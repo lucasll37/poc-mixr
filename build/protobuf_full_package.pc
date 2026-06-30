@@ -1,0 +1,11 @@
+prefix=/home/lima/.conan2/p/b/protoe3dc68c63e014/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+bindir=${prefix}/bin
+
+Name: protobuf_full_package
+Description: Conan package: protobuf_full_package
+Version: 3.21.12
+Libs: -L"${libdir}"
+Cflags: -I"${includedir}"
+Requires: protobuf protobuf_full_package-libprotoc

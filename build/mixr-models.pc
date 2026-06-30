@@ -1,0 +1,10 @@
+prefix=/home/lima/.conan2/p/b/mixr0f9c36e974781/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+bindir=${prefix}/bin
+
+Name: mixr-models
+Description: Conan component: mixr-models
+Version: 1.0.5
+Libs: -L"${libdir}" -lmixr_models
+Cflags: -I"${includedir}"

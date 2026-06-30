@@ -1,0 +1,1 @@
+. "/home/lima/asa/poc-mixr/build/conanbuildenv-debug-x86_64.sh"

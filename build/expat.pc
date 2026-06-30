@@ -1,0 +1,10 @@
+prefix=/home/lima/.conan2/p/expatd8c52bb871b4f/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+bindir=${prefix}/bin
+
+Name: expat
+Description: Conan package: expat
+Version: 2.5.0
+Libs: -L"${libdir}" -lexpat -lm
+Cflags: -I"${includedir}" -DXML_STATIC

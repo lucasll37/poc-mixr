@@ -1,0 +1,56 @@
+[
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/factory_factory.cpp.o -MF src/poc-mixr.p/factory_factory.cpp.o.d -o src/poc-mixr.p/factory_factory.cpp.o -c ../src/factory/factory.cpp",
+    "file": "../src/factory/factory.cpp",
+    "output": "src/poc-mixr.p/factory_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/station_MyStation.cpp.o -MF src/poc-mixr.p/station_MyStation.cpp.o.d -o src/poc-mixr.p/station_MyStation.cpp.o -c ../src/station/MyStation.cpp",
+    "file": "../src/station/MyStation.cpp",
+    "output": "src/poc-mixr.p/station_MyStation.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/simulation_MySimulation.cpp.o -MF src/poc-mixr.p/simulation_MySimulation.cpp.o.d -o src/poc-mixr.p/simulation_MySimulation.cpp.o -c ../src/simulation/MySimulation.cpp",
+    "file": "../src/simulation/MySimulation.cpp",
+    "output": "src/poc-mixr.p/simulation_MySimulation.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/player_MyAircraft.cpp.o -MF src/poc-mixr.p/player_MyAircraft.cpp.o.d -o src/poc-mixr.p/player_MyAircraft.cpp.o -c ../src/player/MyAircraft.cpp",
+    "file": "../src/player/MyAircraft.cpp",
+    "output": "src/poc-mixr.p/player_MyAircraft.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/dynamics_MyDynamics.cpp.o -MF src/poc-mixr.p/dynamics_MyDynamics.cpp.o.d -o src/poc-mixr.p/dynamics_MyDynamics.cpp.o -c ../src/dynamics/MyDynamics.cpp",
+    "file": "../src/dynamics/MyDynamics.cpp",
+    "output": "src/poc-mixr.p/dynamics_MyDynamics.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/navigation_MyNavigation.cpp.o -MF src/poc-mixr.p/navigation_MyNavigation.cpp.o.d -o src/poc-mixr.p/navigation_MyNavigation.cpp.o -c ../src/navigation/MyNavigation.cpp",
+    "file": "../src/navigation/MyNavigation.cpp",
+    "output": "src/poc-mixr.p/navigation_MyNavigation.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/sensor_MyRadar.cpp.o -MF src/poc-mixr.p/sensor_MyRadar.cpp.o.d -o src/poc-mixr.p/sensor_MyRadar.cpp.o -c ../src/sensor/MyRadar.cpp",
+    "file": "../src/sensor/MyRadar.cpp",
+    "output": "src/poc-mixr.p/sensor_MyRadar.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/tacview_AcmiWriter.cpp.o -MF src/poc-mixr.p/tacview_AcmiWriter.cpp.o.d -o src/poc-mixr.p/tacview_AcmiWriter.cpp.o -c ../src/tacview/AcmiWriter.cpp",
+    "file": "../src/tacview/AcmiWriter.cpp",
+    "output": "src/poc-mixr.p/tacview_AcmiWriter.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -MD -MQ src/poc-mixr.p/main.cpp.o -MF src/poc-mixr.p/main.cpp.o.d -o src/poc-mixr.p/main.cpp.o -c ../src/main.cpp",
+    "file": "../src/main.cpp",
+    "output": "src/poc-mixr.p/main.cpp.o"
+  }
+]

@@ -1,0 +1,11 @@
+prefix=/home/lima/.conan2/p/b/mixr0f9c36e974781/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+bindir=${prefix}/bin
+
+Name: mixr
+Description: Conan package: mixr
+Version: 1.0.5
+Libs: -L"${libdir}"
+Cflags: -I"${includedir}"
+Requires: mixr-base mixr-interop_common mixr-interop_dis mixr-linearsystem mixr-linkage mixr-models mixr-recorder mixr-simulation mixr-terrain

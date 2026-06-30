@@ -1,0 +1,10 @@
+[options]
+pkg_config_path = /home/lima/asa/poc-mixr/dist/lib/pkgconfig:./build
+prefix = /home/lima/asa/poc-mixr/dist
+libdir = /home/lima/asa/poc-mixr/dist/lib
+backend = ninja
+buildtype = debug
+
+[properties]
+native_file = ['/home/lima/asa/poc-mixr/build/conan_meson_native.ini']
+
