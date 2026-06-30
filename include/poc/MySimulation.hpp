@@ -8,7 +8,6 @@ class MySimulation final : public mixr::models::WorldModel
     DECLARE_SUBCLASS(MySimulation, mixr::models::WorldModel)
 public:
     MySimulation();
-    static const char* getFactoryName() { return "MySimulation"; }
 };
 
 } // namespace poc

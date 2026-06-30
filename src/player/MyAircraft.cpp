@@ -1,6 +1,8 @@
 #include "poc/MyAircraft.hpp"
+#include "mixr/models/WorldModel.hpp"
 #include "mixr/models/navigation/Navigation.hpp"
-#include "mixr/models/navigation/Steerpoint.hpp"
+#include "mixr/models/navigation/Route.hpp"
+#include "mixr/base/Identifier.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -29,18 +31,21 @@ void MyAircraft::updateTC(const double dt)
         if (reportTimer <= 0.0) {
             reportTimer = REPORT_INTERVAL;
 
-            const auto* nav  = getNavigation();
-            const auto* stpt = (nav != nullptr) ? nav->getSteerpoint() : nullptr;
-            const char* wp   = (stpt != nullptr) ? stpt->getName() : "---";
+            const auto* nav   = getNavigation();
+            const auto* route = (nav != nullptr) ? nav->getPriRoute() : nullptr;
+            const char* wp     = (route != nullptr && route->getSteerpointName() != nullptr)
+                                     ? route->getSteerpointName() : "---";
+
+            const char* myName = (getName() != nullptr) ? getName()->getString() : "?";
 
             std::cout
                 << std::fixed << std::setprecision(2)
-                << "[" << getName() << "]"
+                << "[" << myName << "]"
                 << "  lat="   << getLatitude()   << "°"
                 << "  lon="   << getLongitude()  << "°"
                 << "  alt="   << getAltitudeFt() << "ft"
                 << "  hdg="   << getHeadingD()   << "°"
-                << "  spd="   << getVelocityKts()<< "kt"
+                << "  spd="   << getTotalVelocityKts() << "kt"
                 << "  mach="  << getMach()
                 << "  aoa="   << getAngleOfAttackD() << "°"
                 << "  g="     << getGload()

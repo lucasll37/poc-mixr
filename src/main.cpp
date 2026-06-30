@@ -51,24 +51,25 @@ int main(int argc, char* argv[])
     // ── Cria diretório de saída ─────────────────────────────────────────────
     ::mkdir("output", 0755);
 
-    // ── Fábrica encadeada ───────────────────────────────────────────────────
-    mixr::base::Object::setFactory(poc::factory);
-
     // ── Carrega EDL ────────────────────────────────────────────────────────
+    // A função fábrica (poc::factory) já é passada diretamente ao parser;
+    // não existe (nem é necessário) um Object::setFactory().
     int errors {};
-    auto* pair = mixr::base::edl_parser("config/sim.edl", poc::factory, &errors);
-    if (pair == nullptr || errors > 0) {
+    auto* root = mixr::base::edl_parser("config/sim.edl", poc::factory, &errors);
+    if (root == nullptr || errors > 0) {
         std::cerr << "Falha ao carregar config/sim.edl (" << errors << " erros)\n";
         return 1;
     }
 
-    auto* station = dynamic_cast<mixr::simulation::Station*>(pair->object());
+    // O .edl raiz é "( MyStation ... )" — uma 'form' sem SLOT_ID na frente —
+    // então o parser retorna o próprio objeto Station, não um Pair.
+    auto* station = dynamic_cast<mixr::simulation::Station*>(root);
     if (station == nullptr) {
         std::cerr << "Raiz do EDL não é uma Station\n";
-        pair->unref(); return 1;
+        root->unref(); return 1;
     }
     station->ref();
-    pair->unref();
+    root->unref();
 
     // ── Reset ───────────────────────────────────────────────────────────────
     station->event(mixr::base::Component::RESET_EVENT);

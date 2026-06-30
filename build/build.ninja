@@ -41,50 +41,45 @@ build PHONY: phony
 build src/poc-mixr.p/factory_factory.cpp.o: cpp_COMPILER ../src/factory/factory.cpp
  DEPFILE = src/poc-mixr.p/factory_factory.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/factory_factory.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/station_MyStation.cpp.o: cpp_COMPILER ../src/station/MyStation.cpp
  DEPFILE = src/poc-mixr.p/station_MyStation.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/station_MyStation.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/simulation_MySimulation.cpp.o: cpp_COMPILER ../src/simulation/MySimulation.cpp
  DEPFILE = src/poc-mixr.p/simulation_MySimulation.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/simulation_MySimulation.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/player_MyAircraft.cpp.o: cpp_COMPILER ../src/player/MyAircraft.cpp
  DEPFILE = src/poc-mixr.p/player_MyAircraft.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/player_MyAircraft.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
-
-build src/poc-mixr.p/dynamics_MyDynamics.cpp.o: cpp_COMPILER ../src/dynamics/MyDynamics.cpp
- DEPFILE = src/poc-mixr.p/dynamics_MyDynamics.cpp.o.d
- DEPFILE_UNQUOTED = src/poc-mixr.p/dynamics_MyDynamics.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/navigation_MyNavigation.cpp.o: cpp_COMPILER ../src/navigation/MyNavigation.cpp
  DEPFILE = src/poc-mixr.p/navigation_MyNavigation.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/navigation_MyNavigation.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/sensor_MyRadar.cpp.o: cpp_COMPILER ../src/sensor/MyRadar.cpp
  DEPFILE = src/poc-mixr.p/sensor_MyRadar.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/sensor_MyRadar.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/tacview_AcmiWriter.cpp.o: cpp_COMPILER ../src/tacview/AcmiWriter.cpp
  DEPFILE = src/poc-mixr.p/tacview_AcmiWriter.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/tacview_AcmiWriter.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
 build src/poc-mixr.p/main.cpp.o: cpp_COMPILER ../src/main.cpp
  DEPFILE = src/poc-mixr.p/main.cpp.o.d
  DEPFILE_UNQUOTED = src/poc-mixr.p/main.cpp.o.d
- ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64
+ ARGS = -Isrc/poc-mixr.p -Isrc -I../src -I../include -I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -DXML_STATIC
 
-build src/poc-mixr: cpp_LINKER src/poc-mixr.p/factory_factory.cpp.o src/poc-mixr.p/station_MyStation.cpp.o src/poc-mixr.p/simulation_MySimulation.cpp.o src/poc-mixr.p/player_MyAircraft.cpp.o src/poc-mixr.p/dynamics_MyDynamics.cpp.o src/poc-mixr.p/navigation_MyNavigation.cpp.o src/poc-mixr.p/sensor_MyRadar.cpp.o src/poc-mixr.p/tacview_AcmiWriter.cpp.o src/poc-mixr.p/main.cpp.o | /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_base.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_common.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_dis.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linearsystem.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linkage.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_models.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_recorder.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_simulation.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_terrain.so
- LINK_ARGS = -Wl,--as-needed -Wl,--no-undefined -m64 -Wl,-rpath,/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -Wl,-rpath-link,/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -Wl,--start-group /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_base.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_common.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_dis.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linearsystem.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linkage.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_models.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_recorder.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_simulation.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_terrain.so -Wl,--end-group
+build src/poc-mixr: cpp_LINKER src/poc-mixr.p/factory_factory.cpp.o src/poc-mixr.p/station_MyStation.cpp.o src/poc-mixr.p/simulation_MySimulation.cpp.o src/poc-mixr.p/player_MyAircraft.cpp.o src/poc-mixr.p/navigation_MyNavigation.cpp.o src/poc-mixr.p/sensor_MyRadar.cpp.o src/poc-mixr.p/tacview_AcmiWriter.cpp.o src/poc-mixr.p/main.cpp.o | /home/lima/.conan2/p/b/jsbsib1853f880b36f/p/lib/libAeromatic++.a /home/lima/.conan2/p/b/jsbsib1853f880b36f/p/lib/libJSBSim.a /home/lima/asa/mixr/../dist/lib/libmixr_base.so /home/lima/asa/mixr/../dist/lib/libmixr_interop_common.so /home/lima/asa/mixr/../dist/lib/libmixr_interop_dis.so /home/lima/asa/mixr/../dist/lib/libmixr_linearsystem.so /home/lima/asa/mixr/../dist/lib/libmixr_linkage.so /home/lima/asa/mixr/../dist/lib/libmixr_models.so /home/lima/asa/mixr/../dist/lib/libmixr_recorder.so /home/lima/asa/mixr/../dist/lib/libmixr_simulation.so /home/lima/asa/mixr/../dist/lib/libmixr_terrain.so
+ LINK_ARGS = -Wl,--as-needed -Wl,--no-undefined -m64 -Wl,-rpath,/home/lima/asa/mixr/../dist/lib -Wl,-rpath-link,/home/lima/asa/mixr/../dist/lib -Wl,--start-group /home/lima/asa/mixr/../dist/lib/libmixr_base.so /home/lima/asa/mixr/../dist/lib/libmixr_interop_common.so /home/lima/asa/mixr/../dist/lib/libmixr_interop_dis.so /home/lima/asa/mixr/../dist/lib/libmixr_linearsystem.so /home/lima/asa/mixr/../dist/lib/libmixr_linkage.so /home/lima/asa/mixr/../dist/lib/libmixr_models.so /home/lima/asa/mixr/../dist/lib/libmixr_recorder.so /home/lima/asa/mixr/../dist/lib/libmixr_simulation.so /home/lima/asa/mixr/../dist/lib/libmixr_terrain.so -pthread /home/lima/.conan2/p/b/jsbsib1853f880b36f/p/lib/libJSBSim.a /home/lima/.conan2/p/b/jsbsib1853f880b36f/p/lib/libAeromatic++.a -Wl,--end-group
 
 # Test rules
 
@@ -138,13 +133,13 @@ build meson-internal__clean: CUSTOM_COMMAND PHONY
  COMMAND = /home/lima/.local/bin/ninja -t clean
  description = Cleaning
 
-build build.ninja: REGENERATE_BUILD ../meson.build ../meson_options.txt ../src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat
+build build.ninja: REGENERATE_BUILD ../meson.build ../src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat
  pool = console
 
 build reconfigure: REGENERATE_BUILD PHONY
  pool = console
 
-build ../meson.build ../meson_options.txt ../src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat: phony 
+build ../meson.build ../src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat: phony 
 
 default all
 

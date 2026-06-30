@@ -8,7 +8,6 @@ class MyNavigation final : public mixr::models::Navigation
     DECLARE_SUBCLASS(MyNavigation, mixr::models::Navigation)
 public:
     MyNavigation();
-    static const char* getFactoryName() { return "MyNavigation"; }
 };
 
 } // namespace poc

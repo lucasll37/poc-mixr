@@ -3,6 +3,10 @@
 Demonstração funcional do MIXR com gravação de trajetória para o **Tacview**
 (formato ACMI 2.2).
 
+> **Nota:** esta cópia já inclui as correções de build descritas em
+> `CORRECOES.md`. Veja esse arquivo para o detalhe de cada bug e o porquê
+> da correção.
+
 ## O que está implementado
 
 | Componente | Classe | Descrição |
@@ -10,7 +14,7 @@ Demonstração funcional do MIXR com gravação de trajetória para o **Tacview*
 | Station | `MyStation` | Container raiz com threads TC/BG |
 | WorldModel | `MySimulation` | Ponto de referência geodésico (GRU, SP) |
 | Aeronave | `MyAircraft` | AirVehicle que imprime estado no console |
-| Dinâmica | `MyDynamics` | **JSBSimModel (6DOF)** com modelo f16 |
+| Dinâmica | `mixr::models::JSBSimModel` | JSBSim 6DOF, instanciado direto pela fábrica sob o nome "MyDynamics" |
 | Navegação | `MyNavigation` | Navigation com Route de 4 Steerpoints |
 | Autopilot | `Autopilot` | Modo NAV (segue rota automaticamente) |
 | Radar | `MyRadar` | Radar banda-X com AirTrkMgr |
@@ -24,20 +28,47 @@ Demonstração funcional do MIXR com gravação de trajetória para o **Tacview*
 - MIXR instalado (`libmixr_base`, `libmixr_simulation`, `libmixr_models`)
 - JSBSim instalado com dados de aeronave (`f16.xml`)
 - Meson ≥ 1.0 e Ninja
-- GCC ≥ 7 ou Clang ≥ 5 (C++11)
+- GCC ≥ 7 ou Clang ≥ 5 (C++17)
 - [Tacview](https://www.tacview.net/) para visualizar o ACMI
 
 ---
 
 ## Build
 
-```bash
-meson setup build \
-    -Dmixr_prefix=/caminho/para/mixr \
-    --buildtype=debugoptimized
+O projeto usa **Conan + Meson**, orquestrados pelo `Makefile` na raiz
+(forma padrão de uso). O MIXR (e suas dependências transitivas — JSBSim,
+OpenRTI, Protobuf) é resolvido via `conanfile.py`.
 
-ninja -C build
+```bash
+make configure   # conan install + meson setup (gera ./build e ./dist)
+make build       # ninja compile
+make install     # meson install em ./dist
+make run ARGS="60 output/flight.acmi"   # executa o binário gerado
 ```
+
+Outros alvos úteis: `make clean` (remove `build/` e `dist/`) e
+`make package` (empacota o próprio poc-mixr via `conan create`, em Debug e
+Release).
+
+<details>
+<summary>Equivalente manual, passo a passo (sem o Makefile)</summary>
+
+```bash
+mkdir -p build
+conan install . --build=missing --settings=build_type=Debug
+
+meson setup --reconfigure \
+    --backend ninja \
+    --buildtype debug \
+    --native-file build/conan_meson_native.ini \
+    --prefix="$(pwd)/dist" \
+    --libdir="$(pwd)/dist/lib" \
+    -Dpkg_config_path="$(pwd)/dist/lib/pkgconfig:$(pwd)/build" \
+    build/ .
+
+meson compile -C build
+```
+</details>
 
 ---
 
@@ -45,9 +76,12 @@ ninja -C build
 
 ```bash
 # Padrão: 60 segundos → output/flight.acmi
-./build/poc-mixr
+make run
 
 # Personalizado
+make run ARGS="120 output/minha_missao.acmi"
+
+# ou, diretamente:
 ./build/poc-mixr 120 output/minha_missao.acmi
 ```
 
@@ -97,16 +131,18 @@ Modelos disponíveis tipicamente em `/usr/share/JSBSim/aircraft/`.
 
 ```
 poc-mixr/
+├── Makefile                ← orquestra conan + meson (configure/build/install/run)
+├── conanfile.py             ← resolve o mixr/1.0.5 (e deps transitivas) via Conan
 ├── meson.build
 ├── meson_options.txt
 ├── config/sim.edl
+├── CORRECOES.md          ← detalhe de todos os bugs de build corrigidos
 ├── include/poc/
 │   ├── factory.hpp
 │   ├── AcmiWriter.hpp      ← gravador ACMI
 │   ├── MyStation.hpp
 │   ├── MySimulation.hpp
 │   ├── MyAircraft.hpp
-│   ├── MyDynamics.hpp      ← JSBSimModel
 │   ├── MyNavigation.hpp
 │   └── MyRadar.hpp
 └── src/
@@ -116,9 +152,11 @@ poc-mixr/
     ├── station/
     ├── simulation/
     ├── player/
-    ├── dynamics/
     ├── navigation/
     ├── sensor/
     └── tacview/
         └── AcmiWriter.cpp  ← implementação ACMI 2.2
 ```
+
+> `include/poc/MyDynamics.hpp` e `src/dynamics/MyDynamics.cpp` foram
+> removidos — ver `CORRECOES.md`, item 3.

@@ -1,7 +1,7 @@
 [options]
-pkg_config_path = /home/lima/asa/poc-mixr/dist/lib/pkgconfig:./build
-prefix = /home/lima/asa/poc-mixr/dist
-libdir = /home/lima/asa/poc-mixr/dist/lib
+pkg_config_path = /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:/home/lima/asa/poc-mixr/build
+prefix = /home/lima/asa/poc-mixr/../dist
+libdir = /home/lima/asa/poc-mixr/../dist/lib
 backend = ninja
 buildtype = debug
 

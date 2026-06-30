@@ -4,8 +4,8 @@
 
 # Custom variables
 PWD := $(shell pwd)
-BUILD_DIR := ./build
-DEST_DIR := $(PWD)/dist
+BUILD_DIR := $(PWD)/build
+DEST_DIR := $(PWD)/../dist
 
 # Determine number of parallel jobs for Ninja (half of available cores)
 NINJA_JOBS := $(shell expr $$(nproc) / 2)
@@ -27,7 +27,7 @@ NC := \033[0m # No Color
 
 clean: ## Clean all generated build files in the project.
 	rm -rf $(BUILD_DIR)/
-	rm -rf $(DEST_DIR)/
+# 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
 
 configure: ## Configure the project for building.
@@ -71,7 +71,7 @@ package: ## Package the project using conan.
 # ============================================
 
 run: ## Run the poc-mixr executable. Usage: make run ARGS="60 output/flight.acmi"
-	$(BUILD_DIR)/poc-mixr $(ARGS)
+	$(BUILD_DIR)/src/poc-mixr $(ARGS)
 
 
 # ============================================

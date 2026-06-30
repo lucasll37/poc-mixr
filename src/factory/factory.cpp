@@ -2,9 +2,10 @@
 #include "poc/MyStation.hpp"
 #include "poc/MySimulation.hpp"
 #include "poc/MyAircraft.hpp"
-#include "poc/MyDynamics.hpp"
 #include "poc/MyNavigation.hpp"
 #include "poc/MyRadar.hpp"
+
+#include "mixr/models/dynamics/JSBSimModel.hpp"
 
 #include "mixr/base/factory.hpp"
 #include "mixr/simulation/factory.hpp"
@@ -19,7 +20,7 @@ mixr::base::Object* factory(const std::string& name)
     if      (name == MyStation::getFactoryName())    obj = new MyStation();
     else if (name == MySimulation::getFactoryName()) obj = new MySimulation();
     else if (name == MyAircraft::getFactoryName())   obj = new MyAircraft();
-    else if (name == MyDynamics::getFactoryName())   obj = new MyDynamics();
+    else if (name == "MyDynamics")                   obj = new mixr::models::JSBSimModel();
     else if (name == MyNavigation::getFactoryName()) obj = new MyNavigation();
     else if (name == MyRadar::getFactoryName())      obj = new MyRadar();
 

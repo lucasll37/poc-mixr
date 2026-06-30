@@ -1,5 +1,0 @@
-option('mixr_prefix',
-  type        : 'string',
-  value       : '/usr/local',
-  description : 'Prefixo de instalação do MIXR (contém include/ e lib/)'
-)

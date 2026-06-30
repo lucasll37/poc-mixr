@@ -3,8 +3,10 @@
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/Simulation.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
+#include "mixr/models/player/Player.hpp"
 #include "mixr/base/PairStream.hpp"
 #include "mixr/base/Pair.hpp"
+#include "mixr/base/Identifier.hpp"
 #include "mixr/base/units/angle_utils.hpp"
 
 #include <ctime>
@@ -37,7 +39,7 @@ std::string AcmiWriter::nowUtcIso()
 // https://www.tacview.net/documentation/acmi/en/#Types
 std::string AcmiWriter::acmiType(int majorType)
 {
-    using P = mixr::simulation::AbstractPlayer;
+    using P = mixr::models::Player;
     switch (majorType) {
         case P::AIR_VEHICLE:    return "Air+FixedWing";
         case P::GROUND_VEHICLE: return "Ground+Vehicle";
@@ -45,7 +47,6 @@ std::string AcmiWriter::acmiType(int majorType)
         case P::WEAPON:         return "Weapon+Missile";
         case P::LIFE_FORM:      return "Ground+LifeForm";
         case P::BUILDING:       return "Ground+Structure";
-        case P::EFFECT:         return "Misc+Decoy";
         default:                return "Unknown";
     }
 }
@@ -53,7 +54,7 @@ std::string AcmiWriter::acmiType(int majorType)
 // ── acmiColor ───────────────────────────────────────────────────────────────
 std::string AcmiWriter::acmiColor(int side)
 {
-    using P = mixr::simulation::AbstractPlayer;
+    using P = mixr::models::Player;
     switch (side) {
         case P::BLUE: return "Blue";
         case P::RED:  return "Red";
@@ -97,19 +98,18 @@ void AcmiWriter::writeFrame(double t_sim,
     const auto* sim = station->getSimulation();
     if (sim == nullptr) return;
 
-    // Lista de players ativos
-    mixr::base::PairStream* players = sim->getPlayers();
+    // Lista de players ativos (const: Station/Simulation foram passados como const*)
+    const mixr::base::PairStream* players = sim->getPlayers();
     if (players == nullptr) return;
 
     // Marca o offset de tempo
     file << std::fixed << std::setprecision(3) << "#" << t_sim << "\n";
 
     // Itera sobre todos os players
-    mixr::base::List::Item* item = players->getFirstItem();
+    const mixr::base::List::Item* item = players->getFirstItem();
     while (item != nullptr) {
         const auto* pair = static_cast<const mixr::base::Pair*>(item->getValue());
-        const auto* p    = static_cast<const mixr::simulation::AbstractPlayer*>(
-                               pair->object());
+        const auto* p    = dynamic_cast<const mixr::models::Player*>(pair->object());
 
         if (p != nullptr && p->isMode(mixr::simulation::AbstractPlayer::ACTIVE)) {
             unsigned short id = p->getID();
@@ -117,7 +117,7 @@ void AcmiWriter::writeFrame(double t_sim,
             // Posição geodésica
             double lat = p->getLatitude();   // graus
             double lon = p->getLongitude();  // graus
-            double alt = p->getAltitudeM(); // metros MSL
+            double alt = p->getAltitudeM();  // metros MSL
 
             // Atitude em graus (Euler: roll, pitch, yaw)
             // MIXR armazena em radianos — converter para graus
@@ -129,7 +129,7 @@ void AcmiWriter::writeFrame(double t_sim,
             if (id < MAX_ID && !meta[id].declared) {
                 meta[id].declared = true;
 
-                const char* name = p->getName();
+                const char* name = (p->getName() != nullptr) ? p->getName()->getString() : nullptr;
                 std::string type  = acmiType(p->getMajorType());
                 std::string color = acmiColor(p->getSide());
 
@@ -152,7 +152,7 @@ void AcmiWriter::writeFrame(double t_sim,
         item = item->getNext();
     }
 
-    players->unref();
+    const_cast<mixr::base::PairStream*>(players)->unref();
     file.flush();
 }
 
