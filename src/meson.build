@@ -1,17 +1,15 @@
-# ============================================
-# Subdiretórios
-# ============================================
-subdir('model')
-
-
-
-source_files = ['./main.cpp']
-
-
-executable('PocMixr',
-    source_files,
-    dependencies:  [mixr_dep],
-    install_rpath: '$ORIGIN/../lib',
-    install:       true,
-    install_dir:   get_option('bindir'),
+executable('poc-mixr',
+  sources : files(
+    'factory/factory.cpp',
+    'station/MyStation.cpp',
+    'simulation/MySimulation.cpp',
+    'player/MyAircraft.cpp',
+    'dynamics/MyDynamics.cpp',
+    'navigation/MyNavigation.cpp',
+    'sensor/MyRadar.cpp',
+    'tacview/AcmiWriter.cpp',
+    'main.cpp',
+  ),
+  dependencies : [mixr_dep],
+  install      : true,
 )

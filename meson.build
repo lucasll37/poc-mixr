@@ -1,34 +1,29 @@
 project('poc-mixr', 'cpp',
-    version: '0.0.1',
-    default_options: [
-        'c_std=c11',
-        'cpp_std=c++17',
-        'warning_level=3',
-        'werror=false',
-    ],
+  version : '0.1.0',
+  default_options : [
+    'cpp_std=c++11',
+    'warning_level=1',
+    'buildtype=debugoptimized',
+  ]
 )
-
-message('Version: ' + meson.project_version())
-message('Build Type: ' + get_option('buildtype'))
 
 cpp = meson.get_compiler('cpp')
 
-add_project_arguments(
-    cpp.get_supported_arguments(['-Wno-pedantic', '-Wno-unused-parameter']),
-    language: 'cpp',
+thread_dep  = dependency('threads')
+jsbsim_dep  = dependency('JSBSim', required : false)
+
+# ── MIXR ─────────────────────────────────────────────────────────────────────
+mixr_prefix = get_option('mixr_prefix')
+mixr_inc    = include_directories(mixr_prefix / 'include')
+
+mixr_base_lib    = cpp.find_library('mixr_base',       dirs : mixr_prefix / 'lib', required : true)
+mixr_sim_lib     = cpp.find_library('mixr_simulation',  dirs : mixr_prefix / 'lib', required : true)
+mixr_models_lib  = cpp.find_library('mixr_models',      dirs : mixr_prefix / 'lib', required : true)
+
+mixr_dep = declare_dependency(
+  include_directories : [mixr_inc, include_directories('include')],
+  dependencies : [mixr_base_lib, mixr_sim_lib, mixr_models_lib,
+                  thread_dep, jsbsim_dep],
 )
 
-add_project_link_arguments(
-    '-Wl,-z,noexecstack',
-    language: 'cpp',
-)
-
-# ============================================
-# Dependências
-# ============================================
-mixr_dep = dependency('mixr/1.0.5')
-
-# ============================================
-# Subdiretórios
-# ============================================
 subdir('src')
