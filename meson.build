@@ -1,11 +1,27 @@
 project('poc-mixr', 'cpp',
   version : '0.1.0',
   default_options : [
-    'cpp_std=c++11',
-    'warning_level=1',
-    'buildtype=debugoptimized',
+      'default_library=shared',
+      'c_std=c11',
+      'cpp_std=c++17',
+      'c_args=-fPIC',
+      'cpp_args=-fPIC',
   ]
 )
+
+
+#
+# Linker flags for mostly static builds
+#
+
+static_flags = [
+    '-static-libstdc++',   # embed libstdc++.a
+    '-static-libgcc',      # embed libgcc.a
+]
+
+#
+# Dependencies
+#
 
 thread_dep  = dependency('threads')
 jsbsim_dep  = dependency('jsbsim', required : false)
