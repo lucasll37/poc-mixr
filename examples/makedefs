@@ -1,0 +1,44 @@
+
+# -----------------------------------------------------------------------------
+# MIXR Examples 'make' configuration file
+# -----------------------------------------------------------------------------
+
+include ${MIXR_ROOT}/src/makedefs
+
+# ---
+# Add location of MIXR libs and example libraries
+# ---
+LDFLAGS += -L$(MIXR_ROOT)/lib
+LDFLAGS += -L$(MIXR_EXAMPLES_LIB_PATH)
+
+# ---
+# Add location of 3rd party libs
+# ---
+ifdef MIXR_3RD_PARTY_ROOT
+   LDFLAGS += -L$(MIXR_3RD_PARTY_ROOT)/lib
+   LDFLAGS += -L$(MIXR_3RD_PARTY_ROOT)/lib64
+   LDFLAGS += -L$(MIXR_3RD_PARTY_ROOT)/lib64/osgPlugins-3.4.1
+endif
+
+# ---
+# CPP flags
+# ---
+CPPFLAGS += -I$(MIXR_EXAMPLES_ROOT)/shared
+#CPPFLAGS += -pedantic
+
+# ---
+# EPP flags
+# ---
+EPPFLAGS = \
+	-I$(MIXR_DATA_ROOT) \
+	-I$(MIXR_ROOT)/../mixr-examples/shared \
+	-I$(MIXR_ROOT)/include \
+	-DMIXR_DATA_PATH=\"$(MIXR_DATA_ROOT)/\" \
+	-DMIXR_DATA_FONT_PATH=\"$(MIXR_DATA_ROOT)/fonts/\" \
+	-DMIXR_DATA_FONT_11_19_PATH=\"$(MIXR_DATA_ROOT)/fonts/11x19/normal/\" \
+	-DMIXR_DATA_TEXTURES_PATH=\"$(MIXR_DATA_ROOT)/textures/\" \
+	-DMIXR_DATA_JSBSIM_PATH=\"$(MIXR_DATA_ROOT)/JSBSim/\" \
+	-DMIXR_DATA_VMAP0_PATH=\"$(MIXR_DATA_ROOT)/vmap0/v0noa_5/vmaplv0/\" \
+	-DMIXR_DATA_VISUALDB_PATH=\"$(MIXR_DATA_ROOT)/visualdb/portland/\" \
+	-DMIXR_DATA_RECORDER_FILE=\"$(MIXR_DATA_ROOT)/recorder/zFileWriter.ebd\"
+

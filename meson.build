@@ -17,16 +17,21 @@ message('Build Type: ' + get_option('buildtype'))
 # ============================================
 thread_dep = dependency('threads')
 
-mixr_dep = dependency('mixr',
-    method:  'pkg-config',
-    required: true,
-)
+mixr_dep = dependency('mixr', method:  'pkg-config', required: true)
+
+# ============================================
+# Includes
+# ============================================
+inc_dir = include_directories('include')
 
 # ============================================
 # Subdiretórios
 # ============================================
 subdir('./src')
 
+# ============================================
+# Summary
+# ============================================
 summary({
     'Build Type':   get_option('buildtype'),
     'C++ Standard': get_option('cpp_std'),

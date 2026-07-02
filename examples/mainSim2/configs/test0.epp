@@ -1,0 +1,35 @@
+
+#include "screenSetup.epp"
+
+( SimStation
+
+   tcPriority: 0.0
+   netPriority: 0.0
+   
+   // input/output
+   ioHandler: ( SimIoHandler
+      inputData: ( IoData numAI: 10   numDI: 40 )
+      devices: {
+         //#include "linkage/saitekEVO.epp"
+         #include "linkage/saitekST290.epp"
+         //#include "linkage/thrustmaster.epp"
+         //#include "linkage/warthog.epp"
+      }
+   )
+
+   // image generator host interface
+   igHosts: {
+      //#include "ighosts/pov.epp"
+      #include "ighosts/cigi.epp"
+   }
+
+   // interoperability interfaces
+   networks: {
+      #include "interop/dis.epp"
+   }   
+
+   #include "scenario.epp"
+   #include "instrumentPanel.epp"
+
+)
+

@@ -1,4 +1,4 @@
-Build started at 2026-06-30T15:55:12.300237
+Build started at 2026-07-02T11:28:22.418861
 Main binary: /usr/bin/python3
 Build Options: -Dpkg_config_path=/home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build -Dprefix=/home/lima/asa/poc-mixr/../dist -Dlibdir=/home/lima/asa/poc-mixr/../dist/lib -Dbackend=ninja -Dbuildtype=debug --native-file=./build/conan_meson_native.ini
 Python system: Linux
@@ -30,7 +30,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccCAySXm.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccZbmfI9.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -74,7 +74,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccJSaXoL.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccmA2xJK.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -138,7 +138,7 @@ stdout:
 -L/home/lima/asa/mixr/../dist/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
 -----------
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp3wkp9xmw
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f
 Code:
  
         #include<stdio.h>
@@ -147,7 +147,7 @@ Code:
             return 0;
         }
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp3wkp9xmw/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp3wkp9xmw/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
 Program stdout:
 
 8
@@ -156,11 +156,11 @@ Program stderr:
 
 
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp992_2gme
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg
 Code:
  
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp992_2gme/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp992_2gme/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
 stdout:
 install: /usr/lib/gcc/x86_64-linux-gnu/13/
 programs: =/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/
@@ -177,7 +177,7 @@ mixr-hello 1.0.0
     Prefix         : /home/lima/asa/poc-mixr/../dist
 
   Build Artifacts
-    Executable     : /home/lima/asa/poc-mixr/build/./src/hello
+    Executable     : /home/lima/asa/poc-mixr/build/./src/poc-mixr
 
   User defined options
     Native files   : ./build/conan_meson_native.ini
@@ -189,9 +189,9 @@ mixr-hello 1.0.0
 
 Found ninja-1.10.0.git.kitware.jobserver-1 at /home/lima/.local/bin/ninja
 Running compile:
-Working directory:  /tmp/tmpjjeo_mum
+Working directory:  /tmp/tmp0pjg4b3x
 Code:
  int i = static_cast<int>(0);
 -----------
-Command line: `g++ /tmp/tmpjjeo_mum/testfile.cpp -o /tmp/tmpjjeo_mum/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
+Command line: `g++ /tmp/tmp0pjg4b3x/testfile.cpp -o /tmp/tmp0pjg4b3x/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
 Compiler accepts -std=gnu++17: YES

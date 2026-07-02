@@ -1,0 +1,27 @@
+// ---
+// Route example
+// ---
+
+//
+#define REF_LATITUDE     37.0
+#define REF_LONGITUDE  -116.0
+#define IG_LATITUDE    REF_LATITUDE
+#define IG_LONGITUDE   REF_LONGITUDE
+
+( Station
+
+   tcPriority: 1
+
+   // image generator host interface
+   igHosts: {
+      //#include "ighosts/pov.epp"
+      //#include "ighosts/cigi.epp"
+   }
+
+   // interoperability interfaces
+   networks: {
+      //#include "interop/dis.epp"
+   }
+
+   #include "./test2/scenario.epp"
+)

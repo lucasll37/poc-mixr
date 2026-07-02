@@ -1,1 +1,1 @@
-{"targets": {"/home/lima/asa/poc-mixr/build/./src/hello": {"destination": "{bindir}/hello", "tag": "runtime", "subproject": null}}}
+{"targets": {"/home/lima/asa/poc-mixr/build/./src/poc-mixr": {"destination": "{bindir}/poc-mixr", "tag": "runtime", "subproject": null}}}

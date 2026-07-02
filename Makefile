@@ -55,8 +55,8 @@ install: ## Install all targets in the project.
 # ============================================
 # Execution Targets
 # ============================================
-# run: ## Run the server.
-# 	$(BUILD_DIR)/core/server/MiiaServer --address 0.0.0.0:50052 --models-dir ./models --threads 8
+run: ## Run the server.
+	$(BUILD_DIR)/src/main
 
 # ============================================
 # Misc Targets
