@@ -1,14 +1,14 @@
-.PHONY: clean configure build install package help run
+.PHONY: clean configure build install help
 
 .DEFAULT_GOAL := help
 
 # Custom variables
 PWD := $(shell pwd)
-BUILD_DIR := $(PWD)/build
+BUILD_DIR := ./build
 DEST_DIR := $(PWD)/../dist
 
 # Determine number of parallel jobs for Ninja (half of available cores)
-NINJA_JOBS := $(shell expr $$(nproc) / 2)
+NINJA_JOBS := $(shell expr $$(nproc) / 1)
 
 # Build configuration
 BUILD_TYPE := Debug
@@ -20,14 +20,12 @@ YELLOW := \033[1;33m
 BLUE := \033[0;34m
 NC := \033[0m # No Color
 
-
 # ============================================
 # C++ Build Targets
 # ============================================
 
 clean: ## Clean all generated build files in the project.
 	rm -rf $(BUILD_DIR)/
-# 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
 
 configure: ## Configure the project for building.
@@ -40,6 +38,7 @@ configure: ## Configure the project for building.
 
 	meson setup --reconfigure \
 		--backend ninja \
+		--buildtype debug \
 		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
 		--native-file $(BUILD_DIR)/conan_meson_native.ini \
 		--prefix=$(DEST_DIR) \
@@ -52,31 +51,15 @@ build: ## Build all targets in the project.
 
 install: ## Install all targets in the project.
 	meson install -C $(BUILD_DIR)
-	mkdir -p $(DEST_DIR)/output
-
-package: ## Package the project using conan.
-	conan create ./ \
-		--build=missing \
-		--settings=compiler.cppstd=11 \
-		--settings=build_type=Debug
-
-	conan create ./ \
-		--build=missing \
-		--settings=compiler.cppstd=11 \
-		--settings=build_type=Release
-
 
 # ============================================
 # Execution Targets
 # ============================================
-
-run: ## Run the poc-mixr executable. Usage: make run ARGS="60 output/flight.acmi"
-	$(BUILD_DIR)/src/poc-mixr $(ARGS)
-
+# run: ## Run the server.
+# 	$(BUILD_DIR)/core/server/MiiaServer --address 0.0.0.0:50052 --models-dir ./models --threads 8
 
 # ============================================
-# Misc
+# Misc Targets
 # ============================================
-
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

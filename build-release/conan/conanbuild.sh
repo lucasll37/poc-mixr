@@ -1,0 +1,1 @@
+. "/home/lima/asa/poc-mixr/build-release/conan/conanbuildenv-release-x86_64.sh"

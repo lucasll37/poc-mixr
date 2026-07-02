@@ -1,0 +1,11 @@
+prefix=/home/lima/.conan2/p/b/jsbsi5d1731df04990/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+includedir1=${prefix}/include/JSBSim
+bindir=${prefix}/bin
+
+Name: jsbsim
+Description: Conan package: jsbsim
+Version: 1.1.11
+Libs: -L"${libdir}" -lJSBSim -lAeromatic++
+Cflags: -I"${includedir}" -I"${includedir1}"

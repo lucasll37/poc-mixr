@@ -1,10 +1,1 @@
 # ninja log v5
-0	506	1782838955259920289	src/poc-mixr.p/station_MyStation.cpp.o	4a7dbc48195fd16c
-1	572	1782838955319923050	src/poc-mixr.p/sensor_MyRadar.cpp.o	2406fdaf97181345
-0	613	1782838955359924890	src/poc-mixr.p/simulation_MySimulation.cpp.o	7a9374b77dec80d7
-0	635	1782838955389926266	src/poc-mixr.p/factory_factory.cpp.o	223123538148f399
-1	669	1782838955419927642	src/poc-mixr.p/main.cpp.o	397954486b9ea3cf
-1	675	1782838955429928097	src/poc-mixr.p/player_MyAircraft.cpp.o	65611cc43ec4a470
-1	712	1782838955459929482	src/poc-mixr.p/navigation_MyNavigation.cpp.o	ddde943b313ef7f2
-1	775	1782838955529932698	src/poc-mixr.p/tacview_AcmiWriter.cpp.o	df1fcaa47579ba2e
-776	1211	1782838955959951807	src/poc-mixr	6b4809caa2627f72

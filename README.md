@@ -1,162 +1,100 @@
-# poc-mixr  v0.1
+# mixr-hello
 
-Demonstração funcional do MIXR com gravação de trajetória para o **Tacview**
-(formato ACMI 2.2).
+O exemplo mais simples possível usando o framework MIXR, seguindo o mesmo
+padrão de build do projeto `my_mixr`: `Makefile` orquestrando `conanfile.py`
+(Conan) e `meson.build` (Meson).
 
-> **Nota:** esta cópia já inclui as correções de build descritas em
-> `CORRECOES.md`. Veja esse arquivo para o detalhe de cada bug e o porquê
-> da correção.
-
-## O que está implementado
-
-| Componente | Classe | Descrição |
-|---|---|---|
-| Station | `MyStation` | Container raiz com threads TC/BG |
-| WorldModel | `MySimulation` | Ponto de referência geodésico (GRU, SP) |
-| Aeronave | `MyAircraft` | AirVehicle que imprime estado no console |
-| Dinâmica | `mixr::models::JSBSimModel` | JSBSim 6DOF, instanciado direto pela fábrica sob o nome "MyDynamics" |
-| Navegação | `MyNavigation` | Navigation com Route de 4 Steerpoints |
-| Autopilot | `Autopilot` | Modo NAV (segue rota automaticamente) |
-| Radar | `MyRadar` | Radar banda-X com AirTrkMgr |
-| Alvo | `AirVehicle` + `RacModel` | Alvo vermelho cinemático |
-| **ACMI** | `AcmiWriter` | Grava ACMI 2.2 para Tacview |
+Cria uma `Station` com uma `Simulation` vazia (sem players, sem física,
+sem `models`) e roda o ciclo `updateTC()`/`updateData()` por 5 segundos.
 
 ---
 
 ## Pré-requisitos
 
-- MIXR instalado (`libmixr_base`, `libmixr_simulation`, `libmixr_models`)
-- JSBSim instalado com dados de aeronave (`f16.xml`)
+- O pacote Conan `mixr/1.0.5` já publicado no seu remote local
+  (o mesmo gerado pelo `conanfile.py` do projeto `my_mixr` via
+  `conan create .` ou `scripts/deploy.sh`)
+- Conan ≥ 2.0
 - Meson ≥ 1.0 e Ninja
-- GCC ≥ 7 ou Clang ≥ 5 (C++17)
-- [Tacview](https://www.tacview.net/) para visualizar o ACMI
+- GCC ≥ 7 ou Clang ≥ 5 (C++11)
 
 ---
 
 ## Build
 
-O projeto usa **Conan + Meson**, orquestrados pelo `Makefile` na raiz
-(forma padrão de uso). O MIXR (e suas dependências transitivas — JSBSim,
-OpenRTI, Protobuf) é resolvido via `conanfile.py`.
+```bash
+make configure   # conan install + meson setup
+make build       # meson compile
+./build/hello    # executa
+```
+
+Outros alvos seguem o mesmo padrão do `my_mixr`:
 
 ```bash
-make configure   # conan install + meson setup (gera ./build e ./dist)
-make build       # ninja compile
-make install     # meson install em ./dist
-make run ARGS="60 output/flight.acmi"   # executa o binário gerado
+make install   # copia artefatos para dist/
+make package   # gera o pacote Conan deste projeto (conan create .)
+make clean     # remove build/ e dist/
+make help      # lista os alvos disponíveis (via comentários ## no Makefile)
 ```
-
-Outros alvos úteis: `make clean` (remove `build/` e `dist/`) e
-`make package` (empacota o próprio poc-mixr via `conan create`, em Debug e
-Release).
-
-<details>
-<summary>Equivalente manual, passo a passo (sem o Makefile)</summary>
-
-```bash
-mkdir -p build
-conan install . --build=missing --settings=build_type=Debug
-
-meson setup --reconfigure \
-    --backend ninja \
-    --buildtype debug \
-    --native-file build/conan_meson_native.ini \
-    --prefix="$(pwd)/dist" \
-    --libdir="$(pwd)/dist/lib" \
-    -Dpkg_config_path="$(pwd)/dist/lib/pkgconfig:$(pwd)/build" \
-    build/ .
-
-meson compile -C build
-```
-</details>
 
 ---
 
-## Executar
-
-```bash
-# Padrão: 60 segundos → output/flight.acmi
-make run
-
-# Personalizado
-make run ARGS="120 output/minha_missao.acmi"
-
-# ou, diretamente:
-./build/poc-mixr 120 output/minha_missao.acmi
-```
-
-Depois abra `output/flight.acmi` no Tacview.
-
----
-
-## Formato ACMI gerado
+## Estrutura
 
 ```
-FileType=text/acmi/tacview
-FileVersion=2.2
-0,ReferenceTime=2024-01-01T12:00:00Z
-0,Title=poc-mixr simulation
-
-#0.000
-1,T=-46.467|−23.417|4572.0|0.0|2.1|90.0,Name=alpha,Type=Air+FixedWing,Color=Blue
-2,T=-46.120|−23.383|3048.0|0.0|0.5|260.0,Name=bravo,Type=Air+FixedWing,Color=Red
-
-#0.100
-1,T=-46.466|−23.417|4573.2|0.3|2.0|90.1
-2,T=-46.121|−23.383|3048.1|0.0|0.4|260.0
-...
-```
-
-Propriedades estáticas (`Name`, `Type`, `Color`) são escritas **uma única vez**
-por player. Frames subsequentes contêm apenas `T=lon|lat|alt|roll|pitch|yaw`.
-
----
-
-## Ajuste do JSBSim
-
-Em `config/sim.edl`, altere:
-
-```edl
-dynamicsModel: ( MyDynamics
-    model:   "f16"                    // nome do modelo
-    rootDir: "/usr/share/JSBSim"      // seu diretório JSBSim
-)
-```
-
-Modelos disponíveis tipicamente em `/usr/share/JSBSim/aircraft/`.
-
----
-
-## Estrutura do projeto
-
-```
-poc-mixr/
-├── Makefile                ← orquestra conan + meson (configure/build/install/run)
-├── conanfile.py             ← resolve o mixr/1.0.5 (e deps transitivas) via Conan
-├── meson.build
-├── meson_options.txt
-├── config/sim.edl
-├── CORRECOES.md          ← detalhe de todos os bugs de build corrigidos
-├── include/poc/
-│   ├── factory.hpp
-│   ├── AcmiWriter.hpp      ← gravador ACMI
-│   ├── MyStation.hpp
-│   ├── MySimulation.hpp
-│   ├── MyAircraft.hpp
-│   ├── MyNavigation.hpp
-│   └── MyRadar.hpp
+mixr-hello/
+├── Makefile          # orquestra Conan + Meson
+├── conanfile.py       # consome o pacote mixr/1.0.0
+├── meson.build         # raiz: resolve mixr_base/mixr_simulation via pkg-config
 └── src/
     ├── meson.build
-    ├── main.cpp             ← laço principal + integração AcmiWriter
-    ├── factory/factory.cpp
-    ├── station/
-    ├── simulation/
-    ├── player/
-    ├── navigation/
-    ├── sensor/
-    └── tacview/
-        └── AcmiWriter.cpp  ← implementação ACMI 2.2
+    └── main.cpp        # Station + Simulation, sem EDL, sem models
 ```
 
-> `include/poc/MyDynamics.hpp` e `src/dynamics/MyDynamics.cpp` foram
-> removidos — ver `CORRECOES.md`, item 3.
+---
+
+## Alvos do Makefile
+
+| Alvo | Ação |
+|---|---|
+| `make configure` | `conan install` + `meson setup` |
+| `make build` | `meson compile` |
+| `make install` | copia artefatos para `dist/` |
+| `make package` | `conan create .` — gera o pacote deste projeto |
+| `make clean` | remove `build/` e `dist/` |
+| `make help` | lista os alvos disponíveis (extraído dos comentários `##`) |
+
+---
+
+## Saída esperada
+
+```
+=== mixr-hello ===
+Reset concluído.
+  t = 0s
+  t = 1s
+  t = 2s
+  t = 3s
+  t = 4s
+=== fim ===
+```
+
+---
+
+## O que isso demonstra
+
+- `Station` e `Simulation` podem ser criadas e configuradas diretamente em
+  C++ (sem precisar de um arquivo EDL)
+- `setSlotSimulation()` é o mesmo mecanismo que o EDL usa por trás dos panos
+- `RESET_EVENT` inicializa a árvore de objetos
+- `updateTC()` (tempo crítico) e `updateData()` (background) são os dois
+  pontos de entrada do ciclo de simulação — aqui chamados manualmente
+- `SHUTDOWN_EVENT` + `unref()` é o encerramento limpo
+- O fluxo Conan → Meson → Makefile é idêntico ao usado no `my_mixr`: o
+  Conan resolve a dependência binária (`mixr`) e gera os arquivos de
+  toolchain/pkg-config que o Meson consome via `dependency()`
+
+## Próximo passo
+
+Para ter algo "vivo" na simulação seria necessário adicionar `mixr_models`
+e um `Player` com `DynamicsModel` — escopo do projeto `poc-mixr`.

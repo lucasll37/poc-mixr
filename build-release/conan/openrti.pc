@@ -1,0 +1,11 @@
+prefix=/home/lima/.conan2/p/b/openrf5c6de7ce7ad0/p
+libdir=${prefix}/lib
+includedir=${prefix}/include
+bindir=${prefix}/bin
+
+Name: openrti
+Description: Conan package: openrti
+Version: 814a210978b7faafd65affbe70a2e25679921b23
+Libs: -L"${libdir}" -lFedTime -lOpenRTI -lRTI-NG
+Cflags: -I"${includedir}"
+Requires: expat
