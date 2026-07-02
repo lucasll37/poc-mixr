@@ -1,6 +1,6 @@
-Build started at 2026-07-02T11:28:22.418861
+Build started at 2026-07-02T14:10:00.826241
 Main binary: /usr/bin/python3
-Build Options: -Dpkg_config_path=/home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build -Dprefix=/home/lima/asa/poc-mixr/../dist -Dlibdir=/home/lima/asa/poc-mixr/../dist/lib -Dbackend=ninja -Dbuildtype=debug --native-file=./build/conan_meson_native.ini
+Build Options: -Dpkg_config_path=./build -Dprefix=/home/lima/asa/poc-mixr/dist -Dlibdir=/home/lima/asa/poc-mixr/dist/lib -Dbackend=ninja -Dbuildtype=debug --native-file=./build/conan_meson_native.ini
 Python system: Linux
 The Meson build system
 Version: 1.2.0
@@ -30,7 +30,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccZbmfI9.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccEWa181.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -74,7 +74,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccmA2xJK.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccV4bHkf.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -112,33 +112,33 @@ Pkg-config binary missing from cross or native file, or env var undefined.
 Trying a default Pkg-config fallback at pkg-config
 Found pkg-config: /usr/bin/pkg-config (1.8.1)
 Determining dependency 'mixr' with pkg-config executable '/usr/bin/pkg-config'
-env[PKG_CONFIG_PATH]: /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build
+env[PKG_CONFIG_PATH]: build
 -----------
 Called: `/usr/bin/pkg-config --modversion mixr` -> 0
 stdout:
 1.0.5
 -----------
-env[PKG_CONFIG_PATH]: /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build
+env[PKG_CONFIG_PATH]: build
 -----------
 Called: `/usr/bin/pkg-config --cflags mixr` -> 0
 stdout:
--I/home/lima/asa/mixr/../dist/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include -I/home/lima/.conan2/p/b/jsbsib1853f880b36f/p/include/JSBSim -I/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p/include -I/home/lima/.conan2/p/expatd8c52bb871b4f/p/include -I/home/lima/.conan2/p/b/zlibe2db0c4823de7/p/include -DXML_STATIC -I/home/lima/.conan2/p/b/protoe3dc68c63e014/p/include
+-I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include
 -----------
 env[PKG_CONFIG_ALLOW_SYSTEM_LIBS]: 1
-env[PKG_CONFIG_PATH]: /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build
+env[PKG_CONFIG_PATH]: build
 -----------
 Called: `/usr/bin/pkg-config --libs mixr` -> 0
 stdout:
--L/home/lima/asa/mixr/../dist/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
+-L/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
 -----------
-env[PKG_CONFIG_PATH]: /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build
+env[PKG_CONFIG_PATH]: build
 -----------
 Called: `/usr/bin/pkg-config --libs mixr` -> 0
 stdout:
--L/home/lima/asa/mixr/../dist/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
+-L/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
 -----------
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp3zuhpqlr
 Code:
  
         #include<stdio.h>
@@ -147,7 +147,7 @@ Code:
             return 0;
         }
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp8x5j42_f/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp3zuhpqlr/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp3zuhpqlr/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
 Program stdout:
 
 8
@@ -156,17 +156,24 @@ Program stderr:
 
 
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpoag7atyy
 Code:
  
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmppx5pwbpg/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpoag7atyy/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpoag7atyy/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
 stdout:
 install: /usr/lib/gcc/x86_64-linux-gnu/13/
 programs: =/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/
 libraries: =/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/13/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/13/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
 -----------
 Run-time dependency mixr found: YES 1.0.5
+env[PKG_CONFIG_PATH]: build
+-----------
+Called: `/usr/bin/pkg-config --variable=libdir mixr` -> 0
+stdout:
+/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib
+-----------
+Got pkgconfig variable libdir : /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib
 Build targets in project: 1
 
 mixr-hello 1.0.0
@@ -174,7 +181,7 @@ mixr-hello 1.0.0
   Configuration
     Build Type     : debug
     C++ Standard   : gnu++17
-    Prefix         : /home/lima/asa/poc-mixr/../dist
+    Prefix         : /home/lima/asa/poc-mixr/dist
 
   Build Artifacts
     Executable     : /home/lima/asa/poc-mixr/build/./src/poc-mixr
@@ -183,15 +190,15 @@ mixr-hello 1.0.0
     Native files   : ./build/conan_meson_native.ini
     backend        : ninja
     buildtype      : debug
-    libdir         : /home/lima/asa/poc-mixr/../dist/lib
-    pkg_config_path: /home/lima/asa/poc-mixr/../dist/lib/pkgconfig:./build
-    prefix         : /home/lima/asa/poc-mixr/../dist
+    libdir         : /home/lima/asa/poc-mixr/dist/lib
+    pkg_config_path: ./build
+    prefix         : /home/lima/asa/poc-mixr/dist
 
 Found ninja-1.10.0.git.kitware.jobserver-1 at /home/lima/.local/bin/ninja
 Running compile:
-Working directory:  /tmp/tmp0pjg4b3x
+Working directory:  /tmp/tmpecet4p3q
 Code:
  int i = static_cast<int>(0);
 -----------
-Command line: `g++ /tmp/tmp0pjg4b3x/testfile.cpp -o /tmp/tmp0pjg4b3x/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
+Command line: `g++ /tmp/tmpecet4p3q/testfile.cpp -o /tmp/tmpecet4p3q/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
 Compiler accepts -std=gnu++17: YES

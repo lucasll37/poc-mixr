@@ -5,7 +5,7 @@
 # Custom variables
 PWD := $(shell pwd)
 BUILD_DIR := ./build
-DEST_DIR := $(PWD)/../dist
+DEST_DIR := $(PWD)/dist
 
 # Determine number of parallel jobs for Ninja (half of available cores)
 NINJA_JOBS := $(shell expr $$(nproc) / 1)
@@ -26,6 +26,7 @@ NC := \033[0m # No Color
 
 clean: ## Clean all generated build files in the project.
 	rm -rf $(BUILD_DIR)/
+	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
 
 configure: ## Configure the project for building.
@@ -43,8 +44,12 @@ configure: ## Configure the project for building.
 		--native-file $(BUILD_DIR)/conan_meson_native.ini \
 		--prefix=$(DEST_DIR) \
 		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(DEST_DIR)/lib/pkgconfig:$(BUILD_DIR) \
+		-Dpkg_config_path=$(BUILD_DIR) \
 		$(BUILD_DIR)/ .
+
+
+# 		-Dpkg_config_path=$(BUILD_DIR):$(DEST_DIR)/lib/pkgconfig \
+
 
 build: ## Build all targets in the project.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -56,7 +61,7 @@ install: ## Install all targets in the project.
 # Execution Targets
 # ============================================
 run: ## Run the server.
-	$(BUILD_DIR)/src/main
+	$(BUILD_DIR)/src/poc-mixr
 
 # ============================================
 # Misc Targets

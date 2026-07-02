@@ -67,7 +67,7 @@ mixr::simulation::Station* builder(const std::string& filename)
 int main(int argc, char* argv[])
 {
    // default configuration filename
-   std::string configFilename = "./config/mainSim1/test0.edl";
+   std::string configFilename = "./config/mainSim1/configs/test0.epp";
 
    for (int i = 1; i < argc; i++) {
       if ( std::string(argv[i]) == "-f" ) {
