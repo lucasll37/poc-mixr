@@ -38,6 +38,9 @@ subdir('./src')
 # próprio). Adicionar um novo subdir() aqui para cada poc/NN-slug novo.
 subdir('./poc/01-flying-aircraft')
 subdir('./poc/02-behavior-tree')
+subdir('./poc/03-bt-autopilot')
+subdir('./poc/04-jsbsim-6dof')
+subdir('./poc/05-formation-flight')
 
 # ============================================
 # Summary
@@ -52,4 +55,7 @@ summary({
     'poc-mixr (hello)':        hello.full_path(),
     'poc/01-flying-aircraft':  flying_aircraft.full_path(),
     'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
+    'poc/03-bt-autopilot':     bt_autopilot.full_path(),
+    'poc/04-jsbsim-6dof':      jsbsim_6dof.full_path(),
+    'poc/05-formation-flight': formation_flight.full_path(),
 }, section: 'Build Artifacts')

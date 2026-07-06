@@ -1,0 +1,1 @@
+[keyboard] terminal em modo raw -- W/S=altitude A/D=heading Q/E=velocidade 1-4=formacao R=RTB

@@ -1,4 +1,4 @@
-.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree
+.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight
 
 .DEFAULT_GOAL := help
 
@@ -65,6 +65,15 @@ run-flying-aircraft: ## Run poc/01-flying-aircraft.
 
 run-behavior-tree: ## Run poc/02-behavior-tree.
 	$(BUILD_DIR)/poc/02-behavior-tree/src/behavior-tree
+
+run-bt-autopilot: ## Run poc/03-bt-autopilot.
+	$(BUILD_DIR)/poc/03-bt-autopilot/src/bt-autopilot
+
+run-jsbsim-6dof: ## Run poc/04-jsbsim-6dof (Tacview Real-Time Telemetry on 127.0.0.1:1234).
+	$(BUILD_DIR)/poc/04-jsbsim-6dof/src/jsbsim-6dof
+
+run-formation-flight: ## Run poc/05-formation-flight (5-ship, keyboard control, Tacview on 1234).
+	$(BUILD_DIR)/poc/05-formation-flight/src/formation-flight
 
 # ============================================
 # Misc Targets

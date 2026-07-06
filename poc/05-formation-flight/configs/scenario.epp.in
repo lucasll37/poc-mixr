@@ -1,0 +1,184 @@
+//
+// Subprojeto 05 - formation-flight
+//
+// Esquadrilha de 5 aeronaves sobre terreno real (Serra dos Orgaos, RJ --
+// tile SRTM S23W043). "lead" e o ownship, pilotado por teclado
+// (ioHandler: KeyboardIoHandler, ver configs/linkage.epp); wing1..wing4
+// sao autonomos, seguem o lead via Autopilot.followTheLeadMode nativo,
+// com a formacao/RTB decididos por uma arvore de comportamento cada
+// (ver configs/wingman_tree.xml e main.cpp).
+//
+// DIFERENCA DE DYNAMICS MODEL (pedido explicitamente pelo usuario):
+//   - "lead"  usa JSBSimModel (aerodinamica 6-DOF completa via JSBSim,
+//     aeronave F4N -- os MESMOS dados/config ja validados em
+//     poc/04-jsbsim-6dof/data/jsbsim/, reaproveitados diretamente, sem
+//     duplicar ~700KB de dados aqui).
+//   - "wing1".."wing4" usam RacModel (dynamics model simplificado do
+//     proprio framework, ja usado em poc/01) -- adequado pra 4 agentes
+//     autonomos de menor prioridade de fidelidade que so precisam manter
+//     posicao de formacao, sem o custo computacional do JSBSim x4.
+//
+// @NUM_TC_THREADS@ e substituido em runtime por main.cpp
+// (std::thread::hardware_concurrency()-1) antes do parse -- ver
+// CLAUDE.md/plano: setSlotNumTcThreads() e privado (sem setter publico),
+// entao a unica forma honesta de manter TUDO instanciado via EDL e essa
+// substituicao de template, nao um patch no objeto depois do parse.
+//
+
+( Station
+
+   tcPriority: 0.5
+
+   ownship: lead
+
+   ioHandler:
+   #include "linkage.epp"
+
+   dataRecorder:
+   #include "recorder.epp"
+
+   simulation: ( WorldModel
+
+      // numTcThreads e slot de simulation::Simulation (base de WorldModel),
+      // nao da Station -- ver nota de @NUM_TC_THREADS@ no topo do arquivo.
+      numTcThreads: @NUM_TC_THREADS@
+
+      latitude:  -22.45
+      longitude: -43.00
+
+      terrain: ( SrtmHgtFile
+         path: "./poc/05-formation-flight/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         // --- lider (ownship, JSBSimModel/F4N, pilotado por teclado) ---
+         lead: ( Aircraft
+            id: 101
+            side: blue
+            type: "F4N"
+            signature: ( SigSphere radius: 2.0 )
+
+            initXPos:     ( NauticalMiles 0 )
+            initYPos:     ( NauticalMiles 0 )
+            initAlt:      ( Feet 6000 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 300
+
+            components: {
+               // JSBSimModel: mesma aeronave/dados da poc/04 (6-DOF real)
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./poc/04-jsbsim-6dof/data/jsbsim/"
+                  model: "F4N"
+                  debugLevel: 0
+               )
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode: true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+               )
+               nav: ( Navigation
+                  utc: ( Seconds 0 )
+                  #include "rtb_route.epp"
+               )
+            }
+         )
+
+         // --- wingmen (autonomos, RacModel, seguem o lead via BT) ---
+         wing1: ( Aircraft
+            id: 102
+            side: blue
+            type: "F-16A"
+            signature: ( SigSphere radius: 1.0 )
+            initXPos:     ( NauticalMiles -0.1 )
+            initYPos:     ( NauticalMiles -0.1 )
+            initAlt:      ( Feet 5980 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 300
+            components: {
+               // RacModel: dynamics simplificado (poc/01) -- adequado pra
+               // wingman autonomo, sem o custo do JSBSim x4
+               dynamicsModel: ( RacModel )
+               pilot: ( Autopilot
+                  followTheLeadMode: true
+                  leadPlayerName: lead
+                  leadFollowingDistanceTrail: ( Meters 200 )
+                  leadFollowingDistanceRight: ( Meters 0 )
+                  leadFollowingDeltaAltitude: ( Meters -20 )
+               )
+            }
+         )
+
+         wing2: ( Aircraft
+            id: 103
+            side: blue
+            type: "F-16A"
+            signature: ( SigSphere radius: 1.0 )
+            initXPos:     ( NauticalMiles -0.1 )
+            initYPos:     ( NauticalMiles 0.1 )
+            initAlt:      ( Feet 5960 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 300
+            components: {
+               dynamicsModel: ( RacModel )
+               pilot: ( Autopilot
+                  followTheLeadMode: true
+                  leadPlayerName: lead
+                  leadFollowingDistanceTrail: ( Meters 400 )
+                  leadFollowingDistanceRight: ( Meters 0 )
+                  leadFollowingDeltaAltitude: ( Meters -40 )
+               )
+            }
+         )
+
+         wing3: ( Aircraft
+            id: 104
+            side: blue
+            type: "F-16A"
+            signature: ( SigSphere radius: 1.0 )
+            initXPos:     ( NauticalMiles -0.2 )
+            initYPos:     ( NauticalMiles -0.2 )
+            initAlt:      ( Feet 5940 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 300
+            components: {
+               dynamicsModel: ( RacModel )
+               pilot: ( Autopilot
+                  followTheLeadMode: true
+                  leadPlayerName: lead
+                  leadFollowingDistanceTrail: ( Meters 600 )
+                  leadFollowingDistanceRight: ( Meters 0 )
+                  leadFollowingDeltaAltitude: ( Meters -60 )
+               )
+            }
+         )
+
+         wing4: ( Aircraft
+            id: 105
+            side: blue
+            type: "F-16A"
+            signature: ( SigSphere radius: 1.0 )
+            initXPos:     ( NauticalMiles -0.2 )
+            initYPos:     ( NauticalMiles 0.2 )
+            initAlt:      ( Feet 5920 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 300
+            components: {
+               dynamicsModel: ( RacModel )
+               pilot: ( Autopilot
+                  followTheLeadMode: true
+                  leadPlayerName: lead
+                  leadFollowingDistanceTrail: ( Meters 800 )
+                  leadFollowingDistanceRight: ( Meters 0 )
+                  leadFollowingDeltaAltitude: ( Meters -80 )
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

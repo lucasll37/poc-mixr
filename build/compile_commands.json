@@ -16,5 +16,113 @@
     "command": "g++ -I./poc/02-behavior-tree/./src/behavior-tree.p -I./poc/02-behavior-tree/./src -I../poc/02-behavior-tree/src -I../include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/02-behavior-tree/src/behavior-tree.p/main.cpp.o -MF ./poc/02-behavior-tree/./src/behavior-tree.p/main.cpp.o.d -o poc/02-behavior-tree/src/behavior-tree.p/main.cpp.o -c ../poc/02-behavior-tree/src/main.cpp",
     "file": "../poc/02-behavior-tree/src/main.cpp",
     "output": "poc/02-behavior-tree/src/behavior-tree.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/main.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/main.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/main.cpp.o -c ../poc/03-bt-autopilot/src/main.cpp",
+    "file": "../poc/03-bt-autopilot/src/main.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/mixr_factory.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/mixr_factory.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/mixr_factory.cpp.o -c ../poc/03-bt-autopilot/src/mixr_factory.cpp",
+    "file": "../poc/03-bt-autopilot/src/mixr_factory.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/mixr_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/domain_Mission.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/domain_Mission.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/domain_Mission.cpp.o -c ../poc/03-bt-autopilot/src/domain/Mission.cpp",
+    "file": "../poc/03-bt-autopilot/src/domain/Mission.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/domain_Mission.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/bt_bt_factory.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/bt_bt_factory.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/bt_bt_factory.cpp.o -c ../poc/03-bt-autopilot/src/bt/bt_factory.cpp",
+    "file": "../poc/03-bt-autopilot/src/bt/bt_factory.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/bt_bt_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_FuelLowCondition.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/bt_nodes_FuelLowCondition.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_FuelLowCondition.cpp.o -c ../poc/03-bt-autopilot/src/bt/nodes/FuelLowCondition.cpp",
+    "file": "../poc/03-bt-autopilot/src/bt/nodes/FuelLowCondition.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_FuelLowCondition.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_PatrolAction.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/bt_nodes_PatrolAction.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_PatrolAction.cpp.o -c ../poc/03-bt-autopilot/src/bt/nodes/PatrolAction.cpp",
+    "file": "../poc/03-bt-autopilot/src/bt/nodes/PatrolAction.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_PatrolAction.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/03-bt-autopilot/./src/bt-autopilot.p -I./poc/03-bt-autopilot/./src -I../poc/03-bt-autopilot/src -I../include -I../poc/03-bt-autopilot/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_ReturnToBaseAction.cpp.o -MF ./poc/03-bt-autopilot/./src/bt-autopilot.p/bt_nodes_ReturnToBaseAction.cpp.o.d -o poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_ReturnToBaseAction.cpp.o -c ../poc/03-bt-autopilot/src/bt/nodes/ReturnToBaseAction.cpp",
+    "file": "../poc/03-bt-autopilot/src/bt/nodes/ReturnToBaseAction.cpp",
+    "output": "poc/03-bt-autopilot/src/bt-autopilot.p/bt_nodes_ReturnToBaseAction.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/04-jsbsim-6dof/./src/jsbsim-6dof.p -I./poc/04-jsbsim-6dof/./src -I../poc/04-jsbsim-6dof/src -I../include -I../poc/04-jsbsim-6dof/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/04-jsbsim-6dof/src/jsbsim-6dof.p/main.cpp.o -MF ./poc/04-jsbsim-6dof/./src/jsbsim-6dof.p/main.cpp.o.d -o poc/04-jsbsim-6dof/src/jsbsim-6dof.p/main.cpp.o -c ../poc/04-jsbsim-6dof/src/main.cpp",
+    "file": "../poc/04-jsbsim-6dof/src/main.cpp",
+    "output": "poc/04-jsbsim-6dof/src/jsbsim-6dof.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/04-jsbsim-6dof/./src/jsbsim-6dof.p -I./poc/04-jsbsim-6dof/./src -I../poc/04-jsbsim-6dof/src -I../include -I../poc/04-jsbsim-6dof/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/04-jsbsim-6dof/src/jsbsim-6dof.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/04-jsbsim-6dof/./src/jsbsim-6dof.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/04-jsbsim-6dof/src/jsbsim-6dof.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/04-jsbsim-6dof/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/04-jsbsim-6dof/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/04-jsbsim-6dof/src/jsbsim-6dof.p/tacview_RealtimeTelemetryServer.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/main.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/main.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/main.cpp.o -c ../poc/05-formation-flight/src/main.cpp",
+    "file": "../poc/05-formation-flight/src/main.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/mixr_factory.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/mixr_factory.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/mixr_factory.cpp.o -c ../poc/05-formation-flight/src/mixr_factory.cpp",
+    "file": "../poc/05-formation-flight/src/mixr_factory.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/mixr_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/formations.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/formations.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/formations.cpp.o -c ../poc/05-formation-flight/src/formations.cpp",
+    "file": "../poc/05-formation-flight/src/formations.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/formations.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardDevice.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/linkage_KeyboardDevice.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardDevice.cpp.o -c ../poc/05-formation-flight/src/linkage/KeyboardDevice.cpp",
+    "file": "../poc/05-formation-flight/src/linkage/KeyboardDevice.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardDevice.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardIoHandler.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/linkage_KeyboardIoHandler.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardIoHandler.cpp.o -c ../poc/05-formation-flight/src/linkage/KeyboardIoHandler.cpp",
+    "file": "../poc/05-formation-flight/src/linkage/KeyboardIoHandler.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/linkage_KeyboardIoHandler.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/bt_bt_factory.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/bt_bt_factory.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/bt_bt_factory.cpp.o -c ../poc/05-formation-flight/src/bt/bt_factory.cpp",
+    "file": "../poc/05-formation-flight/src/bt/bt_factory.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/bt_bt_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/bt_nodes_FollowFormationAction.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/bt_nodes_FollowFormationAction.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/bt_nodes_FollowFormationAction.cpp.o -c ../poc/05-formation-flight/src/bt/nodes/FollowFormationAction.cpp",
+    "file": "../poc/05-formation-flight/src/bt/nodes/FollowFormationAction.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/bt_nodes_FollowFormationAction.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/bt_nodes_RtbEngagedCondition.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/bt_nodes_RtbEngagedCondition.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/bt_nodes_RtbEngagedCondition.cpp.o -c ../poc/05-formation-flight/src/bt/nodes/RtbEngagedCondition.cpp",
+    "file": "../poc/05-formation-flight/src/bt/nodes/RtbEngagedCondition.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/bt_nodes_RtbEngagedCondition.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/05-formation-flight/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/05-formation-flight/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o"
   }
 ]

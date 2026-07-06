@@ -1,0 +1,37 @@
+// =============================================================================
+// I/O do teclado -- mesmo padrao nativo mixr::linkage usado em
+// examples/mainSim2/configs/linkage/saitekEVO.epp (so que sem hardware:
+// KeyboardDevice le o terminal em vez de um joystick USB). Incluido como
+// valor do slot "ioHandler" da Station (mesma posicao de SimIoHandler no
+// examples/mainSim2/configs/test0.epp).
+// Mapeamento 1:1 canal-do-dispositivo -> canal do IoData (adapters
+// identidade); os nomes vem de channel_map.hpp (mesmos valores do enum
+// keyboard::Channel em include/linkage/KeyboardDevice.hpp).
+// =============================================================================
+
+#include "channel_map.hpp"
+
+( KeyboardIoHandler
+
+   inputData: ( IoData numDI: 16 )
+
+   devices: {
+      ( KeyboardDevice
+         adapters: {
+            ( DiscreteInput di: ALT_UP    port: 0  channel: ALT_UP )
+            ( DiscreteInput di: ALT_DOWN  port: 0  channel: ALT_DOWN )
+            ( DiscreteInput di: HDG_LEFT  port: 0  channel: HDG_LEFT )
+            ( DiscreteInput di: HDG_RIGHT port: 0  channel: HDG_RIGHT )
+            ( DiscreteInput di: SPD_DOWN  port: 0  channel: SPD_DOWN )
+            ( DiscreteInput di: SPD_UP    port: 0  channel: SPD_UP )
+            ( DiscreteInput di: FORM_1    port: 0  channel: FORM_1 )
+            ( DiscreteInput di: FORM_2    port: 0  channel: FORM_2 )
+            ( DiscreteInput di: FORM_3    port: 0  channel: FORM_3 )
+            ( DiscreteInput di: FORM_4    port: 0  channel: FORM_4 )
+            ( DiscreteInput di: RTB       port: 0  channel: RTB )
+         }
+      )
+   }
+
+
+)

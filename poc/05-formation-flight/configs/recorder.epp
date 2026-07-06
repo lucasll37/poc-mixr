@@ -1,0 +1,48 @@
+// -----------------------------------------------------------------------------
+// Gravador de dados nativo (mixr::recorder), mesmo padrao real de
+// examples/testRecordData/configs/dataRecorder.epp: grava em arquivo
+// binario (FileWriter) E emite em paralelo por UDP local (NetOutput +
+// UdpUnicastHandler) pra um processo externo poder consumir a telemetria
+// em tempo real. TabPrinter da uma versao .csv legivel do mesmo arquivo.
+// PrintPlayer imprime o estado de cada uma das 5 aeronaves na tela.
+//
+// Eventos automaticos (criacao/remocao de player) sao gravados pelo
+// proprio framework sem nenhuma chamada nossa. Eventos customizados
+// (mudanca de formacao, RTB) sao gravados via
+// DataRecorder::recordData(REID_FIRST_USER_EVENT+N, ...) chamado do
+// main.cpp -- ver include/recorder_events.hpp.
+// -----------------------------------------------------------------------------
+
+( DataRecorder
+
+   outputHandler: ( RecorderOutputHandler
+      components: {
+
+         ( RecorderFileWriter
+            filename: "./poc/05-formation-flight/data/recordings/mission.dat"
+         )
+
+         ( RecorderNetOutput
+            netHandler: ( UdpUnicastHandler
+               localIpAddress: localhost
+               ipAddress: "127.0.0.1"
+               port: 5950
+               localPort: 5960
+               shared: true
+            )
+         )
+
+         ( TabPrinter
+            msgHdrOptn: NEW_MSG
+            filename: "./poc/05-formation-flight/data/recordings/mission.csv"
+         )
+
+         ( PrintPlayer playerName: "lead" )
+         ( PrintPlayer playerName: "wing1" )
+         ( PrintPlayer playerName: "wing2" )
+         ( PrintPlayer playerName: "wing3" )
+         ( PrintPlayer playerName: "wing4" )
+
+      }
+   )
+)

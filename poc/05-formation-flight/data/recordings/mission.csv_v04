@@ -1,0 +1,10 @@
+FILE ID	IDENTIFIER	HEADER	Exec time	Sim Time	Utc Time	Event name	Application	Case	Mission	Subject	Run	Day	Month	Year
+FILE ID	IDENTIFIER	DATA	00:00:00.000	19:47:34.000	19:47:34.000			0	0	0	0	0	0	0	
+RESET 	EVENT	DATA	00:00:00.000	19:47:34.000	19:47:34.000	
+PLAYER	DATA	HEADER	Exec time	Sim Time	Utc Time	player ID	federate name	network ID	Latitude	Longitude	Altitude	X position	Y position	Z position	X velocity	Y velocity	Z velocity	X orientation	Y orientation	Z orientation	damage	alpha	beta	cas	
+PLAYER	DATA	DATA	00:00:02.600	19:47:37.336	19:47:37.336	101           	   	lead           	            	-22.443	-43	1835.58	4.31472e+06	-4.02354e+06	-2.42053e+06	0.00037611	-66.0067	-43.0003	88.1152	-82.1699	275.655	0	0.372919	-4.37468e-05	543.534	
+PLAYER	DATA	DATA	00:00:02.600	19:47:37.336	19:47:37.336	102           	   	wing1           	            	-22.4447	-43.0018	1818.95	4.31453e+06	-4.02361e+06	-2.42069e+06	0.105555	-68.005	-41.9713	83.5276	-75.1328	278.137	0	0	0	583.096	
+PLAYER	DATA	DATA	00:00:02.600	19:47:37.336	19:47:37.336	103           	   	wing2           	            	-22.4447	-42.9982	1811.98	4.31477e+06	-4.02334e+06	-2.42069e+06	-0.0981104	-68.2142	-44.099	79.629	-77.1632	277.425	0	0	0	580.75	
+PLAYER	DATA	DATA	00:00:02.600	19:47:37.336	19:47:37.336	104           	   	wing3           	            	-22.4464	-43.0036	1805.88	4.31434e+06	-4.02369e+06	-2.42086e+06	0.199597	-68.2017	-40.8023	83.9703	-72.4871	277.367	0	0	0	580.679	
+PLAYER	DATA	DATA	00:00:02.600	19:47:37.336	19:47:37.336	105           	   	wing4           	            	-22.4464	-42.9965	1799.79	4.31484e+06	-4.02315e+06	-2.42086e+06	-0.188991	-68.2021	-45.2705	77.7516	-78.4892	276.249	0	0	0	578.337	
+LAST 	MESSAGE	DATA	00:00:03.100	19:47:37.836	19:47:37.836	

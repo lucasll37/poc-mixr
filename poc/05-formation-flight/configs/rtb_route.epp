@@ -1,0 +1,39 @@
+// -----------------------------------------------------------------------------
+// Rota de RTB do lider -- Route + Steerpoints nativos (mesmo padrao de
+// examples/mainSim1/configs/test2/route01.epp). Ativada quando o operador
+// aperta a tecla de RTB: o KeyboardIoHandler so liga
+// autopilot->setNavMode(true) -- sequenciamento de steerpoint, calculo de
+// bearing/distancia/cross-track e a decida de qual steerpoint seguir sao
+// 100% do Route/Navigation/Autopilot.flyCRS nativos, nao ha nenhum calculo
+// geodesico proprio aqui.
+//
+// Dentro da area coberta pelo tile SRTM desta PoC (S23W043: lat -23..-22,
+// lon -43..-42, regiao serrana RJ). O ultimo steerpoint fica em altitude
+// baixa perto do "aerodromo" -- pouso em si e simplificado (sem
+// touchdown/rollout fisico, ver main.cpp).
+// -----------------------------------------------------------------------------
+
+route:
+( Route
+   autoSequence: true
+   wrap: false
+   components: {
+
+      // ponto de descida, a caminho de casa
+      ( Steerpoint
+         latitude:  -22.470
+         longitude: -42.995
+         altitude: ( Feet 3000 )
+         airspeed: 220
+      )
+
+      // aerodromo de origem (final da rota -- "pouso")
+      ( Steerpoint
+         latitude:  -22.450
+         longitude: -43.000
+         altitude: ( Feet 900 )
+         airspeed: 140
+      )
+
+   }
+)

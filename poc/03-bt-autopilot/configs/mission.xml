@@ -1,0 +1,19 @@
+<!--
+  Subprojeto 03 - bt-autopilot
+
+  Mesma estrutura de decisao do poc/02 (Fallback + Sequence), agora
+  comandando de fato o dynamics model de uma aeronave MIXR em vez de um
+  sentinela simulado: patrulha entre waypoints enquanto ha combustivel,
+  retorna a base quando fica baixo.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="rtb_sequence">
+        <FuelLow/>
+        <ReturnToBase/>
+      </Sequence>
+      <Patrol/>
+    </Fallback>
+  </BehaviorTree>
+</root>

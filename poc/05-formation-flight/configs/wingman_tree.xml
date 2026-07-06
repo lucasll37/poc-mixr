@@ -1,0 +1,19 @@
+<!--
+  Arvore de comportamento de cada wingman (mesma estrutura para os 4,
+  cada um com seu proprio blackboard filho -- ver main.cpp): se o RTB foi
+  engajado (flag no FormationState compartilhado, blackboard pai), colapsa
+  para a formacao TRAIL; caso contrario, segue a formacao corrente. A
+  convergencia de posicao em si e feita pelo followTheLeadMode nativo do
+  Autopilot -- este no so decide/atualiza os 3 offsets (trail/right/alt).
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="rtb_sequence">
+        <RtbEngaged/>
+        <FollowFormation forceTrail="true"/>
+      </Sequence>
+      <FollowFormation forceTrail="false"/>
+    </Fallback>
+  </BehaviorTree>
+</root>

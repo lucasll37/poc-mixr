@@ -1,0 +1,6 @@
+configs/scenario.generated.epp
+configs/scenario.preprocessed.epp
+data/terrain/srtm/*.hgt
+data/recordings/*.dat
+data/recordings/*.csv
+data/recordings/*.acmi
