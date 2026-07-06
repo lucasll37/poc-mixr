@@ -1,0 +1,19 @@
+<!--
+  Subprojeto 02 - behavior-tree
+
+  Sentinela simples: patrulha enquanto tem bateria; quando a bateria
+  fica baixa, recarrega antes de voltar a patrulhar. Demonstra
+  Fallback + Sequence + Condition + Action lendo/escrevendo estado
+  compartilhado (blackboard "battery"), tudo via BehaviorTree.CPP v3.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="recharge_sequence">
+        <BatteryLow/>
+        <Recharge/>
+      </Sequence>
+      <Patrol/>
+    </Fallback>
+  </BehaviorTree>
+</root>

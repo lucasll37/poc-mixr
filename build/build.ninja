@@ -54,6 +54,14 @@ build ./poc/01-flying-aircraft/./src/flying-aircraft.p/main.cpp.o: cpp_COMPILER 
 build ./poc/01-flying-aircraft/./src/flying-aircraft: cpp_LINKER ./poc/01-flying-aircraft/./src/flying-aircraft.p/main.cpp.o | /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_base.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_common.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_dis.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linearsystem.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linkage.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_models.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_recorder.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_simulation.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_terrain.so
  LINK_ARGS = -Wl,--as-needed -Wl,--no-undefined -m64 -Wl,-rpath,/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -Wl,-rpath-link,/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -Wl,--disable-new-dtags -pthread -Wl,--start-group /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_base.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_common.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_interop_dis.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linearsystem.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_linkage.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_models.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_recorder.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_simulation.so /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib/libmixr_terrain.so -Wl,--end-group
 
+build ./poc/02-behavior-tree/./src/behavior-tree.p/main.cpp.o: cpp_COMPILER .././poc/02-behavior-tree/./src/main.cpp
+ DEPFILE = ./poc/02-behavior-tree/./src/behavior-tree.p/main.cpp.o.d
+ DEPFILE_UNQUOTED = ./poc/02-behavior-tree/./src/behavior-tree.p/main.cpp.o.d
+ ARGS = -I./poc/02-behavior-tree/./src/behavior-tree.p -I./poc/02-behavior-tree/./src -I../poc/02-behavior-tree/src -I../include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread
+
+build ./poc/02-behavior-tree/./src/behavior-tree: cpp_LINKER ./poc/02-behavior-tree/./src/behavior-tree.p/main.cpp.o | /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_context.a /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_coroutine.a /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_exception.a /home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/lib/libsodium.a /home/lima/.conan2/p/behav6d9b7082685c8/p/lib/libbehaviortree_cpp_v3.a /home/lima/.conan2/p/sqlit4825c5f75d6e3/p/lib/libsqlite3.a /home/lima/.conan2/p/zeromc71e56f0ce17a/p/lib/libzmq.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libm.a /usr/lib/x86_64-linux-gnu/libm.so /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/librt.a
+ LINK_ARGS = -Wl,--as-needed -Wl,--no-undefined -m64 -pthread -Wl,--start-group /home/lima/.conan2/p/behav6d9b7082685c8/p/lib/libbehaviortree_cpp_v3.a /home/lima/.conan2/p/zeromc71e56f0ce17a/p/lib/libzmq.a /home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/lib/libsodium.a /home/lima/.conan2/p/sqlit4825c5f75d6e3/p/lib/libsqlite3.a -ldl -lm /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_coroutine.a /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_context.a /home/lima/.conan2/p/b/boost746146545b24c/p/lib/libboost_exception.a -lrt -lpthread -Wl,--end-group
+
 # Test rules
 
 build test: phony meson-internal__test
@@ -94,7 +102,7 @@ build meson-internal__uninstall: CUSTOM_COMMAND PHONY
  COMMAND = /home/lima/.local/bin/meson --internal uninstall
  pool = console
 
-build all: phony meson-test-prereq meson-benchmark-prereq ./src/poc-mixr ./poc/01-flying-aircraft/./src/flying-aircraft
+build all: phony meson-test-prereq meson-benchmark-prereq ./src/poc-mixr ./poc/01-flying-aircraft/./src/flying-aircraft ./poc/02-behavior-tree/./src/behavior-tree
 
 build meson-test-prereq: phony 
 
@@ -106,13 +114,13 @@ build meson-internal__clean: CUSTOM_COMMAND PHONY
  COMMAND = /home/lima/.local/bin/ninja -t clean
  description = Cleaning
 
-build build.ninja: REGENERATE_BUILD ../meson.build ../src/meson.build ../poc/01-flying-aircraft/meson.build ../poc/01-flying-aircraft/src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat
+build build.ninja: REGENERATE_BUILD ../meson.build ../src/meson.build ../poc/01-flying-aircraft/meson.build ../poc/01-flying-aircraft/src/meson.build ../poc/02-behavior-tree/meson.build ../poc/02-behavior-tree/src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat
  pool = console
 
 build reconfigure: REGENERATE_BUILD PHONY
  pool = console
 
-build ../meson.build ../src/meson.build ../poc/01-flying-aircraft/meson.build ../poc/01-flying-aircraft/src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat: phony 
+build ../meson.build ../src/meson.build ../poc/01-flying-aircraft/meson.build ../poc/01-flying-aircraft/src/meson.build ../poc/02-behavior-tree/meson.build ../poc/02-behavior-tree/src/meson.build /home/lima/asa/poc-mixr/build/conan_meson_native.ini meson-private/coredata.dat: phony 
 
 default all
 

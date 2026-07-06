@@ -20,14 +20,22 @@ poc-mixr/
 │                  # são implementadas (não editar; não é publicado por este repo).
 ├── examples/      # Exemplos oficiais upstream do MIXR (mainCockpit, demoEfis, etc.),
 │                  # vendorizados como referência de uso do framework.
+├── BehaviorTree.CPP/  # CÓPIA do repo upstream de BehaviorTree.CPP, só para CONSULTA de
+│                      # API/conceitos (não editar). ATENÇÃO: é a v4.9 upstream, mas o
+│                      # pacote Conan realmente linkado é behaviortree.cpp.asa/3.5.6, cujos
+│                      # headers instalados ficam em <prefix>/include/behaviortree_cpp_v3/
+│                      # (namespace/API de v3, não v4 — checar sempre contra os headers
+│                      # instalados, não contra este vendor, antes de usar uma API nova).
 ├── config/        # Referência histórica (não é mais onde a PoC evolui, ver poc/ abaixo):
 │   ├── mainSim1/  #   - mais simples: usa src/main.cpp da raiz + configs .epp
 │   ├── mainSim2/  #   - + SimStation/SimPlayer/SimIoHandler/InstrumentPanel + display GLUT
 │   └── mainSim3/  #   - mais completa: Station/Display/MapPage, ighost (CIGI/POV), DIS, terrain
 ├── poc/           # SUBPROJETOS INCREMENTAIS que coexistem e buildam em paralelo
 │   │              # (é aqui que novos modelos são desenvolvidos, um por pasta numerada):
-│   └── 01-flying-aircraft/  # Aircraft (F-16A) + RacModel comandado a virar/subir/acelerar;
-│                            # imprime telemetria a cada segundo simulado, roda 30s e encerra
+│   ├── 01-flying-aircraft/  # Aircraft (F-16A) + RacModel comandado a virar/subir/acelerar;
+│   │                        # imprime telemetria a cada segundo simulado, roda 30s e encerra
+│   └── 02-behavior-tree/    # BehaviorTree.CPP v3 (lib externa, sem depender do MIXR):
+│                            # sentinela patrulha/recarrega via Fallback+Sequence+blackboard
 ├── src/           # main.cpp mínimo ("mixr-hello"): cria Station+Simulation vazia,
 │                  # roda RESET_EVENT + updateTC()/updateData() manualmente
 ├── include/       # headers do próprio projeto (vazio por ora, .gitkeep)
@@ -53,10 +61,12 @@ poc/NN-slug/
 
 Todos os subprojetos em `poc/` coexistem: o `meson.build` raiz dá `subdir()`
 em cada um (variáveis compartilhadas `thread_dep`, `mixr_dep`, `mixr_libdir`,
-`inc_dir` já ficam definidas antes desses subdirs), e todos são compilados
-juntos por `make build`. Ao criar `poc/02-.../`, adicionar mais um
-`subdir('./poc/02-...')` no `meson.build` raiz (mesmo padrão do
-`01-flying-aircraft`) e um alvo `run-<slug>` no `Makefile`.
+`behavior_tree_dep`, `inc_dir` já ficam definidas antes desses subdirs), e
+todos são compilados juntos por `make build`. Um subprojeto não precisa usar
+todas as dependências (ex.: `02-behavior-tree` só usa `thread_dep` +
+`behavior_tree_dep`, nem toca no `mixr_dep`). Ao criar `poc/03-.../`,
+adicionar mais um `subdir('./poc/03-...')` no `meson.build` raiz (mesmo
+padrão dos anteriores) e um alvo `run-<slug>` no `Makefile`.
 
 ## Build & Run
 
@@ -68,6 +78,7 @@ make configure             # conan install (profile debug) + meson setup
 make build                 # meson compile -C build (builda TODOS os poc/NN-slug juntos)
 make run                   # executa build/src/poc-mixr (mixr-hello, raiz)
 make run-flying-aircraft   # executa build/poc/01-flying-aircraft/src/flying-aircraft
+make run-behavior-tree     # executa build/poc/02-behavior-tree/src/behavior-tree
 make install               # copia artefatos para dist/
 make package               # conan create . (gera pacote deste projeto)
 make clean                 # remove build/, dist/, subprojects/packagecache
@@ -86,6 +97,14 @@ Subprojetos existentes em `poc/`:
   monotonicamente ao alvo comandado). `RacModel` é um dynamics model bem
   simples do próprio framework (não físico-realista); serve de baseline
   antes de modelos mais sofisticados (ex.: `JSBSimModel`).
+
+- **`02-behavior-tree`**: usa `BehaviorTree.CPP` v3 (pacote Conan
+  `behaviortree.cpp.asa/3.5.6`, independente do MIXR) para um "sentinela"
+  que patrulha e recarrega com base num blackboard compartilhado
+  (`Fallback[Sequence[BatteryLow, Recharge], Patrol]`, árvore em
+  `configs/tree.xml`). 20 ticks, imprime o estado a cada tick. Serve de
+  baseline antes de usar BT.CPP para decidir o comportamento de um player
+  MIXR de verdade (ex.: acoplar a árvore ao `01-flying-aircraft`).
 
 ## Arquitetura do MIXR (para criar novos modelos)
 

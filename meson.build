@@ -37,6 +37,7 @@ subdir('./src')
 # Subprojetos incrementais da PoC (cada um coexiste como um executável
 # próprio). Adicionar um novo subdir() aqui para cada poc/NN-slug novo.
 subdir('./poc/01-flying-aircraft')
+subdir('./poc/02-behavior-tree')
 
 # ============================================
 # Summary
@@ -50,4 +51,5 @@ summary({
 summary({
     'poc-mixr (hello)':        hello.full_path(),
     'poc/01-flying-aircraft':  flying_aircraft.full_path(),
+    'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
 }, section: 'Build Artifacts')

@@ -1,4 +1,4 @@
-.PHONY: clean configure build install help run run-flying-aircraft
+.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree
 
 .DEFAULT_GOAL := help
 
@@ -62,6 +62,9 @@ run: ## Run the root mixr-hello example.
 
 run-flying-aircraft: ## Run poc/01-flying-aircraft.
 	$(BUILD_DIR)/poc/01-flying-aircraft/src/flying-aircraft
+
+run-behavior-tree: ## Run poc/02-behavior-tree.
+	$(BUILD_DIR)/poc/02-behavior-tree/src/behavior-tree
 
 # ============================================
 # Misc Targets
