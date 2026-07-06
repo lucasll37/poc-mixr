@@ -1,1 +1,1 @@
-{"targets": {"/home/lima/asa/poc-mixr/build/./src/poc-mixr": {"destination": "{bindir}/poc-mixr", "tag": "runtime", "subproject": null}}}
+{"targets": {"/home/lima/asa/poc-mixr/build/./src/poc-mixr": {"destination": "{bindir}/poc-mixr", "tag": "runtime", "subproject": null}, "/home/lima/asa/poc-mixr/build/./poc/01-flying-aircraft/./src/flying-aircraft": {"destination": "{bindir}/flying-aircraft", "tag": "runtime", "subproject": null}}}

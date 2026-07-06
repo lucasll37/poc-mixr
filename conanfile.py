@@ -12,6 +12,7 @@ class MixrHelloConan(ConanFile):
 
     def requirements(self):
         self.requires("mixr/1.0.5", transitive_headers=True)
+        self.requires("behaviortree.cpp.asa/3.5.6")
 
     def layout(self):
         self.folders.build = "build"

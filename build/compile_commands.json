@@ -4,5 +4,11 @@
     "command": "g++ -I./src/poc-mixr.p -I./src -I../src -I../include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ src/poc-mixr.p/main.cpp.o -MF ./src/poc-mixr.p/main.cpp.o.d -o src/poc-mixr.p/main.cpp.o -c ../src/main.cpp",
     "file": "../src/main.cpp",
     "output": "src/poc-mixr.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/01-flying-aircraft/./src/flying-aircraft.p -I./poc/01-flying-aircraft/./src -I../poc/01-flying-aircraft/src -I../include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/01-flying-aircraft/src/flying-aircraft.p/main.cpp.o -MF ./poc/01-flying-aircraft/./src/flying-aircraft.p/main.cpp.o.d -o poc/01-flying-aircraft/src/flying-aircraft.p/main.cpp.o -c ../poc/01-flying-aircraft/src/main.cpp",
+    "file": "../poc/01-flying-aircraft/src/main.cpp",
+    "output": "poc/01-flying-aircraft/src/flying-aircraft.p/main.cpp.o"
   }
 ]

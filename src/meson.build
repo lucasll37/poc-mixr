@@ -1,8 +1,3 @@
-# ============================================
-# Resolve o libdir da dependência mixr via pkg-config
-# ============================================
-mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
-
 sources = files(
     'main.cpp',
 )

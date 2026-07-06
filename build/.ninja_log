@@ -1,3 +1,5 @@
 # ninja log v5
-0	254	1783012202115832081	src/poc-mixr.p/main.cpp.o	b023272aa642697a
-255	336	1783012202195835972	src/poc-mixr	db6fe7cd15ceaa4
+0	1426	1783347818088533651	src/poc-mixr.p/main.cpp.o	b023272aa642697a
+0	1429	1783347818098534173	poc/01-flying-aircraft/src/flying-aircraft.p/main.cpp.o	487e860a599e3cce
+1427	1770	1783347818438551718	src/poc-mixr	db6fe7cd15ceaa4
+1429	1772	1783347818438551718	poc/01-flying-aircraft/src/flying-aircraft	1e89f38adbe1ba32

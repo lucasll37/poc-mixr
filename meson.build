@@ -17,7 +17,12 @@ message('Build Type: ' + get_option('buildtype'))
 # ============================================
 thread_dep = dependency('threads')
 
-mixr_dep = dependency('mixr', method:  'pkg-config', required: true)
+mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
+behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
+
+# Resolve o libdir da dependência mixr via pkg-config (compartilhado
+# por todos os executáveis: raiz e subprojetos em poc/)
+mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 
 # ============================================
 # Includes
@@ -29,6 +34,10 @@ inc_dir = include_directories('include')
 # ============================================
 subdir('./src')
 
+# Subprojetos incrementais da PoC (cada um coexiste como um executável
+# próprio). Adicionar um novo subdir() aqui para cada poc/NN-slug novo.
+subdir('./poc/01-flying-aircraft')
+
 # ============================================
 # Summary
 # ============================================
@@ -39,5 +48,6 @@ summary({
 }, section: 'Configuration')
 
 summary({
-    'Executable': hello.full_path(),
+    'poc-mixr (hello)':        hello.full_path(),
+    'poc/01-flying-aircraft':  flying_aircraft.full_path(),
 }, section: 'Build Artifacts')

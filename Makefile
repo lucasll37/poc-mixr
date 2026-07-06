@@ -1,4 +1,4 @@
-.PHONY: clean configure build install help
+.PHONY: clean configure build install help run run-flying-aircraft
 
 .DEFAULT_GOAL := help
 
@@ -48,9 +48,6 @@ configure: ## Configure the project for building.
 		$(BUILD_DIR)/ .
 
 
-# 		-Dpkg_config_path=$(BUILD_DIR):$(DEST_DIR)/lib/pkgconfig \
-
-
 build: ## Build all targets in the project.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
@@ -60,8 +57,11 @@ install: ## Install all targets in the project.
 # ============================================
 # Execution Targets
 # ============================================
-run: ## Run the server.
+run: ## Run the root mixr-hello example.
 	$(BUILD_DIR)/src/poc-mixr
+
+run-flying-aircraft: ## Run poc/01-flying-aircraft.
+	$(BUILD_DIR)/poc/01-flying-aircraft/src/flying-aircraft
 
 # ============================================
 # Misc Targets
