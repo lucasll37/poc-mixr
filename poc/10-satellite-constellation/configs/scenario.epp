@@ -1,0 +1,83 @@
+//
+// Subprojeto 10 - satellite-constellation
+//
+// Constelacao de 4 satelites (LEO, altitude ~780km, inclinacao 53 graus,
+// mesmo plano orbital, defasados 90 graus em argumento de latitude --
+// "walker train" de 1 plano). MIXR nao tem NENHUM propagador orbital
+// nativo (SpaceVehicle/SpaceDynamicsModel sao stubs sem fisica -- ver
+// mixr/src/models/player/space/*.cpp), entao cada satelite e um
+// SpaceVehicle "puro" (sem dynamicsModel nenhum): a posicao real e
+// calculada por nos (poc/10-satellite-constellation/src/orbit.cpp, 2-body
+// + rotacao da Terra) e aplicada a cada tick via
+// Player::setGeocPosition(ecef, slaved=true) em main.cpp -- esse setter
+// (e o flag slaved, que desliga a integracao de posicao nativa) SAO
+// nativos e documentados, so a mecanica orbital em si nao existe no
+// framework.
+//
+// fastForwardRate (slot nativo de Station, nao de WorldModel/Simulation)
+// e o mecanismo NATIVO de aceleracao de tempo: a thread T/C roda em tempo
+// real a tcRate Hz, mas cada periodo real chama tcFrame() fastForwardRate
+// vezes (ver Station::processTimeCriticalTasks() / StationTcPeriodicThread
+// no mixr/ vendorizado) -- ou seja, o tempo simulado avanca N vezes mais
+// rapido que o tempo real. Comeca em 60x aqui (senao uma orbita completa
+// de ~100 minutos seria impraticavel de observar) e pode ser ajustado
+// interativamente em runtime pelo teclado ('+'/'-') -- ver main.cpp.
+//
+
+( Station
+
+  tcPriority: 0.5
+  fastForwardRate: 60
+
+  simulation: ( WorldModel
+
+     latitude:  0.0
+     longitude: 0.0
+
+     players: {
+
+        // u0=0 -> lat=0, lon=0
+        sat1: ( SpaceVehicle
+           id: 201
+           side: blue
+           type: "LEO-780"
+           initLatitude:  0.0
+           initLongitude: 0.0
+           initAlt: ( Meters 780000.0 )
+        )
+
+        // u0=90 -> lat=+53, lon=+90 (defasado 1/4 de orbita)
+        sat2: ( SpaceVehicle
+           id: 202
+           side: blue
+           type: "LEO-780"
+           initLatitude:  53.0
+           initLongitude: 90.0
+           initAlt: ( Meters 780000.0 )
+        )
+
+        // u0=180 -> lat=0, lon=180
+        sat3: ( SpaceVehicle
+           id: 203
+           side: blue
+           type: "LEO-780"
+           initLatitude:  0.0
+           initLongitude: 180.0
+           initAlt: ( Meters 780000.0 )
+        )
+
+        // u0=270 -> lat=-53, lon=-90
+        sat4: ( SpaceVehicle
+           id: 204
+           side: blue
+           type: "LEO-780"
+           initLatitude:  -53.0
+           initLongitude: -90.0
+           initAlt: ( Meters 780000.0 )
+        )
+
+     } // players
+
+  ) // simulation
+
+) // station

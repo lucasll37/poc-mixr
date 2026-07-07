@@ -1,0 +1,89 @@
+//
+// Subprojeto 09 - chaff-flare
+//
+// Mesmas features das pocs anteriores (6-DOF via JSBSimModel/F4N da
+// poc/04, Tacview das pocs 04/05/07/08) -- a novidade e o lancamento de
+// chaff/flare, usando o mecanismo NATIVO do MIXR: Chaff/Flare
+// (mixr::models::player::effect, subclasses de Effect/AbstractWeapon,
+// "podem ser jettisoned/released e virar players independentes" -- ver
+// doc do proprio Effect.hpp) armazenados num StoresMgr comum (mesmo
+// padrao de estoque de armas usado em poc/03 com AamMissile, so trocando
+// o tipo de store), liberados via StoresMgr::releaseOneChaff()/
+// releaseOneFlare() (main.cpp).
+//
+// Sem radar/Antenna nesta poc -- por isso sem #include (gainPattern.epp
+// so e necessario quando ha um componente Antenna) e sem o passo de
+// preprocessador C das pocs 05-08.
+//
+
+( Station
+
+  tcPriority: 0.5
+
+  ownship: hunter
+  simulation: ( WorldModel
+
+     latitude:  37.0
+     longitude: -116.0
+
+     players: {
+
+        hunter: ( Aircraft
+
+           id: 201
+           side: blue
+           type: "F4N"
+           signature: ( SigSphere radius: 2.0 )
+
+           initXPos:     ( NauticalMiles 0 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 0 )
+           initVelocity: 350
+
+           components: {
+
+              // JSBSimModel: mesma aeronave/dados da poc/04 (6-DOF real).
+              dynamicsModel: ( JSBSimModel
+                 rootDir: "./poc/04-jsbsim-6dof/data/jsbsim/"
+                 model: "F4N"
+                 debugLevel: 0
+              )
+
+              // Estoque de chaff/flare -- mesmo StoresMgr/padrao de
+              // "components: { N: (Tipo ...) }" usado pra mísseis na
+              // poc/03, so que com Chaff/Flare no lugar de AamMissile.
+              // Sem signature/irSignature: nao ha radar/seeker nesta poc
+              // pra ser efetivamente enganado, o objetivo aqui e so
+              // demonstrar o lancamento e a visualizacao no Tacview.
+              sms: ( StoresMgr
+                 numStations: 16
+                 stores: {
+                    1: ( Chaff )
+                    2: ( Chaff )
+                    3: ( Chaff )
+                    4: ( Chaff )
+                    5: ( Chaff )
+                    6: ( Chaff )
+                    7: ( Chaff )
+                    8: ( Chaff )
+                    9:  ( Flare )
+                    10: ( Flare )
+                    11: ( Flare )
+                    12: ( Flare )
+                    13: ( Flare )
+                    14: ( Flare )
+                    15: ( Flare )
+                    16: ( Flare )
+                 }
+              )
+
+           } // components
+
+        ) // hunter
+
+     } // players
+
+  ) // simulation
+
+) // station

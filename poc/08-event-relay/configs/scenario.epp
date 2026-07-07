@@ -1,0 +1,169 @@
+//
+// Subprojeto 08 - event-relay
+//
+// Mesmas features das pocs anteriores (6-DOF via JSBSimModel/F4N da
+// poc/04, radar nativo da poc/06, Tacview das pocs 04/05/07) -- a
+// novidade aqui e COMO os componentes se comunicam: em vez de main.cpp
+// chamar objetos diretamente (como nas pocs 04-07), a deteccao do radar
+// vira um EVENTO nativo (Component::event()/send(), CONTACT_EVENT=2001)
+// que percorre a arvore de componentes e so e tratado no destino
+// apropriado -- primeiro localmente (irmao dentro do proprio "hunter"),
+// depois remotamente (outro player, "controller", achado pela lista
+// global do WorldModel, mesma tecnica que mixr::models::system::Datalink
+// usa nativamente pra "distribuir" mensagens entre players). Ver
+// RadarContactRelay (dispara) e AlertReceiver (recebe, dos dois lados).
+//
+// Geometria: "hunter" na origem olhando pro norte; "controller" 10 NM a
+// leste (so recebe o alerta, nao tem radar proprio); "target" comeca 45
+// NM ao norte fechando a 400 kts (mesma geometria da poc/06 -- deteccao
+// progressiva ao longo da simulacao, nao instantanea).
+//
+
+( Station
+
+  tcPriority: 0.5
+
+  ownship: hunter
+  simulation: ( WorldModel
+
+     latitude:  37.0
+     longitude: -116.0
+
+     players: {
+
+        // --- hunter: 6-DOF (JSBSimModel/F4N) + radar nativo + relay de eventos ---
+        hunter: ( Aircraft
+
+           id: 201
+           side: blue
+           type: "F4N"
+           signature: ( SigSphere radius: 2.0 )
+
+           initXPos:     ( NauticalMiles 0 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 0 )
+           initVelocity: 350
+
+           components: {
+
+              // JSBSimModel: mesma aeronave/dados da poc/04 (6-DOF real).
+              dynamicsModel: ( JSBSimModel
+                 rootDir: "./poc/04-jsbsim-6dof/data/jsbsim/"
+                 model: "F4N"
+                 debugLevel: 0
+              )
+
+              // R/F Antenna do radar (mesma config da poc/06)
+              antennas: ( Gimbal
+                 components: {
+                    radar: ( Antenna
+                       polarization: horizontal
+                       gain: ( dB 42 )
+                       #include "gainPattern.epp"
+
+                       initPosition: [ 0 0 ]
+                       maxRates: [ 0.8727 0.8727 ]
+                       commandRateAzimuth:   ( Degrees 60 )
+                       commandRateElevation: ( Degrees 60 )
+                       reference: [ 0 0 ]
+                       searchVolume: [ 1.0472 0.05 ]
+                       numBars: 2
+
+                       maxPlayersOfInterest: 4
+                       playerOfInterestTypes: { air }
+                       maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                       maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                       localPlayersOfInterestOnly: false
+                       useWorldCoordinates: false
+                    )
+                 }
+              )
+
+              // Sensor R/F: radar em modo TWS (mesma config da poc/06)
+              sensors: ( SensorMgr
+                 components: {
+                    ( Tws
+                       trackManagerName: twsTrkMgr
+                       antennaName: radar
+                       powerPeak:  ( KiloWatts 500.0 )
+                       frequency:  ( GigaHertz 3.0 )
+                       bandwidth:  ( GigaHertz 2.0 )
+                       PRF:        ( Hertz 500.0 )
+                       pulseWidth: ( MilliSeconds 0.01 )
+                       threshold:  ( dB 0.0 )
+                       igain: ( dB 0 )
+                       ranges:     [ 10 20 40 80 160 ]
+                       initRangeIdx: 2
+                    )
+                 }
+              )
+
+              // Computador de bordo: dono do gerenciador de pistas
+              obc: ( OnboardComputer
+                 components: {
+                    twsTrkMgr: ( AirTrkMgr
+                       maxTracks: 50
+                       alpha: 1.0
+                       beta:  0.5
+                       gamma: 0.0
+                       positionGate: 1500
+                       rangeGate:     500
+                       velocityGate:   10
+                       firstTrackId: 2000
+                    )
+                 }
+              )
+
+              // Recebe o alerta LOCALMENTE (hop 1: componente irmao, send()
+              // dentro da propria arvore do hunter)
+              localAlert: ( AlertReceiver )
+
+              // Dispara o CONTACT_EVENT (local + remoto) a cada pista nova
+              relay: ( RadarContactRelay
+                 trackManagerName:     twsTrkMgr
+                 localComponentName:   localAlert
+                 relayToPlayerName:    controller
+                 relayToComponentName: alertReceiver
+              )
+
+           } // components
+
+        ) // hunter
+
+        // --- controller: so recebe o alerta remoto (hop 2), sem radar proprio ---
+        controller: ( Aircraft
+           id: 202
+           side: blue
+           type: "F-16A"
+           signature: ( SigSphere radius: 2.0 )
+           initXPos:     ( NauticalMiles 0 )
+           initYPos:     ( NauticalMiles 10 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 0 )
+           initVelocity: 300
+           components: {
+              dynamicsModel: ( RacModel )
+              alertReceiver: ( AlertReceiver )
+           }
+        )
+
+        // --- target: so precisa de signature pra ter RCS ---
+        target: ( Aircraft
+           id: 301
+           side: red
+           type: "F-16A"
+           signature: ( SigSphere radius: 2.0 )
+           initXPos:     ( NauticalMiles 45 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 180 )
+           initVelocity: 400
+           components: { dynamicsModel: ( RacModel ) }
+        )
+
+     } // players
+
+  ) // simulation
+
+) // station

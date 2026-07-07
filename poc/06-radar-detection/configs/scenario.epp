@@ -1,0 +1,138 @@
+//
+// Subprojeto 06 - radar-detection
+//
+// Um radar de busca (Antenna + Tws + AirTrkMgr nativos, dentro de um
+// SensorMgr/OnboardComputer -- mesmo padrao de
+// examples/testRadar/configs/test1.epp e examples/mainCockpit/configs/
+// player01.epp) detecta uma segunda aeronave que se aproxima de fora do
+// alcance. Ambas usam RacModel (dynamics simplificado, poc/01) -- o foco
+// aqui e o sistema de sensores, nao a aerodinamica.
+//
+// Geometria: "hunter" (radar, side blue) fica parado na origem olhando
+// para o norte (heading 0). "target" (side red) comeca 45 NM ao norte
+// (fora do alcance de 40 NM do radar) e voa reto rumo ao hunter (heading
+// 180) a 400 kts -- cruza o alcance do radar por volta de t=~45s.
+//
+
+( Station
+
+  tcPriority: 0.5
+
+  ownship: hunter
+  simulation: ( WorldModel
+
+     latitude:  37.0
+     longitude: -116.0
+
+     players: {
+
+        // --- radar (busca e detecta o target) ---
+        hunter: ( Aircraft
+
+           id: 201
+           side: blue
+           type: "F-16A"
+           signature: ( SigSphere radius: 2.0 )
+
+           initXPos:     ( NauticalMiles 0 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 20000 )
+           initHeading:  ( Degrees 0 )
+           initVelocity: 250
+
+           components: {
+
+              dynamicsModel: ( RacModel )
+
+              // R/F Antenna do radar (Antenna ja e um ScanGimbal --
+              // searchVolume/numBars definem o cone de busca mecanico)
+              antennas: ( Gimbal
+                 components: {
+                    radar: ( Antenna
+                       polarization: horizontal
+                       gain: ( dB 42 )
+                       #include "gainPattern.epp"
+
+                       initPosition: [ 0 0 ]
+                       maxRates: [ 0.8727 0.8727 ]
+                       commandRateAzimuth:   ( Degrees 60 )
+                       commandRateElevation: ( Degrees 60 )
+                       reference: [ 0 0 ]
+                       searchVolume: [ 1.0472 0.05 ]  // +-60 deg az, +-2.9 deg el
+                       numBars: 2
+
+                       maxPlayersOfInterest: 4
+                       playerOfInterestTypes: { air }
+                       maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                       maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                       localPlayersOfInterestOnly: false
+                       useWorldCoordinates: false
+                    )
+                 }
+              )
+
+              // Sensor R/F: radar em modo TWS (Track-While-Scan) --
+              // mesmos parametros validados em examples/testRadar/test1.epp
+              sensors: ( SensorMgr
+                 components: {
+                    ( Tws
+                       trackManagerName: twsTrkMgr
+                       antennaName: radar
+                       powerPeak:  ( KiloWatts 500.0 )
+                       frequency:  ( GigaHertz 3.0 )
+                       bandwidth:  ( GigaHertz 2.0 )
+                       PRF:        ( Hertz 500.0 )
+                       pulseWidth: ( MilliSeconds 0.01 )
+                       threshold:  ( dB 0.0 )
+                       igain: ( dB 0 )
+                       ranges:     [ 10 20 40 80 160 ]
+                       initRangeIdx: 2
+                    )
+                 }
+              )
+
+              // Computador de bordo: dono do gerenciador de pistas (tracks)
+              obc: ( OnboardComputer
+                 components: {
+                    twsTrkMgr: ( AirTrkMgr
+                       maxTracks: 50
+                       alpha: 1.0
+                       beta:  0.5
+                       gamma: 0.0
+                       positionGate: 1500
+                       rangeGate:     500
+                       velocityGate:   10
+                       firstTrackId: 2000
+                    )
+                 }
+              )
+
+           } // components
+
+        ) // hunter
+
+        // --- alvo (so precisa de uma assinatura de RCS pra ser detectavel) ---
+        target: ( Aircraft
+
+           id: 301
+           side: red
+           type: "F-16A"
+           signature: ( SigSphere radius: 2.0 )
+
+           initXPos:     ( NauticalMiles 45 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 20000 )
+           initHeading:  ( Degrees 180 )
+           initVelocity: 400
+
+           components: {
+              dynamicsModel: ( RacModel )
+           }
+
+        ) // target
+
+     } // players
+
+  ) // simulation
+
+) // station

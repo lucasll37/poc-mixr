@@ -124,5 +124,89 @@
     "command": "g++ -I./poc/05-formation-flight/./src/formation-flight.p -I./poc/05-formation-flight/./src -I../poc/05-formation-flight/src -I../include -I../poc/05-formation-flight/include -Ipoc/05-formation-flight -I../poc/05-formation-flight -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -I/home/lima/.conan2/p/behav6d9b7082685c8/p/include -I/home/lima/.conan2/p/cppzm0c71a752fad11/p/include -I/home/lima/.conan2/p/zeromc71e56f0ce17a/p/include -I/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/include -I/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/include -I/home/lima/.conan2/p/b/boost746146545b24c/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -DZMQ_STATIC -DSODIUM_STATIC -pthread -MD -MQ poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/05-formation-flight/./src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/05-formation-flight/src/tacview/RealtimeTelemetryServer.cpp",
     "file": "../poc/05-formation-flight/src/tacview/RealtimeTelemetryServer.cpp",
     "output": "poc/05-formation-flight/src/formation-flight.p/tacview_RealtimeTelemetryServer.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/06-radar-detection/./src/radar-detection.p -I./poc/06-radar-detection/./src -I../poc/06-radar-detection/src -I../include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/06-radar-detection/src/radar-detection.p/main.cpp.o -MF ./poc/06-radar-detection/./src/radar-detection.p/main.cpp.o.d -o poc/06-radar-detection/src/radar-detection.p/main.cpp.o -c ../poc/06-radar-detection/src/main.cpp",
+    "file": "../poc/06-radar-detection/src/main.cpp",
+    "output": "poc/06-radar-detection/src/radar-detection.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/07-radar-intercept/./src/radar-intercept.p -I./poc/07-radar-intercept/./src -I../poc/07-radar-intercept/src -I../include -I../poc/07-radar-intercept/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/07-radar-intercept/src/radar-intercept.p/main.cpp.o -MF ./poc/07-radar-intercept/./src/radar-intercept.p/main.cpp.o.d -o poc/07-radar-intercept/src/radar-intercept.p/main.cpp.o -c ../poc/07-radar-intercept/src/main.cpp",
+    "file": "../poc/07-radar-intercept/src/main.cpp",
+    "output": "poc/07-radar-intercept/src/radar-intercept.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/07-radar-intercept/./src/radar-intercept.p -I./poc/07-radar-intercept/./src -I../poc/07-radar-intercept/src -I../include -I../poc/07-radar-intercept/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/07-radar-intercept/src/radar-intercept.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/07-radar-intercept/./src/radar-intercept.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/07-radar-intercept/src/radar-intercept.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/07-radar-intercept/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/07-radar-intercept/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/07-radar-intercept/src/radar-intercept.p/tacview_RealtimeTelemetryServer.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/main.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/main.cpp.o.d -o poc/08-event-relay/src/event-relay.p/main.cpp.o -c ../poc/08-event-relay/src/main.cpp",
+    "file": "../poc/08-event-relay/src/main.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/mixr_factory.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/mixr_factory.cpp.o.d -o poc/08-event-relay/src/event-relay.p/mixr_factory.cpp.o -c ../poc/08-event-relay/src/mixr_factory.cpp",
+    "file": "../poc/08-event-relay/src/mixr_factory.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/mixr_factory.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/events.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/events.cpp.o.d -o poc/08-event-relay/src/event-relay.p/events.cpp.o -c ../poc/08-event-relay/src/events.cpp",
+    "file": "../poc/08-event-relay/src/events.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/events.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/RadarContactRelay.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/RadarContactRelay.cpp.o.d -o poc/08-event-relay/src/event-relay.p/RadarContactRelay.cpp.o -c ../poc/08-event-relay/src/RadarContactRelay.cpp",
+    "file": "../poc/08-event-relay/src/RadarContactRelay.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/RadarContactRelay.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/AlertReceiver.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/AlertReceiver.cpp.o.d -o poc/08-event-relay/src/event-relay.p/AlertReceiver.cpp.o -c ../poc/08-event-relay/src/AlertReceiver.cpp",
+    "file": "../poc/08-event-relay/src/AlertReceiver.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/AlertReceiver.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/08-event-relay/./src/event-relay.p -I./poc/08-event-relay/./src -I../poc/08-event-relay/src -I../include -I../poc/08-event-relay/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/08-event-relay/src/event-relay.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/08-event-relay/./src/event-relay.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/08-event-relay/src/event-relay.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/08-event-relay/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/08-event-relay/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/08-event-relay/src/event-relay.p/tacview_RealtimeTelemetryServer.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/09-chaff-flare/./src/chaff-flare.p -I./poc/09-chaff-flare/./src -I../poc/09-chaff-flare/src -I../include -I../poc/09-chaff-flare/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/09-chaff-flare/src/chaff-flare.p/main.cpp.o -MF ./poc/09-chaff-flare/./src/chaff-flare.p/main.cpp.o.d -o poc/09-chaff-flare/src/chaff-flare.p/main.cpp.o -c ../poc/09-chaff-flare/src/main.cpp",
+    "file": "../poc/09-chaff-flare/src/main.cpp",
+    "output": "poc/09-chaff-flare/src/chaff-flare.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/09-chaff-flare/./src/chaff-flare.p -I./poc/09-chaff-flare/./src -I../poc/09-chaff-flare/src -I../include -I../poc/09-chaff-flare/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/09-chaff-flare/src/chaff-flare.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/09-chaff-flare/./src/chaff-flare.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/09-chaff-flare/src/chaff-flare.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/09-chaff-flare/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/09-chaff-flare/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/09-chaff-flare/src/chaff-flare.p/tacview_RealtimeTelemetryServer.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/10-satellite-constellation/./src/satellite-constellation.p -I./poc/10-satellite-constellation/./src -I../poc/10-satellite-constellation/src -I../include -I../poc/10-satellite-constellation/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/10-satellite-constellation/src/satellite-constellation.p/main.cpp.o -MF ./poc/10-satellite-constellation/./src/satellite-constellation.p/main.cpp.o.d -o poc/10-satellite-constellation/src/satellite-constellation.p/main.cpp.o -c ../poc/10-satellite-constellation/src/main.cpp",
+    "file": "../poc/10-satellite-constellation/src/main.cpp",
+    "output": "poc/10-satellite-constellation/src/satellite-constellation.p/main.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/10-satellite-constellation/./src/satellite-constellation.p -I./poc/10-satellite-constellation/./src -I../poc/10-satellite-constellation/src -I../include -I../poc/10-satellite-constellation/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/10-satellite-constellation/src/satellite-constellation.p/orbit.cpp.o -MF ./poc/10-satellite-constellation/./src/satellite-constellation.p/orbit.cpp.o.d -o poc/10-satellite-constellation/src/satellite-constellation.p/orbit.cpp.o -c ../poc/10-satellite-constellation/src/orbit.cpp",
+    "file": "../poc/10-satellite-constellation/src/orbit.cpp",
+    "output": "poc/10-satellite-constellation/src/satellite-constellation.p/orbit.cpp.o"
+  },
+  {
+    "directory": "/home/lima/asa/poc-mixr/build",
+    "command": "g++ -I./poc/10-satellite-constellation/./src/satellite-constellation.p -I./poc/10-satellite-constellation/./src -I../poc/10-satellite-constellation/src -I../include -I../poc/10-satellite-constellation/include -I/home/lima/.conan2/p/b/mixr0f9c36e974781/p/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=gnu++17 -O0 -g -m64 -pthread -MD -MQ poc/10-satellite-constellation/src/satellite-constellation.p/tacview_RealtimeTelemetryServer.cpp.o -MF ./poc/10-satellite-constellation/./src/satellite-constellation.p/tacview_RealtimeTelemetryServer.cpp.o.d -o poc/10-satellite-constellation/src/satellite-constellation.p/tacview_RealtimeTelemetryServer.cpp.o -c ../poc/10-satellite-constellation/src/tacview/RealtimeTelemetryServer.cpp",
+    "file": "../poc/10-satellite-constellation/src/tacview/RealtimeTelemetryServer.cpp",
+    "output": "poc/10-satellite-constellation/src/satellite-constellation.p/tacview_RealtimeTelemetryServer.cpp.o"
   }
 ]

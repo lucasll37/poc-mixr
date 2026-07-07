@@ -1,4 +1,4 @@
-Build started at 2026-07-06T16:39:35.465172
+Build started at 2026-07-07T11:57:21.886315
 Main binary: /usr/bin/python3
 Build Options: -Dpkg_config_path=./build -Dprefix=/home/lima/asa/poc-mixr/dist -Dlibdir=/home/lima/asa/poc-mixr/dist/lib -Dbackend=ninja -Dbuildtype=debug --native-file=./build/conan_meson_native.ini
 Python system: Linux
@@ -30,7 +30,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccQkNon0.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccsATtAR.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -74,7 +74,7 @@ This program has absolutely no warranty.
 -----------
 stderr:
 collect2 version 13.3.0
-/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccRGgb2X.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cciCTp90.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. --version -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
 -----------
 Sanity testing C++ compiler: g++
 Is cross compiler: False.
@@ -138,7 +138,7 @@ stdout:
 -L/home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib -lmixr_base -lmixr_interop_common -lmixr_interop_dis -lmixr_linearsystem -lmixr_linkage -lmixr_models -lmixr_recorder -lmixr_simulation -lmixr_terrain
 -----------
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp00zrj6_9
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpxbpthjco
 Code:
  
         #include<stdio.h>
@@ -147,7 +147,7 @@ Code:
             return 0;
         }
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp00zrj6_9/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp00zrj6_9/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpxbpthjco/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpxbpthjco/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive` -> 0
 Program stdout:
 
 8
@@ -156,11 +156,11 @@ Program stderr:
 
 
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpp8c92v5y
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp33e_onvg
 Code:
  
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpp8c92v5y/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpp8c92v5y/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp33e_onvg/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp33e_onvg/output.obj -c -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs` -> 0
 stdout:
 install: /usr/lib/gcc/x86_64-linux-gnu/13/
 programs: =/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/bin/
@@ -195,33 +195,33 @@ stdout:
 -L/home/lima/.conan2/p/behav6d9b7082685c8/p/lib -lbehaviortree_cpp_v3 -L/home/lima/.conan2/p/zeromc71e56f0ce17a/p/lib -lzmq -L/home/lima/.conan2/p/b/libsof9d31ad28c7eb/p/lib -lsodium -L/home/lima/.conan2/p/sqlit4825c5f75d6e3/p/lib -lsqlite3 -ldl -lm -L/home/lima/.conan2/p/b/boost746146545b24c/p/lib -lboost_coroutine -lboost_context -lboost_exception -lrt -lpthread
 -----------
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpayw8erta
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpas_npz7_
 Code:
  int main(void) { return 0; }
 
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpayw8erta/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpayw8erta/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -ldl -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpas_npz7_/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpas_npz7_/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -ldl -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmppxmucss4
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpoj3bqnv9
 Code:
  int main(void) { return 0; }
 
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmppxmucss4/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmppxmucss4/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpoj3bqnv9/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpoj3bqnv9/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpgmh96q4x
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpdfi5j1hu
 Code:
  int main(void) { return 0; }
 
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpgmh96q4x/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpgmh96q4x/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lrt -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpdfi5j1hu/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpdfi5j1hu/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lrt -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
 Running compile:
-Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmpc9j52i5r
+Working directory:  /home/lima/asa/poc-mixr/build/meson-private/tmp_fyt4uee
 Code:
  int main(void) { return 0; }
 
 -----------
-Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmpc9j52i5r/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmpc9j52i5r/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lpthread -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
+Command line: `g++ /home/lima/asa/poc-mixr/build/meson-private/tmp_fyt4uee/testfile.cpp -o /home/lima/asa/poc-mixr/build/meson-private/tmp_fyt4uee/output.exe -m64 -D_FILE_OFFSET_BITS=64 -O0 -fpermissive -Wl,--start-group -lpthread -Wl,--end-group -Wl,--allow-shlib-undefined` -> 0
 Run-time dependency behaviortree.cpp.asa found: YES 3.5.6
 env[PKG_CONFIG_PATH]: build
 -----------
@@ -230,36 +230,41 @@ stdout:
 /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib
 -----------
 Got pkgconfig variable libdir : /home/lima/.conan2/p/b/mixr0f9c36e974781/p/lib
-Build targets in project: 6
+Build targets in project: 11
 
 mixr-hello 1.0.0
 
   Configuration
-    Build Type             : debug
-    C++ Standard           : gnu++17
-    Prefix                 : /home/lima/asa/poc-mixr/dist
+    Build Type                    : debug
+    C++ Standard                  : gnu++17
+    Prefix                        : /home/lima/asa/poc-mixr/dist
 
   Build Artifacts
-    poc-mixr (hello)       : /home/lima/asa/poc-mixr/build/./src/poc-mixr
-    poc/01-flying-aircraft : /home/lima/asa/poc-mixr/build/./poc/01-flying-aircraft/./src/flying-aircraft
-    poc/02-behavior-tree   : /home/lima/asa/poc-mixr/build/./poc/02-behavior-tree/./src/behavior-tree
-    poc/03-bt-autopilot    : /home/lima/asa/poc-mixr/build/./poc/03-bt-autopilot/./src/bt-autopilot
-    poc/04-jsbsim-6dof     : /home/lima/asa/poc-mixr/build/./poc/04-jsbsim-6dof/./src/jsbsim-6dof
-    poc/05-formation-flight: /home/lima/asa/poc-mixr/build/./poc/05-formation-flight/./src/formation-flight
+    poc-mixr (hello)              : /home/lima/asa/poc-mixr/build/./src/poc-mixr
+    poc/01-flying-aircraft        : /home/lima/asa/poc-mixr/build/./poc/01-flying-aircraft/./src/flying-aircraft
+    poc/02-behavior-tree          : /home/lima/asa/poc-mixr/build/./poc/02-behavior-tree/./src/behavior-tree
+    poc/03-bt-autopilot           : /home/lima/asa/poc-mixr/build/./poc/03-bt-autopilot/./src/bt-autopilot
+    poc/04-jsbsim-6dof            : /home/lima/asa/poc-mixr/build/./poc/04-jsbsim-6dof/./src/jsbsim-6dof
+    poc/05-formation-flight       : /home/lima/asa/poc-mixr/build/./poc/05-formation-flight/./src/formation-flight
+    poc/06-radar-detection        : /home/lima/asa/poc-mixr/build/./poc/06-radar-detection/./src/radar-detection
+    poc/07-radar-intercept        : /home/lima/asa/poc-mixr/build/./poc/07-radar-intercept/./src/radar-intercept
+    poc/08-event-relay            : /home/lima/asa/poc-mixr/build/./poc/08-event-relay/./src/event-relay
+    poc/09-chaff-flare            : /home/lima/asa/poc-mixr/build/./poc/09-chaff-flare/./src/chaff-flare
+    poc/10-satellite-constellation: /home/lima/asa/poc-mixr/build/./poc/10-satellite-constellation/./src/satellite-constellation
 
   User defined options
-    Native files           : ./build/conan_meson_native.ini
-    backend                : ninja
-    buildtype              : debug
-    libdir                 : /home/lima/asa/poc-mixr/dist/lib
-    pkg_config_path        : ./build
-    prefix                 : /home/lima/asa/poc-mixr/dist
+    Native files                  : ./build/conan_meson_native.ini
+    backend                       : ninja
+    buildtype                     : debug
+    libdir                        : /home/lima/asa/poc-mixr/dist/lib
+    pkg_config_path               : ./build
+    prefix                        : /home/lima/asa/poc-mixr/dist
 
 Found ninja-1.10.0.git.kitware.jobserver-1 at /home/lima/.local/bin/ninja
 Running compile:
-Working directory:  /tmp/tmp6oww3tbh
+Working directory:  /tmp/tmp6cwvsw6h
 Code:
  int i = static_cast<int>(0);
 -----------
-Command line: `g++ /tmp/tmp6oww3tbh/testfile.cpp -o /tmp/tmp6oww3tbh/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
+Command line: `g++ /tmp/tmp6cwvsw6h/testfile.cpp -o /tmp/tmp6cwvsw6h/output.obj -D_FILE_OFFSET_BITS=64 -c -std=gnu++17` -> 0
 Compiler accepts -std=gnu++17: YES

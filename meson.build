@@ -41,6 +41,11 @@ subdir('./poc/02-behavior-tree')
 subdir('./poc/03-bt-autopilot')
 subdir('./poc/04-jsbsim-6dof')
 subdir('./poc/05-formation-flight')
+subdir('./poc/06-radar-detection')
+subdir('./poc/07-radar-intercept')
+subdir('./poc/08-event-relay')
+subdir('./poc/09-chaff-flare')
+subdir('./poc/10-satellite-constellation')
 
 # ============================================
 # Summary
@@ -58,4 +63,9 @@ summary({
     'poc/03-bt-autopilot':     bt_autopilot.full_path(),
     'poc/04-jsbsim-6dof':      jsbsim_6dof.full_path(),
     'poc/05-formation-flight': formation_flight.full_path(),
+    'poc/06-radar-detection':  radar_detection.full_path(),
+    'poc/07-radar-intercept':  radar_intercept.full_path(),
+    'poc/08-event-relay':      event_relay.full_path(),
+    'poc/09-chaff-flare':      chaff_flare.full_path(),
+    'poc/10-satellite-constellation': satellite_constellation.full_path(),
 }, section: 'Build Artifacts')

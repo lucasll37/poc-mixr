@@ -1,0 +1,172 @@
+//
+// Subprojeto 07 - radar-intercept
+//
+// Integra os subprojetos anteriores num unico cenario: o "hunter" usa
+// JSBSimModel/F4N (aerodinamica 6-DOF real, mesmos dados da poc/04) e
+// carrega o radar de busca 100% nativo da poc/06 (Antenna/Gimbal + Tws +
+// AirTrkMgr, dentro de SensorMgr/OnboardComputer). Tres aeronaves "target"
+// (RacModel, side red, RCS diferentes via signature:) se aproximam de
+// bearings/alcances distintos e sao detectadas em momentos diferentes.
+// Toda a esquadrilha (4 aeronaves) e exportada ao vivo pro Tacview (ver
+// tacview/RealtimeTelemetryServer, mesma extensao multi-aeronave da
+// poc/05), com os eventos de deteccao do radar tambem gravados como
+// Event= no stream/arquivo .acmi pra correlacionar no replay.
+//
+// Geometria (hunter na origem, heading 0 = olhando pro norte):
+//   target1: bearing   0deg, 45 NM, RCS media  (SigSphere radius 2.0)
+//   target2: bearing +30deg, 50 NM, RCS maior  (SigSphere radius 4.0) -- detectado mais longe
+//   target3: bearing -20deg, 35 NM, RCS menor  (SigSphere radius 1.0) -- detectado mais perto
+//
+
+( Station
+
+  tcPriority: 0.5
+
+  ownship: hunter
+  simulation: ( WorldModel
+
+     latitude:  37.0
+     longitude: -116.0
+
+     players: {
+
+        // --- hunter: 6-DOF (JSBSimModel/F4N) + radar nativo ---
+        hunter: ( Aircraft
+
+           id: 201
+           side: blue
+           type: "F4N"
+           signature: ( SigSphere radius: 2.0 )
+
+           initXPos:     ( NauticalMiles 0 )
+           initYPos:     ( NauticalMiles 0 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 0 )
+           initVelocity: 350
+
+           components: {
+
+              // JSBSimModel: mesma aeronave/dados da poc/04 (6-DOF real).
+              // F4N nao tem hold-modes nativos do Autopilot (gotcha ja
+              // documentado) -- main.cpp so sustenta throttle, sem
+              // manobra, pra manter a geometria do radar estavel.
+              dynamicsModel: ( JSBSimModel
+                 rootDir: "./poc/04-jsbsim-6dof/data/jsbsim/"
+                 model: "F4N"
+                 debugLevel: 0
+              )
+
+              // R/F Antenna do radar (Antenna ja e um ScanGimbal --
+              // searchVolume/numBars fazem a varredura mecanica sozinhos)
+              antennas: ( Gimbal
+                 components: {
+                    radar: ( Antenna
+                       polarization: horizontal
+                       gain: ( dB 42 )
+                       #include "gainPattern.epp"
+
+                       initPosition: [ 0 0 ]
+                       maxRates: [ 0.8727 0.8727 ]
+                       commandRateAzimuth:   ( Degrees 60 )
+                       commandRateElevation: ( Degrees 60 )
+                       reference: [ 0 0 ]
+                       searchVolume: [ 1.0472 0.05 ]  // +-60 deg az, +-2.9 deg el
+                       numBars: 2
+
+                       maxPlayersOfInterest: 8
+                       playerOfInterestTypes: { air }
+                       maxRange2PlayersOfInterest: ( NauticalMiles 60.0 )
+                       maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                       localPlayersOfInterestOnly: false
+                       useWorldCoordinates: false
+                    )
+                 }
+              )
+
+              // Sensor R/F: radar em modo TWS -- mesmos parametros
+              // validados na poc/06 (alcance maximo do sensor ampliado
+              // pra 60nm pra cobrir target2)
+              sensors: ( SensorMgr
+                 components: {
+                    ( Tws
+                       trackManagerName: twsTrkMgr
+                       antennaName: radar
+                       powerPeak:  ( KiloWatts 500.0 )
+                       frequency:  ( GigaHertz 3.0 )
+                       bandwidth:  ( GigaHertz 2.0 )
+                       PRF:        ( Hertz 500.0 )
+                       pulseWidth: ( MilliSeconds 0.01 )
+                       threshold:  ( dB 0.0 )
+                       igain: ( dB 0 )
+                       ranges:     [ 10 20 40 80 160 ]
+                       initRangeIdx: 3
+                    )
+                 }
+              )
+
+              // Computador de bordo: dono do gerenciador de pistas
+              obc: ( OnboardComputer
+                 components: {
+                    twsTrkMgr: ( AirTrkMgr
+                       maxTracks: 50
+                       alpha: 1.0
+                       beta:  0.5
+                       gamma: 0.0
+                       positionGate: 1500
+                       rangeGate:     500
+                       velocityGate:   10
+                       firstTrackId: 2000
+                    )
+                 }
+              )
+
+           } // components
+
+        ) // hunter
+
+        // --- targets: RacModel simples, so precisam de signature pra RCS ---
+
+        target1: ( Aircraft
+           id: 301
+           side: red
+           type: "F-16A"
+           signature: ( SigSphere radius: 2.0 )
+           initXPos:     ( NauticalMiles 45.0 )
+           initYPos:     ( NauticalMiles 0.0 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 180 )
+           initVelocity: 400
+           components: { dynamicsModel: ( RacModel ) }
+        )
+
+        target2: ( Aircraft
+           id: 302
+           side: red
+           type: "F-16A"
+           signature: ( SigSphere radius: 4.0 )
+           initXPos:     ( NauticalMiles 43.30 )
+           initYPos:     ( NauticalMiles 25.00 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 210 )
+           initVelocity: 350
+           components: { dynamicsModel: ( RacModel ) }
+        )
+
+        target3: ( Aircraft
+           id: 303
+           side: red
+           type: "F-16A"
+           signature: ( SigSphere radius: 1.0 )
+           initXPos:     ( NauticalMiles 32.89 )
+           initYPos:     ( NauticalMiles -11.97 )
+           initAlt:      ( Feet 15000 )
+           initHeading:  ( Degrees 160 )
+           initVelocity: 300
+           components: { dynamicsModel: ( RacModel ) }
+        )
+
+     } // players
+
+  ) // simulation
+
+) // station

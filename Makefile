@@ -1,4 +1,4 @@
-.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight
+.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation
 
 .DEFAULT_GOAL := help
 
@@ -74,6 +74,21 @@ run-jsbsim-6dof: ## Run poc/04-jsbsim-6dof (Tacview Real-Time Telemetry on 127.0
 
 run-formation-flight: ## Run poc/05-formation-flight (5-ship, keyboard control, Tacview on 1234).
 	$(BUILD_DIR)/poc/05-formation-flight/src/formation-flight
+
+run-radar-detection: ## Run poc/06-radar-detection (native radar detects a target aircraft).
+	$(BUILD_DIR)/poc/06-radar-detection/src/radar-detection
+
+run-radar-intercept: ## Run poc/07-radar-intercept (6DOF hunter + native radar + 3 targets + Tacview 1234).
+	$(BUILD_DIR)/poc/07-radar-intercept/src/radar-intercept
+
+run-event-relay: ## Run poc/08-event-relay (radar contact relayed via native event()/send(), Tacview 1234).
+	$(BUILD_DIR)/poc/08-event-relay/src/event-relay
+
+run-chaff-flare: ## Run poc/09-chaff-flare (6DOF hunter releases chaff/flare, Tacview 1234).
+	$(BUILD_DIR)/poc/09-chaff-flare/src/chaff-flare
+
+run-satellite-constellation: ## Run poc/10-satellite-constellation (4 LEO satellites, accelerated time, Tacview 1234).
+	$(BUILD_DIR)/poc/10-satellite-constellation/src/satellite-constellation
 
 # ============================================
 # Misc Targets
