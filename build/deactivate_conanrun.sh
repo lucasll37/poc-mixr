@@ -1,1 +1,1 @@
-. "/home/lima/asa/poc-mixr/build/deactivate_conanrunenv-debug-x86_64.sh"
+. "/home/lucas/Projects/poc-mixr/build/deactivate_conanrunenv-debug-x86_64.sh"

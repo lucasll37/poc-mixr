@@ -1,4 +1,4 @@
-prefix=/home/lima/.conan2/p/b/openr58cef6f6c7a2d/p
+prefix=/home/lucas/.conan2/p/b/openr74579ba3d03f9/p
 libdir=${prefix}/lib
 includedir=${prefix}/include
 bindir=${prefix}/bin
