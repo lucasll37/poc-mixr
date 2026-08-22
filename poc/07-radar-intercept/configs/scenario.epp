@@ -22,6 +22,26 @@
 
   tcPriority: 0.5
 
+  // Exportacao para o Tacview pela cadeia nativa de OutputHandlers: as 4
+  // aeronaves (REID_PLAYER_DATA) e as deteccoes do radar (REID_NEW_TRACK /
+  // REID_TRACK_REMOVED) viram linhas ACMI sem nenhuma chamada do main.cpp.
+  dataRecorder: ( DataRecorder
+     eventName: "poc-07-radar-intercept"
+     outputHandler: ( RecorderOutputHandler
+        components: {
+           ( TacviewOutput
+              port: 1234
+              callsign: "poc-mixr/radar-intercept"
+              fileName: "./poc/07-radar-intercept/data/recordings/mission.acmi"
+              typeMap:  { hunter: "Air+FixedWing"  target1: "Air+FixedWing"
+                          target2: "Air+FixedWing"  target3: "Air+FixedWing" }
+              colorMap: { hunter: "Blue"  target1: "Red"
+                          target2: "Red"   target3: "Red" }
+           )
+        }
+     )
+  )
+
   ownship: hunter
   simulation: ( WorldModel
 
@@ -43,6 +63,9 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 0 )
            initVelocity: 350
+
+           // 10 Hz -- nasce ZERO; sem este slot o player nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
 
            components: {
 
@@ -136,6 +159,9 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 180 )
            initVelocity: 400
+
+           // 10 Hz -- nasce ZERO; sem este slot o player nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            components: { dynamicsModel: ( RacModel ) }
         )
 
@@ -149,6 +175,9 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 210 )
            initVelocity: 350
+
+           // 10 Hz -- nasce ZERO; sem este slot o player nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            components: { dynamicsModel: ( RacModel ) }
         )
 
@@ -162,6 +191,9 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 160 )
            initVelocity: 300
+
+           // 10 Hz -- nasce ZERO; sem este slot o player nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            components: { dynamicsModel: ( RacModel ) }
         )
 

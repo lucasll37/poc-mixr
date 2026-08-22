@@ -14,14 +14,13 @@
 // AlertReceiver::event() (tambem nativo) trata-los -- tudo isso acontece
 // SOZINHO dentro do updateData(). Este main.cpp so constroi a Station,
 // sustenta o voo do hunter (mesmo gotcha de trim do F4N ja documentado) e
-// encaminha pro Tacview o que os AlertReceivers ja processaram
-// (consumePendingAlert() -- so pra log/replay, a decisao "recebi, tratei"
+// exporta nada: os alertas sao gravados pelo proprio AlertReceiver com a
+// macro nativa BEGIN_RECORD_DATA_SAMPLE (a decisao "recebi, tratei"
 // ja aconteceu dentro do event handler nativo).
 //
 
 #include "AlertReceiver.hpp"
 #include "mixr_factory.hpp"
-#include "tacview/RealtimeTelemetryServer.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
@@ -163,20 +162,6 @@ int main(int argc, char* argv[])
    const int numEngines{dynamicsModel->getNumberOfEngines()};
    const std::vector<double> milPower(static_cast<std::size_t>(numEngines), 1.0);
 
-   tacview::RealtimeTelemetryServer tacviewServer("0.0.0.0", 1234);
-   if (!tacviewServer.start()) {
-      std::cerr << "Failed to start Tacview telemetry server!" << std::endl;
-      std::exit(EXIT_FAILURE);
-   }
-   tacviewServer.startRecording("./poc/08-event-relay/data/recordings/mission.acmi");
-
-   const std::uint32_t hunterId{0x101};
-   const std::uint32_t controllerId{0x102};
-   const std::vector<std::pair<std::uint32_t, tacview::ObjectInfo>> objectInfos{
-      {hunterId,     {"hunter",     "Air+FixedWing", "Blue"}},
-      {controllerId, {"controller", "Air+FixedWing", "Blue"}},
-      {0x103,        {"target",     "Air+FixedWing", "Red"}},
-   };
    const std::vector<mixr::models::Player*> allPlayers{hunter, controller, target};
 
    station->createTimeCriticalProcess();
@@ -206,23 +191,10 @@ int main(int argc, char* argv[])
          dynamicsModel->setControlStick(0.0, pitchCorrection);
       }
 
-      tacviewServer.acceptIfNeeded();
-      tacviewServer.beginFrame(simTime);
-      for (std::size_t i = 0; i < allPlayers.size(); i++) {
-         const auto p = allPlayers[i];
-         tacviewServer.updateObject(objectInfos[i].first,
-                                    p->getLongitude(), p->getLatitude(), p->getAltitudeM(),
-                                    p->getRollD(), p->getPitchD(), p->getHeadingD(),
-                                    &objectInfos[i].second);
-      }
-
-      // Aqui so consumimos o que os AlertReceivers JA processaram, pra
-      // log/Tacview -- nao ha nenhuma decisao de negocio nesta parte.
-      const std::string localAlertText{localAlert->consumePendingAlert()};
-      if (!localAlertText.empty()) tacviewServer.logEvent(hunterId, "[local] " + localAlertText);
-
-      const std::string remoteAlertText{remoteAlert->consumePendingAlert()};
-      if (!remoteAlertText.empty()) tacviewServer.logEvent(controllerId, "[remote] " + remoteAlertText);
+      // Nada de Tacview aqui. As duas aeronaves chegam ao stream por
+      // REID_PLAYER_DATA, as deteccoes por REID_TRACK_DATA e os alertas
+      // (local e remoto) por REID_MARKER, gravado pelo proprio
+      // AlertReceiver::onContactEvent() com a macro nativa do framework.
 
       simTime += dt;
       const double timeNow{mixr::base::getComputerTime()};
@@ -234,7 +206,6 @@ int main(int argc, char* argv[])
 
    std::cout << "=== fim ===" << std::endl;
 
-   tacviewServer.stop();
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
    station->unref();
    return 0;

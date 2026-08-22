@@ -65,6 +65,7 @@
             initAlt:      ( Feet 6000 )
             initHeading:  ( Degrees 0 )
             initVelocity: 300
+            dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
 
             components: {
                // JSBSimModel: mesma aeronave/dados da poc/04 (6-DOF real)
@@ -97,6 +98,7 @@
             initAlt:      ( Feet 5980 )
             initHeading:  ( Degrees 0 )
             initVelocity: 300
+            dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
             components: {
                // RacModel: dynamics simplificado (poc/01) -- adequado pra
                // wingman autonomo, sem o custo do JSBSim x4
@@ -121,6 +123,7 @@
             initAlt:      ( Feet 5960 )
             initHeading:  ( Degrees 0 )
             initVelocity: 300
+            dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
             components: {
                dynamicsModel: ( RacModel )
                pilot: ( Autopilot
@@ -143,6 +146,7 @@
             initAlt:      ( Feet 5940 )
             initHeading:  ( Degrees 0 )
             initVelocity: 300
+            dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
             components: {
                dynamicsModel: ( RacModel )
                pilot: ( Autopilot
@@ -165,6 +169,7 @@
             initAlt:      ( Feet 5920 )
             initHeading:  ( Degrees 0 )
             initVelocity: 300
+            dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
             components: {
                dynamicsModel: ( RacModel )
                pilot: ( Autopilot

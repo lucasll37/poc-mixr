@@ -37,6 +37,21 @@
             filename: "./poc/05-formation-flight/data/recordings/mission.csv"
          )
 
+         // Tacview como mais uma saida da MESMA cadeia -- e exatamente o
+         // que o RecorderOutputHandler multiplexador serve para fazer:
+         // acrescentar/remover uma saida e acrescentar/remover um
+         // componente, sem recompilar nada.
+         ( TacviewOutput
+            port: 1234
+            callsign: "poc-mixr/formation-flight"
+            fileName: "./poc/05-formation-flight/data/recordings/mission.acmi"
+            typeMap:  { lead: "Air+FixedWing"   wing1: "Air+FixedWing"
+                        wing2: "Air+FixedWing"  wing3: "Air+FixedWing"
+                        wing4: "Air+FixedWing" }
+            colorMap: { lead: "Blue"  wing1: "Blue"  wing2: "Blue"
+                        wing3: "Blue"  wing4: "Blue" }
+         )
+
          ( PrintPlayer playerName: "lead" )
          ( PrintPlayer playerName: "wing1" )
          ( PrintPlayer playerName: "wing2" )

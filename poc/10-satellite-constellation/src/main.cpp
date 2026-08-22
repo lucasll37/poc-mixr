@@ -29,7 +29,8 @@
 //
 
 #include "orbit.hpp"
-#include "tacview/RealtimeTelemetryServer.hpp"
+
+#include "mixr_factory.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/models/WorldModel.hpp"
@@ -40,10 +41,6 @@
 #include "mixr/base/osg/Vec3d"
 #include "mixr/base/util/nav_utils.hpp"
 #include "mixr/base/util/system_utils.hpp"
-
-#include "mixr/simulation/factory.hpp"
-#include "mixr/models/factory.hpp"
-#include "mixr/base/factory.hpp"
 
 #include <fcntl.h>
 #include <termios.h>
@@ -67,18 +64,10 @@ const unsigned int fastForwardStep{10};
 volatile std::sig_atomic_t g_stopRequested{0};
 void onSigint(int) { g_stopRequested = 1; }
 
-mixr::base::Object* factory(const std::string& name)
-{
-   mixr::base::Object* obj{mixr::simulation::factory(name)};
-   if (obj == nullptr) obj = mixr::models::factory(name);
-   if (obj == nullptr) obj = mixr::base::factory(name);
-   return obj;
-}
-
 mixr::simulation::Station* buildStation(const std::string& filename)
 {
    int num_errors{};
-   mixr::base::Object* obj{mixr::base::edl_parser(filename, factory, &num_errors)};
+   mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);
@@ -151,8 +140,6 @@ struct Satellite
 {
    mixr::models::Player* player{};
    orbit::CircularOrbit elements;
-   std::uint32_t tacviewId{};
-   tacview::ObjectInfo info;
 };
 
 } // namespace
@@ -186,10 +173,10 @@ int main(int argc, char* argv[])
    const double raanDeg{0.0};
 
    std::array<Satellite, 4> sats{{
-      {findPlayerByName(worldModel, "sat1"), {altitudeM, inclinationDeg, raanDeg, 0.0},   0x301, {"sat1", "Misc", "Blue"}},
-      {findPlayerByName(worldModel, "sat2"), {altitudeM, inclinationDeg, raanDeg, 90.0},  0x302, {"sat2", "Misc", "Blue"}},
-      {findPlayerByName(worldModel, "sat3"), {altitudeM, inclinationDeg, raanDeg, 180.0}, 0x303, {"sat3", "Misc", "Blue"}},
-      {findPlayerByName(worldModel, "sat4"), {altitudeM, inclinationDeg, raanDeg, 270.0}, 0x304, {"sat4", "Misc", "Blue"}},
+      {findPlayerByName(worldModel, "sat1"), {altitudeM, inclinationDeg, raanDeg, 0.0}},
+      {findPlayerByName(worldModel, "sat2"), {altitudeM, inclinationDeg, raanDeg, 90.0}},
+      {findPlayerByName(worldModel, "sat3"), {altitudeM, inclinationDeg, raanDeg, 180.0}},
+      {findPlayerByName(worldModel, "sat4"), {altitudeM, inclinationDeg, raanDeg, 270.0}},
    }};
 
    for (const auto& s : sats) {
@@ -204,13 +191,6 @@ int main(int argc, char* argv[])
               << orbit::orbitalPeriodSec(sats[0].elements) / 60.0 << " min)" << std::endl;
    std::cout << "'+'/'-' aceleram/desaceleram o tempo simulado (fastForwardRate nativo da Station);"
               << " Ctrl+C encerra." << std::endl;
-
-   tacview::RealtimeTelemetryServer tacviewServer("0.0.0.0", 1234);
-   if (!tacviewServer.start()) {
-      std::cerr << "Failed to start Tacview telemetry server!" << std::endl;
-      std::exit(EXIT_FAILURE);
-   }
-   tacviewServer.startRecording("./poc/10-satellite-constellation/data/recordings/mission.acmi");
 
    station->setFastForwardRate(initialFastForward);
    station->createTimeCriticalProcess();
@@ -246,9 +226,8 @@ int main(int argc, char* argv[])
       const double simDt{dt * static_cast<double>(rate)};
       simTime += simDt;
 
-      tacviewServer.acceptIfNeeded();
-      tacviewServer.beginFrame(simTime);
-
+      // Os 4 satelites chegam ao Tacview por REID_PLAYER_DATA (cadeia do
+      // 'dataRecorder'); este laco so aplica a orbita via setGeocPosition.
       for (auto& s : sats) {
          double latDeg{}, lonDeg{}, altM{};
          orbit::groundTrack(s.elements, simTime, &latDeg, &lonDeg, &altM);
@@ -266,10 +245,6 @@ int main(int argc, char* argv[])
          double bearingDeg{}, distNm{};
          mixr::base::nav::fll2bd(latDeg, lonDeg, latAheadDeg, lonAheadDeg, &bearingDeg, &distNm);
          s.player->setEulerAngles(0.0, 0.0, bearingDeg * (3.14159265358979323846 / 180.0));
-
-         tacviewServer.updateObject(s.tacviewId, s.player->getLongitude(), s.player->getLatitude(),
-                                     s.player->getAltitudeM(), s.player->getRollD(), s.player->getPitchD(),
-                                     s.player->getHeadingD(), &s.info);
       }
 
       ++frameCount;
@@ -290,7 +265,6 @@ int main(int argc, char* argv[])
 
    std::cout << "=== fim ===" << std::endl;
 
-   tacviewServer.stop();
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
    station->unref();
    return 0;

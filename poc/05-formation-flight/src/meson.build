@@ -13,13 +13,12 @@ sources = files(
     'bt/bt_factory.cpp',
     'bt/nodes/FollowFormationAction.cpp',
     'bt/nodes/RtbEngagedCondition.cpp',
-    'tacview/RealtimeTelemetryServer.cpp',
 )
 
 formation_flight = executable('formation-flight',
     sources,
     include_directories : [inc_dir, local_inc_dir, subproject_root_inc_dir],
-    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep],
+    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep, xtacview_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_bt_libdir,

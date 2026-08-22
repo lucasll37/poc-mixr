@@ -15,17 +15,23 @@ como dependência/referência.
 
 ```
 poc-mixr/
-├── mixr/          # CÓPIA do framework MIXR (git próprio, ignorado pelo .gitignore).
-│                  # Serve só de CONTEXTO/referência de como as classes do framework
-│                  # são implementadas (não editar; não é publicado por este repo).
-├── examples/      # Exemplos oficiais upstream do MIXR (mainCockpit, demoEfis, etc.),
-│                  # vendorizados como referência de uso do framework.
-├── BehaviorTree.CPP/  # CÓPIA do repo upstream de BehaviorTree.CPP, só para CONSULTA de
-│                      # API/conceitos (não editar). ATENÇÃO: é a v4.9 upstream, mas o
-│                      # pacote Conan realmente linkado é behaviortree.cpp.asa/3.5.6, cujos
-│                      # headers instalados ficam em <prefix>/include/behaviortree_cpp_v3/
-│                      # (namespace/API de v3, não v4 — checar sempre contra os headers
-│                      # instalados, não contra este vendor, antes de usar uma API nova).
+├── contexts/      # ÚNICA fonte de consulta sobre framework/libs neste repo. Substituiu
+│   │              # os vendors mixr/, examples/ e BehaviorTree.CPP/, que NÃO existem mais:
+│   ├── MIXR-CONTEXT.md          # arquitetura do MIXR destilada (classes, macros, fases,
+│   │                            # recorder, rede, armadilhas)
+│   ├── MIXR-PATTERN-CONTEXT.md  # padrões de uso extraídos dos exemplos oficiais
+│   └── BTCPP-CONTEXT.md         # BehaviorTree.CPP
+│                  # ATENÇÃO: contexto é DESTILAÇÃO, não fonte. Antes de usar uma API
+│                  # que não estava documentada aqui, confira contra os HEADERS REAIS
+│                  # instalados pelo Conan:
+│                  #   ~/.conan2/p/b/mixr*/p/include/mixr/...        (framework)
+│                  #   ~/.conan2/p/b/mixr*/p/include/DataRecord.pb.h (schema do recorder,
+│                  #                                                  na RAIZ do include)
+│                  #   <prefix>/include/behaviortree_cpp_v3/          (BT.CPP v3, não v4)
+├── shared/        # Bibliotecas compartilhadas entre subprojetos poc/, no padrão
+│   │              # 'shared/x<nome>' das libs de extensão do MIXR (factory própria +
+│   │              # classes num namespace mixr::x<nome>):
+│   └── xtacview/  #   exportação para o Tacview — ver seção própria mais abaixo
 ├── config/        # Referência histórica (não é mais onde a PoC evolui, ver poc/ abaixo):
 │   ├── mainSim1/  #   - mais simples: usa src/main.cpp da raiz + configs .epp
 │   ├── mainSim2/  #   - + SimStation/SimPlayer/SimIoHandler/InstrumentPanel + display GLUT
@@ -40,9 +46,8 @@ poc-mixr/
 │   │                        # puras) separado de bt/ (nós/factory da árvore) e mixr_factory
 │   │                        # (factory dos objetos MIXR) — ver estrutura completa abaixo
 │   ├── 04-jsbsim-6dof/      # JSBSimModel (aerodinâmica 6-DOF real, aeronave F4N, dados
-│   │                        # próprios em data/jsbsim/) + recorder de rede tacview/ que
-│   │                        # transmite telemetria ao vivo para o Tacview (Real-Time
-│   │                        # Telemetry) em 127.0.0.1:1234
+│   │                        # próprios em data/jsbsim/); telemetria ao vivo pro Tacview
+│   │                        # via shared/xtacview (cadeia nativa do dataRecorder)
 │   ├── 05-formation-flight/ # Esquadrilha de 5 aeronaves (1 lead JSBSimModel/F4N pilotado por
 │   │                        # teclado + 4 wingmen RacModel autônomos via BT), terreno real
 │   │                        # (SRTM), Autopilot.followTheLeadMode nativo p/ formação, Route/
@@ -50,7 +55,7 @@ poc-mixr/
 │   │                        # ver seção própria mais abaixo (maior subprojeto até agora)
 │   ├── 06-radar-detection/  # Radar de busca 100% nativo (Antenna/Gimbal + Tws + AirTrkMgr,
 │   │                        # dentro de SensorMgr/OnboardComputer) detectando uma 2ª aeronave
-│   │                        # que se aproxima — mesmo padrão de examples/testRadar
+│   │                        # que se aproxima — padrão do testRadar oficial (ver contexts/)
 │   ├── 07-radar-intercept/  # Integra 04+05+06 num só cenário: hunter 6-DOF (JSBSimModel/F4N)
 │   │                        # com o radar nativo da poc/06 detectando 3 targets (RacModel,
 │   │                        # RCS diferentes), as 4 aeronaves exportadas ao vivo pro Tacview
@@ -198,10 +203,9 @@ Subprojetos existentes em `poc/`:
   `setCommandedHeadingD()` é graus; `setCommandedVelocityKts()` é nós.
 
 - **`04-jsbsim-6dof`**: `Aircraft` com `JSBSimModel` (aerodinâmica 6-DOF de
-  verdade via JSBSim 1.1.11, não o `RacModel` simplificado) + um recorder de
-  rede (`tacview/RealtimeTelemetryServer`) que implementa o protocolo
-  público **Tacview Real-Time Telemetry** e transmite a simulação ao vivo
-  para o Tacview em `127.0.0.1:1234`.
+  verdade via JSBSim 1.1.11, não o `RacModel` simplificado). A telemetria
+  ao vivo para o Tacview vem de `shared/xtacview` pela cadeia nativa do
+  `dataRecorder` (ver seção própria) — o `main.cpp` só pilota a aeronave.
   - **Dados JSBSim**: modelo `F4N` (F-4 Phantom, dados públicos e não
     proprietários — o próprio `F4N.xml` declara isso no cabeçalho).
     Vendorizados em `poc/04-jsbsim-6dof/data/jsbsim/{aircraft/F4N,engine,
@@ -227,7 +231,7 @@ Subprojetos existentes em `poc/`:
     comandada, decaindo gradualmente) antes de convergir para algo mais
     estável. Ganhos de controle pequenos (`0.03`, não `0.3`) evitam que
     esse transiente vire um parafuso/looping; testado rodando o binário
-    real (ver `RealtimeTelemetryServer` abaixo para como validar o stream).
+    real (ver a seção do `shared/xtacview` para como validar o stream).
   - **Protocolo Tacview**: handshake
     `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n<username>\n\0` (host
     envia primeiro; **todas** as linhas terminam em `\n`, inclusive a
@@ -279,7 +283,7 @@ Subprojetos existentes em `poc/`:
     (`saitekEVO.epp`, `route01.epp`, `dataRecorder.epp`) só funcionam
     porque passam por um preprocessador C de verdade ANTES do
     `edl_parser` — daí o `.epp` (preprocessor source) vs. `.edl` (fonte
-    final) e o "`make edl`" mencionado em `examples/README.md`. As pocs
+    final) e o "`make edl`" mencionado no README dos exemplos. As pocs
     01/03/04 nunca precisaram disso porque seus `.epp` não usavam
     `#include`. A partir da 05, `main.cpp` roda
     `g++ -E -x c -P -undef -nostdinc arquivo.epp -o arquivo.preprocessed.epp`
@@ -335,7 +339,7 @@ Subprojetos existentes em `poc/`:
   - **Validado rodando de ponta a ponta** (sem teclado): EDL parseado,
     Station construída, pool de 23 threads T/C criado, JSBSim/F4N e
     terreno carregados, as 5 aeronaves telemetram (altitude/posição
-    evoluindo de forma coerente), `RealtimeTelemetryServer` grava
+    evoluindo de forma coerente), o `TacviewOutput` grava
     `data/recordings/mission.acmi` válido (5 objetos, replay completo) e o
     `DataRecorder` nativo grava `mission.dat`/`mission.csv` (via
     `RecorderFileWriter`/`TabPrinter`), `Ctrl+C` encerra limpo com os
@@ -344,8 +348,8 @@ Subprojetos existentes em `poc/`:
 - **`06-radar-detection`**: radar de busca **100% nativo** detectando uma
   segunda aeronave — nenhum código próprio de detecção, ganho de antena,
   RCS ou correlação de pista, tudo delegado ao framework. Réplica
-  simplificada de `examples/testRadar/configs/test1.epp` (mesmo padrão de
-  `examples/mainCockpit/configs/player01.epp`): `antennas: (Gimbal
+  simplificada de o `testRadar` oficial (ver `contexts/MIXR-PATTERN-CONTEXT.md`) (mesmo padrão de
+  `mainCockpit/configs/player01.epp` (ver `contexts/`)): `antennas: (Gimbal
   components: { radar: (Antenna ...) })` com `Antenna` (que já é um
   `ScanGimbal`, então `searchVolume`/`numBars` fazem a varredura mecânica
   sem precisar de um componente `ScanGimbal` separado) → `sensors:
@@ -362,7 +366,7 @@ Subprojetos existentes em `poc/`:
   imprime quando aparece um ID de pista novo (`Track::getTrackID/getRange/
   getTrueAzimuthD/getTarget`) — zero lógica de detecção em C++.
   **Também usa `#include`** (`gainPattern.epp`, mesmo padrão de
-  `examples/testRadar`), então precisa do mesmo passo de preprocessador C
+  o `testRadar` oficial), então precisa do mesmo passo de preprocessador C
   documentado no gotcha da poc/05 (ver `preprocessEdl()` no `main.cpp`).
   **Validado rodando de ponta a ponta**: cenário com "hunter" parado
   olhando pro norte e "target" começando 45 NM ao norte fechando a 400kts
@@ -381,10 +385,11 @@ Subprojetos existentes em `poc/`:
   mesmo radar 100% nativo da poc/06; três `target1/2/3` (RacModel) com
   `signature:` (RCS) diferentes — 2.0/4.0/1.0 — a bearings/alcances
   diferentes (0°/45NM, +30°/50NM, -20°/35NM). `tacview/
-  RealtimeTelemetryServer` (cópia da extensão multi-aeronave da poc/05,
-  não a versão single-aircraft da poc/04) exporta as 4 aeronaves ao vivo e
-  grava cada detecção de pista nova como `Event=Message` (visível
-  correlacionado no replay do Tacview).
+  `shared/xtacview` exporta as 4 aeronaves ao vivo, e cada detecção de
+  pista nova vira `Event=Message` a partir do `REID_TRACK_DATA` NATIVO
+  (não de uma consulta do `main.cpp` ao `TrackManager`) — validado:
+  `trk2000/target2 49.3NM`, `trk2001/target1 43.8NM`,
+  `trk2002/target3 34.0NM`, batendo com o log de console.
   **Mesmo gotcha de trim da poc/04, mais pronunciado aqui**: como o
   `main.cpp` originalmente só sustentava a manete (sem nenhum toque no
   stick), o F4N destrimado perdia altitude continuamente ao longo de uma
@@ -412,7 +417,7 @@ Subprojetos existentes em `poc/`:
   genérico", porque não é isso:
   - `Component::event(int, Object*)` despacha via a tabela gerada pelas
     macros `BEGIN_EVENT_HANDLER`/`ON_EVENT`/`ON_EVENT_OBJ`/
-    `END_EVENT_HANDLER` (`mixr/include/mixr/base/macros.hpp`) — cada
+    `END_EVENT_HANDLER` (`<conan>/include/mixr/base/macros.hpp`) — cada
     classe registra que eventos trata escrevendo essas macros; eventos sem
     handler correspondente **não propagam automaticamente** (só eventos de
     tecla, valor ≤ `MAX_KEY_EVENT`=999, sobem pro `container()`; eventos
@@ -439,7 +444,7 @@ Subprojetos existentes em `poc/`:
     quê é código C++ (a tabela `BEGIN_EVENT_HANDLER` decide o que a classe
     aceita; as chamadas `send()`/`event()` decidem quem recebe).
   - Eventos customizados começam em `USER_EVENTS=2000`
-    (`mixr/include/mixr/base/eventTokens.hpp`) — usado `CONTACT_EVENT=2001`.
+    (`<conan>/include/mixr/base/eventTokens.hpp`) — usado `CONTACT_EVENT=2001`.
   - `System::process(dt)` (fase 3 do frame TC, a mesma fase em que o
     `Radar` nativo esvazia sua fila de detecções pro `TrackManager`) é o
     hook certo pra lógica de "depois que sensores rodaram, decida algo" —
@@ -463,7 +468,7 @@ Subprojetos existentes em `poc/`:
 
 - **`09-chaff-flare`**: mesmas features de 04/07/08 (6-DOF, Tacview), agora
   lançando contramedidas. `mixr::models::Chaff`/`Flare`/`Decoy`
-  (`mixr/include/mixr/models/player/effect/`) são subclasses de
+  (`<conan>/include/mixr/models/player/effect/`) são subclasses de
   `Effect`→`AbstractWeapon`→`Player` — "podem ser released e virar
   players independentes", exatamente como uma arma de verdade. Não têm
   slots próprios nem RCS/IR signature por padrão (`Effect` só declara
@@ -484,8 +489,9 @@ Subprojetos existentes em `poc/`:
     (`DETONATE_NONE`) após `maxTOF` (10s por padrão, nenhum slot nosso
     alterando isso) — o "desaparecimento" no Tacview é só o nosso
     `main.cpp` espelhando esse mesmo prazo com uma linha ACMI `-<id>`
-    (adicionado `RealtimeTelemetryServer::removeObject()` pra isso; sem
-    remoção explícita, o objeto ficaria "fantasma" parado no replay).
+    (`RealtimeTelemetryServer::removeObject()`; sem remoção explícita, o
+    objeto ficaria "fantasma" parado no replay). Hoje quem dispara isso é
+    `REID_PLAYER_REMOVED` nativo, não um timer espelhado no `main.cpp`.
   - **Gotcha real encontrado rodando o binário**: ao liberar (`release()`
     em `AbstractWeapon.cpp`), o clone do efeito passa por `reset()`
     usando os slots `initXPos/initY/initAlt` (não configurados nos
@@ -513,7 +519,7 @@ Subprojetos existentes em `poc/`:
   respeite os 6dof e tacview".
   - **MIXR não tem nenhum propagador orbital nativo.** `SpaceVehicle`/
     `UnmannedSpaceVehicle`/`MannedSpaceVehicle`/`BoosterSpaceVehicle`/
-    `SpaceDynamicsModel` (`mixr/src/models/player/space/*.cpp`) existem só
+    `SpaceDynamicsModel` (os stubs de `space/` (ver `contexts/MIXR-CONTEXT.md`)) existem só
     como stubs de classe (RTTI/slot table), sem nenhuma física real —
     confirmado lendo o fonte antes de assumir que existia algo
     reaproveitável. Cada satélite aqui é um `SpaceVehicle` **sem**
@@ -523,7 +529,7 @@ Subprojetos existentes em `poc/`:
     slaved=true)` — mesmo mecanismo que o próprio `NetIO` (DIS) do MIXR
     usa pra posicionar entidades remotas por fora do `dynamics()` de cada
     tick. Confirmado lendo `Player::positionUpdate()`
-    (`mixr/src/models/player/Player.cpp`): quando `posSlaved`/`altSlaved`
+    (`Player::positionUpdate()` (ver `contexts/MIXR-CONTEXT.md`)): quando `posSlaved`/`altSlaved`
     ficam `true` (setados pelo `slaved=true` do `setGeocPosition`), a
     integração de posição nativa por velocidade vira no-op — ou seja, com
     `slaved=true` a posição do player é **100% ditada** pelo que
@@ -546,9 +552,9 @@ Subprojetos existentes em `poc/`:
     (slot do `Station`, não da `Simulation`/`WorldModel` — não confundir
     com o gotcha do `numTcThreads` da poc/05, que é o oposto). Rastreado
     até `StationTcPeriodicThread::userFunc()`
-    (`mixr/src/simulation/StationTcPeriodicThread.cpp`), que chama
+    (`StationTcPeriodicThread::userFunc()` (ver `contexts/`)), que chama
     `Station::processTimeCriticalTasks(dt)`
-    (`mixr/src/simulation/Station.cpp`) — essa função faz
+    (`Station::processTimeCriticalTasks()` (ver `contexts/`)) — essa função faz
     `for (jj=0; jj<getFastForwardRate(); jj++) tcFrame(dt);`, ou seja, a
     cada período real da thread T/C (que já é a mesma arquitetura
     `createTimeCriticalProcess()` usada em todas as pocs anteriores), o
@@ -583,15 +589,133 @@ Subprojetos existentes em `poc/`:
     frente, não um valor fixo) e `.acmi` gravado com os 4 objetos e
     altitude constante (780000m, como esperado numa órbita circular).
 
+## Tacview: `shared/xtacview` (padrão nativo do recorder)
+
+**A exportação para o Tacview é UMA só, em `shared/xtacview/`, e todas as
+pocs a consomem.** Antes existiam 6 cópias de `RealtimeTelemetryServer`
+(pocs 04/05/07/08/09/10, ~1.400 linhas, 4 variantes divergentes, todas com
+o callsign do handshake fixo em `"poc-mixr/formation-flight"`).
+
+### O padrão
+
+O `main.cpp` **não monta mais o stream ACMI**. Quem exporta é
+`mixr::xtacview::TacviewOutput`, um `mixr::recorder::OutputHandler` de
+verdade, ligado na cadeia nativa do slot `dataRecorder` da `Station`:
+
+```
+dataRecorder: ( DataRecorder
+   outputHandler: ( RecorderOutputHandler        // multiplexador nativo
+      components: {
+         ( RecorderFileWriter filename: "mission.dat" )   // opcional
+         ( TabPrinter         filename: "mission.csv" )   // opcional
+         ( TacviewOutput                                   // <<< nosso elo
+            port: 1234
+            callsign: "poc-mixr/<slug>"
+            fileName: "./poc/NN-slug/data/recordings/mission.acmi"
+            typeMap:  { <nome-do-player>: "Air+FixedWing" }
+            colorMap: { <nome-do-player>: "Blue" }
+         )
+      }
+   )
+)
+```
+
+O framework EMPURRA cada registro `REID_*` para o handler, que traduz para
+linhas ACMI. Ligar/desligar uma saída é acrescentar/remover um componente,
+sem recompilar. `station->updateData(dt)` no laço principal é o que drena a
+fila para a cadeia — nada além disso é preciso no `main.cpp`.
+
+`shared/xtacview/` segue o padrão `shared/x<nome>` das libs de extensão do
+MIXR: `factory.{hpp,cpp}` (encadeada ANTES das do framework no
+`mixr_factory.cpp` de cada poc), classes em `namespace mixr::xtacview`,
+`meson.build` produzindo uma `static_library` exposta como `xtacview_dep`.
+
+`RealtimeTelemetryServer` (socket + handshake + arquivo `.acmi`)
+deliberadamente **não** é um `base::NetHandler`: o Tacview é o consumidor
+final e fala protocolo próprio (texto ACMI), então plugá-lo num
+`RecorderNetOutput` — que serializa protobuf — não faria sentido. O ganho
+de padrão está em quem ALIMENTA o servidor, não no transporte.
+
+### ARMADILHAS confirmadas rodando (não redescobrir)
+
+1. **`dataLogTime` é slot do `Player` e NASCE ZERO.** A emissão de
+   `REID_PLAYER_DATA` é guardada por `if (dataLogTime > 0.0)` em
+   `Player::updateTC()`. **Um player sem esse slot nunca aparece no
+   Tacview** — e o sintoma parece bug do handler. Todas as pocs usam
+   `dataLogTime: ( Seconds 0.1 )` (10 Hz, a mesma taxa dos laços antigos).
+
+2. **`PlayerState.angles` são Euler GEOCÊNTRICOS (body/ECEF)**, não
+   geodésicos (body/NED). Sem converter, uma aeronave nivelada em
+   lat 37 / lon −116 aparecia com roll=−180, pitch=−53 (=90−37) e yaw=64
+   (=180−116): os ângulos estavam medindo a posição no globo, não a
+   atitude. Converter com `base::nav::convertEcefAngles2GeodAngles()`.
+   `PlayerState.pos` também é ECEF (usar `convertEcef2Geod()`).
+
+3. **`REID_NEW_TRACK` (81) NUNCA CHEGA.** O `TrackManager` sinaliza a
+   pista nova, mas o `DataRecorder` concreto não tem handler para esse
+   token e o degrada para `REID_UNHANDLED_ID_TOKEN` (2) — rodando a
+   poc/07, as 3 detecções apareciam como 3 registros `REID=2` e nenhum
+   `REID=81`. `REID_TRACK_DATA` (83) e `REID_TRACK_REMOVED` (82) **são**
+   tratados, então o "primeiro contato" é deduzido da primeira amostra de
+   cada `track_id`.
+
+4. **`REID_WEAPON_RELEASED` (61) ABORTA O PROCESSO.** Ao gravar a
+   liberação de uma arma/efeito, o `DataRecorder` nativo constrói uma
+   `std::string` a partir de um ponteiro nulo e lança
+   `std::logic_error: basic_string: construction from null is not valid`.
+   **Não é bug nosso** — reproduzido de forma idêntica trocando o
+   `TacviewOutput` por um `TabPrinter` puro. Workaround na poc/09:
+   `enabledList: [ 43 42 ]` no `DataRecorder` (só `PLAYER_DATA` e
+   `PLAYER_REMOVED`), evitando o token quebrado. Note que
+   `disabledList: [ 61 ]` **não** basta.
+
+5. **Tokens de usuário (1000+) também não têm handler** e caem em
+   `REID_UNHANDLED_ID_TOKEN` como o (3). Por isso os eventos próprios das
+   pocs 05 e 08 são gravados como **`REID_MARKER`**, que é tratado
+   nativamente. `MarkerMsg` só carrega dois `uint32` (id e fonte), sem
+   texto — o texto completo continua indo para o console.
+
+6. **`REID_PLAYER_DATA` traz um `PlayerId` PARCIAL: só `id` e `name`.**
+   `ac_type`, `major_type` e `side` não vêm preenchidos, e
+   `REID_NEW_PLAYER` (41) nunca é emitido para os players declarados no
+   `.epp` (só para entidades criadas em runtime). Por isso `typeMap`/
+   `colorMap` casam pelo **nome** do player.
+
+7. **A cadeia de containers não chega à `Station` a partir do handler.**
+   O `DataRecorder` não chama `container()` no objeto do seu slot
+   `outputHandler`, então `findContainerByType()` para `Station` e para
+   `AbstractDataRecorder` devolve `nullptr` — de dentro do handler
+   enxerga-se no máximo o `RecorderOutputHandler` pai. O código que
+   resolveria tipo/cor consultando o `WorldModel` está escrito em
+   `TacviewOutput::resolveInfo()` e passa a funcionar sozinho se isso for
+   corrigido no framework; hoje quem resolve é o fallback por nome.
+   **Consequência prática**: chaff/flare (nomes automáticos `W10001`...)
+   saem como `Misc`/`Grey` no lugar de `Misc+Decoy+Chaff`/`+Flare`.
+
+### Protocolo Tacview (inalterado, continua valendo)
+
+Handshake `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n<username>\n\0`
+— **todas** as linhas terminam em `\n`, inclusive a última; o `\0` é um
+byte extra e separado. A documentação oficial descreve como se a última
+linha não levasse `\n`, o que **não** conecta no Tacview real ("real-time
+telemetry not compatible with the host exporter"). Depois do handshake o
+servidor faz um `recv()` com timeout de 1s para consumir o handshake de
+volta, e só então envia o cabeçalho ACMI.
+
+Bind em **`0.0.0.0`** (não `127.0.0.1`): com o Tacview no Windows e o
+binário no WSL2, o loopback depende do "localhost forwarding", que nem
+sempre funciona. Se `127.0.0.1:1234` não conectar, use o IP da distro
+(`hostname -I`). Porta padrão **1234**.
+
 ## Arquitetura do MIXR (para criar novos modelos)
 
-Padrão de classe (ver `mixr/include/mixr/base/macros.hpp` e `Object.hpp`):
+Padrão de classe (ver `<conan>/include/mixr/base/macros.hpp` e `Object.hpp`):
 
 - Toda classe herda de `mixr::base::Object` (ref-counting, RTTI própria).
 - `DECLARE_SUBCLASS(ClassName, BaseClass)` no `.hpp` + `IMPLEMENT_SUBCLASS(ClassName, "FactoryName")` no `.cpp`.
 - **Slot table**: parâmetros configuráveis via EDL/`.epp` são declarados com
   `BEGIN_SLOTTABLE`/`END_SLOTTABLE` + `BEGIN_SLOT_MAP`/`ON_SLOT`/`END_SLOT_MAP`,
-  com métodos `setSlotX()` privados. Ver `mixr/src/models/dynamics/RacModel.cpp`
+  com métodos `setSlotX()` privados. Ver o `RacModel` (ver `contexts/MIXR-CONTEXT.md`)
   como exemplo simples e completo.
 - **Factory**: cada biblioteca (`base`, `simulation`, `models`, `terrain`,
   `interop/dis`, `graphics`, `instruments`, `ighost/*`, exemplos com
@@ -599,7 +723,7 @@ Padrão de classe (ver `mixr/include/mixr/base/macros.hpp` e `Object.hpp`):
   "Factory name" bate com a string usada no `.epp`. O `factory()` de cada
   `main.cpp` de exemplo encadeia essas factories (a ordem importa: a primeira
   que retornar não-nulo vence).
-- **Hierarquia de modelos** (`mixr::models`, em `mixr/include/mixr/models/`):
+- **Hierarquia de modelos** (`mixr::models`, em `<conan>/include/mixr/models/`):
   - `WorldModel` (a "Simulation") contém `players`.
   - `Player` (base de `Aircraft`, `Ship`, `GroundVehicle`, `LifeForm`,
     `Building`, mísseis/armas em `player/weapon`, efeitos em `player/effect`)
@@ -620,15 +744,22 @@ Padrão de classe (ver `mixr/include/mixr/base/macros.hpp` e `Object.hpp`):
 
 1. Criar `poc/NN-slug/` (próximo número sequencial) com `meson.build`,
    `src/main.cpp` + `src/meson.build`, `configs/scenario.epp` — usar
-   `poc/01-flying-aircraft/` como template.
+   `poc/01-flying-aircraft/` como template. **Toda poc tem
+   `include/mixr_factory.hpp` + `src/mixr_factory.cpp`** (a factory NÃO
+   fica inline no `main.cpp`); `main.cpp` só orquestra.
 2. Se o modelo novo for uma classe própria (não uma do framework, tipo
    `RacModel`), o header/fonte entram em `include/`/`src/` do subprojeto (ou
    no `include/`/`src/` raiz se for compartilhado entre subprojetos),
-   **nunca** dentro de `mixr/` (só referência/dependência externa).
+   **nunca** dentro de `contexts/` (que é só material de consulta).
 3. Registrar a classe nova na função `factory()` do `main.cpp` do
    subprojeto (padrão: tentar a factory local primeiro, cair para as do
    framework — ver `mixr::models::factory` etc. em `poc/01-flying-aircraft/src/main.cpp`).
 4. Configurar/instanciar via `configs/scenario.epp` (slots do componente).
+   Para exportar ao Tacview, declarar `dataRecorder:` na `Station` com um
+   `( TacviewOutput ... )` na cadeia e **`dataLogTime:` em cada player**
+   (ver a seção do `shared/xtacview` — sem esse slot nada aparece), além
+   de encadear `mixr::xtacview::factory` e `mixr::recorder::factory` no
+   `mixr_factory.cpp`, e `xtacview_dep` no `meson.build`.
 5. No `meson.build` raiz, adicionar `subdir('./poc/NN-slug')` (após os já
    existentes) e, se o executável tiver artefato próprio, referenciá-lo no
    `summary()` de Build Artifacts.
@@ -678,10 +809,28 @@ caminhos de config — não feito.
 
 ## Estado atual / observações
 
-- `build/` e `dist/` (artefatos gerados) estão **versionados no git** (950
-  arquivos rastreados), embora já listados no `.gitignore` local (mudança
-  ainda não commitada, adicionando `dist` e `mixr` à lista que já tinha
-  `build`). Vale decidir e rodar `git rm -r --cached build dist` antes do
-  próximo commit para parar de rastreá-los.
-- `mixr/` tem `.git` próprio — é um clone independente, não um submodule
-  configurado no repo principal.
+- **Todas as 11 pocs compilam e rodam sem crash** (`make build` + smoke
+  test de cada binário). As 6 que exportam telemetria (04/05/07/08/09/10)
+  foram migradas para `shared/xtacview` e revalidadas rodando, comparando
+  o `.acmi` gerado com o log de console de cada uma.
+- **Refatoração estrutural aplicada**: `mixr_factory.{hpp,cpp}` extraído
+  em 01/04/06/07/09/10 (03/05/08 já tinham); `poc/02-behavior-tree`
+  reestruturada em `domain/Sentinel` + `bt/nodes/*` + `bt/bt_factory`
+  (nós como classes registradas na factory com injeção por blackboard, no
+  lugar de `registerSimpleAction` com lambdas e estado solto no
+  blackboard) — comportamento idêntico ao anterior, verificado tick a
+  tick.
+- **Limitação conhecida na poc/09**: chaff/flare aparecem no Tacview como
+  `Misc`/`Grey` em vez de `Misc+Decoy+Chaff`/`Misc+Decoy+Flare`. Três
+  armadilhas do framework se somam (nºs 4, 6 e 7 da seção do xtacview):
+  `REID_WEAPON_RELEASED` aborta o processo, `REID_PLAYER_DATA` não traz
+  `ac_type`, e o handler não alcança o `WorldModel` para consultar o
+  `Player`. Resolver isso exige corrigir o encadeamento de containers do
+  `DataRecorder` no framework (ou passar a informação por outra via).
+- `build/` e `dist/` (artefatos gerados) estão **versionados no git**,
+  embora já listados no `.gitignore` local (mudança ainda não commitada,
+  adicionando `dist` e `mixr` à lista que já tinha `build`). Vale decidir
+  e rodar `git rm -r --cached build dist` antes do próximo commit.
+- `mixr/`, `examples/` e `BehaviorTree.CPP/` **não existem mais** no
+  repositório — foram substituídos por `contexts/` (ver Layout). O
+  `.gitignore` ainda menciona `mixr`.

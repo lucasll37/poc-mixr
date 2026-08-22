@@ -28,6 +28,25 @@
 
   tcPriority: 0.5
   fastForwardRate: 60
+  // Exportacao pela cadeia nativa de OutputHandlers. Nao existe tag ACMI
+  // oficial para satelite -- a taxonomia do Tacview cobre Air/Ground/Sea/
+  // Weapon/Sensor/Navaid/Misc e nada de espaco -- entao "Misc" e uma
+  // aproximacao honesta, nao uma tag inventada.
+  dataRecorder: ( DataRecorder
+     eventName: "poc-10-satellite-constellation"
+     outputHandler: ( RecorderOutputHandler
+        components: {
+           ( TacviewOutput
+              port: 1234
+              callsign: "poc-mixr/satellite-constellation"
+              fileName: "./poc/10-satellite-constellation/data/recordings/mission.acmi"
+              typeMap:  { sat1: "Misc"  sat2: "Misc"  sat3: "Misc"  sat4: "Misc" }
+              colorMap: { sat1: "Blue"  sat2: "Blue"  sat3: "Blue"  sat4: "Blue" }
+           )
+        }
+     )
+  )
+
 
   simulation: ( WorldModel
 
@@ -38,6 +57,9 @@
 
         // u0=0 -> lat=0, lon=0
         sat1: ( SpaceVehicle
+
+           // 10 Hz -- nasce ZERO; sem isto o satelite nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            id: 201
            side: blue
            type: "LEO-780"
@@ -48,6 +70,9 @@
 
         // u0=90 -> lat=+53, lon=+90 (defasado 1/4 de orbita)
         sat2: ( SpaceVehicle
+
+           // 10 Hz -- nasce ZERO; sem isto o satelite nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            id: 202
            side: blue
            type: "LEO-780"
@@ -58,6 +83,9 @@
 
         // u0=180 -> lat=0, lon=180
         sat3: ( SpaceVehicle
+
+           // 10 Hz -- nasce ZERO; sem isto o satelite nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            id: 203
            side: blue
            type: "LEO-780"
@@ -68,6 +96,9 @@
 
         // u0=270 -> lat=-53, lon=-90
         sat4: ( SpaceVehicle
+
+           // 10 Hz -- nasce ZERO; sem isto o satelite nao aparece no Tacview
+           dataLogTime: ( Seconds 0.1 )
            id: 204
            side: blue
            type: "LEO-780"

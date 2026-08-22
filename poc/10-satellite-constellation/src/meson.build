@@ -2,14 +2,14 @@ local_inc_dir = include_directories('../include')
 
 sources = files(
     'main.cpp',
+    'mixr_factory.cpp',
     'orbit.cpp',
-    'tacview/RealtimeTelemetryServer.cpp',
 )
 
 satellite_constellation = executable('satellite-constellation',
     sources,
     include_directories : [inc_dir, local_inc_dir],
-    dependencies        : [thread_dep, mixr_dep],
+    dependencies        : [thread_dep, mixr_dep, xtacview_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir,

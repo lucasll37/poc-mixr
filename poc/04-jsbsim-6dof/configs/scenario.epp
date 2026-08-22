@@ -15,6 +15,29 @@
 
   tcPriority: 0.5
 
+  // Exportacao para o Tacview pela cadeia NATIVA de OutputHandlers do
+  // mixr::recorder: o framework empurra cada REID_* para o TacviewOutput,
+  // em vez de o main.cpp varrer os players e montar o ACMI na mao.
+  // Acrescentar/remover uma saida aqui e so acrescentar/remover um
+  // componente -- sem recompilar.
+  dataRecorder: ( DataRecorder
+     eventName: "poc-04-jsbsim-6dof"
+     outputHandler: ( RecorderOutputHandler
+        components: {
+           ( TacviewOutput
+              port: 1234
+              callsign: "poc-mixr/jsbsim-6dof"
+              fileName: "./poc/04-jsbsim-6dof/data/recordings/mission.acmi"
+              // A chave casa por 'type:' do player quando disponivel e cai
+              // para o NOME do player -- REID_PLAYER_DATA so traz o nome
+              // (ver nota em TacviewOutput.cpp).
+              typeMap:  { xper: "Air+FixedWing" }
+              colorMap: { xper: "Blue" }
+           )
+        }
+     )
+  )
+
   ownship: xper
   simulation: ( WorldModel
 
@@ -35,6 +58,12 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 0 )
            initVelocity: 400
+
+           // Taxa de amostragem deste player para o recorder (10 Hz, a mesma
+           // do laco de background que antes alimentava o Tacview).
+           // ATENCAO: nasce ZERO -- sem este slot o player nunca emite
+           // REID_PLAYER_DATA e simplesmente nao aparece no Tacview.
+           dataLogTime: ( Seconds 0.1 )
 
            components: {
               dynamicsModel: ( JSBSimModel

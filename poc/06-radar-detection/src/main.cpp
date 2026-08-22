@@ -11,6 +11,8 @@
 // 100% nativa do framework.
 //
 
+#include "mixr_factory.hpp"
+
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
 #include "mixr/models/player/Player.hpp"
@@ -25,12 +27,6 @@
 #include "mixr/base/units/Angles.hpp"
 #include "mixr/base/util/system_utils.hpp"
 
-#include "mixr/simulation/factory.hpp"
-#include "mixr/models/factory.hpp"
-#include "mixr/interop/dis/factory.hpp"
-#include "mixr/terrain/factory.hpp"
-#include "mixr/base/factory.hpp"
-
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
@@ -43,17 +39,6 @@ namespace {
 const int bgRate{10};
 const double simDuration{90.0};
 const unsigned int maxTracksToQuery{16};
-
-mixr::base::Object* factory(const std::string& name)
-{
-   mixr::base::Object* obj{mixr::simulation::factory(name)};
-
-   if (obj == nullptr) obj = mixr::models::factory(name);
-   if (obj == nullptr) obj = mixr::terrain::factory(name);
-   if (obj == nullptr) obj = mixr::dis::factory(name);
-   if (obj == nullptr) obj = mixr::base::factory(name);
-   return obj;
-}
 
 // edl_parser (flex/bison) nao entende '#include' nativamente -- este
 // cenario usa #include "gainPattern.epp" (mesmo padrao de examples/
@@ -73,7 +58,7 @@ std::string preprocessEdl(const std::string& inPath, const std::string& outPath)
 mixr::simulation::Station* buildStation(const std::string& filename)
 {
    int num_errors{};
-   mixr::base::Object* obj{mixr::base::edl_parser(filename, factory, &num_errors)};
+   mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);

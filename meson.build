@@ -20,6 +20,10 @@ thread_dep = dependency('threads')
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
+# Usado diretamente por shared/xtacview: o recorder nativo entrega os dados
+# como mensagens protobuf (DataRecord.pb.h).
+protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
+
 # Resolve o libdir de cada dependência via pkg-config. Ambas entregam
 # bibliotecas COMPARTILHADAS (.so) que vivem no cache do Conan, fora de
 # qualquer caminho padrão do loader — então todo executável precisa
@@ -47,6 +51,11 @@ inc_dir = include_directories('include')
 # ============================================
 # Subdiretórios
 # ============================================
+
+# Bibliotecas compartilhadas entre subprojetos (padrao shared/x<nome> do
+# MIXR). Precisa vir ANTES dos poc/, que consomem xtacview_dep.
+subdir('./shared/xtacview')
+
 subdir('./src')
 
 # Subprojetos incrementais da PoC (cada um coexiste como um executável

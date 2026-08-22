@@ -17,9 +17,10 @@
 //                                   e roda o loop
 //
 
-#include "mixr_factory.hpp"
 #include "bt/bt_factory.hpp"
 #include "domain/Mission.hpp"
+
+#include "mixr_factory.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"

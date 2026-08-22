@@ -8,6 +8,8 @@
 // demonstrar que a aeronave de fato manobra (voa), e encerra sozinho.
 //
 
+#include "mixr_factory.hpp"
+
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
 #include "mixr/models/player/Player.hpp"
@@ -16,11 +18,6 @@
 #include "mixr/base/util/system_utils.hpp"
 
 // factories
-#include "mixr/simulation/factory.hpp"
-#include "mixr/models/factory.hpp"
-#include "mixr/interop/dis/factory.hpp"
-#include "mixr/terrain/factory.hpp"
-#include "mixr/base/factory.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -33,22 +30,11 @@ const int bgRate{10};
 // how long the demo runs (simulated seconds)
 const double simDuration{30.0};
 
-mixr::base::Object* factory(const std::string& name)
-{
-   mixr::base::Object* obj{mixr::simulation::factory(name)};
-
-   if (obj == nullptr) obj = mixr::models::factory(name);
-   if (obj == nullptr) obj = mixr::terrain::factory(name);
-   if (obj == nullptr) obj = mixr::dis::factory(name);
-   if (obj == nullptr) obj = mixr::base::factory(name);
-   return obj;
-}
-
 // station builder
 mixr::simulation::Station* builder(const std::string& filename)
 {
    int num_errors{};
-   mixr::base::Object* obj{mixr::base::edl_parser(filename, factory, &num_errors)};
+   mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);

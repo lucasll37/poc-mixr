@@ -6,13 +6,12 @@ sources = files(
     'events.cpp',
     'RadarContactRelay.cpp',
     'AlertReceiver.cpp',
-    'tacview/RealtimeTelemetryServer.cpp',
 )
 
 event_relay = executable('event-relay',
     sources,
     include_directories : [inc_dir, local_inc_dir],
-    dependencies        : [thread_dep, mixr_dep],
+    dependencies        : [thread_dep, mixr_dep, xtacview_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir,

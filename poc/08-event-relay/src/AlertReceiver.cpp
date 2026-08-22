@@ -2,6 +2,10 @@
 #include "events.hpp"
 
 #include "mixr/models/player/Player.hpp"
+#include "mixr/models/WorldModel.hpp"
+#include "mixr/simulation/AbstractDataRecorder.hpp"
+#include "mixr/simulation/recorder_macros.hpp"
+#include "mixr/simulation/dataRecorderTokens.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -41,6 +45,21 @@ bool AlertReceiver::onContactEvent(RadarContactMessage* const msg)
    pendingAlert = oss.str();
 
    std::cout << "[AlertReceiver] " << pendingAlert << std::endl;
+
+   // Grava o alerta no recorder NATIVO, com a mesma macro que o framework
+   // usa nos seus proprios eventos. Dai ele sai em todas as saidas
+   // configuradas no 'dataRecorder' (arquivo, CSV e Tacview) sem que o
+   // main.cpp precise consumir nada -- e por isso consumePendingAlert()
+   // deixou de ser chamado no laco principal.
+   //
+   // REID_MARKER e o token nativo para "marcador da aplicacao": V1 = id do
+   // marcador, V2 = quem o originou. Nao carrega texto -- MarkerMsg so tem
+   // dois uint32 -- entao o texto completo continua indo para o console.
+   BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_MARKER )
+      SAMPLE_2_VALUES( static_cast<double>(msg->trackId),
+                       static_cast<double>(me != nullptr ? me->getID() : 0) )
+   END_RECORD_DATA_SAMPLE()
+
    return true;
 }
 

@@ -17,12 +17,12 @@
 // gravador nativo, e roda o loop ate Ctrl+C.
 //
 
-#include "mixr_factory.hpp"
 #include "formations.hpp"
 #include "recorder_events.hpp"
 #include "linkage/KeyboardIoHandler.hpp"
 #include "bt/bt_factory.hpp"
-#include "tacview/RealtimeTelemetryServer.hpp"
+
+#include "mixr_factory.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
@@ -289,21 +289,8 @@ int main(int argc, char* argv[])
          "./poc/05-formation-flight/configs/wingman_tree.xml", childBlackboard);
    }
 
-   // --- Tacview (protocolo Real-Time Telemetry, ver poc/04) + gravacao local ---
-   tacview::RealtimeTelemetryServer tacviewServer("0.0.0.0", 1234);
-   if (!tacviewServer.start()) {
-      std::cerr << "Failed to start Tacview telemetry server!" << std::endl;
-      std::exit(EXIT_FAILURE);
-   }
-   tacviewServer.startRecording("./poc/05-formation-flight/data/recordings/mission.acmi");
-
-   const std::vector<std::pair<std::uint32_t, tacview::ObjectInfo>> objectInfos{
-      {0x101, {"lead", "Air+FixedWing", "Blue"}},
-      {0x102, {"wing1", "Air+FixedWing", "Blue"}},
-      {0x103, {"wing2", "Air+FixedWing", "Blue"}},
-      {0x104, {"wing3", "Air+FixedWing", "Blue"}},
-      {0x105, {"wing4", "Air+FixedWing", "Blue"}},
-   };
+   // O Tacview e mais uma saida da cadeia do 'dataRecorder' (ver
+   // configs/recorder.epp) -- nao ha servidor nem lista de objetos aqui.
    std::vector<mixr::models::Player*> allPlayers{lead, wingmen[0].player, wingmen[1].player,
                                                   wingmen[2].player, wingmen[3].player};
 
@@ -329,27 +316,22 @@ int main(int argc, char* argv[])
 
       for (auto& w : wingmen) w.tree.tickRoot();
 
-      tacviewServer.acceptIfNeeded();
-      tacviewServer.beginFrame(simTime);
-      for (std::size_t i = 0; i < allPlayers.size(); i++) {
-         const auto p = allPlayers[i];
-         tacviewServer.updateObject(objectInfos[i].first,
-                                    p->getLongitude(), p->getLatitude(), p->getAltitudeM(),
-                                    p->getRollD(), p->getPitchD(), p->getHeadingD(),
-                                    &objectInfos[i].second);
-      }
-
+      // As 5 aeronaves chegam ao stream por REID_PLAYER_DATA (slot
+      // dataLogTime de cada player), sem nada neste laco.
+      //
+      // Os eventos da tripulacao (troca de formacao / RTB) sao gravados
+      // como REID_MARKER, e NAO com um token proprio na faixa de usuario
+      // (1000+): tokens de usuario nao tem handler no DataRecorder
+      // concreto e sao degradados para REID_UNHANDLED_ID_TOKEN, entao nao
+      // chegariam a saida nenhuma. REID_MARKER e tratado nativamente.
       const std::string pendingEvent{keyboardHandler->consumePendingEvent()};
-      if (!pendingEvent.empty()) {
-         tacviewServer.logEvent(0x101, pendingEvent);
-         if (dataRecorder != nullptr) {
-            const unsigned int reid{pendingEvent.rfind("RTB", 0) == 0
-               ? static_cast<unsigned int>(REID_RTB_ENGAGED)
-               : static_cast<unsigned int>(REID_FORMATION_CHANGED)};
-            const mixr::base::Object* pObjects[4]{lead, nullptr, nullptr, nullptr};
-            const double values[4]{};
-            dataRecorder->recordData(reid, pObjects, values);
-         }
+      if (!pendingEvent.empty() && dataRecorder != nullptr) {
+         const double markerId{pendingEvent.rfind("RTB", 0) == 0
+            ? static_cast<double>(REID_RTB_ENGAGED)
+            : static_cast<double>(REID_FORMATION_CHANGED)};
+         const mixr::base::Object* pObjects[4]{lead, nullptr, nullptr, nullptr};
+         const double values[4]{markerId, static_cast<double>(lead->getID()), 0.0, 0.0};
+         dataRecorder->recordData(REID_MARKER, pObjects, values);
       }
 
       simTime += dt;
@@ -362,20 +344,11 @@ int main(int argc, char* argv[])
       frameCount += 1;
       if (frameCount % logEveryNFrames == 0) {
          printStatusLine(numTcThreadsReported, frameCount / logEveryNFrames, allPlayers);
-
-         if (dataRecorder != nullptr) {
-            for (const auto p : allPlayers) {
-               const mixr::base::Object* pObjects[4]{p, nullptr, nullptr, nullptr};
-               const double values[4]{};
-               dataRecorder->recordData(REID_PLAYER_DATA, pObjects, values);
-            }
-         }
       }
    }
 
    std::cout << "=== fim ===" << std::endl;
 
-   tacviewServer.stop();
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
    station->unref();
    return 0;

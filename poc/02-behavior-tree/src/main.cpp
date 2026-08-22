@@ -3,9 +3,7 @@
 //
 // Subprojeto minimo e funcional usando BehaviorTree.CPP (v3, pacote Conan
 // behaviortree.cpp.asa/3.5.6). Nao depende do MIXR -- e uma prova de
-// conceito isolada da biblioteca de arvores de comportamento, pensada como
-// base para, num proximo ciclo, decidir o comportamento de um player MIXR
-// (ex.: substituir o autopilot manual do poc/01-flying-aircraft).
+// conceito isolada da biblioteca de arvores de comportamento.
 //
 // Cenario: um "sentinela" que patrulha enquanto tem bateria e recarrega
 // quando ela fica baixa. A arvore (configs/tree.xml) e:
@@ -16,50 +14,23 @@
 //   |  +- Recharge     (Action)
 //   +- Patrol          (Action)
 //
-// O estado "battery" fica no blackboard raiz, compartilhado entre os nos.
+// Estrutura em camadas (mesma de poc/03-bt-autopilot):
+//   domain/Sentinel  -- regras puras (bateria, patrulha, recarga)
+//   bt/nodes/*       -- adaptadores finos que leem/comandam o Sentinel
+//   bt/bt_factory    -- registro dos nos + injecao via blackboard
+//   main.cpp         -- so orquestra
+//
+// O estado NAO mora mais no blackboard como um int solto: o blackboard
+// carrega um ponteiro para o objeto de dominio, que e quem guarda o estado.
 //
 
-#include "behaviortree_cpp_v3/bt_factory.h"
+#include "bt/bt_factory.hpp"
+#include "domain/Sentinel.hpp"
 
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <thread>
-
-namespace {
-
-const char* const kBatteryKey = "battery";
-const int kDrainPerTick{15};
-const int kLowThreshold{30};
-const int kFullBattery{100};
-
-BT::NodeStatus checkBatteryLow(BT::TreeNode& node)
-{
-   int battery{};
-   node.config().blackboard->get<int>(kBatteryKey, battery);
-   return battery < kLowThreshold ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
-}
-
-BT::NodeStatus patrol(BT::TreeNode& node)
-{
-   int battery{};
-   node.config().blackboard->get<int>(kBatteryKey, battery);
-   battery = std::max(0, battery - kDrainPerTick);
-   node.config().blackboard->set<int>(kBatteryKey, battery);
-
-   std::cout << "  [Patrol]   patrulhando...   battery=" << battery << std::endl;
-   return BT::NodeStatus::SUCCESS;
-}
-
-BT::NodeStatus recharge(BT::TreeNode& node)
-{
-   node.config().blackboard->set<int>(kBatteryKey, kFullBattery);
-
-   std::cout << "  [Recharge] recarregando...  battery=" << kFullBattery << std::endl;
-   return BT::NodeStatus::SUCCESS;
-}
-
-} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -71,15 +42,12 @@ int main(int argc, char* argv[])
       }
    }
 
+   domain::Sentinel sentinel;
+
    BT::BehaviorTreeFactory factory;
-   factory.registerSimpleCondition("BatteryLow", checkBatteryLow);
-   factory.registerSimpleAction("Patrol", patrol);
-   factory.registerSimpleAction("Recharge", recharge);
+   bt::registerNodes(factory);
 
-   auto blackboard = BT::Blackboard::create();
-   blackboard->set<int>(kBatteryKey, kFullBattery);
-
-   BT::Tree tree = factory.createTreeFromFile(treeFilename, blackboard);
+   BT::Tree tree = factory.createTreeFromFile(treeFilename, bt::makeBlackboard(&sentinel));
 
    std::cout << "=== poc/02-behavior-tree ===" << std::endl;
 
@@ -91,5 +59,6 @@ int main(int argc, char* argv[])
    }
 
    std::cout << "=== fim ===" << std::endl;
+   std::cout << "voltas de patrulha: " << sentinel.patrolLaps() << std::endl;
    return 0;
 }

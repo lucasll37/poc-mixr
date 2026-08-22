@@ -22,6 +22,24 @@
 ( Station
 
   tcPriority: 0.5
+  // Exportacao pela cadeia nativa: aeronaves (REID_PLAYER_DATA), pistas do
+  // radar (REID_TRACK_DATA) e os alertas do AlertReceiver (REID_MARKER).
+  dataRecorder: ( DataRecorder
+     eventName: "poc-08-event-relay"
+     outputHandler: ( RecorderOutputHandler
+        components: {
+           ( TacviewOutput
+              port: 1234
+              callsign: "poc-mixr/event-relay"
+              fileName: "./poc/08-event-relay/data/recordings/mission.acmi"
+              typeMap:  { hunter: "Air+FixedWing"  controller: "Air+FixedWing"
+                          target: "Air+FixedWing" }
+              colorMap: { hunter: "Blue"  controller: "Blue"  target: "Red" }
+           )
+        }
+     )
+  )
+
 
   ownship: hunter
   simulation: ( WorldModel
@@ -44,6 +62,7 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 0 )
            initVelocity: 350
+           dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
 
            components: {
 
@@ -142,6 +161,7 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 0 )
            initVelocity: 300
+           dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
            components: {
               dynamicsModel: ( RacModel )
               alertReceiver: ( AlertReceiver )
@@ -159,6 +179,7 @@
            initAlt:      ( Feet 15000 )
            initHeading:  ( Degrees 180 )
            initVelocity: 400
+           dataLogTime: ( Seconds 0.1 )   // 10 Hz -- nasce ZERO
            components: { dynamicsModel: ( RacModel ) }
         )
 

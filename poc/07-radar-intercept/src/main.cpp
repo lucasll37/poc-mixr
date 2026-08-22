@@ -5,16 +5,16 @@
 //   - 6-DOF real (poc/04): "hunter" usa JSBSimModel/F4N (mesmos dados)
 //   - radar nativo (poc/06): Antenna/Gimbal + Tws + AirTrkMgr detectando
 //     3 aeronaves "target" (RacModel) com RCS diferentes
-//   - Tacview (poc/04/05): as 4 aeronaves exportadas ao vivo + eventos de
-//     deteccao do radar gravados como Event= no stream/.acmi
+//   - Tacview (shared/xtacview): as 4 aeronaves E as deteccoes do radar
+//     exportadas pela cadeia nativa do 'dataRecorder' -- REID_PLAYER_DATA e
+//     REID_NEW_TRACK viram linhas ACMI sem nenhuma chamada deste main.cpp
 //
-// main.cpp so orquestra: nao ha nenhuma logica de deteccao/RF em C++ (100%
-// nativa do framework, via Tws/AirTrkMgr) nem de aerodinamica (100% JSBSim/
-// RacModel) -- so consulta o TrackManager e o estado dos players a cada
-// tick e encaminha pro Tacview.
+// main.cpp so orquestra: nao ha logica de deteccao/RF em C++ (100% nativa,
+// via Tws/AirTrkMgr), nem de aerodinamica (JSBSim/RacModel), nem de
+// exportacao (TacviewOutput).
 //
 
-#include "tacview/RealtimeTelemetryServer.hpp"
+#include "mixr_factory.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
@@ -29,12 +29,6 @@
 #include "mixr/base/PairStream.hpp"
 #include "mixr/base/safe_ptr.hpp"
 #include "mixr/base/util/system_utils.hpp"
-
-#include "mixr/simulation/factory.hpp"
-#include "mixr/models/factory.hpp"
-#include "mixr/interop/dis/factory.hpp"
-#include "mixr/terrain/factory.hpp"
-#include "mixr/base/factory.hpp"
 
 #include <algorithm>
 #include <csignal>
@@ -55,17 +49,6 @@ const unsigned int maxTracksToQuery{16};
 volatile std::sig_atomic_t g_stopRequested{0};
 void onSigint(int) { g_stopRequested = 1; }
 
-mixr::base::Object* factory(const std::string& name)
-{
-   mixr::base::Object* obj{mixr::simulation::factory(name)};
-
-   if (obj == nullptr) obj = mixr::models::factory(name);
-   if (obj == nullptr) obj = mixr::terrain::factory(name);
-   if (obj == nullptr) obj = mixr::dis::factory(name);
-   if (obj == nullptr) obj = mixr::base::factory(name);
-   return obj;
-}
-
 // edl_parser nao entende '#include' nativamente (gainPattern.epp) -- mesmo
 // passo de preprocessador C das pocs 05/06 (ver CLAUDE.md).
 std::string preprocessEdl(const std::string& inPath, const std::string& outPath)
@@ -82,7 +65,7 @@ std::string preprocessEdl(const std::string& inPath, const std::string& outPath)
 mixr::simulation::Station* buildStation(const std::string& filename)
 {
    int num_errors{};
-   mixr::base::Object* obj{mixr::base::edl_parser(filename, factory, &num_errors)};
+   mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);
@@ -193,20 +176,6 @@ int main(int argc, char* argv[])
       std::exit(EXIT_FAILURE);
    }
 
-   tacview::RealtimeTelemetryServer tacviewServer("0.0.0.0", 1234);
-   if (!tacviewServer.start()) {
-      std::cerr << "Failed to start Tacview telemetry server!" << std::endl;
-      std::exit(EXIT_FAILURE);
-   }
-   tacviewServer.startRecording("./poc/07-radar-intercept/data/recordings/mission.acmi");
-
-   const std::uint32_t hunterId{0x101};
-   const std::vector<std::pair<std::uint32_t, tacview::ObjectInfo>> objectInfos{
-      {hunterId, {"hunter", "Air+FixedWing", "Blue"}},
-      {0x102, {"target1", "Air+FixedWing", "Red"}},
-      {0x103, {"target2", "Air+FixedWing", "Red"}},
-      {0x104, {"target3", "Air+FixedWing", "Red"}},
-   };
    std::vector<mixr::models::Player*> allPlayers{hunter, targets[0], targets[1], targets[2]};
 
    station->createTimeCriticalProcess();
@@ -239,16 +208,10 @@ int main(int argc, char* argv[])
          dynamicsModel->setControlStick(0.0, pitchCorrection);
       }
 
-      tacviewServer.acceptIfNeeded();
-      tacviewServer.beginFrame(simTime);
-      for (std::size_t i = 0; i < allPlayers.size(); i++) {
-         const auto p = allPlayers[i];
-         tacviewServer.updateObject(objectInfos[i].first,
-                                    p->getLongitude(), p->getLatitude(), p->getAltitudeM(),
-                                    p->getRollD(), p->getPitchD(), p->getHeadingD(),
-                                    &objectInfos[i].second);
-      }
-
+      // As 4 aeronaves E as deteccoes de radar chegam ao Tacview pela cadeia
+      // nativa do 'dataRecorder' (REID_PLAYER_DATA / REID_NEW_TRACK) -- ver
+      // configs/scenario.epp. A consulta ao TrackManager abaixo existe so
+      // para o log legivel no console, que e o output didatico desta poc.
       mixr::base::safe_ptr<mixr::models::Track> trackList[maxTracksToQuery];
       const int numTracks{trkMgr->getTrackList(trackList, maxTracksToQuery)};
       for (int i = 0; i < numTracks; i++) {
@@ -263,7 +226,6 @@ int main(int argc, char* argv[])
                << " range=" << (trk->getRange() / 1852.0) << "NM"
                << " bearing=" << trk->getTrueAzimuthD() << "deg";
             std::cout << ">>> [t=" << simTime << "s] " << ev.str() << std::endl;
-            tacviewServer.logEvent(hunterId, ev.str());
          }
       }
 
@@ -282,7 +244,6 @@ int main(int argc, char* argv[])
 
    std::cout << "=== fim ===" << std::endl;
 
-   tacviewServer.stop();
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
    station->unref();
    return 0;

@@ -19,7 +19,7 @@
 // icone/particula correta de cada tipo.
 //
 
-#include "tacview/RealtimeTelemetryServer.hpp"
+#include "mixr_factory.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
@@ -31,12 +31,6 @@
 #include "mixr/base/edl_parser.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/util/system_utils.hpp"
-
-#include "mixr/simulation/factory.hpp"
-#include "mixr/models/factory.hpp"
-#include "mixr/interop/dis/factory.hpp"
-#include "mixr/terrain/factory.hpp"
-#include "mixr/base/factory.hpp"
 
 #include <algorithm>
 #include <csignal>
@@ -55,21 +49,10 @@ const double effectMaxTofSec{10.0};     // mesmo Effect::maxTOF nativo (default)
 volatile std::sig_atomic_t g_stopRequested{0};
 void onSigint(int) { g_stopRequested = 1; }
 
-mixr::base::Object* factory(const std::string& name)
-{
-   mixr::base::Object* obj{mixr::simulation::factory(name)};
-
-   if (obj == nullptr) obj = mixr::models::factory(name);
-   if (obj == nullptr) obj = mixr::terrain::factory(name);
-   if (obj == nullptr) obj = mixr::dis::factory(name);
-   if (obj == nullptr) obj = mixr::base::factory(name);
-   return obj;
-}
-
 mixr::simulation::Station* buildStation(const std::string& filename)
 {
    int num_errors{};
-   mixr::base::Object* obj{mixr::base::edl_parser(filename, factory, &num_errors)};
+   mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);
@@ -94,22 +77,14 @@ mixr::simulation::Station* buildStation(const std::string& filename)
    return station;
 }
 
-// Efeito (chaff ou flare) atualmente ativo -- rastreado por nos so pra
-// saber quando ele expira (mesmo maxTOF nativo do Effect) e remove-lo do
-// Tacview; a posicao/queda em si e 100% da dinamica nativa do Effect.
-struct ActiveEffect
+// Referencia a um efeito liberado, mantida apenas para o unref() depois
+// que ele expira (gestao de memoria -- releaseOneChaff/Flare devolve um
+// ponteiro cuja posse e nossa). Nada aqui alimenta o Tacview: posicao,
+// declaracao e remocao no stream vem todas do recorder nativo.
+struct ReleasedEffect
 {
    mixr::models::Player* player{};
    double releaseSimTime{};
-   std::uint32_t tacviewId{};
-   tacview::ObjectInfo info;
-   // A heranca de posicao/velocidade do lancador acontece no primeiro
-   // dynamics() nativo do proprio Effect, que roda na thread T/C separada
-   // -- por 1-2 frames apos o release() o player ainda reporta a posicao
-   // "crua" (lat/lon/alt = 0, do reset() com os slots initXPos/Y/Alt nao
-   // configurados). Pulamos a exportacao ate a altitude ficar plausivel,
-   // pra nao mandar esse frame de transicao pro Tacview.
-   bool warmedUp{};
 };
 
 } // namespace
@@ -149,17 +124,7 @@ int main(int argc, char* argv[])
       std::exit(EXIT_FAILURE);
    }
 
-   tacview::RealtimeTelemetryServer tacviewServer("0.0.0.0", 1234);
-   if (!tacviewServer.start()) {
-      std::cerr << "Failed to start Tacview telemetry server!" << std::endl;
-      std::exit(EXIT_FAILURE);
-   }
-   tacviewServer.startRecording("./poc/09-chaff-flare/data/recordings/mission.acmi");
-
-   const std::uint32_t hunterId{0x101};
-   const tacview::ObjectInfo hunterInfo{"hunter", "Air+FixedWing", "Blue"};
-   std::uint32_t nextEffectId{0x200};
-   std::vector<ActiveEffect> activeEffects;
+   std::vector<ReleasedEffect> releasedEffects;
 
    station->createTimeCriticalProcess();
    mixr::base::msleep(1000);
@@ -192,55 +157,37 @@ int main(int argc, char* argv[])
 
          mixr::models::Chaff* const chaff{storesMgr->releaseOneChaff()};
          if (chaff != nullptr) {
-            const std::uint32_t id{nextEffectId++};
-            activeEffects.push_back(ActiveEffect{chaff, simTime, id, {"chaff", "Misc+Decoy+Chaff", "Blue"}});
-            std::cout << "[t=" << simTime << "s] CHAFF lancado (id=" << std::hex << id << std::dec << ")" << std::endl;
+            releasedEffects.push_back(ReleasedEffect{chaff, simTime});
+            std::cout << "[t=" << simTime << "s] CHAFF lancado" << std::endl;
          } else {
             std::cout << "[t=" << simTime << "s] sem chaff disponivel" << std::endl;
          }
 
          mixr::models::Flare* const flare{storesMgr->releaseOneFlare()};
          if (flare != nullptr) {
-            const std::uint32_t id{nextEffectId++};
-            activeEffects.push_back(ActiveEffect{flare, simTime, id, {"flare", "Misc+Decoy+Flare", "Red"}});
-            std::cout << "[t=" << simTime << "s] FLARE lancado (id=" << std::hex << id << std::dec << ")" << std::endl;
+            releasedEffects.push_back(ReleasedEffect{flare, simTime});
+            std::cout << "[t=" << simTime << "s] FLARE lancado" << std::endl;
          } else {
             std::cout << "[t=" << simTime << "s] sem flare disponivel" << std::endl;
          }
       }
 
-      tacviewServer.acceptIfNeeded();
-      tacviewServer.beginFrame(simTime);
-      tacviewServer.updateObject(hunterId, hunter->getLongitude(), hunter->getLatitude(), hunter->getAltitudeM(),
-                                 hunter->getRollD(), hunter->getPitchD(), hunter->getHeadingD(), &hunterInfo);
+      // Nada de Tacview aqui: hunter, chaff e flare chegam ao stream pela
+      // cadeia nativa do 'dataRecorder' (REID_PLAYER_DATA para as posicoes,
+      // REID_WEAPON_RELEASED na liberacao, REID_PLAYER_REMOVED quando o
+      // Effect expira pelo maxTOF nativo). O ciclo de vida dos efeitos --
+      // que este laco antes espelhava a mao, inclusive o "warm-up" de
+      // altitude -- agora vem do proprio framework.
 
-      for (std::size_t i = 0; i < activeEffects.size();) {
-         ActiveEffect& fx{activeEffects[i]};
-         if ((simTime - fx.releaseSimTime) >= effectMaxTofSec) {
-            // mesmo tempo de vida do Effect::maxTOF nativo -- so espelha
-            // no Tacview o que o proprio framework ja fez internamente
-            // (setMode(DETONATED)/DETONATE_NONE em Effect::updateTOF()).
-            tacviewServer.removeObject(fx.tacviewId);
-            std::cout << "[t=" << simTime << "s] " << fx.info.name << " expirou (id="
-                      << std::hex << fx.tacviewId << std::dec << ")" << std::endl;
-            fx.player->unref();
-            activeEffects[i] = activeEffects.back();
-            activeEffects.pop_back();
-            continue; // nao incrementa i: reprocessa a posicao que acabou de vir pro lugar i
+      // Libera a nossa referencia depois que o Effect ja expirou pelo
+      // maxTOF nativo (nao ha nada a fazer no Tacview aqui).
+      for (std::size_t i = 0; i < releasedEffects.size();) {
+         if ((simTime - releasedEffects[i].releaseSimTime) >= effectMaxTofSec) {
+            releasedEffects[i].player->unref();
+            releasedEffects[i] = releasedEffects.back();
+            releasedEffects.pop_back();
+            continue;
          }
-
-         if (!fx.warmedUp) {
-            // so comeca a exportar quando a altitude ja refletir a heranca
-            // do lancador (ver comentario no struct ActiveEffect); ate la,
-            // so pula esta aeronave neste frame.
-            fx.warmedUp = fx.player->getAltitudeM() > 100.0;
-            if (!fx.warmedUp) { ++i; continue; }
-         }
-
-         tacviewServer.updateObject(fx.tacviewId,
-                                    fx.player->getLongitude(), fx.player->getLatitude(), fx.player->getAltitudeM(),
-                                    fx.player->getRollD(), fx.player->getPitchD(), fx.player->getHeadingD(),
-                                    &fx.info);
          ++i;
       }
 
@@ -254,9 +201,8 @@ int main(int argc, char* argv[])
 
    std::cout << "=== fim ===" << std::endl;
 
-   for (auto& fx : activeEffects) fx.player->unref();
+   for (auto& fx : releasedEffects) fx.player->unref();
 
-   tacviewServer.stop();
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
    station->unref();
    return 0;
