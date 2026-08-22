@@ -1,2 +1,0 @@
-Stable release version v18.01
-

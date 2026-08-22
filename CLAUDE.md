@@ -634,6 +634,47 @@ Padrão de classe (ver `mixr/include/mixr/base/macros.hpp` e `Object.hpp`):
    `summary()` de Build Artifacts.
 6. No `Makefile`, adicionar um alvo `run-<slug>` apontando para
    `$(BUILD_DIR)/poc/NN-slug/src/<slug>`.
+7. **No `executable()` do subprojeto, declarar o rpath das dependências
+   usadas** — `install_rpath`/`build_rpath` + `link_args:
+   rpath_link_args`, usando as variáveis definidas no `meson.build` raiz:
+   `mixr_libdir` (só MIXR), `bt_libdir` (só BehaviorTree.CPP) ou
+   `mixr_bt_libdir` (as duas). Ver o gotcha de rpath abaixo — esquecer
+   isso produz um binário que roda a partir de `build/` mas falha a
+   partir de `dist/`.
+
+## Gotcha: rpath das dependências Conan (`dist/` vs `build/`)
+
+Tanto o `mixr/1.0.5` quanto o `behaviortree.cpp.asa/3.5.6` entregam
+bibliotecas **compartilhadas** (`libmixr_*.so`,
+`libbehaviortree_cpp_v3.so`) que vivem no cache do Conan
+(`~/.conan2/p/b/<hash>/p/lib`), fora de qualquer caminho padrão do
+loader (não há nada em `/etc/ld.so.conf.d/` apontando pra lá). Duas
+consequências que já morderam:
+
+- **O Meson descarta o rpath de build no `meson install`** — por design,
+  já que é um caminho da árvore de build. Só o que estiver em
+  `install_rpath` sobrevive em `dist/bin/`. Um alvo sem `install_rpath`
+  roda por `make run-<slug>` (que usa `build/`) e falha em
+  `./dist/bin/<slug>` com `error while loading shared libraries`. Foi
+  exatamente o que aconteceu com `02-behavior-tree`, o único subprojeto
+  que não usa `mixr_dep` e por isso nasceu sem o bloco de rpath (junto
+  com `03`/`05`, que declaravam só o `mixr_libdir` e ignoravam o do BT).
+- **`-Wl,--disable-new-dtags` (em `rpath_link_args`) não é decorativo**:
+  força `DT_RPATH` em vez do `DT_RUNPATH` moderno. RPATH é herdado pelas
+  dependências transitivas, RUNPATH não — sem ele o loader resolve as
+  libs nomeadas no executável mas falha nas dependências entre elas
+  (`libmixr_models.so` → `libmixr_base.so`).
+
+Para conferir depois de um `make install`:
+`ldd dist/bin/<slug> | grep 'not found'` (silêncio = ok) e
+`readelf -d dist/bin/<slug> | grep -E 'RPATH|RUNPATH'`.
+
+`dist/` **não é auto-contido**: os binários apontam pro cache do Conan
+(caminho com hash volátil) e os `main.cpp` leem `configs/`/`data/` por
+caminho relativo, então continuam precisando ser executados a partir da
+raiz do repo. Tornar `dist/` redistribuível exigiria copiar as `.so`
+para `dist/lib/`, usar `install_rpath: '$ORIGIN/../lib'` e resolver os
+caminhos de config — não feito.
 
 ## Estado atual / observações
 

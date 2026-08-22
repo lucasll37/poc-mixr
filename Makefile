@@ -1,4 +1,4 @@
-.PHONY: clean configure build install help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation
+.PHONY: clean configure build install package help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation
 
 .DEFAULT_GOAL := help
 
@@ -7,8 +7,8 @@ PWD := $(shell pwd)
 BUILD_DIR := ./build
 DEST_DIR := $(PWD)/dist
 
-# Determine number of parallel jobs for Ninja (half of available cores)
-NINJA_JOBS := $(shell expr $$(nproc) / 1)
+# Number of parallel jobs for Ninja (all available cores)
+NINJA_JOBS := $(shell nproc)
 
 # Build configuration
 BUILD_TYPE := Debug
@@ -39,7 +39,6 @@ configure: ## Configure the project for building.
 
 	meson setup --reconfigure \
 		--backend ninja \
-		--buildtype debug \
 		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
 		--native-file $(BUILD_DIR)/conan_meson_native.ini \
 		--prefix=$(DEST_DIR) \
@@ -51,8 +50,13 @@ configure: ## Configure the project for building.
 build: ## Build all targets in the project.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: ## Install all targets in the project.
+install: ## Install all targets into dist/.
 	meson install -C $(BUILD_DIR)
+
+package: ## Create the Conan package for this project.
+	conan create ./ \
+		--build=missing \
+		--settings=build_type=$(BUILD_TYPE)
 
 # ============================================
 # Execution Targets

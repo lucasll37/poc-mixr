@@ -20,9 +20,24 @@ thread_dep = dependency('threads')
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
-# Resolve o libdir da dependência mixr via pkg-config (compartilhado
-# por todos os executáveis: raiz e subprojetos em poc/)
+# Resolve o libdir de cada dependência via pkg-config. Ambas entregam
+# bibliotecas COMPARTILHADAS (.so) que vivem no cache do Conan, fora de
+# qualquer caminho padrão do loader — então todo executável precisa
+# carregar o(s) libdir(s) das dependências que usa no seu rpath, senão
+# roda a partir de build/ mas falha a partir de dist/ com
+# "error while loading shared libraries".
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
+bt_libdir = behavior_tree_dep.get_variable(pkgconfig: 'libdir')
+
+# Para os alvos que usam as duas (poc/03, poc/05): rpath aceita vários
+# caminhos separados por ':'.
+mixr_bt_libdir = ':'.join([mixr_libdir, bt_libdir])
+
+# Emite DT_RPATH em vez do DT_RUNPATH moderno. Necessário porque RPATH é
+# herdado pelas dependências transitivas e RUNPATH não: sem isso, o
+# loader acha as libs nomeadas no executável, mas falha ao resolver as
+# dependências entre elas (libmixr_models.so -> libmixr_base.so).
+rpath_link_args = ['-Wl,--disable-new-dtags']
 
 # ============================================
 # Includes
