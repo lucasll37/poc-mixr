@@ -24,6 +24,11 @@ behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', req
 # como mensagens protobuf (DataRecord.pb.h).
 protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 
+# Usado diretamente por poc/12: a dinâmica 6-DOF fala com a JSBSim::FGFDMExec
+# sem passar pelo adaptador do MIXR (o pacote vem como dependência transitiva
+# do mixr, e o pkg-config já expõe include/JSBSim).
+jsbsim_dep = dependency('jsbsim', method: 'pkg-config', required: true)
+
 # Resolve o libdir de cada dependência via pkg-config. Ambas entregam
 # bibliotecas COMPARTILHADAS (.so) que vivem no cache do Conan, fora de
 # qualquer caminho padrão do loader — então todo executável precisa
@@ -37,11 +42,20 @@ bt_libdir = behavior_tree_dep.get_variable(pkgconfig: 'libdir')
 # caminhos separados por ':'.
 mixr_bt_libdir = ':'.join([mixr_libdir, bt_libdir])
 
+# poc/12 usa as três (MIXR + BehaviorTree.CPP + JSBSim).
+jsbsim_libdir = jsbsim_dep.get_variable(pkgconfig: 'libdir')
+mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
+
 # Emite DT_RPATH em vez do DT_RUNPATH moderno. Necessário porque RPATH é
 # herdado pelas dependências transitivas e RUNPATH não: sem isso, o
 # loader acha as libs nomeadas no executável, mas falha ao resolver as
 # dependências entre elas (libmixr_models.so -> libmixr_base.so).
 rpath_link_args = ['-Wl,--disable-new-dtags']
+
+# Depuração temporária (poc/13): -Dasan=true liga o AddressSanitizer só no
+# alvo que precisa, sem recompilar o resto do projeto.
+asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-pointer', '-g'] : []
+asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 
 # ============================================
 # Includes
@@ -58,19 +72,6 @@ subdir('./shared/xtacview')
 
 subdir('./src')
 
-# Subprojetos incrementais da PoC (cada um coexiste como um executável
-# próprio). Adicionar um novo subdir() aqui para cada poc/NN-slug novo.
-subdir('./poc/01-flying-aircraft')
-subdir('./poc/02-behavior-tree')
-subdir('./poc/03-bt-autopilot')
-subdir('./poc/04-jsbsim-6dof')
-subdir('./poc/05-formation-flight')
-subdir('./poc/06-radar-detection')
-subdir('./poc/07-radar-intercept')
-subdir('./poc/08-event-relay')
-subdir('./poc/09-chaff-flare')
-subdir('./poc/10-satellite-constellation')
-
 # ============================================
 # Summary
 # ============================================
@@ -81,7 +82,6 @@ summary({
 }, section: 'Configuration')
 
 summary({
-    'poc-mixr (hello)':        hello.full_path(),
     'poc/01-flying-aircraft':  flying_aircraft.full_path(),
     'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
     'poc/03-bt-autopilot':     bt_autopilot.full_path(),
@@ -92,4 +92,7 @@ summary({
     'poc/08-event-relay':      event_relay.full_path(),
     'poc/09-chaff-flare':      chaff_flare.full_path(),
     'poc/10-satellite-constellation': satellite_constellation.full_path(),
+    'poc/11-custom-models':    custom_models.full_path(),
+    'poc/12-jsbsim-ubf':       jsbsim_ubf.full_path(),
+    'poc/13-native-stack':     native_stack.full_path(),
 }, section: 'Build Artifacts')

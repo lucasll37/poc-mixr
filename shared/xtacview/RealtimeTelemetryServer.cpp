@@ -173,7 +173,14 @@ void RealtimeTelemetryServer::updateObject(const std::uint32_t objectId,
    std::string propsSuffix;
    if (info != nullptr) {
       std::ostringstream p;
-      p << ",Name=" << info->name << ",Type=" << info->type << ",Color=" << info->color;
+      // 'Name' so entra se houver um modelo de verdade: mandar um nome que
+      // a base do Tacview nao conhece e pior do que omitir (omitindo, ele
+      // usa a forma generica do Type -- ver ObjectInfo no .hpp).
+      if (!info->model.empty()) p << ",Name=" << info->model;
+      p << ",Type=" << info->type << ",Color=" << info->color;
+      if (!info->callsign.empty()) {
+         p << ",CallSign=" << info->callsign << ",Pilot=" << info->callsign;
+      }
       propsSuffix = p.str();
    }
 

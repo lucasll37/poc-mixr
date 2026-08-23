@@ -14,11 +14,31 @@ namespace xtacview {
 // Description: Propriedades declaradas apenas na primeira aparicao de um
 //              objeto no stream ACMI (nao mudam quadro a quadro).
 //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Propriedades ACMI declaradas na PRIMEIRA aparicao de um objeto.
+//
+// SEMANTICA DO FORMATO (documentacao oficial do Tacview) -- errar isto e o
+// que faz uma aeronave aparecer como "objeto desconhecido" no replay:
+//
+//   Name     = o MODELO do objeto, na notacao ICAO/OTAN ("F-4E", "F-16C",
+//              "C172"). E por este campo (junto com Type) que o Tacview
+//              procura a aeronave na sua base de dados e escolhe o modelo
+//              3D/icone. Um valor que a base nao conhece cai na forma
+//              generica do Type -- que ainda e uma aeronave.
+//   Type     = a taxonomia ("Air+FixedWing", "Misc+Decoy+Chaff", ...).
+//   CallSign = o indicativo da aeronave (o nome do player, aqui).
+//   Pilot    = o piloto -- e o que o Tacview mostra no rotulo do objeto.
+//
+// O ERRO ANTERIOR desta lib era mandar o nome do player em 'Name'
+// ("Name=uav1"): o Tacview procurava "uav1" na base, nao achava, e
+// desenhava um objeto generico. O nome do player pertence a CallSign/Pilot.
+//------------------------------------------------------------------------------
 struct ObjectInfo
 {
-   std::string name;
-   std::string type;
-   std::string color;
+   std::string model;      // Name=  (modelo; vazio => propriedade omitida)
+   std::string type;       // Type=
+   std::string color;      // Color=
+   std::string callsign;   // CallSign= e Pilot= (vazio => omitidas)
 };
 
 //------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ namespace xtacview {
 //    callsign   <String>      ! Nome do host no handshake (default: "poc-mixr")
 //    typeMap    <PairStream>  ! type: do Player -> tag ACMI "Type=" (ver abaixo)
 //    colorMap   <PairStream>  ! side do Player ("blue"/"red"/...) -> cor ACMI
+//    modelMap   <PairStream>  ! nome/type: do Player -> MODELO ACMI ("F-4E", "F-16C")
 //
 // Em vez de o main.cpp varrer a lista de players a cada tick e montar as
 // linhas ACMI na mao, o framework EMPURRA os dados para ca: cada registro
@@ -81,12 +82,13 @@ private:
    std::string acmiTypeFor(const recorder::pb::PlayerId&) const;
    std::string acmiColorFor(const recorder::pb::PlayerId&) const;
 
+   std::string acmiModelFor(const recorder::pb::PlayerId&) const;
    std::string trackContactText(const std::string& trackId,
                                 const recorder::pb::PlayerId* const tgt,
                                 const recorder::pb::TrackData* const) const;
 
    // Propriedades resolvidas uma vez por objeto, consultando o WorldModel.
-   struct ResolvedInfo { std::string type; std::string color; bool valid{}; };
+   struct ResolvedInfo { std::string type; std::string color; std::string model; bool valid{}; };
 
    // REID_PLAYER_DATA nao traz 'type'/'side' (ver nota no .cpp), e objetos
    // criados em runtime (chaff/flare/misseis) recebem nomes automaticos
@@ -106,6 +108,7 @@ private:
 
    std::map<std::string, std::string> typeMap;    // type: do Player -> "Type=" ACMI
    std::map<std::string, std::string> colorMap;   // side -> "Color=" ACMI
+   std::map<std::string, std::string> modelMap;   // nome/type: do Player -> "Name=" (modelo)
 
    bool initialized{};
    bool initFailed{};
@@ -126,6 +129,7 @@ private:
    bool setSlotCallsign(const base::String* const);
    bool setSlotTypeMap(const base::PairStream* const);
    bool setSlotColorMap(const base::PairStream* const);
+   bool setSlotModelMap(const base::PairStream* const);
 };
 
 }

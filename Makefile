@@ -1,4 +1,4 @@
-.PHONY: clean configure build install package help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation
+.PHONY: clean configure build install package help run run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation run-custom-models check-custom-models run-jsbsim-ubf check-jsbsim-ubf run-native-stack check-native-stack
 
 .DEFAULT_GOAL := help
 
@@ -93,6 +93,75 @@ run-chaff-flare: ## Run poc/09-chaff-flare (6DOF hunter releases chaff/flare, Ta
 
 run-satellite-constellation: ## Run poc/10-satellite-constellation (4 LEO satellites, accelerated time, Tacview 1234).
 	$(BUILD_DIR)/poc/10-satellite-constellation/src/satellite-constellation
+
+run-custom-models: ## Run poc/11-custom-models (player/dynamics/systems próprios + BT em tempo crítico, multithread, Tacview 1234).
+	$(BUILD_DIR)/poc/11-custom-models/src/custom-models
+
+run-jsbsim-ubf: ## Run poc/12-jsbsim-ubf (6-DOF JSBSim direto + UBF/BehaviorTree + alerta entre aviões, Tacview 1234).
+	$(BUILD_DIR)/poc/12-jsbsim-ubf/src/jsbsim-ubf
+
+run-native-stack: ## Run poc/13-native-stack (mesmo cenário da 12, com a pilha nativa do MIXR, Tacview 1234).
+	$(BUILD_DIR)/poc/13-native-stack/src/native-stack
+
+check-native-stack: ## Verifica o determinismo da poc/13 (mesmo estado com 1, 2 e 4 threads T/C).
+	@BIN=$(BUILD_DIR)/poc/13-native-stack/src/native-stack; \
+	OUT=$(BUILD_DIR)/poc13-determinism; mkdir -p $$OUT; \
+	for n in 1 2 4; do \
+		echo "  rodando 2000 frames com numTcThreads=$$n ..."; \
+		$$BIN -threads $$n -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
+	done; \
+	echo "  repetindo a execução de 4 threads ..."; \
+	$$BIN -threads 4 -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-4b.txt; \
+	fail=0; \
+	for pair in "threads-4 threads-4b" "threads-1 threads-2" "threads-1 threads-4"; do \
+		set -- $$pair; \
+		if diff -q $$OUT/$$1.txt $$OUT/$$2.txt > /dev/null; then echo "  OK   $$1 == $$2"; \
+		else echo "  FALHA $$1 != $$2"; fail=1; fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
+	else echo "determinismo: FALHOU"; exit 1; fi
+
+check-jsbsim-ubf: ## Verifica o determinismo da poc/12 (mesmo estado com 1, 2 e 4 threads T/C).
+	@BIN=$(BUILD_DIR)/poc/12-jsbsim-ubf/src/jsbsim-ubf; \
+	OUT=$(BUILD_DIR)/poc12-determinism; mkdir -p $$OUT; \
+	for n in 1 2 4; do \
+		echo "  rodando 2500 frames com numTcThreads=$$n ..."; \
+		$$BIN -threads $$n -deterministic 2500 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
+	done; \
+	echo "  repetindo a execução de 4 threads ..."; \
+	$$BIN -threads 4 -deterministic 2500 2>/dev/null | grep '^frame=' > $$OUT/threads-4b.txt; \
+	fail=0; \
+	for pair in "threads-4 threads-4b" "threads-1 threads-2" "threads-1 threads-4"; do \
+		set -- $$pair; \
+		if diff -q $$OUT/$$1.txt $$OUT/$$2.txt > /dev/null; then \
+			echo "  OK   $$1 == $$2"; \
+		else \
+			echo "  FALHA $$1 != $$2"; fail=1; \
+		fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
+	else echo "determinismo: FALHOU"; exit 1; fi
+
+check-custom-models: ## Verifica o determinismo da poc/11 (mesmo estado com 1, 2 e 4 threads T/C).
+	@BIN=$(BUILD_DIR)/poc/11-custom-models/src/custom-models; \
+	OUT=$(BUILD_DIR)/poc11-determinism; mkdir -p $$OUT; \
+	for n in 1 2 4; do \
+		echo "  rodando 3000 frames com numTcThreads=$$n ..."; \
+		$$BIN -threads $$n -deterministic 3000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
+	done; \
+	echo "  repetindo a execução de 4 threads ..."; \
+	$$BIN -threads 4 -deterministic 3000 2>/dev/null | grep '^frame=' > $$OUT/threads-4b.txt; \
+	fail=0; \
+	for pair in "threads-4 threads-4b" "threads-1 threads-2" "threads-1 threads-4"; do \
+		set -- $$pair; \
+		if diff -q $$OUT/$$1.txt $$OUT/$$2.txt > /dev/null; then \
+			echo "  OK   $$1 == $$2"; \
+		else \
+			echo "  FALHA $$1 != $$2"; fail=1; \
+		fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
+	else echo "determinismo: FALHOU"; exit 1; fi
 
 # ============================================
 # Misc Targets

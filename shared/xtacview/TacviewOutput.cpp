@@ -31,6 +31,7 @@ BEGIN_SLOTTABLE(TacviewOutput)
    "callsign",    // 4: nome do host no handshake
    "typeMap",     // 5: type: do Player -> tag "Type=" do ACMI
    "colorMap",    // 6: side do Player -> "Color=" do ACMI
+   "modelMap",    // 7: nome/type: do Player -> modelo "Name=" do ACMI
 END_SLOTTABLE(TacviewOutput)
 
 BEGIN_SLOT_MAP(TacviewOutput)
@@ -40,6 +41,7 @@ BEGIN_SLOT_MAP(TacviewOutput)
    ON_SLOT(4, setSlotCallsign, base::String)
    ON_SLOT(5, setSlotTypeMap,  base::PairStream)
    ON_SLOT(6, setSlotColorMap, base::PairStream)
+   ON_SLOT(7, setSlotModelMap, base::PairStream)
 END_SLOT_MAP()
 
 EMPTY_DELETEDATA(TacviewOutput)
@@ -59,6 +61,7 @@ void TacviewOutput::copyData(const TacviewOutput& org, const bool)
    callsign = org.callsign;
    typeMap = org.typeMap;
    colorMap = org.colorMap;
+   modelMap = org.modelMap;
 
    // O socket/arquivo NAO sao copiados: a copia reabre os seus.
    initialized = false;
@@ -146,6 +149,28 @@ std::string TacviewOutput::acmiColorFor(const recorder::pb::PlayerId& id) const
 }
 
 //------------------------------------------------------------------------------
+// Modelo ACMI ("Name=") do objeto -- ver ObjectInfo em
+// RealtimeTelemetryServer.hpp: e o campo pelo qual o Tacview encontra a
+// aeronave na sua base de dados. Sem mapeamento, devolve string vazia e a
+// propriedade e OMITIDA (melhor do que mandar um nome desconhecido).
+//------------------------------------------------------------------------------
+std::string TacviewOutput::acmiModelFor(const recorder::pb::PlayerId& id) const
+{
+   if (id.has_ac_type()) {
+      const auto it = modelMap.find(id.ac_type());
+      if (it != modelMap.end()) return it->second;
+   }
+   if (id.has_name()) {
+      const auto it = modelMap.find(id.name());
+      if (it != modelMap.end()) return it->second;
+   }
+   // 'ac_type' e o tipo declarado no .epp (slot 'type:'): se ele ja for uma
+   // designacao de aeronave, serve de modelo por si so.
+   if (id.has_ac_type()) return id.ac_type();
+   return {};
+}
+
+//------------------------------------------------------------------------------
 // Texto do evento de contato de radar, com o que o TrackData nativo oferecer.
 //------------------------------------------------------------------------------
 std::string TacviewOutput::trackContactText(const std::string& trackId,
@@ -223,6 +248,9 @@ const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb
                info.color = (cIt != colorMap.end() && !playerType.empty())
                              ? cIt->second
                              : defaultColorForSide(player->getSide());
+
+               const auto mIt = modelMap.find(playerType);
+               info.model = (mIt != modelMap.end()) ? mIt->second : playerType;
                info.valid = true;
             }
             item = item->getNext();
@@ -234,6 +262,7 @@ const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb
    if (!info.valid) {   // nao achado: cai nos mapas por nome, depois no default
       info.type = acmiTypeFor(id);
       info.color = acmiColorFor(id);
+      info.model = acmiModelFor(id);
    }
 
    resolvedCache[key] = info;
@@ -312,9 +341,10 @@ void TacviewOutput::emitState(const recorder::pb::PlayerId& id,
 
    const ResolvedInfo& resolved{resolveInfo(id)};
    const ObjectInfo info{
-      id.has_name() ? id.name() : std::string("player"),
-      resolved.type,
-      resolved.color
+      resolved.model,                                        // Name=  (modelo)
+      resolved.type,                                         // Type=
+      resolved.color,                                        // Color=
+      id.has_name() ? id.name() : std::string()              // CallSign=/Pilot=
    };
 
    server.updateObject(id.id(), lon, lat, alt, rollDeg, pitchDeg, yawDeg,
@@ -520,6 +550,24 @@ bool TacviewOutput::setSlotTypeMap(const base::PairStream* const x)
       const auto value = dynamic_cast<const base::String*>(pair->object());
       if (value != nullptr) {
          typeMap[pair->slot()->getString()] = value->getString();
+      }
+      item = item->getNext();
+   }
+   return true;
+}
+
+// modelMap: { falcon1: "F-4E"  falcon2: "F-4E" } -- vira "Name=" no ACMI
+bool TacviewOutput::setSlotModelMap(const base::PairStream* const x)
+{
+   if (x == nullptr) return false;
+
+   modelMap.clear();
+   const base::List::Item* item{x->getFirstItem()};
+   while (item != nullptr) {
+      const auto pair = static_cast<const base::Pair*>(item->getValue());
+      const auto value = dynamic_cast<const base::String*>(pair->object());
+      if (value != nullptr) {
+         modelMap[pair->slot()->getString()] = value->getString();
       }
       item = item->getNext();
    }

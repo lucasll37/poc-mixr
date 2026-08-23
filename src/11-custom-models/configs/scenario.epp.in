@@ -1,0 +1,369 @@
+//
+// Subprojeto 11 - custom-models
+//
+// TODOS os players deste cenario sao classes PROPRIAS desta PoC -- nenhum
+// Aircraft/RacModel/JSBSimModel/Antenna/Tws do framework aparece aqui:
+//
+//   ( Drone            )  player  -> poc/11-custom-models/src/xdrone/Drone.cpp
+//   ( DroneDynamics    )  fisica  -> .../xdrone/DroneDynamics.cpp   (3-DOF, do zero)
+//   ( FuelSystem       )  sistema -> .../xdrone/FuelSystem.cpp      (fase 0)
+//   ( ProximitySensor  )  sensor  -> .../xdrone/ProximitySensor.cpp (fase 2)
+//   ( BtPilot          )  logica  -> .../xdrone/BtPilot.cpp         (fase 3, BehaviorTree.CPP)
+//
+// Do framework, continuam sendo usados apenas a infraestrutura (Station,
+// WorldModel, DataRecorder/RecorderOutputHandler) e o TacviewOutput de
+// shared/xtacview. E exatamente esse o ponto do subprojeto: mostrar de que
+// tamanho e o "contrato" que uma classe propria precisa cumprir para o
+// resto do MIXR (4 fases, gravador, Tacview, pool de threads) funcionar.
+//
+// @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse -- o numero
+// de threads do pool depende da maquina, e setSlotNumTcThreads() e privado
+// (mesma justificativa e mesmo mecanismo da poc/05).
+//
+
+( Station
+
+   tcPriority: 0.5
+
+   ownship: uav1
+
+   // Exportacao pela cadeia nativa de OutputHandlers (ver shared/xtacview).
+   // Os drones sao AIR_VEHICLE (Drone::getMajorType()), entao ate sem
+   // typeMap sairiam como Air+FixedWing; o mapa esta aqui para deixar
+   // explicito qual objeto e qual no replay.
+   dataRecorder: ( DataRecorder
+      eventName: "poc-11-custom-models"
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/custom-models"
+               fileName: "./poc/11-custom-models/data/recordings/mission.acmi"
+               typeMap:  { uav1: "Air+FixedWing"  uav2: "Air+FixedWing"
+                           uav3: "Air+FixedWing"  uav4: "Air+FixedWing"
+                           bogey1: "Air+FixedWing"  bogey2: "Air+FixedWing" }
+               colorMap: { uav1: "Blue"  uav2: "Blue"  uav3: "Blue"  uav4: "Blue"
+                           bogey1: "Red"  bogey2: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      // Slot de simulation::Simulation (base do WorldModel), NAO da Station
+      // -- armadilha ja documentada no CLAUDE.md. Com N threads, a lista de
+      // players e percorrida round-robin: o dynamics, o sensor e o tick da
+      // arvore de cada drone rodam de fato em paralelo.
+      numTcThreads: @NUM_TC_THREADS@
+
+      latitude:  -22.90
+      longitude: -43.20
+
+      players: {
+
+         // ------------------------------------------------------------
+         // 4 drones azuis: pilha completa (dinamica + combustivel +
+         // sensor + arvore de comportamento). Cada um comeca com uma
+         // quantidade diferente de combustivel, entao entram em RTB em
+         // momentos diferentes -- da para ver os quatro estados da arvore
+         // acontecendo ao mesmo tempo.
+         //
+         // A reserva (50%) esta calibrada para o raio de patrulha: a 3 NM
+         // da base e 140 kts, o retorno leva ~80 s, e 50% de 12 kg a
+         // 0.06 kg/s dao ~100 s de voo. Com a reserva em 30% (primeira
+         // tentativa) os drones chegavam em casa com 0% -- o RTB comecava
+         // tarde demais. E o tipo de numero que so aparece rodando.
+         // ------------------------------------------------------------
+
+         uav1: ( Drone
+            id: 101
+            side: blue
+            type: "UAV-A"
+            emptyWeight: 25.0
+
+            initXPos:     ( NauticalMiles  3.0 )
+            initYPos:     ( NauticalMiles  0.0 )
+            initAlt:      ( Meters 1200.0 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 57.0                  // ~110 kts em m/s
+
+            dataLogTime: ( Seconds 0.1 )        // 10 Hz -- nasce ZERO
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 9 )
+                  maxBank:      ( Degrees 30 )
+                  maxClimbRate: 8.0
+                  maxAccel:     3.0
+                  minSpeed:     50.0
+                  maxSpeed:     180.0
+               )
+               fuel: ( FuelSystem
+                  capacity:    12.0
+                  initFuel:    12.0
+                  burnRate:     0.06
+                  cruiseSpeed: 110.0
+                  reserve:      0.50
+                  refuelRate:   1.5
+               )
+               sensor: ( ProximitySensor
+                  maxRange:     ( NauticalMiles 4.0 )
+                  fieldOfView:  ( Degrees 70 )
+                  scanInterval: ( Seconds 0.5 )
+                  holdTime:     ( Seconds 4 )
+                  hostileOnly:  1
+               )
+               pilot: ( BtPilot
+                  treeFile:       "./poc/11-custom-models/configs/drone_tree.xml"
+                  patrolHeading:  ( Degrees 90 )
+                  legTime:        ( Seconds 40 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 1200 )
+                  patrolSpeed:    110.0
+                  rtbAltitude:    ( Meters 800 )
+                  rtbSpeed:       140.0
+                  arrivalRadius:  ( Meters 600 )
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 250 )
+                  evadeSpeed:     160.0
+               )
+            }
+         )
+
+         uav2: ( Drone
+            id: 102
+            side: blue
+            type: "UAV-A"
+            emptyWeight: 25.0
+
+            initXPos:     ( NauticalMiles  0.0 )
+            initYPos:     ( NauticalMiles  3.0 )
+            initAlt:      ( Meters 1400.0 )
+            initHeading:  ( Degrees 180 )
+            initVelocity: 57.0
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 9 )
+                  maxBank:      ( Degrees 30 )
+                  maxClimbRate: 8.0
+                  maxAccel:     3.0
+                  minSpeed:     50.0
+                  maxSpeed:     180.0
+               )
+               fuel: ( FuelSystem
+                  capacity:    12.0
+                  initFuel:    10.0
+                  burnRate:     0.06
+                  cruiseSpeed: 110.0
+                  reserve:      0.50
+                  refuelRate:   1.5
+               )
+               sensor: ( ProximitySensor
+                  maxRange:     ( NauticalMiles 4.0 )
+                  fieldOfView:  ( Degrees 70 )
+                  scanInterval: ( Seconds 0.5 )
+                  holdTime:     ( Seconds 4 )
+                  hostileOnly:  1
+               )
+               pilot: ( BtPilot
+                  treeFile:       "./poc/11-custom-models/configs/drone_tree.xml"
+                  patrolHeading:  ( Degrees 180 )
+                  legTime:        ( Seconds 40 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 1400 )
+                  patrolSpeed:    110.0
+                  rtbAltitude:    ( Meters 900 )
+                  rtbSpeed:       140.0
+                  arrivalRadius:  ( Meters 600 )
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 250 )
+                  evadeSpeed:     160.0
+               )
+            }
+         )
+
+         uav3: ( Drone
+            id: 103
+            side: blue
+            type: "UAV-B"
+            emptyWeight: 25.0
+
+            initXPos:     ( NauticalMiles -3.0 )
+            initYPos:     ( NauticalMiles  0.0 )
+            initAlt:      ( Meters 1600.0 )
+            initHeading:  ( Degrees 270 )
+            initVelocity: 57.0
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 12 )   // mais agil que os demais
+                  maxBank:      ( Degrees 35 )
+                  maxClimbRate: 10.0
+                  maxAccel:     3.5
+                  minSpeed:     50.0
+                  maxSpeed:     190.0
+               )
+               fuel: ( FuelSystem
+                  capacity:    12.0
+                  initFuel:     8.0
+                  burnRate:     0.06
+                  cruiseSpeed: 110.0
+                  reserve:      0.50
+                  refuelRate:   1.5
+               )
+               sensor: ( ProximitySensor
+                  maxRange:     ( NauticalMiles 5.0 )
+                  fieldOfView:  ( Degrees 90 )
+                  scanInterval: ( Seconds 0.5 )
+                  holdTime:     ( Seconds 4 )
+                  hostileOnly:  1
+               )
+               pilot: ( BtPilot
+                  treeFile:       "./poc/11-custom-models/configs/drone_tree.xml"
+                  patrolHeading:  ( Degrees 270 )
+                  legTime:        ( Seconds 30 )
+                  legTurn:        ( Degrees 120 )  // circuito triangular
+                  patrolAltitude: ( Meters 1600 )
+                  patrolSpeed:    120.0
+                  rtbAltitude:    ( Meters 1000 )
+                  rtbSpeed:       150.0
+                  arrivalRadius:  ( Meters 600 )
+                  breakTurn:      ( Degrees 130 )
+                  evadeClimb:     ( Meters 300 )
+                  evadeSpeed:     170.0
+               )
+            }
+         )
+
+         uav4: ( Drone
+            id: 104
+            side: blue
+            type: "UAV-B"
+            emptyWeight: 25.0
+
+            initXPos:     ( NauticalMiles  0.0 )
+            initYPos:     ( NauticalMiles -3.0 )
+            initAlt:      ( Meters 1800.0 )
+            initHeading:  ( Degrees 0 )
+            initVelocity: 57.0
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 9 )
+                  maxBank:      ( Degrees 30 )
+                  maxClimbRate: 8.0
+                  maxAccel:     3.0
+                  minSpeed:     50.0
+                  maxSpeed:     180.0
+               )
+               fuel: ( FuelSystem
+                  capacity:    12.0
+                  initFuel:     6.5        // logo acima da reserva: RTB nos primeiros segundos
+                  burnRate:     0.06
+                  cruiseSpeed: 110.0
+                  reserve:      0.50
+                  refuelRate:   1.5
+               )
+               sensor: ( ProximitySensor
+                  maxRange:     ( NauticalMiles 4.0 )
+                  fieldOfView:  ( Degrees 70 )
+                  scanInterval: ( Seconds 0.5 )
+                  holdTime:     ( Seconds 4 )
+                  hostileOnly:  1
+               )
+               pilot: ( BtPilot
+                  treeFile:       "./poc/11-custom-models/configs/drone_tree.xml"
+                  patrolHeading:  ( Degrees 0 )
+                  legTime:        ( Seconds 40 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 1800 )
+                  patrolSpeed:    110.0
+                  rtbAltitude:    ( Meters 1100 )
+                  rtbSpeed:       140.0
+                  arrivalRadius:  ( Meters 600 )
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 250 )
+                  evadeSpeed:     160.0
+               )
+            }
+         )
+
+         // ------------------------------------------------------------
+         // 2 intrusos vermelhos: a MESMA classe Drone e a MESMA
+         // DroneDynamics, mas SEM sensor e SEM arvore -- so os comandos
+         // fixos do .epp. Serve para mostrar que os subsistemas sao
+         // opcionais (Player nao exige nenhum deles) e para dar aos
+         // drones azuis algo que detectar.
+         // ------------------------------------------------------------
+
+         bogey1: ( Drone
+            id: 201
+            side: red
+            type: "INTRUDER"
+            emptyWeight: 40.0
+
+            initXPos:     ( NauticalMiles 6.0 )
+            initYPos:     ( NauticalMiles 6.0 )
+            initAlt:      ( Meters 1500.0 )
+            initHeading:  ( Degrees 225 )
+            initVelocity: 82.0                  // ~160 kts
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 6 )
+                  maxBank:      ( Degrees 25 )
+                  maxClimbRate: 6.0
+                  maxAccel:     2.5
+                  minSpeed:     60.0
+                  maxSpeed:     200.0
+                  cmdHeading:   ( Degrees 225 )
+                  cmdAltitude:  ( Meters 1500 )
+                  cmdSpeed:     160.0
+               )
+            }
+         )
+
+         bogey2: ( Drone
+            id: 202
+            side: red
+            type: "INTRUDER"
+            emptyWeight: 40.0
+
+            initXPos:     ( NauticalMiles -7.0 )
+            initYPos:     ( NauticalMiles  0.0 )
+            initAlt:      ( Meters 1300.0 )
+            initHeading:  ( Degrees 45 )
+            initVelocity: 82.0
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( DroneDynamics
+                  maxTurnRate:  ( Degrees 6 )
+                  maxBank:      ( Degrees 25 )
+                  maxClimbRate: 6.0
+                  maxAccel:     2.5
+                  minSpeed:     60.0
+                  maxSpeed:     200.0
+                  cmdHeading:   ( Degrees 45 )
+                  cmdAltitude:  ( Meters 1300 )
+                  cmdSpeed:     160.0
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

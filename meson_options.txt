@@ -1,0 +1,1 @@
+option('asan', type: 'boolean', value: false, description: 'AddressSanitizer na poc/13 (debug)')

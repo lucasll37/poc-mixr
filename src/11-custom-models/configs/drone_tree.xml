@@ -1,0 +1,43 @@
+<!--
+  Subprojeto 11 - custom-models
+
+  Arvore de comportamento de UM drone. Cada player carrega a sua propria
+  instancia desta arvore (slot 'treeFile' do BtPilot), com o seu proprio
+  blackboard -- nada e compartilhado entre aeronaves, e por isso o tick
+  pode rodar em paralelo nas threads de tempo critico do MIXR.
+
+  Prioridade (Fallback tenta de cima para baixo):
+    1) combustivel abaixo da reserva  -> volta para a base e reabastece
+    2) contato proximo no setor a frente -> manobra de evasao
+    3) caso contrario                  -> patrulha o circuito
+
+  Os nos sao os registrados em bt/bt_factory.cpp; cada um so le regras de
+  negocio de domain/ e comanda o dynamics model -- nenhum deles contem
+  logica de decisao propria.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <!--
+        'margin' e um PORT do no (providedPorts/getInput, convencao
+        BehaviorTree.CPP): soma-se a reserva declarada no FuelSystem do
+        .epp. Reserva do tanque = propriedade do veiculo (EDL); margem de
+        decisao = propriedade desta arvore (XML). Omitir o atributo usa o
+        default 0.0 declarado em FuelLowCondition::providedPorts().
+      -->
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="evade_sequence">
+        <ContactDetected/>
+        <Evade/>
+      </Sequence>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

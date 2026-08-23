@@ -1,14 +1,13 @@
-sources = files(
-    'main.cpp',
-)
-
-hello = executable('poc-mixr',
-    sources,
-    include_directories : inc_dir,
-    dependencies        : [thread_dep, mixr_dep],
-    install             : true,
-    install_dir         : get_option('bindir'),
-    install_rpath       : mixr_libdir,
-    build_rpath         : mixr_libdir,
-    link_args           : rpath_link_args,
-)
+subdir('./01-flying-aircraft')
+subdir('./02-behavior-tree')
+subdir('./03-bt-autopilot')
+subdir('./04-jsbsim-6dof')
+subdir('./05-formation-flight')
+subdir('./06-radar-detection')
+subdir('./07-radar-intercept')
+subdir('./08-event-relay')
+subdir('./09-chaff-flare')
+subdir('./10-satellite-constellation')
+subdir('./11-custom-models')
+subdir('./12-jsbsim-ubf')
+subdir('./13-native-stack')
