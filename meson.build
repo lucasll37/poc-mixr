@@ -81,18 +81,19 @@ summary({
     'Prefix':       get_option('prefix'),
 }, section: 'Configuration')
 
-summary({
-    'poc/01-flying-aircraft':  flying_aircraft.full_path(),
-    'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
-    'poc/03-bt-autopilot':     bt_autopilot.full_path(),
-    'poc/04-jsbsim-6dof':      jsbsim_6dof.full_path(),
-    'poc/05-formation-flight': formation_flight.full_path(),
-    'poc/06-radar-detection':  radar_detection.full_path(),
-    'poc/07-radar-intercept':  radar_intercept.full_path(),
-    'poc/08-event-relay':      event_relay.full_path(),
-    'poc/09-chaff-flare':      chaff_flare.full_path(),
-    'poc/10-satellite-constellation': satellite_constellation.full_path(),
-    'poc/11-custom-models':    custom_models.full_path(),
-    'poc/12-jsbsim-ubf':       jsbsim_ubf.full_path(),
-    'poc/13-native-stack':     native_stack.full_path(),
-}, section: 'Build Artifacts')
+# summary({
+#     'poc/01-flying-aircraft':  flying_aircraft.full_path(),
+#     'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
+#     'poc/03-bt-autopilot':     bt_autopilot.full_path(),
+#     'poc/04-jsbsim-6dof':      jsbsim_6dof.full_path(),
+#     'poc/05-formation-flight': formation_flight.full_path(),
+#     'poc/06-radar-detection':  radar_detection.full_path(),
+#     'poc/07-radar-intercept':  radar_intercept.full_path(),
+#     'poc/08-event-relay':      event_relay.full_path(),
+#     'poc/09-chaff-flare':      chaff_flare.full_path(),
+#     'poc/10-satellite-constellation': satellite_constellation.full_path(),
+#     'poc/11-custom-models':    custom_models.full_path(),
+#     'poc/12-jsbsim-ubf':       jsbsim_ubf.full_path(),
+#     'poc/13-native-stack':     native_stack.full_path(),
+#     'poc/14-tc-agent':         tc_agent.full_path(),
+# }, section: 'Build Artifacts')

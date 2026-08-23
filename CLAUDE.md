@@ -1,0 +1,228 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+> Documentação, comentários de código e mensagens de console deste repositório são em
+> **português do Brasil**; identificadores, nomes de slot e nomes de fábrica ficam em inglês
+> (originais do MIXR). Siga essa convenção ao escrever código novo.
+
+## O que é este projeto
+
+Prova de conceito para desenvolver **novos modelos de simulação** sobre o framework
+[MIXR](https://mixr.dev) (fork ASA, pacote Conan `mixr/1.0.5`) e sobre o
+**BehaviorTree.CPP v3** (`behaviortree.cpp.asa/3.5.6`). O MIXR **não** é o objeto de
+desenvolvimento — é dependência binária.
+
+Cada PoC vive em `src/NN-slug/`, é um executável independente, e todas compilam juntas.
+A progressão é incremental: cada número reaproveita/contrapõe o anterior (ex.: `12` refaz
+`11` com 6-DOF real + UBF; `13` refaz `12` usando a pilha nativa do framework no lugar das
+classes próprias; `14` refaz `13` trocando só o agente do UBF — `SimAgent` nativo, que decide em
+`updateData()`, por um `AgentTC` próprio, que decide na fase 3 do frame).
+
+O fork empacotado é **headless**: não publica `mixr_graphics`/`glut`/`instruments`/`ighost`.
+Por isso não existe `GlutDisplay` aqui e toda visualização é feita por **Tacview Real-Time
+Telemetry** (`shared/xtacview`).
+
+## Build & Run
+
+Toolchain: **Conan 2.x** → **Meson/Ninja** → **Makefile** (orquestra).
+
+```bash
+make configure   # conan install (Debug) + meson setup --reconfigure
+make build       # meson compile -C build -j$(nproc) — builda TODAS as pocs
+make install     # meson install -> dist/
+make clean       # remove build/ e dist/
+make help        # lista os alvos (comentários ## do Makefile)
+```
+
+Binários ficam em `build/src/NN-slug/src/<slug>` (o `<slug>` é o nome da pasta sem o `NN-`), e
+cada um tem um alvo `run-<slug>` no Makefile.
+
+**Todos os binários leem `configs/`/`data/` por caminho relativo (`./src/NN-slug/...`) e devem
+ser executados a partir da raiz do repositório:**
+
+```bash
+./build/src/01-flying-aircraft/src/flying-aircraft
+```
+
+Opções de linha de comando das pocs: `-f <arquivo>` (cenário alternativo) em todas;
+`-threads <N>` e `-deterministic <N>` nas pocs 11/12/13/14.
+
+**Não há suíte de testes.** A verificação automatizada existente é de **determinismo**
+(alvos `check-custom-models`, `check-jsbsim-ubf`, `check-native-stack`, `check-tc-agent`): roda N
+frames de passo fixo com 1, 2 e 4 threads T/C e compara os dumps `frame=` — todos devem ser
+idênticos. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
+O alvo `compare-13-14` lista o que difere entre as pocs 13 e 14 (deve ser só o agente).
+
+**AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan apenas na
+`13-native-stack` (único alvo que consome `asan_cpp_args`/`asan_link_args`).
+
+## Onde consultar o framework
+
+`contexts/` tem duas camadas: os `.md` destilados (leitura rápida) e o **código-fonte completo
+das libs** em `contexts/src/` (a verdade).
+
+**Camada 1 — destilação (`contexts/*.md`):**
+
+| Arquivo | Responde |
+|---|---|
+| `contexts/MIXR-CONTEXT.md` | como o MIXR funciona por dentro (classes, macros, ciclo de vida, EDL, recorder) |
+| `contexts/MIXR-PATTERN-CONTEXT.md` | como se escreve uma aplicação MIXR (padrões dos exemplos oficiais; §0 lista o que do fork **não** existe) |
+| `contexts/BTCPP-CONTEXT.md` | BehaviorTree.CPP **v3.5.6** — nada vale para a v4 |
+
+**Camada 2 — fonte (`contexts/src/`), onde confirmar qualquer coisa que a destilação não cobre
+ou que pareça contraditória:**
+
+- `contexts/src/mixr/` — árvore completa do fork ASA **v1.0.5** (`MIXR_VERSION 170600`), a mesma
+  que gera o pacote Conan consumido aqui: `src/` (313 `.cpp` — as **implementações**, que os
+  headers não mostram), `include/mixr/`, `deps/{jsbsim,openrti}`, `doc/`, e
+  `src/recorder/proto/DataRecord.proto` (schema do recorder). **Não tem `examples/`** — os
+  padrões extraídos deles vivem só no `MIXR-PATTERN-CONTEXT.md`.
+- `contexts/src/BehaviorTree.CPP/` — fonte da 3.5.6 com `examples/`, `sample_nodes/` e `tests/`.
+
+É aqui que se responde "por que esse token não chega no handler?" ou "o que esse slot faz de
+verdade": ler o `.cpp` do framework, não adivinhar pelo header. Ex.: as armadilhas do recorder
+(seção do xtacview) saem de `contexts/src/mixr/src/recorder/DataRecorder.cpp`.
+
+**Atenção:** `contexts/src/mixr/` é **git-ignored** (`.gitignore` casa `mixr`) — é uma cópia
+local, não vem num clone limpo. Se a pasta não existir, caia nos headers instalados pelo Conan:
+`~/.conan2/p/b/mixr*/p/include/mixr/...`, `~/.conan2/p/b/mixr*/p/include/DataRecord.pb.h` (o
+`.pb.h` gerado fica na **raiz** do include, não em `mixr/recorder/`) e
+`<prefix>/include/behaviortree_cpp_v3/`. Em caso de divergência entre a árvore de `contexts/src/`
+e o pacote Conan, **quem vale é o pacote** — é ele que está linkado.
+
+## Arquitetura
+
+### Estrutura de um subprojeto
+
+```
+src/NN-slug/
+├── meson.build            # só faz subdir('./src')
+├── configs/scenario.epp   # cenário EDL (+ .xml das árvores de comportamento)
+├── data/                  # dados vendorizados (jsbsim/, terrain/, recordings/)
+├── include/
+│   ├── domain/            # regras de negócio puras — sem MIXR, sem BT — testável isolado
+│   ├── bt/ | ubf/         # adaptadores da lib externa (nós da árvore, comportamentos UBF)
+│   ├── x<nome>/           # classes MIXR próprias (namespace mixr::x<nome>) + factory própria
+│   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
+└── src/
+    ├── meson.build        # define o executable() — nome = slug
+    ├── main.cpp           # FINO: só orquestra (constrói Station, roda o laço)
+    └── ... (espelha include/)
+```
+
+Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
+`main.cpp` não implementa comportamento. `src/03-bt-autopilot/` e `src/13-native-stack/` são as
+referências completas do padrão.
+
+### O modelo MIXR em uma tela
+
+- Tudo herda de `mixr::base::Object` (ref-counting + RTTI própria):
+  `DECLARE_SUBCLASS(Classe, Base)` no `.hpp`, `IMPLEMENT_SUBCLASS(Classe, "FactoryName")` no `.cpp`.
+- Parâmetros configuráveis por EDL são **slots**: `BEGIN_SLOTTABLE`/`END_SLOTTABLE` +
+  `BEGIN_SLOT_MAP`/`ON_SLOT`/`END_SLOT_MAP`, com `setSlotX()` privados.
+- **Factory por nome**: cada `mixr_factory.cpp` encadeia as factories na ordem
+  `local → xtacview → simulation → models → recorder → base` — **a primeira que retorna
+  não-nulo vence**, então a factory própria vem sempre antes das do framework.
+- **Estrutura vem do `.epp` (EDL), comportamento vem do C++**: reconfigurar o cenário
+  (players, sensores, taxas, threads) não recompila nada.
+- Hierarquia: `Station` → `WorldModel` → `players` → `Player` (`Aircraft`, `SpaceVehicle`, …)
+  agregando `dynamicsModel`, sensores (`Antenna`/`RfSensor`/`Gimbal`/`Autopilot`/`Datalink`)
+  e navegação (`Route`/`Steerpoint`).
+- **Frame de tempo crítico por fases** — o que roda em qual fase importa e é o que permite o
+  paralelismo determinístico: fase 0 `dynamics()`, fase 1 `transmit()`, fase 2 `receive()`,
+  fase 3 `process()`. Decisão (tick da árvore/UBF) vai na fase 3.
+- `station->updateData(dt)` no laço principal é o que **drena a fila do gravador** para a
+  cadeia de `OutputHandler` — sem isso o Tacview não recebe nada.
+
+### `shared/xtacview` — exportação para o Tacview
+
+Biblioteca compartilhada no padrão `shared/x<nome>` do MIXR (factory própria + classes em
+`mixr::xtacview`, exposta como `xtacview_dep`). **É a única exportação Tacview do repo; nenhum
+`main.cpp` monta stream ACMI.** `TacviewOutput` é um `recorder::OutputHandler` de verdade,
+declarado na cadeia nativa do slot `dataRecorder` da `Station`:
+
+```
+dataRecorder: ( DataRecorder
+   outputHandler: ( RecorderOutputHandler
+      components: {
+         ( TacviewOutput port: 1234 callsign: "poc-mixr/<slug>"
+           fileName: "./src/NN-slug/data/recordings/mission.acmi"
+           typeMap: { ... } colorMap: { ... } modelMap: { ... } )
+      } ) )
+```
+
+**Armadilhas já confirmadas rodando — não redescobrir** (detalhes nos comentários de
+`shared/xtacview/TacviewOutput.cpp`):
+
+1. `dataLogTime` é slot do **`Player`** e nasce **zero**; sem `dataLogTime: ( Seconds 0.1 )` o
+   player **nunca** emite `REID_PLAYER_DATA` e some do Tacview. Parece bug do handler, não é.
+2. `PlayerState.pos`/`.angles` são **ECEF/geocêntricos**, não geodésicos: converter com
+   `base::nav::convertEcef2Geod()` e `convertEcefAngles2GeodAngles()`.
+3. `REID_NEW_TRACK` (81) **nunca chega** (degradado para `REID_UNHANDLED_ID_TOKEN`); use
+   `REID_TRACK_DATA` (83) e deduza o primeiro contato pela primeira amostra de cada `track_id`.
+4. `REID_WEAPON_RELEASED` (61) **aborta o processo** (bug do `DataRecorder` nativo, reproduzível
+   com `TabPrinter` puro). Workaround da poc/09: `enabledList: [ 43 42 ]` — `disabledList` não basta.
+5. Tokens de usuário (1000+) também não têm handler: eventos próprios são gravados como
+   `REID_MARKER` (só dois `uint32`, sem texto).
+6. `REID_PLAYER_DATA` traz `PlayerId` **parcial** (só `id` e `name`; sem `ac_type`/`side`) e
+   `REID_NEW_PLAYER` nunca é emitido para players declarados no `.epp`. `typeMap`/`colorMap`/
+   `modelMap` tentam a chave `ac_type` e caem no `name` — na prática **quem resolve é o nome**.
+7. O handler **não alcança a `Station`/`WorldModel`** por `findContainerByType()` (o
+   `DataRecorder` não encadeia `container()` no objeto do slot `outputHandler`).
+
+Protocolo: handshake `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n<username>\n\0` — **todas**
+as linhas terminam em `\n`, inclusive a última (a doc oficial sugere o contrário e não conecta);
+o `\0` é um byte separado. Bind em `0.0.0.0` (não `127.0.0.1`): com Tacview no Windows e binário
+no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname -I`. Porta 1234.
+
+## Ao adicionar um subprojeto novo
+
+1. Criar `src/NN-slug/` (próximo número) seguindo a estrutura acima; sempre com
+   `include/mixr_factory.hpp` + `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`).
+2. Adicionar `subdir('./NN-slug')` em [src/meson.build](src/meson.build) e o alvo no `summary()`
+   de Build Artifacts do [meson.build](meson.build) raiz.
+3. Adicionar o alvo `run-<slug>` no [Makefile](Makefile) — apontando para
+   `$(BUILD_DIR)/src/NN-slug/src/<slug>`.
+4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args` +
+   `install_rpath`/`build_rpath` com `mixr_libdir`, `bt_libdir`, `mixr_bt_libdir` ou
+   `mixr_bt_jsbsim_libdir` conforme as dependências usadas (variáveis definidas no `meson.build` raiz).
+5. Para exportar ao Tacview: `dataRecorder:` na `Station` com `( TacviewOutput ... )`,
+   `dataLogTime:` em **cada** player, `mixr::xtacview::factory` + `mixr::recorder::factory`
+   encadeadas no `mixr_factory.cpp`, e `xtacview_dep` no `meson.build`.
+
+### Gotcha: rpath das dependências Conan (`dist/` vs `build/`)
+
+As `.so` do MIXR/BT.CPP/JSBSim vivem no cache do Conan, fora de qualquer caminho do loader.
+
+- **O Meson descarta o `build_rpath` no `meson install`** (por design): um alvo sem
+  `install_rpath` roda de `build/` e falha em `dist/bin/<slug>` com
+  `error while loading shared libraries`.
+- **`-Wl,--disable-new-dtags` (em `rpath_link_args`) não é decorativo**: força `DT_RPATH` em vez
+  de `DT_RUNPATH`. RPATH é herdado pelas dependências transitivas, RUNPATH não — sem ele o loader
+  resolve as libs nomeadas no executável mas falha entre elas (`libmixr_models.so` → `libmixr_base.so`).
+
+Conferência após `make install`: `ldd dist/bin/<slug> | grep 'not found'` (silêncio = ok) e
+`readelf -d dist/bin/<slug> | grep -E 'RPATH|RUNPATH'`.
+
+`dist/` **não é auto-contido** (rpath com hash do cache Conan + configs por caminho relativo).
+
+### Gotchas de unidades e de modelo
+
+- `DynamicsModel::setCommandedAltitude()` espera **metros** (converter pés com
+  `base::distance::FT2M`); `setCommandedHeadingD()` é graus; `setCommandedVelocityKts()` é nós.
+- Os `setCommanded*` só funcionam com `RacModel`. O `F4N` do JSBSim não tem autopilot próprio —
+  comandar via `setControlStick(roll, pitch)` + `setThrottles(...)` (entradas normalizadas -1..1).
+- `JSBSimModel::reset()` chama `RunIC()` mas **não** roda `FGTrim`: a aeronave começa destrimada e
+  há transiente energético nos primeiros segundos.
+
+## Estado atual / pendências conhecidas
+
+- A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,
+  `.epp`/`.epp.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
+  `poc/NN-slug`** — é só prosa, nenhum caminho depende disso.
+- `docs/` está vazio.
+- `build/` e `dist/` estão **versionados no git** apesar do `.gitignore` — vale `git rm -r --cached
+  build dist` antes do próximo commit.
+- Limitação conhecida na poc/09: chaff/flare saem no Tacview como `Misc`/`Grey` em vez de
+  `Misc+Decoy+Chaff`/`+Flare` — soma das armadilhas 4, 6 e 7 do xtacview.

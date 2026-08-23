@@ -1,22 +1,29 @@
 //
-// Subprojeto 13 - native-stack
+// Subprojeto 14 - tc-agent
 //
-// MESMO cenario da poc/12 (4 avioes patrulhando + 1 intruso; quem detecta
-// avisa os outros, que vao apoiar), mas com a regra invertida: aqui se
-// HERDA/REAPROVEITA o maximo possivel do MIXR. Compare os dois .epp lado a
-// lado -- e a forma mais rapida de ver o que o framework ja entrega:
+// A poc/13 INTEIRA, com UMA unica diferenca: o agente do UBF e um AgentTC
+// proprio (xnative::FlightAgentTC), que decide na FASE 3 do frame de tempo
+// critico, no lugar do ( SimAgent ) nativo, que decide em updateData()
+// (thread de background).
 //
-//   peca            poc/12 (do zero)                 poc/13 (nativo)
-//   --------------  -------------------------------  ----------------------------
-//   player          xair::Airplane   : Player        ( Aircraft )
-//   dinamica 6-DOF  xair::JsbsimFlightModel : System ( JSBSimModel )
-//   controle        xair::FlightDirector : System    ( Autopilot )
-//   sensor          xair::ProximitySensor : System   ( Gimbal/Antenna + Tws + AirTrkMgr )
-//   interacao       xair::AlertRadio : System        ( AlertDatalink : models::Datalink )
-//   agente UBF      xair::FlightAgent : AgentTC      ( SimAgent )
-//   arbitro         ( UbfArbiter )                   ( UbfArbiter )      [igual]
-//   percepcao/      xair::FlightState/FlightAction/  idem (o UBF nao tem State/
-//   decisao/acao    BtBehavior                       Behavior/Action prontos)
+// Todo o resto e identico a poc/13 -- mesma pilha nativa, mesmos numeros,
+// mesma arvore de comportamento:
+//
+//   peca            poc/13                      poc/14
+//   --------------  --------------------------  --------------------------
+//   player          ( Aircraft )                igual
+//   dinamica 6-DOF  ( JSBSimModel )             igual
+//   controle        ( Autopilot )               igual
+//   sensor          ( Gimbal/Antenna+Tws+       igual
+//                     AirTrkMgr )
+//   interacao       ( AlertDatalink )           igual
+//   arbitro         ( UbfArbiter )              igual
+//   percepcao/      FlightState/BtBehavior/     igual
+//   decisao/acao    AltitudeSafetyBehavior/
+//                   FlightAction
+//   agente UBF      ( SimAgent ), na STATION,   ( FlightAgentTC ), DENTRO
+//                   ator por nome, decide em    do player, ator = container,
+//                   updateData()                decide na fase 3
 //
 // AERONAVE: c310 (Cessna 310), e NAO o F4N das pocs 04/12. O motivo e
 // concreto: o JSBSimModel nativo comanda a aeronave escrevendo em
@@ -37,118 +44,21 @@
    ownship: falcon1
 
    // --------------------------------------------------------------------
-   // Agentes do UBF: aqui eles moram na STATION e amarram o ator por NOME
-   // (actorPlayerName), que e como o models::SimAgent nativo funciona.
-   // Na poc/12 o agente era um componente DENTRO do player (porque era o
-   // nosso AgentTC). Consequencia real desta escolha: SimAgent deriva de
-   // ubf::Agent, cujo ciclo roda em updateData() -- ou seja, a decisao
-   // acontece na thread de BACKGROUND, na taxa do laco do main.cpp, e nao
-   // na fase 3 do frame de tempo critico.
+   // A DIFERENCA DA poc/13 ESTA AQUI: esta Station NAO tem 'components:'.
+   //
+   // Na poc/13 os quatro ( SimAgent ) moravam neste ponto e amarravam o
+   // ator por nome (slot 'actorPlayerName'), porque e assim que o SimAgent
+   // nativo funciona -- e, por ser um ubf::Agent, decidiam em updateData().
+   //
+   // Aqui cada agente e um ( FlightAgentTC ) DENTRO da aeronave, no fim da
+   // lista de componentes do player. Duas consequencias diretas:
+   //   * o ator e o proprio container, entao nao ha nome a amarrar;
+   //   * a decisao roda na fase 3 do frame de tempo critico, na thread do
+   //     pool que estiver processando aquele player.
    // --------------------------------------------------------------------
-   components: {
-
-      agent1: ( SimAgent
-         actorPlayerName: falcon1
-         state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior
-                  vote: 90
-                  minAltitude:     ( Meters 1200 )
-                  recoverAltitude: ( Meters 3000 )
-                  recoverSpeed:    160.0
-               )
-               ( BtBehavior
-                  vote: 50
-                  treeFile: "./src/13-native-stack/configs/flight_tree.xml"
-                  patrolHeading:  ( Degrees 90 )
-                  legTime:        ( Seconds 60 )
-                  legTurn:        ( Degrees 90 )
-                  patrolAltitude: ( Meters 3000 )
-                  patrolSpeed:    160.0
-                  rtbAltitude:    ( Meters 2400 )
-                  rtbSpeed:       170.0
-                  arrivalRadius:  ( NauticalMiles 2.0 )
-                  fuelReserve:    0.35
-                  breakTurn:      ( Degrees 110 )
-                  evadeClimb:     ( Meters 400 )
-                  evadeSpeed:     185.0
-                  supportSpeed:   180.0
-               )
-            }
-         )
-      )
-
-      agent2: ( SimAgent
-         actorPlayerName: falcon2
-         state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3300 )
-                  recoverSpeed: 160.0
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./src/13-native-stack/configs/flight_tree.xml"
-                  patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                  legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 3300 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2500 )  rtbSpeed: 170.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 400 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
-               )
-            }
-         )
-      )
-
-      agent3: ( SimAgent
-         actorPlayerName: falcon3
-         state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3600 )
-                  recoverSpeed: 160.0
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./src/13-native-stack/configs/flight_tree.xml"
-                  patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                  legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 3600 )
-                  patrolSpeed: 165.0  rtbAltitude: ( Meters 2600 )  rtbSpeed: 170.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 450 )
-                  evadeSpeed: 190.0  supportSpeed: 185.0
-               )
-            }
-         )
-      )
-
-      agent4: ( SimAgent
-         actorPlayerName: falcon4
-         state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3900 )
-                  recoverSpeed: 160.0
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./src/13-native-stack/configs/flight_tree.xml"
-                  patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                  legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 3900 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2700 )  rtbSpeed: 170.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 400 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
-               )
-            }
-         )
-      )
-
-   } // components (agentes)
 
    dataRecorder: ( DataRecorder
-      eventName: "poc-13-native-stack"
+      eventName: "poc-14-tc-agent"
 
       // ARMADILHA CONFIRMADA COM AddressSanitizer -- o gravador NATIVO
       // ESTOURA ao gravar uma pista nova:
@@ -171,8 +81,8 @@
          components: {
             ( TacviewOutput
                port: 1234
-               callsign: "poc-mixr/native-stack"
-               fileName: "./src/13-native-stack/data/recordings/mission.acmi"
+               callsign: "poc-mixr/tc-agent"
+               fileName: "./src/14-tc-agent/data/recordings/mission.acmi"
 
                // Name= e o MODELO que o Tacview procura na sua base de dados
                // para escolher o icone/modelo 3D (o nome do player vai em
@@ -234,7 +144,7 @@
                // 6-DOF nativo: o mesmo JSBSim, agora pelo adaptador do
                // framework (compare com xair::JsbsimFlightModel da poc/12).
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/13-native-stack/data/jsbsim/"
+                  rootDir: "./src/14-tc-agent/data/jsbsim/"
                   model:   "c310"
                   debugLevel: 0
                )
@@ -328,6 +238,52 @@
                      )
                   }
                )
+
+               // ------------------------------------------------------
+               // O AGENTE -- a diferenca desta poc.
+               //
+               // Mesmo conteudo do ( SimAgent ) da poc/13 (mesmo state,
+               // mesmo arbitro, mesmos numeros); muda a CLASSE e o LUGAR.
+               //
+               // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
+               // percorrida na ordem declarada, e tres coisas rodam na
+               // fase 3 -- Autopilot::process(), AirTrkMgr::process() e a
+               // decisao. Declarado por ultimo, o agente ja enxerga as
+               // pistas ATUALIZADAS deste frame; o comando que ele grava
+               // no Autopilot vale a partir do frame seguinte. E a mesma
+               // disciplina do resto da poc: escreve numa fase, publica
+               // na fronteira, le na fase seguinte.
+               // ------------------------------------------------------
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( UbfArbiter
+                     behaviors: {
+                        ( AltitudeSafetyBehavior
+                           vote: 90
+                           minAltitude:     ( Meters 1200 )
+                           recoverAltitude: ( Meters 3000 )
+                           recoverSpeed:    160.0
+                        )
+                        ( BtBehavior
+                           vote: 50
+                           treeFile: "./src/14-tc-agent/configs/flight_tree.xml"
+                           patrolHeading:  ( Degrees 90 )
+                           legTime:        ( Seconds 60 )
+                           legTurn:        ( Degrees 90 )
+                           patrolAltitude: ( Meters 3000 )
+                           patrolSpeed:    160.0
+                           rtbAltitude:    ( Meters 2400 )
+                           rtbSpeed:       170.0
+                           arrivalRadius:  ( NauticalMiles 2.0 )
+                           fuelReserve:    0.35
+                           breakTurn:      ( Degrees 110 )
+                           evadeClimb:     ( Meters 400 )
+                           evadeSpeed:     185.0
+                           supportSpeed:   180.0
+                        )
+                     }
+                  )
+               )
             }
          )
 
@@ -344,7 +300,7 @@
             dataLogTime: ( Seconds 0.1 )
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/13-native-stack/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./src/14-tc-agent/data/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -379,6 +335,26 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( UbfArbiter
+                     behaviors: {
+                        ( AltitudeSafetyBehavior vote: 90
+                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3300 )
+                           recoverSpeed: 160.0
+                        )
+                        ( BtBehavior vote: 50
+                           treeFile: "./src/14-tc-agent/configs/flight_tree.xml"
+                           patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
+                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 3300 )
+                           patrolSpeed: 160.0  rtbAltitude: ( Meters 2500 )  rtbSpeed: 170.0
+                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 400 )
+                           evadeSpeed: 185.0  supportSpeed: 180.0
+                        )
+                     }
+                  )
+               )
             }
          )
 
@@ -395,7 +371,7 @@
             dataLogTime: ( Seconds 0.1 )
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/13-native-stack/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./src/14-tc-agent/data/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -430,6 +406,26 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( UbfArbiter
+                     behaviors: {
+                        ( AltitudeSafetyBehavior vote: 90
+                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3600 )
+                           recoverSpeed: 160.0
+                        )
+                        ( BtBehavior vote: 50
+                           treeFile: "./src/14-tc-agent/configs/flight_tree.xml"
+                           patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
+                           legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 3600 )
+                           patrolSpeed: 165.0  rtbAltitude: ( Meters 2600 )  rtbSpeed: 170.0
+                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                           breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 450 )
+                           evadeSpeed: 190.0  supportSpeed: 185.0
+                        )
+                     }
+                  )
+               )
             }
          )
 
@@ -446,7 +442,7 @@
             dataLogTime: ( Seconds 0.1 )
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/13-native-stack/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./src/14-tc-agent/data/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -481,6 +477,26 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( UbfArbiter
+                     behaviors: {
+                        ( AltitudeSafetyBehavior vote: 90
+                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 3900 )
+                           recoverSpeed: 160.0
+                        )
+                        ( BtBehavior vote: 50
+                           treeFile: "./src/14-tc-agent/configs/flight_tree.xml"
+                           patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
+                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 3900 )
+                           patrolSpeed: 160.0  rtbAltitude: ( Meters 2700 )  rtbSpeed: 170.0
+                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 400 )
+                           evadeSpeed: 185.0  supportSpeed: 180.0
+                        )
+                     }
+                  )
+               )
             }
          )
 
@@ -502,7 +518,7 @@
             dataLogTime: ( Seconds 0.1 )
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/13-native-stack/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./src/14-tc-agent/data/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true

@@ -1,36 +1,35 @@
 //
-// poc/13-native-stack
+// poc/14-tc-agent
 //
-// MESMO cenario da poc/12 -- 4 avioes patrulhando, 1 intruso, quem detecta
-// avisa os outros pelo datalink e eles vao apoiar -- com a regra invertida:
-// aqui se HERDA do MIXR tudo o que o framework ja tem pronto.
+// A poc/13 INTEIRA, com UMA unica diferenca: o agente do UBF.
 //
-// O que sumiu em relacao a poc/12 (e passou a ser do framework):
+//    poc/13:  ( SimAgent )       nativo, componente da STATION,
+//                                ator por nome, decide em updateData()
+//                                -> thread de BACKGROUND, na taxa deste laco
 //
-//    xair::Airplane           -> ( Aircraft )
-//    xair::JsbsimFlightModel  -> ( JSBSimModel )
-//    xair::FlightDirector     -> ( Autopilot )
-//    xair::ProximitySensor    -> ( Gimbal/Antenna + Tws + AirTrkMgr )
-//    xair::AlertRadio         -> ( AlertDatalink : models::Datalink )
-//    xair::FlightAgent        -> ( SimAgent )
+//    poc/14:  ( FlightAgentTC )  nosso, componente do PLAYER,
+//                                ator = container, decide na fase 3
+//                                -> thread de TEMPO CRITICO, todo frame
 //
-// O que sobrou de nosso: as pecas do UBF (percepcao/decisao/atuacao, que o
-// framework nao traz prontas), a arvore do BehaviorTree.CPP e a carga util
-// da mensagem de datalink.
+// Todo o resto e identico: mesma pilha nativa (Aircraft + JSBSimModel +
+// Autopilot + Antenna/Tws/AirTrkMgr + Datalink), mesmo cenario, mesmos
+// numeros, mesma arvore de comportamento, mesmas classes de UBF.
 //
-// DIFERENCA DE COMPORTAMENTO QUE VEM COM A ESCOLHA: o SimAgent nativo
-// deriva de ubf::Agent, cujo ciclo roda em updateData() -- ou seja, a
-// decisao acontece na thread de BACKGROUND (na taxa deste laco), e nao na
-// fase 3 do frame de tempo critico como na poc/12 (que precisou de um
-// AgentTC proprio justamente por isso).
+// O QUE ISSO MUDA NA PRATICA (ver README, secao "Determinismo"):
 //
-// Opcoes de linha de comando: iguais as das pocs 11/12
+//   * a decisao passa a ser parte do frame, entao ela acontece na taxa do
+//     tempo critico (50 Hz) e nao na do laco de background (10 Hz);
+//   * o determinismo deixa de depender do laco deste arquivo: e o frame
+//     que ordena tudo. Aqui updateData() so drena o gravador (Tacview).
+//
+// Opcoes de linha de comando: iguais as das pocs 11/12/13
 //   -f <arquivo> | -threads <N> | -deterministic <N>
 //
 
 #include "mixr_factory.hpp"
 
 #include "xnative/AlertDatalink.hpp"
+#include "xnative/FlightAgentTC.hpp"
 #include "xnative/runtime_utils.hpp"
 
 #include "mixr/simulation/Station.hpp"
@@ -140,6 +139,16 @@ mixr::models::AirVehicle* findAircraft(mixr::models::WorldModel* wm, const char*
    return result;
 }
 
+// O agente de tempo critico da aeronave. Diferente da poc/13, ele e um
+// COMPONENTE do player -- entao a busca e a mesma que o framework usa para
+// os subsistemas: por tipo, na lista de componentes.
+const mixr::xnative::FlightAgentTC* findAgent(const mixr::models::AirVehicle* const air)
+{
+   const mixr::base::Pair* const pair{air->findByType(typeid(mixr::xnative::FlightAgentTC))};
+   if (pair == nullptr) return nullptr;
+   return dynamic_cast<const mixr::xnative::FlightAgentTC*>(pair->object());
+}
+
 // Contato mais proximo do TrackManager nativo (mesma consulta que o
 // FlightState faz -- aqui so para o status).
 bool nearestTrack(mixr::models::AirVehicle* const air, std::string* const name, double* const rangeM)
@@ -227,6 +236,15 @@ void printStatus(const std::vector<mixr::models::AirVehicle*>& fleet, const doub
          }
       }
 
+      // A conta que separa esta poc da 13: 'dec' cresce uma vez por FRAME
+      // (taxa do tempo critico), nao uma vez por volta deste laco; 'thr' e
+      // o indice da thread do pool T/C que decidiu por ultimo.
+      const mixr::xnative::FlightAgentTC* const agent{findAgent(air)};
+      if (agent != nullptr) {
+         oss << " dec=" << agent->getDecisionCount()
+             << " thr=" << agent->getLastThreadTag();
+      }
+
       oss << std::endl;
    }
 
@@ -243,6 +261,7 @@ void printDeterministicDump(const std::vector<mixr::models::AirVehicle*>& fleet,
 
       const mixr::base::Vec3d& pos{air->getPosition()};
       const auto datalink = dynamic_cast<const mixr::xnative::AlertDatalink*>(air->getDatalink());
+      const mixr::xnative::FlightAgentTC* const agent{findAgent(air)};
 
       std::string trackName{"none"};
       double trackRange{};
@@ -266,6 +285,11 @@ void printDeterministicDump(const std::vector<mixr::models::AirVehicle*>& fleet,
                             ? datalink->getAlert().senderName : std::string("none"))
           << " sent=" << (datalink != nullptr ? datalink->getSentCount() : 0L)
           << " recv=" << (datalink != nullptr ? datalink->getReceivedCount() : 0L)
+          // Contagem de decisoes: entra no dump de proposito. Se a decisao
+          // esta mesmo amarrada ao frame, este numero tem que ser identico
+          // com 1, 2 ou 4 threads -- e igual ao numero de frames. O indice
+          // da thread NAO entra: depende do escalonador.
+          << " dec=" << (agent != nullptr ? agent->getDecisionCount() : 0L)
           << std::endl;
    }
 
@@ -280,12 +304,16 @@ int runDeterministic(mixr::simulation::Station* const station,
 
    std::cout << "[deterministic] frames=" << frames
              << " dt=" << std::fixed << std::setprecision(9) << dt
-             << " (1/tcRate; updateData no mesmo passo, entao os SimAgents"
-             << " tambem decidem uma vez por frame)" << std::endl;
+             << " (1/tcRate; a decisao roda DENTRO do tcFrame, na fase 3)" << std::endl;
 
    for (long frame = 1; frame <= frames; ++frame) {
       station->tcFrame(dt);
+
+      // Diferente da poc/13, updateData() NAO faz parte do determinismo
+      // aqui -- ele so drena o gravador. Manter a chamada e uma escolha:
+      // sem ela o Tacview nao receberia nada, e o dump seria o mesmo.
       station->updateData(dt);
+
       if (frame % 100 == 0 || frame == frames) printDeterministicDump(fleet, frame);
    }
    return 0;
@@ -295,8 +323,8 @@ int runDeterministic(mixr::simulation::Station* const station,
 
 int main(int argc, char* argv[])
 {
-   std::string templatePath = "./src/13-native-stack/configs/scenario.epp.in";
-   std::string generatedPath = "./src/13-native-stack/configs/scenario.generated.epp";
+   std::string templatePath = "./src/14-tc-agent/configs/scenario.epp.in";
+   std::string generatedPath = "./src/14-tc-agent/configs/scenario.generated.epp";
 
    long deterministicFrames{};
    int threadsOverride{};
@@ -364,14 +392,13 @@ int main(int argc, char* argv[])
       return rc;
    }
 
-   std::cout << "=== poc/13-native-stack ===" << std::endl;
-   std::cout << "Mesmo cenario da poc/12, com a pilha NATIVA: Aircraft + JSBSimModel +"
-             << " Autopilot + radar (Antenna/Tws/AirTrkMgr) + Datalink + SimAgent"
-             << std::endl;
-   std::cout << "De proprio sobraram so as pecas do UBF, a arvore e a carga do datalink"
-             << std::endl;
+   std::cout << "=== poc/14-tc-agent ===" << std::endl;
+   std::cout << "A poc/13 inteira, trocando ( SimAgent ) por ( FlightAgentTC ): a decisao"
+             << " saiu do background e entrou na fase 3 do frame" << std::endl;
+   std::cout << "Pilha NATIVA identica a da poc/13: Aircraft + JSBSimModel + Autopilot +"
+             << " radar (Antenna/Tws/AirTrkMgr) + Datalink" << std::endl;
    std::cout << "Pool nativo de threads T/C: " << numTcThreads
-             << " (a decisao, porem, roda no laco de background -- SimAgent e um ubf::Agent)"
+             << " -- e a decisao roda DENTRO dele (compare 'dec' e 'thr' no status)"
              << std::endl;
    std::cout << "Tacview Real-Time Telemetry na porta 1234 -- objetos com Name=C310" << std::endl;
    std::cout << "Ctrl+C encerra." << std::endl;
@@ -386,8 +413,10 @@ int main(int argc, char* argv[])
 
    while (!g_stopRequested) {
 
-      // Aqui updateData() faz DUAS coisas: drena o gravador (Tacview) e
-      // roda os SimAgents (UBF), que sao componentes da Station.
+      // Na poc/13 esta chamada fazia DUAS coisas: drenava o gravador e
+      // rodava os SimAgents. Aqui ela faz UMA: drena o gravador para o
+      // Tacview. A decisao nao depende mais deste laco -- ela acontece na
+      // fase 3 de cada frame, na thread de tempo critico.
       station->updateData(dt);
 
       frameCount += 1;
