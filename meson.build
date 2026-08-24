@@ -70,6 +70,10 @@ inc_dir = include_directories('include')
 # MIXR). Precisa vir ANTES dos poc/, que consomem xtacview_dep.
 subdir('./shared/xtacview')
 
+# Controle de velocidade do tempo (acelerar/frear/pausar). Tambem precisa vir
+# ANTES dos subprojetos, que consomem xclock_dep.
+subdir('./shared/xclock')
+
 subdir('./src')
 
 # ============================================

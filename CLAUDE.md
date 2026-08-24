@@ -176,6 +176,55 @@ as linhas terminam em `\n`, inclusive a última (a doc oficial sugere o contrár
 o `\0` é um byte separado. Bind em `0.0.0.0` (não `127.0.0.1`): com Tacview no Windows e binário
 no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname -I`. Porta 1234.
 
+### `shared/xclock` — controle de velocidade do tempo (acelerar / frear / pausar)
+
+Mesmo padrão `shared/x<nome>` do `xtacview` (factory própria, classes em `mixr::xclock`, exposta
+como `xclock_dep`). O cenário declara **`( ClockStation )` no lugar de `( Station )`** — é uma
+`simulation::Station` com um único override. Usada pelas pocs 13 e 14; trocar de volta para
+`( Station )` continua rodando, só sem as teclas (o `main.cpp` avisa e segue).
+
+Teclas (em `TimeControls`): `+`/`=` acelera, `-`/`_` freia, `espaço`/`p` pausa, `1` volta a
+tempo real, `h` ajuda. Escala em degraus `0.10x … 64x`. A linha de status mostra tempo de parede
+e tempo simulado lado a lado (`[t=24s sim=8.2s PAUSADO (1x)]`) — é a diferença entre os dois que
+prova o efeito.
+
+**A divisão entre nativo e próprio é deliberada:**
+
+- **Acelerar é 100% nativo.** `Station::processTimeCriticalTasks()` já faz
+  `for (jj=0; jj < getFastForwardRate(); jj++) tcFrame(dt);` (`Station.cpp:506-511`), e
+  `setFastForwardRate()` é público e virtual. Nada foi escrito para isso.
+- **Frear não existe no framework** — `fastForwardRate` é `unsigned int` (só multiplica) e não
+  há setter público de `tcRate` em runtime (o rate da `base::PeriodicThread` é fixado na
+  construção). É a **única** coisa acrescentada: abaixo de `1x`, um `tcFrame(dt * fator)` com o
+  `dt` encurtado. Passo de integração menor, nunca maior — não degrada o JSBSim.
+- **Pausar é nativo, por um caminho não óbvio.** Não existe `Simulation::pause()`; o que existe
+  é o flag de freeze do `base::Component`. **Ele não se propaga para os filhos** — a cascata é
+  por *consulta*, no sentido inverso: `Player::isFrozen()` testa o próprio flag **ou** o da
+  simulação (`Player.cpp:445-448`), `System::isFrozen()` testa o próprio **ou** o do ownship
+  (`System.cpp:52-56`), e `Player::dynamics()` repassa ao `DynamicsModel` (`Player.cpp:2773`),
+  que põe a JSBSim em hold (`JSBSimModel.cpp:657`). Por isso `setPaused()` age em
+  `getSimulation()`, **não** na `Station`.
+
+**Armadilha confirmada rodando — não redescobrir:** marcar o freeze **não para o relógio de
+execução**. `Simulation::updateTC()` faz `execTime += dt` na **linha 462**, *antes* do
+`if (isFrozen()) dt0 = 0.0` da linha 498, e com o `dt` cru. Medido: mundo parado, `sim=` ainda
+subindo. Vazaria para o Tacview, que data cada linha ACMI com `exec_time`
+(`TacviewOutput.cpp:373`) — replay avançando com as aeronaves paradas. Correção: quando pausado,
+**não chamar `tcFrame()`**. O flag de freeze continua marcado porque é ele que congela o *outro*
+caminho, o de background (`Simulation::updateData()`, linha 625), que não passa por
+`processTimeCriticalTasks()`.
+
+**Limite conhecido:** `ubf::Agent::updateData()` chama `controller(dt)` sem consultar
+`isFrozen()` (`Agent.cpp:59-62`) — com a simulação pausada, o `SimAgent` da poc/13 continua
+avaliando sobre um mundo estático (nada se move; a decisão só não para). O `FlightAgentTC` da
+poc/14 decide na fase 3, dentro do frame, então para junto.
+
+`-deterministic` **não é afetado**: chama `station->tcFrame(dt)` direto, sem passar por
+`processTimeCriticalTasks()`. `make check-native-stack`/`check-tc-agent` seguem valendo.
+
+Sem TTY (pipe, redirecionamento, CI) o `tcgetattr()` de `ConsoleKeyboard` falha, `isActive()`
+fica `false` e a simulação roda normalmente, só sem teclado.
+
 ## Ao adicionar um subprojeto novo
 
 1. Criar `src/NN-slug/` (próximo número) seguindo a estrutura acima; sempre com

@@ -33,7 +33,11 @@
 #include "xnative/AlertDatalink.hpp"
 #include "xnative/runtime_utils.hpp"
 
+#include "xclock/ClockStation.hpp"
+#include "xclock/TimeControls.hpp"
+
 #include "mixr/simulation/Station.hpp"
+#include "mixr/simulation/Simulation.hpp"
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
 #include "mixr/models/system/Autopilot.hpp"
@@ -172,11 +176,17 @@ bool nearestTrack(mixr::models::AirVehicle* const air, std::string* const name, 
    return true;
 }
 
-void printStatus(const std::vector<mixr::models::AirVehicle*>& fleet, const double elapsedSec)
+void printStatus(const std::vector<mixr::models::AirVehicle*>& fleet, const double elapsedSec,
+                 const double simSec, const std::string& clockLabel)
 {
    std::ostringstream oss;
    oss << std::fixed;
-   oss << "[t=" << std::setprecision(0) << elapsedSec << "s]" << std::endl;
+   // 't' e tempo de PAREDE, 'sim' e tempo SIMULADO. Com o relogio acelerado,
+   // freado ou pausado os dois deixam de andar juntos -- e essa diferenca e
+   // a prova de que o controle de tempo esta agindo.
+   oss << "[t=" << std::setprecision(0) << elapsedSec << "s"
+       << " sim=" << std::setprecision(1) << simSec << "s" << std::setprecision(0)
+       << " " << clockLabel << "]" << std::endl;
 
    for (const auto air : fleet) {
       if (air == nullptr) continue;
@@ -320,6 +330,15 @@ int main(int argc, char* argv[])
 
    mixr::simulation::Station* station{buildStation(generatedPath)};
 
+   // O cenario declara ( ClockStation ): uma Station com controle de
+   // velocidade do tempo. Trocar por ( Station ) no .epp continua rodando --
+   // so sem as teclas -- entao isto e aviso, nao erro fatal.
+   const auto clockStation = dynamic_cast<mixr::xclock::ClockStation*>(station);
+   if (clockStation == nullptr) {
+      std::cerr << "[main] aviso: a Station do cenario nao e uma ( ClockStation );"
+                << " controle de tempo desligado" << std::endl;
+   }
+
    station->event(mixr::base::Component::RESET_EVENT);
    station->tcFrame(static_cast<double>(1.0 / static_cast<double>(station->getTimeCriticalRate())));
 
@@ -376,6 +395,15 @@ int main(int argc, char* argv[])
    std::cout << "Tacview Real-Time Telemetry na porta 1234 -- objetos com Name=C310" << std::endl;
    std::cout << "Ctrl+C encerra." << std::endl;
 
+   // Poe o terminal em modo raw; o destrutor devolve como estava.
+   mixr::xclock::TimeControls timeControls{clockStation};
+   if (timeControls.isAvailable()) {
+      std::cout << mixr::xclock::TimeControls::helpText();
+   } else {
+      std::cout << "Sem terminal interativo (pipe/redirecionamento):"
+                << " controle de tempo por teclado desligado." << std::endl;
+   }
+
    station->createTimeCriticalProcess();
    mixr::base::msleep(1000);
 
@@ -386,13 +414,17 @@ int main(int argc, char* argv[])
 
    while (!g_stopRequested) {
 
+      // Um read() nao bloqueante por frame -- se nao houver tecla, custa nada.
+      timeControls.poll();
+
       // Aqui updateData() faz DUAS coisas: drena o gravador (Tacview) e
       // roda os SimAgents (UBF), que sao componentes da Station.
       station->updateData(dt);
 
       frameCount += 1;
       if (frameCount % statusEveryNFrames == 0) {
-         printStatus(fleet, static_cast<double>(frameCount) * dt);
+         printStatus(fleet, static_cast<double>(frameCount) * dt,
+                     worldModel->getExecTimeSec(), timeControls.describe());
       }
 
       wallTimeElapsed += dt;

@@ -1,4 +1,4 @@
-prefix=/home/lucas/.conan2/p/b/jsbsi454808c9bbc53/p
+prefix=/home/lima/.conan2/p/b/jsbsib1853f880b36f/p
 libdir=${prefix}/lib
 includedir=${prefix}/include
 includedir1=${prefix}/include/JSBSim

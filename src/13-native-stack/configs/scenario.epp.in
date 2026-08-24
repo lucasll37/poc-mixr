@@ -30,7 +30,7 @@
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
 
-( Station
+( ClockStation
 
    tcPriority: 0.5
 

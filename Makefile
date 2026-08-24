@@ -97,7 +97,7 @@ run-custom-models: ## Run poc/11-custom-models (player/dynamics/systems próprio
 run-jsbsim-ubf: ## Run poc/12-jsbsim-ubf (6-DOF JSBSim direto + UBF/BehaviorTree + alerta entre aviões, Tacview 1234).
 	$(BUILD_DIR)/src/12-jsbsim-ubf/src/jsbsim-ubf
 
-run-native-stack: ## Run poc/13-native-stack (mesmo cenário da 12, com a pilha nativa do MIXR, Tacview 1234).
+run-native-stack: ## Run poc/13-native-stack (pilha nativa do MIXR, Tacview 1234; teclas +/- acelera/freia, espaço pausa).
 	$(BUILD_DIR)/src/13-native-stack/src/native-stack
 
 check-native-stack: ## Verifica o determinismo da poc/13 (mesmo estado com 1, 2 e 4 threads T/C).
@@ -118,7 +118,7 @@ check-native-stack: ## Verifica o determinismo da poc/13 (mesmo estado com 1, 2 
 	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
 	else echo "determinismo: FALHOU"; exit 1; fi
 
-run-tc-agent: ## Run poc/14-tc-agent (a poc/13 com AgentTC próprio: decisão na fase 3, Tacview 1234).
+run-tc-agent: ## Run poc/14-tc-agent (a poc/13 com AgentTC próprio: decisão na fase 3, Tacview 1234; teclas +/- e espaço).
 	$(BUILD_DIR)/src/14-tc-agent/src/tc-agent
 
 check-tc-agent: ## Verifica o determinismo da poc/14 (mesmo estado com 1, 2 e 4 threads T/C).

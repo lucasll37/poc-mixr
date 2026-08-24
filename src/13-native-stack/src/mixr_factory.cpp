@@ -2,6 +2,7 @@
 
 #include "xnative/factory.hpp"
 #include "xtacview/factory.hpp"
+#include "xclock/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -18,7 +19,10 @@ mixr::base::Object* mixrFactory(const std::string& name)
    // 2) exportacao para o Tacview (shared/xtacview)
    if (obj == nullptr) obj = mixr::xtacview::factory(name);
 
-   // 3) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, Gimbal,
+   // 3) relogio: ClockStation (Station + acelerar/frear/pausar)
+   if (obj == nullptr) obj = mixr::xclock::factory(name);
+
+   // 4) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, Gimbal,
    //    Antenna, Tws, AirTrkMgr, SensorMgr, OnboardComputer, SimAgent,
    //    UbfArbiter, SigSphere, DataRecorder...
    if (obj == nullptr) obj = mixr::simulation::factory(name);

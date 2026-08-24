@@ -33,6 +33,7 @@ e mede a diferença em vez de argumentar sobre ela.
 8. [O que foi medido rodando](#8-o-que-foi-medido-rodando)
 9. [Qual das duas usar](#9-qual-das-duas-usar)
 10. [Como verificar tudo](#10-como-verificar-tudo)
+11. [Controle de tempo — acelerar, frear, pausar](#11-controle-de-tempo--acelerar-frear-pausar)
 
 ---
 
@@ -694,3 +695,32 @@ make run-tc-agent
 Para tudo o mais — anatomia do frame, o que vem do framework, o radar nativo, as armadilhas do
 JSBSim e do gravador, a semântica ACMI do Tacview — vale integralmente o
 **[README da poc/13](../13-native-stack/README.md)**: aqui nada disso mudou.
+
+---
+
+## 11. Controle de tempo — acelerar, frear, pausar
+
+Igual à poc/13, e pelo mesmo código (`shared/xclock/`, uma cópia só para as duas):
+
+| tecla | efeito |
+|---|---|
+| `+` `=` | acelera (próximo degrau) |
+| `-` `_` | freia (degrau anterior; abaixo de `1x` é câmara lenta) |
+| `espaço` `p` | pausa / retoma |
+| `1` | volta a tempo real e retoma |
+| `h` `?` | reimprime a ajuda |
+
+O cenário declara `( ClockStation )` no lugar de `( Station )`, e a linha de status passou a
+mostrar o tempo simulado ao lado do tempo de parede (`[t=24s sim=8.2s PAUSADO (1x)]`).
+
+Validado nesta poc: com a simulação pausada, oito amostras consecutivas de `falcon1` ao longo de
+16 s de parede saíram byte a byte idênticas, e o relógio simulado parou em 8,2 s. O modo
+`-deterministic` não é afetado — ele chama `tcFrame()` direto, sem passar pelo controle de tempo.
+
+Um detalhe é próprio desta poc: aqui a decisão roda **dentro** do frame de tempo crítico
+(`FlightAgentTC`, fase 3), então ela para junto com a pausa e acelera junto com o
+`fastForwardRate` — ao contrário do `SimAgent` da poc/13, que decide no laço de background e
+continua avaliando com a simulação congelada.
+
+Por que acelerar é nativo, por que frear não é, e a armadilha do `execTime += dt` que acontece
+*antes* do teste de freeze: **[seção 14 do README da poc/13](../13-native-stack/README.md#14-controle-de-tempo--acelerar-frear-pausar)**.

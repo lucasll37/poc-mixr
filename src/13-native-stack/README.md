@@ -34,6 +34,7 @@ make check-native-stack      # verifica o determinismo (1, 2 e 4 threads T/C)
 11. [Estrutura de arquivos](#11-estrutura-de-arquivos)
 12. [Como verificar tudo](#12-como-verificar-tudo)
 13. [O que a poc responde](#13-o-que-a-poc-responde)
+14. [Controle de tempo — acelerar, frear, pausar](#14-controle-de-tempo--acelerar-frear-pausar)
 
 ---
 
@@ -959,3 +960,136 @@ bandit1  ... bt=(sem agente)
   sobra lugar natural para guardar o estado que é da aplicação.
 - **O que é decisão continua sendo seu**: percepção, política, atuação e as regras de
   fusão/determinismo. O UBF define os papéis; ele não os preenche.
+
+---
+
+## 14. Controle de tempo — acelerar, frear, pausar
+
+Os dois executáveis leem o teclado enquanto rodam:
+
+| tecla | efeito |
+|---|---|
+| `+` `=` | acelera (próximo degrau) |
+| `-` `_` | freia (degrau anterior; abaixo de `1x` é câmara lenta) |
+| `espaço` `p` | pausa / retoma |
+| `1` | volta a tempo real e retoma |
+| `h` `?` | reimprime a ajuda |
+
+Escala em degraus: `0.10x 0.25x 0.50x 1x 2x 4x 8x 16x 32x 64x`.
+
+A linha de status passou a mostrar os **dois relógios** lado a lado — é a diferença entre eles
+que prova o efeito:
+
+```
+[t=24s sim=8.2s PAUSADO (1x)]      <- 24 s de parede, 8,2 s simulados
+[t=16s sim=32.0s 4x]               <- o simulado corre quatro vezes mais rápido
+```
+
+O código vive em `shared/xclock/` — biblioteca compartilhada, mesmo padrão de `shared/xtacview`,
+uma cópia só para as duas pocs. O cenário declara `( ClockStation )` no lugar de `( Station )`;
+trocar de volta para `( Station )` continua rodando, apenas sem as teclas (o `main.cpp` avisa e
+segue).
+
+### 14.1 Acelerar já era do framework
+
+`Station::processTimeCriticalTasks()` (`Station.cpp:506-511`) faz exatamente isto:
+
+```cpp
+for (unsigned int jj = 0; jj < getFastForwardRate(); jj++) {
+   tcFrame( dt );
+}
+```
+
+A cada período real da thread T/C, o tempo simulado avança N frames. `setFastForwardRate()` é
+público e virtual, então muda em runtime. **Nada foi escrito para acelerar** — `ClockStation`
+apenas chama esse setter e deixa a classe base rodar o laço.
+
+### 14.2 Frear não existe — é a única coisa acrescentada
+
+`fastForwardRate` é `unsigned int`: multiplica, nunca divide. E não há como baixar a taxa da
+thread T/C em runtime — `Station` só expõe `getTimeCriticalRate()` (o setter é slot privado), e
+o rate da `base::PeriodicThread` é fixado na construção.
+
+Daí o único override da classe: abaixo de `1x`, roda **um** frame com o `dt` encurtado.
+
+```cpp
+void ClockStation::processTimeCriticalTasks(const double dt)
+{
+   if (isPaused()) return;
+
+   if (slowFactor >= 1.0) {
+      BaseClass::processTimeCriticalTasks(dt);   // caminho nativo, intocado
+      return;
+   }
+   tcFrame(dt * slowFactor);                      // câmara lenta
+}
+```
+
+Encurtar o `dt` é seguro: o passo de integração fica **menor**, nunca maior — a dinâmica do
+JSBSim não degrada, fica mais fina.
+
+### 14.3 Pausar é nativo, mas o freeze sozinho não basta
+
+Não existe `Simulation::pause()`. O que existe é o flag de freeze do `base::Component`, honrado
+por `Simulation::updateTC()`/`updateData()` com `if (isFrozen()) dt0 = 0.0`
+(`Simulation.cpp:498` e `625`).
+
+O detalhe que não é óbvio: **o freeze não se propaga para os filhos**. A cascata acontece por
+*consulta*, no sentido inverso —
+
+- `Player::isFrozen()` testa o próprio flag **ou** o da simulação (`Player.cpp:445-448`);
+- `System::isFrozen()` testa o próprio **ou** o do ownship (`System.cpp:52-56`);
+- `Player::dynamics()` repassa `isFrozen()` ao `DynamicsModel` (`Player.cpp:2773`), e o
+  `JSBSimModel` põe a JSBSim em hold (`JSBSimModel.cpp:657`).
+
+Por isso `setPaused()` age em `getSimulation()`, e não na `Station`: congelar a Station não
+pararia nada disso.
+
+**Armadilha encontrada rodando** (ver seção 10 para as outras): marcar o freeze *não* para o
+relógio de execução. `Simulation::updateTC()` faz `execTime += dt` na **linha 462**, antes do
+teste de freeze da linha 498 — e com o `dt` cru, não com o `dt0`. Medido: com a simulação
+congelada, o mundo parava mas `sim=` continuava subindo. Isso vazaria direto para o Tacview,
+que data cada linha ACMI justamente com `exec_time` (`TacviewOutput.cpp:373`) — o replay
+avançaria com as aeronaves paradas.
+
+A correção é não chamar `tcFrame()` quando pausado: o relógio de execução para junto com o
+mundo, e ainda deixa de queimar CPU integrando um estado que não muda. O flag de freeze
+continua marcado, porque é ele que congela o **outro** caminho, o de background
+(`Simulation::updateData()`, linha 625), que não passa por `processTimeCriticalTasks()`.
+
+### 14.4 O que foi medido
+
+Teclas injetadas por pty (não há TTY no ambiente de desenvolvimento), amostrando a razão entre
+tempo simulado e tempo de parede:
+
+| escala pedida | razão medida |
+|---|---|
+| `1x` | 1.00x |
+| `2x` | 2.00x |
+| `4x` | 4.00x |
+| `0.50x` | 0.50x |
+| `0.25x` | 0.25x |
+| `PAUSADO` | 0.00x |
+
+Com a simulação pausada, oito amostras consecutivas de `falcon1` ao longo de 16 s de parede
+saíram **byte a byte idênticas** — altitude, rumo, rolamento, velocidade, empuxo, combustível e
+os comandos do autopilot, todos congelados.
+
+O modo `-deterministic` não é afetado: ele chama `station->tcFrame(dt)` direto, sem passar por
+`processTimeCriticalTasks()`. `make check-native-stack` e `make check-tc-agent` continuam
+valendo.
+
+### 14.5 Limite conhecido
+
+Os agentes UBF são componentes da **Station**, e `ubf::Agent::updateData()` chama `controller(dt)`
+sem consultar `isFrozen()` (`Agent.cpp:59-62`). Com a simulação pausada eles continuam
+avaliando — só que sobre um mundo estático, reemitindo o mesmo comando para um autopilot
+congelado. Nada se move; a decisão apenas não para. Vale para o `SimAgent` da poc/13 e para o
+`FlightAgentTC` da poc/14 apenas no caminho de background.
+
+### 14.6 Sem terminal
+
+`ConsoleKeyboard` usa termios em modo raw (`~ICANON`/`~ECHO`, `VMIN=VTIME=0`) com `stdin` em
+`O_NONBLOCK`, e restaura o terminal no destrutor. Sem TTY — pipe, redirecionamento, CI — o
+`tcgetattr()` falha, `isActive()` fica `false` e a simulação roda normalmente, só sem teclado.
+O `main.cpp` diz isso na partida em vez de fingir que as teclas funcionam.
