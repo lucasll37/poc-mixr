@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/lima/asa/poc-mixr/src",
-      "program": "/home/lima/asa/poc-mixr/src/build/Debug/outDebug",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/build/src/13-native-stack/src/native-stack",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## O que é este projeto
 
 Prova de conceito para desenvolver **novos modelos de simulação** sobre o framework
-[MIXR](https://mixr.dev) (fork ASA, pacote Conan `mixr/1.0.5`) e sobre o
+[MIXR](https://mixr.dev) (fork empacotado como pacote Conan `mixr/1.0.5`) e sobre o
 **BehaviorTree.CPP v3** (`behaviortree.cpp.asa/3.5.6`). O MIXR **não** é o objeto de
 desenvolvimento — é dependência binária.
 
@@ -73,7 +73,7 @@ das libs** em `contexts/src/` (a verdade).
 **Camada 2 — fonte (`contexts/src/`), onde confirmar qualquer coisa que a destilação não cobre
 ou que pareça contraditória:**
 
-- `contexts/src/mixr/` — árvore completa do fork ASA **v1.0.5** (`MIXR_VERSION 170600`), a mesma
+- `contexts/src/mixr/` — árvore completa do fork **v1.0.5** (`MIXR_VERSION 170600`), a mesma
   que gera o pacote Conan consumido aqui: `src/` (313 `.cpp` — as **implementações**, que os
   headers não mostram), `include/mixr/`, `deps/{jsbsim,openrti}`, `doc/`, e
   `src/recorder/proto/DataRecord.proto` (schema do recorder). **Não tem `examples/`** — os
@@ -84,8 +84,8 @@ ou que pareça contraditória:**
 verdade": ler o `.cpp` do framework, não adivinhar pelo header. Ex.: as armadilhas do recorder
 (seção do xtacview) saem de `contexts/src/mixr/src/recorder/DataRecorder.cpp`.
 
-**Atenção:** `contexts/src/mixr/` é **git-ignored** (`.gitignore` casa `mixr`) — é uma cópia
-local, não vem num clone limpo. Se a pasta não existir, caia nos headers instalados pelo Conan:
+**Atenção:** `contexts/src/` inteiro é **git-ignored** — são cópias locais das árvores de
+fonte, não vêm num clone limpo. Se a pasta não existir, caia nos headers instalados pelo Conan:
 `~/.conan2/p/b/mixr*/p/include/mixr/...`, `~/.conan2/p/b/mixr*/p/include/DataRecord.pb.h` (o
 `.pb.h` gerado fica na **raiz** do include, não em `mixr/recorder/`) e
 `<prefix>/include/behaviortree_cpp_v3/`. Em caso de divergência entre a árvore de `contexts/src/`
@@ -271,7 +271,7 @@ Conferência após `make install`: `ldd dist/bin/<slug> | grep 'not found'` (sil
   `.epp`/`.epp.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
   `poc/NN-slug`** — é só prosa, nenhum caminho depende disso.
 - `docs/` está vazio.
-- `build/` e `dist/` estão **versionados no git** apesar do `.gitignore` — vale `git rm -r --cached
-  build dist` antes do próximo commit.
+- `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
+  destrackeado com `git rm -r --cached`.
 - Limitação conhecida na poc/09: chaff/flare saem no Tacview como `Misc`/`Grey` em vez de
   `Misc+Decoy+Chaff`/`+Flare` — soma das armadilhas 4, 6 e 7 do xtacview.

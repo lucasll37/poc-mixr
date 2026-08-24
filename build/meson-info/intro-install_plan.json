@@ -1,1 +1,0 @@
-{"targets": {"/home/lima/asa/poc-mixr/build/./src/./13-native-stack/./src/native-stack": {"destination": "{bindir}/native-stack", "tag": "runtime", "subproject": null}, "/home/lima/asa/poc-mixr/build/./src/./14-tc-agent/./src/tc-agent": {"destination": "{bindir}/tc-agent", "tag": "runtime", "subproject": null}}}

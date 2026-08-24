@@ -112,7 +112,7 @@ o exemplo:
    `mainGlut`, `tutorial07`, `tutorial08`, `testVmap`, `mainIgViewer`, `mainQt1`,
    `mainPuzzle1/2`, `testLinkage` (o display), `testEvents` (o display).
 
-**POR QUÊ** — o fork ASA foi empacotado para uso *headless*/servidor (simulação
+**POR QUÊ** — o fork foi empacotado para uso *headless*/servidor (simulação
 distribuída, DIS, gravação), não para cockpit gráfico. É exatamente por isso que todas
 as pocs deste repositório resolvem visualização por **Tacview Real-Time Telemetry**
 (`poc/04`, `05`, `07`, `08`, `09`, `10`) em vez de por `GlutDisplay`: não há

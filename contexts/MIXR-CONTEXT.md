@@ -1,7 +1,7 @@
 ---
 titulo: "MIXR — Base de Conhecimento Técnica (contexto para RAG)"
 projeto: "MIXR (Mixed Reality Simulation) — framework C++ de Modelagem & Simulação"
-fork_documentado: "github.com/ASA-Simulation/mixr"
+fork_documentado: "fork interno do MIXR (não público)"
 versao: "1.0.5 (meson.build da raiz); MIXR_VERSION = 170600 em include/mixr/config.hpp"
 licenca: "LGPL-3.0"
 fontes: "Manual técnico MIXR (report LaTeX, 13 capítulos) + árvore de fontes C++ do fork"
@@ -78,7 +78,7 @@ final.
 
 ## 1.3 Características do fork documentado (importantes para planejar integração)
 
-Este documento descreve o fork mantido em `github.com/ASA-Simulation/mixr`, versão
+Este documento descreve um fork interno do MIXR (não público), versão
 **1.0.5**, cuja diferença principal em relação ao MIXR original (`mixr.dev`) é a adoção
 de **Meson** e **Conan 2** no lugar do sistema de compilação anterior.
 

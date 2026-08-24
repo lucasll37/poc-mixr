@@ -1,7 +1,7 @@
 # poc-mixr
 
 Prova de conceito para desenvolver **novos modelos de simulação** sobre o framework
-[MIXR](https://mixr.dev) (fork ASA, pacote Conan `mixr/1.0.5`) e sobre o
+[MIXR](https://mixr.dev) (fork empacotado como pacote Conan `mixr/1.0.5`) e sobre o
 [BehaviorTree.CPP v3](https://github.com/BehaviorTree/BehaviorTree.CPP)
 (`behaviortree.cpp.asa/3.5.6`).
 
@@ -128,15 +128,16 @@ Duas camadas de consulta sobre as libs:
 | `contexts/MIXR-CONTEXT.md` | como o MIXR funciona por dentro: classes, macros, ciclo de vida, EDL, recorder |
 | `contexts/MIXR-PATTERN-CONTEXT.md` | como se escreve uma aplicação MIXR; a §0 lista o que o fork empacotado **não** tem |
 | `contexts/BTCPP-CONTEXT.md` | BehaviorTree.CPP **3.5.6** — nada ali vale para a v4 |
-| `contexts/src/mixr/` | **fonte completo** do fork ASA 1.0.5: `src/` com as implementações, `include/`, `deps/`, `doc/` |
+| `contexts/src/mixr/` | **fonte completo** do fork 1.0.5: `src/` com as implementações, `include/`, `deps/`, `doc/` |
 | `contexts/src/BehaviorTree.CPP/` | fonte da 3.5.6, com `examples/`, `sample_nodes/` e `tests/` |
 
 Os `.md` são destilação; `contexts/src/` é a verdade. Quando o comportamento observado
 contraria o esperado, a resposta está no `.cpp` do framework — não no header.
 
-`contexts/src/mixr/` é **git-ignored** (é uma cópia local, não vem num clone limpo). Sem ela,
-os headers instalados pelo Conan (`~/.conan2/p/b/mixr*/p/include/mixr/...`) são o fallback — e,
-em caso de divergência, quem vale é o pacote, que é o que está linkado.
+`contexts/src/` inteiro é **git-ignored**: são cópias locais das árvores de fonte, não vêm num
+clone limpo. Sem elas, os headers instalados pelo Conan
+(`~/.conan2/p/b/mixr*/p/include/mixr/...`) são o fallback — e, em caso de divergência, quem vale
+é o pacote, que é o que está linkado.
 
 ---
 

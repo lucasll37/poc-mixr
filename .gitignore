@@ -2,3 +2,5 @@ build
 dist
 mixr
 miia
+contexts/src/
+.claude/settings.local.json
