@@ -1,9 +1,12 @@
 #include "xnative/FlightAgentTC.hpp"
 
-#include "xnative/runtime_utils.hpp"
+#include "xnative/ThreadTag.hpp"
 
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
+#include "mixr/models/player/air/AirVehicle.hpp"
+
+#include "mixr/base/Pair.hpp"
 
 namespace mixr {
 namespace xnative {
@@ -86,6 +89,15 @@ void FlightAgentTC::controller(const double dt)
    BaseClass::controller(dt * 4.0);
 
    decisions.fetch_add(1, std::memory_order_relaxed);
+}
+
+const FlightAgentTC* findFlightAgent(const models::AirVehicle* const air)
+{
+   if (air == nullptr) return nullptr;
+
+   const base::Pair* const pair{air->findByType(typeid(FlightAgentTC))};
+   if (pair == nullptr) return nullptr;
+   return dynamic_cast<const FlightAgentTC*>(pair->object());
 }
 
 } // namespace xnative

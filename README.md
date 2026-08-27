@@ -92,15 +92,18 @@ src/NN-slug/
 ├── configs/               cenário EDL (.epp) + árvores de comportamento (.xml)
 ├── data/                  dados vendorizados (jsbsim/, terrain/, recordings/)
 ├── include/ e src/
+│   ├── app/               etapas da aplicação, uma questão por arquivo: linha de comando,
+│   │                      geração do cenário, Station, players, status e os dois laços
 │   ├── domain/            regras de negócio puras — sem MIXR, sem BT — testáveis isoladas
 │   ├── ubf/ | bt/         adaptadores: percepção/decisão/atuação, nós da árvore
 │   ├── x<nome>/           classes MIXR próprias (namespace mixr::x<nome>) + factory própria
 │   ├── mixr_factory.*     encadeia a factory própria antes das do framework
-│   └── main.cpp           fino: constrói a Station e roda o laço; não implementa comportamento
+│   └── main.cpp           fino: chama os módulos de app/ na ordem; não implementa comportamento
 ```
 
 A divisão vale a regra: **"o que fazer" mora em `domain/`; "como conectar" mora nas
-factories e adaptadores; `main.cpp` só orquestra.**
+factories e adaptadores; `main.cpp` só orquestra** — e cada arquivo de `app/` trata de uma
+única questão, com o "por que" no cabeçalho do seu header.
 
 O par estrutura/comportamento é o que o MIXR propõe: a **estrutura** do cenário (quais players
 existem, com quais subsistemas, em que taxa, com quantas threads) é declarada em **EDL**

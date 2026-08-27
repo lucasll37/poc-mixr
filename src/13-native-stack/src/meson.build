@@ -1,25 +1,43 @@
-# include/ próprio deste subprojeto (domain/, xnative/, ubf/, bt/)
+# include/ próprio deste subprojeto (app/, domain/, xnative/, ubf/, bt/)
 local_inc_dir = include_directories('../include')
 
 sources = files(
+    # main.cpp só orquestra; cada etapa vive num módulo de app/
     'main.cpp',
     'mixr_factory.cpp',
+
+    # aplicação: linha de comando, cenário, Station, players e os dois laços
+    'app/Options.cpp',
+    'app/ScenarioTemplate.cpp',
+    'app/StationBuilder.cpp',
+    'app/Fleet.cpp',
+    'app/StatusReport.cpp',
+    'app/DeterministicDump.cpp',
+    'app/DeterministicRun.cpp',
+    'app/RealTimeRun.cpp',
 
     # regras de negócio puras (idênticas às da poc/12)
     'domain/geometry.cpp',
     'domain/PatrolPlan.cpp',
+    'domain/RtbPlan.cpp',
     'domain/ThreatPolicy.cpp',
 
     # o pouco que continua sendo nosso do lado MIXR
     'xnative/AlertDatalink.cpp',
     'xnative/TacticalAlert.cpp',
+    'xnative/TrackQuery.cpp',
     'xnative/factory.cpp',
-    'xnative/runtime_utils.cpp',
+
+    # utilitários de runtime, um por questão
+    'xnative/ThreadTag.cpp',
+    'xnative/Log.cpp',
+    'xnative/BehaviorBoard.cpp',
 
     # UBF: percepção, decisão (árvore dentro), atuação
     'ubf/FlightState.cpp',
     'ubf/FlightAction.cpp',
     'ubf/BtBehavior.cpp',
+    'ubf/BtBehaviorSlots.cpp',
     'ubf/AltitudeSafetyBehavior.cpp',
 
     # nós/factory da árvore de comportamento

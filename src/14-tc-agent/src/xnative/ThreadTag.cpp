@@ -1,8 +1,7 @@
-#include "xnative/runtime_utils.hpp"
+#include "xnative/ThreadTag.hpp"
 
 #include <sched.h>
 
-#include <iostream>
 #include <map>
 #include <mutex>
 #include <thread>
@@ -11,20 +10,9 @@ namespace mixr {
 namespace xnative {
 
 namespace {
-
 std::mutex g_tagMutex;
 std::map<std::thread::id, int> g_tags;
 int g_nextTag{};
-
-std::mutex g_logMutex;
-bool g_loggingEnabled{true};
-
-}
-
-void setLoggingEnabled(const bool enabled)
-{
-   std::lock_guard<std::mutex> lock(g_logMutex);
-   g_loggingEnabled = enabled;
 }
 
 int threadTag()
@@ -52,31 +40,6 @@ int threadTag()
 int currentCpu()
 {
    return ::sched_getcpu();
-}
-
-namespace {
-std::mutex g_labelMutex;
-std::map<int, std::string> g_labels;
-}
-
-void setBehaviorLabel(const int playerId, const std::string& label)
-{
-   std::lock_guard<std::mutex> lock(g_labelMutex);
-   g_labels[playerId] = label;
-}
-
-std::string getBehaviorLabel(const int playerId)
-{
-   std::lock_guard<std::mutex> lock(g_labelMutex);
-   const auto it = g_labels.find(playerId);
-   return (it != g_labels.end()) ? it->second : std::string("--");
-}
-
-void logLine(const std::string& line)
-{
-   std::lock_guard<std::mutex> lock(g_logMutex);
-   if (!g_loggingEnabled) return;
-   std::cout << line << std::endl;
 }
 
 } // namespace xnative

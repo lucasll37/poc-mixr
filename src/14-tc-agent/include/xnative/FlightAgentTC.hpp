@@ -6,6 +6,8 @@
 #include <atomic>
 
 namespace mixr {
+namespace models { class AirVehicle; }
+
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -80,6 +82,17 @@ private:
    std::atomic<long> decisions{};
    std::atomic<int> lastThreadTag{-1};
 };
+
+//------------------------------------------------------------------------------
+// O agente de uma aeronave.
+//
+// Diferente do ( SimAgent ) da poc/13 -- componente da STATION, amarrado ao
+// ator por NOME -- este e componente do PLAYER. Entao a busca e a mesma que
+// o framework usa para os subsistemas: por TIPO, na lista de componentes.
+//
+// Devolve nullptr se a aeronave nao declarar um ( FlightAgentTC ) no .epp.
+//------------------------------------------------------------------------------
+const FlightAgentTC* findFlightAgent(const models::AirVehicle* air);
 
 } // namespace xnative
 } // namespace mixr

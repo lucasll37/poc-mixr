@@ -15,7 +15,8 @@ make compare-13-14         # lista o que difere entre os dois subprojetos
 > são resolvidos por caminho relativo (`./src/14-tc-agent/...`).
 
 **Por que ela existe.** A seção 8 do README da poc/13 termina numa ressalva: lá o determinismo é
-propriedade do *harness* (o laço do `main.cpp` serializando `tcFrame()` e `updateData()`), não do
+propriedade do *harness* (o laço de `app/DeterministicRun.cpp` serializando `tcFrame()` e
+`updateData()`), não do
 modelo. Esta poc paga o preço de escrever o agente para que passe a ser propriedade do **modelo** —
 e mede a diferença em vez de argumentar sobre ela.
 
@@ -27,7 +28,7 @@ e mede a diferença em vez de argumentar sobre ela.
 2. [A classe `FlightAgentTC`](#2-a-classe-flightagenttc)
 3. [Onde a decisão entra no frame](#3-onde-a-decisão-entra-no-frame)
 4. [O que muda no `.epp`](#4-o-que-muda-no-epp)
-5. [O que muda no `main.cpp`](#5-o-que-muda-no-maincpp)
+5. [O que muda na aplicação (`main.cpp` + `app/`)](#5-o-que-muda-na-aplicação-maincpp--app)
 6. [Determinismo — o ponto da poc](#6-determinismo--o-ponto-da-poc)
 7. [Interação entre players](#7-interação-entre-players)
 8. [O que foi medido rodando](#8-o-que-foi-medido-rodando)
@@ -57,12 +58,14 @@ Only in src/14-tc-agent/src/xnative:     FlightAgentTC.cpp     ← 92 linhas, 43
 Files .../src/xnative/factory.cpp differ                       ← +1 linha: registra a classe
 Files .../src/meson.build differ                               ← +1 linha: compila o .cpp
 Files .../configs/scenario.epp.in differ                       ← os 4 agentes mudam de lugar e de classe
-Files .../src/main.cpp differ                                  ← banners, comentários e os campos 'dec'/'thr' do status
+Files .../src/app/StatusReport.cpp differ                      ← +1 bloco: os campos 'dec'/'thr'
+Files .../src/app/DeterministicDump.cpp differ                 ← +1 campo: 'dec'
+Files .../src/main.cpp differ                                  ← banner e comentários de cabeçalho
 Files .../README.md differ                                     ← este arquivo
 ```
 
-Nenhum arquivo de `domain/`, `ubf/`, `bt/` ou dos outros modelos de `xnative/` foi tocado — e é
-essa a demonstração: **onde a decisão roda é uma escolha de integração, não do modelo**.
+Nenhum arquivo de `domain/`, `ubf/`, `bt/` ou dos outros modelos de `xnative/` foi tocado, e do
+lado da aplicação só mudou quem *imprime* os dois contadores novos — e é essa a demonstração: **onde a decisão roda é uma escolha de integração, não do modelo**.
 
 > **Sobre o namespace:** continua `mixr::xnative`, igual ao da poc/13, de propósito — é o que
 > permite que `diff -r` entre os dois subprojetos mostre exatamente a diferença que a poc quer
@@ -162,7 +165,7 @@ thread de tempo crítico (dt = 1/tcRate = 0.02 s), pool de N threads
               ├─ UbfArbiter::genAction()   (AltitudeSafetyBehavior 90 | BtBehavior 50)
               └─ FlightAction::execute()   → Autopilot + AlertDatalink
 
-laço do main.cpp (10 Hz)
+laço de app/RealTimeRun.cpp (10 Hz)
 └─ Station::updateData(dt)
    └─ DataRecorder::processRecords() → TacviewOutput     ← só isso; nenhuma decisão
 ```
@@ -211,15 +214,19 @@ linha por linha. Muda a classe, o lugar na árvore e o fato de não haver mais `
 
 ---
 
-## 5. O que muda no `main.cpp`
+## 5. O que muda na aplicação (`main.cpp` + `app/`)
 
 Quase nada — e é esse o ponto:
 
-| trecho | poc/13 | poc/14 |
+| arquivo | poc/13 | poc/14 |
 |---|---|---|
-| laço de tempo real | `station->updateData(dt)` drena o gravador **e** roda os agentes | `station->updateData(dt)` só drena o gravador |
-| laço `-deterministic` | `tcFrame()` + `updateData()` em lockstep — **é o que dá o determinismo** | `tcFrame()` + `updateData()`, mas o determinismo já vem do frame; `updateData()` está lá só para o Tacview |
-| status | — | acrescenta `dec=` (decisões do agente) e `thr=` (thread que decidiu) |
+| `app/RealTimeRun.cpp` | **idêntico** — mas `station->updateData(dt)` drena o gravador **e** roda os agentes | **idêntico** — `station->updateData(dt)` só drena o gravador |
+| `app/DeterministicRun.cpp` | **idêntico** — `tcFrame()` + `updateData()` em lockstep é o que dá o determinismo | **idêntico** — o determinismo já vem do frame; `updateData()` está lá só para o Tacview |
+| `app/StatusReport.cpp` | — | acrescenta `dec=` (decisões do agente) e `thr=` (thread que decidiu) |
+| `app/DeterministicDump.cpp` | — | acrescenta `dec=` ao dump comparável |
+
+Os dois laços são o **mesmo arquivo** nas duas pocs, byte a byte: quem muda é onde o agente está
+declarado no `.epp`, não o código que roda o laço.
 
 A observabilidade nova é de propósito: `dec` é a contagem que prova a mudança de taxa, e `thr` é o
 índice da thread do pool T/C que decidiu por último. `dec` entra no dump de determinismo (é
@@ -242,8 +249,8 @@ harness.
 
 A decisão é **parte do frame**. A fase 3 já é um trecho ordenado e com barreira: nenhum player
 entra nela antes que todos tenham terminado a fase 2, e nenhum sai do frame antes que todos
-tenham terminado a fase 3. Os três defeitos somem por construção — **sem depender de como o
-`main.cpp` chama as coisas**:
+tenham terminado a fase 3. Os três defeitos somem por construção — **sem depender de como a
+aplicação chama as coisas**:
 
 | defeito | poc/13 | poc/14 |
 |---|---|---|
@@ -251,8 +258,8 @@ tenham terminado a fase 3. Os três defeitos somem por construção — **sem de
 | decisões por segundo simulado | varia com o jitter do `msleep` | exatamente 1 por frame |
 | leitura concorrente do player | existe (removida pelo lockstep) | não existe: a decisão *é* o frame |
 
-O laço de tempo real deste `main.cpp` poderia sumir inteiro (só o Tacview pararia de receber) que
-a simulação continuaria evoluindo do mesmo jeito, frame a frame.
+O laço de `app/RealTimeRun.cpp` poderia sumir inteiro (só o Tacview pararia de receber) que a
+simulação continuaria evoluindo do mesmo jeito, frame a frame.
 
 ### 6.3 O paralelismo continua ligado
 
@@ -309,7 +316,7 @@ A lista é sempre a mesma: `Simulation::getPlayers()` (`Simulation.cpp:711`, dev
 **pré-`ref()`'d** — quem chama tem que `unref()`). Há três formas de achar alguém nela:
 `findPlayer(id)`, `findPlayerByName(nome)` e `PairStream::findByName(nome)` sobre o retorno de
 `getPlayers()`. Os `main.cpp` deste repo usam a terceira, inclusive o
-[nosso](src/main.cpp#L130-L140).
+[nosso](src/app/Fleet.cpp).
 
 Do lado do receptor, o despacho é a macro (`base/macros.hpp:327-347`): uma cadeia de `if`s sobre
 `_used`, **o primeiro que casa vence** — e por isso `ON_EVENT_OBJ` vem sempre antes de `ON_EVENT`
@@ -594,8 +601,8 @@ frame=2000  dec=2001
 determinismo: OK (estado idêntico em todas as execuções)
 ```
 
-`dec=2001` em 2000 frames: a decisão a mais é o `tcFrame()` de aquecimento que o `main.cpp` dispara
-logo depois do `RESET_EVENT`.
+`dec=2001` em 2000 frames: a decisão a mais é o `tcFrame()` de aquecimento que
+`app/StationBuilder.cpp` dispara logo depois do `RESET_EVENT`.
 
 ### 8.2 Em passo fixo, as duas pocs dão o **mesmo** estado
 
@@ -625,7 +632,8 @@ Status da poc/14 rodando de verdade (`dec` a cada 2 s):
 [t=10s] falcon1 ... dec=545 thr=0
 ```
 
-Na poc/13 essa mesma conta daria ~10 Hz — a taxa do laço de background (`bgRate` no `main.cpp`).
+Na poc/13 essa mesma conta daria ~10 Hz — a taxa do laço de background (`bgRate` em
+`app/RealTimeRun.cpp`).
 **A decisão ficou 5× mais frequente** sem que nenhum parâmetro do modelo mudasse.
 
 Efeito colateral que vale conhecer: o que a decisão dispara acompanha a taxa. O
@@ -647,7 +655,7 @@ um período mínimo entre transmissões no nó da árvore —, não o agente.
 Mesmo número de decisões, **threads diferentes**: os agentes rodam dentro do pool T/C, em
 paralelo, um por player — e ainda assim o dump é idêntico com 1, 2 ou 4 threads (7.1). Os índices
 de thread não são contíguos porque a numeração é por ordem de primeira chamada
-(`xnative::runtime_utils`), e o laço de background também pega um índice.
+(`xnative::ThreadTag`), e o laço de background também pega um índice.
 
 ---
 

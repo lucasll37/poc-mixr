@@ -101,19 +101,39 @@ src/NN-slug/
 ├── configs/scenario.epp   # cenário EDL (+ .xml das árvores de comportamento)
 ├── data/                  # dados vendorizados (jsbsim/, terrain/, recordings/)
 ├── include/
+│   ├── app/               # as etapas da aplicação, uma questão por arquivo (ver abaixo)
 │   ├── domain/            # regras de negócio puras — sem MIXR, sem BT — testável isolado
 │   ├── bt/ | ubf/         # adaptadores da lib externa (nós da árvore, comportamentos UBF)
 │   ├── x<nome>/           # classes MIXR próprias (namespace mixr::x<nome>) + factory própria
 │   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
 └── src/
     ├── meson.build        # define o executable() — nome = slug
-    ├── main.cpp           # FINO: só orquestra (constrói Station, roda o laço)
+    ├── main.cpp           # FINO: só orquestra (chama os módulos de app/ na ordem)
     └── ... (espelha include/)
 ```
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
 `main.cpp` não implementa comportamento. `src/03-bt-autopilot/` e `src/13-native-stack/` são as
 referências completas do padrão.
+
+**Um arquivo, uma questão.** O que antes era um `main.cpp` de ~450 linhas está quebrado em
+`app/`, no namespace `app`, e cada header abre com o "por que" daquele passo:
+
+| módulo | questão |
+|---|---|
+| `app/Options.*` | `argv` → struct (`-f`, `-threads`, `-deterministic`) |
+| `app/ScenarioTemplate.*` | `.epp.in` → `.epp` (resolve `@NUM_TC_THREADS@` antes do parse) |
+| `app/StationBuilder.*` | `.epp` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
+| `app/Fleet.*` | acha os players por nome e fixa a potência de cruzeiro |
+| `app/StatusReport.*` | o formato da linha de status legível |
+| `app/DeterministicDump.*` | o formato do dump `frame=` que os `make check-*` comparam |
+| `app/DeterministicRun.*` | o laço de passo fixo |
+| `app/RealTimeRun.*` | o laço de tempo real, o teclado e o `Ctrl+C` |
+
+Vale o mesmo dentro de `xnative/` e `ubf/`: a tabela de slots do `BtBehavior` (a fronteira com o
+EDL) fica em `ubf/BtBehaviorSlots.cpp` e os valores que ela ajusta em `ubf/BtTuning.hpp`,
+separados do arquivo que trata da decisão; utilitários de runtime são um por questão
+(`xnative/ThreadTag`, `xnative/Log`, `xnative/BehaviorBoard`).
 
 ### O modelo MIXR em uma tela
 

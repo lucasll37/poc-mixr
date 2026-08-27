@@ -1,7 +1,7 @@
 #include "ubf/FlightAction.hpp"
 
 #include "xnative/AlertDatalink.hpp"
-#include "xnative/runtime_utils.hpp"
+#include "xnative/BehaviorBoard.hpp"
 
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/system/Autopilot.hpp"
@@ -60,7 +60,7 @@ void FlightAction::setAlertBroadcast(const std::string& contactName,
 // conversao acontece aqui, na fronteira.
 //
 // O rotulo do comportamento vai para o quadro de status (ver
-// xnative/runtime_utils.hpp): o Aircraft nativo nao tem onde guarda-lo.
+// xnative/BehaviorBoard.hpp): o Aircraft nativo nao tem onde guarda-lo.
 //------------------------------------------------------------------------------
 bool FlightAction::execute(base::Component* actor)
 {

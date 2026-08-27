@@ -133,7 +133,7 @@ thread de tempo crítico (PeriodicThread, dt = 1/tcRate FIXO)
         Autopilot::process()  → erro de rumo/altitude/velocidade → setCommanded*()
                                  no dynamics model
 
-thread de background (laço do main.cpp, bgRate = 10 Hz)
+thread de background (laço de `app/RealTimeRun.cpp`, bgRate = 10 Hz)
 └─ Station::updateData(dt)
    ├─ SimAgent::updateData() → Agent::controller()
    │     ├─ FlightState::updateState(ator)      PERCEPÇÃO
@@ -157,8 +157,8 @@ agente próprio — o framework não traz um pronto (`UbfAgentTC` existe como cl
 
 ## 4. A árvore de objetos do cenário
 
-`configs/scenario.epp.in` monta isto (o `@NUM_TC_THREADS@` é substituído pelo `main.cpp` antes do
-parse, porque o teto depende da máquina):
+`configs/scenario.epp.in` monta isto (o `@NUM_TC_THREADS@` é substituído por
+`app/ScenarioTemplate.cpp` antes do parse, porque o teto depende da máquina):
 
 ```
 ( Station
@@ -210,7 +210,7 @@ telemetria que delegam ao dynamics model (`getMach()`, `getGload()`, `getFuelWt(
 
 **O que o player nativo não oferece:** um lugar para guardar o que é da aplicação. O rótulo do
 comportamento vencedor (`PATROL`/`EVADE`/`SUPPORT`) não tem campo onde morar e ficou num quadro
-de status por id de player (`include/xnative/runtime_utils.hpp`).
+de status por id de player (`include/xnative/BehaviorBoard.hpp`).
 
 ### 5.2 `( JSBSimModel )` — a dinâmica 6-DOF
 
@@ -259,8 +259,8 @@ preprocessador C antes do `edl_parser`.
 
 > **O radar nativo não separa amigo de inimigo.** `playerOfInterestTypes: { air }` filtra por
 > **tipo** de player, não por lado: a esquadrilha inteira aparece na lista de pistas. O filtro
-> amigo/inimigo é decisão tática e ficou onde deve estar — no `FlightState` (e no display do
-> `main.cpp`, para os dois baterem).
+> amigo/inimigo é decisão tática e ficou onde deve estar — em `xnative::TrackQuery`, uma consulta
+> só, usada tanto pelo `FlightState` quanto pelo status/dump da aplicação.
 
 ### 5.5 `xnative::AlertDatalink : models::Datalink` — a interação
 
@@ -381,7 +381,7 @@ A lista é sempre a mesma: `Simulation::getPlayers()` (`Simulation.cpp:711`, dev
 **pré-`ref()`'d** — quem chama tem que `unref()`). Há três formas de achar alguém nela:
 `findPlayer(id)`, `findPlayerByName(nome)` e `PairStream::findByName(nome)` sobre o retorno de
 `getPlayers()`. Os `main.cpp` deste repo usam a terceira, inclusive o
-[nosso](src/main.cpp#L131-L141).
+[nosso](src/app/Fleet.cpp).
 
 Do lado do receptor, o despacho é a macro (`base/macros.hpp:327-347`): uma cadeia de `if`s sobre
 `_used`, **o primeiro que casa vence** — e por isso `ON_EVENT_OBJ` vem sempre antes de `ON_EVENT`
@@ -701,7 +701,7 @@ Nenhum desses três se repete igual na execução seguinte.
 
 ### 8.4 O artifício: colapsar as duas threads numa só
 
-O modo `-deterministic N` (`src/main.cpp:275-292`) **não sobe a thread periódica**. O mesmo thread
+O modo `-deterministic N` (`src/app/DeterministicRun.cpp`) **não sobe a thread periódica**. O mesmo thread
 chama as duas coisas, em ordem fixa, com passo fixo:
 
 ```cpp
@@ -818,7 +818,7 @@ O `c310ap.xml` original apenas **declara** `ap/airspeed_hold` e `ap/throttle-cmd
 que os implemente. Como o MIXR já escreve `ap/airspeed_setpoint`, bastou acrescentar o canal
 `AP Autothrottle` (PID → manete) à cópia vendorizada — de novo em **dados**, não em C++.
 
-O `main.cpp` complementa fixando a potência de cruzeiro por `AirVehicle::setThrottles()` (método
+`app/Fleet.cpp` complementa fixando a potência de cruzeiro por `AirVehicle::setThrottles()` (método
 do próprio framework): a velocidade passa a ser **resultado** (potência fixa + arrasto), não
 comando.
 
@@ -886,19 +886,34 @@ src/13-native-stack/
 │   │   └── systems/{GNCUtilities.xml, engine-autostart.xml}   ← partida acrescentada
 │   └── recordings/                mission.acmi
 ├── include/ e src/
+│   ├── app/                       a aplicação, uma questão por arquivo
+│   │   ├── Options.*              argv → struct (-f / -threads / -deterministic)
+│   │   ├── ScenarioTemplate.*     .epp.in → .epp (resolve @NUM_TC_THREADS@)
+│   │   ├── StationBuilder.*       .epp → Station de pé (edl_parser, RESET, WorldModel)
+│   │   ├── Fleet.*                acha os players e fixa a potência de cruzeiro
+│   │   ├── StatusReport.*         a linha de status humana (formato)
+│   │   ├── DeterministicDump.*    o dump `frame=` que os `make check-*` comparam
+│   │   ├── DeterministicRun.*     laço de passo fixo (-deterministic N)
+│   │   └── RealTimeRun.*          laço de tempo real + teclado + Ctrl+C
 │   ├── domain/                    regras puras (sem MIXR, sem BT, sem JSBSim)
 │   │   ├── FlightCommand.hpp      DTO de comando (rumo/altitude/velocidade)
 │   │   ├── geometry.*             wrap180/360, rumo e distância em NED
-│   │   ├── PatrolPlan.*           circuito de patrulha + plano de retorno
+│   │   ├── PatrolPlan.*           circuito de patrulha cíclico
+│   │   ├── RtbPlan.*              plano de retorno à base
 │   │   └── ThreatPolicy.*         manobra de evasão
 │   ├── xnative/                   o que sobrou de próprio no lado MIXR
 │   │   ├── AlertDatalink.*        herda models::Datalink
 │   │   ├── TacticalAlert.*        base::Object (carga do datalink)
-│   │   ├── factory.*              registra as 6 classes próprias
-│   │   └── runtime_utils.*        tag de thread, log com mutex, quadro de status
+│   │   ├── TrackQuery.*           contato hostil mais próximo (radar nativo)
+│   │   ├── ThreadTag.*            índice estável da thread T/C chamadora
+│   │   ├── Log.*                  console com mutex (várias threads escrevem)
+│   │   ├── BehaviorBoard.*        quadro de rótulos por id de player
+│   │   └── factory.*              registra as 6 classes próprias
 │   ├── ubf/                       percepção / decisão / atuação
 │   │   ├── FlightState.*          AbstractState  → Snapshot
+│   │   ├── BtTuning.hpp           os números que o EDL ajusta no BtBehavior
 │   │   ├── BtBehavior.*           AbstractBehavior (hospeda a árvore)
+│   │   ├── BtBehaviorSlots.cpp    a fronteira com o EDL do BtBehavior
 │   │   ├── AltitudeSafetyBehavior.*  AbstractBehavior (regra dura)
 │   │   └── FlightAction.*         AbstractAction (Autopilot + Datalink)
 │   ├── bt/                        adaptadores da árvore
@@ -907,7 +922,7 @@ src/13-native-stack/
 │   │   └── nodes/                 FuelLow, ReturnToBase, ContactDetected,
 │   │                              ReportAndEvade, AlertReceived, SupportAlert, Patrol
 │   ├── mixr_factory.*             encadeia xnative → xtacview → framework
-│   └── main.cpp                   gera o .epp, constrói a Station, roda o laço/status
+│   └── main.cpp                   só orquestra: chama os módulos de app/ na ordem
 ```
 
 O `main.cpp` é fino de propósito: ele **não** pilota, **não** tica árvore e **não** monta ACMI.
@@ -987,8 +1002,8 @@ que prova o efeito:
 
 O código vive em `shared/xclock/` — biblioteca compartilhada, mesmo padrão de `shared/xtacview`,
 uma cópia só para as duas pocs. O cenário declara `( ClockStation )` no lugar de `( Station )`;
-trocar de volta para `( Station )` continua rodando, apenas sem as teclas (o `main.cpp` avisa e
-segue).
+trocar de volta para `( Station )` continua rodando, apenas sem as teclas (`app/StationBuilder.cpp`
+avisa e segue).
 
 ### 14.1 Acelerar já era do framework
 
@@ -1092,4 +1107,4 @@ congelado. Nada se move; a decisão apenas não para. Vale para o `SimAgent` da 
 `ConsoleKeyboard` usa termios em modo raw (`~ICANON`/`~ECHO`, `VMIN=VTIME=0`) com `stdin` em
 `O_NONBLOCK`, e restaura o terminal no destrutor. Sem TTY — pipe, redirecionamento, CI — o
 `tcgetattr()` falha, `isActive()` fica `false` e a simulação roda normalmente, só sem teclado.
-O `main.cpp` diz isso na partida em vez de fingir que as teclas funcionam.
+`app/RealTimeRun.cpp` diz isso na partida em vez de fingir que as teclas funcionam.

@@ -1,16 +1,10 @@
 #include "ubf/FlightState.hpp"
 
 #include "xnative/AlertDatalink.hpp"
+#include "xnative/TrackQuery.hpp"
 
-#include "mixr/models/Track.hpp"
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
-#include "mixr/models/system/OnboardComputer.hpp"
-#include "mixr/models/system/trackmanager/TrackManager.hpp"
-
-#include "mixr/base/safe_ptr.hpp"
-
-#include <string>
 
 namespace mixr {
 namespace xnative {
@@ -20,7 +14,6 @@ EMPTY_SLOTTABLE(FlightState)
 EMPTY_DELETEDATA(FlightState)
 
 namespace {
-const int MAX_TRACKS{20};
 const double RAD2DEG{57.295779513082320876798154814105};
 }
 
@@ -42,7 +35,7 @@ void FlightState::copyData(const FlightState& org, const bool)
 // (JsbsimFlightModel, ProximitySensor, AlertRadio). Aqui:
 //
 //   combustivel/mach/G/AoA  -> AirVehicle (que delega ao dynamics model)
-//   contato                 -> OnboardComputer -> TrackManager -> Track
+//   contato                 -> xnative::nearestHostileTrack() (radar nativo)
 //   alerta                  -> Player::getDatalink()
 //
 // Nenhum updateSystemPointers() nosso: o Player ja resolve DynamicsModel,
@@ -78,53 +71,19 @@ void FlightState::updateState(const base::Component* const actor)
    s.alphaDeg = air->getAngleOfAttack() * RAD2DEG;
 
    // --- contato: pista do radar NATIVO (Antenna/Tws -> AirTrkMgr) ---
-   const auto obc = const_cast<models::OnboardComputer*>(air->getOnboardComputer());
-   if (obc != nullptr) {
-      models::TrackManager* const trkMgr{obc->getTrackManagerByName("twsTrkMgr")};
-      if (trkMgr != nullptr) {
-         base::safe_ptr<models::Track> tracks[MAX_TRACKS];
-         const int n{trkMgr->getTrackList(tracks, MAX_TRACKS)};
+   const TrackInfo track{nearestHostileTrack(air)};
+   if (track.found) {
+      s.hasContact = true;
+      s.contactName = track.name;
+      s.contactRangeM = track.rangeM;
+      s.contactRelBearingDeg = track.relBearingDeg;
+      s.contactDeltaAltM = track.deltaAltM;
 
-         const models::Track* best{};
-         for (int i = 0; i < n; i++) {
-            const models::Track* const trk{tracks[i]};
-            if (trk == nullptr) continue;
-
-            // O radar NATIVO nao filtra por lado (playerOfInterestTypes so
-            // filtra por TIPO de player): a esquadrilha inteira aparece na
-            // lista de pistas. Filtrar amigo/inimigo e decisao tatica, e o
-            // lugar dela e aqui -- nao no sensor.
-            const models::Player* const tgtPlayer{trk->getTarget()};
-            if (tgtPlayer != nullptr && tgtPlayer->getSide() == air->getSide()) continue;
-            // Desempate deterministico: menor distancia e, em empate exato,
-            // menor id de pista -- para nao depender da ordem da lista.
-            if (best == nullptr
-                || trk->getRange() < best->getRange()
-                || (trk->getRange() == best->getRange() && trk->getTrackID() < best->getTrackID())) {
-               best = trk;
-            }
-         }
-
-         if (best != nullptr) {
-            s.hasContact = true;
-            s.contactRangeM = best->getRange();
-            s.contactRelBearingDeg = best->getRelAzimuthD();
-
-            // Track::getPosition() e o vetor NED do contato RELATIVO ao
-            // ownship: somando a nossa posicao sai a posicao absoluta, que
-            // e o que vai no alerta para os outros avioes.
-            const base::Vec3d& rel{best->getPosition()};
-            s.contactDeltaAltM = -rel[models::Player::IDOWN];
-            s.contactNorthM = s.northM + rel[models::Player::INORTH];
-            s.contactEastM = s.eastM + rel[models::Player::IEAST];
-            s.contactAltitudeM = s.altitudeM + s.contactDeltaAltM;
-
-            const models::Player* const tgt{best->getTarget()};
-            s.contactName = (tgt != nullptr && tgt->getName() != nullptr)
-                             ? tgt->getName()->getString()
-                             : ("trk" + std::to_string(best->getTrackID()));
-         }
-      }
+      // A pista vem RELATIVA ao ownship; somando a nossa posicao sai a
+      // posicao absoluta, que e o que vai no alerta para os outros avioes.
+      s.contactNorthM = s.northM + track.relNorthM;
+      s.contactEastM = s.eastM + track.relEastM;
+      s.contactAltitudeM = s.altitudeM + track.deltaAltM;
    }
 
    // --- alerta recebido pelo datalink NATIVO ---

@@ -5,7 +5,9 @@
 
 #include "bt/NodeContext.hpp"
 #include "domain/PatrolPlan.hpp"
+#include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
+#include "ubf/BtTuning.hpp"
 #include "ubf/FlightState.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
@@ -87,8 +89,8 @@ public:
    domain::RtbPlan& rtbPlan()                     { return rtb; }
    const domain::ThreatPolicy& threatPolicy() const { return threat; }
    double getFrameDt() const                      { return frameDt; }
-   double getFuelReserve() const                  { return fuelReserve; }
-   double getSupportSpeedKts() const              { return supportSpeedKts; }
+   double getFuelReserve() const                  { return tune.fuelReserve; }
+   double getSupportSpeedKts() const              { return tune.supportSpeedKts; }
 
 protected:
    bool shutdownNotification() override;
@@ -111,22 +113,10 @@ private:
    bool plansReady{};
    double frameDt{};
 
-   std::string treeFile;
-   double patrolHeadingDeg{};
-   double legTimeSec{60.0};
-   double legTurnDeg{90.0};
-   double patrolAltitudeM{4000.0};
-   double patrolSpeedKts{350.0};
-   double rtbAltitudeM{3000.0};
-   double rtbSpeedKts{400.0};
-   double arrivalRadiusM{3.0 * 1852.0};
-   double fuelReserve{0.35};
-   double breakTurnDeg{110.0};
-   double evadeClimbM{600.0};
-   double evadeSpeedKts{450.0};
-   double supportSpeedKts{420.0};
+   // Tudo o que o EDL ajusta (ver ubf/BtTuning.hpp e src/ubf/BtBehaviorSlots.cpp)
+   BtTuning tune;
 
-   // slot table helper methods
+   // slot table helper methods -- corpos em src/ubf/BtBehaviorSlots.cpp
    bool setSlotTreeFile(const base::String* const);
    bool setSlotPatrolHeading(const base::Angle* const);
    bool setSlotLegTime(const base::Time* const);
