@@ -52,8 +52,9 @@ mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
 # dependências entre elas (libmixr_models.so -> libmixr_base.so).
 rpath_link_args = ['-Wl,--disable-new-dtags']
 
-# Depuração temporária (poc/13): -Dasan=true liga o AddressSanitizer só no
-# alvo que precisa, sem recompilar o resto do projeto.
+# Depuração temporária: -Dasan=true liga o AddressSanitizer só nos alvos que
+# consomem estas flags (as pocs single-thread e multi-thread), sem recompilar
+# o resto do projeto.
 asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-pointer', '-g'] : []
 asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 
@@ -98,6 +99,6 @@ summary({
 #     'poc/10-satellite-constellation': satellite_constellation.full_path(),
 #     'poc/11-custom-models':    custom_models.full_path(),
 #     'poc/12-jsbsim-ubf':       jsbsim_ubf.full_path(),
-#     'poc/13-native-stack':     native_stack.full_path(),
-#     'poc/14-tc-agent':         tc_agent.full_path(),
+#     'poc/single-thread':       single_thread.full_path(),
+#     'poc/multi-thread':        multi_thread.full_path(),
 # }, section: 'Build Artifacts')

@@ -13,11 +13,27 @@ Prova de conceito para desenvolver **novos modelos de simulação** sobre o fram
 **BehaviorTree.CPP v3** (`behaviortree.cpp.asa/3.5.6`). O MIXR **não** é o objeto de
 desenvolvimento — é dependência binária.
 
-Cada PoC vive em `src/NN-slug/`, é um executável independente, e todas compilam juntas.
-A progressão é incremental: cada número reaproveita/contrapõe o anterior (ex.: `12` refaz
-`11` com 6-DOF real + UBF; `13` refaz `12` usando a pilha nativa do framework no lugar das
-classes próprias; `14` refaz `13` trocando só o agente do UBF — `SimAgent` nativo, que decide em
-`updateData()`, por um `AgentTC` próprio, que decide na fase 3 do frame).
+O repositório tem hoje **dois subprojetos irmãos** em `src/`, cada um um executável
+independente, e os dois compilam juntos. É o **mesmo modelo** nos dois — mesmo cenário, mesma
+pilha nativa, mesmos comportamentos: a única diferença é o **agente do UBF**, isto é, *onde a
+decisão roda*.
+
+| subprojeto | agente | onde a decisão roda |
+|---|---|---|
+| `src/single-thread/` | `( SimAgent )` nativo, componente da **`Station`** | `updateData()`, thread de **background**: os 4 agentes decidem **em sequência**, numa thread só, a 10 Hz |
+| `src/multi-thread/` | `( FlightAgentTC )` próprio, componente do **`Player`** | **fase 3** do frame, thread de **tempo crítico**: os 4 decidem **em paralelo**, um por thread do pool, a 50 Hz |
+
+> **O nome diz onde a DECISÃO roda — não como a simulação roda.** As duas pocs declaram
+> `numTcThreads` e distribuem os players pelo pool de threads de tempo crítico do framework, e
+> as duas passam nos checks de determinismo com 1, 2 e 4 threads. Nenhuma delas roda a
+> simulação inteira numa thread só.
+
+`make compare-single-multi` mostra a diferença: fora o agente, as duas pastas são iguais.
+
+Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
+`12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
+pastas **não existem mais** e o prefixo numérico **não é mais convenção**: subprojeto novo ganha
+uma pasta com nome descritivo.
 
 O fork empacotado é **headless**: não publica `mixr_graphics`/`glut`/`instruments`/`ighost`.
 Por isso não existe `GlutDisplay` aqui e toda visualização é feita por **Tacview Real-Time
@@ -35,27 +51,28 @@ make clean       # remove build/ e dist/
 make help        # lista os alvos (comentários ## do Makefile)
 ```
 
-Binários ficam em `build/src/NN-slug/src/<slug>` (o `<slug>` é o nome da pasta sem o `NN-`), e
-cada um tem um alvo `run-<slug>` no Makefile.
+Binários ficam em `build/src/<nome>/src/<nome>` — o executável tem o **mesmo nome da pasta** —,
+e cada um tem um alvo `run-<nome>` no Makefile.
 
-**Todos os binários leem `configs/`/`data/` por caminho relativo (`./src/NN-slug/...`) e devem
+**Todos os binários leem `configs/`/`data/` por caminho relativo (`./src/<nome>/...`) e devem
 ser executados a partir da raiz do repositório:**
 
 ```bash
-./build/src/01-flying-aircraft/src/flying-aircraft
+./build/src/single-thread/src/single-thread
 ```
 
-Opções de linha de comando das pocs: `-f <arquivo>` (cenário alternativo) em todas;
-`-threads <N>` e `-deterministic <N>` nas pocs 11/12/13/14.
+Opções de linha de comando, aceitas pelas duas pocs: `-f <arquivo>` (cenário alternativo),
+`-threads <N>` (quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo).
 
-**Não há suíte de testes.** A verificação automatizada existente é de **determinismo**
-(alvos `check-custom-models`, `check-jsbsim-ubf`, `check-native-stack`, `check-tc-agent`): roda N
-frames de passo fixo com 1, 2 e 4 threads T/C e compara os dumps `frame=` — todos devem ser
-idênticos. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
-O alvo `compare-13-14` lista o que difere entre as pocs 13 e 14 (deve ser só o agente).
+**Não há suíte de testes.** A verificação automatizada existente é de **determinismo** (alvos
+`check-single-thread` e `check-multi-thread`): roda N frames de passo fixo com 1, 2 e 4 threads
+T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **duas** pocs, a
+`single-thread` inclusive: ela também roda os players no pool de threads T/C, só decide fora
+dele. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
+O alvo `compare-single-multi` lista o que difere entre as duas pastas (deve ser só o agente).
 
 **AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan apenas na
-`13-native-stack` (único alvo que consome `asan_cpp_args`/`asan_link_args`).
+`single-thread` (único alvo que consome `asan_cpp_args`/`asan_link_args`).
 
 ## Onde consultar o framework
 
@@ -96,10 +113,13 @@ e o pacote Conan, **quem vale é o pacote** — é ele que está linkado.
 ### Estrutura de um subprojeto
 
 ```
-src/NN-slug/
+src/<nome>/
 ├── meson.build            # só faz subdir('./src')
 ├── configs/scenario.epp   # cenário EDL (+ .xml das árvores de comportamento)
-├── data/                  # dados vendorizados (jsbsim/, terrain/, recordings/)
+│                          # nas duas pocs é um .epp.in — ver app/ScenarioTemplate
+├── data/                  # dados vendorizados (jsbsim/, recordings/)
+│                          # exceção: o tile SRTM mora em shared/data/terrain/ —
+│                          # é do cenário, que é o mesmo nas duas pocs
 ├── include/
 │   ├── app/               # as etapas da aplicação, uma questão por arquivo (ver abaixo)
 │   ├── domain/            # regras de negócio puras — sem MIXR, sem BT — testável isolado
@@ -107,14 +127,14 @@ src/NN-slug/
 │   ├── x<nome>/           # classes MIXR próprias (namespace mixr::x<nome>) + factory própria
 │   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
 └── src/
-    ├── meson.build        # define o executable() — nome = slug
+    ├── meson.build        # define o executable() — nome = nome da pasta
     ├── main.cpp           # FINO: só orquestra (chama os módulos de app/ na ordem)
     └── ... (espelha include/)
 ```
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
-`main.cpp` não implementa comportamento. `src/03-bt-autopilot/` e `src/13-native-stack/` são as
-referências completas do padrão.
+`main.cpp` não implementa comportamento. `src/single-thread/` é a referência completa do padrão
+(a `src/multi-thread/` é a mesma árvore, trocando só o agente).
 
 **Um arquivo, uma questão.** O que antes era um `main.cpp` de ~450 linhas está quebrado em
 `app/`, no namespace `app`, e cada header abre com o "por que" daquele passo:
@@ -122,6 +142,7 @@ referências completas do padrão.
 | módulo | questão |
 |---|---|
 | `app/Options.*` | `argv` → struct (`-f`, `-threads`, `-deterministic`) |
+| `app/TerrainData.*` | garante o `.hgt` em disco, com o tamanho que o `SrtmHgtFile` aceita |
 | `app/ScenarioTemplate.*` | `.epp.in` → `.epp` (resolve `@NUM_TC_THREADS@` antes do parse) |
 | `app/StationBuilder.*` | `.epp` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
 | `app/Fleet.*` | acha os players por nome e fixa a potência de cruzeiro |
@@ -166,8 +187,8 @@ declarado na cadeia nativa do slot `dataRecorder` da `Station`:
 dataRecorder: ( DataRecorder
    outputHandler: ( RecorderOutputHandler
       components: {
-         ( TacviewOutput port: 1234 callsign: "poc-mixr/<slug>"
-           fileName: "./src/NN-slug/data/recordings/mission.acmi"
+         ( TacviewOutput port: 1234 callsign: "poc-mixr/<nome>"
+           fileName: "./src/<nome>/data/recordings/mission.acmi"
            typeMap: { ... } colorMap: { ... } modelMap: { ... } )
       } ) )
 ```
@@ -200,7 +221,7 @@ no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname 
 
 Mesmo padrão `shared/x<nome>` do `xtacview` (factory própria, classes em `mixr::xclock`, exposta
 como `xclock_dep`). O cenário declara **`( ClockStation )` no lugar de `( Station )`** — é uma
-`simulation::Station` com um único override. Usada pelas pocs 13 e 14; trocar de volta para
+`simulation::Station` com um único override. Usada pelas duas pocs; trocar de volta para
 `( Station )` continua rodando, só sem as teclas (o `main.cpp` avisa e segue).
 
 Teclas (em `TimeControls`): `+`/`=` acelera, `-`/`_` freia, `espaço`/`p` pausa, `1` volta a
@@ -235,24 +256,95 @@ caminho, o de background (`Simulation::updateData()`, linha 625), que não passa
 `processTimeCriticalTasks()`.
 
 **Limite conhecido:** `ubf::Agent::updateData()` chama `controller(dt)` sem consultar
-`isFrozen()` (`Agent.cpp:59-62`) — com a simulação pausada, o `SimAgent` da poc/13 continua
+`isFrozen()` (`Agent.cpp:59-62`) — com a simulação pausada, o `SimAgent` da poc/single-thread continua
 avaliando sobre um mundo estático (nada se move; a decisão só não para). O `FlightAgentTC` da
-poc/14 decide na fase 3, dentro do frame, então para junto.
+poc/multi-thread decide na fase 3, dentro do frame, então para junto.
 
 `-deterministic` **não é afetado**: chama `station->tcFrame(dt)` direto, sem passar por
-`processTimeCriticalTasks()`. `make check-native-stack`/`check-tc-agent` seguem valendo.
+`processTimeCriticalTasks()`. `make check-single-thread`/`check-multi-thread` seguem valendo.
 
 Sem TTY (pipe, redirecionamento, CI) o `tcgetattr()` de `ConsoleKeyboard` falha, `isActive()`
 fica `false` e a simulação roda normalmente, só sem teclado.
 
+### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
+
+O banco de elevação é **100% nativo**: `libmixr_terrain.so` já vinha linkado (o `mixr.pc` do
+Conan lista `mixr-terrain` em `Requires:`), o `WorldModel` já tinha o slot `terrain`, e o
+`Player` já tinha `getTerrainElevationM()`/`getAltitudeAglM()`/`updateElevation()`. **Nada foi
+escrito do lado do framework e nenhuma linha de meson mudou.** O que faltava eram três coisas:
+
+1. **A factory.** `models::factory` **não** encadeia a de terreno — sem
+   `mixr::terrain::factory(name)` no `mixr_factory.cpp`, o `( SrtmHgtFile )` do `.epp` não
+   constrói nada e o `WorldModel` fica sem terreno, em silêncio.
+2. **O dado.** `shared/data/terrain/srtm/S23W043.hgt.gz` — tile SRTM1 da Serra do Mar (RJ),
+   recuperado do histórico do git (era da `poc/05-formation-flight`). Fica em `shared/` e não
+   em `src/<nome>/data/` de propósito: são 12 MB do **cenário**, que é o mesmo nas duas pocs
+   gêmeas — é a única exceção à regra de `data/` por subprojeto.
+3. **A ponte até a decisão.** `ubf::FlightState::updateState()` copia `terrainElevM`,
+   `altitudeAglM` e `terrainValid` para o `Snapshot`; daí em diante é regra pura em
+   `domain/TerrainFloor.hpp`, consumida pela `domain::ThreatPolicy` (piso da evasão) e pelo
+   `xnative::AltitudeSafetyBehavior` (piso AGL).
+
+**Armadilhas confirmadas lendo o fonte — não redescobrir:**
+
+1. **`Player::updateElevation()` ignora o retorno de `getElevation()`**
+   (`Player.cpp:3205-3206`). Fora da célula do tile, `el` fica `0.0` e
+   `setTerrainElevation(0.0)` liga `tElevValid = true`. **`isTerrainElevationValid()` não é
+   guarda de cobertura.** Por isso o piso de `domain/TerrainFloor.hpp` mantém uma camada
+   absoluta embaixo da camada de terreno, e por isso o cenário fica no miolo da célula.
+2. **`getAltitudeAgl()` não consulta `tElevValid`** (`Player.inl:262-266`): sem banco
+   carregado, AGL == altitude HAE, silenciosamente.
+3. **Os slots são `path` e `file`** — não `pathname`/`filename`, que é como se chamam os
+   setters (`Terrain.cpp:24-32`). Nome errado dá `slot not found` e o tile não carrega.
+4. **`SrtmHgtFile` não lê `.gz`** e valida o **tamanho exato em bytes** (2.884.802 = SRTM3,
+   25.934.402 = SRTM1; `SrtmHgtFile.cpp:154-207`). Qualquer outro tamanho falha com
+   *"ERROR in determining SRTM type"*, sem dizer qual arquivo. O nome é lido por **posição fixa
+   nos últimos 11 caracteres** (`S23W043.hgt`). `app/TerrainData` descomprime e **confere o
+   tamanho**, que é o antídoto para o diagnóstico inútil.
+5. **`CRASH_EVENT` deixa de ser letra morta.** `Player.cpp:2811` dispara com `AGL < 0`, e
+   `crashNotification()` (`Player.cpp:2451-2484`) faz `setMode(CRASHED)` e manda `KILL_EVENT`
+   a todos os subcomponentes — o avião **congela e para de decidir**, porque `updateTC`/
+   `updateData` só rodam com `mode == ACTIVE`. Hoje isso nunca acontecia porque `tElev` era
+   sempre 0. É a razão de a altitude de cada falcon sair do **pico do próprio circuito + 300 m**.
+   Escape hatch, se algum dia precisar: `crashOverride: true` no player (slot nativo 26).
+6. **`terrainElevReq` tem de continuar `false`** (default). Com `true`, `updateElevation()`
+   **pula** a consulta ao banco e fica esperando um gerador de imagem externo empurrar o valor.
+7. `getMinElevation()`/`getMaxElevation()` do `SrtmHgtFile` estão **errados** — refletem só a
+   última linha lida (`SrtmHgtFile.cpp:232-233,253-254`). O `DtedFile` tem o mesmo defeito por
+   coluna. Não usar esses dois.
+8. `QuadMap` aceita **no máximo 4** filhos e descarta o excedente **em silêncio**; e
+   `QuadMap::clone()` devolve `nullptr` (`IMPLEMENT_ABSTRACT_SUBCLASS`), o que faz
+   `WorldModel::copyData()` estourar. Aqui se usa um `SrtmHgtFile` direto — nenhum dos dois
+   se aplica.
+9. `WorldModel::reset()` imprime `"Loading Terrain Data..."` em `stdout`, incondicionalmente.
+   Inofensivo: os `check-*` filtram por `grep '^frame='`.
+10. **Não acrescentar tokens ao `enabledList: [ 43 42 ]`** do `dataRecorder`.
+    `crashNotification()` grava `REID_PLAYER_CRASH`; mantê-lo fora da lista mantém o handler
+    nativo (da mesma família dos que estouram) fora do caminho.
+
+**Onde a elevação é consultada, e o que isso implica:** `Player::updateElevation()` roda em
+`updateData()` (`Player.cpp:630`), ou seja na fase de **background** — não numa das quatro
+fases do frame de tempo crítico. Na `multi-thread`, que decide na fase 3 a 50 Hz contra um
+background de 10 Hz, o valor pode estar até 100 ms velho (~8 m percorridos). Continua
+determinístico: em `-deterministic` o laço faz `tcFrame()` e `updateData()` em sequência no
+mesmo passo, e `check-single-thread`/`check-multi-thread` passam com 1, 2 e 4 threads T/C.
+
+**Limite medido, e vale saber antes de ajustar o cenário:** quem limita a manobra é a
+**aeronave**, não o terreno. Com `maxClimbRateMps: 8.0` e `evadeHold: 30 s`, o C310 desce
+~330 m por engajamento. Para o piso anti-CFIT ser alcançado, `terrainClearance` tem de ficar
+**dentro de ~330 m do AGL de cruzeiro** — daí a folga de 800 m contra um cruzeiro de ~930 m
+AGL. Com folgas "bonitas" (300–500 m) o piso está correto e roda, mas recorta um alvo que a
+aeronave nunca alcançaria: o dump sai idêntico ao do controle negativo.
+
 ## Ao adicionar um subprojeto novo
 
-1. Criar `src/NN-slug/` (próximo número) seguindo a estrutura acima; sempre com
-   `include/mixr_factory.hpp` + `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`).
-2. Adicionar `subdir('./NN-slug')` em [src/meson.build](src/meson.build) e o alvo no `summary()`
+1. Criar `src/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
+   executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
+   `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`).
+2. Adicionar `subdir('./<nome>')` em [src/meson.build](src/meson.build) e o alvo no `summary()`
    de Build Artifacts do [meson.build](meson.build) raiz.
-3. Adicionar o alvo `run-<slug>` no [Makefile](Makefile) — apontando para
-   `$(BUILD_DIR)/src/NN-slug/src/<slug>`.
+3. Adicionar o alvo `run-<nome>` no [Makefile](Makefile) — apontando para
+   `$(BUILD_DIR)/src/<nome>/src/<nome>`.
 4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args` +
    `install_rpath`/`build_rpath` com `mixr_libdir`, `bt_libdir`, `mixr_bt_libdir` ou
    `mixr_bt_jsbsim_libdir` conforme as dependências usadas (variáveis definidas no `meson.build` raiz).
@@ -265,14 +357,14 @@ fica `false` e a simulação roda normalmente, só sem teclado.
 As `.so` do MIXR/BT.CPP/JSBSim vivem no cache do Conan, fora de qualquer caminho do loader.
 
 - **O Meson descarta o `build_rpath` no `meson install`** (por design): um alvo sem
-  `install_rpath` roda de `build/` e falha em `dist/bin/<slug>` com
+  `install_rpath` roda de `build/` e falha em `dist/bin/<nome>` com
   `error while loading shared libraries`.
 - **`-Wl,--disable-new-dtags` (em `rpath_link_args`) não é decorativo**: força `DT_RPATH` em vez
   de `DT_RUNPATH`. RPATH é herdado pelas dependências transitivas, RUNPATH não — sem ele o loader
   resolve as libs nomeadas no executável mas falha entre elas (`libmixr_models.so` → `libmixr_base.so`).
 
-Conferência após `make install`: `ldd dist/bin/<slug> | grep 'not found'` (silêncio = ok) e
-`readelf -d dist/bin/<slug> | grep -E 'RPATH|RUNPATH'`.
+Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (silêncio = ok) e
+`readelf -d dist/bin/<nome> | grep -E 'RPATH|RUNPATH'`.
 
 `dist/` **não é auto-contido** (rpath com hash do cache Conan + configs por caminho relativo).
 
@@ -289,7 +381,7 @@ Conferência após `make install`: `ldd dist/bin/<slug> | grep 'not found'` (sil
 
 - A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,
   `.epp`/`.epp.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
-  `poc/NN-slug`** — é só prosa, nenhum caminho depende disso.
+  `poc/<nome>`** — é só prosa, nenhum caminho depende disso.
 - `docs/` está vazio.
 - `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
   destrackeado com `git rm -r --cached`.

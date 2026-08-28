@@ -1,6 +1,7 @@
 build
 dist
-mixr
-miia
-contexts/src/
 .claude/settings.local.json
+
+# tile SRTM: versiona-se o .gz (12 MB); o .hgt descomprimido (25 MB) e
+# artefato gerado na primeira execucao -- ver app/TerrainData.
+shared/data/terrain/srtm/*.hgt

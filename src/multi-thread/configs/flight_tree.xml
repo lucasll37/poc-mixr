@@ -1,0 +1,55 @@
+<!--
+  Subprojeto 13 - single-thread
+
+  Arvore de comportamento de UM caca. Ela e a politica interna do
+  xnative::BtBehavior, que por sua vez e um AbstractBehavior do UBF nativo --
+  ou seja, esta arvore concorre POR VOTO com outros comportamentos dentro
+  do UbfArbiter declarado no scenario.epp (hoje, com o
+  AltitudeSafetyBehavior, que tem voto maior e so age se a aeronave furar
+  o piso de altitude).
+
+  Prioridade (Fallback, de cima para baixo):
+    1) combustivel abaixo da reserva      -> volta para a base
+    2) manobra de evasao valendo          -> quebra E AVISA os outros
+    3) alerta recebido de outro caca      -> vai apoiar no ponto avisado
+    4) caso contrario                     -> patrulha
+
+  Os itens 2 e 3 sao os dois lados da interacao entre players: quem viu
+  transmite (AlertDatalink, fase 1) e quem recebeu reage (fase 3 do frame
+  seguinte). Nenhum no fala diretamente com outro aviao.
+
+  ATENCAO AO ITEM 2 -- ele NAO e "estou vendo o intruso agora". Os itens 2
+  e 3 comandam sentidos OPOSTOS sobre o mesmo objeto (fugir dele / ir ate
+  ele), e a propria quebra tira o intruso do setor do radar (+-30 graus,
+  contra uma quebra de 110): a pista pisca, e sem tempo minimo de
+  permanencia os dois ramos alternam para sempre -- observado no Tacview
+  como aeronaves "batendo asa", +-25 graus de banco a cada ~12 s.
+
+  Por isso ContactDetected consulta domain::ThreatPolicy::engaged(), que
+  continua true por 'evadeHold' segundos depois de a pista sumir. A
+  histerese e do MODELO, nao da arvore: trocar o XML nao a desliga.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="engage_sequence">
+        <ContactDetected/>
+        <ReportAndEvade/>
+      </Sequence>
+
+      <Sequence name="support_sequence">
+        <AlertReceived/>
+        <SupportAlert/>
+      </Sequence>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

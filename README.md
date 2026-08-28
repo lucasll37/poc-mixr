@@ -38,7 +38,8 @@ make clean       # remove build/ e dist/
 make help        # lista os alvos disponíveis
 ```
 
-Cada subprojeto vira um executável independente em `build/src/NN-slug/src/<slug>`.
+Cada subprojeto vira um executável independente em `build/src/<slug>/src/<slug>` — hoje
+`build/src/single-thread/src/single-thread` e `build/src/multi-thread/src/multi-thread`.
 
 `dist/` **não é auto-contido**: os binários carregam no rpath o caminho das `.so` dentro do
 cache do Conan, e leem `configs/`/`data/` por caminho relativo.
@@ -50,20 +51,32 @@ cache do Conan, e leem `configs/`/`data/` por caminho relativo.
 **Sempre a partir da raiz do repositório** — todos os binários resolvem `configs/` e `data/` por
 caminho relativo.
 
-```bash
-make run-native-stack      # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
-make check-native-stack    # verifica o determinismo (1, 2 e 4 threads de tempo crítico)
+Os dois subprojetos são o **mesmo modelo** — quatro aviões patrulhando, um intruso, aviso por
+datalink. A única diferença é **onde a decisão roda**: na `single-thread` o agente do UBF é o
+`( SimAgent )` nativo, componente da `Station`, que decide em `updateData()` — os quatro agentes
+em sequência, numa thread de background, a 10 Hz; na `multi-thread` é um `( FlightAgentTC )`
+próprio, componente do `Player`, que decide na fase 3 do frame de tempo crítico — os quatro em
+paralelo, um por thread do pool, a 50 Hz.
 
-make run-tc-agent          # a poc/13 com agente de tempo crítico próprio (AgentTC)
-make check-tc-agent        # mesmo determinismo, agora com a decisão dentro do frame
-make compare-13-14         # lista o que difere entre os dois subprojetos
+> Os nomes falam **só da decisão**, não da simulação: `single-thread` **não** roda a simulação
+> inteira numa thread. Os dois subprojetos declaram `numTcThreads` e distribuem os players pelo
+> pool de threads de tempo crítico do framework, e os dois passam nos checks de determinismo com
+> 1, 2 e 4 threads.
+
+```bash
+make run-single-thread     # decisão no ( SimAgent ) nativo; Tacview Real-Time Telemetry na porta 1234
+make check-single-thread   # verifica o determinismo (1, 2 e 4 threads de tempo crítico)
+
+make run-multi-thread      # o mesmo modelo com o ( FlightAgentTC ) próprio: decisão na fase 3
+make check-multi-thread    # mesmo determinismo, agora com a decisão dentro do frame
+make compare-single-multi  # lista o que difere entre os dois subprojetos (deve ser só o agente)
 ```
 
 Ou direto pelo binário, também a partir da raiz:
 
 ```bash
-./build/src/13-native-stack/src/native-stack
-./build/src/14-tc-agent/src/tc-agent
+./build/src/single-thread/src/single-thread
+./build/src/multi-thread/src/multi-thread
 ```
 
 Opções de linha de comando: `-f <arquivo>` (cenário alternativo), `-threads <N>` (força o número
@@ -76,7 +89,9 @@ estado, em vez de rodar em tempo real).
 
 ```
 poc-mixr/
-├── src/NN-slug/       subprojetos: um executável independente por pasta, todos compilados juntos
+├── src/               subprojetos: um executável independente por pasta, todos compilados juntos
+│   ├── single-thread/ decisão no ( SimAgent ) nativo, em updateData() — thread de background
+│   └── multi-thread/  decisão no ( FlightAgentTC ) próprio, na fase 3 do frame de tempo crítico
 ├── shared/xtacview/   exportação para o Tacview (OutputHandler nativo do recorder)
 ├── contexts/          material de consulta sobre MIXR e BehaviorTree.CPP (ver abaixo)
 ├── conanfile.py       dependências binárias
@@ -87,7 +102,7 @@ poc-mixr/
 ### Anatomia de um subprojeto
 
 ```
-src/NN-slug/
+src/<slug>/                (hoje: single-thread/ e multi-thread/)
 ├── meson.build            só faz subdir('./src')
 ├── configs/               cenário EDL (.epp) + árvores de comportamento (.xml)
 ├── data/                  dados vendorizados (jsbsim/, terrain/, recordings/)
@@ -148,9 +163,10 @@ clone limpo. Sem elas, os headers instalados pelo Conan
 
 - **[CLAUDE.md](CLAUDE.md)** — guia operacional do repositório: comandos, arquitetura em uma
   tela, gotchas de rpath, de unidades e do recorder.
-- **[src/13-native-stack/README.md](src/13-native-stack/README.md)** — anatomia completa de um
+- **[src/single-thread/README.md](src/single-thread/README.md)** — anatomia completa de um
   subprojeto, do `.epp` ao frame de tempo crítico: como o framework dirige o código da
   aplicação, o que dá para herdar, o que se paga por isso e as armadilhas medidas rodando.
-- **[src/14-tc-agent/README.md](src/14-tc-agent/README.md)** — a poc/13 com uma única troca (o
-  agente do UBF passa a decidir na fase 3 do frame): onde uma decisão deve rodar, o que isso faz
-  com o determinismo e com a taxa de decisão, medido nos dois binários.
+- **[src/multi-thread/README.md](src/multi-thread/README.md)** — a poc/single-thread com uma
+  única troca (o `( SimAgent )` nativo dá lugar ao `( FlightAgentTC )` próprio, que decide na fase
+  3 do frame): onde uma decisão deve rodar, o que isso faz com o determinismo e com a taxa de
+  decisão, medido nos dois binários.

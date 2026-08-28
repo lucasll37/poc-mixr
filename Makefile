@@ -1,4 +1,4 @@
-.PHONY: clean configure build install package help run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation run-custom-models check-custom-models run-jsbsim-ubf check-jsbsim-ubf run-native-stack check-native-stack run-tc-agent check-tc-agent compare-13-14
+.PHONY: clean configure build install package help run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation run-custom-models check-custom-models run-jsbsim-ubf check-jsbsim-ubf run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi
 
 .DEFAULT_GOAL := help
 
@@ -97,12 +97,25 @@ run-custom-models: ## Run poc/11-custom-models (player/dynamics/systems próprio
 run-jsbsim-ubf: ## Run poc/12-jsbsim-ubf (6-DOF JSBSim direto + UBF/BehaviorTree + alerta entre aviões, Tacview 1234).
 	$(BUILD_DIR)/src/12-jsbsim-ubf/src/jsbsim-ubf
 
-run-native-stack: ## Run poc/13-native-stack (pilha nativa do MIXR, Tacview 1234; teclas +/- acelera/freia, espaço pausa).
-	$(BUILD_DIR)/src/13-native-stack/src/native-stack
+# --------------------------------------------------------------------------
+# poc/single-thread e poc/multi-thread são o MESMO modelo; o nome diz só ONDE
+# a decisão do UBF roda — e NÃO quantas threads a simulação usa. As duas
+# declaram numTcThreads e espalham os players pelo pool de threads de tempo
+# crítico do framework (é por isso que as duas têm check de determinismo com
+# 1, 2 e 4 threads):
+#   single-thread: ( SimAgent ) nativo, componente da Station, decide em
+#                  updateData() — os 4 em sequência, numa thread de
+#                  background, a 10 Hz.
+#   multi-thread:  ( FlightAgentTC ) próprio, componente do player, decide na
+#                  fase 3 do frame — os 4 em paralelo, um por thread do pool
+#                  de tempo crítico, a 50 Hz.
+# --------------------------------------------------------------------------
+run-single-thread: ## Run poc/single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
+	$(BUILD_DIR)/src/single-thread/src/single-thread
 
-check-native-stack: ## Verifica o determinismo da poc/13 (mesmo estado com 1, 2 e 4 threads T/C).
-	@BIN=$(BUILD_DIR)/src/13-native-stack/src/native-stack; \
-	OUT=$(BUILD_DIR)/poc13-determinism; mkdir -p $$OUT; \
+check-single-thread: ## Verifica o determinismo da poc/single-thread (mesmo estado com 1, 2 e 4 threads T/C — a simulação é multithread aqui também).
+	@BIN=$(BUILD_DIR)/src/single-thread/src/single-thread; \
+	OUT=$(BUILD_DIR)/single-thread-determinism; mkdir -p $$OUT; \
 	for n in 1 2 4; do \
 		echo "  rodando 2000 frames com numTcThreads=$$n ..."; \
 		$$BIN -threads $$n -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
@@ -118,12 +131,12 @@ check-native-stack: ## Verifica o determinismo da poc/13 (mesmo estado com 1, 2 
 	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
 	else echo "determinismo: FALHOU"; exit 1; fi
 
-run-tc-agent: ## Run poc/14-tc-agent (a poc/13 com AgentTC próprio: decisão na fase 3, Tacview 1234; teclas +/- e espaço).
-	$(BUILD_DIR)/src/14-tc-agent/src/tc-agent
+run-multi-thread: ## Run poc/multi-thread (a poc/single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
+	$(BUILD_DIR)/src/multi-thread/src/multi-thread
 
-check-tc-agent: ## Verifica o determinismo da poc/14 (mesmo estado com 1, 2 e 4 threads T/C).
-	@BIN=$(BUILD_DIR)/src/14-tc-agent/src/tc-agent; \
-	OUT=$(BUILD_DIR)/poc14-determinism; mkdir -p $$OUT; \
+check-multi-thread: ## Verifica o determinismo da poc/multi-thread (mesmo estado com 1, 2 e 4 threads T/C, mesmo com os 4 agentes decidindo em paralelo).
+	@BIN=$(BUILD_DIR)/src/multi-thread/src/multi-thread; \
+	OUT=$(BUILD_DIR)/multi-thread-determinism; mkdir -p $$OUT; \
 	for n in 1 2 4; do \
 		echo "  rodando 2000 frames com numTcThreads=$$n ..."; \
 		$$BIN -threads $$n -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
@@ -141,9 +154,9 @@ check-tc-agent: ## Verifica o determinismo da poc/14 (mesmo estado com 1, 2 e 4 
 	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
 	else echo "determinismo: FALHOU"; exit 1; fi
 
-compare-13-14: ## Lista o que difere entre a poc/13 e a poc/14 (deve ser só o agente + docs/build).
+compare-single-multi: ## Lista o que difere entre a poc/single-thread e a poc/multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
-		src/13-native-stack src/14-tc-agent || true
+		src/single-thread src/multi-thread || true
 
 check-jsbsim-ubf: ## Verifica o determinismo da poc/12 (mesmo estado com 1, 2 e 4 threads T/C).
 	@BIN=$(BUILD_DIR)/src/12-jsbsim-ubf/src/jsbsim-ubf; \
