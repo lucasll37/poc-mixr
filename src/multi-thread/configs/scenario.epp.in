@@ -57,6 +57,60 @@
    //     pool que estiver processando aquele player.
    // --------------------------------------------------------------------
 
+   // --------------------------------------------------------------------
+   // Joystick fisico para pilotar o bandit1 manualmente -- mecanismo NATIVO
+   // do MIXR (mixr::linkage: IoHandler/IoData/UsbJoystick/AnalogInput), sem
+   // nenhuma dependencia nova (o UsbJoystick le /dev/input/jsX com ioctl
+   // cru). deviceIndex/channel: sao o que muda entre maquinas (WSL2 x Linux
+   // nativo, ou joysticks diferentes) -- sem recompilar. Ver
+   // shared/xjoystick/JoystickIoHandler.hpp para o porque do desengate do
+   // Autopilot do bandit1 a cada frame.
+   //
+   // Numeros dos canais 'ai:' tem de bater com shared/xjoystick/ChannelMap.hpp
+   // (ROLL_AI=1 PITCH_AI=2 RUDDER_AI=3 THROTTLE_AI=4) -- o parser EDL deste
+   // fork nao roda o preprocessador C, entao nao da para #include o header
+   // aqui (mesmo motivo do comentario do radar na poc/single-thread).
+   //
+   // 'channel:' (0-based, lado do dispositivo) CONFIRMADO com
+   // tools/joystick_mapper.py contra um Logitech Extreme 3D (6 eixos/12
+   // botoes, deviceIndex 0): eixo 0 = aileron, 1 = profundor, 2 = leme
+   // (twist do manche), 3 = manete (slider). Trocar de joystick e so
+   // remapear estes 4 numeros -- sem recompilar.
+   //
+   // SINAL -- aileron/profundor/leme JA SAEM do device no mesmo sentido que
+   // o MIXR espera (confirmado testando com o mapeador): roll -1=esquerda,
+   // pitch +1=cabrado, pedal +1=direita (ver os comentarios de
+   // Player::setControlStickRollInput/PitchInput e
+   // AirVehicle::setRudderPedalInput). offset/gain default (0.0/1.0) bastam,
+   // SEM inversao.
+   //
+   // O manete E a transformacao: no Extreme 3D o slider sai em -1..1
+   // INVERTIDO (pleno = -1.0, cutoff = +1.0), enquanto setThrottles()
+   // espera 0.0 (idle) a 1.0 (plena potencia). 'offset: 1.0 gain: -0.5' faz
+   // o AnalogInput calcular t = (raw - 1) * -0.5:
+   //    raw=-1 (pleno)  -> t=1.0
+   //    raw=+1 (cutoff) -> t=0.0
+   //    raw= 0 (metade) -> t=0.5
+   //
+   // SEM JOYSTICK CONECTADO: o UsbJoystick nativo so loga um aviso no stderr
+   // e os canais ficam em zero -- a simulacao sobe normalmente.
+   // --------------------------------------------------------------------
+   ioHandler: ( JoystickIoHandler
+      player: "bandit1"
+      inputData: ( IoData numAI: 4 )
+      devices: {
+         ( UsbJoystick
+            deviceIndex: 0
+            adapters: {
+               ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI     <- aileron
+               ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI    <- profundor
+               ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI   <- leme
+               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI <- manete
+            }
+         )
+      }
+   )
+
    dataRecorder: ( DataRecorder
       eventName: "poc-multi-thread"
 

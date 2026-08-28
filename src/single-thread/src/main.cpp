@@ -107,6 +107,7 @@ int main(int argc, char* argv[])
 
    mixr::simulation::Station* const station{app::buildStation(opts.generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};
+   mixr::linkage::IoHandler* const ioHandler{app::ioHandlerOf(station)};
 
    app::primeStation(station);
 
@@ -119,7 +120,7 @@ int main(int argc, char* argv[])
       rc = app::runDeterministic(station, fleet, opts.deterministicFrames);
    } else {
       printBanner(numTcThreads);
-      app::runRealTime(station, fleet, worldModel, clockStation);
+      app::runRealTime(station, fleet, worldModel, clockStation, ioHandler);
       std::cout << "=== fim ===" << std::endl;
    }
 

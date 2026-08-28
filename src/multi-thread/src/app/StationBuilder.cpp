@@ -4,6 +4,8 @@
 
 #include "xclock/ClockStation.hpp"
 
+#include "mixr/linkage/IoHandler.hpp"
+
 #include "mixr/simulation/Station.hpp"
 #include "mixr/models/WorldModel.hpp"
 
@@ -69,6 +71,16 @@ mixr::xclock::ClockStation* clockStationOf(mixr::simulation::Station* const stat
                 << " controle de tempo desligado" << std::endl;
    }
    return clockStation;
+}
+
+mixr::linkage::IoHandler* ioHandlerOf(mixr::simulation::Station* const station)
+{
+   const auto ioHandler = dynamic_cast<mixr::linkage::IoHandler*>(station->getIoHandler());
+   if (ioHandler == nullptr) {
+      std::cerr << "[main] aviso: cenario sem ( JoystickIoHandler ) no slot 'ioHandler:';"
+                << " controle por joystick desligado" << std::endl;
+   }
+   return ioHandler;
 }
 
 } // namespace app

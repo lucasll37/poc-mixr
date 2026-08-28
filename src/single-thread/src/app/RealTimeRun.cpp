@@ -5,6 +5,8 @@
 #include "xclock/ClockStation.hpp"
 #include "xclock/TimeControls.hpp"
 
+#include "mixr/linkage/IoHandler.hpp"
+
 #include "mixr/simulation/Station.hpp"
 #include "mixr/models/WorldModel.hpp"
 
@@ -28,7 +30,8 @@ void onSigint(int) { g_stopRequested = 1; }
 
 void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
                  mixr::models::WorldModel* const worldModel,
-                 mixr::xclock::ClockStation* const clockStation)
+                 mixr::xclock::ClockStation* const clockStation,
+                 mixr::linkage::IoHandler* const ioHandler)
 {
    std::signal(SIGINT, onSigint);
 
@@ -53,6 +56,9 @@ void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
 
       // Um read() nao bloqueante por frame -- se nao houver tecla, custa nada.
       timeControls.poll();
+
+      // Le o joystick (se houver um configurado) e aplica no bandit1.
+      if (ioHandler != nullptr) ioHandler->inputDevices(dt);
 
       // Drena o gravador (Tacview) -- e, se o agente do cenario for um
       // SimAgent (componente da Station), e tambem aqui que ele decide.

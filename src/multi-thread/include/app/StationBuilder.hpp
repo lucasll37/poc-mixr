@@ -6,6 +6,7 @@ namespace mixr {
 namespace simulation { class Station; }
 namespace models { class WorldModel; }
 namespace xclock { class ClockStation; }
+namespace linkage { class IoHandler; }
 }
 
 namespace app {
@@ -31,5 +32,11 @@ mixr::models::WorldModel* worldModelOf(mixr::simulation::Station* station);
 // do tempo. Trocar por ( Station ) no .epp continua rodando -- so sem as
 // teclas -- entao um nullptr aqui e aviso, nao erro fatal.
 mixr::xclock::ClockStation* clockStationOf(mixr::simulation::Station* station);
+
+// O cenario declara ( JoystickIoHandler ) no slot NATIVO 'ioHandler:' da
+// Station. Um cenario sem essa secao (ou um .epp mais antigo) continua
+// rodando sem controle por joystick -- nullptr aqui e aviso, nao erro fatal,
+// mesmo raciocinio do clockStationOf acima.
+mixr::linkage::IoHandler* ioHandlerOf(mixr::simulation::Station* station);
 
 } // namespace app

@@ -6,6 +6,7 @@ namespace mixr {
 namespace simulation { class Station; }
 namespace models { class WorldModel; }
 namespace xclock { class ClockStation; }
+namespace linkage { class IoHandler; }
 }
 
 namespace app {
@@ -14,10 +15,12 @@ namespace app {
 // O laco de TEMPO REAL -- o modo normal de execucao.
 //
 // Uma unica questao: manter o laco de background andando junto com o relogio
-// de parede. Ele cuida de tres coisas e so delas:
+// de parede. Ele cuida de quatro coisas e so delas:
 //
 //   * teclado de controle de tempo (xclock::TimeControls, um read() nao
 //     bloqueante por volta);
+//   * joystick fisico do bandit1 (linkage::IoHandler::inputDevices(), mesma
+//     taxa/thread do teclado -- ver shared/xjoystick/JoystickIoHandler.hpp);
 //   * station->updateData(dt) -- que DRENA A FILA DO GRAVADOR para o
 //     Tacview (sem isso nada chega la);
 //   * o sleep que acerta o passo com o tempo de parede.
@@ -36,6 +39,7 @@ namespace app {
 //------------------------------------------------------------------------------
 void runRealTime(mixr::simulation::Station* station, const Fleet& fleet,
                  mixr::models::WorldModel* worldModel,
-                 mixr::xclock::ClockStation* clockStation);
+                 mixr::xclock::ClockStation* clockStation,
+                 mixr::linkage::IoHandler* ioHandler);
 
 } // namespace app

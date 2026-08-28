@@ -266,6 +266,91 @@ poc/multi-thread decide na fase 3, dentro do frame, então para junto.
 Sem TTY (pipe, redirecionamento, CI) o `tcgetattr()` de `ConsoleKeyboard` falha, `isActive()`
 fica `false` e a simulação roda normalmente, só sem teclado.
 
+### `shared/xjoystick` — controle do `bandit1` (ownship) por joystick físico
+
+Mesmo padrão `shared/x<nome>` do `xtacview`/`xclock` (factory própria + classes em
+`mixr::xjoystick`, exposta como `xjoystick_dep`). Usa só mecanismo **nativo** do MIXR — o
+`mixr::linkage` (`IoHandler`/`IoData`/`IoDevice`/adapters), já parte da `mixr_dep` via
+`Requires: mixr-linkage` do `mixr.pc` — e o `UsbJoystick` nativo (Linux), que lê
+`/dev/js%d`/`/dev/input/js%d` com `<linux/joystick.h>` cru (ioctl + `read()` não bloqueante).
+**Nenhuma dependência nova** (nem SDL, nem evdev) e nada no Conan mudou.
+
+O cenário (`scenario.epp.in`, as duas pocs) declara o dispositivo no slot **nomeado e
+específico** que `simulation::Station` já tem para isso — `ioHandler:` (`Station.hpp:34`, mesmo
+padrão do `dataRecorder:` do xtacview):
+
+```
+ioHandler: ( JoystickIoHandler
+   player: "bandit1"
+   inputData: ( IoData numAI: 4 )
+   devices: {
+      ( UsbJoystick deviceIndex: 0
+         adapters: {
+            ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI
+            ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI
+            ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI
+            ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI
+         }
+      )
+   }
+)
+```
+
+Os 4 `channel:` acima são os do **Logitech Extreme 3D** (6 eixos/12 botões,
+`deviceIndex: 0`), confirmados com `tools/joystick_mapper.py` (script Python temporário, fora do
+build — mesmo protocolo cru do `UsbJoystick_linux.cpp`, então o canal que ele mostra é o mesmo
+que vai no `channel:` do EDL). Trocar de joystick é só remapear estes 4 números.
+
+`JoystickIoHandler` (`shared/xjoystick/JoystickIoHandler.hpp`) é a subclasse concreta de
+`linkage::IoHandler` que a aplicação tem de fornecer (o framework não traz uma pronta —
+`inputDevicesImpl(dt)`/`outputDevicesImpl(dt)` são os dois únicos métodos a sobrescrever). Ela
+lê os canais do `IoData` e aplica em `AirVehicle::setControlStick()`/`setRudderPedalInput()`/
+`setThrottles()` do player nomeado no slot `player:`.
+
+`app/RealTimeRun.cpp` sonda o handler no mesmo lugar e na mesma taxa do
+`xclock::TimeControls::poll()` de hoje (laço de background, 10 Hz) —
+`ioHandler->inputDevices(dt)`, chamado só se o cenário declarou `ioHandler:` (`nullptr` é aviso,
+não erro fatal, mesmo raciocínio do `clockStationOf`). **Só no laço de tempo real** — `-
+deterministic`/`app/DeterministicRun.cpp` não é tocado, e `make check-single-thread`/
+`check-multi-thread` continuam valendo sem alteração.
+
+**Armadilhas confirmadas — não redescobrir:**
+
+1. **`bandit1` já tem `pilot: ( Autopilot headingHoldMode/altitudeHoldMode/velocityHoldMode:
+   true )`**, e o `Autopilot` reimpõe esses modos a cada fase do frame de tempo crítico (até
+   50 Hz) — muito mais rápido que a sondagem do joystick (10 Hz). Escrever o stick só no
+   `AirVehicle` sem desengatar os hold modes faz o `Autopilot` sobrescrever de volta antes da
+   próxima leitura. Por isso `JoystickIoHandler::inputDevicesImpl()` localiza o `Autopilot` do
+   player (`Player::getPilotByType`) e desliga os três hold modes **todo frame** (idempotente),
+   antes de aplicar o stick direto no `AirVehicle` — não pelo `Autopilot`.
+2. **Numeração dos canais é assimétrica**: `ai:`/`di:` (canal lógico do `IoData`) é **1-based**
+   (`IoData.hpp:19-21`); `channel:` (canal físico do dispositivo) é **0-based**. Os números do
+   `ai:` têm de bater com `shared/xjoystick/ChannelMap.hpp` — repetidos no `.epp.in` com
+   comentário, não por `#include`: este fork do parser EDL não roda o pré-processador C (mesmo
+   motivo já registrado no comentário do padrão de ganho do radar, mais acima neste arquivo).
+3. **Sem hardware, degrada sozinho** — `UsbJoystick::reset()` (Linux) só loga
+   `"UsbJoystick::reset(): Joystick device not found"` em `stderr` quando `/dev/input/jsX` não
+   existe; os canais ficam em zero e `getAnalogInput()` retorna `false`, sem exceção/abort. Não
+   é preciso tratar essa ausência no `JoystickIoHandler` — aplicar zero em roll/pitch/leme e
+   manete no cutoff já é seguro.
+4. **Sinal do manete do Extreme 3D é invertido em relação ao `setThrottles()` nativo** —
+   confirmado rodando: o eixo 3 (slider) sai em `-1.0` no batente de **potência plena** e `+1.0`
+   no de **cutoff**, enquanto `Player::setThrottles()` espera `0.0` (idle) a `1.0` (plena
+   potência) — faixa **unidirecional**, ao contrário de roll/pitch/pedal (`-1..1`, sem
+   transformação nenhuma: o sinal do device já bate com o do MIXR). É por isso que só o `ai: 4`
+   (`THROTTLE_AI`) leva `offset: 1.0 gain: -0.5` — o `AnalogInput` calcula
+   `t = (raw - offset) * gain`, e essa combinação inverte E reescala de `[-1,1]` para `[0,1]` no
+   mesmo passo (raw=-1 → t=1.0; raw=+1 → t=0.0). Ver `AnalogInput.hpp:16-35` para a fórmula.
+5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
+   operacional: em WSL2 é preciso `usbipd-win` no host Windows
+   (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da
+   VM. Em Linux nativo basta o módulo de kernel `joydev` carregado (a maioria das distros já
+   carrega ao conectar o dispositivo).
+6. `mixr::linkage::factory` **não** é encadeada por nenhuma das outras factories nativas
+   (`simulation`/`models`/`terrain`/`recorder`) — sem `mixr::linkage::factory(name)` no
+   `mixr_factory.cpp` de cada poc, o `devices: { ( UsbJoystick ... ) }` do `ioHandler:` não
+   constrói nada, em silêncio (mesma armadilha do `mixr::terrain::factory`, documentada acima).
+
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 
 O banco de elevação é **100% nativo**: `libmixr_terrain.so` já vinha linkado (o `mixr.pc` do

@@ -1,4 +1,4 @@
-project('mixr-hello', 'cpp',
+project('poc-mixr', 'cpp',
     version: '1.0.0',
     license: 'MIT',
     default_options: [
@@ -74,6 +74,10 @@ subdir('./shared/xtacview')
 # Controle de velocidade do tempo (acelerar/frear/pausar). Tambem precisa vir
 # ANTES dos subprojetos, que consomem xclock_dep.
 subdir('./shared/xclock')
+
+# Controle do ownship por joystick fisico. Tambem precisa vir ANTES dos
+# subprojetos, que consomem xjoystick_dep.
+subdir('./shared/xjoystick')
 
 subdir('./src')
 
