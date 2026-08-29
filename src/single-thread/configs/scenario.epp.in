@@ -184,11 +184,13 @@
    // Autopilot scripted de fallback, que emite seu estado via DIS NATIVO
    // do MIXR (mixr::dis -- namespace real da lib, apesar do caminho do
    // header ser mixr/interop/dis/; factory names 'DisNetIO'/'DisNtm').
-   // Esta Station so RECEBE -- 'enableOutput: false' -- mas 'netOutput:'
-   // continua obrigatorio mesmo assim (initNetwork() inicializa os dois
-   // handlers incondicionalmente, testado rodando).
    //
-   // O 'template:' do DisNtm abaixo basta para o radar
+   // BIDIRECIONAL: esta Station RECEBE o bandit1 (inputEntityTypes:) e
+   // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit-dis recebe
+   // de volta e mostra as falcons no proprio Tacview dele (porta 1235).
+   // Sem 'enableOutput: false', o output volta ao default nativo (true).
+   //
+   // O 'template:' do DisNtm de entrada basta para o radar
    // (Antenna/Tws/AirTrkMgr) detectar o fantasma exatamente como detectava
    // o bandit1 nativo: interop::NetIO::createIPlayer() clona o template
    // POR INTEIRO -- signature, dataLogTime -- (confirmado lendo
@@ -198,22 +200,25 @@
    // 'dynamicsModel'/'pilot' NAO precisam ser reproduzidos aqui: a posicao
    // do fantasma e 100% dead reckoning a partir dos PDUs recebidos, nunca
    // simulacao local -- 'side:' tambem e irrelevante, quem manda e o Force
-   // ID do proprio PDU.
+   // ID do proprio PDU. O template de SAIDA (outputEntityTypes:) so
+   // precisa casar CLASSE + 'type:' (e o que o Ntm usa pra achar qual
+   // player local publicar -- ver common/Ntm.hpp) -- falcon1..4 e bandit1
+   // sao a MESMA classe/type ("Aircraft"/"C310"), entao o mesmo
+   // disEntityType serve pros dois sentidos sem ambiguidade: cada lado so
+   // ouve trafego de quem so emite UMA coisa (bandit-dis so emite bandit1;
+   // esta Station so emite falcon1..4).
    //
    // Esquema de portas (ver o comentario irmao em
    // src/bandit-dis/configs/scenario.epp): todo mundo escuta em 3000;
-   // bandit-dis emite da 3001, esta Station da 3002 (so pra manter o
-   // padrao -- nao emite nada de verdade, sem outputEntityTypes:),
-   // multi-thread da 3003.
+   // bandit-dis emite da 3001, esta Station da 3002, multi-thread da 3003.
    //
-   // disEntityType TEM que ser identico ao 'outputEntityTypes:' do
-   // bandit-dis -- e como o Ntm casa o PDU recebido com este template.
-   // Nao e enumeracao SISO-REF-010 real, so um codigo interno consistente.
+   // disEntityType TEM que ser identico dos dois lados -- e como o Ntm casa
+   // o PDU recebido com o template. Nao e enumeracao SISO-REF-010 real, so
+   // um codigo interno consistente.
    // --------------------------------------------------------------------
    networks: {
       ( DisNetIO
          siteID: 2  applicationID: 1  exerciseID: 1
-         enableOutput: false
          netInput:  ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
                       port: 3000  ignoreSourcePort: 3002  shared: true )
          netOutput: ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
@@ -224,6 +229,12 @@
                   signature: ( SigSphere radius: 4.0 )
                   dataLogTime: ( Seconds 0.1 )
                )
+               disEntityType: [ 1 2 225 1 99 0 0 ]
+            )
+         }
+         outputEntityTypes: {
+            ( DisNtm
+               template: ( Aircraft type: "C310" )
                disEntityType: [ 1 2 225 1 99 0 0 ]
             )
          }

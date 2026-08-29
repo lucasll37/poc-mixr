@@ -53,7 +53,7 @@ disseca o assunto.
 | 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](src/single-thread/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 8 | **Padrões de projeto dos exemplos oficiais** — o *builder* canônico, a factory encadeada por nome, o par estrutura-EDL/comportamento-C++, o gancho de sensor em `transmit()`, o `shared/x<nome>` | [`mixr_factory.cpp`](src/single-thread/src/mixr_factory.cpp), [`app/StationBuilder`](src/single-thread/include/app/StationBuilder.hpp), `shared/x*` | [§3 e §5 do single-thread](src/single-thread/README.md#3-como-o-framework-chama-o-nosso-código) |
 | 9 | **Controle por joystick físico, com fallback automático** — o intruso pode ser pilotado por um HOTAS de verdade ou continuar no `Autopilot` nativo *scripted* sem hardware conectado, detectado a cada frame (plugar/desplugar em execução troca o controle sem reiniciar) | [`shared/xjoystick/`](shared/xjoystick/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
-| 10 | **Interoperabilidade DIS nativa** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das duas pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
+| 10 | **Interoperabilidade DIS nativa, bidirecional** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local; e as falcons emitem de volta, então o `bandit-dis` também vê as quatro no próprio Tacview | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das três pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
 | 11 | **Log com nível/*stream* e persistência em arquivo** — investigado e descartado usar o `mixr::recorder` para texto livre (o schema `DataRecord.proto` não carrega string nenhuma); a solução reaproveita `mixr::recorder::PrintHandler` por fora do pipeline REID/protobuf | [`shared/xlog/`](shared/xlog/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
 
 E mais uma, que não é funcionalidade e sim consequência: **onde a decisão roda é uma escolha de
@@ -160,67 +160,25 @@ make run-single-thread     # terminal 2 -- ou run-multi-thread, à sua escolha
 mantém o voo *scripted* de sempre via `Autopilot`; com um HOTAS conectado, você pilota (canais
 mapeados para um Logitech Extreme 3D — outro joystick é só remapear `channel:` no `.epp`, sem
 recompilar). As duas pocs recebem o intruso **só pela rede** (DIS, `localhost:3000`) — nenhum
-player local o declara. Ver [`src/bandit-dis/`](src/bandit-dis/) e a seção "`src/bandit-dis`" do
-[CLAUDE.md](CLAUDE.md).
+player local o declara — **e emitem de volta**: as falcons chegam por DIS no `bandit-dis`
+também, então o Tacview dele (porta 1235) mostra as cinco aeronaves, não só o intruso. Ver
+[`src/bandit-dis/`](src/bandit-dis/) e a seção "`src/bandit-dis`" do [CLAUDE.md](CLAUDE.md).
 
 **Topologia** — três processos independentes, conectados só por rede (DIS UDP) e por Tacview
 (TCP); `single-thread` e `multi-thread` são **alternativas** entre si (nunca rodam juntos), cada
 um roda sozinho ou ao lado do `bandit-dis`:
 
-```mermaid
-flowchart LR
-    JOY(["Joystick físico<br/>/dev/input/js0"])
-    KBD(["Teclado<br/>(terminal interativo)"])
-    TCV(["Tacview<br/>(cliente)"])
+![Topologia dos três processos: bandit-dis, single-thread e multi-thread trocando telemetria por DIS (UDP broadcast, porta 3000) e exportando para o Tacview (TCP, portas 1234/1235)](images/diagram.png)
 
-    subgraph P1["processo: bandit-dis"]
-        direction TB
-        JIH["JoystickIoHandler<br/>(shared/xjoystick)"]
-        B1["bandit1<br/>Aircraft · JSBSimModel · Autopilot"]
-        OUT["DisNetIO<br/>siteID 1 · emite<br/>localPort 3001"]
-        TV0["TacviewOutput<br/>:1235"]
-        JIH --> B1
-        B1 --> OUT
-        B1 --> TV0
-    end
-
-    subgraph P2["processo: single-thread"]
-        direction TB
-        IN1["DisNetIO<br/>siteID 2 · só recebe<br/>localPort 3002"]
-        SA["SimAgent (UBF)<br/>decide em updateData(), 10 Hz"]
-        F1["falcon1..4<br/>Aircraft · JSBSimModel · Autopilot · radar · datalink"]
-        TV1["TacviewOutput<br/>:1234"]
-        IN1 -.->|"clona DisNtm.template<br/>(dead reckoning)"| F1
-        SA --> F1
-        F1 --> TV1
-    end
-
-    subgraph P3["processo: multi-thread (alternativa ao single-thread)"]
-        direction TB
-        IN2["DisNetIO<br/>siteID 3 · só recebe<br/>localPort 3003"]
-        FTC["FlightAgentTC (UBF)<br/>decide na fase 3, 50 Hz"]
-        F2["falcon1..4<br/>Aircraft · JSBSimModel · Autopilot · radar · datalink"]
-        TV2["TacviewOutput<br/>:1234"]
-        IN2 -.->|"clona DisNtm.template<br/>(dead reckoning)"| F2
-        FTC --> F2
-        F2 --> TV2
-    end
-
-    JOY --> JIH
-    KBD -.-> P2
-    KBD -.-> P3
-
-    OUT ==>|"UDP broadcast :3000<br/>(localhost ou LAN)"| IN1
-    OUT ==>|"UDP broadcast :3000<br/>(localhost ou LAN)"| IN2
-
-    TV0 ---|"TCP Real-Time Telemetry"| TCV
-    TV1 ---|"TCP Real-Time Telemetry"| TCV
-    TV2 ---|"TCP Real-Time Telemetry"| TCV
-```
-
-Todo mundo escuta em `0.0.0.0`/porta `3000` (DIS) e nas portas do Tacview — dá pra rodar os
-processos em máquinas diferentes da mesma LAN, não só no mesmo host (ver [§8](#8-bibliotecas-compartilhadas)
-para `xjoystick` e o [CLAUDE.md](CLAUDE.md) para o acesso do Tacview de uma terceira máquina).
+O `UDP broadcast` (porta `3000`) é um meio **compartilhado** (broadcast de verdade, não
+ponto-a-ponto): os três `DisNetIO` escutam a mesma porta e cada um filtra o próprio eco pelo
+`ignoreSourcePort` (== o `localPort` de si mesmo). `bandit-dis` emite `bandit1` e recebe
+`falcon1..4`; cada poc gêmea emite `falcon1..4` e recebe `bandit1` — é por isso que o Tacview do
+`bandit-dis` mostra as **cinco** aeronaves, não só o intruso. Todo mundo escuta em `0.0.0.0`,
+tanto no DIS quanto no Tacview — dá pra rodar os processos em máquinas diferentes da mesma LAN,
+não só no mesmo host (ver [§8](#8-bibliotecas-compartilhadas) para `xjoystick` e o
+[CLAUDE.md](CLAUDE.md) para o
+acesso do Tacview de uma terceira máquina).
 
 **Opções de linha de comando** (as três valem em `single-thread`/`multi-thread`; `bandit-dis` não
 tem CLI — cenário e portas são fixos em [`configs/scenario.epp`](src/bandit-dis/configs/scenario.epp)):
@@ -397,8 +355,10 @@ sempre) rodando **sozinho**, num processo à parte, pilotável por joystick fís
 automático pro `Autopilot` sem hardware) e **emitido via DIS nativo do MIXR**
 (`mixr::dis::NetIO`/`Ntm`, construtíveis direto em EDL). `single-thread`/`multi-thread` não têm
 mais um intruso local: recebem esse player **só pela rede**, e o radar/UBF reagem a ele sem saber
-a diferença — é a prova de que a interoperabilidade DIS realmente desacopla os dois lados. Ver
-[§4](#4-rodar) para rodar os dois juntos, e a seção "`src/bandit-dis`" do [CLAUDE.md](CLAUDE.md)
+a diferença — e emitem as próprias falcons de volta, então o `bandit-dis` também as vê no seu
+Tacview. É a prova de que a interoperabilidade DIS realmente desacopla os dois lados **nos dois
+sentidos**. Ver [§4](#4-rodar) para rodar os dois juntos, e a seção "`src/bandit-dis`" do
+[CLAUDE.md](CLAUDE.md)
 para o desenho completo (com os números de linha do framework que provam o mecanismo).
 
 ---

@@ -5,3 +5,9 @@ dist
 # tile SRTM: versiona-se o .gz (12 MB); o .hgt descomprimido (25 MB) e
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
+
+# gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
+# shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/
+# e data/logs/ e versionado, nunca o conteudo gerado.
+src/*/data/recordings/*.acmi
+src/*/data/logs/*.log*

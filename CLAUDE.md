@@ -468,6 +468,15 @@ nativo do MIXR** (`mixr::dis` — namespace real da lib, apesar do caminho do he
 qualquer outra prova de interoperabilidade DIS de verdade — duas ou mais instâncias separadas,
 não um truque de processo único.
 
+**É bidirecional.** O `bandit-dis` também **recebe** falcon1..4 (que as duas pocs gêmeas emitem
+de volta) — o próprio Tacview do `bandit-dis` (porta 1235) mostra as quatro falcons, não só o
+`bandit1`. Cada `DisNetIO` só precisa dos dois blocos que fazem sentido pro seu lado:
+`outputEntityTypes:` pra publicar os players locais, `inputEntityTypes:` pra materializar os da
+rede — os dois usam o **mesmo** `disEntityType`, porque `bandit1` e `falcon1..4` são a mesma
+classe/`type:` (`Aircraft`/`"C310"`) e o casamento de entrada é só pelo código numérico do fio,
+não pela string — não há ambiguidade porque cada `DisNetIO` só ouve tráfego de quem só emite UMA
+coisa (`bandit-dis` só emite `bandit1`; cada poc gêmea só emite `falcon1..4`).
+
 **Por que dá pra confiar que o radar/UBF das falcons reage a um contato que só existe na rede —
 investigado antes de desenhar isto, não depois de quebrar:**
 `interop::NetIO::createIPlayer()` (`contexts/src/mixr/src/interop/common/NetIO.cpp:639-711`), ao
@@ -484,23 +493,27 @@ não precisam reproduzir `JSBSimModel`/`Autopilot`: a posição do fantasma nunc
 *dead reckoning* — `side:` também é irrelevante, quem manda é o Force ID do próprio PDU
 (`Nib_entity_state.cpp:463-469`), sobrescrito logo após o clone (`NetIO.cpp:684`).
 
-**Testado rodando, ponta a ponta, nas duas pocs**: `bandit-dis` sozinho (sem joystick — o
-`Autopilot` de fallback mantém `hdg=225` scripted) + `single-thread`/`multi-thread` cada um por
-vez → as falcons produzem `pista=bandit1@13.6NM`, `bt=EVADE`/`alerta<-falcon1(bandit1)` se
-propagando, `bt=SUPPORT`, depois `bt=BREAK` — a cadeia UBF/BehaviorTree inteira reagindo a uma
-aeronave que não existe em processo nenhum além do `bandit-dis`. O nome do fantasma saiu **exatamente**
-`"bandit1"` (aparentemente do campo Marking do PDU), então o `modelMap`/`typeMap`/`colorMap` do
-`TacviewOutput` de cada poc não precisou de ajuste nenhum.
+**Testado rodando, ponta a ponta, nas duas pocs, nos dois sentidos**: `bandit-dis` sozinho (sem
+joystick — o `Autopilot` de fallback mantém `hdg=225` scripted) + `single-thread`/`multi-thread`
+cada um por vez → as falcons produzem `pista=bandit1@13.6NM`, `bt=EVADE`/`alerta<-falcon1(bandit1)`
+se propagando, `bt=SUPPORT`, depois `bt=BREAK` — a cadeia UBF/BehaviorTree inteira reagindo a uma
+aeronave que não existe em processo nenhum além do `bandit-dis`. **E na volta**: a gravação
+`.acmi` do `bandit-dis` mostra os cinco `CallSign=` (`bandit1` + `falcon1..4`) — confirmando que
+as falcons chegaram por DIS, não só o intruso. O nome de cada fantasma saiu **exatamente** igual
+ao do player original (aparentemente do campo Marking do PDU), então o `modelMap`/`typeMap`/
+`colorMap` do `TacviewOutput` de cada poc — incluindo as entradas `falcon1..4` acrescentadas no
+`bandit-dis` — não precisou de ajuste nenhum além de existir.
 
 **Esquema de portas** (mesma receita do exemplo do próprio MIXR — `MIXR-PATTERN-CONTEXT.md`
 §6.7 — estendida para 3 processos no mesmo host): todo mundo **escuta** em `3000`; cada processo
 **emite** de uma porta local diferente e ignora essa mesma porta como origem
 (`ignoreSourcePort:` == o próprio `localPort:`), pra ninguém ouvir o próprio eco.
-`bandit-dis`: `3001`. `single-thread`: `3002`. `multi-thread`: `3003` — `single-thread`/
-`multi-thread` não emitem nada de verdade (`enableOutput: false`, sem `outputEntityTypes:`),
-mas `netOutput:` continua obrigatório mesmo assim (ver armadilha 2). `disEntityType:` é um
-código de 7 números inventado (não é enumeração SISO-REF-010 real) — só precisa ser **idêntico**
-entre o `outputEntityTypes:` do `bandit-dis` e o `inputEntityTypes:` de quem recebe.
+`bandit-dis`: `3001`. `single-thread`: `3002`. `multi-thread`: `3003`. Os três `DisNetIO`
+declaram `outputEntityTypes:` **e** `inputEntityTypes:` — nenhum é receive-only — mas
+`netOutput:`/`netInput:` são obrigatórios de qualquer forma, mesmo num `DisNetIO` puramente
+receptor (ver armadilha 2), já que `initNetwork()` inicializa os dois incondicionalmente.
+`disEntityType:` é um código de 7 números inventado (não é enumeração SISO-REF-010 real) — só
+precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
 
 **Armadilhas confirmadas rodando — não redescobrir:**
 
@@ -509,10 +522,11 @@ entre o `outputEntityTypes:` do `bandit-dis` e o `inputEntityTypes:` de quem rec
    `dis::NetIO`/`dis::Ntm` já sobrescrevem todos os métodos virtuais puros da base (factory
    names `"DisNetIO"`/`"DisNtm"`, `dis/factory.cpp:20-22`). Nenhum `.cpp` de classe MIXR nova
    foi escrito para esta PoC — só EDL e reaproveitamento do `shared/xtacview`.
-2. **`initNetwork()` inicializa `netInput`/`netOutput` incondicionalmente** — mesmo com
-   `enableOutput: false`, o `netOutput:` tem que ser um `NetHandler` válido (confirmado
-   rodando: sem ele, a inicialização falha). Por isso o lado receptor declara os dois handlers
-   mesmo não emitindo nada de verdade.
+2. **`initNetwork()` inicializa `netInput`/`netOutput` incondicionalmente** — os dois `netInput:`/
+   `netOutput:` têm que ser `NetHandler`s válidos mesmo que um `DisNetIO` só use um dos sentidos
+   (confirmado rodando: sem os dois presentes, a inicialização falha). Aqui os três processos
+   acabaram sendo bidirecionais de qualquer forma (ver acima), mas a armadilha vale igual para
+   um `DisNetIO` deliberadamente unidirecional.
 3. **Processamento de rede roda dentro de `updateData()`, não do frame de tempo crítico** —
    `Station::processNetworkInputTasks()`/`processNetworkOutputTasks()` são chamadas de dentro de
    `updateData()` (ou de uma thread própria, só se o slot `netRate` pedir uma > 0); como o laço

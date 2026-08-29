@@ -86,6 +86,23 @@
                disEntityType: [ 1 2 225 1 99 0 0 ]
             )
          }
+         // Recebe as falcon1..4 (emitidas por single-thread/multi-thread, ver o
+         // 'outputEntityTypes:' delas). Mesmo disEntityType do bandit1: nao ha
+         // colisao porque cada lado so ouve de quem emite UMA coisa (aqui, so
+         // chega trafego de falcon; o proprio bandit1 e filtrado pelo
+         // ignoreSourcePort acima). Template minimo -- so o suficiente pra
+         // aparecer no Tacview; sem dynamicsModel/pilot: a posicao do fantasma
+         // e so dead reckoning, nunca simulacao local (mesmo raciocinio do
+         // 'inputEntityTypes:' das duas pocs gemeas).
+         inputEntityTypes: {
+            ( DisNtm
+               template: ( Aircraft type: "C310"
+                  signature: ( SigSphere radius: 3.0 )
+                  dataLogTime: ( Seconds 0.1 )
+               )
+               disEntityType: [ 1 2 225 1 99 0 0 ]
+            )
+         }
       )
    }
 
@@ -103,9 +120,13 @@
                port: 1235
                callsign: "poc-mixr/bandit-dis"
                fileName: "./src/bandit-dis/data/recordings/mission.acmi"
-               modelMap: { bandit1: "F-16C" }
-               typeMap:  { bandit1: "Air+FixedWing" }
-               colorMap: { bandit1: "Red" }
+               modelMap: { bandit1: "F-16C"  falcon1: "F-16C"  falcon2: "F-16C"
+                           falcon3: "F-16C"  falcon4: "F-16C" }
+               typeMap:  { bandit1: "Air+FixedWing"  falcon1: "Air+FixedWing"
+                           falcon2: "Air+FixedWing"  falcon3: "Air+FixedWing"
+                           falcon4: "Air+FixedWing" }
+               colorMap: { bandit1: "Red"  falcon1: "Blue"  falcon2: "Blue"
+                           falcon3: "Blue"  falcon4: "Blue" }
             )
          }
       )
