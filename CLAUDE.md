@@ -30,6 +30,13 @@ decisão roda*.
 
 `make compare-single-multi` mostra a diferença: fora o agente, as duas pastas são iguais.
 
+Há um **terceiro subprojeto**, `src/bandit-dis/`, de natureza diferente das duas pocs irmãs
+acima: não tem agente UBF nenhum, é só o `bandit1` (o intruso que as duas pocs perseguem) rodando
+sozinho, num processo à parte, pilotado por joystick ou por `Autopilot` de fallback, emitindo seu
+estado via **DIS nativo do MIXR** (`mixr::dis`) para quem quiser recebê-lo — hoje, `single-thread`/
+`multi-thread`, que não têm mais um `bandit1:` local e o recebem só pela rede. Ver a seção própria
+mais abaixo.
+
 Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
 `12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
 pastas **não existem mais** e o prefixo numérico **não é mais convenção**: subprojeto novo ganha
@@ -275,9 +282,10 @@ Mesmo padrão `shared/x<nome>` do `xtacview`/`xclock` (factory própria + classe
 `/dev/js%d`/`/dev/input/js%d` com `<linux/joystick.h>` cru (ioctl + `read()` não bloqueante).
 **Nenhuma dependência nova** (nem SDL, nem evdev) e nada no Conan mudou.
 
-O cenário (`scenario.epp.in`, as duas pocs) declara o dispositivo no slot **nomeado e
-específico** que `simulation::Station` já tem para isso — `ioHandler:` (`Station.hpp:34`, mesmo
-padrão do `dataRecorder:` do xtacview):
+**Desde que o `bandit1` virou o processo `src/bandit-dis` (ver a seção própria mais abaixo), é lá
+que o `ioHandler:` mora** — `single-thread`/`multi-thread` não declaram mais nenhum. O cenário
+declara o dispositivo no slot **nomeado e específico** que `simulation::Station` já tem para
+isso — `ioHandler:` (`Station.hpp:34`, mesmo padrão do `dataRecorder:` do xtacview):
 
 ```
 ioHandler: ( JoystickIoHandler
@@ -307,12 +315,10 @@ que vai no `channel:` do EDL). Trocar de joystick é só remapear estes 4 númer
 lê os canais do `IoData` e aplica em `AirVehicle::setControlStick()`/`setRudderPedalInput()`/
 `setThrottles()` do player nomeado no slot `player:`.
 
-`app/RealTimeRun.cpp` sonda o handler no mesmo lugar e na mesma taxa do
-`xclock::TimeControls::poll()` de hoje (laço de background, 10 Hz) —
+`app/RealTimeRun.cpp` (de `bandit-dis`) sonda o handler no mesmo lugar e na mesma taxa do
+`xclock::TimeControls::poll()` das outras pocs (laço de background, 10 Hz) —
 `ioHandler->inputDevices(dt)`, chamado só se o cenário declarou `ioHandler:` (`nullptr` é aviso,
-não erro fatal, mesmo raciocínio do `clockStationOf`). **Só no laço de tempo real** — `-
-deterministic`/`app/DeterministicRun.cpp` não é tocado, e `make check-single-thread`/
-`check-multi-thread` continuam valendo sem alteração.
+não erro fatal, mesmo raciocínio do `clockStationOf`).
 
 **Armadilhas confirmadas — não redescobrir:**
 
@@ -321,18 +327,20 @@ deterministic`/`app/DeterministicRun.cpp` não é tocado, e `make check-single-t
    50 Hz) — muito mais rápido que a sondagem do joystick (10 Hz). Escrever o stick só no
    `AirVehicle` sem desengatar os hold modes faz o `Autopilot` sobrescrever de volta antes da
    próxima leitura. Por isso `JoystickIoHandler::inputDevicesImpl()` localiza o `Autopilot` do
-   player (`Player::getPilotByType`) e desliga os três hold modes **todo frame** (idempotente),
-   antes de aplicar o stick direto no `AirVehicle` — não pelo `Autopilot`.
+   player (`Player::getPilotByType`) e desliga os três hold modes antes de aplicar o stick
+   direto no `AirVehicle` — não pelo `Autopilot`. **Mas só quando há joystick de verdade** — ver
+   armadilha 7.
 2. **Numeração dos canais é assimétrica**: `ai:`/`di:` (canal lógico do `IoData`) é **1-based**
    (`IoData.hpp:19-21`); `channel:` (canal físico do dispositivo) é **0-based**. Os números do
    `ai:` têm de bater com `shared/xjoystick/ChannelMap.hpp` — repetidos no `.epp.in` com
    comentário, não por `#include`: este fork do parser EDL não roda o pré-processador C (mesmo
    motivo já registrado no comentário do padrão de ganho do radar, mais acima neste arquivo).
-3. **Sem hardware, degrada sozinho** — `UsbJoystick::reset()` (Linux) só loga
+3. **Sem hardware, o `UsbJoystick` degrada sozinho** — `UsbJoystick::reset()` (Linux) só loga
    `"UsbJoystick::reset(): Joystick device not found"` em `stderr` quando `/dev/input/jsX` não
-   existe; os canais ficam em zero e `getAnalogInput()` retorna `false`, sem exceção/abort. Não
-   é preciso tratar essa ausência no `JoystickIoHandler` — aplicar zero em roll/pitch/leme e
-   manete no cutoff já é seguro.
+   existe; os canais ficam em zero e `getAnalogInput()` retorna `false`, sem exceção/abort. Mas
+   essa degradação é **muda** — quem chama `getAnalogInput()` não descobre que o valor é "zero
+   porque não há dispositivo" e não "zero porque o piloto centralizou o manche". Ver a armadilha
+   7 para o porquê disso importar.
 4. **Sinal do manete do Extreme 3D é invertido em relação ao `setThrottles()` nativo** —
    confirmado rodando: o eixo 3 (slider) sai em `-1.0` no batente de **potência plena** e `+1.0`
    no de **cutoff**, enquanto `Player::setThrottles()` espera `0.0` (idle) a `1.0` (plena
@@ -350,6 +358,162 @@ deterministic`/`app/DeterministicRun.cpp` não é tocado, e `make check-single-t
    (`simulation`/`models`/`terrain`/`recorder`) — sem `mixr::linkage::factory(name)` no
    `mixr_factory.cpp` de cada poc, o `devices: { ( UsbJoystick ... ) }` do `ioHandler:` não
    constrói nada, em silêncio (mesma armadilha do `mixr::terrain::factory`, documentada acima).
+7. **Fallback gracioso para o `Autopilot`, adicionado quando o `bandit1` virou `src/bandit-dis`
+   (voando sozinho, sem as outras aeronaves por perto para "segurar" o cenário se ninguém
+   pilotasse).** Como a armadilha 3 registra, `IoData::getAnalogInput()` não distingue "sem
+   dispositivo" de "manche centralizado" — sem tratar isso à parte, um `bandit1` sem joystick
+   físico ficaria voando em manual com entradas zeradas (manete na metade) em vez de manter o
+   `Autopilot` scripted. `JoystickIoHandler` ganhou um slot próprio `deviceIndex` (tem que bater
+   com o `deviceIndex:` do `( UsbJoystick )` dentro de `devices:`) e um `hasRealJoystick()` que
+   confere a EXISTÊNCIA do arquivo de dispositivo ele mesmo (`mixr::base::doesFileExist()`,
+   mesma ordem de busca do `UsbJoystick_linux.cpp`: `/dev/js<N>` depois `/dev/input/js<N>`) —
+   sem o arquivo, `inputDevicesImpl()` retorna sem tocar em nada, e o `Autopilot` segue no
+   controle exatamente como ficaria sem nenhuma seção `ioHandler:`. A checagem roda todo frame
+   (um `stat()`, custo desprezível): plugar o joystick no meio de uma execução já em andamento
+   troca para controle manual sem reiniciar nada — testado rodando.
+
+### `shared/xlog` — sistema de log `LOG(NIVEL) << ...;` persistido em arquivo
+
+Mesmo padrão `shared/x<nome>` das outras libs, com uma diferença: **sem `factory.cpp`**. Não há
+nada aqui para o parser EDL construir — `mixr::recorder::PrintHandler` (o sink por trás do log)
+é instanciado direto em C++, nunca aparece num `.epp`.
+
+**Por que não é o `mixr::recorder` "de verdade" (`DataRecorder`/`OutputHandler`/`recordData()`)
+— investigado antes de escrever uma linha de código.** O schema `DataRecord.proto` é fechado:
+nenhuma mensagem por-evento tem campo de texto livre (nem o `MarkerMsg`, a mais próxima — só
+`id`/`source_id`, dois `uint32`; confirmado em `DataRecorder::recordMarker()`,
+`DataRecorder.cpp:180-197`), e o único ponto de entrada público do gravador,
+`AbstractDataRecorder::recordData(id, base::Object* pObjects[4], double values[4])`
+(`AbstractDataRecorder.hpp:39-43`), não tem overload de string. Um token de evento próprio
+(1000+) sem handler registrado nem preserva os dois `uint32` do marker — cai em
+`processUnhandledId()` (`DataRecorder.cpp:118-134`) e vira `UnknownIdMsg{id}`, perdendo tudo.
+Carregar texto livre por ali exigiria remendar o `.proto` vendorizado do MIXR (`extend
+DataRecord {...}` nos campos reservados 1000-9999, regenerar o `.pb.cc` do pacote Conan) —
+invasivo e contra a premissa do projeto de que o MIXR é dependência binária, não objeto de
+desenvolvimento.
+
+**O que É reaproveitado do recorder, então:** `mixr::recorder::PrintHandler`
+(`include/mixr/recorder/PrintHandler.hpp`, base de `TabPrinter` e companhia) — mas usado **por
+fora** do pipeline `recordData()`/REID/protobuf. `printToOutput(const char*)`
+(`PrintHandler.cpp:273-291`) escreve direto num `std::ofstream` que ele mesmo abre (preguiçoso,
+no primeiro uso), configurado por `setFilename()`/`setPathName()` — métodos públicos comuns, não
+só slots de EDL: dá para `new mixr::recorder::PrintHandler()` direto em C++, sem `Station`, sem
+factory. `processRecordImp()` (o método que receberia um `DataRecordHandle` do pipeline) é
+no-op vazio na classe base — usado assim, isolado, o `PrintHandler` nunca esbarra no schema
+fechado. Já é dependência transitiva de `mixr_dep` (`mixr-recorder` no `Requires:` do `mixr.pc`,
+a mesma lib que o `xtacview` já linka) — nenhuma dependência nova.
+
+**Uso:**
+```cpp
+#include "xlog/Log.hpp"
+
+LOG(WARNING) << "algo aconteceu: " << valor;
+```
+`Level` é `enum class` (`DEBUG`/`INFO`/`WARNING`/`ERROR`), não `#define`s soltos — evita colisão
+com macros de sistema (`ERROR`/`DEBUG` são armadilhas clássicas no Windows; irrelevante aqui,
+mas o desenho já nasce sem essa pegadinha). `mixr::xlog::Stream` é o objeto RAII por trás da
+macro: acumula em `operator<<` e escreve tudo — console **e** arquivo — no destrutor.
+
+**Armadilhas confirmadas — não redescobrir:**
+
+1. **`data/logs/` precisa existir no disco antes do `init()`** — `PrintHandler::openFile()` não
+   cria diretório, só abre o `ofstream`; sem o diretório, falha em silêncio exatamente como o
+   `TacviewOutput` falha hoje sem `data/recordings/` (`"falha ao abrir .../mission.acmi para
+   gravacao"`, mesma causa). Por isso `data/logs/.gitkeep` existe em cada poc — diretório vazio
+   não versiona em git.
+2. **Mutex único em `Stream::~Stream()`** — a poc `multi-thread` decide em paralelo, um
+   `FlightAgentTC` por thread do pool de tempo crítico; sem lock as linhas se entrelaçam no
+   `std::ofstream` (que não é thread-safe sozinho) exatamente como o `xnative::Log` antigo já
+   precisava de mutex só para o console. Testado com um `treeFile:` inexistente nas duas pocs:
+   4 linhas limpas, sem entrelaçamento, no console e no arquivo.
+3. **`-deterministic` desliga o log** (`xlog::setLoggingEnabled(false)`, chamado em `main.cpp`
+   quando `opts.isDeterministic()`) — linhas de log carregam timestamp de parede, fora do modo
+   comparável; mesmo raciocínio que já existia para o `xnative::Log` (hoje substituído por
+   este). `make check-single-thread`/`check-multi-thread` não são afetados.
+4. **Substituiu `xnative::Log`** (`logLine(string)` + `setLoggingEnabled(bool)`, duplicado à mão
+   nas duas pocs, só console, sem nível) — os 2 pontos de uso (`ubf/BtBehavior.cpp`, mensagem
+   vazia/exceção ao carregar a árvore) migraram para `LOG(WARNING)`/`LOG(ERROR)`.
+
+### `src/bandit-dis` — o `bandit1` num processo próprio, emitindo DIS nativo do MIXR
+
+Terceiro subprojeto, de natureza diferente dos dois primeiros: não é uma pilha nova nem um
+agente novo, é **onde o `bandit1` mora agora** — antes um player local em `single-thread`/
+`multi-thread`, hoje um processo à parte, pilotado por joystick físico (`shared/xjoystick`, com
+fallback pro `Autopilot` scripted — armadilha 7 da seção `xjoystick` acima) e **emitido via DIS
+nativo do MIXR** (`mixr::dis` — namespace real da lib, apesar do caminho do header ser
+`mixr/interop/dis/`) para quem quiser recebê-lo. `single-thread`/`multi-thread` não têm mais um
+`bandit1:` local: recebem esse player **só pela rede**, via `networks:`, exatamente como
+qualquer outra prova de interoperabilidade DIS de verdade — duas ou mais instâncias separadas,
+não um truque de processo único.
+
+**Por que dá pra confiar que o radar/UBF das falcons reage a um contato que só existe na rede —
+investigado antes de desenhar isto, não depois de quebrar:**
+`interop::NetIO::createIPlayer()` (`contexts/src/mixr/src/interop/common/NetIO.cpp:639-711`), ao
+receber o primeiro PDU de uma entidade nova, clona o `template:` do `Ntm` que casou o tipo —
+`templatePlayer->clone()`, um clone **completo** via `Player::copyData()`/`Component::copyData()`
+(`Player.cpp:273-404`, `Component.cpp:70-99`): `signature` (`SigSphere`), `dataLogTime`, tudo
+sobrevive. Só posição/atitude são sobrescritas na criação e depois mantidas por *dead reckoning*
+a cada PDU (`Player::deadReckonPosition()`, `Player.cpp:3084-3094`). O clone entra na **mesma**
+lista que `Simulation::getPlayers()` devolve (`NetIO.cpp:699-700`, `addNewPlayer()`) — a mesma
+que `AirTrkMgr`/`Antenna` já varriam para achar o `bandit1` nativo. **Nenhum player local
+precisa existir no lado receptor** — só o `Ntm` com o `template:` já basta
+(`Ntm::getTemplatePlayer()`, `Ntm.hpp:69`). `dynamicsModel`/`pilot` do template do lado receptor
+não precisam reproduzir `JSBSimModel`/`Autopilot`: a posição do fantasma nunca é simulada ali, só
+*dead reckoning* — `side:` também é irrelevante, quem manda é o Force ID do próprio PDU
+(`Nib_entity_state.cpp:463-469`), sobrescrito logo após o clone (`NetIO.cpp:684`).
+
+**Testado rodando, ponta a ponta, nas duas pocs**: `bandit-dis` sozinho (sem joystick — o
+`Autopilot` de fallback mantém `hdg=225` scripted) + `single-thread`/`multi-thread` cada um por
+vez → as falcons produzem `pista=bandit1@13.6NM`, `bt=EVADE`/`alerta<-falcon1(bandit1)` se
+propagando, `bt=SUPPORT`, depois `bt=BREAK` — a cadeia UBF/BehaviorTree inteira reagindo a uma
+aeronave que não existe em processo nenhum além do `bandit-dis`. O nome do fantasma saiu **exatamente**
+`"bandit1"` (aparentemente do campo Marking do PDU), então o `modelMap`/`typeMap`/`colorMap` do
+`TacviewOutput` de cada poc não precisou de ajuste nenhum.
+
+**Esquema de portas** (mesma receita do exemplo do próprio MIXR — `MIXR-PATTERN-CONTEXT.md`
+§6.7 — estendida para 3 processos no mesmo host): todo mundo **escuta** em `3000`; cada processo
+**emite** de uma porta local diferente e ignora essa mesma porta como origem
+(`ignoreSourcePort:` == o próprio `localPort:`), pra ninguém ouvir o próprio eco.
+`bandit-dis`: `3001`. `single-thread`: `3002`. `multi-thread`: `3003` — `single-thread`/
+`multi-thread` não emitem nada de verdade (`enableOutput: false`, sem `outputEntityTypes:`),
+mas `netOutput:` continua obrigatório mesmo assim (ver armadilha 2). `disEntityType:` é um
+código de 7 números inventado (não é enumeração SISO-REF-010 real) — só precisa ser **idêntico**
+entre o `outputEntityTypes:` do `bandit-dis` e o `inputEntityTypes:` de quem recebe.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **`DisNetIO`/`DisNtm` são construtíveis direto em EDL** — ao contrário do
+   `linkage::IoHandler` do `xjoystick` (abstrato, exigiu a subclasse `JoystickIoHandler`),
+   `dis::NetIO`/`dis::Ntm` já sobrescrevem todos os métodos virtuais puros da base (factory
+   names `"DisNetIO"`/`"DisNtm"`, `dis/factory.cpp:20-22`). Nenhum `.cpp` de classe MIXR nova
+   foi escrito para esta PoC — só EDL e reaproveitamento do `shared/xtacview`.
+2. **`initNetwork()` inicializa `netInput`/`netOutput` incondicionalmente** — mesmo com
+   `enableOutput: false`, o `netOutput:` tem que ser um `NetHandler` válido (confirmado
+   rodando: sem ele, a inicialização falha). Por isso o lado receptor declara os dois handlers
+   mesmo não emitindo nada de verdade.
+3. **Processamento de rede roda dentro de `updateData()`, não do frame de tempo crítico** —
+   `Station::processNetworkInputTasks()`/`processNetworkOutputTasks()` são chamadas de dentro de
+   `updateData()` (ou de uma thread própria, só se o slot `netRate` pedir uma > 0); como o laço
+   de tempo real de todas as pocs já chama `station->updateData(dt)` a cada frame de
+   background, **nenhuma chamada nova foi necessária** — nem em `bandit-dis`, nem nas outras.
+   `createNetworkProcess()` existe (`Station.hpp:248`) mas não é preciso chamá-lo aqui.
+4. **`mixr::dis::factory` não é encadeada por nenhuma outra factory nativa** — mesma armadilha
+   do `terrain`/`linkage` já documentada acima; sem `mixr::dis::factory(name)` no
+   `mixr_factory.cpp` de cada poc (as três, incluindo `bandit-dis`), `networks: ( DisNetIO
+   ... )` não constrói nada, em silêncio.
+5. **Comentários em `.epp`/`.epp.in` têm que ser ASCII puro.** Descoberto quebrando: um único
+   caractere acentuado (`"só"`) dentro de um comentário `//`, em outro ponto do arquivo, sem
+   relação nenhuma com o texto ao redor, fez o `edl_parser` (bison/flex) recusar o arquivo
+   inteiro com `"syntax error"` — apontando a linha certa, mas sem dizer o motivo. É por isso
+   que toda a base já escreve "não"/"está"/"é" sem acento em comentário: não é só estilo, é
+   requisito do parser. Confirmado: `scenario.epp.in` das duas pocs gêmeas são ASCII puro
+   (`file` confirma); o arquivo desta poc também é, depois da correção.
+6. **`applyCruiseThrottle` tem que ser replicado aqui** — o mesmo problema documentado em
+   `app/Fleet.hpp` das pocs gêmeas (o autopilot do c310 fecha malha de rumo/altitude mas não de
+   velocidade; sem manete fixo a aeronave perde velocidade e estola) se aplicava ao `bandit1`
+   antes também — ele estava na `Fleet` das duas pocs e recebia a mesma correção. Como
+   `bandit-dis` não tem `Fleet` (um player só), `main.cpp` aplica `setThrottles(0.95, 1)` uma vez
+   direto no `bandit1`, achado por nome via `getPlayers()`.
 
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 

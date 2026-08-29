@@ -8,6 +8,7 @@
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
 #include "mixr/terrain/factory.hpp"
+#include "mixr/interop/dis/factory.hpp"
 #include "mixr/linkage/factory.hpp"
 #include "mixr/recorder/factory.hpp"
 #include "mixr/base/factory.hpp"
@@ -40,6 +41,13 @@ mixr::base::Object* mixrFactory(const std::string& name)
    //    'terrain: ( SrtmHgtFile ... )' do .epp nao constroi nada e o
    //    WorldModel fica sem terreno, em silencio.
    if (obj == nullptr) obj = mixr::terrain::factory(name);
+
+   // 6.5) DIS nativo -- DisNetIO/DisNtm (namespace real e mixr::dis, apesar
+   //      do caminho do header ser mixr/interop/dis/). NAO encadeada por
+   //      nenhuma outra factory; sem esta linha o 'networks: ( DisNetIO
+   //      ... )' do .epp nao constroi nada, em silencio (mesma armadilha
+   //      do terrain: acima).
+   if (obj == nullptr) obj = mixr::dis::factory(name);
 
    // 7) UsbJoystick / IoData / AnalogInput -- mixr::linkage nativo. NAO
    //    encadeada por nenhuma das factories acima; sem esta linha o

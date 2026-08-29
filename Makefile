@@ -1,4 +1,4 @@
-.PHONY: clean configure build install package help run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation run-custom-models check-custom-models run-jsbsim-ubf check-jsbsim-ubf run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi
+.PHONY: clean configure build install package help run-flying-aircraft run-behavior-tree run-bt-autopilot run-jsbsim-6dof run-formation-flight run-radar-detection run-radar-intercept run-event-relay run-chaff-flare run-satellite-constellation run-custom-models check-custom-models run-jsbsim-ubf check-jsbsim-ubf run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis
 
 .DEFAULT_GOAL := help
 
@@ -157,6 +157,9 @@ check-multi-thread: ## Verifica o determinismo da poc/multi-thread (mesmo estado
 compare-single-multi: ## Lista o que difere entre a poc/single-thread e a poc/multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
 		src/single-thread src/multi-thread || true
+
+run-bandit-dis: ## Run poc/bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
+	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
 
 check-jsbsim-ubf: ## Verifica o determinismo da poc/12 (mesmo estado com 1, 2 e 4 threads T/C).
 	@BIN=$(BUILD_DIR)/src/12-jsbsim-ubf/src/jsbsim-ubf; \

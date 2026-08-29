@@ -530,13 +530,9 @@ na [seção 8](#8-a-cadeia-de-decisão-ubf--behaviortree) e na [seção 10](#10-
 
 ### 7.2 Camada 2 — `xnative/`, os utilitários de runtime
 
-Três arquivos, um por questão, todos independentes entre si e do MIXR.
-
-**[`xnative/Log.*`](include/xnative/Log.hpp)** — `logLine()` com mutex. `std::cout` não é
-sincronizado e aqui vários players escrevem de threads T/C diferentes: sem o mutex as linhas se
-entrelaçam. Só para eventos raros (troca de estado da árvore, falha ao carregar a árvore),
-**nunca a cada frame**. `setLoggingEnabled(false)` desliga tudo no modo determinístico, porque
-essas linhas carregam número de thread.
+Dois arquivos, um por questão, ambos independentes entre si e do MIXR. O log (antes
+`xnative/Log.*`) virou `shared/xlog` — ver a seção `shared/xlog` do CLAUDE.md — porque é idêntico
+nas duas pocs irmãs, como `xtacview`/`xclock`/`xjoystick`.
 
 **[`xnative/ThreadTag.*`](include/xnative/ThreadTag.hpp)** — `threadTag()` devolve um índice
 pequeno e estável (0, 1, 2…) para a thread chamadora, e `currentCpu()` chama `sched_getcpu()`.
@@ -862,7 +858,7 @@ Fino de propósito: **não pilota, não tica árvore e não monta ACMI.** A sequ
 
 ```cpp
 parseCommandLine                                     // app/Options
-if (deterministic) setLoggingEnabled(false)          // xnative/Log
+xlog::init(logPath); if (deterministic) setLoggingEnabled(false)   // shared/xlog
 ensureTerrainData(terrainDir, terrainTile)           // app/TerrainData
 generateScenario(templatePath, generatedPath, ...)   // app/ScenarioTemplate
 buildStation(generatedPath)                          // app/StationBuilder

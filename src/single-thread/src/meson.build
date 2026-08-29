@@ -32,7 +32,6 @@ sources = files(
 
     # utilitários de runtime, um por questão
     'xnative/ThreadTag.cpp',
-    'xnative/Log.cpp',
     'xnative/BehaviorBoard.cpp',
 
     # UBF: percepção, decisão (árvore dentro), atuação
@@ -64,8 +63,8 @@ single_thread = executable('single-thread',
     sources,
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
-    include_directories : [inc_dir, local_inc_dir],
-    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep, xtacview_dep, xclock_dep, xjoystick_dep],
+    include_directories : local_inc_dir,
+    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep, xtacview_dep, xclock_dep, xjoystick_dep, xlog_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_bt_libdir,

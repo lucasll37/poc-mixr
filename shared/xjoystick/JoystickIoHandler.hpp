@@ -6,7 +6,7 @@
 #include <string>
 
 namespace mixr {
-namespace base { class String; }
+namespace base { class String; class Number; }
 namespace models { class AirVehicle; }
 namespace xjoystick {
 
@@ -21,7 +21,11 @@ namespace xjoystick {
 // Factory name: JoystickIoHandler
 //
 // Slots:
-//    player   <String>   ! Nome do player a controlar (ex.: "bandit1")
+//    player       <String>   ! Nome do player a controlar (ex.: "bandit1")
+//    deviceIndex  <Number>   ! Indice do dispositivo a checar (default: 0) --
+//                            ! TEM que bater com o 'deviceIndex:' do
+//                            ! ( UsbJoystick ) dentro de 'devices:', mais
+//                            ! abaixo no mesmo 'ioHandler:'.
 //
 // ARMADILHA DE DESENHO -- nao esta em nenhum exemplo do framework, foi
 // preciso decidir: o player alvo normalmente tem um
@@ -36,10 +40,20 @@ namespace xjoystick {
 // stick -- idempotente, sem precisar de um evento explicito de "assumir
 // controle".
 //
-// SEM HARDWARE: o dispositivo nativo (UsbJoystick) ja degrada sozinho --
-// sem '/dev/input/jsX' so loga um aviso e os canais ficam em zero. Este
-// handler nao precisa (nem deve) tratar essa ausencia: aplicar zero em
-// roll/pitch/leme e manete no cutoff e um comportamento seguro, nao um erro.
+// FALLBACK SEM HARDWARE -- o UsbJoystick nativo degrada sozinho (canais em
+// zero, sem exception/abort), mas ele nao AVISA quem o chama que o
+// dispositivo sumiu -- IoData::getAnalogInput() so olha limite de indice,
+// nao "o valor veio de verdade". Sem essa checagem, um bandit1 sem joystick
+// fisico ficaria voando em manual com entradas zeradas (manete na metade,
+// sem stick nenhum), em vez de manter o Autopilot scripted de sempre.
+// Por isso este handler checa a EXISTENCIA do dispositivo ele mesmo
+// (hasRealJoystick(), mesma ordem de busca do UsbJoystick_linux.cpp:
+// '/dev/js<N>' depois '/dev/input/js<N>') antes de tocar em qualquer coisa:
+// sem o arquivo, nem desengata o Autopilot nem aplica stick -- o player
+// continua exatamente como ficaria SEM nenhuma secao 'ioHandler:' no EDL.
+// A checagem roda todo frame (um stat(), custo desprezivel): plugar o
+// joystick no meio de uma execucao troca para controle manual sem reiniciar
+// nada, e desplugar devolve o Autopilot.
 //------------------------------------------------------------------------------
 class JoystickIoHandler final : public linkage::IoHandler
 {
@@ -53,12 +67,15 @@ private:
    void outputDevicesImpl(const double dt) override { writeDeviceOutputs(dt); }
 
    models::AirVehicle* findTarget();
+   bool hasRealJoystick() const;
 
    std::string playerName;
+   int deviceIndex{};
 
 private:
    // slot table helper methods
    bool setSlotPlayer(const base::String* const);
+   bool setSlotDeviceIndex(const base::Number* const);
 };
 
 }

@@ -1,0 +1,161 @@
+//
+// src/bandit-dis
+//
+// O bandit1 num processo proprio: mesmo player que existia em players: das
+// pocs single-thread/multi-thread (mesma dinamica JSBSim c310 + Autopilot,
+// mesmos valores iniciais), agora com duas coisas a mais:
+//
+//    ioHandler: ( JoystickIoHandler ... )   -- pilotagem manual por
+//       joystick fisico (shared/xjoystick), com fallback automatico para o
+//       Autopilot scripted quando nao ha hardware conectado (ver o
+//       comentario de JoystickIoHandler.hpp sobre hasRealJoystick()).
+//
+//    networks: ( DisNetIO ... )             -- emite o estado do bandit1
+//       via DIS nativo do MIXR. As pocs single-thread/multi-thread nao tem
+//       mais um bandit1 LOCAL: elas recebem este aqui so pela rede (ver o
+//       bloco 'networks:' nos scenario.epp.in delas, com o MESMO
+//       disEntityType usado abaixo).
+//
+// Sem @NUM_TC_THREADS@/.epp.in: nao ha CLI aqui (nada de -threads), entao o
+// numero de threads T/C fica fixo no proprio arquivo.
+//
+// Sem -deterministic/make check-*: joystick e rede sao nao-deterministicos
+// por natureza -- nao ha o que comparar aqui.
+//
+
+( Station
+
+   tcPriority: 0.5
+   ownship: bandit1
+
+   // ----------------------------------------------------------------------
+   // Joystick fisico -- mecanismo NATIVO do MIXR (mixr::linkage), mesmo
+   // desenho do shared/xjoystick documentado no CLAUDE.md. 'channel:'
+   // confirmado com tools/joystick_mapper.py contra um Logitech Extreme 3D
+   // (6 eixos/12 botoes, deviceIndex 0): 0=aileron 1=profundor 2=leme
+   // (twist) 3=manete (slider). SEM joystick conectado, o UsbJoystick so
+   // loga um aviso -- e o JoystickIoHandler agora detecta essa ausencia
+   // (hasRealJoystick()) e deixa o Autopilot abaixo no controle, sem tocar
+   // em nada.
+   // ----------------------------------------------------------------------
+   ioHandler: ( JoystickIoHandler
+      player: "bandit1"
+      deviceIndex: 0
+      inputData: ( IoData numAI: 4 )
+      devices: {
+         ( UsbJoystick
+            deviceIndex: 0
+            adapters: {
+               ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI     <- aileron
+               ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI    <- profundor
+               ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI   <- leme
+               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI <- manete
+            }
+         )
+      }
+   )
+
+   // ----------------------------------------------------------------------
+   // DIS nativo (mixr::dis -- namespace real da lib, apesar do diretorio
+   // 'interop/dis'; factory names 'DisNetIO'/'DisNtm'). Emite o bandit1 sem
+   // nenhuma linha de C++ propria -- DisNetIO/DisNtm sao construtiveis
+   // direto em EDL (ao contrario do linkage::IoHandler, que exigiu o
+   // JoystickIoHandler).
+   //
+   // Esquema de portas (mesma receita do exemplo do proprio MIXR --
+   // MIXR-PATTERN-CONTEXT.md secao 6.7 -- estendida para 3 processos no
+   // mesmo host): todo mundo ESCUTA em 3000; cada processo EMITE de uma
+   // porta local diferente e ignora essa mesma porta como origem (assim
+   // ninguem ouve o proprio eco). bandit-dis: 3001. single-thread: 3002.
+   // multi-thread: 3003.
+   //
+   // disEntityType e inventado (nao e enumeracao SISO-REF-010 real) -- so
+   // precisa ser o MESMO valor usado no 'inputEntityTypes:' das duas pocs
+   // que recebem o bandit1.
+   // ----------------------------------------------------------------------
+   networks: {
+      ( DisNetIO
+         siteID: 1  applicationID: 1  exerciseID: 1
+         netInput:  ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
+                      port: 3000  ignoreSourcePort: 3001  shared: true )
+         netOutput: ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
+                      port: 3000  localPort: 3001          shared: true )
+         outputEntityTypes: {
+            ( DisNtm
+               template: ( Aircraft type: "C310" )
+               disEntityType: [ 1 2 225 1 99 0 0 ]
+            )
+         }
+      )
+   }
+
+   dataRecorder: ( DataRecorder
+      eventName: "poc-bandit-dis"
+
+      // Mesma armadilha documentada no CLAUDE.md para as duas pocs gemeas
+      // (REID_NEW_TRACK/REID_WEAPON_RELEASED derrubam o gravador nativo) --
+      // aqui nao ha radar nem armas, mas manter a lista restrita nao custa
+      // nada e evita redescobrir o problema se o cenario crescer.
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1235
+               callsign: "poc-mixr/bandit-dis"
+               fileName: "./src/bandit-dis/data/recordings/mission.acmi"
+               modelMap: { bandit1: "F-16C" }
+               typeMap:  { bandit1: "Air+FixedWing" }
+               colorMap: { bandit1: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: 2
+
+      // Mesma referencia das duas pocs gemeas -- Serra do Mar / regiao de
+      // Nova Friburgo (RJ). Ver o comentario completo no scenario.epp.in
+      // delas: o piloto humano agora pode voar contra a serra de verdade.
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         // Mesmo bloco que existia em players: das duas pocs gemeas --
+         // cortado de la, colado aqui, sem nenhum valor alterado.
+         bandit1: ( Aircraft
+            id: 201
+            side: red
+            type: "C310"
+            signature: ( SigSphere radius: 4.0 )
+            initXPos:     ( NauticalMiles 12.0 )
+            initYPos:     ( NauticalMiles 12.0 )
+            initAlt:      ( Meters 2400.0 )
+            initHeading:  ( Degrees 225 )
+            initVelocity: 92.0                   // ~180 kts
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./src/bandit-dis/data/jsbsim/"  model: "c310"  debugLevel: 0
+               )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

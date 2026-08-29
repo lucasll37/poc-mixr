@@ -59,11 +59,6 @@ asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-poi
 asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 
 # ============================================
-# Includes
-# ============================================
-inc_dir = include_directories('include')
-
-# ============================================
 # Subdiretórios
 # ============================================
 
@@ -78,6 +73,10 @@ subdir('./shared/xclock')
 # Controle do ownship por joystick fisico. Tambem precisa vir ANTES dos
 # subprojetos, que consomem xjoystick_dep.
 subdir('./shared/xjoystick')
+
+# Sistema de log (LOG(NIVEL) << ...;). Tambem precisa vir ANTES dos
+# subprojetos, que consomem xlog_dep.
+subdir('./shared/xlog')
 
 subdir('./src')
 

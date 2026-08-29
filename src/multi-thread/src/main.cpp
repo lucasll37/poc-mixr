@@ -44,7 +44,7 @@
 #include "app/StationBuilder.hpp"
 #include "app/TerrainData.hpp"
 
-#include "xnative/Log.hpp"
+#include "xlog/Log.hpp"
 
 #include "mixr/simulation/Station.hpp"
 
@@ -58,8 +58,12 @@ namespace {
 
 const double cruiseThrottle{0.95};
 
+// bandit1 nao esta mais aqui -- e um player NETWORKED (recebido via
+// 'networks:', ver scenario.epp.in), nunca declarado localmente. Fleet::
+// collectFleet() aborta o processo se um nome desta lista nao existir
+// entre os players locais -- por isso "bandit1" saiu daqui.
 const std::vector<std::string> playerNames{
-   "falcon1", "falcon2", "falcon3", "falcon4", "bandit1"
+   "falcon1", "falcon2", "falcon3", "falcon4"
 };
 
 // Banco de elevacao (compartilhado com a poc/single-thread -- o tile e do
@@ -85,6 +89,9 @@ void printBanner(const int numTcThreads)
 
 int main(int argc, char* argv[])
 {
+   // Nao depende de mais nada -- pode vir antes de tudo.
+   mixr::xlog::init("./src/multi-thread/data/logs/multi-thread.log");
+
    app::Options defaults;
    defaults.templatePath  = "./src/multi-thread/configs/scenario.epp.in";
    defaults.generatedPath = "./src/multi-thread/configs/scenario.generated.epp";
@@ -93,7 +100,7 @@ int main(int argc, char* argv[])
 
    // O log de transicao carrega o numero da thread, que depende do
    // escalonador -- fora do modo comparavel.
-   if (opts.isDeterministic()) mixr::xnative::setLoggingEnabled(false);
+   if (opts.isDeterministic()) mixr::xlog::setLoggingEnabled(false);
 
    // O .epp nomeia o .hgt; garantir que ele existe e esta integro ANTES do
    // parse (o SrtmHgtFile nao le .gz e valida o tamanho em bytes).

@@ -8,7 +8,7 @@
 
 #include "bt/bt_factory.hpp"
 #include "ubf/FlightAction.hpp"
-#include "xnative/Log.hpp"
+#include "xlog/Log.hpp"
 
 #include <exception>
 #include <mutex>
@@ -96,7 +96,7 @@ void BtBehavior::buildTree()
    treeBuilt = true;   // uma tentativa so
 
    if (tune.treeFile.empty()) {
-      logLine("[BtBehavior] slot 'treeFile' vazio -- arvore nao construida");
+      LOG(WARNING) << "[BtBehavior] slot 'treeFile' vazio -- arvore nao construida";
       return;
    }
 
@@ -110,7 +110,7 @@ void BtBehavior::buildTree()
       tree = btFactory.createTreeFromFile(tune.treeFile, BT::Blackboard::create());
       treeValid = true;
    } catch (const std::exception& ex) {
-      logLine(std::string("[BtBehavior] falha ao carregar a arvore: ") + ex.what());
+      LOG(ERROR) << "[BtBehavior] falha ao carregar a arvore: " << ex.what();
       treeValid = false;
    }
 }

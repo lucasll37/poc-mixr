@@ -12,7 +12,11 @@
 #include "mixr/base/PairStream.hpp"
 #include "mixr/base/String.hpp"
 #include "mixr/base/concepts/linkage/AbstractIoData.hpp"
+#include "mixr/base/numeric/Number.hpp"
 #include "mixr/base/util/math_utils.hpp"
+#include "mixr/base/util/system_utils.hpp"
+
+#include <cstdio>
 
 namespace mixr {
 namespace xjoystick {
@@ -20,11 +24,13 @@ namespace xjoystick {
 IMPLEMENT_SUBCLASS(JoystickIoHandler, "JoystickIoHandler")
 
 BEGIN_SLOTTABLE(JoystickIoHandler)
-   "player",      // 1: nome do player a controlar
+   "player",         // 1: nome do player a controlar
+   "deviceIndex",    // 2: indice do dispositivo a checar (default: 0)
 END_SLOTTABLE(JoystickIoHandler)
 
 BEGIN_SLOT_MAP(JoystickIoHandler)
-   ON_SLOT(1, setSlotPlayer, base::String)
+   ON_SLOT(1, setSlotPlayer,       base::String)
+   ON_SLOT(2, setSlotDeviceIndex,  base::Number)
 END_SLOT_MAP()
 
 EMPTY_DELETEDATA(JoystickIoHandler)
@@ -38,6 +44,7 @@ void JoystickIoHandler::copyData(const JoystickIoHandler& org, const bool)
 {
    BaseClass::copyData(org);
    playerName = org.playerName;
+   deviceIndex = org.deviceIndex;
 }
 
 bool JoystickIoHandler::setSlotPlayer(const base::String* const x)
@@ -45,6 +52,25 @@ bool JoystickIoHandler::setSlotPlayer(const base::String* const x)
    if (x == nullptr) return false;
    playerName = x->getString();
    return true;
+}
+
+bool JoystickIoHandler::setSlotDeviceIndex(const base::Number* const x)
+{
+   if (x == nullptr) return false;
+   deviceIndex = x->getInt();
+   return true;
+}
+
+// Mesma ordem de busca do UsbJoystick_linux.cpp::reset(): '/dev/js<N>'
+// primeiro, '/dev/input/js<N>' depois.
+bool JoystickIoHandler::hasRealJoystick() const
+{
+   char path[64]{};
+   std::snprintf(path, sizeof(path), "/dev/js%d", deviceIndex);
+   if (base::doesFileExist(path)) return true;
+
+   std::snprintf(path, sizeof(path), "/dev/input/js%d", deviceIndex);
+   return base::doesFileExist(path);
 }
 
 models::AirVehicle* JoystickIoHandler::findTarget()
@@ -71,6 +97,11 @@ models::AirVehicle* JoystickIoHandler::findTarget()
 void JoystickIoHandler::inputDevicesImpl(const double dt)
 {
    readDeviceInputs(dt);
+
+   // Sem hardware: nao mexe em nada -- o Autopilot do player segue no
+   // controle, exatamente como ficaria sem esta secao 'ioHandler:' inteira.
+   // Ver o comentario do .hpp sobre por que essa checagem existe.
+   if (!hasRealJoystick()) return;
 
    models::AirVehicle* const av{findTarget()};
    if (av == nullptr) return;
