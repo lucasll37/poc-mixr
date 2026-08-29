@@ -195,6 +195,25 @@ void RealtimeTelemetryServer::updateObject(const std::uint32_t objectId,
    }
 }
 
+void RealtimeTelemetryServer::updateRadarBeam(const std::uint32_t objectId,
+                                              const double azimuthDeg, const double elevationDeg,
+                                              const double rangeM,
+                                              const double hBeamwidthDeg, const double vBeamwidthDeg)
+{
+   std::ostringstream line;
+   line << std::hex << objectId << std::dec
+        << ",RadarMode=1"
+        << std::fixed << std::setprecision(2)
+        << ",RadarAzimuth=" << azimuthDeg
+        << ",RadarElevation=" << elevationDeg
+        << std::setprecision(1)
+        << ",RadarRange=" << rangeM
+        << std::setprecision(2)
+        << ",RadarHorizontalBeamwidth=" << hBeamwidthDeg
+        << ",RadarVerticalBeamwidth=" << vBeamwidthDeg;
+   writeLine(line.str());
+}
+
 void RealtimeTelemetryServer::logEvent(const std::uint32_t objectId, const std::string& text)
 {
    std::ostringstream line;

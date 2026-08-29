@@ -97,6 +97,13 @@ public:
    // Evento textual associado a um objeto ("0,Event=Message|<idHex>|<texto>").
    void logEvent(const std::uint32_t objectId, const std::string& text);
 
+   // Feixe/varredura de radar de um objeto ja declarado (RadarAzimuth/
+   // RadarElevation sao relativos ao PROPRIO objeto, nao ao norte -- ver
+   // TacviewOutput::updateRadarScan()). Angulos em graus, alcance em metros.
+   void updateRadarBeam(const std::uint32_t objectId,
+                        const double azimuthDeg, const double elevationDeg, const double rangeM,
+                        const double hBeamwidthDeg, const double vBeamwidthDeg);
+
    // Remove um objeto da cena ("-<idHex>"), para que efeitos/armas expirados
    // nao fiquem "fantasmas" parados na ultima posicao conhecida.
    void removeObject(const std::uint32_t objectId);

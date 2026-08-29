@@ -120,7 +120,11 @@
       )
    }
 
-   dataRecorder: ( DataRecorder
+   // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
+   // publico -- e o que deixa app/StationBuilder.cpp achar o TacviewOutput
+   // daqui de fora, pra alimentar a varredura de radar (ver
+   // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
+   dataRecorder: ( ExposedDataRecorder
       eventName: "poc-multi-thread"
 
       // ARMADILHA CONFIRMADA COM AddressSanitizer -- o gravador NATIVO

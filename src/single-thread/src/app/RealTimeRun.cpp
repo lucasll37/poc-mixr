@@ -2,10 +2,16 @@
 
 #include "app/StatusReport.hpp"
 
+#include "xnative/RadarScan.hpp"
+
 #include "xclock/ClockStation.hpp"
 #include "xclock/TimeControls.hpp"
 
+#include "xtacview/TacviewOutput.hpp"
+
 #include "mixr/linkage/IoHandler.hpp"
+
+#include "mixr/models/player/air/AirVehicle.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/models/WorldModel.hpp"
@@ -31,7 +37,8 @@ void onSigint(int) { g_stopRequested = 1; }
 void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
                  mixr::models::WorldModel* const worldModel,
                  mixr::xclock::ClockStation* const clockStation,
-                 mixr::linkage::IoHandler* const ioHandler)
+                 mixr::linkage::IoHandler* const ioHandler,
+                 mixr::xtacview::TacviewOutput* const tacviewOutput)
 {
    std::signal(SIGINT, onSigint);
 
@@ -64,6 +71,21 @@ void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
       // SimAgent (componente da Station), e tambem aqui que ele decide.
       // Ver o cabecalho do .hpp.
       station->updateData(dt);
+
+      // Varredura de radar de cada player, direto pro Tacview -- FORA da
+      // fila do gravador (ver TacviewOutput::updateRadarScan()). So depois
+      // do updateData() acima, que ja declarou o objeto (T=) no Tacview.
+      if (tacviewOutput != nullptr) {
+         const double simTime{worldModel->getExecTimeSec()};
+         for (auto* const air : fleet) {
+            const auto scan = mixr::xnative::radarScanOf(air);
+            if (scan.found) {
+               tacviewOutput->updateRadarScan(static_cast<std::uint32_t>(air->getID()), simTime,
+                  scan.azimuthDeg, scan.elevationDeg, scan.rangeM,
+                  scan.horizontalBeamwidthDeg, scan.verticalBeamwidthDeg);
+            }
+         }
+      }
 
       frameCount += 1;
       if (frameCount % statusEveryNFrames == 0) {

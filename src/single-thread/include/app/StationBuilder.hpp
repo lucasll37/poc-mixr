@@ -7,6 +7,7 @@ namespace simulation { class Station; }
 namespace models { class WorldModel; }
 namespace xclock { class ClockStation; }
 namespace linkage { class IoHandler; }
+namespace xtacview { class TacviewOutput; }
 }
 
 namespace app {
@@ -38,5 +39,11 @@ mixr::xclock::ClockStation* clockStationOf(mixr::simulation::Station* station);
 // rodando sem controle por joystick -- nullptr aqui e aviso, nao erro fatal,
 // mesmo raciocinio do clockStationOf acima.
 mixr::linkage::IoHandler* ioHandlerOf(mixr::simulation::Station* station);
+
+// Acha o ( TacviewOutput ) dentro da cadeia dataRecorder->outputHandler->
+// components (ver EDL). Usado para empurrar telemetria que nao cabe no
+// pipeline REID/protobuf do recorder (ver TacviewOutput::updateRadarScan())
+// -- mesmo raciocinio de aviso-e-segue-sem do clockStationOf/ioHandlerOf.
+mixr::xtacview::TacviewOutput* tacviewOutputOf(mixr::simulation::Station* station);
 
 } // namespace app

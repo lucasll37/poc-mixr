@@ -11,6 +11,7 @@ xtacview_lib = static_library('xtacview',
     files(
         'RealtimeTelemetryServer.cpp',
         'TacviewOutput.cpp',
+        'ExposedDataRecorder.cpp',
         'factory.cpp',
     ),
     include_directories : xtacview_inc_dir,

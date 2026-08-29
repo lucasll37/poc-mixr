@@ -1,6 +1,7 @@
 #include "xtacview/factory.hpp"
 
 #include "mixr/base/Object.hpp"
+#include "xtacview/ExposedDataRecorder.hpp"
 #include "xtacview/TacviewOutput.hpp"
 
 #include <string>
@@ -14,6 +15,8 @@ base::Object* factory(const std::string& name)
 
    if ( name == TacviewOutput::getFactoryName() ) {
       obj = new TacviewOutput();
+   } else if ( name == ExposedDataRecorder::getFactoryName() ) {
+      obj = new ExposedDataRecorder();
    }
 
    return obj;

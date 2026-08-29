@@ -7,6 +7,7 @@ namespace simulation { class Station; }
 namespace models { class WorldModel; }
 namespace xclock { class ClockStation; }
 namespace linkage { class IoHandler; }
+namespace xtacview { class TacviewOutput; }
 }
 
 namespace app {
@@ -22,7 +23,9 @@ namespace app {
 //   * joystick fisico do bandit1 (linkage::IoHandler::inputDevices(), mesma
 //     taxa/thread do teclado -- ver shared/xjoystick/JoystickIoHandler.hpp);
 //   * station->updateData(dt) -- que DRENA A FILA DO GRAVADOR para o
-//     Tacview (sem isso nada chega la);
+//     Tacview (sem isso nada chega la), seguido da varredura de radar de
+//     cada player (xnative::radarScanOf() -> TacviewOutput::updateRadarScan(),
+//     que anda FORA dessa fila -- ver o cabecalho de TacviewOutput.hpp);
 //   * o sleep que acerta o passo com o tempo de parede.
 //
 // O frame de tempo critico NAO acontece aqui: quem o roda e o pool nativo
@@ -40,6 +43,7 @@ namespace app {
 void runRealTime(mixr::simulation::Station* station, const Fleet& fleet,
                  mixr::models::WorldModel* worldModel,
                  mixr::xclock::ClockStation* clockStation,
-                 mixr::linkage::IoHandler* ioHandler);
+                 mixr::linkage::IoHandler* ioHandler,
+                 mixr::xtacview::TacviewOutput* tacviewOutput);
 
 } // namespace app

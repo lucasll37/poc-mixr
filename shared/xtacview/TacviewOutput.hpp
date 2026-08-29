@@ -61,6 +61,21 @@ class TacviewOutput : public recorder::OutputHandler
 public:
    TacviewOutput();
 
+   // Feixe/varredura do radar de um player -- chamado FORA da cadeia do
+   // recorder, direto do laco de tempo real (ver app/RealTimeRun.cpp).
+   //
+   // O pipeline REID/DataRecorder nao tem schema para dado de sensor/gimbal
+   // (DataRecord.proto so cobre PlayerState/TrackData/EmissionData -- nenhum
+   // deles e "para onde a antena esta apontando agora"), e a cadeia de
+   // containers que resolveria o Player vivo a partir DAQUI (resolveInfo(),
+   // acima) esta documentada como quebrada. Quem ja tem o AirVehicle nativo
+   // -- a Fleet do main.cpp, via xnative::radarScanOf() -- empurra o dado
+   // direto. So emite se o objeto ja recebeu um T= (ver 'declared' abaixo);
+   // sem isso o Tacview receberia RadarAzimuth= para um id desconhecido.
+   void updateRadarScan(const std::uint32_t playerId, const double simTimeSec,
+                        const double azimuthDeg, const double elevationDeg, const double rangeM,
+                        const double hBeamwidthDeg, const double vBeamwidthDeg);
+
 protected:
    void processRecordImp(const recorder::DataRecordHandle* const) override;
    bool shutdownNotification() override;

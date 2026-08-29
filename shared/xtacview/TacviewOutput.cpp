@@ -351,6 +351,23 @@ void TacviewOutput::emitState(const recorder::pb::PlayerId& id,
                        first ? &info : nullptr);
 }
 
+void TacviewOutput::updateRadarScan(const std::uint32_t playerId, const double simTimeSec,
+                                    const double azimuthDeg, const double elevationDeg,
+                                    const double rangeM,
+                                    const double hBeamwidthDeg, const double vBeamwidthDeg)
+{
+   initIfNeeded();
+   if (!initialized) return;
+
+   server.acceptIfNeeded();
+   if (!server.isActive()) return;
+
+   if (declared.find(playerId) == declared.end()) return;   // ainda sem T= -- Tacview nao conhece o id
+
+   syncFrame(simTimeSec);
+   server.updateRadarBeam(playerId, azimuthDeg, elevationDeg, rangeM, hBeamwidthDeg, vBeamwidthDeg);
+}
+
 //------------------------------------------------------------------------------
 // processRecordImp() -- traduz cada DataRecord nativo em linhas ACMI.
 //

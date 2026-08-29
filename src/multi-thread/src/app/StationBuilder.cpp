@@ -3,8 +3,12 @@
 #include "mixr_factory.hpp"
 
 #include "xclock/ClockStation.hpp"
+#include "xtacview/ExposedDataRecorder.hpp"
+#include "xtacview/TacviewOutput.hpp"
 
 #include "mixr/linkage/IoHandler.hpp"
+
+#include "mixr/recorder/OutputHandler.hpp"
 
 #include "mixr/simulation/Station.hpp"
 #include "mixr/models/WorldModel.hpp"
@@ -81,6 +85,28 @@ mixr::linkage::IoHandler* ioHandlerOf(mixr::simulation::Station* const station)
                 << " controle por joystick desligado" << std::endl;
    }
    return ioHandler;
+}
+
+mixr::xtacview::TacviewOutput* tacviewOutputOf(mixr::simulation::Station* const station)
+{
+   // Navegacao PARA BAIXO na arvore (slot -> filho) -- funciona; e o sentido
+   // contrario (filho -> pai, container()) que esta quebrado, documentado em
+   // TacviewOutput::resolveInfo(). getOutputHandler() so e alcancavel de
+   // fora porque o .epp declara ( ExposedDataRecorder ) em vez de
+   // ( DataRecorder ) -- ver o cabecalho de ExposedDataRecorder.hpp.
+   const auto dataRecorder = dynamic_cast<mixr::xtacview::ExposedDataRecorder*>(station->getDataRecorder());
+   mixr::recorder::OutputHandler* const outputHandler{
+      dataRecorder != nullptr ? dataRecorder->getOutputHandler() : nullptr};
+   mixr::base::Pair* const pair{
+      outputHandler != nullptr ? outputHandler->findByType(typeid(mixr::xtacview::TacviewOutput)) : nullptr};
+   const auto tacviewOutput = pair != nullptr
+      ? dynamic_cast<mixr::xtacview::TacviewOutput*>(pair->object()) : nullptr;
+
+   if (tacviewOutput == nullptr) {
+      std::cerr << "[main] aviso: cenario sem ( TacviewOutput ) na cadeia do dataRecorder;"
+                << " varredura do radar nao sera exportada para o Tacview" << std::endl;
+   }
+   return tacviewOutput;
 }
 
 } // namespace app

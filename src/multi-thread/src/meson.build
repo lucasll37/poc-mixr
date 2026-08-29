@@ -29,6 +29,7 @@ sources = files(
     'xnative/FlightAgentTC.cpp',   # <- a ÚNICA classe a mais que a poc/single-thread
     'xnative/TacticalAlert.cpp',
     'xnative/TrackQuery.cpp',
+    'xnative/RadarScan.cpp',
     'xnative/factory.cpp',
 
     # utilitários de runtime, um por questão

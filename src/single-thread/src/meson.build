@@ -28,6 +28,7 @@ sources = files(
     'xnative/AlertDatalink.cpp',
     'xnative/TacticalAlert.cpp',
     'xnative/TrackQuery.cpp',
+    'xnative/RadarScan.cpp',
     'xnative/factory.cpp',
 
     # utilitários de runtime, um por questão

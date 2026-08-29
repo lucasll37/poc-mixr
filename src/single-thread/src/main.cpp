@@ -47,6 +47,7 @@
 #include "app/TerrainData.hpp"
 
 #include "xlog/Log.hpp"
+#include "xtacview/TacviewOutput.hpp"
 
 #include "mixr/simulation/Station.hpp"
 
@@ -115,6 +116,7 @@ int main(int argc, char* argv[])
    mixr::simulation::Station* const station{app::buildStation(opts.generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};
    mixr::linkage::IoHandler* const ioHandler{app::ioHandlerOf(station)};
+   mixr::xtacview::TacviewOutput* const tacviewOutput{app::tacviewOutputOf(station)};
 
    app::primeStation(station);
 
@@ -127,7 +129,7 @@ int main(int argc, char* argv[])
       rc = app::runDeterministic(station, fleet, opts.deterministicFrames);
    } else {
       printBanner(numTcThreads);
-      app::runRealTime(station, fleet, worldModel, clockStation, ioHandler);
+      app::runRealTime(station, fleet, worldModel, clockStation, ioHandler, tacviewOutput);
       std::cout << "=== fim ===" << std::endl;
    }
 
