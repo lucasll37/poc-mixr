@@ -254,8 +254,10 @@ const FlightAgentTC* findFlightAgent(const models::AirVehicle* air)
 
 Como o agente é componente do **player**, a busca é a mesma que o framework usa para os
 subsistemas: **por tipo**, na lista de componentes. Devolve `nullptr` se a aeronave não declarar
-um `( FlightAgentTC )` no `.epp` — que é o caso do `bandit1`, e é por isso que
-`StatusReport`/`DeterministicDump` imprimem `dec=0` para ele.
+um `( FlightAgentTC )` no `.epp` — o caso de qualquer player sem agente próprio (hoje, nenhum dos
+`falcon1..4` cai nisso; o intruso `bandit1` nem é mais um player local aqui, ver a nota no
+[README do single-thread](../single-thread/README.md#4-a-árvore-de-objetos-do-cenário) sobre
+`src/bandit-dis`).
 
 ---
 

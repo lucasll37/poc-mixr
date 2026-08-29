@@ -177,7 +177,7 @@ Cada peça é "pega" por um mecanismo diferente:
 
 | classe | como o framework chega nela |
 |---|---|
-| `Aircraft`, `bandit1`… | estão na lista `players:` do `WorldModel`, percorrida pela `Simulation` |
+| `Aircraft` (`falcon1`…`falcon4`) | estão na lista `players:` do `WorldModel`, percorrida pela `Simulation` |
 | `JSBSimModel` | achado **por tipo** em `Player::updateSystemPointers()` (`findByType(typeid(DynamicsModel))`) e chamado por `Player::dynamics()` na fase 0 |
 | `Autopilot` | idem, como `Pilot` (`getPilotByType`), rodando na fase 3 |
 | `Antenna`/`Tws`/`AirTrkMgr` | são `System`s dentro do player: fases 1 (transmite), 2 (recebe) e 3 (processa pistas) |
@@ -203,6 +203,8 @@ o teto depende da máquina):
 ```
 ( ClockStation                                       ← shared/xclock: Station + controle de tempo
    components:      { agent1..agent4 : ( SimAgent actorPlayerName: falconN ... ) }
+   networks:        { ( DisNetIO enableOutput: false inputEntityTypes: { ( DisNtm ... ) } ) }
+                                                      ← recebe o bandit1 SÓ pela rede (ver abaixo)
    dataRecorder:    ( DataRecorder enabledList: [ 43 42 ]
                         outputHandler: ( RecorderOutputHandler
                            components: { ( TacviewOutput modelMap/typeMap/colorMap ) } ) )
@@ -224,7 +226,8 @@ o teto depende da máquina):
                                                              trackManagerName: twsTrkMgr ) } )
                  obc:           ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr ) } )
               } )
-           bandit1 : ( Aircraft  dynamicsModel + pilot, SEM sensor/datalink/agente )
+           // bandit1 NÃO mora mais aqui -- é o processo src/bandit-dis, recebido só
+           // pela rede via 'networks:' acima. Ver CLAUDE.md, seção "src/bandit-dis".
         } ) )
 ```
 
@@ -233,7 +236,7 @@ Cinco coisas que valem entender nessa árvore:
 - **`Player` não tem slot para subsistema nenhum.** Tudo entra por `components:` e é localizado
   **por tipo** (`Player::updateSystemPointers()`). Por isso a ordem no `.epp` é irrelevante *para
   encontrar*, os rótulos (`dynamicsModel:`, `pilot:`…) são livres, e um player sem um dado
-  subsistema não é erro — é só um player que não tem aquilo (o caso do `bandit1`).
+  subsistema não é erro — é só um player que não tem aquilo.
 - **Mas a ordem é ordem de EXECUÇÃO dentro da fase.** `Component::updateTC()` percorre os
   subcomponentes na ordem declarada. Como `sensors:` vem antes de `obc:`, o `Radar::process()`
   (que faz `newReport`) roda antes do `TrackManager::process()` (que drena) — e a pista aparece no
@@ -248,6 +251,14 @@ Cinco coisas que valem entender nessa árvore:
   `mixr::models::factory` **não** encadeia a de terreno; sem `mixr::terrain::factory` no
   [`mixr_factory.cpp`](src/mixr_factory.cpp), o `( SrtmHgtFile )` não constrói nada e o mundo fica
   sem chão, em silêncio.
+- **O intruso (`bandit1`) não é mais declarado em `players:`.** Ele virou o processo
+  [`src/bandit-dis`](../bandit-dis/), pilotado por joystick físico (ou pelo `Autopilot` nativo,
+  de *fallback*, sem hardware) e emitido via **DIS nativo do MIXR**. Esta `Station` só *recebe*,
+  pelo `networks:` mostrado acima — `interop::NetIO::createIPlayer()` clona por inteiro o
+  `template:` do `DisNtm` (`signature`, `dataLogTime`) a cada PDU novo e insere o clone na
+  **mesma** lista que `Simulation::getPlayers()` devolve, então o radar/UBF reagem ao `bandit1`
+  de rede exatamente como reagiriam a um local. Detalhe completo, com os números de linha do
+  framework, na seção "`src/bandit-dis`" do [CLAUDE.md](../../CLAUDE.md).
 
 **As altitudes não são arbitrárias.** Cada falcon voa no **pico do próprio circuito de patrulha
 + 300 m** (falcon1 1750, falcon2 1850, falcon3 2050, falcon4 2100 m), porque com terreno

@@ -38,7 +38,7 @@ Telemetry**, exportada pela biblioteca compartilhada [shared/xtacview/](shared/x
 
 ## 1. Funcionalidades exploradas
 
-São oito temas, e cada um foi levado até rodar e ser medido. A coluna "onde" aponta o arquivo
+São onze temas, e cada um foi levado até rodar e ser medido. A coluna "onde" aponta o arquivo
 que responde pela funcionalidade; a coluna "detalhe" aponta a seção do README do subprojeto que
 disseca o assunto.
 
@@ -52,10 +52,13 @@ disseca o assunto.
 | 6 | **Comportamento com UBF nativo** — `AbstractState`/`AbstractBehavior`/`AbstractAction` do framework, arbitrados por voto num `UbfArbiter` nativo | [`ubf/`](src/single-thread/include/ubf/) | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](src/single-thread/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 8 | **Padrões de projeto dos exemplos oficiais** — o *builder* canônico, a factory encadeada por nome, o par estrutura-EDL/comportamento-C++, o gancho de sensor em `transmit()`, o `shared/x<nome>` | [`mixr_factory.cpp`](src/single-thread/src/mixr_factory.cpp), [`app/StationBuilder`](src/single-thread/include/app/StationBuilder.hpp), `shared/x*` | [§3 e §5 do single-thread](src/single-thread/README.md#3-como-o-framework-chama-o-nosso-código) |
+| 9 | **Controle por joystick físico, com fallback automático** — o intruso pode ser pilotado por um HOTAS de verdade ou continuar no `Autopilot` nativo *scripted* sem hardware conectado, detectado a cada frame (plugar/desplugar em execução troca o controle sem reiniciar) | [`shared/xjoystick/`](shared/xjoystick/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
+| 10 | **Interoperabilidade DIS nativa** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das duas pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
+| 11 | **Log com nível/*stream* e persistência em arquivo** — investigado e descartado usar o `mixr::recorder` para texto livre (o schema `DataRecord.proto` não carrega string nenhuma); a solução reaproveita `mixr::recorder::PrintHandler` por fora do pipeline REID/protobuf | [`shared/xlog/`](shared/xlog/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
 
-E uma nona, que não é funcionalidade e sim consequência: **onde a decisão roda é uma escolha de
-integração, não do modelo.** É o que os dois subprojetos existem para demonstrar — são o mesmo
-modelo, byte a byte, trocando só o agente do UBF. Ver [§7](#7-os-subprojetos).
+E mais uma, que não é funcionalidade e sim consequência: **onde a decisão roda é uma escolha de
+integração, não do modelo.** É o que os dois subprojetos gêmeos existem para demonstrar — são o
+mesmo modelo, byte a byte, trocando só o agente do UBF. Ver [§7](#7-os-subprojetos).
 
 ---
 
@@ -100,7 +103,9 @@ make help        # lista os alvos (comentários ## do Makefile)
 ```
 
 Cada subprojeto vira um executável independente em `build/src/<nome>/src/<nome>` — hoje
-`build/src/single-thread/src/single-thread` e `build/src/multi-thread/src/multi-thread`.
+`build/src/single-thread/src/single-thread`, `build/src/multi-thread/src/multi-thread` e
+`build/src/bandit-dis/src/bandit-dis` (este último bem mais simples: sem BehaviorTree.CPP, sem
+UBF — só o intruso, sozinho, emitindo DIS).
 
 **AddressSanitizer:** `meson configure build -Dasan=true && make build`. É a única opção do
 [meson_options.txt](meson_options.txt), e liga ASan apenas na `single-thread` (o único alvo que
@@ -144,7 +149,81 @@ Ou direto pelo binário, também a partir da raiz:
 ./build/src/multi-thread/src/multi-thread
 ```
 
-**Opções de linha de comando** (as três valem nos dois binários):
+**Com o intruso de verdade** (pilotável, em processo próprio) — dois terminais, dois processos:
+
+```bash
+make run-bandit-dis        # terminal 1 -- intruso sozinho, Tacview na porta 1235
+make run-single-thread     # terminal 2 -- ou run-multi-thread, à sua escolha
+```
+
+`bandit-dis` funciona **com ou sem** joystick físico: sem hardware em `/dev/input/js0`, ele
+mantém o voo *scripted* de sempre via `Autopilot`; com um HOTAS conectado, você pilota (canais
+mapeados para um Logitech Extreme 3D — outro joystick é só remapear `channel:` no `.epp`, sem
+recompilar). As duas pocs recebem o intruso **só pela rede** (DIS, `localhost:3000`) — nenhum
+player local o declara. Ver [`src/bandit-dis/`](src/bandit-dis/) e a seção "`src/bandit-dis`" do
+[CLAUDE.md](CLAUDE.md).
+
+**Topologia** — três processos independentes, conectados só por rede (DIS UDP) e por Tacview
+(TCP); `single-thread` e `multi-thread` são **alternativas** entre si (nunca rodam juntos), cada
+um roda sozinho ou ao lado do `bandit-dis`:
+
+```mermaid
+flowchart LR
+    JOY(["Joystick físico<br/>/dev/input/js0"])
+    KBD(["Teclado<br/>(terminal interativo)"])
+    TCV(["Tacview<br/>(cliente)"])
+
+    subgraph P1["processo: bandit-dis"]
+        direction TB
+        JIH["JoystickIoHandler<br/>(shared/xjoystick)"]
+        B1["bandit1<br/>Aircraft · JSBSimModel · Autopilot"]
+        OUT["DisNetIO<br/>siteID 1 · emite<br/>localPort 3001"]
+        TV0["TacviewOutput<br/>:1235"]
+        JIH --> B1
+        B1 --> OUT
+        B1 --> TV0
+    end
+
+    subgraph P2["processo: single-thread"]
+        direction TB
+        IN1["DisNetIO<br/>siteID 2 · só recebe<br/>localPort 3002"]
+        SA["SimAgent (UBF)<br/>decide em updateData(), 10 Hz"]
+        F1["falcon1..4<br/>Aircraft · JSBSimModel · Autopilot · radar · datalink"]
+        TV1["TacviewOutput<br/>:1234"]
+        IN1 -.->|"clona DisNtm.template<br/>(dead reckoning)"| F1
+        SA --> F1
+        F1 --> TV1
+    end
+
+    subgraph P3["processo: multi-thread (alternativa ao single-thread)"]
+        direction TB
+        IN2["DisNetIO<br/>siteID 3 · só recebe<br/>localPort 3003"]
+        FTC["FlightAgentTC (UBF)<br/>decide na fase 3, 50 Hz"]
+        F2["falcon1..4<br/>Aircraft · JSBSimModel · Autopilot · radar · datalink"]
+        TV2["TacviewOutput<br/>:1234"]
+        IN2 -.->|"clona DisNtm.template<br/>(dead reckoning)"| F2
+        FTC --> F2
+        F2 --> TV2
+    end
+
+    JOY --> JIH
+    KBD -.-> P2
+    KBD -.-> P3
+
+    OUT ==>|"UDP broadcast :3000<br/>(localhost ou LAN)"| IN1
+    OUT ==>|"UDP broadcast :3000<br/>(localhost ou LAN)"| IN2
+
+    TV0 ---|"TCP Real-Time Telemetry"| TCV
+    TV1 ---|"TCP Real-Time Telemetry"| TCV
+    TV2 ---|"TCP Real-Time Telemetry"| TCV
+```
+
+Todo mundo escuta em `0.0.0.0`/porta `3000` (DIS) e nas portas do Tacview — dá pra rodar os
+processos em máquinas diferentes da mesma LAN, não só no mesmo host (ver [§8](#8-bibliotecas-compartilhadas)
+para `xjoystick` e o [CLAUDE.md](CLAUDE.md) para o acesso do Tacview de uma terceira máquina).
+
+**Opções de linha de comando** (as três valem em `single-thread`/`multi-thread`; `bandit-dis` não
+tem CLI — cenário e portas são fixos em [`configs/scenario.epp`](src/bandit-dis/configs/scenario.epp)):
 
 | opção | efeito |
 |---|---|
@@ -152,14 +231,23 @@ Ou direto pelo binário, também a partir da raiz:
 | `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico |
 | `-deterministic <N>` | roda N frames de **passo fixo** e despeja o estado, em vez de rodar em tempo real |
 
-**Teclado** (só em terminal interativo — ver [`shared/xclock/`](shared/xclock/)):
-`+`/`=` acelera o tempo, `-`/`_` freia, `espaço`/`p` pausa, `1` volta ao tempo real, `h` ajuda,
-`Ctrl+C` encerra. A linha de status mostra tempo de parede e tempo simulado lado a lado
-(`[t=24s sim=8.2s PAUSADO (1x)]`) — é a diferença entre os dois que prova o efeito.
+**Teclado** (só em `single-thread`/`multi-thread`, terminal interativo — ver
+[`shared/xclock/`](shared/xclock/)): `+`/`=` acelera o tempo, `-`/`_` freia, `espaço`/`p` pausa,
+`1` volta ao tempo real, `h` ajuda, `Ctrl+C` encerra. A linha de status mostra tempo de parede e
+tempo simulado lado a lado (`[t=24s sim=8.2s PAUSADO (1x)]`) — é a diferença entre os dois que
+prova o efeito. `bandit-dis` não tem `xclock` — só `Ctrl+C`.
 
-**Tacview:** abra *File > Real-Time Telemetry* e conecte na porta **1234**. Com o binário no
-WSL2 e o Tacview no Windows, se `127.0.0.1` não conectar, use o IP que `hostname -I` devolve
-dentro do WSL2. Cada execução também grava `src/<nome>/data/recordings/mission.acmi`.
+**Tacview:** abra *File > Real-Time Telemetry* e conecte na porta **1234** (`single-thread`/
+`multi-thread`) ou **1235** (`bandit-dis`) — dá para abrir os dois ao mesmo tempo e ver o mesmo
+contato se movendo nas duas telas. Com o binário no WSL2 e o Tacview no Windows, se `127.0.0.1`
+não conectar, use o IP que `hostname -I` devolve dentro do WSL2. Cada execução também grava
+`src/<nome>/data/recordings/mission.acmi`.
+
+De uma **terceira máquina na rede local** (nem o host, nem o Windows do WSL2): o servidor já
+escuta em `0.0.0.0`, então basta o IP da LAN do host + liberar a porta no firewall; se o binário
+roda **dentro do WSL2**, tem um salto a mais — encaminhar a porta no Windows host com `netsh
+interface portproxy` antes de a LAN alcançar. Passo a passo dos dois casos no
+[CLAUDE.md](CLAUDE.md), seção `shared/xtacview`.
 
 ---
 
@@ -178,9 +266,15 @@ make compare-single-multi  # lista o que difere entre os dois subprojetos (deve 
 `compare-single-multi` é o teste da tese do repositório: se a lista crescer além do agente, do
 `.epp` e da observabilidade, alguma coisa vazou de um subprojeto para o outro.
 
+`bandit-dis` **não tem alvo `check-*`**: joystick e rede (DIS) não são determinísticos por
+natureza — não há dump para comparar. A prova de que ele funciona é rodá-lo junto com
+`single-thread`/`multi-thread` e ver o intruso reagido no radar/Tacview (ver [§4](#4-rodar)).
+
 > **Nota:** `make help` ainda lista alvos `run-*` de subprojetos que foram removidos
 > (`01-flying-aircraft` … `12-jsbsim-ubf`). São entradas mortas no Makefile; os alvos válidos
-> hoje são exatamente os seis listados acima mais `configure`/`build`/`install`/`clean`.
+> hoje são exatamente os seis listados acima (`run-single-thread`, `run-multi-thread`,
+> `run-bandit-dis`, `check-single-thread`, `check-multi-thread`, `compare-single-multi`) mais
+> `configure`/`build`/`install`/`clean`.
 
 ---
 
@@ -190,11 +284,14 @@ make compare-single-multi  # lista o que difere entre os dois subprojetos (deve 
 poc-mixr/
 ├── src/                    subprojetos: um executável independente por pasta, todos compilados juntos
 │   ├── single-thread/      decisão no ( SimAgent ) nativo, em updateData() — thread de background
-│   └── multi-thread/       decisão no ( FlightAgentTC ) próprio, na fase 3 do frame de tempo crítico
+│   ├── multi-thread/       decisão no ( FlightAgentTC ) próprio, na fase 3 do frame de tempo crítico
+│   └── bandit-dis/         o intruso sozinho — joystick/Autopilot + emissão DIS, sem UBF nenhum
 ├── shared/
 │   ├── xtacview/           exportação para o Tacview (OutputHandler nativo do recorder)
 │   ├── xclock/             controle de velocidade do tempo (acelerar / frear / pausar)
-│   └── data/terrain/srtm/  tile SRTM do cenário — compartilhado pelos dois subprojetos
+│   ├── xjoystick/          controle do intruso por joystick físico, com fallback pro Autopilot
+│   ├── xlog/               LOG(NIVEL) << ...; com nível/stream, persistido em arquivo
+│   └── data/terrain/srtm/  tile SRTM do cenário — compartilhado pelos três subprojetos
 ├── contexts/               material de consulta sobre MIXR e BehaviorTree.CPP (ver §9)
 ├── conanfile.py            dependências binárias
 ├── meson.build             raiz: resolve as libs por pkg-config e dá subdir() em cada subprojeto
@@ -229,7 +326,8 @@ Três regras estruturam tudo:
 2. **Um arquivo, uma questão.** O que seria um `main.cpp` de ~450 linhas está quebrado em
    `app/`, e cada header abre com o *porquê* daquele passo. Vale o mesmo dentro de `ubf/` (a
    tabela de slots do `BtBehavior` mora num arquivo separado da decisão) e de `xnative/`
-   (`Log`, `ThreadTag`, `BehaviorBoard` são um utilitário por questão).
+   (`ThreadTag`, `BehaviorBoard` são um utilitário por questão cada; o log virou `shared/xlog/`,
+   porque é idêntico nos subprojetos, como `xtacview`/`xclock`/`xjoystick`).
 3. **Estrutura vem do EDL, comportamento vem do C++.** Quais players existem, com quais
    subsistemas, em que taxa, com quantas threads — tudo isso é declarado em `configs/*.epp` e
    lido em tempo de carga. **Reconfigurar o cenário não recompila nada.**
@@ -240,9 +338,12 @@ Três regras estruturam tudo:
   `.hpp`, `IMPLEMENT_SUBCLASS(Classe, "FactoryName")` no `.cpp`.
 - Parâmetros configuráveis por EDL são **slots**: `BEGIN_SLOTTABLE`/`END_SLOTTABLE` +
   `BEGIN_SLOT_MAP`/`ON_SLOT`/`END_SLOT_MAP`, com `setSlotX()` privados.
-- **Factory por nome:** cada `mixr_factory.cpp` encadeia as factories na ordem
-  `local → xtacview → xclock → simulation → models → terrain → recorder → base`. **A primeira
-  que retorna não-nulo vence** — por isso a factory própria vem sempre antes das do framework.
+- **Factory por nome:** cada `mixr_factory.cpp` encadeia as factories na ordem `local → xtacview
+  → xclock → xjoystick → simulation → models → terrain → dis (DIS nativo, `mixr::dis`) →
+  linkage (UsbJoystick/IoData/AnalogInput) → recorder → base`. **A primeira que retorna não-nulo
+  vence** — por isso a factory própria vem sempre antes das do framework, e várias das nativas
+  (`terrain`, `dis`, `linkage`) precisam de uma linha própria: nenhuma delas é encadeada de graça
+  por `models`/`simulation`.
 - Hierarquia: `Station` → `WorldModel` → `players` → `Player`, agregando `dynamicsModel`,
   sensores (`Antenna`/`RfSensor`/`Gimbal`/`Autopilot`/`Datalink`) e navegação
   (`Route`/`Steerpoint`).
@@ -290,12 +391,23 @@ dependências aparecem:
 
 Comece pelo da `single-thread`: o da `multi-thread` é escrito como *delta* dele.
 
+**Há um terceiro subprojeto, [`src/bandit-dis/`](src/bandit-dis/), de natureza diferente destes
+dois.** Não é gêmeo de nada — é só o intruso (o mesmo `Aircraft`/`JSBSimModel`/`Autopilot` de
+sempre) rodando **sozinho**, num processo à parte, pilotável por joystick físico (com fallback
+automático pro `Autopilot` sem hardware) e **emitido via DIS nativo do MIXR**
+(`mixr::dis::NetIO`/`Ntm`, construtíveis direto em EDL). `single-thread`/`multi-thread` não têm
+mais um intruso local: recebem esse player **só pela rede**, e o radar/UBF reagem a ele sem saber
+a diferença — é a prova de que a interoperabilidade DIS realmente desacopla os dois lados. Ver
+[§4](#4-rodar) para rodar os dois juntos, e a seção "`src/bandit-dis`" do [CLAUDE.md](CLAUDE.md)
+para o desenho completo (com os números de linha do framework que provam o mecanismo).
+
 ---
 
 ## 8. Bibliotecas compartilhadas
 
-Ambas seguem o padrão `shared/x<nome>` dos exemplos oficiais do MIXR: classes num namespace
-`mixr::x<nome>`, factory própria, expostas ao Meson como `x<nome>_dep`.
+Todas seguem o padrão `shared/x<nome>` dos exemplos oficiais do MIXR: classes num namespace
+`mixr::x<nome>`, expostas ao Meson como `x<nome>_dep` — a maioria com factory própria (`xlog` é
+a exceção: não constrói nada via EDL, então não precisa de uma).
 
 ### `shared/xtacview/` — exportação para o Tacview
 
@@ -325,11 +437,42 @@ com um único *override*. A divisão entre nativo e próprio é deliberada e val
   por *consulta*, no sentido inverso (`Player::isFrozen()` testa o próprio flag **ou** o da
   simulação). Por isso `setPaused()` age em `getSimulation()`, e não na `Station`.
 
+### `shared/xjoystick/` — controle do intruso por joystick físico
+
+Mecanismo **100% nativo do MIXR** (`mixr::linkage`: `IoHandler`/`IoData`/`UsbJoystick`/
+`AnalogInput`, já dependência transitiva de `mixr_dep`) — sem SDL, sem evdev, sem dependência
+nova. `UsbJoystick` lê `/dev/input/jsX` direto, com `<linux/joystick.h>` cru. A única classe C++
+própria é `JoystickIoHandler` (o framework não traz uma subclasse pronta de `IoHandler`); ela
+localiza o `Autopilot` do player e desliga os hold modes antes de aplicar o *stick* — mas **só
+quando detecta um dispositivo de verdade** (`hasRealJoystick()`, um `stat()` a cada frame). Sem
+hardware, o `Autopilot` nativo segue no comando, sem nenhuma linha a mais: é o que deixa
+`bandit-dis` viável mesmo numa máquina sem HOTAS conectado.
+
+Canais mapeados e testados contra um Logitech Extreme 3D — trocar de joystick é só remapear
+`channel:` no `.epp`, sem recompilar. Detalhes e as sete armadilhas confirmadas rodando
+(numeração 1-based/0-based dos canais, sinal do manete invertido, WSL2 precisando de
+`usbipd-win`…) estão no [CLAUDE.md](CLAUDE.md).
+
+### `shared/xlog/` — log com nível, *stream* e persistência em arquivo
+
+```cpp
+LOG(WARNING) << "algo aconteceu: " << valor;
+```
+
+Cogitou-se usar o `mixr::recorder` (o gravador nativo) como base, mas o schema
+`DataRecord.proto` é fechado: nenhuma mensagem por-evento tem campo de texto livre — nem o
+`MarkerMsg`, que só carrega dois `uint32`. Carregar texto livre por ali exigiria remendar o
+`.proto` vendorizado do MIXR. A solução reaproveita `mixr::recorder::PrintHandler` (a mesma
+classe por trás do `TabPrinter` nativo) como sink de arquivo, mas **por fora** do pipeline
+`recordData()`/REID/protobuf — `printToOutput()` escreve direto num `std::ofstream`, sem nunca
+tocar no schema fechado. `Level` é `enum class` (`DEBUG`/`INFO`/`WARNING`/`ERROR`), não `#define`
+soltos, e cada linha vai para o console **e** para `data/logs/<poc>.log`, protegida por mutex.
+
 ### `shared/data/terrain/srtm/`
 
-O tile SRTM1 `S23W043.hgt.gz` (Serra do Mar, RJ), **compartilhado pelos dois subprojetos** —
+O tile SRTM1 `S23W043.hgt.gz` (Serra do Mar, RJ), **compartilhado pelos três subprojetos** —
 é a única exceção à regra de `data/` por subprojeto, porque são 12 MB do *cenário*, que é o
-mesmo nas duas pocs gêmeas. O `.gz` é versionado; o `.hgt` descomprimido (25 MB) é artefato
+mesmo em todos eles. O `.gz` é versionado; o `.hgt` descomprimido (25 MB) é artefato
 gerado na primeira execução e está no `.gitignore`.
 
 ---
@@ -363,7 +506,8 @@ não vêm num clone limpo. Sem elas, os headers instalados pelo Conan
 
 | documento | para quê |
 |---|---|
-| **[CLAUDE.md](CLAUDE.md)** | guia operacional: comandos, arquitetura em uma tela, e o catálogo consolidado de armadilhas (rpath, unidades, recorder, xtacview, xclock, terreno) |
+| **[CLAUDE.md](CLAUDE.md)** | guia operacional: comandos, arquitetura em uma tela, e o catálogo consolidado de armadilhas (rpath, unidades, recorder, xtacview, xclock, xjoystick, xlog, terreno, `src/bandit-dis`/DIS) |
 | **[src/single-thread/README.md](src/single-thread/README.md)** | a aula completa sobre um subprojeto, arquivo por arquivo, em ordem de dependência |
 | **[src/multi-thread/README.md](src/multi-thread/README.md)** | onde uma decisão deve rodar, e o que isso custa |
 | **[shared/xtacview/TacviewOutput.cpp](shared/xtacview/TacviewOutput.cpp)** | o protocolo *Real-Time Telemetry* e as sete armadilhas do gravador nativo |
+| **[src/bandit-dis/](src/bandit-dis/)** | o intruso como processo à parte — `configs/scenario.epp` é a referência de como declarar `ioHandler:`+`networks:` juntos |

@@ -222,7 +222,29 @@ dataRecorder: ( DataRecorder
 Protocolo: handshake `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n<username>\n\0` — **todas**
 as linhas terminam em `\n`, inclusive a última (a doc oficial sugere o contrário e não conecta);
 o `\0` é um byte separado. Bind em `0.0.0.0` (não `127.0.0.1`): com Tacview no Windows e binário
-no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname -I`. Porta 1234.
+no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname -I`. Porta 1234
+(1235 no `bandit-dis`).
+
+**Alcançar de uma TERCEIRA máquina, na rede local (não o host, não o Windows do WSL2)** — nenhuma
+das três configs declara o slot `host:`, então o `TacviewOutput` já sobe no default `"0.0.0.0"`:
+o servidor já escuta em qualquer interface, o que falta é só o caminho de rede até a porta.
+
+- **Linux nativo:** `hostname -I`/`ip addr show` no host dá o IP da LAN de verdade (não o
+  interno de VM nenhuma); libere a porta no firewall se houver um ativo (`ufw allow 1234/tcp` ou
+  equivalente da distro); a outra máquina conecta em `<IP-da-LAN>:1234`.
+- **Binário dentro do WSL2 — tem um salto a mais.** `hostname -I` **dentro** do WSL2 devolve o IP
+  interno da rede NAT da VM (tipicamente `172.x.x.x`) — **não alcançável** de outra máquina da
+  LAN, mesmo com o Windows nela. É preciso encaminhar a porta no **Windows host**, como
+  Administrador:
+  ```powershell
+  netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=1234 connectaddress=<IP-WSL2> connectport=1234
+  New-NetFirewallRule -DisplayName "Tacview WSL2" -Direction Inbound -Protocol TCP -LocalPort 1234 -Action Allow
+  ```
+  (conferir com `netsh interface portproxy show v4tov4`); a terceira máquina conecta no IP da LAN
+  **do Windows**, não do WSL2. **Armadilha:** o IP interno do WSL2 muda a cada reinício da
+  VM/máquina — o `portproxy` fica apontando para um IP morto. Refazer o `netsh interface
+  portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=1234` seguido do `add` acima sempre
+  que o WSL2 reiniciar.
 
 ### `shared/xclock` — controle de velocidade do tempo (acelerar / frear / pausar)
 
