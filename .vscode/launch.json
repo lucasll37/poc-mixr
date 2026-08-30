@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug poc/single-thread",
+      "name": "Debug single-thread",
       "type": "cppdbg",
       "request": "launch",
       "args": [],
@@ -21,7 +21,7 @@
       ]
     },
     {
-      "name": "Debug poc/multi-thread",
+      "name": "Debug multi-thread",
       "type": "cppdbg",
       "request": "launch",
       "args": [],
@@ -40,14 +40,14 @@
       ]
     },
     {
-      "name": "C/C++ Runner: Debug Session",
+      "name": "Debug bandit-dis",
       "type": "cppdbg",
       "request": "launch",
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/lima/asa/poc-mixr/src/14-tc-agent/src",
-      "program": "/home/lima/asa/poc-mixr/src/14-tc-agent/src/build/Debug/outDebug",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/build/src/bandit-dis/src/bandit-dis",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

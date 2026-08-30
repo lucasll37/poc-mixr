@@ -27,26 +27,18 @@ namespace xjoystick {
 //                            ! ( UsbJoystick ) dentro de 'devices:', mais
 //                            ! abaixo no mesmo 'ioHandler:'.
 //
-// ARMADILHA DE DESENHO -- nao esta em nenhum exemplo do framework, foi
-// preciso decidir: o player alvo normalmente tem um
-// ( Autopilot headingHoldMode/altitudeHoldMode/velocityHoldMode: true ) para
-// manter o cenario inicial. O Autopilot reimpoe esses modos a cada fase do
-// frame de tempo critico (ate 50 Hz), enquanto este handler e sondado no
-// laco de background (10 Hz, mesmo lugar do xclock::TimeControls::poll()) --
-// se o stick fosse escrito so no AirVehicle sem desengatar os hold modes, o
-// Autopilot sobrescreveria o comando do joystick antes da proxima leitura.
-// Por isso, ao localizar o Autopilot do player (Player::getPilotByType),
-// este handler desliga os tres hold modes TODO frame antes de aplicar o
-// stick -- idempotente, sem precisar de um evento explicito de "assumir
-// controle".
+// DESENGATE DO AUTOPILOT -- o player alvo normalmente tem um ( Autopilot
+// headingHoldMode/altitudeHoldMode/velocityHoldMode: true ), que reimpoe
+// esses modos a cada fase do frame de tempo critico (ate 50 Hz) -- mais
+// rapido que a sondagem deste handler no laco de background (10 Hz). Por
+// isso, ao localizar o Autopilot do player (Player::getPilotByType), este
+// handler desliga os tres hold modes TODO frame antes de aplicar o stick;
+// sem isso o Autopilot sobrescreveria o comando do joystick antes da
+// proxima leitura.
 //
 // FALLBACK SEM HARDWARE -- o UsbJoystick nativo degrada sozinho (canais em
-// zero, sem exception/abort), mas ele nao AVISA quem o chama que o
-// dispositivo sumiu -- IoData::getAnalogInput() so olha limite de indice,
-// nao "o valor veio de verdade". Sem essa checagem, um bandit1 sem joystick
-// fisico ficaria voando em manual com entradas zeradas (manete na metade,
-// sem stick nenhum), em vez de manter o Autopilot scripted de sempre.
-// Por isso este handler checa a EXISTENCIA do dispositivo ele mesmo
+// zero, sem exception/abort), sem avisar quem o chama que o dispositivo
+// sumiu. Por isso este handler checa a EXISTENCIA do dispositivo ele mesmo
 // (hasRealJoystick(), mesma ordem de busca do UsbJoystick_linux.cpp:
 // '/dev/js<N>' depois '/dev/input/js<N>') antes de tocar em qualquer coisa:
 // sem o arquivo, nem desengata o Autopilot nem aplica stick -- o player

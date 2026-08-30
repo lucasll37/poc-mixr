@@ -24,9 +24,10 @@ behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', req
 # como mensagens protobuf (DataRecord.pb.h).
 protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 
-# Usado diretamente por poc/12: a dinâmica 6-DOF fala com a JSBSim::FGFDMExec
-# sem passar pelo adaptador do MIXR (o pacote vem como dependência transitiva
-# do mixr, e o pkg-config já expõe include/JSBSim).
+# Nenhum subprojeto atual fala com a JSBSim::FGFDMExec direto (todos usam o
+# JSBSimModel do próprio MIXR); fica declarado para o rpath de um subprojeto
+# futuro que precise (ver mixr_bt_jsbsim_libdir abaixo e a seção "Ao
+# adicionar um subprojeto novo" do CLAUDE.md).
 jsbsim_dep = dependency('jsbsim', method: 'pkg-config', required: true)
 
 # Resolve o libdir de cada dependência via pkg-config. Ambas entregam
@@ -38,11 +39,11 @@ jsbsim_dep = dependency('jsbsim', method: 'pkg-config', required: true)
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 bt_libdir = behavior_tree_dep.get_variable(pkgconfig: 'libdir')
 
-# Para os alvos que usam as duas (poc/03, poc/05): rpath aceita vários
-# caminhos separados por ':'.
+# Para os alvos que usam as duas (single-thread, multi-thread): rpath aceita
+# vários caminhos separados por ':'.
 mixr_bt_libdir = ':'.join([mixr_libdir, bt_libdir])
 
-# poc/12 usa as três (MIXR + BehaviorTree.CPP + JSBSim).
+# Para um subprojeto futuro que use as três (MIXR + BehaviorTree.CPP + JSBSim).
 jsbsim_libdir = jsbsim_dep.get_variable(pkgconfig: 'libdir')
 mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
 
@@ -52,9 +53,8 @@ mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
 # dependências entre elas (libmixr_models.so -> libmixr_base.so).
 rpath_link_args = ['-Wl,--disable-new-dtags']
 
-# Depuração temporária: -Dasan=true liga o AddressSanitizer só nos alvos que
-# consomem estas flags (as pocs single-thread e multi-thread), sem recompilar
-# o resto do projeto.
+# -Dasan=true liga o AddressSanitizer só nos alvos que consomem estas flags
+# (single-thread e multi-thread), sem recompilar o resto do projeto.
 asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-pointer', '-g'] : []
 asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 
@@ -63,7 +63,7 @@ asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 # ============================================
 
 # Bibliotecas compartilhadas entre subprojetos (padrao shared/x<nome> do
-# MIXR). Precisa vir ANTES dos poc/, que consomem xtacview_dep.
+# MIXR). Precisa vir ANTES de src/, que consome xtacview_dep.
 subdir('./shared/xtacview')
 
 # Controle de velocidade do tempo (acelerar/frear/pausar). Tambem precisa vir
@@ -88,20 +88,3 @@ summary({
     'C++ Standard': get_option('cpp_std'),
     'Prefix':       get_option('prefix'),
 }, section: 'Configuration')
-
-# summary({
-#     'poc/01-flying-aircraft':  flying_aircraft.full_path(),
-#     'poc/02-behavior-tree':    behavior_tree_poc.full_path(),
-#     'poc/03-bt-autopilot':     bt_autopilot.full_path(),
-#     'poc/04-jsbsim-6dof':      jsbsim_6dof.full_path(),
-#     'poc/05-formation-flight': formation_flight.full_path(),
-#     'poc/06-radar-detection':  radar_detection.full_path(),
-#     'poc/07-radar-intercept':  radar_intercept.full_path(),
-#     'poc/08-event-relay':      event_relay.full_path(),
-#     'poc/09-chaff-flare':      chaff_flare.full_path(),
-#     'poc/10-satellite-constellation': satellite_constellation.full_path(),
-#     'poc/11-custom-models':    custom_models.full_path(),
-#     'poc/12-jsbsim-ubf':       jsbsim_ubf.full_path(),
-#     'poc/single-thread':       single_thread.full_path(),
-#     'poc/multi-thread':        multi_thread.full_path(),
-# }, section: 'Build Artifacts')

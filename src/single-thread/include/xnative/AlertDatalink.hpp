@@ -24,8 +24,7 @@ namespace xnative {
 //         trackManagerName) + holdTime
 //    holdTime  <Time>  ! Validade do alerta recebido (default: 25 s)
 //
-// O QUE VEM DE GRACA DA CLASSE BASE (compare com xair::AlertRadio da poc/12,
-// que fazia tudo isso a mao):
+// O QUE VEM DE GRACA DA CLASSE BASE:
 //
 //   * sendMessage(Object*) -- varre os players do WorldModel e entrega a
 //     mensagem com event(DATALINK_MESSAGE, msg) em cada player local ativo
@@ -33,16 +32,14 @@ namespace xnative {
 //     payload de uma Emission e desce a cadeia de RF inteira;
 //   * a fila de SAIDA para a rede (DIS/HLA) sai pronta, se houver NetIO;
 //   * Player::getDatalink() acha esta classe sozinho (busca por tipo), sem
-//     nenhum updateSystemPointers() nosso.
+//     nenhum updateSystemPointers() proprio.
 //
 // O QUE NAO VEM -- dois enganos faceis, ambos conferidos no fonte:
 //
 //   1) ALCANCE E LADO NAO SAO FILTRADOS neste caminho. O slot 'maxRange'
 //      existe e o setter grava em noRadioMaxRange, mas sendMessage() NUNCA
 //      le essa variavel: sem 'radioName', a entrega e broadcast global para
-//      todo player local ativo. A poc/12 fazia os dois filtros a mao
-//      (xair::AlertRadio.cpp:135 para o lado, :143 para o alcance) e eles
-//      NAO foram herdados aqui. O TacticalAlert chega ate no bandit1, que e
+//      todo player local ativo. O TacticalAlert chega ate no bandit1, que e
 //      'red' -- morre la so porque o intruso nao declara nenhum 'datalink:'
 //      (Player::onDatalinkMessageEventPlayer so repassa se getDatalink()
 //      nao for nulo). Dar um datalink ao inimigo bastaria para ele escutar
@@ -50,9 +47,9 @@ namespace xnative {
 //   2) A FILA DE ENTRADA NAO PARTICIPA da entrega local -- ver o comentario
 //      de onDatalinkMessageEvent() la embaixo, com os numeros medidos.
 //
-// O QUE CONTINUA SENDO NOSSO -- e a licao que a poc/12 ja tinha ensinado:
-// nao ha fila no caminho local, e ainda que houvesse ela resolveria a
-// CORRIDA, nao a ORDEM. Se dois avioes avisam no mesmo frame, a ordem de
+// O QUE CONTINUA SENDO PROPRIO: nao ha fila no caminho local, e ainda que
+// houvesse ela resolveria a CORRIDA, nao a ORDEM. Se dois avioes avisam no
+// mesmo frame, a ordem de
 // chegada depende do escalonador. Por isso onDatalinkMessageEvent() -- que
 // roda na thread do EMISSOR -- apenas ENCENA o alerta, fundindo de forma
 // COMUTATIVA (fica o contato mais proximo; empate exato -> menor id de
@@ -97,13 +94,11 @@ protected:
 
    // Ponto de ENTRADA da mensagem, na thread do EMISSOR.
    //
-   // DUAS ARMADILHAS CONFIRMADAS RODANDO ate chegar neste gancho:
-   //
-   //   1) drenar a fila com receiveMessage() na fase 2 nao ve mensagem
-   //      nenhuma (medido: 0 alertas em 90 s, com 1113 transmissoes);
-   //   2) sobrescrever queueIncomingMessage() TAMBEM nao: ele nunca e
-   //      chamado na entrega local (medido: 2016 chamadas de
-   //      onDatalinkMessageEvent contra 0 de queueIncomingMessage).
+   // Nem receiveMessage() (drenar a fila na fase 2) nem sobrescrever
+   // queueIncomingMessage() funcionam para capturar isto: nenhum dos dois e
+   // exercitado pela entrega local (medido: 0 alertas via receiveMessage()
+   // em 90 s com 1113 transmissoes; 2016 chamadas de
+   // onDatalinkMessageEvent contra 0 de queueIncomingMessage).
    //
    // O motivo esta no proprio cabecalho do Datalink: o handler default de
    // DATALINK_MESSAGE "passa as mensagens aos subcomponentes" -- ele NAO

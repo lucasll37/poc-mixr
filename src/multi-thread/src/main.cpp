@@ -1,15 +1,15 @@
 //
-// poc/multi-thread
+// multi-thread
 //
-// A poc/single-thread INTEIRA, com UMA unica diferenca: o agente do UBF.
+// O single-thread INTEIRO, com UMA unica diferenca: o agente do UBF.
 //
-//    poc/single-thread:  ( SimAgent )       nativo, componente da STATION,
-//                                ator por nome, decide em updateData()
-//                                -> thread de BACKGROUND, na taxa daquele laco
+//    single-thread:  ( SimAgent )       nativo, componente da STATION,
+//                            ator por nome, decide em updateData()
+//                            -> thread de BACKGROUND, na taxa daquele laco
 //
-//    poc/multi-thread:  ( FlightAgentTC )  nosso, componente do PLAYER,
-//                                ator = container, decide na fase 3
-//                                -> thread de TEMPO CRITICO, todo frame
+//    multi-thread:   ( FlightAgentTC )  nosso, componente do PLAYER,
+//                            ator = container, decide na fase 3
+//                            -> thread de TEMPO CRITICO, todo frame
 //
 // Todo o resto e identico: mesma pilha nativa (Aircraft + JSBSimModel +
 // Autopilot + Antenna/Tws/AirTrkMgr + Datalink), mesmo cenario, mesmos
@@ -22,7 +22,7 @@
 //   * o determinismo deixa de depender do laco de app/RealTimeRun.cpp: e o
 //     frame que ordena tudo. La updateData() so drena o gravador (Tacview).
 //
-// Opcoes de linha de comando: iguais as das pocs 11/12/13
+// Opcoes de linha de comando:
 //   -f <arquivo> | -threads <N> | -deterministic <N>
 //
 // ESTE ARQUIVO SO ORQUESTRA. Cada etapa mora no seu proprio modulo, em
@@ -59,25 +59,25 @@ namespace {
 
 const double cruiseThrottle{0.95};
 
-// bandit1 nao esta mais aqui -- e um player NETWORKED (recebido via
-// 'networks:', ver scenario.epp.in), nunca declarado localmente. Fleet::
-// collectFleet() aborta o processo se um nome desta lista nao existir
-// entre os players locais -- por isso "bandit1" saiu daqui.
+// bandit1 (o intruso) e um player NETWORKED (recebido via 'networks:', ver
+// scenario.epp.in), nunca declarado localmente -- por isso nao entra nesta
+// lista: Fleet::collectFleet() aborta o processo se um nome dela nao
+// existir entre os players locais.
 const std::vector<std::string> playerNames{
    "falcon1", "falcon2", "falcon3", "falcon4"
 };
 
-// Banco de elevacao (compartilhado com a poc/single-thread -- o tile e do
+// Banco de elevacao (compartilhado com a single-thread -- o tile e do
 // CENARIO, que e o mesmo nas duas). Tem de bater com o 'terrain:' do .epp.
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
 
 void printBanner(const int numTcThreads)
 {
-   std::cout << "=== poc/multi-thread ===" << std::endl;
-   std::cout << "A poc/single-thread inteira, trocando ( SimAgent ) por ( FlightAgentTC ): a decisao"
+   std::cout << "=== multi-thread ===" << std::endl;
+   std::cout << "O single-thread inteiro, trocando ( SimAgent ) por ( FlightAgentTC ): a decisao"
              << " saiu do background e entrou na fase 3 do frame" << std::endl;
-   std::cout << "Pilha NATIVA identica a da poc/single-thread: Aircraft + JSBSimModel + Autopilot +"
+   std::cout << "Pilha NATIVA identica a da single-thread: Aircraft + JSBSimModel + Autopilot +"
              << " radar (Antenna/Tws/AirTrkMgr) + Datalink" << std::endl;
    std::cout << "Pool nativo de threads T/C: " << numTcThreads
              << " -- e a decisao roda DENTRO dele (compare 'dec' e 'thr' no status)"

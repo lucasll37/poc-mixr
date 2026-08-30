@@ -15,14 +15,10 @@ namespace xlog {
 //    LOG(WARNING) << "algo aconteceu: " << valor;
 //
 // POR QUE NAO E O mixr::recorder (DataRecorder/OutputHandler/REID/protobuf):
-// investigado a fundo antes de escrever este arquivo -- o schema
-// DataRecord.proto NAO tem nenhum campo de texto livre em nenhuma mensagem
-// por-evento (nem o MarkerMsg, que so carrega dois uint32) e o unico ponto
-// de entrada publico do gravador, AbstractDataRecorder::recordData(id,
-// pObjects[4], values[4]), nao aceita string. Carregar texto livre por ali
-// exigiria remendar o .proto vendorizado do MIXR (extend DataRecord nos
-// campos reservados 1000-9999) -- invasivo e contra a premissa do projeto
-// de que o MIXR e dependencia binaria, nao objeto de desenvolvimento.
+// o schema DataRecord.proto nao tem nenhum campo de texto livre em nenhuma
+// mensagem por-evento (nem o MarkerMsg, que so carrega dois uint32), e o
+// unico ponto de entrada publico do gravador, AbstractDataRecorder::
+// recordData(id, pObjects[4], values[4]), nao aceita string.
 //
 // O QUE ESTE ARQUIVO REAPROVEITA DO recorder, entao: mixr::recorder::
 // PrintHandler (base de TabPrinter etc.) -- mas por FORA do pipeline
@@ -43,9 +39,8 @@ enum class Level { DEBUG, INFO, WARNING, ERROR };
 // o PrintHandler nativo, esta funcao nao cria diretorios.
 void init(const std::string& filePath);
 
-// '-deterministic' desliga (linhas de log carregam timestamp de parede,
-// fora do modo comparavel) -- mesmo raciocinio que a xnative::Log antiga
-// tinha para o console; agora vale tambem para o arquivo.
+// '-deterministic' desliga: linhas de log carregam timestamp de parede,
+// fora do modo comparavel.
 void setLoggingEnabled(bool enabled);
 
 // Objeto temporario por tras da macro LOG(...) -- nao use diretamente.

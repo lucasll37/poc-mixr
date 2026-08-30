@@ -32,8 +32,8 @@ namespace app {
 // criado por createTimeCriticalProcess().
 //
 // ONDE A DECISAO ENTRA depende do agente do cenario, e essa e a unica coisa
-// que muda entre a poc/single-thread e a poc/multi-thread: um ( SimAgent ) e componente da
-// Station e decide DENTRO deste updateData() -- na taxa deste laco, 10 Hz;
+// que muda entre single-thread e multi-thread: um ( SimAgent ) e componente
+// da Station e decide DENTRO deste updateData() -- na taxa deste laco, 10 Hz;
 // um ( FlightAgentTC ) e componente do player e decide na fase 3 do frame --
 // na taxa do tempo critico, 50 Hz. O codigo do laco e o mesmo nos dois casos.
 //

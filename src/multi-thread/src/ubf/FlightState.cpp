@@ -29,10 +29,7 @@ void FlightState::copyData(const FlightState& org, const bool)
 }
 
 //------------------------------------------------------------------------------
-// updateState() -- percepcao, agora lendo SO acessores nativos.
-//
-// Compare com a poc/12: la o estado consultava as NOSSAS classes
-// (JsbsimFlightModel, ProximitySensor, AlertRadio). Aqui:
+// updateState() -- percepcao, lendo SO acessores nativos:
 //
 //   combustivel/mach/G/AoA  -> AirVehicle (que delega ao dynamics model)
 //   contato                 -> xnative::nearestHostileTrack() (radar nativo)
@@ -66,9 +63,9 @@ void FlightState::updateState(const base::Component* const actor)
    // Referencia de solo, tambem pela pilha nativa: quem consulta o banco de
    // elevacao do WorldModel e o proprio Player::updateElevation(), na fase de
    // BACKGROUND (Player.cpp:630, dentro de updateData()) -- nao numa das
-   // quatro fases do frame de tempo critico. Consequencia pratica: na
-   // poc/multi-thread, que decide na fase 3 a 50 Hz contra um background de
-   // 10 Hz, este valor pode estar ate 100 ms velho (~8 m percorridos), o que
+   // quatro fases do frame de tempo critico. Consequencia pratica: como a
+   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz, este
+   // valor pode estar ate 100 ms velho (~8 m percorridos), o que
    // e irrelevante para um piso com centenas de metros de folga. E continua
    // deterministico: em -deterministic o laco faz tcFrame() e updateData()
    // em sequencia no mesmo passo, com qualquer numero de threads T/C.

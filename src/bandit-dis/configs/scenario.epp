@@ -1,9 +1,9 @@
 //
 // src/bandit-dis
 //
-// O bandit1 num processo proprio: mesmo player que existia em players: das
-// pocs single-thread/multi-thread (mesma dinamica JSBSim c310 + Autopilot,
-// mesmos valores iniciais), agora com duas coisas a mais:
+// O bandit1 (o intruso), num processo proprio: mesma dinamica JSBSim c310 +
+// Autopilot, mesmos valores iniciais dos players single-thread/multi-thread,
+// mais duas coisas:
 //
 //    ioHandler: ( JoystickIoHandler ... )   -- pilotagem manual por
 //       joystick fisico (shared/xjoystick), com fallback automatico para o
@@ -11,10 +11,10 @@
 //       comentario de JoystickIoHandler.hpp sobre hasRealJoystick()).
 //
 //    networks: ( DisNetIO ... )             -- emite o estado do bandit1
-//       via DIS nativo do MIXR. As pocs single-thread/multi-thread nao tem
-//       mais um bandit1 LOCAL: elas recebem este aqui so pela rede (ver o
-//       bloco 'networks:' nos scenario.epp.in delas, com o MESMO
-//       disEntityType usado abaixo).
+//       via DIS nativo do MIXR. single-thread/multi-thread nao declaram
+//       nenhum bandit1 LOCAL: recebem este aqui so pela rede (ver o bloco
+//       'networks:' nos scenario.epp.in delas, com o MESMO disEntityType
+//       usado abaixo).
 //
 // Sem @NUM_TC_THREADS@/.epp.in: nao ha CLI aqui (nada de -threads), entao o
 // numero de threads T/C fica fixo no proprio arquivo.
@@ -149,8 +149,6 @@
 
       players: {
 
-         // Mesmo bloco que existia em players: das duas pocs gemeas --
-         // cortado de la, colado aqui, sem nenhum valor alterado.
          bandit1: ( Aircraft
             id: 201
             side: red

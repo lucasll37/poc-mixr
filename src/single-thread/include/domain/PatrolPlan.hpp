@@ -14,8 +14,7 @@ namespace domain {
 //
 // advance(dt) so e chamado pelo no Patrol da arvore -- quando o drone esta
 // em RTB ou evadindo, o relogio da perna NAO corre, entao a patrulha e
-// retomada exatamente de onde parou (mesma semantica de domain::Mission da
-// poc/03).
+// retomada exatamente de onde parou.
 //
 // O retorno a base e outra questao e mora em domain/RtbPlan.hpp.
 //------------------------------------------------------------------------------

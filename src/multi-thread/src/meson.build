@@ -17,7 +17,7 @@ sources = files(
     'app/DeterministicRun.cpp',
     'app/RealTimeRun.cpp',
 
-    # regras de negócio puras (idênticas às da poc/12)
+    # regras de negócio puras (sem MIXR, sem BehaviorTree.CPP)
     'domain/geometry.cpp',
     'domain/PatrolPlan.cpp',
     'domain/RtbPlan.cpp',
@@ -26,7 +26,7 @@ sources = files(
 
     # o pouco que continua sendo nosso do lado MIXR
     'xnative/AlertDatalink.cpp',
-    'xnative/FlightAgentTC.cpp',   # <- a ÚNICA classe a mais que a poc/single-thread
+    'xnative/FlightAgentTC.cpp',   # <- a ÚNICA classe a mais que o single-thread
     'xnative/TacticalAlert.cpp',
     'xnative/TrackQuery.cpp',
     'xnative/RadarScan.cpp',
@@ -59,7 +59,7 @@ sources = files(
 # "multi-thread" é só ONDE a decisão do UBF roda: no ( FlightAgentTC )
 # próprio, componente do player, que decide na fase 3 do frame — os 4
 # agentes em paralelo, um por thread do pool de tempo crítico. A lista de
-# fontes e as flags são as mesmas da poc/single-thread, que já era
+# fontes e as flags são as mesmas do single-thread, que já era
 # multithread na simulação: o que muda é o agente, não o paralelismo do
 # framework.
 multi_thread = executable('multi-thread',

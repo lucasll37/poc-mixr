@@ -440,17 +440,12 @@ void TacviewOutput::processRecordImp(const recorder::DataRecordHandle* const han
       }
 
       //---------------------------------------------------------------
-      // ARMADILHA CONFIRMADA RODANDO -- REID_NEW_TRACK (81) NUNCA CHEGA.
-      //
-      // O TrackManager nativo sinaliza a pista nova, mas o DataRecorder
-      // concreto desta versao do MIXR nao tem handler para esse token e o
-      // degrada para REID_UNHANDLED_ID_TOKEN (2). Rodando a poc/07, as 3
-      // deteccoes apareciam como 3 registros REID=2, e nenhum REID=81.
-      //
-      // REID_TRACK_DATA (83, periodico) e REID_TRACK_REMOVED (82) SAO
-      // tratados normalmente -- entao o "primeiro contato" e deduzido da
-      // primeira amostra de cada track_id, que e exatamente o que os
-      // main.cpp faziam a mao com um set de ids conhecidos.
+      // REID_NEW_TRACK (81) NUNCA CHEGA: o DataRecorder concreto desta
+      // versao do MIXR nao tem handler para esse token e o degrada para
+      // REID_UNHANDLED_ID_TOKEN (2), apesar do TrackManager nativo sinalizar
+      // a pista nova. REID_TRACK_DATA (83, periodico) e REID_TRACK_REMOVED
+      // (82) SAO tratados normalmente -- entao o "primeiro contato" e
+      // deduzido aqui mesmo, pela primeira amostra de cada track_id.
       //
       // O case de REID_NEW_TRACK fica declarado assim mesmo: se uma versao
       // futura do framework passar a emiti-lo, ja funciona.

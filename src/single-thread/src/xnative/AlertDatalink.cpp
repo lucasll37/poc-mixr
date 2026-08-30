@@ -121,7 +121,7 @@ bool AlertDatalink::onDatalinkMessageEvent(base::Object* const msg)
 //
 // A promocao numa FRONTEIRA DE FASE e o que da latencia FIXA de um frame
 // para todos os receptores, em vez de "as vezes no mesmo frame, as vezes no
-// proximo, dependendo da thread" (mesma disciplina da poc/12).
+// proximo, dependendo da thread".
 //------------------------------------------------------------------------------
 void AlertDatalink::receive(const double dt)
 {

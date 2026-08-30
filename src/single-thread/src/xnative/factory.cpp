@@ -13,10 +13,8 @@ namespace mixr {
 namespace xnative {
 
 //------------------------------------------------------------------------------
-// Compare com a factory da poc/12, que registrava ONZE classes -- player,
-// dinamica, autopilot, sensor, radio, agente, estado, dois comportamentos,
-// acao e a mensagem. Aqui sobram SEIS, e nenhuma delas e player, dinamica,
-// controle ou sensor: tudo isso passou a vir do framework
+// Registra SEIS classes proprias -- nenhuma delas e player, dinamica,
+// controle ou sensor: tudo isso vem do framework
 // (Aircraft/JSBSimModel/Autopilot/Antenna+Tws+AirTrkMgr/SimAgent/UbfArbiter).
 //
 // O que NAO da para herdar, e por que:

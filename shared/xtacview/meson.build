@@ -1,4 +1,4 @@
-# Biblioteca compartilhada entre os subprojetos poc/ que exportam telemetria
+# Biblioteca compartilhada entre os subprojetos de src/ que exportam telemetria
 # para o Tacview. Segue o padrao 'shared/x<nome>' das bibliotecas de extensao
 # dos exemplos MIXR (factory propria + classes no namespace mixr::x<nome>).
 #

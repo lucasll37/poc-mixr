@@ -1,31 +1,20 @@
 //
-// Subprojeto 13 - single-thread
+// single-thread
 //
-// MESMO cenario da poc/12 (4 avioes patrulhando + 1 intruso; quem detecta
-// avisa os outros, que vao apoiar), mas com a regra invertida: aqui se
-// HERDA/REAPROVEITA o maximo possivel do MIXR. Compare os dois .epp lado a
-// lado -- e a forma mais rapida de ver o que o framework ja entrega:
+// 4 avioes patrulhando + 1 intruso; quem detecta avisa os outros, que vao
+// apoiar. A pilha e 100% HERDADA/REAPROVEITADA do MIXR: ( Aircraft ),
+// ( JSBSimModel ), ( Autopilot ), radar ( Gimbal/Antenna + Tws + AirTrkMgr ),
+// ( AlertDatalink : models::Datalink ) e o agente ( SimAgent ). So o
+// arbitro ( UbfArbiter ) e a percepcao/decisao/acao (FlightState/BtBehavior/
+// FlightAction) sao proprios -- o UBF nao traz implementacoes prontas.
 //
-//   peca            poc/12 (do zero)                 poc/single-thread (nativo)
-//   --------------  -------------------------------  ----------------------------
-//   player          xair::Airplane   : Player        ( Aircraft )
-//   dinamica 6-DOF  xair::JsbsimFlightModel : System ( JSBSimModel )
-//   controle        xair::FlightDirector : System    ( Autopilot )
-//   sensor          xair::ProximitySensor : System   ( Gimbal/Antenna + Tws + AirTrkMgr )
-//   interacao       xair::AlertRadio : System        ( AlertDatalink : models::Datalink )
-//   agente UBF      xair::FlightAgent : AgentTC      ( SimAgent )
-//   arbitro         ( UbfArbiter )                   ( UbfArbiter )      [igual]
-//   percepcao/      xair::FlightState/FlightAction/  idem (o UBF nao tem State/
-//   decisao/acao    BtBehavior                       Behavior/Action prontos)
-//
-// AERONAVE: c310 (Cessna 310), e NAO o F4N das pocs 04/12. O motivo e
-// concreto: o JSBSimModel nativo comanda a aeronave escrevendo em
-// 'ap/heading_hold', 'ap/altitude_hold' e 'ap/airspeed_hold' (confirmado
-// com `strings libmixr_models.so`), propriedades que so existem se o
-// MODELO JSBSim tiver um autopilot proprio. O F4N nao tem -- e por isso
-// que as pocs 04/05/12 precisaram de controle escrito a mao. O c310 tem
-// (<autopilot file="c310ap">), entao a cadeia Autopilot -> JSBSimModel ->
-// superficies funciona sem uma linha de lei de controle nossa.
+// AERONAVE: c310 (Cessna 310). O motivo e concreto: o JSBSimModel nativo
+// comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
+// 'ap/airspeed_hold' (confirmado com `strings libmixr_models.so`),
+// propriedades que so existem se o MODELO JSBSim tiver um autopilot proprio.
+// O c310 tem (<autopilot file="c310ap">), entao a cadeia Autopilot ->
+// JSBSimModel -> superficies funciona sem uma linha de lei de controle
+// propria.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -39,11 +28,10 @@
    // --------------------------------------------------------------------
    // Agentes do UBF: aqui eles moram na STATION e amarram o ator por NOME
    // (actorPlayerName), que e como o models::SimAgent nativo funciona.
-   // Na poc/12 o agente era um componente DENTRO do player (porque era o
-   // nosso AgentTC). Consequencia real desta escolha: SimAgent deriva de
-   // ubf::Agent, cujo ciclo roda em updateData() -- ou seja, a decisao
-   // acontece na thread de BACKGROUND, na taxa do laco do main.cpp, e nao
-   // na fase 3 do frame de tempo critico.
+   // Consequencia real desta escolha: SimAgent deriva de ubf::Agent, cujo
+   // ciclo roda em updateData() -- ou seja, a decisao acontece na thread de
+   // BACKGROUND, na taxa do laco do main.cpp, e nao na fase 3 do frame de
+   // tempo critico (ver src/multi-thread, que troca so essa peca).
    // --------------------------------------------------------------------
    components: {
 
@@ -179,11 +167,11 @@
    } // components (agentes)
 
    // --------------------------------------------------------------------
-   // bandit1 (o intruso) NAO mora mais aqui -- ele virou um processo
-   // proprio (src/bandit-dis), pilotado por joystick fisico ou pelo
-   // Autopilot scripted de fallback, que emite seu estado via DIS NATIVO
-   // do MIXR (mixr::dis -- namespace real da lib, apesar do caminho do
-   // header ser mixr/interop/dis/; factory names 'DisNetIO'/'DisNtm').
+   // bandit1 (o intruso) mora no processo proprio src/bandit-dis, pilotado
+   // por joystick fisico ou pelo Autopilot scripted de fallback, que emite
+   // seu estado via DIS NATIVO do MIXR (mixr::dis -- namespace real da lib,
+   // apesar do caminho do header ser mixr/interop/dis/; factory names
+   // 'DisNetIO'/'DisNtm').
    //
    // BIDIRECIONAL: esta Station RECEBE o bandit1 (inputEntityTypes:) e
    // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit-dis recebe
@@ -193,20 +181,18 @@
    // O 'template:' do DisNtm de entrada basta para o radar
    // (Antenna/Tws/AirTrkMgr) detectar o fantasma exatamente como detectava
    // o bandit1 nativo: interop::NetIO::createIPlayer() clona o template
-   // POR INTEIRO -- signature, dataLogTime -- (confirmado lendo
-   // NetIO.cpp:639-711 e Player::copyData()/Component::copyData(),
-   // Player.cpp:273-404) e poe o clone na MESMA lista que
-   // Simulation::getPlayers() devolve -- a mesma que o radar ja varria.
+   // POR INTEIRO -- signature, dataLogTime -- e poe o clone na MESMA lista
+   // que Simulation::getPlayers() devolve, a mesma que o radar ja varria.
    // 'dynamicsModel'/'pilot' NAO precisam ser reproduzidos aqui: a posicao
    // do fantasma e 100% dead reckoning a partir dos PDUs recebidos, nunca
    // simulacao local -- 'side:' tambem e irrelevante, quem manda e o Force
-   // ID do proprio PDU. O template de SAIDA (outputEntityTypes:) so
-   // precisa casar CLASSE + 'type:' (e o que o Ntm usa pra achar qual
-   // player local publicar -- ver common/Ntm.hpp) -- falcon1..4 e bandit1
-   // sao a MESMA classe/type ("Aircraft"/"C310"), entao o mesmo
-   // disEntityType serve pros dois sentidos sem ambiguidade: cada lado so
-   // ouve trafego de quem so emite UMA coisa (bandit-dis so emite bandit1;
-   // esta Station so emite falcon1..4).
+   // ID do proprio PDU. O template de SAIDA (outputEntityTypes:) so precisa
+   // casar CLASSE + 'type:' (o que o Ntm usa pra achar qual player local
+   // publicar) -- falcon1..4 e bandit1 sao a MESMA classe/type
+   // ("Aircraft"/"C310"), entao o mesmo disEntityType serve pros dois
+   // sentidos sem ambiguidade: cada lado so ouve trafego de quem so emite
+   // UMA coisa (bandit-dis so emite bandit1; esta Station so emite
+   // falcon1..4).
    //
    // Esquema de portas (ver o comentario irmao em
    // src/bandit-dis/configs/scenario.epp): todo mundo escuta em 3000;
@@ -246,20 +232,12 @@
    // daqui de fora, pra alimentar a varredura de radar (ver
    // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
    dataRecorder: ( ExposedDataRecorder
-      eventName: "poc-single-thread"
+      eventName: "single-thread"
 
-      // ARMADILHA CONFIRMADA COM AddressSanitizer -- o gravador NATIVO
-      // ESTOURA ao gravar uma pista nova:
-      //
-      //   AirTrkMgr::processTrackList()  (AirTrkMgr.cpp:351)
-      //     -> AbstractDataRecorder::recordData(REID_NEW_TRACK)
-      //       -> DataRecorder::recordNewTrack()  (DataRecorder.cpp:654)
-      //         -> __dynamic_cast  => SEGV
-      //
-      // Nao e bug desta poc: acontece assim que o radar nativo cria a
-      // primeira pista, com o cenario inteiro em classes do framework. E a
-      // mesma familia do REID_WEAPON_RELEASED (armadilha 4 do CLAUDE.md), e
-      // o contorno e o mesmo da poc/09: habilitar SO os tokens que o
+      // O gravador NATIVO ESTOURA (SEGV, via __dynamic_cast em
+      // DataRecorder::recordNewTrack()) ao gravar a primeira pista que o
+      // radar nativo cria -- mesma familia do REID_WEAPON_RELEASED
+      // (armadilha 4 do CLAUDE.md). Contorno: habilitar SO os tokens que o
       // TacviewOutput usa, ja que isDataEnabled() e testado ANTES de
       // chamar o handler quebrado.
       //
@@ -361,17 +339,15 @@
 
             components: {
 
-               // 6-DOF nativo: o mesmo JSBSim, agora pelo adaptador do
-               // framework (compare com xair::JsbsimFlightModel da poc/12).
+               // 6-DOF nativo: JSBSim pelo adaptador do framework.
                dynamicsModel: ( JSBSimModel
                   rootDir: "./src/single-thread/data/jsbsim/"
                   model:   "c310"
                   debugLevel: 0
                )
 
-               // Piloto automatico NATIVO: substitui inteiramente o
-               // xair::FlightDirector (leis de controle, limites e
-               // conversao para as superficies).
+               // Piloto automatico NATIVO: leis de controle, limites e
+               // conversao para as superficies, tudo do framework.
                pilot: ( Autopilot
                   navMode: false
                   headingHoldMode:  true
@@ -617,10 +593,10 @@
             }
          )
 
-         // Intruso: nao mora mais aqui -- virou o processo src/bandit-dis,
+         // Intruso: nao mora aqui, e sim no processo src/bandit-dis --
          // recebido so pela rede via 'networks:' (ver o comentario logo
          // acima de 'dataRecorder:'). Mesma aeronave, mesmos valores
-         // iniciais -- so mudou ONDE ele roda.
+         // iniciais do lado de la.
 
       } // players
 

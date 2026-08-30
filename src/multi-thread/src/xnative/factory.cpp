@@ -14,10 +14,10 @@ namespace mixr {
 namespace xnative {
 
 //------------------------------------------------------------------------------
-// SETE classes -- as SEIS da poc/single-thread mais o FlightAgentTC, que e a unica
-// diferenca entre os dois subprojetos. Nenhuma delas e player, dinamica,
-// controle ou sensor: tudo isso continua vindo do framework
-// (Aircraft/JSBSimModel/Autopilot/Antenna+Tws+AirTrkMgr/UbfArbiter).
+// Registra SETE classes proprias -- as mesmas seis do single-thread mais o
+// FlightAgentTC, que e a unica diferenca entre os dois subprojetos. Nenhuma
+// delas e player, dinamica, controle ou sensor: tudo isso continua vindo do
+// framework (Aircraft/JSBSimModel/Autopilot/Antenna+Tws+AirTrkMgr/UbfArbiter).
 //
 // O que NAO da para herdar, e por que:
 //   * FlightState/BtBehavior/AltitudeSafetyBehavior/FlightAction -- o UBF

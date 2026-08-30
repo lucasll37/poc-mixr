@@ -7,8 +7,8 @@ namespace domain {
 // que o traduzem para o dynamics model. Deliberadamente NAO conhece nenhum
 // tipo do MIXR nem do BehaviorTree.CPP -- e so um DTO.
 //
-// Unidades explicitas no nome do campo: a armadilha classica desta PoC
-// (documentada no CLAUDE.md, poc/03) e misturar pes/metros/nos.
+// Unidades explicitas no nome do campo: a armadilha classica e misturar
+// pes/metros/nos (ver "Gotchas de unidades e de modelo" no CLAUDE.md).
 struct FlightCommand
 {
    double headingDeg{};    // rumo verdadeiro comandado (graus)

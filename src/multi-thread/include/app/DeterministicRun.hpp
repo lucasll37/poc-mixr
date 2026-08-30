@@ -18,11 +18,11 @@ namespace app {
 // app/DeterministicDump.hpp, que os alvos 'make check-*' comparam.
 //
 // updateData() e chamado no MESMO passo. Onde o agente do UBF e um
-// ( SimAgent ) da Station (poc/single-thread), e essa chamada que o faz decidir, uma
-// vez por frame; onde ele e um ( FlightAgentTC ) do player (poc/multi-thread), a
-// decisao ja aconteceu na fase 3 do tcFrame e updateData() so drena o
-// gravador. Nos dois casos o dump sai igual -- e por isso que o laco pode
-// ser o mesmo arquivo nas duas pocs.
+// ( SimAgent ) da Station (single-thread), e essa chamada que o faz decidir,
+// uma vez por frame; onde ele e um ( FlightAgentTC ) do player
+// (multi-thread), a decisao ja aconteceu na fase 3 do tcFrame e updateData()
+// so drena o gravador. Nos dois casos o dump sai igual -- e por isso que o
+// laco pode ser o mesmo arquivo nos dois subprojetos.
 //------------------------------------------------------------------------------
 int runDeterministic(mixr::simulation::Station* station, const Fleet& fleet, long frames);
 

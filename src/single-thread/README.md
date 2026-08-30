@@ -15,7 +15,7 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 > `Station`, que decide em `updateData()`: os quatro agentes são avaliados **em sequência, numa
 > thread só** — a de background —, a 10 Hz. A **simulação** continua multithread: o cenário
 > declara `numTcThreads` e o framework fatia os players pelo pool de threads de tempo crítico,
-> exatamente como na **[poc/multi-thread](../multi-thread/)** — as duas passam no check de
+> exatamente como na **[multi-thread](../multi-thread/)** — as duas passam no check de
 > determinismo com 1, 2 e 4 threads. Lá a única diferença é o agente: um `( FlightAgentTC )`
 > próprio, componente do **player**, que decide na fase 3 do frame — os quatro **em paralelo**,
 > um por thread do pool, a 50 Hz.
@@ -60,17 +60,17 @@ make check-single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
 
 ## 1. O que vem do framework e o que é nosso
 
-| peça | poc/12 (tudo do zero) | **aqui** (nativo) |
-|---|---|---|
-| player | `xair::Airplane : Player` | `( Aircraft )` |
-| dinâmica 6-DOF | `xair::JsbsimFlightModel : System` | `( JSBSimModel )` |
-| controle de voo | `xair::FlightDirector : System` | `( Autopilot )` |
-| sensor | `xair::ProximitySensor : System` | `( Gimbal/Antenna )` + `( Tws )` + `( AirTrkMgr )` |
-| interação | `xair::AlertRadio : System` | `( AlertDatalink : models::Datalink )` |
-| agente UBF | `xair::FlightAgent : AgentTC` | `( SimAgent )` |
-| árbitro | `( UbfArbiter )` | `( UbfArbiter )` — igual |
-| terreno | — | `( SrtmHgtFile )` + `Player::updateElevation()` |
-| percepção / decisão / atuação | `FlightState` / `BtBehavior` / `FlightAction` | **idem** — o UBF não traz implementações |
+| peça | classe nativa |
+|---|---|
+| player | `( Aircraft )` |
+| dinâmica 6-DOF | `( JSBSimModel )` |
+| controle de voo | `( Autopilot )` |
+| sensor | `( Gimbal/Antenna )` + `( Tws )` + `( AirTrkMgr )` |
+| interação | `( AlertDatalink : models::Datalink )` |
+| agente UBF | `( SimAgent )` |
+| árbitro | `( UbfArbiter )` |
+| terreno | `( SrtmHgtFile )` + `Player::updateElevation()` |
+| percepção / decisão / atuação | `FlightState` / `BtBehavior` / `FlightAction` — o UBF não traz implementações prontas |
 
 **Sobraram seis classes próprias**, e nenhuma delas é player, dinâmica, controle ou sensor:
 
@@ -243,7 +243,7 @@ Cinco coisas que valem entender nessa árvore:
   **mesmo** frame. Inverta os dois no EDL e ela atrasa um frame, sem uma linha de C++ mudar.
 - **O agente mora na `Station`, não no player.** É assim que o `SimAgent` nativo funciona: ele
   amarra o ator pelo nome (`actorPlayerName`). Essa é *a* diferença para a
-  [poc/multi-thread](../multi-thread/).
+  [multi-thread](../multi-thread/).
 - **`signature:` é o que torna o avião detectável.** O radar de um player lê a `RfSignature` do
   outro para resolver a equação do radar. Sem ela, o avião é invisível — não importa quantos
   radares existam.
@@ -251,7 +251,7 @@ Cinco coisas que valem entender nessa árvore:
   `mixr::models::factory` **não** encadeia a de terreno; sem `mixr::terrain::factory` no
   [`mixr_factory.cpp`](src/mixr_factory.cpp), o `( SrtmHgtFile )` não constrói nada e o mundo fica
   sem chão, em silêncio.
-- **O intruso (`bandit1`) não é mais declarado em `players:`.** Ele virou o processo
+- **O intruso (`bandit1`) não é declarado em `players:`.** Ele mora no processo
   [`src/bandit-dis`](../bandit-dis/), pilotado por joystick físico (ou pelo `Autopilot` nativo,
   de *fallback*, sem hardware) e emitido via **DIS nativo do MIXR**. Esta `Station` só *recebe*,
   pelo `networks:` mostrado acima — `interop::NetIO::createIPlayer()` clona por inteiro o
@@ -564,12 +564,11 @@ tipo de serialização que anularia o pool de threads do framework.
 **[`xnative/BehaviorBoard.*`](include/xnative/BehaviorBoard.hpp)** — um `std::map<int,
 std::string>` global sob mutex, com `setBehaviorLabel(id, label)` e `getBehaviorLabel(id)`.
 
-> **Este arquivo é um bom exemplo do preço de herdar tudo.** Na poc/12 o rótulo do comportamento
-> vencedor morava num campo do *nosso* player (`xair::Airplane`). Aqui o player é o
-> `models::Aircraft` nativo, que obviamente não tem um campo para isso. Um quadro global por id
-> resolve sem subclassear o `Player` só por causa de uma string — e escancara que, ao herdar
-> tudo, **some o lugar natural para guardar o que é seu**. É escrito pela atuação (thread de
-> tempo crítico) e lido pelo laço de background, daí o mutex.
+> **Este arquivo é um bom exemplo do preço de herdar tudo.** O player é o `models::Aircraft`
+> nativo, que não tem um campo próprio para guardar esse rótulo. Um quadro global por id resolve
+> sem subclassear o `Player` só por causa de uma string — e escancara que, ao herdar tudo,
+> **some o lugar natural para guardar o que é seu**. É escrito pela atuação (thread de tempo
+> crítico) e lido pelo laço de background, daí o mutex.
 
 ### 7.3 Camada 3 — `xnative/`, as classes derivadas do MIXR
 
@@ -768,8 +767,7 @@ factory.registerBuilder<NodeType>(id, builder);
 ### 7.6 Camada 6 — as duas factories
 
 **1. [`xnative/factory.cpp`](src/xnative/factory.cpp)** — uma cadeia de `else if` sobre
-`getFactoryName()`, registrando exatamente as **seis** classes próprias. O comentário no topo do
-arquivo é a métrica do subprojeto: a poc/12 registrava **onze**.
+`getFactoryName()`, registrando exatamente as **seis** classes próprias deste subprojeto.
 
 **2. [`mixr_factory.cpp`](src/mixr_factory.cpp)** — a factory que o `edl_parser` recebe. Oito
 tentativas em ordem:
@@ -1134,12 +1132,10 @@ linha de fiação.
 > filtra alcance nem lado**. O slot `maxRange` existe e o setter grava em `noRadioMaxRange`, mas
 > **`sendMessage()` nunca lê essa variável**: não há teste de distância nenhum entre as linhas
 > 332 e 360 de `Datalink.cpp`. A entrega é **broadcast global** para todo player local ativo —
-> **inclusive o `bandit1`**, que é `red`. Nesta poc a mensagem morre lá porque o intruso não
-> declara nenhum `datalink:`, e `Player::onDatalinkMessageEventPlayer()` só repassa se
+> **inclusive o `bandit1`**, que é `red`. Aqui a mensagem morre lá porque o intruso não declara
+> nenhum `datalink:`, e `Player::onDatalinkMessageEventPlayer()` só repassa se
 > `getDatalink() != nullptr` (`Player.cpp:2746-2752`). Basta dar um datalink ao inimigo para ele
-> passar a escutar a esquadrilha inteira. A poc/12 fazia os dois filtros à mão
-> (`xair::AlertRadio.cpp:135` para o lado, `:143` para o alcance) e eles **não** foram herdados
-> na migração para cá.
+> passar a escutar a esquadrilha inteira.
 
 ### 9.5 Canal 3 — evento próprio
 
@@ -1521,9 +1517,9 @@ compara: os quatro dumps são **byte a byte idênticos**.
 
 > **Onde isso deixa a poc:** o determinismo aqui é propriedade do **harness**, não do modelo —
 > vale enquanto o laço mantiver `tcFrame()` e `updateData()` em lockstep. A
-> **[poc/multi-thread](../multi-thread/)** é exatamente este subprojeto com a decisão movida para
+> **[multi-thread](../multi-thread/)** é exatamente este subprojeto com a decisão movida para
 > dentro da fase 3, para medir a diferença em vez de argumentar sobre ela. Resultado medido: em
-> passo fixo as duas produzem estado **idêntico**; em tempo real, a poc/multi-thread decide a
+> passo fixo as duas produzem estado **idêntico**; em tempo real, a multi-thread decide a
 > 50 Hz em vez de 10 Hz e dispensa o artifício.
 
 ---
@@ -1601,7 +1597,7 @@ O cabeçalho do `Datalink` já avisava: o handler *"passa as mensagens aos subco
 
 `base/factory.cpp` registra apenas `UbfAgent` e `UbfArbiter`. Um agente de tempo crítico só
 existe em EDL se a aplicação registrar o seu. Esta poc usa o `SimAgent` — e é por isso que a
-decisão roda no laço de background. A [poc/multi-thread](../multi-thread/) paga esse preço.
+decisão roda no laço de background. A [multi-thread](../multi-thread/) paga esse preço.
 
 ### 13.7 O `Agent` não propaga o ciclo de componentes
 
@@ -1652,7 +1648,7 @@ Escala em degraus `0.10x … 64x`.
 > **Limite conhecido:** `ubf::Agent::updateData()` chama `controller(dt)` sem consultar
 > `isFrozen()` (`Agent.cpp:59-62`) — com a simulação pausada, o `SimAgent` continua avaliando
 > sobre um mundo estático (nada se move; a decisão só não para). O `FlightAgentTC` da
-> [poc/multi-thread](../multi-thread/) decide na fase 3, dentro do frame, então para junto.
+> [multi-thread](../multi-thread/) decide na fase 3, dentro do frame, então para junto.
 
 `-deterministic` **não é afetado**: chama `station->tcFrame(dt)` direto, sem passar por
 `processTimeCriticalTasks()`.

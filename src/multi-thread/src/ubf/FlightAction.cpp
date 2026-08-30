@@ -48,16 +48,14 @@ void FlightAction::setAlertBroadcast(const std::string& contactName,
 }
 
 //------------------------------------------------------------------------------
-// execute() -- atuacao, agora inteiramente sobre subsistemas NATIVOS.
-//
-// Compare com a poc/12: la a acao escrevia no NOSSO FlightDirector. Aqui ela
-// comanda o models::Autopilot do framework, que por sua vez fala com o
-// JSBSimModel (ap/heading_hold, ap/altitude_hold, ap/airspeed_hold) --
-// nenhuma lei de controle nossa no caminho.
+// execute() -- atuacao, inteiramente sobre subsistemas NATIVOS: comanda o
+// models::Autopilot do framework, que por sua vez fala com o JSBSimModel
+// (ap/heading_hold, ap/altitude_hold, ap/airspeed_hold) -- nenhuma lei de
+// controle propria no caminho.
 //
 // GOTCHA DE UNIDADE: Autopilot::setCommandedAltitudeFt() e em PES, enquanto
-// o domain::FlightCommand (e o resto desta poc) trabalha em metros. A
-// conversao acontece aqui, na fronteira.
+// o domain::FlightCommand (e o resto deste subprojeto) trabalha em metros.
+// A conversao acontece aqui, na fronteira.
 //
 // O rotulo do comportamento vai para o quadro de status (ver
 // xnative/BehaviorBoard.hpp): o Aircraft nativo nao tem onde guarda-lo.

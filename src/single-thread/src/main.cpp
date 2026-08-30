@@ -1,30 +1,19 @@
 //
-// poc/single-thread
+// single-thread
 //
-// MESMO cenario da poc/12 -- 4 avioes patrulhando, 1 intruso, quem detecta
-// avisa os outros pelo datalink e eles vao apoiar -- com a regra invertida:
-// aqui se HERDA do MIXR tudo o que o framework ja tem pronto.
+// 4 avioes patrulhando, 1 intruso; quem detecta avisa os outros pelo
+// datalink e eles vao apoiar. A pilha e 100% NATIVA do MIXR: ( Aircraft ),
+// ( JSBSimModel ), ( Autopilot ), radar ( Gimbal/Antenna + Tws + AirTrkMgr )
+// e ( AlertDatalink : models::Datalink ). De proprio so ficam as pecas do
+// UBF (percepcao/decisao/atuacao, que o framework nao traz prontas), a
+// arvore do BehaviorTree.CPP e a carga util da mensagem de datalink.
 //
-// O que sumiu em relacao a poc/12 (e passou a ser do framework):
+// O agente do UBF e um ( SimAgent ) nativo, componente da Station: deriva de
+// ubf::Agent, cujo ciclo roda em updateData() -- a decisao acontece na
+// thread de BACKGROUND (na taxa daquele laco), nao na fase 3 do frame de
+// tempo critico (ver src/multi-thread, que troca so essa peca).
 //
-//    xair::Airplane           -> ( Aircraft )
-//    xair::JsbsimFlightModel  -> ( JSBSimModel )
-//    xair::FlightDirector     -> ( Autopilot )
-//    xair::ProximitySensor    -> ( Gimbal/Antenna + Tws + AirTrkMgr )
-//    xair::AlertRadio         -> ( AlertDatalink : models::Datalink )
-//    xair::FlightAgent        -> ( SimAgent )
-//
-// O que sobrou de nosso: as pecas do UBF (percepcao/decisao/atuacao, que o
-// framework nao traz prontas), a arvore do BehaviorTree.CPP e a carga util
-// da mensagem de datalink.
-//
-// DIFERENCA DE COMPORTAMENTO QUE VEM COM A ESCOLHA: o SimAgent nativo
-// deriva de ubf::Agent, cujo ciclo roda em updateData() -- ou seja, a
-// decisao acontece na thread de BACKGROUND (na taxa daquele laco), e nao na
-// fase 3 do frame de tempo critico como na poc/12 (que precisou de um
-// AgentTC proprio justamente por isso).
-//
-// Opcoes de linha de comando: iguais as das pocs 11/12
+// Opcoes de linha de comando:
 //   -f <arquivo> | -threads <N> | -deterministic <N>
 //
 // ESTE ARQUIVO SO ORQUESTRA. Cada etapa mora no seu proprio modulo, em
@@ -61,23 +50,23 @@ namespace {
 
 const double cruiseThrottle{0.95};
 
-// bandit1 nao esta mais aqui -- e um player NETWORKED (recebido via
-// 'networks:', ver scenario.epp.in), nunca declarado localmente. Fleet::
-// collectFleet() aborta o processo se um nome desta lista nao existir
-// entre os players locais -- por isso "bandit1" saiu daqui.
+// bandit1 (o intruso) e um player NETWORKED (recebido via 'networks:', ver
+// scenario.epp.in), nunca declarado localmente -- por isso nao entra nesta
+// lista: Fleet::collectFleet() aborta o processo se um nome dela nao
+// existir entre os players locais.
 const std::vector<std::string> playerNames{
    "falcon1", "falcon2", "falcon3", "falcon4"
 };
 
-// Banco de elevacao (compartilhado com a poc/multi-thread -- o tile e do
+// Banco de elevacao (compartilhado com a multi-thread -- o tile e do
 // CENARIO, que e o mesmo nas duas). Tem de bater com o 'terrain:' do .epp.
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
 
 void printBanner(const int numTcThreads)
 {
-   std::cout << "=== poc/single-thread ===" << std::endl;
-   std::cout << "Mesmo cenario da poc/12, com a pilha NATIVA: Aircraft + JSBSimModel +"
+   std::cout << "=== single-thread ===" << std::endl;
+   std::cout << "Pilha NATIVA: Aircraft + JSBSimModel +"
              << " Autopilot + radar (Antenna/Tws/AirTrkMgr) + Datalink + SimAgent"
              << std::endl;
    std::cout << "De proprio sobraram so as pecas do UBF, a arvore e a carga do datalink"

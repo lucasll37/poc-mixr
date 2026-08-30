@@ -64,15 +64,13 @@ namespace xnative {
 //   genAction() pode devolver nullptr (a arvore nao decidiu nada) -- o UBF
 //   trata isso como "sem recomendacao", nao como erro.
 //
-// ARMADILHA CONFIRMADA RODANDO -- reset() NAO CHEGA AQUI. Um Agent nao
-// propaga o ciclo de componentes as pecas do UBF (o proprio Agent.hpp diz
-// que as chamadas "nao sao repassadas ao restante do framework de
-// comportamento"), e um comportamento dentro de um UbfArbiter esta a dois
-// niveis de distancia. Sintoma real: os planos de voo ficavam com os
-// DEFAULTS do domain::PatrolPlan (rumo 0, 1500 m, 120 kts) em vez dos
-// valores dos slots -- as aeronaves viravam para o norte e desciam, sem
-// nenhum erro aparente. Por isso configurePlans() e chamado
-// PREGUICOSAMENTE no primeiro genAction(), e nao so no reset().
+// reset() NAO CHEGA AQUI: um Agent nao propaga o ciclo de componentes as
+// pecas do UBF (o proprio Agent.hpp diz que as chamadas "nao sao repassadas
+// ao restante do framework de comportamento"), e um comportamento dentro de
+// um UbfArbiter esta a dois niveis de distancia. Por isso configurePlans()
+// e chamado PREGUICOSAMENTE no primeiro genAction(), e nao so no reset() --
+// sem isso os planos de voo ficam com os DEFAULTS do domain::PatrolPlan
+// (rumo 0, 1500 m, 120 kts) em vez dos valores dos slots.
 //------------------------------------------------------------------------------
 class BtBehavior : public base::ubf::AbstractBehavior
 {

@@ -13,11 +13,11 @@ namespace xnative {
 //------------------------------------------------------------------------------
 // Class: FlightAgentTC
 //
-// Description: A UNICA classe que esta poc acrescenta em relacao a poc/single-thread.
-//              Roda o ciclo do UBF (percepcao/decisao/atuacao) na FASE 3 do
-//              frame de TEMPO CRITICO, para a aeronave que a contem -- no
-//              lugar do models::SimAgent nativo, que roda em updateData()
-//              (thread de background).
+// Description: A UNICA classe que este subprojeto acrescenta em relacao ao
+//              single-thread. Roda o ciclo do UBF (percepcao/decisao/
+//              atuacao) na FASE 3 do frame de TEMPO CRITICO, para a
+//              aeronave que a contem -- no lugar do models::SimAgent
+//              nativo, que roda em updateData() (thread de background).
 //
 // Factory name: FlightAgentTC
 //
@@ -86,9 +86,10 @@ private:
 //------------------------------------------------------------------------------
 // O agente de uma aeronave.
 //
-// Diferente do ( SimAgent ) da poc/single-thread -- componente da STATION, amarrado ao
-// ator por NOME -- este e componente do PLAYER. Entao a busca e a mesma que
-// o framework usa para os subsistemas: por TIPO, na lista de componentes.
+// Diferente do ( SimAgent ) do single-thread -- componente da STATION,
+// amarrado ao ator por NOME -- este e componente do PLAYER. Entao a busca e
+// a mesma que o framework usa para os subsistemas: por TIPO, na lista de
+// componentes.
 //
 // Devolve nullptr se a aeronave nao declarar um ( FlightAgentTC ) no .epp.
 //------------------------------------------------------------------------------

@@ -17,7 +17,7 @@ sources = files(
     'app/DeterministicRun.cpp',
     'app/RealTimeRun.cpp',
 
-    # regras de negócio puras (idênticas às da poc/12)
+    # regras de negócio puras (sem MIXR, sem BehaviorTree.CPP)
     'domain/geometry.cpp',
     'domain/PatrolPlan.cpp',
     'domain/RtbPlan.cpp',

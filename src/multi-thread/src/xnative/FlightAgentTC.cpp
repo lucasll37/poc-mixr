@@ -30,10 +30,10 @@ void FlightAgentTC::copyData(const FlightAgentTC& org, const bool)
 //------------------------------------------------------------------------------
 // initActor() -- o ator e o player que CONTEM este agente.
 //
-// O SimAgent nativo (poc/single-thread) faz o contrario: mora na Station e resolve o
-// ator por NOME, procurando na lista de players do WorldModel. Aqui basta
-// subir a cadeia de containers -- e o bloco EDL fica identico para as
-// quatro aeronaves.
+// O SimAgent nativo (usado no single-thread) faz o contrario: mora na
+// Station e resolve o ator por NOME, procurando na lista de players do
+// WorldModel. Aqui basta subir a cadeia de containers -- e o bloco EDL fica
+// identico para as quatro aeronaves.
 //------------------------------------------------------------------------------
 void FlightAgentTC::initActor()
 {

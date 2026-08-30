@@ -1,6 +1,6 @@
 # multi-thread
 
-A [poc/single-thread](../single-thread/) **inteira**, com **uma** diferença: o agente do UBF é um
+A [single-thread](../single-thread/) **inteira**, com **uma** diferença: o agente do UBF é um
 `AgentTC` próprio, que decide na **fase 3 do frame de tempo crítico**, no lugar do
 `( SimAgent )` nativo, que decide em `updateData()` — na thread de background.
 
@@ -14,7 +14,7 @@ make compare-single-multi      # lista o que difere entre os dois subprojetos
 > **Rode sempre a partir da raiz do repositório**: cenário, dados do JSBSim, tile SRTM e gravação
 > `.acmi` são resolvidos por caminho relativo (`./src/multi-thread/...`, `./shared/data/...`).
 
-**Por que ela existe.** A [seção 12 do README da poc/single-thread](../single-thread/README.md#12-determinismo)
+**Por que ela existe.** A [seção 12 do README da single-thread](../single-thread/README.md#12-determinismo)
 termina numa ressalva: lá o determinismo é propriedade do *harness* — do laço de
 `app/DeterministicRun.cpp` serializando `tcFrame()` e `updateData()` —, e não do modelo. Esta poc
 paga o preço de escrever o agente para que passe a ser propriedade do **modelo**, e **mede** a
@@ -40,7 +40,7 @@ diferença em vez de argumentar sobre ela.
 
 ## 1. A diferença, em uma tela
 
-| peça | poc/single-thread | poc/multi-thread |
+| peça | single-thread | multi-thread |
 |---|---|---|
 | player / 6-DOF / controle / radar / datalink / terreno | `Aircraft` + `JSBSimModel` + `Autopilot` + `Gimbal/Antenna/Tws/AirTrkMgr` + `AlertDatalink` + `SrtmHgtFile` | **idêntico** |
 | percepção / decisão / atuação | `FlightState` / `BtBehavior` + `AltitudeSafetyBehavior` / `FlightAction` | **idêntico** |
@@ -54,7 +54,7 @@ diferença em vez de argumentar sobre ela.
 | **de onde o alerta é emitido** | do background | da fase 3 — ver [7.3](#73-o-paralelismo-continua-ligado) |
 
 > A linha *histerese da evasão* existe porque sem ela as duas pocs voavam "batendo asa". O
-> diagnóstico e a correção estão na [seção 8 do README da poc/single-thread](../single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree)
+> diagnóstico e a correção estão na [seção 8 do README da single-thread](../single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree)
 > — e valem igual aqui, porque o modelo é o mesmo: **a taxa de decisão não tinha nada a ver com o
 > problema** (1, 2 ou 4 threads, 10 Hz ou 50 Hz, os números eram os mesmos).
 
@@ -77,7 +77,7 @@ Files .../README.md differ                                      ← este arquivo
 do lado da aplicação só mudou quem *imprime* os dois contadores novos. É essa a demonstração:
 **onde a decisão roda é uma escolha de integração, não do modelo.**
 
-> **Sobre o namespace:** continua `mixr::xnative`, igual ao da poc/single-thread, de propósito —
+> **Sobre o namespace:** continua `mixr::xnative`, igual ao da single-thread, de propósito —
 > é o que permite que `diff -r` entre os dois subprojetos mostre exatamente a diferença que a poc
 > quer discutir, sem ruído de renomeação. São executáveis separados, então não há conflito.
 
@@ -320,7 +320,7 @@ A `Station` **perde** o bloco `components:` inteiro (os quatro `( SimAgent )` co
                  obc:           ( OnboardComputer ... )
 +                agent: ( FlightAgentTC
 +                   state: ( FlightState )
-+                   behavior: ( UbfArbiter ... ) )   ← mesmos números da poc/single-thread
++                   behavior: ( UbfArbiter ... ) )   ← mesmos números da single-thread
               } )
 ```
 
@@ -338,7 +338,7 @@ Todo o resto do `.epp` também é igual: a mesma referência geográfica, o mesm
 
 Quase nada — e é esse o ponto:
 
-| arquivo | poc/single-thread | poc/multi-thread |
+| arquivo | single-thread | multi-thread |
 |---|---|---|
 | `app/RealTimeRun.cpp` | **idêntico** — mas `station->updateData(dt)` drena o gravador **e** roda os agentes | **idêntico** — `updateData(dt)` só drena o gravador |
 | `app/DeterministicRun.cpp` | **idêntico** — `tcFrame()` + `updateData()` em lockstep é o que dá o determinismo | **idêntico** — o determinismo já vem do frame; `updateData()` está lá só para o Tacview |
@@ -358,7 +358,7 @@ A observabilidade nova é de propósito: `dec` é a contagem que prova a mudanç
 
 ## 7. Determinismo — o ponto da poc
 
-### 7.1 O que a poc/single-thread tinha de ressalva
+### 7.1 O que a single-thread tinha de ressalva
 
 Lá a decisão roda em `updateData()`, numa thread com relógio próprio (10 Hz) enquanto a física
 roda em outra (50 Hz). Em tempo real isso dá três defeitos de tempo: ponto de amostragem
@@ -374,7 +374,7 @@ entra nela antes que todos tenham terminado a fase 2, e nenhum sai do frame ante
 tenham terminado a fase 3. Os três defeitos somem **por construção** — sem depender de como a
 aplicação chama as coisas:
 
-| defeito | poc/single-thread | poc/multi-thread |
+| defeito | single-thread | multi-thread |
 |---|---|---|
 | ponto de amostragem no frame | arbitrário (removido pelo lockstep) | sempre a fase 3 |
 | decisões por segundo simulado | varia com o jitter do `msleep` | exatamente 1 por frame |
@@ -389,7 +389,7 @@ simulação continuaria evoluindo do mesmo jeito, frame a frame.
 e compara os dumps: **byte a byte idênticos**. Ou seja, a decisão foi para dentro do pool de
 threads — quatro agentes decidindo em paralelo, em threads diferentes — e o resultado não muda.
 
-Isso funciona pelas mesmas três razões da poc/single-thread, que continuam valendo palavra por
+Isso funciona pelas mesmas três razões da single-thread, que continuam valendo palavra por
 palavra: passo fixo (`dt = 1/rate`, calculado uma vez), **fusão comutativa** dos alertas (vence o
 contato mais próximo; empate exato, o emissor de menor id) e **escolha de pista sem depender da
 ordem** da lista do `TrackManager`. A diferença é que agora elas protegem também o caminho da
@@ -405,15 +405,15 @@ entram no dump e continuam idênticos com 1, 2 e 4 threads.
 
 O banco de elevação, o piso anti-CFIT e o piso AGL são **idênticos** aos da gêmea — mesmo tile,
 mesmos slots, mesmos números. A dissecação completa está na
-[§10 da poc/single-thread](../single-thread/README.md#10-elevação-de-terreno).
+[§10 da single-thread](../single-thread/README.md#10-elevação-de-terreno).
 
 **Há uma única diferença, e ela é de tempo.** `Player::updateElevation()` roda em
 `Player::updateData()` — na fase de **background** —, não numa das quatro fases do frame:
 
 | | quando a elevação é escrita | quando a decisão a lê | defasagem |
 |---|---|---|---|
-| poc/single-thread | `updateData()`, 10 Hz | `updateData()`, no mesmo passo | ~0 |
-| **poc/multi-thread** | `updateData()`, 10 Hz | fase 3 do `tcFrame()`, 50 Hz | **até 100 ms** |
+| single-thread | `updateData()`, 10 Hz | `updateData()`, no mesmo passo | ~0 |
+| **multi-thread** | `updateData()`, 10 Hz | fase 3 do `tcFrame()`, 50 Hz | **até 100 ms** |
 
 Cem milissegundos a 82 m/s são ~8 m de deslocamento — irrelevante para um piso com 800 m de
 folga. E **não afeta o determinismo**: em `-deterministic` o laço faz `tcFrame()` e `updateData()`
@@ -422,10 +422,9 @@ de threads T/C. `make check-multi-thread` confirma.
 
 > Se algum dia essa defasagem passar a importar (um seguidor de terreno rigoroso, por exemplo), a
 > saída é consultar o banco **direto** na percepção — `FlightState::updateState()` tem acesso a
-> `air->getWorldModel()->getTerrain()`, e `getElevation()` é `const`. Foi o caminho que a
-> `poc/05-formation-flight` usava. Custa uma consulta por aeronave por ciclo de decisão e devolve
-> um valor fresco e em fase — mas troca a pilha nativa por uma consulta própria, que é
-> exatamente o que estas duas pocs existem para evitar.
+> `air->getWorldModel()->getTerrain()`, e `getElevation()` é `const`. Custa uma consulta por
+> aeronave por ciclo de decisão e devolve um valor fresco e em fase — mas troca a pilha nativa por
+> uma consulta própria, que é exatamente o que estas duas pocs existem para evitar.
 
 ---
 
@@ -481,7 +480,7 @@ de qualquer significado físico.
 
 > É o melhor resumo do que esta poc isola: **o modelo é o mesmo; o que muda é quem garante a
 > ordem**. Em lockstep, o harness garante — e os dois resultados praticamente coincidem. Fora do
-> lockstep, só a poc/multi-thread continua garantindo.
+> lockstep, só a multi-thread continua garantindo.
 >
 > Cada poc, isoladamente, continua **bit a bit determinística** com 1, 2 e 4 threads — que é o
 > que os `make check-*` verificam. A comparação **entre** as duas é outra pergunta, e a resposta
@@ -489,7 +488,7 @@ de qualquer significado físico.
 
 ### 9.3 Em tempo real: 50 Hz contra 10 Hz
 
-Status da poc/multi-thread rodando de verdade (`dec` a cada 2 s):
+Status da multi-thread rodando de verdade (`dec` a cada 2 s):
 
 ```
 [t=2s]  falcon1 ... dec=145 thr=0
@@ -497,13 +496,13 @@ Status da poc/multi-thread rodando de verdade (`dec` a cada 2 s):
 [t=10s] falcon1 ... dec=545 thr=0
 ```
 
-Na poc/single-thread essa mesma conta daria ~10 Hz — a taxa do laço de background (`bgRate` em
+Na single-thread essa mesma conta daria ~10 Hz — a taxa do laço de background (`bgRate` em
 `app/RealTimeRun.cpp`). **A decisão ficou 5× mais frequente** sem que nenhum parâmetro do modelo
 mudasse.
 
 Efeito colateral que vale conhecer: **o que a decisão dispara acompanha a taxa.** O
-`ReportAndEvade` transmite um `TacticalAlert` por decisão, então em tempo real a poc/multi-thread
-emite ~50 alertas/s onde a poc/single-thread emitia ~10. Nada quebra (a fusão é comutativa e o
+`ReportAndEvade` transmite um `TacticalAlert` por decisão, então em tempo real a multi-thread
+emite ~50 alertas/s onde a single-thread emitia ~10. Nada quebra (a fusão é comutativa e o
 `holdTime` do datalink absorve), mas se o custo por decisão importar, **o lugar de resolver isso
 é a política** — um período mínimo entre transmissões no nó da árvore —, não o agente.
 
@@ -527,7 +526,7 @@ Os índices de thread não são contíguos porque a numeração é por ordem de 
 
 ## 10. Qual das duas usar
 
-| | `( SimAgent )` — poc/single-thread | `( FlightAgentTC )` — poc/multi-thread |
+| | `( SimAgent )` — single-thread | `( FlightAgentTC )` — multi-thread |
 |---|---|---|
 | custo de escrita | **zero** (classe do framework) | ~43 linhas + registro na factory |
 | taxa de decisão | a do laço de background | a do frame (`tcRate`) |
@@ -574,4 +573,4 @@ make run-multi-thread
 Para tudo o mais — anatomia do frame, o que vem do framework, a dissecação arquivo por arquivo, o
 radar nativo, o terreno, as armadilhas do JSBSim e do gravador, a semântica ACMI do Tacview e o
 controle de tempo — vale integralmente o
-**[README da poc/single-thread](../single-thread/README.md)**: aqui nada disso mudou.
+**[README da single-thread](../single-thread/README.md)**: aqui nada disso mudou.

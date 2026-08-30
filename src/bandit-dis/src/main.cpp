@@ -65,7 +65,7 @@ void applyCruiseThrottle(mixr::simulation::Station* const station)
 
 void printBanner()
 {
-   std::cout << "=== poc/bandit-dis ===" << std::endl;
+   std::cout << "=== bandit-dis ===" << std::endl;
    std::cout << "bandit1 num processo proprio -- joystick fisico (ou Autopilot scripted, sem"
              << " hardware) + emissao DIS nativa (mixr::dis)" << std::endl;
    std::cout << "Tacview Real-Time Telemetry na porta 1235 -- objetos com Name=F-16C" << std::endl;
