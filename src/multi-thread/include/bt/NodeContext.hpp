@@ -4,7 +4,6 @@
 
 #include <string>
 
-namespace mixr { namespace xnative { class BtBehavior; } }
 
 namespace bt_nodes {
 
@@ -45,9 +44,15 @@ struct FlightDecision
 // via factory.registerBuilder<T>(ID, builder) -- convencao do
 // BehaviorTree.CPP v3 para argumentos extras (o blackboard e para dados
 // que fluem ENTRE nos, nao para injecao de dependencia).
+//
+// O ponteiro e para a INTERFACE (bt/DecisionContext.hpp), nao para a classe
+// concreta: e o que mantem os nos compilaveis sem o MIXR. Aqui basta a
+// declaracao adiantada -- quem chama os metodos inclui o header da interface.
+class DecisionContext;
+
 struct NodeContext
 {
-   mixr::xnative::BtBehavior* behavior{};
+   DecisionContext* behavior{};
 };
 
 } // namespace bt_nodes

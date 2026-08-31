@@ -38,7 +38,7 @@ Telemetry**, exportada pela biblioteca compartilhada [shared/xtacview/](shared/x
 
 ## 1. Funcionalidades exploradas
 
-São onze temas, e cada um foi levado até rodar e ser medido. A coluna "onde" aponta o arquivo
+São treze temas, e cada um foi levado até rodar e ser medido. A coluna "onde" aponta o arquivo
 que responde pela funcionalidade; a coluna "detalhe" aponta a seção do README do subprojeto que
 disseca o assunto.
 
@@ -55,6 +55,8 @@ disseca o assunto.
 | 9 | **Controle por joystick físico, com fallback automático** — o intruso pode ser pilotado por um HOTAS de verdade ou continuar no `Autopilot` nativo *scripted* sem hardware conectado, detectado a cada frame (plugar/desplugar em execução troca o controle sem reiniciar) | [`shared/xjoystick/`](shared/xjoystick/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
 | 10 | **Interoperabilidade DIS nativa, bidirecional** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local; e as falcons emitem de volta, então o `bandit-dis` também vê as quatro no próprio Tacview | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das três pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
 | 11 | **Log com nível/*stream* e persistência em arquivo** — investigado e descartado usar o `mixr::recorder` para texto livre (o schema `DataRecord.proto` não carrega string nenhuma); a solução reaproveita `mixr::recorder::PrintHandler` por fora do pipeline REID/protobuf | [`shared/xlog/`](shared/xlog/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
+| 13 | **Mensagens configuráveis por EDL** — escolher quais grandezas e quais eventos saem da simulação (incluindo status do motor, que o schema do recorder não carrega), com filtros de mudança, limiar com histerese e derivada; saída em NDJSON | [`shared/xmsg/`](shared/xmsg/) | [CLAUDE.md, seção `shared/xmsg`](CLAUDE.md) |
+| 12 | **Detecção de vazamento pelo metadado do framework** — o MIXR mantém contadores de instâncias vivas/pico/total por classe (`MetaObject`), pensados justamente para isso e sem uso aqui até então; viraram um teste que compara duas durações, em vez de um retrato único | [`app/MetaObjectReport`](src/single-thread/include/app/MetaObjectReport.hpp), [`tests/memory/`](tests/memory/) | [tests/README.md](tests/README.md) |
 
 E mais uma, que não é funcionalidade e sim consequência: **onde a decisão roda é uma escolha de
 integração, não do modelo.** É o que os dois subprojetos gêmeos existem para demonstrar — são o
@@ -211,28 +213,48 @@ interface portproxy` antes de a LAN alcançar. Passo a passo dos dois casos no
 
 ## 5. Verificar
 
-**Não há suíte de testes.** A verificação automatizada existente é de **determinismo**: roda N
-frames de passo fixo com 1, 2 e 4 threads de tempo crítico e compara os dumps `frame=` — todos
-têm de ser idênticos.
+Há **suíte de testes** (`tests/`) e, além dela, os alvos de **determinismo**, que são mais antigos
+e continuam valendo por si.
 
 ```bash
+meson configure build -Dtests=true   # a suíte fica atrás desta opção
+make test                            # 13 testes, ~13 s
+
 make check-single-thread   # determinismo com a decisão no laço de background
 make check-multi-thread    # determinismo com os 4 agentes decidindo em paralelo, na fase 3
 make compare-single-multi  # lista o que difere entre os dois subprojetos (deve ser só o agente)
+make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```
 
+A suíte tem cinco camadas, cada uma respondendo uma pergunta diferente — o detalhe está em
+[tests/README.md](tests/README.md):
+
+| suite | pergunta |
+|---|---|
+| `domain` | as regras puras estão certas? (histerese da evasão, alvo fixo, piso anti-CFIT, pernas da patrulha) |
+| `tree` | a máquina de estados está certa? Carrega o `flight_tree.xml` **de produção**, sem `Station` |
+| `scenario` | o modelo se comporta voando? Roda o binário com cenário de teste e afirma sobre as linhas `frame=` |
+| `memory` | vaza objeto? Pelos contadores de instância do próprio MIXR |
+| `determinism` | é reprodutível, **nos dois laços de decisão**? |
+| `guard` | `domain/` e `bt/` continuam byte-idênticos entre as duas pocs? |
+
+O que os `check-*` provam é estreito, e vale saber: **reprodutibilidade não é correção.** Um
+modelo que decide errado passa neles sem reclamar, desde que decida errado sempre igual — é a
+lacuna que as camadas `domain`, `tree` e `scenario` fecham.
+
 `compare-single-multi` é o teste da tese do repositório: se a lista crescer além do agente, do
-`.epp` e da observabilidade, alguma coisa vazou de um subprojeto para o outro.
+`.epp` e da observabilidade, alguma coisa vazou de um subprojeto para o outro. A suíte `guard`
+cobre a parte mais crítica disso com falha de verdade, em vez de uma lista para conferir a olho.
+
+> **Armadilha, encontrada rodando:** o modo `-deterministic` **não é hermético** com o cenário de
+> produção. O bloco `networks:` abre a porta DIS 3000 e ingere PDUs de quem estiver na rede — com
+> um `bandit-dis` de outra sessão no ar, duas execuções idênticas divergem e o `check-*` acusa
+> falso não-determinismo. Por isso os `check-*` e todas as fixtures de teste rodam com o bloco de
+> rede removido. Com cenário hermético, as duas pocs passam com 1, 2 e 4 threads em 2000 frames.
 
 `bandit-dis` **não tem alvo `check-*`**: joystick e rede (DIS) não são determinísticos por
 natureza — não há dump para comparar. A prova de que ele funciona é rodá-lo junto com
 `single-thread`/`multi-thread` e ver o intruso reagido no radar/Tacview (ver [§4](#4-rodar)).
-
-> **Nota:** `make help` ainda lista alvos `run-*` de subprojetos que foram removidos
-> (`01-flying-aircraft` … `12-jsbsim-ubf`). São entradas mortas no Makefile; os alvos válidos
-> hoje são exatamente os seis listados acima (`run-single-thread`, `run-multi-thread`,
-> `run-bandit-dis`, `check-single-thread`, `check-multi-thread`, `compare-single-multi`) mais
-> `configure`/`build`/`install`/`clean`.
 
 ---
 
@@ -249,11 +271,16 @@ poc-mixr/
 │   ├── xclock/             controle de velocidade do tempo (acelerar / frear / pausar)
 │   ├── xjoystick/          controle do intruso por joystick físico, com fallback pro Autopilot
 │   ├── xlog/               LOG(NIVEL) << ...; com nível/stream, persistido em arquivo
+│   ├── xmsg/               mensagens configuráveis por EDL (telemetria + eventos, NDJSON)
 │   └── data/terrain/srtm/  tile SRTM do cenário — compartilhado pelos três subprojetos
+├── tests/                  a suíte automatizada, em cinco camadas (ver §5 e tests/README.md)
+│   ├── domain/ tree/       GTest, sem MIXR: as regras puras e a árvore de produção
+│   ├── scenario/ memory/   scripts sobre os binários: comportamento voando e vazamento
+│   └── determinism/ guard/ 1/2/4 threads nos dois laços, e a duplicação entre as pocs
 ├── contexts/               material de consulta sobre MIXR e BehaviorTree.CPP (ver §9)
-├── conanfile.py            dependências binárias
+├── conanfile.py            dependências binárias (mixr, BehaviorTree.CPP, e gtest em test_requires)
 ├── meson.build             raiz: resolve as libs por pkg-config e dá subdir() em cada subprojeto
-├── meson_options.txt       uma opção: -Dasan
+├── meson_options.txt       duas opções: -Dasan e -Dtests
 └── Makefile                orquestra Conan + Meson
 ```
 
@@ -267,10 +294,11 @@ src/<nome>/
 │   └── flight_tree.xml    a árvore de comportamento
 ├── data/                  dados vendorizados (jsbsim/, recordings/)
 ├── include/ e src/        espelhados; um arquivo, uma questão
-│   ├── domain/            regras de negócio PURAS — sem MIXR, sem BT — testáveis isoladas
+│   ├── domain/            regras de negócio PURAS — sem MIXR, sem BT — testadas em tests/domain/
 │   ├── xnative/           classes MIXR próprias (namespace mixr::xnative) + factory própria
 │   ├── ubf/               percepção / decisão / atuação do UBF
-│   ├── bt/                nós da árvore de comportamento e a factory deles
+│   ├── bt/                nós da árvore + a factory deles; DecisionContext é a interface que
+│   │                      os desacopla do BtBehavior concreto (e do MIXR junto)
 │   ├── app/               as etapas da aplicação, uma questão por arquivo
 │   ├── mixr_factory.*     encadeia a factory própria ANTES das do framework
 │   └── main.cpp           FINO: chama os módulos de app/ na ordem; não implementa comportamento
@@ -280,7 +308,10 @@ Três regras estruturam tudo:
 
 1. **"O que fazer" mora em `domain/`; "como conectar" mora nas factories e adaptadores;
    `main.cpp` só orquestra.** `domain/` não inclui um único header do MIXR ou do
-   BehaviorTree.CPP — é o que permite testar a política sem levantar uma simulação.
+   BehaviorTree.CPP — é o que permite testar a política sem levantar uma simulação. Desde que
+   `bt/NodeContext` passou a apontar para a interface `bt_nodes::DecisionContext`, **os nós da
+   árvore também compilam sem o MIXR**: `tests/tree/` carrega o `flight_tree.xml` de produção e
+   linka zero bibliotecas do framework.
 2. **Um arquivo, uma questão.** O que seria um `main.cpp` de ~450 linhas está quebrado em
    `app/`, e cada header abre com o *porquê* daquele passo. Vale o mesmo dentro de `ubf/` (a
    tabela de slots do `BtBehavior` mora num arquivo separado da decisão) e de `xnative/`
@@ -467,7 +498,9 @@ não vêm num clone limpo. Sem elas, os headers instalados pelo Conan
 | documento | para quê |
 |---|---|
 | **[CLAUDE.md](CLAUDE.md)** | guia operacional: comandos, arquitetura em uma tela, e o catálogo consolidado de armadilhas (rpath, unidades, recorder, xtacview, xclock, xjoystick, xlog, terreno, `src/bandit-dis`/DIS) |
+| **[tests/README.md](tests/README.md)** | a suíte automatizada: as cinco camadas, o que cada uma prova, e as armadilhas que apareceram montando-a (determinismo não-hermético, contadores não-atômicos, vazamentos do framework) |
 | **[src/single-thread/README.md](src/single-thread/README.md)** | a aula completa sobre um subprojeto, arquivo por arquivo, em ordem de dependência |
 | **[src/multi-thread/README.md](src/multi-thread/README.md)** | onde uma decisão deve rodar, e o que isso custa |
+| **[shared/xmsg/](shared/xmsg/)** | o sistema de mensagens: por que o `mixr::recorder` não serve para isso, e as onze armadilhas confirmadas (lista `{ }` do EDL, tolerância em acumulador de tempo, unidade polimórfica do RPM) |
 | **[shared/xtacview/TacviewOutput.cpp](shared/xtacview/TacviewOutput.cpp)** | o protocolo *Real-Time Telemetry* e as sete armadilhas do gravador nativo |
 | **[src/bandit-dis/](src/bandit-dis/)** | o intruso como processo à parte — `configs/scenario.epp` é a referência de como declarar `ioHandler:`+`networks:` juntos |

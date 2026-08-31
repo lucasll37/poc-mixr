@@ -15,6 +15,7 @@ sources = files(
     'app/StatusReport.cpp',
     'app/DeterministicDump.cpp',
     'app/DeterministicRun.cpp',
+    'app/MetaObjectReport.cpp',
     'app/RealTimeRun.cpp',
 
     # regras de negócio puras (sem MIXR, sem BehaviorTree.CPP)
@@ -65,7 +66,7 @@ single_thread = executable('single-thread',
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
     include_directories : local_inc_dir,
-    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep, xtacview_dep, xclock_dep, xjoystick_dep, xlog_dep],
+    dependencies        : [thread_dep, mixr_dep, behavior_tree_dep, xtacview_dep, xclock_dep, xjoystick_dep, xlog_dep, xmsg_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_bt_libdir,

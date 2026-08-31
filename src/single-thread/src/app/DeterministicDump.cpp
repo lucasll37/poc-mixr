@@ -50,6 +50,13 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
                             ? datalink->getAlert().senderName : std::string("none"))
           << " sent=" << (datalink != nullptr ? datalink->getSentCount() : 0L)
           << " recv=" << (datalink != nullptr ? datalink->getReceivedCount() : 0L)
+          // Contagem de decisoes: entra no dump de proposito. Se a decisao
+          // esta mesmo amarrada ao frame, este numero tem que ser identico
+          // com 1, 2 ou 4 threads -- e igual ao numero de frames. Aqui a
+          // decisao roda no laco de BACKGROUND (SimAgent), entao quem conta
+          // e o quadro de status, no ponto da atuacao; a multi-thread conta
+          // no proprio agente, que e dela (ver xnative/BehaviorBoard.hpp).
+          << " dec=" << mixr::xnative::getDecisionCount(air->getID())
           << std::endl;
    }
 

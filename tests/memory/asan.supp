@@ -1,0 +1,28 @@
+# Supressoes do LeakSanitizer -- vazamentos CONHECIDOS, do framework, medidos.
+#
+# Sem este arquivo o alvo 'make test-asan' nasce vermelho e fica inutil: ele
+# acusaria 896 bytes em 22 alocacoes que nao tem nada a ver com o modelo. Com
+# ele, o alvo passa a guardar exatamente o que interessa -- vazamento NOSSO.
+#
+# Todos os quatro sao de PARTIDA (carga do cenario / abertura do log), de
+# tamanho fixo, e nenhum cresce com o numero de frames. Isso foi confirmado
+# por outro caminho, independente do ASan: a Camada 4 le os contadores de
+# instancia do proprio MIXR e mostra 'count' estavel entre 500 e 1000 frames.
+#
+# Se algum dia o fork do MIXR for corrigido, basta apagar a linha
+# correspondente -- o teste passa a cobrir mais, nao menos.
+
+# 1) JSBSimModel::setSlotRootDir e setSlotModel clonam uma base::String de
+#    slot e nunca a liberam. 5 objetos cada (um por aeronave com JSBSim),
+#    640 bytes diretos + 190 indiretos.
+leak:mixr::models::JSBSimModel::setSlotRootDir
+leak:mixr::models::JSBSimModel::setSlotModel
+
+# 2) recorder::PrintHandler::setFullFilename, alcancado por xlog::init na
+#    abertura do arquivo de log. 52 bytes, uma vez por processo. O sink e
+#    nativo (ver a secao shared/xlog do CLAUDE.md); o vazamento e dele.
+leak:mixr::recorder::PrintHandler::setFullFilename
+
+# 3) recorder::DataRecorder::setSlotEventName guarda uma copia crua do nome
+#    do evento. 14 bytes, uma vez.
+leak:mixr::recorder::DataRecorder::setSlotEventName

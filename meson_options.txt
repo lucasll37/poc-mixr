@@ -1,1 +1,2 @@
 option('asan', type: 'boolean', value: false, description: 'AddressSanitizer nas pocs single-thread e multi-thread (depuração)')
+option('tests', type: 'boolean', value: false, description: 'Compila a suite de testes em tests/ (requer gtest via Conan)')

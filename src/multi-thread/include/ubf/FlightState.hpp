@@ -3,6 +3,8 @@
 
 #include "mixr/base/ubf/AbstractState.hpp"
 
+#include "domain/WorldView.hpp"
+
 #include <string>
 
 namespace mixr {
@@ -37,48 +39,11 @@ public:
    FlightState();
 
    // Visao do mundo daquele frame -- numeros crus, sem tipos do MIXR.
-   struct Snapshot
-   {
-      bool valid{};
-
-      // proprio
-      double northM{};
-      double eastM{};
-      double altitudeM{};
-      double headingDeg{};
-      double speedKts{};
-      double rollDeg{};
-      double pitchDeg{};
-      double fuelFraction{1.0};
-      double mach{};
-      double gLoad{1.0};
-      double alphaDeg{};
-
-      // referencia de solo (banco de elevacao do WorldModel, consultado pelo
-      // Player::updateElevation() nativo -- ver o .cpp)
-      bool terrainValid{};
-      double terrainElevM{};    // elevacao do terreno sob a aeronave (MSL)
-      double altitudeAglM{};    // altitudeM - terrainElevM
-
-      // contato do sensor proprio
-      bool hasContact{};
-      std::string contactName;
-      double contactRangeM{};
-      double contactRelBearingDeg{};
-      double contactDeltaAltM{};
-      double contactNorthM{};   // posicao absoluta (para transmitir no alerta)
-      double contactEastM{};
-      double contactAltitudeM{};
-
-      // alerta recebido de OUTRO aviao (ver xnative::AlertRadio)
-      bool hasAlert{};
-      std::string alertSender;
-      std::string alertContactName;
-      double alertNorthM{};
-      double alertEastM{};
-      double alertAltitudeM{};
-      double alertRangeM{};
-   };
+   //
+   // A estrutura mora em domain/WorldView.hpp: quem CONSOME a percepcao (os
+   // nos da arvore, as politicas) precisa dela sem arrastar o MIXR junto.
+   // O alias mantem 'FlightState::Snapshot' valido em todos os call sites.
+   using Snapshot = domain::WorldView;
 
    void updateState(const base::Component* const actor) override;
 

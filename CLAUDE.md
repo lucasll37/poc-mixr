@@ -71,8 +71,8 @@ ser executados a partir da raiz do repositório:**
 Opções de linha de comando, aceitas pelas duas pocs: `-f <arquivo>` (cenário alternativo),
 `-threads <N>` (quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo).
 
-**Não há suíte de testes.** A verificação automatizada existente é de **determinismo** (alvos
-`check-single-thread` e `check-multi-thread`): roda N frames de passo fixo com 1, 2 e 4 threads
+**A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
+a verificação de **determinismo** tem alvos próprios (`check-single-thread` e `check-multi-thread`): roda N frames de passo fixo com 1, 2 e 4 threads
 T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **duas** pocs, a
 `single-thread` inclusive: ela também roda os players no pool de threads T/C, só decide fora
 dele. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
@@ -621,6 +621,175 @@ mesmo passo, e `check-single-thread`/`check-multi-thread` passam com 1, 2 e 4 th
 AGL. Com folgas "bonitas" (300–500 m) o piso está correto e roda, mas recorta um alvo que a
 aeronave nunca alcançaria: o dump sai idêntico ao do controle negativo.
 
+## Testes automatizados (`tests/`)
+
+`make test` roda tudo (`meson test`); exige `configure` com `-Dtests=true`. O framework e o
+**GTest**, declarado como `test_requires` no `conanfile.py` — nenhum binario da aplicacao linka
+gtest. Cinco camadas, da mais isolada para a mais integrada:
+
+| suite | o que prova | custo |
+|---|---|---|
+| `domain` | as regras puras de `domain/` (histerese, alvo fixo, lado da quebra, piso anti-CFIT, pernas da patrulha) | 42 testes, ~10 ms |
+| `tree` | a maquina de estados, carregando o **`flight_tree.xml` de producao** contra um `FakeDecisionContext` — sem `Station` | 15 testes, ~10 ms |
+| `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 2 pocs |
+| `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
+| `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao** | 4 execucoes por poc |
+| `guard` | `domain/` e `bt/` continuam byte-identicos entre as duas pocs | instantaneo |
+
+`make test-asan` e complementar e fica fora da suite: reconfigura com ASan, roda sob
+LeakSanitizer e reverte. Ver as supressoes em `tests/memory/asan.supp`.
+
+**O que mudou no codigo para isso ser possivel** (duas mudancas mecanicas, provadas neutras — o
+dump deterministico saiu identico ao de antes, byte a byte):
+
+1. `FlightState::Snapshot` virou `domain::WorldView` (`include/domain/WorldView.hpp`), com
+   `using Snapshot = domain::WorldView;` mantendo todos os call sites. A estrutura nunca teve tipo
+   do MIXR; o que a prendia ao framework era so morar dentro de uma classe que herda de
+   `AbstractState`.
+2. `bt/NodeContext.hpp` deixou de carregar um `BtBehavior*` concreto e passou a apontar para
+   `bt_nodes::DecisionContext` (`include/bt/DecisionContext.hpp`), a interface com os 8 getters que
+   os nos ja usavam. `BtBehavior` a implementa sem um metodo novo. Resultado: `bt/nodes/*.cpp`
+   compilam com BT.CPP + `domain/` apenas — `ldd` no binario de teste da arvore mostra **zero**
+   libs do MIXR.
+
+**Armadilhas confirmadas rodando — nao redescobrir:**
+
+1. **O modo `-deterministic` NAO e hermetico com o cenario de producao.** O bloco `networks:` abre
+   a porta DIS 3000 e ingere PDUs de quem estiver na LAN: com um `bandit-dis` de outra sessao no
+   ar, duas execucoes identicas divergem e o `check-single-thread` acusa falso nao-determinismo
+   (medido: `frame=600 falcon1` deu `PATROL` com 1 thread e `SUPPORT` com 2 — porque o intruso da
+   rede apareceu em uma e nao na outra). Por isso **todas** as fixtures de teste removem
+   `networks:`, e os alvos `check-*` passaram a rodar em cenario hermetico. Com o cenario
+   hermetico as duas pocs passam com 1, 2 e 4 threads em 2000 frames.
+2. **As fixtures sao DERIVADAS do cenario de producao** (`tests/scenario/make_fixture.py`), nao
+   copias versionadas: uma copia comecaria certa e envelheceria em silencio. O modo `intruder`
+   reintroduz um `bandit1:` **local** — sem ele nao ha como exercitar `EVADE`/`SUPPORT` num
+   processo so, ja que o intruso hoje mora em `src/bandit-dis` e chega apenas por DIS.
+3. **Os contadores de instancia do MIXR nao sao atomicos.** `MetaObject.count/mc/tc`
+   (`MetaObject.hpp:31-33`) sao mantidos por `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR` com
+   `int` cru (`macros.hpp:247-255`); com os agentes decidindo em paralelo no pool T/C os
+   incrementos correm entre si. O teste de vazamento roda com `-threads 1`.
+4. **Vazamento so se prova comparando duas duracoes.** Um retrato unico nao distingue "vazando" de
+   "retido de proposito": o teste roda 500 e 1000 frames e exige `count` igual e `tc` crescendo.
+   Medido saudavel: `FlightAction` faz `tc` = 4 × frames (uma decisao por aviao por frame), com
+   `count=0` e `mc=1`.
+5. **O ASan acusa 896 bytes em 22 alocacoes que NAO sao do modelo** — todas de partida, dentro do
+   framework: `JSBSimModel::setSlotRootDir`/`setSlotModel` clonam uma `base::String` de slot e
+   nunca a liberam, `PrintHandler::setFullFilename` (alcancado por `xlog::init`) e
+   `DataRecorder::setSlotEventName`. Sem as supressoes de `tests/memory/asan.supp` o alvo nasce
+   vermelho e vira ruido. Nenhuma delas cresce com os frames — confirmado por outro caminho pela
+   suite `memory`.
+6. **`dec=` agora existe nas DUAS pocs.** A `multi-thread` ja o tinha, do `FlightAgentTC`; a
+   `single-thread` decide no laco de background, entao quem conta e o `BehaviorBoard`, no ponto da
+   atuacao (`FlightAction::execute`). A assercao **nao** e `dec == frames`: a `multi-thread` decide
+   uma vez a mais na inicializacao (601 em 600 frames, identico nas 3 configuracoes de thread). O
+   que se afirma e que `dec` avanca na **mesma taxa** que `frame` entre dumps consecutivos — mede a
+   propriedade certa e ignora o offset de partida.
+7. **`app/ScenarioTemplate` grava o cenario expandido sempre no mesmo caminho**
+   (`src/<poc>/configs/scenario.generated.epp`, nao configuravel por linha de comando), entao dois
+   testes que rodem um binario ao mesmo tempo disputam o arquivo. Todos os `test()` que executam
+   uma poc sao `is_parallel: false`.
+8. **`wrap180()` tem borda em -180, nao em +180.** O header documenta `(-180, 180]`, mas
+   `wrap180(180) == -180` (`fmod(360,360)==0`). Nao e inofensivo: `ThreatPolicy` escolhe o lado da
+   quebra por `relBearingDeg >= 0`, entao um contato exatamente a re quebra sempre para o mesmo
+   lado. O teste trava o comportamento observado, nao o comentario.
+
+### `shared/xmsg` — mensagens configuráveis por EDL
+
+Escolher **o que** sai da simulação e **quando** sai vira configuração, não recompilação. Um
+`( MsgFeed )` no `components:` da `Station` amostra os players, avalia condições e entrega as
+mensagens a uma lista de destinos. Classes: `MsgFeed`, `MsgReport`, as condições
+(`MsgChanged`/`MsgThreshold`/`MsgRate`) e `MsgFileSink` (NDJSON).
+
+```
+msgFeed: ( MsgFeed
+   trackManager: twsTrkMgr   maxPlayers: 64   healthEvery: ( Seconds 10 )
+   sinks:    { ( MsgFileSink fileName: "./src/<poc>/data/messages/mission.jsonl"
+                             flushEvery: ( Seconds 2 ) ) }
+   messages: {
+      ( MsgReport name: telemetria players: { } labels: { player side mode }
+         fields: { latDeg lonDeg altMslM speedKts machNum fuelFrac }
+         every: ( Seconds 1.0 ) )
+      ( MsgReport name: mudanca-altitude players: { falcon1 }
+         fields: { altMslM climbMps }
+         when: { ( MsgChanged field: altMslM by: ( Meters 100 ) ) } )
+   } )
+```
+
+**Por que NÃO usa o `mixr::recorder`, que seria a resposta óbvia.** O schema `DataRecord.proto`
+é fechado: `PlayerState` carrega só `pos`/`angles`/`vel` (ECEF) e `damage`. **Não há combustível,
+motor, Mach, G nem AGL** — justamente as grandezas pedidas. Tokens REID de usuário (1000-9999)
+são descartados em silêncio (`AbstractDataRecorder::recordDataImp()` devolve `true`
+incondicionalmente, então `processUnhandledId()` nunca dispara para token desconhecido). E não há
+primitiva nenhuma de mudança/limiar/histerese (grep por `hysteresis|Schmitt|Threshold|Debounce`
+em `include/mixr/`: zero). Remendar o `.proto` está vetado — mesma decisão registrada na seção
+`shared/xlog`. O que se reaproveita é a **forma** (EDL declarativo, cadeia de destinos com filtro
+por assinante, trabalho fora do frame T/C); o `Player` é lido direto, como
+`ubf/FlightState::updateState()` e `TacviewOutput::updateRadarScan()` já fazem.
+
+**`rules/` é livre de MIXR** (`Schmitt`, `Deadband`, `RateWindow`, `EmitGate`) e é testado no alvo
+`test-domain`, sem levantar simulação — mesmo movimento do `domain::WorldView`.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **Lista `{ a b c }` no EDL põe o nome no OBJETO, não no slot.** Descoberto quebrando:
+   `fields: { latDeg lonDeg }` chegava como os campos `"1"` e `"2"`. Itens sem `:` são
+   **anônimos** — o parser numera os slots automaticamente (`edl_parser.y:144-155`) e o nome real
+   vai no valor, como `base::Identifier`. Já `{ chave: valor }` (o `typeMap:` do xtacview) põe o
+   nome no slot. Ler o **objeto primeiro** e cair para o slot cobre as duas formas — e cobre de
+   quebra a armadilha irmã de valor sem aspas ser `Identifier` e não `String`.
+2. **Acumulador de tempo simulado precisa de tolerância.** Medido: `0.1` somado 10 vezes dá
+   `0.9999999999999999` (fica **abaixo** de 1.0), enquanto `0.02` somado 50 vezes dá
+   `1.0000000000000004` (fica **acima**). Nenhum dos dois `dt` é representável em binário, e o
+   erro **muda de sinal** entre o laço de 10 Hz e o de 50 Hz: sem tolerância, um
+   `hold: ( Seconds 1.0 )` arma no passo 50 em `-deterministic` e só no passo 11 em tempo real.
+   Ver `rules/timeTolerance.hpp`. A `domain::ThreatPolicy` tem o mesmo padrão
+   (`holdTimer_ -= dt; if (holdTimer_ <= 0.0)`), mas ali o `<=` faz o erro cair para o lado
+   seguro — não há bug hoje.
+3. **`getEngRPM()` é polimórfico na UNIDADE.** `JSBSimModel.cpp:234-281`: pistão e elétrico
+   devolvem RPM absoluto (`getRPM()`), turbina devolve `GetN2()` em **percentual**, turboprop
+   devolve `GetN1()`, foguete devolve 0 — e o `default:` **não escreve no array** enquanto ainda
+   conta o índice no retorno. O c310 destas pocs é `engIO470D`, **pistão, maxrpm 2625**; medido em
+   voo: **2700 RPM**, não ~95. Por isso o campo chama-se `engRpmRaw`, os arrays são zerados antes
+   da chamada, e o sinal **primário** de pane é `engThrustAsymFrac` = (max−min)/max entre motores
+   — adimensional, sem calibração por aeronave (medido saudável: 0,0015).
+4. **Os motores levam segundos para subir.** O `JSBSimModel` nativo nunca os liga (armadilha 13.2
+   do README da poc); quem liga é `data/jsbsim/systems/engine-autostart.xml`. Medido: em t≈1 s o
+   empuxo é ~0 e o RPM é 1,16; em t≈7 s são ~400 lbf e 2700 RPM. **É por isso que `hold:` existe**
+   — sem ele, todo gatilho de motor dispara no transiente de partida.
+5. **Grupo inválido vira `null`, nunca 0.0.** O `bandit1` recebido por DIS é clonado de um
+   `template:` **sem `dynamicsModel`**, então toda grandeza de motor dele lê zero — e zero é um
+   valor plausível de empuxo. Condição sobre campo inválido **não avalia, não gera borda e congela
+   o nível**; sem essa regra, uma mensagem de pane com `players: { }` acusaria falha permanente
+   no intruso.
+6. **O amostrador NÃO pode morar no `Player`.** Seria o padrão do `models::CollisionDetect` e
+   daria 50 Hz, mas `Player::updateTC()` (`Player.cpp:536`) e `Player::updateData()`
+   (`Player.cpp:619`) são os dois guardados por `mode == ACTIVE || PRE_RELEASE`, e
+   `crashNotification()` faz `setMode(CRASHED)` — o observador **emudece exatamente na borda que
+   existe para reportar**. Preço aceito: resolução de 10 Hz (tempo real) / 50 Hz
+   (`-deterministic`).
+7. **`sinks:` e `messages:` ficam em SLOT, nunca em `components:`.** É isso que garante que
+   `Component::updateTC()` — que só desce para a lista de componentes — não tenha caminho até
+   eles. O preço é encaminhar `reset()` e `shutdownNotification()` à mão. (`Station::reset()`
+   **chama** `BaseClass::reset()` no fim, então o `MsgFeed` em `components:` recebe reset normal.)
+8. **`suppressed` só conta para mensagem de EVENTO.** Numa mensagem periódica o `every:` é um
+   limitador de taxa e não emitir a cada ciclo é o comportamento pedido — contar isso como
+   supressão enchia o `msgHealth` de milhares (medido: 4900 em 24 s) e afogava o número que
+   importa, que é a borda de evento adiada.
+9. **`every:` adia, não descarta.** Uma borda que cai dentro do piso é emitida assim que ele
+   vence. Descartar perderia justamente a borda de `crashedFlag` sob carga, e em silêncio.
+10. **`MsgFileSink` não reusa o `recorder::PrintHandler`**, ao contrário do `xlog`:
+    `printToOutput()` termina em `std::endl`, ou seja **um flush por linha**
+    (`PrintHandler.cpp:284`). A dezenas de linhas/s isso vira tempestade de syscall no mesmo laço
+    que também drena o gravador do Tacview. `ofstream` próprio, flush periódico.
+11. **O diretório `data/messages/` tem de existir** — mesma causa da falha muda do `TacviewOutput`
+    sem `data/recordings/`. Há um `.gitkeep` em cada poc.
+
+**O que fica de fora**: injeção de pane (`class JSBSimModel final` — não há subclasse possível;
+a rota real seria `Player::setThrottles()` com valor `< 0.0`, e é peça de modelo, não de
+mensageria), destinos de console e de rede (uma classe + uma linha na factory cada), e eventos
+discretos "no instante exato" — o que se alcança é o que se deriva por amostragem.
+
 ## Ao adicionar um subprojeto novo
 
 1. Criar `src/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
@@ -667,7 +836,8 @@ Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (sil
 - A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,
   `.epp`/`.epp.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
   `poc/<nome>`** — é só prosa, nenhum caminho depende disso.
-- `docs/` está vazio.
+- Não há pasta `docs/`: a documentação vive no `README.md` da raiz, no de cada subprojeto
+  e em `tests/README.md`.
 - `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
   destrackeado com `git rm -r --cached`.
 - Limitação conhecida na poc/09: chaff/flare saem no Tacview como `Misc`/`Grey` em vez de

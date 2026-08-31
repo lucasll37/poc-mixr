@@ -164,6 +164,83 @@
          )
       )
 
+
+      // ------------------------------------------------------------------
+      // Mensagens configuraveis (shared/xmsg). Escolher O QUE sai da
+      // simulacao e QUANDO sai passa a ser configuracao, nao recompilacao.
+      //
+      // Roda em updateData(), na thread do laco -- nao ha uma linha deste
+      // subsistema dentro do frame de tempo critico.
+      // ------------------------------------------------------------------
+      msgFeed: ( MsgFeed
+
+         trackManager: twsTrkMgr        // nome do TrackManager (grupo TRACK)
+         maxPlayers:   64
+         healthEvery:  ( Seconds 10 )
+
+         sinks: {
+            ( MsgFileSink
+               fileName: "./src/single-thread/data/messages/mission.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+
+         messages: {
+
+            // "posicao/velocidade/altitude a cada instante". Sem 'when:' sai
+            // todo ciclo, limitada por 'every:'. players vazio = todos,
+            // inclusive o bandit1 que so existe na rede.
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { latDeg lonDeg altMslM altAglM hdgDeg speedKts
+                         machNum climbMps fuelFrac }
+               every: ( Seconds 1.0 ) )
+
+            // "mudanca de altitude": deadband medido contra o ultimo valor
+            // EMITIDO -- uma subida lenta da um evento por degrau de 100 m,
+            // nao um por ciclo.
+            ( MsgReport name: mudanca-altitude
+               players: { falcon1 falcon2 falcon3 falcon4 }
+               labels: { player }
+               fields: { altMslM altAglM climbMps hdgDeg }
+               when: { ( MsgChanged field: altMslM by: ( Meters 100 ) ) } )
+
+            // "falha no motor". engThrustAsymFrac = (max-min)/max entre os
+            // motores: 0 simetrico, ~1 um motor morto. E adimensional, entao
+            // NAO precisa de calibracao por aeronave -- ao contrario de
+            // engRpmRaw, cuja unidade depende do tipo de motor (o c310 e
+            // pistao: ~2500, nao ~95).
+            //
+            // 'clear' e obrigatorio; 'hold' descarta o transiente dos
+            // primeiros segundos (JSBSimModel::reset() nao roda FGTrim).
+            // Player sem dynamicsModel (o fantasma que chega por DIS) tem o
+            // grupo de motor invalido e NAO avalia -- sem isso, alarme
+            // permanente no intruso.
+            ( MsgReport name: falha-motor  players: { }
+               labels: { player }
+               fields: { engCount engWorstIndex engThrustAsymFrac
+                         engThrustMinLb eng1ThrustLb eng2ThrustLb
+                         eng1RpmRaw eng2RpmRaw engFuelFlowTotalPph
+                         engOilPsiMin fuelFrac altAglM }
+               when: { ( MsgThreshold field: engThrustAsymFrac
+                           above: 0.5  clear: 0.3  hold: ( Seconds 1.0 ) ) }
+               every: ( Seconds 5.0 ) )
+
+            // Filtro composto: baixo E descendo rapido.
+            ( MsgReport name: baixo-e-descendo
+               players: { falcon1 falcon2 falcon3 falcon4 }
+               labels: { player }
+               fields: { altAglM terrainElevM climbMps hdgDeg speedKts }
+               match: all
+               when: {
+                  ( MsgThreshold field: altAglM
+                       below: ( Meters 500 )  clear: ( Meters 700 ) )
+                  ( MsgRate field: altMslM  below: -10.0
+                       window: ( Seconds 1.0 ) )
+               }
+               every: ( Seconds 5.0 ) )
+         }
+      )
+
    } // components (agentes)
 
    // --------------------------------------------------------------------

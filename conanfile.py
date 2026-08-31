@@ -14,6 +14,12 @@ class MixrHelloConan(ConanFile):
         self.requires("mixr/1.0.5", transitive_headers=True)
         self.requires("behaviortree.cpp.asa/3.5.6")
 
+    def build_requirements(self):
+        # Framework da suite de testes. Fica em test_requires porque nenhum
+        # binario da aplicacao linka gtest -- so os alvos de tests/, e so
+        # quando o build e configurado com -Dtests=true.
+        self.test_requires("gtest/1.14.0")
+
     def layout(self):
         self.folders.build = "build"
         self.folders.generators = "build"

@@ -3,7 +3,7 @@
 
 #include "mixr/base/ubf/AbstractBehavior.hpp"
 
-#include "bt/NodeContext.hpp"
+#include "bt/DecisionContext.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -72,7 +72,7 @@ namespace xnative {
 // sem isso os planos de voo ficam com os DEFAULTS do domain::PatrolPlan
 // (rumo 0, 1500 m, 120 kts) em vez dos valores dos slots.
 //------------------------------------------------------------------------------
-class BtBehavior : public base::ubf::AbstractBehavior
+class BtBehavior : public base::ubf::AbstractBehavior, public bt_nodes::DecisionContext
 {
    DECLARE_SUBCLASS(BtBehavior, base::ubf::AbstractBehavior)
 
@@ -84,15 +84,17 @@ public:
 
    void reset() override;
 
-   // --- usados pelos nos da arvore (mesma thread do tick) ---
-   const FlightState::Snapshot& snapshot() const  { return snap; }
-   bt_nodes::FlightDecision& decision()           { return currentDecision; }
-   domain::PatrolPlan& patrolPlan()               { return patrol; }
-   domain::RtbPlan& rtbPlan()                     { return rtb; }
-   const domain::ThreatPolicy& threatPolicy() const { return threat; }
-   double getFrameDt() const                      { return frameDt; }
-   double getFuelReserve() const                  { return tune.fuelReserve; }
-   double getSupportSpeedKts() const              { return tune.supportSpeedKts; }
+   // --- bt_nodes::DecisionContext: o que os nos da arvore enxergam deste
+   //     comportamento (mesma thread do tick). Sao os mesmos metodos de
+   //     sempre; o 'override' e o que os prende ao contrato da interface. ---
+   const domain::WorldView& snapshot() const override    { return snap; }
+   bt_nodes::FlightDecision& decision() override         { return currentDecision; }
+   domain::PatrolPlan& patrolPlan() override             { return patrol; }
+   domain::RtbPlan& rtbPlan() override                   { return rtb; }
+   const domain::ThreatPolicy& threatPolicy() const override { return threat; }
+   double getFrameDt() const override                    { return frameDt; }
+   double getFuelReserve() const override                { return tune.fuelReserve; }
+   double getSupportSpeedKts() const override            { return tune.supportSpeedKts; }
 
 protected:
    bool shutdownNotification() override;

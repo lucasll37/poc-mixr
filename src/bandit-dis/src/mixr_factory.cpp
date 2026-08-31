@@ -2,6 +2,7 @@
 
 #include "xtacview/factory.hpp"
 #include "xjoystick/factory.hpp"
+#include "xmsg/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -22,7 +23,10 @@ mixr::base::Object* mixrFactory(const std::string& name)
    //    AirVehicle do 'player' configurado)
    if (obj == nullptr) obj = mixr::xjoystick::factory(name);
 
-   // 3) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, DataRecorder...
+   // 3) mensagens configuraveis por EDL (shared/xmsg)
+   if (obj == nullptr) obj = mixr::xmsg::factory(name);
+
+   // 4) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, DataRecorder...
    if (obj == nullptr) obj = mixr::simulation::factory(name);
    if (obj == nullptr) obj = mixr::models::factory(name);
 

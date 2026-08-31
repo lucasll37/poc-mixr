@@ -29,6 +29,7 @@
 
 #include "app/DeterministicRun.hpp"
 #include "app/Fleet.hpp"
+#include "app/MetaObjectReport.hpp"
 #include "app/Options.hpp"
 #include "app/RealTimeRun.hpp"
 #include "app/ScenarioTemplate.hpp"
@@ -116,6 +117,9 @@ int main(int argc, char* argv[])
    int rc{};
    if (opts.isDeterministic()) {
       rc = app::runDeterministic(station, fleet, opts.deterministicFrames);
+      // Antes do SHUTDOWN, para o relatorio ver o regime estacionario e
+      // nao o processo ja desmontado (ver app/MetaObjectReport.hpp).
+      app::printMetaObjectReport();
    } else {
       printBanner(numTcThreads);
       app::runRealTime(station, fleet, worldModel, clockStation, ioHandler, tacviewOutput);

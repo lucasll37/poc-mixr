@@ -80,6 +80,7 @@ bool FlightAction::execute(base::Component* actor)
    autopilot->setCommandedVelocityKts(command.speedKts);
 
    setBehaviorLabel(player->getID(), label);
+   bumpDecisionCount(player->getID());
 
    if (broadcast) {
       const auto datalink = dynamic_cast<AlertDatalink*>(player->getDatalink());

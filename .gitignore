@@ -11,3 +11,6 @@ shared/data/terrain/srtm/*.hgt
 # e data/logs/ e versionado, nunca o conteudo gerado.
 src/*/data/recordings/*.acmi
 src/*/data/logs/*.log*
+
+# saida do shared/xmsg (mensagens configuraveis)
+src/*/data/messages/*.jsonl

@@ -1,4 +1,4 @@
-.PHONY: clean configure build install package help run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis
+.PHONY: clean configure build install package help run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis test test-asan
 
 .DEFAULT_GOAL := help
 
@@ -78,46 +78,16 @@ package: ## Create the Conan package for this project.
 run-single-thread: ## Run single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
 	$(BUILD_DIR)/src/single-thread/src/single-thread
 
-check-single-thread: ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C — a simulação é multithread aqui também).
-	@BIN=$(BUILD_DIR)/src/single-thread/src/single-thread; \
-	OUT=$(BUILD_DIR)/single-thread-determinism; mkdir -p $$OUT; \
-	for n in 1 2 4; do \
-		echo "  rodando 2000 frames com numTcThreads=$$n ..."; \
-		$$BIN -threads $$n -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
-	done; \
-	echo "  repetindo a execução de 4 threads ..."; \
-	$$BIN -threads 4 -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-4b.txt; \
-	fail=0; \
-	for pair in "threads-4 threads-4b" "threads-1 threads-2" "threads-1 threads-4"; do \
-		set -- $$pair; \
-		if diff -q $$OUT/$$1.txt $$OUT/$$2.txt > /dev/null; then echo "  OK   $$1 == $$2"; \
-		else echo "  FALHA $$1 != $$2"; fail=1; fi; \
-	done; \
-	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
-	else echo "determinismo: FALHOU"; exit 1; fi
+check-single-thread: ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C, em cenário hermético — sem DIS).
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/src/single-thread/src/single-thread single-thread 2000 single-thread
 
 run-multi-thread: ## Run multi-thread (o single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
 	$(BUILD_DIR)/src/multi-thread/src/multi-thread
 
-check-multi-thread: ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C, mesmo com os 4 agentes decidindo em paralelo).
-	@BIN=$(BUILD_DIR)/src/multi-thread/src/multi-thread; \
-	OUT=$(BUILD_DIR)/multi-thread-determinism; mkdir -p $$OUT; \
-	for n in 1 2 4; do \
-		echo "  rodando 2000 frames com numTcThreads=$$n ..."; \
-		$$BIN -threads $$n -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-$$n.txt; \
-	done; \
-	echo "  repetindo a execução de 4 threads ..."; \
-	$$BIN -threads 4 -deterministic 2000 2>/dev/null | grep '^frame=' > $$OUT/threads-4b.txt; \
-	fail=0; \
-	for pair in "threads-4 threads-4b" "threads-1 threads-2" "threads-1 threads-4"; do \
-		set -- $$pair; \
-		if diff -q $$OUT/$$1.txt $$OUT/$$2.txt > /dev/null; then echo "  OK   $$1 == $$2"; \
-		else echo "  FALHA $$1 != $$2"; fail=1; fi; \
-	done; \
-	echo "  decisões por frame (tem que bater com o número de frames):"; \
-	grep 'player=falcon1 ' $$OUT/threads-4.txt | tail -1 | grep -o 'frame=[0-9]* \|dec=[0-9]*' | tr '\n' ' '; echo; \
-	if [ $$fail -eq 0 ]; then echo "determinismo: OK (estado idêntico em todas as execuções)"; \
-	else echo "determinismo: FALHOU"; exit 1; fi
+check-multi-thread: ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/src/multi-thread/src/multi-thread multi-thread 2000 multi-thread
 
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
@@ -125,6 +95,32 @@ compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (
 
 run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
+
+# ============================================
+# Test Targets
+# ============================================
+
+test: ## Roda a suite de testes (meson test). Requer configure com -Dtests=true.
+	meson test -C $(BUILD_DIR) --print-errorlogs
+
+test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build separado, lento; supressões em tests/memory/asan.supp).
+	@echo "  reconfigurando com ASan ..."
+	@meson configure $(BUILD_DIR) -Dasan=true
+	@meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
+	@mkdir -p $(BUILD_DIR)/tests-fixtures $(BUILD_DIR)/tests-recordings
+	@python3 ./tests/scenario/make_fixture.py --poc single-thread --mode intruder \
+		--out $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in
+	@echo "  rodando 500 frames sob ASan ..."
+	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
+		ASAN_OPTIONS=detect_leaks=1 \
+		$(BUILD_DIR)/src/single-thread/src/single-thread \
+		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in \
+		-threads 1 -deterministic 500 > /dev/null; \
+		rc=$$?; \
+		meson configure $(BUILD_DIR) -Dasan=false >/dev/null; \
+		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1; \
+		if [ $$rc -eq 0 ]; then echo "asan: OK (sem vazamento reportado)"; \
+		else echo "asan: FALHOU (rc=$$rc)"; exit 1; fi
 
 # ============================================
 # Misc Targets

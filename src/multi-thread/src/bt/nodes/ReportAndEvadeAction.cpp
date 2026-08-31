@@ -1,7 +1,7 @@
 #include "bt/nodes/ReportAndEvadeAction.hpp"
 
 #include "domain/ThreatPolicy.hpp"
-#include "ubf/BtBehavior.hpp"
+#include "bt/DecisionContext.hpp"
 
 namespace bt_nodes {
 

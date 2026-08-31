@@ -451,8 +451,11 @@ CAMADA 9  configs/ e data/ o que não é código
 
 ### 7.1 Camada 1 — `domain/`: as regras puras
 
-Seis arquivos, **nenhum** deles inclui um header do MIXR, do BehaviorTree.CPP ou do JSBSim. É a
-camada que se pode compilar e testar sem levantar simulação nenhuma. Todas as unidades trazem a
+Sete arquivos, **nenhum** deles inclui um header do MIXR, do BehaviorTree.CPP ou do JSBSim. É a
+camada que se pode compilar e testar sem levantar simulação nenhuma — e é o que
+[`tests/domain/`](../../tests/domain/) faz: 42 testes que rodam em ~10 ms, cobrindo a histerese da
+evasão, o alvo fixado na entrada, o lado da quebra e o piso anti-CFIT (este com varredura de
+invariante sobre uma grade de elevação × altitude × marcação). Todas as unidades trazem a
 unidade no **nome do campo** (`altitudeM`, `speedKts`, `headingDeg`) — a armadilha clássica deste
 repositório é misturar pés, metros e nós.
 
@@ -726,7 +729,25 @@ de transmissão do alerta. Os nós não tocam em objeto MIXR nenhum — eles só
 estrutura. Quem a transforma em atuação é o `FlightAction`. Assim o mesmo conjunto de nós serviria
 a outra aeronave, outro atuador, ou a um teste unitário sem simulação.
 
-`NodeContext` é a dependência fixa dos nós: **um ponteiro** para o `BtBehavior` que os hospeda.
+`NodeContext` é a dependência fixa dos nós: **um ponteiro** para o comportamento que os hospeda —
+mas para a **interface**, não para a classe concreta.
+
+> **[`bt/DecisionContext.hpp`](include/bt/DecisionContext.hpp) existe por causa de um acoplamento
+> que só aparecia ao tentar testar.** Os headers dos nós sempre foram limpos, mas todo `.cpp`
+> incluía `ubf/BtBehavior.hpp` para chamar oito getters — e com ele vinha o MIXR inteiro. Na
+> prática, a árvore, que é a peça mais própria desta poc, só podia ser exercitada subindo uma
+> `Station`.
+>
+> `DecisionContext` é exatamente aquele conjunto de oito getters, e `BtBehavior` a implementa sem
+> escrever um método novo (as assinaturas já eram estas; só ganharam `override`). Junto com a
+> mudança irmã — `FlightState::Snapshot` virou
+> [`domain::WorldView`](include/domain/WorldView.hpp), com um `using` mantendo os call sites —,
+> `bt/nodes/*.cpp` passaram a compilar contra BehaviorTree.CPP + `domain/` apenas.
+>
+> O resultado é [`tests/tree/`](../../tests/tree/): carrega o `flight_tree.xml` **de produção**,
+> monta um `FakeDecisionContext` e verifica qual ramo venceu — `ldd` no binário mostra **zero**
+> bibliotecas do MIXR. As duas mudanças foram provadas neutras: o dump determinístico saiu byte a
+> byte idêntico ao de antes.
 
 > **Por que injeção por construtor e não pelo blackboard.** O blackboard do BehaviorTree.CPP é
 > para dados que fluem **entre nós**, não para injeção de dependência. E há uma armadilha
@@ -789,7 +810,7 @@ xnative → xtacview → xclock → simulation → models → terrain → record
 
 ### 7.7 Camada 7 — `app/`: a aplicação, uma questão por arquivo
 
-Nove módulos, na ordem em que o `main.cpp` os chama.
+Dez módulos, na ordem em que o `main.cpp` os chama.
 
 **1. [`app/Options.*`](include/app/Options.hpp)** — `argv` → struct. Não abre arquivo, não
 constrói nada, não decide nada. Argumentos desconhecidos são **ignorados**, com a mesma tolerância
@@ -860,6 +881,29 @@ coisas e só delas: um `poll()` não bloqueante do teclado, o `station->updateDa
 gravador (e, aqui, roda os agentes), e o `msleep` que acerta o passo com o relógio de parede. **O
 frame de tempo crítico não acontece aqui** — quem o roda é o pool nativo criado por
 `createTimeCriticalProcess()`. O handler de `SIGINT` só marca uma flag.
+
+**10. [`app/MetaObjectReport.*`](include/app/MetaObjectReport.hpp)** — imprime uma linha `meta=`
+por classe vigiada ao fim de uma corrida determinística, e existe para detectar **vazamento sem
+ferramenta externa**.
+
+Não é instrumentação nossa: toda classe com `DECLARE_SUBCLASS` já carrega um `base::MetaObject`
+estático com `count` (instâncias vivas), `mc` (pico simultâneo) e `tc` (total criado), mantidos
+pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`. O próprio `Object.hpp` diz para que
+serve — *"to spot potential memory leaks"* — e o recurso estava sem uso aqui.
+
+O prefixo `meta=` não é decorativo: os `check-*` filtram `^frame=`, então o relatório passa ao
+largo deles sem que nada precise mudar. A leitura saudável, medida:
+
+```
+meta=FlightAction count=0 mc=1 tc=4000     # 4 aviões × 1000 frames, nenhuma viva no fim
+meta=FlightState  count=4 mc=4 tc=4        # uma por avião, criada no parse do EDL
+```
+
+Quem transforma isso em teste é [`tests/memory/`](../../tests/memory/), comparando **duas
+durações** — 500 e 1000 frames — e exigindo `count` igual com `tc` crescendo. Um retrato único não
+distinguiria "vazando" de "retido de propósito", e uma classe nunca instanciada passaria por
+inércia. **Armadilha:** os contadores não são atômicos (`++metaObject.count` em `int` cru), então
+o teste roda com `-threads 1`.
 
 ### 7.8 Camada 8 — `main.cpp`
 
@@ -1512,8 +1556,20 @@ Ordem entre os quatro agentes também é fixa: eles são componentes da `Station
 compara: os quatro dumps são **byte a byte idênticos**.
 
 - **Prova**: que o paralelismo do pool T/C e as regras de fusão/desempate da poc não introduzem
-  dependência de ordem. Trocar 1 por 4 threads não muda um decimal.
+  dependência de ordem. Trocar 1 por 4 threads não muda um decimal. E, desde que a verificação
+  virou script, também que a decisão está **amarrada ao frame**: `dec` avança na mesma taxa que
+  `frame` entre dumps consecutivos — nem duas decisões no mesmo frame, nem frame sem decisão.
 - **Não prova**: que o modo de tempo real é reprodutível. Ele não é, pelos motivos de 12.3.
+- **Não prova**, e esta é a lacuna maior: que o modelo decide **certo**. Reprodutibilidade não é
+  correção — um modelo que erra sempre igual passa aqui sem reclamar. É o que as camadas `domain`,
+  `tree` e `scenario` de [`tests/`](../../tests/README.md) fecham.
+
+> **Armadilha, encontrada rodando:** o `-deterministic` **não é hermético** com o cenário de
+> produção. O bloco `networks:` abre a porta DIS 3000 e ingere PDUs de quem estiver na rede — com
+> um `bandit-dis` de outra sessão no ar, duas execuções idênticas divergem e o `check-*` acusa
+> falso não-determinismo (medido: `frame=600 falcon1` deu `PATROL` com 1 thread e `SUPPORT` com 2).
+> Por isso os alvos `check-*` passaram a rodar em cenário hermético, gerado sem o bloco de rede.
+> Assim, as duas pocs passam com 1, 2 e 4 threads em 2000 frames.
 
 > **Onde isso deixa a poc:** o determinismo aqui é propriedade do **harness**, não do modelo —
 > vale enquanto o laço mantiver `tcFrame()` e `updateData()` em lockstep. A
@@ -1664,8 +1720,14 @@ simulação roda normalmente, só sem teclado.
 # build + execução (Ctrl+C encerra)
 make build && make run-single-thread
 
-# determinismo: 1, 2 e 4 threads produzem o mesmo estado
+# a suíte inteira: regras, árvore, cenário, vazamento, determinismo, duplicação
+meson configure build -Dtests=true && make build && make test
+
+# determinismo isolado: 1, 2 e 4 threads produzem o mesmo estado (cenário hermético)
 make check-single-thread
+
+# vazamento: LeakSanitizer, com as supressões dos vazamentos conhecidos do framework
+make test-asan
 
 # o terreno chegou? elev= e agl= têm de ser plausíveis e NÃO-ZERO
 ./build/src/single-thread/src/single-thread -deterministic 300 | grep "^frame=300 "
@@ -1684,7 +1746,15 @@ grep -o "Name=[^,]*,Type=[^,]*,Color=[^,]*,CallSign=[^,]*" \
 
 # depuração com AddressSanitizer só neste alvo
 meson configure build -Dasan=true && meson compile -C build single-thread
+
+# vazamento sem ferramenta externa: os contadores de instância do próprio MIXR
+./build/src/single-thread/src/single-thread -threads 1 -deterministic 1000 | grep "^meta="
 ```
+
+> **Atenção ao rodar os comandos acima com `-deterministic` e cenário de produção:** o bloco
+> `networks:` faz o processo ingerir PDUs DIS de quem estiver na rede, então uma instância de
+> `bandit-dis` no ar muda o resultado. Os testes de [`tests/`](../../tests/README.md) contornam
+> isso gerando fixtures sem o bloco de rede.
 
 O status impresso a cada 2 s traz, por aeronave: altitude, **elevação do terreno**, **AGL**,
 rumo, banco, velocidade, empuxo, mach, G, combustível, o rótulo do comportamento vencedor, o que

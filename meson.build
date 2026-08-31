@@ -78,7 +78,18 @@ subdir('./shared/xjoystick')
 # subprojetos, que consomem xlog_dep.
 subdir('./shared/xlog')
 
+# Mensagens configuraveis por EDL (telemetria e eventos). Tambem antes dos
+# subprojetos, que consomem xmsg_dep.
+subdir('./shared/xmsg')
+
 subdir('./src')
+
+# Suite de testes. Fica DEPOIS de src/ porque as camadas de cenario, memoria
+# e determinismo rodam os executaveis das pocs. Atras da opcao -Dtests=true
+# para que um build comum nao precise do gtest resolvido.
+if get_option('tests')
+    subdir('./tests')
+endif
 
 # ============================================
 # Summary

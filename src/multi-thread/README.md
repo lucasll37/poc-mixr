@@ -344,7 +344,8 @@ Quase nada — e é esse o ponto:
 | `app/DeterministicRun.cpp` | **idêntico** — `tcFrame()` + `updateData()` em lockstep é o que dá o determinismo | **idêntico** — o determinismo já vem do frame; `updateData()` está lá só para o Tacview |
 | `app/TerrainData.cpp` | **idêntico** | **idêntico** |
 | `app/StatusReport.cpp` | — | acrescenta `dec=` (decisões do agente) e `thr=` (thread que decidiu) |
-| `app/DeterministicDump.cpp` | — | acrescenta `dec=` ao dump comparável |
+| `app/DeterministicDump.cpp` | conta pelo `BehaviorBoard`, no ponto da atuação | conta no próprio agente (`FlightAgentTC`) |
+| `app/MetaObjectReport.cpp` | **idêntico** — contadores de instância do MIXR, para detectar vazamento | **idêntico** |
 | `src/xnative/factory.cpp` | 6 classes | **7** classes |
 | `src/meson.build` | — | +1 fonte |
 
@@ -439,13 +440,25 @@ $ make check-multi-thread
   OK   threads-4 == threads-4b
   OK   threads-1 == threads-2
   OK   threads-1 == threads-4
-  decisões por frame (tem que bater com o número de frames):
-frame=2000  dec=2001
-determinismo: OK (estado idêntico em todas as execuções)
+  OK   uma decisao por frame, por aviao, nas 3 configuracoes
+determinismo (multi-thread): OK
 ```
 
-`dec=2001` em 2000 frames: a decisão a mais é o `tcFrame()` de aquecimento que
-[`app/StationBuilder.cpp`](src/app/StationBuilder.cpp) dispara logo depois do `RESET_EVENT`.
+**A contagem de decisões deixou de ser impressa e virou asserção.** Antes o `Makefile` mostrava
+`frame=2000 dec=2001` e cabia a quem lesse conferir; hoje o
+[script de verificação](../../tests/determinism/check_determinism.sh) falha sozinho.
+
+Mas repare no que se afirma: **não** é `dec == frames`. `dec=2001` em 2000 frames está correto — a
+decisão a mais é o `tcFrame()` de aquecimento que
+[`app/StationBuilder.cpp`](src/app/StationBuilder.cpp) dispara logo depois do `RESET_EVENT`. Isso
+é *offset* de partida, não perda de vínculo com o frame. O que se afirma é que `dec` avança na
+**mesma taxa** que `frame` entre dois dumps consecutivos — mede a propriedade que interessa e
+ignora o *offset*.
+
+A `single-thread` também ganhou o campo `dec=`, que antes só existia aqui. Como lá a decisão roda
+no laço de background, quem conta é o `BehaviorBoard`, no ponto da atuação — e a mesma asserção
+vale para os dois lados. Na suíte, os dois casos são nomeados por **onde a decisão roda**:
+`determinism-critico` e `determinism-nao-critico`.
 
 ### 9.2 Em passo fixo, as duas pocs dão **praticamente** o mesmo estado
 
