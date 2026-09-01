@@ -2,6 +2,8 @@
 
 #include "mixr_factory.hpp"
 
+#include "xplugin/PluginRegistry.hpp"
+
 #include "mixr/linkage/IoHandler.hpp"
 
 #include "mixr/simulation/Station.hpp"
@@ -18,8 +20,27 @@ namespace app {
 
 mixr::simulation::Station* buildStation(const std::string& filename)
 {
+   // O registro de plugins precisa saber o que a aplicacao JA constroi sem
+   // plugin nenhum: e assim que ele recusa, na CARGA, um plugin cujo nome de
+   // fabrica colida com o framework -- em vez de deixa-lo silenciosamente
+   // inerte. Este e o unico arquivo que enxerga as duas pontas (a factory da
+   // poc e o registro).
+   mixr::xplugin::setBuiltinFactory(mixrFactoryBuiltin);
+
    int num_errors{};
+
+   // A carga dos plugins acontece AQUI DENTRO, durante o parse: o
+   // ( PluginLoader ) declarado no .epp faz o dlopen no proprio isValid(),
+   // que o parser chama no fecha-parenteses do bloco -- antes, portanto, de
+   // qualquer forma escrita depois dele no arquivo. Ver o cabecalho de
+   // shared/xplugin/PluginLoader.hpp para a prova de ordem.
    mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
+
+   // Fecha a janela de escrita do registro: dai em diante ele e so leitura,
+   // e uma carga tardia (ja com as threads de tempo critico no ar) vira erro
+   // em vez de corrida.
+   mixr::xplugin::seal();
+
    if (num_errors > 0) {
       std::cerr << "File: " << filename << ", number of errors: " << num_errors << std::endl;
       std::exit(EXIT_FAILURE);

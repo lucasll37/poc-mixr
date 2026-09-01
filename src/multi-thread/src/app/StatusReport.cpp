@@ -1,8 +1,6 @@
 #include "app/StatusReport.hpp"
 
-#include "xnative/AlertDatalink.hpp"
-#include "xnative/BehaviorBoard.hpp"
-#include "xnative/FlightAgentTC.hpp"
+#include "xboard/Board.hpp"
 #include "xnative/TrackQuery.hpp"
 
 #include "mixr/models/player/air/AirVehicle.hpp"
@@ -43,12 +41,13 @@ void appendFlightLine(std::ostringstream& oss, const mixr::models::AirVehicle* c
        << " fuel=" << ((fuelMax > 0.0) ? (air->getFuelWt() / fuelMax * 100.0) : 0.0) << "%";
 }
 
-void appendDecisionLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air)
+void appendDecisionLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air,
+                        const mixr::xboard::Readout& board)
 {
-   // Rotulo do comportamento: quadro de status por id (o Aircraft nativo nao
-   // tem onde guardar isso) -- ver xnative/BehaviorBoard.hpp
-   oss << " bt=" << std::setw(8) << std::left
-       << mixr::xnative::getBehaviorLabel(air->getID()) << std::right;
+   // Rotulo do comportamento: vem do quadro de leitura, escrito pelo modelo
+   // (que mora num .so). O Aircraft nativo nao tem onde guardar isso, e este
+   // arquivo nao pode incluir header do plugin -- ver shared/xboard/Board.hpp.
+   oss << " bt=" << std::setw(8) << std::left << board.label << std::right;
 
    const auto autopilot = dynamic_cast<const mixr::models::Autopilot*>(air->getPilot());
    if (autopilot != nullptr) {
@@ -59,7 +58,8 @@ void appendDecisionLine(std::ostringstream& oss, const mixr::models::AirVehicle*
    }
 }
 
-void appendSensorLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air)
+void appendSensorLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air,
+                      const mixr::xboard::Readout& board)
 {
    const mixr::xnative::TrackInfo track{mixr::xnative::nearestHostileTrack(air)};
    if (track.found) {
@@ -67,25 +67,20 @@ void appendSensorLine(std::ostringstream& oss, const mixr::models::AirVehicle* c
           << (track.rangeM * M2NM) << "NM";
    }
 
-   const auto datalink = dynamic_cast<const mixr::xnative::AlertDatalink*>(air->getDatalink());
-   if (datalink != nullptr) {
-      const auto alert = datalink->getAlert();
-      if (alert.valid) {
-         oss << " alerta<-" << alert.senderName << "(" << alert.contactName << ")";
-      }
+   if (board.alertValid) {
+      oss << " alerta<-" << board.alertSender << "(" << board.alertContact << ")";
    }
 }
 
-// A conta que separa esta poc da 13: 'dec' cresce uma vez por FRAME (taxa do
-// tempo critico), nao uma vez por volta do laco de background; 'thr' e o
-// indice da thread do pool T/C que decidiu por ultimo.
-void appendAgentLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air)
+void appendAgentLine(std::ostringstream& oss, const mixr::xboard::Readout& board)
 {
-   const mixr::xnative::FlightAgentTC* const agent{mixr::xnative::findFlightAgent(air)};
-   if (agent == nullptr) return;
+   oss << " dec=" << board.decisions;
 
-   oss << " dec=" << agent->getDecisionCount()
-       << " thr=" << agent->getLastThreadTag();
+   // 'thr' so aparece quando a decisao roda numa thread de tempo critico --
+   // o quadro nasce com -1 e so o FlightAgentTC escreve ali. E assim que este
+   // arquivo serve as duas pocs sem um #if: quem nao decide no pool nao
+   // publica, e a coluna simplesmente nao sai.
+   if (board.threadTag >= 0) oss << " thr=" << board.threadTag;
 }
 
 } // namespace
@@ -102,10 +97,11 @@ void printStatus(const Fleet& fleet, const double elapsedSec, const double simSe
 
    for (const auto air : fleet) {
       if (air == nullptr) continue;
+      const mixr::xboard::Readout board{mixr::xboard::get(air->getID())};
       appendFlightLine(oss, air);
-      appendDecisionLine(oss, air);
-      appendSensorLine(oss, air);
-      appendAgentLine(oss, air);
+      appendDecisionLine(oss, air, board);
+      appendSensorLine(oss, air, board);
+      appendAgentLine(oss, board);
       oss << std::endl;
    }
 

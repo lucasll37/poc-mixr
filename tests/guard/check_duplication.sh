@@ -41,8 +41,36 @@ compara src/domain
 compara include/bt
 compara src/bt
 
+# A fiacao da carga dinamica de modelos (shared/xplugin) e IDENTICA nas duas
+# pocs, e continuar identica e o que mantem o 'make compare-single-multi'
+# mostrando so o agente do UBF.
+#
+# Estes quatro ja eram byte a byte antes de existir plugin nenhum -- entram
+# aqui porque agora sao TOCADOS por um assunto novo, e uma edicao aplicada
+# numa poc so passaria despercebida: o compare-single-multi mostra, mas nao
+# falha, e ninguem le a saida toda.
+compara include/mixr_factory.hpp
+compara src/mixr_factory.cpp
+compara src/app/StationBuilder.cpp
+compara src/app/MetaObjectReport.cpp
+
+# O modelo virou plugin, e isso tornou identicos mais tres arquivos que antes
+# divergiam ou nao eram guardados:
+#
+#   include/ubf   ja era byte a byte, so nunca tinha sido guardado;
+#   plugin.cpp    a fronteira C do modelo -- o que diverge entre as pocs
+#                 (o FlightAgentTC) mora nas listas de xnative/factory.cpp;
+#   Deterministic/StatusReport  pararam de incluir header do modelo e passaram
+#                 a ler o quadro (shared/xboard), entao o 'dec=' e o 'thr='
+#                 deixaram de vir de lugares diferentes em cada poc.
+compara include/ubf
+compara src/ubf
+compara src/plugin.cpp
+compara src/app/DeterministicDump.cpp
+compara src/app/StatusReport.cpp
+
 if [ $fail -eq 0 ]; then
-   echo "duplicacao: OK (domain/ e bt/ sao a mesma coisa nas duas pocs)"
+   echo "duplicacao: OK (domain/, bt/ e a fiacao de plugin sao a mesma coisa nas duas pocs)"
    exit 0
 fi
 echo "duplicacao: FALHOU"

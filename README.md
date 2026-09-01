@@ -459,6 +459,47 @@ classe por trás do `TabPrinter` nativo) como sink de arquivo, mas **por fora** 
 tocar no schema fechado. `Level` é `enum class` (`DEBUG`/`INFO`/`WARNING`/`ERROR`), não `#define`
 soltos, e cada linha vai para o console **e** para `data/logs/<poc>.log`, protegida por mutex.
 
+### `shared/xplugin/` + `shared/xboard/` — o modelo é um plugin
+
+**O executável é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` — as peças que de fato mudam
+quando se muda a simulação — não estão dentro do binário: são um `shared_module` aberto com
+`dlopen` durante o parse do cenário.
+
+```
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: { "./build/src/single-thread/src/"  "./dist/lib/mixr-plugins/" }
+         modules: {
+            ( PluginModule  file: "libsingle_thread_model.so"
+               provides: { AlertDatalink TacticalAlert FlightState
+                           BtBehavior AltitudeSafetyBehavior FlightAction } )
+         }
+      )
+      agent1: ( SimAgent  state: ( FlightState )  ... )      // ja usa o plugin
+```
+
+A carga cabe num **passe único** porque a produção `arglist` do `edl_parser` é recursiva à
+esquerda: formas irmãs são construídas na ordem do texto, e a carga mora no `isValid()` do
+`( PluginLoader )` — que o parser chama no fecha-parêntese do bloco. Daí a única regra: **o bloco
+tem de vir antes do primeiro uso**.
+
+`shared/xboard/` é a **única** peça que os dois lados compartilham: um quadro de leitura por id de
+player, escrito pelo modelo e lido pelo host (é dele que saem o `bt=`, o `dec=`, o `alert=`…).
+Por isso ele — e o `xlog` — são `shared_library()` de verdade, ao contrário das outras quatro libs
+de `shared/`: com lib estática cada lado teria sua própria cópia, e o dump imprimiria `bt=--`
+para sempre, sem erro nenhum.
+
+`make check-plugin-hotswap` demonstra a tese: inverte o sentido da curva de patrulha em
+`domain/PatrolPlan.cpp`, rebuilda **só** o `.so`, confere que o executável não foi tocado (mesmo
+`sha256` e `mtime`) e mostra o rumo do falcon1 indo de 141° para 34°.
+
+> **A extração é neutra:** com o modelo dentro do `.so`, o dump `frame=` das duas pocs saiu
+> **byte-idêntico** ao de antes de o plugin existir.
+>
+> *"Sem recompilar tudo"* — sim. *"Sem reiniciar o processo"* — **não**: nunca chamamos `dlclose`,
+> porque toda instância viva guarda ponteiro para dentro do `.so`. Ver a seção **Limites** de
+> [shared/xplugin/README.md](shared/xplugin/README.md).
+
 ### `shared/data/terrain/srtm/`
 
 O tile SRTM1 `S23W043.hgt.gz` (Serra do Mar, RJ), **compartilhado pelos três subprojetos** —

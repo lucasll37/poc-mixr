@@ -1,11 +1,7 @@
 #include "app/MetaObjectReport.hpp"
 
-#include "ubf/AltitudeSafetyBehavior.hpp"
-#include "ubf/BtBehavior.hpp"
-#include "ubf/FlightAction.hpp"
-#include "ubf/FlightState.hpp"
-#include "xnative/AlertDatalink.hpp"
-#include "xnative/TacticalAlert.hpp"
+
+#include "xplugin/PluginRegistry.hpp"
 
 #include "xmsg/MsgFeed.hpp"
 #include "xmsg/MsgReport.hpp"
@@ -37,17 +33,9 @@ void reportClass()
 
 void printMetaObjectReport()
 {
-   // As classes que o modelo aloca EM REGIME -- e onde um vazamento
-   // apareceria. FlightAction e a mais exposta: uma por ciclo de decisao,
-   // por aviao, entregue ao UBF, que precisa dar unref().
-   reportClass<mixr::xnative::FlightAction>();
-   reportClass<mixr::xnative::TacticalAlert>();
-
-   // Estas nascem uma vez, no parse do EDL: 'count' tem de ficar parado.
-   reportClass<mixr::xnative::FlightState>();
-   reportClass<mixr::xnative::BtBehavior>();
-   reportClass<mixr::xnative::AltitudeSafetyBehavior>();
-   reportClass<mixr::xnative::AlertDatalink>();
+   // As classes do MODELO nao aparecem mais aqui -- elas viraram plugin, e
+   // reportClass<T>() precisa do TIPO em tempo de compilacao. Elas reaparecem
+   // no laco de pluginMetaObjects(), no fim desta funcao, no MESMO formato.
 
    // Mensageria: nascem no parse do EDL e nao devem se multiplicar. O 'count'
    // aqui e o detector de clone acidental (BT::Tree e move-only, mas um
@@ -63,6 +51,29 @@ void printMetaObjectReport()
    // Termometro geral do parser/EDL.
    reportClass<mixr::base::Pair>();
    reportClass<mixr::base::String>();
+
+   // As classes que vieram de PLUGIN.
+   //
+   // Nao podem entrar na lista acima, e isso e estrutural e nao esquecimento:
+   // reportClass<T>() e template -- precisa do TIPO em tempo de compilacao --
+   // e uma classe de plugin nao existe dentro do executavel. Pior: nao ha como
+   // chegar ao MetaObject a partir de um Object*, porque getMetaObject() e
+   // ESTATICA, nao virtual (macros.hpp:136).
+   //
+   // Por isso o descritor do plugin carrega os MetaObject* dele (campo 'metas'
+   // de PluginDescV1). O formato da linha e o MESMO das de cima, entao
+   // tests/memory/run_leak_test.py nao precisa saber que a classe veio de fora.
+   //
+   // Roda ANTES do SHUTDOWN e do station->unref(), com a imagem do plugin
+   // garantidamente mapeada -- nunca damos dlclose (ver PluginRegistry.cpp).
+   for (const mixr::base::MetaObject* const meta : mixr::xplugin::pluginMetaObjects()) {
+      if (meta == nullptr) continue;
+      std::cout << "meta=" << meta->getFactoryName()
+                << " count=" << meta->count
+                << " mc=" << meta->mc
+                << " tc=" << meta->tc
+                << std::endl;
+   }
 }
 
 } // namespace app

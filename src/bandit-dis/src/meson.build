@@ -17,9 +17,11 @@ bandit_dis = executable('bandit-dis',
     sources,
     link_args           : rpath_link_args,
     include_directories : local_inc_dir,
-    dependencies        : [thread_dep, mixr_dep, xtacview_dep, xjoystick_dep, xlog_dep, xmsg_dep],
+    dependencies        : [thread_dep, mixr_dep, xtacview_dep, xjoystick_dep, xlog_dep, xplugin_dep, xmsg_dep],
     install             : true,
     install_dir         : get_option('bindir'),
-    install_rpath       : mixr_libdir,
+    # own_libs_rpath ($ORIGIN/../lib) porque xlog e xboard sao .so NOSSAS e
+    # instalam em dist/lib, enquanto o binario vai para dist/bin.
+    install_rpath       : mixr_libdir + ':' + own_libs_rpath,
     build_rpath         : mixr_libdir,
 )

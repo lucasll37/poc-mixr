@@ -634,7 +634,8 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 2 pocs |
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao** | 4 execucoes por poc |
-| `guard` | `domain/` e `bt/` continuam byte-identicos entre as duas pocs | instantaneo |
+| `plugin` | o contrato de carga dinamica, os 7 modos de falha e a prova de que o comportamento vem do `.so` | 4 testes, ~1 s |
+| `guard` | `domain/`, `bt/` e a fiacao de plugin continuam byte-identicos entre as duas pocs | instantaneo |
 
 `make test-asan` e complementar e fica fora da suite: reconfigura com ASan, roda sob
 LeakSanitizer e reverte. Ver as supressoes em `tests/memory/asan.supp`.
@@ -789,6 +790,118 @@ por assinante, trabalho fora do frame T/C); o `Player` é lido direto, como
 a rota real seria `Player::setThrottles()` com valor `< 0.0`, e é peça de modelo, não de
 mensageria), destinos de console e de rede (uma classe + uma linha na factory cada), e eventos
 discretos "no instante exato" — o que se alcança é o que se deriva por amostragem.
+
+### `shared/xplugin` + `shared/xboard` — o MODELO é um plugin
+
+**O executável é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` — ~3.100 linhas por poc, as
+peças que de fato mudam quando se muda a simulação — **não estão dentro do binário**: são um
+`shared_module` aberto com `dlopen` durante o parse do cenário. Trocar uma regra de negócio
+recompila um `.so` de segundos, não a aplicação.
+
+O host fica com: `main.cpp`, `mixr_factory.cpp`, `app/*` e as duas consultas puras sobre tipos
+nativos (`xnative/TrackQuery.cpp`, `xnative/RadarScan.cpp`).
+
+> **`shared/xplugin/README.md` tem a seção "Limites" — leia antes de confiar no contrato.** Resumo
+> do que ele NÃO pega: reordenação de membro com `sizeof` constante, virtual inserida no meio da
+> vtable, e as funções **inline** dos headers do MIXR copiadas para dentro do `.so`. E: *"sem
+> recompilar tudo"* sim; *"sem reiniciar o processo"* **não**.
+
+```
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: { "./build/src/single-thread/src/"  "./dist/lib/mixr-plugins/" }
+         modules: {
+            ( PluginModule  file: "libsingle_thread_model.so"
+               provides: { AlertDatalink TacticalAlert FlightState
+                           BtBehavior AltitudeSafetyBehavior FlightAction } )
+         }
+      )
+      agent1: ( SimAgent  state: ( FlightState )  ... )      // ja usa o plugin
+```
+
+**A carga cabe num PASSE ÚNICO, e é isso que permite declarar o plugin no próprio `.epp`.** A
+objeção óbvia — "o parser precisa da factory antes de construir o primeiro objeto" — não se
+sustenta: a produção `arglist` é **recursiva à esquerda** (`edl_parser.y:143-165`), então formas
+irmãs são construídas **na ordem do texto**, e `parse()` executa `factory` → `setSlotByName` →
+**`isValid()`** no fecha-parêntese de cada uma. A carga mora no `isValid()` do `( PluginLoader )`.
+
+Ancorado no slot nativo **`components:`** porque é o único que existe nas três pocs: as gêmeas
+usam `( ClockStation )` (nossa), mas a `bandit-dis` usa `( Station )` de estoque.
+`Component::processComponents` liga `skipFilter` quando o filtro é `typeid(Component)`
+(`Component.cpp:595-598`) e a `Station` não sobrescreve o método.
+
+### `shared/xboard` — a única coisa que o host e o modelo compartilham
+
+O host imprime `bt=`, `dec=`, `thr=`, `alert=`, `sent=` e `recv=` no dump, mas **não pode incluir
+header nenhum do modelo** — nem para um `dynamic_cast`, porque o typeinfo do plugin está escondido.
+A ponte é um quadro de leitura por id de player: **o modelo escreve, o host lê**.
+
+`shared/xboard` é a **primeira `shared_library()` de `shared/`** (junto com o `xlog`, promovido
+pelo mesmo motivo). As outras quatro continuam `static_library()`. A exceção é estrutural: com
+lib estática cada lado ganharia sua própria cópia dos mapas, e o dump imprimiria `bt=--` e `dec=0`
+para sempre — **sem erro de link, sem aviso**. É a saída que o `README.md` do `xplugin` já apontava
+como a honesta ("promover a peça necessária a `shared_library`").
+
+Escritores: `ubf/FlightAction::execute` (label, decisions), `xnative/AlertDatalink::receive`
+(alert, sent, recv), `xnative/FlightAgentTC::controller` (threadTag). Leitores:
+`app/DeterministicDump.cpp` e `app/StatusReport.cpp` — que por isso ficaram **byte-idênticos entre
+as gêmeas**.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **A BehaviorTree.CPP deste pacote Conan é ESTÁTICA** (`libbehaviortree_cpp_v3.a`, 35 MB — não há
+   `.so`). Duas consequências: (a) o **executável largou `behavior_tree_dep`** — linkada dos dois
+   lados, o processo ficaria com duas cópias dos estáticos dela, entre eles o contador de
+   `BT::getUID()`, o que daria UIDs de nó duplicados através da fronteira; (b) o alvo do plugin
+   **precisa de `-Wl,--exclude-libs,ALL`**, porque `gnu_symbol_visibility: 'hidden'` **não se
+   aplica a objetos vindos de um `.a` — o arquivo traz 447 símbolos `T` globais**. Medido: com a
+   flag, o `.so` de 11 MB exporta **exatamente um** símbolo.
+2. **Nunca `dlclose`.** `STANDARD_CONSTRUCTOR()` faz `slotTable = &slottable` (toda instância viva
+   guarda ponteiro para o `.data` do plugin), a vtable aponta para o `.data.rel.ro` dele, e
+   `STANDARD_DESTRUCTOR()` **escreve** `metaObject.count--` lá. `RTLD_NODELETE` torna um `dlclose`
+   acidental um no-op.
+3. **`RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE`, e `RTLD_LOCAL` é CONTRA o prior art do BT.CPP**
+   (`BTCPP-CONTEXT.md:8641` usa `GLOBAL`). O comentário herdado do POCO — *"RTTI não funciona para
+   tipos definidos na shared library"* — está obsoleto: `type_info::operator==` cai em `strcmp` no
+   ELF, e o escopo de um objeto `RTLD_LOCAL` já inclui o global. E `GLOBAL` traria risco real:
+   `Player::metaObject`/`slottable` são símbolos `GLOBAL OBJECT`.
+4. **Um plugin só pode linkar `mixr_dep`, `xplugin_abi_dep`, `xlog_dep` e `xboard_dep`.** As outras
+   quatro libs de `shared/` são `static_library()`, e linká-las daria ao `.so` uma cópia privada
+   dos estáticos delas (armadilha `BTCPP-CONTEXT.md:7262-7270`).
+5. **Use sempre `MIXR_PLUGIN_DEFINE`.** Escrever a assinatura à mão num alvo com
+   `-fvisibility=hidden` produz ponto de entrada invisível ao `dlsym` — armadilha
+   `BTCPP-CONTEXT.md:7248`. Guarda: `tests/plugin/check_plugin_symbol.sh`.
+6. **`-ldl` NÃO vem de graça.** Conferido: `behaviortree.cpp.asa.pc` traz só
+   `-lbehaviortree_cpp_v3 -lpthread`. Daí o `cpp.find_library('dl', required: false)` na raiz.
+7. **`app/MetaObjectReport` é estruturalmente cego para classe de plugin** — `reportClass<T>()` é
+   template e `getMetaObject()` é **estática, não virtual** (`macros.hpp:136`). Por isso o
+   descritor carrega os `MetaObject*` (campo `metas`, alimentado por `xnative::metaObjects()`) e o
+   relatório imprime no **mesmo formato**, sem o `run_leak_test.py` saber de nada.
+8. **`$ORIGIN/../lib` no `install_rpath` dos três executáveis.** `xlog` e `xboard` são `.so`
+   NOSSAS e instalam em `dist/lib`, enquanto o binário vai para `dist/bin`; os libdir do Conan são
+   absolutos e não cobrem isso. Sem essa entrada, roda de `build/` e quebra de `dist/`.
+9. **`TrackQuery.cpp` é compilado NOS DOIS lados** — o host precisa dele para o dump, e
+   `ubf/FlightState.cpp` também. São funções sem estado (nenhum `static`, nenhum global), então as
+   duas cópias não têm como divergir. É o preço, pequeno e explícito, de não criar uma terceira
+   `.so` só para duas funções.
+10. **A demonstração de hot-swap precisa de PATROL, e a fixture `intruder` não dá isso** —
+    descoberto quebrando. Com o bandido injetado, a árvore vai para `EVADE` e o sentido da curva de
+    patrulha quase não influi (medido: rumos a 0,2° um do outro). E a perna não pode ser curta
+    demais: com `maxRateOfTurnDps: 3`, um `legTime` de 2 s faz o rumo comandado saltar mais rápido
+    do que a aeronave segue, e em 4 pernas os +90 e os −90 somam 360 e voltam a coincidir. O teste
+    remove o intruso e usa perna de 10 s com 1500 frames.
+
+**Cobertura de graça:** como o bloco vive no `.epp.in` de produção e `tests/scenario/make_fixture.py`
+**deriva** as fixtures dele, o modelo-como-plugin entra sozinho nas 6 suítes de cenário, 2 de
+memória e 4 rodadas de determinismo.
+
+**Prova de que a extração é neutra:** com o modelo dentro do `.so`, o dump `frame=` das duas pocs
+saiu **byte-idêntico** ao de antes de o plugin existir.
+
+`make check-plugin-hotswap` é a demonstração: troca o sentido da curva em
+`domain/PatrolPlan.cpp`, rebuilda **só** o `.so` (2 edges do ninja, sem citar o executável),
+confere que o binário não foi tocado (mesmo `sha256` e `mtime`) e mostra o rumo do falcon1 indo de
+141° para 34°.
 
 ## Ao adicionar um subprojeto novo
 

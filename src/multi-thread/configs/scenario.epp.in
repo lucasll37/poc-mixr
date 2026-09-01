@@ -63,6 +63,48 @@
    components: {
 
       // ------------------------------------------------------------------
+      // O MODELO DESTA POC, CARREGADO EM TEMPO DE EXECUCAO (dlopen).
+      //
+      // domain/, bt/, ubf/ e xnative/ NAO estao dentro do executavel: sao um
+      // shared_module compilado a parte, contra o contrato de
+      // shared/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
+      // cenario, a Station, a exportacao e o dump.
+      //
+      // Depois desta linha, os nomes de fabrica que a .so responde
+      // ( FlightState, BtBehavior, AltitudeSafetyBehavior, FlightAction,
+      // AlertDatalink, TacticalAlert, FlightAgentTC )
+      // valem no resto DESTE arquivo, como se fossem do framework.
+      //
+      // ESTE BLOCO TEM DE VIR ANTES DO PRIMEIRO USO -- por isso e a primeira
+      // entrada de 'components:'. O motivo e mecanico: a producao 'arglist'
+      // do edl_parser e RECURSIVA A ESQUERDA (edl_parser.y:143-165), entao
+      // formas irmas sao construidas na ordem do TEXTO, e parse() chama
+      // factory + setSlotByName + isValid() no fecha-parenteses de cada uma.
+      // A carga acontece no isValid() do ( PluginLoader ), portanto antes de
+      // qualquer coisa escrita abaixo -- inclusive o ( FlightState ) do
+      // agente, logo aqui embaixo.
+      //
+      // Fora de ordem, mixrFactory aborta explicando isso. Nao ha silencio
+      // nem SIGSEGV.
+      //
+      // 'provides' e uma ASSERCAO: se a .so nao entregar exatamente esses
+      // nomes, o processo morre dizendo o que ela entrega.
+      // ------------------------------------------------------------------
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./build/src/multi-thread/src/"
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libmulti_thread_model.so"
+               provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
+                           BtBehavior AltitudeSafetyBehavior FlightAction }
+            )
+         }
+      )
+
+      // ------------------------------------------------------------------
       // Mensagens configuraveis (shared/xmsg). Escolher O QUE sai da
       // simulacao e QUANDO sai passa a ser configuracao, nao recompilacao.
       //

@@ -1,1 +1,0 @@
-Como seria se vc quiser fazer cargas dinâmicas de modelos nessa minha aplicação? Tipo, e se eu quisesse usar um tipo de player, fazer o uso delo no epp, que já houvesse sido compilado respeitando algum tipo de interface ou contrato, e depois carregar esse player dinamicamente na aplicação sem precisar recompilar tudo?

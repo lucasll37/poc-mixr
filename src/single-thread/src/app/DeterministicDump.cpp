@@ -1,7 +1,6 @@
 #include "app/DeterministicDump.hpp"
 
-#include "xnative/AlertDatalink.hpp"
-#include "xnative/BehaviorBoard.hpp"
+#include "xboard/Board.hpp"
 #include "xnative/TrackQuery.hpp"
 
 #include "mixr/models/player/Player.hpp"
@@ -23,8 +22,16 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
       if (air == nullptr) continue;
 
       const mixr::base::Vec3d& pos{air->getPosition()};
-      const auto datalink = dynamic_cast<const mixr::xnative::AlertDatalink*>(air->getDatalink());
       const mixr::xnative::TrackInfo track{mixr::xnative::nearestHostileTrack(air)};
+
+      // Tudo o que vem do MODELO chega por aqui, e so por aqui. O modelo mora
+      // num .so carregado com dlopen, entao este arquivo nao pode incluir
+      // nenhum header dele -- nem para um dynamic_cast, porque o typeinfo do
+      // plugin nao e visivel. Ver shared/xboard/Board.hpp.
+      //
+      // E por isso que este arquivo e byte-identico nas duas pocs: o 'dec=' e
+      // o 'bt=' deixaram de vir de lugares diferentes em cada uma.
+      const mixr::xboard::Readout board{mixr::xboard::get(air->getID())};
 
       oss << "frame=" << frame
           << " player=" << (air->getName() != nullptr ? air->getName()->getString() : "?")
@@ -43,20 +50,21 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
           << " spd=" << air->getTotalVelocity()
           << " mach=" << air->getMach()
           << " fuel=" << air->getFuelWt()
-          << " bt=" << mixr::xnative::getBehaviorLabel(air->getID())
+          << " bt=" << board.label
           << " track=" << (track.found ? track.name : std::string("none"))
           << " trackRange=" << track.rangeM
-          << " alert=" << ((datalink != nullptr && datalink->hasAlert())
-                            ? datalink->getAlert().senderName : std::string("none"))
-          << " sent=" << (datalink != nullptr ? datalink->getSentCount() : 0L)
-          << " recv=" << (datalink != nullptr ? datalink->getReceivedCount() : 0L)
+          << " alert=" << (board.alertValid ? board.alertSender : std::string("none"))
+          << " sent=" << board.sent
+          << " recv=" << board.received
           // Contagem de decisoes: entra no dump de proposito. Se a decisao
-          // esta mesmo amarrada ao frame, este numero tem que ser identico
-          // com 1, 2 ou 4 threads -- e igual ao numero de frames. Aqui a
-          // decisao roda no laco de BACKGROUND (SimAgent), entao quem conta
-          // e o quadro de status, no ponto da atuacao; a multi-thread conta
-          // no proprio agente, que e dela (ver xnative/BehaviorBoard.hpp).
-          << " dec=" << mixr::xnative::getDecisionCount(air->getID())
+          // esta mesmo amarrada ao frame, este numero tem que avancar na
+          // MESMA taxa que 'frame' entre dois dumps, com 1, 2 ou 4 threads.
+          //
+          // Conta no ponto da ATUACAO (ubf::FlightAction::execute), nas duas
+          // pocs -- antes a multi-thread contava no proprio agente, o que dava
+          // uma decisao a mais na inicializacao. O que se afirma sempre foi o
+          // avanco, nao o valor absoluto (ver tests/determinism).
+          << " dec=" << board.decisions
           << std::endl;
    }
 

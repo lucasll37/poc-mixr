@@ -17,6 +17,15 @@ message('Build Type: ' + get_option('buildtype'))
 # ============================================
 thread_dep = dependency('threads')
 
+cpp = meson.get_compiler('cpp')
+
+# dlopen/dlsym, para a carga de modelos em tempo de execucao
+# (shared/xplugin). Em glibc >= 2.34 as duas moram na libc e este
+# find_library nao acha nada -- por isso required: false, que cobre as duas
+# eras. NAO vem de graca por nenhum .pc: conferido que o da
+# behaviortree.cpp.asa traz so '-lbehaviortree_cpp_v3 -lpthread'.
+dl_dep = cpp.find_library('dl', required: false)
+
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
@@ -53,6 +62,14 @@ mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
 # dependências entre elas (libmixr_models.so -> libmixr_base.so).
 rpath_link_args = ['-Wl,--disable-new-dtags']
 
+# As nossas proprias .so (xlog, xboard) instalam em <prefix>/lib e os
+# executaveis em <prefix>/bin, entao o rpath instalado precisa do caminho
+# RELATIVO ao binario -- os libdir do Conan sao absolutos e nao cobrem isto.
+# Sem esta entrada, roda a partir de build/ e falha a partir de dist/ com
+# "error while loading shared libraries", que e o gotcha ja documentado no
+# CLAUDE.md.
+own_libs_rpath = '$ORIGIN/../lib'
+
 # -Dasan=true liga o AddressSanitizer só nos alvos que consomem estas flags
 # (single-thread e multi-thread), sem recompilar o resto do projeto.
 asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-pointer', '-g'] : []
@@ -78,9 +95,19 @@ subdir('./shared/xjoystick')
 # subprojetos, que consomem xlog_dep.
 subdir('./shared/xlog')
 
+# O quadro de leitura entre o host e o modelo. E a UNICA peca que o executavel
+# e o plugin de modelo compartilham -- por isso e shared_library() de verdade,
+# e nao static como as demais de shared/ (ver shared/xboard/Board.hpp).
+subdir('./shared/xboard')
+
 # Mensagens configuraveis por EDL (telemetria e eventos). Tambem antes dos
 # subprojetos, que consomem xmsg_dep.
 subdir('./shared/xmsg')
+
+# Carga de modelos em tempo de execucao (dlopen). Exporta xplugin_abi_dep (o
+# contrato, header-only, usado pelos plugins) e xplugin_dep (o registro,
+# usado pelos executaveis). Precisa vir ANTES de src/.
+subdir('./shared/xplugin')
 
 subdir('./src')
 

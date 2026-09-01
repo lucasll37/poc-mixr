@@ -1,5 +1,7 @@
 #include "xnative/AlertDatalink.hpp"
 
+#include "xboard/Board.hpp"
+
 #include "xnative/TacticalAlert.hpp"
 
 #include "mixr/models/player/Player.hpp"
@@ -128,15 +130,38 @@ void AlertDatalink::receive(const double dt)
    BaseClass::receive(dt);
    if (dt <= 0.0) return;
 
-   std::lock_guard<std::mutex> lock(alertMutex);
+   Alert publicar{};
+   long publicarSent{};
+   long publicarRecv{};
+   {
+      std::lock_guard<std::mutex> lock(alertMutex);
 
-   if (staged.valid) {
-      current = staged;
-      staged = Alert{};
-      holdTimer = holdTimeSec;
-   } else if (current.valid) {
-      holdTimer -= dt;
-      if (holdTimer <= 0.0) current = Alert{};
+      if (staged.valid) {
+         current = staged;
+         staged = Alert{};
+         holdTimer = holdTimeSec;
+      } else if (current.valid) {
+         holdTimer -= dt;
+         if (holdTimer <= 0.0) current = Alert{};
+      }
+
+      publicar = current;
+      publicarSent = sentCount;
+      publicarRecv = receivedCount;
+   }
+
+   // Publica no quadro de leitura, FORA do nosso mutex -- o xboard tem o dele,
+   // e segurar os dois ao mesmo tempo criaria uma ordem de travamento para
+   // ninguem manter.
+   //
+   // Aqui, na fronteira de fase, e nao nos getters: o host nao alcanca mais
+   // esta classe (ela mora no plugin), e publicar uma vez por frame mantem a
+   // latencia fixa que o comentario acima descreve.
+   const models::Player* const owner{static_cast<const models::Player*>(findContainerByType(typeid(models::Player)))};
+   if (owner != nullptr) {
+      const int id{owner->getID()};
+      xboard::setAlert(id, publicar.valid, publicar.senderName, publicar.contactName);
+      xboard::setDatalinkCounters(id, publicarSent, publicarRecv);
    }
 }
 

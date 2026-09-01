@@ -93,6 +93,9 @@ compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
 		src/single-thread src/multi-thread || true
 
+check-plugin-hotswap: ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
+	@bash tests/plugin/check_hotswap_rebuild.sh
+
 run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
 

@@ -7,6 +7,7 @@
 #include "xnative/AlertDatalink.hpp"
 #include "xnative/TacticalAlert.hpp"
 
+#include "mixr/base/MetaObject.hpp"
 #include "mixr/base/Object.hpp"
 
 namespace mixr {
@@ -41,6 +42,40 @@ base::Object* factory(const std::string& name)
 
    return obj;
 }
+
+//------------------------------------------------------------------------------
+// O que este modelo PUBLICA para o host, atraves do descritor do plugin.
+//
+// As duas listas tem de acompanhar o if/else acima -- o registro confere: se a
+// fabrica devolver nulo para um nome declarado aqui, a carga e recusada
+// dizendo que descritor e factory estao fora de sincronia.
+//------------------------------------------------------------------------------
+namespace {
+
+const char* const NOMES[] = {
+   "AlertDatalink",
+   "TacticalAlert",
+   "FlightState",
+   "BtBehavior",
+   "AltitudeSafetyBehavior",
+   "FlightAction",
+   nullptr
+};
+
+const base::MetaObject* const METAS[] = {
+   AlertDatalink::getMetaObject(),
+   TacticalAlert::getMetaObject(),
+   FlightState::getMetaObject(),
+   BtBehavior::getMetaObject(),
+   AltitudeSafetyBehavior::getMetaObject(),
+   FlightAction::getMetaObject(),
+   nullptr
+};
+
+} // namespace
+
+const char* const* factoryNames()             { return NOMES; }
+const base::MetaObject* const* metaObjects()  { return METAS; }
 
 } // namespace xnative
 } // namespace mixr

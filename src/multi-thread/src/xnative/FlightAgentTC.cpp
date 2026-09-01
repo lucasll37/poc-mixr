@@ -2,6 +2,8 @@
 
 #include "xnative/ThreadTag.hpp"
 
+#include "xboard/Board.hpp"
+
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
@@ -84,7 +86,13 @@ void FlightAgentTC::controller(const double dt)
    // pertence a fase 3 ("logica e controle"), com o dt do frame inteiro.
    if (world->phase() != 3) return;
 
-   lastThreadTag.store(threadTag(), std::memory_order_relaxed);
+   const int tag{threadTag()};
+   lastThreadTag.store(tag, std::memory_order_relaxed);
+
+   // Publica no quadro de leitura: e por ele que a linha de status mostra em
+   // que thread do pool T/C este aviao decidiu. O host nao alcanca mais esta
+   // classe -- ela mora no plugin do modelo.
+   xboard::setThreadTag(player->getID(), tag);
 
    BaseClass::controller(dt * 4.0);
 

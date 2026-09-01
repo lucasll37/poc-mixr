@@ -1,7 +1,8 @@
 #include "ubf/FlightAction.hpp"
 
 #include "xnative/AlertDatalink.hpp"
-#include "xnative/BehaviorBoard.hpp"
+
+#include "xboard/Board.hpp"
 
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/system/Autopilot.hpp"
@@ -79,8 +80,15 @@ bool FlightAction::execute(base::Component* actor)
    autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);
    autopilot->setCommandedVelocityKts(command.speedKts);
 
-   setBehaviorLabel(player->getID(), label);
-   bumpDecisionCount(player->getID());
+   // O quadro de leitura (shared/xboard) e a UNICA coisa que este modelo e o
+   // host compartilham: escrevemos aqui, o dump e a linha de status leem la.
+   // Ele mora numa .so de verdade justamente porque este codigo passou a rodar
+   // dentro de um plugin -- ver o cabecalho de shared/xboard/Board.hpp.
+   //
+   // Conta DECISAO, nao candidatura: estamos depois de o UbfArbiter ter
+   // escolhido o vencedor.
+   xboard::setBehaviorLabel(player->getID(), label);
+   xboard::bumpDecisionCount(player->getID());
 
    if (broadcast) {
       const auto datalink = dynamic_cast<AlertDatalink*>(player->getDatalink());

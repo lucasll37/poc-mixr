@@ -15,7 +15,7 @@ Para rodar uma camada só: `meson test -C build --suite domain` (ou `tree`, `sce
 
 ---
 
-## Por que cinco camadas
+## Por que seis camadas
 
 O repositório já tinha verificação automatizada — os `check-*` de determinismo — mas ela responde
 uma pergunta estreita: *o estado é reprodutível?* Um modelo que decide **errado** passa nos
@@ -31,7 +31,8 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 6 execuções |
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 4 execuções |
 | `determinism` | é reprodutível, nos dois laços de decisão? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 8 execuções |
-| `guard` | as duas pocs continuam gêmeas? | `diff -r` entre `domain/` e `bt/` | instantâneo |
+| `plugin` | a carga dinâmica de modelos cumpre o contrato e falha legivelmente? | contrato via `dlopen`, guarda de símbolo, 7 modos de falha, prova de *hot-swap* | 4 testes, ~1 s |
+| `guard` | as duas pocs continuam gêmeas? | `diff -r` entre `domain/`, `bt/` e a fiação de plugin | instantâneo |
 
 ---
 
@@ -190,6 +191,36 @@ threads, e isso é asserção — não precaução.
 FALHA threads-1 != threads-2
       primeira divergencia: frame=600 player=falcon1  threads-1:bt=PATROL  threads-2:bt=SUPPORT
 ```
+
+
+## Camada 6 — o modelo como plugin ([plugin/](plugin/))
+
+`domain/`, `bt/`, `ubf/` e `xnative/` **não estão dentro do executável**: são um `shared_module`
+aberto com `dlopen` durante o parse do cenário. Esta camada prova que o contrato é cumprido, que
+as falhas são legíveis, e que o comportamento vem mesmo do `.so`.
+
+| teste | o que prova |
+|---|---|
+| `plugin-contrato` | o descritor bate com o host; as 6 classes que o cenário nomeia são construíveis; `dynamic_cast` para `AbstractBehavior`/`AbstractState`/`Datalink` atravessa a fronteira do `.so`; slot próprio (`treeFile`) **e herdado** (`vote`) resolvem |
+| `plugin-simbolo` | `nm -D` mostra `mixr_plugin_v1` como `T` — **e nada mais**, apesar dos 35 MB de BehaviorTree.CPP **estática** linkados dentro (é o que valida o `-Wl,--exclude-libs,ALL`) |
+| `plugin-negativos` | 7 modos de falha, **cada um afirmando `rc != 139`** |
+| `plugin-hotswap` | mesmo binário + `.so` diferente = **voo** diferente: duas variantes do modelo com o sentido da curva de patrulha invertido, e o rumo do falcon1 divergindo ~107° |
+
+**`plugin-contrato` é um gate, não só um teste.** Ele afirma que RTTI atravessa o `.so` com o
+plugin compilado em `-fvisibility=hidden` e aberto com `RTLD_LOCAL`. Se ficar vermelho, a
+resposta é tirar `gnu_symbol_visibility: 'hidden'` do `meson.build` do plugin — o `RTLD_LOCAL`
+sozinho já cobre o essencial.
+
+**Por que todo caso negativo afirma `rc != 139`.** Antes desta camada, dois deles terminavam em
+SIGSEGV mudo, e a causa era do próprio `edl_parser`: a mensagem `"undefined factory name"`
+(`edl_parser.y:97-100`) está num ramo inalcançável, e `slot_value : SLOT_ID form`
+(`edl_parser.y:179`) faz `$2->unref()` sem checar nulo. Se alguém remover a checagem de nome
+desconhecido de `mixrFactory()`, estes testes ficam vermelhos em vez de o repositório voltar a
+estourar em silêncio.
+
+**Cobertura de graça.** Como o `( PluginLoader )` vive no `.epp.in` de produção e as fixtures são
+**derivadas** dele, as camadas 3, 4 e 5 passaram a exercitar o plugin sem uma linha nova nos
+scripts.
 
 ## Guarda — a duplicação ([guard/](guard/))
 

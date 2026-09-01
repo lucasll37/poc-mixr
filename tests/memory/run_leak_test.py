@@ -44,6 +44,18 @@ UMA_POR_AVIAO = (
     "AlertDatalink",
 )
 
+# NOTA: TODAS as classes de UMA_POR_AVIAO e POR_DECISAO vem de um PLUGIN --
+# domain/, bt/, ubf/ e xnative/ nao estao mais dentro do executavel. Elas
+# aparecem no relatorio porque o descritor do plugin exporta os MetaObject
+# delas (campo 'metas' de PluginDescV1) e app/MetaObjectReport imprime no MESMO
+# formato 'meta='. Este script nao precisa saber de nada disso -- e exatamente
+# essa a prova de que a fronteira ficou no lugar certo.
+#
+# Um detalhe medido, e que este teste tolera de proposito: o 'tc' de cada classe
+# nasce em 1 e nao em 0, porque o registro de plugins constroi uma instancia de
+# cada nome declarado na CARGA, para conferir que a fabrica entrega o que o
+# descritor promete. O 'count' volta a zero, entao nada aqui e afetado.
+
 # Alocada a cada ciclo de decisao, por aviao. E a classe mais exposta a
 # vazamento e a unica de que se exige crescimento de 'tc'.
 POR_DECISAO = "FlightAction"
