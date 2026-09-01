@@ -30,7 +30,7 @@ constexpr unsigned groupBit(const Group g)  { return 1u << static_cast<int>(g); 
 // e a diferenca entre "o valor e zero" e "a grandeza nao existe aqui".
 //
 // 'p' e nao-const porque getTrackManagerByName() nao e const no framework
-// (mesmo const_cast confinado de xnative/TrackQuery.cpp).
+// (mesmo const_cast confinado de shared/xtrack/TrackQuery.cpp).
 void fillSnapshot(Snapshot& snap, models::Player* p, unsigned groupMask,
                   const std::string& trackManagerName);
 

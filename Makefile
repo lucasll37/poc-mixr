@@ -164,11 +164,11 @@ run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilo
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree), no projeto dele.
+test-models: ## Roda a suite do MODELO (domain + tree + native), no projeto dele.
 	@# 'meson test' devolve rc=0 para suite VAZIA (medido: "No tests defined.").
 	@# Sem esta contagem, perder as duas camadas seria um verde silencioso.
 	@N=$$(meson introspect --tests $(MODEL_BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 2 ] || { echo "$(RED)suite do modelo vazia ($$N) -- rode 'make models'$(NC)"; exit 1; }
+	 [ "$$N" -ge 3 ] || { echo "$(RED)suite do modelo incompleta ($$N de 3) -- rode 'make models'$(NC)"; exit 1; }
 	meson test -C $(MODEL_BUILD_DIR) --print-errorlogs
 
 test: test-models ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true.

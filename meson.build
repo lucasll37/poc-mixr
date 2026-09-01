@@ -8,7 +8,7 @@ project('poc-mixr', 'cpp',
     ],
 )
 
-message('mixr-hello - Meson Build')
+message('POC-MIXR - Meson Build')
 message('Version: ' + meson.project_version())
 message('Build Type: ' + get_option('buildtype'))
 
@@ -27,34 +27,28 @@ cpp = meson.get_compiler('cpp')
 dl_dep = cpp.find_library('dl', required: false)
 
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
-behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
 # Usado diretamente por shared/xtacview: o recorder nativo entrega os dados
 # como mensagens protobuf (DataRecord.pb.h).
 protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 
-# Nenhum subprojeto atual fala com a JSBSim::FGFDMExec direto (todos usam o
-# JSBSimModel do próprio MIXR); fica declarado para o rpath de um subprojeto
-# futuro que precise (ver mixr_bt_jsbsim_libdir abaixo e a seção "Ao
-# adicionar um subprojeto novo" do CLAUDE.md).
-jsbsim_dep = dependency('jsbsim', method: 'pkg-config', required: true)
 
-# Resolve o libdir de cada dependência via pkg-config. Ambas entregam
-# bibliotecas COMPARTILHADAS (.so) que vivem no cache do Conan, fora de
-# qualquer caminho padrão do loader — então todo executável precisa
-# carregar o(s) libdir(s) das dependências que usa no seu rpath, senão
-# roda a partir de build/ mas falha a partir de dist/ com
-# "error while loading shared libraries".
+# Resolve o libdir do MIXR via pkg-config. As libs dele são COMPARTILHADAS
+# (.so) e vivem no cache do Conan, fora de qualquer caminho padrão do loader —
+# então todo executável precisa carregá-lo no rpath, senão roda a partir de
+# build/ mas falha a partir de dist/ com "error while loading shared libraries".
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
-bt_libdir = behavior_tree_dep.get_variable(pkgconfig: 'libdir')
 
-# Para os alvos que usam as duas (single-thread, multi-thread): rpath aceita
-# vários caminhos separados por ':'.
-mixr_bt_libdir = ':'.join([mixr_libdir, bt_libdir])
+# NAO ha behavior_tree_dep nem jsbsim_dep aqui, e a ausencia e deliberada:
+# depois que o modelo saiu para models/flight-model (projeto meson proprio),
+# NENHUM alvo deste projeto linka BehaviorTree.CPP ou JSBSim. Quem precisa
+# delas e o modelo, e ele declara as suas.
+#
+# Se um subprojeto novo do HOST algum dia precisar de uma das duas, e sinal de
+# que ele esta fazendo trabalho de modelo -- reconsidere antes de acrescentar
+# a linha de volta.
 
-# Para um subprojeto futuro que use as três (MIXR + BehaviorTree.CPP + JSBSim).
-jsbsim_libdir = jsbsim_dep.get_variable(pkgconfig: 'libdir')
-mixr_bt_jsbsim_libdir = ':'.join([mixr_libdir, bt_libdir, jsbsim_libdir])
+
 
 # Emite DT_RPATH em vez do DT_RUNPATH moderno. Necessário porque RPATH é
 # herdado pelas dependências transitivas e RUNPATH não: sem isso, o

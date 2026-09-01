@@ -152,15 +152,17 @@ src/<nome>/
 │                          # é do cenário, que é o mesmo nas duas pocs
 ├── include/
 │   ├── app/               # as etapas da aplicação, uma questão por arquivo (ver abaixo)
-│   ├── domain/            # regras de negócio puras — sem MIXR, sem BT — testável isolado
-│   ├── bt/ | ubf/         # adaptadores da lib externa (nós da árvore, comportamentos UBF)
-│   ├── x<nome>/           # classes MIXR próprias (namespace mixr::x<nome>) + factory própria
 │   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
 └── src/
     ├── meson.build        # define o executable() — nome = nome da pasta
     ├── main.cpp           # FINO: só orquestra (chama os módulos de app/ na ordem)
-    └── ... (espelha include/)
+    └── app/               # espelha include/app/
 ```
+
+> **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
+> `models/flight-model/`, um projeto Meson independente construído numa etapa **anterior**
+> (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver `models/README.md`.
+> A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
 `main.cpp` não implementa comportamento. `src/single-thread/` é a referência completa do padrão
@@ -184,7 +186,7 @@ Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories
 Vale o mesmo dentro de `xnative/` e `ubf/`: a tabela de slots do `BtBehavior` (a fronteira com o
 EDL) fica em `ubf/BtBehaviorSlots.cpp` e os valores que ela ajusta em `ubf/BtTuning.hpp`,
 separados do arquivo que trata da decisão; utilitários de runtime são um por questão
-(`xnative/ThreadTag`, `xnative/Log`, `xnative/BehaviorBoard`).
+(`xnative/ThreadTag` no modelo; o log virou `shared/xlog` e o quadro de status, `shared/xboard`).
 
 ### O modelo MIXR em uma tela
 
@@ -654,9 +656,10 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 |---|---|---|
 | `domain` | as regras puras de `domain/` (histerese, alvo fixo, lado da quebra, piso anti-CFIT, pernas da patrulha) | 42 testes, ~10 ms |
 | `tree` | a maquina de estados, carregando o **`flight_tree.xml` de producao** contra um `FakeDecisionContext` — sem `Station` | 15 testes, ~10 ms |
+| `native` | as classes MIXR do modelo: coerencia da fabrica, slots com tipo **e unidade**, e a fronteira de fase do `AlertDatalink` — sem `Station` | 9 testes, ~10 ms |
 | `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 2 pocs |
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
-| `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao** | 4 execucoes por poc |
+| `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap e **o cenario de producao rodando com um modelo DESCONHECIDO** | 5 testes, ~3 s |
 | `guard` | `domain/`, `bt/` e a fiacao de plugin continuam byte-identicos entre as duas pocs | instantaneo |
 
@@ -704,7 +707,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
    vermelho e vira ruido. Nenhuma delas cresce com os frames — confirmado por outro caminho pela
    suite `memory`.
 6. **`dec=` agora existe nas DUAS pocs.** A `multi-thread` ja o tinha, do `FlightAgentTC`; a
-   `single-thread` decide no laco de background, entao quem conta e o `BehaviorBoard`, no ponto da
+   `single-thread` decide no laco de background, entao quem conta e o `shared/xboard`, no ponto da
    atuacao (`FlightAction::execute`). A assercao **nao** e `dec == frames`: a `multi-thread` decide
    uma vez a mais na inicializacao (601 em 600 frames, identico nas 3 configuracoes de thread). O
    que se afirma e que `dec` avanca na **mesma taxa** que `frame` entre dumps consecutivos — mede a
@@ -851,8 +854,10 @@ percepção do modelo; não confundir com o `RadarScan`, que é o **apontamento 
 modelo).
 Mais um `poc-mixr-sdk.pc`, que é como o projeto do modelo o consome.
 
-Essas três são as **únicas** `shared_library()` de `shared/`; as outras quatro seguem estáticas e
-um plugin não pode linká-las.
+Essas três são as **únicas** `shared_library()` de `shared/`. As outras cinco seguem estáticas:
+`xtacview`, `xclock`, `xjoystick` e `xmsg` — que um plugin **não pode** linkar, ou ganharia cópia
+privada dos estáticos delas — e `xplugin`, que é o registro e só entra no executável (o plugin usa
+o `xplugin_abi_dep`, header-only).
 
 ### O que o contrato NÃO cobria — e o que se fez a respeito
 
@@ -912,13 +917,14 @@ falcon1 indo de 141° para 34°.
 1. Criar `src/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
    executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
    `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`).
-2. Adicionar `subdir('./<nome>')` em [src/meson.build](src/meson.build) e o alvo no `summary()`
-   de Build Artifacts do [meson.build](meson.build) raiz.
+2. Adicionar `subdir('./<nome>')` em [src/meson.build](src/meson.build).
 3. Adicionar o alvo `run-<nome>` no [Makefile](Makefile) — apontando para
    `$(BUILD_DIR)/src/<nome>/src/<nome>`.
-4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args` +
-   `install_rpath`/`build_rpath` com `mixr_libdir`, `bt_libdir`, `mixr_bt_libdir` ou
-   `mixr_bt_jsbsim_libdir` conforme as dependências usadas (variáveis definidas no `meson.build` raiz).
+4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args`, `build_rpath: mixr_libdir`
+   e `install_rpath: mixr_libdir + ':' + own_libs_rpath` — o `own_libs_rpath` (`$ORIGIN/../lib`) é o
+   que faz o binário de `dist/bin/` achar `libxboard.so`/`libxlog.so`/`libxtrack.so` em `dist/lib/`.
+   **Não há `behavior_tree_dep` nem `jsbsim_dep` na raiz**: quem precisa delas é o modelo, e ele é
+   outro projeto (ver `models/README.md`).
 5. Para exportar ao Tacview: `dataRecorder:` na `Station` com `( TacviewOutput ... )`,
    `dataLogTime:` em **cada** player, `mixr::xtacview::factory` + `mixr::recorder::factory`
    encadeadas no `mixr_factory.cpp`, e `xtacview_dep` no `meson.build`.

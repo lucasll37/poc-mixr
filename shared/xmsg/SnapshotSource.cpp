@@ -135,7 +135,7 @@ void fillTrack(Snapshot& snap, const models::AirVehicle* const air,
 {
    if (trackManagerName.empty()) return;
 
-   // Mesmo const_cast confinado de xnative/TrackQuery.cpp: a consulta e de
+   // Mesmo const_cast confinado de shared/xtrack/TrackQuery.cpp: a consulta e de
    // leitura, mas o getter nao e const no framework.
    const auto obc = const_cast<models::OnboardComputer*>(air->getOnboardComputer());
    if (obc == nullptr) return;

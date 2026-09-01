@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 
    int rc{};
    if (opts.isDeterministic()) {
-      rc = app::runDeterministic(station, fleet, opts.deterministicFrames);
+      rc = app::runDeterministic(station, fleet, opts.deterministicFrames, opts.parallelDecision);
       // Antes do SHUTDOWN, para o relatorio ver o regime estacionario e
       // nao o processo ja desmontado (ver app/MetaObjectReport.hpp).
       app::printMetaObjectReport();

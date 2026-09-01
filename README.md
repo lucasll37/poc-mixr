@@ -30,6 +30,7 @@ Telemetry**, exportada pela biblioteca compartilhada [shared/xtacview/](shared/x
 5. [Verificar](#5-verificar)
 6. [Como o projeto se organiza](#6-como-o-projeto-se-organiza)
 7. [Os subprojetos](#7-os-subprojetos)
+7.1 [Os modelos (plugins)](models/README.md)
 8. [Bibliotecas compartilhadas](#8-bibliotecas-compartilhadas)
 9. [`contexts/` — onde consultar o framework](#9-contexts--onde-consultar-o-framework)
 10. [Onde ler mais](#10-onde-ler-mais)
@@ -44,13 +45,13 @@ disseca o assunto.
 
 | # | funcionalidade | onde vive | detalhe |
 |---|---|---|---|
-| 1 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da manobra de evasão e piso AGL do comportamento de segurança | `configs/scenario.epp.in` (slot `terrain:` do `WorldModel`), [`domain/TerrainFloor`](src/single-thread/include/domain/TerrainFloor.hpp), [`app/TerrainData`](src/single-thread/include/app/TerrainData.hpp) | [§10 do single-thread](src/single-thread/README.md#10-elevação-de-terreno) |
+| 1 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da manobra de evasão e piso AGL do comportamento de segurança | `configs/scenario.epp.in` (slot `terrain:` do `WorldModel`), [`domain/TerrainFloor`](models/flight-model/include/domain/TerrainFloor.hpp), [`app/TerrainData`](src/single-thread/include/app/TerrainData.hpp) | [§10 do single-thread](src/single-thread/README.md#10-elevação-de-terreno) |
 | 2 | **Recorder → Tacview** — visualização por *Real-Time Telemetry*, escrita como um `OutputHandler` de verdade na cadeia nativa do gravador, e não como um stream ACMI paralelo | [`shared/xtacview/`](shared/xtacview/) | [§11 do single-thread](src/single-thread/README.md#11-tacview) |
 | 3 | **Dinâmica 6-DOF** — aerodinâmica completa via JSBSim, pelo adaptador nativo `JSBSimModel`, comandada pelo `Autopilot` nativo | `configs/scenario.epp.in` (`dynamicsModel: ( JSBSimModel )`), `data/jsbsim/` | [§6.2 do single-thread](src/single-thread/README.md#62--jsbsimmodel---a-dinâmica-6-dof) |
-| 4 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros; o transporte é o `Datalink` nativo e o `Component::event()` do framework, sem nenhum ponteiro direto entre players | [`xnative/AlertDatalink`](src/single-thread/include/xnative/AlertDatalink.hpp), [`xnative/TacticalAlert`](src/single-thread/include/xnative/TacticalAlert.hpp) | [§9 do single-thread](src/single-thread/README.md#9-interação-entre-players) |
+| 4 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros; o transporte é o `Datalink` nativo e o `Component::event()` do framework, sem nenhum ponteiro direto entre players | [`xnative/AlertDatalink`](models/flight-model/include/xnative/AlertDatalink.hpp), [`xnative/TacticalAlert`](models/flight-model/include/xnative/TacticalAlert.hpp) | [§9 do single-thread](src/single-thread/README.md#9-interação-entre-players) |
 | 5 | **Paralelismo com determinismo garantido** — os players rodam no pool de threads de tempo crítico do framework, e o estado final é idêntico com 1, 2 e 4 threads | `numTcThreads` no `.epp`, [`app/DeterministicRun`](src/single-thread/include/app/DeterministicRun.hpp), [`app/DeterministicDump`](src/single-thread/include/app/DeterministicDump.hpp) | [§12 do single-thread](src/single-thread/README.md#12-determinismo) · [§7 do multi-thread](src/multi-thread/README.md#7-determinismo--o-ponto-da-poc) |
-| 6 | **Comportamento com UBF nativo** — `AbstractState`/`AbstractBehavior`/`AbstractAction` do framework, arbitrados por voto num `UbfArbiter` nativo | [`ubf/`](src/single-thread/include/ubf/) | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
-| 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](src/single-thread/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
+| 6 | **Comportamento com UBF nativo** — `AbstractState`/`AbstractBehavior`/`AbstractAction` do framework, arbitrados por voto num `UbfArbiter` nativo | [`ubf/`](models/flight-model/include/ubf/) | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
+| 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](models/flight-model/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 8 | **Padrões de projeto dos exemplos oficiais** — o *builder* canônico, a factory encadeada por nome, o par estrutura-EDL/comportamento-C++, o gancho de sensor em `transmit()`, o `shared/x<nome>` | [`mixr_factory.cpp`](src/single-thread/src/mixr_factory.cpp), [`app/StationBuilder`](src/single-thread/include/app/StationBuilder.hpp), `shared/x*` | [§3 e §5 do single-thread](src/single-thread/README.md#3-como-o-framework-chama-o-nosso-código) |
 | 9 | **Controle por joystick físico, com fallback automático** — o intruso pode ser pilotado por um HOTAS de verdade ou continuar no `Autopilot` nativo *scripted* sem hardware conectado, detectado a cada frame (plugar/desplugar em execução troca o controle sem reiniciar) | [`shared/xjoystick/`](shared/xjoystick/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
 | 10 | **Interoperabilidade DIS nativa, bidirecional** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local; e as falcons emitem de volta, então o `bandit-dis` também vê as quatro no próprio Tacview | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das três pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
@@ -96,22 +97,33 @@ em `Requires:`, então não há uma linha de meson por biblioteca.
 
 Toolchain: **Conan 2.x** → **Meson/Ninja** → **Makefile** (orquestra).
 
+São **três projetos Meson**, e a ordem é obrigatória — o modelo é construído **antes** do host.
+
 ```bash
-make configure   # conan install (Debug) + meson setup --reconfigure
-make build       # compila TODOS os subprojetos, em paralelo
-make install     # instala em dist/
-make clean       # remove build/ e dist/
+make configure   # conan install (Debug) + meson setup do HOST -> build/
+make sdk         # publica o SDK                               -> dist/{include,lib,lib/pkgconfig}
+make models      # o modelo e o stub, projetos à parte         -> build-models/, build-stub/
+make build       # os executáveis do host (JÁ dispara sdk + models)
+make install     # copia os binários para dist/bin/ (opcional)
+make test        # as DUAS suítes: a do modelo e a do host
+make clean       # remove os três build*/ e o dist/
 make help        # lista os alvos (comentários ## do Makefile)
 ```
+
+No dia a dia basta `make configure && make build` — a cadeia (`build: models`, `models: sdk`) faz o
+resto. Ver [models/README.md](models/README.md) para o detalhe de cada etapa.
 
 Cada subprojeto vira um executável independente em `build/src/<nome>/src/<nome>` — hoje
 `build/src/single-thread/src/single-thread`, `build/src/multi-thread/src/multi-thread` e
 `build/src/bandit-dis/src/bandit-dis` (este último bem mais simples: sem BehaviorTree.CPP, sem
 UBF — só o intruso, sozinho, emitindo DIS).
 
-**AddressSanitizer:** `meson configure build -Dasan=true && make build`. É a única opção do
-[meson_options.txt](meson_options.txt), e liga ASan apenas na `single-thread` (o único alvo que
-consome `asan_cpp_args`/`asan_link_args`). Voltar: `-Dasan=false` e recompilar.
+**AddressSanitizer:** use `make test-asan`, que instrumenta **os dois projetos** (o host e o
+modelo), roda sob LeakSanitizer e reverte no fim. Instrumentar só um lado deixaria o `.so` sem
+redzone de pilha e sem símbolos no relatório.
+
+O [meson_options.txt](meson_options.txt) do host tem duas opções — `asan` e `tests`; o do modelo
+tem três (`asan`, `tests`, `variants`).
 
 ### Gotcha: rpath das dependências Conan
 
@@ -218,7 +230,7 @@ e continuam valendo por si.
 
 ```bash
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
-make test                            # 13 testes, ~13 s
+make test                            # 22 testes nas DUAS suítes, ~20 s
 
 make check-single-thread   # determinismo com a decisão no laço de background
 make check-multi-thread    # determinismo com os 4 agentes decidindo em paralelo, na fase 3
@@ -226,7 +238,7 @@ make compare-single-multi  # lista o que difere entre os dois subprojetos (deve 
 make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```
 
-A suíte tem cinco camadas, cada uma respondendo uma pergunta diferente — o detalhe está em
+São **duas suítes, em dois projetos** (o modelo saiu para `models/`), cada camada respondendo uma pergunta diferente — o detalhe está em
 [tests/README.md](tests/README.md):
 
 | suite | pergunta |
@@ -273,7 +285,7 @@ poc-mixr/
 │   ├── xlog/               LOG(NIVEL) << ...; com nível/stream, persistido em arquivo
 │   ├── xmsg/               mensagens configuráveis por EDL (telemetria + eventos, NDJSON)
 │   └── data/terrain/srtm/  tile SRTM do cenário — compartilhado pelos três subprojetos
-├── tests/                  a suíte automatizada, em cinco camadas (ver §5 e tests/README.md)
+├── tests/                  a suíte do HOST (a do modelo vive em models/flight-model/tests/)
 │   ├── domain/ tree/       GTest, sem MIXR: as regras puras e a árvore de produção
 │   ├── scenario/ memory/   scripts sobre os binários: comportamento voando e vazamento
 │   └── determinism/ guard/ 1/2/4 threads nos dois laços, e a duplicação entre as pocs
@@ -315,7 +327,7 @@ Três regras estruturam tudo:
 2. **Um arquivo, uma questão.** O que seria um `main.cpp` de ~450 linhas está quebrado em
    `app/`, e cada header abre com o *porquê* daquele passo. Vale o mesmo dentro de `ubf/` (a
    tabela de slots do `BtBehavior` mora num arquivo separado da decisão) e de `xnative/`
-   (`ThreadTag`, `BehaviorBoard` são um utilitário por questão cada; o log virou `shared/xlog/`,
+   (`ThreadTag` é um utilitário do modelo; o log virou `shared/xlog/` e o quadro de status, `shared/xboard/`,
    porque é idêntico nos subprojetos, como `xtacview`/`xclock`/`xjoystick`).
 3. **Estrutura vem do EDL, comportamento vem do C++.** Quais players existem, com quais
    subsistemas, em que taxa, com quantas threads — tudo isso é declarado em `configs/*.epp` e
@@ -540,10 +552,19 @@ não vêm num clone limpo. Sem elas, os headers instalados pelo Conan
 
 ## 10. Onde ler mais
 
+| documento | responde |
+|---|---|
+| [models/README.md](models/README.md) | **como criar um modelo novo e uma poc nova**, o build em etapas e todos os alvos do `make` |
+| [models/stub-model/CONTRATO.md](models/stub-model/CONTRATO.md) | o que um modelo **tem** de fazer — inclusive a obrigação que falha em silêncio |
+| [models/flight-model/README.md](models/flight-model/README.md) | as quatro camadas do modelo de produção e o que cada uma testa |
+| [shared/xplugin/README.md](shared/xplugin/README.md) | o contrato de ABI, as flags de link obrigatórias e a seção **Limites** |
+| [tests/README.md](tests/README.md) | as duas suítes, em dois projetos, e o que cada camada prova |
+
+
 | documento | para quê |
 |---|---|
 | **[CLAUDE.md](CLAUDE.md)** | guia operacional: comandos, arquitetura em uma tela, e o catálogo consolidado de armadilhas (rpath, unidades, recorder, xtacview, xclock, xjoystick, xlog, terreno, `src/bandit-dis`/DIS) |
-| **[tests/README.md](tests/README.md)** | a suíte automatizada: as cinco camadas, o que cada uma prova, e as armadilhas que apareceram montando-a (determinismo não-hermético, contadores não-atômicos, vazamentos do framework) |
+| **[tests/README.md](tests/README.md)** | a suíte automatizada: as **duas suítes em dois projetos**, o que cada camada prova, e as armadilhas que apareceram montando-a (determinismo não-hermético, contadores não-atômicos, vazamentos do framework) |
 | **[src/single-thread/README.md](src/single-thread/README.md)** | a aula completa sobre um subprojeto, arquivo por arquivo, em ordem de dependência |
 | **[src/multi-thread/README.md](src/multi-thread/README.md)** | onde uma decisão deve rodar, e o que isso custa |
 | **[shared/xmsg/](shared/xmsg/)** | o sistema de mensagens: por que o `mixr::recorder` não serve para isso, e as onze armadilhas confirmadas (lista `{ }` do EDL, tolerância em acumulador de tempo, unidade polimórfica do RPM) |

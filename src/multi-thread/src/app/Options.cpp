@@ -14,6 +14,8 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
          opts.templatePath = argv[++i];
       } else if (arg == "-deterministic" && (i + 1) < argc) {
          opts.deterministicFrames = std::stol(argv[++i]);
+      } else if (arg == "-parallel-decision") {
+         opts.parallelDecision = true;
       } else if (arg == "-threads" && (i + 1) < argc) {
          opts.threadsOverride = std::stoi(argv[++i]);
       }

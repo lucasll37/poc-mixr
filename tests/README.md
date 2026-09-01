@@ -4,7 +4,7 @@
 make configure                       # inclui gtest (test_requires no conanfile.py)
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make build
-make test                            # 13 testes, ~13 s
+make test                            # 22 testes nas DUAS suítes, ~20 s
 ```
 
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
@@ -15,7 +15,7 @@ make test                            # 13 testes, ~13 s
 
 ```bash
 make test          # as duas
-make test-models   # só a do modelo:  domain (42 casos) + tree (15)
+make test-models   # só a do modelo:  domain (42) + tree (15) + native (9)
 meson test -C build --suite plugin   # só uma camada do host
 ```
 
@@ -41,9 +41,10 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `domain` (modelo) | as regras estão certas? | GTest sobre `models/flight-model/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
 | `domain` (host) | as primitivas do `shared/xmsg` estão certas? | GTest sobre `shared/xmsg/rules/` | 24 testes, ~10 ms |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
+| `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 6 execuções |
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 4 execuções |
-| `determinism` | é reprodutível, nos dois laços de decisão? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 8 execuções |
+| `determinism` | é reprodutível, nos dois laços de decisão? **E de onde vem essa reprodutibilidade?** | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg`; mais o controle negativo `onde-a-decisao-roda` | 8 execuções + ~10 |
 | `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **stub** | 5 testes, ~3 s |
 | `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo e o `.so` está **fresco**? | `diff -r` da camada de aplicação + duas guardas novas | instantâneo |
 
@@ -62,7 +63,7 @@ somado 50 vezes fica **acima**, então um `hold: ( Seconds 1 )` armava em passos
 10 Hz e a 50 Hz. Dois testes vermelhos acharam isso antes de qualquer linha de MIXR ser escrita.
 
 O que se trava aqui é, sobretudo, a história registrada no cabeçalho de
-[`domain/ThreatPolicy.hpp`](../src/single-thread/include/domain/ThreatPolicy.hpp): três correções
+[`domain/ThreatPolicy.hpp`](../models/flight-model/include/domain/ThreatPolicy.hpp): três correções
 que vieram de ver as aeronaves "batendo asa" no Tacview. Cada uma virou um teste, porque cada uma
 é uma regressão que voltaria em silêncio:
 
@@ -74,10 +75,10 @@ Mais o piso anti-CFIT, com **varredura de invariante**: para uma grade de eleva�
 marcação × sentido do contato, a altitude comandada nunca fica abaixo de `terreno + folga`. É
 laço aninhado comum, sem dependência de *property testing*.
 
-## Camada 2 — a árvore ([tree/](tree/))
+## Camada 2 — a árvore ([tree/](../models/flight-model/tests/tree/))
 
 Carrega o
-[`flight_tree.xml` de produção](../src/single-thread/configs/flight_tree.xml) — por caminho, não
+[`flight_tree.xml` de produção](../models/flight-model/configs/flight_tree.xml) — por caminho, não
 uma cópia. Um teste contra uma cópia provaria que a cópia está certa, o que não interessa a
 ninguém.
 
@@ -92,12 +93,12 @@ hoje isso não quebra o build, quebra o voo.
 > **Esta camada só é possível por causa de duas mudanças no código de produção**, ambas mecânicas
 > e provadas neutras (o dump determinístico saiu byte a byte idêntico ao de antes):
 >
-> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../src/single-thread/include/domain/WorldView.hpp),
+> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/flight-model/include/domain/WorldView.hpp),
 >    com `using Snapshot = domain::WorldView;` mantendo todos os call sites. A estrutura nunca teve
 >    tipo do MIXR — o que a prendia ao framework era só morar dentro de uma classe que herda de
 >    `AbstractState`.
 > 2. `NodeContext` deixou de carregar um `BtBehavior*` concreto e passou a apontar para
->    [`bt_nodes::DecisionContext`](../src/single-thread/include/bt/DecisionContext.hpp), a interface
+>    [`bt_nodes::DecisionContext`](../models/flight-model/include/bt/DecisionContext.hpp), a interface
 >    com os 8 getters que os nós já usavam. `BtBehavior` a implementa sem um método novo.
 >
 > Resultado: `ldd` no binário desta camada mostra **zero** bibliotecas do MIXR. O comentário de
@@ -120,7 +121,7 @@ Três modos, um por ramo da árvore:
 > **Correção de um bug latente, feita aqui:** `make_fixture.py` reescrevia `fileName:` com um
 > `re.sub` **global**, e isso só funcionava porque havia exatamente **um** `fileName:` em cada
 > cenário. Quando o `shared/xmsg` acrescentou o segundo (o `.jsonl`), os dois passariam a apontar
-> para o mesmo `.acmi` — dois `ofstream` truncando a mesma gravação, em silêncio, nos 13 testes.
+> para o mesmo `.acmi` — dois `ofstream` truncando a mesma gravação, em silêncio, ao longo da suíte.
 > As substituições agora são ancoradas na extensão (`\.acmi"` e `\.jsonl"`).
 
 As fixtures são **derivadas** do cenário de produção por
@@ -191,7 +192,7 @@ partida, não perda de vínculo com o frame. Comparar deltas mede a propriedade 
 
 **2. A `single-thread` ganhou o campo `dec=`,** que antes só existia na `multi-thread`. Como ali a
 decisão roda no laço de background, quem conta é o
-[`BehaviorBoard`](../src/single-thread/include/xnative/BehaviorBoard.hpp), no ponto da atuação.
+[`BehaviorBoard`](../shared/xboard/Board.hpp), no ponto da atuação.
 
 **A saída de mensagens entra na mesma comparação.** O `shared/xmsg` **não** é desligado em
 `-deterministic` (ao contrário do `xlog`): tudo que ele emite carrega tempo simulado, nunca
@@ -282,3 +283,33 @@ sem falso positivo nas outras:
 | alvo da evasão recalculado a cada tick | `domain` — 1 teste (`AlvoEhFixadoNaEntradaENaoSegueOContato`) |
 | `ContactDetected` volta a ser "estou vendo agora", sem histerese | `tree` — 2 testes |
 | `ref()` a mais na `FlightAction` | `memory` — `count` 2000 → 4000, proporcional aos frames |
+
+---
+
+## O controle negativo: de onde vem o determinismo
+
+`make check-single-thread` prova que a poc é reprodutível. Ele **não** prova por quê — e a
+resposta natural ("porque roda em passo fixo") está errada.
+
+`tests/determinism/check_onde_a_decisao_roda.py` separa as duas coisas. Ele roda as duas pocs com
+`-parallel-decision`, que solta o laço de background numa thread própria, sem sincronizar com o
+frame — exatamente o que o tempo real faz, só que sem o relógio de parede — e afirma:
+
+| poc | onde a decisão roda | exigência |
+|---|---|---|
+| `single-thread` | `( SimAgent )`, laço de background | **tem de DIVERGIR** |
+| `multi-thread` | `( FlightAgentTC )`, **fase 3** do frame, dentro da barreira | **NÃO pode divergir** |
+
+Medido: a `single-thread` produziu **5 resultados distintos em 5 execuções**; a `multi-thread`, um
+só. No cenário de patrulha a divergência é na **trajetória** (`n=9224.47` / `9226.59` / `9226.32`),
+não só num contador.
+
+**Concorrência sozinha não basta — e isso foi medido montando o teste.** Uma primeira versão deixou
+`updateData()` concorrente com o `tcFrame()` mas manteve **uma decisão por frame**: as duas pocs
+continuaram byte-idênticas em 5 execuções. As decisões deste modelo são todas por **limiar**, e os
+comandos vêm do plano de voo, não do estado instantâneo — ler a posição alguns centímetros adiante
+não muda nada. O que quebra é a **contagem** de decisões variar, porque aí o `PatrolPlan::advance()`
+integra tempo diferente a cada execução.
+
+Sem o lado da `multi-thread`, o teste só mostraria que concorrência quebra coisas. Sem o lado da
+`single-thread`, o `check-*` poderia estar passando por inércia. É o par que prova a afirmação.

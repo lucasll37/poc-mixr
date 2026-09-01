@@ -61,3 +61,34 @@ test_tree = executable('test-tree',
     install             : false,
 )
 test('tree', test_tree, suite: 'tree', timeout: 60)
+
+# Camada 3 -- as classes MIXR proprias, SEM levantar Station.
+#
+# Esta linka o MIXR (as outras duas nao) e o SDK -- e o preco de testar o que
+# de fato herda do framework. Mas nao levanta simulacao: nada aqui tem
+# WorldModel, Station, terreno ou JSBSim.
+#
+# Reusa os MESMOS fontes que vao para o .so, e nao uma copia.
+native_sources = files(
+    '../src/xnative/AlertDatalink.cpp',
+    '../src/xnative/TacticalAlert.cpp',
+    '../src/xnative/ThreadTag.cpp',
+    '../src/xnative/RadarScan.cpp',
+    '../src/xnative/FlightAgentTC.cpp',
+    '../src/xnative/factory.cpp',
+    '../src/ubf/FlightState.cpp',
+    '../src/ubf/FlightAction.cpp',
+    '../src/ubf/BtBehavior.cpp',
+    '../src/ubf/BtBehaviorSlots.cpp',
+    '../src/ubf/AltitudeSafetyBehavior.cpp',
+)
+
+test_native = executable('test-native',
+    files('native/test_xnative.cpp') + native_sources + bt_sources + domain_sources,
+    link_args           : ['-Wl,--disable-new-dtags'],
+    include_directories : model_inc,
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, behavior_tree_dep, sdk_dep],
+    install             : false,
+    build_rpath         : mixr_libdir + ':' + sdk_libdir,
+)
+test('native', test_native, suite: 'native', timeout: 60)

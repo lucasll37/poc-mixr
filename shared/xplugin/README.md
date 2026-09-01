@@ -14,9 +14,9 @@ No cenário, como **primeira entrada de `components:`** da Station:
 ```
    components: {
       plugins: ( PluginLoader
-         searchPaths: { "./build/src/single-thread/src/"  "./dist/lib/mixr-plugins/" }
+         searchPaths: { "./dist/lib/mixr-plugins/" }
          modules: {
-            ( PluginModule  file: "libsingle_thread_model.so"
+            ( PluginModule  file: "libflight_model.so"
                provides: { AlertDatalink TacticalAlert FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction } )
          }

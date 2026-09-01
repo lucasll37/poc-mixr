@@ -14,6 +14,10 @@ namespace app {
 //   -f <arquivo>         cenario alternativo (o .epp.in, nao o gerado)
 //   -threads <N>         numTcThreads do pool nativo de tempo critico
 //   -deterministic <N>   roda N frames de passo fixo e sai (sem tempo real)
+//   -parallel-decision   NAO serializa updateData() depois do tcFrame: roda os
+//                        dois CONCORRENTEMENTE, como no tempo real. Existe para
+//                        DEMONSTRAR onde o determinismo deixa de valer -- ver o
+//                        cabecalho de app/DeterministicRun.hpp.
 //------------------------------------------------------------------------------
 struct Options
 {
@@ -21,6 +25,7 @@ struct Options
    std::string generatedPath;
    long deterministicFrames{};
    int threadsOverride{};
+   bool parallelDecision{};
 
    bool isDeterministic() const   { return deterministicFrames > 0; }
 };

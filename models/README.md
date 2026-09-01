@@ -1,0 +1,246 @@
+# `models/` — os modelos, como plugins
+
+Um **modelo** é a política da simulação: percepção, decisão, atuação e as classes MIXR próprias
+que o cenário nomeia. Ele **não** é compilado dentro do executável — é um `shared_module`
+construído numa etapa anterior e aberto com `dlopen` durante o parse do `.epp`.
+
+Isso existe para tornar verificável um cenário concreto: **um terceiro entrega só o binário**, o
+host nunca viu o fonte, e mesmo assim tudo funciona.
+
+```
+models/
+├── flight-model/    # o modelo de produção das duas pocs gêmeas
+│   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
+│   ├── tests/{domain,tree,native}/        # 66 casos, e nenhum levanta Station
+│   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
+└── stub-model/      # um modelo ESTRANHO, escrito só contra o SDK
+    ├── src/stub.cpp
+    └── CONTRATO.md  # ← o que um modelo TEM de fazer. Leia primeiro.
+```
+
+---
+
+## 1. O build em etapas, e por que a ordem importa
+
+São **três projetos Meson**, em três diretórios de build. O modelo é construído **antes** do host,
+que só consome o `.so` instalado.
+
+```bash
+make configure   # 1. conan + meson setup do HOST            -> build/
+make sdk         # 2. publica o SDK                          -> dist/{include,lib,lib/pkgconfig}
+make models      # 3. o modelo e o stub, projetos à parte     -> build-models/, build-stub/
+make build       # 4. os executáveis do host                  -> build/src/<poc>/src/
+```
+
+**`make build` já encadeia o resto** — a cadeia está declarada (`build: models`, `models: sdk`).
+No dia a dia:
+
+```bash
+make configure && make build
+```
+
+O único que não entra na cadeia é o `configure`: ele roda o Conan e o `meson setup` do host, e a
+etapa `sdk` precisa desse `build/` já existir.
+
+| alvo | o que faz | quando rodar |
+|---|---|---|
+| `make configure` | Conan + `meson setup` do host | uma vez, e depois de `make clean` |
+| `make sdk` | compila `xboard`/`xlog`/`xtrack` e instala com `--tags sdk,devel` | raramente sozinho |
+| `make models` | configura, compila e instala **flight-model** e **stub-model** | ao mexer no modelo |
+| `make build` | os três executáveis (dispara `models` → `sdk`) | ao mexer em qualquer coisa |
+| `make install` | copia os binários para `dist/bin/` | opcional — **não** é preciso para rodar nem testar |
+| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` | ao mexer no modelo |
+| `make test` | as **duas** suítes (dispara `test-models`) | antes de commitar |
+| `make check-plugin-hotswap` | prova que trocar o modelo não recompila a aplicação | demonstração |
+| `make clean` | apaga os três `build*/` e o `dist/` | |
+
+> **`make install` não é necessário para rodar.** O `sdk` e o `models` já instalam em `dist/`, que
+> é para onde o `searchPaths:` do cenário aponta; o executável roda direto de `build/`. O
+> `install` só popula `dist/bin/`.
+
+> **Depois de um `make clean`, o `-Dtests` volta ao default (`false`)** — o diretório de build foi
+> apagado. Para os testes: `meson configure build -Dtests=true` antes do `make build`.
+
+---
+
+## 2. Como criar um modelo novo
+
+**Comece pelo stub, não pelo `flight-model`.** O `stub-model` é ~300 linhas e é o exemplo mínimo
+completo; o `flight-model` tem 3.100 e vai te distrair.
+
+```bash
+cp -r models/stub-model models/meu-modelo
+mv models/meu-modelo/src/stub.cpp models/meu-modelo/src/meu_modelo.cpp
+sed -i 's/stub-model/meu-modelo/g; s/stub_model/meu_modelo/g' models/meu-modelo/meson.build
+sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/meu-modelo/meson.build
+```
+
+Conferido rodando: essas quatro linhas mais um `meson setup` já produzem um `.so` válido —
+**um** símbolo exportado, nenhuma dependência não resolvida.
+
+### 2.1 O que o `meson.build` tem de ter
+
+Quatro coisas, e nenhuma é opcional:
+
+```meson
+sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
+
+shared_module('meu_modelo',
+    files('src/meu_modelo.cpp'),
+    cpp_args : [
+        '-DMIXR_PLUGIN_PKG_VERSION="' + mixr_dep.version() + '"',
+        '-DMIXR_PLUGIN_BUILD_ID="' + cpp.get_id() + ' ' + cpp.version() + '"',
+    ],
+    link_args             : ['-Wl,--disable-new-dtags', '-Wl,--no-undefined',
+                             '-Wl,--exclude-libs,ALL'],
+    dependencies          : [mixr_dep, sdk_dep],
+    gnu_symbol_visibility : 'hidden',
+    install               : true,
+    install_dir           : get_option('libdir') / 'mixr-plugins',
+    install_rpath         : mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..',
+)
+```
+
+1. **`shared_module()`**, nunca `library()` — o artefato não pode ser linkável, ou alguém acaba
+   pondo num `link_with:` e o processo fica com duas cópias dos `MetaObject` das suas classes.
+2. **`gnu_symbol_visibility: 'hidden'`** + **`-Wl,--exclude-libs,ALL`** — a segunda é obrigatória
+   se você linkar **qualquer biblioteca estática**: a visibilidade escondida **não se aplica a
+   objetos vindos de um `.a`**. A BehaviorTree.CPP deste pacote traz 447 símbolos globais.
+3. **`-Wl,--no-undefined`** — o executável não exporta símbolo nenhum, então um modelo não pode
+   chamar código da aplicação. Esta flag transforma isso em erro de **link**, não de `dlopen`.
+4. **`dependencies` só pode ter `mixr_dep`, `sdk_dep`** e, se precisar, `behavior_tree_dep`.
+   **Nunca** as libs de `shared/` que são estáticas (`xtacview`, `xclock`, `xjoystick`, `xmsg`) —
+   você ganharia uma cópia privada dos estáticos delas.
+
+E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub-model`.
+
+### 2.2 O que o `.cpp` tem de ter
+
+Leia **[stub-model/CONTRATO.md](stub-model/CONTRATO.md)** — é a lista completa. O resumo:
+
+- exportar o ponto de entrada **sempre pela macro** `MIXR_PLUGIN_DEFINE`, nunca escrevendo a
+  assinatura à mão (num alvo com visibilidade escondida ela viraria símbolo invisível ao `dlsym`,
+  e o sintoma aparece longe);
+- registrar os nomes de fábrica que **o cenário nomeia**, derivando das classes base certas;
+- **escrever no `xboard`** — a única obrigação que falha em **silêncio**. Sem ela o dump sai com
+  `bt=--` e `dec=0`, sem erro, com todos os outros testes verdes.
+
+### 2.3 Verificar
+
+```bash
+make models
+nm -D --defined-only dist/lib/mixr-plugins/libmeu_modelo.so | grep ' T '   # tem de ser 1 linha
+ldd dist/lib/mixr-plugins/libmeu_modelo.so | grep 'not found'             # tem de ser vazio
+```
+
+Depois aponte um cenário para ele (§4) e rode.
+
+---
+
+## 3. Para que serve o `stub-model`
+
+Ele tem **dois papéis**, e o segundo é o que justifica existir.
+
+### Papel 1 — o exemplo mínimo
+
+~300 linhas, projeto Meson próprio, e a superfície inteira que ele conhece são o SDK e o MIXR.
+É o ponto de partida para um modelo novo (§2).
+
+### Papel 2 — a prova de que o contrato basta
+
+Todos os outros testes de plugin carregam **o mesmo** modelo, compilado do mesmo fonte. Nenhum
+deles pode falhar pelo motivo que importa — *"um `.so` que eu não escrevi não serve"*.
+
+O teste `plugin-modelo-estranho` roda o cenário de **produção** contra o stub trocando **apenas o
+`file:`** do `( PluginModule )`. A edição mínima é parte da asserção: se fosse preciso mexer em
+mais alguma coisa, é isso que o teste teria de denunciar.
+
+```bash
+meson configure build -Dtests=true && make build
+meson test -C build --suite plugin        # inclui plugin-modelo-estranho
+```
+
+**O modo de falha que só ele pega:** um modelo que responde pelos nomes certos, deriva das bases
+certas, mas nunca chama o `xboard`. O host sobe, o cenário parseia, os aviões voam pelo
+`Autopilot` nativo — e o dump sai vazio, com `plugin-contrato`, `plugin-simbolo`,
+`plugin-negativos` e as guardas **todos verdes**.
+
+**Ele é uma especificação executável.** Se você acrescentar uma classe ou um slot ao cenário, o
+stub quebra — e isso é bom: vira o lembrete de atualizar o `CONTRATO.md` na hora, em vez de virar
+surpresa do terceiro.
+
+> Quando criar um modelo novo com classes novas, **atualize o stub junto**. Ele existe para
+> quebrar.
+
+---
+
+## 4. Como criar uma poc nova que usa um modelo novo
+
+A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nada de modelo.
+`src/bandit-dis/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
+
+1. **`src/<nome>/`** seguindo o molde de `src/single-thread/` (só `app/`, `main.cpp`,
+   `mixr_factory.{hpp,cpp}`), e `subdir('./<nome>')` em [src/meson.build](../src/meson.build).
+2. **`mixr_factory.cpp`** encadeia `mixr::xplugin::factory` (as classes EDL `( PluginLoader )` e
+   `( PluginModule )`) e, no fim, `mixr::xplugin::loadedFactory` — as classes que vieram do
+   plugin. Copie de `src/bandit-dis/src/mixr_factory.cpp`.
+3. **`app/StationBuilder.cpp`** chama `xplugin::setBuiltinFactory(mixrFactoryBuiltin)` antes do
+   `edl_parser` e `xplugin::seal()` depois.
+4. **`dependencies`** do `executable()`: `[thread_dep, mixr_dep, xtacview_dep, xclock_dep,
+   xjoystick_dep, xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep]` — **sem**
+   `behavior_tree_dep` (quem decide é o modelo).
+5. **`install_rpath`**: `mixr_libdir + ':' + own_libs_rpath` — o `$ORIGIN/../lib` é o que faz o
+   binário de `dist/bin/` achar a `libxboard.so` em `dist/lib/`.
+6. **No cenário**, o bloco de plugin como **primeira entrada de `components:`**:
+
+```
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: { "./dist/lib/mixr-plugins/" }
+         modules: {
+            ( PluginModule  file: "libmeu_modelo.so"
+               provides: { AlertDatalink TacticalAlert FlightState
+                           BtBehavior AltitudeSafetyBehavior FlightAction } )
+         }
+      )
+      ...
+```
+
+> **O bloco tem de vir ANTES do primeiro uso**, e essa é a única regra que o autor do cenário
+> precisa lembrar. O motivo é mecânico: a produção `arglist` do `edl_parser` é recursiva à
+> esquerda, então formas irmãs são construídas **na ordem do texto**, e a carga acontece no
+> `isValid()` do `( PluginLoader )`. Fora de ordem, o `mixrFactory` aborta explicando isso — não
+> há silêncio nem SIGSEGV.
+
+> **`provides:` é igualdade EXATA de conjunto.** Se a `.so` não entregar exatamente esses nomes, o
+> processo morre dizendo o que ela entrega. É o que pega uma `.so` velha esquecida no caminho.
+
+---
+
+## 5. Armadilhas confirmadas — não redescobrir
+
+1. **`meson compile` resolve alvo por NOME; o `ninja` cru, por caminho de saída.**
+   `ninja -C build xboard` dá *"unknown target"*.
+2. **`meson install --tags sdk` NÃO instala os headers.** `install_headers()` não aceita
+   `install_tag` no Meson 1.2, então eles ficam com a tag automática `devel`. Tem de ser
+   `--tags sdk,devel`, e o sintoma da falta aparece dois alvos depois.
+3. **`PKG_CONFIG_PATH` de ambiente é descartado** quando o native-file do Conan fixa
+   `pkg_config_path`. Use `-Dpkg_config_path=` na linha de comando, e o separador é **vírgula**.
+4. **`meson test` devolve `rc=0` para suíte vazia** ("No tests defined."). Por isso `make test` e
+   `make test-models` conferem a contagem com `meson introspect --tests` antes de rodar.
+5. **`meson configure -Dasan=true` dispara um regenerate que reavalia dependências** — e ali o
+   `dependency('poc-mixr-sdk')` já falhou. Use a linha completa de `meson setup --reconfigure`
+   (é o que o alvo `models` faz, e o `test-asan` reusa com `ASAN=true`).
+6. **Nunca `dlclose`.** Toda instância viva guarda ponteiro para dentro do `.so`, e o destrutor
+   **escreve** lá. *"Sem recompilar tudo"* — sim; *"sem reiniciar o processo"* — **não**.
+
+---
+
+## Ler também
+
+- **[stub-model/CONTRATO.md](stub-model/CONTRATO.md)** — o que um modelo TEM de fazer
+- **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
+  **Limites**, que diz o que ele **não** garante
+- **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova
+- **[../src/single-thread/README.md](../src/single-thread/README.md)** — a dissecação profunda do
+  modelo de produção (os arquivos moraram para cá, o texto continua valendo)

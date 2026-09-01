@@ -9,8 +9,8 @@
 #
 # A prova de verdade e a saida do ninja no passo 3: tem de listar DUAS edges e
 # NAO citar single-thread, multi-thread nem bandit-dis. Compare com o
-# contra-exemplo: mexer em src/single-thread/include/xnative/AlertDatalink.hpp
-# dispara dezenas de edges e um relink do executavel inteiro.
+# contra-exemplo: mexer em src/single-thread/include/app/Fleet.hpp
+# dispara um relink do executavel inteiro -- e o modelo nao e nem tocado.
 #
 set -euo pipefail
 

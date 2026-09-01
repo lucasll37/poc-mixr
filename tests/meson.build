@@ -87,6 +87,18 @@ foreach poc : pocs
          timeout: 1800, is_parallel: false)
 endforeach
 
+# O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
+# (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
+# thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a
+# multi-thread NAO. Ver o cabecalho do script.
+test('onde-a-decisao-roda', py,
+     args: files('determinism/check_onde_a_decisao_roda.py') + [
+         '--single', single_thread.full_path(),
+         '--multi', multi_thread.full_path()],
+     depends: [single_thread, multi_thread],
+     workdir: raiz, suite: 'determinism',
+     timeout: 1800, is_parallel: false)
+
 # ------------------------------------------------------------------------------
 # Camada de plugin -- o contrato de carga dinamica
 #
