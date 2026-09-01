@@ -24,6 +24,7 @@ xlog_lib = shared_library('xlog',
     dependencies        : [mixr_dep],
     install             : true,
     install_dir         : get_option('libdir'),
+    install_tag         : 'sdk',
     build_rpath         : mixr_libdir,
     install_rpath       : mixr_libdir,
 )

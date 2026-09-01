@@ -51,6 +51,19 @@ void setDatalinkCounters(const int playerId, const long sent, const long receive
    r.received = received;
 }
 
+void setRadarScan(const int playerId, const bool valid, const double azDeg, const double elDeg,
+                  const double rangeM, const double hBeamDeg, const double vBeamDeg)
+{
+   std::lock_guard<std::mutex> lock(g_mutex);
+   Readout& r{g_board[playerId]};
+   r.radarValid = valid;
+   r.radarAzDeg = azDeg;
+   r.radarElDeg = elDeg;
+   r.radarRangeM = rangeM;
+   r.radarHBeamDeg = hBeamDeg;
+   r.radarVBeamDeg = vBeamDeg;
+}
+
 Readout get(const int playerId)
 {
    std::lock_guard<std::mutex> lock(g_mutex);

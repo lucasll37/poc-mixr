@@ -459,46 +459,50 @@ classe por trás do `TabPrinter` nativo) como sink de arquivo, mas **por fora** 
 tocar no schema fechado. `Level` é `enum class` (`DEBUG`/`INFO`/`WARNING`/`ERROR`), não `#define`
 soltos, e cada linha vai para o console **e** para `data/logs/<poc>.log`, protegida por mutex.
 
-### `shared/xplugin/` + `shared/xboard/` — o modelo é um plugin
+### O modelo é um plugin, construído numa etapa prévia
 
-**O executável é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` — as peças que de fato mudam
-quando se muda a simulação — não estão dentro do binário: são um `shared_module` aberto com
-`dlopen` durante o parse do cenário.
+`src/<poc>/` é **só o host**. `domain/`, `bt/`, `ubf/` e `xnative/` moram em
+[models/flight-model/](models/flight-model/) — um **projeto Meson independente**, construído antes
+do host e consumido como `.so` a partir de `dist/lib/mixr-plugins/`.
 
-```
-   components: {
-      plugins: ( PluginLoader
-         searchPaths: { "./build/src/single-thread/src/"  "./dist/lib/mixr-plugins/" }
-         modules: {
-            ( PluginModule  file: "libsingle_thread_model.so"
-               provides: { AlertDatalink TacticalAlert FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction } )
-         }
-      )
-      agent1: ( SimAgent  state: ( FlightState )  ... )      // ja usa o plugin
+```bash
+make configure   # host -> build/
+make sdk         # SDK -> dist/{include,lib,lib/pkgconfig}
+make models      # modelo + stub -> build-models/, build-stub/ -> dist/lib/mixr-plugins/
+make build       # o host (já dispara sdk + models)
 ```
 
-A carga cabe num **passe único** porque a produção `arglist` do `edl_parser` é recursiva à
-esquerda: formas irmãs são construídas na ordem do texto, e a carga mora no `isValid()` do
-`( PluginLoader )` — que o parser chama no fecha-parêntese do bloco. Daí a única regra: **o bloco
-tem de vir antes do primeiro uso**.
+O SDK é o contrato (`xplugin/PluginAbi.hpp`) mais as três `.so` que atravessam a fronteira:
+`libxboard` (o quadro de leitura entre modelo e host), `libxlog` e `libxtrack` (o contato detectado
+pelo radar, que o dump do host também mostra). Mais um `poc-mixr-sdk.pc` — é assim que o projeto do
+modelo o consome, e é assim que um terceiro faria.
 
-`shared/xboard/` é a **única** peça que os dois lados compartilham: um quadro de leitura por id de
-player, escrito pelo modelo e lido pelo host (é dele que saem o `bt=`, o `dec=`, o `alert=`…).
-Por isso ele — e o `xlog` — são `shared_library()` de verdade, ao contrário das outras quatro libs
-de `shared/`: com lib estática cada lado teria sua própria cópia, e o dump imprimiria `bt=--`
-para sempre, sem erro nenhum.
+Depois que a **varredura de radar** também virou responsabilidade do modelo (ele publica o
+apontamento da antena no quadro; o host só relaia ao Tacview), `src/<poc>/` ficou com
+`main.cpp` + `mixr_factory.cpp` + `app/` — e nada mais.
 
-`make check-plugin-hotswap` demonstra a tese: inverte o sentido da curva de patrulha em
-`domain/PatrolPlan.cpp`, rebuilda **só** o `.so`, confere que o executável não foi tocado (mesmo
-`sha256` e `mtime`) e mostra o rumo do falcon1 indo de 141° para 34°.
+**Por que a separação, e não só arrumação:** enquanto o modelo era um alvo do host, o `meson.build`
+dele listava os 24 `.cpp` e o build do host **exigia o fonte**. Agora não, e
+[`tests/guard/check_host_opaco.sh`](tests/guard/check_host_opaco.sh) trava isso.
 
-> **A extração é neutra:** com o modelo dentro do `.so`, o dump `frame=` das duas pocs saiu
-> **byte-idêntico** ao de antes de o plugin existir.
+### A prova: um modelo desconhecido
+
+[`models/stub-model/`](models/stub-model/) é um modelo de ~270 linhas escrito **só contra o SDK
+publicado** — sem árvore de comportamento, sem uma linha de `domain/`. O teste
+`plugin-modelo-estranho` roda o cenário de **produção** contra ele trocando **apenas** o `file:` do
+`( PluginModule )`.
+
+É o único teste que pode falhar por *"o contrato não basta"*: todos os outros carregam o mesmo
+modelo compilado do mesmo fonte. E foi escrevê-lo que revelou que as obrigações de um modelo não
+estavam escritas em lugar nenhum — em especial o dever de **escrever no `xboard`**, sem o qual o
+host imprime `bt=--` e `dec=0` sem erro nenhum e com todos os outros testes verdes. Está agora em
+[models/stub-model/CONTRATO.md](models/stub-model/CONTRATO.md).
+
+> **A extração é neutra:** com o modelo fora do executável, o dump `frame=` das duas pocs saiu
+> **byte-idêntico** ao de antes de existir plugin nenhum.
 >
-> *"Sem recompilar tudo"* — sim. *"Sem reiniciar o processo"* — **não**: nunca chamamos `dlclose`,
-> porque toda instância viva guarda ponteiro para dentro do `.so`. Ver a seção **Limites** de
-> [shared/xplugin/README.md](shared/xplugin/README.md).
+> *"Sem recompilar tudo"* — sim. *"Sem reiniciar o processo"* — **não**: nunca chamamos `dlclose`.
+> Ver a seção **Limites** de [shared/xplugin/README.md](shared/xplugin/README.md).
 
 ### `shared/data/terrain/srtm/`
 

@@ -10,12 +10,24 @@ make test                            # 13 testes, ~13 s
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
 `subdir('./tests')` do [meson.build](../meson.build) raiz nem é avaliado.
 
-Para rodar uma camada só: `meson test -C build --suite domain` (ou `tree`, `scenario`,
-`memory`, `determinism`, `guard`).
+**São DUAS suítes, em dois diretórios de build**, porque o modelo saiu para um projeto próprio
+(`models/flight-model/`):
+
+```bash
+make test          # as duas
+make test-models   # só a do modelo:  domain (42 casos) + tree (15)
+meson test -C build --suite plugin   # só uma camada do host
+```
+
+> **Cuidado, e isto foi medido:** `meson test` devolve **rc=0 para suíte vazia** ("No tests
+> defined."), e o default de `-Dtests` é `false`. `meson test -C build --suite domain` continua
+> existindo, mas hoje ele roda só as primitivas do `shared/xmsg` — as regras do modelo estão em
+> `build-models`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
+> `make test-models` conferem a contagem com `meson introspect --tests` **antes** de rodar.
 
 ---
 
-## Por que seis camadas
+## Duas suítes, em dois projetos
 
 O repositório já tinha verificação automatizada — os `check-*` de determinismo — mas ela responde
 uma pergunta estreita: *o estado é reprodutível?* Um modelo que decide **errado** passa nos
@@ -26,13 +38,14 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 
 | suite | pergunta | como | custo |
 |---|---|---|---|
-| `domain` | as regras estão certas? | GTest sobre `domain/` **e sobre `shared/xmsg/rules/`**, sem MIXR e sem BT.CPP | 66 testes, ~10 ms |
-| `tree` | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
+| `domain` (modelo) | as regras estão certas? | GTest sobre `models/flight-model/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
+| `domain` (host) | as primitivas do `shared/xmsg` estão certas? | GTest sobre `shared/xmsg/rules/` | 24 testes, ~10 ms |
+| `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 6 execuções |
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 4 execuções |
 | `determinism` | é reprodutível, nos dois laços de decisão? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 8 execuções |
-| `plugin` | a carga dinâmica de modelos cumpre o contrato e falha legivelmente? | contrato via `dlopen`, guarda de símbolo, 7 modos de falha, prova de *hot-swap* | 4 testes, ~1 s |
-| `guard` | as duas pocs continuam gêmeas? | `diff -r` entre `domain/`, `bt/` e a fiação de plugin | instantâneo |
+| `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **stub** | 5 testes, ~3 s |
+| `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo e o `.so` está **fresco**? | `diff -r` da camada de aplicação + duas guardas novas | instantâneo |
 
 ---
 

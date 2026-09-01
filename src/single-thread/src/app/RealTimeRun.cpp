@@ -2,7 +2,7 @@
 
 #include "app/StatusReport.hpp"
 
-#include "xnative/RadarScan.hpp"
+#include "xboard/Board.hpp"
 
 #include "xclock/ClockStation.hpp"
 #include "xclock/TimeControls.hpp"
@@ -75,14 +75,18 @@ void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
       // Varredura de radar de cada player, direto pro Tacview -- FORA da
       // fila do gravador (ver TacviewOutput::updateRadarScan()). So depois
       // do updateData() acima, que ja declarou o objeto (T=) no Tacview.
+      //
+      // O host NAO le o Gimbal: quem le e o modelo, na percepcao, e publica no
+      // quadro (shared/xboard). Aqui so se relaia. Um modelo que nunca publique
+      // deixa 'radarValid' em false e simplesmente nao desenha varredura.
       if (tacviewOutput != nullptr) {
          const double simTime{worldModel->getExecTimeSec()};
          for (auto* const air : fleet) {
-            const auto scan = mixr::xnative::radarScanOf(air);
-            if (scan.found) {
+            const mixr::xboard::Readout board{mixr::xboard::get(air->getID())};
+            if (board.radarValid) {
                tacviewOutput->updateRadarScan(static_cast<std::uint32_t>(air->getID()), simTime,
-                  scan.azimuthDeg, scan.elevationDeg, scan.rangeM,
-                  scan.horizontalBeamwidthDeg, scan.verticalBeamwidthDeg);
+                  board.radarAzDeg, board.radarElDeg, board.radarRangeM,
+                  board.radarHBeamDeg, board.radarVBeamDeg);
             }
          }
       }

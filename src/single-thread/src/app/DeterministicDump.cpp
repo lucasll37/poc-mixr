@@ -1,7 +1,7 @@
 #include "app/DeterministicDump.hpp"
 
 #include "xboard/Board.hpp"
-#include "xnative/TrackQuery.hpp"
+#include "xtrack/TrackQuery.hpp"
 
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
@@ -22,7 +22,7 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
       if (air == nullptr) continue;
 
       const mixr::base::Vec3d& pos{air->getPosition()};
-      const mixr::xnative::TrackInfo track{mixr::xnative::nearestHostileTrack(air)};
+      const mixr::xtrack::TrackInfo track{mixr::xtrack::nearestHostileTrack(air)};
 
       // Tudo o que vem do MODELO chega por aqui, e so por aqui. O modelo mora
       // num .so carregado com dlopen, entao este arquivo nao pode incluir

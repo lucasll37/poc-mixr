@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# As duas pocs sao gemeas: diferem SO no agente do UBF (onde a decisao roda).
-# Em particular, domain/ e bt/ sao copias byte a byte uma da outra.
+# As duas pocs sao gemeas. Depois que o MODELO saiu para models/flight-model,
+# o que sobra em src/<poc>/ e so a camada de aplicacao -- e ela e byte a byte
+# identica entre as duas, com quatro excecoes conhecidas (main.cpp,
+# ScenarioTemplate.cpp, meson.build e o cenario).
 #
 # Isso era convencao implicita -- 'make compare-single-multi' mostra as
 # diferencas, mas nao falha, e ninguem le a saida toda. Aqui vira invariante
@@ -36,41 +38,25 @@ compara() {   # compara <caminho relativo dentro da poc>
    fi
 }
 
-compara include/domain
-compara src/domain
-compara include/bt
-compara src/bt
-
-# A fiacao da carga dinamica de modelos (shared/xplugin) e IDENTICA nas duas
-# pocs, e continuar identica e o que mantem o 'make compare-single-multi'
-# mostrando so o agente do UBF.
-#
-# Estes quatro ja eram byte a byte antes de existir plugin nenhum -- entram
-# aqui porque agora sao TOCADOS por um assunto novo, e uma edicao aplicada
-# numa poc so passaria despercebida: o compare-single-multi mostra, mas nao
-# falha, e ninguem le a saida toda.
+# O que sobrou de duplicado entre as gemeas depois que o MODELO saiu para
+# models/flight-model: so a camada de aplicacao. domain/, bt/ e ubf/ nao
+# aparecem mais aqui porque nao existem mais em duas copias -- a duplicacao
+# foi dissolvida por construcao, e nao mais sustentada por este teste.
+compara include/app
 compara include/mixr_factory.hpp
 compara src/mixr_factory.cpp
 compara src/app/StationBuilder.cpp
 compara src/app/MetaObjectReport.cpp
-
-# O modelo virou plugin, e isso tornou identicos mais tres arquivos que antes
-# divergiam ou nao eram guardados:
-#
-#   include/ubf   ja era byte a byte, so nunca tinha sido guardado;
-#   plugin.cpp    a fronteira C do modelo -- o que diverge entre as pocs
-#                 (o FlightAgentTC) mora nas listas de xnative/factory.cpp;
-#   Deterministic/StatusReport  pararam de incluir header do modelo e passaram
-#                 a ler o quadro (shared/xboard), entao o 'dec=' e o 'thr='
-#                 deixaram de vir de lugares diferentes em cada poc.
-compara include/ubf
-compara src/ubf
-compara src/plugin.cpp
 compara src/app/DeterministicDump.cpp
 compara src/app/StatusReport.cpp
+compara src/app/Options.cpp
+compara src/app/TerrainData.cpp
+compara src/app/Fleet.cpp
+compara src/app/DeterministicRun.cpp
+compara src/app/RealTimeRun.cpp
 
 if [ $fail -eq 0 ]; then
-   echo "duplicacao: OK (domain/, bt/ e a fiacao de plugin sao a mesma coisa nas duas pocs)"
+   echo "duplicacao: OK (a camada de aplicacao e a mesma nas duas pocs)"
    exit 0
 fi
 echo "duplicacao: FALHOU"

@@ -1,7 +1,7 @@
 #include "app/StatusReport.hpp"
 
 #include "xboard/Board.hpp"
-#include "xnative/TrackQuery.hpp"
+#include "xtrack/TrackQuery.hpp"
 
 #include "mixr/models/player/air/AirVehicle.hpp"
 #include "mixr/models/system/Autopilot.hpp"
@@ -61,7 +61,7 @@ void appendDecisionLine(std::ostringstream& oss, const mixr::models::AirVehicle*
 void appendSensorLine(std::ostringstream& oss, const mixr::models::AirVehicle* const air,
                       const mixr::xboard::Readout& board)
 {
-   const mixr::xnative::TrackInfo track{mixr::xnative::nearestHostileTrack(air)};
+   const mixr::xtrack::TrackInfo track{mixr::xtrack::nearestHostileTrack(air)};
    if (track.found) {
       oss << " pista=" << track.name << "@" << std::setprecision(1)
           << (track.rangeM * M2NM) << "NM";

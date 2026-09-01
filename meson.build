@@ -100,6 +100,10 @@ subdir('./shared/xlog')
 # e nao static como as demais de shared/ (ver shared/xboard/Board.hpp).
 subdir('./shared/xboard')
 
+# Consulta ao radar nativo -- disputada pelo host (dump) e pelo modelo
+# (percepcao), por isso .so e por isso no SDK.
+subdir('./shared/xtrack')
+
 # Mensagens configuraveis por EDL (telemetria e eventos). Tambem antes dos
 # subprojetos, que consomem xmsg_dep.
 subdir('./shared/xmsg')
@@ -108,6 +112,52 @@ subdir('./shared/xmsg')
 # contrato, header-only, usado pelos plugins) e xplugin_dep (o registro,
 # usado pelos executaveis). Precisa vir ANTES de src/.
 subdir('./shared/xplugin')
+
+
+# ==============================================================================
+# O SDK DE PLUGIN
+#
+# Tudo o que um TERCEIRO precisa para compilar um modelo sem ter este
+# repositorio: o contrato (header-only) e as tres .so que atravessam a
+# fronteira. Publicado em dist/{include,lib,lib/pkgconfig}.
+#
+# COMO INSTALAR SO O SDK (e a etapa 'sdk' do Makefile):
+#     ninja -C build xboard xlog xtrack        # por NOME de alvo
+#     meson install -C build --no-rebuild --tags sdk,devel
+#
+# DUAS ARMADILHAS MEDIDAS, nao supostas:
+#
+#   1. 'meson compile -C build shared/xboard/libxboard.so' NAO funciona --
+#      "target not found". O meson compile resolve por NOME de alvo; quem
+#      resolve por caminho de saida e o ninja. Dai o 'ninja' acima.
+#
+#   2. '--tags sdk' SOZINHO instala so as .so. install_headers() nao aceita
+#      install_tag no meson 1.2, entao os headers ficam com a tag automatica
+#      'devel' e sao EXCLUIDOS. O sintoma aparece longe: o build do modelo
+#      morre com "xplugin/PluginAbi.hpp: No such file or directory", dois
+#      alvos depois. Por isso '--tags sdk,devel'.
+#
+# O SDK NAO exporta -DMIXR_PLUGIN_PKG_VERSION / -DMIXR_PLUGIN_BUILD_ID pelo
+# .pc, embora isso funcione tecnicamente (medido: as aspas escapadas
+# atravessam intactas ate o compile_commands.json). E deliberado: a impressao
+# digital descreve QUEM CONSTRUIU o plugin, entao cada lado calcula a sua e o
+# registro compara as duas na carga. Um -D vindo do .pc faria os dois lados
+# reportarem o mesmo numero por construcao, e a checagem viraria tautologia.
+# O .pc expoe 'mixr_pkg_version' como VARIAVEL, para conferencia cruzada.
+# ==============================================================================
+install_headers('shared/xplugin/PluginAbi.hpp', subdir: 'xplugin')
+install_headers('shared/xboard/Board.hpp',      subdir: 'xboard')
+install_headers('shared/xlog/Log.hpp',          subdir: 'xlog')
+install_headers('shared/xtrack/TrackQuery.hpp', subdir: 'xtrack')
+
+pkg = import('pkgconfig')
+pkg.generate(
+    name        : 'poc-mixr-sdk',
+    description : 'SDK para compilar um modelo (plugin) do poc-mixr',
+    libraries   : [xboard_lib, xlog_lib, xtrack_lib],
+    requires    : ['mixr'],
+    variables   : ['mixr_pkg_version=' + mixr_dep.version()],
+)
 
 subdir('./src')
 

@@ -16,6 +16,7 @@ xboard_lib = shared_library('xboard',
     include_directories : xboard_inc_dir,
     install             : true,
     install_dir         : get_option('libdir'),
+    install_tag         : 'sdk',
 )
 
 xboard_dep = declare_dependency(

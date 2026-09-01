@@ -92,12 +92,11 @@
       // ------------------------------------------------------------------
       plugins: ( PluginLoader
          searchPaths: {
-            "./build/src/multi-thread/src/"
             "./dist/lib/mixr-plugins/"
          }
          modules: {
             ( PluginModule
-               file:     "libmulti_thread_model.so"
+               file:     "libflight_model_tc.so"
                provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction }
             )
@@ -489,7 +488,7 @@
                         )
                         ( BtBehavior
                            vote: 50
-                           treeFile: "./src/multi-thread/configs/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
                            patrolHeading:  ( Degrees 90 )
                            legTime:        ( Seconds 60 )
                            legTurn:        ( Degrees 90 )
@@ -583,7 +582,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/multi-thread/configs/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
                            patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
                            patrolSpeed: 160.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 170.0
@@ -658,7 +657,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/multi-thread/configs/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
                            patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                            legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
                            patrolSpeed: 165.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 170.0
@@ -733,7 +732,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/multi-thread/configs/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
                            patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
                            patrolSpeed: 160.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 170.0

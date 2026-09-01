@@ -50,6 +50,21 @@ struct Readout
    std::string alertContact;
    long sent{};               // alertas transmitidos por este player
    long received{};           // alertas recebidos
+
+   // Para onde a antena esta apontando AGORA. Alimenta a varredura de radar do
+   // Tacview (RadarAzimuth/RadarElevation/...), que e caminho de TEMPO REAL --
+   // nao entra no dump deterministico.
+   //
+   // Quem le o Gimbal e o MODELO, nao o host: e ele que sabe o que a aeronave
+   // esta enxergando. 'radarValid' fica false se o modelo nunca publicar, e ai
+   // o host simplesmente nao empurra varredura nenhuma -- degrada em silencio,
+   // de proposito: um modelo sem radar e legitimo.
+   bool radarValid{};
+   double radarAzDeg{};
+   double radarElDeg{};
+   double radarRangeM{};
+   double radarHBeamDeg{};
+   double radarVBeamDeg{};
 };
 
 //--- escrita: SO o modelo chama -----------------------------------------------
@@ -67,6 +82,8 @@ void bumpDecisionCount(int playerId);
 void setThreadTag(int playerId, int tag);
 void setAlert(int playerId, bool valid, const std::string& sender, const std::string& contact);
 void setDatalinkCounters(int playerId, long sent, long received);
+void setRadarScan(int playerId, bool valid, double azDeg, double elDeg,
+                  double rangeM, double hBeamDeg, double vBeamDeg);
 
 //--- leitura: SO o host chama -------------------------------------------------
 
