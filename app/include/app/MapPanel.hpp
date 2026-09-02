@@ -97,6 +97,20 @@ void zoomMap(MapViewState& view, bool zoomIn);
 void rotateMap(MapViewState& view, bool clockwise);
 void centerMapOn(MapViewState& view, const EntityState& e);
 
+// So faz sentido na perspectiva Lateral: reancora 'view.panAltM' (a
+// altitude de REFERENCIA que fica presa ao meio vertical da tela, ver
+// project()) pra que o nivel do terreno NO PONTO DO PAN atual va parar
+// perto do limite INFERIOR da janela, em vez de flutuar em qualquer lugar
+// (inclusive, dependendo do zoom/pan, sumir da tela) -- pedido explicito:
+// "a linha do terreno deve estar no limite inferior da janela de
+// visualizacao". UM AJUSTE, nao uma trava: so muda 'panAltM' nesta
+// chamada (ao ligar o terreno, trocar pra Lateral, ou centralizar numa
+// entidade -- ver DashboardLoop.cpp), o pan manual (setas) continua livre
+// depois disso, sem nenhum override continuo. No-op se nao houver
+// amostrador ou nao houver dado de terreno no ponto do pan (sem terreno,
+// nao ha "nivel do chao" nenhum pra ancorar).
+void snapPanToGroundLevel(MapViewState& view, const TerrainSampler& terrainSampler);
+
 // Acrescenta a posicao atual de cada entidade ao rastro dela e descarta o
 // que passou de kMapTrailLength -- chamada uma vez por amostra nova (ver
 // DashboardLoop.cpp), nao por redesenho (evita rastro com pontos

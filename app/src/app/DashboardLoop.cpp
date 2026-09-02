@@ -507,16 +507,31 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto doMapRotateLeft = [&] { rotateMap(mapView, false); };
    const auto doMapRotateRight = [&] { rotateMap(mapView, true); };
    const auto doMapToggleTrails = [&] { mapView.showTrails = !mapView.showTrails; };
-   const auto doMapToggleTerrain = [&] { mapView.showTerrain = !mapView.showTerrain; };
+
+   // Reancora o nivel do terreno perto do limite inferior da janela
+   // (ver MapPanel.hpp::snapPanToGroundLevel) -- so tem efeito na
+   // perspectiva Lateral com terreno ligado; um sampler novo aqui e
+   // barato (mesmo raciocinio do que 'mapCanvasArea' ja reconstroi a cada
+   // redesenho, ver mais abaixo).
+   const auto doMapSnapGroundIfApplicable = [&] {
+      if (!mapView.showTerrain) return;
+      snapPanToGroundLevel(mapView, makeTerrainSampler(worldModel));
+   };
+   const auto doMapToggleTerrain = [&] {
+      mapView.showTerrain = !mapView.showTerrain;
+      doMapSnapGroundIfApplicable();
+   };
    const auto doMapTogglePerspective = [&] {
       mapView.perspective = (mapView.perspective == Perspective::TopDown)
          ? Perspective::Lateral : Perspective::TopDown;
+      doMapSnapGroundIfApplicable();
    };
    const auto doMapCenterOnSelected = [&] {
       if (displayedEntities.empty()) return;
       const std::size_t idx{static_cast<std::size_t>(
          std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
       centerMapOn(mapView, displayedEntities[idx]);
+      doMapSnapGroundIfApplicable();
    };
 
    // ---- breakpoint de arvore de BT -- "marcar um estado da bt de um dado
@@ -788,7 +803,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    trailsOpt.label = "[t] Rastro";
    trailsOpt.on_click = doMapToggleTrails;
    trailsOpt.transform = [&](const EntryState&) {
-      return text(std::string("[t] Rastro: ") + (mapView.showTrails ? "ON" : "OFF"))
+      return text(std::string(" [t] Rastro: ") + (mapView.showTrails ? "ON" : "OFF") + " ")
          | (mapView.showTrails ? (bgcolor(Color::Blue) | bold) : dim);
    };
    const Component btnMapTrails{Button(trailsOpt)};
@@ -797,7 +812,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    terrainOpt.label = "[e] Terreno";
    terrainOpt.on_click = doMapToggleTerrain;
    terrainOpt.transform = [&](const EntryState&) {
-      return text(std::string("[e] Terreno: ") + (mapView.showTerrain ? "ON" : "OFF"))
+      return text(std::string(" [e] Terreno: ") + (mapView.showTerrain ? "ON" : "OFF") + " ")
          | (mapView.showTerrain ? (bgcolor(Color::Blue) | bold) : dim);
    };
    const Component btnMapTerrain{Button(terrainOpt)};
@@ -807,7 +822,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    perspectiveOpt.on_click = doMapTogglePerspective;
    perspectiveOpt.transform = [&](const EntryState&) {
       const bool lateral{mapView.perspective == Perspective::Lateral};
-      return text(std::string("[v] Vista: ") + (lateral ? "Lado" : "Cima"))
+      return text(std::string(" [v] Vista: ") + (lateral ? "Lado" : "Cima") + " ")
          | (lateral ? (bgcolor(Color::Blue) | bold) : dim);
    };
    const Component btnMapPerspective{Button(perspectiveOpt)};
@@ -883,7 +898,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    accelOpt.label = "[+] Acelerar";
    accelOpt.on_click = doAccelerate;
    accelOpt.transform = [&](const EntryState&) {
-      return text("[+] Acelerar") | (fastRunToBreakpoint.load() ? dim : nothing);
+      return text(" [+] Acelerar ") | (fastRunToBreakpoint.load() ? dim : nothing);
    };
    const Component btnAccel{Button(accelOpt)};
 
@@ -891,7 +906,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    decelOpt.label = "[-] Frear";
    decelOpt.on_click = doDecelerate;
    decelOpt.transform = [&](const EntryState&) {
-      return text("[-] Frear") | (fastRunToBreakpoint.load() ? dim : nothing);
+      return text(" [-] Frear ") | (fastRunToBreakpoint.load() ? dim : nothing);
    };
    const Component btnDecel{Button(decelOpt)};
 

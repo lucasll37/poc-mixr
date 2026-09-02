@@ -177,7 +177,17 @@ certo por coordenada a cada consulta. Hoje isso cobre uma área de 2°×2° ao r
 por uma função matemática simples, não dado real — ver
 [`shared/data/terrain/srtm/README.md`](../shared/data/terrain/srtm/README.md) para o porquê e
 como acrescentar tiles reais depois, sem mudar nenhum código). Fora de toda cobertura carregada,
-`[e]` simplesmente não desenha nada ali — degrada em silêncio, sem inventar elevação.
+`[e]` simplesmente não desenha nada ali — degrada em silêncio, sem inventar elevação. Uma célula
+"void" (buraco na cobertura de radar original, sem dado — não deve acontecer nos tiles deste
+repositório, mas pode acontecer num tile de terceiro) também é tratada como "sem dado", nunca
+desenhada como se fosse uma elevação real.
+
+**Enquadramento automático (só na perspectiva Lado)**: ao ligar `[e]`, trocar pra vista `[v]`
+Lado, ou centralizar `[c]` numa entidade, a referência vertical é reancorada pra que o nível do
+terreno **no ponto centralizado** apareça perto do limite inferior da janela — em vez de
+flutuar em qualquer altura (ou sumir da tela, dependendo do zoom). É um ajuste PONTUAL, feito só
+nesses três momentos — depois disso as setas continuam movendo o pan livremente, sem nenhum
+recentramento automático atrapalhando.
 
 ### O que aparece desenhado
 

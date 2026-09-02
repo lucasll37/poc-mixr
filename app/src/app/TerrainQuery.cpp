@@ -24,6 +24,19 @@ namespace {
 // atravessar so essa fronteira).
 const char* const kTerrainDir{"./shared/data/terrain/srtm/"};
 
+// SrtmHgtFile marca "sem dado" (void, buraco no tile) com um valor de
+// SENTINELA em torno de -32767/-32768 -- e DataFile::getElevation() (lido
+// em contexts/src/mixr/src/terrain/DataFile.cpp antes de escrever isto)
+// devolve esse valor como se fosse uma elevacao REAL (nao filtra void
+// nenhum, so retorna 'false' se o ponto cair FORA da caixa do tile). Sem
+// este filtro, um void vira "elevacao -32768 m" na vista Lateral -- a
+// linha de contorno despencava pro fundo do canvas (o pedido que motivou
+// isto: "hoje esta algo em torno de -32k, nao faz sentido"). Qualquer
+// ponto da Terra de verdade fica acima disto por larga margem (o mais
+// fundo, o Mar Morto, e so uns -430 m) -- tratado como void e descartado
+// (a mesma semantica de "false" que ja usamos pra "fora de todo tile").
+const double kMinPlausibleElevM{-1000.0};
+
 // Um tile carregado (qualquer resolucao/origem -- SrtmHgtFile aceita
 // SRTM1 e SRTM3, ver a validacao de tamanho em bytes no proprio arquivo)
 // mais a caixa 1x1 grau que ele cobre, pelo nome (canto SW).
@@ -141,7 +154,7 @@ TerrainSampler makeTerrainSampler(mixr::models::WorldModel* const worldModel)
          if (lat < tile.swLat || lat >= tile.swLat + 1.0) continue;
          if (lon < tile.swLon || lon >= tile.swLon + 1.0) continue;
          double elev{};
-         if (tile.terrain->getElevation(&elev, lat, lon, true)) {
+         if (tile.terrain->getElevation(&elev, lat, lon, true) && elev >= kMinPlausibleElevM) {
             elevM = elev;
             return true;
          }

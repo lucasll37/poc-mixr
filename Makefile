@@ -123,6 +123,19 @@ models: sdk ## Compila e instala o MODELO (plugin), num projeto meson à parte. 
 	@for so in libflight.so libflight_tc.so libstub.so libmissile.so; do \
 	   ldd $(DEST_DIR)/lib/mixr-plugins/$$so | grep -q 'not found' && { echo "$(RED)models: $$so com dependencia nao resolvida$(NC)"; exit 1; } || true; \
 	 done
+	@# Terceiros: qualquer .so ja pronto em models/plugins/ (ver
+	@# models/plugins/README.md pro contrato que ele tem de cumprir) e so
+	@# COPIADO pra dist/lib/mixr-plugins/ -- nao ha projeto Meson aqui, o
+	@# .so ja vem compilado de fora deste repositorio. Pasta vazia (nenhum
+	@# terceiro depositado ainda) e um no-op silencioso, nao erro.
+	mkdir -p $(DEST_DIR)/lib/mixr-plugins/
+	@if ls models/plugins/*.so >/dev/null 2>&1; then \
+	   cp -v models/plugins/*.so $(DEST_DIR)/lib/mixr-plugins/; \
+	   for so in models/plugins/*.so; do \
+	      base=$$(basename "$$so"); \
+	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)models: $$base (terceiro) com dependencia nao resolvida$(NC)"; exit 1; } || true; \
+	   done; \
+	 fi
 	@echo "$(GREEN)models: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
 
 build: models ## Build all targets in the project (o modelo é construído ANTES, como plugin).

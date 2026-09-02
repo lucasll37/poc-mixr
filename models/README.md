@@ -33,18 +33,23 @@ models/
 │   ├── docs/DESIGN.md
 │   ├── Makefile          # build AUTOCONTIDO (§1.1)
 │   └── README.md
-└── fixtures/
-    └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
-        ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
-        │                             # teste (ver §3) E o ponto de partida
-        │                             # para um modelo novo (§2) -- copiar
-        │                             # este diretório já copia as quatro
-        │                             # peças que todo projeto de modelo
-        │                             # deste repositório tem de ter.
-        ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
-        ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
-        ├── Makefile                 # build AUTOCONTIDO (§1.1)
-        └── README.md
+├── fixtures/
+│   └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
+│       ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
+│       │                             # teste (ver §3) E o ponto de partida
+│       │                             # para um modelo novo (§2) -- copiar
+│       │                             # este diretório já copia as quatro
+│       │                             # peças que todo projeto de modelo
+│       │                             # deste repositório tem de ter.
+│       ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
+│       ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
+│       ├── Makefile                 # build AUTOCONTIDO (§1.1)
+│       └── README.md
+└── plugins/         # DEPÓSITO, não projeto Meson -- um .so de TERCEIRO,
+                      # já compilado fora deste repositório, entra aqui e
+                      # 'make models' só COPIA pra dist/lib/mixr-plugins/
+                      # (nenhum código-fonte, nenhum build). Ver
+                      # models/plugins/README.md.
 ```
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile` e `README.md` — sem exceção.** Não é
@@ -62,6 +67,7 @@ do host, que só consome os `.so` instalados.
 make configure   # 1. conan + meson setup do HOST            -> build/
 make sdk         # 2. publica o SDK                          -> dist/{include,lib,lib/pkgconfig}
 make models      # 3. flight, missile e stub, projetos à parte -> build-flight/, build-missile/, build-stub/
+                 #    + copia qualquer .so de terceiro em models/plugins/ (sem build, só cópia)
 make build       # 4. os executáveis do host                  -> build/src/<poc>/src/
 ```
 

@@ -195,6 +195,20 @@ test('plugin-modelo-estranho', py,
      depends: single_thread, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
+# O DEPOSITO DE TERCEIRO -- prova que models/plugins/ (o deposito pra um .so
+# ja compilado fora deste repositorio, ver models/plugins/README.md) nao e
+# so uma pasta com um README: um .so colocado ali e de fato copiado pra
+# dist/lib/mixr-plugins/ (o mesmo passo que o alvo 'models' do Makefile
+# raiz faz) e o resultado E USAVEL numa simulacao de verdade -- reusa o
+# stub como o "terceiro" e a MESMA bateria de plugin-modelo-estranho.
+test('plugin-deposito-terceiro', py,
+     args: files('plugin/run_thirdparty_deposit.py') + [
+         '--binario', single_thread.full_path(), '--poc', 'single-thread',
+         '--source-so', dist_plugins / 'libstub.so',
+         '--run-stub-model', raiz / 'tests' / 'plugin' / 'run_stub_model.py'],
+     depends: single_thread, workdir: raiz, suite: 'plugin',
+     timeout: 900, is_parallel: false)
+
 # ------------------------------------------------------------------------------
 # Guardas estruturais
 # ------------------------------------------------------------------------------

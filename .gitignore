@@ -6,6 +6,11 @@ dist
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
 
+# deposito de plugins de terceiros (.so pre-compilado, externo a este
+# repositorio) -- ver models/plugins/README.md. 'make models' copia
+# qualquer .so encontrado aqui pra dist/lib/mixr-plugins/.
+models/plugins/*.so
+
 # gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
 # shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/
 # e data/logs/ e versionado, nunca o conteudo gerado. 'app/' (o dashboard)

@@ -28,6 +28,12 @@ using namespace ftxui;
 const int kCanvasW{kMapCanvasWidthCells * 2};
 const int kCanvasH{120};
 
+// Quanto do limite INFERIOR do canvas fica reservado, em pixel, quando
+// 'snapPanToGroundLevel()' reancora o nivel do terreno perto de baixo --
+// nao flush contra a borda: sobra espaco pra grade/rotulo de altitude
+// (ex.: "-2133ft") continuarem legiveis abaixo da linha do chao.
+const int kGroundMarginBottomPx{16};
+
 const double kPi{3.14159265358979323846};
 const double kDeg2Rad{kPi / 180.0};
 
@@ -349,6 +355,22 @@ void centerMapOn(MapViewState& view, const EntityState& e)
    view.panNorthM = e.northM;
    view.panEastM = e.eastM;
    view.panAltM = e.altitudeM;
+}
+
+void snapPanToGroundLevel(MapViewState& view, const TerrainSampler& terrainSampler)
+{
+   if (view.perspective != Perspective::Lateral) return;
+   if (!terrainSampler) return;
+
+   double groundElevM{};
+   if (!terrainSampler(view.panNorthM, view.panEastM, groundElevM)) return;
+
+   // Mesma equacao de project() pro ramo Lateral, resolvida pra panAltM
+   // dado um 'py' ALVO (perto do fundo do canvas): py = cy - (elev -
+   // panAltM)/mpc  =>  panAltM = elev - (cy - py) * mpc.
+   const int cy{kCanvasH / 2};
+   const int targetPy{kCanvasH - kGroundMarginBottomPx};
+   view.panAltM = groundElevM - static_cast<double>(cy - targetPy) * view.metersPerCell;
 }
 
 void updateTrails(MapViewState& view, const std::vector<EntityState>& entities)

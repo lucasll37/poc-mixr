@@ -664,7 +664,7 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 2 pocs |
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
-| `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap e **o cenario de producao rodando com um modelo DESCONHECIDO** | 5 testes, ~3 s |
+| `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`models/plugins/`) | 6 testes, ~3 s |
 | `guard` | `domain/`, `bt/` e a fiacao de plugin continuam byte-identicos entre as duas pocs | instantaneo |
 
 `make test-asan` e complementar e fica fora da suite: reconfigura com ASan, roda sob
@@ -1845,6 +1845,121 @@ maior da rodada — o Mapa passou a carregar MÚLTIPLOS tiles SRTM, não só o d
     de verdade (execução direta não-interativa) confirmando que os 4 `.hgt.gz` descompactam
     sozinhos na primeira execução, sem erro/aviso.
   - `make test` segue 23/24 (só a falha pré-existente).
+
+**Décima segunda passada: `models/plugins/` — um depósito pra plugin de TERCEIRO (só cópia, sem
+build) — e dois consertos na vista de terreno Lateral (valor sem sentido de "-32k" e a linha
+flutuando longe do limite inferior da janela).**
+
+- **`models/plugins/` (novo)** — quarta entrada em `models/`, mas de natureza DIFERENTE das
+  outras três (`flight`/`missile`/`fixtures/stub`, todos projetos Meson compilados por este
+  repositório): aqui não há código-fonte nem build nenhum, é um DEPÓSITO — um `.so` já pronto,
+  compilado fora deste repositório (outra equipe, outro fornecedor), entra na pasta e
+  `make models` só COPIA pra `dist/lib/mixr-plugins/`, o mesmo lugar onde `libflight.so`/
+  `libmissile.so`/`libstub.so` são instalados. Dali em diante, um cenário carrega esse `.so`
+  pelo MESMO mecanismo `( PluginModule file: "..." provides: {...} )` — nenhuma mudança no host
+  pra reconhecer um plugin de terceiro, porque `PluginModule`/`dlopen` já eram agnósticos a quem
+  compilou o `.so`, só o CONTRATO (`shared/xplugin/PluginAbi.hpp`) importa.
+  - `README.md` da pasta aponta pro mesmo `models/fixtures/stub/docs/CONTRATO.md` que já
+    documenta o que um modelo tem de fazer — nenhuma lista nova pra manter sincronizada.
+  - **Alvo `models` do Makefile raiz ganhou um passo novo**, depois do bloco do missile: `mkdir -p`
+    + `cp -v models/plugins/*.so dist/lib/mixr-plugins/` só SE houver algum `.so` (pasta vazia é
+    no-op silencioso, testado rodando `make models` sem nada depositado — sai "models: OK" igual
+    a sempre) + o MESMO check de `ldd | grep 'not found'` que os plugins locais já passam, agora
+    também sobre qualquer terceiro copiado (nome desconhecido de antemão, por isso um loop sobre
+    `models/plugins/*.so` em vez de uma lista fixa de nomes).
+  - **`.so` de terceiro NÃO é versionado** (`.gitignore`: `models/plugins/*.so`) — é externo a
+    este repositório por natureza (pode ser proprietário, pode mudar de versão à parte); o
+    `README.md` da pasta continua rastreado, então o contrato fica documentado mesmo com a pasta
+    vazia num clone limpo.
+  - **Testado rodando de ponta a ponta**: copiado um `.so` de exemplo (`libstub.so`, já validado
+    pelo próprio `check_contract.sh` do stub) pra dentro de `models/plugins/` com outro nome,
+    `make models` copiou pra `dist/lib/mixr-plugins/` e passou no `ldd`; removido depois (não é
+    pra ficar vendorizado — era só prova de que o mecanismo funciona).
+- **Vista de terreno Lateral: elevação "-32k" (sem sentido) e linha longe do limite inferior da
+  janela — dois problemas DIFERENTES, investigados e corrigidos separadamente.**
+  - **Causa do "-32k": `SrtmHgtFile`/`DataFile::getElevation()` NÃO filtra célula "void"** (sem
+    dado — sentinela em torno de -32767/-32768, convenção padrão do formato SRTM) — lido o fonte
+    (`contexts/src/mixr/src/terrain/DataFile.cpp`) antes de escrever qualquer coisa: o método só
+    devolve `false` se o ponto cair FORA da caixa do tile; um void DENTRO da caixa (buraco na
+    cobertura de radar) volta como se fosse elevação de verdade. `app/TerrainQuery.cpp` corrigido
+    pra tratar qualquer leitura abaixo de `kMinPlausibleElevM` (-1000 m — folga generosa: o ponto
+    mais fundo da Terra, o Mar Morto, é só uns -430 m) como "sem dado", mesma semântica de
+    `false` que já usamos pra "fora de todo tile". Conferido no tile real vendorizado
+    (`S23W043`): varredura COMPLETA dos 12,9 milhões de pontos não achou nenhum void (esse tile
+    específico é limpo) — o filtro é defensivo pra QUALQUER tile futuro (inclusive um de
+    terceiro, ver item acima), não uma correção pontual deste tile.
+  - **Causa do "longe do limite inferior": nada empurrava a vista pra mostrar o chão perto de
+    baixo** — `panAltM` (a altitude que fica presa ao MEIO vertical da tela) ficava, por padrão,
+    na altitude de cruzeiro do avião (~1750 m); com o chão real a ~900 m, a linha de terreno
+    saía bem acima do centro da janela, sobrando quase metade da tela vazia embaixo dela (medido
+    antes do fix: terreno na linha ~15 de ~30 visíveis, só grade solta abaixo). **NÃO é a mesma
+    causa do "-32k"** — mesmo com elevação real e sensata, a ENQUADRAÇÃO por si só não colocava o
+    chão embaixo.
+    - **`app::snapPanToGroundLevel(view, sampler)` (novo, `MapPanel.{hpp,cpp}`)** — resolve a
+      MESMA equação de `project()` (ramo Lateral) pra trás: dado que se quer a elevação do
+      terreno NO PONTO DO PAN mapeada pra uma linha alvo perto do fundo do canvas
+      (`kCanvasH - kGroundMarginBottomPx`, margem de 16 px pra grade/rótulo continuarem legíveis
+      abaixo), isola `panAltM`. É um AJUSTE PONTUAL, não uma trava contínua — só roda nos
+      momentos em que a vista muda de referência (ligar `[e]`, trocar `[v]` pra Lateral,
+      `[c]` centralizar numa entidade), preservando o pan manual (setas) livre depois disso; um
+      override contínuo tornaria as setas de cima/baixo inúteis com terreno ligado, o que
+      NENHUM pedido pediu.
+    - No-op se não houver amostrador ou não houver dado de terreno no ponto do pan (sem terreno,
+      não há "nível do chão" nenhum pra ancorar) — mesmo padrão de degradação silenciosa do
+      resto da feature.
+  - **Verificado ISOLADAMENTE com dado REAL** (não sintético desta vez — o tile `S23W043`
+    genuíno, decomprimido do `.gz` vendorizado): antes do `snapPanToGroundLevel()`, terreno na
+    linha ~15/30 (quase metade da tela vazia embaixo); depois, linha ~24/30, avião nitidamente
+    acima dele com folga — `panAltM` saltou de 1750 (a altitude do avião) pra ~3545 (a nova
+    referência central), exatamente o comportamento esperado da equação invertida.
+  - `make test` segue 23/24 (só a falha pré-existente).
+
+**Décima terceira passada: botões colados uns nos outros (relatado com o `[e]` de terreno como
+exemplo) — `ButtonOption::Ascii()` (o estilo padrão de TODOS os botões deste app, ver
+`makeButton()`) só se auto-espaça (`" " + label + " "` sem foco, `"[" + label + "]"` com foco)
+quando usa o `transform` PADRÃO da própria FTXUI; cinco botões sobrescrevem `transform` com um
+rótulo dinâmico (estado ON/OFF, cor condicional) e nenhum deles reproduzia esse espaçamento —
+`text(...)` sem espaço nenhum na ponta. `Container::Horizontal`/`->Render()` so concatena os
+filhos, sem gap automático nenhum, então dois desses ficavam literalmente grudados. Corrigidos os
+cinco (`accelOpt`/`decelOpt` na barra principal; `trailsOpt`/`terrainOpt`/`perspectiveOpt` na
+barra do Mapa) acrescentando o mesmo espaço líder/final que o estilo padrão já usa — nenhum
+botão novo, só paridade com o padrão que os outros (criados via `makeButton()`) já tinham.
+Confirmado rodando (captura não-interativa, sem pty): "Acelerar[-] Frear" virou "Acel [-] Fre"
+(com espaço) na barra principal, mesmo com o terminal estreito o suficiente pra cortar o resto
+da linha.
+
+**Décima quarta passada: teste novo — o `.so` depositado em `models/plugins/` (a pasta pra
+plugin de terceiro, ver a passada de `models/plugins/`) de fato roda numa simulação, não só
+chega em disco.**
+
+- **`tests/plugin/run_thirdparty_deposit.py` (novo) + `plugin-deposito-terceiro` (registrado em
+  `tests/meson.build`, suíte `plugin`)** — reusa o STUB (`models/fixtures/stub`) fazendo o papel
+  do "terceiro": já é um modelo pronto, compilado, e já provado suficiente pra rodar o cenário
+  de produção (é o mesmo `.so` que `plugin-modelo-estranho` já usa) — sem ser nenhum dos plugins
+  que o host normalmente consome direto de `dist/lib/mixr-plugins/`. Isso isola exatamente a
+  variável que importava provar: o CAMINHO pelo qual o `.so` chegou (depósito → cópia), não se o
+  modelo em si é válido (isso quem já prova é `plugin-modelo-estranho`).
+- **Copia o `.so` pra `models/plugins/` com um nome DISTINTO de qualquer plugin real**
+  (`libthirdparty_deposit_test.so`) — colidir com `libflight.so`/`libflight_tc.so`/
+  `libmissile.so`/`libstub.so` (os quatro que `make models` já instala direto) faria o teste não
+  provar nada: estaria só verificando um arquivo que já estava lá por outro motivo.
+- **A cópia pra `dist/lib/mixr-plugins/` é REPLICADA no script Python** (`shutil.copy2`), não
+  feita chamando `make models` de verdade — `make models` também recompila flight/missile/stub,
+  pesado demais pra suíte rápida (`meson test`, chamada a cada `make test`). A linha do Makefile
+  que importa é um `cp` puro; testar essa cópia isolada não perde cobertura nenhuma sobre o que
+  pode dar errado nela.
+- **A prova em si NÃO reimplementa nenhuma asserção** — chama `run_stub_model.py` (a MESMA
+  bateria inteira: carga, `provides:`, escrita no `xboard`, movimento entre frames, varredura de
+  radar no Tacview) via `subprocess`, apontando pro `.so` recém-depositado-e-copiado em vez do
+  `dist_plugins/libstub.so` que `make models` já instala direto — duas baterias idênticas, duas
+  origens de arquivo diferentes.
+- **Limpa os dois arquivos temporários no `finally`** (`models/plugins/
+  libthirdparty_deposit_test.so` e o correspondente em `dist/lib/mixr-plugins/`) — não é pra
+  ficar vendorizado nem instalado, era só a prova de que o mecanismo funciona. Confirmado rodando:
+  as duas pastas voltam exatamente ao estado de antes do teste (`models/plugins/` só com
+  `README.md`, `dist/lib/mixr-plugins/` só com os quatro plugins de sempre).
+- `make test` segue com a MESMA falha pré-existente de sempre (`onde-a-decisao-roda`) — agora
+  24/25 (não mais 23/24: o total subiu em um com o teste novo).
 
 ## Estado atual / pendências conhecidas
 
