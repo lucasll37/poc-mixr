@@ -9,6 +9,10 @@
 # demo (src/single-thread/configs/scenario_missile_demo.epp.in), publicando
 # so "GuidedMissile" -- os 6 nomes do flight nao mudam, entao 'provides:'
 # dos cenarios de PRODUCAO (que so carregam libflight.so) continua igual.
+#
+# Como todo projeto de modelo deste repositorio, este diretorio tambem tem
+# tests/, docs/, Makefile e README.md -- ver o README.md ao lado para o
+# build autocontido (dist/ na raiz DESTE projeto).
 # ==============================================================================
 project('missile', 'cpp',
     version: '1.0.0',
@@ -26,7 +30,7 @@ sdk_libdir  = sdk_dep.get_variable(pkgconfig: 'libdir')
 
 model_inc = include_directories('src')
 
-shared_module('missile',
+missile_lib = shared_module('missile',
     files(
         'src/plugin.cpp',
         'src/domain/Guidance.cpp',
@@ -46,3 +50,9 @@ shared_module('missile',
     install_rpath         : mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..',
     build_rpath           : mixr_libdir + ':' + sdk_libdir,
 )
+
+# Camada 'domain' -- so a lei de guiagem, pura (sem MIXR). Mesmo molde de
+# models/flight/tests/meson.build, escalado para um modelo de uma classe so.
+if get_option('tests')
+    subdir('tests')
+endif

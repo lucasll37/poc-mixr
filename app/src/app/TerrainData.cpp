@@ -1,6 +1,7 @@
 #include "app/TerrainData.hpp"
 
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -51,6 +52,39 @@ void ensureTerrainData(const std::string& dir, const std::string& baseName)
       std::cerr << "[main] " << hgt << " tem " << size << " bytes; o SrtmHgtFile so aceita "
                 << SRTM3_BYTES << " (SRTM3) ou " << SRTM1_BYTES << " (SRTM1)" << std::endl;
       std::exit(EXIT_FAILURE);
+   }
+}
+
+void ensureAllTerrainTiles(const std::string& dir)
+{
+   namespace fs = std::filesystem;
+   std::error_code ec;
+   if (!fs::exists(dir, ec)) return;
+
+   const std::string suffix{".hgt.gz"};
+   for (const auto& entry : fs::directory_iterator(dir, ec)) {
+      if (ec) break;
+      if (!entry.is_regular_file()) continue;
+
+      const std::string name{entry.path().filename().string()};
+      if (name.size() <= suffix.size() ||
+          name.compare(name.size() - suffix.size(), suffix.size(), suffix) != 0) {
+         continue;
+      }
+
+      const std::string baseName{name.substr(0, name.size() - suffix.size())};
+      const std::string hgt{dir + baseName + ".hgt"};
+      if (isValidSrtmSize(fileSize(hgt))) continue;   // ja descomprimido e integro
+
+      const std::string gz{dir + name};
+      std::cout << "[main] descomprimindo " << gz << " ..." << std::endl;
+      const std::string cmd{"gunzip -kf \"" + gz + "\""};
+      std::system(cmd.c_str());
+
+      if (!isValidSrtmSize(fileSize(hgt))) {
+         std::cerr << "[main] aviso: " << hgt << " nao ficou com tamanho SRTM valido -- "
+                   << "ignorado (a vista de terreno so cobre os tiles que carregarem)" << std::endl;
+      }
    }
 }
 

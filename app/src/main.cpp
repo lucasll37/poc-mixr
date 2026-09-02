@@ -100,6 +100,12 @@ int main(int argc, char* argv[])
 
    app::ensureTerrainData(terrainDir, terrainTile);
 
+   // O tile do EDL acima e OBRIGATORIO (para/sai se faltar -- ver o
+   // comentario de ensureTerrainData()). Os demais '.hgt.gz' do mesmo
+   // diretorio sao OPCIONAIS -- so ampliam a cobertura da vista de terreno
+   // do Mapa (ver app/TerrainQuery.hpp); nenhum cenario depende deles.
+   app::ensureAllTerrainTiles(terrainDir);
+
    const std::string generatedPath{"./app/configs/" + entry->key + ".generated.epp"};
    const int numTcThreads{
       app::generateScenario(entry->templatePath, generatedPath, opts.threadsOverride)};

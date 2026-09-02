@@ -17,7 +17,7 @@
 // E ele ja pagou por si: escrever este arquivo foi o que revelou que as
 // obrigacoes de um modelo NAO ESTAVAM ESCRITAS em lugar nenhum -- em especial
 // o dever de escrever no xboard, sem o qual o host imprime 'bt=--' e 'dec=0'
-// sem erro nenhum. Ver models/fixtures/stub/CONTRATO.md.
+// sem erro nenhum. Ver models/fixtures/stub/docs/CONTRATO.md.
 //
 // O comportamento e deliberadamente trivial: voa reto e nivelado. O que se
 // verifica aqui NAO e voo bonito, e que a aplicacao INTEIRA sobe, parseia o

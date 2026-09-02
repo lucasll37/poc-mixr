@@ -19,7 +19,7 @@ O que isso verifica, e nada mais verifica:
 E o que ele obriga e o ganho maior: para o stub existir, alguem teve de
 DESCOBRIR e ESCREVER todas as obrigacoes que estavam implicitas. Cada uma que
 faltasse apareceria aqui -- como falha de carga, ou como 'bt=--' no dump.
-Ver models/fixtures/stub/CONTRATO.md.
+Ver models/fixtures/stub/docs/CONTRATO.md.
 """
 
 import argparse

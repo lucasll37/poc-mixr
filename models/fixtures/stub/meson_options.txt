@@ -1,0 +1,1 @@
+option('tests', type: 'boolean', value: false, description: 'Compila a suite de contrato do fixture; nao precisa de gtest (script puro)')

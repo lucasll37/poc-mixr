@@ -14,26 +14,42 @@ models/
 │   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
 │   │                 # pocs (single-thread/multi-thread/bandit-dis) apontam pra cá
 │   ├── tests/{domain,tree,native}/        # 76 casos, e nenhum levanta Station
+│   ├── docs/ARCHITECTURE.md               # calibração + armadilhas deste modelo
+│   ├── Makefile      # build AUTOCONTIDO -- dist/ na raiz deste projeto (§1.1)
+│   ├── README.md
 │   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
 ├── missile/         # SEGUNDO exemplo de "criar um modelo novo": um único
 │   ├── src/xmissile/GuidedMissile.{hpp,cpp}   # Player novo, guiado sobre um
 │   │                                          # JSBSimModel anexado -- física
 │   │                                          # 6-DOF de verdade
 │   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
-│   └── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
-│                         # flight (2º PluginModule) só no cenário de demo
-│                         # (src/single-thread/configs/
-│                         # scenario_missile_demo.epp.in). Ver CLAUDE.md,
-│                         # seção "Demo: míssil guiado", para o "porque" de
-│                         # ser um plugin à parte e não dentro do flight.
+│   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
+│   │                     # flight (2º PluginModule) só no cenário de demo
+│   │                     # (src/single-thread/configs/
+│   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
+│   │                     # seção "Demo: míssil guiado", para o "porque" de
+│   │                     # ser um plugin à parte e não dentro do flight.
+│   ├── tests/domain/     # domain::pursuit(), puro
+│   ├── docs/DESIGN.md
+│   ├── Makefile          # build AUTOCONTIDO (§1.1)
+│   └── README.md
 └── fixtures/
     └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
         ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
-        └── CONTRATO.md              # teste (ver §3). Fica em fixtures/ para
-                                      # não sugerir o contrário. CONTRATO.md
-                                      # é o que um modelo TEM de fazer --
-                                      # leia primeiro.
+        │                             # teste (ver §3) E o ponto de partida
+        │                             # para um modelo novo (§2) -- copiar
+        │                             # este diretório já copia as quatro
+        │                             # peças que todo projeto de modelo
+        │                             # deste repositório tem de ter.
+        ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
+        ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
+        ├── Makefile                 # build AUTOCONTIDO (§1.1)
+        └── README.md
 ```
+
+**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile` e `README.md` — sem exceção.** Não é
+estilo: é o que faz cada um AUTOCONTIDO (§1.1) e verificável sozinho, sem depender do resto do
+repositório estar em mente.
 
 ---
 
@@ -78,6 +94,44 @@ etapa `sdk` precisa desse `build/` já existir.
 > **Depois de um `make clean`, o `-Dtests` volta ao default (`false`)** — o diretório de build foi
 > apagado. Para os testes: `meson configure build -Dtests=true` antes do `make build`.
 
+### 1.1 Build autocontido, por modelo
+
+O fluxo acima é **orquestrado** — um só Makefile (o da raiz) sabe os caminhos dos três projetos e
+os constrói em sequência. É o fluxo de CI/produção e continua sendo a forma canônica de construir
+o repositório inteiro.
+
+**Cada projeto de modelo TAMBÉM tem o próprio `Makefile`, autocontido** — pensado para abrir o VS
+Code só naquele diretório (`models/flight/`, `models/missile/` ou `models/fixtures/stub/`) e
+iterar sem o resto do repositório em mente:
+
+```bash
+# uma vez, na raiz do poc-mixr (publica o que todo modelo consome):
+make configure && make sdk
+
+# daqui em diante, de dentro de QUALQUER projeto de modelo:
+cd models/flight   # ou models/missile, ou models/fixtures/stub
+make               # configura (./build) + compila -> ./dist/lib/mixr-plugins/*.so
+make test          # roda a suite DAQUELE modelo, isolada
+make install-host  # sincroniza ./dist para a raiz do poc-mixr -- so ai o cenario enxerga o .so
+```
+
+`./dist` nasce **dentro** do próprio projeto de modelo — é o que "autocontido" quer dizer aqui: o
+`.so` (e, no caso do `flight`, também a árvore e a aeronave) sai na raiz do MESMO projeto que você
+abriu, sem precisar do Makefile raiz. O único pré-requisito que não tem como deixar de existir é o
+SDK publicado pelo host (`make configure && make sdk`, uma vez) — o modelo depende do contrato de
+ABI e dos pacotes Conan (`mixr`, `behaviortree.cpp.asa`) que só o projeto host resolve.
+
+`make install-host` é o único alvo que escreve fora do `./dist` local — sincroniza para
+`dist/lib/mixr-plugins/` (e `dist/share/mixr-plugins/<nome>/`, quando há dados) na raiz do
+`poc-mixr`, que é onde o `searchPaths:` de `( PluginLoader )` dos cenários já procura. Sem rodar
+esse alvo, o `.so` compilado fica só no projeto do modelo — útil para iterar (compilar, `make
+test`), inútil para um cenário até ser sincronizado.
+
+Os dois fluxos não competem: `make models` da raiz (re)configura e (re)instala os três do zero, e
+continua sendo o que `make build`/`make test`/o CI usam. O Makefile de cada modelo é para
+desenvolvimento focado num modelo só — rode `make install-host` quando quiser ver o resultado
+refletido nos cenários do host.
+
 ---
 
 ## 2. Como criar um modelo novo
@@ -94,6 +148,16 @@ sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/meu-modelo/
 
 Conferido rodando: essas quatro linhas mais um `meson setup` já produzem um `.so` válido —
 **um** símbolo exportado, nenhuma dependência não resolvida.
+
+**A cópia já traz `tests/`, `docs/`, `Makefile` e `README.md`** — as quatro peças que todo projeto
+de modelo deste repositório tem de ter (ver o aviso logo abaixo do diagrama, no topo deste
+arquivo). Só uma correção é necessária no `Makefile`
+copiado: `stub/` mora em `models/fixtures/stub/` (três níveis até a raiz do `poc-mixr`,
+`ROOT := $(abspath ../../..)`), enquanto `models/meu-modelo/` mora só dois níveis abaixo — troque
+a linha `ROOT := $(abspath ../../..)` para `ROOT := $(abspath ../..)`, ou o Makefile vai apontar
+para o diretório **pai** do `poc-mixr` e falhar em `check-root` com um caminho que não existe.
+Depois disso, `cd models/meu-modelo && make && make test && make install-host` funciona igual ao
+`stub` (ver [fixtures/stub/README.md](fixtures/stub/README.md) para o que cada alvo faz).
 
 ### 2.1 O que o `meson.build` tem de ter
 
@@ -133,7 +197,7 @@ E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub`.
 
 ### 2.2 O que o `.cpp` tem de ter
 
-Leia **[fixtures/stub/CONTRATO.md](fixtures/stub/CONTRATO.md)** — é a lista completa. O resumo:
+Leia **[fixtures/stub/docs/CONTRATO.md](fixtures/stub/docs/CONTRATO.md)** — é a lista completa. O resumo:
 
 - exportar o ponto de entrada **sempre pela macro** `MIXR_PLUGIN_DEFINE`, nunca escrevendo a
   assinatura à mão (num alvo com visibilidade escondida ela viraria símbolo invisível ao `dlsym`,
@@ -251,12 +315,23 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
    (é o que o alvo `models` faz, e o `test-asan` reusa com `ASAN=true`).
 6. **Nunca `dlclose`.** Toda instância viva guarda ponteiro para dentro do `.so`, e o destrutor
    **escreve** lá. *"Sem recompilar tudo"* — sim; *"sem reiniciar o processo"* — **não**.
+7. **O `ROOT` do Makefile autocontido (§1.1) é a profundidade do diretório, não um valor
+   universal.** `models/flight/` e `models/missile/` ficam dois níveis abaixo da raiz
+   (`ROOT := $(abspath ../..)`); `models/fixtures/stub/` fica três (`../../..`). Copiar o
+   `Makefile` do `stub` para um modelo novo direto sob `models/` (o caminho recomendado em §2) e
+   esquecer de tirar um `../` faz `check-root` apontar para o diretório **pai** do `poc-mixr` e
+   falhar dizendo que o SDK não existe — mesmo com ele publicado.
 
 ---
 
 ## Ler também
 
-- **[fixtures/stub/CONTRATO.md](fixtures/stub/CONTRATO.md)** — o que um modelo TEM de fazer
+- **[fixtures/stub/docs/CONTRATO.md](fixtures/stub/docs/CONTRATO.md)** — o que um modelo TEM de fazer
+- **[fixtures/stub/README.md](fixtures/stub/README.md)** — o build autocontido do fixture/template,
+  alvo por alvo (`make`, `make test`, `make install-host`)
+- **[flight/docs/ARCHITECTURE.md](flight/docs/ARCHITECTURE.md)** — calibração e armadilhas do
+  modelo de produção
+- **[missile/docs/DESIGN.md](missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova

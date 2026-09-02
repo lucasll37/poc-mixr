@@ -11,6 +11,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
+#include <vector>
 
 namespace app {
 
@@ -34,9 +35,6 @@ const double kDeg2Rad{kPi / 180.0};
 // 40px = 20 celulas de terminal na horizontal, 10 na vertical.
 const int kGridStepPx{40};
 
-// Limiar minimo do eixo Y na vista Lateral (pedido explicito) -- a grade de
-// altitude nao desce abaixo disto.
-const double kMapAltitudeFloorFt{-1000.0};
 
 std::string formatScale(const double metersPerCell)
 {
@@ -60,6 +58,14 @@ std::string formatScaleNm(const double metersPerCell)
 }
 
 struct Projected { int px{}; int py{}; bool onCanvas{}; };
+
+// Espacamento (em pixel de canvas) do GRID de amostragem de curvas de
+// nivel (TopDown) -- ver o comentario grande de 'drawTerrain', abaixo. Fino
+// o bastante (3px, perto da resolucao do proprio canvas de braille) pra
+// dar linha continua a olho na deteccao de borda por faixa; ainda assim
+// so ~3200 consultas por redesenho (kCanvasW/passo * kCanvasH/passo),
+// desprezivel mesmo chamado ate ~10x/s.
+const int kTerrainGridStepPx{3};
 
 // A MESMA rotacao serve pras duas projecoes -- ver o comentario de
 // Perspective no header: o eixo livre (vertical) e compartilhado.
@@ -90,6 +96,161 @@ Projected project(const double northM, const double eastM, const double altitude
    }
    p.onCanvas = (p.px >= 0 && p.px < kCanvasW && p.py >= 0 && p.py < kCanvasH);
    return p;
+}
+
+// INVERSA de project() para o plano N/E (TopDown) -- dado um pixel do
+// canvas, devolve o ponto do MUNDO (northM/eastM) que ele representa.
+// 'rotE'/'rotN' saem direto da grade (mesma conta que os rotulos de eixo ja
+// fazem); desfazer a rotacao de 'yaw' e so aplicar a rotacao INVERSA
+// (R(-yaw), ja que project() aplicou R(+yaw)).
+void worldFromCanvasTopDown(const int px, const int py, const MapViewState& view,
+                            double& northM, double& eastM)
+{
+   const int cx{kCanvasW / 2};
+   const int cy{kCanvasH / 2};
+   const double rotE{(px - cx) * view.metersPerCell};
+   const double rotN{(cy - py) * view.metersPerCell};
+   const double yaw{view.viewYawDeg * kDeg2Rad};
+   const double relE{rotE * std::cos(yaw) + rotN * std::sin(yaw)};
+   const double relN{-rotE * std::sin(yaw) + rotN * std::cos(yaw)};
+   northM = view.panNorthM + relN;
+   eastM = view.panEastM + relE;
+}
+
+// Mesma ideia, mas para a vista Lateral: aqui so a coluna (px) importa -- o
+// perfil de terreno mostrado e o do CHAO ao longo da linha de visada que
+// passa pelo pan (profundidade zero, rotN=0), nao um ponto qualquer do
+// plano. E o "corte" que aparece de lado.
+void worldFromCanvasLateral(const int px, const MapViewState& view,
+                            double& northM, double& eastM)
+{
+   const int cx{kCanvasW / 2};
+   const double rotE{(px - cx) * view.metersPerCell};
+   const double yaw{view.viewYawDeg * kDeg2Rad};
+   northM = view.panNorthM - rotE * std::sin(yaw);
+   eastM = view.panEastM + rotE * std::cos(yaw);
+}
+
+// Intervalo de curva de nivel "redondo" pro alcance de elevacao amostrado
+// -- mesma ideia de um mapa topografico de papel escolher 10/20/50/100m
+// conforme a escala, nao um numero arbitrario. ~4 curvas cobrindo o
+// alcance visivel agora (pedido explicito: "espacamento maior para nao
+// poluir a visualizacao" -- era range/8, ~8 curvas; dobrado o intervalo,
+// metade das curvas). Se ajusta sozinho ao zoom/pan.
+double contourIntervalFor(const double minM, const double maxM)
+{
+   const double range{std::max(1.0, maxM - minM)};
+   const double roughStep{range / 4.0};
+   static const double niceSteps[]{5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000};
+   for (const double s : niceSteps) {
+      if (s >= roughStep) return s;
+   }
+   return 5000.0;
+}
+
+// A vista de TERRENO em si -- desenhada ANTES de grade/entidades (fica por
+// baixo). So chamada quando 'view.showTerrain' esta ligado E ha amostrador
+// (ver app/TerrainQuery.hpp: um std::function vazio significa "sem banco
+// de terreno carregado neste cenario" -- degrade em silencio, nao desenha
+// nada, mesmo raciocinio do resto do app pra campo que nao se aplica).
+//
+// TopDown: CURVAS DE NIVEL SEM COR (pedido explicito: "linhas sem cor, mais
+// finas e com espacamento maior") -- amostra um grid (passo
+// 'kTerrainGridStepPx'), quantiza cada ponto pra uma "faixa" de elevacao
+// (floor(elev/intervalo)) e marca um ponto onde a faixa do vizinho (direita
+// ou abaixo) e DIFERENTE -- e a fronteira entre duas faixas, ou seja, uma
+// curva de nivel. Deteccao de borda por comparacao de faixa e mais simples
+// que 'marching squares' de verdade (nao interpola o cruzamento exato) mas
+// no passo fino usado aqui (3px, a resolucao do proprio canvas de braille)
+// o resultado ja sai como linha continua a olho. Um unico tom neutro
+// (Color::GrayDark) em vez do gradiente por elevacao de uma passada
+// anterior -- e um PONTO por vez (DrawPoint, 1px), nao mais um circulo
+// preenchido (DrawPointCircleFilled) -- pra ficar fina de verdade.
+//
+// Lateral: LINHA DE CONTORNO EM VERMELHO (pedido explicito: "o nivel do
+// terreno deve aparecer em vermelho... substituindo o threshold de
+// 1000ft") -- uma amostra por coluna ao longo da linha de visada que passa
+// pelo pan, ligadas em sequencia por DrawPointLine. E o perfil do chao
+// como silhueta ABERTA (nao preenchida), sempre em Color::Red -- e o que
+// agora marca "onde e o chao" na vista Lateral, no lugar do piso fixo de
+// -1000 ft que existia antes de haver terreno de verdade pra mostrar (ver
+// o comentario da secao Lateral em renderMap()).
+void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& sample)
+{
+   if (!sample) return;
+
+   if (view.perspective == Perspective::TopDown) {
+      const int step{kTerrainGridStepPx};
+      const int nx{kCanvasW / step + 2};
+      const int ny{kCanvasH / step + 2};
+      std::vector<double> elev(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny), 0.0);
+      std::vector<bool> valid(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny), false);
+      const auto at = [nx](const int ix, const int iy) {
+         return static_cast<std::size_t>(iy) * static_cast<std::size_t>(nx) + static_cast<std::size_t>(ix);
+      };
+
+      double minM{1e18};
+      double maxM{-1e18};
+      for (int iy = 0; iy < ny; iy++) {
+         const int gy{iy * step};
+         if (gy >= kCanvasH) continue;
+         for (int ix = 0; ix < nx; ix++) {
+            const int gx{ix * step};
+            if (gx >= kCanvasW) continue;
+            double northM{};
+            double eastM{};
+            worldFromCanvasTopDown(gx, gy, view, northM, eastM);
+            double elevM{};
+            if (!sample(northM, eastM, elevM)) continue;
+            elev[at(ix, iy)] = elevM;
+            valid[at(ix, iy)] = true;
+            minM = std::min(minM, elevM);
+            maxM = std::max(maxM, elevM);
+         }
+      }
+      if (maxM < minM) return;   // nenhum ponto valido (fora do tile inteiro)
+
+      const double interval{contourIntervalFor(minM, maxM)};
+      for (int iy = 0; iy < ny; iy++) {
+         const int gy{iy * step};
+         if (gy >= kCanvasH) continue;
+         for (int ix = 0; ix < nx; ix++) {
+            const int gx{ix * step};
+            if (gx >= kCanvasW || !valid[at(ix, iy)]) continue;
+            const double e{elev[at(ix, iy)]};
+            const int band{static_cast<int>(std::floor(e / interval))};
+
+            bool onContour{false};
+            if (ix + 1 < nx && (ix + 1) * step < kCanvasW && valid[at(ix + 1, iy)]) {
+               if (static_cast<int>(std::floor(elev[at(ix + 1, iy)] / interval)) != band) onContour = true;
+            }
+            if (!onContour && iy + 1 < ny && (iy + 1) * step < kCanvasH && valid[at(ix, iy + 1)]) {
+               if (static_cast<int>(std::floor(elev[at(ix, iy + 1)] / interval)) != band) onContour = true;
+            }
+            if (onContour) {
+               c.DrawPoint(gx, gy, true, Color::GrayDark);
+            }
+         }
+      }
+   } else {
+      std::vector<int> px;
+      std::vector<int> py;
+      const int cy{kCanvasH / 2};
+      for (int x = 0; x < kCanvasW; x += 2) {
+         double northM{};
+         double eastM{};
+         worldFromCanvasLateral(x, view, northM, eastM);
+         double elevM{};
+         if (!sample(northM, eastM, elevM)) continue;
+         const int groundPy{cy - static_cast<int>(
+            std::lround((elevM - view.panAltM) / view.metersPerCell))};
+         px.push_back(x);
+         py.push_back(std::clamp(groundPy, 0, kCanvasH - 1));
+      }
+      for (std::size_t i = 1; i < px.size(); i++) {
+         c.DrawPointLine(px[i - 1], py[i - 1], px[i], py[i], Color::Red);
+      }
+   }
 }
 
 // Direcao da LINHA de rumo, em espaco de tela (pixel do canvas, y pra
@@ -135,29 +296,21 @@ void drawHeadingLine(Canvas& c, const int px, const int py, const double dx, con
    c.DrawPointLine(px, py, tipX, tipY, color);
 }
 
-// O nome da entidade dentro de uma caixa com moldura, ligada ao ponto por
-// uma linha -- pedido explicito, no lugar do texto solto de antes (que
-// disputava espaco visual com o proprio ponto). A caixa fica pro
-// nordeste do ponto, deslocada e recortada pra nao estourar o canvas; a
-// linha sai do ponto ate o canto mais proximo da caixa.
+// O nome da entidade ligado ao ponto por uma linha -- SEM moldura ao redor
+// do texto (pedido explicito: "remova o quadro ao redor do nome"; a moldura
+// de uma passada anterior competia visualmente com o proprio mapa quando
+// havia varias entidades perto umas das outras). O texto fica a nordeste do
+// ponto, deslocado e recortado pra nao estourar o canvas; a linha sai do
+// ponto ate o inicio do texto.
 void drawLabelCallout(Canvas& c, const int px, const int py, const std::string& label,
                       const Color color)
 {
    const int textW{static_cast<int>(label.size()) * 2};
-   const int boxW{textW + 4};
-   const int boxH{8};
+   const int textX{std::clamp(px + 5, 0, std::max(0, kCanvasW - textW))};
+   const int textY{std::clamp(py - 11, 0, std::max(0, kCanvasH - 4))};
 
-   int boxX{std::clamp(px + 5, 0, std::max(0, kCanvasW - boxW))};
-   int boxY{std::clamp(py - boxH - 3, 0, std::max(0, kCanvasH - boxH))};
-
-   c.DrawPointLine(px, py, boxX, boxY + boxH, color);
-
-   c.DrawPointLine(boxX, boxY, boxX + boxW, boxY, color);
-   c.DrawPointLine(boxX, boxY + boxH, boxX + boxW, boxY + boxH, color);
-   c.DrawPointLine(boxX, boxY, boxX, boxY + boxH, color);
-   c.DrawPointLine(boxX + boxW, boxY, boxX + boxW, boxY + boxH, color);
-
-   c.DrawText(boxX + 2, boxY + 2, label, color);
+   c.DrawPointLine(px, py, textX, textY + 4, color);
+   c.DrawText(textX, textY, label, color);
 }
 
 }
@@ -227,15 +380,8 @@ std::string formatMeters(const double m)
    return oss.str();
 }
 
-std::string formatMetersMagnitude(const double m)
-{
-   std::ostringstream oss;
-   oss << std::fixed << std::setprecision(0) << m;
-   return oss.str();
-}
-
-// Mesma logica de 'formatMeters'/'formatMetersMagnitude', em milhas
-// nauticas -- so a vista de cima usa (ver o comentario de formatScaleNm()).
+// Mesma logica de 'formatMeters', em milhas nauticas -- so a vista de cima
+// usa (ver o comentario de formatScaleNm()).
 std::string formatNm(const double m)
 {
    const double nm{m * mixr::base::distance::M2NM};
@@ -253,9 +399,14 @@ std::string formatNmMagnitude(const double m)
 }
 
 Element renderMap(const std::vector<EntityState>& entities, const MapViewState& view,
-                  const int focusedId, Box& outCanvasBox)
+                  const int focusedId, Box& outCanvasBox, const TerrainSampler& terrainSampler)
 {
    auto c = Canvas(kCanvasW, kCanvasH);
+
+   // Terreno primeiro -- fica por BAIXO da grade/entidades (desenhadas
+   // depois, por cima). So(t) faz algo se 'view.showTerrain' estiver ligado
+   // e houver amostrador (ver drawTerrain()).
+   if (view.showTerrain) drawTerrain(c, view, terrainSampler);
 
    const int cx{kCanvasW / 2};
    const int cy{kCanvasH / 2};
@@ -291,30 +442,30 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
       c.DrawPointLine(4, barY - 2, 4, barY + 2, Color::White);
       c.DrawPointLine(4 + kGridStepPx, barY - 2, 4 + kGridStepPx, barY + 2, Color::White);
    } else {
-      // Lateral: eixo Y = altitude em PES (pedido explicito). 'panAltM' e
-      // o referencial (o "zero" que fica no meio da tela); ver project().
-      // Limiar minimo de -1000 ft (pedido explicito) -- abaixo disso a
-      // grade simplesmente para de aparecer (nao ha nada de util pra
-      // mostrar mais fundo que isso), e uma linha SOLIDA marca o piso.
+      // Lateral: eixo Y = altitude em PES. 'panAltM' e o referencial (o
+      // "zero" que fica no meio da tela); ver project(). O piso fixo de
+      // -1000 ft de uma passada anterior SAIU (pedido explicito) -- quem
+      // marca "onde e o chao" agora e o proprio nivel do terreno, em
+      // VERMELHO (ver drawTerrain(), mais abaixo: a linha de contorno na
+      // perspectiva Lateral usa Color::Red em vez do gradiente por
+      // elevacao). Sem terreno carregado no cenario a grade so nao tem
+      // marca de chao nenhuma -- nao ha mais um piso arbitrario pra cair
+      // de volta.
       for (int gy = cy % kGridStepPx; gy < kCanvasH; gy += kGridStepPx) {
          const double altM{view.panAltM - (gy - cy) * view.metersPerCell};
          const double altFt{altM * mixr::base::distance::M2FT};
-         if (altFt < kMapAltitudeFloorFt) continue;
          drawDimLine(c, 0, gy, kCanvasW - 1, gy);
          c.DrawText(0, std::clamp(gy - 2, 0, kCanvasH - 4),
                     formatMeters(altFt) + "ft", [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
 
-      // A linha do piso em si, se estiver visivel na janela atual.
-      const double floorAltM{kMapAltitudeFloorFt / mixr::base::distance::M2FT};
-      const int floorGy{cy - static_cast<int>(std::lround((floorAltM - view.panAltM) / view.metersPerCell))};
-      if (floorGy >= 0 && floorGy < kCanvasH) {
-         c.DrawPointLine(0, floorGy, kCanvasW - 1, floorGy, Color::Red);
-         c.DrawText(0, std::clamp(floorGy - 2, 0, kCanvasH - 4),
-                    formatMetersMagnitude(kMapAltitudeFloorFt) + "ft (piso)", Color::Red);
-      }
-
-      c.DrawText(kCanvasW - 14, 2, "y: alt(ft)", Color::GrayDark);
+      // "y: alt(ft)" tem 10 caracteres; Canvas::DrawText anda 2px POR
+      // caractere (canvas.cpp: 'x += 2' por glifo) -- precisa de 20px de
+      // largura. Com 'kCanvasW - 14' a string estourava 6px alem da borda
+      // direita e saia cortada ("y: alt(", sem o "ft)") -- IsIn() descarta
+      // em silencio os glifos fora do canvas. Corrigido com a mesma folga
+      // (~4px) que "x/y (NM)" ja usa no TopDown.
+      c.DrawText(kCanvasW - 24, 2, "y: alt(ft)", Color::GrayDark);
    }
 
    // Referencia do pan -- cruz tenue, marca exatamente o "zero" dos eixos

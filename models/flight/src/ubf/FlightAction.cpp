@@ -1,6 +1,7 @@
 #include "ubf/FlightAction.hpp"
 
 #include "xnative/AlertDatalink.hpp"
+#include "xnative/ThreadTag.hpp"
 
 #include "xboard/Board.hpp"
 
@@ -101,6 +102,18 @@ bool FlightAction::execute(base::Component* actor)
    // escolhido o vencedor.
    xboard::setBehaviorLabel(player->getID(), label);
    xboard::bumpDecisionCount(player->getID());
+
+   // Qual thread decidiu -- unico ponto de atuacao comum aos DOIS agentes
+   // (o SimAgent nativo, background, e o FlightAgentTC, pool T/C), entao e
+   // aqui que o quadro fica correto pros dois: FlightAgentTC::controller()
+   // ja escreve o mesmo valor antes de chegar aqui (redundante, inofensivo,
+   // mesma tag); o SimAgent nunca escrevia nada -- o campo ficava preso em
+   // -1 ("-") pra sempre, nao porque a decisao nao tivesse thread, mas
+   // porque ninguem contava qual. threadTag() e por-thread (cache
+   // thread_local), entao aqui sai sempre a MESMA tag pras 4 aeronaves --
+   // resposta honesta: elas decidem, de fato, todas na mesma thread de
+   // background.
+   xboard::setThreadTag(player->getID(), threadTag());
 
    if (broadcast) {
       const auto datalink = dynamic_cast<AlertDatalink*>(player->getDatalink());

@@ -1,0 +1,1 @@
+option('tests', type: 'boolean', value: false, description: 'Compila a suite de domain/ (lei de guiagem pura); requer gtest')

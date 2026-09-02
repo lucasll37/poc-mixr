@@ -1,5 +1,6 @@
 #include "app/DashboardLoop.hpp"
 
+#include "app/BackgroundPanel.hpp"
 #include "app/BehaviorTreeView.hpp"
 #include "app/DashboardState.hpp"
 #include "app/Fleet.hpp"
@@ -52,10 +53,12 @@
 // dica de atalho" sem duplicar logica (ver a barra de botoes no fim desta
 // funcao).
 //
-// TRES ABAS (ftxui::Container::Tab), cada uma um ftxui::Menu dentro de
-// frame()/vscroll_indicator() (padrao oficial do FTXUI para lista rolavel
-// -- ver o exemplo menu_in_frame.cpp da propria lib): e o que deixa a UI
-// caber QUALQUER quantidade de entidades/classes sem crescer a tela.
+// QUATRO ABAS (ftxui::Container::Tab) -- Players/Mapa/Memoria sao cada uma
+// um ftxui::Menu dentro de frame()/vscroll_indicator() (padrao oficial do
+// FTXUI para lista rolavel -- ver o exemplo menu_in_frame.cpp da propria
+// lib): e o que deixa a UI caber QUALQUER quantidade de entidades/classes
+// sem crescer a tela. Fundo (a quarta) e um painel estatico -- ver
+// app/BackgroundPanel.hpp.
 //
 // DUAS THREADS, no molde do que app/RealTimeRun.cpp (das outras pocs) ja faz
 // sozinho: a de SIMULACAO avanca a 10 Hz independente de quando o terminal
@@ -111,6 +114,20 @@ struct Breakpoint
    bool fastMode{};        // "velocidade maxima possivel" -- simThread pula o msleep()
    double armedAtSimSec{};
 
+   // O 'timeScale' NOMINAL de antes de armar em modo rapido -- 'fastMode'
+   // tambem crava o ClockStation no topo da escada (ver 'doArmBreakpoint'),
+   // porque pular o msleep() do PROPRIO laco do dashboard nao acelera a
+   // simulacao sozinho: quem manda no ritmo de verdade e o pool de tempo
+   // critico nativo (fastForwardRate), rodando na SUA PROPRIA thread desde
+   // 'station->createTimeCriticalProcess()' -- independente de quantas vezes
+   // por segundo 'simThread' chama 'updateData()'. Sem tambem cravar o
+   // ClockStation, "[G] velocidade maxima" so fazia o laco girar em vazio
+   // mais rapido, sem o mundo simulado andar mais rapido de verdade (medido:
+   // cabecalho mostrava "MAX (~1x real)" com o breakpoint armado sobre
+   // timeScale nominal 1x -- o rotulo estava certo, a FUNCIONALIDADE que
+   // faltava). Restaurado ao sair do modo rapido (hit/timeout/cancelamento).
+   double restoreTimeScale{1.0};
+
    // Resultado da ultima tentativa -- pra UI mostrar o que aconteceu depois
    // que 'armed' volta a false, sem precisar de um canal separado.
    bool hit{};
@@ -154,14 +171,28 @@ Element renderHeader(const DashboardState& st)
    std::ostringstream ts;
    ts << "sim=" << std::fixed << std::setprecision(1) << st.simSec << "s";
 
-   const std::string speedLabel{st.paused ? ("PAUSADO (" + formatScale(st.timeScale) + ")")
-                                          : formatScale(st.timeScale)};
-   const Color speedColor{st.paused ? Color::Red
-                          : (st.timeScale > 1.0 ? Color::Yellow
-                            : (st.timeScale < 1.0 ? Color::Cyan : Color::Green))};
+   // Durante um breakpoint em velocidade MAXIMA, o valor NOMINAL da escada
+   // (st.timeScale) para de significar alguma coisa -- o laco de simulacao
+   // ignora o pacing de parede por completo (ver o laco de 'simThread').
+   // Mostra a velocidade MEDIDA de verdade em vez disso -- "o factual da
+   // simulacao", pedido explicito.
+   std::string speedLabel;
+   Color speedColor{Color::Green};
+   if (st.fastBreakpointRun) {
+      std::ostringstream oss;
+      oss << "MAX (~" << std::fixed << std::setprecision(0) << st.actualTimeScale << "x real)";
+      speedLabel = oss.str();
+      speedColor = Color::Magenta;
+   } else if (st.paused) {
+      speedLabel = "PAUSADO (" + formatScale(st.timeScale) + ")";
+      speedColor = Color::Red;
+   } else {
+      speedLabel = formatScale(st.timeScale);
+      speedColor = st.timeScale > 1.0 ? Color::Yellow : (st.timeScale < 1.0 ? Color::Cyan : Color::Green);
+   }
 
    return hbox({
-             text(" dashboard ") | bold | bgcolor(Color::Blue) | color(Color::White),
+             text(" app ") | bold | bgcolor(Color::Blue) | color(Color::White),
              text(" " + st.scenarioLabel + " ") | bold,
              text(" entidades=" + std::to_string(st.entities.size()) + " ") | dim,
              filler(),
@@ -223,7 +254,30 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       std::vector<ClassStat> classHistory;
       bool wasFast{};
 
+      // Velocidade FACTUAL (medida) -- tempo simulado / tempo de PAREDE de
+      // verdade, numa janela deslizante de ~0.5s. Ao contrario de
+      // 'timeScale' (o valor NOMINAL da escada de xclock), isto continua
+      // significando alguma coisa durante um breakpoint em velocidade
+      // maxima, onde o laco ignora o pacing por completo -- ver o pedido
+      // "o valor da aceleracao no cabecalho deve refletir o factual da
+      // simulacao".
+      double speedMarkRealTime{mixr::base::getComputerTime()};
+      double speedMarkSimSec{0.0};
+      double measuredActualTimeScale{1.0};
+
+      // Ver o comentario grande de app::BackgroundInfo (DashboardState.hpp):
+      // este laco INTEIRO e a "thread de tempo nao critico" da aba Fundo --
+      // 'bgRateMark*' mede a taxa REAL de iteracao (janela de ~0.5s, mesmo
+      // desenho de 'speedMark*' acima), separada da taxa SIMULADA que
+      // 'measuredActualTimeScale' ja cobre.
+      double bgRateMarkRealTime{mixr::base::getComputerTime()};
+      long bgRateMarkCount{};
+      double measuredBgHz{static_cast<double>(bgRate)};
+      long radarScanPushCount{};
+
       while (running.load()) {
+         const double iterationStart{mixr::base::getComputerTime()};
+
          station->updateData(dt);
 
          if (tacviewOutput != nullptr) {
@@ -234,15 +288,45 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                   tacviewOutput->updateRadarScan(static_cast<std::uint32_t>(player->getID()), simTime,
                      board.radarAzDeg, board.radarElDeg, board.radarRangeM,
                      board.radarHBeamDeg, board.radarVBeamDeg);
+                  radarScanPushCount += 1;
                }
             }
          }
 
          frameCount += 1;
-         DashboardState next{captureState(worldModel, static_cast<double>(frameCount) * dt,
+         DashboardState next{captureState(worldModel, station, static_cast<double>(frameCount) * dt,
                                           worldModel->getExecTimeSec(), clockStation,
                                           numTcThreads, scenarioLabel, classHistory)};
          classHistory = next.classStats;
+
+         {
+            const double nowReal{mixr::base::getComputerTime()};
+            const double dReal{nowReal - speedMarkRealTime};
+            if (dReal >= 0.5) {
+               const double dSim{next.simSec - speedMarkSimSec};
+               measuredActualTimeScale = (dReal > 1e-6) ? (dSim / dReal) : 0.0;
+               speedMarkRealTime = nowReal;
+               speedMarkSimSec = next.simSec;
+            }
+         }
+
+         bgRateMarkCount += 1;
+         {
+            const double nowReal{mixr::base::getComputerTime()};
+            const double dReal{nowReal - bgRateMarkRealTime};
+            if (dReal >= 0.5) {
+               measuredBgHz = (dReal > 1e-6) ? (static_cast<double>(bgRateMarkCount) / dReal) : 0.0;
+               bgRateMarkRealTime = nowReal;
+               bgRateMarkCount = 0;
+            }
+         }
+
+         next.background.targetHz = bgRate;
+         next.background.measuredHz = measuredBgHz;
+         next.background.iterationCount = frameCount;
+         next.background.lastIterationMs = (mixr::base::getComputerTime() - iterationStart) * 1000.0;
+         next.background.tacviewEnabled = (tacviewOutput != nullptr);
+         next.background.radarScanPushCount = radarScanPushCount;
 
          // Checagem do breakpoint -- ver o comentario da struct Breakpoint.
          // Roda toda amostra, mesmo fora do modo rapido: "a velocidade que
@@ -252,7 +336,10 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
             if (bp.armed) {
                for (const auto& e : next.entities) {
                   if (e.id == bp.entityId && matchesLabel(bp.nodeTag, e.behaviorLabel)) {
-                     if (clockStation != nullptr) clockStation->setPaused(true);
+                     if (clockStation != nullptr) {
+                        if (bp.fastMode) clockStation->setTimeScale(bp.restoreTimeScale);
+                        clockStation->setPaused(true);
+                     }
                      bp.armed = false;
                      bp.hit = true;
                      bp.hitSimSec = next.simSec;
@@ -261,12 +348,16 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                   }
                }
                if (bp.armed && (next.simSec - bp.armedAtSimSec) > kBreakpointTimeoutSimSec) {
+                  if (bp.fastMode && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale);
                   bp.armed = false;
                   bp.timedOut = true;
                   fastRunToBreakpoint = false;
                }
             }
          }
+
+         next.actualTimeScale = measuredActualTimeScale;
+         next.fastBreakpointRun = fastRunToBreakpoint.load();
 
          {
             const std::lock_guard<std::mutex> lock(stateMutex);
@@ -334,6 +425,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    std::vector<std::string> entityLabels;
    std::vector<ClassStat> displayedClasses;
    std::vector<std::string> classLabels;
+   BackgroundInfo displayedBackground;
 
    // A arvore de BT achatada NAO muda (o arquivo e lido uma vez, no
    // startup -- ver main.cpp) -- calculada aqui, fora de qualquer Renderer.
@@ -346,13 +438,20 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    int selectedBtLineIndex{};
 
    // ---- acoes nomeadas: cada uma e usada por TECLA e por BOTAO ----
+   //
+   // Acelerar/frear MANUAL ficam BLOQUEADOS enquanto um breakpoint roda em
+   // velocidade maxima (pedido explicito) -- o valor nominal da escada
+   // (kLadder[ladderIndex]) nao tem efeito nenhum ali mesmo (o laco ja
+   // ignora o pacing de parede por completo, ver 'fastRunToBreakpoint' no
+   // laco de 'simThread'), entao mexer nele so confundiria o que o
+   // cabecalho mostra depois que o modo rapido terminar.
    const auto doAccelerate = [&] {
-      if (clockStation == nullptr || ladderIndex >= kLadderSize - 1) return;
+      if (clockStation == nullptr || fastRunToBreakpoint.load() || ladderIndex >= kLadderSize - 1) return;
       ladderIndex++;
       clockStation->setTimeScale(kLadder[ladderIndex]);
    };
    const auto doDecelerate = [&] {
-      if (clockStation == nullptr || ladderIndex <= 0) return;
+      if (clockStation == nullptr || fastRunToBreakpoint.load() || ladderIndex <= 0) return;
       ladderIndex--;
       clockStation->setTimeScale(kLadder[ladderIndex]);
    };
@@ -408,6 +507,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto doMapRotateLeft = [&] { rotateMap(mapView, false); };
    const auto doMapRotateRight = [&] { rotateMap(mapView, true); };
    const auto doMapToggleTrails = [&] { mapView.showTrails = !mapView.showTrails; };
+   const auto doMapToggleTerrain = [&] { mapView.showTerrain = !mapView.showTerrain; };
    const auto doMapTogglePerspective = [&] {
       mapView.perspective = (mapView.perspective == Perspective::TopDown)
          ? Perspective::Lateral : Perspective::TopDown;
@@ -459,12 +559,20 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          bp.nodeTag = line.tag;
          bp.fastMode = fast;
          bp.armedAtSimSec = currentSimSec;
+         if (fast && clockStation != nullptr) {
+            // Crava o pool de tempo critico no topo da escada -- ver o
+            // comentario grande em 'Breakpoint::restoreTimeScale' sobre por
+            // que pular o msleep() do dashboard nao bastava sozinho.
+            bp.restoreTimeScale = clockStation->getTimeScale();
+            clockStation->setTimeScale(kLadder[kLadderSize - 1]);
+         }
       }
       fastRunToBreakpoint = fast;
       if (clockStation != nullptr) clockStation->setPaused(false);
    };
    const auto doCancelBreakpoint = [&] {
       const std::lock_guard<std::mutex> lock(bpMutex);
+      if (bp.fastMode && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale);
       bp.armed = false;
       fastRunToBreakpoint = false;
    };
@@ -573,9 +681,19 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto buildDetailPanel = [&](const EntityState& e, const Component& treeMenu) -> Element {
       Elements parts{renderEntityDetail(e)};
       if (e.behaviorLabel != "--" && !treeLines.empty()) {
+         // Subquadro PROPRIO, com barra de titulo -- pedido explicito:
+         // "tal como no subquadro acima do player" (o card de detalhe
+         // usa a mesma receita: uma linha de titulo, um separador, o
+         // conteudo, tudo dentro do MESMO 'border').
+         const Element treeBox{vbox({
+            text(" Arvore de Comportamento ") | bold | bgcolor(Color::Blue) | color(Color::White),
+            separator(),
+            treeMenu->Render() | vscroll_indicator | frame | size(HEIGHT, LESS_THAN, 14),
+            separator(),
+            buildBreakpointStatus(),
+         }) | border};
          parts.push_back(separator());
-         parts.push_back(treeMenu->Render() | vscroll_indicator | frame | size(HEIGHT, LESS_THAN, 14));
-         parts.push_back(buildBreakpointStatus());
+         parts.push_back(treeBox);
       }
       return vbox(std::move(parts)) | size(WIDTH, EQUAL, detailPanelWidth)
             | size(HEIGHT, EQUAL, kDetailPanelHeight);
@@ -609,7 +727,19 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component fleetBody{Container::Horizontal({entityMenu, entityDetail})};
    const Component fleetTab{Renderer(fleetBody, [&]() -> Element {
       return hbox({
-                entityMenu->Render() | vscroll_indicator | frame | size(WIDTH, LESS_THAN, 60) | flex,
+                // O LIMITE tem de caber a soma de TODAS as colunas
+                // (badge+nome+tipo+bt+thread+altitude+vel+combust, ver
+                // app/FleetPanel.hpp) -- com "60" (herdado de antes da
+                // coluna de thread) a soma passava do limite e o FTXUI
+                // apertava as ultimas colunas em silencio (o cabecalho
+                // "vel(kt)"/"combust." e quem expos isso: sem gap nenhum
+                // antes da coluna seguinte, mesmo com kCol* de sobra).
+                vbox({
+                   renderEntityListHeader(),
+                   separator(),
+                   entityMenu->Render() | vscroll_indicator | frame | flex,
+                }) | size(WIDTH, LESS_THAN, kColBadge + kColName + kColType + kColBehavior
+                                            + kColThread + kColAlt + kColSpd + kColFuel + 4) | flex,
                 separator(),
                 entityDetail->Render(),
              })
@@ -633,8 +763,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          focusedId = displayedEntities[idx].id;
          detail = buildDetailPanel(displayedEntities[idx], treeMenuMap);
       }
+      // Reconstruido a cada redesenho (barato: dois getters + um ponteiro
+      // capturado, ver app/TerrainQuery.hpp) -- so e CHAMADO de verdade por
+      // renderMap() quando 'mapView.showTerrain' esta ligado.
+      const TerrainSampler terrainSampler{makeTerrainSampler(worldModel)};
       return hbox({
-                renderMap(displayedEntities, mapView, focusedId, mapCanvasBox) | flex,
+                renderMap(displayedEntities, mapView, focusedId, mapCanvasBox, terrainSampler) | flex,
                 separator(),
                 detail,
              })
@@ -659,6 +793,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const Component btnMapTrails{Button(trailsOpt)};
 
+   ButtonOption terrainOpt;
+   terrainOpt.label = "[e] Terreno";
+   terrainOpt.on_click = doMapToggleTerrain;
+   terrainOpt.transform = [&](const EntryState&) {
+      return text(std::string("[e] Terreno: ") + (mapView.showTerrain ? "ON" : "OFF"))
+         | (mapView.showTerrain ? (bgcolor(Color::Blue) | bold) : dim);
+   };
+   const Component btnMapTerrain{Button(terrainOpt)};
+
    ButtonOption perspectiveOpt;
    perspectiveOpt.label = "[v] Vista";
    perspectiveOpt.on_click = doMapTogglePerspective;
@@ -671,7 +814,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component mapButtons{Container::Horizontal({
       btnMapZoomOut, btnMapZoomIn, btnMapRotL, btnMapRotR,
-      btnMapCenter, btnMapTrails, btnMapPerspective,
+      btnMapCenter, btnMapTrails, btnMapTerrain, btnMapPerspective,
    })};
 
    const Component mapBody{Container::Vertical({mapCanvasArea, mapButtons})};
@@ -714,7 +857,16 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       });
    })};
 
-   const Component contentTab{Container::Tab({fleetTab, mapTab, memoryTab}, &activeTab)};
+   // ---- aba "Fundo": o que roda na thread de tempo NAO critico -- painel
+   // estatico, sem lista (ver app/BackgroundPanel.hpp). 'displayedBackground'
+   // e alimentado pelo MESMO Renderer externo que ja alimenta
+   // 'displayedEntities'/'displayedClasses' (ver 'withRenderer' abaixo) --
+   // nao ha necessidade de tomar 'stateMutex' de novo aqui. ----
+   const Component backgroundTab{Renderer([&]() -> Element {
+      return renderBackgroundPanel(displayedBackground) | frame | flex;
+   })};
+
+   const Component contentTab{Container::Tab({fleetTab, mapTab, memoryTab, backgroundTab}, &activeTab)};
 
    // ---- barra de abas e barra de acoes, TODAS clicaveis (Button de
    // verdade), com a dica de atalho ja no rotulo ----
@@ -722,8 +874,27 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnFleet{makeButton("[F1] Players", [&] { gotoTab(0); })};
    const Component btnMap{makeButton("[F2] Mapa", [&] { gotoTab(1); })};
    const Component btnMemory{makeButton("[F3] Memoria", [&] { gotoTab(2); })};
-   const Component btnAccel{makeButton("[+] Acelerar", doAccelerate)};
-   const Component btnDecel{makeButton("[-] Frear", doDecelerate)};
+   const Component btnBackground{makeButton("[F4] Fundo", [&] { gotoTab(3); })};
+
+   // Acelerar/Frear ficam visualmente apagados enquanto bloqueados (ver
+   // 'doAccelerate'/'doDecelerate' acima) -- 'transform' roda a cada
+   // redesenho, entao basta ler 'fastRunToBreakpoint' direto nele.
+   ButtonOption accelOpt;
+   accelOpt.label = "[+] Acelerar";
+   accelOpt.on_click = doAccelerate;
+   accelOpt.transform = [&](const EntryState&) {
+      return text("[+] Acelerar") | (fastRunToBreakpoint.load() ? dim : nothing);
+   };
+   const Component btnAccel{Button(accelOpt)};
+
+   ButtonOption decelOpt;
+   decelOpt.label = "[-] Frear";
+   decelOpt.on_click = doDecelerate;
+   decelOpt.transform = [&](const EntryState&) {
+      return text("[-] Frear") | (fastRunToBreakpoint.load() ? dim : nothing);
+   };
+   const Component btnDecel{Button(decelOpt)};
+
    const Component btnPause{makeButton("[espaco] Pausar", doTogglePause)};
    const Component btnReal{makeButton("[1] Tempo real", doRealTime)};
    const Component btnLoad{makeButton("[l] Carregar", doLoad)};
@@ -732,7 +903,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnQuit{makeButton("[q] Sair", doQuit)};
 
    const Component toolbar{Container::Horizontal({
-      btnFleet, btnMap, btnMemory,
+      btnFleet, btnMap, btnMemory, btnBackground,
       btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
       btnLoad, btnRestart, btnStop, btnQuit,
    })};
@@ -752,6 +923,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
       displayedEntities = snap.entities;
       displayedClasses = snap.classStats;
+      displayedBackground = snap.background;
 
       // So acrescenta ao rastro quando a amostra e REALMENTE nova -- este
       // Renderer roda a cada redesenho, nao so a cada captura nova (uma
@@ -801,7 +973,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
       return vbox({
          renderHeader(snap),
-         hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2)}),
+         hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
+               tabBadge(btnBackground, 3)}),
          separator(),
          contentTab->Render() | flex,
          separator(),
@@ -822,6 +995,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::F1) { gotoTab(0); return true; }
       if (event == Event::F2) { gotoTab(1); return true; }
       if (event == Event::F3) { gotoTab(2); return true; }
+      if (event == Event::F4) { gotoTab(3); return true; }
 
       // Navegacao por seta das listas (Frota/Memoria) -- tratada AQUI, no
       // CatchEvent mais externo, e nao deixada para o ftxui::Menu receber
@@ -941,6 +1115,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          if (event == Event::Character(',')) { doMapRotateLeft(); return true; }
          if (event == Event::Character('.')) { doMapRotateRight(); return true; }
          if (event == Event::Character('t') || event == Event::Character('T')) { doMapToggleTrails(); return true; }
+         if (event == Event::Character('e') || event == Event::Character('E')) { doMapToggleTerrain(); return true; }
          if (event == Event::Character('v') || event == Event::Character('V')) { doMapTogglePerspective(); return true; }
          if (event == Event::Character('c') || event == Event::Character('C')) { doMapCenterOnSelected(); return true; }
       }

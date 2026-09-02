@@ -12,8 +12,12 @@
 # Ele NÃO linka a BehaviorTree.CPP — um modelo não precisa decidir com árvore.
 # Isso também é parte do que se verifica: o contrato não impõe a pilha interna.
 #
-# Ver models/fixtures/stub/CONTRATO.md para as obrigações que este arquivo
+# Ver models/fixtures/stub/docs/CONTRATO.md para as obrigações que este arquivo
 # existe para exercitar.
+#
+# Como todo projeto de modelo deste repositório, este diretório também tem
+# tests/, docs/, Makefile e README.md -- ver o README.md ao lado para o build
+# autocontido (dist/ na raiz DESTE projeto, sem depender do Makefile raiz).
 # ==============================================================================
 project('stub', 'cpp',
     version: '1.0.0',
@@ -29,7 +33,7 @@ mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 sdk_libdir  = sdk_dep.get_variable(pkgconfig: 'libdir')
 
-shared_module('stub',
+stub_lib = shared_module('stub',
     files('src/stub.cpp'),
     cpp_args : [
         '-DMIXR_PLUGIN_PKG_VERSION="' + mixr_dep.version() + '"',
@@ -44,3 +48,14 @@ shared_module('stub',
     install_rpath         : mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..',
     build_rpath           : mixr_libdir + ':' + sdk_libdir,
 )
+
+# A suite de CONTRATO -- nao a suite de comportamento do host (essa e
+# tests/plugin/run_stub_model.py, na raiz, e continua rodando so a partir do
+# Makefile raiz). Esta e local a este projeto: os dois criterios "medidos"
+# que models/README.md §2.3 ja documentava a mao (1 simbolo T exportado, zero
+# dependencia "not found") viram um `meson test` de verdade, sem precisar de
+# gtest -- e por isso o default de -Dtests aqui e so um script, nao uma
+# suite C++.
+if get_option('tests')
+    subdir('tests')
+endif

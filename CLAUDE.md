@@ -839,17 +839,36 @@ models/
 │   ├── configs/flight_tree.xml            # a arvore de comportamento
 │   ├── data/jsbsim/                       # a aeronave (ver abaixo)
 │   ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
-│   └── meson.build      # UMA arvore, DOIS artefatos:
-│                        #   libflight.so     (single-thread)
-│                        #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
+│   ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
+│   ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
+│   ├── README.md
+│   └── meson.build       # UMA arvore, DOIS artefatos:
+│                         #   libflight.so     (single-thread)
+│                         #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
 ├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
 │                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
+│   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md
 └── fixtures/
     └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
-        ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito)
-        └── CONTRATO.md   # ~270 linhas, escritas SO contra o SDK -- o que um modelo
-                           # TEM de fazer
+        ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
+        │                 # ponto de partida copiavel para um modelo novo (models/README.md §2)
+        ├── tests/check_contract.sh   # forma do .so: 1 simbolo T, deps resolvidas
+        ├── docs/CONTRATO.md          # ~270 linhas, escritas SO contra o SDK -- o que
+        │                             # um modelo TEM de fazer
+        ├── Makefile
+        └── README.md
 ```
+
+**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile` e `README.md`.** O `Makefile` de cada
+um é **autocontido**: `cd models/<nome> && make` configura, compila e instala em `./dist` -- a
+raiz DAQUELE projeto, nao a raiz do `poc-mixr` -- sem chamar o Makefile raiz. O unico
+pre-requisito e o SDK que o host publica uma vez (`make configure && make sdk`, na raiz); dai em
+diante cada modelo se basta, e `make install-host` (o unico alvo que escreve fora do `./dist`
+local) sincroniza para `dist/` da raiz, onde os cenarios de producao procuram. O fluxo orquestrado
+da raiz (`make models`, usado por CI e pelo dia a dia) continua sendo a forma canonica de construir
+os tres de uma vez -- o Makefile por projeto e para iterar num modelo so, sem o resto do
+repositorio aberto. Detalhes e as armadilhas de profundidade de caminho:
+`models/README.md` §1.1 e §5.7.
 
 **A duplicação entre as gêmeas foi dissolvida por construção.** Antes eram ~3.100 linhas copiadas
 sustentadas por um teste de guarda; agora é uma árvore só, e a única diferença (o `FlightAgentTC`)
@@ -894,7 +913,7 @@ pelo `Autopilot` nativo — e o dump sai com `bt=--` e `dec=0` **com todos os ou
 
 Duas peças fecham isso:
 
-- **`models/fixtures/stub/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
+- **`models/fixtures/stub/docs/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
 - **`models/fixtures/stub/`** — um modelo de ~270 linhas escrito **só contra o SDK**, sem árvore de
   comportamento e sem uma linha de `domain/`, que registra os mesmos 6 nomes com os mesmos slots.
   O teste `plugin-modelo-estranho` roda o cenário de **produção** contra ele trocando **apenas** o
@@ -1455,6 +1474,377 @@ principal, o card de detalhe ganhou largura dinâmica, e a vista Lateral do mapa
   abaixo do piso, e uma linha SÓLIDA vermelha marca o piso em si quando ele está dentro da janela
   visível atual (`"-1000ft (piso)"`) — não é só a grade que some sem explicação, fica claro ONDE
   e PORQUE ela parou.
+
+**Sexta passada: barra de memória virou Canvas com gradiente, o quadro da árvore ganhou barra de
+título, a linha redundante "arvore: folha atual" saiu do card, `dec=` virou `decisoes`/`thread`
+sempre visíveis, e — a correção mais importante — "[G] velocidade máxima" passou a acelerar a
+simulação de VERDADE, não só o laço do dashboard.**
+
+- **Barra de memória (F3) trocou o `gauge()` simples por um `ftxui::Canvas` com gradiente
+  verde→amarelo→vermelho conforme a fração de `pico` ocupada, MAIS uma marca branca de
+  TENDÊNCIA** (onde `count` estava no início da janela deslizante de ~3s) — dá pra ver não só o
+  nível atual mas se ele subiu ou desceu num relance, sem precisar do gráfico de linha antigo.
+  Suspeita de vazamento força vermelho, independente da fração. `renderMemoryBar()` em
+  `app/MemoryPanel.cpp`; as colunas de texto (`count=`/`pico=`/`criados=`) continuam intactas ao
+  lado, pedido explícito de manter.
+- **O quadro da árvore de BT ganhou a MESMA barra de título do card de detalhe do player**
+  (`" Arvore de Comportamento "` em `bold`+`bgcolor(Blue)`, separador, depois o `Menu` da árvore
+  e o status/botões de breakpoint por baixo, tudo dentro de UM `border` só) — antes era só uma
+  lista solta, sem o mesmo tratamento visual do card acima dela.
+- **A linha "arvore: folha atual" saiu do card do player** (`app/FleetPanel.cpp`,
+  `renderEntityDetail()`) — informação redundante com o próprio quadro da árvore logo abaixo, que
+  já destaca a folha ativa (`bgcolor(Blue)`). Pedido explícito, por ser duplicado.
+- **`dec=`/`thr=` (quando presente) virou uma linha SEMPRE visível `decisoes N   thread T`**, em
+  vez de aparecer condicionalmente e com nome abreviado. Resposta à pergunta "o que significa
+  `dec=`?": é a contagem de decisões ATUADAS por aquele player (via `shared/xboard::Readout`,
+  incrementado em `FlightAction::execute()`) — não confundir com `frame=`, que é o passo de
+  simulação; ver a nota já existente na suíte de testes ("`dec=` avanca na MESMA TAXA que `frame`
+  entre dumps consecutivos", não necessariamente igual em valor absoluto).
+- **Bug real encontrado ao medir a velocidade "factual" pedida na rodada anterior: "[G] modo
+  máxima velocidade" não acelerava a simulação de verdade.** `fastRunToBreakpoint` só fazia
+  `simThread` pular o PRÓPRIO `msleep()` de pacing — mas quem manda no ritmo real da simulação é
+  o pool de tempo crítico NATIVO, numa thread própria criada uma vez em
+  `station->createTimeCriticalProcess()` (`StationTcPeriodicThread`, native, rodando sozinha a
+  `tcRate` Hz) chamando `Station::processTimeCriticalTasks()`, que faz
+  `for (jj=0; jj<getFastForwardRate(); jj++) tcFrame(dt);` — `getFastForwardRate()` só muda via
+  `ClockStation::setTimeScale()`. Rodar `simThread` sem dormir só fazia `updateData()`/captura de
+  estado/checagem de breakpoint acontecerem mais vezes por segundo (útil para detectar o hit mais
+  cedo), mas **não** fazia o mundo simulado avançar mais rápido — confirmado medindo: com o
+  breakpoint armado sobre `timeScale` nominal 1x, o cabeçalho mostrava honestamente
+  "MAX (~1x real)" (a medição estava certa; a FUNCIONALIDADE que faltava era acelerar o
+  `ClockStation` junto). Corrigido: `Breakpoint` ganhou `restoreTimeScale`; `doArmBreakpoint(true)`
+  agora também crava `clockStation->setTimeScale(kLadder[kLadderSize-1])` (topo da escada, 64x —
+  reaproveitando o mesmo teto já usado por `+`, não um número novo), guardando o valor nominal de
+  antes em `bp.restoreTimeScale`; os três caminhos de saída do modo rápido (hit, timeout de 300s
+  simulados, cancelamento manual) restauram esse valor. Medido rodando: sim avançou de 5,4s para
+  quase 300s em ~7s de parede real (fator ~44-49x, batendo com o teto da escada, contra ~1x antes
+  do fix) até vencer o timeout (alvo `FuelLow`, que não dispara cedo com 68% de combustível) e
+  voltar sozinho para `1x` nominal.
+- **`+`/`-` continuam bloqueados enquanto `fastRunToBreakpoint` está ligado** (mecanismo já
+  existente, inalterado nesta rodada) — a diferença é que agora o valor que eles ficariam
+  bloqueados de mexer é o de VERDADE (64x), não um nominal que não fazia diferença nenhuma.
+
+**Sétima passada: a coluna de thread saiu do card de detalhe (fica só na lista, F1) e a lista
+ganhou cabeçalho nomeando cada coluna — o que expôs (e corrigiu) um estouro de largura latente
+que já cortava conteúdo em silêncio antes mesmo desta rodada.**
+
+- **`thread` saiu de `renderEntityDetail()`** (`app/FleetPanel.cpp`) — a informação já vive na
+  lista (`renderEntityRow()`, coluna própria desde a quinta passada); repetir no card era
+  redundante, e o pedido foi mover, não duplicar. O card agora mostra só `decisoes N`.
+- **`renderEntityListHeader()` (novo, `app/FleetPanel.cpp`/`.hpp`)** — uma linha de rótulos
+  (`nome`/`tipo`/`bt`/`thread`/`altitude`/`vel(kt)`/`combust.`) nos MESMOS `size(WIDTH, EQUAL,
+  kCol*)` de `renderEntityRow()`, desenhada uma vez, FORA do `ftxui::Menu` (que rola) — fica fixa
+  no topo da aba Players, `separator()` embaixo. Responde à pergunta "o que é essa coluna": antes
+  a coluna de thread (`T0`/`-`) não tinha nome nenhum na lista, só no card (que agora nem mostra
+  mais).
+- **Bug real encontrado ao escrever o cabeçalho, não relacionado ao pedido em si: a soma das
+  colunas (badge+nome+tipo+bt+thread+altitude+vel+combust = 70) já excedia o
+  `size(WIDTH, LESS_THAN, 60)` que envolve a lista inteira** — com valores de dado curtos
+  (`"-"`, `"68%"`) o estouro nunca aparecia como erro visível, só apertava as ULTIMAS colunas em
+  silêncio; o cabeçalho, com rótulos mais compridos (`"vel(kt)"`, `"combust."`), expôs isso na
+  hora: colunas coladas sem espaço nenhum entre si (`"threadaltitude"`, `"vel(kt)combust"`).
+  Medido byte a byte (`pyte`, char a char) antes de mexer em qualquer coisa, pra não caçar
+  fantasma. Descoberta uma segunda vítima do MESMO estouro, pré-existente e muda até aqui: o
+  badge de tipo (`" A "`, `majorTypeGlyph()`+`bgcolor`) das linhas de DADO também estava sendo
+  cortado — nenhuma aeronave mostrava o glifo `A` antes do nome, em terminal nenhum, desde que a
+  lista existe. Corrigido widening o limite pra caber a soma de verdade (`kColBadge + ... +
+  kColFuel + 4`, calculado a partir das MESMAS constantes de `FleetPanel.hpp`, não um número
+  solto) e `kColThread` de 6 para 7 (a palavra "thread" tem 6 letras — exatamente a largura
+  antiga, sem sobrar 1 caractere de respiro pro próximo campo). Confirmado rodando: badge `A`
+  volta a aparecer em toda linha, cabeçalho e dados alinham coluna a coluna.
+
+**Oitava passada: a coluna de thread agora reporta um valor de verdade (não mais sempre "-"),
+o termo "dashboard" saiu de toda a interface de terminal, e a tela de selecão de cenário ganhou
+tamanho fixo — não pula mais de layout ao navegar entre as opções.**
+
+- **`thread` sempre "-" não era so falta de destaque — era falta de DADO.** Investigado antes de
+  mexer: `shared/xboard::Board.hpp::threadTag` só é escrito em UM lugar do modelo,
+  `models/flight/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
+  pela `multi-thread`) — o caminho que este `app` usa (o mesmo `SimAgent` nativo da
+  `single-thread`, decidindo no laço de background) nunca escrevia nada ali, então o campo ficava
+  preso em `-1` ("-") pra sempre; não por já ser a "resposta certa" e sim por ninguém contar.
+  Corrigido no ÚNICO ponto de atuação comum aos dois agentes,
+  `models/flight/src/ubf/FlightAction.cpp::execute()` (onde `xboard::setBehaviorLabel()`/
+  `bumpDecisionCount()` já rodavam para os dois caminhos): mais uma linha,
+  `xboard::setThreadTag(player->getID(), threadTag())` (`xnative::ThreadTag.hpp`, cache
+  `thread_local` por thread do SO, já existia, só nunca tinha sido chamada fora do
+  `FlightAgentTC`). Resultado, medido rodando: os 4 falcons (que decidem na MESMA thread de
+  background) agora mostram `T0` — a mesma tag pros quatro, resposta honesta de que realmente
+  decidem juntos na mesma thread — e o `bandit1` (fantasma DIS, sem `dynamicsModel`/pilot local,
+  nunca chama `FlightAction::execute()`) continua em `-`, também honesto: ele não decide nada
+  localmente. Redundante mas inofensivo pra `FlightAgentTC` (que já escrevia o mesmo valor um
+  passo antes) — não foi removido de lá pra não arriscar `lastThreadTag`/testes que já lêem esse
+  membro. Precisou rebuildar o PLUGIN (`make models`), não o host — o campo é do modelo.
+- **`app/src/app/DashboardLoop.cpp`**: o badge do cabeçalho principal, `text(" dashboard ")`,
+  virou `text(" app ")` — o nome público do binário/pasta desde a quinta passada, nunca
+  atualizado na PRÓPRIA interface até agora. **`app/src/app/ScenarioPickerScreen.cpp`**: o título
+  da tela de seleção, `"dashboard -- selecione um cenario"`, virou só `"selecione um cenario"`
+  (o "app --" já é redundante com o contexto da tela). `grep -rn '"dashboard'` em `app/src`/
+  `app/include` confirma zero string literal visível restante (as classes/arquivos internos —
+  `DashboardLoop`, `DashboardState`, `runDashboard`... — continuam com esse nome, por ser
+  invisível de fora; ver a quinta passada).
+- **A tela de seleção "pulava" de tamanho ao navegar** porque usava `size(WIDTH, GREATER_THAN,
+  60)`/`size(HEIGHT, GREATER_THAN, 16)` — um MÍNIMO, não um valor fixo — envolvendo um
+  `paragraphAlignLeft(desc)` sem altura reservada: as três descrições do catálogo
+  (`ScenarioCatalog.cpp`) têm comprimentos diferentes (76/77/80 caracteres) e quebravam em 1 ou 2
+  linhas dependendo de QUAL estava selecionada, esticando/encolhendo (e recentralizando, por
+  causa do `center`) a caixa inteira a cada seta. Corrigido com três constantes fixas
+  (`kPickerWidth=76`, `kPickerDescLines=2`, `kPickerHeight=12` — a soma exata de
+  título+separador+menu(3)+separador+descrição(2)+separador+rodapé+borda) e `size(..., EQUAL,
+  ...)` no lugar de `GREATER_THAN`, tanto no box externo quanto no bloco da descrição
+  especificamente. Confirmado rodando: borda no MESMO lugar, MESMA altura total (12 linhas), nas
+  três opções — a descrição mais longa (80 caracteres, "Intercepto + Missil") ainda cabe
+  confortavelmente em 2 linhas na largura escolhida.
+- **Achado incidental, fora do pedido, registrado e NÃO corrigido**: em terminal mais estreito
+  (100 colunas — comum), o cabeçalho/lista da aba Players volta a mostrar o mesmo tipo de
+  aperto de colunas corrigido na sétima passada, porque `detailPanelWidth` reserva espaço como se
+  o canvas do Mapa (`kMapCanvasWidthCells=120`) estivesse sempre visível, mesmo na aba Players —
+  decisão EXPLÍCITA de uma passada anterior ("mesma largura nas duas abas"). Mudar essa política
+  agora contradiria aquele pedido; registrado aqui caso vire pedido explícito no futuro.
+
+**Nona passada: o mapa perdeu a moldura do rótulo (só a linha guia + texto ficaram), `app` passou
+a decidir em MULTITHREAD de verdade (trocou de pilha `single-thread` para `multi-thread`), e
+ganhou uma quarta aba mostrando o que roda na thread de tempo NÃO crítico.**
+
+- **`drawLabelCallout()` perdeu a moldura** (`app/MapPanel.cpp`) — pedido explícito ("remova o
+  quadro ao redor do nome"). Ficaram só a bolinha, a linha guia (do ponto até o início do texto) e
+  o `DrawText` em si; as quatro chamadas de `DrawPointLine` que desenhavam a borda saíram.
+- **A pergunta "todos os players estão na mesma thread, isso está certo?" tinha resposta
+  técnica: sim, e por design — mas não era o design que se queria.** Investigado antes de mexer:
+  este `app` sempre usou a MESMA pilha nativa da `single-thread` (`libflight.so`, `( SimAgent )`
+  nativo na `Station`, decidindo os 4 falcons em SEQUÊNCIA no laço de background) — a oitava
+  passada só tinha corrigido o SINTOMA (a coluna "thread" virou de "sempre -" pra "sempre T0",
+  porque agora alguém escrevia o valor, mas o valor era sempre o mesmo porque so havia UMA
+  thread decidindo). "Quero que seja multithread" pedia trocar a pilha inteira para o padrão da
+  `multi-thread`: agente `( FlightAgentTC )` DENTRO de cada player (não `( SimAgent )` na
+  Station), decidindo na FASE 3 do frame de tempo crítico — aí sim um por thread do pool.
+  - **Migração mecânica dos três `.epp.in`** (`app/configs/scenario_{patrol,intercept,
+    intercept_missile}.epp.in`) via script Python de uso único (não versionado — descartado após
+    o uso): troca `file: "libflight.so"` → `"libflight_tc.so"` e acrescenta `FlightAgentTC` ao
+    `provides:`; remove os quatro blocos `agentN: ( SimAgent actorPlayerName: falconN ... )` de
+    dentro de `components:` da `Station`; injeta `agent: ( FlightAgentTC state: ... behavior:
+    ... )` como o ÚLTIMO componente de cada `falconN: ( Aircraft ... components: { ... } )` —
+    mesma ordem/motivo já documentado na seção `src/multi-thread` deste arquivo (fase 3 roda
+    `Autopilot`/`AirTrkMgr`/decisão nessa ordem; decidir por último já vê as pistas atualizadas
+    deste frame). O script usa casamento de parênteses "de verdade" (ignora `//` e `"..."` ao
+    contar profundidade) — não regex ingênuo — porque o conteúdo de `state:`/`behavior:` de cada
+    agente é grande e tem parênteses aninhados profundos. Conferido com um contador de
+    balanceamento `(`/`)`/`{`/`}` no arquivo inteiro (ignorando comentário/string) antes de
+    aplicar nos arquivos de verdade — os três saíram `(0, 0)`.
+  - **`bandit1` NÃO ganhou `agent:`** — ele já não tinha `( SimAgent )` nenhum antes (é um
+    intruso scriptado, só `Autopilot`), então continua sem decidir, e a coluna "thread" dele
+    continua `-` — resposta certa, não regressão.
+  - **No cenário do míssil, `agent:` entra DEPOIS de `stores:`** (o `GuidedMissile` de
+    `falcon1`) — a migração preserva a ordem "agente é o ÚLTIMO componente", com `stores:` ainda
+    antes dele; conferido lendo o arquivo migrado.
+  - Cabeçalhos dos três `.epp.in` que citavam `src/single-thread`/`SimAgent`/`libflight.so` como
+    a pilha de referência foram corrigidos para `src/multi-thread`/`FlightAgentTC`/
+    `libflight_tc.so`.
+  - **Medido rodando (execução direta, não interativa — `timeout 3 ./build/app/src/app -scenario
+    intercept`, redirecionado a arquivo): os 4 falcons saem `T3`, `T0`, `T1`, `T2`** — quatro
+    threads DIFERENTES do pool, confirmando que a decisão migrou de verdade pro pool de tempo
+    crítico. `bandit1` segue `-`.
+  - `make test` segue 23/24 (só a falha pré-existente `onde-a-decisao-roda`, não relacionada) —
+    `scenario-app-*` cobre os três cenários migrados rodando de ponta a ponta em
+    `-deterministic`.
+- **Quarta aba, "Fundo" (F4)** — "informações das coisas que rodam na thread de tempo NAO
+  critico". Achado ao investigar: este `app` NUNCA chama
+  `station->createBackgroundProcess()` (a `StationBgPeriodicThread` nativa) — quem faz esse
+  papel é o PRÓPRIO laço de `simThread` em `DashboardLoop.cpp`, chamando
+  `station->updateData(dt)` fora do frame de tempo crítico (o mesmo padrão desde a primeira
+  versão do dashboard). A aba nova é literalmente "o que esse laço faz", medido nele mesmo:
+  - **`app::BackgroundInfo`** (novo, `DashboardState.hpp`) — `targetHz`/`measuredHz` (taxa
+    MEDIDA de verdade, janela de ~0.5s, mesmo desenho de `measuredActualTimeScale` da sexta
+    passada) / `lastIterationMs` / `iterationCount`; `tacviewEnabled` + `radarScanPushCount`
+    (contador cumulativo, incrementado a cada `tacviewOutput->updateRadarScan()`);
+    `terrainLoaded` (`WorldModel::getTerrain() != nullptr` — só a versão CONST é pública,
+    `getTerrain()` não-const é `protected`); `networkHandlerCount`/`networkRateHz`
+    (`Station::getNetworks()->entries()`/`getNetworkRate()` — 0/vazio nos três cenários deste
+    `app`, que são herméticos de propósito, mas o dado é lido de verdade, não fixado).
+  - **`captureState()` ganhou um parâmetro `Station*`** (único call site, `DashboardLoop.cpp`) —
+    só pra alcançar `getNetworks()`/`getNetworkRate()`, que são da `Station`, não do
+    `WorldModel` (terreno já é do `WorldModel`, não precisou do parametro novo).
+  - **`app/BackgroundPanel.{hpp,cpp}` (novo)** — painel ESTÁTICO (sem `Menu`, ao contrário das
+    outras três abas — não há "lista" aqui, só contadores/taxas), registrado em
+    `app/src/meson.build`. Verificado ISOLADAMENTE (sem depender do dashboard inteiro nem de
+    pty/TTY): um `main.cpp` descartável linkando só `BackgroundPanel.cpp` + FTXUI, construindo
+    um `BackgroundInfo` sintético e imprimindo `ftxui::Screen::ToString()` — confirma o layout
+    (título, quatro seções, cores por limiar) sem precisar de terminal interativo nenhum.
+  - **Aba SEM `Menu`** (diferente de Players/Mapa/Memória) — `Container::Tab` aceita qualquer
+    `Component`, e um `Renderer` puro (sem filho algum) é um `Component` válido; não precisou
+    inventar nada novo na infraestrutura de abas.
+  - Wiring idêntico ao padrão já estabelecido pelas outras três abas: `btnBackground` (`"[F4]
+    Fundo"`), entrada em `contentTab` (`Container::Tab`), badge no rodapé, tecla `Event::F4` no
+    `CatchEvent` mais externo — nenhum mecanismo novo, só mais uma instância do que já existia.
+
+**Décima passada: vista de terreno (elevação) na aba Mapa, de cima e de lado, com liga/desliga
+(`[e]`) — reaproveitando 100% de API nativa do MIXR, nenhuma linha de imagem/heightmap própria.**
+
+- **A peça que faltava era só a PONTE, não o dado.** `mixr::terrain::Terrain::getElevation(lat,
+  lon)` já existe (o mesmo mecanismo que `Player::updateElevation()` usa, documentado na seção
+  "Terreno" deste arquivo) — o que faltava era converter o referencial deste app (N/E em metros,
+  relativo ao pan) para lat/lon, que é o único jeito de consultar o banco. Resolvido com
+  `mixr::base::nav::convertPosVec2llE(refLat, refLon, Vec3d(northM, eastM, 0), &lat, &lon, &alt)`
+  — utilitário nativo de projeção plana, já linkado via `mixr_dep`, nunca usado neste repositório
+  até agora.
+- **`app/TerrainQuery.{hpp,cpp}` (novo, par de arquivos pequeno)** — `makeTerrainSampler
+  (WorldModel*)` devolve um `std::function<bool(northM, eastM, double& elevM)>` (`TerrainSampler`)
+  capturando o `Terrain*` e a lat/lon de referência UMA vez; `{}` (vazio, falso em bool) se o
+  cenário não tiver terreno carregado. Existe para manter `app/MapPanel.cpp` "puro" (o próprio
+  cabeçalho do arquivo já dizia isso antes desta rodada) — `MapPanel.cpp` continua sem incluir
+  nenhum header do MIXR além do que já incluía; só recebe a função pronta pra chamar.
+- **`renderMap()` ganhou um parâmetro `const TerrainSampler&`** — chamado só quando
+  `view.showTerrain` está ligado (`MapViewState::showTerrain`, novo, default `false`: nem todo
+  cenário tem terreno, e o sombreamento compete visualmente com entidades quando não é o que se
+  quer ver). `DashboardLoop.cpp` reconstrói o sampler a cada redesenho
+  (`makeTerrainSampler(worldModel)`) — barato (dois getters + um ponteiro capturado), evita
+  guardar estado extra.
+- **Duas rotinas de projeção NOVAS, inversas de `project()` já existente** —
+  `worldFromCanvasTopDown()`/`worldFromCanvasLateral()` (`MapPanel.cpp`): dado um pixel do
+  canvas, devolvem o ponto do mundo (N/E) que ele representa. TopDown desfaz a MESMA rotação de
+  `viewYawDeg` que `project()` aplica (rotação inversa, `R(-yaw)` em vez de `R(+yaw)`); Lateral
+  simplifica pra uma reta (só a coluna importa — o perfil mostrado é o do chão ao longo da linha
+  de visada que passa pelo pan, profundidade zero).
+- **Não usa `Terrain::getMinElevation()`/`getMaxElevation()`** — a seção "Terreno" deste arquivo
+  já documenta que esses dois estão ERRADOS no `SrtmHgtFile` (refletem só a última linha lida).
+  `elevationColor()` normaliza pelo min/max da PRÓPRIA amostra em tela (calculado num primeiro
+  passo, antes de desenhar) — vantagem de quebra: a escala de cor se ajusta sozinha ao dar
+  zoom/arrastar, em vez de ficar presa a um range fixo (ou errado) do banco inteiro.
+- **Refeito na mesma rodada, a pedido explícito** ("visto de cima, eu quero curvas de nível e
+  visto de lado, eu quero uma linha do contorno") — a primeira versão desenhava um sombreamento
+  PREENCHIDO nas duas perspectivas (grade de círculos coloridos por elevação no TopDown, silhueta
+  preenchida até a base no Lateral); o pedido era por LINHAS, não área preenchida. Trocado sem
+  tocar a ponte com o MIXR (`TerrainQuery.cpp`, `worldFromCanvasTopDown/Lateral()`,
+  `elevationColor()` — todos continuam do jeito documentado acima), só a forma final de desenhar.
+- **TopDown: CURVAS DE NÍVEL de verdade.** `contourIntervalFor(minM, maxM)` escolhe um intervalo
+  "redondo" (5/10/20/25/50/100/200/250/500/1000/2000/2500/5000 m, o primeiro que cobre
+  `range/8`) — mesma lógica de um mapa topográfico de papel escolher a equidistância conforme a
+  escala, não um número fixo arbitrário. Cada ponto de um grid fino
+  (`kTerrainGridStepPx=3px` — perto da resolução do próprio canvas de braille) é quantizado numa
+  FAIXA (`floor(elev/intervalo)`); um ponto é marcado como "em cima de uma curva" quando a faixa
+  do vizinho da direita OU de baixo é DIFERENTE — é a fronteira entre duas faixas, ou seja, uma
+  curva de nível. É detecção de borda por comparação de faixa, não *marching squares* de verdade
+  (não interpola o cruzamento exato entre os dois pontos) — mas no passo fino usado aqui o
+  resultado já sai como linha contínua a olho (confirmado na verificação abaixo: anéis
+  concêntricos nitidamente reconhecíveis, não uma nuvem de pontos soltos).
+  **Lateral: LINHA DE CONTORNO aberta** — a mesma amostra por coluna de antes (passo 2px), mas
+  agora ligada em sequência por `DrawPointLine` (um segmento por par de colunas vizinhas) em vez
+  de `DrawBlockLine` até a base — vira uma silhueta ABERTA (só o traço do chão), não mais uma
+  área preenchida. Terreno continua desenhado ANTES de grade/entidades (fica por baixo).
+- **Custo por redesenho**: TopDown subiu de ~800 para ~3200 consultas (grid 80×40 no passo de
+  3px, contra o grid de 6px de antes) — ainda desprezível: `getElevation()` é indexação de array
+  já carregado em memória (não I/O por chamada), mesmo a ~10 redesenhos/s. Lateral não mudou
+  (~120 consultas, passo 2px). Não medido com profiler formal, mas nenhuma lentidão perceptível
+  na verificação isolada abaixo.
+- **Verificado ISOLADAMENTE, sem depender de terreno de verdade nem de pty/TTY** (mesmo método
+  já usado pra validar a primeira versão, repetido depois da reescrita): um `main.cpp`
+  descartável linkando `MapPanel.cpp`+`FleetPanel.cpp` de verdade (não uma reimplementação),
+  passando um `TerrainSampler` SINTÉTICO (uma função gaussiana simples, sem tocar
+  `TerrainQuery.cpp`/MIXR) e chamando `renderMap()` com `showTerrain=true` nas duas
+  perspectivas, imprimindo via `ftxui::Screen::ToString()`. Confirmado: TopDown mostra anéis de
+  curva de nível concêntricos ao redor do pico sintético, com grade/rótulo/entidade sobrepostos
+  corretamente por cima; Lateral
+  mostra o TRAÇO (linha aberta, não mais preenchido) do perfil de uma "colina" com o pico no
+  lugar certo, composto corretamente com a linha do piso (-1000 ft) por baixo. `TerrainQuery.cpp`
+  (a parte que fala com o MIXR de verdade)
+  syntax-checked à parte contra os headers reais (`Terrain.hpp`/`nav_utils.hpp`/`WorldModel.hpp`)
+  — risco baixo, é só três chamadas de API já documentada.
+- Os três cenários deste `app` já carregavam `terrain: ( SrtmHgtFile ... )` desde a seção
+  "Terreno" original deste arquivo — a feature funciona nos três sem nenhuma mudança de EDL.
+- `make test` segue 23/24 (só a falha pré-existente `onde-a-decisao-roda`).
+
+**Décima primeira passada: três ajustes finos na vista de terreno (piso vermelho no lugar do
+threshold fixo, curvas de nível sem cor/mais espaçadas, rótulo cortado corrigido) e — o pedido
+maior da rodada — o Mapa passou a carregar MÚLTIPLOS tiles SRTM, não só o do cenário.**
+
+- **Rótulo "y: alt(ft)" cortado**: `Canvas::DrawText` anda 2px POR CARACTERE (confirmado lendo
+  `canvas.cpp`) — a string (10 caracteres, 20px) estava posicionada em `kCanvasW - 14`, estourando
+  6px além da borda; `IsIn()` descarta em silêncio os glifos fora do canvas, cortando o final
+  ("ft)"). Corrigido para `kCanvasW - 24`, mesma folga (~4px) que "x/y (NM)" já usa no TopDown.
+- **Piso fixo de -1000 ft REMOVIDO da vista Lateral** (pedido explícito: "o nível do terreno deve
+  aparecer em vermelho... substituindo o threshold de 1000fts") — a grade de altitude não corta
+  mais em nenhum limiar (`kMapAltitudeFloorFt` saiu inteiramente); quem marca "onde é o chão" agora
+  é a própria linha de contorno do terreno (`drawTerrain()`, perspectiva Lateral), sempre em
+  `Color::Red` no lugar do gradiente por elevação de antes. Sem terreno carregado, a grade
+  simplesmente não tem marca de chão nenhuma — não há mais piso arbitrário pra cair de volta.
+- **TopDown: curvas de nível SEM COR, mais finas, mais espaçadas** (pedido explícito) —
+  `elevationColor()` (o gradiente hipsométrico) saiu inteiramente (ficou órfão depois dessa
+  troca, removido); as curvas usam `Color::GrayDark` fixo. `DrawPointCircleFilled(raio 1)` virou
+  `DrawPoint` (1px de verdade, não mais um disco de ~5px) — mais fina. `contourIntervalFor()`
+  passou de `range/8` pra `range/4` — metade das curvas, o dobro do espaçamento entre elas.
+- **O pedido maior: "complete a aplicação com todos os dados de elevação da américa do sul".**
+  Investigado antes de prometer qualquer coisa: cobertura real da América do Sul em SRTM1 é
+  centenas de tiles, vários GB — ordens de grandeza acima do único tile de ~12 MB que este repo
+  vendoriza hoje (escolha deliberada, documentada na seção "Terreno" acima). Perguntado ao
+  usuário como abordar (AskUserQuestion) — escolhida a opção **"infraestrutura multi-tile, poucos
+  tiles de exemplo"**: construir o MECANISMO de verdade, sem tentar (e falhar silenciosamente,
+  ou prometer e não entregar) baixar o continente inteiro.
+  - **Fonte oficial da NASA para SRTM1 hoje exige login** — verificado via busca antes de tentar
+    qualquer download (não adivinhar/inventar URL): `dwtkns.com/srtm30m` confirma "As of 2026,
+    NASA distributes SRTM via the Earthdata Cloud"; o antigo espelho sem login
+    (`dds.cr.usgs.gov`) redireciona pra lá. Nenhuma fonte sem cadastro encontrada que sirva
+    `.hgt` no formato binário EXATO que `SrtmHgtFile` exige (int16 big-endian, tamanho em bytes
+    validado). CGIAR-CSI é aberto mas em GeoTIFF/ASCII Grid, formato incompatível sem conversão.
+  - **Três tiles vizinhos SINTÉTICOS foram gerados e vendorizados no lugar de dado real** —
+    `S22W043`/`S23W044`/`S22W044` (norte/oeste/noroeste do `S23W043` real), SRTM3 (1201×1201,
+    não SRTM1 — resolução menor de propósito, pra não fingir precisão que o dado não tem, E pra
+    manter o repo pequeno: ~1,9 MB cada `.gz` contra ~14 MB que sairia em SRTM1). Gerados por
+    `elevationAt(lat, lon)` — soma de senos de poucas frequências, função PURA de lat/lon
+    ABSOLUTOS (não por-tile) — dois tiles quaisquer gerados por ela saem automaticamente
+    contínuos na fronteira compartilhada, sem nenhum código de *stitching*. Faixa de saída
+    (0–1800 m) escolhida pra não destoar do tile real vizinho (medido: 0–1960 m). **Documentado
+    como SINTÉTICO, não real, em três lugares** — `shared/data/terrain/srtm/README.md` (novo),
+    o comentário do script gerador (não versionado — descartado depois do uso, receita registrada
+    aqui pra quem quiser refazer), e este parágrafo — pra ninguém confundir com elevação de
+    verdade depois.
+  - **`app/TerrainQuery.cpp` reescrito**: não lê mais só `WorldModel::getTerrain()` (o UM tile
+    que o cenário declara em EDL) — `tileRepository()` (cache `static` local, carregado uma vez)
+    escaneia `shared/data/terrain/srtm/` inteiro, carrega TODO `.hgt` válido
+    (`new mixr::terrain::SrtmHgtFile()` + `setPathname()`/`setFilename()` + `reset()`, em C++
+    puro — sem EDL, sem `Station`) e guarda `{swLat, swLon, Terrain*}` por tile — o canto SW
+    vem do NOME do arquivo (mesma convenção de 11 caracteres que `SrtmHgtFile::
+    determineSrtmInfo()` usa por dentro, replicada aqui só pra ESCOLHER qual tile responde a uma
+    consulta, não pra ler o arquivo). O sampler devolvido por `makeTerrainSampler()` varre os
+    tiles carregados e usa o primeiro cuja caixa 1×1 grau contém o ponto — fora de todos, `false`
+    (honesto, não inventa elevação). O `terrain:` que o EDL do cenário declara CONTINUA existindo
+    e intocado — é o que `Player::updateElevation()` nativo usa pro anti-CFIT; esta mudança é só
+    do lado da VISUALIZAÇÃO no Mapa, um caminho totalmente separado.
+  - **Armadilha do `base::safe_ptr<T>` num `std::vector`**: a primeira tentativa guardava
+    `safe_ptr<Terrain>` dentro do `struct LoadedTile` armazenado num `std::vector` — não
+    compilou: `safe_ptr`'s o construtor de cópia pede `safe_ptr<T>&` NÃO-const (não aceita
+    rvalue) e não há construtor de mover, então `std::vector::push_back` (que precisa mover ou
+    copiar pra crescer/realocar) falha em tempo de compilação. Trocado por um ponteiro CRU —
+    seguro aqui porque `tileRepository()` é um cache de vida INTEIRA do processo (carregado uma
+    vez, nunca esvaziado até sair): o refcount 1 de `new` basta, não há `unref()` de volta, o SO
+    recupera tudo na saída.
+  - **`Terrain::setFilename()`/`setPathname()` fazem `ref()` no ponteiro recebido e RETÊM** —
+    confirmado lendo o fonte (`Terrain.cpp`) antes de escrever qualquer coisa: passar um
+    `base::String` alocado na PILHA seria um ponteiro pendurado assim que a função retornasse
+    (LOAD_DATA/reset() acontece na mesma chamada, mas o objeto `Terrain` continua guardando o
+    ponteiro depois). Corrigido com o padrão já usado no resto do repo (`FlightAction.cpp`, o
+    míssil): `new base::String(...)`, passa pro setter (que dá `ref()`, incrementando pra 2), e
+    `unref()` a própria referência logo em seguida (volta pra 1, agora possuída só pelo
+    `Terrain`).
+  - **`app/TerrainData.{hpp,cpp}` ganhou `ensureAllTerrainTiles(dir)`** — generaliza a
+    descompactação (armadilha 1 já documentada: `SrtmHgtFile` não lê `.gz`) pra QUALQUER
+    `.hgt.gz` do diretório, não só o tile do EDL. Deliberadamente TOLERANTE (ao contrário de
+    `ensureTerrainData()`, que derruba o processo se o tile OBRIGATÓRIO falhar): um tile extra
+    corrompido só vira aviso, nunca aborta — não é a condição de contorno que o cenário exige
+    pra rodar. Chamado em `main.cpp` logo depois de `ensureTerrainData()`. Acrescentar cobertura
+    depois é só soltar mais `.hgt.gz` na pasta — nenhuma mudança de código necessária (o
+    `README.md` da pasta documenta isso).
+  - **Verificado ISOLADAMENTE, ponta a ponta, com código de PRODUÇÃO de verdade (não mockado)**:
+    um `main.cpp` descartável, com uma subclasse mínima só pra reexpor
+    `WorldModel::setRefLatitude/Longitude` (`protected`, a EDL os alcança pelos slots privados;
+    aqui bastou uma classe filha com `using`), chamando `app::makeTerrainSampler()` de verdade
+    contra os 4 tiles reais (o `S23W043` real + os 3 sintéticos, gerados e copiados pro lugar
+    certo antes do teste). Cinco pontos testados: perto do ref (achou no tile REAL, elevação
+    plausível ~905 m); ~40 km norte/oeste/noroeste (achou cada um no tile SINTÉTICO certo,
+    confirmando que a escolha por caixa geográfica roteia certo); ~300 km ao sul (fora dos 4
+    tiles carregados — `found=false`, honesto, sem inventar). Depois do teste, rodado o `app`
+    de verdade (execução direta não-interativa) confirmando que os 4 `.hgt.gz` descompactam
+    sozinhos na primeira execução, sem erro/aviso.
+  - `make test` segue 23/24 (só a falha pré-existente).
 
 ## Estado atual / pendências conhecidas
 

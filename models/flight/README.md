@@ -38,10 +38,32 @@ xnative/    classes MIXR          MIXR + ubf/                     ← 9 testes, 
 Era a única diferença entre as duas cópias que existiam antes — ~3.100 linhas duplicadas
 sustentadas por um teste de guarda. Agora é um `#ifdef`.
 
+## Build autocontido
+
+Este diretório também tem um `Makefile` próprio, independente do Makefile da raiz do `poc-mixr` —
+útil para abrir o VS Code só aqui e iterar sem levantar o host inteiro:
+
+```bash
+# uma vez, na raiz do poc-mixr:
+cd ../.. && make configure && make sdk
+
+# daqui em diante, so aqui dentro:
+cd models/flight
+make                 # -> ./dist/lib/mixr-plugins/{libflight,libflight_tc}.so + ./dist/share/...
+make test            # domain + tree + native, neste build isolado
+make install-host    # sincroniza ./dist para a raiz do poc-mixr (a UNICA escrita fora daqui)
+```
+
+`make help` lista os alvos. O fluxo de produção/CI continua sendo o Makefile da raiz (`make
+models`, que constrói **os três** modelos de uma vez) — este é só para iterar neste modelo
+sozinho. Ver [models/fixtures/stub/README.md](../fixtures/stub/README.md) para o "porquê" de
+`install-host` ser o único alvo que escreve fora de `./dist`.
+
 ## Testes
 
 ```bash
-make test-models        # domain (47) + tree (20) + native (9) = 76 casos, ~1 s
+make test-models        # domain (47) + tree (20) + native (9) = 76 casos, ~1 s -- via o Makefile da raiz
+make test                                                                       # via este Makefile
 ```
 
 Nenhuma das três levanta `Station`. A camada `native` linka o MIXR (as outras duas não) e testa a
@@ -57,3 +79,10 @@ varredura, pela checagem do `.acmi` no teste do stub.
 
 O [README da single-thread](../../src/single-thread/README.md) descreve este modelo peça por peça —
 seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
+
+## Ler também
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — calibração do c310, armadilhas confirmadas
+  específicas deste modelo
+- [../README.md](../README.md) — visão geral de `models/`, o contrato de plugin, e o build
+  orquestrado pelo Makefile da raiz

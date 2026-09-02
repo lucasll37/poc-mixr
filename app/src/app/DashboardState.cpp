@@ -9,6 +9,8 @@
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
+#include "mixr/simulation/Station.hpp"
+#include "mixr/base/PairStream.hpp"
 
 #include <cxxabi.h>
 #include <cstdlib>
@@ -23,7 +25,7 @@ const double M2NM{1.0 / 1852.0};
 // Nome de classe C++ mais derivada via RTTI pura -- sem incluir header
 // nenhum do modelo. E o fallback de 'typeLabel' quando o EDL nao declarou
 // 'type:'; funciona para QUALQUER .so carregado, inclusive um "modelo
-// desconhecido" (ver models/fixtures/stub/CONTRATO.md).
+// desconhecido" (ver models/fixtures/stub/docs/CONTRATO.md).
 std::string demangledClassName(const mixr::models::Player& player)
 {
    int status{};
@@ -104,6 +106,7 @@ EntityState captureEntity(mixr::models::Player* const player)
 }
 
 DashboardState captureState(mixr::models::WorldModel* const worldModel,
+                            mixr::simulation::Station* const station,
                             const double wallSec, const double simSec,
                             const mixr::xclock::ClockStation* const clockStation,
                             const int numTcThreads, const std::string& scenarioLabel,
@@ -125,6 +128,19 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
    }
 
    state.classStats = sampleMetaObjects(previousClassStats);
+
+   if (worldModel != nullptr) {
+      // getTerrain() non-const e protected -- so a versao const e API
+      // publica (WorldModel.hpp).
+      const auto* const constWorld{worldModel};
+      state.background.terrainLoaded = (constWorld->getTerrain() != nullptr);
+   }
+   if (station != nullptr) {
+      const mixr::base::PairStream* const networks{station->getNetworks()};
+      state.background.networkHandlerCount = (networks != nullptr)
+         ? static_cast<int>(networks->entries()) : 0;
+      state.background.networkRateHz = station->getNetworkRate();
+   }
 
    return state;
 }

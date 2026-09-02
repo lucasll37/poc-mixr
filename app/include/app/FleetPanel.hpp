@@ -46,7 +46,7 @@ const int kColBadge{3};
 const int kColName{11};
 const int kColType{12};
 const int kColBehavior{10};
-const int kColThread{6};
+const int kColThread{7};
 const int kColAlt{10};
 const int kColSpd{9};
 const int kColFuel{9};
@@ -79,6 +79,14 @@ std::string entityRowText(const EntityState& e);
 // A MESMA linha, com cor -- chamada de dentro do 'entries_option.transform'
 // do Menu em DashboardLoop.cpp, uma vez por entidade visivel.
 ftxui::Element renderEntityRow(const EntityState& e, bool focused);
+
+// Cabecalho da lista -- um rotulo por coluna, nos MESMOS 'size(WIDTH, EQUAL,
+// kCol*)' de renderEntityRow(), pra cair exatamente em cima da coluna que
+// nomeia (ex.: "thread", em cima da coluna que hoje so mostra "T0"/"-" --
+// sem isso nao da pra saber o que aquele numero quer dizer so olhando a
+// lista). Desenhado uma vez, fora do ftxui::Menu (que rola) -- fica fixo no
+// topo da aba Frota, ver DashboardLoop.cpp.
+ftxui::Element renderEntityListHeader();
 
 // O painel de detalhe completo (o box de sempre) de UMA entidade -- as
 // linhas exclusivas de AirVehicle (combustivel/G/empuxo/pista) so aparecem

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/DashboardState.hpp"
+#include "app/TerrainQuery.hpp"
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/box.hpp>
@@ -46,6 +47,13 @@ struct MapViewState
    double viewYawDeg{};
    Perspective perspective{Perspective::TopDown};
    bool showTrails{};
+
+   // Vista de terreno (de cima: sombreado por elevacao amostrada num grid;
+   // de lado: perfil/silhueta do chao) -- pedido explicito de poder
+   // habilitar/desabilitar. Desligada por padrao: nem todo cenario tem
+   // banco de terreno carregado, e o sombreamento compete visualmente com
+   // entidades quando nao e o que se quer ver.
+   bool showTerrain{};
 
    // Arrasto em andamento (botao esquerdo). 'pressX/pressY' fica FIXO no
    // pixel do Pressed original -- serve pra distinguir CLIQUE (selecionar a
@@ -99,9 +107,13 @@ void updateTrails(MapViewState& view, const std::vector<EntityState>& entities);
 // ftxui::reflect) -- o chamador usa para saber se um clique caiu DENTRO do
 // mapa (e nao, por exemplo, no botao de outra aba desenhado no mesmo
 // quadro) antes de tratar como arrasto/selecao. 'focusedId' realca (anel) a
-// entidade selecionada.
+// entidade selecionada. 'terrainSampler' so e CHAMADO quando
+// 'view.showTerrain' esta ligado -- um std::function vazio (WorldModel sem
+// terreno carregado) e seguro de passar sempre, mesmo com a vista ligada:
+// simplesmente nao desenha nada (ver app/TerrainQuery.hpp).
 ftxui::Element renderMap(const std::vector<EntityState>& entities, const MapViewState& view,
-                         int focusedId, ftxui::Box& outCanvasBox);
+                         int focusedId, ftxui::Box& outCanvasBox,
+                         const TerrainSampler& terrainSampler);
 
 // Converte um clique em CELULAS de terminal relativas ao canvas (ja
 // subtraido o canto do Box) na entidade mais proxima, ou -1. Usa a MESMA

@@ -164,6 +164,20 @@ Element renderEntityRow(const EntityState& e, const bool focused)
    return hbox(std::move(row)) | (focused ? inverted : nothing);
 }
 
+Element renderEntityListHeader()
+{
+   return hbox({
+             text("") | size(WIDTH, EQUAL, kColBadge),
+             text(" nome") | dim | size(WIDTH, EQUAL, kColName),
+             text("tipo") | dim | size(WIDTH, EQUAL, kColType),
+             text("bt") | dim | size(WIDTH, EQUAL, kColBehavior),
+             text("thread") | dim | size(WIDTH, EQUAL, kColThread),
+             text("altitude") | dim | size(WIDTH, EQUAL, kColAlt),
+             text("vel(kt)") | dim | size(WIDTH, EQUAL, kColSpd),
+             text("combust.") | dim | size(WIDTH, EQUAL, kColFuel),
+          });
+}
+
 Element renderEntityDetail(const EntityState& e)
 {
    const Color badge{behaviorColor(e.behaviorLabel)};
@@ -182,12 +196,9 @@ Element renderEntityDetail(const EntityState& e)
       lines.push_back(text(modeLabel(e.mode)) | color(modeColor(e.mode)) | bold);
    }
 
-   // "--" = o modelo nunca chamou xboard::setBehaviorLabel() para esta
-   // entidade -- nao tem arvore de comportamento (ou nao publica), entao
-   // nao ha folha nenhuma pra mostrar. Ver shared/xboard/Board.hpp.
-   if (e.behaviorLabel != "--") {
-      lines.push_back(text("arvore: folha atual \"" + e.behaviorLabel + "\"") | color(badge));
-   }
+   // A folha atual NAO repete aqui -- o subquadro da arvore, logo abaixo
+   // (ver DashboardLoop.cpp::buildDetailPanel), ja mostra ela destacada.
+   // Repetir como texto solto era informacao redundante.
 
    lines.push_back(hbox({
       kv("alt ", formatFixed(e.altitudeM, 0, 5) + "m") | flex,
@@ -234,10 +245,12 @@ Element renderEntityDetail(const EntityState& e)
                       | color(Color::RedLight));
    }
 
-   std::ostringstream dec;
-   dec << "dec=" << e.decisions;
-   if (e.threadTag >= 0) dec << " thr=" << e.threadTag;
-   lines.push_back(text(dec.str()) | dim);
+   // "decisoes" = quantas decisoes da arvore/UBF ja foram efetivamente
+   // ATUADAS nesta entidade (nao candidaturas -- ver shared/xboard/
+   // Board.hpp). "thread" saiu do card -- mudou pra coluna da LISTA (F1,
+   // renderEntityRow()), com o cabecalho explicando a coluna
+   // (renderEntityListHeader()); nao faz sentido repetir aqui.
+   lines.push_back(kv("decisoes ", std::to_string(e.decisions)));
 
    return vbox(std::move(lines)) | border | color(badge);
 }

@@ -30,4 +30,16 @@ namespace app {
 //------------------------------------------------------------------------------
 void ensureTerrainData(const std::string& dir, const std::string& baseName);
 
+// Mesma armadilha 1) acima, generalizada pra QUALQUER '.hgt.gz' encontrado
+// em 'dir' -- nao so o tile que o cenario declara em EDL. Existe pra
+// app/TerrainQuery.hpp (a vista de terreno do Mapa, que carrega TODOS os
+// tiles do diretorio, nao so o do EDL): acrescentar cobertura depois e so
+// soltar mais um '.hgt.gz' na pasta, sem editar nenhum codigo.
+//
+// Deliberadamente TOLERANTE (ao contrario de ensureTerrainData) -- um tile
+// extra corrompido/truncado e so um "a mais" que faltou, nao a condicao de
+// contorno que o cenario exige pra rodar: registra um aviso e segue, nunca
+// derruba o processo.
+void ensureAllTerrainTiles(const std::string& dir);
+
 } // namespace app
