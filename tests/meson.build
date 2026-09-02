@@ -49,19 +49,20 @@ test_domain_rules = executable('test-domain-rules',
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
 
 # A logica pura (sem MIXR, sem FTXUI) por tras da aba "Memoria" do dashboard
-# -- ver o cabecalho de src/dashboard/include/app/MetaObjectSnapshot.hpp.
-# Mesmo motivo de estar na suite 'domain': regra isolada, milissegundos.
-test_dashboard_meta = executable('test-dashboard-meta',
-    files('dashboard/test_meta_object_snapshot.cpp') + files(
-        '../src/dashboard/src/app/MetaObjectSnapshot.cpp',
+# (./app/, fora de src/ -- ver o cabecalho de ../app/include/app/
+# MetaObjectSnapshot.hpp). Mesmo motivo de estar na suite 'domain': regra
+# isolada, milissegundos.
+test_app_meta = executable('test-app-meta',
+    files('app/test_meta_object_snapshot.cpp') + files(
+        '../app/src/app/MetaObjectSnapshot.cpp',
     ),
     link_args           : rpath_link_args,
-    include_directories : include_directories('../src/dashboard/include'),
+    include_directories : include_directories('../app/include'),
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep],
     install             : false,
     build_rpath         : mixr_libdir,
 )
-test('dashboard-meta-object-snapshot', test_dashboard_meta, suite: 'domain', timeout: 60)
+test('app-meta-object-snapshot', test_app_meta, suite: 'domain', timeout: 60)
 
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
@@ -103,18 +104,18 @@ foreach poc : pocs
 endforeach
 
 # ------------------------------------------------------------------------------
-# dashboard -- os TRES cenarios PROPRIOS (ver src/dashboard/include/app/
-# ScenarioCatalog.hpp), rodados com '-deterministic' (sem TUI, sem TTY nenhum).
-# Nao usa scenario_runner (que e '-f'/fixture-based, especifico de single-
-# thread/multi-thread) nem checa o canal de mensagens (dashboard nao linka
-# shared/xmsg) -- ver o cabecalho de run_dashboard_test.py.
+# app (o dashboard, ./app/ na raiz) -- os TRES cenarios PROPRIOS (ver
+# ../app/include/app/ScenarioCatalog.hpp), rodados com '-deterministic' (sem
+# TUI, sem TTY nenhum). Nao usa scenario_runner (que e '-f'/fixture-based,
+# especifico de single-thread/multi-thread) nem checa o canal de mensagens
+# (app nao linka shared/xmsg) -- ver o cabecalho de run_app_test.py.
 # ------------------------------------------------------------------------------
-dashboard_runner = files('scenario/run_dashboard_test.py')
+app_runner = files('scenario/run_app_test.py')
 foreach chave : ['patrol', 'intercept', 'intercept_missile']
-    test('scenario-dashboard-' + chave, py,
-         args: dashboard_runner + ['--binario', dashboard.full_path(),
-                                   '--scenario', chave, '--frames', '300'],
-         depends: dashboard, workdir: raiz, suite: 'scenario',
+    test('scenario-app-' + chave, py,
+         args: app_runner + ['--binario', app.full_path(),
+                             '--scenario', chave, '--frames', '300'],
+         depends: app, workdir: raiz, suite: 'scenario',
          timeout: 300, is_parallel: false)
 endforeach
 

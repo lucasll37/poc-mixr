@@ -1067,14 +1067,16 @@ exemplificar três coisas, nesta ordem:
    mapear `typeMap`/`colorMap`/`modelMap` do Tacview: o míssil aparece com o ícone padrão, o que já
    basta para a demo.
 
-## `src/dashboard` — TUI de controle/monitoramento (estilo btop)
+## `./app` — TUI de controle/monitoramento (estilo btop)
 
-Quarto subprojeto: a MESMA pilha nativa de `single-thread` (`Aircraft`/`JSBSimModel`/`Autopilot`/
+Quarto subprojeto — mora em `./app/`, na RAIZ, fora de `src/` (é o único ocupante da pasta, por
+isso o alvo Meson e o binário se chamam `app`, não `dashboard`; mesma convenção de `dist/bin/`
+das outras pocs). A MESMA pilha nativa de `single-thread` (`Aircraft`/`JSBSimModel`/`Autopilot`/
 radar/`SimAgent`, o mesmo plugin `libflight.so`, **nenhuma** mudança em `models/`) — só troca
 `app/RealTimeRun.cpp` (a linha de status em texto) por `app/DashboardLoop.cpp`, um painel FTXUI
 (cores, borda, medidor de combustível, navegação por teclado). Três cenários **próprios**,
 herméticos, em `configs/` (`scenario_patrol`/`scenario_intercept`/`scenario_intercept_missile`),
-com porta de Tacview (**1236**) e diretório de dados (`./src/dashboard/data/`) próprios — dá para
+com porta de Tacview (**1236**) e diretório de dados (`./app/data/`) próprios — dá para
 rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
 
 **Duas decisões de arquitetura, e o "porquê" de cada uma:**
@@ -1084,7 +1086,7 @@ rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
   Conan (`build/ftxui.pc`) encadeia os três componentes da lib (`screen`/`dom`/`component`) via
   `Requires:`, então `dependency('ftxui', method: 'pkg-config')` sozinho já resolve tudo (conferido
   lendo `build/ftxui-ftxui-*.pc`); não precisou de três `dependency()` separados. Declarado só em
-  `src/dashboard/src/meson.build` (não no `meson.build` raiz) porque é o único consumidor.
+  `app/src/meson.build` (não no `meson.build` raiz) porque é o único consumidor.
 - **"Carregar cenário"/"reiniciar"/"parar" são um `execv()` de si mesmo** (`app/Respawn.hpp`),
   nunca uma segunda `Station` no mesmo processo. `app::buildStation()` (`StationBuilder.cpp`) só
   roda `xplugin::setBuiltinFactory()` + `edl_parser()` + `xplugin::seal()` **uma vez por
@@ -1402,6 +1404,57 @@ gráfico de linha) e confirmação para as quatro ações disruptivas.**
     poucos segundos de parede depois, `falcon1` atingiu `SUPPORT` e o cabeçalho mostrou
     `PAUSADO` — a simulação nativa pausou de verdade (`ClockStation::setPaused(true)`), não só a
     UI achou que estava.
+
+**Quinta passada: mudou de `src/dashboard/` para `./app` (na raiz), aba "Frota" virou "Players",
+os controles de breakpoint foram pro card da própria árvore, "[m] Ver no mapa" subiu pra barra
+principal, o card de detalhe ganhou largura dinâmica, e a vista Lateral do mapa ganhou piso de
+-1000 ft.**
+
+- **`./app/` — não `src/dashboard/` — porque é o ÚNICO ocupante da pasta**: deixou de ser "mais
+  uma poc dentro de `src/`" (nunca foi, de fato — não troca DIS com as outras, não é uma
+  variação de "onde a decisão roda") e passou a ter pasta própria na raiz, ao lado de `src/`,
+  `models/`, `shared/`, `tests/`. O alvo Meson e o binário (`dist/bin/app`) viraram `app`, não
+  `dashboard` — `subdir('./app')` entrou direto no `meson.build` raiz (depois de `subdir('./src')`,
+  antes do bloco `if get_option('tests')`), não mais dentro de `src/meson.build`. `make run-app`
+  (era `run-dashboard`), `tests/app/` (era `tests/dashboard/`), `tests/scenario/run_app_test.py`
+  (era `run_dashboard_test.py`), suíte `scenario-app-*` (era `scenario-dashboard-*`). As classes/
+  arquivos C++ internos (`DashboardLoop`, `DashboardState`, `runDashboard`...) **não** foram
+  renomeados — ainda descrevem bem o que fazem independente de onde a pasta mora; só o que é
+  visível de FORA (pasta, alvo de build, binário, nomes de teste) mudou. Verificado com o ciclo
+  completo `make clean && make configure -Dtests=true && make build && make test` — os mesmos
+  23/24 de sempre (só a falha pré-existente e conhecida) — e `check-single-thread`/
+  `check-multi-thread`, inalterados.
+- **Os controles de breakpoint (selecionar folha, `[g]`/`[G]`/`[x]`) saíram da linha global e
+  foram pro CARD DA PRÓPRIA ÁRVORE** (pedido explícito) — `buildBreakpointStatus()` continua
+  sendo a mesma função, só que agora é chamada de DENTRO de `buildDetailPanel()`, logo abaixo do
+  `Menu` da árvore, em vez de numa linha própria entre a barra de abas e o conteúdo. Os `Button`s
+  em si (`btnRunToBreakpoint`/`btnRunToBreakpointMax`/`btnCancelBreakpoint`) continuam filhos de
+  `root` (via `breakpointBar`, fora da árvore de `Container::Tab`) — só o `Render()` deles é que
+  mudou de LUGAR na composição visual; a árvore de componentes (o que importa pra clique
+  funcionar) não mudou.
+- **"[m] Ver no mapa" subiu pra barra principal**, ao lado de Acelerar/Frear/Pausar/Tempo real —
+  só aparece quando há alguma entidade (`!displayedEntities.empty()`), pedido explícito. Precisou
+  sair de dentro de `entityDetail` (onde só existia component-filho da aba Frota) e virar membro
+  de `toolbar` — mesma treta de sempre (broadcast de mouse só alcança quem está DE FATO na árvore
+  de componentes).
+- **O card de detalhe ganhou LARGURA DINÂMICA** (pedido explícito: "torne-o mais largo, ocupando
+  por referência até onde o mapa acaba") — deixou de ser uma constante (`kDetailPanelWidth`) e
+  virou uma variável recalculada a cada redesenho, via `ftxui::Terminal::Size().dimx` menos o
+  que o canvas do Mapa reserva (`kMapCanvasWidthCells`, promovida a constante PÚBLICA em
+  `app/MapPanel.hpp` — antes só existia como `kCanvasW` privado do `.cpp`, DashboardLoop.cpp
+  precisava de uma fonte única pra não duplicar o número), clampada entre `kDetailPanelMinWidth`
+  (40, o valor fixo antigo) e `kDetailPanelMaxWidth` (100). Medido rodando: com terminal de 160
+  colunas o card fica no piso de 40 (o Mapa sozinho já reserva ~126); com 210 colunas o card salta
+  pra ~52 — a barra de combustível, antes ~19 caracteres, passa de 50. Ganhou também
+  `kDetailPanelHeight` FIXA (34 linhas, a mesma nas duas abas e ao trocar de player — pedido
+  explícito: "deve ter tamanho fixo ao se navegar entre players e entre abas") — sem isso, campos
+  opcionais (combustível, alerta, pista) aparecendo/sumindo ou a árvore mudando de altura faziam o
+  card inteiro "pular" de tamanho a cada seleção.
+- **Vista Lateral do mapa ganhou piso de -1000 ft** (pedido explícito) — `kMapAltitudeFloorFt`
+  em `app/MapPanel.cpp`: a grade de altitude simplesmente para de desenhar (linha E rótulo)
+  abaixo do piso, e uma linha SÓLIDA vermelha marca o piso em si quando ele está dentro da janela
+  visível atual (`"-1000ft (piso)"`) — não é só a grade que some sem explicação, fica claro ONDE
+  e PORQUE ela parou.
 
 ## Estado atual / pendências conhecidas
 

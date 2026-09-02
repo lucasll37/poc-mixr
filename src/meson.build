@@ -8,7 +8,6 @@ subdir('./multi-thread')
 # pocs acima recebem esse player so pela rede, sem declara-lo localmente.
 subdir('./bandit-dis')
 
-# TUI de controle/monitoramento (estilo btop) -- a MESMA pilha nativa de
-# single-thread, so trocando o laco de tempo real por um painel FTXUI. Tres
-# cenarios PROPRIOS, herméticos (ver src/dashboard/configs/).
-subdir('./dashboard')
+# O dashboard (TUI de controle/monitoramento) NAO mora aqui -- ver
+# ./app/meson.build, subdir'ado direto da raiz. E o UNICO ocupante de
+# ./app/, por isso o alvo se chama 'app', nao 'dashboard'.

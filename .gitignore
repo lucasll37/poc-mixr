@@ -8,9 +8,13 @@ shared/data/terrain/srtm/*.hgt
 
 # gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
 # shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/
-# e data/logs/ e versionado, nunca o conteudo gerado.
+# e data/logs/ e versionado, nunca o conteudo gerado. 'app/' (o dashboard)
+# mora fora de 'src/', por isso o padrao repete pros dois prefixos.
 src/*/data/recordings/*.acmi
 src/*/data/logs/*.log*
+app/data/recordings/*.acmi
+app/data/logs/*.log*
 
 # saida do shared/xmsg (mensagens configuraveis)
 src/*/data/messages/*.jsonl
+app/data/messages/*.jsonl

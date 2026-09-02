@@ -22,6 +22,7 @@
 #include <ftxui/component/mouse.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/terminal.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -318,6 +319,14 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    Box mapCanvasBox{};
    double lastTrailSimSec{-1.0};
 
+   // Largura do card de detalhe -- recalculada a cada redesenho (o
+   // terminal pode ser redimensionado em qualquer frame), "ocupando por
+   // referencia ate onde o mapa acaba": reserva 'kMapCanvasWidthCells' pro
+   // canvas do Mapa mais uma folga pras bordas/separador, e da o RESTO da
+   // largura do terminal pro card -- clampado pra nunca ficar
+   // absurdamente estreito nem largo.
+   int detailPanelWidth{kDetailPanelMinWidth};
+
    // Copias reconstruidas a cada redesenho -- lidas pelos 'transform' dos
    // Menu abaixo (que precisam de referencia estavel enquanto o componente
    // vive, ao contrario do DashboardState publicado sob mutex).
@@ -505,9 +514,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component treeMenuFleet{Menu(btTreeMenuOpt)};
    const Component treeMenuMap{Menu(btTreeMenuOpt)};
 
-   // Status do breakpoint + as acoes que dependem dele -- GLOBAL (nao por
-   // aba: o breakpoint observa uma entidade/no especificos, independente
-   // de qual aba esta em foco no momento). Le 'bp' sob 'bpMutex' e
+   // Status do breakpoint + as acoes que dependem dele -- pedido explicito:
+   // "devem ficar no quadro da propria arvore" (nao mais uma linha GLOBAL
+   // separada). Por isso mora dentro de 'buildDetailPanel', logo abaixo do
+   // Menu da arvore -- so chamada de la, dentro do 'if (!treeLines.empty())'
+   // (por isso nao precisa mais checar isso aqui). Le 'bp' sob 'bpMutex' e
    // 'selectedBtLineIndex'/'treeLines' direto (mutacao so pelo clique do
    // proprio usuario, sem concorrencia de thread).
    const auto buildBreakpointStatus = [&]() -> Element {
@@ -517,9 +528,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          snap = bp;
       }
 
-      if (treeLines.empty()) {
-         return text("Nenhuma arvore de comportamento disponivel neste cenario") | dim;
-      }
       if (snap.armed) {
          std::ostringstream oss;
          oss << "Aguardando: " << snap.entityName << " -> \"" << snap.nodeTag << "\""
@@ -552,27 +560,25 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return text("Clique numa folha da arvore (Players ou Mapa) para marcar um breakpoint") | dim;
    };
 
-   // O card de detalhe INTEIRO (campos + arvore de BT, se houver) -- usado
-   // pelas DUAS abas (Frota e Mapa), sempre com a MESMA largura
-   // ('kDetailPanelWidth', de app/FleetPanel.hpp -- pedido explicito: "essa
-   // aba deve ter a mesma largura nas abas frota e mapa"). A arvore so
-   // aparece quando a entidade TEM comportamento publicado (behaviorLabel
-   // != "--") E o cenario declarou 'treeFile:' que deu pra carregar -- ver
-   // app/BehaviorTreeView.hpp. 'includeViewOnMapButton' so vai true na
-   // chamada da Frota; 'treeMenu' e qual das duas instancias (Frota/Mapa)
-   // usar.
-   const auto buildDetailPanel = [&](const EntityState& e, const bool includeViewOnMapButton,
-                                     const Component& treeMenu) -> Element {
+   // O card de detalhe INTEIRO (campos + arvore de BT + os controles de
+   // breakpoint, se houver arvore) -- usado pelas DUAS abas (Frota e Mapa),
+   // sempre com o MESMO tamanho ('detailPanelWidth'/'kDetailPanelHeight',
+   // de app/FleetPanel.hpp -- pedido explicito: "deve ter tamanho fixo ao
+   // se navegar entre players e entre abas"). A arvore (e os controles de
+   // breakpoint junto dela, tambem pedido explicito: "devem ficar no
+   // quadro da propria arvore") so aparece quando a entidade TEM
+   // comportamento publicado (behaviorLabel != "--") E o cenario declarou
+   // 'treeFile:' que deu pra carregar -- ver app/BehaviorTreeView.hpp.
+   // 'treeMenu' e qual das duas instancias (Frota/Mapa) usar.
+   const auto buildDetailPanel = [&](const EntityState& e, const Component& treeMenu) -> Element {
       Elements parts{renderEntityDetail(e)};
-      if (includeViewOnMapButton) {
-         parts.push_back(separator());
-         parts.push_back(btnViewOnMap->Render());
-      }
       if (e.behaviorLabel != "--" && !treeLines.empty()) {
          parts.push_back(separator());
          parts.push_back(treeMenu->Render() | vscroll_indicator | frame | size(HEIGHT, LESS_THAN, 14));
+         parts.push_back(buildBreakpointStatus());
       }
-      return vbox(std::move(parts)) | size(WIDTH, EQUAL, kDetailPanelWidth);
+      return vbox(std::move(parts)) | size(WIDTH, EQUAL, detailPanelWidth)
+            | size(HEIGHT, EQUAL, kDetailPanelHeight);
    };
 
    // ---- aba "Frota": lista rolavel + detalhe da entidade selecionada ----
@@ -586,18 +592,18 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const Component entityMenu{Menu(entityMenuOpt)};
 
-   // 'btnViewOnMap'/'treeMenuFleet' entram como FILHOS deste Renderer (nao
-   // Renderer solto) -- e o que faz o clique neles chegar de verdade (o
-   // broadcast de mouse desce por TODOS os filhos de um Container, mas so
-   // alcanca quem esta de fato na arvore de componentes).
-   const Component entityDetail{Renderer(Container::Vertical({btnViewOnMap, treeMenuFleet}),
-                                         [&]() -> Element {
+   // 'treeMenuFleet' entra como FILHO deste Renderer (nao Renderer solto) --
+   // e o que faz o clique nele chegar de verdade (o broadcast de mouse
+   // desce por TODOS os filhos de um Container, mas so alcanca quem esta
+   // de fato na arvore de componentes).
+   const Component entityDetail{Renderer(treeMenuFleet, [&]() -> Element {
       if (displayedEntities.empty()) {
-         return text("(sem entidades no cenario)") | dim | center | size(WIDTH, EQUAL, kDetailPanelWidth);
+         return text("(sem entidades no cenario)") | dim | center
+               | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight);
       }
       const std::size_t idx{static_cast<std::size_t>(
          std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
-      return buildDetailPanel(displayedEntities[idx], true, treeMenuFleet);
+      return buildDetailPanel(displayedEntities[idx], treeMenuFleet);
    })};
 
    const Component fleetBody{Container::Horizontal({entityMenu, entityDetail})};
@@ -618,13 +624,14 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // selecionada") ----
    const Component mapCanvasArea{Renderer(treeMenuMap, [&]() -> Element {
       int focusedId{-1};
-      Element detail{text("(clique numa entidade no mapa, ou selecione na Frota)")
-                     | dim | center | size(WIDTH, EQUAL, kDetailPanelWidth)};
+      Element detail{text("(clique numa entidade no mapa, ou selecione nos Players)")
+                     | dim | center
+                     | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
       if (!displayedEntities.empty()) {
          const std::size_t idx{static_cast<std::size_t>(
             std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
          focusedId = displayedEntities[idx].id;
-         detail = buildDetailPanel(displayedEntities[idx], false, treeMenuMap);
+         detail = buildDetailPanel(displayedEntities[idx], treeMenuMap);
       }
       return hbox({
                 renderMap(displayedEntities, mapView, focusedId, mapCanvasBox) | flex,
@@ -726,7 +733,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component toolbar{Container::Horizontal({
       btnFleet, btnMap, btnMemory,
-      btnAccel, btnDecel, btnPause, btnReal,
+      btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
       btnLoad, btnRestart, btnStop, btnQuit,
    })};
 
@@ -773,22 +780,33 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
             static_cast<int>(treeLines.size()) - 1);
       }
 
+      // Recalculado a cada redesenho -- o terminal pode ser redimensionado
+      // em qualquer frame. "+6" cobre a borda do canvas (2) + separador (1)
+      // + borda do proprio card (2) + uma folga de 1.
+      detailPanelWidth = std::clamp(Terminal::Size().dimx - (kMapCanvasWidthCells + 6),
+                                    kDetailPanelMinWidth, kDetailPanelMaxWidth);
+
       const auto tabBadge = [&](const Component& btn, const int index) -> Element {
          Element e{btn->Render()};
          if (activeTab == index) return e | bgcolor(Color::Blue) | bold;
          return e | dim;
       };
 
+      // "[m] Ver no mapa" -- pedido explicito: posicao mais visivel, igual
+      // aos demais botoes principais, so aparece quando ha alguma entidade
+      // selecionada (senao nao ha "onde ir").
+      Elements primaryButtons{btnAccel->Render(), btnDecel->Render(), btnPause->Render(),
+                              btnReal->Render()};
+      if (!displayedEntities.empty()) primaryButtons.push_back(btnViewOnMap->Render());
+
       return vbox({
          renderHeader(snap),
          hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2)}),
          separator(),
-         buildBreakpointStatus(),
-         separator(),
          contentTab->Render() | flex,
          separator(),
          hbox({
-            btnAccel->Render(), btnDecel->Render(), btnPause->Render(), btnReal->Render(),
+            hbox(std::move(primaryButtons)),
             filler(),
             btnLoad->Render(), btnRestart->Render(), btnStop->Render(), btnQuit->Render(),
          }),

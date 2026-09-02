@@ -1,12 +1,20 @@
 //
-// dashboard -- cenario "Intercepto + Missil"
+// dashboard -- cenario "Patrulha"
 //
-// scenario_intercept.epp.in + falcon1 carregando UM missil guiado (mesmo
-// molde de src/single-thread/configs/scenario_missile_demo.epp.in) --
-// lancamento/detonacao/destruicao, otimo pra demonstrar pausar/frear bem no
-// meio do engajamento. Carrega os DOIS plugins: libflight.so (6 nomes de
-// sempre) e libmissile.so (so "GuidedMissile") -- ver CLAUDE.md, secao
-// "Demo: missil guiado", para o "porque" de serem dois plugins e nao um so.
+// 4 falcons patrulhando, SEM intruso -- o mais calmo dos tres cenarios deste
+// poc, bom pra ver pausar/acelerar/frear sem nenhum outro comportamento
+// competindo pela atencao. Derivado de src/single-thread/configs/
+// scenario.epp.in (mesma pilha 100% nativa: Aircraft/JSBSimModel/Autopilot/
+// radar/AlertDatalink/SimAgent, o mesmo plugin libflight.so), com o delta:
+//
+//   1) SEM 'networks:' -- hermetico, mesmo motivo de
+//      tests/scenario/make_fixture.py (nao competir por porta/trafego com
+//      outra sessao).
+//   2) Porta de Tacview PROPRIA (1236) e dataRecorder/data/ apontando pra
+//      ./app/, pra poder rodar ao lado de single-thread/
+//      multi-thread (porta 1234) sem colidir.
+//   3) SEM 'msgFeed:' -- dashboard nao linka shared/xmsg (o proprio TUI ja e
+//      o "feed"), entao ( MsgFeed ) nao construiria nada aqui.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -29,10 +37,6 @@
                provides: { AlertDatalink TacticalAlert FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction }
             )
-            ( PluginModule
-               file:     "libmissile.so"
-               provides: { GuidedMissile }
-            )
          }
       )
 
@@ -51,7 +55,7 @@
                )
                ( BtBehavior
                   vote: 50
-                  treeFile: "./models/flight/configs/flight_tree_missile_demo.xml"
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading:  ( Degrees 90 )
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )
@@ -67,14 +71,6 @@
                   terrainClearance: ( Meters 800 )
                   evadeHold:      ( Seconds 30 )
                   supportSpeed:   180.0
-                  // Envelope de lancamento -- ver a armadilha confirmada
-                  // rodando no CLAUDE.md ("Demo: missil guiado"): o primeiro
-                  // contato nesta geometria acontece a ~13.6 NM, e
-                  // ReportAndEvade FOGE do contato assim que ele aparece --
-                  // um launchMaxRange menor que isso nunca dispara.
-                  launchMinRange: ( NauticalMiles 0.8 )
-                  launchMaxRange: ( NauticalMiles 20.0 )
-                  launchCone:     ( Degrees 60 )
                )
             }
          )
@@ -158,19 +154,18 @@
    } // components (agentes)
 
    dataRecorder: ( ExposedDataRecorder
-      eventName: "dashboard-intercept-missile"
+      eventName: "dashboard-patrol"
       enabledList: [ 43 42 ]
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
                port: 1236
-               callsign: "poc-mixr/dashboard-intercept-missile"
-               fileName: "./src/dashboard/data/recordings/mission-intercept-missile.acmi"
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C"
-                           bandit1: "F-16C" }
+               callsign: "poc-mixr/dashboard-patrol"
+               fileName: "./app/data/recordings/mission-patrol.acmi"
+               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C" }
                typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
-                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"  bandit1: "Air+FixedWing" }
-               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue"  bandit1: "Red" }
+                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing" }
+               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue" }
             )
          }
       )
@@ -239,36 +234,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-
-               // ---------------------------------------------------------
-               // O MISSIL -- mesmo molde de scenario_missile_demo.epp.in.
-               // UM so, na unica estacao deste StoresMgr. GuidedMissile vem
-               // do plugin libmissile.so (ver plugins: acima); StoresMgr
-               // (SimpleStoresMgr, ver a armadilha do nome de fabrica no
-               // CLAUDE.md) e nativo do MIXR.
-               // ---------------------------------------------------------
-               stores: ( StoresMgr
-                  numStations: 1
-                  stores: {
-                     1: ( GuidedMissile
-                        id: 501
-                        side: blue
-                        type: "AIM1"
-                        signature: ( SigSphere radius: 0.3 )
-                        dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 45 )
-                        lethalRange: ( Meters 30 )
-                        maxBurstRng: ( Meters 150 )
-                        components: {
-                           dynamicsModel: ( JSBSimModel
-                              rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
-                              model:   "aim1"
-                              debugLevel: 0
-                           )
-                        }
-                     )
-                  }
-               )
             }
          )
 
@@ -425,36 +390,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-            }
-         )
-
-
-         // ------------------------------------------------------------------
-         // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
-         // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
-         // 'intruder') / src/bandit-dis/configs/scenario.epp.
-         // ------------------------------------------------------------------
-         bandit1: ( Aircraft
-            id: 201
-            side: red
-            type: "C310"
-            signature: ( SigSphere radius: 4.0 )
-            initXPos:     ( NauticalMiles 12.0 )
-            initYPos:     ( NauticalMiles 12.0 )
-            initAlt:      ( Meters 2400.0 )
-            initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
-            dataLogTime: ( Seconds 0.1 )
-            interpolateTerrain: true
-            components: {
-               dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
-               )
-               pilot: ( Autopilot
-                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
-               )
             }
          )
 

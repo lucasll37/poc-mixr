@@ -72,6 +72,13 @@ const double kMapMaxMetersPerCell{200000.0};
 const double kMapRotateStepDeg{15.0};
 const std::size_t kMapTrailLength{80};   // ~8s a 10 Hz
 
+// Largura do canvas, em CELULAS de terminal -- publica porque
+// DashboardLoop.cpp usa ela como referencia pra calcular a largura do card
+// de detalhe ("ocupando por referencia ate onde o mapa acaba", pedido
+// explicito). MapPanel.cpp deriva o tamanho do Canvas (em pixel de
+// braille) DESTA constante, nao o contrario -- fonte unica.
+const int kMapCanvasWidthCells{120};
+
 // Desloca o pan em termos de TELA (direita/cima, em metros de canvas), nao
 // de mundo -- ja leva em conta 'viewYawDeg' e 'perspective': a horizontal
 // sempre e a mesma (rotE, ver MapPanel.cpp), so a vertical muda de sentido

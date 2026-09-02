@@ -21,7 +21,7 @@ host_sources = files(
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc
 # nao encadeia mixr::xjoystick::factory()/mixr::xmsg::factory() (nenhum
 # cenario de configs/ declara ioHandler:/msgFeed:).
-dashboard = executable('dashboard',
+app = executable('app',
     host_sources,
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,

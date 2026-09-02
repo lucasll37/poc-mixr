@@ -177,8 +177,8 @@ check-plugin-hotswap: ## Prova que trocar um modelo NÃO recompila a aplicação
 run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
 
-run-dashboard: ## Run dashboard (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
-	$(BUILD_DIR)/src/dashboard/src/dashboard
+run-app: ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
+	$(BUILD_DIR)/app/src/app
 
 # ============================================
 # Test Targets

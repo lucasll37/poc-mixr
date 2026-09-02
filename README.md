@@ -183,10 +183,11 @@ FTXUI) em vez da linha de status: um **quarto** subprojeto, independente dos tr�
 troca DIS com eles, cada um roda sozinho):
 
 ```bash
-make run-dashboard        # sem argumento: mostra a tela de seleção de cenário
+make run-app        # sem argumento: mostra a tela de seleção de cenário
 ```
 
-`dashboard` é a MESMA pilha nativa de `single-thread` (mesmo plugin `libflight.so`), só trocando
+`./app/` (fora de `src/`, é o único ocupante da pasta) é a MESMA pilha nativa de `single-thread`
+(mesmo plugin `libflight.so`), só trocando
 a linha de status por um painel — um por avião, com o rótulo do comportamento colorido, medidor
 de combustível, e o cabeçalho mostrando tempo/velocidade/pausa. Carrega um de três cenários
 **próprios**, herméticos (Tacview na porta **1236**, para não colidir com as pocs acima):
@@ -195,7 +196,7 @@ de combustível, e o cabeçalho mostrando tempo/velocidade/pausa. Carrega um de 
 Atalhos: `+`/`-` acelera/freia, `espaço` pausa,
 `1` tempo real, `l` troca de cenário, `r` reinicia, `s` para (volta à seleção), `q` sai — os três
 últimos são um reinício limpo do processo (`execv`), nunca uma segunda simulação no mesmo
-processo (ver [CLAUDE.md](CLAUDE.md), seção "dashboard").
+processo (ver [CLAUDE.md](CLAUDE.md), seção "`./app`").
 
 **Topologia** — três processos independentes, conectados só por rede (DIS UDP) e por Tacview
 (TCP); `single-thread` e `multi-thread` são **alternativas** entre si (nunca rodam juntos), cada

@@ -21,8 +21,10 @@ using namespace ftxui;
 // ftxui/dom/canvas.hpp: multiplique por 2/4 para celulas de terminal --
 // 240x120 pixels ocupam ~120x30 celulas, cabe numa tela cheia tipica sem
 // depender do Box calculado em tempo de render, que so fica disponivel
-// DEPOIS do layout).
-const int kCanvasW{240};
+// DEPOIS do layout). A largura deriva de 'kMapCanvasWidthCells' (header) --
+// fonte unica, DashboardLoop.cpp usa a MESMA constante pra calcular a
+// largura do card de detalhe.
+const int kCanvasW{kMapCanvasWidthCells * 2};
 const int kCanvasH{120};
 
 const double kPi{3.14159265358979323846};
@@ -31,6 +33,10 @@ const double kDeg2Rad{kPi / 180.0};
 // Espacamento (em pixel de canvas) entre linhas de grade/marcas de eixo --
 // 40px = 20 celulas de terminal na horizontal, 10 na vertical.
 const int kGridStepPx{40};
+
+// Limiar minimo do eixo Y na vista Lateral (pedido explicito) -- a grade de
+// altitude nao desce abaixo disto.
+const double kMapAltitudeFloorFt{-1000.0};
 
 std::string formatScale(const double metersPerCell)
 {
@@ -287,13 +293,27 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
    } else {
       // Lateral: eixo Y = altitude em PES (pedido explicito). 'panAltM' e
       // o referencial (o "zero" que fica no meio da tela); ver project().
+      // Limiar minimo de -1000 ft (pedido explicito) -- abaixo disso a
+      // grade simplesmente para de aparecer (nao ha nada de util pra
+      // mostrar mais fundo que isso), e uma linha SOLIDA marca o piso.
       for (int gy = cy % kGridStepPx; gy < kCanvasH; gy += kGridStepPx) {
-         drawDimLine(c, 0, gy, kCanvasW - 1, gy);
          const double altM{view.panAltM - (gy - cy) * view.metersPerCell};
          const double altFt{altM * mixr::base::distance::M2FT};
+         if (altFt < kMapAltitudeFloorFt) continue;
+         drawDimLine(c, 0, gy, kCanvasW - 1, gy);
          c.DrawText(0, std::clamp(gy - 2, 0, kCanvasH - 4),
                     formatMeters(altFt) + "ft", [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
+
+      // A linha do piso em si, se estiver visivel na janela atual.
+      const double floorAltM{kMapAltitudeFloorFt / mixr::base::distance::M2FT};
+      const int floorGy{cy - static_cast<int>(std::lround((floorAltM - view.panAltM) / view.metersPerCell))};
+      if (floorGy >= 0 && floorGy < kCanvasH) {
+         c.DrawPointLine(0, floorGy, kCanvasW - 1, floorGy, Color::Red);
+         c.DrawText(0, std::clamp(floorGy - 2, 0, kCanvasH - 4),
+                    formatMetersMagnitude(kMapAltitudeFloorFt) + "ft (piso)", Color::Red);
+      }
+
       c.DrawText(kCanvasW - 14, 2, "y: alt(ft)", Color::GrayDark);
    }
 

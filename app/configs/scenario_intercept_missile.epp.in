@@ -1,14 +1,12 @@
 //
-// dashboard -- cenario "Intercepto"
+// dashboard -- cenario "Intercepto + Missil"
 //
-// scenario_patrol.epp.in + um bandit1 LOCAL (mesmo bloco BANDIT de
-// tests/scenario/make_fixture.py, modo 'intruder') -- mostra a evasao e o
-// apoio entre os falcons (EVADE/SUPPORT), sem sair do processo unico e sem
-// depender de src/bandit-dis rodando a parte.
-//
-// Mesmo delta de scenario_patrol.epp.in em relacao a producao (sem
-// 'networks:', porta de Tacview e dados PROPRIOS -- 1236,
-// ./src/dashboard/ --, sem 'msgFeed:').
+// scenario_intercept.epp.in + falcon1 carregando UM missil guiado (mesmo
+// molde de src/single-thread/configs/scenario_missile_demo.epp.in) --
+// lancamento/detonacao/destruicao, otimo pra demonstrar pausar/frear bem no
+// meio do engajamento. Carrega os DOIS plugins: libflight.so (6 nomes de
+// sempre) e libmissile.so (so "GuidedMissile") -- ver CLAUDE.md, secao
+// "Demo: missil guiado", para o "porque" de serem dois plugins e nao um so.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -31,6 +29,10 @@
                provides: { AlertDatalink TacticalAlert FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction }
             )
+            ( PluginModule
+               file:     "libmissile.so"
+               provides: { GuidedMissile }
+            )
          }
       )
 
@@ -49,7 +51,7 @@
                )
                ( BtBehavior
                   vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                  treeFile: "./models/flight/configs/flight_tree_missile_demo.xml"
                   patrolHeading:  ( Degrees 90 )
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )
@@ -65,6 +67,14 @@
                   terrainClearance: ( Meters 800 )
                   evadeHold:      ( Seconds 30 )
                   supportSpeed:   180.0
+                  // Envelope de lancamento -- ver a armadilha confirmada
+                  // rodando no CLAUDE.md ("Demo: missil guiado"): o primeiro
+                  // contato nesta geometria acontece a ~13.6 NM, e
+                  // ReportAndEvade FOGE do contato assim que ele aparece --
+                  // um launchMaxRange menor que isso nunca dispara.
+                  launchMinRange: ( NauticalMiles 0.8 )
+                  launchMaxRange: ( NauticalMiles 20.0 )
+                  launchCone:     ( Degrees 60 )
                )
             }
          )
@@ -148,14 +158,14 @@
    } // components (agentes)
 
    dataRecorder: ( ExposedDataRecorder
-      eventName: "dashboard-intercept"
+      eventName: "dashboard-intercept-missile"
       enabledList: [ 43 42 ]
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
                port: 1236
-               callsign: "poc-mixr/dashboard-intercept"
-               fileName: "./src/dashboard/data/recordings/mission-intercept.acmi"
+               callsign: "poc-mixr/dashboard-intercept-missile"
+               fileName: "./app/data/recordings/mission-intercept-missile.acmi"
                modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C"
                            bandit1: "F-16C" }
                typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
@@ -229,6 +239,36 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+
+               // ---------------------------------------------------------
+               // O MISSIL -- mesmo molde de scenario_missile_demo.epp.in.
+               // UM so, na unica estacao deste StoresMgr. GuidedMissile vem
+               // do plugin libmissile.so (ver plugins: acima); StoresMgr
+               // (SimpleStoresMgr, ver a armadilha do nome de fabrica no
+               // CLAUDE.md) e nativo do MIXR.
+               // ---------------------------------------------------------
+               stores: ( StoresMgr
+                  numStations: 1
+                  stores: {
+                     1: ( GuidedMissile
+                        id: 501
+                        side: blue
+                        type: "AIM1"
+                        signature: ( SigSphere radius: 0.3 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 45 )
+                        lethalRange: ( Meters 30 )
+                        maxBurstRng: ( Meters 150 )
+                        components: {
+                           dynamicsModel: ( JSBSimModel
+                              rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                              model:   "aim1"
+                              debugLevel: 0
+                           )
+                        }
+                     )
+                  }
+               )
             }
          )
 

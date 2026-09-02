@@ -25,8 +25,8 @@ class MixrHelloConan(ConanFile):
     def requirements(self):
         self.requires("mixr/1.0.5", transitive_headers=True)
         self.requires("behaviortree.cpp.asa/3.5.6")
-        # So o src/dashboard/ linka isto (TUI do laco de tempo real) -- nenhum
-        # outro poc nem o modelo. MIT, sem dependencia de sistema alem de um
+        # So o ./app/ linka isto (TUI do laco de tempo real) -- nenhum outro
+        # poc nem o modelo. MIT, sem dependencia de sistema alem de um
         # compilador C++17.
         self.requires("ftxui/7.0.3")
 

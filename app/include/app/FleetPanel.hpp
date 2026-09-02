@@ -21,13 +21,22 @@
 //------------------------------------------------------------------------------
 namespace app {
 
-// Largura (em colunas de terminal) do painel de detalhe -- a MESMA nas
-// abas Frota e Mapa (pedido explicito: "essa aba deve ter a mesma largura
-// nas abas frota e mapa"), tomando a largura que a Frota ja usava como
-// referencia. Ver DashboardLoop.cpp: aplicado com 'size(WIDTH, EQUAL, ...)'
-// nos dois lugares em vez de deixar o 'flex' decidir (que daria larguras
-// DIFERENTES em cada aba, por terem vizinhos diferentes na mesma linha).
-const int kDetailPanelWidth{40};
+// Altura (em linhas de terminal) do painel de detalhe -- FIXA nas duas
+// abas (Frota e Mapa) e ao navegar entre players (pedido explicito:
+// "deve ter tamanho fixo ao se navegar entre players e entre abas"), pra
+// nao "pular" quando um campo opcional aparece/some ou a arvore muda de
+// tamanho. Generosa o bastante pra caber o card mais cheio (todos os
+// campos + arvore + status de breakpoint) sem cortar.
+const int kDetailPanelHeight{34};
+
+// A LARGURA do painel de detalhe e calculada em runtime, nao e uma
+// constante -- ver 'detailPanelWidth' em DashboardLoop.cpp: pedido
+// explicito, "torne-o mais largo, ocupando por referencia ate onde o mapa
+// acaba" (kMapCanvasWidthCells, de app/MapPanel.hpp) usando o tamanho REAL
+// do terminal (ftxui::Terminal::Size()). Continua sendo a MESMA largura
+// nas duas abas -- so deixou de ser um numero fixo escrito aqui.
+const int kDetailPanelMinWidth{40};
+const int kDetailPanelMaxWidth{100};
 
 // Largura fixa de cada COLUNA da linha compacta da lista (Frota) -- ver
 // renderEntityRow(). Alinhar em colunas de verdade (em vez de texto colado

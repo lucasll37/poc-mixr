@@ -1,20 +1,14 @@
 //
-// dashboard -- cenario "Patrulha"
+// dashboard -- cenario "Intercepto"
 //
-// 4 falcons patrulhando, SEM intruso -- o mais calmo dos tres cenarios deste
-// poc, bom pra ver pausar/acelerar/frear sem nenhum outro comportamento
-// competindo pela atencao. Derivado de src/single-thread/configs/
-// scenario.epp.in (mesma pilha 100% nativa: Aircraft/JSBSimModel/Autopilot/
-// radar/AlertDatalink/SimAgent, o mesmo plugin libflight.so), com o delta:
+// scenario_patrol.epp.in + um bandit1 LOCAL (mesmo bloco BANDIT de
+// tests/scenario/make_fixture.py, modo 'intruder') -- mostra a evasao e o
+// apoio entre os falcons (EVADE/SUPPORT), sem sair do processo unico e sem
+// depender de src/bandit-dis rodando a parte.
 //
-//   1) SEM 'networks:' -- hermetico, mesmo motivo de
-//      tests/scenario/make_fixture.py (nao competir por porta/trafego com
-//      outra sessao).
-//   2) Porta de Tacview PROPRIA (1236) e dataRecorder/data/ apontando pra
-//      ./src/dashboard/, pra poder rodar ao lado de single-thread/
-//      multi-thread (porta 1234) sem colidir.
-//   3) SEM 'msgFeed:' -- dashboard nao linka shared/xmsg (o proprio TUI ja e
-//      o "feed"), entao ( MsgFeed ) nao construiria nada aqui.
+// Mesmo delta de scenario_patrol.epp.in em relacao a producao (sem
+// 'networks:', porta de Tacview e dados PROPRIOS -- 1236,
+// ./app/ --, sem 'msgFeed:').
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -154,18 +148,19 @@
    } // components (agentes)
 
    dataRecorder: ( ExposedDataRecorder
-      eventName: "dashboard-patrol"
+      eventName: "dashboard-intercept"
       enabledList: [ 43 42 ]
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
                port: 1236
-               callsign: "poc-mixr/dashboard-patrol"
-               fileName: "./src/dashboard/data/recordings/mission-patrol.acmi"
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C" }
+               callsign: "poc-mixr/dashboard-intercept"
+               fileName: "./app/data/recordings/mission-intercept.acmi"
+               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C"
+                           bandit1: "F-16C" }
                typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
-                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing" }
-               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue" }
+                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"  bandit1: "Air+FixedWing" }
+               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue"  bandit1: "Red" }
             )
          }
       )
@@ -390,6 +385,36 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+            }
+         )
+
+
+         // ------------------------------------------------------------------
+         // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
+         // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
+         // 'intruder') / src/bandit-dis/configs/scenario.epp.
+         // ------------------------------------------------------------------
+         bandit1: ( Aircraft
+            id: 201
+            side: red
+            type: "C310"
+            signature: ( SigSphere radius: 4.0 )
+            initXPos:     ( NauticalMiles 12.0 )
+            initYPos:     ( NauticalMiles 12.0 )
+            initAlt:      ( Meters 2400.0 )
+            initHeading:  ( Degrees 225 )
+            initVelocity: 92.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+               )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+               )
             }
          )
 

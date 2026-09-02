@@ -67,7 +67,7 @@ def main():
 
     esperados = JOGADORES_POR_CENARIO[args.scenario]
 
-    print(f"  rodando dashboard / {args.scenario} por {args.frames} frames ...")
+    print(f"  rodando app / {args.scenario} por {args.frames} frames ...")
     proc = subprocess.run(
         [args.binario, "-scenario", args.scenario, "-threads", "1",
          "-deterministic", str(args.frames)],
@@ -109,10 +109,10 @@ def main():
         print()
         for f in falhas:
             print(f"  FALHA {f}")
-        print(f"dashboard/{args.scenario}: FALHOU")
+        print(f"app/{args.scenario}: FALHOU")
         return 1
 
-    print(f"dashboard/{args.scenario}: OK")
+    print(f"app/{args.scenario}: OK")
     return 0
 
 

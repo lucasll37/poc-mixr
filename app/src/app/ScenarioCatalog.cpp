@@ -8,17 +8,17 @@ const std::vector<ScenarioEntry>& scenarioCatalog()
       {
          "patrol", "Patrulha",
          "4 falcons patrulhando, sem intruso -- bom para ver pausar/acelerar sem ruido",
-         "./src/dashboard/configs/scenario_patrol.epp.in",
+         "./app/configs/scenario_patrol.epp.in",
       },
       {
          "intercept", "Intercepto",
          "+ bandit1 local -- mostra a evasao e o apoio entre os falcons (EVADE/SUPPORT)",
-         "./src/dashboard/configs/scenario_intercept.epp.in",
+         "./app/configs/scenario_intercept.epp.in",
       },
       {
          "intercept_missile", "Intercepto + Missil",
          "+ falcon1 com um missil guiado -- lancamento/detonacao, otimo pra pausar no meio",
-         "./src/dashboard/configs/scenario_intercept_missile.epp.in",
+         "./app/configs/scenario_intercept_missile.epp.in",
       },
    };
    return catalog;

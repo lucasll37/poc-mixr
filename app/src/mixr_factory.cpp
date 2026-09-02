@@ -38,7 +38,7 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    // dashboard nao usa joystick nem shared/xmsg (o proprio TUI ja e o "feed"
    // de mensagens) -- por isso, ao contrario das outras pocs, este arquivo
    // NAO encadeia mixr::xjoystick::factory()/mixr::xmsg::factory() nem linka
-   // xjoystick_dep/xmsg_dep (ver src/dashboard/src/meson.build).
+   // xjoystick_dep/xmsg_dep (ver app/src/meson.build).
 
    // 6) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, Gimbal,
    //    Antenna, Tws, AirTrkMgr, SensorMgr, OnboardComputer, SimAgent,

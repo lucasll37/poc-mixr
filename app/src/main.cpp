@@ -7,9 +7,10 @@
 // real por um painel FTXUI (estilo btop: cores, navegacao por teclado,
 // redesenho responsivo) capaz de pausar/parar/acelerar/frear e carregar um
 // dentre tres cenarios PROPRIOS (ver app/ScenarioCatalog.hpp), herméticos e
-// com porta de Tacview/diretorio de dados proprios (1236,
-// ./src/dashboard/data/) para poder rodar ao lado de single-thread/
-// multi-thread sem colidir.
+// com porta de Tacview/diretorio de dados proprios (1236, ./app/data/) para
+// poder rodar ao lado de single-thread/multi-thread sem colidir. Mora fora
+// de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o alvo
+// se chama 'app', nao 'dashboard'.
 //
 // "Carregar outro cenario"/"reiniciar"/"parar" sao um REEXEC de si mesmo
 // (app/Respawn.hpp) -- nunca uma segunda Station no mesmo processo. Ver o
@@ -74,7 +75,7 @@ const std::string terrainTile{"S23W043"};
 
 int main(int argc, char* argv[])
 {
-   mixr::xlog::init("./src/dashboard/data/logs/dashboard.log");
+   mixr::xlog::init("./app/data/logs/app.log");
 
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
@@ -91,7 +92,7 @@ int main(int argc, char* argv[])
 
    const app::ScenarioEntry* const entry{app::findScenario(scenarioKey)};
    if (entry == nullptr) {
-      std::cerr << "dashboard: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
+      std::cerr << "app: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
       return EXIT_FAILURE;
    }
 
@@ -99,7 +100,7 @@ int main(int argc, char* argv[])
 
    app::ensureTerrainData(terrainDir, terrainTile);
 
-   const std::string generatedPath{"./src/dashboard/configs/" + entry->key + ".generated.epp"};
+   const std::string generatedPath{"./app/configs/" + entry->key + ".generated.epp"};
    const int numTcThreads{
       app::generateScenario(entry->templatePath, generatedPath, opts.threadsOverride)};
 

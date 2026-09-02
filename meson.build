@@ -155,6 +155,11 @@ pkg.generate(
 
 subdir('./src')
 
+# O dashboard (TUI) -- unico ocupante de ./app/, fora de src/ de proposito
+# (nao e "mais uma poc" no molde single-thread/multi-thread/bandit-dis; e a
+# ferramenta de controle/monitoramento das outras). Alvo se chama 'app'.
+subdir('./app')
+
 # Suite de testes. Fica DEPOIS de src/ porque as camadas de cenario, memoria
 # e determinismo rodam os executaveis das pocs. Atras da opcao -Dtests=true
 # para que um build comum nao precise do gtest resolvido.
