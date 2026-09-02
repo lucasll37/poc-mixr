@@ -69,7 +69,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_model.so"
+               file:     "libflight.so"
                provides: { AlertDatalink TacticalAlert FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction }
             )
@@ -98,7 +98,7 @@
                )
                ( BtBehavior
                   vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading:  ( Degrees 90 )
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )
@@ -141,7 +141,7 @@
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
                   patrolSpeed: 160.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 170.0
@@ -166,7 +166,7 @@
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                   legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
                   patrolSpeed: 165.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 170.0
@@ -191,7 +191,7 @@
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight-model/flight_tree.xml"
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
                   patrolSpeed: 160.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 170.0
@@ -459,7 +459,7 @@
 
                // 6-DOF nativo: JSBSim pelo adaptador do framework.
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/single-thread/data/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
                   model:   "c310"
                   debugLevel: 0
                )
@@ -569,7 +569,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/single-thread/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -621,7 +621,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/single-thread/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -673,7 +673,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/single-thread/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true

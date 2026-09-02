@@ -1,0 +1,55 @@
+<!--
+  Arvore de DEMO, para src/single-thread/configs/scenario_missile_demo.epp.in.
+
+  Copia de flight_tree.xml (a arvore de PRODUCAO, intocada) com um ramo a
+  mais dentro de 'engage_sequence': antes de reportar e evadir, tenta lancar
+  um missil se houver arma disponivel (WorldView::weaponReady) e o contato
+  estiver dentro do envelope (domain::LaunchPolicy).
+
+  So falcon1 (o unico com 'stores:' no cenario de demo) usa esta arvore --
+  os outros tres falcons continuam com o flight_tree.xml de producao. Em
+  qualquer aviao SEM StoresMgr, LaunchEnvelope falha sempre (weaponReady fica
+  false), entao o ramo extra e um no-op inerte -- por isso e seguro esta
+  arvore existir sem duplicar a producao byte a byte.
+
+  Prioridade (Fallback, de cima para baixo) -- identica a producao, so com
+  o passo de lancamento inserido dentro do item 2:
+    1) combustivel abaixo da reserva      -> volta para a base
+    2) manobra de evasao valendo          -> tenta lancar, senao quebra e avisa
+    3) alerta recebido de outro caca      -> vai apoiar no ponto avisado
+    4) caso contrario                     -> patrulha
+
+  So ha 1 missil no cenario de demo: depois do lancamento, weaponReady vira
+  false e os ciclos seguintes caem direto em ReportAndEvade -- a progressao
+  "detecta -> lanca -> evade" acontece sozinha, sem estado extra na arvore.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="engage_sequence">
+        <ContactDetected/>
+        <Fallback name="engage_fallback">
+          <Sequence name="launch_sequence">
+            <LaunchEnvelope/>
+            <LaunchMissile/>
+          </Sequence>
+          <ReportAndEvade/>
+        </Fallback>
+      </Sequence>
+
+      <Sequence name="support_sequence">
+        <AlertReceived/>
+        <SupportAlert/>
+      </Sequence>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

@@ -11,7 +11,7 @@ make test                            # 22 testes nas DUAS suítes, ~20 s
 `subdir('./tests')` do [meson.build](../meson.build) raiz nem é avaliado.
 
 **São DUAS suítes, em dois diretórios de build**, porque o modelo saiu para um projeto próprio
-(`models/flight-model/`):
+(`models/flight/`):
 
 ```bash
 make test          # as duas
@@ -22,7 +22,7 @@ meson test -C build --suite plugin   # só uma camada do host
 > **Cuidado, e isto foi medido:** `meson test` devolve **rc=0 para suíte vazia** ("No tests
 > defined."), e o default de `-Dtests` é `false`. `meson test -C build --suite domain` continua
 > existindo, mas hoje ele roda só as primitivas do `shared/xmsg` — as regras do modelo estão em
-> `build-models`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
+> `build-flight`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
 > `make test-models` conferem a contagem com `meson introspect --tests` **antes** de rodar.
 
 ---
@@ -38,7 +38,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 
 | suite | pergunta | como | custo |
 |---|---|---|---|
-| `domain` (modelo) | as regras estão certas? | GTest sobre `models/flight-model/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
+| `domain` (modelo) | as regras estão certas? | GTest sobre `models/flight/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
 | `domain` (host) | as primitivas do `shared/xmsg` estão certas? | GTest sobre `shared/xmsg/rules/` | 24 testes, ~10 ms |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
@@ -63,7 +63,7 @@ somado 50 vezes fica **acima**, então um `hold: ( Seconds 1 )` armava em passos
 10 Hz e a 50 Hz. Dois testes vermelhos acharam isso antes de qualquer linha de MIXR ser escrita.
 
 O que se trava aqui é, sobretudo, a história registrada no cabeçalho de
-[`domain/ThreatPolicy.hpp`](../models/flight-model/include/domain/ThreatPolicy.hpp): três correções
+[`domain/ThreatPolicy.hpp`](../models/flight/include/domain/ThreatPolicy.hpp): três correções
 que vieram de ver as aeronaves "batendo asa" no Tacview. Cada uma virou um teste, porque cada uma
 é uma regressão que voltaria em silêncio:
 
@@ -75,10 +75,10 @@ Mais o piso anti-CFIT, com **varredura de invariante**: para uma grade de eleva�
 marcação × sentido do contato, a altitude comandada nunca fica abaixo de `terreno + folga`. É
 laço aninhado comum, sem dependência de *property testing*.
 
-## Camada 2 — a árvore ([tree/](../models/flight-model/tests/tree/))
+## Camada 2 — a árvore ([tree/](../models/flight/tests/tree/))
 
 Carrega o
-[`flight_tree.xml` de produção](../models/flight-model/configs/flight_tree.xml) — por caminho, não
+[`flight_tree.xml` de produção](../models/flight/configs/flight_tree.xml) — por caminho, não
 uma cópia. Um teste contra uma cópia provaria que a cópia está certa, o que não interessa a
 ninguém.
 
@@ -93,12 +93,12 @@ hoje isso não quebra o build, quebra o voo.
 > **Esta camada só é possível por causa de duas mudanças no código de produção**, ambas mecânicas
 > e provadas neutras (o dump determinístico saiu byte a byte idêntico ao de antes):
 >
-> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/flight-model/include/domain/WorldView.hpp),
+> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/flight/include/domain/WorldView.hpp),
 >    com `using Snapshot = domain::WorldView;` mantendo todos os call sites. A estrutura nunca teve
 >    tipo do MIXR — o que a prendia ao framework era só morar dentro de uma classe que herda de
 >    `AbstractState`.
 > 2. `NodeContext` deixou de carregar um `BtBehavior*` concreto e passou a apontar para
->    [`bt_nodes::DecisionContext`](../models/flight-model/include/bt/DecisionContext.hpp), a interface
+>    [`bt_nodes::DecisionContext`](../models/flight/include/bt/DecisionContext.hpp), a interface
 >    com os 8 getters que os nós já usavam. `BtBehavior` a implementa sem um método novo.
 >
 > Resultado: `ldd` no binário desta camada mostra **zero** bibliotecas do MIXR. O comentário de

@@ -83,7 +83,7 @@ TEST_F(Modelo, DescritorBateComOHost)
    EXPECT_EQ(desc->struct_size, sizeof(PluginDescV1));
    EXPECT_EQ(desc->mixr_version, static_cast<std::uint32_t>(MIXR_VERSION));
    EXPECT_EQ(desc->cxx11_abi, static_cast<std::uint32_t>(MIXR_PLUGIN_CXX11_ABI));
-   EXPECT_STREQ(desc->plugin_name, "flight-model");
+   EXPECT_STREQ(desc->plugin_name, "flight");
    EXPECT_NE(desc->factory, nullptr);
 }
 

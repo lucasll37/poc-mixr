@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!-- Bocal do genericRocket.xml, molde do xlr99_nozzle.xml do proprio JSBSim. -->
+<nozzle name="genericNozzle">
+  <pe unit="PSF">   14.7  </pe>
+  <area unit="FT2">  0.5  </area>
+</nozzle>

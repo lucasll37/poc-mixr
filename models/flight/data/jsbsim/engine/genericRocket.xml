@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!--
+  Motor-foguete simples, para o aircraft/aim1 (demo academica de missil,
+  ver o comentario no topo de aircraft/aim1/aim1.xml). Molde minimo do
+  proprio JSBSim (mesmos elementos do XLR-99 do X-15, so com numeros
+  menores): isp + vazao maxima de combustivel/oxidante, sem thrust_table.
+-->
+<rocket_engine name="genericRocket">
+  <isp>                          240  </isp>
+  <maxthrottle>                 1.00  </maxthrottle>
+  <minthrottle>                 0.00  </minthrottle>
+  <slfuelflowmax unit="LBS/SEC">  3.0  </slfuelflowmax>
+  <sloxiflowmax unit="LBS/SEC">   4.0  </sloxiflowmax>
+</rocket_engine>

@@ -10,7 +10,7 @@ A [single-thread](../single-thread/) **inteira**, com **uma** diferença: o agen
 > o dump. Mais nada.
 >
 > A **política** descrita acima — `domain/`, `bt/`, `ubf/`, `xnative/` — não está aqui e nem é
-> compilada junto: mora em **[models/flight-model/](../../models/flight-model/)**, um projeto
+> compilada junto: mora em **[models/flight/](../../models/flight/)**, um projeto
 > Meson independente, construído numa etapa **anterior** e carregado com `dlopen` durante o parse
 > do cenário. O que este README descreve das seções 7 a 10 continua valendo, só que os arquivos
 > ficam lá.
@@ -131,8 +131,8 @@ headers de `models`, e é registrada na **camada 6** (`xnative/factory.cpp`). Na
 
 ## 3. Dissecação da `FlightAgentTC`, linha por linha
 
-[`include/xnative/FlightAgentTC.hpp`](../../models/flight-model/include/xnative/FlightAgentTC.hpp) ·
-[`src/xnative/FlightAgentTC.cpp`](../../models/flight-model/src/xnative/FlightAgentTC.cpp) — 43 linhas de código, e **cada
+[`include/xnative/FlightAgentTC.hpp`](../../models/flight/include/xnative/FlightAgentTC.hpp) ·
+[`src/xnative/FlightAgentTC.cpp`](../../models/flight/src/xnative/FlightAgentTC.cpp) — 43 linhas de código, e **cada
 bloco delas existe por causa de uma armadilha do framework**. É o resumo mais honesto do que
 custa mover uma decisão para dentro do frame.
 
@@ -160,7 +160,7 @@ private:
 apenas `"UbfAgent"` e `"UbfArbiter"` — escrever `( UbfAgentTC ... )` no EDL **não constrói nada**.
 
 **Um agente de tempo crítico é, na prática, código da aplicação**: a classe é do framework, o
-registro é seu. Uma linha em [`src/xnative/factory.cpp`](../../models/flight-model/src/xnative/factory.cpp):
+registro é seu. Uma linha em [`src/xnative/factory.cpp`](../../models/flight/src/xnative/factory.cpp):
 
 ```cpp
 else if ( name == FlightAgentTC::getFactoryName() )  obj = new FlightAgentTC();
@@ -547,7 +547,7 @@ emite ~50 alertas/s onde a single-thread emitia ~10. Nada quebra (a fusão é co
 Mesmo número de decisões, **threads diferentes**: os agentes rodam dentro do pool T/C, em
 paralelo, um por player — e ainda assim o dump é idêntico com 1, 2 ou 4 threads ([7.3](#73-o-paralelismo-continua-ligado)).
 Os índices de thread não são contíguos porque a numeração é por ordem de primeira chamada
-([`xnative::ThreadTag`](../../models/flight-model/include/xnative/ThreadTag.hpp)), e o laço de background também pega um
+([`xnative::ThreadTag`](../../models/flight/include/xnative/ThreadTag.hpp)), e o laço de background também pega um
 índice.
 
 ---

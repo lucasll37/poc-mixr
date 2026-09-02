@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# As duas pocs sao gemeas. Depois que o MODELO saiu para models/flight-model,
+# As duas pocs sao gemeas. Depois que o MODELO saiu para models/flight,
 # o que sobra em src/<poc>/ e so a camada de aplicacao -- e ela e byte a byte
 # identica entre as duas, com quatro excecoes conhecidas (main.cpp,
 # ScenarioTemplate.cpp, meson.build e o cenario).
@@ -39,7 +39,7 @@ compara() {   # compara <caminho relativo dentro da poc>
 }
 
 # O que sobrou de duplicado entre as gemeas depois que o MODELO saiu para
-# models/flight-model: so a camada de aplicacao. domain/, bt/ e ubf/ nao
+# models/flight: so a camada de aplicacao. domain/, bt/ e ubf/ nao
 # aparecem mais aqui porque nao existem mais em duas copias -- a duplicacao
 # foi dissolvida por construcao, e nao mais sustentada por este teste.
 compara include/app

@@ -18,8 +18,8 @@ RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ"
 
 BIN=build/src/single-thread/src/single-thread
-SO=dist/lib/mixr-plugins/libflight_model.so
-MODEL_BUILD=build-models
+SO=dist/lib/mixr-plugins/libflight.so
+MODEL_BUILD=build-flight
 FIX=build/tests-fixtures/single-thread-hotswap-vivo.epp.in
 
 [ -x "$BIN" ] || { echo "rode 'make build' primeiro"; exit 1; }
@@ -53,13 +53,13 @@ PYEOF
 
 # Backup em disco, e nao 'git checkout': o plugin pode ainda nao estar
 # versionado, e um alvo de demonstracao nao pode depender disso.
-HDR=models/flight-model/src/domain/PatrolPlan.cpp
+HDR=models/flight/src/domain/PatrolPlan.cpp
 BKP=$(mktemp)
 cp "$HDR" "$BKP"
 restaura() {
    cp "$BKP" "$HDR"
    rm -f "$BKP"
-   meson compile -C "$MODEL_BUILD" flight_model > /dev/null 2>&1 || true
+   meson compile -C "$MODEL_BUILD" flight > /dev/null 2>&1 || true
    meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1 || true
 }
 trap restaura EXIT
@@ -70,7 +70,7 @@ trap restaura EXIT
 # .so em disco ja era o "depois".
 echo "=== 0) normalizando o ponto de partida ==="
 sed -i 's/^\( *\)#define POC_MODEL_TURN_SIGN .*/\1#define POC_MODEL_TURN_SIGN 1.0/' "$HDR"
-meson compile -C "$MODEL_BUILD" flight_model > /dev/null 2>&1
+meson compile -C "$MODEL_BUILD" flight > /dev/null 2>&1
 meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1
 echo "    default do modelo: curva de patrulha no sentido normal"
 
@@ -85,7 +85,7 @@ grep 'player=falcon1' /tmp/hotswap-A.txt | tail -1 | grep -o ' hdg=[0-9.]*' | se
 
 echo "=== 3) editando SO o modelo e rebuildando SO o .so ==="
 sed -i 's/^\( *\)#define POC_MODEL_TURN_SIGN .*/\1#define POC_MODEL_TURN_SIGN -1.0/' "$HDR"
-meson compile -C "$MODEL_BUILD" flight_model 2>&1 | grep -E "^\[|Compiling|Linking" | sed 's/^/    /'
+meson compile -C "$MODEL_BUILD" flight 2>&1 | grep -E "^\[|Compiling|Linking" | sed 's/^/    /'
 meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1
 
 echo "=== 4) o executavel foi tocado? ==="

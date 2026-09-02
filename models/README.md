@@ -9,26 +9,43 @@ host nunca viu o fonte, e mesmo assim tudo funciona.
 
 ```
 models/
-├── flight-model/    # o modelo de produção das duas pocs gêmeas
+├── flight/          # o modelo de produção das duas pocs gêmeas
 │   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
-│   ├── tests/{domain,tree,native}/        # 66 casos, e nenhum levanta Station
+│   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
+│   │                 # pocs (single-thread/multi-thread/bandit-dis) apontam pra cá
+│   ├── tests/{domain,tree,native}/        # 76 casos, e nenhum levanta Station
 │   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
-└── stub-model/      # um modelo ESTRANHO, escrito só contra o SDK
-    ├── src/stub.cpp
-    └── CONTRATO.md  # ← o que um modelo TEM de fazer. Leia primeiro.
+├── missile/         # SEGUNDO exemplo de "criar um modelo novo": um único
+│   ├── src/xmissile/GuidedMissile.{hpp,cpp}   # Player novo, guiado sobre um
+│   │                                          # JSBSimModel anexado -- física
+│   │                                          # 6-DOF de verdade
+│   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
+│   └── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
+│                         # flight (2º PluginModule) só no cenário de demo
+│                         # (src/single-thread/configs/
+│                         # scenario_missile_demo.epp.in). Ver CLAUDE.md,
+│                         # seção "Demo: míssil guiado", para o "porque" de
+│                         # ser um plugin à parte e não dentro do flight.
+└── fixtures/
+    └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
+        ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
+        └── CONTRATO.md              # teste (ver §3). Fica em fixtures/ para
+                                      # não sugerir o contrário. CONTRATO.md
+                                      # é o que um modelo TEM de fazer --
+                                      # leia primeiro.
 ```
 
 ---
 
 ## 1. O build em etapas, e por que a ordem importa
 
-São **três projetos Meson**, em três diretórios de build. O modelo é construído **antes** do host,
-que só consome o `.so` instalado.
+São **quatro projetos Meson**, em quatro diretórios de build. Os modelos são construídos **antes**
+do host, que só consome os `.so` instalados.
 
 ```bash
 make configure   # 1. conan + meson setup do HOST            -> build/
 make sdk         # 2. publica o SDK                          -> dist/{include,lib,lib/pkgconfig}
-make models      # 3. o modelo e o stub, projetos à parte     -> build-models/, build-stub/
+make models      # 3. flight, missile e stub, projetos à parte -> build-flight/, build-missile/, build-stub/
 make build       # 4. os executáveis do host                  -> build/src/<poc>/src/
 ```
 
@@ -46,7 +63,7 @@ etapa `sdk` precisa desse `build/` já existir.
 |---|---|---|
 | `make configure` | Conan + `meson setup` do host | uma vez, e depois de `make clean` |
 | `make sdk` | compila `xboard`/`xlog`/`xtrack` e instala com `--tags sdk,devel` | raramente sozinho |
-| `make models` | configura, compila e instala **flight-model** e **stub-model** | ao mexer no modelo |
+| `make models` | configura, compila e instala **flight**, **missile** e **stub** | ao mexer no modelo |
 | `make build` | os três executáveis (dispara `models` → `sdk`) | ao mexer em qualquer coisa |
 | `make install` | copia os binários para `dist/bin/` | opcional — **não** é preciso para rodar nem testar |
 | `make test-models` | a suíte do modelo: `domain` + `tree` + `native` | ao mexer no modelo |
@@ -65,13 +82,13 @@ etapa `sdk` precisa desse `build/` já existir.
 
 ## 2. Como criar um modelo novo
 
-**Comece pelo stub, não pelo `flight-model`.** O `stub-model` é ~300 linhas e é o exemplo mínimo
-completo; o `flight-model` tem 3.100 e vai te distrair.
+**Comece pelo stub, não pelo `flight`.** O `stub` é ~300 linhas e é o exemplo mínimo completo; o
+`flight` tem 3.100 e vai te distrair.
 
 ```bash
-cp -r models/stub-model models/meu-modelo
+cp -r models/fixtures/stub models/meu-modelo
 mv models/meu-modelo/src/stub.cpp models/meu-modelo/src/meu_modelo.cpp
-sed -i 's/stub-model/meu-modelo/g; s/stub_model/meu_modelo/g' models/meu-modelo/meson.build
+sed -i 's/'"'"'stub'"'"'/'"'"'meu_modelo'"'"'/g' models/meu-modelo/meson.build
 sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/meu-modelo/meson.build
 ```
 
@@ -112,11 +129,11 @@ shared_module('meu_modelo',
    **Nunca** as libs de `shared/` que são estáticas (`xtacview`, `xclock`, `xjoystick`, `xmsg`) —
    você ganharia uma cópia privada dos estáticos delas.
 
-E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub-model`.
+E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub`.
 
 ### 2.2 O que o `.cpp` tem de ter
 
-Leia **[stub-model/CONTRATO.md](stub-model/CONTRATO.md)** — é a lista completa. O resumo:
+Leia **[fixtures/stub/CONTRATO.md](fixtures/stub/CONTRATO.md)** — é a lista completa. O resumo:
 
 - exportar o ponto de entrada **sempre pela macro** `MIXR_PLUGIN_DEFINE`, nunca escrevendo a
   assinatura à mão (num alvo com visibilidade escondida ela viraria símbolo invisível ao `dlsym`,
@@ -137,9 +154,10 @@ Depois aponte um cenário para ele (§4) e rode.
 
 ---
 
-## 3. Para que serve o `stub-model`
+## 3. Para que serve o `stub` (e por que mora em `fixtures/`)
 
-Ele tem **dois papéis**, e o segundo é o que justifica existir.
+`fixtures/` já diz o principal: isto **não é um terceiro modelo de produção** ao lado de `flight` e
+`missile` — é um fixture de teste, com dois papéis, e o segundo é o que justifica existir.
 
 ### Papel 1 — o exemplo mínimo
 
@@ -238,7 +256,7 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 
 ## Ler também
 
-- **[stub-model/CONTRATO.md](stub-model/CONTRATO.md)** — o que um modelo TEM de fazer
+- **[fixtures/stub/CONTRATO.md](fixtures/stub/CONTRATO.md)** — o que um modelo TEM de fazer
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova

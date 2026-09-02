@@ -41,7 +41,7 @@ fi
 for d in domain bt ubf xnative; do
    for p in single-thread multi-thread; do
       if [ -e "src/$p/src/$d" ] || [ -e "src/$p/include/$d" ]; then
-         echo "  FALHA src/$p ainda tem a arvore '$d' -- o modelo mora em models/flight-model"
+         echo "  FALHA src/$p ainda tem a arvore '$d' -- o modelo mora em models/flight"
          fail=1
       fi
    done

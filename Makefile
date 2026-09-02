@@ -5,10 +5,11 @@
 # Custom variables
 PWD := $(shell pwd)
 BUILD_DIR := ./build
-MODEL_BUILD_DIR := ./build-models
+MODEL_BUILD_DIR := ./build-flight
 STUB_BUILD_DIR := ./build-stub
+MISSILE_BUILD_DIR := ./build-missile
 DEST_DIR := $(PWD)/dist
-MODEL_DIR := ./models/flight-model
+MODEL_DIR := ./models/flight
 
 # O meson DESCARTA o PKG_CONFIG_PATH do ambiente quando o native-file do Conan
 # fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
@@ -36,6 +37,7 @@ clean: ## Clean all generated build files in the project.
 	rm -rf $(BUILD_DIR)/
 	rm -rf $(MODEL_BUILD_DIR)/
 	rm -rf $(STUB_BUILD_DIR)/
+	rm -rf $(MISSILE_BUILD_DIR)/
 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
 
@@ -91,7 +93,8 @@ models: sdk ## Compila e instala o MODELO (plugin), num projeto meson à parte. 
 	meson compile -C $(MODEL_BUILD_DIR) -j$(NINJA_JOBS)
 	meson install -C $(MODEL_BUILD_DIR) --no-rebuild
 	@# O modelo ESTRANHO -- projeto proprio, ve so o SDK. E o unico artefato
-	@# que pode falhar por "o contrato nao basta". Ver models/stub-model/CONTRATO.md.
+	@# que pode falhar por "o contrato nao basta". Ver models/fixtures/stub/CONTRATO.md.
+	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
 	mkdir -p $(STUB_BUILD_DIR)/
 	meson setup --reconfigure \
 		--backend ninja \
@@ -100,10 +103,24 @@ models: sdk ## Compila e instala o MODELO (plugin), num projeto meson à parte. 
 		--prefix=$(DEST_DIR) \
 		--libdir=$(DEST_DIR)/lib \
 		-Dpkg_config_path=$(PKG_PATH) \
-		$(STUB_BUILD_DIR)/ ./models/stub-model
+		$(STUB_BUILD_DIR)/ ./models/fixtures/stub
 	meson compile -C $(STUB_BUILD_DIR) -j$(NINJA_JOBS)
 	meson install -C $(STUB_BUILD_DIR) --no-rebuild
-	@for so in libflight_model.so libflight_model_tc.so libstub_model.so; do \
+	@# O SEGUNDO plugin de exemplo -- so o GuidedMissile, carregado ao lado do
+	@# flight no cenario de demo (scenario_missile_demo.epp.in). Mesmo molde
+	@# do stub: projeto Meson proprio, so mixr_dep + sdk_dep.
+	mkdir -p $(MISSILE_BUILD_DIR)/
+	meson setup --reconfigure \
+		--backend ninja \
+		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
+		--native-file $(BUILD_DIR)/conan_meson_native.ini \
+		--prefix=$(DEST_DIR) \
+		--libdir=$(DEST_DIR)/lib \
+		-Dpkg_config_path=$(PKG_PATH) \
+		$(MISSILE_BUILD_DIR)/ ./models/missile
+	meson compile -C $(MISSILE_BUILD_DIR) -j$(NINJA_JOBS)
+	meson install -C $(MISSILE_BUILD_DIR) --no-rebuild
+	@for so in libflight.so libflight_tc.so libstub.so libmissile.so; do \
 	   ldd $(DEST_DIR)/lib/mixr-plugins/$$so | grep -q 'not found' && { echo "$(RED)models: $$so com dependencia nao resolvida$(NC)"; exit 1; } || true; \
 	 done
 	@echo "$(GREEN)models: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
@@ -159,6 +176,9 @@ check-plugin-hotswap: ## Prova que trocar um modelo NÃO recompila a aplicação
 
 run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
+
+run-dashboard: ## Run dashboard (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
+	$(BUILD_DIR)/src/dashboard/src/dashboard
 
 # ============================================
 # Test Targets

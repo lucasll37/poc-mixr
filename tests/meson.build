@@ -2,8 +2,8 @@
 # Suite do HOST -- so entra no build com -Dtests=true (ver meson_options.txt)
 #
 # As camadas 'domain' e 'tree' NAO estao mais aqui: elas compilam domain/ e bt/
-# direto, e esses fontes sairam para models/flight-model/. Moraram junto com o
-# que testam -- rode 'make test-models' (ou 'make test', que roda as duas).
+# direto, e esses fontes sairam para models/flight/. Moraram junto com o que
+# testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
 #   domain-rules  as primitivas de deteccao do shared/xmsg (host, ficaram)
 #   scenario      o binario de verdade, com fixture, asserções sobre 'frame='
@@ -26,7 +26,7 @@ bash = find_program('bash')
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-model_build  = raiz / 'build-models'
+model_build  = raiz / 'build-flight'
 
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do shared/xmsg
@@ -47,6 +47,21 @@ test_domain_rules = executable('test-domain-rules',
     install             : false,
 )
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
+
+# A logica pura (sem MIXR, sem FTXUI) por tras da aba "Memoria" do dashboard
+# -- ver o cabecalho de src/dashboard/include/app/MetaObjectSnapshot.hpp.
+# Mesmo motivo de estar na suite 'domain': regra isolada, milissegundos.
+test_dashboard_meta = executable('test-dashboard-meta',
+    files('dashboard/test_meta_object_snapshot.cpp') + files(
+        '../src/dashboard/src/app/MetaObjectSnapshot.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../src/dashboard/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('dashboard-meta-object-snapshot', test_dashboard_meta, suite: 'domain', timeout: 60)
 
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
@@ -87,6 +102,22 @@ foreach poc : pocs
          timeout: 1800, is_parallel: false)
 endforeach
 
+# ------------------------------------------------------------------------------
+# dashboard -- os TRES cenarios PROPRIOS (ver src/dashboard/include/app/
+# ScenarioCatalog.hpp), rodados com '-deterministic' (sem TUI, sem TTY nenhum).
+# Nao usa scenario_runner (que e '-f'/fixture-based, especifico de single-
+# thread/multi-thread) nem checa o canal de mensagens (dashboard nao linka
+# shared/xmsg) -- ver o cabecalho de run_dashboard_test.py.
+# ------------------------------------------------------------------------------
+dashboard_runner = files('scenario/run_dashboard_test.py')
+foreach chave : ['patrol', 'intercept', 'intercept_missile']
+    test('scenario-dashboard-' + chave, py,
+         args: dashboard_runner + ['--binario', dashboard.full_path(),
+                                   '--scenario', chave, '--frames', '300'],
+         depends: dashboard, workdir: raiz, suite: 'scenario',
+         timeout: 300, is_parallel: false)
+endforeach
+
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
 # thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a
@@ -117,7 +148,7 @@ foreach b : ['nosym', 'abi', 'collide']
     )}
 endforeach
 
-modelo_so = dist_plugins / 'libflight_model.so'
+modelo_so = dist_plugins / 'libflight.so'
 
 test_plugin_load = executable('test-plugin-load',
     files('plugin/test_plugin_load.cpp'),
@@ -159,7 +190,7 @@ test('plugin-hotswap', py,
 test('plugin-modelo-estranho', py,
      args: files('plugin/run_stub_model.py') + [
          '--binario', single_thread.full_path(), '--poc', 'single-thread',
-         '--stub', dist_plugins / 'libstub_model.so'],
+         '--stub', dist_plugins / 'libstub.so'],
      depends: single_thread, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 

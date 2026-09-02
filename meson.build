@@ -40,7 +40,7 @@ protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 
 # NAO ha behavior_tree_dep nem jsbsim_dep aqui, e a ausencia e deliberada:
-# depois que o modelo saiu para models/flight-model (projeto meson proprio),
+# depois que o modelo saiu para models/flight (projeto meson proprio),
 # NENHUM alvo deste projeto linka BehaviorTree.CPP ou JSBSim. Quem precisa
 # delas e o modelo, e ele declara as suas.
 #

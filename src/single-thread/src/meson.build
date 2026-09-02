@@ -5,7 +5,7 @@ local_inc_dir = include_directories('../include')
 # O HOST, e SÓ o host.
 #
 # O MODELO (domain/, bt/, ubf/, xnative/) não está aqui e este arquivo não sabe
-# onde ele mora: os fontes saíram para models/flight-model/, que é um PROJETO
+# onde ele mora: os fontes saíram para models/flight/, que é um PROJETO
 # MESON SEPARADO, construído numa etapa ANTERIOR (`make models`). O host só
 # consome o .so pronto, pelo bloco ( PluginLoader ) do cenário.
 #

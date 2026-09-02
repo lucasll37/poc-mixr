@@ -45,13 +45,13 @@ disseca o assunto.
 
 | # | funcionalidade | onde vive | detalhe |
 |---|---|---|---|
-| 1 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da manobra de evasão e piso AGL do comportamento de segurança | `configs/scenario.epp.in` (slot `terrain:` do `WorldModel`), [`domain/TerrainFloor`](models/flight-model/include/domain/TerrainFloor.hpp), [`app/TerrainData`](src/single-thread/include/app/TerrainData.hpp) | [§10 do single-thread](src/single-thread/README.md#10-elevação-de-terreno) |
+| 1 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da manobra de evasão e piso AGL do comportamento de segurança | `configs/scenario.epp.in` (slot `terrain:` do `WorldModel`), [`domain/TerrainFloor`](models/flight/include/domain/TerrainFloor.hpp), [`app/TerrainData`](src/single-thread/include/app/TerrainData.hpp) | [§10 do single-thread](src/single-thread/README.md#10-elevação-de-terreno) |
 | 2 | **Recorder → Tacview** — visualização por *Real-Time Telemetry*, escrita como um `OutputHandler` de verdade na cadeia nativa do gravador, e não como um stream ACMI paralelo | [`shared/xtacview/`](shared/xtacview/) | [§11 do single-thread](src/single-thread/README.md#11-tacview) |
-| 3 | **Dinâmica 6-DOF** — aerodinâmica completa via JSBSim, pelo adaptador nativo `JSBSimModel`, comandada pelo `Autopilot` nativo | `configs/scenario.epp.in` (`dynamicsModel: ( JSBSimModel )`), `data/jsbsim/` | [§6.2 do single-thread](src/single-thread/README.md#62--jsbsimmodel---a-dinâmica-6-dof) |
-| 4 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros; o transporte é o `Datalink` nativo e o `Component::event()` do framework, sem nenhum ponteiro direto entre players | [`xnative/AlertDatalink`](models/flight-model/include/xnative/AlertDatalink.hpp), [`xnative/TacticalAlert`](models/flight-model/include/xnative/TacticalAlert.hpp) | [§9 do single-thread](src/single-thread/README.md#9-interação-entre-players) |
+| 3 | **Dinâmica 6-DOF** — aerodinâmica completa via JSBSim, pelo adaptador nativo `JSBSimModel`, comandada pelo `Autopilot` nativo | `configs/scenario.epp.in` (`dynamicsModel: ( JSBSimModel )`), [`models/flight/data/jsbsim/`](models/flight/data/jsbsim/) | [§6.2 do single-thread](src/single-thread/README.md#62--jsbsimmodel---a-dinâmica-6-dof) |
+| 4 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros; o transporte é o `Datalink` nativo e o `Component::event()` do framework, sem nenhum ponteiro direto entre players | [`xnative/AlertDatalink`](models/flight/include/xnative/AlertDatalink.hpp), [`xnative/TacticalAlert`](models/flight/include/xnative/TacticalAlert.hpp) | [§9 do single-thread](src/single-thread/README.md#9-interação-entre-players) |
 | 5 | **Paralelismo com determinismo garantido** — os players rodam no pool de threads de tempo crítico do framework, e o estado final é idêntico com 1, 2 e 4 threads | `numTcThreads` no `.epp`, [`app/DeterministicRun`](src/single-thread/include/app/DeterministicRun.hpp), [`app/DeterministicDump`](src/single-thread/include/app/DeterministicDump.hpp) | [§12 do single-thread](src/single-thread/README.md#12-determinismo) · [§7 do multi-thread](src/multi-thread/README.md#7-determinismo--o-ponto-da-poc) |
-| 6 | **Comportamento com UBF nativo** — `AbstractState`/`AbstractBehavior`/`AbstractAction` do framework, arbitrados por voto num `UbfArbiter` nativo | [`ubf/`](models/flight-model/include/ubf/) | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
-| 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](models/flight-model/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
+| 6 | **Comportamento com UBF nativo** — `AbstractState`/`AbstractBehavior`/`AbstractAction` do framework, arbitrados por voto num `UbfArbiter` nativo | [`ubf/`](models/flight/include/ubf/) | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
+| 7 | **Árvores de comportamento (BehaviorTree.CPP)** — a política interna de um dos comportamentos do UBF é uma árvore v3 carregada de XML | [`bt/`](models/flight/include/bt/), `configs/flight_tree.xml` | [§8 do single-thread](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 8 | **Padrões de projeto dos exemplos oficiais** — o *builder* canônico, a factory encadeada por nome, o par estrutura-EDL/comportamento-C++, o gancho de sensor em `transmit()`, o `shared/x<nome>` | [`mixr_factory.cpp`](src/single-thread/src/mixr_factory.cpp), [`app/StationBuilder`](src/single-thread/include/app/StationBuilder.hpp), `shared/x*` | [§3 e §5 do single-thread](src/single-thread/README.md#3-como-o-framework-chama-o-nosso-código) |
 | 9 | **Controle por joystick físico, com fallback automático** — o intruso pode ser pilotado por um HOTAS de verdade ou continuar no `Autopilot` nativo *scripted* sem hardware conectado, detectado a cada frame (plugar/desplugar em execução troca o controle sem reiniciar) | [`shared/xjoystick/`](shared/xjoystick/) | [§8 abaixo](#8-bibliotecas-compartilhadas) |
 | 10 | **Interoperabilidade DIS nativa, bidirecional** — o intruso roda num processo à parte ([`src/bandit-dis/`](src/bandit-dis/)) e é recebido pelas duas pocs **só pela rede** (IEEE 1278/DIS), com o radar e a árvore de comportamento reagindo exatamente como reagiriam a um player local; e as falcons emitem de volta, então o `bandit-dis` também vê as quatro no próprio Tacview | [`src/bandit-dis/`](src/bandit-dis/), slot `networks:` das três pocs | [CLAUDE.md, seção `src/bandit-dis`](CLAUDE.md) |
@@ -102,7 +102,7 @@ São **três projetos Meson**, e a ordem é obrigatória — o modelo é constru
 ```bash
 make configure   # conan install (Debug) + meson setup do HOST -> build/
 make sdk         # publica o SDK                               -> dist/{include,lib,lib/pkgconfig}
-make models      # o modelo e o stub, projetos à parte         -> build-models/, build-stub/
+make models      # o modelo e o stub, projetos à parte         -> build-flight/, build-stub/
 make build       # os executáveis do host (JÁ dispara sdk + models)
 make install     # copia os binários para dist/bin/ (opcional)
 make test        # as DUAS suítes: a do modelo e a do host
@@ -177,6 +177,25 @@ recompilar). As duas pocs recebem o intruso **só pela rede** (DIS, `localhost:3
 player local o declara — **e emitem de volta**: as falcons chegam por DIS no `bandit-dis`
 também, então o Tacview dele (porta 1235) mostra as cinco aeronaves, não só o intruso. Ver
 [`src/bandit-dis/`](src/bandit-dis/) e a seção "`src/bandit-dis`" do [CLAUDE.md](CLAUDE.md).
+
+**Com um painel de controle estilizado** (cores, navegação por teclado, redesenho responsivo —
+FTXUI) em vez da linha de status: um **quarto** subprojeto, independente dos três acima (nunca
+troca DIS com eles, cada um roda sozinho):
+
+```bash
+make run-dashboard        # sem argumento: mostra a tela de seleção de cenário
+```
+
+`dashboard` é a MESMA pilha nativa de `single-thread` (mesmo plugin `libflight.so`), só trocando
+a linha de status por um painel — um por avião, com o rótulo do comportamento colorido, medidor
+de combustível, e o cabeçalho mostrando tempo/velocidade/pausa. Carrega um de três cenários
+**próprios**, herméticos (Tacview na porta **1236**, para não colidir com as pocs acima):
+"Patrulha" (calmo), "Intercepto" (evasão/apoio) e "Intercepto + Míssil" (o míssil guiado da seção
+"Demo: míssil guiado" do [CLAUDE.md](CLAUDE.md), ótimo para pausar bem no meio do lançamento).
+Atalhos: `+`/`-` acelera/freia, `espaço` pausa,
+`1` tempo real, `l` troca de cenário, `r` reinicia, `s` para (volta à seleção), `q` sai — os três
+últimos são um reinício limpo do processo (`execv`), nunca uma segunda simulação no mesmo
+processo (ver [CLAUDE.md](CLAUDE.md), seção "dashboard").
 
 **Topologia** — três processos independentes, conectados só por rede (DIS UDP) e por Tacview
 (TCP); `single-thread` e `multi-thread` são **alternativas** entre si (nunca rodam juntos), cada
@@ -285,7 +304,7 @@ poc-mixr/
 │   ├── xlog/               LOG(NIVEL) << ...; com nível/stream, persistido em arquivo
 │   ├── xmsg/               mensagens configuráveis por EDL (telemetria + eventos, NDJSON)
 │   └── data/terrain/srtm/  tile SRTM do cenário — compartilhado pelos três subprojetos
-├── tests/                  a suíte do HOST (a do modelo vive em models/flight-model/tests/)
+├── tests/                  a suíte do HOST (a do modelo vive em models/flight/tests/)
 │   ├── domain/ tree/       GTest, sem MIXR: as regras puras e a árvore de produção
 │   ├── scenario/ memory/   scripts sobre os binários: comportamento voando e vazamento
 │   └── determinism/ guard/ 1/2/4 threads nos dois laços, e a duplicação entre as pocs
@@ -474,13 +493,13 @@ soltos, e cada linha vai para o console **e** para `data/logs/<poc>.log`, proteg
 ### O modelo é um plugin, construído numa etapa prévia
 
 `src/<poc>/` é **só o host**. `domain/`, `bt/`, `ubf/` e `xnative/` moram em
-[models/flight-model/](models/flight-model/) — um **projeto Meson independente**, construído antes
+[models/flight/](models/flight/) — um **projeto Meson independente**, construído antes
 do host e consumido como `.so` a partir de `dist/lib/mixr-plugins/`.
 
 ```bash
 make configure   # host -> build/
 make sdk         # SDK -> dist/{include,lib,lib/pkgconfig}
-make models      # modelo + stub -> build-models/, build-stub/ -> dist/lib/mixr-plugins/
+make models      # modelo + stub -> build-flight/, build-stub/ -> dist/lib/mixr-plugins/
 make build       # o host (já dispara sdk + models)
 ```
 
@@ -499,7 +518,7 @@ dele listava os 24 `.cpp` e o build do host **exigia o fonte**. Agora não, e
 
 ### A prova: um modelo desconhecido
 
-[`models/stub-model/`](models/stub-model/) é um modelo de ~270 linhas escrito **só contra o SDK
+[`models/fixtures/stub/`](models/fixtures/stub/) é um modelo de ~270 linhas escrito **só contra o SDK
 publicado** — sem árvore de comportamento, sem uma linha de `domain/`. O teste
 `plugin-modelo-estranho` roda o cenário de **produção** contra ele trocando **apenas** o `file:` do
 `( PluginModule )`.
@@ -508,7 +527,7 @@ publicado** — sem árvore de comportamento, sem uma linha de `domain/`. O test
 modelo compilado do mesmo fonte. E foi escrevê-lo que revelou que as obrigações de um modelo não
 estavam escritas em lugar nenhum — em especial o dever de **escrever no `xboard`**, sem o qual o
 host imprime `bt=--` e `dec=0` sem erro nenhum e com todos os outros testes verdes. Está agora em
-[models/stub-model/CONTRATO.md](models/stub-model/CONTRATO.md).
+[models/fixtures/stub/CONTRATO.md](models/fixtures/stub/CONTRATO.md).
 
 > **A extração é neutra:** com o modelo fora do executável, o dump `frame=` das duas pocs saiu
 > **byte-idêntico** ao de antes de existir plugin nenhum.
@@ -555,8 +574,8 @@ não vêm num clone limpo. Sem elas, os headers instalados pelo Conan
 | documento | responde |
 |---|---|
 | [models/README.md](models/README.md) | **como criar um modelo novo e uma poc nova**, o build em etapas e todos os alvos do `make` |
-| [models/stub-model/CONTRATO.md](models/stub-model/CONTRATO.md) | o que um modelo **tem** de fazer — inclusive a obrigação que falha em silêncio |
-| [models/flight-model/README.md](models/flight-model/README.md) | as quatro camadas do modelo de produção e o que cada uma testa |
+| [models/fixtures/stub/CONTRATO.md](models/fixtures/stub/CONTRATO.md) | o que um modelo **tem** de fazer — inclusive a obrigação que falha em silêncio |
+| [models/flight/README.md](models/flight/README.md) | as quatro camadas do modelo de produção e o que cada uma testa |
 | [shared/xplugin/README.md](shared/xplugin/README.md) | o contrato de ABI, as flags de link obrigatórias e a seção **Limites** |
 | [tests/README.md](tests/README.md) | as duas suítes, em dois projetos, e o que cada camada prova |
 

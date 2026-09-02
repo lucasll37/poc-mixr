@@ -10,9 +10,25 @@ class MixrHelloConan(ConanFile):
 
     settings = "os", "compiler", "build_type", "arch"
 
+    # A BehaviorTree.CPP tem de ser ESTATICA: o plugin do modelo a linka com
+    # -Wl,--exclude-libs,ALL para esconder os simbolos dela do .dynsym (ver
+    # models/flight/meson.build); o host nunca a linka, pra nao
+    # duplicar o contador estatico BT::getUID() entre host e plugin. A
+    # receita da behaviortree.cpp.asa tem default_options={"shared": True},
+    # entao sem este override o Conan resolve/constroi a variante .so e o
+    # link do modelo quebra com "dependencia nao resolvida" em runtime.
+    default_options = {
+        "behaviortree.cpp.asa/*:shared": False,
+        "behaviortree.cpp.asa/*:fPIC": True,
+    }
+
     def requirements(self):
         self.requires("mixr/1.0.5", transitive_headers=True)
         self.requires("behaviortree.cpp.asa/3.5.6")
+        # So o src/dashboard/ linka isto (TUI do laco de tempo real) -- nenhum
+        # outro poc nem o modelo. MIT, sem dependencia de sistema alem de um
+        # compilador C++17.
+        self.requires("ftxui/7.0.3")
 
     def build_requirements(self):
         # Framework da suite de testes. Fica em test_requires porque nenhum

@@ -19,7 +19,7 @@ O que isso verifica, e nada mais verifica:
 E o que ele obriga e o ganho maior: para o stub existir, alguem teve de
 DESCOBRIR e ESCREVER todas as obrigacoes que estavam implicitas. Cada uma que
 faltasse apareceria aqui -- como falha de carga, ou como 'bt=--' no dump.
-Ver models/stub-model/CONTRATO.md.
+Ver models/fixtures/stub/CONTRATO.md.
 """
 
 import argparse
@@ -77,7 +77,7 @@ def main():
     elif r.returncode != 0:
         falhas.append(f"o processo saiu com {r.returncode}")
 
-    if "[plugin] carregado 'stub-model'" not in saida:
+    if "[plugin] carregado 'stub'" not in saida:
         falhas.append("o stub nao foi carregado")
 
     linhas = [l for l in saida.splitlines() if l.startswith("frame=")]

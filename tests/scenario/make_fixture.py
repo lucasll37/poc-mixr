@@ -30,7 +30,8 @@ import sys
 from pathlib import Path
 
 # O intruso, identico ao de src/bandit-dis/configs/scenario.epp, so que
-# local e com o rootDir do jsbsim desta poc.
+# local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
+# (models/flight/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
          // ------------------------------------------------------------------
          // FIXTURE DE TESTE -- bandit1 LOCAL.
@@ -54,7 +55,7 @@ BANDIT = """
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./src/@POC@/data/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -118,11 +119,10 @@ def main():
 
     # 3) o delta do modo
     if args.mode == "intruder":
-        bandit = BANDIT.replace("@POC@", args.poc)
         marcador = "      } // players"
         if marcador not in texto:
             raise SystemExit("nao achei o fim da lista de players")
-        texto = texto.replace(marcador, bandit + "\n" + marcador, 1)
+        texto = texto.replace(marcador, BANDIT + "\n" + marcador, 1)
     elif args.mode == "lowfuel":
         antes = texto
         texto = re.sub(r"fuelReserve:(\s*)0\.35", r"fuelReserve:\g<1>0.99", texto)

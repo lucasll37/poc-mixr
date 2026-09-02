@@ -57,7 +57,7 @@ etapa **anterior**, e o host só consome o `.so` instalado.
 ```bash
 make configure   # conan install (Debug) + meson setup do HOST -> build/
 make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
-make models      # projeto à parte -> build-models/ e build-stub/ -> dist/lib/mixr-plugins/
+make models      # projetos à parte -> build-flight/, build-missile/ e build-stub/ -> dist/lib/mixr-plugins/
 make build       # o HOST (depende de models, que depende de sdk) -> build/
 make install     # meson install -> dist/
 make test        # as DUAS suítes: a do modelo e a do host
@@ -147,9 +147,13 @@ src/<nome>/
 ├── meson.build            # só faz subdir('./src')
 ├── configs/scenario.epp   # cenário EDL (+ .xml das árvores de comportamento)
 │                          # nas duas pocs é um .epp.in — ver app/ScenarioTemplate
-├── data/                  # dados vendorizados (jsbsim/, recordings/)
-│                          # exceção: o tile SRTM mora em shared/data/terrain/ —
-│                          # é do cenário, que é o mesmo nas duas pocs
+├── data/                  # dados de RUNTIME (recordings/, logs/, messages/) —
+│                          # gitignored, escritos pelo próprio binário
+│                          # duas exceções, nenhuma vendorizada aqui: o tile SRTM
+│                          # mora em shared/data/terrain/ (é do cenário, o mesmo
+│                          # nas duas pocs) e a aeronave JSBSim mora em
+│                          # models/flight/data/jsbsim/ (é do MODELO — ver
+│                          # a seção "O MODELO é um plugin" mais abaixo)
 ├── include/
 │   ├── app/               # as etapas da aplicação, uma questão por arquivo (ver abaixo)
 │   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
@@ -160,7 +164,7 @@ src/<nome>/
 ```
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
-> `models/flight-model/`, um projeto Meson independente construído numa etapa **anterior**
+> `models/flight/`, um projeto Meson independente construído numa etapa **anterior**
 > (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver `models/README.md`.
 > A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
@@ -820,7 +824,7 @@ discretos "no instante exato" — o que se alcança é o que se deriva por amost
 ### O MODELO é um plugin, construído numa etapa PRÉVIA
 
 **`src/<poc>/` é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
-em `models/flight-model/`, que é um **projeto Meson independente**, construído antes do host
+em `models/flight/`, que é um **projeto Meson independente**, construído antes do host
 (`make models`). O host só consome o `.so` instalado em `dist/lib/mixr-plugins/`.
 
 Isso não é arrumação: é o que torna **verificável** o cenário de um terceiro entregar só o binário.
@@ -830,20 +834,39 @@ host exigia o fonte — o oposto do que se queria provar. A guarda
 
 ```
 models/
-├── flight-model/        # projeto meson proprio -> build-models/
-│   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
+├── flight/              # projeto meson proprio -> build-flight/ -- O MODELO de producao
+│   ├── include/{domain,bt,ubf,xnative}/   src/...
+│   ├── configs/flight_tree.xml            # a arvore de comportamento
+│   ├── data/jsbsim/                       # a aeronave (ver abaixo)
 │   ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
 │   └── meson.build      # UMA arvore, DOIS artefatos:
-│                        #   libflight_model.so     (single-thread)
-│                        #   libflight_model_tc.so  (multi, -DFLIGHT_MODEL_TC_AGENT)
-└── stub-model/          # projeto meson proprio -> build-stub/
-    ├── src/stub.cpp     # ~270 linhas, escritas SO contra o SDK
-    └── CONTRATO.md      # o que um modelo TEM de fazer
+│                        #   libflight.so     (single-thread)
+│                        #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
+├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
+│                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
+└── fixtures/
+    └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
+        ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito)
+        └── CONTRATO.md   # ~270 linhas, escritas SO contra o SDK -- o que um modelo
+                           # TEM de fazer
 ```
 
 **A duplicação entre as gêmeas foi dissolvida por construção.** Antes eram ~3.100 linhas copiadas
 sustentadas por um teste de guarda; agora é uma árvore só, e a única diferença (o `FlightAgentTC`)
 fica atrás de um `#ifdef`. O `make compare-single-multi` caiu de **11 para 5** arquivos.
+
+**A aeronave é dado do MODELO, não do cenário — e por isso mora aqui, não em `src/<poc>/data/`.**
+As três pocs (`single-thread`, `multi-thread`, `bandit-dis`) pilotavam a mesma cópia
+byte-idêntica de `data/jsbsim/` (o c310), vendorizada três vezes. Não é coincidência: o próprio
+`domain/`/`bt/` deste modelo é calibrado **para o c310** especificamente —
+`maxClimbRateMps`/`maxRateOfTurnDps` do `Autopilot`, a folga de `TerrainFloor` contra o piso
+anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
+trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
+`data/jsbsim/` em `dist/share/mixr-plugins/flight/jsbsim/` junto com `flight_tree.xml`, e
+**todo** `rootDir:` de `( JSBSimModel )` nos três cenários — inclusive o de `src/bandit-dis`, que
+não carrega o plugin nenhum, mas pilota a mesma aeronave — aponta para lá. `make models` publica
+antes de `make build` precisar (ordem `deps -> sdk -> models -> build`), então a ordem normal já
+garante o arquivo no lugar.
 
 ### O SDK de plugin
 
@@ -871,8 +894,8 @@ pelo `Autopilot` nativo — e o dump sai com `bt=--` e `dec=0` **com todos os ou
 
 Duas peças fecham isso:
 
-- **`models/stub-model/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
-- **`models/stub-model/`** — um modelo de ~270 linhas escrito **só contra o SDK**, sem árvore de
+- **`models/fixtures/stub/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
+- **`models/fixtures/stub/`** — um modelo de ~270 linhas escrito **só contra o SDK**, sem árvore de
   comportamento e sem uma linha de `domain/`, que registra os mesmos 6 nomes com os mesmos slots.
   O teste `plugin-modelo-estranho` roda o cenário de **produção** contra ele trocando **apenas** o
   `file:` do `( PluginModule )`. É o único teste que pode falhar por *"o contrato não basta"* —
@@ -908,7 +931,7 @@ Duas peças fecham isso:
 **Prova de neutralidade:** com o modelo fora do executável e carregado de `dist/`, o dump `frame=`
 das duas pocs saiu **byte-idêntico** ao de antes de existir plugin nenhum.
 
-`make check-plugin-hotswap` troca o sentido da curva em `models/flight-model/src/domain/PatrolPlan.cpp`,
+`make check-plugin-hotswap` troca o sentido da curva em `models/flight/src/domain/PatrolPlan.cpp`,
 rebuilda **só** o `.so` (2 edges), confere que o executável não foi tocado e mostra o rumo do
 falcon1 indo de 141° para 34°.
 
@@ -953,6 +976,432 @@ Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (sil
   comandar via `setControlStick(roll, pitch)` + `setThrottles(...)` (entradas normalizadas -1..1).
 - `JSBSimModel::reset()` chama `RunIC()` mas **não** roda `FGTrim`: a aeronave começa destrimada e
   há transiente energético nos primeiros segundos.
+
+## Demo: míssil guiado (segundo modelo, ativação de player em runtime, lançamento/detonação/destruição)
+
+Exemplo acadêmico, isolado da produção: `falcon1`, no cenário de demo
+`src/single-thread/configs/scenario_missile_demo.epp.in` (rodado com `-f`, binário `single-thread`
+já existente — nenhum host mudou), carrega **um** míssil guiado e o lança contra um `bandit1`
+LOCAL (sem `networks:`, mesmo motivo do `tests/scenario/make_fixture.py`: hermético). Existe para
+exemplificar três coisas, nesta ordem:
+
+1. **Criar um modelo novo, num plugin próprio.** `models/missile/` — cópia da receita de
+   `models/fixtures/stub` (`models/README.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
+   (sem `behavior_tree_dep` — o míssil não decide com árvore, só guia e voa), publicando **só**
+   `GuidedMissile`. **Por que um plugin separado e não dentro do `flight`:** `provides:` no
+   `.epp` é igualdade exata de conjunto contra o que a `.so` exporta — acrescentar `GuidedMissile`
+   aos 6 nomes do `flight` obrigaria **todo** cenário que carrega essa `.so` (inclusive os de
+   produção) a atualizar `provides:`. Um segundo `( PluginModule )` no cenário de demo, com seu
+   próprio `provides: { GuidedMissile }`, evita isso — `flight` ganhou código novo (a
+   política de lançamento, ver item 2) mas os 6 nomes publicados não mudaram.
+2. **Ativar um player em runtime.** Não foi escrito nenhum código para isso — é o mecanismo NATIVO
+   de liberação de armas do MIXR, o mesmo que chaff/flare/bombas já usam:
+   `StoresMgr::releaseOneMissile()` → `Stores::releaseWeapon()` → `AbstractWeapon::release()`, que
+   clona o `( GuidedMissile )` declarado em `stores:` e o enfileira via
+   `Simulation::addNewPlayer()` — materializado no próximo `updatePlayerList()` do laço de
+   background, exatamente como `interop::NetIO::createIPlayer()` materializa o fantasma DIS do
+   `bandit1` nas duas pocs gêmeas. `xnative::FlightAction::execute()`
+   (`models/flight/src/ubf/FlightAction.cpp`) é o único ponto do `flight` que toca esse
+   objeto MIXR de arma: resolve o alvo por nome
+   (`player->getWorldModel()->findPlayerByName(...)`), libera o míssil e chama
+   `setTargetPlayer(alvo, true)`.
+3. **Lançamento → detonação → destruição.** `bt/nodes/LaunchEnvelopeCondition` +
+   `bt/nodes/LaunchMissileAction` (árvore de demo `flight_tree_missile_demo.xml`, cópia da de
+   produção com um ramo a mais — a de produção fica intocada) decidem **quando**; detonação
+   (`collisionNotification()`/`crashNotification()`/`updateTOF()`, todos nativos de
+   `AbstractWeapon`) já levam o `mode` a `DETONATED` sozinhos. `shared/xmsg` já mapeia
+   `AbstractPlayer::Mode` para string (`"launched"`, `"detonated"`) — é a fonte de verdade mais
+   barata para ver os três eventos (o `( MsgReport name: ciclo-de-vida ... fields: { modeNum } )`
+   do cenário de demo), sem depender de `REID_WEAPON_RELEASED`/`REID_WEAPON_DETONATION` nativos
+   (mesma família do bug do `DataRecorder` já documentado acima — por isso **não** entram em
+   `enabledList`; o míssil ainda aparece no Tacview via `REID_PLAYER_DATA`, como qualquer player).
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **O nome de fábrica de `SimpleStoresMgr` é `"StoresMgr"`, não `"SimpleStoresMgr"`.** O header
+   documenta isso (`Factory name: StoresMgr`) mas é fácil escrever o nome da classe C++ por engano
+   no EDL — o `mixrFactory` recusa com "nome de fábrica desconhecido". A classe abstrata
+   `StoresMgr` não é construível via EDL nenhuma.
+2. **`DETONATED` sozinho nunca remove o player da lista.** Só `AbstractWeapon::reset()` transiciona
+   para `DELETE_REQUEST`, e só num reset de cenário inteiro — em jogo, quem tem de fazer essa
+   transição é o próprio modelo. E ela **não pode morar em `dynamics()`**: `Player::updateTC()` só
+   chama `dynamics()` quando `mode == ACTIVE || mode == PRE_RELEASE` — uma vez `DETONATED`,
+   `dynamics()` para de ser chamado e um timer ali nunca avança (medido: o player ficava
+   "detonated" para sempre). `AbstractWeapon::updateTC()` é diferente: ele chama
+   `BaseClass::updateTC(dt)` (que tem o mesmo portão) e **depois** roda a própria lógica de fase
+   (a transição `PRE_RELEASE`→`ACTIVE`, o TOF) sem checar o `mode` do míssil — é por isso que o
+   framework consegue ativar um weapon em primeiro lugar. O timer de destruição tem que entrar no
+   mesmo lugar (`updateTC()`), pelo mesmo motivo.
+3. **`updateTC()` é chamado 4x por frame, uma vez por fase, com `dt = dt_do_frame/4`**
+   (`Simulation::updateTC()` chama `updateTcPlayerList(..., dt0/4.0, ...)` dentro de um laço de 4
+   fases). Um acumulador de tempo em `updateTC()` tem de (a) só somar numa fase fixa (ex.: fase 3,
+   o mesmo ponto onde `AbstractWeapon` atualiza o TOF) **e** (b) multiplicar esse `dt` por 4 — sem
+   os dois, o timer soma 4x mais rápido (sem a guarda de fase) ou 4x mais devagar (sem a
+   multiplicação). Medido: sem a multiplicação, um timer de 2 s levava quase 8 s de tempo simulado
+   para disparar.
+4. **Um controlador de guiagem só-proporcional diverge nesta aeronave, mesmo com o comando
+   limitado em taxa de variação.** Reduzir os momentos de inércia do `aim1.xml` na mesma proporção
+   do peso (para "mais carga G") deixa o modo de arfagem/rolagem pouco amortecido demais para o
+   passo fixo de 0,02 s do integrador do JSBSim — medido divergindo (mais de 100° de banco/arfagem
+   e velocidade escalando para milhares de nós em menos de 0,3 s) mesmo com o comando de
+   `domain::pursuit()` limitado em taxa (`GuidedMissile::guide()`). O que resolveu foi **não**
+   reduzir `ixx`/`iyy`/`izz` (ficam exatamente os do c310, cujas tabelas aerodinâmicas — `Clp`,
+   `Cmq` etc. — foram calibradas para essa inércia): a massa (`emptywt`) cai ~15x sozinha, o que já
+   basta para "mais carga G" (G = sustentação / peso, sustentação inalterada), sem desestabilizar a
+   dinâmica rotacional. Fisicamente estranho (massa cai, inércia rotacional não), mas é a
+   aproximação acadêmica documentada no próprio `aim1.xml`.
+5. **O envelope de lançamento tem que cobrir o alcance do PRIMEIRO contato, não um alcance de
+   engajamento "realista".** Nesta geometria de cenário o primeiro contato acontece a ~13,6 NM
+   (mesmo valor usado em `tests/tree/test_flight_tree.cpp`), e `ReportAndEvade` FOGE do contato
+   assim que ele aparece — o alcance só cresce depois disso. Um `launchMaxRange` menor que o
+   alcance do primeiro contato nunca dispara: a janela de lançamento é o primeiro frame com
+   contato, ou nunca.
+6. **Comentário de XML do JSBSim não aceita `--` (hífen duplo) em lugar nenhum do corpo**, mesma
+   classe de armadilha do parser EDL com acento (ver a armadilha 5 da seção `bandit-dis` acima) —
+   aqui é o `xmllint`/parser XML do JSBSim que recusa, não o `edl_parser`. Confirmado quebrando
+   várias vezes escrevendo os comentários longos de `aim1.xml`: `xmllint --noout <arquivo>` antes
+   de rodar economiza o ciclo de "recompilar só para descobrir que é um typo de comentário".
+7. **`AbstractWeapon::release()` nomeia o flyout `"W%05d"`** a partir do próximo ID de arma
+   liberada (`Simulation::getNewReleasedWeaponID()`, faixa default `[10001..65535]`) — com um único
+   míssil no cenário, o nome sai previsível (`"W10001"`), mas não vale a pena depender disso para
+   mapear `typeMap`/`colorMap`/`modelMap` do Tacview: o míssil aparece com o ícone padrão, o que já
+   basta para a demo.
+
+## `src/dashboard` — TUI de controle/monitoramento (estilo btop)
+
+Quarto subprojeto: a MESMA pilha nativa de `single-thread` (`Aircraft`/`JSBSimModel`/`Autopilot`/
+radar/`SimAgent`, o mesmo plugin `libflight.so`, **nenhuma** mudança em `models/`) — só troca
+`app/RealTimeRun.cpp` (a linha de status em texto) por `app/DashboardLoop.cpp`, um painel FTXUI
+(cores, borda, medidor de combustível, navegação por teclado). Três cenários **próprios**,
+herméticos, em `configs/` (`scenario_patrol`/`scenario_intercept`/`scenario_intercept_missile`),
+com porta de Tacview (**1236**) e diretório de dados (`./src/dashboard/data/`) próprios — dá para
+rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
+
+**Duas decisões de arquitetura, e o "porquê" de cada uma:**
+
+- **FTXUI é a primeira dependência nova do HOST** nesta série de mudanças (as anteriores só
+  acrescentaram plugins). `conanfile.py` pede só `self.requires("ftxui/7.0.3")` — o `.pc` do
+  Conan (`build/ftxui.pc`) encadeia os três componentes da lib (`screen`/`dom`/`component`) via
+  `Requires:`, então `dependency('ftxui', method: 'pkg-config')` sozinho já resolve tudo (conferido
+  lendo `build/ftxui-ftxui-*.pc`); não precisou de três `dependency()` separados. Declarado só em
+  `src/dashboard/src/meson.build` (não no `meson.build` raiz) porque é o único consumidor.
+- **"Carregar cenário"/"reiniciar"/"parar" são um `execv()` de si mesmo** (`app/Respawn.hpp`),
+  nunca uma segunda `Station` no mesmo processo. `app::buildStation()` (`StationBuilder.cpp`) só
+  roda `xplugin::setBuiltinFactory()` + `edl_parser()` + `xplugin::seal()` **uma vez por
+  processo**, em lugar nenhum do repositório esse caminho é chamado uma segunda vez, e
+  `shared/xplugin/README.md` documenta que plugins não têm hot-reload em processo vivo —
+  reconstruir por cima disso seria pisar em terreno nunca exercitado. `execv()` resolve o próprio
+  caminho via `/proc/self/exe` (não `argv[0]`, que pode vir relativo) e é o caminho 100% testado:
+  é o que já acontece toda vez que alguém roda o binário de novo, só que sub-segundo.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **`shared/xclock::TimeControls`/`ConsoleKeyboard` NÃO entram aqui.** Os dois mexem em
+   `termios` (modo bruto do terminal) por fora do FTXUI — que já é dono do terminal assim que
+   `ScreenInteractive::Fullscreen()` começa (alternate screen buffer, o próprio modo bruto dele).
+   As teclas de controle de tempo (`app/DashboardLoop.cpp`) chamam `ClockStation::
+   setTimeScale()`/`togglePaused()`/`setPaused()` **direto** — a mesma API que
+   `TimeControls::apply()` já usa por baixo, só sem a camada de tecla-crua no meio. A escada de
+   velocidade (`0.10x .. 64x`) foi copiada de `TimeControls.cpp` de propósito, para a mesma
+   sensação de controle das outras pocs.
+2. **Duas threads, pelo mesmo motivo de `ConsoleKeyboard::poll()` ser não-bloqueante nas outras
+   pocs**: a simulação tem de avançar a 10 Hz independente de quando o terminal manda evento. Uma
+   thread roda exatamente o corpo de `RealTimeRun.cpp` (`station->updateData(dt)`, varredura de
+   radar pro Tacview, o mesmo espaçamento por relógio de parede) e, por cima, captura um
+   `DashboardState` sob mutex e chama `screen.PostEvent(Event::Custom)` para pedir redesenho — uso
+   documentado do FTXUI para UI tipo "top" (uma thread externa empurrando eventos). A thread
+   principal só roda `screen.Loop()`.
+3. **`Ctrl+C` não precisa de handler próprio.** `ftxui::App::ForceHandleCtrlC(true)` é o default —
+   a lib já instala o handler e sai do `Loop()` sozinha, mesmo que o `CatchEvent` não intercepte o
+   evento. `action` fica no valor padrão (`Quit`), que é exatamente o que se quer (sair limpo, sem
+   reexec). Confirmado rodando sob um pty: `Ctrl+C` restaura o terminal (o `\x1b[?1049l` de saída
+   do alternate screen buffer aparece na saída) igual ao `q`.
+4. **`app/MetaObjectReport.cpp` copiado de `single-thread` não compila sem trim.** O original
+   reporta `mixr::xmsg::MsgFeed`/`MsgReport` — mas `dashboard` não linka `xmsg_dep` (nenhum
+   cenário de `configs/` declara `msgFeed:`, o próprio TUI já é o "feed"), e o link falha com
+   *"undefined reference to mixr::xmsg::MsgFeed::getMetaObject()"*. As duas linhas
+   `reportClass<mixr::xmsg::...>()` (e o `#include` delas) saíram da cópia.
+5. **`bandit1` nunca aparece no dump `-deterministic`, nem em `intercept`/`intercept_missile`** —
+   `app/DeterministicDump.cpp` só imprime a `Fleet` (`playerNames = falcon1..4` em `main.cpp`), o
+   mesmo em toda poc deste repositório (nem o modo `intruder` de `single-thread`/`multi-thread`
+   mostra `bandit1` no dump). `tests/scenario/run_dashboard_test.py` afirma exatamente os 4
+   falcons nos três cenários, não 5 — a primeira versão do teste esperava `bandit1` também e
+   falhava.
+6. **`SimpleStoresMgr` (o `StoresMgr` do `scenario_intercept_missile.epp.in`) é a mesma armadilha
+   de nome de fábrica já documentada na seção "Demo: míssil guiado"** — `( StoresMgr ... )` no EDL,
+   não `( SimpleStoresMgr ... )`.
+
+**Redesenho: agnóstico a tipo de modelo, três abas (Frota/Mapa/Memória), botões clicáveis.** O
+dashboard nasceu lendo `mixr::models::AirVehicle*` por uma lista fixa de nomes (`falcon1..4`) — só
+fazia sentido para o modelo `flight`. Virou genérico por `mixr::models::Player` (a BASE): posição
+(`getPosition()`), altitude/AGL, atitude, velocidade, `getType()` (string `type:` do EDL),
+`getMajorType()`/`getSide()` (bitmasks nativos, pensados pelo framework para "que espécie de
+player" e "de que lado" — cobrem `AIR_VEHICLE`/`GROUND_VEHICLE`/`WEAPON`/`SHIP`/`SPACE_VEHICLE`/
+`BUILDING`/`LIFE_FORM` e `BLUE`/`RED`/`YELLOW`/`CYAN`/`GRAY`/`WHITE`) e `getMode()`
+(`AbstractPlayer::Mode`) já são todos da base — só combustível/G/empuxo continuam exclusivos de
+`AirVehicle` (conceito aerodinâmico), preenchidos só quando o `dynamic_cast` funciona
+(`app/DashboardState.cpp`). `app::discoverPlayers(WorldModel*)` (`app/Fleet.hpp`) varre
+`getPlayers()` a cada amostragem (10 Hz) em vez de uma lista fixa — entidades que nascem/somem em
+runtime (o míssil lançado, o intruso local) aparecem/somem sozinhas. O rótulo de comportamento
+(`bt=`) deixou de ter um `switch` sobre nomes do `flight` (`PATROL`/`EVADE`/...) — vira hash
+FNV-1a determinístico sobre uma paleta fixa (`app/FleetPanel.cpp`), então um modelo futuro com
+vocabulário de árvore totalmente diferente já funciona sem tocar o dashboard.
+
+Três abas (`ftxui::Container::Tab`, `F1`/`F2`/`F3` ou clique): **Frota** (lista rolável +
+detalhe da entidade focada), **Mapa** (canvas navegável) e **Memória** (contadores de instância ao
+vivo). Cada ação (acelerar/pausar/trocar de aba/carregar/reiniciar/parar/sair) é uma lambda
+nomeada usada tanto pela tecla quanto por um `ftxui::Button` com a dica de atalho já no rótulo
+(`"[+] Acelerar"`) — sem duplicar lógica.
+
+- **Painel "Memória" é o `app/MetaObjectReport.cpp` de sempre, só que AO VIVO.**
+  `mixr::xplugin::pluginMetaObjects()` (`shared/xplugin/PluginRegistry.hpp`) já devolve os
+  `MetaObject*` que o(s) plugin(s) carregado(s) declararam no próprio descritor — automaticamente
+  cobre `flight`/`missile`/`stub`/qualquer modelo futuro, sem um nome de classe escrito no
+  dashboard. `app/MetaObjectSnapshot.hpp` amostra isso a 10 Hz numa janela deslizante de ~3 s
+  (`kHistoryWindow`) por classe e marca "CRESCENDO" quando `count` nunca caiu dentro da janela e
+  termina maior que começou — critério simples e testável (`tests/dashboard/
+  test_meta_object_snapshot.cpp`, sem MIXR nem FTXUI). Testado rodando: lançar o míssil do cenário
+  `intercept_missile` faz `GuidedMissile` aparecer na lista com `tc` crescendo — sem "CRESCENDO",
+  porque o próprio ciclo de criar/destruir mantém `count` oscilando, não subindo sem parar.
+- **O mapa usa um `ftxui::Canvas` de tamanho FIXO** (`kCanvasW`/`kCanvasH` em
+  `app/MapPanel.cpp`), não o `Box` calculado em tempo de render — o `Box` só existe DEPOIS do
+  layout, tarde demais para escolher o tamanho do `Canvas` que se desenha DENTRO dele. Fonte de
+  posição é só `EntityState.northM/eastM` (`Player::getPosition()`), então o mapa já funciona para
+  qualquer tipo de player sem mudança — testado com o `GuidedMissile` (`W10001`, glifo `W` de
+  `WEAPON`) aparecendo no canvas ao lado dos `falcon*` (`A`, `AIR_VEHICLE`).
+- **Arrastar/zoom do mapa são tratados no `CatchEvent` MAIS EXTERNO, não num `CatchEvent` local
+  da aba.** Armadilha encontrada rodando sob pty: `ftxui::Container::Vertical`/`Horizontal`
+  (`ContainerBase::OnEvent`, `container.cpp`) só encaminha TECLADO para o filho `Focused()` —
+  mouse tem caminho próprio (`OnMouseEvent`, que baixo do capô é o `ComponentBase::OnEvent`
+  padrão: percorre TODOS os filhos, sem checar foco) e por isso sempre funciona, mas teclado não.
+  Com `root = Container::Vertical({toolbar, contentTab})` sem selector explícito, `ActiveChild()`
+  fica preso em `toolbar` (índice 0) até o usuário navegar o foco manualmente — setas endereçadas
+  ao mapa/à lista nunca chegariam ao componente certo. Fix: tratar tecla de seta/`[`/`]`/`c`
+  (mapa) e seta de navegação da lista (Frota/Memória) no `CatchEvent` mais externo — o mesmo que já
+  trata `+`/`-`/espaço/etc., que roda incondicionalmente ANTES de qualquer roteamento por foco
+  (`CatchEventBase::OnEvent` chama o handler primeiro, sem checar `Focused()`) — em vez de
+  depender da cadeia de componentes. Mexer direto em `selectedEntityIndex`/`selectedClassIndex`
+  tem o MESMO efeito da navegação interna do `ftxui::Menu` (o campo `selected` dele é um ponteiro
+  para essa mesma variável). Confirmado rodando sob pty: sem o fix, `ArrowDown` na aba Frota não
+  movia a seleção; com o fix, sim.
+- **Lista rolável é o padrão oficial `menu_in_frame.cpp` do próprio FTXUI**: `Menu(...)->Render()
+  | vscroll_indicator | frame | size(...)` — não foi inventado nada novo para caber "muitas
+  entidades" na tela; é o mesmo idiom que a lib já documenta para esse caso.
+
+**Bug confirmado e corrigido: a aba Mapa "prendia" a navegação — clique em QUALQUER lugar da
+tela (inclusive nos botões `[F1]`/`[F3]`) era engolido como "começar a arrastar o mapa".** A causa:
+o `CatchEvent` mais externo tratava `Mouse::Left`+`Pressed` como início de arrasto sempre que
+`activeTab == 1`, sem checar SE o clique caiu dentro do canvas — um clique no botão `[F1]`,
+desenhado no mesmo quadro, também disparava `mapView.dragging = true` e devolvia `true`
+(consumido), então o `Button` por baixo nunca via o `Pressed` e seu `on_click` nunca disparava.
+Fix: `ftxui::reflect(Box&)` aplicado ao elemento do canvas (dentro de `renderMap()`, que agora
+recebe `Box& outCanvasBox`) captura a caixa de tela real do mapa a cada desenho; o `CatchEvent` só
+inicia um arrasto se `mapCanvasBox.Contain(m.x, m.y)` — um arrasto **em andamento** continua
+processando até soltar mesmo que o cursor escape do canvas por um instante (movimento rápido),
+mas só o **início** (`Pressed`) e a roda do mouse exigem estar dentro. Confirmado rodando sob pty:
+clicar em `[F1]` estando na aba Mapa agora troca de aba normalmente.
+
+**A aba Mapa ganhou: setas de rumo, rastro opcional, seleção por clique com painel de detalhe,
+duas perspectivas e rotação — tudo compartilhando a MESMA infraestrutura de projeção
+(`app/MapPanel.cpp`).**
+
+- **Setas de rumo, não pontos.** Toda entidade cujo `majorType` não é `BUILDING`
+  (`hasMovementDynamics()`) ganha uma seta curta (`drawArrow()`, duas farpas em ~150° do eixo)
+  apontando pra `headingArrowDir()` — no TopDown é o rumo de compasso girado pela mesma rotação da
+  vista; no Lateral, a horizontal é a mesma projeção lateral do rumo e a vertical usa
+  `sin(pitchDeg)` como aproximação VISUAL de subida/descida (não é física rigorosa, é só a mesma
+  pista de direção que a seta já dá no TopDown). `BUILDING` é o único `MajorType` sem dinâmica de
+  movimento no bitmask nativo — por isso o gate.
+- **Rastro é opcional e por entidade, guardado em `MapViewState::trails`** (não em
+  `DashboardState`, porque é estado de UI que sobrevive entre amostras, não um fato instantâneo da
+  simulação), uma janela deslizante de `(northM, eastM, altitudeM)` por `Player::getID()`
+  (`kMapTrailLength` ≈ 8s a 10 Hz). `updateTrails()` só roda quando `simSec` muda — o `Renderer`
+  do FTXUI dispara a cada redesenho (tecla, resize...), não só a cada amostra nova; sem a guarda
+  o rastro ganharia pontos duplicados sobrepostos. Alternado por tecla (`t`/`T`) OU pelo botão
+  `[t] Rastro: ON/OFF`, cujo rótulo já mostra o estado atual (o `ButtonOption::transform` roda a
+  cada redesenho, não só no clique — basta capturar `mapView` por referência).
+- **Clicar numa entidade no mapa abre o MESMO painel de detalhe da aba Frota** —
+  `renderEntityDetail()` (`app/FleetPanel.hpp`) é função pura, chamada direto de dentro do
+  `Renderer` da aba Mapa, sem precisar duplicar o componente `entityDetail` da Frota (que não daria
+  pra reusar como Component: um `ComponentBase` só pode ter UM pai na árvore do FTXUI). Clicar
+  muda `selectedEntityIndex` — a MESMA variável que a aba Frota usa — então as duas abas sempre
+  concordam sobre "quem está selecionada", e `[c] Centralizar` na aba Mapa centraliza em quem quer
+  que esteja selecionada, mesmo que a seleção tenha vindo da Frota.
+  - **Clique vs. arrasto se distingue pelo deslocamento total entre `Pressed` e `Released`**
+    (`MapViewState::pressX/pressY`, fixados no `Pressed`): se o `Released` acontece a ≤1 célula de
+    distância, é clique — chama `hitTestEntity()` (mesma projeção de `renderMap()`, comparando em
+    CÉLULAS de terminal, não pixels de canvas: a resolução do mouse já é de célula, então
+    converter a posição de cada entidade por `px/2, py/4` e comparar direto é suficiente, sem
+    precisar de tolerância sub-célula).
+- **TopDown/Lateral compartilham a MESMA rotação (`viewYawDeg`) por design** — é o pedido de "girar
+  no eixo livre em todos os casos": o eixo livre é sempre o vertical (down), seja pra girar a rosa
+  dos ventos (TopDown) seja pra escolher de que rumo se está olhando a formação (Lateral, onde a
+  vertical da tela vira altitude). `project()` centraliza a rotação; só a componente que vira `py`
+  muda (`rotN` girado vs. `altitudeM - panAltM`). `panMap()` foi reescrita para receber deltas em
+  espaço de TELA (`screenRightM`/`screenUpM`, já invertendo a rotação) em vez de E/N de mundo —
+  arrastar/setas funcionam igual nas duas perspectivas sem `DashboardLoop.cpp` precisar saber qual
+  está ativa.
+- **O canvas tem tamanho FIXO** (`kCanvasW`/`kCanvasH`), não o `Box` calculado em tempo de render
+  — o `Box` só existe DEPOIS do layout, tarde demais pra dimensionar o `Canvas` desenhado dentro
+  dele (mesma armadilha já registrada na entrada anterior desta seção, agora também motivo de
+  capturar o `Box` À PARTE, via `reflect`, só para hit-test/gate de mouse — não para dimensionar
+  nada).
+
+**Segunda passada no Mapa: bolinha + linha (sem seta), rótulo em caixa com linha guia, eixos/
+escala por perspectiva, árvore de BT gráfica no card, e alinhamento tabular nas duas listas.**
+
+- **`drawArrow()` virou `drawHeadingLine()`** — só o traço na direção do rumo, sem as duas farpas
+  do desenho anterior (pedido explícito: "ao invés de seta, use somente uma linha"). A entidade em
+  si continua uma bolinha (`DrawPointCircleFilled`), como já era.
+- **Nome da entidade agora é um rótulo em caixa (`drawLabelCallout()`), ligado ao ponto por uma
+  linha** — antes era `DrawText` solto ao lado do ponto, que competia visualmente com o próprio
+  marcador. A caixa fica a nordeste do ponto (recortada nas bordas do canvas quando não cabe);
+  todos os rótulos são desenhados numa segunda passada, DEPOIS de todos os pontos/linhas de rumo
+  — senão uma caixa desenhada cedo demais ficaria por baixo do marcador de uma entidade vizinha
+  desenhada depois.
+- **Os eixos "x"/"y" são relativos ao PAN (o ponto que está no centro da tela agora), não ao
+  referencial absoluto da simulação.** Decisão deliberada, não simplificação preguiçosa: como a
+  horizontal da tela já É `rotE` por construção (ver `project()`), o valor de cada linha de grade
+  sai direto de `(gx-cx)*metersPerCell`, sem nenhuma trigonometria extra — e o rótulo continua
+  fazendo sentido depois de arrastar/centralizar/**girar**, sem ter que reconciliar rótulo com
+  rotação. TopDown ganhou grade completa (`x`/`y` em metros, com sinal) mais uma barra de escala
+  explícita (segmento de comprimento conhecido com tique nas pontas, além das marcas de grade).
+  Lateral ganhou só o eixo `y` (pedido explícito: "quando visto de lado, faça uso de um eixo y com
+  a altura/altitude em pés") — `mixr::base::distance::M2FT` (`mixr/base/units/distance_utils.hpp`)
+  faz a conversão; não existe eixo `x` rotulado no Lateral, só a mesma grade de referência.
+- **A árvore de BT agora é visualizável de verdade, dentro do card de detalhe (Frota E Mapa) —
+  novo módulo `app/BehaviorTreeView.{hpp,cpp}`.** O dashboard nunca teve acesso à ESTRUTURA da
+  árvore em runtime (só ao rótulo da folha vencedora, via `xboard::Readout::label`) — por isso
+  `loadTreeForScenario()` lê o MESMO `.generated.epp` que o cenário já resolveu, acha a primeira
+  ocorrência de `treeFile: "..."` e faz o parse do XML (parser mínimo escrito à mão, só o
+  suficiente pro formato do BT.CPP — ver o cabeçalho do `.cpp`; não vale a pena puxar uma lib de
+  XML pra isto). **Isto quebra a agnosticidade a MODELO só até onde o próprio projeto já quebra: é
+  agnóstico a qual `.xml` o cenário aponta, mas assume que existe um, no formato do
+  BehaviorTree.CPP — a tecnologia de BT é uma escolha do PROJETO, documentada em
+  `contexts/BTCPP-CONTEXT.md`, não uma suposição sobre qual modelo está carregado.** Renderizado
+  como árvore de texto com linhas Unicode (estilo `tree`), destacando MELHOR ESFORÇO a folha que
+  bate com o rótulo ativo (`matchesLabel()`: nome da tag contém o rótulo OU vice-versa,
+  normalizado). **Limite conhecido e aceito**: `ReportAndEvadeAction`/`ReturnToBaseAction`
+  decidem em RUNTIME entre dois rótulos cada (`"EVADE"`/`"BREAK"`, `"RTB"`/`"HOME"` —
+  `models/flight/src/bt/nodes/ReportAndEvadeAction.cpp`/`ReturnToBaseAction.cpp`), e nenhum dos
+  dois é substring do nome da tag (`ReportAndEvade`, `ReturnToBase`) — a árvore ainda aparece, só
+  sem destaque nesses dois casos. A alternativa seria uma tabela de mapeamento escrita à mão aqui,
+  específica do modelo `flight` — o oposto do resto deste dashboard, por isso não foi feita.
+  Confirmado rodando: a árvore de `intercept_missile` (com o ramo extra `LaunchEnvelope`/
+  `LaunchMissile`) aparece certinha no card, diferente da árvore de produção — prova que
+  `loadTreeForScenario()` está lendo o arquivo CERTO por cenário, não um caminho fixo.
+- **O card de detalhe tem a MESMA largura nas duas abas** (`kDetailPanelWidth`, em
+  `app/FleetPanel.hpp`) — antes a Frota usava `flex` (largura = o que sobrava ao lado da lista) e
+  o Mapa usava um `size(WIDTH, LESS_THAN, 36)` solto; as duas podiam sair com larguras diferentes
+  dependendo do que mais estava na mesma linha. Unificado num `size(WIDTH, EQUAL, ...)` aplicado
+  nos DOIS lugares, com o mesmo valor — determinístico, não depende de quem mais está na linha.
+- **As listas da Frota e da Memória alinham em COLUNA de verdade** (`size(WIDTH, EQUAL, N)` por
+  campo, larguras em `kCol*` de `app/FleetPanel.hpp`/`app/MemoryPanel.hpp`) — antes cada célula
+  tinha a largura do próprio conteúdo (só com padding manual na string de fallback do `Menu`, que
+  nem é o que aparece de verdade — o `entries_option.transform` é quem desenha), então um nome ou
+  valor mais comprido empurrava as colunas seguintes fora de alinhamento entre uma linha e outra.
+
+**Terceira passada: "ver no mapa" a partir da Frota, barra de nível na Memória (no lugar do
+gráfico de linha) e confirmação para as quatro ações disruptivas.**
+
+- **Botão "[m] Ver no mapa" no card de detalhe da Frota** — como Frota e Mapa já COMPARTILHAM
+  `selectedEntityIndex` (a mesma variável, desde a passada anterior), o botão só faz
+  `gotoTab(1)`: a entidade certa já aparece selecionada do outro lado, sem precisar re-selecionar
+  nada. Só aparece no card da Frota (`buildDetailPanel(e, includeViewOnMapButton)`) — no Mapa você
+  já está lá. Precisou virar filho de verdade do `Renderer` (`Renderer(btnViewOnMap, fn)`, não um
+  `Renderer(fn)` solto) para o clique alcançá-lo — mesma regra de sempre: broadcast de mouse desce
+  por todo `Container`, mas só quem está DE FATO na árvore de componentes recebe.
+- **Barra de nível na Memória, no lugar do sparkline** — `gauge(count / pico)` (`ftxui::gauge`, a
+  mesma primitiva já usada na barra de combustível). `pico` (`ClassStat::mc`) é o teto: o próprio
+  `MetaObject` nativo mantém esse número, ele só CRESCE (nunca encolhe), e por isso a escala "varia
+  com o tempo, já que o limite não é conhecido" — não tem teto fixo escrito em lugar nenhum, é o
+  recorde já observado. `count=`/`pico=`/`criados=` continuam como texto, sem remover nada — só o
+  gráfico de tendência (`sparkline()`, removida — ficou sem nenhum uso depois da troca) virou
+  barra.
+- **`l`/`r`/`s`/`q` agora pedem confirmação — mesmo padrão do exemplo oficial
+  `modal_dialog_custom.cpp` do próprio FTXUI**, não o helper `Modal()` da lib (que tem semântica
+  própria não verificada; preferido reusar um padrão já lido na fonte, depois do susto do bug de
+  clique-trava documentado acima). `Container::Tab({withKeys, confirmDialog}, &uiDepth)` cuida SÓ
+  do roteamento de evento — `TabContainer::OnEvent` só entrega pro filho ATIVO
+  (`container.cpp`), então com `uiDepth==1` o `withKeys` (e tudo por baixo — botões, listas, mapa)
+  para de receber qualquer evento, o que já BLOQUEIA sozinho a interação com o resto da UI
+  enquanto o diálogo está aberto, sem precisar de nenhum flag extra. A composição VISUAL (o
+  diálogo sobreposto, não substituindo a tela) é feita à mão no `Renderer` mais externo — `dbox`
+  (camadas) + `clear_under` (opaco por cima) + `center` —, exatamente como o exemplo da lib faz:
+  `Container::Tab::OnRender()` só desenha o filho ativo, então contar com o `Render()` automático
+  do `Tab` mostraria SÓ o diálogo, sem o resto congelado atrás.
+  - `l`/`r`/`s`/`q` viraram "pedidos" (só armam `pendingAction` + `uiDepth=1`); as ações de
+    verdade (as que antigas faziam) ganharam o sufixo `Confirmed` e só rodam a partir do diálogo
+    (`Enter`/clique em "[Enter] Confirmar") ou são descartadas (`Escape`/clique em "[Esc]
+    Cancelar", `cancelPendingAction()`).
+  - **`Escape` saiu do atalho direto de sair** (antes era sinônimo de `q`) — dentro do diálogo ele
+    significa "cancelar", e mantê-lo também como atalho de sair no nível de cima geraria o efeito
+    estranho de Escape armar a confirmação de sair e o Escape SEGUINTE cancelar ela na hora. `q`/
+    `Q` continuam sendo o único atalho de teclado pra sair.
+  - Confirmado rodando sob pty: `q` mostra o diálogo sem sair; `Escape` cancela e volta pra UI
+    normal (`t=`/`sim=` seguem avançando, prova que o processo nunca foi encerrado); `r` + `Enter`
+    reinicia de verdade (tela pisca, `t=` volta a 0 — o mesmo reexec de sempre, ver `app/
+    Respawn.hpp`).
+
+**Quarta passada: aba "Frota" virou "Players" com coluna de thread, Mapa em milhas náuticas
+(vista de cima) e — a maior peça — breakpoint na árvore de BT.**
+
+- **`[F1] Frota` → `[F1] Players`** (pedido literal, em inglês mesmo — única string da UI que
+  foge da convenção geral de português do projeto, por instrução direta) e nova coluna de thread
+  na lista (`EntityState::threadTag`, já existia só no card de detalhe). Nesta poc (a mesma pilha
+  nativa da `single-thread`) a coluna sai sempre `-`: quem decide no pool T/C é a `FlightAgentTC`
+  da `multi-thread`, não o `SimAgent` do laço de background que o dashboard usa — é a resposta
+  CERTA, não um campo quebrado.
+- **Mapa, vista de cima, em milhas náuticas** — só a vista de cima (pedido explícito); a de lado
+  continua com pés no eixo Y (rodada anterior) e metros no resto. `mixr::base::distance::M2NM`
+  (`distance_utils.hpp`) faz a conversão só na CAMADA DE EXIBIÇÃO — o zoom (`metersPerCell`)
+  continua em metros por baixo, sem tocar `project()`/`panMap()`/`zoomMap()`.
+- **Breakpoint de árvore de BT** — "marcar um estado da bt de um dado elemento e rodar a
+  simulação até que aquele nó seja atingido, devolvendo a simulação pausada", com a escolha de
+  velocidade ("a que eu decidir" ou "máxima possível") e tratamento de nó nunca atingido. Módulo
+  novo nenhum — tudo em `app/DashboardLoop.cpp` (a lógica de arvore ficou em `app/
+  BehaviorTreeView`, que perdeu a dependência de FTXUI: agora só expõe dado — `BtTreeLine`,
+  `flattenBehaviorTree()` — e o critério de correspondência — `matchesLabel()`, promovido de
+  privado pra público porque a checagem de breakpoint precisa do MESMO critério que já destacava
+  a folha ativa).
+  - **A "caixa da árvore" virou `ftxui::Menu` de verdade** (pedido explícito: clicável) — mas
+    precisou de DUAS instâncias (`treeMenuFleet`/`treeMenuMap`), não uma só: `Container::Tab` (o
+    `contentTab` que já existia) só entrega evento pro filho ATIVO, então um `Menu` dentro da
+    Frota nunca receberia clique nenhum com a aba Mapa em cena. As duas instâncias compartilham o
+    MESMO `MenuOption` (copiado, não movido — os ponteiros `entries`/`selected` continuam os
+    mesmos) — selecionar numa aba reflete na outra, o mesmo padrão já usado por
+    `selectedEntityIndex` entre Frota e Mapa.
+  - **O alvo é (id do PLAYER, tag do nó) — "de um dado elemento", não "qualquer um nesse
+    estado"**: `Breakpoint::entityId` é capturado no momento de armar (`doArmBreakpoint`), da
+    entidade selecionada NAQUELE instante — trocar a seleção depois não muda o alvo já armado.
+  - **Estado do breakpoint é compartilhado entre a thread de SIMULAÇÃO (quem checa a condição e
+    quem pausa) e a de UI (quem arma/cancela)** — `bpMutex`, mesmo padrão de `stateMutex`/
+    `latest` já usado pelo resto do arquivo. A checagem roda a cada amostra nova (10 Hz), rodando
+    ou pausada, em QUALQUER escala de tempo — "a velocidade que eu decidir" não é um modo
+    especial, é só não estar pausado enquanto o observador roda em paralelo.
+  - **"Velocidade máxima possível" é um modo de fato novo**: `fastRunToBreakpoint` (atômico, lido
+    a cada iteração do laço de `simThread`) faz o laço PULAR o `msleep()` de pacing — gira o mais
+    rápido que a CPU permitir, independente da `timeScale` do `ClockStation` (que continua
+    controlando quanto tempo SIMULADO cada passo representa; os dois efeitos se somam). Ao SAIR
+    do modo rápido (atingiu, foi cancelado, ou nunca esteve armado), a referência de parede
+    (`wallTimeElapsed`/`startTime`) é RESINCRONIZADA na hora — sem isso, o pacing tentaria
+    "recuperar" de uma vez todo o tempo que o laço correu sem dormir, travando a tela por um
+    tempo proporcional a quanto ele adiantou. Medido rodando: sem a resincronização o sintoma
+    seria um `msleep()` de vários segundos logo depois do breakpoint disparar.
+  - **"Trate os casos em que um nó objetivo nunca é atingido"**: cancelamento manual sempre
+    disponível (`[x]`/botão, roda em qualquer aba) MAIS um limite automático —
+    `kBreakpointTimeoutSimSec` (300s) de tempo SIMULADO (não de parede: independe de estar em
+    velocidade máxima ou 1×) desde que foi armado. Vencido o prazo, desarma sozinho e avisa
+    "NAO atingido... cancelado" em vez de rodar pra sempre.
+  - **Testado ponta a ponta com um emulador de terminal de verdade (`pyte`, via um venv
+    Python — a captura ingênua de bytes ANSI das rodadas anteriores não bastava pra achar
+    coordenada de clique com confiança depois que a tela cresceu de camadas), não só inspeção de
+    código**: clicar em `"SupportAlert"` na árvore mudou o status pra "Folha selecionada"; `[G]`
+    armou em modo rápido (`t=` disparou pra centenas de "segundos" enquanto `sim=` mal se moveu,
+    `dec=` na casa dos milhares — prova de que o laço rodou muitas iterações sem dormir);
+    poucos segundos de parede depois, `falcon1` atingiu `SUPPORT` e o cabeçalho mostrou
+    `PAUSADO` — a simulação nativa pausou de verdade (`ClockStation::setPaused(true)`), não só a
+    UI achou que estava.
 
 ## Estado atual / pendências conhecidas
 
