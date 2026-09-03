@@ -142,7 +142,7 @@ pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`:
 | `tc` | total já criado desde o início do processo |
 
 O próprio `Object.hpp` diz para que serve: *"to spot potential memory leaks"*.
-[`app/MetaObjectReport`](../src/single-thread/include/app/MetaObjectReport.hpp) imprime uma linha
+[`app/MetaObjectReport`](../src/poc/single-thread/include/app/MetaObjectReport.hpp) imprime uma linha
 `meta=` por classe vigiada ao fim de uma corrida determinística.
 
 **A asserção é comparativa, e é isso que a torna válida.** Um retrato único não distingue
@@ -259,7 +259,7 @@ passaram a rodar hermético. Assim, as duas pocs passam com 1, 2 e 4 threads em 
 entre si. O teste de vazamento roda com `-threads 1`.
 
 **3. Os testes que executam uma poc são `is_parallel: false`.** `app/ScenarioTemplate` grava o
-cenário expandido sempre no mesmo caminho (`src/<poc>/configs/scenario.generated.epp`, não
+cenário expandido sempre no mesmo caminho (`src/poc/<poc>/configs/scenario.generated.epp`, não
 configurável por linha de comando), então duas execuções simultâneas disputam o arquivo.
 
 **4. `wrap180(180) == -180`.** O header documenta `(-180, 180]`, mas `fmod(360,360)==0` faz a

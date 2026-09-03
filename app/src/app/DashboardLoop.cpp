@@ -59,7 +59,7 @@
 // um ftxui::Menu dentro de frame()/vscroll_indicator() (padrao oficial do
 // FTXUI para lista rolavel -- ver o exemplo menu_in_frame.cpp da propria
 // lib): e o que deixa a UI caber QUALQUER quantidade de entidades/classes
-// sem crescer a tela. Fundo (a quarta) e um painel estatico -- ver
+// sem crescer a tela. Tempo Nao-Critico (a quarta) e um painel estatico -- ver
 // app/BackgroundPanel.hpp.
 //
 // DUAS THREADS, no molde do que app/RealTimeRun.cpp (das outras pocs) ja faz
@@ -120,8 +120,20 @@ Element renderHeader(const DashboardState& st)
    ts << "sim=" << std::fixed << std::setprecision(1) << st.simSec << "s";
 
    const SpeedDisplay disp{speedDisplay(st.fastBreakpointRun, st.paused, st.timeScale, st.actualTimeScale)};
-   const std::string& speedLabel{disp.label};
-   const Color speedColor{speedToneColor(disp.tone)};
+   std::string speedLabel{disp.label};
+   Color speedColor{speedToneColor(disp.tone)};
+
+   // Um BP armado TRAVA os controles manuais de velocidade nos DOIS modos
+   // ('g'/'G' -- ver isBreakpointArmedNow() em runDashboard()), e isso tem
+   // de ficar obvio mesmo fora do card da arvore (pedido explicito). O modo
+   // rapido ja fala por si (label "MAX (~Nx real)" em Magenta); e no modo
+   // de velocidade ATUAL a cor normal (verde/amarelo/ciano) nao diz nada
+   // sobre a trava -- daí o override pra Azul so nesse caso (mesmo tom que
+   // o card da arvore ja usa pra folha ativa, ver renderBtLine()).
+   if (st.breakpointArmed) {
+      speedLabel += " [BP]";
+      if (!st.fastBreakpointRun) speedColor = Color::Blue;
+   }
 
    return hbox({
              text(" app ") | bold | bgcolor(Color::Blue) | color(Color::White),
@@ -198,7 +210,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       double measuredActualTimeScale{1.0};
 
       // Ver o comentario grande de app::BackgroundInfo (DashboardState.hpp):
-      // este laco INTEIRO e a "thread de tempo nao critico" da aba Fundo --
+      // este laco INTEIRO e a "thread de tempo nao critico" da aba Tempo Nao-Critico --
       // 'bgRateMark*' mede a taxa REAL de iteracao (janela de ~0.5s, mesmo
       // desenho de 'speedMark*' acima), separada da taxa SIMULADA que
       // 'measuredActualTimeScale' ja cobre.
@@ -277,6 +289,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                }
                fastRunToBreakpoint = false;
             }
+
+            // Publica pro DashboardState -- ver o "porque" no cabecalho de
+            // BreakpointController.hpp e o pedido explicito de deixar o
+            // travamento de velocidade (armado, QUALQUER modo) e o "informe"
+            // de hit obvios na UI, nao so dentro do card da arvore. status()
+            // com (false,false,"") le so armed_/hit_ -- os
+            // parametros de selecao de arvore nao entram nesses ramos.
+            next.breakpointArmed = bp.isArmed();
+            const BreakpointStatus globalBpStatus{bp.status(false, false, "")};
+            next.breakpointHit = (globalBpStatus.branch == BreakpointStatusBranch::Hit);
+            next.breakpointHitMessage = globalBpStatus.text;
          }
 
          next.actualTimeScale = measuredActualTimeScale;
@@ -351,6 +374,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    std::vector<std::string> classLabels;
    BackgroundInfo displayedBackground;
 
+   // Copia "pra desenho" de DashboardState::breakpoint* -- ver o cabecalho
+   // desses campos em DashboardState.hpp. Usada so pelos 'transform' dos
+   // botoes (podem atrasar um quadro sem problema -- e so estetica); a
+   // trava DE VERDADE dos comandos manuais le 'bp.isArmed()' direto, sob
+   // 'bpMutex' (ver isBreakpointArmedNow(), acima).
+   bool displayedBreakpointArmed{};
+   bool displayedBreakpointHit{};
+   std::string displayedBreakpointHitMessage;
+
    // A arvore de BT achatada NAO muda (o arquivo e lido uma vez, no
    // startup -- ver main.cpp) -- calculada aqui, fora de qualquer Renderer.
    // 'selectedBtLineIndex' e a escolha do usuario (clique na "caixa da
@@ -361,25 +393,37 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    for (const auto& line : treeLines) treeLineLabels.push_back(line.display);
    int selectedBtLineIndex{};
 
-   // ---- acoes nomeadas: cada uma e usada por TECLA e por BOTAO ----
+   // ---- acoes nomeadas: cada una e usada por TECLA e por BOTAO ----
    //
-   // Acelerar/frear MANUAL ficam BLOQUEADOS enquanto um breakpoint roda em
-   // velocidade maxima (pedido explicito) -- o valor nominal da escada
-   // (ladder.scale()) nao tem efeito nenhum ali mesmo (o laco ja
-   // ignora o pacing de parede por completo, ver 'fastRunToBreakpoint' no
-   // laco de 'simThread'), entao mexer nele so confundiria o que o
-   // cabecalho mostra depois que o modo rapido terminar.
+   // Acelerar/frear/voltar-a-tempo-real MANUAIS ficam BLOQUEADOS enquanto
+   // HOUVER um breakpoint armado -- pedido explicito, e vale nos DOIS modos
+   // ('g': velocidade atual; 'G': velocidade maxima), nao so no rapido: a
+   // ideia e "a velocidade fica travada no que estava/na maxima ate o BP
+   // ser atingido", nao so "nao adianta acelerar durante o modo rapido".
+   // 'doRealTime' entra na mesma trava por mudar a escada pra 1x (e
+   // despausar) -- deixa-lo passar destrancaria a velocidade so apertando
+   // '1'.
+   //
+   // Le 'bp.isArmed()' sob 'bpMutex' -- chamado so por tecla/clique do
+   // usuario (nao no laco quente de 'simThread'), entao tomar o lock aqui
+   // e barato e mantem a checagem sempre CORRETA (ao contrario de uma
+   // copia "so pra exibir" que pode atrasar um quadro -- ver
+   // 'displayedBreakpointArmed', usado so pelo desenho dos botoes).
+   const auto isBreakpointArmedNow = [&] {
+      const std::lock_guard<std::mutex> lock(bpMutex);
+      return bp.isArmed();
+   };
    const auto doAccelerate = [&] {
-      if (clockStation == nullptr || fastRunToBreakpoint.load()) return;
+      if (clockStation == nullptr || isBreakpointArmedNow()) return;
       if (ladder.accelerate()) clockStation->setTimeScale(ladder.scale());
    };
    const auto doDecelerate = [&] {
-      if (clockStation == nullptr || fastRunToBreakpoint.load()) return;
+      if (clockStation == nullptr || isBreakpointArmedNow()) return;
       if (ladder.decelerate()) clockStation->setTimeScale(ladder.scale());
    };
    const auto doTogglePause = [&] { if (clockStation != nullptr) clockStation->togglePaused(); };
    const auto doRealTime = [&] {
-      if (clockStation == nullptr) return;
+      if (clockStation == nullptr || isBreakpointArmedNow()) return;
       ladder.toRealTime();
       clockStation->setPaused(false);
       clockStation->setTimeScale(ladder.scale());
@@ -478,18 +522,13 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       const BtTreeLine& line{treeLines[static_cast<std::size_t>(selectedBtLineIndex)]};
       if (!line.leaf) return;
 
-      double currentSimSec{};
-      {
-         const std::lock_guard<std::mutex> lock(stateMutex);
-         currentSimSec = latest.simSec;
-      }
       const std::size_t idx{static_cast<std::size_t>(
          std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
       const EntityState& target{displayedEntities[idx]};
 
       {
          const std::lock_guard<std::mutex> lock(bpMutex);
-         bp.arm(target.id, target.name, line.tag, fast, currentSimSec,
+         bp.arm(target.id, target.name, line.tag, fast,
                clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
          if (fast && clockStation != nullptr) {
             // Crava o pool de tempo critico no topo da escada -- ver o
@@ -508,8 +547,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (shouldRestoreScale && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale());
       fastRunToBreakpoint = false;
    };
-   const Component btnRunToBreakpoint{makeButton("[g] Rodar ate aqui", [&] { doArmBreakpoint(false); })};
-   const Component btnRunToBreakpointMax{makeButton("[G] Rodar (max veloc.)", [&] { doArmBreakpoint(true); })};
+   // Rotulo dos dois botoes ja e a LEGENDA do efeito (pedido explicito de
+   // deixar g/G intuitivos sem precisar abrir outro lugar pra entender):
+   // "trava" e a palavra que tambem aparece no cabecalho ([BP]) e no status
+   // do card da arvore (ver BreakpointController::status()) -- vocabulario
+   // consistente nos tres lugares.
+   const Component btnRunToBreakpoint{
+      makeButton("[g] Rodar (trava veloc. atual)", [&] { doArmBreakpoint(false); })};
+   const Component btnRunToBreakpointMax{
+      makeButton("[G] Rodar (trava em veloc. MAXIMA)", [&] { doArmBreakpoint(true); })};
    const Component btnCancelBreakpoint{makeButton("[x] Cancelar breakpoint", doCancelBreakpoint)};
 
    // "Ver no mapa" -- so faz sentido no card da Frota (no Mapa voce ja esta
@@ -575,21 +621,23 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          snap = bp.status(hasSelection, selectionIsLeaf, selectedLeafTag);
       }
 
+      // 'paragraphAlignLeft' quebra linha sozinho na largura disponivel --
+      // pedido explicito: texto extenso vazava o quadro da arvore. Botao(es)
+      // vao numa linha PROPRIA, embaixo do texto, nunca no mesmo hbox (um
+      // hbox nao quebra linha, so estoura pra fora do card).
       switch (snap.branch) {
          case BreakpointStatusBranch::Armed:
-            return hbox({text(snap.text) | color(Color::Yellow) | bold, text("  "),
+            return vbox({paragraphAlignLeft(snap.text) | color(Color::Yellow) | bold,
                          btnCancelBreakpoint->Render()});
          case BreakpointStatusBranch::Hit:
-            return text(snap.text) | color(Color::Green) | bold;
-         case BreakpointStatusBranch::TimedOut:
-            return text(snap.text) | color(Color::Red);
+            return paragraphAlignLeft(snap.text) | color(Color::Green) | bold;
          case BreakpointStatusBranch::LeafSelected:
-            return hbox({text(snap.text + "  "),
-                         btnRunToBreakpoint->Render(), text(" "), btnRunToBreakpointMax->Render()});
+            return vbox({paragraphAlignLeft(snap.text),
+                         hbox({btnRunToBreakpoint->Render(), text(" "), btnRunToBreakpointMax->Render()})});
          case BreakpointStatusBranch::NonLeafSelected:
          case BreakpointStatusBranch::NoTreeSelection:
          default:
-            return text(snap.text) | dim;
+            return paragraphAlignLeft(snap.text) | dim;
       }
    };
 
@@ -782,7 +830,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       });
    })};
 
-   // ---- aba "Fundo": o que roda na thread de tempo NAO critico -- painel
+   // ---- aba "Tempo Nao-Critico": o que roda na thread de tempo NAO critico -- painel
    // estatico, sem lista (ver app/BackgroundPanel.hpp). 'displayedBackground'
    // e alimentado pelo MESMO Renderer externo que ja alimenta
    // 'displayedEntities'/'displayedClasses' (ver 'withRenderer' abaixo) --
@@ -799,16 +847,20 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnFleet{makeButton("[F1] Players", [&] { gotoTab(0); })};
    const Component btnMap{makeButton("[F2] Mapa", [&] { gotoTab(1); })};
    const Component btnMemory{makeButton("[F3] Memoria", [&] { gotoTab(2); })};
-   const Component btnBackground{makeButton("[F4] Fundo", [&] { gotoTab(3); })};
+   const Component btnBackground{makeButton("[F4] Tempo Nao-Critico", [&] { gotoTab(3); })};
 
-   // Acelerar/Frear ficam visualmente apagados enquanto bloqueados (ver
-   // 'doAccelerate'/'doDecelerate' acima) -- 'transform' roda a cada
-   // redesenho, entao basta ler 'fastRunToBreakpoint' direto nele.
+   // Acelerar/Frear/Tempo-real ficam visualmente apagados enquanto
+   // bloqueados -- QUALQUER breakpoint armado ('g' OU 'G', ver
+   // 'doAccelerate'/'doDecelerate'/'doRealTime' acima), nao so o modo
+   // rapido. 'transform' roda a cada redesenho, entao basta ler
+   // 'displayedBreakpointArmed' direto nele (a copia "pra desenho",
+   // atualizada por 'withRenderer' -- ver o comentario onde ela e
+   // declarada).
    ButtonOption accelOpt;
    accelOpt.label = "[+] Acelerar";
    accelOpt.on_click = doAccelerate;
    accelOpt.transform = [&](const EntryState&) {
-      return text(" [+] Acelerar ") | (fastRunToBreakpoint.load() ? dim : nothing);
+      return text(" [+] Acelerar ") | (displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnAccel{Button(accelOpt)};
 
@@ -816,12 +868,19 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    decelOpt.label = "[-] Frear";
    decelOpt.on_click = doDecelerate;
    decelOpt.transform = [&](const EntryState&) {
-      return text(" [-] Frear ") | (fastRunToBreakpoint.load() ? dim : nothing);
+      return text(" [-] Frear ") | (displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnDecel{Button(decelOpt)};
 
    const Component btnPause{makeButton("[espaco] Pausar", doTogglePause)};
-   const Component btnReal{makeButton("[1] Tempo real", doRealTime)};
+
+   ButtonOption realOpt;
+   realOpt.label = "[1] Tempo real";
+   realOpt.on_click = doRealTime;
+   realOpt.transform = [&](const EntryState&) {
+      return text(" [1] Tempo real ") | (displayedBreakpointArmed ? dim : nothing);
+   };
+   const Component btnReal{Button(realOpt)};
    const Component btnLoad{makeButton("[l] Carregar", doLoad)};
    const Component btnRestart{makeButton("[r] Reiniciar", doRestart)};
    const Component btnStop{makeButton("[s] Parar", doStop)};
@@ -849,6 +908,9 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       displayedEntities = snap.entities;
       displayedClasses = snap.classStats;
       displayedBackground = snap.background;
+      displayedBreakpointArmed = snap.breakpointArmed;
+      displayedBreakpointHit = snap.breakpointHit;
+      displayedBreakpointHitMessage = snap.breakpointHitMessage;
 
       // So acrescenta ao rastro quando a amostra e REALMENTE nova -- este
       // Renderer roda a cada redesenho, nao so a cada captura nova (uma
@@ -890,25 +952,37 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       };
 
       // "[m] Ver no mapa" -- pedido explicito: posicao mais visivel, igual
-      // aos demais botoes principais, so aparece quando ha alguma entidade
-      // selecionada (senao nao ha "onde ir").
+      // aos demais botoes principais, so aparece na aba Players (F1) COM
+      // uma entidade selecionada -- nas outras abas (Mapa, Memoria, Tempo Nao-Critico)
+      // nao faz sentido ("ver no mapa" a partir de onde voce ja esta, ou
+      // de uma lista que nao e de players).
       Elements primaryButtons{btnAccel->Render(), btnDecel->Render(), btnPause->Render(),
                               btnReal->Render()};
-      if (!displayedEntities.empty()) primaryButtons.push_back(btnViewOnMap->Render());
+      if (activeTab == 0 && !displayedEntities.empty()) primaryButtons.push_back(btnViewOnMap->Render());
 
-      return vbox({
-         renderHeader(snap),
-         hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
-               tabBadge(btnBackground, 3)}),
-         separator(),
-         contentTab->Render() | flex,
-         separator(),
-         hbox({
-            hbox(std::move(primaryButtons)),
-            filler(),
-            btnLoad->Render(), btnRestart->Render(), btnStop->Render(), btnQuit->Render(),
-         }),
-      });
+      // "Informe" de BP atingido, pedido explicito -- fica visivel ate o
+      // usuario armar um NOVO breakpoint (ver o comentario de
+      // DashboardState::breakpointHit), nao so no instante do hit; e uma
+      // LINHA PROPRIA, logo abaixo do cabecalho, pra nao depender de
+      // ninguem estar olhando o card da arvore (que ja mostra a mesma
+      // mensagem, ver buildBreakpointStatus()) pra perceber.
+      Elements rows{renderHeader(snap)};
+      if (displayedBreakpointHit) {
+         rows.push_back(text(" BP ATINGIDO -- " + displayedBreakpointHitMessage + " ")
+                         | bold | bgcolor(Color::Blue) | color(Color::White) | center);
+      }
+      rows.push_back(hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
+               tabBadge(btnBackground, 3)}));
+      rows.push_back(separator());
+      rows.push_back(contentTab->Render() | flex);
+      rows.push_back(separator());
+      rows.push_back(hbox({
+         hbox(std::move(primaryButtons)),
+         filler(),
+         btnLoad->Render(), btnRestart->Render(), btnStop->Render(), btnQuit->Render(),
+      }));
+
+      return vbox(std::move(rows));
    })};
 
    const Component withKeys{CatchEvent(withRenderer, [&](Event event) -> bool {

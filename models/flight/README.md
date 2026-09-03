@@ -77,7 +77,7 @@ varredura, pela checagem do `.acmi` no teste do stub.
 
 ## A dissecação profunda
 
-O [README da single-thread](../../src/single-thread/README.md) descreve este modelo peça por peça —
+O [README da single-thread](../../src/poc/single-thread/README.md) descreve este modelo peça por peça —
 seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
 
 ## Ler também

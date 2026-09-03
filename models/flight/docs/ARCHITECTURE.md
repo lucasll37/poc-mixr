@@ -10,7 +10,7 @@ específicas deste modelo que, de outra forma, só existiam espalhadas em
 
 `data/jsbsim/` (o c310) e `configs/flight_tree.xml` são publicados junto com o `.so`
 (`install_subdir()`/`install_data()` no `meson.build`, para `<prefix>/share/mixr-plugins/flight/`)
-— não moram em `src/<poc>/data/` de nenhuma poc. Não é só arrumação: `domain/`/`bt/` deste modelo
+— não moram em `src/poc/<poc>/data/` de nenhuma poc. Não é só arrumação: `domain/`/`bt/` deste modelo
 são calibrados **para o c310** especificamente:
 
 - `maxClimbRateMps`/`maxRateOfTurnDps` do `Autopilot` (ver `include/domain/`).

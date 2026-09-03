@@ -1,19 +1,12 @@
-Faça um teste fino no repositório e com base no contexts, avalie se o código segue uma boa arquitetura que escale, que seja mutenivel, legivel e claro, extraindo as melhores praticas possíveis do framework
-
 Controle de randomização
 
 Evento based -> Explosão de Bomba afeta: bomba e player que estão num raio da bomba (Usar python para isso?)
 
-implementar thread de "fundo"
-arvore de comportamento controle de velocidade BP
-mapa -> seletor verde
 mensagens personalizáveis
 
-Integrar MIIA
-
-remover o que é hj é o single-thread
-
 criar scripts e deps
+webstation
+engine
 
 
 --------------------------------------------------------

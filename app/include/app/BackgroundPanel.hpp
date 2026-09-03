@@ -5,7 +5,7 @@
 #include <ftxui/dom/elements.hpp>
 
 //------------------------------------------------------------------------------
-// A aba "Fundo" (F4): o que roda na thread de tempo NAO critico -- ver o
+// A aba "Tempo Nao-Critico" (F4): o que roda na thread de tempo NAO critico -- ver o
 // comentario grande de app::BackgroundInfo em DashboardState.hpp para o
 // "porque" (este `app` nunca cria a StationBgPeriodicThread nativa; quem faz
 // esse papel e o proprio laco de simThread em DashboardLoop.cpp).

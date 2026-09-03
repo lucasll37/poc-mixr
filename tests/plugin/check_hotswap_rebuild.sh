@@ -9,7 +9,7 @@
 #
 # A prova de verdade e a saida do ninja no passo 3: tem de listar DUAS edges e
 # NAO citar single-thread, multi-thread nem bandit-dis. Compare com o
-# contra-exemplo: mexer em src/single-thread/include/app/Fleet.hpp
+# contra-exemplo: mexer em src/poc/single-thread/include/app/Fleet.hpp
 # dispara um relink do executavel inteiro -- e o modelo nao e nem tocado.
 #
 set -euo pipefail
@@ -17,7 +17,7 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ"
 
-BIN=build/src/single-thread/src/single-thread
+BIN=build/src/poc/single-thread/src/single-thread
 SO=dist/lib/mixr-plugins/libflight.so
 MODEL_BUILD=build-flight
 FIX=build/tests-fixtures/single-thread-hotswap-vivo.epp.in

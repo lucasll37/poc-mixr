@@ -27,7 +27,11 @@ struct BreakpointEntity
    std::string behaviorLabel;
 };
 
-enum class BreakpointOutcome { None, Hit, TimedOut };
+// Sem timeout: uma vez armado, o breakpoint so sai do ar por HIT ou por
+// cancelamento manual ('x'/botao) -- "continuar acelerado ate o fim" e
+// "a busca deve ir ate chegar nesse no ou a simulacao encerrar" foram
+// pedidos explicitos que descartam qualquer desarme automatico por tempo.
+enum class BreakpointOutcome { None, Hit };
 
 // O que mudou nesta chamada a tick() -- o chamador decide o QUE FAZER
 // (pausar o ClockStation, restaurar a escala nominal); o controller so
@@ -36,7 +40,7 @@ struct BreakpointTickResult
 {
    BreakpointOutcome outcome{BreakpointOutcome::None};
    bool shouldPause{};          // Hit: chamador deve ClockStation::setPaused(true)
-   bool shouldRestoreScale{};   // Hit/TimedOut em modo rapido: restaurar a escala nominal
+   bool shouldRestoreScale{};   // Hit em modo rapido: restaurar a escala nominal
    double simSecAtOutcome{};
 };
 
@@ -47,7 +51,6 @@ using BreakpointLabelMatcher = std::function<bool(const std::string& tag, const 
 enum class BreakpointStatusBranch {
    Armed,           // aguardando o no ser atingido
    Hit,             // atingiu -- simulacao pausada
-   TimedOut,        // desarmado sozinho por timeout
    NoTreeSelection, // nenhuma linha da arvore selecionada ainda
    NonLeafSelected, // selecionou um no de controle (Fallback/Sequence), nao serve de alvo
    LeafSelected,    // selecionou uma folha valida -- pode armar
@@ -67,12 +70,12 @@ struct BreakpointStatus
 class BreakpointController
 {
 public:
-   explicit BreakpointController(double timeoutSimSec = 300.0);
+   BreakpointController() = default;
 
    // Arma sobre (entityId, nodeTag). 'currentTimeScale' e sempre guardado
    // como a escala a restaurar (so e CONSULTADO se fastMode==true depois).
    void arm(int entityId, std::string entityName, std::string nodeTag,
-            bool fastMode, double simSecNow, double currentTimeScale);
+            bool fastMode, double currentTimeScale);
 
    // Cancelamento manual (tecla 'x'/botao). Devolve true se o chamador
    // deve restaurar a escala nominal do ClockStation (isto e, se estava
@@ -96,19 +99,15 @@ public:
                            const std::string& selectedLeafTag) const;
 
 private:
-   double timeoutSimSec_;
-
    bool armed_{};
    int entityId_{-1};
    std::string entityName_;
    std::string nodeTag_;
    bool fastMode_{};
-   double armedAtSimSec_{};
    double restoreTimeScale_{1.0};
 
    bool hit_{};
    double hitSimSec_{};
-   bool timedOut_{};
 };
 
 } // namespace app

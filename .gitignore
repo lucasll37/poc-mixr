@@ -6,20 +6,47 @@ dist
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
 
-# deposito de plugins de terceiros (.so pre-compilado, externo a este
-# repositorio) -- ver models/plugins/README.md. 'make models' copia
-# qualquer .so encontrado aqui pra dist/lib/mixr-plugins/.
+# deposito COMPARTILHADO de plugins (locais -- flight/missile/stub, via o
+# 'install-host' de cada um -- E de terceiros, externos a este repositorio)
+# -- ver models/plugins/README.md. 'make install' (alvo 'sync-plugins')
+# copia daqui pra dist/lib(share)/mixr-plugins/; 'make models' so ESCREVE
+# aqui, nunca em dist/. 'data/' e a excecao ao deposito flat (hoje, so os
+# dados do flight: jsbsim/ + flight_tree.xml).
 models/plugins/*.so
+models/plugins/data/
 
 # gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
 # shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/
 # e data/logs/ e versionado, nunca o conteudo gerado. 'app/' (o dashboard)
-# mora fora de 'src/', por isso o padrao repete pros dois prefixos.
-src/*/data/recordings/*.acmi
-src/*/data/logs/*.log*
+# mora fora de 'src/', por isso o padrao repete pros dois prefixos. As tres
+# pocs de execucao real moram em 'src/poc/<nome>/' (um nivel a mais que
+# 'app/data/...', dai o 'src/poc/*/data/...' em vez de 'src/*/data/...').
+src/poc/*/data/recordings/*.acmi
+src/poc/*/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
 
 # saida do shared/xmsg (mensagens configuraveis)
-src/*/data/messages/*.jsonl
+src/poc/*/data/messages/*.jsonl
 app/data/messages/*.jsonl
+
+# src/server: diretorio de trabalho POR REQUISICAO HTTP (o corpo enviado
+# pelo cliente + o .epp montado -- ver app/HttpServer.cpp/ScenarioAssembler.cpp).
+# Cada requisicao limpa o proprio; so o .gitkeep e versionado.
+src/server/data/runs/*
+!src/server/data/runs/.gitkeep
+
+# src/rl/: gravacoes Tacview de cada execucao do wrapper Gymnasium (mesmo
+# padrao das outras pocs), o cache de bytecode do pacote Python mixr_gym e o
+# venv local (ver 'make venv-rl').
+src/rl/data/recordings/*.acmi
+src/rl/data/logs/*.log*
+src/rl/python/mixr_gym/__pycache__/
+src/rl/.venv/
+
+# src/ui: editor visual de cenarios (React + Express, so-leitura -- primeiro
+# JS/Node do repo). 'dist' acima ja e do SDK C++; o build do Vite usa
+# 'dist-app' de proposito, pra nao confundir os dois.
+src/ui/node_modules/
+src/ui/web/dist-app/
+src/ui/server/dist/

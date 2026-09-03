@@ -1,15 +1,17 @@
-.PHONY: clean configure sdk models build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis test test-asan
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis run-app run-server venv-rl test-rl test test-asan
 
 .DEFAULT_GOAL := help
 
 # Custom variables
 PWD := $(shell pwd)
 BUILD_DIR := ./build
-MODEL_BUILD_DIR := ./build-flight
-STUB_BUILD_DIR := ./build-stub
-MISSILE_BUILD_DIR := ./build-missile
 DEST_DIR := $(PWD)/dist
-MODEL_DIR := ./models/flight
+
+# Deposito COMPARTILHADO dos modelos (flight/missile/stub, construidos por
+# este repositorio, MAIS qualquer .so de terceiro -- ver
+# models/plugins/README.md). 'make models' so escreve ATE aqui; dist/ e
+# populado so por 'make install' (alvo 'sync-plugins'), do HOST.
+MODELS_PLUGINS_DIR := $(PWD)/models/plugins
 
 # O meson DESCARTA o PKG_CONFIG_PATH do ambiente quando o native-file do Conan
 # fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
@@ -33,13 +35,20 @@ NC := \033[0m # No Color
 # C++ Build Targets
 # ============================================
 
-clean: ## Clean all generated build files in the project.
+clean: ## Clean all generated build files in the project (host + os tres modelos + o deposito que 'make models' gerou).
 	rm -rf $(BUILD_DIR)/
-	rm -rf $(MODEL_BUILD_DIR)/
-	rm -rf $(STUB_BUILD_DIR)/
-	rm -rf $(MISSILE_BUILD_DIR)/
 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
+	@# Cada modelo limpa o PROPRIO build/dist (autocontido) -- '|| true' porque
+	@# um clean antes do primeiro 'make models' nao tem nada para limpar ali.
+	@$(MAKE) -C models/flight clean 2>/dev/null || true
+	@$(MAKE) -C models/missile clean 2>/dev/null || true
+	@$(MAKE) -C models/fixtures/stub clean 2>/dev/null || true
+	@# So os nomes que ESTE repositorio gera -- um .so de TERCEIRO com outro
+	@# nome (ver models/plugins/README.md) nao e apagado por um 'make clean'.
+	@rm -f $(MODELS_PLUGINS_DIR)/libflight.so $(MODELS_PLUGINS_DIR)/libflight_tc.so \
+	       $(MODELS_PLUGINS_DIR)/libstub.so $(MODELS_PLUGINS_DIR)/libmissile.so
+	@rm -rf $(MODELS_PLUGINS_DIR)/data
 
 configure: ## Configure the project for building.
 	mkdir -p $(BUILD_DIR)/
@@ -64,12 +73,19 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
 	@# ter de escrever shared/xboard/libxboard.so a mao.
-	meson compile -C $(BUILD_DIR) xboard xlog xtrack
+	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge
 	@# '--tags sdk,devel' e nao '--tags sdk': install_headers() nao aceita
 	@# install_tag no meson 1.2, entao os headers ficam com a tag automatica
 	@# 'devel'. Com '--tags sdk' sozinho o SDK sai SEM os headers, e o erro so
 	@# aparece dois alvos depois, como "PluginAbi.hpp: No such file or directory".
-	meson install -C $(BUILD_DIR) --no-rebuild --tags sdk,devel
+	@# '--only-changed': sem isto, cada 'make sdk' RECOPIA libxboard/libxlog/
+	@# libxtrack pra dist/lib/ com mtime NOVO mesmo sem mudanca de conteudo --
+	@# e um destino mais novo que um input ja linkado faz o ninja dos modelos
+	@# (flight/missile/stub, que dependem do SDK) achar que precisa RELINKAR
+	@# na proxima chamada. Confirmado com 'ninja -C models/flight/build -d
+	@# explain libflight.so'. Sem isto, TODO 'make install'/'run-*'/'test'
+	@# relinkava os quatro plugins de producao, mesmo com tudo ja compilado.
+	meson install -C $(BUILD_DIR) --no-rebuild --tags sdk,devel --only-changed
 	@test -f $(DEST_DIR)/lib/pkgconfig/poc-mixr-sdk.pc || { echo "$(RED)sdk: .pc ausente$(NC)"; exit 1; }
 	@test -f $(DEST_DIR)/include/xplugin/PluginAbi.hpp || { echo "$(RED)sdk: headers ausentes -- use --tags sdk,devel$(NC)"; exit 1; }
 	@echo "$(GREEN)sdk: OK$(NC) -> dist/include, dist/lib, dist/lib/pkgconfig"
@@ -77,72 +93,68 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 # ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
 ASAN ?= false
 
-models: sdk ## Compila e instala o MODELO (plugin), num projeto meson à parte. Roda ANTES do build das pocs.
-	mkdir -p $(MODEL_BUILD_DIR)/
-	meson setup --reconfigure \
-		--backend ninja \
-		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-		--native-file $(BUILD_DIR)/conan_meson_native.ini \
-		--prefix=$(DEST_DIR) \
-		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(PKG_PATH) \
-		-Dtests=true \
-		-Dvariants=true \
-		-Dasan=$(ASAN) \
-		$(MODEL_BUILD_DIR)/ $(MODEL_DIR)
-	meson compile -C $(MODEL_BUILD_DIR) -j$(NINJA_JOBS)
-	meson install -C $(MODEL_BUILD_DIR) --no-rebuild
+# ==============================================================================
+# 'models' e 'sync-plugins' -- DECOPLADOS de proposito.
+#
+# 'models' compila e instala flight/missile/stub, cada um projeto Meson
+# AUTOCONTIDO (ver models/README.md §1.1) -- delegando pro Makefile de CADA
+# um (`$(MAKE) -C models/<nome> install-host`), nao reimplementando o setup
+# aqui. O resultado -- so os .so, flat, mais os dados do flight -- pousa em
+# models/plugins/ (e models/plugins/data/flight/), o MESMO deposito que um
+# terceiro usaria (ver models/plugins/README.md). Este alvo NUNCA escreve em
+# dist/ -- e por isso "desacoplado do restante": compilar/instalar um
+# modelo nao presume nada sobre onde o HOST guarda os artefatos dele.
+#
+# 'sync-plugins' e a UNICA ponte para dist/ -- copia models/plugins/*.so
+# (de QUALQUER origem: flight/missile/stub OU terceiro, ja indistinguiveis
+# neste ponto) para dist/lib/mixr-plugins/, e models/plugins/data/ para
+# dist/share/mixr-plugins/. So roda como parte de 'install' -- e por isso
+# "so no install do restante do projeto": nem 'build' nem 'models' tocam
+# dist/lib/mixr-plugins/ sozinhos.
+# ==============================================================================
+
+models: sdk ## Compila e deposita flight/missile/stub em models/plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+	$(MAKE) -C models/flight install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
 	@# O modelo ESTRANHO -- projeto proprio, ve so o SDK. E o unico artefato
 	@# que pode falhar por "o contrato nao basta". Ver models/fixtures/stub/CONTRATO.md.
 	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
-	mkdir -p $(STUB_BUILD_DIR)/
-	meson setup --reconfigure \
-		--backend ninja \
-		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-		--native-file $(BUILD_DIR)/conan_meson_native.ini \
-		--prefix=$(DEST_DIR) \
-		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(PKG_PATH) \
-		$(STUB_BUILD_DIR)/ ./models/fixtures/stub
-	meson compile -C $(STUB_BUILD_DIR) -j$(NINJA_JOBS)
-	meson install -C $(STUB_BUILD_DIR) --no-rebuild
+	$(MAKE) -C models/fixtures/stub install-host TESTS=true
 	@# O SEGUNDO plugin de exemplo -- so o GuidedMissile, carregado ao lado do
 	@# flight no cenario de demo (scenario_missile_demo.epp.in). Mesmo molde
 	@# do stub: projeto Meson proprio, so mixr_dep + sdk_dep.
-	mkdir -p $(MISSILE_BUILD_DIR)/
-	meson setup --reconfigure \
-		--backend ninja \
-		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-		--native-file $(BUILD_DIR)/conan_meson_native.ini \
-		--prefix=$(DEST_DIR) \
-		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(PKG_PATH) \
-		$(MISSILE_BUILD_DIR)/ ./models/missile
-	meson compile -C $(MISSILE_BUILD_DIR) -j$(NINJA_JOBS)
-	meson install -C $(MISSILE_BUILD_DIR) --no-rebuild
-	@for so in libflight.so libflight_tc.so libstub.so libmissile.so; do \
-	   ldd $(DEST_DIR)/lib/mixr-plugins/$$so | grep -q 'not found' && { echo "$(RED)models: $$so com dependencia nao resolvida$(NC)"; exit 1; } || true; \
-	 done
-	@# Terceiros: qualquer .so ja pronto em models/plugins/ (ver
-	@# models/plugins/README.md pro contrato que ele tem de cumprir) e so
-	@# COPIADO pra dist/lib/mixr-plugins/ -- nao ha projeto Meson aqui, o
-	@# .so ja vem compilado de fora deste repositorio. Pasta vazia (nenhum
-	@# terceiro depositado ainda) e um no-op silencioso, nao erro.
+	$(MAKE) -C models/missile install-host TESTS=true
+	@echo "$(GREEN)models: OK$(NC) -> $(MODELS_PLUGINS_DIR)/ (rode 'make install' para sincronizar com dist/)"
+
+sync-plugins: models ## Sincroniza models/plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
+	@# models/plugins/ ja mistura o que os tres modelos locais depositaram
+	@# (via 'models', acima) com qualquer .so de terceiro (ver
+	@# models/plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,
+	@# e essa e a ideia: o mesmo passo de copia cobre os dois casos. Pasta
+	@# vazia (build limpo, nada depositado) e um no-op silencioso, nao erro.
 	mkdir -p $(DEST_DIR)/lib/mixr-plugins/
-	@if ls models/plugins/*.so >/dev/null 2>&1; then \
-	   cp -v models/plugins/*.so $(DEST_DIR)/lib/mixr-plugins/; \
-	   for so in models/plugins/*.so; do \
+	@if ls $(MODELS_PLUGINS_DIR)/*.so >/dev/null 2>&1; then \
+	   cp -v $(MODELS_PLUGINS_DIR)/*.so $(DEST_DIR)/lib/mixr-plugins/; \
+	   for so in $(MODELS_PLUGINS_DIR)/*.so; do \
 	      base=$$(basename "$$so"); \
-	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)models: $$base (terceiro) com dependencia nao resolvida$(NC)"; exit 1; } || true; \
+	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)sync-plugins: $$base com dependencia nao resolvida$(NC)"; exit 1; } || true; \
 	   done; \
 	 fi
-	@echo "$(GREEN)models: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
+	@# Dados (hoje, so o flight: jsbsim/ + flight_tree.xml) -- unica excecao
+	@# ao deposito flat de models/plugins/, documentada em
+	@# models/plugins/README.md.
+	@if [ -d $(MODELS_PLUGINS_DIR)/data ]; then \
+	   mkdir -p $(DEST_DIR)/share/mixr-plugins/; \
+	   cp -a $(MODELS_PLUGINS_DIR)/data/. $(DEST_DIR)/share/mixr-plugins/; \
+	 fi
+	@echo "$(GREEN)sync-plugins: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
 
-build: models ## Build all targets in the project (o modelo é construído ANTES, como plugin).
+build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: ## Install all targets into dist/.
-	meson install -C $(BUILD_DIR)
+install: build sync-plugins ## Instala os binarios do host em dist/bin/ E sincroniza models/plugins/ -> dist/ (ver 'sync-plugins').
+	@# '--only-changed' -- mesmo "porque" do alvo 'sdk' acima: evita mtime
+	@# novo em dist/bin/ sem necessidade a cada chamada.
+	meson install -C $(BUILD_DIR) --only-changed
 
 package: ## Create the Conan package for this project.
 	conan create ./ \
@@ -166,45 +178,81 @@ package: ## Create the Conan package for this project.
 #                  fase 3 do frame — os 4 em paralelo, um por thread do pool
 #                  de tempo crítico, a 50 Hz.
 # --------------------------------------------------------------------------
-run-single-thread: ## Run single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
-	$(BUILD_DIR)/src/single-thread/src/single-thread
+# Todos os alvos abaixo RODAM um binario que faz dlopen() num modelo em
+# tempo de execucao -- por isso dependem de 'install' (que roda 'models' +
+# 'sync-plugins' + o build do host). 'build'/'models' sozinhos NAO deixam
+# nada rodavel: dist/lib/mixr-plugins/ so e populado no install (ver o
+# comentario grande acima de 'models'/'sync-plugins').
 
-check-single-thread: ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C, em cenário hermético — sem DIS).
+run-single-thread: install ## Run single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
+	$(BUILD_DIR)/src/poc/single-thread/src/single-thread
+
+check-single-thread: install ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C, em cenário hermético — sem DIS).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/single-thread/src/single-thread single-thread 2000 single-thread
+		$(BUILD_DIR)/src/poc/single-thread/src/single-thread single-thread 2000 single-thread
 
-run-multi-thread: ## Run multi-thread (o single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
-	$(BUILD_DIR)/src/multi-thread/src/multi-thread
+run-multi-thread: install ## Run multi-thread (o single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
+	$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread
 
-check-multi-thread: ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
+check-multi-thread: install ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/multi-thread/src/multi-thread multi-thread 2000 multi-thread
+		$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread multi-thread 2000 multi-thread
 
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
-		src/single-thread src/multi-thread || true
+		src/poc/single-thread src/poc/multi-thread || true
 
-check-plugin-hotswap: ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
+check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
-run-bandit-dis: ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
-	$(BUILD_DIR)/src/bandit-dis/src/bandit-dis
+run-bandit-dis: install ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
+	$(BUILD_DIR)/src/poc/bandit-dis/src/bandit-dis
 
-run-app: ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
+run-app: install ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
 	$(BUILD_DIR)/app/src/app
+
+run-server: install ## Run server (API REST de simulação -- POST /simulate recebe um cenário, roda num sim-runner isolado e devolve JSON; porta 8080).
+	$(BUILD_DIR)/src/server/src/server
+
+venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
+	python3 -m venv src/rl/.venv
+	src/rl/.venv/bin/pip install -q --upgrade pip
+	src/rl/.venv/bin/pip install -q -r src/rl/requirements.txt
+	@echo "$(GREEN)venv-rl: OK$(NC) -> src/rl/.venv (ative com 'source src/rl/.venv/bin/activate', ou use direto: src/rl/.venv/bin/python3)"
+
+test-rl: install venv-rl ## Roda o smoke test Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'.
+	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
+
+# ============================================
+# src/ui -- editor visual de cenários (React + Express, só-leitura)
+# ============================================
+# Primeiro JS/Node do repo -- projeto Node AUTOCONTIDO, fora do grafo do
+# Meson de propósito (mesmo princípio de tools/joystick_mapper.py: ferramenta
+# auxiliar, não um subprojeto C++). Estes alvos só chamam 'npm' -- ver
+# src/ui/README.md para o que cada script faz de verdade.
+
+ui-install: ## Instala as dependências Node de src/ui/ (npm install).
+	npm --prefix src/ui install
+
+ui-dev: ## Sobe o editor de cenários (frontend Vite + backend Express) em modo dev -- http://localhost:5173.
+	npm --prefix src/ui run dev
+
+ui-build: ## Builda o editor de cenários para produção (estáticos do Vite + servidor Express compilado).
+	npm --prefix src/ui run build
+
+ui-test: ## Roda a suite de testes do editor de cenários (round-trip EDL, guarda ASCII, ordenação de plugins, SRTM, coordenadas).
+	npm --prefix src/ui test
 
 # ============================================
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native), no projeto dele.
-	@# 'meson test' devolve rc=0 para suite VAZIA (medido: "No tests defined.").
-	@# Sem esta contagem, perder as duas camadas seria um verde silencioso.
-	@N=$$(meson introspect --tests $(MODEL_BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 3 ] || { echo "$(RED)suite do modelo incompleta ($$N de 3) -- rode 'make models'$(NC)"; exit 1; }
-	meson test -C $(MODEL_BUILD_DIR) --print-errorlogs
+test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/flight.
+	@# 'test' do Makefile de models/flight ja confere a contagem (>=3) e ja
+	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
+	$(MAKE) -C models/flight test
 
-test: test-models ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true.
+test: test-models install ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true. 'install' garante dist/ populado p/ os testes que rodam binario.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
@@ -219,7 +267,10 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 	@# 'meson configure' dispara um regenerate que REAVALIA as dependencias, e
 	@# ali o dependency('poc-mixr-sdk') ja falhou. A linha completa de
 	@# 'meson setup --reconfigure' passa todas as opcoes de novo e e estavel.
-	@$(MAKE) --no-print-directory models ASAN=true
+	@# 'sync-plugins' ja depende de 'models' (PHONY -- sempre reavalia), entao
+	@# uma chamada so basta; ASAN=true propaga por linha de comando ate o
+	@# 'install-host ASAN=$(ASAN)' dentro de 'models'.
+	@$(MAKE) --no-print-directory sync-plugins ASAN=true
 	@meson configure $(BUILD_DIR) -Dasan=true
 	@meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 	@mkdir -p $(BUILD_DIR)/tests-fixtures $(BUILD_DIR)/tests-recordings
@@ -228,11 +279,11 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 	@echo "  rodando 500 frames sob ASan ..."
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
-		$(BUILD_DIR)/src/single-thread/src/single-thread \
+		$(BUILD_DIR)/src/poc/single-thread/src/single-thread \
 		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in \
 		-threads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
-		$(MAKE) --no-print-directory models ASAN=false >/dev/null 2>&1; \
+		$(MAKE) --no-print-directory sync-plugins ASAN=false >/dev/null 2>&1; \
 		meson configure $(BUILD_DIR) -Dasan=false >/dev/null; \
 		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1; \
 		if [ $$rc -eq 0 ]; then echo "asan: OK (sem vazamento reportado)"; \

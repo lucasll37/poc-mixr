@@ -3,7 +3,7 @@
 //
 // 4 falcons patrulhando, SEM intruso -- o mais calmo dos tres cenarios deste
 // poc, bom pra ver pausar/acelerar/frear sem nenhum outro comportamento
-// competindo pela atencao. Derivado de src/multi-thread/configs/
+// competindo pela atencao. Derivado de src/poc/multi-thread/configs/
 // scenario.epp.in (mesma pilha 100% nativa: Aircraft/JSBSimModel/Autopilot/
 // radar/AlertDatalink/FlightAgentTC, o mesmo plugin libflight_tc.so -- os 4
 // falcons decidem em PARALELO, um por thread do pool de tempo critico, na
@@ -38,7 +38,8 @@
             ( PluginModule
                file:     "libflight_tc.so"
                provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction }
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
             )
          }
       )

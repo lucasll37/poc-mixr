@@ -27,7 +27,7 @@ No cenário, como **primeira entrada de `components:`** da Station:
 Daí em diante, essas classes valem no resto do arquivo como se fossem do framework.
 O primeiro uso vem logo abaixo: o `state: ( FlightState )` do agente.
 
-No plugin, um arquivo de cola de quinze linhas (`src/<poc>/src/plugin.cpp`) e a macro
+No plugin, um arquivo de cola de quinze linhas (`src/poc/<poc>/src/plugin.cpp`) e a macro
 `MIXR_PLUGIN_DEFINE`. **Use sempre a macro** — ela emite o `extern "C"` com visibilidade default,
 que é o que impede a armadilha mais clássica do assunto (ver Limites, item 8).
 
@@ -56,14 +56,17 @@ Fora de ordem, o parser chega na classe do plugin sem ninguém que responda por 
    estruturalmente que alguém o ponha num `link_with:` e acabe com duas cópias de
    `Player::metaObject` no processo (o símbolo é `GLOBAL OBJECT` forte — exatamente um por
    processo).
-2. **`dependencies:` só pode conter `mixr_dep`, `xplugin_abi_dep`, `xlog_dep` e `xboard_dep`.**
+2. **`dependencies:` só pode conter `mixr_dep`, `xplugin_abi_dep`, `xlog_dep`, `xboard_dep`,
+   `xtrack_dep` e `xrlbridge_dep`.**
    Nunca `xmsg_dep`, `xtacview_dep`, `xclock_dep` ou `xjoystick_dep`: as quatro são
    `static_library()`, e o `.so` ganharia a **própria cópia** dos estáticos delas. É a armadilha de
    `contexts/BTCPP-CONTEXT.md:7262-7270`.
 
-   `xlog` e `xboard` são exceção porque foram **promovidas a `shared_library()`** exatamente por
-   isto — é a saída documentada no item 6 dos Limites, aplicada. As libs do MIXR já eram `.so` de
-   verdade, com tudo exportado.
+   `xlog`, `xboard`, `xtrack` e `xrlbridge` são exceção porque foram **promovidas a
+   `shared_library()`** exatamente por isto — é a saída documentada no item 6 dos Limites,
+   aplicada. As libs do MIXR já eram `.so` de verdade, com tudo exportado. (Um modelo que enxerga
+   estes quatro nomes por fora do SDK publicado — via `sdk_dep`, um único `pkg-config` agregado —
+   nem precisa declará-los individualmente; a regra vale igual para quem os consome direto.)
 
    **Biblioteca estática de terceiro é caso à parte:** a BehaviorTree.CPP deste pacote Conan é um
    `.a` com 447 símbolos `T` globais, e `gnu_symbol_visibility: 'hidden'` **não se aplica a

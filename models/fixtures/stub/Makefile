@@ -19,9 +19,12 @@
 # tantas vezes quanto quiser, sozinho, so contra o que foi publicado em
 # ../../../dist e ../../../build.
 #
-# `make install-host` e o unico alvo que TOCA no projeto raiz: sincroniza
-# este ./dist local para ../../../dist, que e onde o `searchPaths:` dos
-# cenarios de producao ja aponta. Sem ele, o .so fica so aqui -- util para
+# `make install-host` e o unico alvo que TOCA no projeto raiz: deposita
+# este ./dist local em ../../../models/plugins/, o MESMO deposito flat que
+# um .so de terceiro usaria (ver models/plugins/README.md). NUNCA escreve
+# em ../../../dist/ diretamente -- quem sincroniza models/plugins/ ->
+# dist/lib/mixr-plugins/ e o 'make install' do projeto raiz (alvo
+# 'sync-plugins'). Sem os dois passos, o .so fica so aqui -- util para
 # iterar (compilar, rodar a suite de contrato) sem afetar o host, mas
 # inutilizavel por um cenario ate ser publicado.
 # ==============================================================================
@@ -51,22 +54,35 @@ check-root: ## Confere que o projeto HOST ja publicou o SDK (pre-requisito, uma 
 		echo "  rode 'cd $(ROOT) && make sdk' primeiro (uma vez)."; exit 1; }
 
 configure: check-root ## meson setup, isolado neste projeto (./build), consumindo o SDK/Conan do host por pkg-config.
-	mkdir -p $(BUILD_DIR)
-	meson setup --reconfigure \
-		--backend ninja \
-		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-		--native-file $(ROOT)/build/conan_meson_native.ini \
-		--prefix=$(DEST_DIR) \
-		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(PKG_PATH) \
-		-Dtests=$(TESTS) \
-		$(BUILD_DIR)/ .
+	@mkdir -p $(BUILD_DIR)
+	@# So reconfigura (caro) se o build.ninja nao existe AINDA ou se
+	@# TESTS/BUILD_TYPE mudaram desde a ultima vez -- ver o "porque" no
+	@# Makefile de models/flight (mesmo padrao).
+	@WANT="$(BUILD_TYPE)|$(TESTS)"; \
+	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
+	 STALE=$$(find meson.build meson_options.txt -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
+	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
+	    :; \
+	 else \
+	    meson setup --reconfigure \
+	       --backend ninja \
+	       --buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
+	       --native-file $(ROOT)/build/conan_meson_native.ini \
+	       --prefix=$(DEST_DIR) \
+	       --libdir=$(DEST_DIR)/lib \
+	       -Dpkg_config_path=$(PKG_PATH) \
+	       -Dtests=$(TESTS) \
+	       $(BUILD_DIR)/ .; \
+	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
+	 fi
 
 build: configure ## Compila o .so.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
 install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/libstub.so.
-	meson install -C $(BUILD_DIR) --no-rebuild
+	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
+	@# Makefile de models/flight.
+	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
 	@ldd $(DEST_DIR)/lib/mixr-plugins/libstub.so | grep -q 'not found' && \
 		{ echo "$(RED)install: dependencia nao resolvida$(NC)"; exit 1; } || true
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/libstub.so"
@@ -74,11 +90,11 @@ install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/l
 test: build ## Roda a suite de CONTRATO deste projeto (forma do .so -- nao o cenario de producao).
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install-host: install ## Sincroniza ./dist para ../../../dist -- o UNICO alvo que toca o host.
-	@mkdir -p $(ROOT)/dist/lib/mixr-plugins
-	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/dist/lib/mixr-plugins/
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/dist/lib/mixr-plugins/"
-	@echo "  aponte 'file:' do ( PluginModule ) do cenario para libstub.so para usar."
+install-host: install ## Deposita em ../../../models/plugins/ (flat) -- NAO toca dist/.
+	@mkdir -p $(ROOT)/models/plugins
+	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/models/plugins/
+	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/models/plugins/"
+	@echo "  'cd $(ROOT) && make install' sincroniza para dist/; so ai um cenario enxerga libstub.so."
 
 clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../../dist do host).
 	rm -rf $(BUILD_DIR) $(DEST_DIR)

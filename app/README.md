@@ -4,7 +4,7 @@ Aplicação de terminal estilizada (cores, navegação por teclado e por mouse, 
 responsivo — biblioteca [FTXUI](https://github.com/ArthurSonzogni/FTXUI)) para **carregar,
 acompanhar e controlar** uma simulação, em vez de ler uma linha de status em texto puro.
 
-Roda a **mesma pilha nativa** de [`src/multi-thread/`](../src/multi-thread/) — mesmo plugin de
+Roda a **mesma pilha nativa** de [`src/poc/multi-thread/`](../src/poc/multi-thread/) — mesmo plugin de
 modelo (`libflight_tc.so`), mesmo `Aircraft`/`JSBSimModel`/`Autopilot`/radar/`FlightAgentTC`
 (os 4 falcons decidem em PARALELO, um por thread do pool de tempo crítico, na fase 3 do frame),
 nenhuma mudança em [`models/`](../models/) — só troca a impressão de status por este painel. Mora fora de
@@ -26,7 +26,7 @@ raiz e o alvo/binário se chamam `app`, não `dashboard`.
 5. [Aba Players](#5-aba-players)
 6. [Aba Mapa](#6-aba-mapa)
 7. [Aba Memória](#7-aba-memória)
-8. [Aba Fundo](#8-aba-fundo)
+8. [Aba Tempo Não-Crítico](#8-aba-tempo-não-crítico)
 9. [Árvore de comportamento e breakpoints](#9-árvore-de-comportamento-e-breakpoints)
 10. [Todos os atalhos de teclado](#10-todos-os-atalhos-de-teclado)
 11. [Todos os elementos clicáveis](#11-todos-os-elementos-clicáveis)
@@ -94,7 +94,7 @@ não abre terminal interativo, então funciona em CI.
 ╭──────────────────────────────────────────────────────────────────────╮
 │ app  <cenário>  entidades=N                t=Xs  sim=Ys  <vel>  thr=N │
 ╰──────────────────────────────────────────────────────────────────────╯
-[F1] Players  [F2] Mapa  [F3] Memória  [F4] Fundo
+[F1] Players  [F2] Mapa  [F3] Memória  [F4] Tempo Não-Crítico
 ──────────────────────────────────────────────────────────────────────
                         (conteúdo da aba ativa)
 ──────────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ contínua.
 
 ---
 
-## 8. Aba Fundo
+## 8. Aba Tempo Não-Crítico
 
 Painel estático (sem lista) com o que roda na **thread de tempo NÃO crítico** — este `app` nunca
 cria a `StationBgPeriodicThread` nativa do MIXR; quem faz esse papel é o próprio laço que atualiza
@@ -291,7 +291,7 @@ breakpoint se desarma sozinho e avisa.
 | `F1` | aba Players |
 | `F2` | aba Mapa |
 | `F3` | aba Memória |
-| `F4` | aba Fundo |
+| `F4` | aba Tempo Não-Crítico |
 | `g` | roda até o breakpoint armado, na velocidade atual |
 | `G` | roda até o breakpoint armado, na velocidade máxima |
 | `x` | cancela o breakpoint armado |
@@ -340,7 +340,7 @@ breakpoint se desarma sozinho e avisa.
 Além das teclas acima, **tudo tem um botão equivalente** — a dica do atalho já vem no rótulo do
 próprio botão:
 
-- As quatro abas: `[F1] Players`, `[F2] Mapa`, `[F3] Memória`, `[F4] Fundo`.
+- As quatro abas: `[F1] Players`, `[F2] Mapa`, `[F3] Memória`, `[F4] Tempo Não-Crítico`.
 - Barra principal: `[+] Acelerar`, `[-] Frear`, `[espaço] Pausar`, `[1] Tempo real`,
   `[m] Ver no mapa` (só aparece com alguma entidade selecionada), `[l] Carregar`,
   `[r] Reiniciar`, `[s] Parar`, `[q] Sair`.

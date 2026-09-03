@@ -20,8 +20,8 @@ fail=0
 
 compara() {   # compara <caminho relativo dentro da poc>
    local sub="$1"
-   local a="src/single-thread/$sub"
-   local b="src/multi-thread/$sub"
+   local a="src/poc/single-thread/$sub"
+   local b="src/poc/multi-thread/$sub"
 
    if [ ! -e "$a" ] || [ ! -e "$b" ]; then
       echo "  FALHA $sub nao existe nas duas pocs"

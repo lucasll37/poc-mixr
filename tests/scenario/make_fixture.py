@@ -17,7 +17,7 @@ Modos:
 
   intruder  reintroduz o bandit1 LOCAL. Sem ele nao ha como exercitar
             EVADE/SUPPORT num processo so, porque o intruso hoje mora em
-            src/bandit-dis e chega apenas por DIS.
+            src/poc/bandit-dis e chega apenas por DIS.
   lowfuel   sobe 'fuelReserve' acima da fracao real de combustivel, pelo slot
             que ja existe: o ramo de RTB vence desde o primeiro frame.
   terrain   sobe 'minAltitude' do AltitudeSafetyBehavior acima da altitude de
@@ -29,14 +29,14 @@ import re
 import sys
 from pathlib import Path
 
-# O intruso, identico ao de src/bandit-dis/configs/scenario.epp, so que
+# O intruso, identico ao de src/poc/bandit-dis/configs/scenario.epp, so que
 # local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
 # (models/flight/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
          // ------------------------------------------------------------------
          // FIXTURE DE TESTE -- bandit1 LOCAL.
          //
-         // Em producao o intruso vive no processo src/bandit-dis e chega por
+         // Em producao o intruso vive no processo src/poc/bandit-dis e chega por
          // DIS. Num teste de processo unico isso tornaria EVADE e SUPPORT
          // inalcancaveis, entao ele volta para ca, com os mesmos valores
          // iniciais do lado de la.
@@ -93,7 +93,7 @@ def main():
     args = ap.parse_args()
 
     raiz = Path(__file__).resolve().parents[2]
-    origem = raiz / "src" / args.poc / "configs" / "scenario.epp.in"
+    origem = raiz / "src" / "poc" / args.poc / "configs" / "scenario.epp.in"
     texto = origem.read_text(encoding="utf-8")
 
     # 1) hermetico: fora a rede

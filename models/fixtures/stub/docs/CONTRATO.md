@@ -59,6 +59,7 @@ só a lista que ESTE cenário específico pede hoje; um cenário diferente pedir
 | `FlightState` | `base::ubf::AbstractState` | slot `state:` do agente de decisão |
 | `BtBehavior` | `base::ubf::AbstractBehavior` | dentro do arbitrador de comportamentos |
 | `AltitudeSafetyBehavior` | `base::ubf::AbstractBehavior` | idem |
+| `RLBridgeBehavior` | `base::ubf::AbstractBehavior` | idem — decisão vem de fora (ponte RL) |
 | `FlightAction` | `base::ubf::AbstractAction` | devolvida pela decisão, executa no player |
 | `AlertDatalink` | `models::Datalink` | achada por tipo entre os componentes do player |
 | `TacticalAlert` | `base::Object` | carga útil transportada pelo alerta acima |

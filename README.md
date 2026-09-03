@@ -44,14 +44,14 @@ disseca por inteiro, com números medidos e as armadilhas encontradas rodando.
 | # | funcionalidade | detalhe |
 |---|---|---|
 | 1 | **Carga dinâmica de modelos** — o modelo (players, dinâmicas, decisão) é um `.so` carregado por `dlopen` em tempo de execução, não um alvo linkado do host; o mesmo executável roda com modelos diferentes, inclusive um "desconhecido" escrito só contra o SDK publicado, sem trocar uma linha do host | [§8](#8-os-modelos-são-plugins), [models/README.md](models/README.md) |
-| 2 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da evasão e piso AGL do comportamento de segurança | [src/single-thread/README.md §10](src/single-thread/README.md#10-elevação-de-terreno) |
+| 2 | **Elevação de terreno** — banco SRTM real consultado pela decisão, virando piso anti-CFIT da evasão e piso AGL do comportamento de segurança | [src/poc/single-thread/README.md §10](src/poc/single-thread/README.md#10-elevação-de-terreno) |
 | 3 | **Recorder → Tacview** — visualização por *Real-Time Telemetry*, escrita como `OutputHandler` de verdade na cadeia nativa do gravador | [shared/xtacview/](shared/xtacview/), [CLAUDE.md](CLAUDE.md) |
-| 4 | **Dinâmica 6-DOF** — aerodinâmica completa via JSBSim, pelo adaptador nativo `JSBSimModel` | [src/single-thread/README.md §6.2](src/single-thread/README.md#62--jsbsimmodel---a-dinâmica-6-dof) |
-| 5 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros pelo `Datalink` nativo, sem ponteiro direto entre players | [src/single-thread/README.md §9](src/single-thread/README.md#9-interação-entre-players) |
+| 4 | **Dinâmica 6-DOF** — aerodinâmica completa via JSBSim, pelo adaptador nativo `JSBSimModel` | [src/poc/single-thread/README.md §6.2](src/poc/single-thread/README.md#62--jsbsimmodel---a-dinâmica-6-dof) |
+| 5 | **Interação entre agentes por eventos** — quem detecta o intruso avisa os outros pelo `Datalink` nativo, sem ponteiro direto entre players | [src/poc/single-thread/README.md §9](src/poc/single-thread/README.md#9-interação-entre-players) |
 | 6 | **Paralelismo com determinismo garantido** — os players decidem no pool de threads de tempo crítico do framework, e o estado final é idêntico com 1, 2 e 4 threads | [§7](#7-os-quatro-subprojetos), [tests/README.md](tests/README.md) |
-| 7 | **Comportamento com UBF + BehaviorTree.CPP** — `AbstractState`/`AbstractBehavior`/`AbstractAction` nativos, arbitrados por voto, com uma árvore v3 carregada de XML como política interna | [src/single-thread/README.md §8](src/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
+| 7 | **Comportamento com UBF + BehaviorTree.CPP** — `AbstractState`/`AbstractBehavior`/`AbstractAction` nativos, arbitrados por voto, com uma árvore v3 carregada de XML como política interna | [src/poc/single-thread/README.md §8](src/poc/single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree) |
 | 8 | **Controle por joystick físico, com fallback automático** — HOTAS de verdade ou `Autopilot` *scripted*, decidido a cada frame, sem reiniciar | [CLAUDE.md](CLAUDE.md), seção `shared/xjoystick` |
-| 9 | **Interoperabilidade DIS nativa e bidirecional** — o intruso roda num processo à parte e é recebido só pela rede (IEEE 1278/DIS); as outras pocs emitem de volta | [src/bandit-dis/](src/bandit-dis/), [CLAUDE.md](CLAUDE.md) |
+| 9 | **Interoperabilidade DIS nativa e bidirecional** — o intruso roda num processo à parte e é recebido só pela rede (IEEE 1278/DIS); as outras pocs emitem de volta | [src/poc/bandit-dis/](src/poc/bandit-dis/), [CLAUDE.md](CLAUDE.md) |
 | 10 | **Log e mensagens configuráveis por EDL** — nível/*stream* persistido em arquivo, e telemetria/eventos escolhidos por configuração (sem recompilar), em NDJSON | [CLAUDE.md](CLAUDE.md), seções `shared/xlog` e `shared/xmsg` |
 | 11 | **Detecção de vazamento pelo metadado do próprio framework** — contadores de instâncias vivas/pico/total por classe (`MetaObject`), ao vivo num painel ou comparando duas durações num teste | [app/README.md §7](app/README.md#7-aba-memória), [tests/README.md](tests/README.md) |
 | 12 | **Painel de controle interativo** — carregar cenário, pausar/acelerar/frear, navegar um mapa clicável, e até rodar a simulação até um nó específico da árvore de comportamento ser atingido | [app/README.md](app/README.md) |
@@ -117,9 +117,9 @@ caminho relativo.
 | subprojeto | comando | Tacview | o quê |
 |---|---|---|---|
 | [`app`](app/) | `make run-app` | 1236 | painel de controle interativo — **comece por aqui** |
-| [`single-thread`](src/single-thread/) | `make run-single-thread` | 1234 | decisão no `( SimAgent )` nativo, thread de background |
-| [`multi-thread`](src/multi-thread/) | `make run-multi-thread` | 1234 | o mesmo modelo, decisão no `( FlightAgentTC )` próprio, fase 3 |
-| [`bandit-dis`](src/bandit-dis/) | `make run-bandit-dis` | 1235 | só o intruso, pilotável por joystick, emitindo DIS |
+| [`single-thread`](src/poc/single-thread/) | `make run-single-thread` | 1234 | decisão no `( SimAgent )` nativo, thread de background |
+| [`multi-thread`](src/poc/multi-thread/) | `make run-multi-thread` | 1234 | o mesmo modelo, decisão no `( FlightAgentTC )` próprio, fase 3 |
+| [`bandit-dis`](src/poc/bandit-dis/) | `make run-bandit-dis` | 1235 | só o intruso, pilotável por joystick, emitindo DIS |
 
 `single-thread`/`multi-thread` são **alternativas** entre si (nunca rodam juntos); qualquer um
 roda sozinho ou ao lado do `bandit-dis`, que entrega o intruso **só pela rede** (DIS) — nenhuma
@@ -215,7 +215,7 @@ fases…) está no [CLAUDE.md](CLAUDE.md).
 um intruso cruzando a área, e quem detecta avisa os outros pelo datalink. A única diferença é
 **onde a decisão roda**:
 
-| | [`single-thread`](src/single-thread/) | [`multi-thread`](src/multi-thread/) |
+| | [`single-thread`](src/poc/single-thread/) | [`multi-thread`](src/poc/multi-thread/) |
 |---|---|---|
 | agente do UBF | `( SimAgent )` **nativo** | `( FlightAgentTC )` **próprio** |
 | decide em | `updateData()` — thread de **background** | fase 3 do `updateTC()` — thread de **tempo crítico** |
@@ -227,7 +227,7 @@ um intruso cruzando a área, e quem detecta avisa os outros pelo datalink. A ún
 Comece pelo README da `single-thread` (a aula completa); o da `multi-thread` é escrito como
 *delta* dele.
 
-**[`bandit-dis`](src/bandit-dis/)** é de natureza diferente: não é gêmeo de nada, é só o intruso
+**[`bandit-dis`](src/poc/bandit-dis/)** é de natureza diferente: não é gêmeo de nada, é só o intruso
 rodando **sozinho**, pilotável por joystick físico (com *fallback* automático) e emitido via DIS
 nativo — prova que a interoperabilidade desacopla os dois lados de verdade.
 
@@ -240,13 +240,13 @@ painel interativo em vez de uma linha de status. Documentação própria e compl
 
 ## 8. Os modelos são plugins
 
-`domain/`, `bt/`, `ubf/` e o resto da lógica de decisão **não** moram dentro de `src/<poc>/`.
+`domain/`, `bt/`, `ubf/` e o resto da lógica de decisão **não** moram dentro de `src/poc/<poc>/`.
 Cada modelo é um **projeto Meson independente**, em [`models/`](models/), construído numa etapa
 anterior (`make models`) e carregado pelo host via `dlopen`, através de um contrato de ABI
 publicado ([`shared/xplugin/`](shared/xplugin/)):
 
 ```bash
-make sdk      # publica o contrato (xplugin/PluginAbi.hpp) + 3 libs de fronteira -> dist/
+make sdk      # publica o contrato (xplugin/PluginAbi.hpp) + 4 libs de fronteira -> dist/
 make models   # constroi CADA modelo a parte -> build-<nome>/ -> dist/lib/mixr-plugins/*.so
 make build    # o host (ja dispara sdk + models antes) -> build/
 ```
@@ -281,7 +281,7 @@ rodando — está no [CLAUDE.md](CLAUDE.md).
 | [`xlog/`](shared/xlog/) | `LOG(NIVEL) << ...;`, persistido em arquivo, reaproveitando o `PrintHandler` nativo por fora do gravador |
 | [`xmsg/`](shared/xmsg/) | mensagens configuráveis por EDL — quais grandezas e eventos saem da simulação, em NDJSON |
 | [`xplugin/`](shared/xplugin/README.md) | o contrato de ABI entre host e modelo (ver [§8](#8-os-modelos-são-plugins)) |
-| `xboard/`, `xtrack/` | as duas outras libs que atravessam a fronteira host↔modelo — o quadro de leitura e o contato detectado |
+| `xboard/`, `xtrack/`, `xrlbridge/` | as outras três libs que atravessam a fronteira host↔modelo — o quadro de leitura, o contato detectado e a ponte de comando/observação do wrapper de RL (ver [§11](#11-onde-ler-mais)) |
 | [`data/terrain/srtm/`](shared/data/terrain/srtm/) | o tile SRTM do cenário, compartilhado por todos os subprojetos |
 
 ---
@@ -311,6 +311,7 @@ vale é o pacote instalado.
 | **[CLAUDE.md](CLAUDE.md)** | guia operacional completo: comandos, arquitetura em uma tela, e o catálogo de armadilhas de todo o repositório |
 | [models/README.md](models/README.md) | como criar um modelo novo, o contrato de plugin, e todos os alvos do `make` |
 | [models/fixtures/stub/docs/CONTRATO.md](models/fixtures/stub/docs/CONTRATO.md) | o que um modelo **tem** de fazer — inclusive a obrigação que falha em silêncio |
-| [src/single-thread/README.md](src/single-thread/README.md) | a aula completa sobre um subprojeto, arquivo por arquivo |
-| [src/multi-thread/README.md](src/multi-thread/README.md) | onde uma decisão deve rodar, e o que isso custa |
+| [src/poc/single-thread/README.md](src/poc/single-thread/README.md) | a aula completa sobre um subprojeto, arquivo por arquivo |
+| [src/poc/multi-thread/README.md](src/poc/multi-thread/README.md) | onde uma decisão deve rodar, e o que isso custa |
+| [src/rl/README.md](src/rl/README.md) | o wrapper Gymnasium — como treinar um agente de RL contra a mesma simulação |
 | [tests/README.md](tests/README.md) | as suítes de teste — o que cada camada prova |

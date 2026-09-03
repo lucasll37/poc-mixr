@@ -107,6 +107,11 @@ subdir('./shared/xmsg')
 # usado pelos executaveis). Precisa vir ANTES de src/.
 subdir('./shared/xplugin')
 
+# A ponte de comando/observacao entre o host de RL (./rl) e RLBridgeBehavior
+# (models/flight). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
+# precisa existir antes de pkg.generate() listar as libs do SDK.
+subdir('./shared/xrlbridge')
+
 
 # ==============================================================================
 # O SDK DE PLUGIN
@@ -139,16 +144,17 @@ subdir('./shared/xplugin')
 # reportarem o mesmo numero por construcao, e a checagem viraria tautologia.
 # O .pc expoe 'mixr_pkg_version' como VARIAVEL, para conferencia cruzada.
 # ==============================================================================
-install_headers('shared/xplugin/PluginAbi.hpp', subdir: 'xplugin')
-install_headers('shared/xboard/Board.hpp',      subdir: 'xboard')
-install_headers('shared/xlog/Log.hpp',          subdir: 'xlog')
-install_headers('shared/xtrack/TrackQuery.hpp', subdir: 'xtrack')
+install_headers('shared/xplugin/PluginAbi.hpp',     subdir: 'xplugin')
+install_headers('shared/xboard/Board.hpp',          subdir: 'xboard')
+install_headers('shared/xlog/Log.hpp',              subdir: 'xlog')
+install_headers('shared/xtrack/TrackQuery.hpp',     subdir: 'xtrack')
+install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
 
 pkg = import('pkgconfig')
 pkg.generate(
     name        : 'poc-mixr-sdk',
     description : 'SDK para compilar um modelo (plugin) do poc-mixr',
-    libraries   : [xboard_lib, xlog_lib, xtrack_lib],
+    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib],
     requires    : ['mixr'],
     variables   : ['mixr_pkg_version=' + mixr_dep.version()],
 )

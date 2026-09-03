@@ -5,25 +5,17 @@
 
 namespace app {
 
-BreakpointController::BreakpointController(const double timeoutSimSec)
-   : timeoutSimSec_(timeoutSimSec)
-{
-}
-
 void BreakpointController::arm(const int entityId, std::string entityName, std::string nodeTag,
-                               const bool fastMode, const double simSecNow,
-                               const double currentTimeScale)
+                               const bool fastMode, const double currentTimeScale)
 {
    armed_ = true;
    entityId_ = entityId;
    entityName_ = std::move(entityName);
    nodeTag_ = std::move(nodeTag);
    fastMode_ = fastMode;
-   armedAtSimSec_ = simSecNow;
    restoreTimeScale_ = currentTimeScale;
    hit_ = false;
    hitSimSec_ = 0.0;
-   timedOut_ = false;
 }
 
 bool BreakpointController::cancel()
@@ -53,14 +45,6 @@ BreakpointTickResult BreakpointController::tick(const std::vector<BreakpointEnti
       }
    }
 
-   if (armed_ && (simSecNow - armedAtSimSec_) > timeoutSimSec_) {
-      armed_ = false;
-      timedOut_ = true;
-      result.outcome = BreakpointOutcome::TimedOut;
-      result.shouldRestoreScale = fastMode_;
-      result.simSecAtOutcome = simSecNow;
-   }
-
    return result;
 }
 
@@ -70,33 +54,26 @@ BreakpointStatus BreakpointController::status(const bool hasTreeSelection,
 {
    if (armed_) {
       std::ostringstream oss;
-      oss << "Aguardando: " << entityName_ << " -> \"" << nodeTag_ << "\""
-          << (fastMode_ ? " (velocidade maxima)" : " (velocidade atual)");
+      oss << "BP armado: " << entityName_ << " -> \"" << nodeTag_ << "\" ("
+          << (fastMode_ ? "MAX" : "atual") << ")";
       return BreakpointStatus{BreakpointStatusBranch::Armed, oss.str()};
    }
    if (hit_) {
       std::ostringstream oss;
-      oss << "Breakpoint atingido: " << entityName_ << " chegou em \"" << nodeTag_
-          << "\" (sim=" << std::fixed << std::setprecision(1) << hitSimSec_
-          << "s) -- simulacao PAUSADA";
+      oss << "BP atingido: " << entityName_ << " -> \"" << nodeTag_ << "\" (sim="
+          << std::fixed << std::setprecision(1) << hitSimSec_ << "s) -- PAUSADO";
       return BreakpointStatus{BreakpointStatusBranch::Hit, oss.str()};
-   }
-   if (timedOut_) {
-      std::ostringstream oss;
-      oss << "Breakpoint NAO atingido em " << std::fixed << std::setprecision(0)
-          << timeoutSimSec_ << "s de simulacao -- cancelado";
-      return BreakpointStatus{BreakpointStatusBranch::TimedOut, oss.str()};
    }
    if (hasTreeSelection) {
       if (!selectionIsLeaf) {
          return BreakpointStatus{BreakpointStatusBranch::NonLeafSelected,
-            "Selecione uma FOLHA da arvore (nao um no de controle) para marcar um breakpoint"};
+            "Selecione uma folha (nao um no de controle)"};
       }
       return BreakpointStatus{BreakpointStatusBranch::LeafSelected,
-         "Folha selecionada: \"" + selectedLeafTag + "\""};
+         "Folha: \"" + selectedLeafTag + "\""};
    }
    return BreakpointStatus{BreakpointStatusBranch::NoTreeSelection,
-      "Clique numa folha da arvore (Players ou Mapa) para marcar um breakpoint"};
+      "Clique numa folha da arvore para marcar um BP"};
 }
 
 } // namespace app

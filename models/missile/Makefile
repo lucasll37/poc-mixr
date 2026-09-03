@@ -12,8 +12,10 @@
 #
 #     cd ../.. && make configure && make sdk
 #
-# Ver models/fixtures/stub/README.md para o "porque" de `install-host` ser
-# o unico alvo que escreve fora de ./dist -- mesmo padrao aqui.
+# `install-host` e o unico alvo que escreve fora de ./dist -- mas so ate
+# ../../models/plugins/, o deposito compartilhado com terceiros (ver
+# models/plugins/README.md). NUNCA escreve em ../../dist/ diretamente --
+# quem sincroniza e o 'make install' do projeto raiz (alvo 'sync-plugins').
 # ==============================================================================
 
 ROOT      := $(abspath ../..)
@@ -41,22 +43,35 @@ check-root: ## Confere que o projeto HOST ja publicou o SDK (pre-requisito, uma 
 		echo "  rode 'cd $(ROOT) && make sdk' primeiro (uma vez)."; exit 1; }
 
 configure: check-root ## meson setup, isolado neste projeto (./build), consumindo o SDK/Conan do host por pkg-config.
-	mkdir -p $(BUILD_DIR)
-	meson setup --reconfigure \
-		--backend ninja \
-		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-		--native-file $(ROOT)/build/conan_meson_native.ini \
-		--prefix=$(DEST_DIR) \
-		--libdir=$(DEST_DIR)/lib \
-		-Dpkg_config_path=$(PKG_PATH) \
-		-Dtests=$(TESTS) \
-		$(BUILD_DIR)/ .
+	@mkdir -p $(BUILD_DIR)
+	@# So reconfigura (caro) se o build.ninja nao existe AINDA ou se
+	@# TESTS/BUILD_TYPE mudaram desde a ultima vez -- ver o "porque" no
+	@# Makefile de models/flight (mesmo padrao).
+	@WANT="$(BUILD_TYPE)|$(TESTS)"; \
+	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
+	 STALE=$$(find meson.build meson_options.txt -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
+	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
+	    :; \
+	 else \
+	    meson setup --reconfigure \
+	       --backend ninja \
+	       --buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
+	       --native-file $(ROOT)/build/conan_meson_native.ini \
+	       --prefix=$(DEST_DIR) \
+	       --libdir=$(DEST_DIR)/lib \
+	       -Dpkg_config_path=$(PKG_PATH) \
+	       -Dtests=$(TESTS) \
+	       $(BUILD_DIR)/ .; \
+	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
+	 fi
 
 build: configure ## Compila o .so.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
 install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/libmissile.so.
-	meson install -C $(BUILD_DIR) --no-rebuild
+	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
+	@# Makefile de models/flight.
+	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
 	@ldd $(DEST_DIR)/lib/mixr-plugins/libmissile.so | grep -q 'not found' && \
 		{ echo "$(RED)install: dependencia nao resolvida$(NC)"; exit 1; } || true
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/libmissile.so"
@@ -64,10 +79,11 @@ install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/l
 test: build ## Roda a suite de domain/ (domain::pursuit(), pura).
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install-host: install ## Sincroniza ./dist para ../../dist -- o UNICO alvo que toca o host.
-	@mkdir -p $(ROOT)/dist/lib/mixr-plugins
-	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/dist/lib/mixr-plugins/
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/dist/lib/mixr-plugins/"
+install-host: install ## Deposita em ../../models/plugins/ (flat) -- NAO toca dist/.
+	@mkdir -p $(ROOT)/models/plugins
+	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/models/plugins/
+	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/models/plugins/"
+	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
 clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../dist do host).
 	rm -rf $(BUILD_DIR) $(DEST_DIR)

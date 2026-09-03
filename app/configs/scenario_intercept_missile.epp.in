@@ -2,7 +2,7 @@
 // dashboard -- cenario "Intercepto + Missil"
 //
 // scenario_intercept.epp.in + falcon1 carregando UM missil guiado (mesmo
-// molde de src/single-thread/configs/scenario_missile_demo.epp.in) --
+// molde de src/poc/single-thread/configs/scenario_missile_demo.epp.in) --
 // lancamento/detonacao/destruicao, otimo pra demonstrar pausar/frear bem no
 // meio do engajamento. Carrega os DOIS plugins: libflight_tc.so (os 7 nomes
 // de sempre, incluindo FlightAgentTC) e libmissile.so (so "GuidedMissile")
@@ -28,7 +28,8 @@
             ( PluginModule
                file:     "libflight_tc.so"
                provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction }
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
             )
             ( PluginModule
                file:     "libmissile.so"
@@ -412,7 +413,7 @@
          // ------------------------------------------------------------------
          // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
          // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
-         // 'intruder') / src/bandit-dis/configs/scenario.epp.
+         // 'intruder') / src/poc/bandit-dis/configs/scenario.epp.
          // ------------------------------------------------------------------
          bandit1: ( Aircraft
             id: 201

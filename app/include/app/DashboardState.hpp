@@ -86,7 +86,7 @@ struct EntityState
 };
 
 //------------------------------------------------------------------------------
-// O que roda na thread de tempo NAO critico -- a aba "Fundo" (F4). Este
+// O que roda na thread de tempo NAO critico -- a aba "Tempo Nao-Critico" (F4). Este
 // `app` nunca chama `station->createBackgroundProcess()` (a
 // StationBgPeriodicThread nativa): quem faz o papel dela e o PROPRIO laco de
 // `simThread` em DashboardLoop.cpp, chamando `station->updateData(dt)` a
@@ -137,6 +137,18 @@ struct DashboardState
    // de parede por completo).
    double actualTimeScale{1.0};
    bool fastBreakpointRun{};
+
+   // Estado do breakpoint de arvore de comportamento -- ver app/
+   // BreakpointController.hpp. 'breakpointArmed' e verdadeiro em AMBOS os
+   // modos (velocidade atual OU maxima -- 'fastBreakpointRun', acima, so
+   // cobre o segundo); usado pra travar os controles manuais de velocidade
+   // e para o cabecalho mostrar "[BP]" independente do modo. 'breakpointHit'
+   // + 'breakpointHitMessage' alimentam o aviso de "BP atingido" -- ficam
+   // verdadeiros ate o usuario armar um NOVO breakpoint (ver
+   // BreakpointController::arm(), que reseta hit_).
+   bool breakpointArmed{};
+   bool breakpointHit{};
+   std::string breakpointHitMessage;
 
    std::vector<EntityState> entities;
 

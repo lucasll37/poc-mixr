@@ -1,13 +1,30 @@
-# `models/plugins/` — depósito de plugins de TERCEIROS (`.so` pré-compilado)
+# `models/plugins/` — o depósito COMPARTILHADO de todo plugin (local ou de TERCEIRO)
 
 Diferente de [`models/flight/`](../flight/), [`models/missile/`](../missile/) e
 [`models/fixtures/stub/`](../fixtures/stub/) — que são projetos Meson **compilados por este
-repositório** — esta pasta não compila nada. É um **depósito**: você coloca aqui um `.so` já
-pronto, vindo de fora (outra equipe, outro repositório, um fornecedor), e `make models` copia
-esse arquivo para `dist/lib/mixr-plugins/`, o mesmo lugar onde os plugins compilados localmente
-são instalados — de lá em diante, um cenário carrega esse `.so` exatamente como carrega
-`libflight.so`/`libmissile.so`/`libstub.so`, pelo mesmo mecanismo `( PluginModule file: "..."
-provides: { ... } )`.
+repositório** — esta pasta não compila nada. É um **depósito**.
+
+**Dois tipos de conteúdo pousam aqui, e a partir do momento em que pousam são
+INDISTINGUÍVEIS:**
+
+1. **Local**: `flight`/`missile`/`stub` — cada um constrói no PRÓPRIO projeto (`./build`,
+   `./dist`) e o alvo `install-host` de cada `Makefile` deposita SÓ o resultado final aqui
+   (`.so` flat; `data/flight/` para a árvore + a aeronave, a única exceção ao depósito flat).
+   `make models`, na raiz, chama os três `install-host` em sequência.
+2. **Terceiro**: você coloca aqui um `.so` já pronto, vindo de fora (outra equipe, outro
+   repositório, um fornecedor).
+
+Nos dois casos, **nada aqui é visível a um cenário ainda** — `make install` (alvo `sync-plugins`
+do Makefile raiz) é quem copia `models/plugins/*.so` para `dist/lib/mixr-plugins/` e
+`models/plugins/data/` para `dist/share/mixr-plugins/`, o mesmo lugar de sempre. De lá em diante,
+um cenário carrega esse `.so` exatamente como carrega `libflight.so`/`libmissile.so`/
+`libstub.so`, pelo mesmo mecanismo `( PluginModule file: "..." provides: { ... } )`.
+
+**Por que unificar os dois**: compilar um modelo (local) nunca precisou saber onde o HOST guarda
+os artefatos dele — só RODAR algo precisa disso, e isso só acontece em `dlopen()`, em tempo de
+execução. Antes, `flight`/`missile`/`stub` escreviam direto em `dist/`, acoplando "compilar o
+modelo" a "onde o host instala" sem necessidade — e só o terceiro passava por este depósito
+intermediário. Agora os quatro passam pelo mesmo lugar, com a mesma regra.
 
 ## O que colocar aqui
 
@@ -28,19 +45,22 @@ com os nomes que este repositório já usa (`libflight.so`, `libflight_tc.so`, `
 
 ## Integração com o build
 
-`make models` (alvo do [Makefile](../../Makefile) raiz), depois de compilar/instalar
-flight+missile+stub, copia qualquer `*.so` encontrado aqui para `dist/lib/mixr-plugins/` —
-nenhum passo manual além de soltar o arquivo nesta pasta antes de rodar `make models`/`make
-build`. Um `.so` com dependência não resolvida (`ldd` acusando `not found`) faz o alvo falhar
-**nesta etapa**, antes de qualquer cenário tentar carregá-lo — mesmo tratamento que os plugins
-compilados localmente já recebem.
+Não é `make models` quem copia daqui para `dist/` — `make models` só CRIA o conteúdo desta pasta
+(o seu, de terceiro, mais o que `flight`/`missile`/`stub` acabaram de depositar via o próprio
+`install-host`). Quem copia `models/plugins/*.so` (+ `models/plugins/data/`) para
+`dist/lib/mixr-plugins/` (+ `dist/share/mixr-plugins/`) é o alvo `sync-plugins` do
+[Makefile](../../Makefile) raiz, chamado por `make install` — nenhum passo manual além de soltar
+o arquivo nesta pasta antes de rodar `make install`/`make test`. Um `.so` com dependência não
+resolvida (`ldd` acusando `not found`) faz `sync-plugins` falhar **nesta etapa**, antes de
+qualquer cenário tentar carregá-lo — mesmo tratamento pra terceiro e pra plugin compilado
+localmente, já que os dois passam pelo mesmo laço de cópia.
 
 ## Como isso é verificado
 
 `tests/plugin/run_thirdparty_deposit.py` (suíte `plugin`, alvo `plugin-deposito-terceiro` em
 `make test`) prova o mecanismo de ponta a ponta: deposita um `.so` de exemplo (o stub, ver
 [`models/fixtures/stub/`](../fixtures/stub/)) aqui, copia pra `dist/lib/mixr-plugins/` (a MESMA
-cópia que `make models` faz), e roda o cenário de produção contra o resultado — não só confere
+cópia que `sync-plugins` faz), e roda o cenário de produção contra o resultado — não só confere
 que o arquivo chegou em disco, confere que ele decide, escreve no `xboard` e aparece no Tacview.
 Limpa os dois arquivos de teste no final; não fica nada vendorizado.
 

@@ -1,0 +1,68 @@
+//
+// sim-runner -- cabecalho FIXO do cenario, o mesmo para toda requisicao.
+//
+// O corpo enviado pelo cliente em POST /simulate (o "arquivo descritor de
+// cenario") entra INTEIRO logo apos 'players: {' abaixo -- ver
+// app/ScenarioAssembler.cpp (prefixo + corpo + scenario_suffix.epp.in) e
+// src/server/README.md para o contrato HTTP completo.
+//
+// O cliente NAO declara ( PluginLoader )/( PluginModule )/terrain/
+// numTcThreads -- o server RECUSA um corpo que contenha esses tokens (ver
+// ScenarioUpload.cpp) exatamente porque este prefixo ja resolve tudo isso.
+// O cliente so escreve o conteudo de 'players: {}': cada player e o
+// molde ja usado em src/poc/multi-thread/configs/scenario.epp.in (agente
+// ( FlightAgentTC ) DENTRO do player, como ULTIMO componente, ou nenhum
+// agente para um player so-Autopilot).
+//
+// @NUM_TC_THREADS@ e substituido por ScenarioAssembler antes do parse.
+//
+( Station
+
+   tcPriority: 0.5
+
+   components: {
+
+      // ------------------------------------------------------------------
+      // O MODELO, carregado em tempo de execucao (dlopen) -- mesmo
+      // mecanismo e mesma armadilha de ordem documentados em
+      // src/poc/multi-thread/configs/scenario.epp.in: este bloco tem de
+      // vir antes do primeiro uso de qualquer nome que ele fornece, e
+      // ficar sendo o PRIMEIRO componente ja garante isso.
+      //
+      // FlightAgentTC (nao SimAgent): o agente mora DENTRO de cada player,
+      // nao aqui na Station -- e o que deixa o corpo enviado pelo cliente
+      // autocontido (um player = um bloco, sem uma segunda secao em outro
+      // lugar do arquivo para casar por nome).
+      // ------------------------------------------------------------------
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libflight_tc.so"
+               provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
+            )
+         }
+      )
+   }
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Serra do Mar / regiao de Nova Friburgo (RJ) -- o mesmo ponto de
+      // referencia das outras pocs deste repositorio, e o tile SRTM abaixo
+      // e o mesmo. Players declarados +-12 NM do centro ficam dentro da
+      // celula (ver a nota identica em scenario.epp.in do single-thread).
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {

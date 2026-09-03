@@ -39,7 +39,7 @@ TEST(BreakpointController, TickSemArmarNuncaDispara)
 TEST(BreakpointController, ArmarEDispararNoHit)
 {
    BreakpointController bp;
-   bp.arm(42, "falcon1", "SupportAlert", false, 5.0, 1.0);
+   bp.arm(42, "falcon1", "SupportAlert", false, 1.0);
    EXPECT_TRUE(bp.isArmed());
    EXPECT_TRUE(bp.isArmedOn("SupportAlert"));
 
@@ -64,7 +64,7 @@ TEST(BreakpointController, ArmarEDispararNoHit)
 TEST(BreakpointController, ModoRapidoRestauraEscalaNoHit)
 {
    BreakpointController bp;
-   bp.arm(1, "falcon1", "Evade", true, 0.0, 1.0);
+   bp.arm(1, "falcon1", "Evade", true, 1.0);
    EXPECT_DOUBLE_EQ(bp.restoreTimeScale(), 1.0);
 
    const auto hit{bp.tick({{1, "EVADE"}}, fakeMatches, 1.0)};
@@ -72,30 +72,29 @@ TEST(BreakpointController, ModoRapidoRestauraEscalaNoHit)
    EXPECT_TRUE(hit.shouldRestoreScale);
 }
 
-TEST(BreakpointController, ExpiraSozinhoAposTimeout)
+TEST(BreakpointController, NuncaExpiraSozinho)
 {
-   BreakpointController bp(10.0);
-   bp.arm(7, "bandit1", "RTB", false, 100.0, 1.0);
+   // Pedido explicito: nao ha mais desarme automatico por tempo -- o
+   // breakpoint so sai do ar por HIT ou por cancelamento manual, mesmo
+   // apos uma janela de simulacao bem maior que o antigo timeout de 300s.
+   BreakpointController bp;
+   bp.arm(7, "bandit1", "RTB", false, 1.0);
 
-   auto stillWaiting{bp.tick({{7, "PATROL"}}, fakeMatches, 105.0)};
+   const auto stillWaiting{bp.tick({{7, "PATROL"}}, fakeMatches, 1000.0)};
    EXPECT_EQ(stillWaiting.outcome, BreakpointOutcome::None);
    EXPECT_TRUE(bp.isArmed());
-
-   const auto timedOut{bp.tick({{7, "PATROL"}}, fakeMatches, 111.0)};
-   EXPECT_EQ(timedOut.outcome, BreakpointOutcome::TimedOut);
-   EXPECT_FALSE(bp.isArmed());
-   EXPECT_EQ(bp.status(true, true, "RTB").branch, BreakpointStatusBranch::TimedOut);
+   EXPECT_EQ(bp.status(true, true, "RTB").branch, BreakpointStatusBranch::Armed);
 }
 
 TEST(BreakpointController, CancelamentoManual)
 {
    BreakpointController bp;
-   bp.arm(1, "falcon1", "Patrol", true, 0.0, 2.0);
+   bp.arm(1, "falcon1", "Patrol", true, 2.0);
    EXPECT_TRUE(bp.cancel());   // fastMode -> pede restauracao de escala
    EXPECT_FALSE(bp.isArmed());
 
    BreakpointController bp2;
-   bp2.arm(1, "falcon1", "Patrol", false, 0.0, 2.0);
+   bp2.arm(1, "falcon1", "Patrol", false, 2.0);
    EXPECT_FALSE(bp2.cancel());   // fora de fastMode -> nao pede
 }
 
@@ -110,10 +109,10 @@ TEST(BreakpointController, StatusSemArmar)
 TEST(BreakpointController, RearmarLimpaHitAnterior)
 {
    BreakpointController bp;
-   bp.arm(1, "falcon1", "Support", false, 0.0, 1.0);
+   bp.arm(1, "falcon1", "Support", false, 1.0);
    bp.tick({{1, "SUPPORT"}}, fakeMatches, 1.0);
    EXPECT_EQ(bp.status(true, true, "Support").branch, BreakpointStatusBranch::Hit);
 
-   bp.arm(2, "falcon2", "Evade", false, 2.0, 1.0);
+   bp.arm(2, "falcon2", "Evade", false, 1.0);
    EXPECT_EQ(bp.status(true, true, "Evade").branch, BreakpointStatusBranch::Armed);
 }

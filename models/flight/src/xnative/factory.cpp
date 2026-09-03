@@ -4,6 +4,7 @@
 #include "ubf/BtBehavior.hpp"
 #include "ubf/FlightAction.hpp"
 #include "ubf/FlightState.hpp"
+#include "ubf/RLBridgeBehavior.hpp"
 #include "xnative/AlertDatalink.hpp"
 #ifdef FLIGHT_TC_AGENT
    #include "xnative/FlightAgentTC.hpp"
@@ -52,6 +53,7 @@ base::Object* factory(const std::string& name)
    else if ( name == FlightState::getFactoryName() )            obj = new FlightState();
    else if ( name == BtBehavior::getFactoryName() )             obj = new BtBehavior();
    else if ( name == AltitudeSafetyBehavior::getFactoryName() ) obj = new AltitudeSafetyBehavior();
+   else if ( name == RLBridgeBehavior::getFactoryName() )       obj = new RLBridgeBehavior();
    else if ( name == FlightAction::getFactoryName() )           obj = new FlightAction();
 
    return obj;
@@ -75,6 +77,7 @@ const char* const NOMES[] = {
    "FlightState",
    "BtBehavior",
    "AltitudeSafetyBehavior",
+   "RLBridgeBehavior",
    "FlightAction",
    nullptr
 };
@@ -88,6 +91,7 @@ const base::MetaObject* const METAS[] = {
    FlightState::getMetaObject(),
    BtBehavior::getMetaObject(),
    AltitudeSafetyBehavior::getMetaObject(),
+   RLBridgeBehavior::getMetaObject(),
    FlightAction::getMetaObject(),
    nullptr
 };

@@ -25,7 +25,7 @@ models/
 │   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
 │   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
 │   │                     # flight (2º PluginModule) só no cenário de demo
-│   │                     # (src/single-thread/configs/
+│   │                     # (src/poc/single-thread/configs/
 │   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
 │   │                     # seção "Demo: míssil guiado", para o "porque" de
 │   │                     # ser um plugin à parte e não dentro do flight.
@@ -61,41 +61,48 @@ repositório estar em mente.
 ## 1. O build em etapas, e por que a ordem importa
 
 São **quatro projetos Meson**, em quatro diretórios de build. Os modelos são construídos **antes**
-do host, que só consome os `.so` instalados.
+do host, mas — desde a decoplagem descrita abaixo — o host **compila** sem depender deles; só
+**rodar** algo (`install`/`test`/`run-*`) depende dos modelos já publicados.
 
 ```bash
 make configure   # 1. conan + meson setup do HOST            -> build/
 make sdk         # 2. publica o SDK                          -> dist/{include,lib,lib/pkgconfig}
-make models      # 3. flight, missile e stub, projetos à parte -> build-flight/, build-missile/, build-stub/
-                 #    + copia qualquer .so de terceiro em models/plugins/ (sem build, só cópia)
-make build       # 4. os executáveis do host                  -> build/src/<poc>/src/
+make models      # 3. flight, missile e stub, cada um autocontido -> models/plugins/ (NUNCA dist/)
+make build       # 4. os executáveis do host (só precisa do sdk) -> build/src/poc/<poc>/src/
+make install     # 5. sync-plugins (models/plugins/ -> dist/) + instala os binários -> dist/
 ```
 
-**`make build` já encadeia o resto** — a cadeia está declarada (`build: models`, `models: sdk`).
-No dia a dia:
+**`make build` NÃO dispara `models` mais** — a cadeia mudou (`build: sdk`, não `build: models`) —
+porque compilar o host nunca precisou dos `.so` dos modelos, só de saber onde ficam os headers do
+SDK. É `make install` quem encadeia `build` + `sync-plugins` (que por sua vez depende de
+`models`). No dia a dia:
 
 ```bash
-make configure && make build
+make configure && make build && make install
+# ou, direto: make configure && make test (já encadeia install)
 ```
 
-O único que não entra na cadeia é o `configure`: ele roda o Conan e o `meson setup` do host, e a
-etapa `sdk` precisa desse `build/` já existir.
+O único que não entra em nenhuma cadeia é o `configure`: ele roda o Conan e o `meson setup` do
+host, e a etapa `sdk` precisa desse `build/` já existir.
 
 | alvo | o que faz | quando rodar |
 |---|---|---|
 | `make configure` | Conan + `meson setup` do host | uma vez, e depois de `make clean` |
-| `make sdk` | compila `xboard`/`xlog`/`xtrack` e instala com `--tags sdk,devel` | raramente sozinho |
-| `make models` | configura, compila e instala **flight**, **missile** e **stub** | ao mexer no modelo |
-| `make build` | os três executáveis (dispara `models` → `sdk`) | ao mexer em qualquer coisa |
-| `make install` | copia os binários para `dist/bin/` | opcional — **não** é preciso para rodar nem testar |
-| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` | ao mexer no modelo |
-| `make test` | as **duas** suítes (dispara `test-models`) | antes de commitar |
-| `make check-plugin-hotswap` | prova que trocar o modelo não recompila a aplicação | demonstração |
-| `make clean` | apaga os três `build*/` e o `dist/` | |
+| `make sdk` | compila `xboard`/`xlog`/`xtrack`/`xrlbridge` e instala com `--tags sdk,devel` | raramente sozinho |
+| `make models` | configura, compila e **deposita em `models/plugins/`** flight/missile/stub — NUNCA toca `dist/` | ao mexer no modelo |
+| `make build` | os três executáveis do host — só depende do `sdk`, não dos modelos | ao mexer no host |
+| `make sync-plugins` | copia `models/plugins/*.so` (+ `data/`) para `dist/` — a ÚNICA ponte | raramente sozinho — `install` já chama |
+| `make install` | `build` + `sync-plugins` + copia os binários para `dist/bin/` | **necessário** para rodar/testar (ver abaixo) |
+| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` (delega pro Makefile de `models/flight`) | ao mexer no modelo |
+| `make test` | as **duas** suítes — dispara `test-models` **e** `install` | antes de commitar |
+| `make check-plugin-hotswap` | prova que trocar o modelo não recompila a aplicação — depende de `install` | demonstração |
+| `make clean` | apaga o `build/`+`dist/` do host, o `build/`+`dist/` de CADA modelo, e os `.so`/`data/` que `make models` gerou em `models/plugins/` | |
 
-> **`make install` não é necessário para rodar.** O `sdk` e o `models` já instalam em `dist/`, que
-> é para onde o `searchPaths:` do cenário aponta; o executável roda direto de `build/`. O
-> `install` só popula `dist/bin/`.
+> **`make install` (ou `make test`/`run-*`, que já o encadeiam) É NECESSÁRIO para rodar.**
+> Diferente do design anterior, `dist/lib/mixr-plugins/` só é populado pelo alvo `sync-plugins`
+> (parte de `install`) — nem `make build` nem `make models`, sozinhos, deixam nada executável.
+> Isso é deliberado: compilar não deveria depender de onde os artefatos finais moram; só RODAR
+> depende disso, e `dlopen()` só acontece em tempo de execução.
 
 > **Depois de um `make clean`, o `-Dtests` volta ao default (`false`)** — o diretório de build foi
 > apagado. Para os testes: `meson configure build -Dtests=true` antes do `make build`.
@@ -118,7 +125,7 @@ make configure && make sdk
 cd models/flight   # ou models/missile, ou models/fixtures/stub
 make               # configura (./build) + compila -> ./dist/lib/mixr-plugins/*.so
 make test          # roda a suite DAQUELE modelo, isolada
-make install-host  # sincroniza ./dist para a raiz do poc-mixr -- so ai o cenario enxerga o .so
+make install-host  # deposita em ../../models/plugins/ -- so ai um cenario PODE vir a enxergar o .so
 ```
 
 `./dist` nasce **dentro** do próprio projeto de modelo — é o que "autocontido" quer dizer aqui: o
@@ -127,16 +134,19 @@ abriu, sem precisar do Makefile raiz. O único pré-requisito que não tem como 
 SDK publicado pelo host (`make configure && make sdk`, uma vez) — o modelo depende do contrato de
 ABI e dos pacotes Conan (`mixr`, `behaviortree.cpp.asa`) que só o projeto host resolve.
 
-`make install-host` é o único alvo que escreve fora do `./dist` local — sincroniza para
-`dist/lib/mixr-plugins/` (e `dist/share/mixr-plugins/<nome>/`, quando há dados) na raiz do
-`poc-mixr`, que é onde o `searchPaths:` de `( PluginLoader )` dos cenários já procura. Sem rodar
-esse alvo, o `.so` compilado fica só no projeto do modelo — útil para iterar (compilar, `make
-test`), inútil para um cenário até ser sincronizado.
+`make install-host` é o único alvo que escreve fora do `./dist` local — mas só até
+`../../models/plugins/` (lib, flat) e `../../models/plugins/data/<nome>/` (quando há dados), o
+MESMO depósito que um `.so` de terceiro usaria (ver `models/plugins/README.md`). **Nunca escreve
+em `dist/lib/mixr-plugins/` diretamente** — quem sincroniza `models/plugins/` → `dist/` é o alvo
+`sync-plugins` do Makefile raiz, chamado por `make install`. Sem rodar `install-host` E `make
+install` (na raiz), o `.so` compilado fica só no projeto do modelo (ou só em `models/plugins/`) —
+útil para iterar (compilar, `make test`), inútil para um cenário do host até ser sincronizado até
+`dist/`.
 
-Os dois fluxos não competem: `make models` da raiz (re)configura e (re)instala os três do zero, e
-continua sendo o que `make build`/`make test`/o CI usam. O Makefile de cada modelo é para
-desenvolvimento focado num modelo só — rode `make install-host` quando quiser ver o resultado
-refletido nos cenários do host.
+Os dois fluxos não competem: `make models` da raiz chama exatamente este `install-host` de cada
+um dos três, e continua sendo o que `make build`/`make test`/o CI usam. O Makefile de cada modelo
+é para desenvolvimento focado num modelo só — rode `make install-host` (aqui) seguido de `cd
+../.. && make install` quando quiser ver o resultado refletido nos cenários do host.
 
 ---
 
@@ -265,13 +275,13 @@ surpresa do terceiro.
 ## 4. Como criar uma poc nova que usa um modelo novo
 
 A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nada de modelo.
-`src/bandit-dis/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
+`src/poc/bandit-dis/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
 
-1. **`src/<nome>/`** seguindo o molde de `src/single-thread/` (só `app/`, `main.cpp`,
+1. **`src/poc/<nome>/`** seguindo o molde de `src/poc/single-thread/` (só `app/`, `main.cpp`,
    `mixr_factory.{hpp,cpp}`), e `subdir('./<nome>')` em [src/meson.build](../src/meson.build).
 2. **`mixr_factory.cpp`** encadeia `mixr::xplugin::factory` (as classes EDL `( PluginLoader )` e
    `( PluginModule )`) e, no fim, `mixr::xplugin::loadedFactory` — as classes que vieram do
-   plugin. Copie de `src/bandit-dis/src/mixr_factory.cpp`.
+   plugin. Copie de `src/poc/bandit-dis/src/mixr_factory.cpp`.
 3. **`app/StationBuilder.cpp`** chama `xplugin::setBuiltinFactory(mixrFactoryBuiltin)` antes do
    `edl_parser` e `xplugin::seal()` depois.
 4. **`dependencies`** do `executable()`: `[thread_dep, mixr_dep, xtacview_dep, xclock_dep,
@@ -341,5 +351,5 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova
-- **[../src/single-thread/README.md](../src/single-thread/README.md)** — a dissecação profunda do
+- **[../src/poc/single-thread/README.md](../src/poc/single-thread/README.md)** — a dissecação profunda do
   modelo de produção (os arquivos moraram para cá, o texto continua valendo)

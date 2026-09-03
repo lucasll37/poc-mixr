@@ -9,7 +9,7 @@
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/single-thread/src/single-thread",
+      "program": "${workspaceFolder}/build/src/poc/single-thread/src/single-thread",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
@@ -28,7 +28,7 @@
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/multi-thread/src/multi-thread",
+      "program": "${workspaceFolder}/build/src/poc/multi-thread/src/multi-thread",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
@@ -47,7 +47,7 @@
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/bandit-dis/src/bandit-dis",
+      "program": "${workspaceFolder}/build/src/poc/bandit-dis/src/bandit-dis",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

@@ -26,7 +26,12 @@ bash = find_program('bash')
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-model_build  = raiz / 'build-flight'
+# 'models/flight' e um projeto Meson AUTOCONTIDO (ver models/README.md
+# Sec1.1) -- constroi em './build' DENTRO da propria pasta, nao mais em
+# 'build-flight' na raiz (esse era o caminho do design anterior, quando
+# 'make models' fazia o setup do flight direto por aqui). As variantes A/B
+# de teste ('libmodel_variant_a.so'/'_b.so', para plugin-hotswap) saem la.
+model_build  = raiz / 'models' / 'flight' / 'build'
 
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do shared/xmsg
@@ -302,3 +307,41 @@ test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
 # calibrados por aviao). Ver skeleton_diff.py para o metodo.
 test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
+
+# ------------------------------------------------------------------------------
+# src/server -- a API REST de simulacao (ver src/server/README.md e
+# src/server/docs/ARCHITECTURE.md). Duas camadas rapidas por unit-test-by-
+# inclusion (mesmo padrao das outras suites 'domain': linka o .cpp sob teste
+# direto, sem MIXR) + o contrato HTTP fim-a-fim contra os binarios de
+# verdade ('server' dispara 'sim-runner' de verdade, com libflight_tc.so
+# ja sincronizado por 'make install').
+# ------------------------------------------------------------------------------
+server_inc_dir = include_directories('../src/server/include')
+
+test_server_upload = executable('test-server-scenario-upload',
+    files('../src/server/tests/unit/test_scenario_upload.cpp',
+          '../src/server/src/app/ScenarioUpload.cpp'),
+    include_directories : server_inc_dir,
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('server-scenario-upload', test_server_upload, suite: 'server', timeout: 60)
+
+test_server_assembler = executable('test-server-scenario-assembler',
+    files('../src/server/tests/unit/test_scenario_assembler.cpp',
+          '../src/server/src/app/ScenarioAssembler.cpp'),
+    include_directories : server_inc_dir,
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('server-scenario-assembler', test_server_assembler, suite: 'server', timeout: 60)
+
+# is_parallel: false -- sobe o 'server' de verdade, que por sua vez dispara
+# 'sim-runner' (JSBSim incluso); mesma cautela de recursos das outras
+# suites que rodam um binario da poc.
+test('server-http', py,
+     args: files('../src/server/tests/http/run_server_test.py') + [
+         '--server-binario', server.full_path(),
+         '--runner-binario', sim_runner.full_path()],
+     depends: [server, sim_runner], workdir: raiz, suite: 'server',
+     timeout: 300, is_parallel: false)

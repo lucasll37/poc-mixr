@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Os cenarios de src/single-thread e src/multi-thread declaram
+# Os cenarios de src/poc/single-thread e src/poc/multi-thread declaram
 # falcon1..falcon4, cada um um bloco '( Aircraft ... )'. falcon1 carrega
 # comentario explicando cada slot; falcon2/3/4 sao a mesma estrutura,
 # terse, sem comentario -- uma forma de duplicacao que nunca bate byte a
@@ -15,8 +15,8 @@ cd "$RAIZ" || exit 1
 
 fail=0
 
-for arquivo in src/single-thread/configs/scenario.epp.in \
-               src/multi-thread/configs/scenario.epp.in; do
+for arquivo in src/poc/single-thread/configs/scenario.epp.in \
+               src/poc/multi-thread/configs/scenario.epp.in; do
    if python3 tests/guard/skeleton_diff.py "$arquivo" falcon1 falcon2 falcon3 falcon4; then
       echo "  OK   $arquivo"
    else

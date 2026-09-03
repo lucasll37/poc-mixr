@@ -217,6 +217,28 @@ BEGIN_SLOT_MAP(AltitudeSafetyBehavior)
 END_SLOT_MAP()
 
 //------------------------------------------------------------------------------
+// RLBridgeBehavior -- so precisa existir e se recusar a decidir (nullptr):
+// nenhum cenario de teste que carrega o stub liga a ponte de RL de verdade
+// (isso exigiria shared/xrlbridge, que o stub nao linka), so o cenario de
+// PRODUCAO declara RLBridgeBehavior no seu 'provides:' (ver
+// models/flight/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
+// MESMO cenario trocando so o 'file:', precisa responder pelo nome pra nao
+// quebrar a igualdade exata de conjunto.
+//------------------------------------------------------------------------------
+class RLBridgeBehavior final : public base::ubf::AbstractBehavior
+{
+   DECLARE_SUBCLASS(RLBridgeBehavior, base::ubf::AbstractBehavior)
+public:
+   RLBridgeBehavior()                                    { STANDARD_CONSTRUCTOR() }
+   base::ubf::AbstractAction* genAction(const base::ubf::AbstractState* const,
+                                        const double) override { return nullptr; }
+};
+IMPLEMENT_SUBCLASS(RLBridgeBehavior, "RLBridgeBehavior")
+EMPTY_SLOTTABLE(RLBridgeBehavior)
+EMPTY_DELETEDATA(RLBridgeBehavior)
+EMPTY_COPYDATA(RLBridgeBehavior)
+
+//------------------------------------------------------------------------------
 // A carga util do datalink e o datalink. O cenario poe ( AlertDatalink ) no
 // slot 'datalink:' de cada aviao, entao ele TEM de derivar de models::Datalink
 // -- Player::processComponents casa por findByType(typeid(models::Datalink)).
@@ -274,6 +296,7 @@ base::Object* fabrica(const char* const name)
    if (std::strcmp(name, "FlightAction") == 0)           return new FlightAction();
    if (std::strcmp(name, "BtBehavior") == 0)             return new BtBehavior();
    if (std::strcmp(name, "AltitudeSafetyBehavior") == 0) return new AltitudeSafetyBehavior();
+   if (std::strcmp(name, "RLBridgeBehavior") == 0)       return new RLBridgeBehavior();
    if (std::strcmp(name, "TacticalAlert") == 0)          return new TacticalAlert();
    if (std::strcmp(name, "AlertDatalink") == 0)          return new AlertDatalink();
    return nullptr;
@@ -281,14 +304,15 @@ base::Object* fabrica(const char* const name)
 
 const char* const NOMES[] = {
    "AlertDatalink", "TacticalAlert", "FlightState",
-   "BtBehavior", "AltitudeSafetyBehavior", "FlightAction",
+   "BtBehavior", "AltitudeSafetyBehavior", "RLBridgeBehavior", "FlightAction",
    nullptr
 };
 
 const base::MetaObject* const METAS[] = {
    AlertDatalink::getMetaObject(), TacticalAlert::getMetaObject(),
    FlightState::getMetaObject(), BtBehavior::getMetaObject(),
-   AltitudeSafetyBehavior::getMetaObject(), FlightAction::getMetaObject(),
+   AltitudeSafetyBehavior::getMetaObject(), RLBridgeBehavior::getMetaObject(),
+   FlightAction::getMetaObject(),
    nullptr
 };
 

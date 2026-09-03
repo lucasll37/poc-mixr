@@ -4,7 +4,7 @@
 // scenario_patrol.epp.in + um bandit1 LOCAL (mesmo bloco BANDIT de
 // tests/scenario/make_fixture.py, modo 'intruder') -- mostra a evasao e o
 // apoio entre os falcons (EVADE/SUPPORT), sem sair do processo unico e sem
-// depender de src/bandit-dis rodando a parte.
+// depender de src/poc/bandit-dis rodando a parte.
 //
 // Mesmo delta de scenario_patrol.epp.in em relacao a producao (sem
 // 'networks:', porta de Tacview e dados PROPRIOS -- 1236,
@@ -29,7 +29,8 @@
             ( PluginModule
                file:     "libflight_tc.so"
                provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction }
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
             )
          }
       )
@@ -371,7 +372,7 @@
          // ------------------------------------------------------------------
          // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
          // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
-         // 'intruder') / src/bandit-dis/configs/scenario.epp.
+         // 'intruder') / src/poc/bandit-dis/configs/scenario.epp.
          // ------------------------------------------------------------------
          bandit1: ( Aircraft
             id: 201

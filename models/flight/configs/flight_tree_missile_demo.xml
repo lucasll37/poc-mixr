@@ -1,5 +1,5 @@
 <!--
-  Arvore de DEMO, para src/single-thread/configs/scenario_missile_demo.epp.in.
+  Arvore de DEMO, para src/poc/single-thread/configs/scenario_missile_demo.epp.in.
 
   Copia de flight_tree.xml (a arvore de PRODUCAO, intocada) com um ramo a
   mais dentro de 'engage_sequence': antes de reportar e evadir, tenta lancar
