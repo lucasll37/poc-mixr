@@ -26,11 +26,19 @@ ClassStat updateClassStat(const ClassStat& previous, const std::string& factoryN
       s.countHistory.erase(s.countHistory.begin());
    }
 
+   // 'count' negativo em qualquer ponto da janela so pode ser corrupcao do
+   // contador nao-atomico do MIXR sob decisao paralela (ver o comentario de
+   // 'racyCounter' no header) -- nunca um vazamento de verdade.
+   for (const int c : s.countHistory) {
+      if (c < 0) { s.racyCounter = true; break; }
+   }
+
    // Cresceu sustentado: o mais novo e maior que o mais velho da janela, e
    // 'count' nunca caiu entre duas amostras consecutivas dentro dela. So
    // vale a pena julgar com a janela cheia -- amostra de menos gera falso
-   // positivo/negativo por ruido de partida.
-   if (static_cast<int>(s.countHistory.size()) == kHistoryWindow) {
+   // positivo/negativo por ruido de partida. Uma janela com leitura racy nao
+   // pode acusar vazamento: o proprio dado ja provou estar corrompido.
+   if (static_cast<int>(s.countHistory.size()) == kHistoryWindow && !s.racyCounter) {
       const bool grew{s.countHistory.front() < s.countHistory.back()};
       bool everDropped{};
       for (std::size_t i = 1; i < s.countHistory.size(); i++) {

@@ -42,6 +42,18 @@ struct ClassStat
    // inicio dela -- crescimento sustentado, o sinal de vazamento que se
    // pode afirmar sem depender de limiar magico por classe.
    bool suspectedLeak{};
+
+   // 'count' negativo em qualquer amostra da janela -- IMPOSSIVEL para uma
+   // contagem de instancias vivas de verdade, e por isso a prova de que
+   // mixr::base::MetaObject::count deste 'factoryName' esta sendo raceado
+   // (macros.hpp: '++'/'--' cru, sem lock -- mesma armadilha ja documentada
+   // em tests/memory/run_leak_test.py, que roda com '-threads 1' por causa
+   // dela). So acontece com decisao multithread (pool T/C): classes criadas
+   // a cada ciclo de decisao em mais de uma thread do pool -- FlightAction,
+   // TacticalAlert -- competem pelo mesmo contador nao-atomico. Enquanto
+   // 'racyCounter' e verdadeiro, 'suspectedLeak' fica sempre falso: uma
+   // leitura corrompida nao pode servir de prova de vazamento.
+   bool racyCounter{};
 };
 
 // 'previous' e o resultado da amostra anterior (para herdar o historico);

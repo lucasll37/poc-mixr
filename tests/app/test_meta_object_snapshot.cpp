@@ -84,6 +84,33 @@ TEST(MetaObjectSnapshot, JanelaDeslizaEDescartaAmostraAntiga)
    EXPECT_FALSE(feed(seq).suspectedLeak);
 }
 
+TEST(MetaObjectSnapshot, NegativoNuncaAcusaVazamentoEMarcaRacy)
+{
+   // 'count' negativo e impossivel para uma contagem de instancias vivas de
+   // verdade -- so acontece com o contador nao-atomico do MIXR corrompido
+   // por decisao paralela no pool T/C (ver o comentario de 'racyCounter' no
+   // header). Mesmo com o padrao classico de "cresce sem nunca cair" na
+   // parte positiva da sequencia, uma leitura racy nao pode virar veredito
+   // de vazamento.
+   // Exatamente kHistoryWindow amostras -- a negativa do inicio nunca
+   // desliza pra fora da janela (nao ha amostra alem dela pra empurra-la).
+   std::vector<int> seq;
+   for (int i = 0; i < kHistoryWindow; i++) seq.push_back(i - 5);   // -5..-1, depois 0..24
+   const ClassStat s{feed(seq)};
+   EXPECT_TRUE(s.racyCounter);
+   EXPECT_FALSE(s.suspectedLeak);
+}
+
+TEST(MetaObjectSnapshot, RacySaiDaJanelaQuandoONegativoDesliza)
+{
+   // Um unico mergulho negativo (o instante da corrida) seguido de amostras
+   // estaveis e nao-negativas: assim que a janela desliza para alem dele,
+   // 'racyCounter' volta a false -- nao e um estigma permanente da classe.
+   std::vector<int> seq{-1};
+   for (int i = 0; i < kHistoryWindow + 5; i++) seq.push_back(3);
+   EXPECT_FALSE(feed(seq).racyCounter);
+}
+
 TEST(MetaObjectSnapshot, CamposBasicosSaoRepassados)
 {
    const ClassStat s{updateClassStat(ClassStat{}, "GuidedMissile", true, 3, 7, 42)};

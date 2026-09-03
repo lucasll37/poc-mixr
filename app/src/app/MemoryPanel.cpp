@@ -15,9 +15,13 @@ using namespace ftxui;
 // Gradiente verde -> amarelo -> vermelho conforme a fracao de 'pico' ja
 // ocupada -- muito mais ilustrativo que uma cor so (ciano ou vermelho) o
 // tempo inteiro. Suspeita de vazamento forca vermelho, independente da
-// fracao (o alerta importa mais que o nivel exato).
-Color gradientColor(const float fraction, const bool suspectedLeak)
+// fracao (o alerta importa mais que o nivel exato). Contador RACY (ver
+// ClassStat::racyCounter) forca azul, propositalmente DIFERENTE do
+// vermelho de vazamento -- e um aviso de "nao confie neste numero", nao um
+// alarme de vazamento.
+Color gradientColor(const float fraction, const bool suspectedLeak, const bool racyCounter)
 {
+   if (racyCounter) return Color::Blue;
    if (suspectedLeak) return Color::Red;
    const float t{std::clamp(fraction, 0.0f, 1.0f)};
    if (t < 0.5f) {
@@ -42,7 +46,7 @@ Element renderMemoryBar(const ClassStat& s)
       ? std::clamp(static_cast<float>(s.count) / static_cast<float>(s.mc), 0.0f, 1.0f)
       : 0.0f};
    const int filledPx{static_cast<int>(std::lround(fraction * (widthPx - 1)))};
-   const Color barColor{gradientColor(fraction, s.suspectedLeak)};
+   const Color barColor{gradientColor(fraction, s.suspectedLeak, s.racyCounter)};
 
    if (filledPx > 0) {
       c.DrawBlockLine(0, 0, filledPx, 0, barColor);
@@ -65,7 +69,7 @@ std::string classRowText(const ClassStat& s)
    std::ostringstream oss;
    oss << (s.fromPlugin ? "[plugin] " : "[host]   ") << std::left << std::setw(kColFactory) << s.factoryName
        << " count=" << s.count << " mc=" << s.mc << " tc=" << s.tc
-       << (s.suspectedLeak ? "  CRESCENDO" : "");
+       << (s.racyCounter ? "  RACA (contador MIXR nao-atomico)" : (s.suspectedLeak ? "  CRESCENDO" : ""));
    return oss.str();
 }
 
@@ -89,7 +93,9 @@ Element renderClassRow(const ClassStat& s, const bool focused)
       text("criados=" + std::to_string(s.tc)) | size(WIDTH, EQUAL, kColCreated),
       renderMemoryBar(s),
    };
-   if (s.suspectedLeak) {
+   if (s.racyCounter) {
+      row.push_back(text("  RACA (contador nao-atomico)") | color(Color::Blue) | bold);
+   } else if (s.suspectedLeak) {
       row.push_back(text("  CRESCENDO") | color(Color::Red) | bold);
    }
    return hbox(std::move(row)) | (focused ? inverted : nothing);
