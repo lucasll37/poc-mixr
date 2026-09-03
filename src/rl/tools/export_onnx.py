@@ -123,6 +123,15 @@ def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int
         [w1, b1, w2, b2, w3, b3],
     )
     modelo = helper.make_model(grafo, opset_imports=[helper.make_opsetid("", 17)])
+
+    # ARMADILHA MEDIDA (ver src/poc/onnx-policy): o ONNX Runtime deste pacote
+    # Conan aceita IR ate 9, e o pacote Python 'onnx' >= 1.19 grava 13 por
+    # padrao. O sintoma nao aparece aqui -- aparece EM VOO, com xinfer::open()
+    # recusando o arquivo ("Unsupported model IR version: 13, max supported
+    # IR version: 9") e a arvore caindo no Fallback. IR 8 e o do
+    # policy_example.onnx ja versionado.
+    modelo.ir_version = 8
+
     modelo.doc_string = (
         "PESOS ALEATORIOS, nao treinados. Ordem de entrada: " + ",".join(nomes)
     )
