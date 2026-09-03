@@ -1,13 +1,15 @@
-Controle de randomização
 
 Evento based -> Explosão de Bomba afeta: bomba e player que estão num raio da bomba (Usar python para isso?)
 
 mensagens personalizáveis
+onnxruntime
+pythonruntime
 
 criar scripts e deps
 webstation
 engine
 
+Controle de randomização
 
 --------------------------------------------------------
 testar em python para migrar para mixr/cpp facilita a prototipagem mais abre margem para desafios de integração -> nascer já em cpp com o desafio de se criar ferramentas de desenvolvimento que permita boa produtividade
