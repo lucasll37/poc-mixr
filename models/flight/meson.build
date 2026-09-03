@@ -91,12 +91,14 @@ model_sources = files(
 
     # nos/factory da arvore de comportamento
     'src/bt/bt_factory.cpp',
+    'src/bt/bt_factory_sdk.cpp',
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
     'src/bt/nodes/LaunchEnvelopeCondition.cpp',
     'src/bt/nodes/LaunchMissileAction.cpp',
     'src/bt/nodes/PatrolAction.cpp',
+    'src/bt/nodes/OnnxScoreCondition.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',

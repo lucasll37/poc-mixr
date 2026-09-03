@@ -30,18 +30,19 @@ class MixrHelloConan(ConanFile):
         # compilador C++17.
         self.requires("ftxui/7.0.3")
 
-        # So src/server linka isto (a API REST de simulacao). nlohmann_json
-        # entra nos dois executaveis de la (sim-runner E server); cpp-httplib
-        # so no 'server' (a camada HTTP). Nenhuma outra poc nem o modelo usa.
-        self.requires("nlohmann_json/3.11.3")
-        self.requires("cpp-httplib/0.15.3")
-
         # So src/rl/bindings linka isto -- o modulo de extensao Python que expoe
         # a Station a um gymnasium.Env (ver src/rl/README.md). Header-only, sem
         # dependencia de sistema alem do proprio Python de desenvolvimento
         # (Python.h/libpython, resolvidos pelo modulo 'python' do Meson, nao
         # pelo Conan).
         self.requires("pybind11/2.13.6")
+
+        # So shared/xinfer linka isto -- o motor de inferencia que roda a
+        # politica .onnx de dentro do frame (ver shared/xinfer/README.md).
+        # Estatico (a receita ja tem shared=False por default), e contido
+        # inteiro dentro de libxinfer.so por '-Wl,--exclude-libs,ALL': nenhum
+        # outro alvo, e nenhum modelo, ve header ou biblioteca do ORT.
+        self.requires("onnxruntime/1.17.3")
 
     def build_requirements(self):
         # Framework da suite de testes. Fica em test_requires porque nenhum

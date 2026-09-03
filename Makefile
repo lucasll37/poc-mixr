@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis run-app run-server venv-rl test-rl test test-asan
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis run-app venv-rl test-rl test test-asan
 
 .DEFAULT_GOAL := help
 
@@ -68,12 +68,12 @@ configure: ## Configure the project for building.
 		$(BUILD_DIR)/ .
 
 
-sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack). Etapa PRÉVIA ao build do modelo.
+sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack/libxrlbridge/libxinfer). Etapa PRÉVIA ao build do modelo.
 	@# 'meson compile' com os NOMES dos alvos. Medido: o meson compile resolve
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
 	@# ter de escrever shared/xboard/libxboard.so a mao.
-	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge
+	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer
 	@# '--tags sdk,devel' e nao '--tags sdk': install_headers() nao aceita
 	@# install_tag no meson 1.2, entao os headers ficam com a tag automatica
 	@# 'devel'. Com '--tags sdk' sozinho o SDK sai SEM os headers, e o erro so
@@ -211,9 +211,6 @@ run-bandit-dis: install ## Run bandit-dis (bandit1 sozinho: joystick físico ou 
 run-app: install ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
 	$(BUILD_DIR)/app/src/app
 
-run-server: install ## Run server (API REST de simulação -- POST /simulate recebe um cenário, roda num sim-runner isolado e devolve JSON; porta 8080).
-	$(BUILD_DIR)/src/server/src/server
-
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
 	python3 -m venv src/rl/.venv
 	src/rl/.venv/bin/pip install -q --upgrade pip
@@ -222,26 +219,6 @@ venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.v
 
 test-rl: install venv-rl ## Roda o smoke test Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'.
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
-
-# ============================================
-# src/ui -- editor visual de cenários (React + Express, só-leitura)
-# ============================================
-# Primeiro JS/Node do repo -- projeto Node AUTOCONTIDO, fora do grafo do
-# Meson de propósito (mesmo princípio de tools/joystick_mapper.py: ferramenta
-# auxiliar, não um subprojeto C++). Estes alvos só chamam 'npm' -- ver
-# src/ui/README.md para o que cada script faz de verdade.
-
-ui-install: ## Instala as dependências Node de src/ui/ (npm install).
-	npm --prefix src/ui install
-
-ui-dev: ## Sobe o editor de cenários (frontend Vite + backend Express) em modo dev -- http://localhost:5173.
-	npm --prefix src/ui run dev
-
-ui-build: ## Builda o editor de cenários para produção (estáticos do Vite + servidor Express compilado).
-	npm --prefix src/ui run build
-
-ui-test: ## Roda a suite de testes do editor de cenários (round-trip EDL, guarda ASCII, ordenação de plugins, SRTM, coordenadas).
-	npm --prefix src/ui test
 
 # ============================================
 # Test Targets

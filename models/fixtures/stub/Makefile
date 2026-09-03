@@ -58,9 +58,15 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	@# So reconfigura (caro) se o build.ninja nao existe AINDA ou se
 	@# TESTS/BUILD_TYPE mudaram desde a ultima vez -- ver o "porque" no
 	@# Makefile de models/flight (mesmo padrao).
+	@# O native-file do Conan entra no STALE junto com os meson.build: um
+	@# 'make configure' na RAIZ reescreve conan_meson_native.ini, e o regen
+	@# AUTOMATICO do ninja dispara por causa dele -- sem repassar
+	@# '-Dpkg_config_path', exatamente como descrito acima. Confirmado
+	@# quebrando: 'make configure' na raiz seguido de 'make test' falhava com
+	@# "Dependency poc-mixr-sdk not found", com o .pc presente em dist/.
 	@WANT="$(BUILD_TYPE)|$(TESTS)"; \
 	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
-	 STALE=$$(find meson.build meson_options.txt -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
+	 STALE=$$(find meson.build meson_options.txt $(ROOT)/build/conan_meson_native.ini -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
 	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
 	    :; \
 	 else \

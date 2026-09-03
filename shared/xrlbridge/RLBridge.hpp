@@ -1,7 +1,10 @@
 #ifndef __xrlbridge_RLBridge_H__
 #define __xrlbridge_RLBridge_H__
 
+#include "xrlbridge/ObservationFields.hpp"
+
 #include <string>
+#include <vector>
 
 namespace mixr {
 namespace xrlbridge {
@@ -106,6 +109,27 @@ void setObservation(const Observation& obs);
 
 //--- leitura: SO o host chama -------------------------------------------------
 Observation getObservation();
+
+//------------------------------------------------------------------------------
+// O CONTRATO DE DADOS com o treino -- ver xrlbridge/ObservationFields.hpp.
+//
+// Estas tres funcoes existem para que a ordem dos campos deixe de ser mantida
+// a mao em cinco lugares. Sao usadas pelo lado do MODELO (que empacota o
+// WorldView para o .onnx) e expostas ao Python pelos bindings, que constroi o
+// observation_space a partir delas em vez de repetir a lista.
+//------------------------------------------------------------------------------
+
+// Os nomes dos 28 campos numericos, na ordem canonica.
+std::vector<std::string> observationFieldNames();
+
+// Observation -> os 28 floats, na ordem canonica. 'out' tem de ter pelo menos
+// XRLBRIDGE_OBSERVATION_SIZE posicoes.
+void packObservation(const Observation& obs, float* out);
+
+// Acao NORMALIZADA em [-1,1] (o que um .onnx exportado do SB3 emite) -> as
+// unidades fisicas que o Autopilot espera. Fora de [-1,1] e recortado: a
+// politica nao pode comandar 40 mil pes so porque a rede saiu de escala.
+Command unscaleCommand(const float* normalized3);
 
 } // namespace xrlbridge
 } // namespace mixr

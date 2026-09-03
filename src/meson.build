@@ -5,12 +5,7 @@
 # se chama 'app', nao 'dashboard'.
 subdir('./poc')
 
-# API REST de simulacao -- peer de ./poc/, nao mais uma poc: recebe um
-# cenario por HTTP, roda num sim-runner isolado (um processo por
-# requisicao) e devolve telemetria em JSON. Ver src/server/README.md.
-subdir('./server')
-
-# O wrapper Gymnasium -- peer de ./poc/ e ./server/, tambem nao mais uma poc:
+# O wrapper Gymnasium -- peer de ./poc/, tambem nao mais uma poc:
 # modulo de extensao Python + pacote Python puro, nem sequer produz um
 # executavel. Ver src/rl/README.md.
 subdir('./rl')

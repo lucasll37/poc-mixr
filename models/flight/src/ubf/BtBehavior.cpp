@@ -7,6 +7,7 @@
 #include "ubf/BtBehavior.hpp"
 
 #include "bt/bt_factory.hpp"
+#include "bt/bt_factory_sdk.hpp"
 #include "ubf/FlightAction.hpp"
 #include "xlog/Log.hpp"
 
@@ -105,6 +106,7 @@ void BtBehavior::buildTree()
 
    std::lock_guard<std::mutex> lock(g_treeBuildMutex);
    bt_nodes::registerNodes(btFactory, context);
+   bt_nodes::registerSdkNodes(btFactory, context);
 
    try {
       tree = btFactory.createTreeFromFile(tune.treeFile, BT::Blackboard::create());

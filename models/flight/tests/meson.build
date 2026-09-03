@@ -53,6 +53,22 @@ bt_sources = files(
     '../src/bt/nodes/SupportAlertAction.cpp',
 )
 
+# Os nos que dependem do SDK ficam FORA de bt_sources, de proposito.
+#
+# bt_sources e compartilhado por test_tree e test_native, e test_tree tem uma
+# propriedade que vale a pena preservar: ele NAO linka o MIXR (ver o comentario
+# do alvo, logo abaixo) -- e o que o refactor de bt/DecisionContext.hpp
+# comprou. Um no que chama shared/xinfer arrasta sdk_dep, cujo .pc declara
+# 'Requires: mixr', e a propriedade se perderia em silencio.
+#
+# Estes nos sao exercitados pelo test_native, que ja linka o SDK. A arvore de
+# PRODUCAO (flight_tree.xml) nao os usa, entao test_tree continua cobrindo
+# tudo o que ela contem.
+bt_sdk_sources = files(
+    '../src/bt/bt_factory_sdk.cpp',
+    '../src/bt/nodes/OnnxScoreCondition.cpp',
+)
+
 # O XML de PRODUCAO, por caminho -- nao uma copia.
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
 flight_tree_missile_demo_xml = meson.current_source_dir() / '../configs/flight_tree_missile_demo.xml'
@@ -91,7 +107,7 @@ native_sources = files(
 )
 
 test_native = executable('test-native',
-    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp') + native_sources + bt_sources + domain_sources,
+    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp') + native_sources + bt_sources + bt_sdk_sources + domain_sources,
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : model_inc,
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, behavior_tree_dep, sdk_dep],

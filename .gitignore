@@ -30,12 +30,6 @@ app/data/logs/*.log*
 src/poc/*/data/messages/*.jsonl
 app/data/messages/*.jsonl
 
-# src/server: diretorio de trabalho POR REQUISICAO HTTP (o corpo enviado
-# pelo cliente + o .epp montado -- ver app/HttpServer.cpp/ScenarioAssembler.cpp).
-# Cada requisicao limpa o proprio; so o .gitkeep e versionado.
-src/server/data/runs/*
-!src/server/data/runs/.gitkeep
-
 # src/rl/: gravacoes Tacview de cada execucao do wrapper Gymnasium (mesmo
 # padrao das outras pocs), o cache de bytecode do pacote Python mixr_gym e o
 # venv local (ver 'make venv-rl').
@@ -43,10 +37,3 @@ src/rl/data/recordings/*.acmi
 src/rl/data/logs/*.log*
 src/rl/python/mixr_gym/__pycache__/
 src/rl/.venv/
-
-# src/ui: editor visual de cenarios (React + Express, so-leitura -- primeiro
-# JS/Node do repo). 'dist' acima ja e do SDK C++; o build do Vite usa
-# 'dist-app' de proposito, pra nao confundir os dois.
-src/ui/node_modules/
-src/ui/web/dist-app/
-src/ui/server/dist/

@@ -112,16 +112,21 @@ subdir('./shared/xplugin')
 # precisa existir antes de pkg.generate() listar as libs do SDK.
 subdir('./shared/xrlbridge')
 
+# Inferencia ONNX -- o motor, contido numa .so so (o ORT sao ~1,9 GB de .a em
+# Debug e models/flight gera QUATRO artefatos do mesmo fonte). Tambem antes do
+# SDK, pelo mesmo motivo de xboard/xtrack/xrlbridge.
+subdir('./shared/xinfer')
+
 
 # ==============================================================================
 # O SDK DE PLUGIN
 #
 # Tudo o que um TERCEIRO precisa para compilar um modelo sem ter este
-# repositorio: o contrato (header-only) e as tres .so que atravessam a
+# repositorio: o contrato (header-only) e as .so que atravessam a
 # fronteira. Publicado em dist/{include,lib,lib/pkgconfig}.
 #
 # COMO INSTALAR SO O SDK (e a etapa 'sdk' do Makefile):
-#     ninja -C build xboard xlog xtrack        # por NOME de alvo
+#     meson compile -C build xboard xlog xtrack xrlbridge xinfer   # por NOME
 #     meson install -C build --no-rebuild --tags sdk,devel
 #
 # DUAS ARMADILHAS MEDIDAS, nao supostas:
@@ -149,12 +154,14 @@ install_headers('shared/xboard/Board.hpp',          subdir: 'xboard')
 install_headers('shared/xlog/Log.hpp',              subdir: 'xlog')
 install_headers('shared/xtrack/TrackQuery.hpp',     subdir: 'xtrack')
 install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
+install_headers('shared/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
+install_headers('shared/xinfer/Infer.hpp',          subdir: 'xinfer')
 
 pkg = import('pkgconfig')
 pkg.generate(
     name        : 'poc-mixr-sdk',
     description : 'SDK para compilar um modelo (plugin) do poc-mixr',
-    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib],
+    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib, xinfer_lib],
     requires    : ['mixr'],
     variables   : ['mixr_pkg_version=' + mixr_dep.version()],
 )

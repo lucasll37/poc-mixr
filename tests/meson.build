@@ -180,6 +180,20 @@ test_xboard_concurrency = executable('test-xboard-concurrency',
 )
 test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60)
 
+# shared/xinfer -- a DEGRADACAO do motor de inferencia: modelo ausente,
+# arquivo que nao e .onnx, id invalido. Nenhuma dessas entradas pode derrubar
+# a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
+# consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
+# verdade + determinismo com 1/2/4 threads) precisa de um .onnx e vem depois.
+test_xinfer = executable('test-xinfer',
+    files('domain/test_xinfer.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xinfer_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('xinfer-degradacao', test_xinfer, suite: 'domain', timeout: 60)
+
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
 #
@@ -369,41 +383,3 @@ test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
 # calibrados por aviao). Ver skeleton_diff.py para o metodo.
 test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
-
-# ------------------------------------------------------------------------------
-# src/server -- a API REST de simulacao (ver src/server/README.md e
-# src/server/docs/ARCHITECTURE.md). Duas camadas rapidas por unit-test-by-
-# inclusion (mesmo padrao das outras suites 'domain': linka o .cpp sob teste
-# direto, sem MIXR) + o contrato HTTP fim-a-fim contra os binarios de
-# verdade ('server' dispara 'sim-runner' de verdade, com libflight_tc.so
-# ja sincronizado por 'make install').
-# ------------------------------------------------------------------------------
-server_inc_dir = include_directories('../src/server/include')
-
-test_server_upload = executable('test-server-scenario-upload',
-    files('../src/server/tests/unit/test_scenario_upload.cpp',
-          '../src/server/src/app/ScenarioUpload.cpp'),
-    include_directories : server_inc_dir,
-    dependencies        : [gtest_dep, gtest_main_dep],
-    install             : false,
-)
-test('server-scenario-upload', test_server_upload, suite: 'server', timeout: 60)
-
-test_server_assembler = executable('test-server-scenario-assembler',
-    files('../src/server/tests/unit/test_scenario_assembler.cpp',
-          '../src/server/src/app/ScenarioAssembler.cpp'),
-    include_directories : server_inc_dir,
-    dependencies        : [gtest_dep, gtest_main_dep],
-    install             : false,
-)
-test('server-scenario-assembler', test_server_assembler, suite: 'server', timeout: 60)
-
-# is_parallel: false -- sobe o 'server' de verdade, que por sua vez dispara
-# 'sim-runner' (JSBSim incluso); mesma cautela de recursos das outras
-# suites que rodam um binario da poc.
-test('server-http', py,
-     args: files('../src/server/tests/http/run_server_test.py') + [
-         '--server-binario', server.full_path(),
-         '--runner-binario', sim_runner.full_path()],
-     depends: [server, sim_runner], workdir: raiz, suite: 'server',
-     timeout: 300, is_parallel: false)

@@ -2304,7 +2304,7 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
   `.generated.epp` em vez de fixar o número, porque o fragmento compartilhado já mudou de porta
   uma vez. Verificado nos dois sentidos: **falha** contra o código sem `SO_SNDTIMEO` e passa com
   ele. `make test` 37/37; `check-single-thread`/`check-multi-thread` inalterados.
-- **As outras pocs (`src/poc/*`, `src/server`) têm a MESMA forma de risco no encerramento** — nenhuma
+- **As outras pocs (`src/poc/*`) têm a MESMA forma de risco no encerramento** — nenhuma
   para a thread T/C antes do `SHUTDOWN_EVENT` — mas não foram tocadas nesta rodada (escopo
   acordado). Elas já ganham o teto de escrita do `shared/xtacview`, que é a metade que de fato
   travava. Registrado no `TODO.md`.
@@ -2351,8 +2351,8 @@ plugin. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico: `RLBridg
 **oitavo** nome que `libflight`/`libflight_tc.so` exportam, e como `provides:` é igualdade EXATA de
 conjunto contra o que a `.so` exporta, TODO cenário que carrega esse plugin precisou de uma linha a
 mais em `provides:` — `src/poc/single-thread/configs/scenario.epp.in`,
-`src/poc/multi-thread/configs/scenario.epp.in`, os três `app/configs/scenario_*.epp.in` e
-`src/server/configs/scenario_prefix.epp.in` — nenhuma mudança de comportamento, só manter o
+`src/poc/multi-thread/configs/scenario.epp.in` e os três `app/configs/scenario_*.epp.in` —
+nenhuma mudança de comportamento, só manter o
 contrato satisfeito. Pelo mesmo motivo, `models/fixtures/stub/src/stub.cpp` (o "modelo estranho" de
 teste) também ganhou uma `RLBridgeBehavior` trivial (`genAction()` sempre devolve `nullptr`) — sem
 isso, `plugin-modelo-estranho`/`plugin-deposito-terceiro` quebravam: o stub deixava de ser
@@ -2383,9 +2383,9 @@ contrato-compatível com o `provides:` (agora maior) do cenário de produção q
    `primeStation()`, sem reconstruir a `Station`) restaura posição/combustível bem próximos do
    valor inicial — resíduo de integração do JSBSim entre uma chamada e outra na ordem de `1e-5` m
    em `eastM` / `1e-6` de fração de combustível, medido com `reset()` chamado 4x seguidas. Irrelevante
-   pra RL, mas documentado porque era um risco real antes de medir: o próprio `src/server/README.md`
-   roda um processo POR REQUISIÇÃO citando exatamente essa incerteza — só que pra um caso
-   DIFERENTE (hot-reload de PLUGIN em processo vivo, nunca testado, não o que acontece aqui).
+   pra RL, mas documentado porque era um risco real antes de medir: a incerteza que motivou a
+   medição era um caso DIFERENTE (hot-reload de PLUGIN em processo vivo, nunca testado, não o que
+   acontece aqui).
 4. **`step(action)` reflete o comando do passo ANTERIOR, não o atual** — publica o `Command` em
    `shared/xrlbridge` ANTES de `station->tcFrame(dt)`, mas a fase 3 desse MESMO frame já leu o
    `WorldView` (via `state->updateState(actor)`, chamado por `Agent::controller()` antes de
