@@ -85,6 +85,45 @@ test_app_map_geometry = executable('test-app-map-geometry',
 )
 test('app-map-geometry', test_app_map_geometry, suite: 'domain', timeout: 60)
 
+# O canvas da aba Mapa acompanha a caixa que o LAYOUT reservou pra ele (era
+# fixo em 120x30 celulas: num terminal maior sobrava quadro vazio, num
+# menor o desenho saia cortado). Alem da conversao em si, o teste monta a
+# MESMA composicao de app/DashboardLoop.cpp e renderiza num ftxui::Screen
+# de tamanho fixo -- por isso linka MapPanel.cpp/FleetPanel.cpp/
+# BehaviorTreeView.cpp, e nao so a geometria pura. Sem Station, sem
+# terminal de verdade.
+test_app_map_fit = executable('test-app-map-canvas-fit',
+    files('app/test_map_canvas_fit.cpp') + files(
+        '../app/src/app/MapPanel.cpp',
+        '../app/src/app/MapGeometry.cpp',
+        '../app/src/app/FleetPanel.cpp',
+        '../app/src/app/BehaviorTreeView.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-map-canvas-fit', test_app_map_fit, suite: 'domain', timeout: 60)
+
+# O buffer em memoria de shared/xlog -- a fonte da aba "Log" do ./app -- e
+# as duas regras puras do painel (filtro por nivel minimo e o ciclo dele).
+# O buffer e estado GLOBAL do processo de proposito: e o que faz o LOG(...)
+# do plugin do modelo (um .so aberto por dlopen) cair no MESMO lugar que o
+# do host, sem nenhuma ponte extra.
+test_app_log = executable('test-app-log',
+    files('app/test_log_panel.cpp') + files(
+        '../app/src/app/LogPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, xlog_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-log', test_app_log, suite: 'domain', timeout: 60)
+
 # A maquina de estados do breakpoint de arvore de comportamento --
 # extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
 test_app_breakpoint = executable('test-app-breakpoint-controller',
@@ -195,6 +234,29 @@ foreach chave : ['patrol', 'intercept', 'intercept_missile']
          depends: app, workdir: raiz, suite: 'scenario',
          timeout: 300, is_parallel: false)
 endforeach
+
+# A IDENTIDADE dos objetos no stream ACMI: tipo, cor e modelo. Nenhum dos
+# testes acima olha o .acmi -- eles afirmam sobre as linhas 'frame=' do dump.
+# Este abre a gravacao do cenario com missil e exige taxonomia e cor validas,
+# inclusive no objeto criado em RUNTIME (o missil, cujo nome sintetico
+# "W%05d" nao esta em mapa nenhum do EDL e so resolve pela identidade que o
+# host publica). Ver o cabecalho do script.
+test('scenario-app-tacview-identidade', py,
+     args: files('scenario/run_tacview_identity_test.py') + [
+         '--binario', app.full_path(), '--frames', '1200'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
+
+# A SAIDA do app, no caminho INTERATIVO -- o unico que os testes acima nao
+# alcancam: eles rodam '-deterministic', que nao tem TUI nem thread de tempo
+# critico nativa. Este sobe o binario num pty de verdade, aperta [q] e afirma
+# que o processo TERMINA. Inclui o caso que de fato travava: um cliente na
+# porta do Tacview que conecta e para de ler. Ver o cabecalho do script.
+test('scenario-app-quit', py,
+     args: files('scenario/run_app_quit_test.py') + [
+         '--binario', app.full_path(), '--scenario', 'patrol'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
 
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa

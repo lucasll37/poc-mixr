@@ -2,6 +2,7 @@
 
 #include "app/MetaObjectSnapshot.hpp"
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,7 @@ namespace mixr {
 namespace models { class WorldModel; }
 namespace simulation { class Station; }
 namespace xclock { class ClockStation; }
+namespace xtacview { class TacviewOutput; }
 }
 
 namespace app {
@@ -112,11 +114,76 @@ struct BackgroundInfo
    // futuro declarar 'networks:', a aba passa a refletir isso sozinha.
    int networkHandlerCount{};
    double networkRateHz{};
+   bool networkThreadRunning{};
 
    bool terrainLoaded{};
 
-   bool tacviewEnabled{};
+   //--- Exportacao para o Tacview ----------------------------------------
+   // O SOCKET, nao so um "ligado/desligado": e a duvida real ao depurar
+   // ("o Tacview nao mostra nada" -- a porta subiu? alguem conectou? caiu?
+   // esta saindo byte?). Tudo vem de getters de leitura de
+   // shared/xtacview (TacviewOutput::telemetry()), sem amostrar nada novo.
+   bool tacviewEnabled{};          // ha um ( TacviewOutput ) no cenario
+   bool tacviewInitialized{};      // socket de escuta de pe
+   bool tacviewInitFailed{};       // nem socket nem arquivo subiram
+   bool tacviewListening{};        // socket de escuta de pe (bind/listen ok)
+   bool tacviewConnected{};        // ha um cliente AGORA
+   bool tacviewRecording{};        // arquivo .acmi aberto
+   std::string tacviewHost;
+   int tacviewPort{};
+   std::string tacviewCallsign;
+   std::string tacviewFile;
+   unsigned long tacviewConnections{};   // quantos clientes ja conectaram
+   unsigned long tacviewBytesSent{};
+   unsigned long tacviewLines{};
+   unsigned long tacviewFrames{};
+   std::size_t tacviewDeclared{};        // objetos com T= no stream
+   std::size_t tacviewIdentified{};      // objetos com identidade publicada
+   double tacviewStreamTime{};           // ultimo "#<t>" emitido
    long radarScanPushCount{};
+
+   //--- Relogio do executivo (Simulation) --------------------------------
+   // cycle/frame/phase sao os contadores do frame de tempo critico -- o
+   // outro lado da moeda desta aba: o que NAO roda aqui. Mostrar os dois
+   // lado a lado e o que torna a distincao concreta.
+   unsigned int execCycle{};
+   unsigned int execFrame{};
+   unsigned int execPhase{};
+   unsigned int execCounter{};
+   double simTimeOfDaySec{};
+   int playerCount{};
+
+   //--- Gaming area / terreno --------------------------------------------
+   double refLatDeg{};
+   double refLonDeg{};
+
+   //--- Duracao MEDIDA do frame de tempo critico -------------------------
+   // base::Component::getTimingStats() -- alimentado pelo proprio tcFrame()
+   // (Component::updateTC mede o dt real e faz timingStats->sigma()), so
+   // que zerado ate alguem chamar setTimingStatsEnabled(true). E o unico
+   // numero desta aba que mede a OUTRA thread por dentro, em vez de contar
+   // o que este laco faz.
+   //
+   // ARMADILHA: base::Statistic nao tem lock, e quem escreve e a thread T/C
+   // enquanto esta aba le. E a mesma classe de corrida ja documentada para
+   // MetaObject::count, mas aqui o efeito e so cosmetico (uma media
+   // momentaneamente incoerente), nunca um valor impossivel -- por isso nao
+   // ha tratamento especial, so esta nota.
+   bool tcTimingAvailable{};
+   double tcFrameLastMs{};
+   double tcFrameMeanMs{};
+   double tcFrameMaxMs{};
+   int tcFrameSamples{};
+
+   //--- Taxas declaradas na Station --------------------------------------
+   double stationTcRateHz{};
+   double stationBgRateHz{};
+   unsigned int fastForwardRate{};
+   bool tcThreadRunning{};
+   bool bgThreadRunning{};
+
+   //--- Processo ----------------------------------------------------------
+   long residentKb{};   // /proc/self/statm -- so Linux, 0 se indisponivel
 };
 
 struct DashboardState
@@ -170,6 +237,7 @@ struct DashboardState
 // DashboardLoop.cpp -- ver o comentario grande de BackgroundInfo.
 DashboardState captureState(mixr::models::WorldModel* worldModel,
                             mixr::simulation::Station* station,
+                            const mixr::xtacview::TacviewOutput* tacviewOutput,
                             double wallSec, double simSec,
                             const mixr::xclock::ClockStation* clockStation,
                             int numTcThreads, const std::string& scenarioLabel,

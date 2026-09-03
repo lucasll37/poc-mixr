@@ -3,6 +3,8 @@
 
 #include "mixr/simulation/Station.hpp"
 
+#include <atomic>
+
 namespace mixr {
 namespace xclock {
 
@@ -88,12 +90,56 @@ public:
    static double getMinTimeScale();
    static double getMaxTimeScale();
 
+   //---------------------------------------------------------------------------
+   // PARADA da thread de tempo critico -- o unico jeito seguro de encerrar.
+   //
+   // O MIXR nao oferece API para parar a StationTcPeriodicThread: o loop dela
+   // (base/threads/platform/PeriodicThread_linux.cpp:53) so testa
+   // getParent()->isShutdown(), e esse flag da Station e setado no FIM de
+   // Station::shutdownNotification() (Station.cpp:405) -- depois de a
+   // Simulation ja ter sido derrubada (Station.cpp:377-380), o que MATA as
+   // 'numTcThreads-1' threads do pool (Simulation.cpp:436-441). Na janela
+   // entre as duas coisas a thread T/C ainda comeca frames novos e chama
+   // SyncThread::waitForAllCompleted() (Simulation.cpp:570, 4x por frame)
+   // sobre workers que ja morreram. No Linux esses "semaforos" sao
+   // pthread_mutex_t comuns (SyncThread_linux.cpp:20-93, contra
+   // CreateSemaphore no Windows) e entre fases o 'completedSig' esta travado
+   // pela PROPRIA thread T/C -- ou seja, ela se auto-trava num mutex
+   // "normal" da glibc, que nao devolve EDEADLK. E nao ha join nem
+   // waitForTerminate em lugar nenhum do framework.
+   //
+   // Alem do deadlock, enquanto a thread T/C roda ela segue enfileirando
+   // registros no recorder::OutputHandler, cuja fila e uma base::List SEM
+   // TETO drenada so por Station::updateData() -- se o laco de background da
+   // aplicacao ja parou, isso e crescimento de memoria sem limite.
+   //
+   // A saida e nao deixar frame novo COMECAR: processTimeCriticalTasks() e o
+   // ponto por onde a thread T/C passa a cada periodo, e ele e nosso.
+   // requestTcStop() marca a flag; waitForTcQuiesced() espera a PROVA
+   // POSITIVA de que a thread passou por aqui depois da marcacao (logo, que
+   // o tcFrame() anterior retornou), com teto de tempo.
+   //---------------------------------------------------------------------------
+
+   // Pede que nenhum frame novo comece. Idempotente, seguro de qualquer thread.
+   void requestTcStop();
+
+   // Espera a thread T/C confirmar que esta ociosa. 'true' se confirmou,
+   // 'false' se o teto venceu (nunca trava o chamador). Chamar depois de
+   // requestTcStop().
+   bool waitForTcQuiesced(double timeoutSec);
+
 protected:
    void processTimeCriticalTasks(const double dt) override;
 
 private:
    // 1.0 = sem camara lenta (a velocidade mora no fastForwardRate nativo).
    double slowFactor{1.0};
+
+   // Escritos pela thread que pede a parada, lidos/incrementados pela thread
+   // T/C -- por isso atomicos, e nao 'bool'/'long' crus como o
+   // Component::shutdown do proprio framework.
+   std::atomic<bool> tcStopRequested_{false};
+   std::atomic<unsigned long> tcIdleTicks_{0};
 };
 
 }

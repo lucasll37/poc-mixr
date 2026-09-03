@@ -1,5 +1,7 @@
 #include "app/DeterministicRun.hpp"
 
+#include "xtacview/TacviewOutput.hpp"
+
 #include "app/DeterministicDump.hpp"
 
 #include "mixr/simulation/Station.hpp"
@@ -16,7 +18,8 @@ const long dumpEveryNFrames{100};
 }
 
 int runDeterministic(mixr::simulation::Station* const station, const Fleet& fleet,
-                     const long frames, const bool parallelDecision)
+                     const long frames, mixr::xtacview::TacviewOutput* const tacviewOutput,
+                     const bool parallelDecision)
 {
    const double dt{1.0 / static_cast<double>(station->getTimeCriticalRate())};
 
@@ -54,6 +57,11 @@ int runDeterministic(mixr::simulation::Station* const station, const Fleet& flee
 
    for (long frame = 1; frame <= frames; ++frame) {
       station->tcFrame(dt);
+
+      // Identidade real de cada player pro Tacview, ANTES do updateData que
+      // declara os objetos -- ver o cabecalho do .hpp e
+      // TacviewOutput::publishIdentities().
+      if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(station->getSimulation());
 
       // Sempre no mesmo passo do tcFrame -- ver o cabecalho do .hpp: e o que
       // drena o gravador e, quando o agente mora na Station, o que o faz

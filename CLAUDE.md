@@ -495,6 +495,29 @@ macro: acumula em `operator<<` e escreve tudo — console **e** arquivo — no d
    nas duas pocs, só console, sem nível) — os 2 pontos de uso (`ubf/BtBehavior.cpp`, mensagem
    vazia/exceção ao carregar a árvore) migraram para `LOG(WARNING)`/`LOG(ERROR)`.
 
+**Buffer em memória — a fonte da aba "Log" do `./app`** (acrescentado junto com aquela aba; ver a
+passada correspondente na seção `./app`). Além de console e arquivo, toda linha entra num buffer
+circular das últimas `kMemoryCapacity` (500) entradas, lido por `snapshot()`/`lastSeq()`. Guarda
+os campos **separados** (`seq`/`level`/`time`/`text`), não a linha já formatada — quem exibe quer
+colorir por nível e alinhar o carimbo em coluna própria.
+
+- **Por que aqui e não um `tail` do arquivo:** o arquivo é escrito pelo `PrintHandler` com flush
+  próprio, então reler o que acabou de ser escrito é corrida contra o buffer do `ofstream`; e
+  esta lib já é o ponto por onde toda linha passa, com o mutex que já serializa os escritores.
+- **O motivo estrutural, e o que ele dá de graça:** `xlog` é `shared_library()` (a razão original
+  está acima: `setLoggingEnabled(false)` tem de alcançar o lado do plugin), então há **uma cópia
+  só no processo** — o `LOG(...)` do MODELO, que mora num `.so` aberto por `dlopen`, cai no MESMO
+  buffer que o do host. **Confirmado rodando**: com `flight_tree.xml` removido do lugar, as 4
+  linhas `LOG(ERROR) "[BtBehavior] falha ao carregar a arvore"` (uma por falcon, de dentro de
+  `libflight_tc.so`) aparecem na aba Log do `app` sem nenhuma ponte extra.
+- **`setConsoleEnabled(bool)` é novo e separado de `setLoggingEnabled(bool)`**: desliga só a cópia
+  em `std::cout`, mantendo arquivo e buffer. Existe para quem é dono do terminal — o `./app` roda
+  FTXUI em tela cheia, e uma linha escrita direto em stdout suja o desenho (o FTXUI não sabe que
+  alguém escreveu por baixo dele para redesenhar aquela região). `setLoggingEnabled(false)`
+  continua desligando **tudo**, inclusive o buffer, que é o que `-deterministic` quer.
+- Testado em `tests/app/test_log_panel.cpp` (alvo `app-log`): ordem, `seq` monotônico, descarte do
+  mais antigo passada a capacidade, e o desligamento não registrando nada.
+
 ### `src/poc/bandit-dis` — o `bandit1` num processo próprio, emitindo DIS nativo do MIXR
 
 Terceiro subprojeto, de natureza diferente dos dois primeiros: não é uma pilha nova nem um
@@ -2065,6 +2088,226 @@ não era vazamento nenhum.**
   `-deterministic` (`app/MetaObjectReport.cpp`, usado por `tests/memory/run_leak_test.py`)
   continua imprimindo o número CRU, sem essa camada — é o que já roda com `-threads 1` de
   propósito e não precisa do aviso.
+
+**Décima sexta passada: o canvas do Mapa (F2) deixou de ter tamanho FIXO — relatado rodando o
+`app` em outro computador, com resolução de tela diferente: "o mapa ocupa somente parte do quadro
+destinado a ele".**
+
+- **A causa era a decisão de tamanho fixo já registrada duas vezes nesta seção** (`kCanvasW`/
+  `kCanvasH`, 240×120 pixels de braille = 120×30 células de terminal): *"o `Box` só existe DEPOIS
+  do layout, tarde demais para escolher o tamanho do `Canvas` que se desenha DENTRO dele"*. Com
+  o tamanho travado, um terminal maior que isso desenhava o mapa num pedaço do quadro (o resto
+  ficava vazio dentro da borda) e um menor recortava o desenho em silêncio. **A altura é a metade
+  que mais aparecia**: a largura do card de detalhe já se ajustava ao terminal (quinta passada),
+  então a sobra horizontal era de poucas células, mas a vertical não se ajustava a nada — medido
+  num terminal de 50 linhas: quadro do mapa com ~45 linhas úteis contra 30 desenhadas, ~15 linhas
+  de borda vazia.
+- **A saída é a realimentação de UM QUADRO, não uma medição na hora**: `ftxui::reflect` já
+  guardava a caixa real do canvas em `mapCanvasBox` (existia desde a passada que consertou o
+  clique-trava, só era usada pra hit-test/gate de mouse). `app::fitMapCanvasToBox(view, box)`
+  (novo, `MapPanel.cpp`) usa essa caixa — a do quadro ANTERIOR — pra dimensionar o `Canvas` do
+  quadro atual: `células × 2` na horizontal, `× 4` na vertical (a resolução do braille).
+  `DashboardLoop.cpp` chama isso logo antes de `renderMap()`, dentro do `Renderer` da aba.
+  **É ponto fixo, não oscilação**: o elemento do canvas leva `flex`, então quem decide a caixa é
+  o layout (`largura do terminal − card − separador`), NÃO a exigência do canvas — dimensionar
+  por ela não realimenta o layout. Converge no segundo quadro e fica (verificado explicitamente
+  no teste, com um terceiro quadro).
+- **`kCanvasW`/`kCanvasH` saíram de `MapGeometry.hpp`** e viraram
+  `MapViewState::canvasWidthPx`/`canvasHeightPx`. Tinham de virar estado (e não parâmetro solto)
+  porque **três** consumidores precisam concordar sobre o mesmo tamanho: o desenho
+  (`renderMap()`), o hit-test de clique (`hitTestEntity()`, que reprojeta pela mesma
+  `project()`) e `snapPanToGroundLevel()` (que resolve a equação de `project()` ao contrário pra
+  ancorar o terreno perto do fundo). Como todas as funções de `mapgeometry` já recebiam a `view`,
+  **nenhuma assinatura mudou** — só o centro do canvas passou a sair de lá.
+- **`kMapCanvasWidthCells{120}` continua existindo, com outro papel**: não é mais o tamanho do
+  canvas, é só a largura de REFERÊNCIA que `DashboardLoop.cpp` reserva ao mapa pra calcular
+  `detailPanelWidth` (a política da quinta passada, inalterada). Piso novo
+  (`kMapCanvasMinCellsW/H`) faz `fitMapCanvasToBox()` ser no-op diante de caixa degenerada — o
+  `Box{}` zerado do primeiro quadro, ou um terminal absurdamente pequeno: `Canvas(0,0)` não
+  desenha nada e `project()` dividiria a tela em torno de um centro degenerado.
+- **Teste PERMANENTE, no lugar do "main.cpp descartável" que esta seção documenta ter usado
+  várias vezes**: `tests/app/test_map_canvas_fit.cpp` (alvo `app-map-canvas-fit`, suíte
+  `domain`) monta a MESMA composição da aba (`hbox{mapa|flex, separator, card}` dentro do vbox
+  com barra e rodapé), renderiza num `ftxui::Screen` de tamanho fixo — sem `Station`, sem pty —
+  e afirma, em cinco tamanhos de terminal (80×24 a 300×80), que depois de um quadro
+  `canvasWidthPx/2 == largura da caixa` e `canvasHeightPx/4 == altura da caixa`, mais a
+  estabilidade no terceiro quadro. Linka `MapPanel.cpp`/`FleetPanel.cpp`/`BehaviorTreeView.cpp`
+  de verdade (não uma reimplementação da projeção).
+- Confirmado também no binário de verdade, sob pty, em dois tamanhos: a moldura do mapa mede
+  ~123 células num terminal de 200 colunas e ~77 num de 120 — antes seria 120 nos dois (sobrando
+  no primeiro, cortado no segundo). `make test` 35/35 (34 de antes + o novo), sem regressão —
+  inclusive `onde-a-decisao-roda`, que passou aqui.
+
+**Décima sétima passada: quinta aba, "Log" (F5) — as linhas de `shared/xlog` (`LOG(NIVEL) << ...`)
+exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/flight`), de dentro do `.so`
+aberto por `dlopen`.**
+
+- **O que faltava era a FONTE, não a aba.** `xlog` escrevia em `std::cout` e no arquivo, e nada
+  mais — não havia como ler de volta o que foi logado. A lib ganhou um buffer circular em memória
+  (`snapshot()`/`lastSeq()`, 500 linhas) e `setConsoleEnabled(bool)`; ver a subseção "Buffer em
+  memória" na seção `shared/xlog` acima, que também explica por que não é um `tail` do arquivo.
+- **Consequência de graça, e é a parte interessante:** `xlog` é `shared_library()`, então há uma
+  cópia só no processo — o `LOG(...)` do MODELO (`models/flight`, dentro do `.so` aberto por
+  `dlopen`) cai no mesmo buffer. Confirmado rodando: removendo `flight_tree.xml` do lugar, as 4
+  linhas de `LOG(ERROR)` do `BtBehavior` (uma por falcon) aparecem na aba, sem ponte nenhuma.
+- **`setConsoleEnabled(false)` no início de `runDashboard()`, `true` no fim** — o FTXUI é dono do
+  terminal a partir de `ScreenInteractive::Fullscreen()`, e uma linha em stdout no meio disso suja
+  o desenho (a lib não sabe que alguém escreveu por baixo dela para redesenhar aquela região).
+  Arquivo e buffer continuam recebendo; a aba lê do buffer. **Isto conserta um risco que já
+  existia** antes desta aba: qualquer `LOG(...)` durante o painel corrompia a tela.
+- **`app/LogPanel.{hpp,cpp}` (novo)** — mesmo desenho das outras abas de lista: `ftxui::Menu`
+  dentro de `frame()`/`vscroll_indicator()`, cabeçalho fixo fora do Menu (`renderLogListHeader()`,
+  mesmo motivo da aba Players), colunas em `size(WIDTH, EQUAL, kColLog*)` e nível como badge de
+  fundo colorido (cinza/ciano/amarelo/vermelho) — o campo que se procura varrendo a lista com o
+  olho, mesma razão do badge de comportamento na aba Players.
+- **Duas teclas próprias da aba**: `[f]` cicla o filtro por nível MÍNIMO (DEBUG→INFO→WARNING→
+  ERROR→DEBUG) e `[a]` liga/desliga "acompanhar". Acompanhar gruda a seleção na linha mais
+  recente (comportamento de `tail -f`); **qualquer `ArrowUp` desliga sozinho** — senão a próxima
+  linha nova arrastaria a seleção de volta pro fim e seria impossível ler o histórico com a
+  simulação rodando — e chegar de volta no fim religa. As duas teclas e as setas são tratadas no
+  `CatchEvent` MAIS EXTERNO, como todo o resto (ver a armadilha já documentada sobre
+  `Container::Vertical` só encaminhar teclado ao filho focado).
+- **`lastSeq()` evita copiar o buffer a cada redesenho**: `snapshot()` copia até 500 entradas e o
+  `Renderer` externo roda a cada redesenho (tecla, mouse, resize — não só a cada amostra nova). Só
+  recopia quando `lastSeq()` muda **ou** quando o filtro muda (aí o conteúdo exibido muda sem
+  linha nova nenhuma).
+- **Quem PRODUZ o log é o MODELO, não o app** (pedido explícito, na sequência da primeira versão
+  desta aba — que tinha dois blocos `TRECHO DE TESTE` dentro do `DashboardLoop.cpp`, hoje
+  removidos junto com os logs de evento do próprio app: o `app` não chama `LOG(...)` em lugar
+  nenhum, só **exibe**; o único ponto em que ele mexe no `xlog` é o `setConsoleEnabled(false)`
+  acima). A instrumentação foi para `models/flight/src/ubf/FlightAction.cpp` —
+  `FlightAction::execute()`, que já é a **única atuação comum aos dois agentes** (`SimAgent` de
+  background e `FlightAgentTC` do pool T/C) e já é onde o rótulo vencedor chega:
+  - `INFO` na **transição** de comportamento (`falcon1: PATROL -> EVADE (hdg=... alt=... vel=...)`)
+    — o estado anterior sai do próprio `xboard::get()`, lido antes de sobrescrever o rótulo, então
+    nenhum contador ou campo novo foi preciso;
+  - `WARNING` no alerta tático transmitido, `INFO` no míssil lançado e `WARNING` nas duas formas de
+    o lançamento **não** acontecer (alvo inexistente, cabide vazio) — as duas eram falhas mudas;
+  - `ERROR` quando o ator não tem `Autopilot` (a decisão não pode ser atuada) — também era muda: a
+    aeronave simplesmente não obedecia e nada aparecia em lugar nenhum;
+  - `DEBUG` de batimento a cada `kHeartbeatEveryDecisions` (500) decisões atuadas, com a thread que
+    decidiu — prova que a aeronave continua decidindo sem trocar de comportamento.
+- **Armadilha medida ao fazer isso, e é o motivo de haver uma regra de borda no modelo:**
+  `execute()` roda **até 50 Hz por aeronave**, e nem todo campo da ação é evento — `broadcast` (o
+  pedido de alerta tático) fica **ligado** enquanto a aeronave evade. A primeira versão logava
+  direto no `if (broadcast)` e deu **~50 linhas/s por aeronave**: medido num intercepto de 20 s,
+  1856 linhas emitidas e o buffer de 500 já girado três vezes, engolindo justamente as transições
+  que interessavam. Corrigido com `changedFor()` (mapa estático por player, com mutex porque os
+  agentes decidem em paralelo), que transforma estado contínuo em **borda** — uma linha por
+  episódio de alerta, e sair do alerta zera a chave para um episódio novo voltar a logar. Depois:
+  26 linhas em 30 s do mesmo cenário, contando a história inteira (`PATROL -> EVADE`, alerta,
+  `SUPPORT` se propagando, batimentos).
+- **`-deterministic` não é afetado**: `main.cpp` chama `setLoggingEnabled(false)`, que desliga
+  console, arquivo **e** buffer — e como `xlog` é uma cópia só no processo, isso alcança o lado do
+  plugin (a razão original de a lib ser `shared_library()`). Os dumps comparáveis não mudam;
+  `scenario-app-*`, `determinism-*` e `onde-a-decisao-roda` seguem passando.
+- **Efeito colateral aceito nas outras pocs**: `single-thread`/`multi-thread` não têm aba, então as
+  mesmas linhas saem no console (e no `data/logs/*.log`) delas. Medido em tempo real: 12 linhas em
+  ~20 s (4 transições + 8 batimentos), intercaladas com a linha de status — informativo, não
+  ruído.
+- **Testado**: `tests/app/test_log_panel.cpp` (alvo `app-log`, suíte `domain`) cobre o buffer
+  (ordem, `seq` monotônico, descarte do mais antigo passada a capacidade, desligamento) e as duas
+  regras puras do painel (filtro por nível mínimo, ciclo do filtro). Sob pty, confirmado rodando:
+  no cenário `patrol`, as 4 transições `-- -> PATROL` e os batimentos com `thread 0..3` (que de
+  quebra mostram os quatro agentes decidindo em threads diferentes do pool); no `intercept`, a
+  cadeia `PATROL -> EVADE` + alerta tático + `SUPPORT` se propagando; `[f]` duas vezes escondendo
+  DEBUG e INFO; e -- com `flight_tree.xml` removido do lugar -- as 4 linhas `LOG(ERROR)` do
+  `BtBehavior` vindas de dentro do `.so`. `make test` 36/36.
+
+**Décima oitava passada: sair com `[q]` travava o processo — o terminal nunca voltava, e a
+memória subia sem parar até a máquina engasgar. Causa medida (não inferida): o `::send()` do
+`shared/xtacview` não tinha teto, e ele roda dentro do laço de background do `app`.**
+
+- **A cadeia exata, reproduzida sob pty e medida em `/proc/<pid>/task/*/syscall`:** um cliente
+  de Tacview que **conecta e para de ler** (minimizado, máquina do cliente engasgada, link caído
+  sem FIN) enche o buffer de escrita do socket. Sem `SO_SNDTIMEO`,
+  `RealtimeTelemetryServer::sendRaw()` fica preso em `::send()` **para sempre** — e esse send é
+  alcançado por `station->updateData()` → `dataRecorder->processRecords()` →
+  `OutputHandler::processQueue()`, ou seja, de dentro do laço de `simThread`
+  (`app/DashboardLoop.cpp`). Ao apertar `[q]`, `runDashboard()` faz `simThread.join()` e a
+  **main trava ali**, esperando uma thread que nunca mais volta. Medido, com a correção
+  desligada: `SendQ` do socket saturado em 986317 bytes, a thread do laço parada em `sendto`
+  (syscall 44, `wchan=wait_woken`), a main em `futex_do_wait` (o `join`), e **RSS subindo
+  ~1,9 MB/s** — porque a thread de tempo crítico continua enfileirando registros numa fila que é
+  uma `base::List` **SEM TETO** (`recorder/OutputHandler.hpp:69`) e ninguém mais a drena. É esse
+  crescimento que trava a máquina, não o processo pendurado em si.
+- **A correção primária é um teto de escrita**: `SO_SNDTIMEO` de 1 s no fd aceito, no mesmo ponto
+  onde o `SO_RCVTIMEO` já era posto (`acceptIfNeeded()`), e `sendRaw()` tratando
+  `EAGAIN`/`EWOULDBLOCK` como cliente morto — o chamador (`writeLine()`) já faz `closeClient()`.
+  Os dois `setsockopt` foram movidos para **antes** do primeiro `sendRaw()` (o do handshake), que
+  antes acontecia sem teto nenhum. Medido depois: cliente descartado em ~10 s, **RSS plano**
+  (54432 → 54516 kB em 30 s), saída em 0,20 s. **Vale para as três pocs**, não só o `app`.
+- **A segunda metade é a ORDEM do encerramento, e ela conserta um defeito diferente do mesmo
+  sintoma.** Nada parava a `StationTcPeriodicThread` nativa antes do teardown: ela sobrevive ao
+  fim do `screen.Loop()` e roda durante todo o `station->event(SHUTDOWN_EVENT)`. Isso é ruim por
+  dois motivos, os dois lidos no fonte do MIXR:
+  1. **Auto-deadlock.** `Station::shutdownNotification()` derruba a `Simulation` primeiro
+     (`Station.cpp:377-380`) — o que **mata as `numTcThreads-1` threads do pool**
+     (`Simulation.cpp:436-441`) — mas só marca a **própria Station** como `isShutdown()` na
+     linha 405. O laço da thread T/C testa `getParent()->isShutdown()`, e o parent é a *Station*.
+     Na janela entre as duas coisas ela ainda começa frames e chama
+     `SyncThread::waitForAllCompleted()` (`Simulation.cpp:570`, 4× por frame) sobre workers que
+     já morreram. No Linux esses "semáforos" são `pthread_mutex_t` comuns
+     (`SyncThread_linux.cpp:20-93`, contra `CreateSemaphore` no Windows) e entre fases o
+     `completedSig` está travado **pela própria thread T/C** — ela se auto-trava num mutex
+     "normal" da glibc, que não devolve `EDEADLK`. Não há `join`/`waitForTerminate` em lugar
+     nenhum do framework (grep confirmado).
+  2. **Crescimento de memória durante o próprio encerramento**: com `running = false` a drenagem
+     para, e a thread T/C segue produzindo.
+- **`shared/xclock/ClockStation` ganhou o handshake de parada** — `requestTcStop()` +
+  `waitForTcQuiesced(timeout)`. É lá porque `ClockStation` **já sobrescrevia**
+  `processTimeCriticalTasks()`, que é exatamente o ponto por onde a thread T/C passa a cada
+  período. O gate novo é o **primeiro** statement do método, **antes** do `isPaused()` — a prova
+  tem de valer também com a simulação pausada, estado perfeitamente possível na hora de sair. Não
+  é um `sleep` esperançoso: um contador atômico dá **prova positiva** de que a thread passou por
+  ali depois da marcação, logo de que o `tcFrame()` anterior retornou. Confirmado rodando: nenhum
+  aviso de timeout no log.
+- **`app/Shutdown.{hpp,cpp}` (novos)** — `quiesceTimeCritical()` e `shutdownStation()`, um arquivo
+  por questão como o resto de `app/`. `quiesceTimeCritical()` volta para **1x antes** de pedir a
+  parada (a 64× um único `processTimeCriticalTasks()` faz 64 `tcFrame()`, e esperar por esse
+  volume estouraria o teto), e é no-op quando não há thread T/C (`-deterministic`). Sem
+  `ClockStation` (cenário com `( Station )` pura) cai num fallback nativo:
+  `setFastForwardRate(0)` faz o laço `for (jj=0; jj<getFastForwardRate(); jj++) tcFrame(dt)` da
+  `Station` rodar **zero** vezes.
+- **Watchdog em `shutdownStation()`**: uma thread destacada que chama `std::_Exit(0)` se o
+  teardown não terminar em 10 s. O caminho limpo continua sendo o normal (é ele que fecha o
+  `.acmi` e o log); o watchdog só existe para o usuário **sempre** recuperar o shell. Usa
+  `std::fputs` em `stderr`, não `LOG()`, de propósito — o log toma um mutex global que pode ser
+  justamente o que está preso.
+- **A ordem nova no fim de `runDashboard()`**: (1) `quiesceTimeCritical()` cala a **produtora**;
+  (2) `running = false; simThread.join()` para a **consumidora**; (3) um `station->updateData()`
+  final drena a fila com a produção já parada, deixando o `DataRecorder::shutdownNotification()`
+  do `SHUTDOWN_EVENT` (que também drena, mas na thread main) com quase nada a fazer.
+- **`AbstractThread::terminate()` no Linux é `pthread_kill(*thread, SIGKILL)`**
+  (`AbstractThread_linux.cpp:150`) — e SIGKILL não é direcionável a uma thread: **mata o processo
+  inteiro**. `Simulation::deleteData()` (`Simulation.cpp:164-168`) chama isso em cada thread do
+  pool. É por isso que o `SHUTDOWN_EVENT` antes do `unref()` é obrigatório (ele zera os ponteiros
+  de thread da `Station`, `Station.cpp:400-402`, tornando o `terminate()` do destrutor um no-op)
+  — e é por isso que **nunca** se deve chamar `terminate()` à mão. Anotado aqui porque o nome do
+  método não sugere nada disso.
+- **`mixr::base::lock()` é spin PURO** (`atomics_linux.hpp:18-24`:
+  `while (__sync_lock_test_and_set(sem, 1));`, sem `pause`/`yield` — a variante em assembly com
+  `pause` está `#if 0`). É o que serializa **todo** `ref()`/`unref()` (`Referenced.hpp`) e a fila
+  do gravador. Uma thread que não progride deixa as outras queimando 100% de núcleo. Medido no
+  travamento: 4 threads do pool a ~45% de CPU cada, sem sair do lugar.
+- **`AbstractThread::createThread()` ignora o retorno de `pthread_create`** e nunca chama
+  `pthread_attr_setinheritsched(PTHREAD_EXPLICIT_SCHED)` — então o `SCHED_FIFO` que ele configura
+  é **silenciosamente descartado** e as threads herdam `SCHED_OTHER`. Ou seja, o `tcPriority: 0.5`
+  dos `.epp` não vira prioridade de tempo real. Bom saber antes de acusar o escalonador.
+- **O teste que faltava**: `tests/scenario/run_app_quit_test.py` (alvo `scenario-app-quit`, suíte
+  `scenario`). Os `scenario-app-*` que já existiam rodam **só** `-deterministic` — sem TUI, sem
+  TTY e **sem thread T/C nativa** (esse modo chama `tcFrame()` direto) —, por isso o caminho
+  interativo de saída nunca era exercitado. O teste novo sobe o binário num `pty.openpty()` da
+  biblioteca padrão (não precisa de `pyte`: não lê a tela, só afirma que o processo **termina**),
+  manda `q` + Enter (o diálogo de confirmação exige o Enter) e cobre os dois casos — saída normal
+  e **saída com um cliente conectado que parou de ler**. Ele descobre a porta lendo o
+  `.generated.epp` em vez de fixar o número, porque o fragmento compartilhado já mudou de porta
+  uma vez. Verificado nos dois sentidos: **falha** contra o código sem `SO_SNDTIMEO` e passa com
+  ele. `make test` 37/37; `check-single-thread`/`check-multi-thread` inalterados.
+- **As outras pocs (`src/poc/*`, `src/server`) têm a MESMA forma de risco no encerramento** — nenhuma
+  para a thread T/C antes do `SHUTDOWN_EVENT` — mas não foram tocadas nesta rodada (escopo
+  acordado). Elas já ganham o teto de escrita do `shared/xtacview`, que é a metade que de fato
+  travava. Registrado no `TODO.md`.
 
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 

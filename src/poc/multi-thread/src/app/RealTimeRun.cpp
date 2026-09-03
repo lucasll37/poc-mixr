@@ -67,6 +67,12 @@ void runRealTime(mixr::simulation::Station* const station, const Fleet& fleet,
       // Le o joystick (se houver um configurado) e aplica no bandit1.
       if (ioHandler != nullptr) ioHandler->inputDevices(dt);
 
+      // Identidade real de cada player pro Tacview (tipo/lado/major type),
+      // ANTES de drenar o gravador -- e o updateData() abaixo que declara
+      // cada objeto no stream, e Name/Type/Color so vao na primeira
+      // aparicao de cada id. Ver TacviewOutput::publishIdentities().
+      if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(worldModel);
+
       // Drena o gravador (Tacview) -- e, se o agente do cenario for um
       // SimAgent (componente da Station), e tambem aqui que ele decide.
       // Ver o cabecalho do .hpp.

@@ -1,8 +1,11 @@
 #ifndef __xlog_Log_H__
 #define __xlog_Log_H__
 
+#include <cstddef>
+#include <cstdint>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace mixr {
 namespace xlog {
@@ -40,8 +43,54 @@ enum class Level { DEBUG, INFO, WARNING, ERROR };
 void init(const std::string& filePath);
 
 // '-deterministic' desliga: linhas de log carregam timestamp de parede,
-// fora do modo comparavel.
+// fora do modo comparavel. Desliga TUDO -- console, arquivo e o buffer em
+// memoria abaixo.
 void setLoggingEnabled(bool enabled);
+
+// Liga/desliga SO a copia no console (std::cout), sem afetar arquivo nem
+// buffer. Existe para quem e dono do terminal: o ./app roda um painel
+// FTXUI em tela cheia, e uma linha escrita direto em stdout no meio disso
+// suja o desenho (o FTXUI nao sabe que alguem escreveu por baixo dele e
+// nao redesenha aquela regiao). Com o console desligado a linha continua
+// indo pro arquivo e pro buffer -- que e de onde a aba "Log" a le.
+void setConsoleEnabled(bool enabled);
+
+//------------------------------------------------------------------------------
+// BUFFER EM MEMORIA -- as ultimas kMemoryCapacity linhas, para quem quer
+// EXIBIR o log em vez de so grava-lo (a aba "Log" do ./app).
+//
+// Por que aqui e nao um tail do arquivo: (a) o arquivo e escrito por um
+// mixr::recorder::PrintHandler com flush proprio, entao reler o que
+// acabou de ser escrito e uma corrida contra o buffer do ofstream; (b)
+// esta lib ja e o ponto por onde TODA linha passa, com o mutex que ja
+// serializa os escritores; e (c) -- o motivo estrutural -- 'xlog' e uma
+// shared_library() (ver o comentario em shared/xlog/meson.build), entao ha
+// UMA copia so no processo: o LOG(...) do MODELO, que mora num .so aberto
+// por dlopen, cai no MESMO buffer que o do host. A aba mostra os dois sem
+// nenhuma ponte extra.
+//------------------------------------------------------------------------------
+
+struct Entry {
+   std::uint64_t seq{};             // 1 na primeira linha do processo, sempre crescente
+   Level level{Level::INFO};
+   std::string time;                // "HH:MM:SS.mmm", o mesmo carimbo da linha gravada
+   std::string text;                // so a mensagem, sem carimbo nem nivel
+};
+
+// Quantas linhas o buffer guarda. Passou disso, a mais antiga sai (por
+// isso 'seq' e util: a primeira entrada do snapshot diz quantas ja
+// escorreram).
+const std::size_t kMemoryCapacity{500};
+
+// 'seq' da linha mais recente (0 se nada foi logado ainda) -- barato,
+// serve para o chamador so copiar o buffer quando algo mudou de fato, em
+// vez de a cada redesenho.
+std::uint64_t lastSeq();
+
+// Copia do buffer, do mais ANTIGO para o mais NOVO.
+std::vector<Entry> snapshot();
+
+const char* levelName(Level level);
 
 // Objeto temporario por tras da macro LOG(...) -- nao use diretamente.
 // RAII: acumula em operator<< e escreve tudo de uma vez no destrutor, o

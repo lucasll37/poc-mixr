@@ -43,6 +43,7 @@
 #include "app/ScenarioCatalog.hpp"
 #include "app/ScenarioPickerScreen.hpp"
 #include "app/ScenarioTemplate.hpp"
+#include "app/Shutdown.hpp"
 #include "app/StationBuilder.hpp"
 #include "app/TerrainData.hpp"
 
@@ -131,7 +132,8 @@ int main(int argc, char* argv[])
    app::DashboardExit action{app::DashboardExit::Quit};
 
    if (opts.isDeterministic()) {
-      rc = app::runDeterministic(station, fleet, opts.deterministicFrames, opts.parallelDecision);
+      rc = app::runDeterministic(station, fleet, opts.deterministicFrames, tacviewOutput,
+                                 opts.parallelDecision);
       app::printMetaObjectReport();
    } else {
       // Best-effort: le o MESMO '.epp' ja expandido pra achar 'treeFile:'
@@ -143,8 +145,11 @@ int main(int argc, char* argv[])
                                  numTcThreads, entry->label, behaviorTree);
    }
 
-   station->event(mixr::base::Component::SHUTDOWN_EVENT);
-   station->unref();
+   // Nao e 'event(SHUTDOWN_EVENT) + unref()' cru: ver app/Shutdown.hpp para o
+   // porque -- o teardown do MIXR nao e observavel e ja travou o processo aqui.
+   // No caminho interativo a thread T/C nativa ja foi calada dentro de
+   // runDashboard(); em '-deterministic' nao existe thread T/C nenhuma.
+   app::shutdownStation(station);
 
    if (opts.isDeterministic()) return rc;
 

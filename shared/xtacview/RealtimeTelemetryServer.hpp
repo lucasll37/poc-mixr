@@ -1,6 +1,7 @@
 #ifndef __xtacview_RealtimeTelemetryServer_H__
 #define __xtacview_RealtimeTelemetryServer_H__
 
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -84,6 +85,36 @@ public:
    bool isRecording() const                 { return file_.is_open(); }
    bool isActive() const                    { return isConnected() || isRecording(); }
 
+   //---------------------------------------------------------------------
+   // Introspeccao do socket -- so leitura, para a aba "Tempo Nao-Critico"
+   // do ./app poder mostrar o estado REAL do transporte em vez de um
+   // "ligado/desligado" que nao distingue "ninguem conectou ainda" de
+   // "o Tacview caiu no meio". Tudo que devolve aqui e contador ja
+   // mantido pelo proprio caminho de escrita: nada e amostrado a mais.
+   //---------------------------------------------------------------------
+   // O socket de escuta subiu de fato? (start() pode falhar no bind -- porta
+   // ocupada por outra poc -- e a gravacao em arquivo continuar valendo; ver
+   // TacviewOutput::initIfNeeded().) 'listenHost/listenPort' devolvem o que
+   // foi CONFIGURADO, com socket ou sem.
+   bool isListening() const                 { return listenFd_ >= 0; }
+   int listenPort() const                   { return listenPort_; }
+   const std::string& listenHost() const    { return listenHost_; }
+   const std::string& callsign() const      { return callsign_; }
+   const std::string& recordingPath() const { return recordingPath_; }
+
+   // Quantos clientes ja conectaram desde o start (nao quantos estao
+   // conectados -- isso e isConnected()). Distingue "o Tacview nunca veio"
+   // de "veio e caiu", que e a duvida real ao depurar a exportacao.
+   unsigned long connectionCount() const    { return connectionCount_; }
+
+   unsigned long bytesSent() const          { return bytesSent_; }
+   unsigned long linesWritten() const       { return linesWritten_; }
+   unsigned long framesEmitted() const      { return framesEmitted_; }
+
+   // Objetos ja declarados (Name/Type/Color emitidos) para cada destino.
+   std::size_t objectsOnSocket() const      { return knownObjectsSocket_.size(); }
+   std::size_t objectsInFile() const        { return knownObjectsFile_.size(); }
+
    // Novo quadro de tempo (linha "#<segundos>").
    void beginFrame(const double simTimeSec);
 
@@ -116,8 +147,15 @@ private:
    void writeLine(const std::string& lineWithoutNewline);
 
    std::string callsign_{"poc-mixr"};
+   std::string listenHost_;
+   std::string recordingPath_;
+   int listenPort_{-1};
    int listenFd_{-1};
    int clientFd_{-1};
+   unsigned long connectionCount_{};
+   unsigned long bytesSent_{};
+   unsigned long linesWritten_{};
+   unsigned long framesEmitted_{};
    std::unordered_set<std::uint32_t> knownObjectsSocket_;
    std::unordered_set<std::uint32_t> knownObjectsFile_;
    std::ofstream file_;

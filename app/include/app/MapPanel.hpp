@@ -38,6 +38,24 @@ namespace app {
 // "em todos os casos" o eixo livre e o vertical.
 enum class Perspective { TopDown, Lateral };
 
+// Largura de REFERENCIA reservada ao canvas do Mapa, em CELULAS de
+// terminal -- publica porque DashboardLoop.cpp usa ela pra calcular a
+// largura do card de detalhe ("ocupando por referencia ate onde o mapa
+// acaba", pedido explicito de uma passada anterior).
+//
+// NAO e (mais) o tamanho do canvas: o desenho acompanha a area que o
+// layout DE FATO deu ao mapa (ver fitMapCanvasToBox(), abaixo), que muda
+// com o tamanho do terminal. Este numero so decide QUANTO da largura
+// sobra pro card ao lado.
+const int kMapCanvasWidthCells{120};
+
+// Piso do que fitMapCanvasToBox() aceita, em celulas -- um terminal
+// absurdamente pequeno (ou o quadro inicial, antes do primeiro reflect
+// chegar) nao pode zerar o canvas: Canvas(0,0) nao desenha nada e
+// project() dividiria a tela em torno de um centro degenerado.
+const int kMapCanvasMinCellsW{20};
+const int kMapCanvasMinCellsH{6};
+
 struct MapViewState
 {
    double panNorthM{};
@@ -54,6 +72,17 @@ struct MapViewState
    // banco de terreno carregado, e o sombreamento compete visualmente com
    // entidades quando nao e o que se quer ver.
    bool showTerrain{};
+
+   // Tamanho do canvas em PIXEL de braille (2 por celula de terminal na
+   // horizontal, 4 na vertical) -- NAO e constante: acompanha a area que
+   // o layout de fato deu ao mapa, atualizado por fitMapCanvasToBox() a
+   // cada redesenho. Mora aqui (e nao numa constante em MapGeometry.hpp,
+   // como ja foi) porque a projecao mundo->tela depende do centro do
+   // canvas: desenho, hit-test de clique e snapPanToGroundLevel() TEM de
+   // concordar sobre o mesmo tamanho. O valor inicial e so o que vale ate
+   // o primeiro reflect chegar (um quadro).
+   int canvasWidthPx{kMapCanvasWidthCells * 2};
+   int canvasHeightPx{120};
 
    // Arrasto em andamento (botao esquerdo). 'pressX/pressY' fica FIXO no
    // pixel do Pressed original -- serve pra distinguir CLIQUE (selecionar a
@@ -80,12 +109,19 @@ const double kMapMaxMetersPerCell{200000.0};
 const double kMapRotateStepDeg{15.0};
 const std::size_t kMapTrailLength{80};   // ~8s a 10 Hz
 
-// Largura do canvas, em CELULAS de terminal -- publica porque
-// DashboardLoop.cpp usa ela como referencia pra calcular a largura do card
-// de detalhe ("ocupando por referencia ate onde o mapa acaba", pedido
-// explicito). MapPanel.cpp deriva o tamanho do Canvas (em pixel de
-// braille) DESTA constante, nao o contrario -- fonte unica.
-const int kMapCanvasWidthCells{120};
+// Ajusta o tamanho do canvas a caixa de tela que o layout reservou pro
+// mapa -- 'box' e a MESMA que renderMap() preenche via ftxui::reflect, ou
+// seja a do quadro ANTERIOR (a caixa de um elemento so existe DEPOIS do
+// layout, tarde demais pra dimensionar o Canvas desenhado dentro dele --
+// armadilha ja documentada em CLAUDE.md). Um quadro de atraso ao
+// redimensionar o terminal, e depois disso e ponto fixo: como o elemento
+// do canvas leva 'flex', a caixa vem do layout e nao da exigencia do
+// canvas, entao dimensionar por ela nao realimenta o layout.
+//
+// No-op enquanto a caixa for degenerada (Box zerado do primeiro quadro,
+// ou terminal menor que o piso de kMapCanvasMinCells*) -- mantem o
+// tamanho anterior em vez de encolher pra nada.
+void fitMapCanvasToBox(MapViewState& view, const ftxui::Box& box);
 
 // Desloca o pan em termos de TELA (direita/cima, em metros de canvas), nao
 // de mundo -- ja leva em conta 'viewYawDeg' e 'perspective': a horizontal

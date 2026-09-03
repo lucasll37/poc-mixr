@@ -4,6 +4,7 @@
 #include "mixr/recorder/OutputHandler.hpp"
 #include "xtacview/RealtimeTelemetryServer.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <set>
@@ -12,6 +13,8 @@
 namespace mixr {
 namespace base { class Integer; class Number; class PairStream; class String; }
 namespace recorder { class DataRecordHandle; namespace pb { class PlayerId; class PlayerState; class TrackData; } }
+namespace simulation { class Simulation; }
+namespace models { class Player; }
 
 namespace xtacview {
 
@@ -76,6 +79,64 @@ public:
                         const double azimuthDeg, const double elevationDeg, const double rangeM,
                         const double hBeamwidthDeg, const double vBeamwidthDeg);
 
+   //---------------------------------------------------------------------
+   // Identidade REAL de cada player (tipo/lado/major type), empurrada pelo
+   // HOST -- mesma porta de servico de updateRadarScan(), e pelo mesmo
+   // motivo: o pipeline do recorder nao entrega o dado, e quem o tem em
+   // maos e quem roda o laco de background.
+   //
+   // POR QUE ISTO EXISTE (medido, nao suposto):
+   //   1. REID_PLAYER_DATA (43) -- o UNICO token por onde os objetos
+   //      chegam aqui, ja que 'enabledList: [ 43 42 ]' deixa de fora
+   //      REID_NEW_PLAYER (41) e REID_WEAPON_RELEASED (61, que aborta o
+   //      DataRecorder nativo) -- traz um PlayerId PARCIAL: so 'id' e
+   //      'name'. Sem 'ac_type', sem 'major_type', sem 'side'.
+   //   2. resolveInfo() tentaria buscar o Player real subindo ate a
+   //      Station, mas o encadeamento de containers NAO chega la (o
+   //      DataRecorder nao chama container() no objeto do slot
+   //      'outputHandler') -- ver o comentario de resolveInfo() no .cpp.
+   //   3. Sobra casar por NOME nos mapas do EDL. Isso cobre os players
+   //      declarados no cenario, e NAO cobre os criados em runtime: um
+   //      missil liberado ganha nome automatico "W%05d"
+   //      (AbstractWeapon::release() -> Simulation::getNewReleasedWeaponID(),
+   //      faixa 10001..65535), impossivel de escrever num mapa. Resultado
+   //      antes disto: o missil ia pro Tacview como "Misc"/"Grey", sem
+   //      modelo -- um quadradinho cinza em vez de um missil.
+   //
+   // Com a identidade empurrada, cada objeto resolve por
+   // typeMap/colorMap/modelMap[type:] -> [nome] -> default por
+   // majorType/side -- um SUPERCONJUNTO dos dois caminhos anteriores,
+   // entao nada que ja funcionava muda.
+   //
+   // ORDEM IMPORTA: chame ANTES de station->updateData(dt) no laco. E o
+   // updateData() que drena a fila do gravador e DECLARA o objeto no
+   // stream (Name/Type/Color so vao na primeira aparicao de cada id --
+   // ver RealtimeTelemetryServer::updateObject()). Um player materializado
+   // em runtime entra na lista em updatePlayerList(), dentro de
+   // updateData(), e so emite seu primeiro REID_PLAYER_DATA no tcFrame
+   // SEGUINTE -- entao publicar no topo do laco da uma iteracao inteira de
+   // folga.
+   //
+   // THREAD: o mesmo laco de background que chama updateData() e
+   // updateRadarScan(). Nenhuma das tres pocs cria a thread de background
+   // nativa (Station::createBackgroundProcess()), entao publicacao e
+   // consumo acontecem na MESMA thread -- sem lock, como updateRadarScan().
+   void publishIdentities(const simulation::Simulation* const sim);
+
+   //---------------------------------------------------------------------
+   // Estado observavel da exportacao -- para a aba "Tempo Nao-Critico" do
+   // ./app. Repassa o que RealtimeTelemetryServer ja contabiliza (ver a
+   // secao de introspeccao la) mais o que so este nivel conhece: se a
+   // inicializacao falhou (porta ocupada, diretorio de gravacao
+   // inexistente) e quantos objetos ja ganharam um T= no stream.
+   //---------------------------------------------------------------------
+   const RealtimeTelemetryServer& telemetry() const { return server; }
+   bool isInitialized() const                       { return initialized; }
+   bool didInitFail() const                         { return initFailed; }
+   std::size_t declaredObjectCount() const          { return declared.size(); }
+   std::size_t identifiedObjectCount() const        { return resolvedCache.size(); }
+   double currentStreamTime() const                 { return currentFrameTime; }
+
 protected:
    void processRecordImp(const recorder::DataRecordHandle* const) override;
    bool shutdownNotification() override;
@@ -94,16 +155,23 @@ private:
    // Emite a linha de posicao/atitude de um objeto ja declarado.
    void emitState(const recorder::pb::PlayerId&, const recorder::pb::PlayerState&);
 
-   std::string acmiTypeFor(const recorder::pb::PlayerId&) const;
-   std::string acmiColorFor(const recorder::pb::PlayerId&) const;
-
-   std::string acmiModelFor(const recorder::pb::PlayerId&) const;
    std::string trackContactText(const std::string& trackId,
                                 const recorder::pb::PlayerId* const tgt,
                                 const recorder::pb::TrackData* const) const;
 
    // Propriedades resolvidas uma vez por objeto, consultando o WorldModel.
    struct ResolvedInfo { std::string type; std::string color; std::string model; bool valid{}; };
+
+   // A regra de precedencia, num lugar so: mapa por 'type:' do EDL, depois
+   // por NOME do player, depois o default por majorType/side. Usada tanto
+   // por publishIdentities() (que tem os quatro campos de verdade) quanto
+   // pelo fallback de resolveInfo() (que tem so o que o protobuf deu).
+   // 'player' e opcional: quando ha um Player vivo (publishIdentities()) o
+   // tipo default sai da CLASSE dele -- e o unico jeito de distinguir chaff
+   // de missil, ja que os dois sao majorType WEAPON.
+   ResolvedInfo resolveFrom(const std::string& name, const std::string& type,
+                            const unsigned int majorType, const unsigned int side,
+                            const models::Player* const player = nullptr) const;
 
    // REID_PLAYER_DATA nao traz 'type'/'side' (ver nota no .cpp), e objetos
    // criados em runtime (chaff/flare/misseis) recebem nomes automaticos

@@ -2,7 +2,8 @@
 
 #include "app/Fleet.hpp"
 
-namespace mixr { namespace simulation { class Station; } }
+namespace mixr { namespace simulation { class Station; }
+namespace xtacview { class TacviewOutput; } }
 
 namespace app {
 
@@ -43,7 +44,16 @@ namespace app {
 // E o controle NEGATIVO do 'make check-*': prova que o determinismo vem de ONDE
 // a decisao roda, e nao de sorte.
 //------------------------------------------------------------------------------
+// 'tacviewOutput' pode ser nullptr (cenario sem exportacao). Quando dado, a
+// identidade real de cada player e publicada antes de cada updateData() --
+// mesma razao e mesma ordem do laco de tempo real (ver
+// TacviewOutput::publishIdentities()), para que o .acmi gerado neste modo
+// hermetico traga os mesmos Type=/Color=/Name= que a execucao interativa.
+// So no ramo SEQUENCIAL: com 'parallelDecision' o updateData() roda noutra
+// thread, e publicar daqui seria uma corrida de verdade sobre o cache do
+// handler.
 int runDeterministic(mixr::simulation::Station* station, const Fleet& fleet, long frames,
+                     mixr::xtacview::TacviewOutput* tacviewOutput = nullptr,
                      bool parallelDecision = false);
 
 } // namespace app

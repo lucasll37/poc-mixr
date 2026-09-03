@@ -16,8 +16,8 @@ Projected project(const double northM, const double eastM, const double altitude
    const double rotE{relE * std::cos(yaw) - relN * std::sin(yaw)};
    const double rotN{relE * std::sin(yaw) + relN * std::cos(yaw)};
 
-   const int cx{kCanvasW / 2};
-   const int cy{kCanvasH / 2};
+   const int cx{view.canvasWidthPx / 2};
+   const int cy{view.canvasHeightPx / 2};
 
    Projected p;
    p.px = cx + static_cast<int>(std::lround(rotE / view.metersPerCell));
@@ -26,15 +26,16 @@ Projected project(const double northM, const double eastM, const double altitude
    } else {
       p.py = cy - static_cast<int>(std::lround((altitudeM - view.panAltM) / view.metersPerCell));
    }
-   p.onCanvas = (p.px >= 0 && p.px < kCanvasW && p.py >= 0 && p.py < kCanvasH);
+   p.onCanvas = (p.px >= 0 && p.px < view.canvasWidthPx &&
+                 p.py >= 0 && p.py < view.canvasHeightPx);
    return p;
 }
 
 void worldFromCanvasTopDown(const int px, const int py, const MapViewState& view,
                             double& northM, double& eastM)
 {
-   const int cx{kCanvasW / 2};
-   const int cy{kCanvasH / 2};
+   const int cx{view.canvasWidthPx / 2};
+   const int cy{view.canvasHeightPx / 2};
    const double rotE{(px - cx) * view.metersPerCell};
    const double rotN{(cy - py) * view.metersPerCell};
    const double yaw{view.viewYawDeg * kDeg2Rad};
@@ -46,7 +47,7 @@ void worldFromCanvasTopDown(const int px, const int py, const MapViewState& view
 
 void worldFromCanvasLateral(const int px, const MapViewState& view, double& northM, double& eastM)
 {
-   const int cx{kCanvasW / 2};
+   const int cx{view.canvasWidthPx / 2};
    const double rotE{(px - cx) * view.metersPerCell};
    const double yaw{view.viewYawDeg * kDeg2Rad};
    northM = view.panNorthM - rotE * std::sin(yaw);

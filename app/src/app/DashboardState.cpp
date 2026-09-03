@@ -4,6 +4,7 @@
 
 #include "xboard/Board.hpp"
 #include "xclock/ClockStation.hpp"
+#include "xtacview/TacviewOutput.hpp"
 #include "xtrack/TrackQuery.hpp"
 
 #include "mixr/models/WorldModel.hpp"
@@ -11,9 +12,13 @@
 #include "mixr/models/player/air/AirVehicle.hpp"
 #include "mixr/simulation/Station.hpp"
 #include "mixr/base/PairStream.hpp"
+#include "mixr/base/Statistic.hpp"
 
 #include <cxxabi.h>
+#include <unistd.h>
+
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 
 namespace app {
@@ -21,6 +26,20 @@ namespace app {
 namespace {
 
 const double M2NM{1.0 / 1852.0};
+
+// Memoria residente do processo, em KiB. /proc/self/statm da o dado sem
+// nenhuma dependencia nova (campo 2 = paginas residentes); onde o arquivo
+// nao existir devolve 0 e o painel omite a linha. Ler um arquivo minusculo
+// a 10 Hz e desprezivel -- e e informacao de tempo NAO critico por
+// definicao, que e do que esta aba trata.
+long residentKb()
+{
+   std::ifstream statm("/proc/self/statm");
+   if (!statm.is_open()) return 0;
+   long totalPages{}, residentPages{};
+   if (!(statm >> totalPages >> residentPages)) return 0;
+   return residentPages * (sysconf(_SC_PAGESIZE) / 1024);
+}
 
 // Nome de classe C++ mais derivada via RTTI pura -- sem incluir header
 // nenhum do modelo. E o fallback de 'typeLabel' quando o EDL nao declarou
@@ -107,6 +126,7 @@ EntityState captureEntity(mixr::models::Player* const player)
 
 DashboardState captureState(mixr::models::WorldModel* const worldModel,
                             mixr::simulation::Station* const station,
+                            const mixr::xtacview::TacviewOutput* const tacviewOutput,
                             const double wallSec, const double simSec,
                             const mixr::xclock::ClockStation* const clockStation,
                             const int numTcThreads, const std::string& scenarioLabel,
@@ -134,13 +154,65 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
       // publica (WorldModel.hpp).
       const auto* const constWorld{worldModel};
       state.background.terrainLoaded = (constWorld->getTerrain() != nullptr);
+      state.background.refLatDeg = constWorld->getRefLatitude();
+      state.background.refLonDeg = constWorld->getRefLongitude();
+
+      // Contadores do executivo (Simulation) -- o OUTRO lado desta aba: o
+      // frame de tempo critico, que nao roda neste laco. Ver o painel.
+      state.background.execCycle = constWorld->cycle();
+      state.background.execFrame = constWorld->frame();
+      state.background.execPhase = constWorld->phase();
+      state.background.execCounter = constWorld->getExecCounter();
+      state.background.simTimeOfDaySec = constWorld->getSimTimeOfDay();
+      state.background.playerCount = static_cast<int>(state.entities.size());
    }
    if (station != nullptr) {
       const mixr::base::PairStream* const networks{station->getNetworks()};
       state.background.networkHandlerCount = (networks != nullptr)
          ? static_cast<int>(networks->entries()) : 0;
+      if (networks != nullptr) networks->unref();   // getNetworks() vem pre-ref()'d
       state.background.networkRateHz = station->getNetworkRate();
+      state.background.networkThreadRunning = station->doWeHaveTheNetThread();
+      state.background.stationTcRateHz = station->getTimeCriticalRate();
+      state.background.stationBgRateHz = station->getBackgroundRate();
+      state.background.fastForwardRate = station->getFastForwardRate();
+      state.background.tcThreadRunning = station->doWeHaveTheTcThread();
+
+      // Duracao real do frame T/C -- so existe se alguem ligou
+      // setTimingStatsEnabled(true) (DashboardLoop.cpp faz, uma vez).
+      const mixr::base::Statistic* const timing{station->getTimingStats()};
+      if (timing != nullptr && timing->getN() > 0) {
+         state.background.tcTimingAvailable = true;
+         state.background.tcFrameLastMs = timing->value() * 1000.0;
+         state.background.tcFrameMeanMs = timing->mean() * 1000.0;
+         state.background.tcFrameMaxMs = timing->maxValue() * 1000.0;
+         state.background.tcFrameSamples = timing->getN();
+      }
+      state.background.bgThreadRunning = station->doWeHaveTheBgThread();
    }
+   if (tacviewOutput != nullptr) {
+      const auto& srv{tacviewOutput->telemetry()};
+      auto& bg{state.background};
+      bg.tacviewEnabled = true;
+      bg.tacviewInitialized = tacviewOutput->isInitialized();
+      bg.tacviewInitFailed = tacviewOutput->didInitFail();
+      bg.tacviewListening = srv.isListening();
+      bg.tacviewConnected = srv.isConnected();
+      bg.tacviewRecording = srv.isRecording();
+      bg.tacviewHost = srv.listenHost();
+      bg.tacviewPort = srv.listenPort();
+      bg.tacviewCallsign = srv.callsign();
+      bg.tacviewFile = srv.recordingPath();
+      bg.tacviewConnections = srv.connectionCount();
+      bg.tacviewBytesSent = srv.bytesSent();
+      bg.tacviewLines = srv.linesWritten();
+      bg.tacviewFrames = srv.framesEmitted();
+      bg.tacviewDeclared = tacviewOutput->declaredObjectCount();
+      bg.tacviewIdentified = tacviewOutput->identifiedObjectCount();
+      bg.tacviewStreamTime = tacviewOutput->currentStreamTime();
+   }
+
+   state.background.residentKb = residentKb();
 
    return state;
 }

@@ -20,14 +20,11 @@
 namespace app {
 namespace mapgeometry {
 
-// Dimensao FIXA do canvas, em "pixels" de braille -- fonte unica pro
-// desenho (Canvas(kCanvasW, kCanvasH) em MapPanel.cpp) E pra geometria.
-// A largura deriva de kMapCanvasWidthCells (MapPanel.hpp), publica porque
-// DashboardLoop.cpp tambem usa ela pra calcular a largura do card de
-// detalhe.
-constexpr int kCanvasW{kMapCanvasWidthCells * 2};
-constexpr int kCanvasH{120};
-
+// A dimensao do canvas NAO e mais constante aqui -- mora em
+// MapViewState::canvasWidthPx/canvasHeightPx (MapPanel.hpp) e acompanha a
+// area que o layout de fato deu ao mapa (fitMapCanvasToBox()). Como toda
+// funcao deste header ja recebia a 'view', nenhuma assinatura mudou: o
+// centro do canvas passou a sair de la em vez de um constexpr.
 constexpr double kPi{3.14159265358979323846};
 constexpr double kDeg2Rad{kPi / 180.0};
 

@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <deque>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -17,18 +18,15 @@ namespace {
 
 std::mutex g_mutex;
 bool g_enabled{true};
+bool g_consoleEnabled{true};
 base::safe_ptr<recorder::PrintHandler> g_sink;
 
-const char* levelTag(const Level level)
-{
-   switch (level) {
-      case Level::DEBUG:   return "DEBUG";
-      case Level::INFO:    return "INFO";
-      case Level::WARNING: return "WARNING";
-      case Level::ERROR:   return "ERROR";
-   }
-   return "?";
-}
+// Buffer circular das ultimas linhas -- ver o "porque" em Log.hpp. deque
+// e nao vector: a operacao dominante e "empurra no fim, descarta do
+// inicio", O(1) nos dois lados, sem realocar o miolo.
+std::deque<Entry> g_entries;
+std::uint64_t g_seq{};
+
 
 std::string timestamp()
 {
@@ -47,6 +45,17 @@ std::string timestamp()
 }
 
 } // namespace
+
+const char* levelName(const Level level)
+{
+   switch (level) {
+      case Level::DEBUG:   return "DEBUG";
+      case Level::INFO:    return "INFO";
+      case Level::WARNING: return "WARNING";
+      case Level::ERROR:   return "ERROR";
+   }
+   return "?";
+}
 
 void init(const std::string& filePath)
 {
@@ -75,6 +84,24 @@ void setLoggingEnabled(const bool enabled)
    g_enabled = enabled;
 }
 
+void setConsoleEnabled(const bool enabled)
+{
+   std::lock_guard<std::mutex> lock(g_mutex);
+   g_consoleEnabled = enabled;
+}
+
+std::uint64_t lastSeq()
+{
+   std::lock_guard<std::mutex> lock(g_mutex);
+   return g_seq;
+}
+
+std::vector<Entry> snapshot()
+{
+   std::lock_guard<std::mutex> lock(g_mutex);
+   return std::vector<Entry>(g_entries.begin(), g_entries.end());
+}
+
 Stream::Stream(const Level level) : level(level)
 {
 }
@@ -84,10 +111,19 @@ Stream::~Stream()
    std::lock_guard<std::mutex> lock(g_mutex);
    if (!g_enabled) return;
 
-   const std::string line{"[" + timestamp() + "] [" + levelTag(level) + "] " + buffer.str()};
+   const std::string stamp{timestamp()};
+   const std::string text{buffer.str()};
+   const std::string line{"[" + stamp + "] [" + levelName(level) + "] " + text};
 
-   std::cout << line << std::endl;
+   if (g_consoleEnabled) std::cout << line << std::endl;
    if (g_sink != nullptr) g_sink->printToOutput(line.c_str());
+
+   // O buffer guarda os campos SEPARADOS (nao a linha ja formatada) --
+   // quem exibe quer colorir por nivel e alinhar o carimbo em coluna
+   // propria; refatiar a string formatada de volta seria trabalho a toa.
+   g_seq += 1;
+   g_entries.push_back(Entry{g_seq, level, stamp, text});
+   while (g_entries.size() > kMemoryCapacity) g_entries.pop_front();
 }
 
 } // namespace xlog

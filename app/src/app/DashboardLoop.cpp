@@ -6,12 +6,15 @@
 #include "app/DashboardState.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
+#include "app/LogPanel.hpp"
 #include "app/MapPanel.hpp"
 #include "app/MemoryPanel.hpp"
+#include "app/Shutdown.hpp"
 #include "app/SpeedLadder.hpp"
 
 #include "xboard/Board.hpp"
 #include "xclock/ClockStation.hpp"
+#include "xlog/Log.hpp"
 #include "xtacview/TacviewOutput.hpp"
 
 #include "mixr/models/WorldModel.hpp"
@@ -55,12 +58,13 @@
 // dica de atalho" sem duplicar logica (ver a barra de botoes no fim desta
 // funcao).
 //
-// QUATRO ABAS (ftxui::Container::Tab) -- Players/Mapa/Memoria sao cada uma
+// CINCO ABAS (ftxui::Container::Tab) -- Players/Mapa/Memoria/Log sao cada uma
 // um ftxui::Menu dentro de frame()/vscroll_indicator() (padrao oficial do
 // FTXUI para lista rolavel -- ver o exemplo menu_in_frame.cpp da propria
 // lib): e o que deixa a UI caber QUALQUER quantidade de entidades/classes
-// sem crescer a tela. Tempo Nao-Critico (a quarta) e um painel estatico -- ver
-// app/BackgroundPanel.hpp.
+// sem crescer a tela. Tempo Nao-Critico e um painel estatico -- ver
+// app/BackgroundPanel.hpp. A aba Log le o buffer em memoria de
+// shared/xlog (ver app/LogPanel.hpp).
 //
 // DUAS THREADS, no molde do que app/RealTimeRun.cpp (das outras pocs) ja faz
 // sozinho: a de SIMULACAO avanca a 10 Hz independente de quando o terminal
@@ -185,7 +189,24 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    BreakpointController bp;
    std::atomic<bool> fastRunToBreakpoint{false};
 
+   // A partir daqui o FTXUI e dono do terminal (alternate screen buffer,
+   // modo bruto) -- uma linha de log escrita direto em std::cout suja o
+   // desenho, e o FTXUI nao sabe que alguem escreveu por baixo dele pra
+   // redesenhar aquela regiao. Desliga SO o console: arquivo
+   // (./app/data/logs/app.log) e buffer em memoria continuam, e e do
+   // buffer que a aba Log le. Religado no fim desta funcao, antes de
+   // devolver o controle ao main.cpp (que pode reexecutar o processo ou
+   // imprimir no terminal ja restaurado).
+   mixr::xlog::setConsoleEnabled(false);
+
    auto screen = ScreenInteractive::Fullscreen();
+
+   // Liga a medicao de duracao do frame de tempo critico (aba F4). Uma vez
+   // so, antes do laco. NUNCA setPrintTimingStats(true): esse flag faz
+   // Component::printTimingStats() escrever direto em std::cout, e o FTXUI e
+   // dono do terminal -- exatamente o motivo de runDashboard() ja ter
+   // desligado o console do xlog logo acima.
+   station->setTimingStatsEnabled(true);
 
    std::thread simThread([&] {
       station->createTimeCriticalProcess();
@@ -222,6 +243,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       while (running.load()) {
          const double iterationStart{mixr::base::getComputerTime()};
 
+         // Identidade real de cada player (tipo/lado/major type) ANTES de
+         // drenar o gravador -- e o updateData() abaixo que DECLARA cada
+         // objeto no stream ACMI, e Name/Type/Color so vao na primeira
+         // aparicao de cada id. Sem isto, o que nasce em runtime (o missil
+         // liberado, cujo nome automatico "W10001" nao esta em mapa
+         // nenhum) ia pro Tacview como "Misc"/"Grey". Ver o cabecalho de
+         // TacviewOutput::publishIdentities().
+         if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(worldModel);
+
          station->updateData(dt);
 
          if (tacviewOutput != nullptr) {
@@ -238,7 +268,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          }
 
          frameCount += 1;
-         DashboardState next{captureState(worldModel, station, static_cast<double>(frameCount) * dt,
+         DashboardState next{captureState(worldModel, station, tacviewOutput,
+                                          static_cast<double>(frameCount) * dt,
                                           worldModel->getExecTimeSec(), clockStation,
                                           numTcThreads, scenarioLabel, classHistory)};
          classHistory = next.classStats;
@@ -349,6 +380,20 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    int activeTab{};
    int selectedEntityIndex{};
    int selectedClassIndex{};
+
+   // ---- aba "Log" ----
+   // 'logMinLevel' e o filtro por nivel MINIMO (tecla/botao [f]);
+   // 'logFollowTail' faz a selecao grudar na linha mais recente enquanto o
+   // usuario nao rolar pra cima -- e o comportamento que se espera de um
+   // painel de log ao vivo (tipo 'tail -f'), e qualquer ArrowUp desliga.
+   // 'lastLogSeq' evita copiar as (ate 500) linhas do buffer a cada
+   // redesenho: so recopia quando xlog::lastSeq() muda, ou quando o filtro
+   // muda (ai o conteudo exibido muda sem linha nova nenhuma).
+   int selectedLogIndex{};
+   bool logFollowTail{true};
+   mixr::xlog::Level logMinLevel{mixr::xlog::Level::DEBUG};
+   mixr::xlog::Level lastLogFilter{mixr::xlog::Level::DEBUG};
+   std::uint64_t lastLogSeq{};
    MapViewState mapView;
    // Caixa de tela do canvas do mapa apos o ultimo desenho (ftxui::reflect,
    // dentro de renderMap()) -- usada pelo CatchEvent mais externo pra saber
@@ -372,6 +417,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    std::vector<std::string> entityLabels;
    std::vector<ClassStat> displayedClasses;
    std::vector<std::string> classLabels;
+   std::vector<mixr::xlog::Entry> displayedLogs;
+   std::vector<std::string> logLabels;
    BackgroundInfo displayedBackground;
 
    // Copia "pra desenho" de DashboardState::breakpoint* -- ver o cabecalho
@@ -413,6 +460,9 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       const std::lock_guard<std::mutex> lock(bpMutex);
       return bp.isArmed();
    };
+   // Nenhuma destas acoes chama LOG(...): o app e LEITOR do log, nao
+   // produtor. Quem escreve e o MODELO (models/flight) -- ver o cabecalho
+   // de app/LogPanel.hpp.
    const auto doAccelerate = [&] {
       if (clockStation == nullptr || isBreakpointArmedNow()) return;
       if (ladder.accelerate()) clockStation->setTimeScale(ladder.scale());
@@ -740,6 +790,14 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // capturado, ver app/TerrainQuery.hpp) -- so e CHAMADO de verdade por
       // renderMap() quando 'mapView.showTerrain' esta ligado.
       const TerrainSampler terrainSampler{makeTerrainSampler(worldModel)};
+
+      // O canvas acompanha a area que o layout DE FATO reservou pro mapa,
+      // em vez de um tamanho fixo que sobrava (terminal grande: mapa
+      // desenhado so num pedaco do quadro) ou faltava (terminal pequeno:
+      // desenho cortado). 'mapCanvasBox' e do quadro ANTERIOR -- e a unica
+      // hora em que a caixa existe, ver fitMapCanvasToBox() em
+      // app/MapPanel.hpp.
+      fitMapCanvasToBox(mapView, mapCanvasBox);
       return hbox({
                 renderMap(displayedEntities, mapView, focusedId, mapCanvasBox, terrainSampler) | flex,
                 separator(),
@@ -839,7 +897,63 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return renderBackgroundPanel(displayedBackground) | frame | flex;
    })};
 
-   const Component contentTab{Container::Tab({fleetTab, mapTab, memoryTab, backgroundTab}, &activeTab)};
+   // ---- aba "Log": as ultimas linhas de shared/xlog, do host E do plugin
+   // do modelo (uma copia so de libxlog.so no processo -- ver o cabecalho
+   // de app/LogPanel.hpp). Mesmo padrao de lista rolavel das abas
+   // Players/Memoria: ftxui::Menu dentro de frame()/vscroll_indicator(). ----
+   MenuOption logMenuOpt;
+   logMenuOpt.entries = &logLabels;
+   logMenuOpt.selected = &selectedLogIndex;
+   logMenuOpt.entries_option.transform = [&](const EntryState& es) -> Element {
+      if (es.index >= 0 && es.index < static_cast<int>(displayedLogs.size()))
+         return renderLogRow(displayedLogs[static_cast<std::size_t>(es.index)], es.active);
+      return text(es.label);
+   };
+   const Component logMenu{Menu(logMenuOpt)};
+
+   const auto doCycleLogFilter = [&] {
+      logMinLevel = nextLevelFilter(logMinLevel);
+      logFollowTail = true;
+   };
+   const auto doToggleLogFollow = [&] { logFollowTail = !logFollowTail; };
+
+   ButtonOption logFilterOpt;
+   logFilterOpt.on_click = doCycleLogFilter;
+   logFilterOpt.transform = [&](const EntryState&) {
+      return text(std::string(" [f] Nivel min: ") + mixr::xlog::levelName(logMinLevel) + " ")
+         | bgcolor(Color::Blue) | bold;
+   };
+   const Component btnLogFilter{Button(logFilterOpt)};
+
+   ButtonOption logFollowOpt;
+   logFollowOpt.on_click = doToggleLogFollow;
+   logFollowOpt.transform = [&](const EntryState&) {
+      return text(std::string(" [a] Acompanhar: ") + (logFollowTail ? "ON" : "OFF") + " ")
+         | (logFollowTail ? (bgcolor(Color::Blue) | bold) : dim);
+   };
+   const Component btnLogFollow{Button(logFollowOpt)};
+
+   const Component logButtons{Container::Horizontal({btnLogFilter, btnLogFollow})};
+   const Component logBody{Container::Vertical({logMenu, logButtons})};
+   const Component logTab{Renderer(logBody, [&]() -> Element {
+      return vbox({
+         hbox({
+            text("linhas: " + std::to_string(displayedLogs.size())) | dim,
+            text("  (buffer de " + std::to_string(mixr::xlog::kMemoryCapacity) + ", o mais antigo sai)") | dim,
+            filler(),
+            text("total emitido: " + std::to_string(lastLogSeq)) | dim,
+         }),
+         separator(),
+         renderLogListHeader(),
+         separator(),
+         logMenu->Render() | vscroll_indicator | frame | flex,
+         separator(),
+         logButtons->Render(),
+      });
+   })};
+
+   const Component contentTab{Container::Tab({fleetTab, mapTab, memoryTab, backgroundTab, logTab},
+                                             &activeTab)};
 
    // ---- barra de abas e barra de acoes, TODAS clicaveis (Button de
    // verdade), com a dica de atalho ja no rotulo ----
@@ -848,6 +962,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnMap{makeButton("[F2] Mapa", [&] { gotoTab(1); })};
    const Component btnMemory{makeButton("[F3] Memoria", [&] { gotoTab(2); })};
    const Component btnBackground{makeButton("[F4] Tempo Nao-Critico", [&] { gotoTab(3); })};
+   const Component btnLog{makeButton("[F5] Log", [&] { gotoTab(4); })};
 
    // Acelerar/Frear/Tempo-real ficam visualmente apagados enquanto
    // bloqueados -- QUALQUER breakpoint armado ('g' OU 'G', ver
@@ -887,7 +1002,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnQuit{makeButton("[q] Sair", doQuit)};
 
    const Component toolbar{Container::Horizontal({
-      btnFleet, btnMap, btnMemory, btnBackground,
+      btnFleet, btnMap, btnMemory, btnBackground, btnLog,
       btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
       btnLoad, btnRestart, btnStop, btnQuit,
    })};
@@ -934,6 +1049,31 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          selectedClassIndex = std::clamp(selectedClassIndex, 0,
             static_cast<int>(displayedClasses.size()) - 1);
       }
+
+      // Aba Log -- so recopia do buffer quando ha linha nova (lastSeq
+      // mudou) ou quando o filtro mudou; 'snapshot()' copia ate 500
+      // entradas e este Renderer roda a cada redesenho, nao so a cada
+      // amostra nova (tecla, resize e mouse tambem redesenham).
+      {
+         const std::uint64_t seqNow{mixr::xlog::lastSeq()};
+         if (seqNow != lastLogSeq || logMinLevel != lastLogFilter) {
+            lastLogSeq = seqNow;
+            lastLogFilter = logMinLevel;
+            displayedLogs.clear();
+            logLabels.clear();
+            for (const auto& e : mixr::xlog::snapshot()) {
+               if (!passesLevelFilter(e.level, logMinLevel)) continue;
+               displayedLogs.push_back(e);
+               logLabels.push_back(logRowText(e));
+            }
+            if (logFollowTail && !displayedLogs.empty()) {
+               selectedLogIndex = static_cast<int>(displayedLogs.size()) - 1;
+            }
+         }
+      }
+      selectedLogIndex = displayedLogs.empty()
+         ? 0
+         : std::clamp(selectedLogIndex, 0, static_cast<int>(displayedLogs.size()) - 1);
       if (!treeLines.empty()) {
          selectedBtLineIndex = std::clamp(selectedBtLineIndex, 0,
             static_cast<int>(treeLines.size()) - 1);
@@ -972,7 +1112,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                          | bold | bgcolor(Color::Blue) | color(Color::White) | center);
       }
       rows.push_back(hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
-               tabBadge(btnBackground, 3)}));
+               tabBadge(btnBackground, 3), tabBadge(btnLog, 4)}));
       rows.push_back(separator());
       rows.push_back(contentTab->Render() | flex);
       rows.push_back(separator());
@@ -995,6 +1135,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::F2) { gotoTab(1); return true; }
       if (event == Event::F3) { gotoTab(2); return true; }
       if (event == Event::F4) { gotoTab(3); return true; }
+      if (event == Event::F5) { gotoTab(4); return true; }
 
       // Navegacao por seta das listas (Frota/Memoria) -- tratada AQUI, no
       // CatchEvent mais externo, e nao deixada para o ftxui::Menu receber
@@ -1017,6 +1158,31 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          const int last{static_cast<int>(displayedClasses.size()) - 1};
          if (event == Event::ArrowDown) { selectedClassIndex = std::min(selectedClassIndex + 1, last); return true; }
          if (event == Event::ArrowUp)   { selectedClassIndex = std::max(selectedClassIndex - 1, 0); return true; }
+      }
+      if (activeTab == 4) {
+         // Rolar pra CIMA desliga o "acompanhar" (senao a proxima linha
+         // nova arrastaria a selecao de volta pro fim e seria impossivel
+         // ler o historico com a simulacao rodando); chegar de volta no fim
+         // religa, que e o gesto natural de "voltar a acompanhar".
+         if (event == Event::ArrowUp) {
+            logFollowTail = false;
+            selectedLogIndex = std::max(selectedLogIndex - 1, 0);
+            return true;
+         }
+         if (event == Event::ArrowDown) {
+            const int last{std::max(0, static_cast<int>(displayedLogs.size()) - 1)};
+            selectedLogIndex = std::min(selectedLogIndex + 1, last);
+            if (selectedLogIndex == last) logFollowTail = true;
+            return true;
+         }
+         if (event == Event::Character('f') || event == Event::Character('F')) {
+            doCycleLogFilter();
+            return true;
+         }
+         if (event == Event::Character('a') || event == Event::Character('A')) {
+            doToggleLogFollow();
+            return true;
+         }
       }
 
       // Breakpoint de BT -- GLOBAL (nao depende de aba), mesmo raciocinio
@@ -1162,8 +1328,29 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // e exatamente o que se quer.
    screen.Loop(appRoot);
 
+   // ---- ENCERRAMENTO, e a ORDEM aqui e o conserto (ver app/Shutdown.hpp) ----
+   //
+   // 1) Cala a PRODUTORA primeiro. A thread T/C nativa criada la em cima nao
+   //    morre com o fim do Loop() -- ela sobrevive a esta funcao inteira e ao
+   //    SHUTDOWN_EVENT do main.cpp. Enquanto ela roda, segue enfileirando
+   //    registros na fila SEM TETO do gravador; e e a corrida dela contra o
+   //    teardown que produz o auto-deadlock documentado em
+   //    xclock/ClockStation.hpp.
+   quiesceTimeCritical(station, clockStation);
+
+   // 2) So agora para a CONSUMIDORA. Nesta ordem 'simThread' nao pode mais ser
+   //    surpreendida por trabalho novo entrando na fila.
    running = false;
    simThread.join();
+
+   // 3) Ultima drenagem, com a producao ja parada -- fecha a fila numa passada
+   //    e deixa o DataRecorder::shutdownNotification() do SHUTDOWN_EVENT (que
+   //    tambem drena, mas na thread main) com quase nada para fazer.
+   station->updateData(1.0 / static_cast<double>(bgRate));
+
+   // Terminal de volta pro dono anterior -- ver setConsoleEnabled(false)
+   // no inicio desta funcao.
+   mixr::xlog::setConsoleEnabled(true);
 
    return action;
 }

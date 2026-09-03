@@ -30,6 +30,28 @@ Ver o diagrama em [../README.md](../README.md). O ponto que vale repetir: `bt/` 
 um `FakeDecisionContext`, em ~10 ms, sem linkar uma lib do MIXR — a suite mais barata e mais
 repetida durante o desenvolvimento da árvore.
 
+## O log do modelo (`LOG(...)` em `ubf/FlightAction.cpp`)
+
+`shared/xlog` é uma `shared_library()`, então há **uma cópia no processo** e o `LOG(...)` emitido
+de dentro deste `.so` (aberto por `dlopen`) cai no mesmo buffer/arquivo do host — é o que faz a aba
+"Log" (F5) do `./app` mostrar o que o modelo registra, sem nenhuma ponte. Nas outras pocs
+(`single-thread`/`multi-thread`), que não têm aba, as mesmas linhas saem no console e no
+`data/logs/*.log`. Sob `-deterministic` o `main.cpp` chama `setLoggingEnabled(false)` e nada é
+emitido — os dumps comparáveis não mudam.
+
+`FlightAction::execute()` é o ponto certo para isso: é a única atuação comum aos dois agentes
+(`SimAgent` de background e `FlightAgentTC` do pool T/C) e já é onde o rótulo vencedor chega. O
+que se registra: transição de comportamento (`PATROL -> EVADE`), alerta tático, lançamento de
+míssil (e as duas formas de ele não acontecer) e um batimento a cada `kHeartbeatEveryDecisions`
+decisões atuadas.
+
+**A armadilha, medida e corrigida:** `execute()` roda **até 50 Hz por aeronave**, e nem todo campo
+da ação é um evento — `broadcast` (o pedido de alerta tático) fica **ligado** enquanto a aeronave
+evade. Logar direto no `if (broadcast)` deu ~50 linhas/s por aeronave: em 20 s de intercepto o
+buffer de 500 entradas já tinha girado três vezes e engolido justamente as transições. Por isso
+todo log daqui passa por uma regra de **borda** (`changedFor()`, um mapa estático por player, com
+mutex porque os agentes decidem em paralelo) ou de **contagem** (o batimento), nunca por decisão.
+
 ## Armadilhas confirmadas — não redescobrir
 
 1. **O motor leva segundos para subir.** `JSBSimModel` nativo nunca liga o motor sozinho; quem

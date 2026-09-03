@@ -1,6 +1,7 @@
 #include "xclock/ClockStation.hpp"
 
 #include "mixr/simulation/Simulation.hpp"
+#include "mixr/base/util/system_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -30,6 +31,9 @@ void ClockStation::copyData(const ClockStation& org, const bool)
 {
    BaseClass::copyData(org);
    slowFactor = org.slowFactor;
+   // 'tcStopRequested_'/'tcIdleTicks_' NAO sao copiados de proposito: sao
+   // estado de CICLO DE VIDA desta instancia (a thread T/C que aponta para
+   // ela), nao configuracao do cenario. Uma copia nasce sem pedido de parada.
 }
 
 double ClockStation::getMinTimeScale() { return kMinTimeScale; }
@@ -77,6 +81,34 @@ bool ClockStation::togglePaused()
 }
 
 //------------------------------------------------------------------------------
+// requestTcStop() / waitForTcQuiesced() -- ver o "porque" longo no .hpp.
+//------------------------------------------------------------------------------
+void ClockStation::requestTcStop()
+{
+   tcStopRequested_.store(true, std::memory_order_release);
+}
+
+bool ClockStation::waitForTcQuiesced(const double timeoutSec)
+{
+   // Sem thread T/C nativa (o modo '-deterministic' chama tcFrame() direto,
+   // na propria thread do laco) nao ha nada para esperar.
+   if (!doWeHaveTheTcThread()) return true;
+
+   // Um tick JA prova o que interessa: a thread T/C e uma so e sequencial,
+   // entao ve-la entrar em processTimeCriticalTasks() depois da marcacao quer
+   // dizer que o tcFrame() anterior retornou. O segundo tick e folga barata.
+   const unsigned long alvo{2};
+
+   const int passoMs{2};
+   const int tentativas{std::max(1, static_cast<int>((timeoutSec * 1000.0) / passoMs))};
+   for (int i = 0; i < tentativas; i++) {
+      if (tcIdleTicks_.load(std::memory_order_acquire) >= alvo) return true;
+      base::msleep(passoMs);
+   }
+   return tcIdleTicks_.load(std::memory_order_acquire) >= alvo;
+}
+
+//------------------------------------------------------------------------------
 // processTimeCriticalTasks() -- unico ponto em que esta classe se mete no
 // caminho do framework.
 //------------------------------------------------------------------------------
@@ -100,6 +132,17 @@ void ClockStation::processTimeCriticalTasks(const double dt)
    // O flag de freeze CONTINUA valendo (setPaused o mantem): ele e o que
    // congela o outro caminho, o de background -- Simulation::updateData()
    // tem o mesmo teste (linha 625), e esse laco nao passa por aqui.
+
+   // PARADA pedida: nenhum frame novo comeca, e registramos a passagem para
+   // que waitForTcQuiesced() tenha prova de que esta thread saiu de
+   // tcFrame(). Vem ANTES do isPaused() de proposito -- a prova tem de valer
+   // tambem com a simulacao pausada, que e um estado perfeitamente possivel
+   // no momento em que o usuario decide sair.
+   if (tcStopRequested_.load(std::memory_order_acquire)) {
+      tcIdleTicks_.fetch_add(1, std::memory_order_release);
+      return;
+   }
+
    if (isPaused()) return;
 
    if (slowFactor >= 1.0) {

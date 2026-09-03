@@ -12,6 +12,12 @@
 #include "mixr/simulation/Station.hpp"
 #include "mixr/simulation/Simulation.hpp"
 #include "mixr/models/player/Player.hpp"
+#include "mixr/models/player/effect/Chaff.hpp"
+#include "mixr/models/player/effect/Decoy.hpp"
+#include "mixr/models/player/effect/Flare.hpp"
+#include "mixr/models/player/weapon/Bomb.hpp"
+#include "mixr/models/player/weapon/Bullet.hpp"
+#include "mixr/models/player/weapon/Missile.hpp"
 
 #include "DataRecord.pb.h"
 
@@ -82,6 +88,29 @@ void TacviewOutput::copyData(const TacviewOutput& org, const bool)
 //------------------------------------------------------------------------------
 namespace {
 
+//------------------------------------------------------------------------------
+// Tipo ACMI a partir da CLASSE C++ do player -- so possivel quando ha um
+// Player vivo em maos (publishIdentities()); o caminho do protobuf continua
+// caindo em defaultTypeForMajor(), abaixo.
+//
+// POR QUE PRECISA SER POR CLASSE: chaff, flare e decoy derivam de
+// models::Effect, que deriva de AbstractWeapon -- logo getMajorType() devolve
+// WEAPON para os tres, e o mapeamento por major type sozinho mandaria um
+// chaff para o Tacview como "Weapon+Missile". A ordem dos dynamic_cast
+// abaixo importa: do mais derivado para o menos (Sam deriva de Missile;
+// Chaff/Flare/Decoy derivam de Effect).
+//------------------------------------------------------------------------------
+std::string defaultTypeForPlayer(const models::Player* const player)
+{
+   if (dynamic_cast<const models::Chaff*>(player)  != nullptr) return "Misc+Decoy+Chaff";
+   if (dynamic_cast<const models::Flare*>(player)  != nullptr) return "Misc+Decoy+Flare";
+   if (dynamic_cast<const models::Decoy*>(player)  != nullptr) return "Misc+Decoy";
+   if (dynamic_cast<const models::Bomb*>(player)   != nullptr) return "Weapon+Bomb";
+   if (dynamic_cast<const models::Bullet*>(player) != nullptr) return "Weapon+Bullet";
+   if (dynamic_cast<const models::Missile*>(player) != nullptr) return "Weapon+Missile";
+   return {};   // nao e arma/efeito: quem chama cai no default por major type
+}
+
 std::string defaultTypeForMajor(const unsigned int majorType)
 {
    switch (majorType) {
@@ -96,13 +125,49 @@ std::string defaultTypeForMajor(const unsigned int majorType)
    }
 }
 
+//------------------------------------------------------------------------------
+// Cor ACMI por lado (models::Player::Side, Player.hpp:377-384).
+//
+// ARMADILHA CORRIGIDA AQUI -- "Grey" NAO e uma cor valida do formato: o ACMI
+// aceita Red / Orange / Yellow / Green / Cyan / Blue / Violet, e so. O valor
+// antigo era o default de TUDO que nao fosse BLUE/RED, incluindo o missil
+// liberado em runtime; o Tacview descarta a propriedade e o objeto fica sem
+// cor de lado nenhuma. Os seis valores do enum agora tem cada um a sua, e o
+// default cai em Violet (uma cor real, visivelmente "nao e nem azul nem
+// vermelho") em vez de uma string invalida.
+//------------------------------------------------------------------------------
 std::string defaultColorForSide(const unsigned int side)
 {
    switch (side) {
-      case 0x01: return "Blue";
-      case 0x02: return "Red";
-      default:   return "Grey";
+      case 0x01: return "Blue";     // BLUE
+      case 0x02: return "Red";      // RED
+      case 0x04: return "Yellow";   // YELLOW -- 3a forca
+      case 0x08: return "Cyan";     // CYAN   -- 4a forca
+      case 0x10: return "Green";    // GRAY   -- neutro (nao ha cinza no ACMI)
+      case 0x20: return "Green";    // WHITE  -- civil/comercial
+      default:   return "Violet";
    }
+}
+
+// Busca no mapa do EDL por 'type:' e depois por NOME do player, caindo no
+// default. As duas chaves existem porque os cenarios deste repositorio usam
+// as DUAS convencoes: single-thread/multi-thread mapeiam por nome
+// (falcon1: "Air+FixedWing"), e a chave documentada no slot e o 'type:'.
+// Chave vazia nunca casa (uma base::String vazia devolve ponteiro nulo --
+// ver a nota em resolveInfo()).
+std::string lookupOr(const std::map<std::string, std::string>& table,
+                     const std::string& typeKey, const std::string& nameKey,
+                     const std::string& fallback)
+{
+   if (!typeKey.empty()) {
+      const auto it = table.find(typeKey);
+      if (it != table.end()) return it->second;
+   }
+   if (!nameKey.empty()) {
+      const auto it = table.find(nameKey);
+      if (it != table.end()) return it->second;
+   }
+   return fallback;
 }
 
 }
@@ -120,56 +185,10 @@ std::string defaultColorForSide(const unsigned int side)
 // Por isso a chave dos mapas casa por 'ac_type' QUANDO existe (caso das
 // armas/efeitos, via REID_WEAPON_RELEASED) e cai para o 'name' do player,
 // que e o unico campo sempre disponivel. Os defaults por major_type/side
-// ficam como ultimo recurso.
+// ficam como ultimo recurso. Essa precedencia inteira mora em
+// resolveFrom(), mais abaixo -- e a MESMA usada por publishIdentities(),
+// que e por onde a identidade de verdade chega hoje.
 //------------------------------------------------------------------------------
-std::string TacviewOutput::acmiTypeFor(const recorder::pb::PlayerId& id) const
-{
-   if (id.has_ac_type()) {
-      const auto it = typeMap.find(id.ac_type());
-      if (it != typeMap.end()) return it->second;
-   }
-   if (id.has_name()) {
-      const auto it = typeMap.find(id.name());
-      if (it != typeMap.end()) return it->second;
-   }
-   return defaultTypeForMajor(id.has_major_type() ? id.major_type() : 0);
-}
-
-std::string TacviewOutput::acmiColorFor(const recorder::pb::PlayerId& id) const
-{
-   if (id.has_ac_type()) {
-      const auto it = colorMap.find(id.ac_type());
-      if (it != colorMap.end()) return it->second;
-   }
-   if (id.has_name()) {
-      const auto it = colorMap.find(id.name());
-      if (it != colorMap.end()) return it->second;
-   }
-   return defaultColorForSide(id.has_side() ? id.side() : 0);
-}
-
-//------------------------------------------------------------------------------
-// Modelo ACMI ("Name=") do objeto -- ver ObjectInfo em
-// RealtimeTelemetryServer.hpp: e o campo pelo qual o Tacview encontra a
-// aeronave na sua base de dados. Sem mapeamento, devolve string vazia e a
-// propriedade e OMITIDA (melhor do que mandar um nome desconhecido).
-//------------------------------------------------------------------------------
-std::string TacviewOutput::acmiModelFor(const recorder::pb::PlayerId& id) const
-{
-   if (id.has_ac_type()) {
-      const auto it = modelMap.find(id.ac_type());
-      if (it != modelMap.end()) return it->second;
-   }
-   if (id.has_name()) {
-      const auto it = modelMap.find(id.name());
-      if (it != modelMap.end()) return it->second;
-   }
-   // 'ac_type' e o tipo declarado no .epp (slot 'type:'): se ele ja for uma
-   // designacao de aeronave, serve de modelo por si so.
-   if (id.has_ac_type()) return id.ac_type();
-   return {};
-}
-
 //------------------------------------------------------------------------------
 // Texto do evento de contato de radar, com o que o TrackData nativo oferecer.
 //------------------------------------------------------------------------------
@@ -212,6 +231,74 @@ std::string TacviewOutput::trackContactText(const std::string& trackId,
 // no default por major_type. O codigo de consulta fica porque passa a
 // funcionar sozinho se o encadeamento for corrigido no framework.
 //------------------------------------------------------------------------------
+TacviewOutput::ResolvedInfo TacviewOutput::resolveFrom(const std::string& name,
+                                                       const std::string& type,
+                                                       const unsigned int majorType,
+                                                       const unsigned int side,
+                                                       const models::Player* const player) const
+{
+   // Com um Player em maos da pra distinguir chaff de missil, o que o major
+   // type sozinho nao permite (os dois sao WEAPON) -- ver defaultTypeForPlayer().
+   std::string fallbackType{player != nullptr ? defaultTypeForPlayer(player) : std::string{}};
+   if (fallbackType.empty()) fallbackType = defaultTypeForMajor(majorType);
+
+   ResolvedInfo info;
+   info.type  = lookupOr(typeMap,  type, name, fallbackType);
+   info.color = lookupOr(colorMap, type, name, defaultColorForSide(side));
+   // Sem entrada no modelMap, o proprio 'type:' do EDL serve de modelo: se
+   // ja for uma designacao conhecida do Tacview ("F-16C"), acerta; se nao
+   // for, o Tacview cai na forma generica do Type= -- que ainda e a
+   // categoria certa (ver ObjectInfo em RealtimeTelemetryServer.hpp).
+   info.model = lookupOr(modelMap, type, name, type);
+   info.valid = true;
+   return info;
+}
+
+//------------------------------------------------------------------------------
+// publishIdentities() -- ver o "porque" completo no cabecalho do .hpp.
+//
+// Varre os players vivos e grava a identidade REAL de cada um no cache que
+// emitState() consulta.
+//
+// LIMITE QUE ISTO **NAO** RESOLVE, e por isso a ordem de chamada importa
+// tanto: Name/Type/Color sao emitidos UMA UNICA VEZ por objeto, na primeira
+// aparicao dele em cada destino ('declared' aqui, 'knownObjectsSocket_'/
+// 'knownObjectsFile_' no servidor). Chegar com a identidade DEPOIS da
+// primeira declaracao nao corrige o que ja foi escrito: o arquivo .acmi
+// guarda a linha errada para sempre, e o socket so redeclara na RECONEXAO
+// de um cliente (acceptIfNeeded() limpa 'knownObjectsSocket_'). Por isso
+// publicar ANTES de station->updateData(dt) -- que e quem drena a fila e
+// declara -- nao e detalhe de estilo: e o que faz a identidade estar no
+// lugar quando a unica declaracao acontece.
+//------------------------------------------------------------------------------
+void TacviewOutput::publishIdentities(const simulation::Simulation* const sim)
+{
+   if (sim == nullptr) return;
+
+   const base::PairStream* players{sim->getPlayers()};
+   if (players == nullptr) return;
+
+   for (const base::List::Item* item = players->getFirstItem(); item != nullptr; item = item->getNext()) {
+      const auto pair = static_cast<const base::Pair*>(item->getValue());
+      const auto player = dynamic_cast<const models::Player*>(pair->object());
+      if (player == nullptr) continue;
+
+      // base::String::getString() devolve o ponteiro CRU, nulo numa String
+      // vazia -- nunca construir std::string dele sem checar (foi assim que
+      // o DataRecorder nativo abortou; mesma nota em resolveInfo()).
+      const base::String* const typeStr{player->getType()};
+      const char* const typeChars{typeStr != nullptr ? typeStr->getString() : nullptr};
+      const base::String* const nameStr{player->getName()};
+      const char* const nameChars{nameStr != nullptr ? nameStr->getString() : nullptr};
+
+      resolvedCache[static_cast<std::uint32_t>(player->getID())] =
+         resolveFrom(nameChars != nullptr ? nameChars : "",
+                     typeChars != nullptr ? typeChars : "",
+                     player->getMajorType(), player->getSide(), player);
+   }
+   players->unref();
+}
+
 const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb::PlayerId& id)
 {
    const std::uint32_t key{id.id()};
@@ -232,26 +319,17 @@ const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb
             const auto pair = static_cast<const base::Pair*>(item->getValue());
             const auto player = dynamic_cast<const models::Player*>(pair->object());
             if (player != nullptr && static_cast<std::uint32_t>(player->getID()) == key) {
-               const base::String* const typeStr{player->getType()};
                // String::getString() devolve o ponteiro cru, que pode ser
                // nulo numa String vazia -- nunca construir std::string dele
                // sem checar (foi assim que o DataRecorder nativo abortou).
+               const base::String* const typeStr{player->getType()};
                const char* const typeChars{typeStr != nullptr ? typeStr->getString() : nullptr};
-               const std::string playerType{typeChars != nullptr ? typeChars : ""};
+               const base::String* const nameStr{player->getName()};
+               const char* const nameChars{nameStr != nullptr ? nameStr->getString() : nullptr};
 
-               const auto tIt = typeMap.find(playerType);
-               info.type = (tIt != typeMap.end() && !playerType.empty())
-                            ? tIt->second
-                            : defaultTypeForMajor(player->getMajorType());
-
-               const auto cIt = colorMap.find(playerType);
-               info.color = (cIt != colorMap.end() && !playerType.empty())
-                             ? cIt->second
-                             : defaultColorForSide(player->getSide());
-
-               const auto mIt = modelMap.find(playerType);
-               info.model = (mIt != modelMap.end()) ? mIt->second : playerType;
-               info.valid = true;
+               info = resolveFrom(nameChars != nullptr ? nameChars : "",
+                                  typeChars != nullptr ? typeChars : "",
+                                  player->getMajorType(), player->getSide(), player);
             }
             item = item->getNext();
          }
@@ -259,26 +337,46 @@ const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb
       }
    }
 
-   if (!info.valid) {   // nao achado: cai nos mapas por nome, depois no default
-      info.type = acmiTypeFor(id);
-      info.color = acmiColorFor(id);
-      info.model = acmiModelFor(id);
+   if (!info.valid) {
+      // Nao achado: so o que o protobuf deu. Note que 'ac_type'/'major_type'/
+      // 'side' quase sempre faltam em REID_PLAYER_DATA -- e por isso que
+      // publishIdentities() existe.
+      info = resolveFrom(id.has_name() ? id.name() : std::string{},
+                         id.has_ac_type() ? id.ac_type() : std::string{},
+                         id.has_major_type() ? id.major_type() : 0,
+                         id.has_side() ? id.side() : 0);
    }
 
    resolvedCache[key] = info;
    return resolvedCache[key];
 }
 
+//------------------------------------------------------------------------------
+// initIfNeeded() -- socket e arquivo, INDEPENDENTES um do outro.
+//
+// ARMADILHA CORRIGIDA AQUI (encontrada rodando): a versao anterior fazia
+// 'return' assim que server.start() falhava, e com isso NAO abria o .acmi --
+// uma porta ocupada matava tambem a gravacao local, que nao tem nada a ver
+// com o socket. E acontece de verdade neste repositorio: basta uma segunda
+// poc (ou uma segunda instancia do ./app) ja escutando a mesma porta e a
+// missao inteira era perdida em silencio, com a unica pista num std::cerr
+// que o FTXUI engole.
+//
+// Agora o transporte de rede e a gravacao sao tentados separadamente, e
+// 'initialized' passa a significar "ha ALGUM destino" -- que e exatamente o
+// que server.isActive() ja testava no resto da classe. 'initFailed' fica
+// para o caso de nenhum dos dois subir.
+//------------------------------------------------------------------------------
 void TacviewOutput::initIfNeeded()
 {
    if (initialized || initFailed) return;
 
-   if (!server.start(host, port, callsign)) {
+   const bool socketUp{server.start(host, port, callsign)};
+   const bool fileUp{!fileName.empty() && server.startRecording(fileName)};
+
+   if (!socketUp && !fileUp) {
       initFailed = true;
       return;
-   }
-   if (!fileName.empty()) {
-      server.startRecording(fileName);
    }
    initialized = true;
 }

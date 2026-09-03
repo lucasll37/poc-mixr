@@ -4,7 +4,7 @@ dataRecorder: ( ExposedDataRecorder
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
-               port: 1236
+               port: 1234
                callsign: "poc-mixr/dashboard-@SCENARIO_ID@"
                fileName: "./app/data/recordings/mission-@SCENARIO_ID@.acmi"
                modelMap: { @MODEL_MAP@ }

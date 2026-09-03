@@ -67,6 +67,8 @@ RealtimeTelemetryServer::~RealtimeTelemetryServer()
 
 bool RealtimeTelemetryServer::start(const std::string& host, const int port, const std::string& callsign)
 {
+   listenHost_ = host;
+   listenPort_ = port;
    callsign_ = callsign;
 
    listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -110,6 +112,7 @@ bool RealtimeTelemetryServer::start(const std::string& host, const int port, con
 
 bool RealtimeTelemetryServer::startRecording(const std::string& filePath)
 {
+   recordingPath_ = filePath;
    file_.open(filePath, std::ios::out | std::ios::trunc);
    if (!file_.is_open()) {
       std::cerr << "[tacview] falha ao abrir " << filePath << " para gravacao" << std::endl;
@@ -131,15 +134,33 @@ void RealtimeTelemetryServer::acceptIfNeeded()
    clientFd_ = fd;
    knownObjectsSocket_.clear();
 
+   // Os DOIS timeouts vao aqui, ANTES do primeiro sendRaw() -- o de escrita
+   // inclusive, e ele nao e decorativo.
+   //
+   // ARMADILHA MEDIDA (nao redescobrir): sem SO_SNDTIMEO, um cliente que
+   // CONECTA e para de ler (Tacview minimizado, maquina do cliente
+   // engasgada, link caido sem FIN) enche o buffer do socket e o ::send() de
+   // sendRaw() bloqueia PARA SEMPRE. Esse send roda dentro de
+   // OutputHandler::processQueue(), alcancado por station->updateData() --
+   // ou seja, dentro do laco de background da aplicacao. Reproduzido no
+   // ./app com um cliente de teste que so conecta: a thread do laco travou
+   // no send, a main travou no join() dela, o terminal nunca voltou, e a
+   // thread de tempo critico seguiu enfileirando registros numa fila que e
+   // uma base::List SEM TETO (RSS subindo ~1,9 MB/s). Um teto de escrita
+   // transforma isso em "cliente morto, fecha e segue".
+   timeval sendTimeout{1, 0};
+   ::setsockopt(clientFd_, SOL_SOCKET, SO_SNDTIMEO, &sendTimeout, sizeof(sendTimeout));
+
+   // Idem para a leitura: nunca travar o laco caso o cliente nao mande nada.
+   timeval recvTimeout{1, 0};
+   ::setsockopt(clientFd_, SOL_SOCKET, SO_RCVTIMEO, &recvTimeout, sizeof(recvTimeout));
+
    if (!sendRaw(buildHandshake(callsign_))) {
       closeClient();
       return;
    }
 
-   // Consome o handshake de volta do Tacview, com timeout curto para nunca
-   // travar o laco da simulacao caso o cliente nao mande nada.
-   timeval recvTimeout{1, 0};
-   ::setsockopt(clientFd_, SOL_SOCKET, SO_RCVTIMEO, &recvTimeout, sizeof(recvTimeout));
+   // Consome o handshake de volta do Tacview.
    char discard[256];
    ::recv(clientFd_, discard, sizeof(discard), 0);
 
@@ -148,11 +169,13 @@ void RealtimeTelemetryServer::acceptIfNeeded()
       return;
    }
 
+   connectionCount_ += 1;
    std::cout << "[tacview] cliente conectado, transmitindo telemetria" << std::endl;
 }
 
 void RealtimeTelemetryServer::beginFrame(const double simTimeSec)
 {
+   framesEmitted_ += 1;
    std::ostringstream line;
    line << "#" << std::fixed << std::setprecision(2) << simTimeSec;
    writeLine(line.str());
@@ -262,14 +285,21 @@ bool RealtimeTelemetryServer::sendRaw(const std::string& data)
    std::size_t sent{0};
    while (sent < data.size()) {
       const ssize_t n{::send(clientFd_, data.data() + sent, data.size() - sent, MSG_NOSIGNAL)};
+      if (n < 0 && errno == EINTR) continue;   // sinal no meio, nao e erro
+      // Com o SO_SNDTIMEO de acceptIfNeeded(), um cliente que parou de ler
+      // devolve EAGAIN/EWOULDBLOCK depois do teto. Tratamos como cliente
+      // morto (mesmo caminho de n == 0 / erro): quem chama -- writeLine() --
+      // ja faz closeClient(), e a simulacao segue sem exportador.
       if (n <= 0) return false;
       sent += static_cast<std::size_t>(n);
+      bytesSent_ += static_cast<unsigned long>(n);
    }
    return true;
 }
 
 void RealtimeTelemetryServer::writeLine(const std::string& lineWithoutNewline)
 {
+   linesWritten_ += 1;
    if (file_.is_open()) {
       file_ << lineWithoutNewline << "\n";
    }

@@ -18,8 +18,8 @@ namespace app {
 
 namespace {
 using namespace ftxui;
-using namespace mapgeometry;   // kCanvasW/kCanvasH/kPi/kDeg2Rad/Projected/
-                                // project()/worldFromCanvas*()/contourIntervalFor()
+using namespace mapgeometry;   // kPi/kDeg2Rad/Projected/project()/
+                                // worldFromCanvas*()/contourIntervalFor()
                                 // -- ver app/MapGeometry.hpp
 
 // Quanto do limite INFERIOR do canvas fica reservado, em pixel, quando
@@ -58,8 +58,11 @@ std::string formatScaleNm(const double metersPerCell)
 // nivel (TopDown) -- ver o comentario grande de 'drawTerrain', abaixo. Fino
 // o bastante (3px, perto da resolucao do proprio canvas de braille) pra
 // dar linha continua a olho na deteccao de borda por faixa; ainda assim
-// so ~3200 consultas por redesenho (kCanvasW/passo * kCanvasH/passo),
-// desprezivel mesmo chamado ate ~10x/s.
+// poucos milhares de consultas por redesenho (canvasW/passo *
+// canvasH/passo -- cresce com o tamanho do terminal desde que o canvas
+// deixou de ter tamanho fixo), desprezivel mesmo chamado ate ~10x/s:
+// getElevation() e indexacao de um array ja carregado em memoria, nao I/O
+// por chamada.
 const int kTerrainGridStepPx{3};
 
 // project()/worldFromCanvasTopDown()/worldFromCanvasLateral()/
@@ -98,10 +101,13 @@ void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& samp
 {
    if (!sample) return;
 
+   const int canvasW{view.canvasWidthPx};
+   const int canvasH{view.canvasHeightPx};
+
    if (view.perspective == Perspective::TopDown) {
       const int step{kTerrainGridStepPx};
-      const int nx{kCanvasW / step + 2};
-      const int ny{kCanvasH / step + 2};
+      const int nx{canvasW / step + 2};
+      const int ny{canvasH / step + 2};
       std::vector<double> elev(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny), 0.0);
       std::vector<bool> valid(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny), false);
       const auto at = [nx](const int ix, const int iy) {
@@ -112,10 +118,10 @@ void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& samp
       double maxM{-1e18};
       for (int iy = 0; iy < ny; iy++) {
          const int gy{iy * step};
-         if (gy >= kCanvasH) continue;
+         if (gy >= canvasH) continue;
          for (int ix = 0; ix < nx; ix++) {
             const int gx{ix * step};
-            if (gx >= kCanvasW) continue;
+            if (gx >= canvasW) continue;
             double northM{};
             double eastM{};
             worldFromCanvasTopDown(gx, gy, view, northM, eastM);
@@ -132,18 +138,18 @@ void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& samp
       const double interval{contourIntervalFor(minM, maxM)};
       for (int iy = 0; iy < ny; iy++) {
          const int gy{iy * step};
-         if (gy >= kCanvasH) continue;
+         if (gy >= canvasH) continue;
          for (int ix = 0; ix < nx; ix++) {
             const int gx{ix * step};
-            if (gx >= kCanvasW || !valid[at(ix, iy)]) continue;
+            if (gx >= canvasW || !valid[at(ix, iy)]) continue;
             const double e{elev[at(ix, iy)]};
             const int band{static_cast<int>(std::floor(e / interval))};
 
             bool onContour{false};
-            if (ix + 1 < nx && (ix + 1) * step < kCanvasW && valid[at(ix + 1, iy)]) {
+            if (ix + 1 < nx && (ix + 1) * step < canvasW && valid[at(ix + 1, iy)]) {
                if (static_cast<int>(std::floor(elev[at(ix + 1, iy)] / interval)) != band) onContour = true;
             }
-            if (!onContour && iy + 1 < ny && (iy + 1) * step < kCanvasH && valid[at(ix, iy + 1)]) {
+            if (!onContour && iy + 1 < ny && (iy + 1) * step < canvasH && valid[at(ix, iy + 1)]) {
                if (static_cast<int>(std::floor(elev[at(ix, iy + 1)] / interval)) != band) onContour = true;
             }
             if (onContour) {
@@ -154,8 +160,8 @@ void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& samp
    } else {
       std::vector<int> px;
       std::vector<int> py;
-      const int cy{kCanvasH / 2};
-      for (int x = 0; x < kCanvasW; x += 2) {
+      const int cy{canvasH / 2};
+      for (int x = 0; x < canvasW; x += 2) {
          double northM{};
          double eastM{};
          worldFromCanvasLateral(x, view, northM, eastM);
@@ -164,7 +170,7 @@ void drawTerrain(Canvas& c, const MapViewState& view, const TerrainSampler& samp
          const int groundPy{cy - static_cast<int>(
             std::lround((elevM - view.panAltM) / view.metersPerCell))};
          px.push_back(x);
-         py.push_back(std::clamp(groundPy, 0, kCanvasH - 1));
+         py.push_back(std::clamp(groundPy, 0, canvasH - 1));
       }
       for (std::size_t i = 1; i < px.size(); i++) {
          c.DrawPointLine(px[i - 1], py[i - 1], px[i], py[i], Color::Red);
@@ -222,16 +228,31 @@ void drawHeadingLine(Canvas& c, const int px, const int py, const double dx, con
 // ponto, deslocado e recortado pra nao estourar o canvas; a linha sai do
 // ponto ate o inicio do texto.
 void drawLabelCallout(Canvas& c, const int px, const int py, const std::string& label,
-                      const Color color)
+                      const Color color, const int canvasW, const int canvasH)
 {
    const int textW{static_cast<int>(label.size()) * 2};
-   const int textX{std::clamp(px + 5, 0, std::max(0, kCanvasW - textW))};
-   const int textY{std::clamp(py - 11, 0, std::max(0, kCanvasH - 4))};
+   const int textX{std::clamp(px + 5, 0, std::max(0, canvasW - textW))};
+   const int textY{std::clamp(py - 11, 0, std::max(0, canvasH - 4))};
 
    c.DrawPointLine(px, py, textX, textY + 4, color);
    c.DrawText(textX, textY, label, color);
 }
 
+}
+
+void fitMapCanvasToBox(MapViewState& view, const Box& box)
+{
+   // ftxui::Box e INCLUSIVO nos dois extremos -- a largura em celulas e
+   // 'x_max - x_min + 1', nao a diferenca crua.
+   const int cellsW{box.x_max - box.x_min + 1};
+   const int cellsH{box.y_max - box.y_min + 1};
+   if (cellsW < kMapCanvasMinCellsW || cellsH < kMapCanvasMinCellsH) return;
+
+   // Um Canvas de braille tem 2 pixels por celula na horizontal e 4 na
+   // vertical (ftxui/dom/canvas.hpp) -- e por isso que dimensionar por
+   // aqui faz o desenho ocupar a area INTEIRA, sem sobra nem corte.
+   view.canvasWidthPx = cellsW * 2;
+   view.canvasHeightPx = cellsH * 4;
 }
 
 void panMap(MapViewState& view, const double screenRightM, const double screenUpM)
@@ -281,8 +302,8 @@ void snapPanToGroundLevel(MapViewState& view, const TerrainSampler& terrainSampl
    // Mesma equacao de project() pro ramo Lateral, resolvida pra panAltM
    // dado um 'py' ALVO (perto do fundo do canvas): py = cy - (elev -
    // panAltM)/mpc  =>  panAltM = elev - (cy - py) * mpc.
-   const int cy{kCanvasH / 2};
-   const int targetPy{kCanvasH - kGroundMarginBottomPx};
+   const int cy{view.canvasHeightPx / 2};
+   const int targetPy{view.canvasHeightPx - kGroundMarginBottomPx};
    view.panAltM = groundElevM - static_cast<double>(cy - targetPy) * view.metersPerCell;
 }
 
@@ -336,15 +357,17 @@ std::string formatNmMagnitude(const double m)
 Element renderMap(const std::vector<EntityState>& entities, const MapViewState& view,
                   const int focusedId, Box& outCanvasBox, const TerrainSampler& terrainSampler)
 {
-   auto c = Canvas(kCanvasW, kCanvasH);
+   const int canvasW{view.canvasWidthPx};
+   const int canvasH{view.canvasHeightPx};
+   auto c = Canvas(canvasW, canvasH);
 
    // Terreno primeiro -- fica por BAIXO da grade/entidades (desenhadas
    // depois, por cima). So(t) faz algo se 'view.showTerrain' estiver ligado
    // e houver amostrador (ver drawTerrain()).
    if (view.showTerrain) drawTerrain(c, view, terrainSampler);
 
-   const int cx{kCanvasW / 2};
-   const int cy{kCanvasH / 2};
+   const int cx{canvasW / 2};
+   const int cy{canvasH / 2};
 
    // Grade e eixos -- "x"/"y" SAO relativos ao referencial do PAN (o ponto
    // que esta no meio da tela agora), nao ao referencial absoluto da
@@ -354,25 +377,25 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
    // valor em metros de cada coluna de grade sai direto de '(gx-cx)*mpc',
    // sem nenhuma trigonometria extra).
    if (view.perspective == Perspective::TopDown) {
-      for (int gx = cx % kGridStepPx; gx < kCanvasW; gx += kGridStepPx) {
-         drawDimLine(c, gx, 0, gx, kCanvasH - 1);
+      for (int gx = cx % kGridStepPx; gx < canvasW; gx += kGridStepPx) {
+         drawDimLine(c, gx, 0, gx, canvasH - 1);
          const double xM{(gx - cx) * view.metersPerCell};
-         c.DrawText(std::clamp(gx - 6, 0, kCanvasW - 14), kCanvasH - 4,
+         c.DrawText(std::clamp(gx - 6, 0, canvasW - 14), canvasH - 4,
                     formatNm(xM), [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
-      for (int gy = cy % kGridStepPx; gy < kCanvasH; gy += kGridStepPx) {
-         drawDimLine(c, 0, gy, kCanvasW - 1, gy);
+      for (int gy = cy % kGridStepPx; gy < canvasH; gy += kGridStepPx) {
+         drawDimLine(c, 0, gy, canvasW - 1, gy);
          const double yM{(cy - gy) * view.metersPerCell};
-         c.DrawText(0, std::clamp(gy - 2, 0, kCanvasH - 4),
+         c.DrawText(0, std::clamp(gy - 2, 0, canvasH - 4),
                     formatNm(yM), [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
-      c.DrawText(kCanvasW - 20, 2, "x/y (NM)", Color::GrayDark);
+      c.DrawText(canvasW - 20, 2, "x/y (NM)", Color::GrayDark);
 
       // Barra de escala explicita, alem das marcas de grade -- um segmento
       // de comprimento CONHECIDO (kGridStepPx, o mesmo passo da grade) com
       // tiques nas pontas e a distancia correspondente, em NM, escrita
       // embaixo.
-      const int barY{kCanvasH - 10};
+      const int barY{canvasH - 10};
       c.DrawPointLine(4, barY, 4 + kGridStepPx, barY, Color::White);
       c.DrawPointLine(4, barY - 2, 4, barY + 2, Color::White);
       c.DrawPointLine(4 + kGridStepPx, barY - 2, 4 + kGridStepPx, barY + 2, Color::White);
@@ -386,26 +409,26 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
       // elevacao). Sem terreno carregado no cenario a grade so nao tem
       // marca de chao nenhuma -- nao ha mais um piso arbitrario pra cair
       // de volta.
-      for (int gy = cy % kGridStepPx; gy < kCanvasH; gy += kGridStepPx) {
+      for (int gy = cy % kGridStepPx; gy < canvasH; gy += kGridStepPx) {
          const double altM{view.panAltM - (gy - cy) * view.metersPerCell};
          const double altFt{altM * mixr::base::distance::M2FT};
-         drawDimLine(c, 0, gy, kCanvasW - 1, gy);
-         c.DrawText(0, std::clamp(gy - 2, 0, kCanvasH - 4),
+         drawDimLine(c, 0, gy, canvasW - 1, gy);
+         c.DrawText(0, std::clamp(gy - 2, 0, canvasH - 4),
                     formatMeters(altFt) + "ft", [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
 
       // "y: alt(ft)" tem 10 caracteres; Canvas::DrawText anda 2px POR
       // caractere (canvas.cpp: 'x += 2' por glifo) -- precisa de 20px de
-      // largura. Com 'kCanvasW - 14' a string estourava 6px alem da borda
+      // largura. Com 'canvasW - 14' a string estourava 6px alem da borda
       // direita e saia cortada ("y: alt(", sem o "ft)") -- IsIn() descarta
       // em silencio os glifos fora do canvas. Corrigido com a mesma folga
       // (~4px) que "x/y (NM)" ja usa no TopDown.
-      c.DrawText(kCanvasW - 24, 2, "y: alt(ft)", Color::GrayDark);
+      c.DrawText(canvasW - 24, 2, "y: alt(ft)", Color::GrayDark);
    }
 
    // Referencia do pan -- cruz tenue, marca exatamente o "zero" dos eixos
    // acima (o ponto que esta preso ao centro da tela).
-   if (cx >= 0 && cx < kCanvasW && cy >= 0 && cy < kCanvasH) {
+   if (cx >= 0 && cx < canvasW && cy >= 0 && cy < canvasH) {
       c.DrawPointLine(cx - 3, cy, cx + 3, cy, Color::GrayDark);
       c.DrawPointLine(cx, cy - 3, cx, cy + 3, Color::GrayDark);
    }
@@ -452,7 +475,8 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
       c.DrawPointCircleFilled(p.px, p.py, 2, col);
    }
    for (const auto& [p, ePtr] : onScreen) {
-      drawLabelCallout(c, p.px, p.py, ePtr->name, sideColor(ePtr->side));
+      drawLabelCallout(c, p.px, p.py, ePtr->name, sideColor(ePtr->side),
+                       view.canvasWidthPx, view.canvasHeightPx);
    }
 
    const bool topDown{view.perspective == Perspective::TopDown};
@@ -460,7 +484,7 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
       + (topDown ? "  [cima]" : "  [lado]")
       + "  rumo=" + std::to_string(static_cast<int>(std::lround(view.viewYawDeg))) + "deg");
    if (topDown) {
-      c.DrawText(4, kCanvasH - 6, formatNmMagnitude(kGridStepPx * view.metersPerCell) + "NM", Color::White);
+      c.DrawText(4, canvasH - 6, formatNmMagnitude(kGridStepPx * view.metersPerCell) + "NM", Color::White);
    }
 
    return canvas(std::move(c)) | reflect(outCanvasBox) | flex | border;
