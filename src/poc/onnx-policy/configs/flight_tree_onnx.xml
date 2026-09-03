@@ -1,0 +1,58 @@
+<!--
+  A arvore desta poc: quem decide e uma REDE NEURAL.
+
+  E a unica coisa que separa a onnx-policy da multi-thread. Lado a lado:
+
+      multi-thread (flight_tree.xml)       onnx-policy (este arquivo)
+      ...............................      ...............................
+      Fallback                             Fallback
+        +- FuelLow?    -> ReturnToBase       +- OnnxPolicy  (a rede)
+        +- Contact?    -> ReportAndEvade     +- Patrol      (rede de seguranca)
+        +- Alert?      -> SupportAlert
+        +- Patrol
+
+  A ORDEM IMPORTA, e o segundo ramo nao e decorativo:
+
+    1) OnnxPolicy: carrega o .onnx uma vez (a sessao do ONNX Runtime e
+       cacheada por CAMINHO em shared/xinfer, entao as 4 aeronaves
+       compartilham UMA), empacota os 28 campos do WorldView na ordem
+       canonica de shared/xrlbridge/ObservationFields.hpp, infere e comanda.
+       Enquanto a rede responde, o Fallback para aqui.
+
+    2) Patrol: so roda se a rede FALHAR (arquivo ausente, forma diferente de
+       28 para 3, erro de inferencia). Sem este ramo, um .onnx quebrado
+       deixaria a aeronave sem comando nenhum. Os numeros que ele usa
+       (patrolHeading, legTime, patrolAltitude, patrolSpeed) vem dos slots do
+       ( BtBehavior ) no cenario; ver o comentario de la.
+
+  O QUE NAO ESTA AQUI, de proposito: o piso anti-CFIT. Ele nao e da arvore, e
+  o ( AltitudeSafetyBehavior vote: 90 ), que concorre por VOTO com o
+  ( BtBehavior vote: 50 ) no mesmo UbfArbiter. A rede pode comandar uma
+  altitude que fura o terreno; o arbitro nativo sobrepoe sem que esta arvore
+  precise saber disso. E por isso que trocar de politica aqui nao exige
+  revalidar seguranca de voo.
+
+  CAMINHOS RELATIVOS A RAIZ DO REPOSITORIO, como todo caminho de configs/ e
+  data/ das pocs (o binario e executado de la). O .onnx mora ao lado deste
+  arquivo, e nao em dist/share/mixr-plugins/flight/, porque a politica e do
+  CENARIO desta poc e nao do modelo: models/flight instala a sua propria
+  (policy_example.onnx, de pesos aleatorios, usada pelo teste
+  scenario-policy-onnx) e as duas convivem sem se pisar.
+
+  Para trocar a rede: gere outro .onnx (tools/train_policy.py, ou
+  src/rl/tools/export_onnx.py a partir de uma politica treinada), aponte o
+  atributo 'model' para ele e rode de novo. Nada recompila.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <OnnxPolicy model="./src/poc/onnx-policy/configs/policy_barrier.onnx"
+                  normalized="true"
+                  label="ONNX"/>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

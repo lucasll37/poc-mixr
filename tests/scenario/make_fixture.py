@@ -87,7 +87,7 @@ def remove_block(texto, marcador):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--poc", required=True, help="single-thread ou multi-thread")
+    ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (single-thread, multi-thread, python-flight)")
     ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "terrain"))
     ap.add_argument("--out", required=True, help="caminho do .epp.in a gerar")
     args = ap.parse_args()
@@ -109,7 +109,12 @@ def main():
     # truncando a mesma gravacao, em silencio, em todos os testes de cenario.
     # Nenhum teste afirma sobre o .acmi, entao a corrupcao passaria batida
     # justamente no arquivo que um humano abre para depurar.
-    texto = texto.replace("port: 1234", "port: 12341")
+    # Cada poc tem a SUA porta de Tacview (1234 nas gemeas, 1237 na
+    # python-flight); a fixture desvia qualquer uma delas acrescentando um
+    # digito, para nunca disputar a porta com uma poc rodando de verdade.
+    # So a faixa 123x e tocada: o DIS usa 3000/300x e ja saiu com o
+    # bloco 'networks:'.
+    texto = re.sub(r'port:\s*(123\d)\b', lambda m: f'port: {m.group(1)}1', texto)
     texto = re.sub(r'fileName:\s*"[^"]*\.acmi"',
                    f'fileName: "./build/tests-recordings/{args.poc}-{args.mode}.acmi"',
                    texto)

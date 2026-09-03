@@ -1,0 +1,77 @@
+<!--
+  python-flight: a arvore em que TODA acao e um script Python.
+
+  Mesma forma do flight_tree.xml de producao, um Fallback com as quatro
+  prioridades na mesma ordem. A diferenca esta nas FOLHAS DE ACAO: onde a
+  producao tem um no C++ do plugin, aqui ha um ( PyDecide ) apontando para um
+  arquivo de configs/policy/.
+
+    prioridade            condicao (C++, do plugin)   acao (Python, editavel)
+    ....................  ..........................  .......................
+    1) pouco combustivel  FuelLow margin=0.05         policy/rtb.py
+    2) evasao valendo     ContactDetected             policy/evade.py
+    3) alerta recebido    AlertReceived               policy/support.py
+    4) nada acontecendo   (nenhuma)                   policy/patrol.py
+
+  POR QUE AS CONDICOES CONTINUAM EM C++. ContactDetected nao pergunta "estou
+  vendo o intruso agora": ele consulta domain::ThreatPolicy::engaged(), que
+  continua verdadeiro por 'evadeHold' segundos DEPOIS de a pista sumir. Essa
+  histerese envelhece com o 'dt' do frame, e um script Python nao recebe
+  'dt': a fronteira de shared/xpyembed e "28 floats entram, 3 saem". Sem ela,
+  a propria quebra tira o intruso do setor do radar (30 graus para cada lado,
+  contra uma quebra de 110), a pista pisca, e os ramos 2 e 3, que comandam
+  sentidos OPOSTOS sobre o mesmo objeto, alternam para sempre (a aeronave
+  "batendo asa", observada no Tacview e registrada no cabecalho do
+  flight_tree.xml).
+
+  POR QUE ( ReportAndEvade ) SOBREVIVEU DENTRO DO RAMO 2. Ele faz duas
+  coisas: fixa o comando de quebra E marca o pedido de alerta tatico. O
+  ( PyDecide ) logo depois sobrescreve o comando, ja que
+  FlightDecision::take() troca rumo, altitude e rotulo, mas NAO limpa o
+  pedido de alerta. Entao o aviso aos outros continua saindo do C++, na fase
+  1 do frame seguinte, e a MANOBRA passa a ser a do Python. E tambem por isso
+  que o ramo 3 existe de verdade neste subprojeto: sem esse alerta, nenhum
+  falcon receberia apoio.
+
+  DEGRADACAO. Sem interpretador Python no sistema, script ausente, sem
+  decide(), ou excecao: cada ( PyDecide ) devolve FAILURE. Os ramos 1 a 3
+  falham com ele (Sequence), o ramo 4 tambem, e o ( Patrol ) nativo do fim
+  assume. A aeronave continua voando, com a patrulha em C++ configurada
+  pelos slots patrol*/legTime do cenario. E o mesmo desenho do
+  flight_tree_py.xml do models/flight, so que com quatro folhas em vez de
+  uma.
+
+  Os caminhos sao relativos a RAIZ DO REPOSITORIO, que e de onde todos os
+  binarios desta poc-mixr sao executados.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <PyDecide script="./src/poc/python-flight/configs/policy/rtb.py"
+                  label="PY-RTB"/>
+      </Sequence>
+
+      <Sequence name="engage_sequence">
+        <ContactDetected/>
+        <ReportAndEvade/>
+        <PyDecide script="./src/poc/python-flight/configs/policy/evade.py"
+                  label="PY-EVADE"/>
+      </Sequence>
+
+      <Sequence name="support_sequence">
+        <AlertReceived/>
+        <PyDecide script="./src/poc/python-flight/configs/policy/support.py"
+                  label="PY-SUPPORT"/>
+      </Sequence>
+
+      <PyDecide script="./src/poc/python-flight/configs/policy/patrol.py"
+                label="PY-PATROL"/>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-bandit-dis run-app venv-rl test-rl test test-asan
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl test test-asan
 
 .DEFAULT_GOAL := help
 
@@ -197,6 +197,20 @@ run-multi-thread: install ## Run multi-thread (o single-thread trocando só o ag
 check-multi-thread: install ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
 	@./tests/determinism/check_determinism.sh \
 		$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread multi-thread 2000 multi-thread
+
+run-python-flight: install ## Run python-flight (a mesma pilha do multi-thread com as leis de voo em Python: configs/policy/*.py, editáveis sem recompilar; Tacview 1237).
+	$(BUILD_DIR)/src/poc/python-flight/src/python-flight
+
+check-python-flight: install ## Verifica o determinismo do python-flight (mesmo estado com 1, 2 e 4 threads T/C — os quatro scripts decidem em paralelo, serializados pelo GIL).
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/src/poc/python-flight/src/python-flight python-flight 2000 python-flight
+
+run-onnx-policy: install ## Run onnx-policy (a mesma pilha do multi-thread com a decisão numa REDE NEURAL: configs/policy_barrier.onnx, inferido na fase 3 do frame; Tacview 1238).
+	$(BUILD_DIR)/src/poc/onnx-policy/src/onnx-policy
+
+check-onnx-policy: install ## Verifica o determinismo do onnx-policy (mesmo estado com 1, 2 e 4 threads T/C — as quatro aeronaves inferem em paralelo, numa sessão só do ONNX Runtime).
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/src/poc/onnx-policy/src/onnx-policy onnx-policy 2000 onnx-policy
 
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \

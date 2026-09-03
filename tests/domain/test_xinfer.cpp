@@ -18,6 +18,8 @@
 #include <array>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
 #include <cstring>
 #include <thread>
 #include <vector>
@@ -34,8 +36,13 @@ class ArquivoTemporario
 {
 public:
    explicit ArquivoTemporario(const std::string& conteudo)
-      : caminho_{std::tmpnam(nullptr)}
    {
+      // mkstemp e nao tmpnam: o segundo e uma corrida entre gerar o nome e
+      // abrir, e o linker avisa sobre ele em toda compilacao.
+      char molde[]{"/tmp/xinfer-teste-XXXXXX"};
+      const int fd{::mkstemp(molde)};
+      if (fd >= 0) ::close(fd);
+      caminho_ = molde;
       std::ofstream out{caminho_, std::ios::binary};
       out << conteudo;
    }

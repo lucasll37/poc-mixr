@@ -120,6 +120,7 @@ caminho relativo.
 | [`single-thread`](src/poc/single-thread/) | `make run-single-thread` | 1234 | decisão no `( SimAgent )` nativo, thread de background |
 | [`multi-thread`](src/poc/multi-thread/) | `make run-multi-thread` | 1234 | o mesmo modelo, decisão no `( FlightAgentTC )` próprio, fase 3 |
 | [`bandit-dis`](src/poc/bandit-dis/) | `make run-bandit-dis` | 1235 | só o intruso, pilotável por joystick, emitindo DIS |
+| [`python-flight`](src/poc/python-flight/) | `make run-python-flight` | 1237 | o mesmo modelo, com as **leis de voo em Python** — quatro `.py` editáveis sem recompilar |
 
 `single-thread`/`multi-thread` são **alternativas** entre si (nunca rodam juntos); qualquer um
 roda sozinho ou ao lado do `bandit-dis`, que entrega o intruso **só pela rede** (DIS) — nenhuma
@@ -164,6 +165,7 @@ make test                            # as suítes do host e do(s) modelo(s)
 
 make check-single-thread   # determinismo com a decisão no laço de background
 make check-multi-thread    # determinismo com os 4 agentes decidindo em paralelo, na fase 3
+make check-python-flight   # o mesmo, com os 4 agentes decidindo em Python (um GIL para os quatro)
 make compare-single-multi  # lista o que difere entre os dois subprojetos (deve ser só o agente)
 make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```
@@ -181,7 +183,9 @@ poc-mixr/
 ├── src/                    subprojetos "poc": um executavel independente por pasta
 │   ├── single-thread/      decisao no ( SimAgent ) nativo, em updateData() -- thread de background
 │   ├── multi-thread/       decisao no ( FlightAgentTC ) proprio, na fase 3 do frame de tempo critico
-│   └── bandit-dis/         o intruso sozinho -- joystick/Autopilot + emissao DIS, sem UBF nenhum
+│   ├── bandit-dis/         o intruso sozinho -- joystick/Autopilot + emissao DIS, sem UBF nenhum
+│   └── python-flight/      a multi-thread com as LEIS DE VOO em Python (configs/policy/*.py),
+│                           avaliadas dentro da fase 3 do frame -- sem recompilar nada
 ├── models/                 o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (ver §8)
 │   ├── flight/             o modelo de producao (o que os quatro subprojetos acima carregam)
 │   ├── missile/            segundo modelo -- demo academica de missil guiado 6-DOF
@@ -313,5 +317,6 @@ vale é o pacote instalado.
 | [models/fixtures/stub/docs/CONTRATO.md](models/fixtures/stub/docs/CONTRATO.md) | o que um modelo **tem** de fazer — inclusive a obrigação que falha em silêncio |
 | [src/poc/single-thread/README.md](src/poc/single-thread/README.md) | a aula completa sobre um subprojeto, arquivo por arquivo |
 | [src/poc/multi-thread/README.md](src/poc/multi-thread/README.md) | onde uma decisão deve rodar, e o que isso custa |
+| [src/poc/python-flight/README.md](src/poc/python-flight/README.md) | escrever a política em Python, dentro do frame — o que atravessa a fronteira e o que não |
 | [src/rl/README.md](src/rl/README.md) | o wrapper Gymnasium — como treinar um agente de RL contra a mesma simulação |
 | [tests/README.md](tests/README.md) | as suítes de teste — o que cada camada prova |

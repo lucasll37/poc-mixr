@@ -219,9 +219,16 @@ test('xpyembed-isolamento', test_xpyembed, suite: 'domain', timeout: 120)
 # is_parallel: false em tudo que roda um executavel da poc: app/ScenarioTemplate
 # grava o cenario expandido sempre no MESMO caminho.
 # ------------------------------------------------------------------------------
+# O quarto campo e o prefixo de rotulo: a src/poc/python-flight troca as folhas
+# de ACAO da arvore por ( PyDecide ) e rotula cada uma com 'PY-<modo>'. As
+# propriedades afirmadas sao as MESMAS -- quem evadiu avisa, quem apoiou
+# recebeu, ninguem voou para dentro do terreno -- entao ela entra na bateria
+# que ja existe, normalizando o rotulo na entrada, em vez de ganhar uma copia
+# do runner que envelheceria em silencio ao lado dele.
 pocs = [
-    ['single-thread', single_thread,  'nao-critico'],
-    ['multi-thread',  multi_thread,   'critico'],
+    ['single-thread', single_thread,  'nao-critico', ''],
+    ['multi-thread',  multi_thread,   'critico',     ''],
+    ['python-flight', python_flight,  'python',      'PY-'],
 ]
 
 scenario_runner = files('scenario/run_scenario_test.py')
@@ -229,14 +236,16 @@ leak_runner     = files('memory/run_leak_test.py')
 determinism_sh  = files('determinism/check_determinism.sh')
 
 foreach poc : pocs
-    nome = poc[0]
-    bin  = poc[1]
-    laco = poc[2]
+    nome    = poc[0]
+    bin     = poc[1]
+    laco    = poc[2]
+    prefixo = poc[3]
 
     foreach modo : ['intruder', 'lowfuel', 'terrain']
         test('scenario-' + modo + '-' + nome, py,
              args: scenario_runner + ['--binario', bin.full_path(), '--poc', nome,
-                                      '--mode', modo, '--frames', '800'],
+                                      '--mode', modo, '--frames', '800',
+                                      '--label-prefix', prefixo],
              depends: bin, workdir: raiz, suite: 'scenario',
              timeout: 900, is_parallel: false)
     endforeach
@@ -309,6 +318,47 @@ foreach caso : [['onnx', 'flight_tree_onnx.xml', 'ONNX'],
          depends: multi_thread, workdir: raiz, suite: 'scenario',
          timeout: 900, is_parallel: false)
 endforeach
+
+# ------------------------------------------------------------------------------
+# src/poc/onnx-policy -- a poc em que a decisao E a rede neural.
+#
+# NAO entra na lista 'pocs' acima, e a razao e o desenho dela: a arvore tem uma
+# folha util so, ( OnnxPolicy ), entao nao ha rotulo EVADE/SUPPORT/RTB para os
+# modos 'intruder' e 'lowfuel' afirmarem -- uma politica treinada substitui a
+# ARVORE INTEIRA, ao contrario da python-flight, que troca as FOLHAS e por isso
+# preserva a forma que aqueles modos medem.
+#
+# O que sobra dela e afirmado por dois testes, e os dois dizem algo que nenhum
+# outro diz:
+#
+#   1. a bateria de politica (a mesma de scenario-policy-*, agora apontada para
+#      o cenario PROPRIO desta poc, sem troca de arvore): a rede decidiu em
+#      todos os frames (bt=ONNX, ou seja nao caiu no Fallback), os dumps de 1, 2
+#      e 4 threads sao byte-identicos com as quatro aeronaves inferindo em
+#      paralelo, e 'dec' avanca na taxa de 'frame';
+#   2. o modo 'terrain': com o piso do ( AltitudeSafetyBehavior vote: 90 ) acima
+#      da altitude de cruzeiro, TODA linha sai bt=SAFETY -- a prova de que a
+#      rede (voto 50) nao tem a ultima palavra sobre o terreno. E a propriedade
+#      que torna seguro trocar de politica sem revalidar seguranca de voo.
+# ------------------------------------------------------------------------------
+test('scenario-onnx-policy', py,
+     args: files('scenario/run_policy_test.py') + [
+         '--binario', onnx_policy.full_path(),
+         '--poc', 'onnx-policy', '--label', 'ONNX', '--frames', '600'],
+     depends: onnx_policy, workdir: raiz, suite: 'scenario',
+     timeout: 900, is_parallel: false)
+
+test('scenario-terrain-onnx-policy', py,
+     args: scenario_runner + ['--binario', onnx_policy.full_path(),
+                              '--poc', 'onnx-policy', '--mode', 'terrain',
+                              '--frames', '800'],
+     depends: onnx_policy, workdir: raiz, suite: 'scenario',
+     timeout: 900, is_parallel: false)
+
+test('memory-onnx-policy', py,
+     args: leak_runner + [onnx_policy.full_path(), 'onnx-policy'],
+     depends: onnx_policy, workdir: raiz, suite: 'memory',
+     timeout: 1800, is_parallel: false)
 
 # multi-thread NAO. Ver o cabecalho do script.
 test('onde-a-decisao-roda', py,

@@ -32,20 +32,48 @@ convencao de src/rl/tests/test_smoke.py.
 from __future__ import annotations
 
 import argparse
+import os
+import pathlib
 import sys
+
+
+def carregar_native():
+    """Carrega mixr_gym._native SEM passar pelo __init__ do pacote.
+
+    O __init__ importa env.py, que importa gymnasium e numpy. Este script so
+    precisa da lista de nomes -- exigir o venv de treino para gerar um .onnx
+    de teste seria uma dependencia gratuita. Carregar o .so direto tambem
+    preserva a ordem de dlopen que o __init__ documenta (RTLD_GLOBAL antes de
+    qualquer outra extensao C), porque aqui nada mais foi importado ainda.
+    """
+    import glob
+    import importlib.util
+
+    raiz = pathlib.Path(__file__).resolve().parents[3]
+    padrao = str(raiz / "dist" / "python" / "mixr_gym" / "_native*.so")
+    achados = glob.glob(padrao)
+    if not achados:
+        sys.exit(f"nao achei o modulo nativo em {padrao}\n  rode 'make install' primeiro.")
+
+    anterior = sys.getdlopenflags()
+    sys.setdlopenflags(anterior | os.RTLD_GLOBAL)
+    try:
+        spec = importlib.util.spec_from_file_location("_native", achados[0])
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+    finally:
+        sys.setdlopenflags(anterior)
+    return modulo
 
 
 def ordem_canonica() -> list[str]:
     """Os 28 nomes, na ordem, vindos do C++ -- nunca de uma lista local."""
     try:
-        import mixr_gym
-        return list(mixr_gym._native.observation_field_names())
+        return list(carregar_native().observation_field_names())
+    except SystemExit:
+        raise
     except Exception as exc:  # noqa: BLE001
-        sys.exit(
-            f"nao consegui ler a ordem canonica do C++: {exc}\n"
-            "  rode com PYTHONPATH=./dist/python e cwd na raiz do repositorio,\n"
-            "  depois de 'make install'."
-        )
+        sys.exit(f"nao consegui ler a ordem canonica do C++: {exc}")
 
 
 def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int) -> None:
@@ -153,12 +181,23 @@ def main() -> None:
                        help="gera um .onnx de pesos aleatorios com a forma certa")
     grupo.add_argument("--sb3", metavar="ZIP",
                        help="exporta uma politica treinada do Stable-Baselines3")
-    ap.add_argument("-o", "--out", required=True, help="arquivo .onnx de saida")
+    grupo.add_argument("--campos", action="store_true",
+                       help="so imprime a ordem canonica dos campos e sai")
+    ap.add_argument("-o", "--out", help="arquivo .onnx de saida (nao usado com --campos)")
     ap.add_argument("--hidden", type=int, default=64, help="tamanho da camada oculta (--random)")
     ap.add_argument("--seed", type=int, default=0, help="semente (--random)")
     args = ap.parse_args()
 
     nomes = ordem_canonica()
+
+    if args.campos:
+        for i, nome in enumerate(nomes):
+            print(f"{i:2d} {nome}")
+        return
+
+    if not args.out:
+        ap.error("-o/--out e obrigatorio para exportar")
+
     print(f"ordem canonica ({len(nomes)} campos), lida do C++")
 
     if args.random:

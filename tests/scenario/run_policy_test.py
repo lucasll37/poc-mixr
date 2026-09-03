@@ -15,9 +15,10 @@ O que este teste prova, e que nenhum outro prova:
      tests/determinism/check_determinism.sh.
 
 A fixture e DERIVADA do cenario de producao (make_fixture.py), nao uma copia
-versionada: uma copia comecaria certa e envelheceria em silencio. O unico
-delta e o 'treeFile:', que passa a apontar para a arvore de deploy da
-politica.
+versionada: uma copia comecaria certa e envelheceria em silencio. Com
+'--tree', o unico delta e o 'treeFile:', que passa a apontar para a arvore de
+deploy da politica; sem ele, a fixture e a da poc como ela e -- o caso da
+src/poc/onnx-policy, cujo cenario ja aponta para a rede.
 """
 
 import argparse
@@ -30,11 +31,21 @@ import tempfile
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 
 
-def gerar_fixture(destino: pathlib.Path, arvore: str) -> None:
+def gerar_fixture(destino: pathlib.Path, poc: str, arvore: str | None) -> None:
+    """Fixture hermetica da poc dada, opcionalmente com a arvore trocada.
+
+    Sem '--tree' nao ha troca nenhuma: e o caso de uma poc cujo PROPRIO
+    cenario ja aponta para a arvore da politica (src/poc/onnx-policy). Com
+    '--tree', o cenario de producao da poc (que aponta para as regras em C++)
+    e desviado para a arvore de deploy que models/flight instala -- o caso
+    das gemeas, que nao tem cenario proprio de politica.
+    """
     subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
-         "--poc", "multi-thread", "--mode", "intruder", "--out", str(destino)],
+         "--poc", poc, "--mode", "intruder", "--out", str(destino)],
         check=True, cwd=RAIZ, stdout=subprocess.DEVNULL)
+    if arvore is None:
+        return
     texto = destino.read_text()
     if "flight_tree.xml" not in texto:
         sys.exit("fixture nao tem 'flight_tree.xml' -- o cenario mudou de forma?")
@@ -51,14 +62,17 @@ def rodar(binario: str, fixture: pathlib.Path, threads: int, frames: int) -> lis
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--binario", required=True)
-    ap.add_argument("--tree", required=True, help="nome do .xml da arvore")
+    ap.add_argument("--poc", default="multi-thread",
+                    help="pasta em src/poc/ de onde a fixture e derivada")
+    ap.add_argument("--tree", help="nome do .xml da arvore a por no lugar do de "
+                                   "producao; omitido, usa o do proprio cenario")
     ap.add_argument("--label", required=True, help="rotulo esperado em bt=")
     ap.add_argument("--frames", type=int, default=600)
     args = ap.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
-        fixture = pathlib.Path(tmp) / "onnx.epp.in"
-        gerar_fixture(fixture, args.tree)
+        fixture = pathlib.Path(tmp) / "politica.epp.in"
+        gerar_fixture(fixture, args.poc, args.tree)
 
         dumps = {}
         for t in (1, 2, 4):

@@ -37,6 +37,14 @@ estado via **DIS nativo do MIXR** (`mixr::dis`) para quem quiser recebê-lo — 
 `multi-thread`, que não têm mais um `bandit1:` local e o recebem só pela rede. Ver a seção própria
 mais abaixo.
 
+E um **quarto**, `src/poc/python-flight/`, que muda um eixo diferente: não *onde* a decisão roda —
+ele é a `multi-thread` inteira, com o mesmo `( FlightAgentTC )` na fase 3 — e sim **em que
+linguagem ela é escrita**. As folhas de ação da árvore de comportamento são quatro arquivos `.py`
+lidos em tempo de execução (`configs/policy/`), avaliados dentro do frame por `shared/xpyembed`;
+editar a política deixa de ser recompilar. As **condições** da árvore continuam em C++, e a razão
+está na seção própria: elas dependem do `dt` do frame, que a fronteira "28 floats entram, 3 saem"
+não atravessa.
+
 Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
 `12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
 pastas **não existem mais** e o prefixo numérico **não é mais convenção**: subprojeto novo ganha
@@ -101,12 +109,14 @@ ser executados a partir da raiz do repositório:**
 ./build/src/poc/single-thread/src/single-thread
 ```
 
-Opções de linha de comando, aceitas pelas duas pocs: `-f <arquivo>` (cenário alternativo),
+Opções de linha de comando, aceitas por `single-thread`/`multi-thread`/`python-flight`:
+`-f <arquivo>` (cenário alternativo),
 `-threads <N>` (quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo).
 
 **A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
-a verificação de **determinismo** tem alvos próprios (`check-single-thread` e `check-multi-thread`): roda N frames de passo fixo com 1, 2 e 4 threads
-T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **duas** pocs, a
+a verificação de **determinismo** tem alvos próprios (`check-single-thread`, `check-multi-thread`
+e `check-python-flight`): roda N frames de passo fixo com 1, 2 e 4 threads
+T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **três**, a
 `single-thread` inclusive: ela também roda os players no pool de threads T/C, só decide fora
 dele. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
 O alvo `compare-single-multi` lista o que difere entre as duas pastas (deve ser só o agente).
@@ -613,6 +623,101 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    `bandit-dis` não tem `Fleet` (um player só), `main.cpp` aplica `setThrottles(0.95, 1)` uma vez
    direto no `bandit1`, achado por nome via `getPlayers()`.
 
+### `src/poc/python-flight` — as LEIS DE VOO em Python, dentro do frame
+
+Quarto subprojeto de `src/poc/`. É a `multi-thread` **inteira** — mesmo cenário, mesma pilha
+nativa, mesmo `libflight_tc.so`, mesmo `( FlightAgentTC )` decidindo na fase 3 — com **uma**
+diferença: as folhas de **ação** da árvore de comportamento não são nós C++ do plugin, são quatro
+arquivos `.py` em `configs/policy/`, lidos em tempo de execução. Editar a política deixa de ser
+recompilar. Portas próprias (Tacview **1237**, DIS **3004**), então roda ao lado das outras três.
+
+**Nenhuma linha de C++ foi escrita para isto**, e esse é o resultado a observar: `shared/xpyembed`
+(o interpretador embarcado) e `bt/nodes/PyDecideAction` (o nó `( PyDecide )`) já existiam; o que
+faltava era uma poc **completa** em cima deles. O que havia antes era um `flight_tree_py.xml` de
+exemplo no `models/flight`, com um nó e um script de dez linhas, exercitado só pelo teste
+`scenario-policy-python` — não havia como *rodar* e olhar no Tacview. O host desta pasta é cópia
+do da `multi-thread` com caminhos e banner trocados.
+
+**A divisão é deliberada: CONDIÇÃO em C++, AÇÃO em Python.** `configs/flight_tree_python.xml` tem a
+mesma forma da árvore de produção (um `Fallback` com as quatro prioridades na mesma ordem); só as
+folhas de ação mudam:
+
+| prioridade | condição (C++, do plugin) | ação (Python, editável) |
+|---|---|---|
+| 1) pouco combustível | `FuelLow margin="0.05"` | `policy/rtb.py` |
+| 2) evasão valendo | `ContactDetected` | `policy/evade.py` |
+| 3) alerta recebido | `AlertReceived` | `policy/support.py` |
+| 4) nada acontecendo | — | `policy/patrol.py` |
+| (degradação) | — | `( Patrol )` nativo, no fim do `Fallback` |
+
+Quatro folhas, e não uma, porque o `label` do `( PyDecide )` é estático: com um nó só, o dump sairia
+com `bt=PY` constante e o rótulo deixaria de significar alguma coisa. Assim sai `bt=PY-EVADE`,
+`bt=PY-SUPPORT` — e cada script fica pequeno.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **`ContactDetected` NÃO pode migrar para Python.** Ele não pergunta "estou vendo o intruso
+   agora": consulta `domain::ThreatPolicy::engaged()`, que continua true por `evadeHold` segundos
+   **depois** de a pista sumir, e essa histerese envelhece com o `dt` do frame. A fronteira de
+   `shared/xpyembed` é **28 floats entram, 3 saem** — não há `dt`. Sem a histerese, a própria
+   quebra tira o intruso do setor do radar (±30° contra uma quebra de 110°), a pista pisca, e os
+   ramos 2 e 3 (que comandam sentidos **opostos** sobre o mesmo objeto) alternam para sempre — a
+   oscilação já registrada no cabeçalho do `flight_tree.xml`. Isso não é limitação a contornar: é
+   o que mantém cada script **puro em relação ao estado da própria aeronave**, que é a condição do
+   determinismo.
+2. **`( ReportAndEvade )` fica DENTRO do ramo 2, antes do `( PyDecide )`, e isso é o que faz o
+   ramo 3 existir.** Ele marca o pedido de alerta tático (`FlightDecision::broadcastAlert`), e
+   `FlightDecision::take()` — o caminho pelo qual o script entrega o comando — sobrescreve rumo,
+   altitude e rótulo mas **não** limpa esse pedido (`NodeContext.hpp`). Resultado: quem **avisa**
+   os outros é o C++, quem **manobra** é o Python. Sem esse nó no meio, nenhum falcon receberia
+   alerta e `AlertReceived` nunca dispararia.
+3. **Comentário de XML não aceita `--`** — mesma armadilha já registrada para o `aim1.xml` do
+   JSBSim (armadilha 6 da seção do míssil), aqui com o parser do BehaviorTree.CPP. Pegou ao
+   escrever o cabeçalho longo de `flight_tree_python.xml`. `python3 -c "import
+   xml.dom.minidom; xml.dom.minidom.parse('<arquivo>')"` antes de rodar economiza o ciclo.
+4. **Nada nesta pasta pode integrar tempo** (corolário da armadilha 1), e é por isso que as duas
+   regras de estado foram desenhadas sem relógio:
+   * a patrulha é **geométrica** — uma órbita de raio fixo em torno da base, com o rumo saindo da
+     posição atual a cada tick (`rumo = marcação_para_a_base - 90° + correção_de_raio`) — e não
+     as pernas cronometradas do `( Patrol )` nativo, que derivam. Medido: raio mantido a **menos
+     de 1 m** dos 5 NM nominais, sem deriva.
+   * o fim de um episódio de evasão é detectado por **distância percorrida entre duas chamadas**:
+     entre dois ticks consecutivos a aeronave anda ~1,6 m (82 m/s a 50 Hz), entre dois episódios
+     ela passa minutos patrulhando; um salto > 50 m significa "faz tempo que este script não é
+     chamado". É o que permite **fixar o alvo na entrada da manobra**, sem o qual a curva nunca
+     termina (a mesma armadilha que `domain::ThreatPolicy` resolve com `if (!engaged_)`).
+5. **Uma variável global de módulo é estado POR AERONAVE** — cada `(script, aeronave)` recebe o
+   seu próprio dicionário de globais em `shared/xpyembed`. É assim que `patrol.py`/`rtb.py`
+   guardam a altitude de cruzeiro: cada falcon nasce numa altitude própria (1750/1850/2050/2100 m,
+   calculadas no `.epp` contra o pico do circuito de cada um) e o script simplesmente guarda a
+   altitude da **primeira** decisão — medido, sai exatamente igual ao `.epp`, sem o script saber
+   que existem quatro aeronaves. O que **continua compartilhado** é o `sys.modules`, e é por isso
+   que os dois helpers de ângulo estão **repetidos** nos quatro arquivos em vez de importados: um
+   `import` seria a única porta de estado compartilhado da pasta.
+6. **A folga de terreno dos scripts é 850 m, acima do `recoverClearance` de 800 m** do
+   `( AltitudeSafetyBehavior )` (voto 90 contra os 50 da árvore). Mantendo-se acima da rede de
+   segurança, a política em Python nunca entra em disputa com ela — e a rede continua lá, para o
+   caso de um script novo fazer besteira.
+7. **`tests/scenario/make_fixture.py` desviava a porta do Tacview com um `replace("port: 1234", ...)`
+   literal** — que não alcançaria a 1237 desta poc, e a fixture disputaria a porta com uma
+   execução de verdade. Virou uma regex sobre a faixa `123x` (o DIS usa `3000`/`300x` e já sai com
+   o bloco `networks:`); a substituição das gêmeas continua idêntica, byte a byte.
+8. **`tests/scenario/run_scenario_test.py` afirma sobre rótulos literais** (`EVADE`, `SUPPORT`,
+   `RTB`, `SAFETY`). Em vez de uma cópia do runner que envelheceria em silêncio ao lado dele,
+   ganhou `--label-prefix`, que normaliza `PY-EVADE` → `EVADE` na entrada: as propriedades
+   afirmadas são as do **modelo** (quem evadiu avisa, quem apoiou recebeu, ninguém voou para
+   dentro do terreno) e valem igual quando o comando sai de um script. Rótulo que não começa com o
+   prefixo passa intacto — o caso dos nós nativos que sobrevivem na árvore (`SAFETY`, e o `PATROL`
+   de degradação).
+
+**O que foi medido rodando:** determinismo com 1, 2 e 4 threads T/C em 2000 frames (dumps e
+mensagens **byte-idênticos**, com quatro `decide()` em paralelo sobre um GIL só); a cadeia
+`PY-PATROL` → `PY-EVADE` → `PY-SUPPORT` se propagando entre os players na fixture com intruso; as
+quatro aeronaves decidindo em threads diferentes do pool (`thread 1..4` no `data/logs/`); a
+degradação com o script removido (`bt=PATROL`, do nó nativo — a aeronave não cai nem congela); e o
+custo do Python no frame, **~42 µs por decisão** (~0,8% de um frame de 20 ms), medido com os dois
+binários na mesma fixture, 4000 frames, 4 threads, três repetições.
+
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 
 O banco de elevação é **100% nativo**: `libmixr_terrain.so` já vinha linkado (o `mixr.pc` do
@@ -694,9 +799,9 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `domain` | as regras puras de `domain/` (histerese, alvo fixo, lado da quebra, piso anti-CFIT, pernas da patrulha) | 42 testes, ~10 ms |
 | `tree` | a maquina de estados, carregando o **`flight_tree.xml` de producao** contra um `FakeDecisionContext` — sem `Station` | 15 testes, ~10 ms |
 | `native` | as classes MIXR do modelo: coerencia da fabrica, slots com tipo **e unidade**, e a fronteira de fase do `AlertDatalink` — sem `Station` | 9 testes, ~10 ms |
-| `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 2 pocs |
+| `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 3 pocs |
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
-| `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
+| `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao e com a politica em Python**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`models/plugins/`) | 6 testes, ~3 s |
 | `guard` | `domain/`, `bt/` e a fiacao de plugin continuam byte-identicos entre as duas pocs | instantaneo |
 
@@ -1035,7 +1140,7 @@ falcon1 indo de 141° para 34°.
 1. Criar `src/poc/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
    executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
    `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`). `src/poc/` é a pasta que
-   agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis) — o dashboard (`./app/`)
+   agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis/python-flight) — o dashboard (`./app/`)
    fica fora, na raiz, por ser o único ocupante da própria pasta.
 2. Adicionar `subdir('./<nome>')` em [src/poc/meson.build](src/poc/meson.build) — não em
    `src/meson.build`, que só delega pra `subdir('./poc')`.
@@ -2419,6 +2524,87 @@ de `dist/`). `make venv-rl` cria/atualiza um venv LOCAL em `src/rl/.venv` (gitig
 `gymnasium`+`numpy`; `make test-rl` (depende de `venv-rl`) roda `src/rl/tests/test_smoke.py` contra
 a `Station` de verdade — fora de `make test` de propósito, por depender de pacotes Python fora da
 toolchain Conan/Meson.
+
+## `shared/xinfer` e `shared/xpyembed` — decisão por ONNX e por Python, dentro do frame
+
+Duas `shared_library()` novas no SDK (agora são seis: `xboard`, `xlog`, `xtrack`, `xrlbridge`,
+`xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/flight`, que juntos fecham o ciclo
+que o `src/rl` tinha aberto pela metade.
+
+**O que mudou de direção.** O `RLBridgeBehavior` (a referência deste trabalho) é uma *caixa de
+correio*: o Python dirige o frame de fora e o modelo só publica observação e consome comando, com
+um frame de latência. Isso treina, mas não põe em produção. Os nós novos decidem **dentro** do
+`genAction()`, na fase 3, sem Python no caminho (ONNX) ou com um interpretador embarcado (Python):
+
+| nó | o que faz | árvore |
+|---|---|---|
+| `OnnxPolicy` | roda a política treinada em `src/rl`, exportada para `.onnx` | `flight_tree_onnx.xml` |
+| `OnnxScore` | condição genérica: compara uma saída do modelo com um limiar | (qualquer) |
+| `PyDecide` | roda um `decide(obs)` escrito em Python — prototipagem | `flight_tree_py.xml`; e as quatro folhas de `src/poc/python-flight` |
+
+**Nó de BT não custa nome de fábrica.** Os três são registrados na `BT::BehaviorTreeFactory`, não
+na factory MIXR — zero mudança em `provides:`, em `.epp`, em `stub.cpp` ou em `xnative/factory.cpp`.
+Um nome de fábrica novo custaria 10 pontos de edição (foi o preço pago pelo `RLBridgeBehavior`). A
+árvore de **produção** fica intocada; trocar de política é apontar `treeFile:` para outro arquivo.
+
+**Por que as libs, e não código dentro do plugin.** Mesmo argumento de `shared/xboard/Board.hpp`,
+com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/flight` gera
+**quatro** artefatos do mesmo `model_sources` (~2,3 GB recopiados por `sync-plugins`); o
+`-Wl,--no-undefined` **proíbe** o plugin de chamar a API C do CPython sem linkar `libpython`; e as
+extensões C do Python só importam com `libpython` no escopo global. Contido nas libs, o plugin
+continua com 12 MB e **1 símbolo forte**.
+
+**Contrato de dados com fonte única.** A ordem dos 28 campos numéricos da observação era mantida à
+mão em cinco lugares. Virou uma X-macro — `shared/xrlbridge/ObservationFields.hpp` — expandida
+contra `domain::WorldView` no modelo e contra `xrlbridge::Observation` na ponte: **um nome que
+divergir entre as duas structs não compila**. O `env.py` deriva as listas de
+`_native.observation_field_names()` e levanta na importação se os conjuntos não baterem.
+`src/rl/tools/export_onnx.py` lê a mesma ordem do C++ — não há lista escrita em Python.
+
+**Determinismo, medido no binário de verdade.** 600 frames, 4 aeronaves decidindo em paralelo na
+fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idênticos** nos dois casos
+(ONNX e Python). Travado por `scenario-policy-onnx` e `scenario-policy-python`.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **`gnu_symbol_visibility: 'hidden'` esconde a PRÓPRIA API da lib.** `nm -D` devolve **zero**
+   símbolos fortes e o consumidor falha no link com "undefined reference" a uma função que está no
+   `.cpp`. Precisa de `__attribute__((visibility("default")))` explícito em cada declaração
+   (`XINFER_API` / `XPYEMBED_API`). Pegou **duas vezes** — o sintoma só aparece se alguém for olhar.
+2. **`-Wl,--strip-debug` não é equivalente a `strip --strip-unneeded`.** O primeiro preserva a
+   `.symtab` e para em 82 MB; `-Wl,-s` chega aos 39 MB. A API pública sobrevive porque vive na
+   `.dynsym`, que o `-s` não toca.
+3. **Fixar `intra_op_num_threads=1` no ORT é mais RÁPIDO, não só mais determinístico** — 50,1 µs
+   contra 76,0 µs (1 thread) e 55,1 contra 96,8 (4). A coordenação do pool custa mais que o ganho
+   num modelo pequeno.
+4. **`Ort::Session` custa 51 ms a frio e 8–9 ms depois.** Quatro aeronaves criando uma cada seriam
+   ~36 ms, mais que um frame de 20 ms. Daí o cache por caminho, no molde do `g_treeBuildMutex` do
+   `BtBehavior`.
+5. **CPython dentro de um plugin `RTLD_LOCAL` não importa extensão C.** `import ctypes` →
+   `undefined symbol: PyTuple_Type`; `numpy` → `PyExc_ImportError`. Python puro e módulos *builtin*
+   funcionam, o que faz parecer intermitente. A correção é `dlopen(libpython, RTLD_GLOBAL)` em
+   runtime — nenhum `DT_NEEDED` resolveria, porque a lib herda o escopo de quem a carregou.
+6. **O `/usr/bin/python3` do Ubuntu tem `libpython` ESTÁTICA.** Um `DT_NEEDED` de
+   `libpython3.12.so` carregaria um **segundo** runtime Python no processo do `src/rl`. Por isso
+   `xpyembed` checa `dlsym(RTLD_DEFAULT, "Py_IsInitialized")` antes de carregar qualquer coisa.
+7. **`Py_InitializeEx` segura o GIL.** Sem `PyEval_SaveThread()` logo depois, a primeira
+   `PyGILState_Ensure()` de outra thread trava para sempre.
+8. **O `.cpp` de um nó de BT novo entra em DOIS `meson.build`** — `models/flight/meson.build`
+   (`model_sources`) e `models/flight/tests/meson.build`. Nos que dependem do SDK vão em
+   `bt_sdk_sources`, **não** em `bt_sources`: este último é compartilhado com o `test-tree`, que tem
+   a propriedade de não linkar MIXR (o `poc-mixr-sdk.pc` declara `Requires: mixr`). O registro
+   deles fica em `bt/bt_factory_sdk.cpp`, separado de `bt/bt_factory.cpp` pelo mesmo motivo.
+9. **O Meson CACHEIA o resultado do pkg-config entre execuções.** Uma lib nova no SDK fica
+   invisível ao modelo mesmo depois de um `meson setup --reconfigure` completo — o link falha com
+   "undefined reference" a uma função que existe e está exportada. O ramo de reconfiguração dos
+   `models/*/Makefile` começa com `meson configure --clearcache`. (`--clearcache` é argumento de
+   `meson configure`, **não** de `meson setup`; passá-lo ao setup faz o Meson recusar a linha
+   inteira, e a falha se parece com "não mudou nada".)
+10. **O guard de staleness dos `models/*/Makefile` vigiava só `meson.build`/`meson_options.txt`.**
+    Agora vigia também `build/conan_meson_native.ini` e `dist/lib/pkgconfig/poc-mixr-sdk.pc`: um
+    `make configure` na raiz reescreve o primeiro, o regen automático do ninja dispara por causa
+    dele e **não** repassa `-Dpkg_config_path` — `make test` quebrava com "Dependency poc-mixr-sdk
+    not found" com o `.pc` presente em `dist/`.
 
 ## Estado atual / pendências conhecidas
 

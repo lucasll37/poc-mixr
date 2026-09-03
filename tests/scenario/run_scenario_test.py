@@ -15,6 +15,14 @@ Cada modo exercita um ramo diferente da arvore:
   terrain   o AltitudeSafetyBehavior (voto 90) ganha do BtBehavior (voto 50).
 
 Todos rodam contra fixtures HERMETICAS geradas por make_fixture.py.
+
+O '--label-prefix' existe para a src/poc/python-flight, cuja arvore troca as
+folhas de acao por ( PyDecide ) e rotula cada uma com 'PY-<modo>'. As
+propriedades afirmadas aqui sao do MODELO -- quem evadiu avisa, quem apoiou
+recebeu, ninguem voou para dentro do terreno -- e valem igual quando o comando
+sai de um script Python. Normalizar o rotulo na entrada e o que evita
+reescrever a bateria inteira so por causa do prefixo (e o que faz um teste
+NOVO deixar de ser uma copia envelhecendo em silencio, ao lado deste).
 """
 
 import argparse
@@ -27,18 +35,30 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "SAFETY", "?"}
+ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "SAFETY", "?",
+                      # src/poc/onnx-policy: a arvore inteira e uma rede neural, e o
+                      # rotulo dela nao e um modo de voo -- e o no que decidiu.
+                      "ONNX"}
 
 CAMPO = re.compile(r"(\w+)=(\S+)")
 
 
-def parse_dump(saida):
-    """Linhas 'frame=' -> lista de dicionarios, na ordem em que sairam."""
+def parse_dump(saida, prefixo_rotulo=""):
+    """Linhas 'frame=' -> lista de dicionarios, na ordem em que sairam.
+
+    'prefixo_rotulo' e removido de 'bt=' na entrada: e o que permite afirmar
+    as MESMAS propriedades sobre uma arvore que rotula 'PY-EVADE' onde a de
+    producao rotula 'EVADE'. Rotulo que nao comeca com o prefixo passa
+    intacto -- e o caso dos nos nativos que sobrevivem na arvore em Python
+    (SAFETY, e o PATROL de degradacao).
+    """
     amostras = []
     for linha in saida.splitlines():
         if not linha.startswith("frame="):
             continue
         d = dict(CAMPO.findall(linha))
+        if prefixo_rotulo and d.get("bt", "").startswith(prefixo_rotulo):
+            d["bt"] = d["bt"][len(prefixo_rotulo):]
         d["frame"] = int(d["frame"])
         for k in ("n", "e", "alt", "agl", "elev", "hdg", "spd", "fuel", "trackRange"):
             if k in d:
@@ -250,6 +270,8 @@ def main():
     ap.add_argument("--poc", required=True)
     ap.add_argument("--mode", required=True, choices=tuple(CHECAGENS))
     ap.add_argument("--frames", type=int, default=800)
+    ap.add_argument("--label-prefix", default="",
+                    help="prefixo a remover de bt= antes de afirmar (ex.: PY-)")
     args = ap.parse_args()
 
     fixture = RAIZ / "build" / "tests-fixtures" / f"{args.poc}-{args.mode}.epp.in"
@@ -274,7 +296,7 @@ def main():
         print(f"  FALHA o binario saiu com codigo {proc.returncode}")
         return 1
 
-    amostras = parse_dump(proc.stdout)
+    amostras = parse_dump(proc.stdout, args.label_prefix)
     falhas = []
     checa_comuns(amostras, falhas)
     CHECAGENS[args.mode](amostras, falhas)

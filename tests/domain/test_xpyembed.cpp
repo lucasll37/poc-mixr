@@ -14,6 +14,8 @@
 #include <array>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -26,9 +28,14 @@ using namespace mixr;
 class ScriptTemporario
 {
 public:
-   explicit ScriptTemporario(const std::string& fonte) : caminho_{std::tmpnam(nullptr)}
+   explicit ScriptTemporario(const std::string& fonte)
    {
-      caminho_ += ".py";
+      // mkstemps (com sufixo) e nao tmpnam -- ver o mesmo comentario em
+      // test_xinfer.cpp. O sufixo importa: o script tem de terminar em .py.
+      char molde[]{"/tmp/xpyembed-teste-XXXXXX.py"};
+      const int fd{::mkstemps(molde, 3)};
+      if (fd >= 0) ::close(fd);
+      caminho_ = molde;
       std::ofstream out{caminho_};
       out << fonte;
    }

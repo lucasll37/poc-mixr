@@ -4,7 +4,7 @@
 make configure                       # inclui gtest (test_requires no conanfile.py)
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make build
-make test                            # 22 testes nas DUAS suítes, ~20 s
+make test                            # 45 testes nas DUAS suítes
 ```
 
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
@@ -25,6 +25,15 @@ meson test -C build --suite plugin   # só uma camada do host
 > `build-flight`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
 > `make test-models` conferem a contagem com `meson introspect --tests` **antes** de rodar.
 
+> **A terceira poc na bateria de cenário/memória/determinismo.** `src/poc/python-flight` troca as
+> folhas de **ação** da árvore por scripts Python (`( PyDecide )`), rotulados `PY-<modo>`. Ela roda
+> a **mesma** bateria semântica das gêmeas: o runner ganhou `--label-prefix`, que normaliza
+> `PY-EVADE` → `EVADE` na entrada, em vez de uma cópia do script que envelheceria em silêncio ao
+> lado dele. As propriedades afirmadas são as do **modelo** — quem evadiu avisa, quem apoiou
+> recebeu, ninguém voou para dentro do terreno — e valem igual quando o comando sai de um `.py`.
+> O `determinism-python` é o que prova que quatro `decide()` em paralelo, sobre **um** GIL
+> adquirido em ordem arbitrária, ainda dão dumps byte-idênticos com 1, 2 e 4 threads T/C.
+
 ---
 
 ## Duas suítes, em dois projetos
@@ -42,9 +51,9 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `domain` (host) | as primitivas do `shared/xmsg` estão certas? | GTest sobre `shared/xmsg/rules/` | 24 testes, ~10 ms |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
-| `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 6 execuções |
-| `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 4 execuções |
-| `determinism` | é reprodutível, nos dois laços de decisão? **E de onde vem essa reprodutibilidade?** | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg`; mais o controle negativo `onde-a-decisao-roda` | 8 execuções + ~10 |
+| `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 9 execuções |
+| `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 6 execuções |
+| `determinism` | é reprodutível, nos dois laços de decisão **e com a política escrita em Python**? **E de onde vem essa reprodutibilidade?** | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg`; mais o controle negativo `onde-a-decisao-roda` | 12 execuções + ~10 |
 | `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **stub** | 5 testes, ~3 s |
 | `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo, o `.so` está **fresco** e todo modelo tem as cinco peças? | `diff -r` da camada de aplicação + as guardas estruturais | instantâneo |
 
