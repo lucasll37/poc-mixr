@@ -55,6 +55,7 @@ disseca por inteiro, com números medidos e as armadilhas encontradas rodando.
 | 10 | **Log e mensagens configuráveis por EDL** — nível/*stream* persistido em arquivo, e telemetria/eventos escolhidos por configuração (sem recompilar), em NDJSON | [CLAUDE.md](CLAUDE.md), seções `shared/xlog` e `shared/xmsg` |
 | 11 | **Detecção de vazamento pelo metadado do próprio framework** — contadores de instâncias vivas/pico/total por classe (`MetaObject`), ao vivo num painel ou comparando duas durações num teste | [app/README.md §7](app/README.md#7-aba-memória), [tests/README.md](tests/README.md) |
 | 12 | **Painel de controle interativo** — carregar cenário, pausar/acelerar/frear, navegar um mapa clicável, e até rodar a simulação até um nó específico da árvore de comportamento ser atingido | [app/README.md](app/README.md) |
+| 13 | **Política de rede neural no comando** — um `.onnx` treinado fora entra no lugar da árvore de regras e pilota de dentro da fase 3 do frame, sem Python no processo e sem perder o determinismo; o árbitro nativo mantém o piso anti-CFIT acima dela | [src/poc/onnx-policy/README.md](src/poc/onnx-policy/README.md), [shared/xinfer/](shared/xinfer/) |
 
 E mais uma, que não é funcionalidade e sim consequência: **onde a decisão roda é uma escolha de
 integração, não do modelo.** É o que os subprojetos gêmeos existem para demonstrar — o mesmo
@@ -121,6 +122,7 @@ caminho relativo.
 | [`multi-thread`](src/poc/multi-thread/) | `make run-multi-thread` | 1234 | o mesmo modelo, decisão no `( FlightAgentTC )` próprio, fase 3 |
 | [`bandit-dis`](src/poc/bandit-dis/) | `make run-bandit-dis` | 1235 | só o intruso, pilotável por joystick, emitindo DIS |
 | [`python-flight`](src/poc/python-flight/) | `make run-python-flight` | 1237 | o mesmo modelo, com as **leis de voo em Python** — quatro `.py` editáveis sem recompilar |
+| [`onnx-policy`](src/poc/onnx-policy/) | `make run-onnx-policy` | 1238 | o mesmo modelo, com o voo governado por uma **rede neural** (`.onnx`), inferida dentro do frame |
 
 `single-thread`/`multi-thread` são **alternativas** entre si (nunca rodam juntos); qualquer um
 roda sozinho ou ao lado do `bandit-dis`, que entrega o intruso **só pela rede** (DIS) — nenhuma
@@ -166,6 +168,7 @@ make test                            # as suítes do host e do(s) modelo(s)
 make check-single-thread   # determinismo com a decisão no laço de background
 make check-multi-thread    # determinismo com os 4 agentes decidindo em paralelo, na fase 3
 make check-python-flight   # o mesmo, com os 4 agentes decidindo em Python (um GIL para os quatro)
+make check-onnx-policy     # o mesmo, com os 4 agentes inferindo uma rede neural (uma sessão ONNX)
 make compare-single-multi  # lista o que difere entre os dois subprojetos (deve ser só o agente)
 make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```
@@ -184,8 +187,10 @@ poc-mixr/
 │   ├── single-thread/      decisao no ( SimAgent ) nativo, em updateData() -- thread de background
 │   ├── multi-thread/       decisao no ( FlightAgentTC ) proprio, na fase 3 do frame de tempo critico
 │   ├── bandit-dis/         o intruso sozinho -- joystick/Autopilot + emissao DIS, sem UBF nenhum
-│   └── python-flight/      a multi-thread com as LEIS DE VOO em Python (configs/policy/*.py),
-│                           avaliadas dentro da fase 3 do frame -- sem recompilar nada
+│   ├── python-flight/      a multi-thread com as LEIS DE VOO em Python (configs/policy/*.py),
+│   │                       avaliadas dentro da fase 3 do frame -- sem recompilar nada
+│   └── onnx-policy/        a multi-thread com o voo governado por uma REDE NEURAL
+│                           (configs/policy_barrier.onnx), inferida na fase 3 do frame
 ├── models/                 o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (ver §8)
 │   ├── flight/             o modelo de producao (o que os quatro subprojetos acima carregam)
 │   ├── missile/            segundo modelo -- demo academica de missil guiado 6-DOF
@@ -318,5 +323,6 @@ vale é o pacote instalado.
 | [src/poc/single-thread/README.md](src/poc/single-thread/README.md) | a aula completa sobre um subprojeto, arquivo por arquivo |
 | [src/poc/multi-thread/README.md](src/poc/multi-thread/README.md) | onde uma decisão deve rodar, e o que isso custa |
 | [src/poc/python-flight/README.md](src/poc/python-flight/README.md) | escrever a política em Python, dentro do frame — o que atravessa a fronteira e o que não |
+| [src/poc/onnx-policy/README.md](src/poc/onnx-policy/README.md) | pôr uma rede neural no comando: o contrato do `.onnx`, o que uma política treinada consegue representar e o que não |
 | [src/rl/README.md](src/rl/README.md) | o wrapper Gymnasium — como treinar um agente de RL contra a mesma simulação |
 | [tests/README.md](tests/README.md) | as suítes de teste — o que cada camada prova |

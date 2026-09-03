@@ -45,6 +45,13 @@ editar a política deixa de ser recompilar. As **condições** da árvore contin
 está na seção própria: elas dependem do `dt` do frame, que a fronteira "28 floats entram, 3 saem"
 não atravessa.
 
+E um **quinto**, `src/poc/onnx-policy/`, que muda o mesmo eixo do quarto e leva ao extremo: quem
+decide é uma **rede neural**. Também é a `multi-thread` inteira; a árvore de comportamento dela,
+porém, tem **uma folha só** — `( OnnxPolicy )`, que carrega um `.onnx` de 6.211 parâmetros e infere
+dentro da fase 3, sem Python no processo. A `python-flight` troca as **folhas** e preserva a forma
+da árvore de produção; aqui a árvore some, porque uma política treinada **é** o mapa observação →
+ação inteiro, inclusive a decisão de *quando* evadir. Ver a seção própria mais abaixo.
+
 Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
 `12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
 pastas **não existem mais** e o prefixo numérico **não é mais convenção**: subprojeto novo ganha
@@ -109,14 +116,14 @@ ser executados a partir da raiz do repositório:**
 ./build/src/poc/single-thread/src/single-thread
 ```
 
-Opções de linha de comando, aceitas por `single-thread`/`multi-thread`/`python-flight`:
+Opções de linha de comando, aceitas por `single-thread`/`multi-thread`/`python-flight`/`onnx-policy`:
 `-f <arquivo>` (cenário alternativo),
 `-threads <N>` (quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo).
 
 **A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
-a verificação de **determinismo** tem alvos próprios (`check-single-thread`, `check-multi-thread`
-e `check-python-flight`): roda N frames de passo fixo com 1, 2 e 4 threads
-T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **três**, a
+a verificação de **determinismo** tem alvos próprios (`check-single-thread`, `check-multi-thread`,
+`check-python-flight` e `check-onnx-policy`): roda N frames de passo fixo com 1, 2 e 4 threads
+T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **quatro**, a
 `single-thread` inclusive: ela também roda os players no pool de threads T/C, só decide fora
 dele. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
 O alvo `compare-single-multi` lista o que difere entre as duas pastas (deve ser só o agente).
@@ -718,6 +725,85 @@ degradação com o script removido (`bt=PATROL`, do nó nativo — a aeronave n�
 custo do Python no frame, **~42 µs por decisão** (~0,8% de um frame de 20 ms), medido com os dois
 binários na mesma fixture, 4000 frames, 4 threads, três repetições.
 
+### `src/poc/onnx-policy` — a DECISÃO numa REDE NEURAL, dentro do frame
+
+Quinto subprojeto de `src/poc/`. É a `multi-thread` **inteira** — mesmo cenário, mesma pilha
+nativa, mesmo `libflight_tc.so`, mesmo `( FlightAgentTC )` decidindo na fase 3 — com **uma**
+diferença: o `treeFile:` aponta para uma árvore cuja única folha útil é `( OnnxPolicy )`, que
+carrega `configs/policy_barrier.onnx` (MLP 28→64→64→3, 6.211 parâmetros, 25 KB) e infere dentro do
+frame, **sem Python no processo**. Portas próprias (Tacview **1238**, DIS **3005**), então roda ao
+lado das outras quatro.
+
+**Nenhuma linha de C++ foi escrita para isto** — `shared/xinfer`, o nó `( OnnxPolicy )` e o
+`unscaleCommand()` de `shared/xrlbridge` já existiam; o que faltava era uma poc **completa** em
+cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/flight`, apontando para
+um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
+provar que a cadeia funciona, não para voar com ela. O host é cópia do da `multi-thread` com
+caminhos e banner trocados (a guarda `check_duplication.sh` cobra que continue byte a byte igual).
+
+**Uma folha só, e não quatro como na `python-flight` — a diferença é conceitual.** Um script é uma
+regra que você escreve por ramo, então preservar a forma da árvore de produção faz sentido; uma
+política treinada **é** o mapa observação → ação inteiro, inclusive o "quando evadir". Manter os
+ramos seria pedir à rede que decidisse dentro de um recorte que ela não conhece. O preço é que
+`bt=` deixa de ser um modo de voo e sai sempre `ONNX` — e é por isso que esta poc **não entra** na
+lista `pocs` de `tests/meson.build` (os modos `intruder`/`lowfuel` afirmam sobre
+`EVADE`/`SUPPORT`/`RTB`) e ganha três testes próprios: `scenario-onnx-policy` (a bateria de
+política, agora com `--poc`, sem troca de árvore), `scenario-terrain-onnx-policy` e
+`memory-onnx-policy`.
+
+**A rede é treinada por CLONAGEM DE COMPORTAMENTO, e o treinador é versionado**
+(`tools/train_policy.py`, numpy puro + `onnx`, semente fixa): amostra-se o espaço de observação,
+calcula-se o comando de uma regra, treina-se o MLP a reproduzi-lo. Não é RL — é o caminho mais
+curto entre "uma regra que eu sei escrever" e "uma rede que voa", e o objetivo da poc é a
+**cadeia** (rede → comando → `Autopilot`, no frame), não uma tática nova. A regra clonada é uma
+barreira no paralelo `norte = 0`: `rumo = 90 + 90·tanh(norte/4000)` (guiagem por erro lateral),
+`altitude = terreno + 900 m` limitada a `[1500, 3200]`, `velocidade` 160 kt (185 com contato). Com
+contato, o mesmo termo de rumo apontado para o lado oposto ao do intruso. A ordem dos 28 campos vem
+do C++ (`export_onnx.py` → `mixr_gym._native` → `ObservationFields.hpp`) — **não há lista de campos
+escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede voando errado.
+
+**Armadilhas confirmadas rodando — não redescobrir:**
+
+1. **`ir_version` do `.onnx`: este ONNX Runtime aceita até 9; o pacote Python `onnx` 1.22 grava 13
+   por padrão.** O sintoma **não** é um erro de exportação — é a poc voando com `bt=PATROL`, porque
+   a recusa acontece em tempo de execução, dentro de `xinfer::open()`
+   (`Unsupported model IR version: 13, max supported IR version: 9`), e o `Fallback` da árvore
+   assume. `tools/train_policy.py` fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx`
+   já versionado). **Vale para qualquer `.onnx` gerado hoje** — inclusive
+   `src/rl/tools/export_onnx.py --random`, que não fixa a versão; o arquivo versionado em
+   `models/flight/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
+2. **Uma rede contínua NÃO consegue representar a órbita geométrica da `python-flight`** (marcação
+   para a base − 90°). O comando de rumo sai de um `tanh` mapeado linearmente em `[0, 360]`; uma
+   órbita percorre todos os rumos, então há um ponto do espaço de observação onde o alvo salta de
+   360 para 0, e uma função contínua **interpola** esse salto — isto é, curva para o lado errado
+   exatamente ao cruzar o corte. Um script Python não tem o problema porque não interpola nada. Daí
+   a barreira, cujo alvo vive em `[0, 180]` e é suave. A saída conhecida (emitir seno e cosseno do
+   rumo) mudaria o contrato de 3 saídas, compartilhado com `src/rl` e com o `unscale` de
+   `xrlbridge` — fica registrado como o caminho, não feito.
+3. **A política é dado do CENÁRIO, não do modelo** — por isso `.onnx` e árvore moram em `configs/`
+   desta poc (lidos por caminho relativo à raiz, como o próprio `.epp`), e não em
+   `dist/share/mixr-plugins/flight/`, que é onde `models/flight` instala os **dele**. As duas
+   coisas convivem: `scenario-policy-onnx` continua rodando a árvore do modelo, com pesos
+   aleatórios, sobre a `multi-thread`.
+4. **O árbitro nativo continua acima da rede.** `( AltitudeSafetyBehavior vote: 90 )` contra
+   `( BtBehavior vote: 50 )`: medido com a fixture `terrain`, **32/32** linhas do dump saem
+   `bt=SAFETY`. É o que torna barato trocar de política sem revalidar segurança de voo, e é a
+   propriedade que `scenario-terrain-onnx-policy` trava.
+
+**O que foi medido rodando:** `bt=ONNX` em 100% das linhas; `falcon1`, começando 9,3 km ao norte da
+linha, entra na faixa de 100 m em **160 s** de simulação e depois fica com `|norte| ≤ 11,1 m` por
+100 s (converge sem oscilar — é o `tanh`); erro da rede contra a regra clonada de 0,27° em rumo
+(2,50° máx.), 6,6 m em altitude e 0,08 kt em velocidade; dumps **byte-idênticos** com 1, 2 e 4
+threads T/C, com as quatro aeronaves inferindo em paralelo sobre **uma** sessão do ONNX Runtime
+(cache por caminho de `shared/xinfer`); 50,1 µs por inferência (0,25% de um frame de 20 ms, número
+medido em `shared/xinfer` para este mesmo MLP).
+
+**Duas guardas foram generalizadas** ao acrescentar esta poc, pelo mesmo motivo já registrado em
+`check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` descobre as gêmeas
+por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exclui a `bandit-dis`
+sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.epp.in`
+por glob. Poc nova nasce cobrada pelas duas sem editar arquivo nenhum.
+
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 
 O banco de elevação é **100% nativo**: `libmixr_terrain.so` já vinha linkado (o `mixr.pc` do
@@ -1140,7 +1226,7 @@ falcon1 indo de 141° para 34°.
 1. Criar `src/poc/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
    executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
    `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`). `src/poc/` é a pasta que
-   agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis/python-flight) — o dashboard (`./app/`)
+   agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis/python-flight/onnx-policy) — o dashboard (`./app/`)
    fica fora, na raiz, por ser o único ocupante da própria pasta.
 2. Adicionar `subdir('./<nome>')` em [src/poc/meson.build](src/poc/meson.build) — não em
    `src/meson.build`, que só delega pra `subdir('./poc')`.
@@ -2538,7 +2624,7 @@ um frame de latência. Isso treina, mas não põe em produção. Os nós novos d
 
 | nó | o que faz | árvore |
 |---|---|---|
-| `OnnxPolicy` | roda a política treinada em `src/rl`, exportada para `.onnx` | `flight_tree_onnx.xml` |
+| `OnnxPolicy` | roda a política treinada em `src/rl`, exportada para `.onnx` | `flight_tree_onnx.xml`; e a folha única de `src/poc/onnx-policy` |
 | `OnnxScore` | condição genérica: compara uma saída do modelo com um limiar | (qualquer) |
 | `PyDecide` | roda um `decide(obs)` escrito em Python — prototipagem | `flight_tree_py.xml`; e as quatro folhas de `src/poc/python-flight` |
 
