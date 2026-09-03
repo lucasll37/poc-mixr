@@ -45,23 +45,19 @@
 
    } // components (plugins)
 
-   dataRecorder: ( ExposedDataRecorder
-      eventName: "dashboard-patrol"
-      enabledList: [ 43 42 ]
-      outputHandler: ( RecorderOutputHandler
-         components: {
-            ( TacviewOutput
-               port: 1236
-               callsign: "poc-mixr/dashboard-patrol"
-               fileName: "./app/data/recordings/mission-patrol.acmi"
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C" }
-               typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
-                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing" }
-               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue" }
-            )
-         }
-      )
-   )
+   // Esqueleto compartilhado com scenario_intercept.epp.in/
+   // scenario_intercept_missile.epp.in (era ~95% byte-identico entre os
+   // tres -- so eventName/callsign/fileName/os mapas mudavam). Ver
+   // app/configs/fragments/tacview_recorder.epp.frag e
+   // app::generateScenario() (ScenarioTemplate.cpp) -- os quatro tokens
+   // do fragmento vem de ScenarioCatalog.cpp, resolvidos ANTES do
+   // edl_parser ver este arquivo, igual o numero de threads ja fazia.
+   //
+   // ARMADILHA (encontrada rodando): NAO escrever a sintaxe literal de
+   // token (arroba-nome-arroba) num comentario deste arquivo -- a
+   // substituicao e texto puro, sem entender comentario EDL, e corrompe
+   // qualquer ocorrencia literal do marcador, comentario incluso.
+   @include:tacview_recorder.epp.frag@
 
    simulation: ( WorldModel
 

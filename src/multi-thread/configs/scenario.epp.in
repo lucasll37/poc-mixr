@@ -501,6 +501,13 @@
                            breakTurn:      ( Degrees 110 )
                            evadeClimb:     ( Meters 700 )
                            evadeSpeed:     185.0
+                           supportSpeed:   180.0
+                           // Histerese da evasao: por quanto tempo a manobra continua
+                           // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
+                           // entre perder o contato (a propria quebra tira o intruso do
+                           // setor do radar) e o ramo de apoio querer assumir -- sem
+                           // isso os dois alternam e a aeronave voa "batendo asa".
+                           evadeHold:      ( Seconds 30 )
                            // PISO ANTI-CFIT. O desconflito vertical da evasao
                            // desce 700 m a partir da altitude atual; com ~940 m
                            // de AGL de cruzeiro isso levaria a aeronave para
@@ -509,13 +516,6 @@
                            // devolve o piso absoluto de 200 m -- e o controle
                            // negativo, sem recompilar.
                            terrainClearance: ( Meters 800 )
-                           // Histerese da evasao: por quanto tempo a manobra continua
-                           // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
-                           // entre perder o contato (a propria quebra tira o intruso do
-                           // setor do radar) e o ramo de apoio querer assumir -- sem
-                           // isso os dois alternam e a aeronave voa "batendo asa".
-                           evadeHold:      ( Seconds 30 )
-                           supportSpeed:   180.0
                         )
                      }
                   )

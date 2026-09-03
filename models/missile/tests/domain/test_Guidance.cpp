@@ -53,3 +53,41 @@ TEST(Guidance, ComandoSaturaEmMenosUmAUm)
    EXPECT_LE(cmd.rollNorm, 1.0);
    EXPECT_GE(cmd.rollNorm, -1.0);
 }
+
+// slewTowards() -- o amortecimento que falta na lei P pura acima (ver o
+// "porque" no header): limita a TAXA de variacao do comando, nao so a
+// amplitude. GuidedMissile::guide() chama isto uma vez por frame,
+// realimentando o proprio resultado como 'current' no frame seguinte.
+
+TEST(SlewTowards, DentroDoLimiteAlcancaOAlvoDireto)
+{
+   EXPECT_DOUBLE_EQ(domain::slewTowards(0.0, 0.3, 4.0), 0.3);
+}
+
+TEST(SlewTowards, ForaDoLimiteAvancaSoMaxDelta)
+{
+   // GuidedMissile::guide() chama com maxDelta = kMaxSlewPerSec * dt
+   // (4.0 * 0.02 = 0.08 num frame de 50 Hz) -- um comando pedindo +1.0 de
+   // uma vez so tem que avancar so 0.08 por frame.
+   EXPECT_DOUBLE_EQ(domain::slewTowards(0.0, 1.0, 0.08), 0.08);
+   EXPECT_DOUBLE_EQ(domain::slewTowards(0.0, -1.0, 0.08), -0.08);   // simetrico
+}
+
+TEST(SlewTowards, JaNoAlvoENoOp)
+{
+   EXPECT_DOUBLE_EQ(domain::slewTowards(0.5, 0.5, 0.08), 0.5);
+}
+
+TEST(SlewTowards, ConvergeAposChamadasRepetidas)
+{
+   // Mesmo padrao de uso real: chamada por frame, realimentando o
+   // resultado. 1.0 / 0.08 = 12.5 -> converge exatamente no 13o frame.
+   double current{0.0};
+   int frames{};
+   while (current < 1.0 && frames < 100) {
+      current = domain::slewTowards(current, 1.0, 0.08);
+      frames++;
+   }
+   EXPECT_DOUBLE_EQ(current, 1.0);
+   EXPECT_EQ(frames, 13);
+}

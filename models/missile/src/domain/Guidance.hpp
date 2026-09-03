@@ -58,4 +58,19 @@ GuidanceCommand pursuit(double relNorthM, double relEastM, double relDownM,
                         double ownRollRateDps, double ownPitchRateDps,
                         const GuidanceGains& gains = GuidanceGains{});
 
+//------------------------------------------------------------------------------
+// slewTowards() -- o amortecimento que falta na lei P pura acima: limita a
+// TAXA DE VARIACAO do comando normalizado (nao so sua AMPLITUDE, que
+// GuidanceCommand::rollNorm/pitchNorm ja saturam em [-1,1]).
+//
+// ARMADILHA CONFIRMADA RODANDO (ver GuidedMissile::guide()): sem isto, o
+// comando P puro pula de 0 a +-1 num frame so, e a inercia reduzida do
+// aim1.xml (ver o "porque" em aim1.xml e em GuidedMissile.hpp) diverge --
+// medido indo de oscilacoes de poucos graus a mais de 100 graus de
+// arfagem/banco em menos de 0.3 s, velocidade escalando para milhares de
+// nos. 'maxDelta' e o limite de variacao POR CHAMADA (tipicamente
+// kMaxSlewPerSec * dt, ver GuidedMissile::guide()).
+//------------------------------------------------------------------------------
+double slewTowards(double current, double target, double maxDelta);
+
 } // namespace domain

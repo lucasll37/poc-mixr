@@ -51,16 +51,6 @@ bool GuidedMissile::crashNotification()
    return r;
 }
 
-namespace {
-double slewTowards(const double current, const double target, const double maxDelta)
-{
-   const double delta{target - current};
-   if (delta > maxDelta) return current + maxDelta;
-   if (delta < -maxDelta) return current - maxDelta;
-   return target;
-}
-}
-
 //------------------------------------------------------------------------------
 // guide() -- calcula o vetor NED ate o alvo (mesma origem para os dois:
 // "posicao a partir do ponto de referencia do WorldModel", Player.hpp),
@@ -69,10 +59,11 @@ double slewTowards(const double current, const double target, const double maxDe
 // dynamicsModel recebe o comando de manche/manete igual a um joystick
 // fisico (mesma faixa -1..1, ver shared/xjoystick).
 //
-// slewTowards() e o amortecimento que falta na lei P pura (ver o "porque"
-// no header e no comentario de aim1.xml sobre a inercia) -- sem ele o
-// comando pula de 0 a +-1 no primeiro frame com erro de rumo, e a resposta
-// da aeronave diverge antes de o proximo tick corrigir.
+// domain::slewTowards() e o amortecimento que falta na lei P pura (ver o
+// "porque" em domain/Guidance.hpp e no comentario de aim1.xml sobre a
+// inercia) -- sem ele o comando pula de 0 a +-1 no primeiro frame com erro
+// de rumo, e a resposta da aeronave diverge antes de o proximo tick
+// corrigir.
 //------------------------------------------------------------------------------
 namespace {
 constexpr double RAD2DEG{57.295779513082320876798154814105};
@@ -93,8 +84,8 @@ void GuidedMissile::guide(const double dt)
    };
 
    const double maxDelta{kMaxSlewPerSec * dt};
-   lastRollNorm_ = slewTowards(lastRollNorm_, cmd.rollNorm, maxDelta);
-   lastPitchNorm_ = slewTowards(lastPitchNorm_, cmd.pitchNorm, maxDelta);
+   lastRollNorm_ = domain::slewTowards(lastRollNorm_, cmd.rollNorm, maxDelta);
+   lastPitchNorm_ = domain::slewTowards(lastPitchNorm_, cmd.pitchNorm, maxDelta);
 
    setControlStickRollInput(lastRollNorm_);
    setControlStickPitchInput(lastPitchNorm_);

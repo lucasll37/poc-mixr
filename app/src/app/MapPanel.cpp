@@ -1,5 +1,6 @@
 #include "app/MapPanel.hpp"
 #include "app/FleetPanel.hpp"
+#include "app/MapGeometry.hpp"
 
 #include "mixr/models/player/Player.hpp"
 
@@ -17,25 +18,15 @@ namespace app {
 
 namespace {
 using namespace ftxui;
-
-// Dimensao FIXA do canvas, em "pixels" de braille (ver o comentario de
-// ftxui/dom/canvas.hpp: multiplique por 2/4 para celulas de terminal --
-// 240x120 pixels ocupam ~120x30 celulas, cabe numa tela cheia tipica sem
-// depender do Box calculado em tempo de render, que so fica disponivel
-// DEPOIS do layout). A largura deriva de 'kMapCanvasWidthCells' (header) --
-// fonte unica, DashboardLoop.cpp usa a MESMA constante pra calcular a
-// largura do card de detalhe.
-const int kCanvasW{kMapCanvasWidthCells * 2};
-const int kCanvasH{120};
+using namespace mapgeometry;   // kCanvasW/kCanvasH/kPi/kDeg2Rad/Projected/
+                                // project()/worldFromCanvas*()/contourIntervalFor()
+                                // -- ver app/MapGeometry.hpp
 
 // Quanto do limite INFERIOR do canvas fica reservado, em pixel, quando
 // 'snapPanToGroundLevel()' reancora o nivel do terreno perto de baixo --
 // nao flush contra a borda: sobra espaco pra grade/rotulo de altitude
 // (ex.: "-2133ft") continuarem legiveis abaixo da linha do chao.
 const int kGroundMarginBottomPx{16};
-
-const double kPi{3.14159265358979323846};
-const double kDeg2Rad{kPi / 180.0};
 
 // Espacamento (em pixel de canvas) entre linhas de grade/marcas de eixo --
 // 40px = 20 celulas de terminal na horizontal, 10 na vertical.
@@ -63,8 +54,6 @@ std::string formatScaleNm(const double metersPerCell)
    return oss.str();
 }
 
-struct Projected { int px{}; int py{}; bool onCanvas{}; };
-
 // Espacamento (em pixel de canvas) do GRID de amostragem de curvas de
 // nivel (TopDown) -- ver o comentario grande de 'drawTerrain', abaixo. Fino
 // o bastante (3px, perto da resolucao do proprio canvas de braille) pra
@@ -73,86 +62,10 @@ struct Projected { int px{}; int py{}; bool onCanvas{}; };
 // desprezivel mesmo chamado ate ~10x/s.
 const int kTerrainGridStepPx{3};
 
-// A MESMA rotacao serve pras duas projecoes -- ver o comentario de
-// Perspective no header: o eixo livre (vertical) e compartilhado.
-//
-// TopDown: (rotE, rotN) sao N/E girados por 'viewYawDeg' -- px anda com
-// rotE (largura da tela), py anda com -rotN (profundidade vira "pra cima").
-// Lateral: px continua sendo rotE (largura -- distancia lateral vista de
-// 'viewYawDeg'), py passa a ser a ALTITUDE relativa ao pan.
-Projected project(const double northM, const double eastM, const double altitudeM,
-                  const MapViewState& view)
-{
-   const double relN{northM - view.panNorthM};
-   const double relE{eastM - view.panEastM};
-   const double yaw{view.viewYawDeg * kDeg2Rad};
-
-   const double rotE{relE * std::cos(yaw) - relN * std::sin(yaw)};
-   const double rotN{relE * std::sin(yaw) + relN * std::cos(yaw)};
-
-   const int cx{kCanvasW / 2};
-   const int cy{kCanvasH / 2};
-
-   Projected p;
-   p.px = cx + static_cast<int>(std::lround(rotE / view.metersPerCell));
-   if (view.perspective == Perspective::TopDown) {
-      p.py = cy - static_cast<int>(std::lround(rotN / view.metersPerCell));
-   } else {
-      p.py = cy - static_cast<int>(std::lround((altitudeM - view.panAltM) / view.metersPerCell));
-   }
-   p.onCanvas = (p.px >= 0 && p.px < kCanvasW && p.py >= 0 && p.py < kCanvasH);
-   return p;
-}
-
-// INVERSA de project() para o plano N/E (TopDown) -- dado um pixel do
-// canvas, devolve o ponto do MUNDO (northM/eastM) que ele representa.
-// 'rotE'/'rotN' saem direto da grade (mesma conta que os rotulos de eixo ja
-// fazem); desfazer a rotacao de 'yaw' e so aplicar a rotacao INVERSA
-// (R(-yaw), ja que project() aplicou R(+yaw)).
-void worldFromCanvasTopDown(const int px, const int py, const MapViewState& view,
-                            double& northM, double& eastM)
-{
-   const int cx{kCanvasW / 2};
-   const int cy{kCanvasH / 2};
-   const double rotE{(px - cx) * view.metersPerCell};
-   const double rotN{(cy - py) * view.metersPerCell};
-   const double yaw{view.viewYawDeg * kDeg2Rad};
-   const double relE{rotE * std::cos(yaw) + rotN * std::sin(yaw)};
-   const double relN{-rotE * std::sin(yaw) + rotN * std::cos(yaw)};
-   northM = view.panNorthM + relN;
-   eastM = view.panEastM + relE;
-}
-
-// Mesma ideia, mas para a vista Lateral: aqui so a coluna (px) importa -- o
-// perfil de terreno mostrado e o do CHAO ao longo da linha de visada que
-// passa pelo pan (profundidade zero, rotN=0), nao um ponto qualquer do
-// plano. E o "corte" que aparece de lado.
-void worldFromCanvasLateral(const int px, const MapViewState& view,
-                            double& northM, double& eastM)
-{
-   const int cx{kCanvasW / 2};
-   const double rotE{(px - cx) * view.metersPerCell};
-   const double yaw{view.viewYawDeg * kDeg2Rad};
-   northM = view.panNorthM - rotE * std::sin(yaw);
-   eastM = view.panEastM + rotE * std::cos(yaw);
-}
-
-// Intervalo de curva de nivel "redondo" pro alcance de elevacao amostrado
-// -- mesma ideia de um mapa topografico de papel escolher 10/20/50/100m
-// conforme a escala, nao um numero arbitrario. ~4 curvas cobrindo o
-// alcance visivel agora (pedido explicito: "espacamento maior para nao
-// poluir a visualizacao" -- era range/8, ~8 curvas; dobrado o intervalo,
-// metade das curvas). Se ajusta sozinho ao zoom/pan.
-double contourIntervalFor(const double minM, const double maxM)
-{
-   const double range{std::max(1.0, maxM - minM)};
-   const double roughStep{range / 4.0};
-   static const double niceSteps[]{5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000};
-   for (const double s : niceSteps) {
-      if (s >= roughStep) return s;
-   }
-   return 5000.0;
-}
+// project()/worldFromCanvasTopDown()/worldFromCanvasLateral()/
+// contourIntervalFor() moraram aqui -- agora em app/MapGeometry.hpp/.cpp,
+// testados isoladamente em tests/app/test_map_geometry.cpp (ver o
+// "porque" no cabecalho daquele header).
 
 // A vista de TERRENO em si -- desenhada ANTES de grade/entidades (fica por
 // baixo). So chamada quando 'view.showTerrain' esta ligado E ha amostrador

@@ -57,4 +57,12 @@ GuidanceCommand pursuit(const double relNorthM, const double relEastM, const dou
    return cmd;
 }
 
+double slewTowards(const double current, const double target, const double maxDelta)
+{
+   const double delta{target - current};
+   if (delta > maxDelta) return current + maxDelta;
+   if (delta < -maxDelta) return current - maxDelta;
+   return target;
+}
+
 } // namespace domain

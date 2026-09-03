@@ -39,24 +39,11 @@
 
    } // components (plugins)
 
-   dataRecorder: ( ExposedDataRecorder
-      eventName: "dashboard-intercept-missile"
-      enabledList: [ 43 42 ]
-      outputHandler: ( RecorderOutputHandler
-         components: {
-            ( TacviewOutput
-               port: 1236
-               callsign: "poc-mixr/dashboard-intercept-missile"
-               fileName: "./app/data/recordings/mission-intercept-missile.acmi"
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"  falcon4: "F-16C"
-                           bandit1: "F-16C" }
-               typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
-                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"  bandit1: "Air+FixedWing" }
-               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"  falcon4: "Blue"  bandit1: "Red" }
-            )
-         }
-      )
-   )
+   // Esqueleto compartilhado com scenario_patrol.epp.in/
+   // scenario_intercept.epp.in -- ver
+   // app/configs/fragments/tacview_recorder.epp.frag e
+   // app::generateScenario() (ScenarioTemplate.cpp).
+   @include:tacview_recorder.epp.frag@
 
    simulation: ( WorldModel
 

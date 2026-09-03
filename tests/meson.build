@@ -64,6 +64,78 @@ test_app_meta = executable('test-app-meta',
 )
 test('app-meta-object-snapshot', test_app_meta, suite: 'domain', timeout: 60)
 
+# A geometria pura da aba Mapa (projecao mundo->tela e sua inversa, escolha
+# de intervalo de curva de nivel) -- promovida de um namespace anonimo
+# dentro de app/MapPanel.cpp para app/MapGeometry.hpp/.cpp. Ver o "porque"
+# no cabecalho daquele header.
+test_app_map_geometry = executable('test-app-map-geometry',
+    files('app/test_map_geometry.cpp') + files(
+        '../app/src/app/MapGeometry.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-map-geometry', test_app_map_geometry, suite: 'domain', timeout: 60)
+
+# A maquina de estados do breakpoint de arvore de comportamento --
+# extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
+test_app_breakpoint = executable('test-app-breakpoint-controller',
+    files('app/test_breakpoint_controller.cpp') + files(
+        '../app/src/app/BreakpointController.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-breakpoint-controller', test_app_breakpoint, suite: 'domain', timeout: 60)
+
+# A escada de velocidade e a decisao de rotulo/cor do cabecalho -- extraida
+# de app/DashboardLoop.cpp para app/SpeedLadder.hpp/.cpp.
+test_app_speed_ladder = executable('test-app-speed-ladder',
+    files('app/test_speed_ladder.cpp') + files(
+        '../app/src/app/SpeedLadder.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-speed-ladder', test_app_speed_ladder, suite: 'domain', timeout: 60)
+
+# A regra de selecao de pista (filtro por lado + desempate deterministico)
+# de shared/xtrack, separada da travessia AirVehicle->OnboardComputer->
+# TrackManager->Track que a alimenta -- ver o "porque" em
+# shared/xtrack/TrackQuery.hpp. Alimenta models/flight/src/ubf/
+# FlightState.cpp (a percepcao do modelo).
+test_track_selection = executable('test-track-selection',
+    files('domain/test_track_selection.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xtrack_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('track-selection', test_track_selection, suite: 'domain', timeout: 60)
+
+# A UNICA responsabilidade de shared/xboard -- ser um mapa seguro entre N
+# escritores concorrentes (o pool T/C, um por player) e 1 leitor (o laco
+# de background) -- ver o "porque" de ser a UNICA shared_library() de
+# shared/ em xboard/Board.hpp. Nunca tinha teste direto antes desta
+# suite: so validacao indireta pelos dumps end-to-end.
+test_xboard_concurrency = executable('test-xboard-concurrency',
+    files('domain/test_xboard_concurrency.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xboard_dep, thread_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60)
+
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
 #
@@ -223,4 +295,10 @@ test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),
 # o frescor tem de ser afirmado a mao -- senao a suite passa contra um plugin
 # velho e a regressao no modelo fica invisivel.
 test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
+     workdir: raiz, suite: 'guard', timeout: 60)
+
+# falcon1..4 (dentro do MESMO cenario) tem que declarar os mesmos slots, na
+# mesma estrutura -- so os VALORES podem diferir (posicao/altitude/velocidade
+# calibrados por aviao). Ver skeleton_diff.py para o metodo.
+test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)

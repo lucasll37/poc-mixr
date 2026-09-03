@@ -54,6 +54,7 @@
 #include "mixr/base/Component.hpp"
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -107,8 +108,14 @@ int main(int argc, char* argv[])
    app::ensureAllTerrainTiles(terrainDir);
 
    const std::string generatedPath{"./app/configs/" + entry->key + ".generated.epp"};
+   const std::map<std::string, std::string> tacviewTokens{
+      {"SCENARIO_ID", entry->tacviewId},
+      {"MODEL_MAP", entry->tacviewModelMap},
+      {"TYPE_MAP", entry->tacviewTypeMap},
+      {"COLOR_MAP", entry->tacviewColorMap},
+   };
    const int numTcThreads{
-      app::generateScenario(entry->templatePath, generatedPath, opts.threadsOverride)};
+      app::generateScenario(entry->templatePath, generatedPath, opts.threadsOverride, tacviewTokens)};
 
    mixr::simulation::Station* const station{app::buildStation(generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};

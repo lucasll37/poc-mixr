@@ -2,11 +2,13 @@
 
 #include "app/BackgroundPanel.hpp"
 #include "app/BehaviorTreeView.hpp"
+#include "app/BreakpointController.hpp"
 #include "app/DashboardState.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
 #include "app/MapPanel.hpp"
 #include "app/MemoryPanel.hpp"
+#include "app/SpeedLadder.hpp"
 
 #include "xboard/Board.hpp"
 #include "xclock/ClockStation.hpp"
@@ -92,76 +94,22 @@ std::string pendingActionLabel(const PendingAction a)
    }
 }
 
-//------------------------------------------------------------------------------
-// Breakpoint de arvore de comportamento -- "marcar um estado da bt de um
-// dado elemento e rodar a simulacao ate que aquele no seja atingido,
-// devolvendo a simulacao pausada". Escrito pela thread de SIMULACAO (que
-// checa a condicao a cada amostra -- ver o laco de 'simThread' em
-// runDashboard()) e pela thread de UI (que arma/cancela); protegido por
-// 'bpMutex' (mesmo padrao de 'stateMutex'/'latest').
-//
-// O alvo e (id do PLAYER, tag do no) -- nao "qualquer player nesse estado":
-// o pedido foi "de um dado elemento", entao o breakpoint observa uma
-// entidade especifica, capturada no momento de armar (ver 'doArmBreakpoint'
-// em runDashboard()).
-//------------------------------------------------------------------------------
-struct Breakpoint
+// Breakpoint de arvore de comportamento e escada de velocidade -- a
+// DECISAO de cada um mora em app/BreakpointController.hpp e
+// app/SpeedLadder.hpp (sem FTXUI/MIXR, testada em tests/app/), separada
+// do wiring com mutex/ClockStation que continua aqui. Ver o "porque" nos
+// dois headers.
+
+Color speedToneColor(const SpeedTone tone)
 {
-   bool armed{};
-   int entityId{-1};
-   std::string entityName;
-   std::string nodeTag;
-   bool fastMode{};        // "velocidade maxima possivel" -- simThread pula o msleep()
-   double armedAtSimSec{};
-
-   // O 'timeScale' NOMINAL de antes de armar em modo rapido -- 'fastMode'
-   // tambem crava o ClockStation no topo da escada (ver 'doArmBreakpoint'),
-   // porque pular o msleep() do PROPRIO laco do dashboard nao acelera a
-   // simulacao sozinho: quem manda no ritmo de verdade e o pool de tempo
-   // critico nativo (fastForwardRate), rodando na SUA PROPRIA thread desde
-   // 'station->createTimeCriticalProcess()' -- independente de quantas vezes
-   // por segundo 'simThread' chama 'updateData()'. Sem tambem cravar o
-   // ClockStation, "[G] velocidade maxima" so fazia o laco girar em vazio
-   // mais rapido, sem o mundo simulado andar mais rapido de verdade (medido:
-   // cabecalho mostrava "MAX (~1x real)" com o breakpoint armado sobre
-   // timeScale nominal 1x -- o rotulo estava certo, a FUNCIONALIDADE que
-   // faltava). Restaurado ao sair do modo rapido (hit/timeout/cancelamento).
-   double restoreTimeScale{1.0};
-
-   // Resultado da ultima tentativa -- pra UI mostrar o que aconteceu depois
-   // que 'armed' volta a false, sem precisar de um canal separado.
-   bool hit{};
-   double hitSimSec{};
-   bool timedOut{};
-};
-
-// "Trate os casos em que um no objetivo nunca e atingido": alem do cancelamento
-// manual (sempre disponivel), um breakpoint que nunca dispara e abandonado
-// sozinho depois desse tanto de tempo SIMULADO (nao de parede -- independe
-// de estar em velocidade maxima ou 1x) desde que foi armado.
-const double kBreakpointTimeoutSimSec{300.0};
-
-// Mesma escada de shared/xclock/TimeControls.cpp, de proposito.
-const double kLadder[]{0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0};
-const int kLadderSize{static_cast<int>(sizeof(kLadder) / sizeof(kLadder[0]))};
-const int kRealTimeIndex{3};
-
-int nearestLadderIndex(const double scale)
-{
-   int best{kRealTimeIndex};
-   double bestDist{-1.0};
-   for (int i = 0; i < kLadderSize; i++) {
-      const double dist{std::fabs(kLadder[i] - scale)};
-      if (bestDist < 0.0 || dist < bestDist) { bestDist = dist; best = i; }
+   switch (tone) {
+      case SpeedTone::Yellow:  return Color::Yellow;
+      case SpeedTone::Cyan:    return Color::Cyan;
+      case SpeedTone::Red:     return Color::Red;
+      case SpeedTone::Magenta: return Color::Magenta;
+      case SpeedTone::Green:
+      default:                return Color::Green;
    }
-   return best;
-}
-
-std::string formatScale(const double scale)
-{
-   std::ostringstream oss;
-   oss << std::fixed << std::setprecision(scale < 1.0 ? 2 : 0) << scale << "x";
-   return oss.str();
 }
 
 Element renderHeader(const DashboardState& st)
@@ -171,25 +119,9 @@ Element renderHeader(const DashboardState& st)
    std::ostringstream ts;
    ts << "sim=" << std::fixed << std::setprecision(1) << st.simSec << "s";
 
-   // Durante um breakpoint em velocidade MAXIMA, o valor NOMINAL da escada
-   // (st.timeScale) para de significar alguma coisa -- o laco de simulacao
-   // ignora o pacing de parede por completo (ver o laco de 'simThread').
-   // Mostra a velocidade MEDIDA de verdade em vez disso -- "o factual da
-   // simulacao", pedido explicito.
-   std::string speedLabel;
-   Color speedColor{Color::Green};
-   if (st.fastBreakpointRun) {
-      std::ostringstream oss;
-      oss << "MAX (~" << std::fixed << std::setprecision(0) << st.actualTimeScale << "x real)";
-      speedLabel = oss.str();
-      speedColor = Color::Magenta;
-   } else if (st.paused) {
-      speedLabel = "PAUSADO (" + formatScale(st.timeScale) + ")";
-      speedColor = Color::Red;
-   } else {
-      speedLabel = formatScale(st.timeScale);
-      speedColor = st.timeScale > 1.0 ? Color::Yellow : (st.timeScale < 1.0 ? Color::Cyan : Color::Green);
-   }
+   const SpeedDisplay disp{speedDisplay(st.fastBreakpointRun, st.paused, st.timeScale, st.actualTimeScale)};
+   const std::string& speedLabel{disp.label};
+   const Color speedColor{speedToneColor(disp.tone)};
 
    return hbox({
              text(" app ") | bold | bgcolor(Color::Blue) | color(Color::White),
@@ -233,12 +165,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    DashboardState latest;
    std::atomic<bool> running{true};
 
-   // Estado do breakpoint (ver o comentario da struct Breakpoint, acima) --
+   // Estado do breakpoint (ver app/BreakpointController.hpp) --
    // 'fastRunToBreakpoint' e atomico A PARTE (lido a cada iteracao do laco
    // de 'simThread', sem tomar 'bpMutex' so pra isso) porque decide se a
    // iteracao PULA o msleep() de pacing -- caminho quente, sem alocacao.
    std::mutex bpMutex;
-   Breakpoint bp;
+   BreakpointController bp;
    std::atomic<bool> fastRunToBreakpoint{false};
 
    auto screen = ScreenInteractive::Fullscreen();
@@ -328,31 +260,22 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          next.background.tacviewEnabled = (tacviewOutput != nullptr);
          next.background.radarScanPushCount = radarScanPushCount;
 
-         // Checagem do breakpoint -- ver o comentario da struct Breakpoint.
+         // Checagem do breakpoint -- ver app/BreakpointController.hpp.
          // Roda toda amostra, mesmo fora do modo rapido: "a velocidade que
          // eu decidir" tambem tem de parar sozinha quando o no e atingido.
          {
             const std::lock_guard<std::mutex> lock(bpMutex);
-            if (bp.armed) {
-               for (const auto& e : next.entities) {
-                  if (e.id == bp.entityId && matchesLabel(bp.nodeTag, e.behaviorLabel)) {
-                     if (clockStation != nullptr) {
-                        if (bp.fastMode) clockStation->setTimeScale(bp.restoreTimeScale);
-                        clockStation->setPaused(true);
-                     }
-                     bp.armed = false;
-                     bp.hit = true;
-                     bp.hitSimSec = next.simSec;
-                     fastRunToBreakpoint = false;
-                     break;
-                  }
+            std::vector<BreakpointEntity> bpEntities;
+            bpEntities.reserve(next.entities.size());
+            for (const auto& e : next.entities) bpEntities.push_back({e.id, e.behaviorLabel});
+
+            const BreakpointTickResult result{bp.tick(bpEntities, matchesLabel, next.simSec)};
+            if (result.outcome != BreakpointOutcome::None) {
+               if (clockStation != nullptr) {
+                  if (result.shouldRestoreScale) clockStation->setTimeScale(bp.restoreTimeScale());
+                  if (result.shouldPause) clockStation->setPaused(true);
                }
-               if (bp.armed && (next.simSec - bp.armedAtSimSec) > kBreakpointTimeoutSimSec) {
-                  if (bp.fastMode && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale);
-                  bp.armed = false;
-                  bp.timedOut = true;
-                  fastRunToBreakpoint = false;
-               }
+               fastRunToBreakpoint = false;
             }
          }
 
@@ -388,7 +311,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    });
 
    DashboardExit action{DashboardExit::Quit};
-   int ladderIndex{nearestLadderIndex(clockStation != nullptr ? clockStation->getTimeScale() : 1.0)};
+   SpeedLadder ladder;
+   ladder.seedFromScale(clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
 
    // Camada de confirmacao -- 'uiDepth' 0 = UI normal, 1 = dialogo de
    // confirmacao por cima. E o MESMO padrao do exemplo oficial
@@ -441,26 +365,24 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    //
    // Acelerar/frear MANUAL ficam BLOQUEADOS enquanto um breakpoint roda em
    // velocidade maxima (pedido explicito) -- o valor nominal da escada
-   // (kLadder[ladderIndex]) nao tem efeito nenhum ali mesmo (o laco ja
+   // (ladder.scale()) nao tem efeito nenhum ali mesmo (o laco ja
    // ignora o pacing de parede por completo, ver 'fastRunToBreakpoint' no
    // laco de 'simThread'), entao mexer nele so confundiria o que o
    // cabecalho mostra depois que o modo rapido terminar.
    const auto doAccelerate = [&] {
-      if (clockStation == nullptr || fastRunToBreakpoint.load() || ladderIndex >= kLadderSize - 1) return;
-      ladderIndex++;
-      clockStation->setTimeScale(kLadder[ladderIndex]);
+      if (clockStation == nullptr || fastRunToBreakpoint.load()) return;
+      if (ladder.accelerate()) clockStation->setTimeScale(ladder.scale());
    };
    const auto doDecelerate = [&] {
-      if (clockStation == nullptr || fastRunToBreakpoint.load() || ladderIndex <= 0) return;
-      ladderIndex--;
-      clockStation->setTimeScale(kLadder[ladderIndex]);
+      if (clockStation == nullptr || fastRunToBreakpoint.load()) return;
+      if (ladder.decelerate()) clockStation->setTimeScale(ladder.scale());
    };
    const auto doTogglePause = [&] { if (clockStation != nullptr) clockStation->togglePaused(); };
    const auto doRealTime = [&] {
       if (clockStation == nullptr) return;
-      ladderIndex = kRealTimeIndex;
+      ladder.toRealTime();
       clockStation->setPaused(false);
-      clockStation->setTimeScale(kLadder[ladderIndex]);
+      clockStation->setTimeScale(ladder.scale());
    };
    // As quatro versoes de VERDADE (o que 'l'/'r'/'s'/'q' faziam direto
    // antes) -- agora so rodam depois de confirmadas (ver 'confirmDialog'
@@ -567,19 +489,14 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
       {
          const std::lock_guard<std::mutex> lock(bpMutex);
-         bp = Breakpoint{};
-         bp.armed = true;
-         bp.entityId = target.id;
-         bp.entityName = target.name;
-         bp.nodeTag = line.tag;
-         bp.fastMode = fast;
-         bp.armedAtSimSec = currentSimSec;
+         bp.arm(target.id, target.name, line.tag, fast, currentSimSec,
+               clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
          if (fast && clockStation != nullptr) {
             // Crava o pool de tempo critico no topo da escada -- ver o
-            // comentario grande em 'Breakpoint::restoreTimeScale' sobre por
-            // que pular o msleep() do dashboard nao bastava sozinho.
-            bp.restoreTimeScale = clockStation->getTimeScale();
-            clockStation->setTimeScale(kLadder[kLadderSize - 1]);
+            // comentario grande sobre 'restoreTimeScale()' em
+            // app/BreakpointController.hpp sobre por que pular o msleep()
+            // do dashboard nao bastava sozinho.
+            clockStation->setTimeScale(ladder.maxScale());
          }
       }
       fastRunToBreakpoint = fast;
@@ -587,8 +504,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const auto doCancelBreakpoint = [&] {
       const std::lock_guard<std::mutex> lock(bpMutex);
-      if (bp.fastMode && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale);
-      bp.armed = false;
+      const bool shouldRestoreScale{bp.cancel()};
+      if (shouldRestoreScale && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale());
       fastRunToBreakpoint = false;
    };
    const Component btnRunToBreakpoint{makeButton("[g] Rodar ate aqui", [&] { doArmBreakpoint(false); })};
@@ -629,7 +546,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       bool isBreakpoint{};
       {
          const std::lock_guard<std::mutex> lock(bpMutex);
-         isBreakpoint = bp.armed && bp.nodeTag == line.tag;
+         isBreakpoint = bp.isArmedOn(line.tag);
       }
 
       return renderBtLine(line, isActiveLeaf, es.active, isBreakpoint);
@@ -645,42 +562,35 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // 'selectedBtLineIndex'/'treeLines' direto (mutacao so pelo clique do
    // proprio usuario, sem concorrencia de thread).
    const auto buildBreakpointStatus = [&]() -> Element {
-      Breakpoint snap;
+      const bool hasSelection{selectedBtLineIndex >= 0
+                              && selectedBtLineIndex < static_cast<int>(treeLines.size())};
+      const bool selectionIsLeaf{hasSelection
+         && treeLines[static_cast<std::size_t>(selectedBtLineIndex)].leaf};
+      const std::string selectedLeafTag{hasSelection
+         ? treeLines[static_cast<std::size_t>(selectedBtLineIndex)].tag : std::string{}};
+
+      BreakpointStatus snap;
       {
          const std::lock_guard<std::mutex> lock(bpMutex);
-         snap = bp;
+         snap = bp.status(hasSelection, selectionIsLeaf, selectedLeafTag);
       }
 
-      if (snap.armed) {
-         std::ostringstream oss;
-         oss << "Aguardando: " << snap.entityName << " -> \"" << snap.nodeTag << "\""
-             << (snap.fastMode ? " (velocidade maxima)" : " (velocidade atual)");
-         return hbox({text(oss.str()) | color(Color::Yellow) | bold, text("  "),
-                      btnCancelBreakpoint->Render()});
+      switch (snap.branch) {
+         case BreakpointStatusBranch::Armed:
+            return hbox({text(snap.text) | color(Color::Yellow) | bold, text("  "),
+                         btnCancelBreakpoint->Render()});
+         case BreakpointStatusBranch::Hit:
+            return text(snap.text) | color(Color::Green) | bold;
+         case BreakpointStatusBranch::TimedOut:
+            return text(snap.text) | color(Color::Red);
+         case BreakpointStatusBranch::LeafSelected:
+            return hbox({text(snap.text + "  "),
+                         btnRunToBreakpoint->Render(), text(" "), btnRunToBreakpointMax->Render()});
+         case BreakpointStatusBranch::NonLeafSelected:
+         case BreakpointStatusBranch::NoTreeSelection:
+         default:
+            return text(snap.text) | dim;
       }
-      if (snap.hit) {
-         std::ostringstream oss;
-         oss << "Breakpoint atingido: " << snap.entityName << " chegou em \"" << snap.nodeTag
-             << "\" (sim=" << std::fixed << std::setprecision(1) << snap.hitSimSec
-             << "s) -- simulacao PAUSADA";
-         return text(oss.str()) | color(Color::Green) | bold;
-      }
-      if (snap.timedOut) {
-         std::ostringstream oss;
-         oss << "Breakpoint NAO atingido em " << std::fixed << std::setprecision(0)
-             << kBreakpointTimeoutSimSec << "s de simulacao -- cancelado";
-         return text(oss.str()) | color(Color::Red);
-      }
-      if (selectedBtLineIndex >= 0 && selectedBtLineIndex < static_cast<int>(treeLines.size())) {
-         const BtTreeLine& line{treeLines[static_cast<std::size_t>(selectedBtLineIndex)]};
-         if (!line.leaf) {
-            return text("Selecione uma FOLHA da arvore (nao um no de controle) para marcar um breakpoint")
-                  | dim;
-         }
-         return hbox({text("Folha selecionada: \"" + line.tag + "\"  "),
-                      btnRunToBreakpoint->Render(), text(" "), btnRunToBreakpointMax->Render()});
-      }
-      return text("Clique numa folha da arvore (Players ou Mapa) para marcar um breakpoint") | dim;
    };
 
    // O card de detalhe INTEIRO (campos + arvore de BT + os controles de
