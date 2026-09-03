@@ -2015,6 +2015,57 @@ chega em disco.**
 - `make test` segue com a MESMA falha pré-existente de sempre (`onde-a-decisao-roda`) — agora
   24/25 (não mais 23/24: o total subiu em um com o teste novo).
 
+**Décima quinta passada: a aba Memória acusava `FlightAction` com `count` NEGATIVO e
+`TacticalAlert` "vazando" (`count` só subindo) — as duas eram o MESMO fenômeno, não dois bugs, e
+não era vazamento nenhum.**
+
+- **Investigado antes de mexer em qualquer coisa**: o ciclo `new`/`unref()` de `TacticalAlert`
+  (`AlertDatalink::broadcastAlert()`) e de `FlightAction` (criado a cada decisão, `unref()`'d pelo
+  `base::ubf::Agent` nativo — mesmo padrão do comentário "pre-ref'd" em `stub.cpp`) está
+  corretamente balanceado nos dois casos — conferido lendo `sendMessage()`/`event()`/
+  `onDatalinkMessageEvent()` do framework, nenhum `ref()` extra escondido no caminho de entrega.
+- **A causa real é a MESMA armadilha 3 já documentada na seção "Testes automatizados" deste
+  arquivo** — `mixr::base::MetaObject::count/mc/tc` são `int` cru, incrementados/decrementados
+  sem lock (`macros.hpp:249`, dentro de `STANDARD_CONSTRUCTOR()`/`STANDARD_DESTRUCTOR()`, que são
+  expandidos DENTRO do `.cpp` de cada classe — `TacticalAlert.cpp`/`FlightAction.cpp` no plugin
+  `flight`, não dentro da `.so` pré-compilada do MIXR). Antes da nona passada (`SimAgent` único,
+  laço de background) isso nunca corria risco de corrida; depois dela, `app` decide via
+  `FlightAgentTC` no pool T/C — as MESMAS duas classes, construídas/destruídas a cada ciclo de
+  decisão, agora em MAIS DE UMA thread do pool ao mesmo tempo, competindo pelo mesmo contador
+  não-atômico. `tests/memory/run_leak_test.py` já roda com `-threads 1` exatamente por causa
+  disso — a aba Memória do `app`, ao vivo, nunca tinha essa proteção.
+- **Reproduzido medindo, não só lendo o código**: `./dist/bin/app -scenario intercept -threads 1
+  -deterministic 1000` sempre termina com `count=0` para as duas classes, em toda repetição.
+  `-threads 4` no MESMO cenário deu `FlightAction count=-92`/`-330`/`-170` e `TacticalAlert
+  count=1`/`-2`/`0` em três corridas seguidas — negativo e não-reprodutível entre corridas
+  IDÊNTICAS, a assinatura de uma corrida de dados, não de um vazamento (que seria determinístico
+  e nunca daria um número impossível como `count` negativo).
+- **Fix em `app/MetaObjectSnapshot.{hpp,cpp}`**: `ClassStat` ganhou `racyCounter` — verdadeiro
+  quando QUALQUER amostra da janela deslizante de `count` já foi negativa (impossível para uma
+  contagem de instâncias vivas de verdade, portanto prova suficiente de que o contador daquela
+  classe está sendo raceado). Enquanto `racyCounter` é verdadeiro, `suspectedLeak` fica sempre
+  `false` — uma leitura já comprovadamente corrompida não pode virar veredito de vazamento.
+- **`app/MemoryPanel.cpp`**: a barra e o rótulo da linha usam `racyCounter` para mostrar
+  `"RACA (contador não-atômico)"` em AZUL (deliberadamente diferente do vermelho de
+  `"CRESCENDO"`) — o aviso certo é "não confie neste número agora", não um alarme de vazamento.
+- **Testado**: `tests/app/test_meta_object_snapshot.cpp` ganhou
+  `NegativoNuncaAcusaVazamentoEMarcaRacy` (um padrão clássico de "cresce sem nunca cair" que
+  cruza por valores negativos não pode acusar `suspectedLeak`) e
+  `RacySaiDaJanelaQuandoONegativoDesliza` (um mergulho negativo único, uma vez fora da janela
+  deslizante, `racyCounter` volta a `false` sozinho — não é estigma permanente da classe). Suíte
+  `test-app-meta` 9/9; `make test` completo segue 33/34, mesma falha pré-existente de sempre
+  (`onde-a-decisao-roda`), nenhuma regressão.
+- **O que este fix NÃO faz, de propósito**: não toca o contador `mixr::base::MetaObject`
+  em si (`MIXR` é dependência binária, não objeto de desenvolvimento — mesma régua já aplicada em
+  `shared/xlog`/`shared/xmsg`) nem tenta serializar construção/destruição dessas classes (a
+  corrida acontece entre a CONSTRUÇÃO de uma instância numa thread do pool e a DESTRUIÇÃO de OUTRA
+  instância em outra thread simultânea — um mutex só em torno do `new`/`unref()` do nosso próprio
+  código não fecharia a janela, porque o destrutor de verdade é gerado por
+  `IMPLEMENT_SUBCLASS()` e roda onde quer que o `unref()` final aconteça). O relatório de
+  `-deterministic` (`app/MetaObjectReport.cpp`, usado por `tests/memory/run_leak_test.py`)
+  continua imprimindo o número CRU, sem essa camada — é o que já roda com `-threads 1` de
+  propósito e não precisa do aviso.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
