@@ -78,6 +78,17 @@ std::vector<std::string> observationFieldNames()
    return nomes;
 }
 
+std::vector<std::string> observationBoolFields()
+{
+   std::vector<std::string> nomes;
+#define XRLBRIDGE_F(nome)
+#define XRLBRIDGE_B(nome) nomes.emplace_back(#nome);
+   XRLBRIDGE_OBSERVATION_FIELDS
+#undef XRLBRIDGE_F
+#undef XRLBRIDGE_B
+   return nomes;
+}
+
 void packObservation(const Observation& obs, float* const out)
 {
    if (out == nullptr) return;

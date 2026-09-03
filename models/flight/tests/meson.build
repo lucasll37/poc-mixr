@@ -67,6 +67,8 @@ bt_sources = files(
 bt_sdk_sources = files(
     '../src/bt/bt_factory_sdk.cpp',
     '../src/bt/nodes/OnnxScoreCondition.cpp',
+    '../src/bt/nodes/OnnxPolicyAction.cpp',
+    '../src/bt/nodes/PyDecideAction.cpp',
 )
 
 # O XML de PRODUCAO, por caminho -- nao uma copia.

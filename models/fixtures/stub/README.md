@@ -53,10 +53,12 @@ alvo deste `Makefile` que copia algo para lá.
 
 ## Usando este diretório como ponto de partida para um modelo novo
 
-Copiar esta pasta inteira já traz, prontos, os quatro itens que qualquer novo modelo neste
+Copiar esta pasta inteira já traz, prontos, os cinco itens que qualquer novo modelo neste
 repositório precisa ter (um `Makefile` de build autocontido como este, uma pasta `tests/`, uma
-pasta `docs/` e um `README.md`), além de um arquivo de projeto Meson mínimo que já satisfaz o
-empacotamento exigido:
+pasta `docs/`, um `README.md` e um `CHANGELOG.md`), além de um arquivo de projeto Meson mínimo que
+já satisfaz o empacotamento exigido. Os cinco são cobrados pela guarda
+[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh), que
+descobre os projetos sozinha — um modelo novo já nasce cobrado:
 
 ```bash
 cp -r models/fixtures/stub models/meu-modelo
@@ -79,6 +81,7 @@ abaixo da raiz — abra o `Makefile` copiado e troque a linha `ROOT := $(abspath
 | [`src/stub.cpp`](src/stub.cpp) | a implementação de referência — leia junto com `docs/CONTRATO.md` |
 | [`docs/CONTRATO.md`](docs/CONTRATO.md) | a lista completa do que um modelo precisa fazer |
 | [`tests/`](tests/) | confere que o `.so` compilado tem a forma certa (um símbolo exportado, dependências resolvidas) |
+| [`CHANGELOG.md`](CHANGELOG.md) | o que mudou neste fixture, e por quê — ao copiar a pasta, esvazie e recomece pela versão do seu `meson.build` |
 | `meson.build` | o projeto de build deste modelo |
 | `Makefile` | compila, testa e publica este projeto sozinho, sem precisar do resto do repositório |
 
@@ -86,4 +89,4 @@ abaixo da raiz — abra o `Makefile` copiado e troque a linha `ROOT := $(abspath
 
 Nada acima depende disto, mas se quiser entender como os modelos se encaixam na aplicação maior —
 outros modelos que existem, como um cenário aponta para um `.so`, o fluxo de build orquestrado que
-constrói tudo de uma vez — o ponto de entrada é [`../README.md`](../README.md).
+constrói tudo de uma vez — o ponto de entrada é [`../../README.md`](../../README.md).

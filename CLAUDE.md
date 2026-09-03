@@ -878,12 +878,13 @@ models/
 │   ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
 │   ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
 │   ├── README.md
+│   ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
 │   └── meson.build       # UMA arvore, DOIS artefatos:
 │                         #   libflight.so     (single-thread)
 │                         #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
 ├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
 │                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
-│   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md
+│   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md  CHANGELOG.md
 └── fixtures/
     └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
         ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
@@ -892,10 +893,19 @@ models/
         ├── docs/CONTRATO.md          # ~270 linhas, escritas SO contra o SDK -- o que
         │                             # um modelo TEM de fazer
         ├── Makefile
-        └── README.md
+        ├── README.md
+        └── CHANGELOG.md
 ```
 
-**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile` e `README.md`.** O `Makefile` de cada
+**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
+guarda `tests/guard/check_modelo_estrutura.sh` (suite `guard`, alvo `modelo-estrutura`) cobra as
+cinco.** Ela descobre os projetos por `find` sob `models/` (todo diretorio com um `project()` no
+`meson.build`), nao por lista fixa -- modelo novo ja nasce cobrado, e `models/plugins/` fica de
+fora de proposito (e deposito de `.so` de terceiro, nao projeto). No `CHANGELOG.md`, duas
+convencoes que nao sao as usuais e existem por um motivo medido: a **versao** e a do `project()`
+do `meson.build` daquele modelo (o descritor de plugin nao carrega versao nenhuma do modelo --
+`PluginDescV1` so tem `plugin_name`/`mixr_pkg_version`/`build_id`), e as **datas saem da data de
+COMMIT, nunca da mensagem** -- todo commit deste repositorio se chama "up". O `Makefile` de cada
 um é **autocontido**: `cd models/<nome> && make` configura, compila e instala em `./dist` -- a
 raiz DAQUELE projeto, nao a raiz do `poc-mixr` -- sem chamar o Makefile raiz. O unico
 pre-requisito e o SDK que o host publica uma vez (`make configure && make sdk`, na raiz); dai em

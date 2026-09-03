@@ -1,0 +1,24 @@
+<!--
+  A arvore de PROTOTIPAGEM: a decisao vem de um script Python.
+
+  Mesma forma da arvore de deploy do .onnx (flight_tree_onnx.xml), e pelo mesmo
+  motivo: o Fallback tem a politica primeiro e a rede de seguranca depois. Se o
+  Python nao estiver disponivel, o script nao existir, nao definir decide(), ou
+  levantar excecao, o no devolve FAILURE e a Patrol assume -- a aeronave
+  continua voando.
+
+  A arvore de PRODUCAO (flight_tree.xml) fica intocada. Trocar de politica e
+  apontar o 'treeFile:' do cenario para outro arquivo.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <PyDecide script="./dist/share/mixr-plugins/flight/policy_example.py"
+                label="PY"/>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

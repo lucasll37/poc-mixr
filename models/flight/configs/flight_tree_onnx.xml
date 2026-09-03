@@ -1,0 +1,38 @@
+<!--
+  A arvore de DEPLOY da politica de RL.
+
+  A de PRODUCAO (flight_tree.xml) fica intocada, de proposito: esta e um
+  arquivo a mais, apontado por 'treeFile:' de um cenario que queira rodar a
+  politica treinada em vez das regras escritas a mao. Trocar de politica e
+  trocar arquivo -- nao recompilar.
+
+  O Fallback tem DOIS ramos, e a ordem importa:
+
+    1) OnnxPolicy -- a politica treinada. Se o .onnx carregar e inferir, ela
+       comanda e o Fallback para aqui.
+    2) Patrol     -- a rede de seguranca. So roda se a politica FALHAR
+       (arquivo ausente, forma errada, erro de inferencia). Sem ela, uma
+       politica quebrada deixaria a aeronave sem comando nenhum.
+
+  Note o que NAO esta aqui: o piso anti-CFIT. Ele nao e da arvore -- e o
+  AltitudeSafetyBehavior, que concorre por VOTO no UbfArbiter do cenario com
+  voto 90 contra os 50 do BtBehavior. Uma politica ruim pode comandar uma
+  altitude que fura o terreno; o arbitro nativo sobrepoe sem que esta arvore
+  precise saber disso.
+
+  O caminho do modelo e o de INSTALACAO (dist/share/mixr-plugins/flight/), a
+  mesma convencao do proprio flight_tree.xml e do rootDir: do JSBSim.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <OnnxPolicy model="./dist/share/mixr-plugins/flight/policy_example.onnx"
+                  normalized="true"
+                  label="ONNX"/>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

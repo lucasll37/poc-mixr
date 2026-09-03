@@ -117,6 +117,10 @@ subdir('./shared/xrlbridge')
 # SDK, pelo mesmo motivo de xboard/xtrack/xrlbridge.
 subdir('./shared/xinfer')
 
+# Python embarcado (nos de arvore escritos em script). Nao linka libpython --
+# ver o cabecalho de PyEmbed.hpp. Tambem antes do SDK.
+subdir('./shared/xpyembed')
+
 
 # ==============================================================================
 # O SDK DE PLUGIN
@@ -126,7 +130,7 @@ subdir('./shared/xinfer')
 # fronteira. Publicado em dist/{include,lib,lib/pkgconfig}.
 #
 # COMO INSTALAR SO O SDK (e a etapa 'sdk' do Makefile):
-#     meson compile -C build xboard xlog xtrack xrlbridge xinfer   # por NOME
+#     meson compile -C build xboard xlog xtrack xrlbridge xinfer xpyembed
 #     meson install -C build --no-rebuild --tags sdk,devel
 #
 # DUAS ARMADILHAS MEDIDAS, nao supostas:
@@ -156,12 +160,13 @@ install_headers('shared/xtrack/TrackQuery.hpp',     subdir: 'xtrack')
 install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
 install_headers('shared/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
 install_headers('shared/xinfer/Infer.hpp',          subdir: 'xinfer')
+install_headers('shared/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
 
 pkg = import('pkgconfig')
 pkg.generate(
     name        : 'poc-mixr-sdk',
     description : 'SDK para compilar um modelo (plugin) do poc-mixr',
-    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib, xinfer_lib],
+    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib, xinfer_lib, xpyembed_lib],
     requires    : ['mixr'],
     variables   : ['mixr_pkg_version=' + mixr_dep.version()],
 )

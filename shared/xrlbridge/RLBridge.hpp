@@ -122,6 +122,10 @@ Observation getObservation();
 // Os nomes dos 28 campos numericos, na ordem canonica.
 std::vector<std::string> observationFieldNames();
 
+// Quais desses nomes sao booleanos (os 5 do fim). O lado Python precisa para
+// montar Discrete(2) em vez de Box -- e para nao ter de repetir a lista.
+std::vector<std::string> observationBoolFields();
+
 // Observation -> os 28 floats, na ordem canonica. 'out' tem de ter pelo menos
 // XRLBRIDGE_OBSERVATION_SIZE posicoes.
 void packObservation(const Observation& obs, float* out);

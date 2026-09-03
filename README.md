@@ -259,8 +259,8 @@ o `.so`, e é o único teste que pode falhar por *"o contrato não basta"*.
 
 Hoje há três modelos: [`models/flight/`](models/flight/) (produção, carregado pelas quatro pocs),
 [`models/missile/`](models/missile/) (segundo modelo, demo acadêmica de míssil guiado) e o
-`stub` de teste acima. **Cada um tem `tests/`, `docs/`, `Makefile` e `README.md` próprios** — o
-`Makefile` é autocontido: `cd models/<nome> && make` compila e instala em `./dist` (a raiz
+`stub` de teste acima. **Cada um tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md`
+próprios** (a guarda `modelo-estrutura` cobra as cinco) — o `Makefile` é autocontido: `cd models/<nome> && make` compila e instala em `./dist` (a raiz
 daquele projeto) sem depender do Makefile raiz, só do SDK que este já publicou (`make configure
 && make sdk`, uma vez). Como criar um modelo novo, o contrato completo
 (`models/fixtures/stub/docs/CONTRATO.md`) e todos os alvos de build: **[models/README.md](models/README.md)**.

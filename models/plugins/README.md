@@ -4,6 +4,11 @@ Diferente de [`models/flight/`](../flight/), [`models/missile/`](../missile/) e
 [`models/fixtures/stub/`](../fixtures/stub/) — que são projetos Meson **compilados por este
 repositório** — esta pasta não compila nada. É um **depósito**.
 
+Por isso a regra das cinco peças de um projeto de modelo (`tests/`, `docs/`, `README.md`,
+`CHANGELOG.md` e `Makefile`, ver [../README.md](../README.md)) **não** se aplica aqui, e a guarda
+`tests/guard/check_modelo_estrutura.sh` pula esta pasta de propósito: não há fonte, não há build,
+e o `.so` de terceiro é documentado por quem o compilou.
+
 **Dois tipos de conteúdo pousam aqui, e a partir do momento em que pousam são
 INDISTINGUÍVEIS:**
 

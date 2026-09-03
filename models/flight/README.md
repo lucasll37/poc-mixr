@@ -84,5 +84,6 @@ seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — calibração do c310, armadilhas confirmadas
   específicas deste modelo
+- [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
 - [../README.md](../README.md) — visão geral de `models/`, o contrato de plugin, e o build
   orquestrado pelo Makefile da raiz

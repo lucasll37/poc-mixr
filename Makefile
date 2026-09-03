@@ -73,7 +73,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
 	@# ter de escrever shared/xboard/libxboard.so a mao.
-	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer
+	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer xpyembed
 	@# '--tags sdk,devel' e nao '--tags sdk': install_headers() nao aceita
 	@# install_tag no meson 1.2, entao os headers ficam com a tag automatica
 	@# 'devel'. Com '--tags sdk' sozinho o SDK sai SEM os headers, e o erro so

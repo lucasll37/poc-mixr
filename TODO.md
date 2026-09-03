@@ -7,13 +7,6 @@ criar scripts e deps
 
 Controle de randomização
 
-Encerramento: aplicar em src/poc/* e src/server o mesmo que o ./app ganhou
-(ver app/Shutdown.hpp) -- calar a thread de tempo critico ANTES do
-SHUTDOWN_EVENT. Nenhuma delas faz isso hoje. A metade que de fato travava (o
-::send() sem teto do shared/xtacview) ja foi corrigida e vale para todas.
-
-
-
 --------------------------------------------------------
 testar em python para migrar para mixr/cpp facilita a prototipagem mais abre margem para desafios de integração -> nascer já em cpp com o desafio de se criar ferramentas de desenvolvimento que permita boa produtividade
 

@@ -46,7 +46,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 4 execuções |
 | `determinism` | é reprodutível, nos dois laços de decisão? **E de onde vem essa reprodutibilidade?** | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg`; mais o controle negativo `onde-a-decisao-roda` | 8 execuções + ~10 |
 | `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **stub** | 5 testes, ~3 s |
-| `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo e o `.so` está **fresco**? | `diff -r` da camada de aplicação + duas guardas novas | instantâneo |
+| `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo, o `.so` está **fresco** e todo modelo tem as cinco peças? | `diff -r` da camada de aplicação + as guardas estruturais | instantâneo |
 
 ---
 
@@ -242,6 +242,20 @@ scripts.
 `compare-single-multi` mostra as diferenças, mas não falha, e ninguém lê a saída toda. Aqui vira
 invariante verificado — e é ele que justifica as camadas 1 e 2 compilarem contra **uma cópia só**.
 Se as duas divergissem, metade do modelo ficaria sem teste em silêncio.
+
+### `modelo-estrutura` — as cinco peças de todo projeto de modelo
+
+[`guard/check_modelo_estrutura.sh`](guard/check_modelo_estrutura.sh) afirma que **todo** projeto
+sob `models/` tem `tests/`, `docs/`, `README.md`, `CHANGELOG.md` e `Makefile` — a regra escrita em
+[models/README.md](../models/README.md), que antes só existia como prosa. É o que faz cada modelo
+autocontido: quem abre o editor só em `models/<nome>/` tem ali como compilar, como provar que
+continua certo, o "porquê" das decisões, a porta de entrada e o que mudou desde a última vez.
+
+Ela **descobre os projetos por `find`** (todo diretório com `project()` no `meson.build`), não por
+lista fixa — mesma lição já registrada no cabeçalho de `check_host_opaco.sh`, onde um glob de dois
+níveis passou a mentir em silêncio depois de uma renomeação. Modelo novo já nasce cobrado, e
+`models/plugins/` fica de fora de propósito: é o depósito de `.so` de terceiro, não um projeto.
+Diretório presente mas vazio (ou só com `.gitkeep`) conta como ausente.
 
 ---
 

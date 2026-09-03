@@ -19,6 +19,7 @@ missile/
 │   └── xmissile/GuidedMissile.{hpp,cpp}   # o Player -- guia sobre o JSBSimModel
 ├── tests/domain/                # so domain::pursuit(), sem levantar Station
 ├── docs/DESIGN.md               # a guiagem em detalhe + a armadilha de inercia/massa
+├── CHANGELOG.md                 # o que mudou neste modelo, e por que
 ├── Makefile                     # build autocontido -- ver abaixo
 └── meson.build
 ```
@@ -48,6 +49,7 @@ interna nenhuma.
 ## Ler também
 
 - [docs/DESIGN.md](docs/DESIGN.md) — a lei de guiagem e a armadilha de inércia/massa
+- [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
 - [../README.md](../README.md) — visão geral de `models/`, o contrato de plugin, e o build
   orquestrado pelo Makefile da raiz (`make models`)
 - [../../CLAUDE.md](../../CLAUDE.md) — seção "Demo: míssil guiado", a dissecação completa

@@ -74,12 +74,31 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	@# '-Dpkg_config_path', exatamente como descrito acima. Confirmado
 	@# quebrando: 'make configure' na raiz seguido de 'make test' falhava com
 	@# "Dependency poc-mixr-sdk not found", com o .pc presente em dist/.
+	@#
+	@# O proprio poc-mixr-sdk.pc entra pelo MESMO motivo, e a falha e ainda
+	@# mais silenciosa: o meson resolve o 'Libs:' do .pc em tempo de CONFIGURE
+	@# e grava os caminhos das .so direto no build.ninja. Uma lib NOVA no SDK
+	@# (o -lxinfer, por exemplo) nao aparece em lugar nenhum -- nem o guard nem
+	@# o regen do ninja percebem -- e o link do plugin falha com "undefined
+	@# reference" a uma funcao que existe e esta exportada. Confirmado
+	@# quebrando, exatamente assim.
+	@#
+	@# E por isso que o ramo de reconfiguracao comeca com 'meson configure
+	@# --clearcache': o meson CACHEIA o resultado do pkg-config entre
+	@# execucoes, e '--reconfigure' sozinho reusa o cache -- medido, a
+	@# dependencia continuava com as 4 .so antigas do SDK depois de um
+	@# reconfigure completo. ('--clearcache' e argumento de 'meson configure',
+	@# nao de 'meson setup' -- passa-lo ao setup faz o meson recusar a linha
+	@# inteira, e a falha se parece com "nao mudou nada".)
 	@WANT="$(BUILD_TYPE)|$(TESTS)|$(VARIANTS)|$(ASAN)"; \
 	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
-	 STALE=$$(find meson.build meson_options.txt $(ROOT)/build/conan_meson_native.ini -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
+	 STALE=$$(find meson.build meson_options.txt $(ROOT)/build/conan_meson_native.ini $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
 	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
 	    :; \
 	 else \
+	    if [ -f $(BUILD_DIR)/build.ninja ]; then \
+	       meson configure $(BUILD_DIR) --clearcache >/dev/null 2>&1 || true; \
+	    fi; \
 	    meson setup --reconfigure \
 	       --backend ninja \
 	       --buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \

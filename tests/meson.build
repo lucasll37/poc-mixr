@@ -185,14 +185,33 @@ test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
 # consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
 # verdade + determinismo com 1/2/4 threads) precisa de um .onnx e vem depois.
+# O .onnx DE VERDADE que models/flight instala -- por caminho, nao uma copia.
+# Mesmo padrao de FLIGHT_TREE_XML em models/flight/tests/meson.build: um teste
+# contra uma copia provaria que a copia esta certa, o que nao interessa.
+policy_onnx = raiz / 'models' / 'flight' / 'configs' / 'policy_example.onnx'
+
 test_xinfer = executable('test-xinfer',
     files('domain/test_xinfer.cpp'),
+    cpp_args            : ['-DPOLICY_ONNX="' + policy_onnx + '"'],
     link_args           : rpath_link_args,
-    dependencies        : [gtest_dep, gtest_main_dep, xinfer_dep],
+    dependencies        : [gtest_dep, gtest_main_dep, xinfer_dep, xrlbridge_dep, thread_dep],
     install             : false,
     build_rpath         : mixr_libdir,
 )
-test('xinfer-degradacao', test_xinfer, suite: 'domain', timeout: 60)
+test('xinfer-degradacao', test_xinfer, suite: 'domain', timeout: 120)
+
+# shared/xpyembed -- degradacao E isolamento por chave. O segundo e o que
+# mantem o check-multi-thread verde: a ordem de aquisicao do GIL nao e
+# deterministica, entao dois avioes rodando o mesmo script NAO podem
+# compartilhar globais.
+test_xpyembed = executable('test-xpyembed',
+    files('domain/test_xpyembed.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xpyembed_dep, thread_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('xpyembed-isolamento', test_xpyembed, suite: 'domain', timeout: 120)
 
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
@@ -275,6 +294,22 @@ test('scenario-app-quit', py,
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
 # thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a
+# ------------------------------------------------------------------------------
+# A politica .onnx rodando DENTRO do frame -- ver o cabecalho do script.
+#
+# is_parallel: false porque roda o binario da poc quatro vezes (JSBSim
+# incluso), como as demais suites de cenario.
+# ------------------------------------------------------------------------------
+foreach caso : [['onnx', 'flight_tree_onnx.xml', 'ONNX'],
+                 ['python', 'flight_tree_py.xml', 'PY']]
+    test('scenario-policy-' + caso[0], py,
+         args: files('scenario/run_policy_test.py') + [
+             '--binario', multi_thread.full_path(),
+             '--tree', caso[1], '--label', caso[2], '--frames', '600'],
+         depends: multi_thread, workdir: raiz, suite: 'scenario',
+         timeout: 900, is_parallel: false)
+endforeach
+
 # multi-thread NAO. Ver o cabecalho do script.
 test('onde-a-decisao-roda', py,
      args: files('determinism/check_onde_a_decisao_roda.py') + [
@@ -370,6 +405,12 @@ test('duplicacao', bash, args: files('guard/check_duplication.sh'),
 
 # O host nao pode voltar a conhecer o fonte do modelo.
 test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),
+     workdir: raiz, suite: 'guard', timeout: 60)
+
+# Todo projeto de modelo tem tests/, docs/, README.md e CHANGELOG.md -- o que
+# faz cada um autocontido e verificavel sozinho. Descobre os projetos por
+# find, entao um modelo novo ja nasce cobrado.
+test('modelo-estrutura', bash, args: files('guard/check_modelo_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
 # O meson do host nao tem aresta ate o .so do modelo (ele vem de dist/), entao

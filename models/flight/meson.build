@@ -99,6 +99,8 @@ model_sources = files(
     'src/bt/nodes/LaunchMissileAction.cpp',
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/OnnxScoreCondition.cpp',
+    'src/bt/nodes/OnnxPolicyAction.cpp',
+    'src/bt/nodes/PyDecideAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',
@@ -134,6 +136,27 @@ endforeach
 # o slot 'treeFile:' do ( BtBehavior ) nomeia este XML, e ele e do modelo, nao
 # do cenario.
 install_data('configs/flight_tree.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+
+# A arvore de DEPLOY da politica de RL e o .onnx que ela aponta. Vao junto
+# pelo mesmo motivo do flight_tree.xml: sao do MODELO, nao do cenario -- a
+# politica foi treinada contra ESTA observacao e ESTA aeronave.
+#
+# O .onnx de exemplo tem pesos ALEATORIOS, nao treinados (ver
+# src/rl/tools/export_onnx.py --random). Ele existe para exercitar a cadeia
+# inteira -- carga, forma, inferencia, desnormalizacao, atuacao -- sem
+# depender de uma sessao de treino. Uma politica de verdade substitui o
+# arquivo, sem recompilar nada.
+install_data('configs/flight_tree_onnx.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+install_data('configs/policy_example.onnx',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+
+# A arvore de PROTOTIPAGEM e o script que ela aponta -- ver
+# shared/xpyembed/PyEmbed.hpp.
+install_data('configs/flight_tree_py.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+install_data('configs/policy_example.py',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 
 # A aeronave TAMBEM vai junto, pelo mesmo motivo: o modelo (domain/ThreatPolicy,

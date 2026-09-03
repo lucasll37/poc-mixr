@@ -1,6 +1,8 @@
 #include "bt/bt_factory_sdk.hpp"
 
+#include "bt/nodes/OnnxPolicyAction.hpp"
 #include "bt/nodes/OnnxScoreCondition.hpp"
+#include "bt/nodes/PyDecideAction.hpp"
 
 #include <memory>
 #include <string>
@@ -28,6 +30,8 @@ void registerWithContext(BT::BehaviorTreeFactory& factory, const std::string& id
 void registerSdkNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
 {
    registerWithContext<OnnxScoreCondition>(factory, "OnnxScore", context);
+   registerWithContext<OnnxPolicyAction>(factory, "OnnxPolicy", context);
+   registerWithContext<PyDecideAction>(factory, "PyDecide", context);
 }
 
 } // namespace bt_nodes

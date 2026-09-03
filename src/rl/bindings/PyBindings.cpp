@@ -3,6 +3,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "xrlbridge/ObservationFields.hpp"
+
 namespace py = pybind11;
 
 namespace {
@@ -17,37 +19,18 @@ namespace {
 py::dict toDict(const mixr::xrlbridge::Observation& obs)
 {
    py::dict d;
-   d["valid"] = obs.valid;
-   d["northM"] = obs.northM;
-   d["eastM"] = obs.eastM;
-   d["altitudeM"] = obs.altitudeM;
-   d["headingDeg"] = obs.headingDeg;
-   d["speedKts"] = obs.speedKts;
-   d["rollDeg"] = obs.rollDeg;
-   d["pitchDeg"] = obs.pitchDeg;
-   d["fuelFraction"] = obs.fuelFraction;
-   d["mach"] = obs.mach;
-   d["gLoad"] = obs.gLoad;
-   d["alphaDeg"] = obs.alphaDeg;
-   d["terrainValid"] = obs.terrainValid;
-   d["terrainElevM"] = obs.terrainElevM;
-   d["altitudeAglM"] = obs.altitudeAglM;
-   d["hasContact"] = obs.hasContact;
+   // Os 28 campos numericos vem da MACRO -- nao ha lista escrita aqui. Um
+   // campo novo em ObservationFields.hpp aparece neste dict sozinho.
+#define XRLBRIDGE_F(nome) d[#nome] = obs.nome;
+#define XRLBRIDGE_B(nome) d[#nome] = obs.nome;
+   XRLBRIDGE_OBSERVATION_FIELDS
+#undef XRLBRIDGE_F
+#undef XRLBRIDGE_B
+   // Os tres de TEXTO ficam fora da macro (nao entram num tensor), mas
+   // continuam no dict, para info["raw_state"].
    d["contactName"] = obs.contactName;
-   d["contactRangeM"] = obs.contactRangeM;
-   d["contactRelBearingDeg"] = obs.contactRelBearingDeg;
-   d["contactDeltaAltM"] = obs.contactDeltaAltM;
-   d["contactNorthM"] = obs.contactNorthM;
-   d["contactEastM"] = obs.contactEastM;
-   d["contactAltitudeM"] = obs.contactAltitudeM;
-   d["hasAlert"] = obs.hasAlert;
    d["alertSender"] = obs.alertSender;
    d["alertContactName"] = obs.alertContactName;
-   d["alertNorthM"] = obs.alertNorthM;
-   d["alertEastM"] = obs.alertEastM;
-   d["alertAltitudeM"] = obs.alertAltitudeM;
-   d["alertRangeM"] = obs.alertRangeM;
-   d["weaponReady"] = obs.weaponReady;
    return d;
 }
 
@@ -101,4 +84,13 @@ PYBIND11_MODULE(_native, m)
            py::arg("heading_deg"), py::arg("altitude_m"), py::arg("speed_kts"),
            "Aplica o comando, avanca um frame de decisao, devolve (observacao: dict, terminated: bool).")
       .def("close", &PyNativeSimulation::close);
+
+   // O CONTRATO DE DADOS, exposto ao Python. env.py e
+   // src/rl/tools/export_onnx.py consomem estas duas em vez de repetir a
+   // lista de campos -- ver shared/xrlbridge/ObservationFields.hpp.
+   m.def("observation_field_names", &mixr::xrlbridge::observationFieldNames,
+         "Os nomes dos campos numericos da observacao, na ORDEM CANONICA "
+         "(a mesma que o .onnx espera na entrada).");
+   m.def("observation_bool_fields", &mixr::xrlbridge::observationBoolFields,
+         "Quais desses nomes sao booleanos.");
 }

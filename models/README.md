@@ -17,6 +17,8 @@ models/
 │   ├── docs/ARCHITECTURE.md               # calibração + armadilhas deste modelo
 │   ├── Makefile      # build AUTOCONTIDO -- dist/ na raiz deste projeto (§1.1)
 │   ├── README.md
+│   ├── CHANGELOG.md  # o que mudou, e por quê -- as datas saem do COMMIT, nunca
+│   │                 # da mensagem (todo commit deste repo se chama "up")
 │   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
 ├── missile/         # SEGUNDO exemplo de "criar um modelo novo": um único
 │   ├── src/xmissile/GuidedMissile.{hpp,cpp}   # Player novo, guiado sobre um
@@ -32,7 +34,8 @@ models/
 │   ├── tests/domain/     # domain::pursuit(), puro
 │   ├── docs/DESIGN.md
 │   ├── Makefile          # build AUTOCONTIDO (§1.1)
-│   └── README.md
+│   ├── README.md
+│   └── CHANGELOG.md
 ├── fixtures/
 │   └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
 │       ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
@@ -44,7 +47,8 @@ models/
 │       ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
 │       ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
 │       ├── Makefile                 # build AUTOCONTIDO (§1.1)
-│       └── README.md
+│       ├── README.md
+│       └── CHANGELOG.md
 └── plugins/         # DEPÓSITO, não projeto Meson -- um .so de TERCEIRO,
                       # já compilado fora deste repositório, entra aqui e
                       # 'make models' só COPIA pra dist/lib/mixr-plugins/
@@ -52,9 +56,23 @@ models/
                       # models/plugins/README.md.
 ```
 
-**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile` e `README.md` — sem exceção.** Não é
-estilo: é o que faz cada um AUTOCONTIDO (§1.1) e verificável sozinho, sem depender do resto do
-repositório estar em mente.
+**Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` — sem
+exceção.** Não é estilo: é o que faz cada um AUTOCONTIDO (§1.1) e verificável sozinho, sem
+depender do resto do repositório estar em mente. Quem abre o VS Code só em `models/<nome>/` tem,
+ali dentro, como compilar (`Makefile`), como provar que continua certo (`tests/`), o "porquê" das
+decisões (`docs/`), a porta de entrada (`README.md`) e o que mudou desde a última vez que olhou
+(`CHANGELOG.md`).
+
+**A guarda [`tests/guard/check_modelo_estrutura.sh`](../tests/guard/check_modelo_estrutura.sh)
+(suíte `guard`, alvo `modelo-estrutura`) trava isso** — e descobre os projetos por `find`, não por
+lista fixa: um modelo novo já nasce cobrado, sem ninguém precisar lembrar de editar o teste.
+`models/plugins/` fica de fora de propósito (é depósito de `.so` de terceiro, não projeto).
+
+**Sobre o `CHANGELOG.md` especificamente**, porque a forma dele aqui não é a usual: a versão é a
+do `project()` do `meson.build` de cada modelo (o descritor de plugin não carrega versão nenhuma
+do modelo — `PluginDescV1` tem `plugin_name`, `mixr_pkg_version` e `build_id`, e mais nada), e as
+datas saem da **data de commit**, nunca da mensagem — todo commit deste repositório se chama
+`up`.
 
 ---
 
@@ -165,9 +183,10 @@ sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/meu-modelo/
 Conferido rodando: essas quatro linhas mais um `meson setup` já produzem um `.so` válido —
 **um** símbolo exportado, nenhuma dependência não resolvida.
 
-**A cópia já traz `tests/`, `docs/`, `Makefile` e `README.md`** — as quatro peças que todo projeto
-de modelo deste repositório tem de ter (ver o aviso logo abaixo do diagrama, no topo deste
-arquivo). Só uma correção é necessária no `Makefile`
+**A cópia já traz `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md`** — as cinco peças
+que todo projeto de modelo deste repositório tem de ter (ver o aviso logo abaixo do diagrama, no
+topo deste arquivo; a guarda `modelo-estrutura` cobra as cinco). O `CHANGELOG.md` copiado é o do
+`stub`: esvazie-o e comece pela versão que o seu `meson.build` declara. Só uma correção é necessária no `Makefile`
 copiado: `stub/` mora em `models/fixtures/stub/` (três níveis até a raiz do `poc-mixr`,
 `ROOT := $(abspath ../../..)`), enquanto `models/meu-modelo/` mora só dois níveis abaixo — troque
 a linha `ROOT := $(abspath ../../..)` para `ROOT := $(abspath ../..)`, ou o Makefile vai apontar
