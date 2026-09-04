@@ -31,7 +31,7 @@ dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
 # 'build-flight' na raiz (esse era o caminho do design anterior, quando
 # 'make models' fazia o setup do flight direto por aqui). As variantes A/B
 # de teste ('libmodel_variant_a.so'/'_b.so', para plugin-hotswap) saem la.
-model_build  = raiz / 'models' / 'flight' / 'build'
+model_build  = raiz / 'models' / 'player' / 'flight' / 'build'
 
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do shared/xmsg
@@ -251,7 +251,7 @@ test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60
 # O .onnx DE VERDADE que models/flight instala -- por caminho, nao uma copia.
 # Mesmo padrao de FLIGHT_TREE_XML em models/flight/tests/meson.build: um teste
 # contra uma copia provaria que a copia esta certa, o que nao interessa.
-policy_onnx = raiz / 'models' / 'flight' / 'configs' / 'policy_example.onnx'
+policy_onnx = raiz / 'models' / 'player' / 'flight' / 'configs' / 'policy_example.onnx'
 
 test_xinfer = executable('test-xinfer',
     files('domain/test_xinfer.cpp'),
@@ -559,8 +559,8 @@ test('plugin-modelo-estranho', py,
      depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
-# O DEPOSITO DE TERCEIRO -- prova que models/plugins/ (o deposito pra um .so
-# ja compilado fora deste repositorio, ver models/plugins/README.md) nao e
+# O DEPOSITO DE TERCEIRO -- prova que plugins/ (o deposito pra um .so
+# ja compilado fora deste repositorio, ver plugins/README.md) nao e
 # so uma pasta com um README: um .so colocado ali e de fato copiado pra
 # dist/lib/mixr-plugins/ (o mesmo passo que o alvo 'models' do Makefile
 # raiz faz) e o resultado E USAVEL numa simulacao de verdade -- reusa o

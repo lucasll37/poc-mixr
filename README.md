@@ -67,15 +67,112 @@ visualização é feita via **Tacview Real-Time Telemetry**.
 
 | ferramenta | versão | por quê |
 |---|---|---|
-| **Conan** | ≥ 2.0 | resolve `mixr/1.0.5`, `behaviortree.cpp.asa/3.5.6`, `ftxui/7.0.3` |
+| **Conan** | ≥ 2.0 | resolve `mixr/1.0.5`, `behaviortree.cpp.asa/3.5.6`, `ftxui/7.0.3`, `pybind11`, `onnxruntime`, `gtest` |
 | **Meson** | ≥ 1.0 | sistema de build |
 | **Ninja** | qualquer | *backend* do Meson |
 | **GCC ≥ 7** ou **Clang ≥ 5** | — | o projeto compila em **C++17** |
+| **pkg-config** | qualquer | o `meson.build` raiz resolve MIXR/protobuf/gtest via `dependency(method: 'pkg-config')` |
+| **Python 3 + headers de desenvolvimento** | 3.x | `src/rl/bindings` (compilado **sempre**, faz parte do host) linka `pybind11`, que inclui `Python.h` |
 | **gzip** | qualquer | descomprime os tiles SRTM na primeira execução |
 | **Tacview** (Advanced ou Standard) | opcional | recebe a telemetria ao vivo |
 
 Outras bibliotecas vêm como dependências **transitivas** do MIXR — não
 precisam ser pedidas à parte.
+
+Esta seção foi escrita para ir além dessa tabela: é o passo a passo **testado** (ver
+`tests/docker/`, que sobe um container `ubuntu:24.04` limpo e mede exatamente o que falta) para
+preparar uma instalação **Ubuntu 24.04 LTS virgem** — sem nada além do sistema base — até o ponto
+em que `make configure && make build && make install` (seção 3) funciona.
+
+### 2.1. Pacotes de sistema (`apt`)
+
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential ninja-build meson pkg-config \
+    git curl perl patch zlib1g-dev \
+    python3 python3-venv python3-dev pipx \
+    gzip sudo
+```
+
+Por que cada um:
+
+- **`build-essential`** — `gcc`/`g++`/`make`. O projeto compila em C++17; qualquer GCC ≥ 7 serve.
+- **`ninja-build`**, **`meson`** — o Ubuntu 24.04 já traz Meson 1.3.2 e Ninja 1.11 nos repositórios
+  padrão, ambos acima do mínimo exigido — não precisa vir de `pip`.
+- **`pkg-config`** — sem ele o `meson setup` de `make configure` falha, mesmo com o Conan tendo
+  gerado os `.pc` corretos: é por `pkg-config` que o `meson.build` raiz resolve MIXR, protobuf e
+  gtest.
+- **`git`**, **`curl`**, **`perl`**, **`patch`**, **`zlib1g-dev`** — o remote público (ConanCenter)
+  só publica binário de `mixr/1.0.5` para **GCC 11**; o Ubuntu 24.04 traz **GCC 13**, então o
+  `package_id` não casa e o `--build=missing` do `make configure` recompila boost, OpenSSL,
+  protobuf, JSBSim e o próprio MIXR **do fonte** — e essas receitas autotools/CMake precisam desse
+  ferramental. Sem eles o primeiro `make configure` quebra horas depois de começar, no meio da
+  compilação de uma dependência transitiva. Se a máquina tiver GCC 11 disponível (ex.: Ubuntu
+  22.04, ou um `update-alternatives` apontando para ele), o build usa binário pronto e nada disso
+  chega a ser exercitado — mas ainda assim vale instalar, é barato.
+- **`python3`**, **`python3-venv`**, **`pipx`** — para instalar o Conan (não há pacote `conan` no
+  `apt`; ver §2.2) e para os scripts de teste em `tests/`.
+- **`python3-dev`** — cabeçalhos do Python (`Python.h`). `src/rl/bindings/` compila sempre como
+  parte do host (`subdir('./src')` → `subdir('./rl')` no `meson.build` raiz) e linka `pybind11`,
+  que inclui esse header — sem o pacote, `make build` falha com *"Python.h: No such file or
+  directory"*.
+- **`gzip`** — descomprime os tiles SRTM (`shared/data/terrain/srtm/*.hgt.gz`) na primeira
+  execução de qualquer cenário.
+- **`sudo`** — `make configure` roda `conan install` com
+  `-c tools.system.package_manager:sudo=True` fixo. Numa máquina onde o usuário já tem `sudo`
+  configurado isso é transparente; falta só em containers rodando como `root` sem esse binário.
+
+### 2.2. Conan (via `pipx`, não `pip`)
+
+O Ubuntu 24.04 recusa `pip install` fora de um ambiente virtual (PEP 668 —
+`error: externally-managed-environment`), e não há pacote `conan` no `apt`. O caminho testado é
+`pipx`, que já isola o próprio venv:
+
+```bash
+pipx install conan
+pipx ensurepath
+exec "$SHELL"          # ou abra um terminal novo, para o PATH do pipx valer
+conan --version         # confirma >= 2.0
+```
+
+(Alternativa equivalente, sem `pipx`: `python3 -m venv ~/.venvs/conan && ~/.venvs/conan/bin/pip
+install conan` e colocar `~/.venvs/conan/bin` no `PATH`.)
+
+### 2.3. Perfil do Conan (uma vez por máquina)
+
+O Conan 2 **não** cria o perfil `default` sozinho. Sem este passo, o primeiro `make configure`
+morre com *"The default build profile doesn't exist"*:
+
+```bash
+conan profile detect --force
+```
+
+### 2.4. Remote privado com as dependências que não estão no ConanCenter
+
+`mixr/1.0.5` e `behaviortree.cpp.asa/3.5.6` (ver `conanfile.py`) são forks empacotados **fora** do
+ConanCenter — vêm de um remote Conan privado da organização. Sem declará-lo, `make configure` falha
+com *"package not found"* (parece erro de versão, não é). Peça o endereço e as credenciais a quem
+administra o projeto e rode, uma vez por máquina:
+
+```bash
+conan remote add <nome-do-remote> <url-do-remote>
+conan remote login <nome-do-remote> <seu-usuario>   # pede a senha/token interativamente
+```
+
+Sem TTY (script não interativo, CI) a falta de credencial **não** aparece como erro de autenticação
+legível — o Conan tenta perguntar o usuário, encontra `stdin` fechado e morre com *"not resolved:
+EOF when reading a line"*, fácil de confundir com problema de rede.
+
+### 2.5. Checagem final
+
+```bash
+gcc --version && meson --version && ninja --version && pkg-config --version && conan --version
+```
+
+Com os cinco respondendo, a máquina está pronta para a seção 3 (`make configure && make build &&
+make install`). O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13
+em §2.1 —, mas as próximas execuções reaproveitam o cache do Conan (`~/.conan2/`) e são rápidas.
 
 ---
 
@@ -218,12 +315,12 @@ Cada modelo é um **projeto Meson independente**, em `models/`, construído numa
 
 ```bash
 make sdk      # publica o contrato (PluginAbi.hpp) + as libs de fronteira -> dist/
-make models   # constroi CADA modelo a parte -> deposita em models/plugins/*.so
+make models   # constroi CADA modelo a parte -> deposita em plugins/*.so
 make build    # o host (depende so do sdk) -> build/ -- nao precisa dos modelos pra compilar
-make install  # sincroniza models/plugins/ -> dist/lib/mixr-plugins/ e instala o host -> dist/
+make install  # sincroniza plugins/ -> dist/lib/mixr-plugins/ e instala o host -> dist/
 ```
 
-`models/plugins/` é um depósito comum: um `.so` compilado por este repositório e um `.so` de
+`plugins/` é um depósito comum: um `.so` compilado por este repositório e um `.so` de
 terceiro (compilado em outro lugar, só copiado para lá) são indistinguíveis a partir desse ponto —
 os dois viram visíveis ao host somente quando `make install` sincroniza para `dist/`.
 

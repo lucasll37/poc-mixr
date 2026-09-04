@@ -90,7 +90,7 @@
                   // DEMO (tenta lancar antes de evadir) e os 3 slots do
                   // envelope de lancamento. O resto e identico ao falcon1
                   // de scenario.epp.in.
-                  treeFile: "./models/flight/configs/flight_tree_missile_demo.xml"
+                  treeFile: "./models/player/flight/configs/flight_tree_missile_demo.xml"
                   patrolHeading:  ( Degrees 90 )
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )

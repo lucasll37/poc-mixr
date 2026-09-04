@@ -130,7 +130,7 @@ subdir('./shared/xpyembed')
 # ganhou pasta propria em destaque em vez de mais um shared/x<nome> perdido
 # entre outros. O MECANISMO e o MESMO (shared_library(), entra antes do SDK
 # pelo mesmo motivo de xboard/xtrack) -- so o endereco do fonte mudou.
-subdir('./events')
+subdir('./models/events')
 
 
 # ==============================================================================
@@ -172,8 +172,8 @@ install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
 install_headers('shared/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
 install_headers('shared/xinfer/Infer.hpp',          subdir: 'xinfer')
 install_headers('shared/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
-install_headers('events/payloads/EID_ALERT/TacticalAlert.hpp', subdir: 'events/payloads/EID_ALERT')
-install_headers('events/EventTokens.hpp',                       subdir: 'events')
+install_headers('models/events/payloads/EID_ALERT/TacticalAlert.hpp', subdir: 'events/payloads/EID_ALERT')
+install_headers('models/events/EventTokens.hpp',                       subdir: 'events')
 install_headers('shared/xrandom/DeterministicRng.hpp', subdir: 'xrandom')
 
 pkg = import('pkgconfig')

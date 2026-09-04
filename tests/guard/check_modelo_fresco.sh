@@ -16,7 +16,7 @@ RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ" || exit 1
 
 SO="dist/lib/mixr-plugins/libflight.so"
-FONTE="models/flight"
+FONTE="models/player/flight"
 
 if [ ! -f "$SO" ]; then
    echo "  FALHA $SO nao existe -- rode 'make models'"

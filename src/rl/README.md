@@ -51,7 +51,7 @@ sobrepoe.
 ```bash
 make configure   # inclui pybind11 (conanfile.py) alem das dependencias de sempre
 make sdk         # publica libxboard/libxlog/libxtrack/libxrlbridge + headers em dist/
-make models      # compila libflight_tc.so (com RLBridgeBehavior) -> models/plugins/
+make models      # compila libflight_tc.so (com RLBridgeBehavior) -> plugins/
 make build       # compila o host, incluindo o modulo _native (src/rl/bindings/)
 make install     # dist/python/mixr_gym/{__init__.py, env.py, _native*.so}
 ```

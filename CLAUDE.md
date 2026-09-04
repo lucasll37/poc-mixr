@@ -88,9 +88,9 @@ os modelos guardam os artefatos deles, e vice-versa:
 ```bash
 make configure   # conan install (Debug) + meson setup do HOST -> build/
 make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
-make models      # flight/missile/stub, cada um autocontido -> models/plugins/ (NUNCA dist/)
+make models      # flight/missile/stub, cada um autocontido -> plugins/ (NUNCA dist/)
 make build       # so o HOST (depende so de sdk) -> build/ -- NAO precisa dos modelos pra compilar
-make install     # 'sync-plugins' (models/plugins/ -> dist/lib+share/mixr-plugins/) + meson install do host -> dist/
+make install     # 'sync-plugins' (plugins/ -> dist/lib+share/mixr-plugins/) + meson install do host -> dist/
 make test        # as DUAS suítes: a do modelo (test-models) e a do host (depende de 'install')
 make clean       # remove os três build/dist locais + dist/ do host + o deposito que 'models' gerou
 make help        # lista os alvos (comentários ## do Makefile)
@@ -98,9 +98,9 @@ make help        # lista os alvos (comentários ## do Makefile)
 
 `dlopen()` só acontece em **tempo de execução**, então `dist/lib/mixr-plugins/` só precisa
 existir quando algo de fato **roda** um binário — nunca para compilá-lo. Por isso `make models`
-deposita só em `models/plugins/` (o MESMO lugar onde um `.so` de terceiro entra, ver a seção
-`models/plugins/` mais abaixo) e é `make install` — não `make build`, não `make models` — quem
-sincroniza `models/plugins/` → `dist/`. Todo alvo que **roda** algo (`run-*`, `check-*`,
+deposita só em `plugins/` (o MESMO lugar onde um `.so` de terceiro entra, ver a seção
+`plugins/` mais abaixo) e é `make install` — não `make build`, não `make models` — quem
+sincroniza `plugins/` → `dist/`. Todo alvo que **roda** algo (`run-*`, `check-*`,
 `test`) depende de `install`; `build`/`models` sozinhos não deixam nada executável.
 
 O fluxo do dia a dia é `make configure && make build && make install` (ou direto
@@ -578,8 +578,8 @@ qualquer código: nada em `base::`, nada registrado em factory nenhuma. O único
 compilado no pacote Conan `mixr/1.0.5` — não existe neste clone.
 
 **Header-only, ao contrário das seis `shared_library()` de `shared/`** (`xboard`/`xlog`/
-`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) **e de `events/`** (a sétima, na raiz — ver
-`events/README.md` para o porquê de não estar em `shared/`). Essas sete existem porque host e
+`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) **e de `events/`** (a sétima, dentro de `models/` — ver
+`models/events/README.md` para o porquê de não estar em `shared/`). Essas sete existem porque host e
 plugin precisam compartilhar UMA cópia de estado mutável em tempo de execução através do `dlopen`
 (ex.: `xlog::setLoggingEnabled()` tem que alcançar o `.so` do modelo). Derivação de semente não tem esse
 requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
@@ -1089,7 +1089,7 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `scenario` | o binario de verdade, com fixture, afirmando comportamento sobre as linhas `frame=` | 3 modos × 3 pocs |
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao e com a politica em Python**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
-| `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`models/plugins/`) | 6 testes, ~3 s |
+| `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`plugins/`) | 6 testes, ~3 s |
 | `guard` | invariantes estruturais: o host **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 4 testes, instantaneo |
 
 > A guarda **`duplicacao`** foi aposentada quando o `./app` virou o runner unico: ela travava a
@@ -1274,7 +1274,7 @@ discretos "no instante exato" — o que se alcança é o que se deriva por amost
 **`src/poc/<poc>/` é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
 em `models/flight/`, que é um **projeto Meson independente**, construído antes do host
 (`make models`). O host só consome o `.so` instalado em `dist/lib/mixr-plugins/` — mas
-`make models`, sozinho, **não escreve ali**: deposita em `models/plugins/` (decoplado de
+`make models`, sozinho, **não escreve ali**: deposita em `plugins/` (decoplado de
 propósito de `dist/`), e é `make install` quem sincroniza os dois. Ver "Desacoplando `models` de
 `dist/`" logo abaixo.
 
@@ -1285,38 +1285,43 @@ host exigia o fonte — o oposto do que se queria provar. A guarda
 
 ```
 models/
-├── flight/              # projeto meson proprio -> build-flight/ -- O MODELO de producao
-│   ├── include/{domain,bt,ubf,xnative}/   src/...
-│   ├── configs/flight_tree.xml            # a arvore de comportamento
-│   ├── data/jsbsim/                       # a aeronave (ver abaixo)
-│   ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
-│   ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
-│   ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
-│   ├── README.md
-│   ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
-│   └── meson.build       # UMA arvore, DOIS artefatos:
-│                         #   libflight.so     (single-thread)
-│                         #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
-├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
-│                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
-│   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md  CHANGELOG.md
-└── fixtures/
-    └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
-        ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
-        │                 # ponto de partida copiavel para um modelo novo (models/README.md §2)
-        ├── tests/check_contract.sh   # forma do .so: 1 simbolo T, deps resolvidas
-        ├── docs/CONTRATO.md          # ~270 linhas, escritas SO contra o SDK -- o que
-        │                             # um modelo TEM de fazer
-        ├── Makefile
-        ├── README.md
-        └── CHANGELOG.md
+├── events/               # o contrato de eventos que atravessam fronteira de plugin --
+│                         # payload + token (EventTokens.hpp). Mora dentro de models/
+│                         # (nao e um modelo em si -- e' consumido POR eles e por app/).
+└── player/               # os projetos de modelo -- cada um um .so de producao
+    ├── flight/              # projeto meson proprio -> build-flight/ -- O MODELO de producao
+    │   ├── include/{domain,bt,ubf,xnative}/   src/...
+    │   ├── configs/flight_tree.xml            # a arvore de comportamento
+    │   ├── data/jsbsim/                       # a aeronave (ver abaixo)
+    │   ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
+    │   ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
+    │   ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
+    │   ├── README.md
+    │   ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
+    │   └── meson.build       # UMA arvore, DOIS artefatos:
+    │                         #   libflight.so     (single-thread)
+    │                         #   libflight_tc.so  (multi, -DFLIGHT_TC_AGENT)
+    ├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
+    │                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
+    │   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md  CHANGELOG.md
+    └── fixtures/
+        └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
+            ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
+            │                 # ponto de partida copiavel para um modelo novo (models/README.md §2)
+            ├── tests/check_contract.sh   # forma do .so: 1 simbolo T, deps resolvidas
+            ├── docs/CONTRATO.md          # ~270 linhas, escritas SO contra o SDK -- o que
+            │                             # um modelo TEM de fazer
+            ├── Makefile
+            ├── README.md
+            └── CHANGELOG.md
 ```
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
 guarda `tests/guard/check_modelo_estrutura.sh` (suite `guard`, alvo `modelo-estrutura`) cobra as
 cinco.** Ela descobre os projetos por `find` sob `models/` (todo diretorio com um `project()` no
-`meson.build`), nao por lista fixa -- modelo novo ja nasce cobrado, e `models/plugins/` fica de
-fora de proposito (e deposito de `.so` de terceiro, nao projeto). No `CHANGELOG.md`, duas
+`meson.build`), nao por lista fixa -- modelo novo ja nasce cobrado. `plugins/` nem entra nessa
+busca: mora na RAIZ do repositorio, fora de `models/`, de proposito -- e deposito de `.so`
+(proprio ou de terceiro), nao projeto Meson nenhum. No `CHANGELOG.md`, duas
 convencoes que nao sao as usuais e existem por um motivo medido: a **versao** e a do `project()`
 do `meson.build` daquele modelo (o descritor de plugin nao carrega versao nenhuma do modelo --
 `PluginDescV1` so tem `plugin_name`/`mixr_pkg_version`/`build_id`), e as **datas saem da data de
@@ -1325,21 +1330,21 @@ um é **autocontido**: `cd models/<nome> && make` configura, compila e instala e
 raiz DAQUELE projeto, nao a raiz do `poc-mixr` -- sem chamar o Makefile raiz. O unico
 pre-requisito e o SDK que o host publica uma vez (`make configure && make sdk`, na raiz); dai em
 diante cada modelo se basta, e `make install-host` (o unico alvo que escreve fora do `./dist`
-local) deposita em `models/plugins/` da raiz -- **nao** em `dist/`, ver o "porque" logo abaixo. O
+local) deposita em `plugins/` da raiz -- **nao** em `dist/`, ver o "porque" logo abaixo. O
 fluxo orquestrado da raiz (`make models`, usado por CI e pelo dia a dia) continua sendo a forma
 canonica de construir os tres de uma vez -- o Makefile por projeto e para iterar num modelo so,
 sem o resto do repositorio aberto. Detalhes e as armadilhas de profundidade de caminho:
 `models/README.md` §1.1 e §5.7.
 
-### Desacoplando `models` de `dist/` -- `models/plugins/` e o unico deposito
+### Desacoplando `models` de `dist/` -- `plugins/` e o unico deposito
 
 **`make models` nao escreve em `dist/lib/mixr-plugins/` -- nunca.** flight/missile/stub, via o
-`install-host` de cada um, depositam SO em `models/plugins/` (lib, flat) e
-`models/plugins/data/flight/` (a arvore + a aeronave, unica excecao ao deposito flat) -- o MESMO
-lugar que um `.so` de terceiro ja usava (ver a secao `models/plugins/` mais abaixo). Dali em
+`install-host` de cada um, depositam SO em `plugins/` (lib, flat) e
+`plugins/data/flight/` (a arvore + a aeronave, unica excecao ao deposito flat) -- o MESMO
+lugar que um `.so` de terceiro ja usava (ver a secao `plugins/` mais abaixo). Dali em
 diante, um `.so` compilado por este repositorio e um de terceiro sao **indistinguiveis**: os dois
 so viram visiveis a um cenario quando `make install` roda o alvo `sync-plugins`, que copia
-`models/plugins/*.so` -> `dist/lib/mixr-plugins/` e `models/plugins/data/` ->
+`plugins/*.so` -> `dist/lib/mixr-plugins/` e `plugins/data/` ->
 `dist/share/mixr-plugins/`.
 
 **Por que**: compilar um modelo nunca precisou saber onde o HOST guarda os artefatos dele --
@@ -1369,7 +1374,7 @@ byte-idêntica de `data/jsbsim/` (o c310), vendorizada três vezes. Não é coin
 `maxClimbRateMps`/`maxRateOfTurnDps` do `Autopilot`, a folga de `TerrainFloor` contra o piso
 anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
 trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
-`data/jsbsim/` em `models/plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
+`data/jsbsim/` em `plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
 `install-host` de `models/flight/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos três
 cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
@@ -2516,6 +2521,16 @@ chega em disco.**
   `README.md`, `dist/lib/mixr-plugins/` só com os quatro plugins de sempre).
 - `make test` segue com a MESMA falha pré-existente de sempre (`onde-a-decisao-roda`) — agora
   24/25 (não mais 23/24: o total subiu em um com o teste novo).
+
+**ATUALIZAÇÃO (passada posterior): `models/plugins/` saiu de `models/` e virou `./plugins/`, na
+RAIZ do repositório.** Mesma pasta, mesmo papel (depósito flat de `.so` — próprio ou de
+terceiro — mais `data/`, sincronizado para `dist/` só por `make install`/`sync-plugins`), só o
+endereço mudou: nunca foi um projeto Meson (não tem `meson.build`, não é descoberto por
+`check_modelo_estrutura.sh`), então morar dentro de `models/` nunca foi mais que uma questão de
+vizinhança — e um depósito puro de artefato binário fica mais claro como irmão de `dist/`/`build/`
+na raiz do que aninhado dentro da pasta que guarda o FONTE dos modelos. Toda referência textual
+daqui para frente usa `plugins/`; as passadas acima (que introduziram e testaram o mecanismo)
+ficam como estavam, com o endereço de então.
 
 **Décima quinta passada: a aba Memória acusava `FlightAction` com `count` NEGATIVO e
 `TacticalAlert` "vazando" (`count` só subindo) — as duas eram o MESMO fenômeno, não dois bugs, e

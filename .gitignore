@@ -8,12 +8,12 @@ shared/data/terrain/srtm/*.hgt
 
 # deposito COMPARTILHADO de plugins (locais -- flight/missile/stub, via o
 # 'install-host' de cada um -- E de terceiros, externos a este repositorio)
-# -- ver models/plugins/README.md. 'make install' (alvo 'sync-plugins')
+# -- ver plugins/README.md. 'make install' (alvo 'sync-plugins')
 # copia daqui pra dist/lib(share)/mixr-plugins/; 'make models' so ESCREVE
 # aqui, nunca em dist/. 'data/' e a excecao ao deposito flat (hoje, so os
 # dados do flight: jsbsim/ + flight_tree.xml).
-models/plugins/*.so
-models/plugins/data/
+plugins/*.so
+plugins/data/
 
 # gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
 # shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/

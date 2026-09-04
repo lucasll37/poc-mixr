@@ -179,7 +179,7 @@ fi
 # PORTAO 5 e 6 -- o resto da secao 3 do README.
 #
 #   make build     compila o host
-#   make install   'sync-plugins' (models/plugins/ -> dist/) + install do host
+#   make install   'sync-plugins' (plugins/ -> dist/) + install do host
 #
 # 'make install' encadeia 'models', que compila os tres modelos -- e o unico
 # ponto em que o teste exercita os Makefile autocontidos de models/*.

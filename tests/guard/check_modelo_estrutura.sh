@@ -17,7 +17,7 @@
 # cobrado sem editar este arquivo. E a mesma licao ja registrada no cabecalho
 # de check_host_opaco.sh: glob/lista fixa envelhece em silencio.
 #
-# models/plugins/ fica de fora de proposito: e um DEPOSITO para .so de
+# plugins/ fica de fora de proposito: e um DEPOSITO para .so de
 # terceiro (ja compilado fora deste repositorio), nao um projeto -- nao tem
 # fonte, nao tem build, e nada ali e nosso para documentar.
 set -u

@@ -1,0 +1,2138 @@
+<title>Explorador de Execução MIXR</title>
+<meta charset="utf-8">
+<style>
+:root{
+  --bg:#0f1115; --panel:#161923; --panel2:#1c2030; --border:#2a2f42;
+  --text:#dfe3ee; --dim:#8890a8; --accent:#5eb0ff; --accent2:#ffb454;
+  --ok:#57c785; --idle:#5a6178; --warn:#ff6b6b; --stack:#c98bff;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+h1,h2,h3{font-family:ui-sans-serif,system-ui,sans-serif;margin:0}
+button{font:inherit;cursor:pointer;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 9px}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=range]{accent-color:var(--accent)}
+.topbar{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topbar h1{font-size:15px;color:var(--accent)}
+.tabs{display:flex;gap:4px}
+.tabs button[aria-pressed=true]{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.transport{display:flex;align-items:center;gap:6px;flex:1;min-width:280px}
+.transport input[type=range]{flex:1}
+.filterbar{display:flex;align-items:center;gap:8px}
+.counters{display:flex;gap:12px;padding:5px 14px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:12px;color:var(--dim);flex-wrap:wrap}
+.counters b{color:var(--text)}
+.phaseStrip{display:flex;gap:3px;padding:4px 14px;background:var(--panel2);border-bottom:1px solid var(--border)}
+.phaseStrip span{flex:1;text-align:center;font-size:11px;padding:3px 4px;border-radius:3px;background:#12141c;color:var(--dim)}
+.phaseStrip span.on{background:var(--accent);color:#06121f;font-weight:600}
+.cols{display:grid;grid-template-columns:minmax(280px,1fr) minmax(340px,1.3fr) minmax(260px,0.9fr);height:calc(100vh - 118px)}
+.col{overflow:auto;border-right:1px solid var(--border)}
+.col:last-child{border-right:none}
+.colhead{position:sticky;top:0;background:var(--panel);padding:6px 10px;font:600 11px ui-sans-serif,sans-serif;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);z-index:2}
+svg{display:block}
+.node rect{fill:var(--panel2);stroke:var(--border);stroke-width:1;rx:4}
+.node.active rect{fill:#2a3f2a;stroke:var(--ok);stroke-width:2}
+.node.stack rect{stroke:var(--stack);stroke-width:1.6}
+.node.idle rect{stroke-dasharray:3,2;opacity:.55}
+.node.selected rect{stroke:var(--accent2);stroke-width:2}
+.node.unborn rect{stroke-dasharray:2,3;fill:transparent;opacity:.4}
+.node text{fill:var(--text);font-size:10px;pointer-events:none}
+.node .cls{fill:var(--dim);font-size:8px}
+.node{cursor:pointer}
+.edge{stroke:var(--border);stroke-width:1;fill:none}
+.evtEdge{stroke:var(--accent2);stroke-width:1.6;stroke-dasharray:4,3;fill:none;marker-end:url(#arrow)}
+.evtLabel{fill:var(--accent2);font-size:9px}
+pre.code{margin:0;padding:8px 0 40px;font-size:12.5px}
+.codepath{position:sticky;top:0;background:var(--panel);padding:6px 10px;font-size:11px;color:var(--accent);border-bottom:1px solid var(--border)}
+.codeline{display:flex;white-space:pre}
+.codeline .ln{width:44px;flex:none;text-align:right;padding-right:10px;color:#4d5468;user-select:none}
+.codeline.hl{background:#2a3350}
+.codeline.hl .ln{color:var(--accent)}
+.panel{padding:10px;border-bottom:1px solid var(--border)}
+.panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);margin-bottom:6px}
+.panel .title{font:600 13px ui-sans-serif,sans-serif;color:var(--accent);margin-bottom:4px}
+.panel .body{color:var(--text)}
+.panel .warn{margin-top:6px;padding:6px 8px;background:#3a1c1c;border:1px solid var(--warn);border-radius:4px;color:#ffb3b3}
+.stackList{list-style:none;margin:0;padding:0}
+.stackList li{padding:2px 0;color:var(--dim);border-left:2px solid var(--border);padding-left:8px;margin-bottom:2px}
+.stackList li.top{color:var(--text);border-left-color:var(--stack)}
+.chainList{list-style:none;margin:0;padding:0}
+.chainList li{padding:3px 6px;margin-bottom:3px;border-radius:3px;background:var(--panel2);display:flex;justify-content:space-between;gap:6px}
+.chainList li.dispatch{outline:1px dashed var(--dim)}
+.chainList li.acting{background:#2a3f2a;outline:1px solid var(--ok)}
+.chainList small{color:var(--dim)}
+.emptyHint{padding:14px;color:var(--dim);font-size:12px}
+.legend{font-size:11px;color:var(--dim);padding:6px 10px;display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--border)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+@media (max-width: 880px){
+  .cols{grid-template-columns:1fr;height:auto}
+  .col{height:60vh;border-right:none;border-bottom:1px solid var(--border)}
+}
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
+<script>
+/* ============================================================================
+   data/sources.js -- trechos de fonte REAIS, transcritos (nunca parafraseados)
+   de contexts/src/mixr/ (fork MIXR v1.0.5, vendorizado neste repositorio) e de
+   models/player/flight/ (o plugin 'flight' deste repositorio -- caminho pode
+   mudar: models/ estava em reorganizacao no momento em que isto foi escrito,
+   ver README.md).
+
+   POLITICA DE TRANSCRICAO (a "regra de ouro" deste projeto): cada 'block' com
+   'start'+'lines' e uma copia EXATA e CONTIGUA do arquivo real, linha a linha
+   (inclusive linhas em branco, para a numeracao continuar batendo com o
+   arquivo) -- nunca reescrita, nunca duas linhas fundidas numa so. Um bloco
+   '{ omitted: "..." }' marca EXPLICITAMENTE um trecho que existe no arquivo
+   real mas nao e mostrado aqui -- nunca finge que o corpo continua sozinho.
+   scripts/extract_execution_chain.py e o oraculo que valida nomes de
+   classe/metodo contra este mesmo fonte.
+============================================================================ */
+const SRC = {
+
+'Station::updateTC': {
+  file: 'contexts/src/mixr/src/simulation/Station.cpp',
+  blocks: [ { start: 258, lines: [
+`void Station::updateTC(const double dt)`,
+`{`,
+`   // Update the base::Timers`,
+`   if (isUpdateTimersEnabled()) {`,
+`      base::Timer::updateTimers(dt);`,
+`   }`,
+``,
+`   // the I/O handler`,
+`   if (ioHandler != nullptr) {`,
+`      ioHandler->tcFrame(dt);`,
+`   }`,
+``,
+`   // Process station inputs`,
+`   inputDevices(dt);`,
+``,
+`   // Update the simulation`,
+`   if (sim != nullptr) sim->tcFrame(dt);`,
+``,
+`   // Process station outputs`,
+`   outputDevices(dt);`,
+``,
+`   // Our major subsystems`,
+`   if (sim != nullptr && igHosts != nullptr) {`,
+`      base::PairStream* playerList{sim->getPlayers()};`,
+`      base::List::Item* item{igHosts->getFirstItem()};`,
+`      while (item != nullptr) {`,
+``,
+`         const auto pair = static_cast<base::Pair*>(item->getValue());`,
+`         const auto p = static_cast<AbstractIgHost*>(pair->object());`,
+``,
+`         // Set ownship & player list`,
+`         p->setOwnship(ownship);`,
+`         p->setPlayerList(playerList);`,
+``,
+`         // TC frame`,
+`         p->tcFrame(dt);`,
+``,
+`         item = item->getNext();`,
+`      }`,
+`      if (playerList != nullptr) playerList->unref();`,
+`   }`,
+``,
+`   // Startup RESET timer --`,
+`   //    Sends an initial RESET pulse after timeout`,
+`   //    (Some simulation may need this)`,
+`   if (startupResetTimer >= 0) {`,
+`      startupResetTimer -= dt;`,
+`      if (startupResetTimer < 0) {`,
+`         this->event(RESET_EVENT);`,
+`      }`,
+`   }`,
+``,
+`   // Update the base class data`,
+`   BaseClass::updateTC(dt);`,
+`}`,
+  ] } ],
+},
+
+'Station::updateData': {
+  file: 'contexts/src/mixr/src/simulation/Station.cpp',
+  blocks: [
+    { start: 323, lines: [
+`void Station::updateData(const double dt)`,
+`{`,
+`   // Create a background thread (if needed)`,
+`   if (getBackgroundRate() > 0 && !doWeHaveTheBgThread()) {`,
+`      createBackgroundProcess();`,
+`   }`,
+``,
+`   // Our simulation model and image generator host interfaces (if no separate thread)`,
+`   if (getBackgroundRate() == 0 && !doWeHaveTheBgThread()) {`,
+`      processBackgroundTasks(dt);`,
+`   }`,
+    ] },
+    { omitted: 'laco de rede (processNetworkInputTasks/OutputTasks) e a drenagem da fila do gravador para os OutputHandler' },
+  ],
+},
+
+'Simulation::updateTC': {
+  file: 'contexts/src/mixr/src/simulation/Simulation.cpp',
+  blocks: [
+    { start: 457, lines: [
+`void Simulation::updateTC(const double dt)`,
+`{`,
+`   // ---`,
+`   // Update the executive time`,
+`   // ---`,
+`   execTime += dt;`,
+    ] },
+    { omitted: 'atualizacao do relogio de parede do computador (UTC/data), linhas 463-493 -- nao muda a historia do dt0/4' },
+    { start: 494, lines: [
+`   // ---`,
+`   // Delta-Time (Frozen?)`,
+`   // ---`,
+`   double dt0 {dt};`,
+`   if (isFrozen()) dt0 = 0.0;`,
+    ] },
+    { omitted: 'atualizacao do tempo SIMULADO a partir de dt0, linhas 499-535' },
+    { start: 536, lines: [
+`   // ---`,
+`   // Update base classes stuff`,
+`   // ---`,
+`   BaseClass::updateTC(dt0);`,
+    ] },
+    { start: 541, lines: [
+`   // ---`,
+`   // Called once per frame -- Process 4 phases per frame`,
+`   // ---`,
+`   {`,
+`      // This locks the current player list for this time-critical frame`,
+`      base::safe_ptr<base::PairStream> currentPlayerList = players;`,
+``,
+`      for (unsigned int f = 0; f < 4; f++) {`,
+``,
+`         // Set the current phase`,
+`         setPhase(f);`,
+``,
+`         if (reqTcThreads == 1) {`,
+`            // Our single TC thread`,
+`            updateTcPlayerList(currentPlayerList, (dt0/4.0), 1, 1);`,
+`         } else if (numTcThreads > 0) {`,
+`            // multiple threads`,
+`            for (unsigned short i = 0; i < numTcThreads; i++) {`,
+``,
+`               // assign the threads from the pool`,
+`               unsigned int idx {static_cast<unsigned int>(i+1)};`,
+`               tcThreads[i]->start0(currentPlayerList, (dt0/4.0), idx, reqTcThreads);`,
+`            }`,
+``,
+`            // we're the last thread`,
+`            updateTcPlayerList(currentPlayerList, (dt0/4.0), reqTcThreads, reqTcThreads);`,
+``,
+`            // Now wait for the other thread(s) to complete`,
+`            base::SyncThread** pp {reinterpret_cast<base::SyncThread**>(&tcThreads[0])};`,
+`            base::SyncThread::waitForAllCompleted(pp, numTcThreads);`,
+``,
+`         } else if (isMessageEnabled(MSG_ERROR)) {`,
+`            std::cerr << "simulation::updateTC() ERROR, invalid T/C thread setup";`,
+`            std::cerr << "; reqTcThreads = " << reqTcThreads;`,
+`            std::cerr << "; numTcThreads = " << numTcThreads;`,
+`            std::cerr << std::endl;`,
+`         }`,
+`      }`,
+`   }`,
+    ] },
+    { omitted: 'contadores de frame()/cycle(), linha 580 em diante -- nao muda a historia do laco de 4 fases' },
+  ],
+},
+
+'Simulation::reset': {
+  file: 'contexts/src/mixr/src/simulation/Simulation.cpp',
+  blocks: [
+    { start: 186, lines: [
+`void Simulation::reset()`,
+`{`,
+`   // ---`,
+`   // Something old and something new ...`,
+`   // ... We're going to create a new player list.`,
+`   // ---`,
+`   base::safe_ptr<base::PairStream> newList( new base::PairStream() );`,
+`   newList->unref();  // 'newList' has it, so unref() from the 'new'`,
+``,
+`   // ---`,
+`   // Copy original players to the new list`,
+`   // ---`,
+`   {`,
+`      if (origPlayers != nullptr) {`,
+`         base::safe_ptr<base::PairStream> origPlayerList = origPlayers;`,
+`         base::List::Item* item{origPlayerList->getFirstItem()};`,
+`         while (item != nullptr) {`,
+`            base::Pair* pair {static_cast<base::Pair*>(item->getValue())};`,
+`            AbstractPlayer* ip {static_cast<AbstractPlayer*>(pair->object())};`,
+``,
+`            // reinstated the container pointer and player name`,
+`            ip->container(this);`,
+`            ip->setName(*pair->slot());`,
+``,
+`            // Insert the player into the new list in sorted order`,
+`            insertPlayerSort(pair, newList);`,
+`            item = item->getNext();`,
+`         }`,
+`      }`,
+`   }`,
+``,
+`   // ---`,
+`   // Copy the old networked players (IPlayers) to the new list`,
+`   // ---`,
+`   {`,
+`      if (players != nullptr) {`,
+`         base::safe_ptr<base::PairStream> origPlayerList = players;`,
+`         base::List::Item* item{origPlayerList->getFirstItem()};`,
+`         while (item != nullptr) {`,
+`            base::Pair* pair {static_cast<base::Pair*>(item->getValue())};`,
+`            AbstractPlayer* ip {static_cast<AbstractPlayer*>(pair->object())};`,
+`            if (ip->isNetworkedPlayer()) {`,
+``,
+`               // reinstated the container pointer and player name`,
+`               ip->container(this);`,
+`               ip->setName(*pair->slot());`,
+``,
+`               // Insert the IPlayer into the new list in sorted order`,
+`               insertPlayerSort(pair, newList);`,
+`            }`,
+`            item = item->getNext();`,
+`         }`,
+`      }`,
+`   }`,
+``,
+`   // ---`,
+`   // Swap the lists`,
+`   // ---`,
+`   players = newList;`,
+    ] },
+    { omitted: 'criacao do pool de threads T/C (so quando reqTcThreads>1), linha 245 em diante -- nao muda a historia do reset em si' },
+  ],
+},
+
+'Component::tcFrame': {
+  file: 'contexts/src/mixr/src/base/Component.cpp',
+  blocks: [
+    { start: 184, lines: [
+`void Component::tcFrame(const double dt)`,
+`{`,
+`   // ---`,
+`   // Collect start time`,
+`   // ---`,
+`   double tcStartTime {};`,
+`   if (isTimingStatsEnabled()) {`,
+`      #if defined(WIN32)`,
+`         LARGE_INTEGER fcnt;`,
+`         QueryPerformanceCounter(&fcnt);`,
+`         tcStartTime = static_cast<double>( fcnt.QuadPart );`,
+`      #else`,
+`         tcStartTime = getComputerTime();`,
+`      #endif`,
+`   }`,
+``,
+`   // ---`,
+`   // Execute one time-critical frame`,
+`   // ---`,
+`   this->updateTC(dt);`,
+``,
+`   // ---`,
+`   // Process timing data`,
+`   // ---`,
+`   if (isTimingStatsEnabled()) {`,
+    ] },
+    { omitted: 'calculo do tempo decorrido (QueryPerformanceCounter/getComputerTime) e printTimingStats(), linhas 209-228 -- so estatistica, nao afeta o despacho' },
+    { start: 229, lines: [
+`   }`,
+`}`,
+    ] },
+  ],
+},
+
+'Component::updateTC': {
+  file: 'contexts/src/mixr/src/base/Component.cpp',
+  blocks: [ { start: 243, lines: [
+`void Component::updateTC(const double dt)`,
+`{`,
+`    // Update all my children`,
+`    PairStream* subcomponents {getComponents()};`,
+`    if (subcomponents != nullptr) {`,
+`        if (selection != nullptr) {`,
+`            // When we've selected only one`,
+`            if (selected != nullptr) selected->tcFrame(dt);`,
+`        } else {`,
+`            // When we should update them all`,
+`            List::Item* item{subcomponents->getFirstItem()};`,
+`            while (item != nullptr) {`,
+`                const auto pair = static_cast<Pair*>(item->getValue());`,
+`                const auto obj = static_cast<Component*>( pair->object() );`,
+`                obj->tcFrame(dt);`,
+`                item = item->getNext();`,
+`            }`,
+`        }`,
+`        subcomponents->unref();`,
+`        subcomponents = nullptr;`,
+`    }`,
+`}`,
+  ] } ],
+},
+
+'Component::processComponents': {
+  file: 'contexts/src/mixr/src/base/Component.cpp',
+  blocks: [
+    { start: 583, lines: [
+`void Component::processComponents(`,
+`      PairStream* const list,`,
+`      const std::type_info& filter,`,
+`      Pair* const add,`,
+`      Component* const remove`,
+`   )`,
+`{`,
+`   PairStream* oldList {components.getRefPtr()};`,
+``,
+`   // ---`,
+`   // Our dynamic_cast (see below) already filters on the Component class`,
+`   // ---`,
+`   bool skipFilter {};`,
+`   if (filter == typeid(Component)) {`,
+`      skipFilter = true;`,
+`   }`,
+``,
+`   // ---`,
+`   // Create a new list, copy (filter) the component pairs and set their container pointers`,
+`   // ---`,
+`   const auto newList = new PairStream();`,
+`   if (list != nullptr) {`,
+``,
+`      // Add the (filtered) components to the new list and set their container`,
+`      List::Item* item {list->getFirstItem()};`,
+`      while (item != nullptr) {`,
+`         const auto pair = static_cast<Pair*>(item->getValue());`,
+`         const auto cp = dynamic_cast<Component*>( pair->object() );`,
+`         if ( cp != nullptr && cp != remove && (skipFilter || cp->isClassType(filter)) ) {`,
+`            newList->put(pair);`,
+`            cp->container(this);`,
+`         } else if ( cp != nullptr && cp == remove ) {`,
+`            cp->container(nullptr);`,
+`         }`,
+`         item = item->getNext();`,
+`      }`,
+``,
+`   }`,
+``,
+`   // ---`,
+`   // Add the optional component`,
+`   // ---`,
+`   if (add != nullptr) {`,
+`      const auto cp = dynamic_cast<Component*>( add->object() );`,
+`      if ( cp != nullptr && (skipFilter || cp->isClassType(filter)) ) {`,
+`         newList->put(add);`,
+`         cp->container(this);`,
+`      }`,
+`   }`,
+``,
+`   // ---`,
+`   // Swap lists`,
+`   // ---`,
+`   components = newList;`,
+`   newList->unref();`,
+    ] },
+    { omitted: 'repasse da selecao ativa para a nova lista, linha 638 em diante' },
+  ],
+},
+
+'Player::updateTC': {
+  file: 'contexts/src/mixr/src/models/player/Player.cpp',
+  blocks: [ { start: 528, lines: [
+`void Player::updateTC(const double dt0)`,
+`{`,
+`   // Make sure we've loaded our system pointers`,
+`   if (loadSysPtrs) {`,
+`      updateSystemPointers();`,
+`      loadSysPtrs = false;`,
+`   }`,
+``,
+`   if (mode == ACTIVE || mode == PRE_RELEASE) {`,
+``,
+`      // ---`,
+`      // Time-out requests for reflections of RF emissions hitting us`,
+`      // ---`,
+`      for (unsigned int i = 0; i < MAX_RF_REFLECTIONS; i++) {`,
+`         if (rfReflect[i] != nullptr) {`,
+`            rfReflectTimer[i] -= dt0;`,
+`            if (rfReflectTimer[i] <= 0) {`,
+`               // Clear the request`,
+`               rfReflect[i]->unref();`,
+`               rfReflect[i] = nullptr;`,
+`            }`,
+`         }`,
+`      }`,
+``,
+`      // ---`,
+`      // Delta time -- real or frozen?`,
+`      // ---`,
+`      double dt{dt0};`,
+`      if (isFrozen()) dt = 0.0;`,
+``,
+`      // ---`,
+`      // Compute delta time for modules running every fourth phase`,
+`      // ---`,
+`      double dt4{dt * 4.0};     // Delta time for items running every fourth phase`,
+`      switch (getWorldModel()->phase()) {`,
+``,
+`         // Phase 0 -- Dynamics`,
+`         case 0 : {`,
+`            // Our dynamics`,
+`            dynamics(dt4);`,
+``,
+`            // Log our player's dynamic data just after its been updated ...`,
+`            if (dataLogTime > 0.0) {`,
+`               // When we have a data logging time, update the timer`,
+`               dataLogTimer -= dt4;`,
+`               if (dataLogTimer <= 0.0) {`,
+`                  // At timeout, log the player's data and ...`,
+``,
+`                  BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_PLAYER_DATA )`,
+`                     SAMPLE_1_OBJECT( this )`,
+`                  END_RECORD_DATA_SAMPLE()`,
+``,
+`                  // reset the timer.`,
+`                  dataLogTimer = dataLogTime;`,
+`               }`,
+`            }`,
+``,
+`            // Update signatures after we've updated our dynamics`,
+`            if (signature != nullptr) signature->updateTC(dt4);`,
+`            if (irSignature != nullptr) irSignature->updateTC(dt4);`,
+`         }`,
+`         break;`,
+``,
+`         // Phase 1 -- Sensors transmit`,
+`         case 1 :`,
+`         break;`,
+``,
+`         // Phase 2 -- Sensors Receive`,
+`         case 2 :`,
+`         break;`,
+``,
+`         // Phase 3 -- PDL and other logic`,
+`         case 3 :`,
+`         break;`,
+``,
+`      }`,
+``,
+`      // ---`,
+`      // Notes:`,
+`      //  a) Remember that our subsystems in the components list (e.g., pilot, nav,`,
+`      //     sms and obc) are updated by our call to BaseClass:updateTC()`,
+`      //  b) We're calling BaseClass::updateTC() class because we want to update`,
+`      //     our player dynamics, etc before our subsystems.`,
+`      // ---`,
+`      BaseClass::updateTC(dt);`,
+`   }`,
+`}`,
+  ] } ],
+},
+
+'Player::updateSystemPointers': {
+  file: 'contexts/src/mixr/src/models/player/Player.cpp',
+  blocks: [ { start: 3141, lines: [
+`void Player::updateSystemPointers()`,
+`{`,
+`   // ---`,
+`   // Set base::Pair pointers for our primary systems located in our list of subcomponents`,
+`   // ---`,
+`   loadSysPtrs = false;`,
+`   setDynamicsModel( findByType(typeid(DynamicsModel)) );`,
+`   setDatalink( findByType(typeid(Datalink)) );`,
+`   setGimbal( findByType(typeid(Gimbal)) );`,
+`   setIrSystem( findByType(typeid(IrSystem)) );`,
+`   setNavigation( findByType(typeid(Navigation)) );`,
+`   setOnboardComputer( findByType(typeid(OnboardComputer)) );`,
+`   setPilot( findByType(typeid(Pilot)) );`,
+`   setRadio( findByType(typeid(Radio)) );`,
+`   setSensor( findByType(typeid(RfSensor)) );`,
+`   setStoresMgr( findByType(typeid(StoresMgr)) );`,
+`}`,
+  ] } ],
+},
+
+'System::updateTC': {
+  file: 'contexts/src/mixr/src/models/system/System.cpp',
+  blocks: [ { start: 84, lines: [
+`void System::updateTC(const double dt0)`,
+`{`,
+`   // We're nothing without an ownship ...`,
+`   if (ownship == nullptr && getOwnship() == nullptr) return;`,
+``,
+`   // ---`,
+`   // Delta time`,
+`   // ---`,
+``,
+`   // real or frozen?`,
+`   double dt{dt0};`,
+`   if (isFrozen()) dt = 0.0;`,
+``,
+`   // Delta time for methods that are running every fourth phase`,
+`   double dt4{dt * 4.0};`,
+``,
+`   // ---`,
+`   // Four phases per frame`,
+`   // ---`,
+`   WorldModel* sim{ownship->getWorldModel()};`,
+`   if (sim == nullptr) return;`,
+``,
+`   switch (sim->phase()) {`,
+``,
+`      case 0 : // Frame0 --- Dynamics method`,
+`         dynamics(dt4);`,
+`         break;`,
+``,
+`      case 1 : // Frame1 --- Transmit method`,
+`         transmit(dt4);`,
+`         break;`,
+``,
+`      case 2 : // Frame2 --- Receive method`,
+`         receive(dt4);`,
+`         break;`,
+``,
+`      case 3 : // Frame3 --- Process method`,
+`         process(dt4);`,
+`         break;`,
+`   }`,
+``,
+`   // ---`,
+`   // Last, update our base class`,
+`   // and use 'dt' because if we're frozen then so are our subcomponents.`,
+`   // ---`,
+`   BaseClass::updateTC(dt);`,
+`}`,
+  ] } ],
+},
+
+'System::dynamics/transmit/receive/process': {
+  file: 'contexts/src/mixr/src/models/system/System.cpp',
+  blocks: [ { start: 135, lines: [
+`void System::dynamics(const double)`,
+`{`,
+`}`,
+``,
+`void System::transmit(const double)`,
+`{`,
+`}`,
+``,
+`void System::receive(const double)`,
+`{`,
+`}`,
+``,
+`void System::process(const double)`,
+`{`,
+`}`,
+  ] } ],
+},
+
+'Autopilot::process': {
+  file: 'contexts/src/mixr/src/models/system/Autopilot.cpp',
+  blocks: [ { start: 187, lines: [
+`void Autopilot::process(const double dt)`,
+`{`,
+`   modeManager();`,
+`   headingController();`,
+`   altitudeController();`,
+`   velocityController();`,
+``,
+`   BaseClass::process(dt);`,
+`}`,
+  ] } ],
+},
+
+'Gimbal::processPlayersOfInterest': {
+  file: 'contexts/src/mixr/src/models/system/Gimbal.cpp',
+  blocks: [ { start: 1318, lines: [
+`unsigned int Gimbal::processPlayersOfInterest(base::PairStream* const poi)`,
+`{`,
+`   const auto tdb0 = new Tdb(maxPlayers, this);`,
+``,
+`   unsigned int ntgts{tdb0->processPlayers(poi)};`,
+`   setCurrentTdb(tdb0);`,
+`   tdb0->unref();`,
+``,
+`   return ntgts;`,
+`}`,
+  ] } ],
+},
+
+'Stores::releaseWeapon': {
+  file: 'contexts/src/mixr/src/models/system/Stores.cpp',
+  blocks: [ { start: 312, lines: [
+`// By weapon`,
+`AbstractWeapon* Stores::releaseWeapon(AbstractWeapon* const wpn)`,
+`{`,
+`   AbstractWeapon* flyout{};`,
+``,
+`   Player* own{getOwnship()};`,
+`   if (wpn != nullptr && own != nullptr) {`,
+``,
+`      // Release the weapon`,
+`      wpn->setLaunchVehicle(own);`,
+`      flyout = wpn->release();`,
+``,
+`   }`,
+``,
+`   return flyout;`,
+`}`,
+``,
+`// By station`,
+`AbstractWeapon* Stores::releaseWeapon(const unsigned int s)`,
+`{`,
+`   AbstractWeapon* flyout{};`,
+``,
+`   AbstractWeapon* wpn{getWeapon(s)};`,
+`   if (wpn != nullptr) {`,
+`      flyout = releaseWeapon(wpn);`,
+`      wpn->unref();`,
+`   }`,
+``,
+`   return flyout;`,
+`}`,
+  ] } ],
+},
+
+'SimpleStoresMgr::releaseOneDecoy': {
+  file: 'contexts/src/mixr/src/models/system/SimpleStoresMgr.cpp',
+  blocks: [ { start: 574, lines: [
+`Decoy* SimpleStoresMgr::releaseOneDecoy()`,
+`{`,
+`   Decoy* flyout{};`,
+`   Decoy* decoy{getNextDecoy()};`,
+`   if (decoy != nullptr) {`,
+`      flyout = static_cast<Decoy*>( releaseWeapon(decoy) );`,
+`   }`,
+`   return flyout;`,
+`}`,
+  ] } ],
+},
+
+'AbstractWeapon::release': {
+  file: 'contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp',
+  blocks: [
+    { start: 560, lines: [
+`AbstractWeapon* AbstractWeapon::release()`,
+`{`,
+`   AbstractWeapon* flyout{};`,
+``,
+`   // When this weapon isn't already released, blocked or jettisoned.`,
+`   if ( !isReleased() && !isBlocked() && !isJettisoned() ) {`,
+``,
+`      // and isn't flagged to be a hung store (i.e., failure mode),`,
+`      if (!getWillHang()) {`,
+``,
+`         // and we have a launching player and a simulation ...`,
+`         Player* lplayer{getLaunchVehicle()};`,
+`         const auto sim = static_cast<WorldModel*>( findContainerByType(typeid(WorldModel)) );`,
+`         if ( lplayer != nullptr && sim != nullptr) {`,
+``,
+`            // then release the weapon!`,
+``,
+`            flyout = getFlyoutWeapon();`,
+`            if (flyout != nullptr) {`,
+    ] },
+    { omitted: 'ramo "ja existe um flyout em release hold" (chamado quando algo ja chamou prerelease() antes) -- linhas 757-592. NAO E O CAMINHO que StoresMgr::releaseOneDecoy segue: nada nesta cadeia chama prerelease() antes, entao getFlyoutWeapon() volta nullptr e cai no "else" abaixo.' },
+    { start: 593, lines: [
+`            } else {`,
+`               // When we haven't already created a flyout then this is`,
+`               // a direct release ...`,
+``,
+`               // Get a release event`,
+`               eventID = sim->getNewWeaponEventID();`,
+``,
+`               // Next we'll clone ourself --`,
+`               //  -- this will be the actual weapon player what will do the fly-out.`,
+`               flyout = this->clone();`,
+``,
+`               flyout->container( sim );`,
+`               flyout->reset();`,
+``,
+`               flyout->setFlyoutWeapon(flyout);`,
+`               flyout->setInitialWeapon(this);`,
+`               flyout->setID( sim->getNewReleasedWeaponID() );`,
+``,
+`               flyout->setLaunchVehicle( lplayer );`,
+`               flyout->setSide( lplayer->getSide() );`,
+``,
+`               // and set the weapon prerelease`,
+`               flyout->setMode(PRE_RELEASE);`,
+`               flyout->setReleased(true);`,
+`               flyout->setReleaseHold(false);`,
+``,
+`               // Set our mode flags to fully released.`,
+`               setFlyoutWeapon(flyout);`,
+`               setInitialWeapon(this);`,
+`               setMode(Player::LAUNCHED);`,
+`               setReleased(true);`,
+`               setReleaseHold(false);`,
+``,
+`               // add it to the flyout weapon player list`,
+`               char pname[32];`,
+`               std::sprintf(pname,"W%05d", flyout->getID());`,
+`               sim->addNewPlayer(pname,flyout);`,
+`            }`,
+``,
+`            BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_RELEASED )`,
+`               SAMPLE_3_OBJECTS( flyout, getLaunchVehicle(), nullptr )  // weapon, shooter, target`,
+`               SAMPLE_2_VALUES( 0, 0.0 )`,
+`            END_RECORD_DATA_SAMPLE()`,
+`         }`,
+    ] },
+  ],
+},
+
+'Antenna::rfTransmit': {
+  file: 'contexts/src/mixr/src/models/system/Antenna.cpp',
+  blocks: [
+    { start: 379, lines: [
+`void Antenna::rfTransmit(Emission* const xmit)`,
+`{`,
+`   // Need something to transmit and someone to send to`,
+`   Tdb* tdb{getCurrentTDB()};`,
+`   Player* ownship{getOwnship()};`,
+`   if (xmit == nullptr || tdb == nullptr || ownship == nullptr) {`,
+`      // Clean up and leave`,
+`      if (tdb != nullptr) tdb->unref();`,
+`      return;`,
+`   }`,
+``,
+`   // ---`,
+`   // Compute gimbal boresight data for our targets`,
+`   // ---`,
+`   unsigned int ntgts{tdb->computeBoresightData()};`,
+`   if (ntgts > MAX_PLAYERS) ntgts = MAX_PLAYERS;`,
+``,
+`   // ---`,
+`   // If we have targets`,
+`   // ---`,
+`   const base::Vec3d* losG{tdb->getGimbalLosVectors()};`,
+`   if (ntgts > 0 && losG != nullptr) {`,
+    ] },
+    { omitted: 'ganho da antena por alvo via a tabela gainPattern (Table1/Table2) e potencia efetiva irradiada (erp), linhas 401-525' },
+    { start: 525, lines: [
+`               em->setPolarization(getPolarization());`,
+`               em->setLocalPlayersOnly( isLocalPlayersOfInterestOnly() );`,
+``,
+`               // c) Send the emission to the target`,
+`               targets[i]->event(RF_EMISSION, em);`,
+    ] },
+  ],
+},
+
+'Radar::process': {
+  file: 'contexts/src/mixr/src/models/system/Radar.cpp',
+  blocks: [
+    { start: 325, lines: [
+`void Radar::process(const double dt)`,
+`{`,
+`   BaseClass::process(dt);`,
+``,
+`   // Find the track manager`,
+`   TrackManager* tm{getTrackManager()};`,
+`   if (tm == nullptr) {`,
+`      // No track manager! Then just flush the input queue.`,
+`      base::lock(myLock);`,
+`      for (Emission* em = rptQueue.get(); em != nullptr; em = rptQueue.get()) {`,
+`         em->unref();`,
+`         rptSnQueue.get();`,
+`      }`,
+`      base::unlock(myLock);`,
+`   }`,
+``,
+``,
+`   // ---`,
+`   // When end of scan, send all unsent reports to the track manager`,
+`   // ---`,
+`   if (endOfScanFlg) {`,
+``,
+`      endOfScanFlg = false;`,
+``,
+`      base::lock(myLock);`,
+`      for (unsigned int i = 0; i < numReports && i < MAX_REPORTS; i++) {`,
+`         if (tm != nullptr) {`,
+`            tm->newReport(reports[i], rptMaxSn[i]);`,
+`         }`,
+`         reports[i]->unref();`,
+`         reports[i] = nullptr;`,
+`         rptMaxSn[i] = 0;`,
+`      }`,
+`      numReports = 0;`,
+`      base::unlock(myLock);`,
+`   }`,
+    ] },
+    { omitted: 'casamento emissao<->relatorio existente e criacao de relatorios novos (a fusao propriamente dita), linha 361 em diante' },
+  ],
+},
+
+'TrackManager::newReport': {
+  file: 'contexts/src/mixr/src/models/system/trackmanager/TrackManager.cpp',
+  blocks: [ { start: 301, lines: [
+`void TrackManager::newReport(Emission* em, double sn)`,
+`{`,
+`   // Queue up emissions reports`,
+`   if (em != nullptr) {`,
+`      base::lock(queueLock);`,
+`      if (emQueue.isNotFull()) {`,
+`      em->ref();`,
+`      emQueue.put(em);`,
+`      snQueue.put(sn);`,
+`      }`,
+`      base::unlock(queueLock);`,
+`   }`,
+`}`,
+  ] } ],
+},
+
+'AlertDatalink::receive': {
+  file: 'models/player/flight/src/xnative/AlertDatalink.cpp',
+  blocks: [ { start: 151, lines: [
+`//------------------------------------------------------------------------------`,
+`// FASE 2 -- promove o alerta encenado e envelhece o corrente.`,
+`//`,
+`// A promocao numa FRONTEIRA DE FASE e o que da latencia FIXA de um frame`,
+`// para todos os receptores, em vez de "as vezes no mesmo frame, as vezes no`,
+`// proximo, dependendo da thread".`,
+`//------------------------------------------------------------------------------`,
+`void AlertDatalink::receive(const double dt)`,
+`{`,
+`   BaseClass::receive(dt);`,
+`   if (dt <= 0.0) return;`,
+``,
+`   Alert publicar{};`,
+`   long publicarSent{};`,
+`   long publicarRecv{};`,
+`   {`,
+`      std::lock_guard<std::mutex> lock(alertMutex);`,
+``,
+`      if (staged.valid) {`,
+`         current = staged;`,
+`         staged = Alert{};`,
+`         holdTimer = holdTimeSec;`,
+`      } else if (current.valid) {`,
+`         holdTimer -= dt;`,
+`         if (holdTimer <= 0.0) current = Alert{};`,
+`      }`,
+``,
+`      publicar = current;`,
+`      publicarSent = sentCount;`,
+`      publicarRecv = receivedCount;`,
+`   }`,
+``,
+`   // Publica no quadro de leitura, FORA do nosso mutex -- o xboard tem o dele,`,
+`   // e segurar os dois ao mesmo tempo criaria uma ordem de travamento para`,
+`   // ninguem manter.`,
+`   const models::Player* const owner{static_cast<const models::Player*>(findContainerByType(typeid(models::Player)))};`,
+`   if (owner != nullptr) {`,
+`      const int id{owner->getID()};`,
+`      xboard::setAlert(id, publicar.valid, publicar.senderName, publicar.contactName);`,
+`      xboard::setDatalinkCounters(id, publicarSent, publicarRecv);`,
+`   }`,
+`}`,
+  ] } ],
+},
+
+'Action::process': {
+  file: 'contexts/src/mixr/src/models/Actions.cpp',
+  blocks: [ { start: 111, lines: [
+`//------------------------------------------------------------------------------`,
+`// process() -- action processing`,
+`//------------------------------------------------------------------------------`,
+`void Action::process(const double)`,
+`{`,
+`}`,
+  ] } ],
+},
+
+'ActionDecoyRelease::process': {
+  file: 'contexts/src/mixr/src/models/Actions.cpp',
+  blocks: [ { start: 635, lines: [
+`void ActionDecoyRelease::process(const double)`,
+`{`,
+`    // keep counting until we have our "interval" of seconds`,
+`    OnboardComputer* mgr{getManager()};`,
+`    if (mgr != nullptr) {`,
+`        Player* own{static_cast<Player*>(mgr->findContainerByType(typeid(Player)))};`,
+`        if (own != nullptr) {`,
+`            tod = own->getWorldModel()->getSimTimeOfDay();`,
+`            if (interval < (tod - startTOD)) {`,
+`                // we have hit our interval, release another decoy`,
+`                StoresMgr* sms = own->getStoresManagement();`,
+`                if (sms != nullptr) {`,
+`                    sms->releaseOneDecoy();`,
+`                    numToLaunch--;`,
+`                    if (numToLaunch == 0) {`,
+`                        setManager(nullptr);`,
+`                        BaseClass::setCompleted(true);`,
+`                    }`,
+`                    else {`,
+`                        // keep going, start counting again!`,
+`                        startTOD = tod;`,
+`                    }`,
+`                }`,
+`            }`,
+`        }`,
+`    }`,
+`}`,
+  ] } ],
+},
+
+'ActionWeaponRelease::trigger': {
+  file: 'contexts/src/mixr/src/models/Actions.cpp',
+  blocks: [
+    { start: 458, lines: [
+`bool ActionWeaponRelease::trigger(OnboardComputer* const mgr)`,
+`{`,
+`   bool ok{};`,
+``,
+`   if (mgr != nullptr) {`,
+`      Player* own{static_cast<Player*>(mgr->findContainerByType(typeid(Player)))};`,
+`      if (own != nullptr) {`,
+``,
+`         StoresMgr* sms{own->getStoresManagement()};`,
+`         if (sms != nullptr) {`,
+``,
+`            // Get the simulation ref point`,
+`            WorldModel* sim{own->getWorldModel()};`,
+`            const double refLat{sim->getRefLatitude()};`,
+`            const double refLon{sim->getRefLongitude()};`,
+``,
+`            // Computes the target's position vector`,
+`            base::Vec3d tgtPos;                          // Target position  (m) NED`,
+`            base::nav::convertLL2PosVec(`,
+`               refLat, refLon,                           // Ref point (at sea level)`,
+`               getTargetLatitude(), getTargetLongitude(), getTargetElevation(),`,
+`               &tgtPos); // x,y,z  NED`,
+``,
+`            if (isMessageEnabled(MSG_INFO)) {`,
+`               std::cout << "ActionWeaponRelease::trigger() Release weapon at [ " << tgtPos[0] << ", } " << tgtPos[1] << " ]" << std::endl;`,
+`            }`,
+``,
+`            // Release the weapon and set the target`,
+`            AbstractWeapon* flyout{sms->releaseOneBomb()};`,
+`            if (flyout != nullptr) {`,
+`                flyout->setTargetPosition(tgtPos);`,
+`            }`,
+`         }`,
+``,
+`         BaseClass::setCompleted(true);`,
+`         ok = true;`,
+`      }`,
+    ] },
+    { omitted: 'fechamento das chaves e "return ok;", linha 495 em diante' },
+  ],
+},
+
+'Agent::updateData/controller': {
+  file: 'contexts/src/mixr/src/base/ubf/Agent.cpp',
+  blocks: [
+    { start: 59, lines: [
+`void Agent::updateData(const double dt)`,
+`{`,
+`   controller(dt);`,
+`}`,
+``,
+`void Agent::controller(const double dt)`,
+`{`,
+`   base::Component* actor{getActor()};`,
+``,
+`   if ( (actor!=nullptr) && (getState()!=nullptr) && (getBehavior()!=nullptr) ) {`,
+``,
+`      // update ubf state`,
+`      getState()->updateState(actor);`,
+``,
+`      // generate an action, but allow possibility of no action returned`,
+`      AbstractAction* action{getBehavior()->genAction(state, dt)};`,
+    ] },
+    { omitted: 'se houver acao, action->execute(actor) e action->unref(), linha 75 em diante' },
+  ],
+},
+
+'Stores::updateTC/updateData': {
+  file: 'contexts/src/mixr/src/models/system/Stores.cpp',
+  blocks: [ { start: 80, lines: [
+`//------------------------------------------------------------------------------`,
+`// updateTC() -- update time critical stuff here`,
+`//------------------------------------------------------------------------------`,
+`void Stores::updateTC(const double dt)`,
+`{`,
+`   // Update our non-weapon, external stores, which need to act as`,
+`   // active systems attached to our ownship player.`,
+`   {`,
+`      base::PairStream* list{getStores()};`,
+`      if (list != nullptr) {`,
+`         base::List::Item* item{list->getFirstItem()};`,
+`         while (item != nullptr) {`,
+`            const auto pair = static_cast<base::Pair*>(item->getValue());`,
+`            const auto p = dynamic_cast<ExternalStore*>( pair->object() );`,
+`            if (p != nullptr) p->updateTC(dt);`,
+`            item = item->getNext();`,
+`         }`,
+`         list->unref();`,
+`         list = nullptr;`,
+`      }`,
+`   }`,
+``,
+`   BaseClass::updateTC(dt);`,
+`}`,
+  ] } ],
+},
+
+'Simulation.hpp::players': {
+  file: 'contexts/src/mixr/include/mixr/simulation/Simulation.hpp',
+  blocks: [ { start: 256, lines: [
+`base::safe_ptr<base::PairStream> players;     // Main player list (sorted by network and player IDs)`,
+`base::safe_ptr<base::PairStream> origPlayers; // Original player list`,
+  ] } ],
+},
+
+'Route::updateData/autoSequencer/triggerAction': {
+  file: 'contexts/src/mixr/src/models/navigation/Route.cpp',
+  blocks: [
+    { start: 119, lines: [
+`//------------------------------------------------------------------------------`,
+`// updateData() -- update Non-time critical stuff here`,
+`//------------------------------------------------------------------------------`,
+`void Route::updateData(const double dt)`,
+`{`,
+`   BaseClass::updateData(dt);`,
+``,
+`   const Navigation* nav{static_cast<const Navigation*>(findContainerByType(typeid(Navigation)))};`,
+`   if (nav != nullptr) {`,
+`      computeSteerpointData(dt, nav);`,
+`      autoSequencer(dt, nav);`,
+`   }`,
+`}`,
+    ] },
+    { omitted: 'computeSteerpointData() -- calcula o rumo/distancia para cada steerpoint da rota, linhas 133-161' },
+    { start: 163, lines: [
+`//------------------------------------------------------------------------------`,
+`// Auto Sequence through Steerpoints`,
+`//------------------------------------------------------------------------------`,
+`void Route::autoSequencer(const double, const Navigation* const nav)`,
+`{`,
+`   if (isAutoSequence() && to != nullptr && nav != nullptr) {`,
+`      Steerpoint* toSP{static_cast<Steerpoint*>(to->object())};`,
+`      if (toSP->getDistNM() <= autoSeqDistNM) {`,
+`         // We're within range of the steerpoint, so compute our relative`,
+`         // to see if we just passed it.`,
+`         const double rbrg{base::angle::aepcdDeg(toSP->getTrueBrgDeg() - nav->getHeadingDeg())};`,
+`         if ( std::fabs(rbrg) >= 90.0) {`,
+`            // We're within range and we're going away from it, so ...`,
+`            triggerAction();`,
+`            incStpt();`,
+`         }`,
+`      }`,
+`   }`,
+`}`,
+``,
+`//------------------------------------------------------------------------------`,
+`// trigger the 'to' steerpoint's action (if any)`,
+`//------------------------------------------------------------------------------`,
+`void Route::triggerAction()`,
+`{`,
+`   // ---`,
+`   // find and start the current 'to' steerpoint action`,
+`   // ---`,
+`   Player* own{static_cast<Player*>(findContainerByType(typeid(Player)))};`,
+`   if (to != nullptr && own != nullptr) {`,
+`      Steerpoint* toSP{static_cast<Steerpoint*>(to->object())};`,
+`      Action* toAction{toSP->getAction()};`,
+`      if (toAction != nullptr) {`,
+`         OnboardComputer* obc{own->getOnboardComputer()};`,
+`         if (obc != nullptr) obc->triggerAction(toAction);`,
+`      }`,
+`   }`,
+    ] },
+  ],
+},
+
+'OnboardComputer::updateData/triggerAction/actionManager': {
+  file: 'contexts/src/mixr/src/models/system/OnboardComputer.cpp',
+  blocks: [
+    { start: 76, lines: [
+`//------------------------------------------------------------------------------`,
+`// updateData() -- update background data here`,
+`//------------------------------------------------------------------------------`,
+`void OnboardComputer::updateData(const double dt)`,
+`{`,
+`   BaseClass::updateData(dt);`,
+``,
+`   // Manage active actions`,
+`   actionManager(dt);`,
+``,
+`   // Update the shoot list`,
+`   updateShootList();`,
+`}`,
+``,
+`//------------------------------------------------------------------------------`,
+`// trigger the 'to' steerpoint's action (if any)`,
+`//------------------------------------------------------------------------------`,
+`void OnboardComputer::triggerAction(Action* const toAction)`,
+`{`,
+`   // ---`,
+`   // Cancel any previous action`,
+`   // ---`,
+`   if (action != nullptr) {`,
+`      action->cancel();`,
+`   }`,
+``,
+`   // ---`,
+`   // find and start the current 'to' steerpont action`,
+`   // ---`,
+`   if (toAction != nullptr) {`,
+`      // trigger the action`,
+`      toAction->trigger(this);`,
+``,
+`      if (toAction->isInProgress()) {`,
+`         // Wasn't a one-shot, so remember this action`,
+`         action = toAction;`,
+`      }`,
+`   }`,
+`}`,
+``,
+``,
+`//------------------------------------------------------------------------------`,
+`// Manage the active action`,
+`//------------------------------------------------------------------------------`,
+`void OnboardComputer::actionManager(const double dt)`,
+`{`,
+`   if (action != nullptr) {`,
+`      // update the action`,
+`      action->process(dt);`,
+`      if (action->isCompleted()) {`,
+`         // The action has finished`,
+`         action = nullptr;`,
+`      }`,
+`   }`,
+`}`,
+    ] },
+  ],
+},
+
+};
+
+function flattenSrc(entry) {
+  const out = [];
+  for (const b of entry.blocks) {
+    if (b.omitted) {
+      out.push({ ln: null, text: '  ··· (' + b.omitted + ') ···' });
+    } else {
+      b.lines.forEach((t, i) => out.push({ ln: b.start + i, text: t }));
+    }
+  }
+  return out;
+}
+</script>
+<script>
+/* ============================================================================
+   data/scenario.js -- a arvore de contencao REAL de
+   src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in (falcon1, o
+   "player maximo": 53 das 96 classes de mixr::models). Nenhum nome de
+   classe/fabrica/slot aqui foi inventado -- todos batem com o .epp e com a
+   saida de scripts/extract_execution_chain.py (rode-o para conferir).
+
+   Por que ESTE cenario, e nao um generico: e o unico deste repositorio que
+   junta, num so lugar, TODOS os ingredientes que a ferramenta quer mostrar --
+   as 4 fases + fundo, a cadeia RF completa, um Player DOCKED cujo
+   Player::updateTC nunca entra no switch(phase) ate ser liberado, uma arma
+   que nasce em execucao (Stores::releaseWeapon) e desaparece no reset
+   (Simulation::reset() so copia de origPlayers + IPlayers de rede), e uma
+   dezena de nos genuinamente OCIOSOS (confirmados pelo extrator, nao
+   copiados as cegas da lista do TODO.md original -- ver README.md).
+
+   Campos de cada no (ver README.md para o contrato completo):
+     id, cls, factory (so quando difere de cls), player(bool),
+     phases: [0,1,2,3,'bg','init'] -- fases em que ALGUM nivel da cadeia,
+             ACIMA do despacho generico, faz trabalho real (nao-vazio);
+             [] = ociosidade estrutural confirmada pelo extrator.
+     idle: espelha phases.length===0, exceto quando a nota explica um motivo
+           mais fino (ex.: DOCKED -- a cadeia nao e ociosa, mas o mode-gate de
+           Player::updateTC a torna efetivamente inerte).
+     chain: do concreto ao nivel generico (Component/System/Simulation).
+     dispatch: em qual nivel da cadeia mora o switch(phase)/laco de 4 fases.
+     srcKeys: chaves de SRC relevantes para este no.
+     dynamic: nasce em execucao (nao existe no primeiro frame).
+     note: a observacao que da o valor pedagogico ao no.
+============================================================================ */
+
+function n(id, cls, o) {
+  o = o || {};
+  return {
+    id, cls,
+    factory: o.factory || cls,
+    player: !!o.player,
+    phases: o.phases || [],
+    idle: o.idle !== undefined ? o.idle : (o.phases || []).length === 0,
+    chain: o.chain || [cls],
+    dispatch: o.dispatch || null,
+    srcKeys: o.srcKeys || [],
+    dynamic: !!o.dynamic,
+    note: o.note || '',
+    children: o.children || [],
+  };
+}
+
+// --- assinatura RF: SigSwitch + 6 filhos -- todos confirmados OCIOSOS pelo
+// extrator (RfSignature nunca sobrescreve nenhum dos 7 metodos -- e
+// consultada SOB DEMANDA pela equacao de RF de quem ilumina o alvo, nunca
+// por um laco de frame). Isto valida a UNICA entrada da lista original do
+// TODO.md que sobrevive a checagem contra o fonte: 'SigSphere'.
+function sigSwitch() {
+  return n('signature', 'SigSwitch', {
+    chain: ['SigSwitch', 'RfSignature'],
+    note: 'Ocioso confirmado: RfSignature nunca sobrescreve nenhum dos 7 metodos. getRCS() e chamado sob demanda pelo RfSensor de quem ilumina o alvo -- nunca pelo laco de frame. camouflageType escolhe qual dos 6 filhos abaixo responde (SigSwitch::getRCS(), Signatures.cpp).',
+    children: [
+      n('sig_limpo', 'SigSphere', { chain: ['SigSphere', 'RfSignature'] }),
+      n('sig_placa', 'SigPlate', { chain: ['SigPlate', 'RfSignature'] }),
+      n('sig_const', 'SigConstant', { chain: ['SigConstant', 'RfSignature'] }),
+      n('sig_died', 'SigDihedralCR', { chain: ['SigDihedralCR', 'SigPlate', 'RfSignature'] }),
+      n('sig_tried', 'SigTrihedralCR', { chain: ['SigTrihedralCR', 'SigDihedralCR', 'SigPlate', 'RfSignature'] }),
+      n('sig_azel', 'SigAzEl', { chain: ['SigAzEl', 'RfSignature'] }),
+    ],
+  });
+}
+
+function irSignature(id, heat) {
+  return n(id, 'IrSignature', {
+    chain: ['IrSignature'],
+    note: 'Ocioso confirmado. E do ALVO, nao do sensor -- e ela que o IRST dos OUTROS consulta sob demanda; base=' + heat + ' (baseHeatSignature).',
+    children: [ n(id + '_shape', 'IrSphere', { chain: ['IrSphere', 'IrShape'] }) ],
+  });
+}
+
+// --- a rota e as 4 acoes (so em falcon1) ---
+function route() {
+  return n('route', 'Route', {
+    phases: ['bg'],
+    chain: ['Route'],
+    srcKeys: ['Route::updateData/autoSequencer/triggerAction'],
+    note: 'ATIVO em updateData() -- Route::autoSequencer() sequencia por distancia + marcacao relativa, e chama triggerAction() no steerpoint que a aeronave acabou de passar. Tudo isto roda no FUNDO (cadeia b), independente de navMode: e Route::updateData(), nao Route::process().',
+    children: [
+      n('wp1', 'Steerpoint', {
+        chain: ['Steerpoint'],
+        note: 'processComponents() proprio so encadeia os filhos; a navegacao de verdade e feita pelo Route pai. "ponto 1 -- solta decoy ao passar" (t=37,0s medido).',
+        children: [ n('action_wp1', 'ActionDecoyRelease', {
+          chain: ['ActionDecoyRelease', 'Action'],
+          idle: false, phases: ['bg'],
+          srcKeys: ['Action::process', 'ActionDecoyRelease::process', 'Route::updateData/autoSequencer/triggerAction', 'OnboardComputer::updateData/triggerAction/actionManager'],
+          note: 'ATIVO -- ActionDecoyRelease::process() SOBRESCREVE o stub vazio de Action::process() (confirmado pelo extrator). Mas o caminho e o QUE MAIS SURPREENDE aqui: Action NAO e um System/Component -- e um base::ubf::AbstractAction. Route::triggerAction() dispara o trigger() UMA VEZ; dai em diante e OnboardComputer::actionManager(), chamado por OnboardComputer::updateData() (THREAD DE FUNDO), quem chama action->process(dt) todo ciclo ate numToLaunch chegar a 0. Nao ha switch(phase) nenhum nesta cadeia. ARMADILHA MEDIDA: process() conta o "interval" em getSimTimeOfDay() (relogio de PAREDE), nao em tempo simulado -- em -deterministic (~200x mais rapido) 1s vira ~190s simulados entre um decoy e o proximo.',
+        }) ],
+      }),
+      n('wp2', 'Steerpoint', {
+        chain: ['Steerpoint'],
+        note: '"ponto 2 -- imageamento SAR".',
+        children: [ n('action_wp2', 'ActionImagingSar', {
+          chain: ['ActionImagingSar', 'Action'],
+          phases: ['bg'],
+          idle: false,
+          note: 'ATIVO -- mesmo caminho de action_wp1: process() proprio, chamado por OnboardComputer::actionManager() na THREAD DE FUNDO (nao no switch(phase); Action nao e um System).',
+        }) ],
+      }),
+      n('wp3', 'Steerpoint', {
+        chain: ['Steerpoint'],
+        note: '"ponto 3 -- troca a camuflagem (RCS)".',
+        children: [ n('action_wp3', 'ActionCamouflageType', {
+          chain: ['ActionCamouflageType', 'Action'],
+          srcKeys: ['Action::process'],
+          note: 'Ocioso pelos 7 metodos -- so troca camouflageType uma vez, via trigger(), no instante em que o steerpoint e passado.',
+        }) ],
+      }),
+      n('wp4', 'Steerpoint', {
+        chain: ['Steerpoint'],
+        note: '"ponto 4 -- liberacao de arma na estacao 1" (t=225,3s medido). ARMADILHA: o slot station:5 e ignorado -- quem sai e a primeira Bomb livre (StoresMgr::releaseOneBomb()).',
+        children: [ n('action_wp4', 'ActionWeaponRelease', {
+          chain: ['ActionWeaponRelease', 'Action'],
+          srcKeys: ['Action::process', 'ActionWeaponRelease::trigger'],
+          note: 'Ocioso pelos 7 metodos -- dispara via trigger(), chamado pelo Route. E ESTE trigger() que chama StoresMgr::releaseOneBomb() -> Stores::releaseWeapon().',
+        }) ],
+      }),
+    ],
+  });
+}
+
+function trkMgr(id, cls, chainExtra) {
+  return n(id, cls, {
+    phases: [3],
+    chain: [cls].concat(chainExtra || ['TrackManager', 'System']),
+    dispatch: 'System',
+    srcKeys: ['TrackManager::newReport', 'System::updateTC'],
+    note: 'Resolvido por NOME (trackManagerName: ' + id + '), nao por tipo -- um erro de digitacao no .epp nao falha a carga, so silencia o sensor.',
+  });
+}
+
+function antenna(id, note) {
+  return n(id, 'Antenna', {
+    phases: [0, 3],
+    chain: ['Antenna', 'ScanGimbal', 'Gimbal', 'System'],
+    dispatch: 'System',
+    srcKeys: ['Antenna::rfTransmit', 'System::updateTC'],
+    note: note || 'ScanGimbal/Gimbal::dynamics() varrem fisicamente a antena (fase 0); Antenna::process() e o helper rfTransmit() fazem o trabalho de RF.',
+  });
+}
+
+// --- falcon2/3/4: a pilha de PRODUCAO (mesma das outras pocs), repetida 3x
+// no .epp de verdade -- aqui via funcao para nao triplicar o literal.
+function productionFalcon(idx, initHeading) {
+  return n('falcon' + idx, 'Aircraft', {
+    player: true,
+    phases: [0, 1, 2, 3, 'bg'],
+    chain: ['Aircraft', 'AirVehicle', 'Player', 'Component'],
+    dispatch: 'Player',
+    srcKeys: ['Player::updateTC'],
+    note: 'Pilha de producao (radar+datalink+autopilot) -- contraste e alvo do RWR de falcon1. initHeading=' + initHeading + 'deg.',
+    children: [
+      n('falcon' + idx + '_dyn', 'JSBSimModel', { phases: [0], chain: ['JSBSimModel', 'AerodynamicsModel', 'DynamicsModel', 'Component'] }),
+      n('falcon' + idx + '_pilot', 'Autopilot', { phases: [3], chain: ['Autopilot', 'Pilot', 'System'], dispatch: 'System', srcKeys: ['Autopilot::process'] }),
+      n('falcon' + idx + '_dl', 'AlertDatalink', { phases: [2], chain: ['AlertDatalink', 'Datalink', 'System'], dispatch: 'System', srcKeys: ['AlertDatalink::receive'] }),
+      n('falcon' + idx + '_gimbal', 'Gimbal', { phases: [0], chain: ['Gimbal', 'System'], children: [
+        antenna('falcon' + idx + '_radar', null),
+      ]}),
+      n('falcon' + idx + '_sensors', 'SensorMgr', { phases: [3, 'bg'], chain: ['SensorMgr', 'RfSensor', 'RfSystem', 'System'], children: [
+        n('falcon' + idx + '_tws', 'Tws', { phases: [1, 2, 3, 'bg'], chain: ['Tws', 'Radar', 'RfSensor', 'RfSystem', 'System'], srcKeys: ['Radar::process', 'TrackManager::newReport'] }),
+      ]}),
+      n('falcon' + idx + '_obc', 'OnboardComputer', { phases: [3, 'bg'], chain: ['OnboardComputer', 'System'], children: [
+        trkMgr('falcon' + idx + '_twsTrkMgr', 'AirTrkMgr'),
+      ]}),
+    ],
+  });
+}
+
+const SCENARIO = n('station', 'ClockStation', {
+  factory: 'ClockStation',
+  chain: ['ClockStation', 'Station', 'Component'],
+  phases: [0, 1, 2, 3, 'bg'],
+  dispatch: 'Component',
+  srcKeys: ['Station::updateTC', 'Station::updateData'],
+  note: 'ClockStation e uma simulation::Station com um unico override (controle de velocidade/pausa) -- o corpo de updateTC()/updateData() e o nativo.',
+  children: [
+    n('plugins', 'PluginLoader', { phases: ['init'], chain: ['PluginLoader', 'Component'], note: 'Ocioso por frame: carrega libflight.so em reset()/construcao, uma vez -- nao participa do laco de tempo critico nem do de fundo.' }),
+
+    n('agent1', 'SimAgent', {
+      factory: 'SimAgent', phases: ['bg'], chain: ['SimAgent', 'Agent', 'Component'],
+      dispatch: 'Component', srcKeys: ['Agent::updateData/controller'],
+      note: 'E AQUI (thread de fundo, updateData) que falcon1 decide nesta poc -- Agent::updateData() chama controller(dt), que chama state->updateState() e behavior->genAction(). Nao ha updateTC proprio: a decisao NAO acontece na fase 3 do quadro (contraste com FlightAgentTC da poc multi-thread).',
+      children: [
+        n('agent1_state', 'FlightState', { chain: ['FlightState', 'AbstractState', 'Component'], note: 'Ocioso pelos 7 metodos -- a interface real e updateState(actor), fora do escopo desta ferramenta (nao e um dos 7 metodos de fase).' }),
+        n('agent1_behavior', 'UbfArbiter', {
+          factory: 'UbfArbiter', chain: ['Arbiter', 'AbstractBehavior', 'Component'],
+          note: 'Ocioso pelos 7 metodos -- decide via genAction(state, dt), chamado por Agent::controller(). vote:90 (AltitudeSafetyBehavior) vs vote:50 (BtBehavior): o maior vote vence.',
+          children: [
+            n('agent1_safety', 'AltitudeSafetyBehavior', { chain: ['AltitudeSafetyBehavior', 'Component'], note: 'Ocioso pelos 7 metodos -- so genAction(). Arbitro de piso anti-CFIT, vote:90.' }),
+            n('agent1_bt', 'BtBehavior', { chain: ['BtBehavior', 'AbstractBehavior', 'Component'], note: 'Ocioso pelos 7 metodos -- so genAction(), que roda a arvore flight_tree.xml (fora do escopo desta ferramenta: e a arvore de DECISAO, nao a de contencao MIXR). vote:50.' }),
+          ],
+        }),
+      ],
+    }),
+    n('agent2', 'SimAgent', { factory: 'SimAgent', phases: ['bg'], chain: ['SimAgent', 'Agent', 'Component'], note: 'Mesma forma de agent1, actorPlayerName: falcon2.' }),
+    n('agent3', 'SimAgent', { factory: 'SimAgent', phases: ['bg'], chain: ['SimAgent', 'Agent', 'Component'], note: 'Mesma forma de agent1, actorPlayerName: falcon3.' }),
+    n('agent4', 'SimAgent', { factory: 'SimAgent', phases: ['bg'], chain: ['SimAgent', 'Agent', 'Component'], note: 'Mesma forma de agent1, actorPlayerName: falcon4.' }),
+
+    n('msgFeed', 'MsgFeed', { phases: ['bg'], chain: ['MsgFeed', 'Component'], note: 'MsgFeed::updateData() real (shared/xmsg/MsgFeed.cpp:243) -- amostra os players e emite telemetria/mudanca-altitude fora do laco de tempo critico.' }),
+
+    n('dataRecorder', 'ExposedDataRecorder', {
+      chain: ['ExposedDataRecorder', 'DataRecorder', 'AbstractDataRecorder', 'AbstractRecorderComponent', 'Component'],
+      note: 'Ocioso pelos 7 metodos -- e chamado EXPLICITAMENTE por Station::updateData() (drenagem da fila, processRecords()), nao pelo despacho generico de Component. Um jeito diferente de nao ser "esquecido" mesmo ocioso.',
+      children: [
+        n('outputHandler', 'RecorderOutputHandler', {
+          factory: 'RecorderOutputHandler', phases: [], chain: ['OutputHandler', 'AbstractRecorderComponent', 'Component'],
+          idle: false,
+          note: 'OutputHandler::processComponents() e real (shared/xtacview e chain, OutputHandler.cpp:150) -- estrutural (encadeia destinos), nao um dos 4 metodos de fase.',
+          children: [
+            n('tacviewOutput', 'TacviewOutput', { chain: ['TacviewOutput', 'OutputHandler', 'Component'], note: 'enabledList:[43 42] -- so REID_PLAYER_DATA e REID_PLAYER_CRASH habilitados; REID_WEAPON_RELEASED (61) aborta o processo neste fork (armadilha documentada em CLAUDE.md), por isso fica de fora.' }),
+          ],
+        }),
+      ],
+    }),
+
+    n('simulation', 'WorldModel', {
+      factory: 'WorldModel', phases: [0, 1, 2, 3, 'bg'], chain: ['WorldModel', 'Simulation', 'Component'],
+      dispatch: 'Simulation', srcKeys: ['Simulation::updateTC', 'Simulation::reset', 'Simulation.hpp::players'],
+      note: 'E AQUI que vive o laco "4 fases por quadro" (Simulation::updateTC) e a reconstrucao da lista de players a partir de origPlayers (Simulation::reset).',
+      children: [
+        n('terrain', 'SrtmHgtFile', { chain: ['SrtmHgtFile', 'DataFile', 'Terrain'], note: 'Ocioso pelos 7 metodos -- Player::updateElevation() o consulta sob demanda (getElevation()), fora do escopo desta ferramenta.' }),
+
+        {
+          id: 'players', cls: '(lista de players)', factory: null, player: false, phases: [], idle: true, chain: [], dispatch: null, srcKeys: [], dynamic: false,
+          note: 'No SINTETICO -- nao existe slot "players:" isolado no sentido de Component; e o mesmo caso ja documentado no dashboard (Station.getNetworks()/getPlayers() nao passam por components:). Agrupado aqui so para navegacao.',
+          children: [
+            n('falcon1', 'Aircraft', {
+              player: true, phases: [0, 1, 2, 3, 'bg'], chain: ['Aircraft', 'AirVehicle', 'Player', 'Component'],
+              dispatch: 'Player', srcKeys: ['Player::updateTC', 'Player::updateSystemPointers'],
+              note: 'O PLAYER MAXIMO: 53 das 96 classes de mixr::models num Aircraft so. updateSystemPointers() resolve DEZ ponteiros primarios por TIPO (findByType() -- so o PRIMEIRO casamento importa).',
+              children: [
+                sigSwitch(),
+                irSignature('irSignature', 320.0),
+                n('dynamicsModel', 'JSBSimModel', { phases: [0], chain: ['JSBSimModel', 'AerodynamicsModel', 'DynamicsModel', 'Component'], dispatch: 'Component', srcKeys: ['System::updateTC'], note: 'dynamics() real (JSBSimModel.cpp) -- integra o JSBSim (c310). DynamicsModel::dynamics() e um stub vazio (mesmo padrao de System).' }),
+                n('pilot', 'Autopilot', { phases: [3], chain: ['Autopilot', 'Pilot', 'System', 'Component'], dispatch: 'System', srcKeys: ['Autopilot::process', 'System::updateTC'], note: 'navMode:false DE PROPOSITO -- o Autopilot NUNCA le a Navigation abaixo; ela continua ativa, so ignorada.' }),
+                n('nav', 'Ins', {
+                  phases: [3, 'bg'], chain: ['Ins', 'Navigation', 'System', 'Component'], dispatch: 'System',
+                  note: 'ATIVO (Navigation::updateData + process reais), MAS o resultado e ignorado pelo Autopilot (navMode:false acima). Nao e "SigSphere" -- e um caso mais interessante que a lista original do TODO.md sugeria: nao e ocioso, e IGNORADO.',
+                  children: [
+                    route(),
+                    n('bullseye', 'Bullseye', { chain: ['Bullseye', 'Steerpoint'], note: 'Mesma familia de Steerpoint -- so um ponto de referencia, sem Action.' }),
+                    n('gps', 'Gps', { phases: [3, 'bg'], chain: ['Gps', 'Navigation', 'System', 'Component'], dispatch: 'System', note: 'Aninhado dentro de Ins (Ins : public Navigation) -- um irmao seria invisivel a findByType().' }),
+                  ],
+                }),
+                n('datalink', 'AlertDatalink', { phases: [2], chain: ['AlertDatalink', 'Datalink', 'System', 'Component'], dispatch: 'System', srcKeys: ['AlertDatalink::receive'], note: 'A UNICA classe nao-nativa do player. receive() promove o alerta numa FRONTEIRA DE FASE -- latencia fixa de 1 frame para todo mundo.' }),
+                n('comm1', 'CommRadio', {
+                  phases: ['bg'], chain: ['CommRadio', 'Radio', 'RfSystem', 'System', 'Component'], dispatch: 'RfSystem',
+                  note: 'Ativo por heranca de RfSystem::updateData() -- nenhum override proprio de CommRadio encontrado pelo extrator.',
+                  children: [ n('iff', 'Iff', { phases: ['bg'], chain: ['Iff', 'Radio', 'RfSystem', 'System', 'Component'], note: 'Aninhado (Iff e um Radio) -- irmao seria invisivel.' }) ],
+                }),
+                n('antennas', 'Gimbal', {
+                  phases: [0], chain: ['Gimbal', 'System', 'Component'], dispatch: 'System',
+                  note: 'UMA antena por sensor de RF -- Antenna::setSystem() guarda 1 ponteiro so; por isso 6 antenas.',
+                  children: [
+                    antenna('ant_tws', 'A antena do TWS -- fase 1 (rfTransmit, via helper) e fase 3 (Antenna::process).'),
+                    antenna('ant_stt'), antenna('ant_gmti'),
+                    antenna('ant_rwr', 'Cobertura esferica, ganho baixo (3dB) -- so ESCUTA, nunca ilumina.'),
+                    antenna('ant_jam', 'disableEmissions:true por default -- estrutura pronta, desligada.'),
+                    n('estab', 'StabilizingGimbal', { phases: [0], chain: ['StabilizingGimbal', 'Gimbal', 'System', 'Component'], note: 'Gimbal DENTRO de gimbal -- contra-rola o berco do SAR.', children: [ antenna('ant_sar') ] }),
+                    n('irst', 'IrSeeker', { phases: [0], chain: ['IrSeeker', 'ScanGimbal', 'Gimbal', 'System', 'Component'], note: 'E um ScanGimbal (logo um Gimbal) -- por isso mora aqui, nao solto no player.' }),
+                  ],
+                }),
+                n('sensors', 'SensorMgr', {
+                  phases: [3, 'bg'], chain: ['SensorMgr', 'RfSensor', 'RfSystem', 'System', 'Component'], dispatch: 'RfSystem',
+                  note: 'SensorMgr E um RfSensor -- o conteiner que permite mais de um sensor de RF no mesmo player.',
+                  children: [
+                    n('tws', 'Tws', { phases: [1, 2, 3, 'bg'], chain: ['Tws', 'Radar', 'RfSensor', 'RfSystem', 'System', 'Component'], dispatch: 'System', srcKeys: ['Antenna::rfTransmit', 'Radar::process', 'TrackManager::newReport'], note: 'fase1 transmit, fase2 receive, fase3 process() -> TrackManager::newReport() em twsTrkMgr (por NOME).' }),
+                    n('stt', 'Stt', { phases: [1, 2, 3, 'bg'], chain: ['Stt', 'Radar', 'RfSensor', 'RfSystem', 'System', 'Component'] }),
+                    n('gmti', 'Gmti', { phases: [1, 2, 3, 'bg'], chain: ['Gmti', 'Radar', 'RfSensor', 'RfSystem', 'System', 'Component'], note: 'trackManagerName: gmtiTrkMgr (nome diferente do TWS).' }),
+                    n('sar', 'Sar', { phases: [1, 2, 3, 'bg'], chain: ['Sar', 'Radar', 'RfSensor', 'RfSystem', 'System', 'Component'], note: 'Sem trackManagerName -- so imageia, nao alimenta track manager.' }),
+                    n('rwr', 'Rwr', { phases: ['bg'], chain: ['Rwr', 'RfSensor', 'RfSystem', 'System', 'Component'], note: 'disableEmissions:true -- so RECEBE, nunca ilumina os outros.' }),
+                    n('jam', 'Jammer', { phases: ['bg'], chain: ['Jammer', 'RfSensor', 'RfSystem', 'System', 'Component'], note: 'disableEmissions:true por default neste cenario -- desligado de proposito.' }),
+                  ],
+                }),
+                n('irsystem', 'IrSensor', { phases: [0, 1, 3, 'bg'], chain: ['IrSensor', 'IrSystem', 'System', 'Component'], dispatch: 'System', note: 'seekerName aponta pro IrSeeker (irst) pelo MESMO mecanismo de nome do antennaName.' }),
+                n('obc', 'OnboardComputer', {
+                  phases: ['bg'], chain: ['OnboardComputer', 'System', 'Component'], dispatch: 'System',
+                  srcKeys: ['OnboardComputer::updateData/triggerAction/actionManager'],
+                  note: 'O conteiner de TrackManager -- casamento sensor->trackmanager e por NOME (trackManagerName), nao por tipo. process() proprio (fase 3) e so um passthrough (BaseClass::process(dt);) -- confirmado lendo o fonte, e uma falsa positiva do extrator (conta como "nao-vazio" por ter uma linha, mas nao faz nada alem de delegar). O trabalho de verdade -- actionManager()/updateShootList() -- acontece em updateData(), na THREAD DE FUNDO.',
+                  children: [
+                    trkMgr('twsTrkMgr', 'AirTrkMgr'),
+                    trkMgr('rwrTrkMgr', 'RwrTrkMgr'),
+                    trkMgr('gmtiTrkMgr', 'GmtiTrkMgr'),
+                    trkMgr('irTrkMgr', 'AirAngleOnlyTrkMgr', ['AngleOnlyTrackManager', 'TrackManager', 'System']),
+                  ],
+                }),
+                n('stores', 'StoresMgr', {
+                  factory: 'StoresMgr', phases: [0, 3, 'bg'], chain: ['SimpleStoresMgr', 'StoresMgr', 'Stores', 'ExternalStore', 'System', 'Component'], dispatch: 'System',
+                  srcKeys: ['Stores::releaseWeapon', 'Stores::updateTC/updateData', 'SimpleStoresMgr::releaseOneDecoy', 'AbstractWeapon::release'],
+                  note: 'ARMADILHA: nome de fabrica "StoresMgr" e a classe C++ real e SimpleStoresMgr -- a classe abstrata StoresMgr responde por "BaseStoresMgr" e nao e construivel via EDL. ARMADILHA MAIOR, lida no fonte: Stores::updateTC()/updateData() percorrem storesList e fazem dynamic_cast<ExternalStore*> em cada item -- para uma ARMA (AamMissile/Bomb/Chaff/Flare/Decoy), esse cast falha (arma nao e ExternalStore) e updateTC()/updateData() JAMAIS SAO CHAMADOS enquanto ela esta docked. Nao e um mode-gate dentro de Player -- e um FILTRO explicito no laco do Stores, que so deixa passar ExternalStore (Gun/FuelTank/AvionicsPod).',
+                  children: [
+                    n('st1', 'AamMissile', { player: true, chain: ['Aam', 'Missile', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'DOCKED -- Stores::updateTC() nunca chama updateTC() nela (dynamic_cast<ExternalStore*> falha). A cadeia Player/AbstractWeapon nao e ociosa; ela so nunca e visitada enquanto aqui.' }),
+                    n('st2', 'AamMissile', { player: true, chain: ['Aam', 'Missile', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'Mesmo motivo de st1.' }),
+                    n('st5', 'Bomb', { player: true, chain: ['Bomb', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'Mesmo motivo de st1 -- e a que sai em wp4 (t=225,3s).' }),
+                    n('st6', 'Chaff', { player: true, chain: ['Chaff', 'Effect', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'Docked, mesmo motivo de st1.' }),
+                    n('st7', 'Flare', { player: true, chain: ['Flare', 'Effect', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'Docked, mesmo motivo de st1.' }),
+                    n('st8', 'Decoy', {
+                      player: true, chain: ['Decoy', 'Effect', 'AbstractWeapon', 'Player', 'Component'], idle: true,
+                      note: 'DOCKED ate wp1 (t=37,0s). Mesmo motivo de st1 -- e o QUE NUNCA MUDA: ele mesmo nao vira ativo, nao sai da lista, so ganha a flag LAUNCHED (AbstractWeapon::release()). Quem realmente voa e aparece no Tacview e um CLONE, com ID novo -- ver o no dinamico "decoy_flyout" em players/.',
+                    }),
+                    n('st9', 'Gun', {
+                      phases: [3], chain: ['Gun', 'ExternalStore', 'System', 'Component'], dispatch: 'System', idle: false,
+                      note: 'ATIVO de verdade -- e ExternalStore, entao Stores::updateTC()/updateData() O ALCANCAM (dynamic_cast succeeds); Guns.cpp::process() roda todo frame (controla o ciclo de rajada), mesmo sem disparar.',
+                      children: [ n('bulletType', 'Bullet', { player: true, chain: ['Bullet', 'AbstractWeapon', 'Player', 'Component'], idle: true, note: 'E so o MOLDE do projetil -- clonado a cada rajada; nao participa da arvore de verdade ate isso acontecer.' }) ],
+                    }),
+                    n('st10', 'FuelTank', { chain: ['FuelTank', 'ExternalStore', 'System', 'Component'], note: 'E ExternalStore -- Stores::updateTC()/updateData() O ALCANCAM (ao contrario das armas), mas FuelTank/ExternalStore nao sobrescrevem nenhum dos 7 metodos (confirmado): e VISITADO, so que nao faz nada. Ocioso "de verdade" (por falta de trabalho), nao por exclusao do laco -- diferente das armas acima.' }),
+                    n('st11', 'AvionicsPod', { chain: ['AvionicsPod', 'ExternalStore', 'System', 'Component'], note: 'Mesma familia de FuelTank -- visitado, mas ocioso.' }),
+                  ],
+                }),
+                n('colisao', 'CollisionDetect', { phases: [3, 'bg'], chain: ['CollisionDetect', 'System', 'Component'], dispatch: 'System', note: 'Roda na fase 3 e dispara CRASH_EVENT nativo quando alguem entra no raio -- nao e sistema primario, e so mais um Component comum.' }),
+              ],
+            }),
+            productionFalcon(2, 180),
+            productionFalcon(3, 270),
+            productionFalcon(4, 0),
+            n('bandit1', 'Aircraft', {
+              player: true, phases: [0, 3, 'bg'], chain: ['Aircraft', 'AirVehicle', 'Player', 'Component'], dispatch: 'Player',
+              note: 'O intruso LOCAL -- so dynamicsModel+pilot (Autopilot scripted, headingHold 225deg). SEM radar, SEM datalink: e alvo, nunca observador. 30 NM de cada lado de proposito (da tempo do circuito de falcon1 fechar antes do contato).',
+              children: [
+                n('bandit1_dyn', 'JSBSimModel', { phases: [0], chain: ['JSBSimModel', 'AerodynamicsModel', 'DynamicsModel', 'Component'] }),
+                n('bandit1_pilot', 'Autopilot', { phases: [3], chain: ['Autopilot', 'Pilot', 'System', 'Component'], srcKeys: ['Autopilot::process'] }),
+              ],
+            }),
+            n('decoy_flyout', 'Decoy', {
+              player: true, dynamic: true, phases: [0, 3, 'bg'], chain: ['Decoy', 'Effect', 'AbstractWeapon', 'Player', 'Component'], dispatch: 'Player',
+              srcKeys: ['AbstractWeapon::release', 'Simulation.hpp::players', 'Simulation::reset'],
+              note: 'NAO existe em players: no .epp -- nasce em execucao. AbstractWeapon::release() CLONA o Decoy docked (st8), da um ID novo ("W%05d") e chama sim->addNewPlayer() -- so o CLONE entra em Simulation::players, com Player/AbstractWeapon::updateTC/dynamics rodando normalmente dai em diante (nao esta mais dentro de storesList, entao o filtro de Stores::updateTC nao se aplica mais). NAO esta em origPlayers -- Simulation::reset() reconstroi so a partir de origPlayers + IPlayers de rede, entao este no desaparece no reset (cadeia c), enquanto st8 continua exatamente onde sempre esteve.',
+            }),
+          ],
+        },
+      ],
+    }),
+  ],
+});
+</script>
+
+<script>
+/* ============================================================================
+   data/traces.js -- os GERADORES de passos das tres cadeias.
+
+   Nenhum destes tres geradores enumera exaustivamente TODO player em TODA
+   fase -- falcon1 sozinho tem ~50 nos, e falcon2/3/4/bandit1 repetem o MESMO
+   mecanismo (System::updateTC/dt4/switch(phase)), entao cada cadeia visita
+   falcon1 em detalhe e condensa os demais numa unica nota "idem" -- decisao
+   documentada em README.md, para o trace ficar rolavel sem perder nada que
+   nao ja tenha sido mostrado.
+
+   CORRECAO relativa ao docs/TODO.md original: o TODO presumia a liberacao da
+   arma em "fase 3 do segundo quadro" (Stores::releaseWeapon() dentro do laco
+   de tempo critico). Lendo o fonte de verdade desta poc, isso e FALSO aqui:
+   Route::autoSequencer() roda em Route::updateData() (fundo), e quem chama
+   Action::process() ate o release e OnboardComputer::actionManager(), tambem
+   chamado por OnboardComputer::updateData() (fundo) -- NUNCA pelo switch
+   (phase) de um System. Por isso o lancamento do decoy mora na cadeia (b),
+   nao na (a). Ver a nota de 'action_wp1' em scenario.js para a fonte exata.
+============================================================================ */
+
+function step(o) {
+  return Object.assign({
+    kind: 'visit', node: null, to: null,
+    counters: {}, dt: null, src: null, hl: null,
+    stack: [], runs: false, idle: false,
+    title: '', body: '', warn: null,
+    spawn: null, despawn: null,
+  }, o);
+}
+
+// ============================================================================
+// (a) QUADRO -- o laco de tempo critico, 3 quadros consecutivos, SEM eventos
+// dinamicos (a arvore nao muda aqui -- ver (b) para o porque).
+// ============================================================================
+function buildFrameTrace() {
+  const steps = [];
+  const S = (o) => steps.push(step(o));
+  const C = (frame, phase) => ({ cycle: Math.floor(frame / 16), frame, phase, exec: frame, simT: (frame * 0.02).toFixed(2) + 's' });
+  const dt = 0.02;
+
+  // ---- QUADRO 1 (frame=200) -- detalhado -----------------------------------
+  S({ node: 'station', title: 'Station::tcFrame(dt) -- entrada do quadro', body: 'Todo quadro do laco de tempo critico comeca em Component::tcFrame(), que so cronometra e chama updateTC(dt).', src: 'Component::tcFrame', hl: [184, 203], counters: C(200, null), dt, stack: [{ label: 'tcFrame(dt)', node: 'station' }] });
+  S({ node: 'station', title: 'Station::updateTC -- os 7 passos', body: 'Os sete passos do metodo, na ordem em que aparecem no fonte.', src: 'Station::updateTC', hl: [258, 259], counters: C(200, null), dt });
+  S({ node: 'station', title: '1) Timer::updateTimers(dt)', body: 'Atualiza os timers do framework -- nao toca nossa arvore de simulacao.', src: 'Station::updateTC', hl: [261, 263], idle: true, counters: C(200, null), dt });
+  S({ node: 'station', title: '2) ioHandler->tcFrame(dt)', body: 'Este cenario e hermetico (sem joystick/DIS local): ioHandler nunca foi declarado, o ponteiro e nulo e o guard protege.', src: 'Station::updateTC', hl: [266, 268], idle: true, counters: C(200, null), dt });
+  S({ node: 'station', title: '3) inputDevices(dt)', src: 'Station::updateTC', hl: [270, 271], idle: true, counters: C(200, null), dt });
+  S({ node: 'simulation', title: '4) sim->tcFrame(dt) -- desce para a Simulation', body: 'A partir daqui, quem manda e Simulation::updateTC().', src: 'Station::updateTC', hl: [273, 274], runs: true, counters: C(200, null), dt, stack: [{ label: 'tcFrame', node: 'station' }, { label: 'sim->tcFrame(dt)', node: 'simulation' }] });
+  S({ node: 'simulation', title: 'Simulation::updateTC -- execTime e dt0', body: 'execTime soma dt de qualquer forma. dt0 e o dt que respeita isFrozen() (aqui, nao esta pausado).', src: 'Simulation::updateTC', hl: [457, 462], counters: C(200, null), dt, stack: [{ label: 'tcFrame', node: 'station' }, { label: 'sim->tcFrame(dt)', node: 'simulation' }] });
+  S({ node: 'simulation', title: 'dt0 = isFrozen() ? 0 : dt', src: 'Simulation::updateTC', hl: [494, 498], counters: C(200, null), dt, body: 'dt0 permanece 0.02s -- a simulacao esta rodando.' });
+  S({ node: 'simulation', title: 'for f in 0..3: setPhase(f) -> updateTcPlayerList(dt0/4, ...)', body: 'AQUI nasce o dt/4 que toda fase recebe -- e que System::updateTC vai multiplicar de volta por 4 mais abaixo. A divisao desce, a multiplicacao volta: o metodo de fase roda UMA VEZ por quadro, com o dt INTEGRAL.', src: 'Simulation::updateTC', hl: [541, 555], counters: C(200, 0), dt: dt / 4, warn: 'dt/4 desce (0.005s); dt4=dt*4 volta a subir (0.02s) dentro de System::updateTC. As duas contas se cancelam -- e o ponto mais fácil de errar lendo o fonte pela primeira vez.' });
+
+  // -- FASE 0 --
+  S({ kind: 'phase', node: 'simulation', title: 'FASE 0 -- dynamics', counters: C(200, 0), dt: dt / 4, body: 'Player::updateTC recebe dt0=dt/4=0.005s; dentro dele, dt4=dt0*4=0.02s de volta.' });
+  S({ node: 'falcon1', title: 'Player::tcFrame(0.005) -> updateTC()', src: 'Player::updateTC', hl: [528, 536], runs: true, counters: C(200, 0), dt: dt / 4, stack: [{ label: 'tcFrame', node: 'station' }, { label: 'sim->tcFrame', node: 'simulation' }, { label: 'updateTcPlayerList', node: 'simulation' }, { label: 'falcon1->tcFrame(dt/4)', node: 'falcon1' }] });
+  S({ node: 'falcon1', title: 'mode==ACTIVE -- entra no switch(phase); dt4 = 0.005*4 = 0.02', src: 'Player::updateTC', hl: [561, 568], runs: true, counters: C(200, 0), dt: 0.02 });
+  S({ node: 'dynamicsModel', title: 'JSBSimModel::dynamics(0.02) via System::updateTC', body: 'System::updateTC (base de JSBSimModel via DynamicsModel) despacha case 0 -> dynamics(dt4).', src: 'System::updateTC', hl: [108, 110], runs: true, counters: C(200, 0), dt: 0.02, stack: [{ label: 'falcon1->tcFrame', node: 'falcon1' }, { label: 'BaseClass::updateTC (Component)', node: 'falcon1' }, { label: 'dynamicsModel->tcFrame(dt4)', node: 'dynamicsModel' }] });
+  S({ node: 'antennas', title: 'Gimbal::dynamics(0.02) -- varredura mecanica', runs: true, src: 'System::updateTC', hl: [108, 110], counters: C(200, 0), dt: 0.02 });
+  S({ node: 'ant_tws', title: 'Antenna(ScanGimbal)::dynamics(0.02)', runs: true, src: 'System::updateTC', hl: [108, 110], counters: C(200, 0), dt: 0.02 });
+  S({ node: 'signature', title: 'SigSwitch -- visitado, nao faz nada', body: 'signature->updateTC(dt4) e chamado (Player::updateTC, fase 0), mas RfSignature nunca sobrescreve dynamics(): fica no stub vazio de System.', src: 'Player::updateTC', hl: [585, 587], idle: true, counters: C(200, 0), dt: 0.02 });
+  S({ node: 'st8', title: 'Decoy (docked) -- NUNCA visitado', body: 'Stores::updateTC() faz dynamic_cast<ExternalStore*> em cada item de storesList; para o Decoy (AbstractWeapon) o cast falha, e updateTC() nem chega a ser chamado. Nao e um mode-gate dentro de Player -- e um filtro no proprio laco do Stores.', src: 'Stores::updateTC/updateData', hl: [85, 96], idle: true, counters: C(200, 0), dt: 0.02 });
+  S({ node: 'st10', title: 'FuelTank (docked) -- visitado, ocioso', body: 'E ExternalStore: o dynamic_cast passa, updateTC() E chamado -- so que FuelTank nao sobrescreve dynamics(). Visitado != ativo.', src: 'Stores::updateTC/updateData', hl: [93, 95], idle: true, counters: C(200, 0), dt: 0.02 });
+  S({ node: 'falcon1', title: 'falcon2, falcon3, falcon4 e bandit1 idem', body: 'Mesmo mecanismo (System::updateTC, dt4=0.02) em cada um -- omitido aqui para nao repetir; o filtro de fases esconde estes 4 nos se marcados ociosos, mas nenhum esta.', idle: false, runs: true, counters: C(200, 0), dt: 0.02 });
+
+  // -- FASE 1 --
+  S({ kind: 'phase', node: 'simulation', title: 'FASE 1 -- transmit', counters: C(200, 1), dt: dt / 4, body: 'dt4 volta a ser 0.02s em cada System.' });
+  S({ node: 'tws', title: 'Tws(Radar)::transmit(0.02)', src: 'System::updateTC', hl: [112, 114], runs: true, counters: C(200, 1), dt: 0.02 });
+  S({ kind: 'rf', node: 'ant_tws', to: 'bandit1', title: 'Antenna::rfTransmit() -- entrega RF_EMISSION a bandit1', body: 'Depois de calcular ganho/potencia efetiva pela tabela gainPattern, a antena entrega o evento diretamente ao alvo.', src: 'Antenna::rfTransmit', hl: [525, 529], runs: true, counters: C(200, 1), dt: 0.02, warn: 'O Tdb consultado aqui (getCurrentTDB()) veio de Gimbal::processPlayersOfInterest() -- rodado na THREAD DE FUNDO (cadeia b), nao neste quadro. A fase 1 usa um retrato que pode ter ate ~100ms (5 quadros a 50Hz).' });
+
+  // -- FASE 2 --
+  S({ kind: 'phase', node: 'simulation', title: 'FASE 2 -- receive', counters: C(200, 2), dt: dt / 4 });
+  S({ node: 'datalink', title: 'AlertDatalink::receive(0.02) -- fronteira de fase', body: 'Roda todo quadro; sem alerta staged/current pendente aqui, so mantem os contadores.', src: 'AlertDatalink::receive', hl: [158, 161], runs: true, counters: C(200, 2), dt: 0.02 });
+  S({ node: 'tws', title: 'Tws(Radar)::receive(0.02)', src: 'System::updateTC', hl: [116, 118], runs: true, counters: C(200, 2), dt: 0.02 });
+
+  // -- FASE 3 --
+  S({ kind: 'phase', node: 'simulation', title: 'FASE 3 -- process', counters: C(200, 3), dt: dt / 4 });
+  S({ node: 'pilot', title: 'Autopilot::process(0.02)', src: 'Autopilot::process', hl: [187, 194], runs: true, counters: C(200, 3), dt: 0.02 });
+  S({ node: 'tws', title: 'Radar::process(0.02) -- fim de varredura', src: 'Radar::process', hl: [325, 344], runs: true, counters: C(200, 3), dt: 0.02 });
+  S({ kind: 'resolve', node: 'tws', to: 'twsTrkMgr', title: 'tm->newReport() -- resolvido por NOME (twsTrkMgr)', body: '"trackManagerName: twsTrkMgr" no .epp casa por STRING com o nome do slot no OnboardComputer -- nao por tipo.', src: 'TrackManager::newReport', hl: [301, 304], runs: true, counters: C(200, 3), dt: 0.02, warn: 'Um erro de digitacao em trackManagerName NAO falha o parse -- so silencia o sensor, sem aviso nenhum.' });
+  S({ node: 'twsTrkMgr', title: 'AirTrkMgr(TrackManager)::process(0.02) -- processTrackList()', src: 'System::updateTC', hl: [120, 122], runs: true, counters: C(200, 3), dt: 0.02 });
+  S({ node: 'colisao', title: 'CollisionDetect::process(0.02)', src: 'System::updateTC', hl: [120, 122], runs: true, counters: C(200, 3), dt: 0.02 });
+  S({ node: 'st9', title: 'Guns::process(0.02) -- ciclo de rajada (mesmo sem disparar)', src: 'System::updateTC', hl: [120, 122], runs: true, counters: C(200, 3), dt: 0.02 });
+
+  S({ node: 'simulation', title: 'waitForAllCompleted -- barreira entre threads T/C', body: 'So relevante com numTcThreads>0; nesta demonstracao (reqTcThreads=1) so a thread principal roda.', src: 'Simulation::updateTC', hl: [569, 570], counters: C(200, 3), dt });
+  S({ node: 'station', title: '5) outputDevices(dt)', src: 'Station::updateTC', hl: [276, 277], idle: true, counters: C(200, null), dt });
+  S({ node: 'station', title: '6) igHosts loop', body: 'Fork headless -- sem GlutDisplay/instruments, sem hosts de IG.', src: 'Station::updateTC', hl: [279, 280], idle: true, counters: C(200, null), dt });
+  S({ node: 'station', title: '7) startupResetTimer', src: 'Station::updateTC', hl: [303, 308], idle: true, counters: C(200, null), dt });
+  S({ node: 'station', title: 'BaseClass::updateTC(dt) -- desce para os FILHOS DIRETOS da Station', body: 'plugins, agent1..4, msgFeed, dataRecorder sao visitados aqui (Component::updateTC generico) -- nenhum sobrescreve updateTC proprio. O trabalho deles acontece em updateData() (cadeia b) ou por chamada explicita (dataRecorder).', src: 'Component::updateTC', hl: [243, 246], counters: C(200, null), dt });
+  S({ node: 'plugins', title: 'PluginLoader -- visitado, ocioso', idle: true, counters: C(200, null), dt });
+  S({ node: 'agent1', title: 'SimAgent -- visitado, ocioso (aqui)', body: 'Agent nao sobrescreve updateTC -- so updateData(). Ver cadeia (b) para a decisao de verdade.', idle: true, counters: C(200, null), dt });
+  S({ node: 'msgFeed', title: 'MsgFeed -- visitado, ocioso (aqui)', idle: true, counters: C(200, null), dt });
+  S({ node: 'dataRecorder', title: 'ExposedDataRecorder -- visitado, ocioso (aqui)', body: 'O trabalho real (drenagem da fila) e chamado explicitamente por Station::updateData(), nao por este despacho generico.', idle: true, counters: C(200, null), dt });
+
+  // ---- QUADRO 2 e 3 (frame=201, 202) -- condensados, mesmo mecanismo -------
+  for (const frame of [201, 202]) {
+    S({ node: 'station', title: `Quadro seguinte (frame=${frame}) -- mesmo mecanismo`, body: 'dt0/4 e dt4 nao mudam; so os contadores avancam.', src: 'Station::updateTC', hl: [258, 259], counters: C(frame, null), dt });
+    S({ kind: 'phase', node: 'simulation', title: 'fases 0..3 -- dt4=0.02 em cada System, como no quadro anterior', counters: C(frame, 0), dt: dt / 4 });
+    S({ node: 'dynamicsModel', title: 'JSBSimModel::dynamics(0.02)', runs: true, src: 'System::updateTC', hl: [108, 110], counters: C(frame, 0), dt: 0.02 });
+    S({ kind: 'rf', node: 'ant_tws', to: 'bandit1', title: 'Antenna::rfTransmit() de novo', runs: true, src: 'Antenna::rfTransmit', hl: [525, 529], counters: C(frame, 1), dt: 0.02 });
+    S({ node: 'twsTrkMgr', title: 'AirTrkMgr::process(0.02) de novo', runs: true, src: 'System::updateTC', hl: [120, 122], counters: C(frame, 3), dt: 0.02 });
+  }
+
+  return steps;
+}
+
+// ============================================================================
+// (b) THREAD DE FUNDO -- Station::updateData(). Duas historias correm aqui:
+// a decisao do agente (SimAgent) e a cadeia Route -> Action -> liberacao da
+// Decoy, que E ONDE ela de fato acontece (ver o comentario no topo do
+// arquivo).
+// ============================================================================
+function buildBackgroundTrace() {
+  const steps = [];
+  const S = (o) => steps.push(step(o));
+  const C = (frame, simT) => ({ cycle: Math.floor(frame / 16), frame, phase: '-', exec: frame, simT });
+
+  S({ node: 'station', title: 'Station::updateData(dt) -- o outro laco', body: 'Roda a taxa PROPRIA de fundo (bgRate), nao a de tempo critico -- por isso nao ha dataFrame() aqui, e este caminho nao e instrumentavel pela extensao futura descrita no README (que so olha tcFrame()).', src: 'Station::updateData', hl: [323, 333], counters: C(1849, '36.97s') });
+  S({ node: 'simulation', title: 'processBackgroundTasks(dt) -- desce ate cada player', idle: false, runs: true, counters: C(1849, '36.97s') });
+
+  // -- historia 1: o agente decide --
+  S({ node: 'agent1', title: 'Agent::updateData(dt) -> controller(dt)', src: 'Agent::updateData/controller', hl: [59, 62], runs: true, counters: C(1849, '36.97s'), stack: [{ label: 'Station::updateData', node: 'station' }, { label: 'agent1->updateData(dt)', node: 'agent1' }] });
+  S({ node: 'agent1_state', title: 'state->updateState(actor) -- FlightState le o mundo', src: 'Agent::updateData/controller', hl: [69, 71], runs: true, counters: C(1849, '36.97s') });
+  S({ node: 'agent1_behavior', title: 'behavior->genAction(state, dt) -- Arbiter arbitra os votos', body: 'AltitudeSafetyBehavior (vote:90) e BtBehavior (vote:50) -- quem tiver o voto MAIOR e a acao vencedora.', src: 'Agent::updateData/controller', hl: [73, 74], runs: true, counters: C(1849, '36.97s') });
+  S({ node: 'agent1_bt', title: 'BtBehavior::genAction() roda a flight_tree.xml', body: 'Fora do escopo desta ferramenta -- e a arvore de DECISAO, nao a de contencao MIXR. Aqui so registramos QUE ela decide, e ONDE (thread de fundo).', idle: true, counters: C(1849, '36.97s') });
+
+  // -- historia 2: Route detecta a passagem por wp1 e dispara a Action --
+  S({ node: 'route', title: 'Route::updateData(dt) -- computeSteerpointData + autoSequencer', src: 'Route::updateData/autoSequencer/triggerAction', hl: [122, 131], runs: true, counters: C(1849, '36.97s'), stack: [{ label: 'Station::updateData', node: 'station' }, { label: 'falcon1->updateData', node: 'falcon1' }, { label: 'nav->updateData', node: 'nav' }, { label: 'route->updateData(dt)', node: 'route' }] });
+  S({ node: 'wp1', title: 'autoSequencer(): getDistNM() <= autoSeqDistNM E |rbrg| >= 90', body: 'falcon1 passou de wp1 e esta se afastando -- e o instante do gatilho (t=37,0s medido).', src: 'Route::updateData/autoSequencer/triggerAction', hl: [166, 178], runs: true, counters: C(1850, '37.00s') });
+  S({ node: 'route', title: 'Route::triggerAction() -- acha a Action do steerpoint e entrega ao OBC', src: 'Route::updateData/autoSequencer/triggerAction', hl: [186, 199], runs: true, counters: C(1850, '37.00s') });
+  S({ node: 'obc', title: 'OnboardComputer::triggerAction(toAction) -- action->trigger(this)', body: 'ActionDecoyRelease::trigger() (nao mostrado -- e curto e so arma numToLaunch/startTOD) marca isInProgress()==true, entao o OBC GUARDA a acao para seguir chamando process() nos proximos ciclos.', src: 'OnboardComputer::updateData/triggerAction/actionManager', hl: [90, 113], runs: true, counters: C(1850, '37.00s') });
+  S({ node: 'action_wp1', title: 'ActionDecoyRelease::process(dt) -- interval vencido, libera', body: 'A cada ciclo seguinte, OnboardComputer::actionManager() (chamado de dentro de updateData()) chama action->process(dt). Quando "interval < (tod - startTOD)", libera.', src: 'ActionDecoyRelease::process', hl: [635, 647], runs: true, counters: C(1850, '37.00s'), warn: 'process() mede o intervalo com getSimTimeOfDay() -- relogio de PAREDE, nao tempo simulado. Em -deterministic (~200x mais rapido) 1s de "interval" vira ~190s SIMULADOS entre um decoy e o proximo.' });
+  S({ node: 'stores', title: 'sms->releaseOneDecoy()', src: 'SimpleStoresMgr::releaseOneDecoy', hl: [574, 582], runs: true, counters: C(1850, '37.00s') });
+  S({ node: 'stores', title: 'Stores::releaseWeapon(decoy) -- setLaunchVehicle + release()', src: 'Stores::releaseWeapon', hl: [313, 323], runs: true, counters: C(1850, '37.00s') });
+  S({ node: 'st8', title: 'AbstractWeapon::release() -- sem flyout previo, cai no release DIRETO', body: 'getFlyoutWeapon() volta nulo (nada chamou prerelease() antes) -- entra no ramo "else": clona a si mesmo, da um ID novo, e chama sim->addNewPlayer(). O ORIGINAL (st8) so recebe setMode(LAUNCHED) -- continua no mesmo lugar, dentro de storesList.', src: 'AbstractWeapon::release', hl: [593, 629], runs: true, counters: C(1850, '37.00s'), warn: 'REID_WEAPON_RELEASED (61), gravado logo em seguida, ABORTA O PROCESSO neste fork (armadilha documentada) -- por isso enabledList do dataRecorder desta poc e so [43 42], sem o 61.' });
+  S({ kind: 'spawn', node: 'decoy_flyout', title: 'sim->addNewPlayer("W#####", flyout) -- a arvore muda em execucao', body: 'O CLONE entra em Simulation::players com um ID novo. Dai em diante ele e um Player/AbstractWeapon comum: participa do laco de tempo critico (cadeia a) normalmente -- ja NAO esta mais dentro de storesList, entao o filtro de Stores::updateTC nao se aplica mais a ele.', src: 'Simulation.hpp::players', hl: [256, 256], runs: true, counters: C(1850, '37.00s'), spawn: 'decoy_flyout' });
+
+  return steps;
+}
+
+// ============================================================================
+// (c) RESET -- RESET_EVENT descendo a arvore; Simulation::reset() reconstroi
+// 'players' so a partir de origPlayers + IPlayers de rede. O decoy_flyout
+// (cadeia b) nao esta em nenhum dos dois -- desaparece sem NENHUMA linha de
+// codigo dedicada a remove-lo.
+// ============================================================================
+function buildResetTrace() {
+  const steps = [];
+  const S = (o) => steps.push(step(o));
+  const C = (label) => ({ cycle: '-', frame: '-', phase: '-', exec: '-', simT: label });
+
+  S({ node: 'station', title: 'RESET_EVENT chega na Station', body: 'Pode vir do startupResetTimer (Station::updateTC) ou de um pedido externo -- o efeito e o mesmo: event(RESET_EVENT) desce a arvore de Component.', counters: C('reset') });
+  S({ node: 'simulation', title: 'Simulation::reset() -- "algo velho, algo novo"', src: 'Simulation::reset', hl: [186, 194], runs: true, counters: C('reset'), body: 'Uma lista NOVA e criada; o que entra nela e decidido pelas duas proximas etapas.' });
+  S({ node: 'falcon1', title: 'Copia falcon1 (e falcon2/3/4, bandit1) de origPlayers', src: 'Simulation::reset', hl: [198, 215], runs: true, counters: C('reset'), body: 'origPlayers e a foto de quando o .epp foi carregado -- os cinco players declarados sobrevivem, sempre.' });
+  S({ node: 'st8', title: 'st8 (Decoy docked) nem aparece aqui -- e nem precisa', body: 'st8 nunca foi um item de origPlayers/players por si so: ele mora dentro de storesList (slot da StoresMgr), nao na lista de players da Simulation. Reset ou nao, ele so existe la -- e o mode LAUNCHED que ganhou sera desfeito pelo proprio reset() de falcon1/stores (fora do escopo deste trecho).', idle: true, counters: C('reset') });
+  S({ node: 'simulation', title: 'Copia so os IPlayers de REDE de players (a lista antiga)', src: 'Simulation::reset', hl: [217, 239], runs: true, counters: C('reset'), body: 'Cenario hermetico (sem networks:) -- este passo nao encontra nenhum IPlayer aqui.' });
+  S({ kind: 'despawn', node: 'decoy_flyout', title: 'decoy_flyout NAO esta em nenhuma das duas fontes -- some', body: 'Ele so existia em "players" (a lista ANTIGA, sobrescrita a seguir) -- nunca esteve em origPlayers (nao veio do .epp) nem e um IPlayer de rede. Nenhuma linha de codigo o "remove": ele simplesmente nao e candidato a entrar na lista NOVA.', counters: C('reset'), despawn: 'decoy_flyout', warn: 'Esta e a carga util da cadeia (c): so faz sentido porque a cadeia (b) foi vista primeiro.' });
+  S({ node: 'simulation', title: 'players = newList -- a troca', src: 'Simulation::reset', hl: [244, 244], runs: true, counters: C('reset') });
+
+  return steps;
+}
+
+const TRACES = {
+  quadro: buildFrameTrace(),
+  fundo: buildBackgroundTrace(),
+  reset: buildResetTrace(),
+};
+</script>
+
+<script>
+/* ============================================================================
+   App.jsx (aqui sem JSX -- React.createElement puro, para nao depender de
+   Babel via CDN) -- a UI. NAO conhece MIXR: nenhuma regra de fase/dt4/idle
+   esta escrita aqui, so consome os campos ja calculados de SCENARIO/SRC/
+   TRACES. Se um dia esta UI precisar "saber" o que e uma fase para desenhar
+   algo, e sinal de que o dado deveria ter vindo pronto de scenario.js.
+============================================================================ */
+const h = React.createElement;
+const { useState, useEffect, useRef, useMemo } = React;
+
+// ---- layout recursivo da arvore (~25 linhas, sem lib de grafo) -----------
+const NODE_W = 150, NODE_H = 28, H_GAP = 16, V_GAP = 58;
+
+function layoutTree(root, collapsedIds) {
+  function measure(node, depth) {
+    const collapsed = collapsedIds.has(node.id) && (node.children || []).length > 0;
+    const kids = collapsed ? [] : (node.children || []);
+    node._collapsed = collapsed;
+    node._kids = kids;
+    node._depth = depth;
+    if (kids.length === 0) {
+      node._w = NODE_W;
+    } else {
+      let total = 0;
+      kids.forEach((c, i) => { total += measure(c, depth + 1) + (i > 0 ? H_GAP : 0); });
+      node._w = Math.max(NODE_W, total);
+    }
+    return node._w;
+  }
+  function place(node, x0) {
+    const kids = node._kids;
+    if (kids.length === 0) {
+      node._x = x0 + node._w / 2;
+    } else {
+      const kidsTotal = kids.reduce((a, c) => a + c._w, 0) + (kids.length - 1) * H_GAP;
+      let cursor = x0 + (node._w - kidsTotal) / 2;
+      kids.forEach(c => { place(c, cursor); cursor += c._w + H_GAP; });
+      node._x = (kids[0]._x + kids[kids.length - 1]._x) / 2;
+    }
+    node._y = node._depth * V_GAP + NODE_H / 2 + 12;
+  }
+  measure(root, 0);
+  place(root, 0);
+  return root;
+}
+
+function flattenVisible(root) {
+  const nodes = [], edges = [];
+  (function walk(node) {
+    nodes.push(node);
+    node._kids.forEach(c => { edges.push([node, c]); walk(c); });
+  })(root);
+  return { nodes, edges };
+}
+
+function findNode(root, id) {
+  if (root.id === id) return root;
+  for (const c of (root.children || [])) { const r = findNode(c, id); if (r) return r; }
+  return null;
+}
+
+function ancestorsOf(root, id, path) {
+  path = path || [];
+  if (root.id === id) return path;
+  for (const c of (root.children || [])) {
+    const r = ancestorsOf(c, id, path.concat([root.id]));
+    if (r) return r;
+  }
+  return null;
+}
+
+function countDescendants(node) {
+  let c = 0;
+  (function walk(n) { (n.children || []).forEach(k => { c++; walk(k); }); })(node);
+  return c;
+}
+
+function defaultCollapsed() {
+  // Colapsa a partir da profundidade 5 (os subsistemas diretos de falcon1 --
+  // profundidade 4 -- ficam visiveis de cara; o que colapsa e o NIVEL
+  // seguinte: as 6 antenas dentro de Gimbal, os 8 itens de StoresMgr, os 4
+  // steerpoints da Route, os 6 filhos de SigSwitch etc.)
+  const s = new Set();
+  (function walk(node, depth) {
+    if ((node.children || []).length > 0 && depth >= 5) s.add(node.id);
+    (node.children || []).forEach(c => walk(c, depth + 1));
+  })(SCENARIO, 0);
+  return s;
+}
+
+function collectDynamicIds() {
+  const s = new Set();
+  (function walk(n) { if (n.dynamic) s.add(n.id); (n.children || []).forEach(walk); })(SCENARIO);
+  return s;
+}
+
+function computeDefaultDynamicBorn(steps, dynamicIds) {
+  const hasSpawn = new Set(), hasDespawn = new Set();
+  steps.forEach(s => { if (s.spawn) hasSpawn.add(s.spawn); if (s.despawn) hasDespawn.add(s.despawn); });
+  const born = new Set();
+  dynamicIds.forEach(id => { if (hasDespawn.has(id) && !hasSpawn.has(id)) born.add(id); });
+  return born;
+}
+
+function computeExistence(steps, uptoIndex, defaultBorn) {
+  const set = new Set(defaultBorn);
+  for (let i = 0; i <= uptoIndex; i++) {
+    const s = steps[i];
+    if (!s) continue;
+    if (s.spawn) set.add(s.spawn);
+    if (s.despawn) set.delete(s.despawn);
+  }
+  return set;
+}
+
+function prefersReducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+// ---- arvore SVG -----------------------------------------------------------
+function Tree(props) {
+  const { root, collapsedIds, onToggle, onSelect, selectedId, activeId, eventToId, stackIds, existing } = props;
+  const containerRef = useRef(null);
+  layoutTree(root, collapsedIds);
+  const { nodes, edges } = flattenVisible(root);
+  const maxX = Math.max(150, ...nodes.map(n => n._x)) + NODE_W;
+  const maxY = Math.max(80, ...nodes.map(n => n._y)) + NODE_H;
+  const activeNode = eventToId ? nodes.find(n => n.id === activeId) : null;
+  const toNode = eventToId ? nodes.find(n => n.id === eventToId) : null;
+
+  // Sem isto, o no ativo pode ficar bem longe do canto (0,0) onde a rolagem
+  // comeca -- 'station' e centralizado sobre TODOS os filhos, inclusive a
+  // subarvore enorme de 'simulation', e fica fora da vista sem isto (medido
+  // rodando: so 'plugins'/'agent1' apareciam no primeiro quadro).
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current.querySelector('#node-' + CSS.escape(activeId || ''));
+    if (el) el.scrollIntoView({ block: 'center', inline: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [activeId]);
+
+  return h('div', { ref: containerRef },
+  h('svg', { width: maxX, height: maxY, role: 'tree', 'aria-label': 'Árvore de contenção MIXR' },
+    h('defs', null,
+      h('marker', { id: 'arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
+        h('path', { d: 'M0,0 L10,5 L0,10 z', fill: 'var(--accent2)' }))),
+    edges.map(([p, c]) => h('line', { key: p.id + '>' + c.id, className: 'edge', x1: p._x, y1: p._y + NODE_H / 2, x2: c._x, y2: c._y - NODE_H / 2 })),
+    (activeNode && toNode) ? h('g', { key: '__evt' },
+      h('line', { className: 'evtEdge', x1: activeNode._x, y1: activeNode._y, x2: toNode._x, y2: toNode._y }),
+      h('text', { className: 'evtLabel', x: (activeNode._x + toNode._x) / 2, y: (activeNode._y + toNode._y) / 2 - 6, textAnchor: 'middle' }, 'evento')
+    ) : null,
+    nodes.map(node => {
+      const classes = ['node'];
+      if (node.id === activeId) classes.push('active');
+      if (stackIds.has(node.id) && node.id !== activeId) classes.push('stack');
+      if (node.idle) classes.push('idle');
+      if (node.id === selectedId) classes.push('selected');
+      const unborn = node.dynamic && !existing.has(node.id);
+      if (unborn) classes.push('unborn');
+      const hasKids = (node.children || []).length > 0;
+      return h('g', {
+        key: node.id, id: 'node-' + node.id, className: classes.join(' '),
+        transform: 'translate(' + (node._x - NODE_W / 2) + ',' + (node._y - NODE_H / 2) + ')',
+        tabIndex: 0, role: 'treeitem', 'aria-selected': node.id === selectedId,
+        'aria-label': node.id + ', classe ' + node.cls + (node.idle ? ', ocioso' : '') + (unborn ? ', ainda não criado' : ''),
+        onClick: (e) => { e.stopPropagation(); onSelect(node.id); },
+        onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(node.id); } },
+      },
+        h('rect', { width: NODE_W, height: NODE_H }),
+        h('text', { x: 8, y: hasKids ? 12 : 17 }, (hasKids ? (node._collapsed ? '▸ ' : '▾ ') : '') + node.id),
+        h('text', {
+          className: 'cls', x: 8, y: 24,
+          onClick: hasKids ? (e) => { e.stopPropagation(); onToggle(node.id); } : undefined,
+        }, node.cls + (node._collapsed ? ' [+' + countDescendants(node) + ']' : ''))
+      );
+    })
+  ));
+}
+
+// ---- painel de codigo -------------------------------------------------
+function CodePanel({ srcKey, hl }) {
+  const containerRef = useRef(null);
+  const lines = useMemo(() => (srcKey && SRC[srcKey]) ? flattenSrc(SRC[srcKey]) : null, [srcKey]);
+
+  useEffect(() => {
+    if (!hl || !containerRef.current) return;
+    const el = containerRef.current.querySelector('[data-ln="' + hl[0] + '"]');
+    if (el) el.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [srcKey, hl ? hl[0] : null, hl ? hl[1] : null]);
+
+  if (!lines) return h('div', { className: 'emptyHint' }, 'Nenhum trecho de fonte associado a este passo.');
+
+  return h(React.Fragment, null,
+    h('div', { className: 'codepath' }, SRC[srcKey].file),
+    h('pre', { className: 'code', ref: containerRef },
+      lines.map((l, i) => {
+        const inRange = hl && l.ln !== null && l.ln >= hl[0] && l.ln <= hl[1];
+        return h('div', { key: i, className: 'codeline' + (inRange ? ' hl' : ''), 'data-ln': l.ln },
+          h('span', { className: 'ln' }, l.ln !== null ? l.ln : ''),
+          h('span', null, l.text));
+      })
+    )
+  );
+}
+
+// ---- paineis laterais ---------------------------------------------------
+function StepPanel({ step }) {
+  if (!step) return h('div', { className: 'panel' }, h('div', { className: 'emptyHint' }, 'Sem passo selecionado.'));
+  return h('div', { className: 'panel' },
+    h('h3', null, 'Passo atual'),
+    h('div', { className: 'title' }, step.title),
+    step.body ? h('div', { className: 'body' }, step.body) : null,
+    step.warn ? h('div', { className: 'warn' }, '⚠ ' + step.warn) : null
+  );
+}
+
+function StackPanel({ stack }) {
+  return h('div', { className: 'panel' },
+    h('h3', null, 'Pilha de chamadas'),
+    (stack && stack.length) ? h('ul', { className: 'stackList' },
+      stack.map((s, i) => h('li', { key: i, className: i === stack.length - 1 ? 'top' : '' }, s.label + '  —  ' + s.node))
+    ) : h('div', { className: 'emptyHint' }, '(vazio neste passo)')
+  );
+}
+
+function ChainPanel({ node, onFollow, following }) {
+  if (!node) return h('div', { className: 'panel' }, h('h3', null, 'Herança'), h('div', { className: 'emptyHint' }, 'Clique num nó da árvore para inspecionar.'));
+  return h('div', { className: 'panel' },
+    h('h3', null, 'Nó inspecionado — ' + node.id + (following ? ' (seguindo o passo)' : '')),
+    h('ul', { className: 'chainList' },
+      node.chain.map((cls, i) => h('li', { key: i, className: cls === node.dispatch ? 'dispatch' : (i === 0 ? 'acting' : '') },
+        h('span', null, cls), cls === node.dispatch ? h('small', null, 'switch(phase) aqui') : null))
+    ),
+    node.note ? h('div', { className: 'body', style: { marginTop: '8px' } }, node.note) : null,
+    !following ? h('button', { style: { marginTop: '8px' }, onClick: onFollow }, 'Voltar a seguir o passo atual') : null
+  );
+}
+
+function CountersBar({ c, dt }) {
+  if (!c) return h('div', { className: 'counters' });
+  return h('div', { className: 'counters' },
+    h('span', null, 'ciclo ', h('b', null, c.cycle)),
+    h('span', null, 'frame ', h('b', null, c.frame)),
+    h('span', null, 'fase ', h('b', null, (c.phase === null || c.phase === undefined) ? '—' : c.phase)),
+    h('span', null, 'exec ', h('b', null, c.exec)),
+    h('span', null, 't sim ', h('b', null, c.simT)),
+    h('span', null, 'dt ', h('b', null, (dt != null) ? dt.toFixed(4) + 's' : '—'))
+  );
+}
+
+function PhaseStrip({ phase }) {
+  const labels = ['0 dynamics', '1 transmit', '2 receive', '3 process'];
+  return h('div', { className: 'phaseStrip' },
+    labels.map((l, i) => h('span', { key: i, className: phase === i ? 'on' : '' }, l)),
+    h('span', { className: (phase !== 0 && phase !== 1 && phase !== 2 && phase !== 3) ? 'on' : '' }, 'fundo / reset')
+  );
+}
+
+// ---- App ------------------------------------------------------------------
+const CHAINS = [
+  ['quadro', '(a) Quadro'],
+  ['fundo', '(b) Thread de fundo'],
+  ['reset', '(c) Reset'],
+];
+const SPEEDS = [0.5, 1, 2, 4, 8];
+
+function App() {
+  const [chain, setChain] = useState('quadro');
+  const [stepIndex, setStepIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(2);
+  const [hideIdle, setHideIdle] = useState(false);
+  const [collapsedIds, setCollapsedIds] = useState(defaultCollapsed);
+  const [selectedId, setSelectedId] = useState(null);
+
+  const dynamicIds = useMemo(collectDynamicIds, []);
+  const allSteps = TRACES[chain];
+  const defaultBorn = useMemo(() => computeDefaultDynamicBorn(allSteps, dynamicIds), [chain, allSteps, dynamicIds]);
+  const visibleSteps = useMemo(() => hideIdle ? allSteps.filter(s => !s.idle) : allSteps, [chain, hideIdle, allSteps]);
+
+  useEffect(() => { setStepIndex(0); setPlaying(false); }, [chain, hideIdle]);
+
+  const step = visibleSteps[stepIndex] || null;
+  const originalIndex = step ? allSteps.indexOf(step) : -1;
+  const existing = useMemo(() => computeExistence(allSteps, originalIndex, defaultBorn), [allSteps, originalIndex, defaultBorn]);
+  const stackIds = useMemo(() => new Set((step && step.stack || []).map(s => s.node)), [step]);
+
+  // auto-expande o caminho ate os nos relevantes do passo atual
+  useEffect(() => {
+    if (!step) return;
+    const targets = [step.node, step.to, step.spawn, step.despawn].filter(Boolean);
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      targets.forEach(id => {
+        const anc = ancestorsOf(SCENARIO, id) || [];
+        anc.forEach(a => { if (next.has(a)) { next.delete(a); changed = true; } });
+      });
+      return changed ? next : prev;
+    });
+  }, [step]);
+
+  // reproducao (indice de array, discreta -- nao e requestAnimationFrame)
+  useEffect(() => {
+    if (!playing) return;
+    const id = setInterval(() => {
+      setStepIndex(i => {
+        if (i >= visibleSteps.length - 1) return i;
+        return i + 1;
+      });
+    }, 1000 / speed);
+    return () => clearInterval(id);
+  }, [playing, speed, visibleSteps.length]);
+
+  useEffect(() => { if (playing && stepIndex >= visibleSteps.length - 1) setPlaying(false); }, [playing, stepIndex, visibleSteps.length]);
+
+  // atalhos de teclado
+  useEffect(() => {
+    function onKey(e) {
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON') return;
+      if (e.key === 'ArrowRight') setStepIndex(i => Math.min(visibleSteps.length - 1, i + 1));
+      else if (e.key === 'ArrowLeft') setStepIndex(i => Math.max(0, i - 1));
+      else if (e.key === ' ') { e.preventDefault(); setPlaying(p => !p); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visibleSteps.length]);
+
+  const following = selectedId === null;
+  const inspectedId = following ? (step && step.node) : selectedId;
+  const inspectedNode = inspectedId ? findNode(SCENARIO, inspectedId) : null;
+
+  return h('div', null,
+    h('div', { className: 'topbar' },
+      h('h1', null, 'Explorador de Execução MIXR'),
+      h('nav', { className: 'tabs', role: 'tablist', 'aria-label': 'Cadeia de trace' },
+        CHAINS.map(([k, label]) => h('button', { key: k, role: 'tab', 'aria-pressed': chain === k, onClick: () => setChain(k) }, label))
+      ),
+      h('div', { className: 'transport' },
+        h('button', { onClick: () => setStepIndex(i => Math.max(0, i - 1)), 'aria-label': 'passo atrás', title: '← passo atrás' }, '⏮'),
+        h('button', { onClick: () => setPlaying(p => !p), 'aria-label': playing ? 'pausar' : 'reproduzir', title: 'espaço: reproduzir/pausar' }, playing ? '⏸' : '▶'),
+        h('button', { onClick: () => setStepIndex(i => Math.min(visibleSteps.length - 1, i + 1)), 'aria-label': 'passo à frente', title: '→ passo à frente' }, '⏭'),
+        h('input', {
+          type: 'range', min: 0, max: Math.max(0, visibleSteps.length - 1), value: stepIndex,
+          onChange: (e) => setStepIndex(Number(e.target.value)), 'aria-label': 'posição no trace',
+        }),
+        h('span', null, (visibleSteps.length ? stepIndex + 1 : 0) + ' / ' + visibleSteps.length),
+        h('select', { value: speed, onChange: (e) => setSpeed(Number(e.target.value)), 'aria-label': 'velocidade de reprodução' },
+          SPEEDS.map(v => h('option', { key: v, value: v }, v + 'x/s')))
+      ),
+      h('div', { className: 'filterbar' },
+        h('label', null,
+          h('input', { type: 'checkbox', checked: hideIdle, onChange: (e) => setHideIdle(e.target.checked) }),
+          ' esconder passos ociosos')
+      )
+    ),
+    h(CountersBar, { c: step && step.counters, dt: step && step.dt }),
+    h(PhaseStrip, { phase: step && step.counters ? step.counters.phase : null }),
+    h('div', { className: 'cols' },
+      h('div', { className: 'col' },
+        h('div', { className: 'colhead' }, 'Árvore de contenção'),
+        visibleSteps.length ? h(Tree, {
+          root: SCENARIO, collapsedIds,
+          onToggle: (id) => setCollapsedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }),
+          onSelect: setSelectedId,
+          selectedId: inspectedId, activeId: step && step.node, eventToId: step && step.to,
+          stackIds, existing,
+        }) : h('div', { className: 'emptyHint' }, 'Nenhum passo nesta cadeia com o filtro atual.')
+      ),
+      h('div', { className: 'col' },
+        h('div', { className: 'colhead' }, step ? (step.src || 'sem trecho de fonte') : 'código'),
+        h(CodePanel, { srcKey: step && step.src, hl: step && step.hl })
+      ),
+      h('div', { className: 'col' },
+        h(StepPanel, { step }),
+        h(StackPanel, { stack: step && step.stack }),
+        h(ChainPanel, { node: inspectedNode, following, onFollow: () => setSelectedId(null) }),
+        h('div', { className: 'legend' },
+          h('span', null, h('span', { className: 'swatch', style: { background: '#2a3f2a', border: '2px solid #57c785' } }), 'em execução'),
+          h('span', null, h('span', { className: 'swatch', style: { border: '1.6px solid #c98bff' } }), 'na pilha'),
+          h('span', null, h('span', { className: 'swatch', style: { border: '1px dashed #8890a8', opacity: .6 } }), 'ocioso'),
+          h('span', null, h('span', { className: 'swatch', style: { border: '1px dashed #8890a8', opacity: .3 } }), 'ainda não criado')
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>

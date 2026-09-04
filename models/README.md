@@ -9,52 +9,61 @@ host nunca viu o fonte, e mesmo assim tudo funciona.
 
 ```
 models/
-├── flight/          # o modelo de produção das duas pocs gêmeas
-│   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
-│   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
-│   │                 # pocs (single-thread/multi-thread/bandit) apontam pra cá
-│   ├── tests/{domain,tree,native}/        # 76 casos, e nenhum levanta Station
-│   ├── docs/ARCHITECTURE.md               # calibração + armadilhas deste modelo
-│   ├── Makefile      # build AUTOCONTIDO -- dist/ na raiz deste projeto (§1.1)
-│   ├── README.md
-│   ├── CHANGELOG.md  # o que mudou, e por quê -- as datas saem do COMMIT, nunca
-│   │                 # da mensagem (todo commit deste repo se chama "up")
-│   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
-├── missile/         # SEGUNDO exemplo de "criar um modelo novo": um único
-│   ├── src/xmissile/GuidedMissile.{hpp,cpp}   # Player novo, guiado sobre um
-│   │                                          # JSBSimModel anexado -- física
-│   │                                          # 6-DOF de verdade
-│   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
-│   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
-│   │                     # flight (2º PluginModule) só no cenário de demo
-│   │                     # (src/poc/dis/single-thread/configs/
-│   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
-│   │                     # seção "Demo: míssil guiado", para o "porque" de
-│   │                     # ser um plugin à parte e não dentro do flight.
-│   ├── tests/domain/     # domain::pursuit(), puro
-│   ├── docs/DESIGN.md
-│   ├── Makefile          # build AUTOCONTIDO (§1.1)
-│   ├── README.md
-│   └── CHANGELOG.md
-├── fixtures/
-│   └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
-│       ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
-│       │                             # teste (ver §3) E o ponto de partida
-│       │                             # para um modelo novo (§2) -- copiar
-│       │                             # este diretório já copia as quatro
-│       │                             # peças que todo projeto de modelo
-│       │                             # deste repositório tem de ter.
-│       ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
-│       ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
-│       ├── Makefile                 # build AUTOCONTIDO (§1.1)
-│       ├── README.md
-│       └── CHANGELOG.md
-└── plugins/         # DEPÓSITO, não projeto Meson -- um .so de TERCEIRO,
-                      # já compilado fora deste repositório, entra aqui e
-                      # 'make models' só COPIA pra dist/lib/mixr-plugins/
-                      # (nenhum código-fonte, nenhum build). Ver
-                      # models/plugins/README.md.
+├── events/          # o contrato de eventos que atravessam fronteira de plugin --
+│   │                 # payload (base::Object-derivada) + token (EventTokens.hpp).
+│   │                 # shared_library() de verdade (dlopen exige isso, ver o
+│   │                 # cabecalho de events/meson.build) -- publicada pelo MESMO
+│   │                 # SDK que xboard/xlog/xtrack, so o endereco do fonte muda.
+│   │                 # Nao e um modelo -- e' consumida POR eles (e por app/).
+│   └── payloads/EID_ALERT/TacticalAlert.{hpp,cpp}   # um payload, uma pasta,
+│                     # nomeada igual ao token que carrega (ver EventTokens.hpp)
+├── player/          # os projetos de modelo -- cada um um .so de PRODUCAO
+│   ├── flight/          # o modelo de produção das duas pocs gêmeas
+│   │   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
+│   │   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
+│   │   │                 # pocs (single-thread/multi-thread/bandit) apontam pra cá
+│   │   ├── tests/{domain,tree,native}/        # 76 casos, e nenhum levanta Station
+│   │   ├── docs/ARCHITECTURE.md               # calibração + armadilhas deste modelo
+│   │   ├── Makefile      # build AUTOCONTIDO -- dist/ na raiz deste projeto (§1.1)
+│   │   ├── README.md
+│   │   ├── CHANGELOG.md  # o que mudou, e por quê -- as datas saem do COMMIT, nunca
+│   │   │                 # da mensagem (todo commit deste repo se chama "up")
+│   │   └── meson.build   # UMA árvore, DOIS artefatos (o TC fica atrás de um #ifdef)
+│   ├── missile/         # SEGUNDO exemplo de "criar um modelo novo": um único
+│   │   ├── src/xmissile/GuidedMissile.{hpp,cpp}   # Player novo, guiado sobre um
+│   │   │                                          # JSBSimModel anexado -- física
+│   │   │                                          # 6-DOF de verdade
+│   │   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
+│   │   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
+│   │   │                     # flight (2º PluginModule) só no cenário de demo
+│   │   │                     # (src/poc/dis/single-thread/configs/
+│   │   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
+│   │   │                     # seção "Demo: míssil guiado", para o "porque" de
+│   │   │                     # ser um plugin à parte e não dentro do flight.
+│   │   ├── tests/domain/     # domain::pursuit(), puro
+│   │   ├── docs/DESIGN.md
+│   │   ├── Makefile          # build AUTOCONTIDO (§1.1)
+│   │   ├── README.md
+│   │   └── CHANGELOG.md
+│   └── fixtures/
+│       └── stub/        # um modelo ESTRANHO, escrito só contra o SDK -- NÃO é um
+│           ├── src/stub.cpp             # modelo de produção, é um FIXTURE de
+│           │                             # teste (ver §3) E o ponto de partida
+│           │                             # para um modelo novo (§2) -- copiar
+│           │                             # este diretório já copia as quatro
+│           │                             # peças que todo projeto de modelo
+│           │                             # deste repositório tem de ter.
+│           ├── tests/check_contract.sh  # forma do .so: 1 símbolo T, deps resolvidas
+│           ├── docs/CONTRATO.md         # o que um modelo TEM de fazer -- leia primeiro
+│           ├── Makefile                 # build AUTOCONTIDO (§1.1)
+│           ├── README.md
+│           └── CHANGELOG.md
+└── README.md        # este arquivo
 ```
+
+`plugins/` (o depósito de `.so`, próprio ou de terceiro) **não mora aqui** — fica na raiz do
+repositório, irmão de `dist/`/`build/`, porque nunca foi um projeto Meson (ver
+`../plugins/README.md`).
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` — sem
 exceção.** Não é estilo: é o que faz cada um AUTOCONTIDO (§1.1) e verificável sozinho, sem
@@ -66,7 +75,7 @@ decisões (`docs/`), a porta de entrada (`README.md`) e o que mudou desde a últ
 **A guarda [`tests/guard/check_modelo_estrutura.sh`](../tests/guard/check_modelo_estrutura.sh)
 (suíte `guard`, alvo `modelo-estrutura`) trava isso** — e descobre os projetos por `find`, não por
 lista fixa: um modelo novo já nasce cobrado, sem ninguém precisar lembrar de editar o teste.
-`models/plugins/` fica de fora de propósito (é depósito de `.so` de terceiro, não projeto).
+`plugins/` fica de fora de propósito (é depósito de `.so` de terceiro, não projeto).
 
 **Sobre o `CHANGELOG.md` especificamente**, porque a forma dele aqui não é a usual: a versão é a
 do `project()` do `meson.build` de cada modelo (o descritor de plugin não carrega versão nenhuma
@@ -85,9 +94,9 @@ do host, mas — desde a decoplagem descrita abaixo — o host **compila** sem d
 ```bash
 make configure   # 1. conan + meson setup do HOST            -> build/
 make sdk         # 2. publica o SDK                          -> dist/{include,lib,lib/pkgconfig}
-make models      # 3. flight, missile e stub, cada um autocontido -> models/plugins/ (NUNCA dist/)
+make models      # 3. flight, missile e stub, cada um autocontido -> plugins/ (NUNCA dist/)
 make build       # 4. os executáveis do host (só precisa do sdk) -> build/src/poc/<poc>/src/
-make install     # 5. sync-plugins (models/plugins/ -> dist/) + instala os binários -> dist/
+make install     # 5. sync-plugins (plugins/ -> dist/) + instala os binários -> dist/
 ```
 
 **`make build` NÃO dispara `models` mais** — a cadeia mudou (`build: sdk`, não `build: models`) —
@@ -107,14 +116,14 @@ host, e a etapa `sdk` precisa desse `build/` já existir.
 |---|---|---|
 | `make configure` | Conan + `meson setup` do host | uma vez, e depois de `make clean` |
 | `make sdk` | compila `xboard`/`xlog`/`xtrack`/`xrlbridge` e instala com `--tags sdk,devel` | raramente sozinho |
-| `make models` | configura, compila e **deposita em `models/plugins/`** flight/missile/stub — NUNCA toca `dist/` | ao mexer no modelo |
+| `make models` | configura, compila e **deposita em `plugins/`** flight/missile/stub — NUNCA toca `dist/` | ao mexer no modelo |
 | `make build` | os três executáveis do host — só depende do `sdk`, não dos modelos | ao mexer no host |
-| `make sync-plugins` | copia `models/plugins/*.so` (+ `data/`) para `dist/` — a ÚNICA ponte | raramente sozinho — `install` já chama |
+| `make sync-plugins` | copia `plugins/*.so` (+ `data/`) para `dist/` — a ÚNICA ponte | raramente sozinho — `install` já chama |
 | `make install` | `build` + `sync-plugins` + copia os binários para `dist/bin/` | **necessário** para rodar/testar (ver abaixo) |
-| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` (delega pro Makefile de `models/flight`) | ao mexer no modelo |
+| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` (delega pro Makefile de `models/player/flight`) | ao mexer no modelo |
 | `make test` | as **duas** suítes — dispara `test-models` **e** `install` | antes de commitar |
 | `make check-plugin-hotswap` | prova que trocar o modelo não recompila a aplicação — depende de `install` | demonstração |
-| `make clean` | apaga o `build/`+`dist/` do host, o `build/`+`dist/` de CADA modelo, e os `.so`/`data/` que `make models` gerou em `models/plugins/` | |
+| `make clean` | apaga o `build/`+`dist/` do host, o `build/`+`dist/` de CADA modelo, e os `.so`/`data/` que `make models` gerou em `plugins/` | |
 
 > **`make install` (ou `make test`/`run-*`, que já o encadeiam) É NECESSÁRIO para rodar.**
 > Diferente do design anterior, `dist/lib/mixr-plugins/` só é populado pelo alvo `sync-plugins`
@@ -132,7 +141,7 @@ os constrói em sequência. É o fluxo de CI/produção e continua sendo a forma
 o repositório inteiro.
 
 **Cada projeto de modelo TAMBÉM tem o próprio `Makefile`, autocontido** — pensado para abrir o VS
-Code só naquele diretório (`models/flight/`, `models/missile/` ou `models/fixtures/stub/`) e
+Code só naquele diretório (`models/player/flight/`, `models/player/missile/` ou `models/player/fixtures/stub/`) e
 iterar sem o resto do repositório em mente:
 
 ```bash
@@ -140,10 +149,10 @@ iterar sem o resto do repositório em mente:
 make configure && make sdk
 
 # daqui em diante, de dentro de QUALQUER projeto de modelo:
-cd models/flight   # ou models/missile, ou models/fixtures/stub
+cd models/player/flight   # ou models/player/missile, ou models/player/fixtures/stub
 make               # configura (./build) + compila -> ./dist/lib/mixr-plugins/*.so
 make test          # roda a suite DAQUELE modelo, isolada
-make install-host  # deposita em ../../models/plugins/ -- so ai um cenario PODE vir a enxergar o .so
+make install-host  # deposita em ../../plugins/ -- so ai um cenario PODE vir a enxergar o .so
 ```
 
 `./dist` nasce **dentro** do próprio projeto de modelo — é o que "autocontido" quer dizer aqui: o
@@ -153,11 +162,11 @@ SDK publicado pelo host (`make configure && make sdk`, uma vez) — o modelo dep
 ABI e dos pacotes Conan (`mixr`, `behaviortree.cpp.asa`) que só o projeto host resolve.
 
 `make install-host` é o único alvo que escreve fora do `./dist` local — mas só até
-`../../models/plugins/` (lib, flat) e `../../models/plugins/data/<nome>/` (quando há dados), o
-MESMO depósito que um `.so` de terceiro usaria (ver `models/plugins/README.md`). **Nunca escreve
-em `dist/lib/mixr-plugins/` diretamente** — quem sincroniza `models/plugins/` → `dist/` é o alvo
+`../../plugins/` (lib, flat) e `../../plugins/data/<nome>/` (quando há dados), o
+MESMO depósito que um `.so` de terceiro usaria (ver `plugins/README.md`). **Nunca escreve
+em `dist/lib/mixr-plugins/` diretamente** — quem sincroniza `plugins/` → `dist/` é o alvo
 `sync-plugins` do Makefile raiz, chamado por `make install`. Sem rodar `install-host` E `make
-install` (na raiz), o `.so` compilado fica só no projeto do modelo (ou só em `models/plugins/`) —
+install` (na raiz), o `.so` compilado fica só no projeto do modelo (ou só em `plugins/`) —
 útil para iterar (compilar, `make test`), inútil para um cenário do host até ser sincronizado até
 `dist/`.
 
@@ -174,10 +183,10 @@ um dos três, e continua sendo o que `make build`/`make test`/o CI usam. O Makef
 `flight` tem 3.100 e vai te distrair.
 
 ```bash
-cp -r models/fixtures/stub models/meu-modelo
-mv models/meu-modelo/src/stub.cpp models/meu-modelo/src/meu_modelo.cpp
-sed -i 's/'"'"'stub'"'"'/'"'"'meu_modelo'"'"'/g' models/meu-modelo/meson.build
-sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/meu-modelo/meson.build
+cp -r models/player/fixtures/stub models/player/meu-modelo
+mv models/player/meu-modelo/src/stub.cpp models/player/meu-modelo/src/meu_modelo.cpp
+sed -i 's/'"'"'stub'"'"'/'"'"'meu_modelo'"'"'/g' models/player/meu-modelo/meson.build
+sed -i "s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" models/player/meu-modelo/meson.build
 ```
 
 Conferido rodando: essas quatro linhas mais um `meson setup` já produzem um `.so` válido —
@@ -186,13 +195,14 @@ Conferido rodando: essas quatro linhas mais um `meson setup` já produzem um `.s
 **A cópia já traz `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md`** — as cinco peças
 que todo projeto de modelo deste repositório tem de ter (ver o aviso logo abaixo do diagrama, no
 topo deste arquivo; a guarda `modelo-estrutura` cobra as cinco). O `CHANGELOG.md` copiado é o do
-`stub`: esvazie-o e comece pela versão que o seu `meson.build` declara. Só uma correção é necessária no `Makefile`
-copiado: `stub/` mora em `models/fixtures/stub/` (três níveis até a raiz do `poc-mixr`,
-`ROOT := $(abspath ../../..)`), enquanto `models/meu-modelo/` mora só dois níveis abaixo — troque
-a linha `ROOT := $(abspath ../../..)` para `ROOT := $(abspath ../..)`, ou o Makefile vai apontar
-para o diretório **pai** do `poc-mixr` e falhar em `check-root` com um caminho que não existe.
-Depois disso, `cd models/meu-modelo && make && make test && make install-host` funciona igual ao
-`stub` (ver [fixtures/stub/README.md](fixtures/stub/README.md) para o que cada alvo faz).
+`stub`: esvazie-o e comece pela versão que o seu `meson.build` declara. Só uma correção é
+necessária no `Makefile` copiado: `stub/` mora em `models/player/fixtures/stub/` (quatro níveis
+até a raiz do `poc-mixr`, `ROOT := $(abspath ../../../..)`), enquanto `models/player/meu-modelo/`
+mora só três níveis abaixo — troque a linha `ROOT := $(abspath ../../../..)` para
+`ROOT := $(abspath ../../..)`, ou o Makefile vai apontar para o diretório **pai** do `poc-mixr` e
+falhar em `check-root` com um caminho que não existe.
+Depois disso, `cd models/player/meu-modelo && make && make test && make install-host` funciona
+igual ao `stub` (ver [player/fixtures/stub/README.md](player/fixtures/stub/README.md) para o que cada alvo faz).
 
 ### 2.1 O que o `meson.build` tem de ter
 
@@ -232,7 +242,7 @@ E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub`.
 
 ### 2.2 O que o `.cpp` tem de ter
 
-Leia **[fixtures/stub/docs/CONTRATO.md](fixtures/stub/docs/CONTRATO.md)** — é a lista completa. O resumo:
+Leia **[player/fixtures/stub/docs/CONTRATO.md](player/fixtures/stub/docs/CONTRATO.md)** — é a lista completa. O resumo:
 
 - exportar o ponto de entrada **sempre pela macro** `MIXR_PLUGIN_DEFINE`, nunca escrevendo a
   assinatura à mão (num alvo com visibilidade escondida ela viraria símbolo invisível ao `dlsym`,
@@ -351,22 +361,22 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 6. **Nunca `dlclose`.** Toda instância viva guarda ponteiro para dentro do `.so`, e o destrutor
    **escreve** lá. *"Sem recompilar tudo"* — sim; *"sem reiniciar o processo"* — **não**.
 7. **O `ROOT` do Makefile autocontido (§1.1) é a profundidade do diretório, não um valor
-   universal.** `models/flight/` e `models/missile/` ficam dois níveis abaixo da raiz
-   (`ROOT := $(abspath ../..)`); `models/fixtures/stub/` fica três (`../../..`). Copiar o
-   `Makefile` do `stub` para um modelo novo direto sob `models/` (o caminho recomendado em §2) e
-   esquecer de tirar um `../` faz `check-root` apontar para o diretório **pai** do `poc-mixr` e
-   falhar dizendo que o SDK não existe — mesmo com ele publicado.
+   universal.** `models/player/flight/` e `models/player/missile/` ficam três níveis abaixo da
+   raiz (`ROOT := $(abspath ../../..)`); `models/player/fixtures/stub/` fica quatro
+   (`../../../..`). Copiar o `Makefile` do `stub` para um modelo novo direto sob `models/player/`
+   (o caminho recomendado em §2) e esquecer de tirar um `../` faz `check-root` apontar para um
+   diretório que não existe e falhar dizendo que o SDK não existe — mesmo com ele publicado.
 
 ---
 
 ## Ler também
 
-- **[fixtures/stub/docs/CONTRATO.md](fixtures/stub/docs/CONTRATO.md)** — o que um modelo TEM de fazer
-- **[fixtures/stub/README.md](fixtures/stub/README.md)** — o build autocontido do fixture/template,
+- **[player/fixtures/stub/docs/CONTRATO.md](player/fixtures/stub/docs/CONTRATO.md)** — o que um modelo TEM de fazer
+- **[player/fixtures/stub/README.md](player/fixtures/stub/README.md)** — o build autocontido do fixture/template,
   alvo por alvo (`make`, `make test`, `make install-host`)
-- **[flight/docs/ARCHITECTURE.md](flight/docs/ARCHITECTURE.md)** — calibração e armadilhas do
+- **[player/flight/docs/ARCHITECTURE.md](player/flight/docs/ARCHITECTURE.md)** — calibração e armadilhas do
   modelo de produção
-- **[missile/docs/DESIGN.md](missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil
+- **[player/missile/docs/DESIGN.md](player/missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova

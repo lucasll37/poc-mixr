@@ -153,7 +153,7 @@
                         )
                         ( BtBehavior
                            vote: 50
-                           treeFile: "./models/flight/configs/flight_tree_missile_demo.xml"
+                           treeFile: "./models/player/flight/configs/flight_tree_missile_demo.xml"
                            patrolHeading:  ( Degrees 90 )
                            legTime:        ( Seconds 60 )
                            legTurn:        ( Degrees 90 )

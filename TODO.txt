@@ -6,7 +6,6 @@ enxugar shared
 
 no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
 
-
 no readme, ensinar como instala dependecias
 
 .epp -> .edl
@@ -16,3 +15,11 @@ app quebrando
 gerar documentação
 
 interface gráfica para montar edl e interface gráfica para criar comportamento
+
+figura bonitinha no tacview
+
+dados de outras aeronaves
+
+pasta plugin fora do models
+
+dados do jsbsim

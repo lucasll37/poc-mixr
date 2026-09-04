@@ -9,9 +9,9 @@ DEST_DIR := $(PWD)/dist
 
 # Deposito COMPARTILHADO dos modelos (flight/missile/stub, construidos por
 # este repositorio, MAIS qualquer .so de terceiro -- ver
-# models/plugins/README.md). 'make models' so escreve ATE aqui; dist/ e
+# plugins/README.md). 'make models' so escreve ATE aqui; dist/ e
 # populado so por 'make install' (alvo 'sync-plugins'), do HOST.
-MODELS_PLUGINS_DIR := $(PWD)/models/plugins
+PLUGINS_DIR := $(PWD)/plugins
 
 # O meson DESCARTA o PKG_CONFIG_PATH do ambiente quando o native-file do Conan
 # fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
@@ -41,14 +41,14 @@ clean: ## Clean all generated build files in the project (host + os tres modelos
 	rm -rf ./subprojects/packagecache
 	@# Cada modelo limpa o PROPRIO build/dist (autocontido) -- '|| true' porque
 	@# um clean antes do primeiro 'make models' nao tem nada para limpar ali.
-	@$(MAKE) -C models/flight clean 2>/dev/null || true
-	@$(MAKE) -C models/missile clean 2>/dev/null || true
-	@$(MAKE) -C models/fixtures/stub clean 2>/dev/null || true
+	@$(MAKE) -C models/player/flight clean 2>/dev/null || true
+	@$(MAKE) -C models/player/missile clean 2>/dev/null || true
+	@$(MAKE) -C models/player/fixtures/stub clean 2>/dev/null || true
 	@# So os nomes que ESTE repositorio gera -- um .so de TERCEIRO com outro
-	@# nome (ver models/plugins/README.md) nao e apagado por um 'make clean'.
-	@rm -f $(MODELS_PLUGINS_DIR)/libflight.so $(MODELS_PLUGINS_DIR)/libflight_tc.so \
-	       $(MODELS_PLUGINS_DIR)/libstub.so $(MODELS_PLUGINS_DIR)/libmissile.so
-	@rm -rf $(MODELS_PLUGINS_DIR)/data
+	@# nome (ver plugins/README.md) nao e apagado por um 'make clean'.
+	@rm -f $(PLUGINS_DIR)/libflight.so $(PLUGINS_DIR)/libflight_tc.so \
+	       $(PLUGINS_DIR)/libstub.so $(PLUGINS_DIR)/libmissile.so
+	@rm -rf $(PLUGINS_DIR)/data
 
 configure: ## Configure the project for building.
 	mkdir -p $(BUILD_DIR)/
@@ -82,7 +82,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# libxtrack pra dist/lib/ com mtime NOVO mesmo sem mudanca de conteudo --
 	@# e um destino mais novo que um input ja linkado faz o ninja dos modelos
 	@# (flight/missile/stub, que dependem do SDK) achar que precisa RELINKAR
-	@# na proxima chamada. Confirmado com 'ninja -C models/flight/build -d
+	@# na proxima chamada. Confirmado com 'ninja -C models/player/flight/build -d
 	@# explain libflight.so'. Sem isto, TODO 'make install'/'run-*'/'test'
 	@# relinkava os quatro plugins de producao, mesmo com tudo ja compilado.
 	meson install -C $(BUILD_DIR) --no-rebuild --tags sdk,devel --only-changed
@@ -100,58 +100,58 @@ ASAN ?= false
 # AUTOCONTIDO (ver models/README.md §1.1) -- delegando pro Makefile de CADA
 # um (`$(MAKE) -C models/<nome> install-host`), nao reimplementando o setup
 # aqui. O resultado -- so os .so, flat, mais os dados do flight -- pousa em
-# models/plugins/ (e models/plugins/data/flight/), o MESMO deposito que um
-# terceiro usaria (ver models/plugins/README.md). Este alvo NUNCA escreve em
+# plugins/ (e plugins/data/flight/), o MESMO deposito que um
+# terceiro usaria (ver plugins/README.md). Este alvo NUNCA escreve em
 # dist/ -- e por isso "desacoplado do restante": compilar/instalar um
 # modelo nao presume nada sobre onde o HOST guarda os artefatos dele.
 #
-# 'sync-plugins' e a UNICA ponte para dist/ -- copia models/plugins/*.so
+# 'sync-plugins' e a UNICA ponte para dist/ -- copia plugins/*.so
 # (de QUALQUER origem: flight/missile/stub OU terceiro, ja indistinguiveis
-# neste ponto) para dist/lib/mixr-plugins/, e models/plugins/data/ para
+# neste ponto) para dist/lib/mixr-plugins/, e plugins/data/ para
 # dist/share/mixr-plugins/. So roda como parte de 'install' -- e por isso
 # "so no install do restante do projeto": nem 'build' nem 'models' tocam
 # dist/lib/mixr-plugins/ sozinhos.
 # ==============================================================================
 
-models: sdk ## Compila e deposita flight/missile/stub em models/plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
-	$(MAKE) -C models/flight install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
+models: sdk ## Compila e deposita flight/missile/stub em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+	$(MAKE) -C models/player/flight install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
 	@# O modelo ESTRANHO -- projeto proprio, ve so o SDK. E o unico artefato
-	@# que pode falhar por "o contrato nao basta". Ver models/fixtures/stub/CONTRATO.md.
+	@# que pode falhar por "o contrato nao basta". Ver models/player/fixtures/stub/CONTRATO.md.
 	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
-	$(MAKE) -C models/fixtures/stub install-host TESTS=true
+	$(MAKE) -C models/player/fixtures/stub install-host TESTS=true
 	@# O SEGUNDO plugin de exemplo -- so o GuidedMissile, carregado ao lado do
 	@# flight no cenario de demo (scenario_missile_demo.epp.in). Mesmo molde
 	@# do stub: projeto Meson proprio, so mixr_dep + sdk_dep.
-	$(MAKE) -C models/missile install-host TESTS=true
-	@echo "$(GREEN)models: OK$(NC) -> $(MODELS_PLUGINS_DIR)/ (rode 'make install' para sincronizar com dist/)"
+	$(MAKE) -C models/player/missile install-host TESTS=true
+	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ (rode 'make install' para sincronizar com dist/)"
 
-sync-plugins: models ## Sincroniza models/plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
-	@# models/plugins/ ja mistura o que os tres modelos locais depositaram
+sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
+	@# plugins/ ja mistura o que os tres modelos locais depositaram
 	@# (via 'models', acima) com qualquer .so de terceiro (ver
-	@# models/plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,
+	@# plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,
 	@# e essa e a ideia: o mesmo passo de copia cobre os dois casos. Pasta
 	@# vazia (build limpo, nada depositado) e um no-op silencioso, nao erro.
 	mkdir -p $(DEST_DIR)/lib/mixr-plugins/
-	@if ls $(MODELS_PLUGINS_DIR)/*.so >/dev/null 2>&1; then \
-	   cp -v $(MODELS_PLUGINS_DIR)/*.so $(DEST_DIR)/lib/mixr-plugins/; \
-	   for so in $(MODELS_PLUGINS_DIR)/*.so; do \
+	@if ls $(PLUGINS_DIR)/*.so >/dev/null 2>&1; then \
+	   cp -v $(PLUGINS_DIR)/*.so $(DEST_DIR)/lib/mixr-plugins/; \
+	   for so in $(PLUGINS_DIR)/*.so; do \
 	      base=$$(basename "$$so"); \
 	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)sync-plugins: $$base com dependencia nao resolvida$(NC)"; exit 1; } || true; \
 	   done; \
 	 fi
 	@# Dados (hoje, so o flight: jsbsim/ + flight_tree.xml) -- unica excecao
-	@# ao deposito flat de models/plugins/, documentada em
-	@# models/plugins/README.md.
-	@if [ -d $(MODELS_PLUGINS_DIR)/data ]; then \
+	@# ao deposito flat de plugins/, documentada em
+	@# plugins/README.md.
+	@if [ -d $(PLUGINS_DIR)/data ]; then \
 	   mkdir -p $(DEST_DIR)/share/mixr-plugins/; \
-	   cp -a $(MODELS_PLUGINS_DIR)/data/. $(DEST_DIR)/share/mixr-plugins/; \
+	   cp -a $(PLUGINS_DIR)/data/. $(DEST_DIR)/share/mixr-plugins/; \
 	 fi
 	@echo "$(GREEN)sync-plugins: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
 
 build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: build sync-plugins ## Instala os binarios do host em dist/bin/ E sincroniza models/plugins/ -> dist/ (ver 'sync-plugins').
+install: build sync-plugins ## Instala os binarios do host em dist/bin/ E sincroniza plugins/ -> dist/ (ver 'sync-plugins').
 	@# '--only-changed' -- mesmo "porque" do alvo 'sdk' acima: evita mtime
 	@# novo em dist/bin/ sem necessidade a cada chamada.
 	meson install -C $(BUILD_DIR) --only-changed
@@ -258,10 +258,10 @@ venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/flight.
-	@# 'test' do Makefile de models/flight ja confere a contagem (>=3) e ja
+test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/player/flight.
+	@# 'test' do Makefile de models/player/flight ja confere a contagem (>=3) e ja
 	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
-	$(MAKE) -C models/flight test
+	$(MAKE) -C models/player/flight test
 
 test: test-models install ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true. 'install' garante dist/ populado p/ os testes que rodam binario.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \

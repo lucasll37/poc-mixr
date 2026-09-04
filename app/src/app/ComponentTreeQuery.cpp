@@ -45,7 +45,7 @@ namespace {
 // Teto de seguranca -- getComponents() so DESCE (confirmado lendo
 // contexts/src/mixr/src/base/Component.cpp: nenhum caminho de volta ao
 // container), entao nao ha ciclo em uso normal. Mas um .epp malformado (ou
-// um modelo de terceiro estranho, ver models/plugins/) nao pode travar o
+// um modelo de terceiro estranho, ver plugins/) nao pode travar o
 // dashboard -- os dois numeros abaixo sao generosos pro maior cenario deste
 // repositorio (4 falcons x ~10 subsistemas cada, algumas dezenas de nos) e
 // ainda assim finitos.

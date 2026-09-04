@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-O DEPOSITO DE TERCEIRO -- prova que models/plugins/ nao e so uma pasta com
+O DEPOSITO DE TERCEIRO -- prova que plugins/ nao e so uma pasta com
 um README bonito: um .so colocado ali de fato chega em dist/lib/mixr-plugins/
-pelo mecanismo que 'make models' usa (Makefile: cp models/plugins/*.so
+pelo mecanismo que 'make models' usa (Makefile: cp plugins/*.so
 dist/lib/mixr-plugins/), e o resultado dessa copia e REALMENTE carregavel e
 USAVEL numa simulacao -- nao so um arquivo presente em disco.
 
@@ -57,11 +57,11 @@ def main():
     # 'make models' ja instala direto), senao o teste nao provaria nada:
     # estaria so verificando um arquivo que ja estava la por outro motivo.
     nome = "libthirdparty_deposit_test.so"
-    deposito = RAIZ / "models" / "plugins" / nome
+    deposito = RAIZ / "plugins" / nome
     instalado = RAIZ / "dist" / "lib" / "mixr-plugins" / nome
 
     try:
-        # 1) "Alguem deposita" o .so em models/plugins/ -- exatamente o que
+        # 1) "Alguem deposita" o .so em plugins/ -- exatamente o que
         #    um terceiro faria, sem tocar em nenhum projeto Meson deste
         #    repositorio.
         deposito.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +76,7 @@ def main():
         shutil.copy2(deposito, instalado)
         if not instalado.is_file():
             print(f"FALHA: {instalado} nao apareceu depois da copia -- o mecanismo de "
-                  f"deposito (models/plugins/ -> dist/lib/mixr-plugins/) nao funcionou")
+                  f"deposito (plugins/ -> dist/lib/mixr-plugins/) nao funcionou")
             return 1
         print(f"  OK   depositado e copiado: {deposito.relative_to(RAIZ)} -> "
               f"{instalado.relative_to(RAIZ)}")
@@ -95,7 +95,7 @@ def main():
             print("plugin de deposito de terceiro: FALHOU (ver saida de run_stub_model.py acima)")
             return r.returncode
 
-        print("  OK   o .so depositado em models/plugins/ rodou a simulacao de producao")
+        print("  OK   o .so depositado em plugins/ rodou a simulacao de producao")
         print("plugin de deposito de terceiro: OK")
         return 0
     finally:

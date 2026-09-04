@@ -263,7 +263,7 @@ continua certo, o "porquê" das decisões, a porta de entrada e o que mudou desd
 Ela **descobre os projetos por `find`** (todo diretório com `project()` no `meson.build`), não por
 lista fixa — mesma lição já registrada no cabeçalho de `check_host_opaco.sh`, onde um glob de dois
 níveis passou a mentir em silêncio depois de uma renomeação. Modelo novo já nasce cobrado, e
-`models/plugins/` fica de fora de propósito: é o depósito de `.so` de terceiro, não um projeto.
+`plugins/` fica de fora de propósito: é o depósito de `.so` de terceiro, não um projeto.
 Diretório presente mas vazio (ou só com `.gitkeep`) conta como ausente.
 
 ---
