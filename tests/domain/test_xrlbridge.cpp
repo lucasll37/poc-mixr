@@ -225,6 +225,20 @@ TEST(XRLBridge, EscritasConcorrentesNuncaEntregamStructMisturado)
    std::atomic<bool> parar{false};
    std::atomic<int> inconsistencias{};
 
+   // g_observation e um global do PROCESSO (shared_library, sem reset entre
+   // TEST()s) -- um teste anterior pode deixar northM/eastM/altitudeM
+   // desiguais (ex.: CommandEObservationFazemRoundtrip so mexe em northM).
+   // Sem esta priming, o loop de leitura abaixo pode comecar a ler ANTES da
+   // primeira escrita da thread 'escritor' e contar esse estado herdado como
+   // "struct misturado" -- um falso positivo de teste, nao um bug de
+   // concorrencia de verdade. Uma escrita consistente aqui, ainda em serie,
+   // estabelece a invariante que o loop concorrente vai checar.
+   Observation baseline;
+   baseline.northM = 0.0;
+   baseline.eastM = 0.0;
+   baseline.altitudeM = 0.0;
+   setObservation(baseline);
+
    std::thread escritor([&] {
       double v{1.0};
       while (!parar.load()) {
