@@ -108,7 +108,7 @@ native_sources = files(
 )
 
 test_native = executable('test-native',
-    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp') + native_sources + bt_sources + bt_sdk_sources + domain_sources,
+    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp', 'native/test_flight_state_action.cpp') + native_sources + bt_sources + bt_sdk_sources + domain_sources,
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : model_inc,
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, behavior_tree_dep, sdk_dep],
