@@ -63,15 +63,22 @@ else
 fi
 
 # 3) as arvores do modelo nao existem mais dentro das pocs
-for d in domain bt ubf xnative; do
-   for p in single-thread multi-thread; do
-      if [ -e "src/poc/$p/src/$d" ] || [ -e "src/poc/$p/include/$d" ]; then
-         echo "  FALHA src/poc/$p ainda tem a arvore '$d' -- o modelo mora em models/flight"
-         fail=1
-      fi
-   done
-done
-[ $fail -eq 0 ] && echo "  OK   domain/, bt/, ubf/ e xnative/ nao existem mais sob src/"
+#
+# ARMADILHA CONFIRMADA (nao redescobrir): esta checagem chegou a usar uma
+# lista fixa ('for p in single-thread multi-thread'), o mesmo erro ja
+# registrado no cabecalho para os checks 1/2 -- e ela nao pegava
+# python-flight/onnx-policy/app (pocs mais novas que a lista). Achado
+# reproduzindo: uma pasta 'src/domain/' plantada em python-flight passava
+# batido. Trocado por 'find' sob src/ e app/ inteiros, sem depender de nome
+# de poc nenhum.
+achados_arvore="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type d \( -name domain -o -name bt -o -name ubf -o -name xnative \) -print 2>/dev/null)"
+if [ -n "$achados_arvore" ]; then
+   echo "  FALHA arvore do modelo encontrada sob src/ ou app/ -- o modelo mora em models/flight:"
+   echo "$achados_arvore" | sed 's/^/        /'
+   fail=1
+else
+   echo "  OK   domain/, bt/, ubf/ e xnative/ nao existem mais sob src/"
+fi
 
 [ $fail -eq 0 ] && { echo "host opaco: OK"; exit 0; }
 echo "host opaco: FALHOU"

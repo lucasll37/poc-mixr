@@ -978,7 +978,7 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao e com a politica em Python**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`models/plugins/`) | 6 testes, ~3 s |
-| `guard` | `domain/`, `bt/` e a fiacao de plugin continuam byte-identicos entre as duas pocs | instantaneo |
+| `guard` | invariantes estruturais: a camada de aplicacao byte-identica entre as pocs gemeas, o host **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 5 testes, instantaneo |
 
 `make test-asan` e complementar e fica fora da suite: reconfigura com ASan, roda sob
 LeakSanitizer e reverte. Ver as supressoes em `tests/memory/asan.supp`.

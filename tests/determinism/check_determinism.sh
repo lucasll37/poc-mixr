@@ -43,8 +43,23 @@ args=()
 MSGDIR="$RAIZ/build/tests-messages"
 
 roda() {   # roda <n-threads> <arquivo-de-saida>
-   "$BIN" "${args[@]}" -threads "$1" -deterministic "$FRAMES" 2>/dev/null \
-      | grep '^frame=' > "$2"
+   # ARMADILHA CONFIRMADA (nao redescobrir): '$BIN | grep > arquivo' devolve o
+   # rc do GREP, nao do binario -- um crash do $BIN (sinal, abort) que ainda
+   # tenha impresso ALGUMA linha 'frame=' antes de morrer passava batido
+   # aqui, e o 'roda ... || exit 1' do chamador nunca disparava. Reproduzido
+   # com um binario fake que imprime uma linha e sai com rc=137: a funcao
+   # devolvia 0. Por isso o binario roda para um arquivo bruto e o rc dele e
+   # checado A PARTE, antes de filtrar.
+   local raw rc
+   raw="$(mktemp)"
+   "$BIN" "${args[@]}" -threads "$1" -deterministic "$FRAMES" > "$raw" 2>/dev/null
+   rc=$?
+   grep '^frame=' "$raw" > "$2"
+   rm -f "$raw"
+   if [ "$rc" -ne 0 ]; then
+      echo "  FALHA $BIN saiu com codigo $rc (threads=$1)"
+      return 1
+   fi
    # O shared/xmsg grava por fora do stdout, e cada corrida trunca o mesmo
    # arquivo -- guardar uma copia por configuracao de thread e o que permite
    # comparar a saida de mensagens do mesmo jeito que se compara o dump.

@@ -41,12 +41,32 @@ import sys
 def extract_balanced_block(text: str, marker: str) -> str:
     """Acha 'marker' e devolve o conteudo ate o parenteses seguinte
     fechar, contando profundidade -- mesma tecnica ja usada no script de
-    migracao citado na "nona passada" da secao "./app" do CLAUDE.md."""
+    migracao citado na "nona passada" da secao "./app" do CLAUDE.md: ignora
+    '//' e "..." ao contar profundidade, nao regex ingenuo.
+
+    ARMADILHA CONFIRMADA (nao redescobrir): uma primeira versao contava
+    parenteses char a char SEM pular comentario/string -- ao contrario do
+    que o proprio docstring ja dizia fazer. Um unico parentese
+    desbalanceado dentro de um comentario '//' (o tipo de coisa que se
+    escreve sem pensar em prosa) fazia a extracao NUNCA fechar no lugar
+    certo e engolir o bloco seguinte inteiro, comparando lixo com lixo.
+    Reproduzido com um comentario de teste antes de corrigir.
+    """
     start = text.index(marker)
     i = text.index("(", start)
     depth = 0
     j = i
     while j < len(text):
+        if text.startswith("//", j):
+            nl = text.find("\n", j)
+            j = len(text) if nl < 0 else nl
+            continue
+        if text[j] == '"':
+            j += 1
+            while j < len(text) and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            j += 1
+            continue
         if text[j] == "(":
             depth += 1
         elif text[j] == ")":

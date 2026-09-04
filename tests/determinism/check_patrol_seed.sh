@@ -34,8 +34,20 @@ gera_fixture() {   # gera_fixture <semente> <arquivo-out>
 }
 
 roda() {   # roda <cenario> <n-threads> <arquivo-saida>
-   "$BIN" -f "$1" -threads "$2" -deterministic "$FRAMES" 2>/dev/null \
-      | grep '^frame=' > "$3"
+   # Mesma armadilha ja documentada em check_determinism.sh: '$BIN | grep'
+   # devolve o rc do grep, nao do binario -- um crash com pelo menos uma
+   # linha 'frame=' impressa antes passaria batido. Binario roda para um
+   # arquivo bruto e o rc e checado a parte, antes de filtrar.
+   local raw rc
+   raw="$(mktemp)"
+   "$BIN" -f "$1" -threads "$2" -deterministic "$FRAMES" > "$raw" 2>/dev/null
+   rc=$?
+   grep '^frame=' "$raw" > "$3"
+   rm -f "$raw"
+   if [ "$rc" -ne 0 ]; then
+      echo "  FALHA $BIN saiu com codigo $rc (cenario=$1 threads=$2)"
+      return 1
+   fi
 }
 
 CEN_A="$FIXTURES/$POC-patrolseed-a.epp.in"
