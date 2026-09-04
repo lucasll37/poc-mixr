@@ -4,11 +4,8 @@ TODOS OS players devem informar a thread a qual está associado na tela F1 do ap
 
 enxugar shared
 
-inclua a velocidade real de execução no app
-
 no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
 
-abrir app gera uma compilação
 
 no readme, ensinar como instala dependecias
 
@@ -16,6 +13,6 @@ no readme, ensinar como instala dependecias
 
 app quebrando
 
-estrutura de pasta para modelos (herdar de mixr/model)
-
 gerar documentação
+
+interface gráfica para montar edl e interface gráfica para criar comportamento

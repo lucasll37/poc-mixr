@@ -237,7 +237,7 @@ check-built-in_mixr_1: install ## Verifica o determinismo do built-in_mixr_1 (me
 run-bandit: install ## Run bandit (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/app/src/app -scenario bandit
 
-run-app: install ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
+run-app: ## Run app (TUI; sem '-scenario' mostra a tela de seleção).
 	$(BUILD_DIR)/app/src/app
 
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.

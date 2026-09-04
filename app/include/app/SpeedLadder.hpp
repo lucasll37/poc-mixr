@@ -38,10 +38,13 @@ std::vector<double> defaultSpeedLadder();
 std::string formatSpeedScale(double scale);
 
 // O bloco de decisao do cabecalho: qual rotulo/cor mostrar dado o estado
-// atual. 'actualTimeScale' so e usado quando 'fastBreakpointRun' e
-// verdadeiro (a velocidade MEDIDA, nao a nominal -- ver o comentario
-// grande em DashboardLoop.cpp sobre por que o nominal para de significar
-// algo durante um breakpoint em modo rapido).
+// atual. 'actualTimeScale' (a velocidade MEDIDA, tempo simulado / tempo de
+// parede -- nao a nominal da escada) aparece ao lado do comandado sempre
+// que 'timeScale' != 1.0, nao so durante um breakpoint em modo rapido: o
+// pacing pode nao alcancar o nominal comandado (carga de CPU, teto do
+// laco), e mostrar so o comandado escondia essa divergencia. Durante
+// 'fastBreakpointRun' o nominal deixa de significar algo (o laco ignora o
+// pacing por completo), entao o rotulo vira so "MAX (~Nx real)".
 SpeedDisplay speedDisplay(bool fastBreakpointRun, bool paused, double timeScale,
                           double actualTimeScale);
 

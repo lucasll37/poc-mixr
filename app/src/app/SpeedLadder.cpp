@@ -31,6 +31,18 @@ SpeedDisplay speedDisplay(const bool fastBreakpointRun, const bool paused, const
    }
    const SpeedTone tone{timeScale > 1.0 ? SpeedTone::Yellow
                                         : (timeScale < 1.0 ? SpeedTone::Cyan : SpeedTone::Green)};
+   // Fora do tempo real (acelerado OU freado), mostra tambem o FACTUAL
+   // medido ao lado do comandado -- os dois podem divergir (carga de CPU,
+   // teto do pacing) e o comandado sozinho ja escondeu isso uma vez (ver o
+   // bug do modo MAX, acima). Em 1x os dois coincidem por definicao (e o
+   // proprio pacing usa 1x como referencia), entao omitir ali evita
+   // ruido sem esconder nada.
+   if (timeScale != 1.0) {
+      std::ostringstream oss;
+      oss << formatSpeedScale(timeScale) << " (~" << std::fixed << std::setprecision(1)
+          << actualTimeScale << "x real)";
+      return SpeedDisplay{oss.str(), tone};
+   }
    return SpeedDisplay{formatSpeedScale(timeScale), tone};
 }
 

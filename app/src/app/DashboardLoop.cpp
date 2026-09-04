@@ -229,6 +229,19 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       double wallTimeElapsed{};
       double startTime{mixr::base::getComputerTime()};
       long frameCount{};
+
+      // Referencia de PAREDE de verdade para "t=" no cabecalho -- NUNCA
+      // resetada (ao contrario de 'startTime', que reancora a cada troca
+      // fast<->normal so para o pacing). 'frameCount * dt' parecia
+      // equivalente enquanto o pacing mantinha uma iteracao por 'dt' de
+      // parede, mas no modo rapido ('fastRunToBreakpoint') o laco pula o
+      // msleep() e gira muito mais que 1/dt vezes por segundo -- contando
+      // iteracoes * dt, "t=" (rotulado "tempo real" no cabecalho) acelerava
+      // junto com a simulacao, o que nao faz sentido: o relogio de PAREDE
+      // nao pode correr mais rapido so porque a simulacao esta em MAX.
+      // Medindo o tempo de parede de verdade, "t=" sempre anda a 1x, rodando
+      // ou em MAX -- e continua sendo a base contra a qual "sim=" se compara.
+      const double realWallClockStart{mixr::base::getComputerTime()};
       std::vector<ClassStat> classHistory;
       bool wasFast{};
 
@@ -301,7 +314,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
          frameCount += 1;
          DashboardState next{captureState(worldModel, station, tacviewOutput,
-                                          static_cast<double>(frameCount) * dt,
+                                          mixr::base::getComputerTime() - realWallClockStart,
                                           worldModel->getExecTimeSec(), clockStation,
                                           numTcThreads, scenarioLabel, classHistory)};
          classHistory = next.classStats;
