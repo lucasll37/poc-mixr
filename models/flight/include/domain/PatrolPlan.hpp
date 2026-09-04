@@ -45,7 +45,11 @@ public:
    void reset();
 
    // Integra o tempo de permanencia na perna atual; devolve true quando
-   // trocou de perna neste passo.
+   // trocou de perna neste passo. Um 'dt' que cobre VARIAS pernas de uma vez
+   // avanca todas elas nesta mesma chamada (nunca deixa legTimeRemaining()
+   // negativo) -- na pratica 'dt' e sempre o passo de decisao (0.02-0.1 s)
+   // contra pernas de dezenas de segundos, entao isto raramente importa, mas
+   // e a diferenca entre "correto" e "correto so no caso comum".
    bool advance(double dt);
 
    FlightCommand command() const;

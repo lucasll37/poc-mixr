@@ -199,6 +199,16 @@ TEST(ThreatPolicy, SemTerrenoValidoAindaHaOPisoAbsoluto)
    EXPECT_NEAR(p.command().altitudeM, MIN_SAFE_ALT_M, TOL);
 }
 
+// Borda nao coberta ate aqui: deltaAltM == 0.0 cai no ramo ">= 0.0" de
+// breakCommand() (mesma convencao de contato "acima"), logo desce -- e nao um
+// caso ambiguo tratado por acaso.
+TEST(ThreatPolicy, ContatoNaMesmaAltitudeContaComoAcimaEDesce)
+{
+   domain::ThreatPolicy p{limitesPadrao()};
+   p.update(1.0, true, contato(30.0, 0.0), 0.0, 3000.0, SEM_SOLO);
+   EXPECT_NEAR(p.command().altitudeM, 2750.0, TOL);
+}
+
 TEST(ThreatPolicy, VelocidadeDaManobraEhSempreADeArranque)
 {
    domain::ThreatPolicy p{limitesPadrao()};

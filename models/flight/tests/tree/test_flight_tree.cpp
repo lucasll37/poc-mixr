@@ -191,6 +191,19 @@ TEST(FlightTree, LimiarDeCombustivelSomaAMargemDoXml)
       arvore.tick();
       EXPECT_EQ(ctx.dec.label, "PATROL") << "0.41 ainda esta acima do limiar";
    }
+   {
+      // Borda exata: fuelFraction == reserva + margem, calculado com a MESMA
+      // soma em ponto flutuante que FuelLowCondition faz (0.35 + 0.05 !=
+      // 0.40 exato em double -- ver o teste abaixo). A comparacao e "<"
+      // estrita, entao exatamente no limiar AINDA NAO e "baixo": travando
+      // isso para nao virar "<=" por engano depois.
+      FakeDecisionContext ctx{contextoEmPatrulha()};
+      ArvoreDeVoo arvore{ctx};
+      ctx.snap.fuelFraction = ctx.fuelReserve + 0.05;
+      ctx.alimentarPolitica(ctx.frameDt);
+      arvore.tick();
+      EXPECT_EQ(ctx.dec.label, "PATROL") << "exatamente no limiar ainda nao e combustivel baixo";
+   }
 }
 
 //------------------------------------------------------------------------------

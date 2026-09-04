@@ -44,12 +44,21 @@ void PatrolPlan::reset()
 bool PatrolPlan::advance(const double dt)
 {
    legTimer_ += dt;
-   if (legTimer_ < legSeconds_) return false;
 
-   legTimer_ -= legSeconds_;
-   leg_ += 1;
-   resampleJitter();
-   return true;
+   // Loop, e nao 'if': um dt maior que VARIAS pernas (ex.: um passo de
+   // controle gigante, ou legSeconds configurado muito pequeno) tem de
+   // trocar de perna uma vez por fronteira cruzada, nao uma vez so. Um 'if'
+   // aqui deixava legTimeRemaining() NEGATIVO sempre que dt >= 2*legSeconds_
+   // -- a folga so era recuperada aos poucos, numa chamada por vez, ate o
+   // acumulo (legTimer_) cair de volta abaixo de legSeconds_.
+   bool trocouDePerna{false};
+   while (legTimer_ >= legSeconds_) {
+      legTimer_ -= legSeconds_;
+      leg_ += 1;
+      resampleJitter();
+      trocouDePerna = true;
+   }
+   return trocouDePerna;
 }
 
 FlightCommand PatrolPlan::command() const

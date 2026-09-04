@@ -98,6 +98,30 @@ TEST(PatrolPlan, PassoGrandeTrocaUmaVezEGuardaOResto)
    EXPECT_NEAR(p.legTimeRemaining(), 45.0, TOL) << "o excedente tem de contar na perna nova";
 }
 
+// Um passo que cobre VARIAS pernas de uma vez tem de avancar todas elas na
+// MESMA chamada -- um bug anterior so descontava uma perna por chamada
+// (um 'if' em vez de 'while'), o que deixava legTimeRemaining() NEGATIVO
+// (60 - 90 = -30) ate uma chamada seguinte "digerir" o resto aos poucos.
+TEST(PatrolPlan, PassoComVariasPernasAvancaTodasNaMesmaChamada)
+{
+   auto p{quadrado()};                    // legSeconds = 60
+   EXPECT_TRUE(p.advance(150.0));         // 2 pernas inteiras (120) + 30 de resto
+   EXPECT_EQ(p.legIndex(), 2);
+   EXPECT_GE(p.legTimeRemaining(), 0.0) << "nunca pode ficar negativo";
+   EXPECT_NEAR(p.legTimeRemaining(), 30.0, TOL);
+   EXPECT_NEAR(p.command().headingDeg, 270.0, TOL);
+}
+
+// Um dt EXATAMENTE em multiplos inteiros da perna tem de trocar exatamente
+// esse numero de vezes, sem sobra nenhuma.
+TEST(PatrolPlan, PassoMultiploExatoDeVariasPernasNaoDeixaSobra)
+{
+   auto p{quadrado()};
+   EXPECT_TRUE(p.advance(180.0));         // exatamente 3 pernas
+   EXPECT_EQ(p.legIndex(), 3);
+   EXPECT_NEAR(p.legTimeRemaining(), 60.0, TOL);
+}
+
 //------------------------------------------------------------------------------
 // Jitter de rumo -- desligado por padrao (amplitude 0), sorteado uma vez por
 // troca de perna, nunca por dt (o que preservaria o determinismo entre 1/2/4
