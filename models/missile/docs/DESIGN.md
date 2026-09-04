@@ -38,5 +38,5 @@ chamado 4× por frame, nome de fábrica `StoresMgr`, comentário XML sem `--`).
 `tests/domain/` cobre só `domain::pursuit()` — pura, sem MIXR, sem JSBSim, no mesmo espírito da
 camada `domain` do `flight`. Não há teste de `xmissile::GuidedMissile` isolado (a classe MIXR):
 ela é exercitada de ponta a ponta pelo cenário de demo
-(`src/poc/single-thread/configs/scenario_missile_demo.epp.in`), a mesma prova que os testes de
+(`src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in`), a mesma prova que os testes de
 `tests/scenario/` do host já fazem para os outros modelos.

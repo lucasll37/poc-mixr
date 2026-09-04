@@ -5,6 +5,8 @@
 
 #include "xtacview/factory.hpp"
 #include "xclock/factory.hpp"
+#include "xjoystick/factory.hpp"
+#include "xmsg/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -27,7 +29,7 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    // plugin (shared_module), carregado com dlopen durante o parse do .epp --
    // e as classes deles chegam pelo ULTIMO elo de mixrFactory(), via
    // mixr::xplugin::loadedFactory(). Este arquivo ficou igual ao do
-   // bandit-dis, que nunca teve modelo.
+   // bandit, que nunca teve modelo.
 
    // 2) exportacao para o Tacview (shared/xtacview)
    if (obj == nullptr) obj = mixr::xtacview::factory(name);
@@ -35,10 +37,14 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    // 3) relogio: ClockStation (Station + acelerar/frear/pausar)
    if (obj == nullptr) obj = mixr::xclock::factory(name);
 
-   // dashboard nao usa joystick nem shared/xmsg (o proprio TUI ja e o "feed"
-   // de mensagens) -- por isso, ao contrario das outras pocs, este arquivo
-   // NAO encadeia mixr::xjoystick::factory()/mixr::xmsg::factory() nem linka
-   // xjoystick_dep/xmsg_dep (ver app/src/meson.build).
+   // Joystick e mensageria: o ./app nao usa NENHUM dos dois por conta propria
+   // (o proprio TUI ja e o "feed"), mas e o runner UNICO das pocs -- e os
+   // cenarios delas usam: 'bandit' declara ( JoystickIoHandler ) no slot
+   // 'ioHandler:', e single-thread/multi-thread/python-flight/onnx-policy/
+   // built-in_mixr_1 declaram ( MsgFeed ) em 'components:'. Sem estas duas
+   // linhas o parser recusa esses cenarios com "nome de fabrica desconhecido".
+   if (obj == nullptr) obj = mixr::xjoystick::factory(name);
+   if (obj == nullptr) obj = mixr::xmsg::factory(name);
 
    // 6) framework -- daqui vem Aircraft, JSBSimModel, Autopilot, Gimbal,
    //    Antenna, Tws, AirTrkMgr, SensorMgr, OnboardComputer, SimAgent,

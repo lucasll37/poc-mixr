@@ -22,7 +22,7 @@ namespace xplugin {
 // POR QUE DERIVA DE base::Component, e nao de base::Object: e o unico ponto
 // de ancoragem que existe nas TRES pocs. O slot 'components:' vem de
 // base::Component, entao existe tanto na ( ClockStation ) das gemeas quanto
-// na ( Station ) de estoque do bandit-dis -- um slot novo so existiria numa
+// na ( Station ) de estoque do bandit -- um slot novo so existiria numa
 // Station nossa. Component::processComponents liga skipFilter quando o filtro
 // e typeid(Component) (Component.cpp:595-598) e a Station nao sobrescreve o
 // metodo, entao qualquer Component e aceito e mantido.

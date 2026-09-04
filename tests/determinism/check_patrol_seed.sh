@@ -22,7 +22,20 @@ POC="${3:?falta o nome da poc (single-thread ou multi-thread)}"
 FRAMES="${4:-600}"
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-OUT="$(dirname "$BIN")/../../../${ROTULO}-patrol-seed"
+# ONDE OS DUMPS DESTA EXECUCAO FICAM.
+#
+# ARMADILHA JA PAGA (nao redescobrir): isto era aritmetica de caminho sobre o
+# BINARIO -- '$(dirname "$BIN")/../../../<rotulo>-{sufixo}' --, o que so dava
+# num lugar sensato enquanto o binario estava a exatamente tres niveis de
+# profundidade ('build/src/poc/<poc>/src/<poc>'). Quando o ./app virou o runner
+# unico ('build/app/src/app', um nivel a menos), os tres '..' passaram a
+# aterrissar na RAIZ DO REPOSITORIO e cada execucao largava uma pasta de lixo
+# la -- nao versionada, mas suja e facil de commitar por engano.
+#
+# Agora sai de RAIZ, explicitamente, e vai para 'build/' junto com os outros
+# artefatos de teste (build/tests-fixtures, tests-recordings, tests-messages):
+# um lugar so, ja gitignorado, e que nao depende de onde o binario mora.
+OUT="$RAIZ/build/tests-patrol-seed/${ROTULO}"
 mkdir -p "$OUT" || exit 1
 
 FIXTURES="$RAIZ/build/tests-fixtures"

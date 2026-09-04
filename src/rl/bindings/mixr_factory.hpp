@@ -6,7 +6,7 @@
 
 //------------------------------------------------------------------------------
 // Factory de objetos MIXR deste host -- mesmo padrao de duas funcoes que
-// src/poc/single-thread/include/mixr_factory.hpp / app/include/mixr_factory.hpp.
+// src/poc/dis/single-thread/include/mixr_factory.hpp / app/include/mixr_factory.hpp.
 //
 // mixrFactoryBuiltin()  a cadeia SEM plugin. Devolve nullptr para nome
 //                       desconhecido -- usada como SONDA por shared/xplugin

@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24
 
 .DEFAULT_GOAL := help
 
@@ -185,50 +185,57 @@ package: ## Create the Conan package for this project.
 # comentario grande acima de 'models'/'sync-plugins').
 
 run-single-thread: install ## Run single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
-	$(BUILD_DIR)/src/poc/single-thread/src/single-thread
+	$(BUILD_DIR)/app/src/app -scenario single-thread
 
 check-single-thread: install ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C, em cenário hermético — sem DIS).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/poc/single-thread/src/single-thread single-thread 2000 single-thread
+		$(BUILD_DIR)/app/src/app single-thread 2000 single-thread
 
 run-multi-thread: install ## Run multi-thread (o single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
-	$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread
+	$(BUILD_DIR)/app/src/app -scenario multi-thread
 
 check-multi-thread: install ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread multi-thread 2000 multi-thread
+		$(BUILD_DIR)/app/src/app multi-thread 2000 multi-thread
 
 run-python-flight: install ## Run python-flight (a mesma pilha do multi-thread com as leis de voo em Python: configs/policy/*.py, editáveis sem recompilar; Tacview 1237).
-	$(BUILD_DIR)/src/poc/python-flight/src/python-flight
+	$(BUILD_DIR)/app/src/app -scenario python-flight
 
 check-python-flight: install ## Verifica o determinismo do python-flight (mesmo estado com 1, 2 e 4 threads T/C — os quatro scripts decidem em paralelo, serializados pelo GIL).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/poc/python-flight/src/python-flight python-flight 2000 python-flight
+		$(BUILD_DIR)/app/src/app python-flight 2000 python-flight
 
 run-onnx-policy: install ## Run onnx-policy (a mesma pilha do multi-thread com a decisão numa REDE NEURAL: configs/policy_barrier.onnx, inferido na fase 3 do frame; Tacview 1238).
-	$(BUILD_DIR)/src/poc/onnx-policy/src/onnx-policy
+	$(BUILD_DIR)/app/src/app -scenario onnx-policy
 
 check-onnx-policy: install ## Verifica o determinismo do onnx-policy (mesmo estado com 1, 2 e 4 threads T/C — as quatro aeronaves inferem em paralelo, numa sessão só do ONNX Runtime).
 	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/src/poc/onnx-policy/src/onnx-policy onnx-policy 2000 onnx-policy
+		$(BUILD_DIR)/app/src/app onnx-policy 2000 onnx-policy
 
 check-patrol-seed-single-thread: install ## Prova o RNG de patrulha no single-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
 	@./tests/determinism/check_patrol_seed.sh \
-		$(BUILD_DIR)/src/poc/single-thread/src/single-thread single-thread single-thread 600
+		$(BUILD_DIR)/app/src/app single-thread single-thread 600
 
 check-patrol-seed-multi-thread: install ## Prova o RNG de patrulha no multi-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
 	@./tests/determinism/check_patrol_seed.sh \
-		$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread multi-thread multi-thread 600
+		$(BUILD_DIR)/app/src/app multi-thread multi-thread 600
 
-compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (deve ser só o agente do UBF + docs/build).
-	@diff -rq --exclude=data --exclude=scenario.generated.epp \
-		src/poc/single-thread src/poc/multi-thread || true
+compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (hoje só o cenário: o agente do UBF e a porta DIS).
+	@diff -rq --exclude=data \
+		src/poc/dis/single-thread src/poc/dis/multi-thread || true
 
 check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
-run-bandit-dis: install ## Run bandit-dis (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
-	$(BUILD_DIR)/src/poc/bandit-dis/src/bandit-dis
+run-built-in_mixr_1: install ## Run built-in_mixr_1 (o PLAYER MAXIMO: falcon1 com 53 classes nativas do mixr::models num unico Aircraft; Tacview 1239).
+	$(BUILD_DIR)/app/src/app -scenario built-in_mixr_1
+
+check-built-in_mixr_1: install ## Verifica o determinismo do built-in_mixr_1 (mesmo estado com 1, 2 e 4 threads T/C). O cenario proprio ja e hermetico -- sem 'networks:', nao precisa de fixture.
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/app/src/app built-in_mixr_1 2000 '' built-in_mixr_1
+
+run-bandit: install ## Run bandit (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
+	$(BUILD_DIR)/app/src/app -scenario bandit
 
 run-app: install ## Run app (TUI estilo btop -- mesma pilha do single-thread; sem '-scenario' mostra a tela de seleção; Tacview 1236).
 	$(BUILD_DIR)/app/src/app
@@ -283,7 +290,7 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 	@echo "  rodando 500 frames sob ASan ..."
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
-		$(BUILD_DIR)/src/poc/single-thread/src/single-thread \
+		$(BUILD_DIR)/app/src/app \
 		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in \
 		-threads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \

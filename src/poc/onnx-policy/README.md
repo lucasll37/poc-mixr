@@ -1,5 +1,15 @@
 # onnx-policy
 
+> **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
+> (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
+> cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
+> `app -scenario onnx-policy`, ou `make run-onnx-policy`. O que sobra nesta pasta é o **cenário**
+> (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
+> `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
+> cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
+> [src/poc/meson.build](../meson.build) para o porquê e para a prova de neutralidade (os dumps
+> saíram byte-idênticos).
+
 A [multi-thread](../multi-thread/) **inteira**, com **uma** diferença: quem decide não é uma árvore
 de regras — é uma **rede neural**. Um MLP de 6.211 parâmetros, carregado de
 [`configs/policy_barrier.onnx`](configs/) e inferido **dentro da fase 3 do frame de tempo
@@ -296,7 +306,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
    `models/flight` instala os **dele**). As duas coisas convivem: o teste `scenario-policy-onnx`
    continua rodando a árvore do modelo com pesos aleatórios sobre a `multi-thread`.
 3. **Portas próprias, senão as pocs brigam.** Tacview **1238** e DIS `localPort` **3005** (1234
-   single/multi, 1235 bandit-dis, 1236 app, 1237 python-flight; DIS 3001/3002/3003/3004). Todo
+   single/multi, 1235 bandit, 1236 app, 1237 python-flight; DIS 3001/3002/3003/3004). Todo
    mundo escuta DIS em 3000 e ignora a própria porta de origem.
 4. **Comentário de XML não aceita `--`.** A mesma classe de armadilha do parser EDL com acento: o
    traço duplo dentro de um comentário faz o parser recusar o arquivo. `xmllint --noout` no `.xml`

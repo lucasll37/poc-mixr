@@ -5,7 +5,7 @@
 // LACUNA DOCUMENTADA, nao resolvida aqui: as armadilhas de verdade desta lib
 // (desengate dos hold modes do Autopilot, inversao de sinal do manete,
 // numeracao ai:/channel:) so sao exercitadas MANUALMENTE, rodando o binario
-// de bandit-dis com hardware de verdade -- ver a secao 'shared/xjoystick' do
+// de bandit com hardware de verdade -- ver a secao 'shared/xjoystick' do
 // CLAUDE.md raiz. Automatizar isso exigiria um AirVehicle/Autopilot de
 // verdade (pesado, e o padrao deste repositorio para esse nivel de teste e a
 // suite 'scenario', com Station de verdade) OU fabricar um arquivo de

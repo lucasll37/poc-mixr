@@ -4,7 +4,7 @@ Aplicação de terminal estilizada (cores, navegação por teclado e por mouse, 
 responsivo — biblioteca [FTXUI](https://github.com/ArthurSonzogni/FTXUI)) para **carregar,
 acompanhar e controlar** uma simulação, em vez de ler uma linha de status em texto puro.
 
-Roda a **mesma pilha nativa** de [`src/poc/multi-thread/`](../src/poc/multi-thread/) — mesmo plugin de
+Roda a **mesma pilha nativa** de [`src/poc/dis/multi-thread/`](../src/poc/dis/multi-thread/) — mesmo plugin de
 modelo (`libflight_tc.so`), mesmo `Aircraft`/`JSBSimModel`/`Autopilot`/radar/`FlightAgentTC`
 (os 4 falcons decidem em PARALELO, um por thread do pool de tempo crítico, na fase 3 do frame),
 nenhuma mudança em [`models/`](../models/) — só troca a impressão de status por este painel. Mora fora de
@@ -55,13 +55,20 @@ por caminho relativo):
 
 Não precisa de nenhum outro processo rodando — os três cenários são **herméticos** (sem
 `networks:`) e usam porta de Tacview e diretório de dados **próprios**, então dá para rodar junto
-com `single-thread`/`multi-thread`/`bandit-dis` sem colidir (ver [§13](#13-portas-arquivos-e-dados)).
+com `single-thread`/`multi-thread`/`bandit` sem colidir (ver [§13](#13-portas-arquivos-e-dados)).
 
 ---
 
 ## 2. Cenários
 
-A tela de seleção (sem `-scenario`) lista os três; `-scenario <chave>` pula direto para um deles.
+A tela de seleção (sem `-scenario`) lista os cenários; `-scenario <chave>` pula direto para um
+deles.
+
+> **Este binário é o runner de TODAS as pocs.** Além dos três cenários próprios
+> (`patrol`/`intercept`/`intercept_missile`), o catálogo traz `single-thread`, `multi-thread`,
+> `bandit`, `python-flight`, `onnx-policy` e `built-in_mixr_1` — as pocs não têm mais executável
+> próprio, são só cenário. `-f <arquivo>` carrega um `.epp`/`.epp.in` fora do catálogo (é como as
+> fixtures de teste entram). Ver `src/poc/meson.build`.
 
 | chave | rótulo | conteúdo |
 |---|---|---|
@@ -78,7 +85,8 @@ expandido em tempo de execução para `configs/<chave>.generated.epp` (gitignore
 
 | opção | efeito |
 |---|---|
-| `-scenario <chave>` | pula a tela de seleção e carrega o cenário direto (`patrol`, `intercept` ou `intercept_missile`) |
+| `-scenario <chave>` | pula a tela de seleção e carrega o cenário direto — os três próprios (`patrol`, `intercept`, `intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`) |
+| `-f <arquivo>` | um `.epp`/`.epp.in` fora do catálogo — o caminho das fixtures de teste |
 | `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico (sem isso: detecta `hardware_concurrency()`, limitado a 8) |
 | `-deterministic <N>` | roda **N frames de passo fixo** e sai — sem TUI, sem TTY; imprime linhas `frame=` e o relatório de instâncias no final (ver [tests/scenario/run_app_test.py](../tests/scenario/run_app_test.py)) |
 | `-parallel-decision` | só faz sentido junto com `-deterministic`: decide os 4 players em paralelo em vez de sequência (ver [`app/DeterministicRun.hpp`](include/app/DeterministicRun.hpp)) |
@@ -376,14 +384,14 @@ tela de seleção. `q` só encerra.
 
 | item | valor |
 |---|---|
-| Tacview (*Real-Time Telemetry*) | porta **1236** — diferente de `single-thread`/`multi-thread` (1234) e `bandit-dis` (1235), de propósito, pra rodar junto sem colidir |
+| Tacview (*Real-Time Telemetry*) | porta **1236** — diferente de `single-thread`/`multi-thread` (1234) e `bandit` (1235), de propósito, pra rodar junto sem colidir |
 | log | `./app/data/logs/app.log` |
 | gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` |
 | cenário expandido | `./app/configs/<chave>.generated.epp` (gitignored — gerado a cada carga) |
 | terreno (SRTM) | `./shared/data/terrain/srtm/` — compartilhado com as outras pocs |
 
 Todos os cenários são **herméticos** (sem bloco `networks:`) — não abrem porta DIS nenhuma, então
-não competem com `bandit-dis` nem entre si.
+não competem com `bandit` nem entre si.
 
 ---
 

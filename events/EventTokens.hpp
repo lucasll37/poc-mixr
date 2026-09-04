@@ -30,7 +30,7 @@ namespace events {
 // ON_EVENT_OBJ(token, handler, TipoDoPayload) dentro do seu proprio
 // BEGIN_EVENT_HANDLER -- sem registro de "quem escuta o que" em lugar
 // nenhum, pelo mesmo motivo de nao haver broker no restante do MIXR (ver
-// src/poc/single-thread/README.md secao 9).
+// src/poc/dis/single-thread/README.md secao 9).
 //
 // EID_ALERT (payload: events::TacticalAlert, events/payloads/EID_ALERT/
 // TacticalAlert.hpp): broadcast DIRETO (Component::event() sobre

@@ -15,9 +15,10 @@ void advanceComponentFlowStep(ComponentFlowState& flow)
    flow.redrawsSincePlay = 0;
 }
 
-void toggleComponentFlowPlaying(ComponentFlowState& flow)
+void setComponentFlowPlaying(ComponentFlowState& flow, const bool playing)
 {
-   flow.playing = !flow.playing;
+   if (flow.playing == playing) return;   // sem isto, o contador zeraria a cada redesenho
+   flow.playing = playing;
    flow.redrawsSincePlay = 0;
 }
 

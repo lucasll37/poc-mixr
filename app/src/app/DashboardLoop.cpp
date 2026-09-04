@@ -1,5 +1,7 @@
 #include "app/DashboardLoop.hpp"
 
+#include "mixr/linkage/IoHandler.hpp"
+
 #include "app/BackgroundPanel.hpp"
 #include "app/BehaviorTreeView.hpp"
 #include "app/BreakpointController.hpp"
@@ -175,6 +177,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                            mixr::models::WorldModel* const worldModel,
                            mixr::xclock::ClockStation* const clockStation,
                            mixr::xtacview::TacviewOutput* const tacviewOutput,
+                           mixr::linkage::IoHandler* const ioHandler,
                            const int numTcThreads, const std::string& scenarioLabel,
                            const BtNode& behaviorTree)
 {
@@ -189,6 +192,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    std::mutex bpMutex;
    BreakpointController bp;
    std::atomic<bool> fastRunToBreakpoint{false};
+
+   // Pedidos de PASSO de simulacao pendentes -- o "[n] Passo" da aba F6.
+   // Cada um vale UM Station::tcFrame(dt) de verdade, executado la em
+   // 'simThread' (nunca aqui, na thread de desenho): a thread T/C nativa
+   // continua viva, e so nao esta chamando tcFrame() porque
+   // ClockStation::processTimeCriticalTasks() retorna cedo quando pausado
+   // (ver o comentario grande la). Dar o passo com a simulacao RODANDO seria
+   // duas threads dentro do mesmo frame -- por isso o passo pausa antes.
+   std::atomic<int> stepFrameRequests{0};
 
    // A partir daqui o FTXUI e dono do terminal (alternate screen buffer,
    // modo bruto) -- uma linha de log escrita direto em std::cout suja o
@@ -252,6 +264,25 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // nenhum) ia pro Tacview como "Misc"/"Grey". Ver o cabecalho de
          // TacviewOutput::publishIdentities().
          if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(worldModel);
+
+         // Passo manual pedido pela aba F6 -- ANTES do updateData() para que
+         // a passada de fundo que vem a seguir ja veja o estado novo (e
+         // drene o gravador, alimentando o Tacview com o frame recem-dado).
+         if (const int steps{stepFrameRequests.exchange(0)}; steps > 0) {
+            const double tcRate{station->getTimeCriticalRate()};
+            if (tcRate > 0.0 && clockStation != nullptr && clockStation->isPaused()) {
+               const double tcDt{1.0 / tcRate};
+               for (int i = 0; i < steps; i++) station->tcFrame(tcDt);
+            }
+         }
+
+         // Joystick (so o cenario 'bandit' declara um 'ioHandler:'): mesma
+         // taxa e mesmo lugar do laco de tempo real que as pocs usavam
+         // antes de o ./app virar o runner unico delas -- 10 Hz, fora do
+         // frame de tempo critico. Sem hardware conectado o
+         // JoystickIoHandler nao toca em nada e o Autopilot segue no
+         // controle (ver a armadilha 7 de shared/xjoystick no CLAUDE.md).
+         if (ioHandler != nullptr) ioHandler->inputDevices(dt);
 
          station->updateData(dt);
 
@@ -432,6 +463,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // tickComponentFlowAnimation() a cada redesenho (ver o Renderer mais
    // externo, mais abaixo) -- MODELO CONCEITUAL, nao medicao ao vivo.
    ComponentFlowState componentsFlow;
+
+   // Os numeros VIVOS que entram nos argumentos da cadeia de chamadas (ver
+   // app/FrameCallChain.hpp) -- recalculados a cada redesenho no Renderer
+   // mais externo, junto com o resto. Nao sao constantes: 'fastForwardRate'
+   // muda com [+]/[-], e 'paused' e o que faz a cadeia mostrar dt0 = 0.
+   FrameCallParams frameCallParams;
 
    // Largura do card de detalhe -- recalculada a cada redesenho (o
    // terminal pode ser redimensionado em qualquer frame), "ocupando por
@@ -622,9 +659,26 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // ---- animacao de fluxo da aba "Componentes" (SEGUNDA METADE, ver
    // app/ComponentFlowState.hpp) -- mesma regra de sempre: uma lambda, usada
    // por tecla E por botao ----
-   const auto doCompTogglePlay = [&] { toggleComponentFlowPlaying(componentsFlow); };
-   const auto doCompStep = [&] { advanceComponentFlowStep(componentsFlow); };
+   // [Espaco] na aba F6 pausa a SIMULACAO de verdade -- o mesmo caminho do
+   // botao/tecla global, nao um relogio paralelo. A animacao do fluxo virou
+   // ESCRAVA desse estado (ver 'setComponentFlowPlaying' no Renderer mais
+   // externo): pausou a simulacao, o pulso para junto, e o cabecalho
+   // (t=/sim=/thr=) passa a refletir o que foi comandado aqui -- que era
+   // exatamente o que nao acontecia antes.
+   const auto doCompTogglePlay = doTogglePause;
+
+   // [n] = UM Station::tcFrame(dt) de verdade. Pausa antes, se estiver
+   // rodando (o mesmo gesto de qualquer depurador: dar um passo implica
+   // parar), porque dar o passo com a thread T/C nativa ativa poria duas
+   // threads dentro do mesmo frame. O ponteiro de fase avanca junto, pra
+   // toques seguidos percorrerem a explicacao da cadeia de chamadas.
+   const auto doCompStep = [&] {
+      if (clockStation != nullptr && !clockStation->isPaused()) clockStation->setPaused(true);
+      stepFrameRequests.fetch_add(1);
+      advanceComponentFlowStep(componentsFlow);
+   };
    const auto doCompCycleSpeed = [&] { cycleComponentFlowSpeed(componentsFlow); };
+
 
    // ---- breakpoint de arvore de BT -- "marcar um estado da bt de um dado
    // elemento e rodar a simulacao ate que aquele no seja atingido,
@@ -961,7 +1015,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                      | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
       const int selected{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
       if (selected >= 0) {
-         detail = renderComponentDetail(componentsLayout.nodes[static_cast<std::size_t>(selected)])
+         detail = renderComponentDetail(componentsLayout.nodes[static_cast<std::size_t>(selected)],
+                                        componentsFlow, frameCallParams)
                   | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight);
       }
       // Mesma tecnica de fitMapCanvasToBox() (ver o comentario grande em
@@ -981,7 +1036,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       }
       return hbox({
                 renderComponentTree(componentsLayout, componentsView, componentsCanvasBox,
-                                    currentFlowPhase(componentsFlow)) | flex,
+                                    componentsFlow, frameCallParams) | flex,
                 separator(),
                 detail,
              })
@@ -993,16 +1048,30 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnCompCenter{makeButton("[c] Centralizar", doCompCenterOnSelected)};
 
    // Play/pause com rotulo dinamico -- mesmo padrao de 'btnLogFollow'/
-   // 'logFilterOpt' acima (transform le estado vivo, nao so o clique).
+   // 'logFilterOpt' acima (transform le estado vivo, nao so o clique). O
+   // rotulo diz SIMULACAO de proposito: e a simulacao que para, nao um
+   // relogio de animacao a parte.
    ButtonOption compPlayOpt;
    compPlayOpt.on_click = doCompTogglePlay;
    compPlayOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [Espaco] ") + (componentsFlow.playing ? "Pausar" : "Tocar") + " ")
-         | (componentsFlow.playing ? (bgcolor(Color::Blue) | bold) : dim);
+      const bool running{!frameCallParams.paused};
+      return text(std::string(" [Espaco] ") + (running ? "Pausar" : "Rodar") + " ")
+         | (running ? (bgcolor(Color::Green) | color(Color::Black) | bold)
+                     : (bgcolor(Color::Yellow) | color(Color::Black) | bold));
    };
    const Component btnCompPlay{Button(compPlayOpt)};
 
-   const Component btnCompStep{makeButton("[n] Proximo passo", doCompStep)};
+   // O rotulo carrega o dt de verdade -- e a resposta curta pra "quanto vale
+   // um passo", sem ter de ler o painel inteiro.
+   ButtonOption compStepOpt;
+   compStepOpt.on_click = doCompStep;
+   compStepOpt.transform = [&](const EntryState&) {
+      std::ostringstream os;
+      os << " [n] Passo " << std::fixed << std::setprecision(4)
+         << frameStepSeconds(frameCallParams) << "s ";
+      return text(os.str()) | bgcolor(Color::Blue) | color(Color::White) | bold;
+   };
+   const Component btnCompStep{Button(compStepOpt)};
 
    // Retrair/expandir -- tecla E botao, a regra de sempre. O rotulo do
    // primeiro muda com o estado do no selecionado (transform roda a cada
@@ -1015,39 +1084,46 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          && componentsLayout.nodes[static_cast<std::size_t>(idx)].childCount > 0};
       const bool isCollapsed{canToggle
          && componentsLayout.nodes[static_cast<std::size_t>(idx)].collapsed};
-      if (!canToggle) return text(" [Enter] Retrair/Expandir ") | dim;
-      return text(std::string(" [Enter] ") + (isCollapsed ? "Expandir" : "Retrair") + " galho ")
+      if (!canToggle) return text(" [Enter] Retrair ") | dim;
+      return text(std::string(" [Enter] ") + (isCollapsed ? "Expandir" : "Retrair") + " ")
          | bgcolor(Color::Blue) | bold;
    };
    const Component btnCompToggle{Button(compToggleOpt)};
 
-   const Component btnCompExpandAll{makeButton("[o] Expandir tudo", doCompExpandAll)};
-   const Component btnCompCollapseAll{makeButton("[f] Retrair tudo", doCompCollapseAll)};
+   const Component btnCompExpandAll{makeButton("[o] Abrir tudo", doCompExpandAll)};
+   const Component btnCompCollapseAll{makeButton("[f] Fechar tudo", doCompCollapseAll)};
 
    ButtonOption compSpeedOpt;
    compSpeedOpt.on_click = doCompCycleSpeed;
    compSpeedOpt.transform = [&](const EntryState&) {
-      return text(" [v] Velocidade " + std::to_string(componentsFlow.stepsPerSecond) + "x/s ")
+      return text(" [v] " + std::to_string(componentsFlow.stepsPerSecond) + "x/s ")
          | bgcolor(Color::Blue) | bold;
    };
    const Component btnCompSpeed{Button(compSpeedOpt)};
 
    const Component componentsButtons{Container::Horizontal(
-      {btnCompToggle, btnCompExpandAll, btnCompCollapseAll,
-       btnCompZoomOut, btnCompZoomIn, btnCompCenter, btnCompPlay, btnCompStep, btnCompSpeed})};
+      {btnCompPlay, btnCompStep, btnCompSpeed,
+       btnCompToggle, btnCompExpandAll, btnCompCollapseAll,
+       btnCompZoomOut, btnCompZoomIn, btnCompCenter})};
 
    const Component componentsBody{Container::Vertical({componentsCanvasArea, componentsButtons})};
    const Component componentsTab{Renderer(componentsBody, [&]() -> Element {
+      // MESMA altura da versao anterior a esta feature: uma linha em cima
+      // (era um texto dim, hoje e a faixa de fases -- o mesmo espaco), o
+      // canvas com todo o resto, e o rodape de sempre. A explicacao do passo
+      // NAO mora mais num painel de texto que roubava ~19 linhas do desenho:
+      // ela foi PARA DENTRO do desenho (rotulo de chamada em cada no, o
+      // caminho da recursao aceso, a onda descendo) e para o card de
+      // detalhe, que ja tinha espaco sobrando.
       return vbox({
-         text(" arvore de componentes REAL (getComponents() + players/dataRecorder/ioHandler/"
-              "networks) -- cor = fase ESTIMADA (heuristica, ver card de detalhe) ") | dim,
+         renderFramePhaseStrip(componentsFlow, frameCallParams),
          componentsCanvasArea->Render() | flex,
          separator(),
-         renderComponentFlowStatus(componentsFlow),
+         renderComponentFlowStatus(componentsFlow, frameCallParams),
          renderComponentFlowLegend(),
          text("[setas] navegar entre nos  [Enter] retrair/expandir  [o]/[f] expandir/retrair tudo  "
               "[clique] selecionar  [arraste] mover  [ [ ]/roda ] zoom  [c] centralizar  "
-              "[Espaco] play/pause do fluxo  [n] passo  [v] velocidade") | dim,
+              "[Espaco] pausar simulacao  [n] passo de 1 frame  [v] velocidade") | dim,
          componentsButtons->Render(),
       });
    })};
@@ -1294,7 +1370,20 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // reaproveitando esse pulso como relogio em vez de medir tempo de
       // parede. Roda mesmo com outra aba ativa, pelo mesmo motivo de
       // 'componentsLayout' ser recalculado incondicionalmente aqui.
+      // A animacao e ESCRAVA da simulacao (pedido explicito: o controle da
+      // aba F6 tem de mexer na simulacao de verdade). Pausou -> o pulso
+      // para; voltou a rodar -> volta a andar. Feito aqui, e nao na acao de
+      // tecla, pra tambem valer quando a pausa vem de outro lugar (o botao
+      // [espaco] da barra principal, a tecla 'p', um breakpoint de BT
+      // atingido).
+      setComponentFlowPlaying(componentsFlow, !snap.paused);
       tickComponentFlowAnimation(componentsFlow);
+
+      frameCallParams.tcRateHz = station->getTimeCriticalRate();
+      frameCallParams.bgRateHz = static_cast<double>(bgRate);
+      frameCallParams.fastForwardRate = station->getFastForwardRate();
+      frameCallParams.numTcThreads = snap.numTcThreads;
+      frameCallParams.paused = snap.paused;
 
       // A selecao NAO precisa de clamp: e uma CHAVE, nao um indice. Se o no
       // sumiu da arvore (retraido junto com o pai, missil que detonou,

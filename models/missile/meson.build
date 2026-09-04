@@ -6,7 +6,7 @@
 # so mixr_dep + sdk_dep. NAO linka behaviortree.cpp.asa -- este modelo nao
 # decide nada, so voa (guiagem propria em cima do JSBSimModel anexado). E
 # carregado ao lado do flight, por um SEGUNDO ( PluginModule ) no cenario de
-# demo (src/poc/single-thread/configs/scenario_missile_demo.epp.in), publicando
+# demo (src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in), publicando
 # so "GuidedMissile" -- os 6 nomes do flight nao mudam, entao 'provides:'
 # dos cenarios de PRODUCAO (que so carregam libflight.so) continua igual.
 #

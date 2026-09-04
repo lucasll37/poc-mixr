@@ -167,10 +167,19 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
       state.background.playerCount = static_cast<int>(state.entities.size());
    }
    if (station != nullptr) {
+      // ARMADILHA MEDIDA (nao redescobrir): Station::getNetworks() NAO e
+      // pre-ref()'d. Ao contrario de getPlayers(), que o cabecalho do
+      // framework marca assim, ele devolve o membro cru (Station.cpp:639-642
+      // -- 'return networks;'). O unref() que estava aqui soltava uma
+      // referencia nunca tomada, a 10 Hz: em poucos segundos o contador
+      // chegava a zero e a PROPRIA Station estourava ao ref()-ar a lista em
+      // processNetworkInputTasks() ('ExpInvalidRefCount'). So aparecia em
+      // cenario com 'networks:' -- os tres cenarios proprios deste app nao
+      // tem nenhum, e por isso ficou latente ate o ./app virar o runner das
+      // pocs de DIS.
       const mixr::base::PairStream* const networks{station->getNetworks()};
       state.background.networkHandlerCount = (networks != nullptr)
          ? static_cast<int>(networks->entries()) : 0;
-      if (networks != nullptr) networks->unref();   // getNetworks() vem pre-ref()'d
       state.background.networkRateHz = station->getNetworkRate();
       state.background.networkThreadRunning = station->doWeHaveTheNetThread();
       state.background.stationTcRateHz = station->getTimeCriticalRate();

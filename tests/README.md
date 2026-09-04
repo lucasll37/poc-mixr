@@ -151,7 +151,7 @@ pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`:
 | `tc` | total já criado desde o início do processo |
 
 O próprio `Object.hpp` diz para que serve: *"to spot potential memory leaks"*.
-[`app/MetaObjectReport`](../src/poc/single-thread/include/app/MetaObjectReport.hpp) imprime uma linha
+[`app/MetaObjectReport`](../src/poc/dis/single-thread/include/app/MetaObjectReport.hpp) imprime uma linha
 `meta=` por classe vigiada ao fim de uma corrida determinística.
 
 **A asserção é comparativa, e é isso que a torna válida.** Um retrato único não distingue
@@ -271,7 +271,7 @@ Diretório presente mas vazio (ou só com `.gitkeep`) conta como ausente.
 ## Armadilhas encontradas montando isto
 
 **1. O `-deterministic` não é hermético com o cenário de produção.** O bloco `networks:` abre a
-porta DIS 3000 e ingere PDUs de quem estiver na LAN. Com um `bandit-dis` de outra sessão no ar,
+porta DIS 3000 e ingere PDUs de quem estiver na LAN. Com um `bandit` de outra sessão no ar,
 duas execuções idênticas divergem e o `check-single-thread` acusa **falso não-determinismo** —
 medido: `frame=600 falcon1` deu `PATROL` com 1 thread e `SUPPORT` com 2, porque o intruso da rede
 apareceu em uma e não na outra. Todas as fixtures removem `networks:`, e os alvos `check-*`

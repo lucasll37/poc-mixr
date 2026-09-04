@@ -52,7 +52,7 @@ xplugin_dep = declare_dependency(
     link_with           : xplugin_lib,
     include_directories : xplugin_inc_dir,
     compile_args        : xplugin_version_args,
-    # dl_dep viaja junto: o bandit-dis nao usa behavior_tree_dep e portanto
+    # dl_dep viaja junto: o bandit nao usa behavior_tree_dep e portanto
     # nao herdaria '-ldl' de nenhum .pc (conferido: o .pc da
     # behaviortree.cpp.asa traz so -lbehaviortree_cpp_v3 -lpthread).
     dependencies        : [mixr_dep, dl_dep],

@@ -51,10 +51,10 @@ visualização é feita via **Tacview Real-Time Telemetry**.
 | 2 | Elevação de terreno real (dados SRTM)| `shared/data/terrain/srtm/` |
 | 3 | Exportação da simulação para o Tacview (visualizador de voo em tempo real), reaproveitando o próprio mecanismo de gravação de dados do MIXR | `shared/xtacview/` |
 | 4 | Física de voo completa (6 graus de liberdade) via JSBSim, o simulador de voo já integrado ao MIXR | `models/flight/` |
-| 5 | Decisão em paralelo sem perder previsibilidade — várias aeronaves decidindo ao mesmo tempo, em threads diferentes, chegam ao mesmo resultado rodando com 1, 2 ou 4 threads | `src/poc/multi-thread/` |
+| 5 | Decisão em paralelo sem perder previsibilidade — várias aeronaves decidindo ao mesmo tempo, em threads diferentes, chegam ao mesmo resultado rodando com 1, 2 ou 4 threads | `src/poc/dis/multi-thread/` |
 | 6 | Lógica de decisão como uma árvore de comportamento (BehaviorTree.CPP) carregada de um arquivo XML — trocar a política não recompila nada | `models/flight/src/bt/` |
 | 7 | Controle por joystick físico, com o piloto automático assumindo sozinho quando não há joystick conectado | `shared/xjoystick/` |
-| 8 | Interoperabilidade entre processos via DIS (protocolo padrão de simulação distribuída): uma aeronave roda num processo separado e é vista pelas outras só pela rede | `src/poc/bandit-dis/` |
+| 8 | Interoperabilidade entre processos via DIS (protocolo padrão de simulação distribuída): uma aeronave roda num processo separado e é vista pelas outras só pela rede | `src/poc/dis/bandit/` |
 | 9 | Log e telemetria configuráveis pelo próprio arquivo de cenário, sem recompilar nada | `shared/xlog/`, `shared/xmsg/` |
 | 10 | Detecção de vazamento de memória usando os contadores de instância que o próprio MIXR já mantém internamente | `shared/xboard/` |
 | 11 | Painel de controle interativo em terminal — pausar/acelerar o tempo, navegar num mapa, pausar a simulação quando a decisão de uma aeronave atingir um ponto específico da árvore | `app/` |
@@ -103,19 +103,24 @@ reverte no final.
 
 ## 4. Rodar
 
-**Sempre a partir da raiz do repositório** — os binários resolvem `configs/`/`data/` por caminho
+**Há um executável só: `app`.** Ele é o runner de todas as provas de conceito — cada uma é um
+cenário, não um programa. `app -scenario <chave>` carrega uma das chaves abaixo; sem `-scenario`
+ele abre a tela de seleção. `make run-<chave>` é atalho para a primeira forma.
+
+**Sempre a partir da raiz do repositório** — o binário resolve `configs/`/`data/` por caminho
 relativo. `single-thread`/`multi-thread` são alternativas entre si; qualquer um roda sozinho ou ao
-lado do `bandit-dis`, que entrega a aeronave intrusa só pela rede, e o Tacview conecta na porta
+lado do `bandit`, que entrega a aeronave intrusa só pela rede, e o Tacview conecta na porta
 indicada (*File > Real-Time Telemetry*).
 
-| subprojeto | comando | Tacview | decisão |
+| chave | comando | Tacview | decisão |
 |---|---|---|---|
-| `app` | `make run-app` | 1236 | painel interativo — **comece por aqui** |
+| `patrol`/`intercept`/`intercept_missile` | `make run-app` | 1236 | os cenários do próprio painel — **comece por aqui** |
 | `single-thread` | `make run-single-thread` | 1234 | numa única thread, em segundo plano |
 | `multi-thread` | `make run-multi-thread` | 1234 | em paralelo, uma thread por aeronave |
-| `bandit-dis` | `make run-bandit-dis` | 1235 | nenhuma — só uma aeronave, por joystick ou piloto automático, emitida via rede (DIS) |
+| `bandit` | `make run-bandit` | 1235 | nenhuma — só uma aeronave, por joystick ou piloto automático, emitida via rede (DIS) |
 | `python-flight` | `make run-python-flight` | 1237 | em Python, editável sem recompilar |
 | `onnx-policy` | `make run-onnx-policy` | 1238 | por uma rede neural (`.onnx`) |
+| `built-in_mixr_1` | `make run-built-in_mixr_1` | 1239 | a mesma da `single-thread` — o que muda é a aeronave, com 53 classes nativas |
 
 ---
 
@@ -129,7 +134,7 @@ make check-single-thread   # determinismo com a decisão no laço de background
 make check-multi-thread    # determinismo com os agentes decidindo em paralelo, na fase 3
 make check-python-flight   # o mesmo, decidindo em Python (um GIL para os quatro)
 make check-onnx-policy     # o mesmo, inferindo uma rede neural (uma sessão ONNX)
-make compare-single-multi  # lista o que difere entre os dois subprojetos (deve ser só o agente)
+make compare-single-multi  # lista o que difere entre os dois cenários (deve ser só o agente e a porta DIS)
 make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```
 
@@ -143,11 +148,15 @@ poc-mixr/
 ├── src/
 │   ├── poc/                as POCs propriamente ditas: cada pasta isola uma variavel de
 │   │   │                   integracao, mantendo o resto do cenario identico as demais
-│   │   ├── single-thread/  decide uma aeronave de cada vez, numa unica thread, em segundo plano
-│   │   ├── multi-thread/   decide todas ao mesmo tempo, cada uma na sua propria thread
-│   │   ├── bandit-dis/     so uma aeronave, sem logica de decisao, emitida via rede (DIS)
+│   │   ├── dis/            as tres que so fazem sentido JUNTAS, em processos separados
+│   │   │   │               trocando DIS: o intruso mora numa e chega nas outras pela rede
+│   │   │   ├── bandit/         so uma aeronave, sem logica de decisao, emitida via rede
+│   │   │   ├── single-thread/  decide uma aeronave de cada vez, numa unica thread, em
+│   │   │   │                   segundo plano
+│   │   │   └── multi-thread/   decide todas ao mesmo tempo, cada uma na sua propria thread
 │   │   ├── python-flight/  a multi-thread com a logica de decisao em Python
-│   │   └── onnx-policy/    a multi-thread com a logica de decisao numa rede neural
+│   │   ├── onnx-policy/    a multi-thread com a logica de decisao numa rede neural
+│   │   └── built-in_mixr_1/ o "player maximo": uma aeronave com 53 das 96 classes nativas
 │   ├── rl/                 aplicacao de verdade, nao poc: treino de aprendizado por reforco
 │   │                       (RL) contra a mesma simulacao
 │   └── node/               aplicacao de verdade, nao poc: placeholder do no de producao que
@@ -190,7 +199,7 @@ paralelismo do MIXR e passam pela mesma verificação de determinismo.
 tecnologia da lógica de decisão**: a primeira por scripts Python, a segunda por uma rede neural —
 nos dois casos, sem perder o determinismo mesmo decidindo em paralelo.
 
-`bandit-dis` é de outra natureza: não tem lógica de decisão nenhuma, só uma aeronave pilotada por
+`bandit` é de outra natureza: não tem lógica de decisão nenhuma, só uma aeronave pilotada por
 joystick (ou por um piloto automático, quando não há joystick conectado), emitida via rede —
 existe para provar que dois processos distintos podem trocar uma aeronave só pela rede, como se
 fossem simuladores de fabricantes diferentes.

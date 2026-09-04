@@ -13,15 +13,21 @@ Prova de conceito para desenvolver **novos modelos de simulação** sobre o fram
 **BehaviorTree.CPP v3** (`behaviortree.cpp.asa/3.5.6`). O MIXR **não** é o objeto de
 desenvolvimento — é dependência binária.
 
-O repositório tem hoje **dois subprojetos irmãos** em `src/`, cada um um executável
-independente, e os dois compilam juntos. É o **mesmo modelo** nos dois — mesmo cenário, mesma
-pilha nativa, mesmos comportamentos: a única diferença é o **agente do UBF**, isto é, *onde a
-decisão roda*.
+As pocs vivem em `src/poc/`, e **três delas moram juntas em `src/poc/dis/`** — `bandit`,
+`single-thread` e `multi-thread`. Esse agrupamento não é arrumação: o que as junta é só fazerem
+sentido **juntas**, em processos separados trocando **DIS nativo do MIXR**. O intruso mora no
+`bandit` e chega nas outras duas apenas pela rede (`networks:`), enquanto `falcon1..4` fazem o
+caminho de volta; rodar qualquer uma sozinha é meia demonstração. As demais pocs
+(`python-flight`, `onnx-policy`, `built-in_mixr_1`) continuam soltas em `src/poc/`, uma pasta cada.
+
+Dentro de `src/poc/dis/` há **dois subprojetos irmãos**, cada um um executável independente, e os
+dois compilam juntos. É o **mesmo modelo** nos dois — mesmo cenário, mesma pilha nativa, mesmos
+comportamentos: a única diferença é o **agente do UBF**, isto é, *onde a decisão roda*.
 
 | subprojeto | agente | onde a decisão roda |
 |---|---|---|
-| `src/poc/single-thread/` | `( SimAgent )` nativo, componente da **`Station`** | `updateData()`, thread de **background**: os 4 agentes decidem **em sequência**, numa thread só, a 10 Hz |
-| `src/poc/multi-thread/` | `( FlightAgentTC )` próprio, componente do **`Player`** | **fase 3** do frame, thread de **tempo crítico**: os 4 decidem **em paralelo**, um por thread do pool, a 50 Hz |
+| `src/poc/dis/single-thread/` | `( SimAgent )` nativo, componente da **`Station`** | `updateData()`, thread de **background**: os 4 agentes decidem **em sequência**, numa thread só, a 10 Hz |
+| `src/poc/dis/multi-thread/` | `( FlightAgentTC )` próprio, componente do **`Player`** | **fase 3** do frame, thread de **tempo crítico**: os 4 decidem **em paralelo**, um por thread do pool, a 50 Hz |
 
 > **O nome diz onde a DECISÃO roda — não como a simulação roda.** As duas pocs declaram
 > `numTcThreads` e distribuem os players pelo pool de threads de tempo crítico do framework, e
@@ -30,8 +36,9 @@ decisão roda*.
 
 `make compare-single-multi` mostra a diferença: fora o agente, as duas pastas são iguais.
 
-Há um **terceiro subprojeto**, `src/poc/bandit-dis/`, de natureza diferente das duas pocs irmãs
-acima: não tem agente UBF nenhum, é só o `bandit1` (o intruso que as duas pocs perseguem) rodando
+Há um **terceiro subprojeto** no mesmo grupo, `src/poc/dis/bandit/` (era `src/poc/bandit-dis/`;
+o sufixo `-dis` saiu do nome quando a pasta `dis/` passou a dizer a mesma coisa), de natureza
+diferente das duas pocs irmãs acima: não tem agente UBF nenhum, é só o `bandit1` (o intruso que as duas pocs perseguem) rodando
 sozinho, num processo à parte, pilotado por joystick ou por `Autopilot` de fallback, emitindo seu
 estado via **DIS nativo do MIXR** (`mixr::dis`) para quem quiser recebê-lo — hoje, `single-thread`/
 `multi-thread`, que não têm mais um `bandit1:` local e o recebem só pela rede. Ver a seção própria
@@ -51,6 +58,12 @@ porém, tem **uma folha só** — `( OnnxPolicy )`, que carrega um `.onnx` de 6.
 dentro da fase 3, sem Python no processo. A `python-flight` troca as **folhas** e preserva a forma
 da árvore de produção; aqui a árvore some, porque uma política treinada **é** o mapa observação →
 ação inteiro, inclusive a decisão de *quando* evadir. Ver a seção própria mais abaixo.
+
+E um **sexto**, `src/poc/built-in_mixr_1/`, que não muda eixo nenhum da decisão: a aplicação dele é
+a da `single-thread` **byte a byte**. O que ele muda é o **cenário** — `falcon1` carrega **53 das 96
+classes** que `mixr::models::factory` publica, num único `( Aircraft )`. É a resposta escrita e
+rodável para "qual o player mais elaborado que dá para montar só com componentes built-in". Ver a
+seção própria mais abaixo.
 
 Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
 `12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
@@ -106,19 +119,20 @@ sozinho ao mexer só no modelo, sem tocar o host.
    `pkg_config_path`. Tem de ser `-Dpkg_config_path=` na linha de comando — e o separador de lista
    do Meson é **vírgula**, não dois-pontos.
 
-Binários ficam em `build/src/poc/<nome>/src/<nome>` — o executável tem o **mesmo nome da pasta** —,
-e cada um tem um alvo `run-<nome>` no Makefile.
+**Há um executável só: `build/app/src/app`** (instalado em `dist/bin/app`). As pocs não têm binário
+próprio — são cenário, e o `./app` é o runner: `app -scenario <chave>` ou `app -f <arquivo>`. Cada
+poc tem um alvo `run-<chave>` no Makefile, que é atalho para a primeira forma.
 
 **Todos os binários leem `configs/`/`data/` por caminho relativo (`./src/poc/<nome>/...`) e devem
 ser executados a partir da raiz do repositório:**
 
 ```bash
-./build/src/poc/single-thread/src/single-thread
+./build/app/src/app -scenario single-thread
 ```
 
-Opções de linha de comando, aceitas por `single-thread`/`multi-thread`/`python-flight`/`onnx-policy`:
-`-f <arquivo>` (cenário alternativo),
-`-threads <N>` (quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo).
+Opções de linha de comando do `./app`: `-scenario <chave>` (uma das chaves do catálogo — sem ela
+abre a tela de seleção), `-f <arquivo>` (cenário fora do catálogo), `-threads <N>` (quantas threads
+de tempo crítico) e `-deterministic <N>` (N frames de passo fixo, sem TUI).
 
 **A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
 a verificação de **determinismo** tem alvos próprios (`check-single-thread`, `check-multi-thread`,
@@ -169,26 +183,51 @@ e o pacote Conan, **quem vale é o pacote** — é ele que está linkado.
 
 ### Estrutura de um subprojeto
 
+**Uma poc não tem código.** Desde que o `./app` virou o **runner único**, cada pasta sob
+`src/poc/` é só dado:
+
 ```
 src/poc/<nome>/
-├── meson.build            # só faz subdir('./src')
-├── configs/scenario.epp   # cenário EDL (+ .xml das árvores de comportamento)
-│                          # nas duas pocs é um .epp.in — ver app/ScenarioTemplate
-├── data/                  # dados de RUNTIME (recordings/, logs/, messages/) —
-│                          # gitignored, escritos pelo próprio binário
-│                          # duas exceções, nenhuma vendorizada aqui: o tile SRTM
-│                          # mora em shared/data/terrain/ (é do cenário, o mesmo
-│                          # nas duas pocs) e a aeronave JSBSim mora em
-│                          # models/flight/data/jsbsim/ (é do MODELO — ver
-│                          # a seção "O MODELO é um plugin" mais abaixo)
-├── include/
-│   ├── app/               # as etapas da aplicação, uma questão por arquivo (ver abaixo)
-│   └── mixr_factory.hpp   # factory dos objetos MIXR deste subprojeto
-└── src/
-    ├── meson.build        # define o executable() — nome = nome da pasta
-    ├── main.cpp           # FINO: só orquestra (chama os módulos de app/ na ordem)
-    └── app/               # espelha include/app/
+├── configs/scenario.epp.in  # o cenário EDL (+ .xml das árvores de comportamento)
+├── data/                    # dados de RUNTIME (recordings/, logs/, messages/) —
+│                            # gitignored, escritos pela execução
+│                            # duas exceções, nenhuma vendorizada aqui: o tile SRTM
+│                            # mora em shared/data/terrain/ (é do cenário, o mesmo
+│                            # em todas) e a aeronave JSBSim mora em
+│                            # models/flight/data/jsbsim/ (é do MODELO — ver
+│                            # a seção "O MODELO é um plugin" mais abaixo)
+└── README.md                # o que ESTA poc isola, e o que foi medido nela
 ```
+
+Quem executa é o `./app`: `app -scenario <chave>` (as chaves estão em
+`app/ScenarioCatalog.cpp`) ou `app -f <arquivo>` para um cenário fora do catálogo — que é como
+as fixtures de teste entram. `make run-<poc>` é atalho para a primeira forma.
+
+**O que havia antes, e por que saiu:** cada poc carregava uma cópia **byte a byte** da camada
+de aplicação — `include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas —, sustentada pela
+guarda `tests/guard/check_duplication.sh`. Era duplicação real e já tinha cobrado o preço: a
+correção da ordem de encerramento (calar a thread T/C antes do `SHUTDOWN_EVENT`) teve de ser
+copiada, uma a uma, para as cinco. Hoje a duplicação está dissolvida **por construção** — o
+mesmo movimento que já tinha acontecido com o MODELO quando ele saiu para `models/flight` — e a
+guarda que a sustentava foi aposentada junto.
+
+**Prova de neutralidade, medida na troca:** o dump `frame=` de `single-thread`, `multi-thread`,
+`python-flight`, `onnx-policy` e `built-in_mixr_1` rodados pelo `./app` saiu **byte-idêntico** ao
+dos binários próprios que existiam antes (600 frames, `-threads 2`).
+
+**A aplicação — `./app`, um arquivo por questão**, no namespace `app`:
+
+| módulo | questão |
+|---|---|
+| `app/Options.*` | `argv` → struct (`-scenario`, `-f`, `-threads`, `-deterministic`) |
+| `app/ScenarioCatalog.*` | as chaves de cenário conhecidas, e a **frota** de cada uma |
+| `app/TerrainData.*` | garante o `.hgt` em disco, com o tamanho que o `SrtmHgtFile` aceita |
+| `app/ScenarioTemplate.*` | `.epp.in` → `.epp` (`@NUM_TC_THREADS@`, `@include:...@`, tokens) |
+| `app/StationBuilder.*` | `.epp` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
+| `app/Fleet.*` | acha os players do cenário e fixa a potência de cruzeiro |
+| `app/DeterministicDump.*` | o formato do dump `frame=` que os `make check-*` comparam |
+| `app/DeterministicRun.*` | o laço de passo fixo |
+| `app/DashboardLoop.*` | o laço de tempo real: TUI, teclado, joystick, `Ctrl+C` |
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
 > `models/flight/`, um projeto Meson independente construído numa etapa **anterior**
@@ -196,23 +235,9 @@ src/poc/<nome>/
 > A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
-`main.cpp` não implementa comportamento. `src/poc/single-thread/` é a referência completa do padrão
-(a `src/poc/multi-thread/` é a mesma árvore, trocando só o agente).
-
-**Um arquivo, uma questão.** O que antes era um `main.cpp` de ~450 linhas está quebrado em
-`app/`, no namespace `app`, e cada header abre com o "por que" daquele passo:
-
-| módulo | questão |
-|---|---|
-| `app/Options.*` | `argv` → struct (`-f`, `-threads`, `-deterministic`) |
-| `app/TerrainData.*` | garante o `.hgt` em disco, com o tamanho que o `SrtmHgtFile` aceita |
-| `app/ScenarioTemplate.*` | `.epp.in` → `.epp` (resolve `@NUM_TC_THREADS@` antes do parse) |
-| `app/StationBuilder.*` | `.epp` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
-| `app/Fleet.*` | acha os players por nome e fixa a potência de cruzeiro |
-| `app/StatusReport.*` | o formato da linha de status legível |
-| `app/DeterministicDump.*` | o formato do dump `frame=` que os `make check-*` comparam |
-| `app/DeterministicRun.*` | o laço de passo fixo |
-| `app/RealTimeRun.*` | o laço de tempo real, o teclado e o `Ctrl+C` |
+`main.cpp` não implementa comportamento. `src/poc/dis/single-thread/configs/scenario.epp.in` é a
+referência completa do padrão de cenário (a `src/poc/dis/multi-thread/` é o mesmo arquivo, trocando
+só o agente e a porta DIS — `make compare-single-multi` mostra).
 
 Vale o mesmo dentro de `xnative/` e `ubf/`: a tabela de slots do `BtBehavior` (a fronteira com o
 EDL) fica em `ubf/BtBehaviorSlots.cpp` e os valores que ela ajusta em `ubf/BtTuning.hpp`,
@@ -279,7 +304,7 @@ Protocolo: handshake `XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n<username>\
 as linhas terminam em `\n`, inclusive a última (a doc oficial sugere o contrário e não conecta);
 o `\0` é um byte separado. Bind em `0.0.0.0` (não `127.0.0.1`): com Tacview no Windows e binário
 no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname -I`. Porta 1234
-(1235 no `bandit-dis`).
+(1235 no `bandit`).
 
 **Alcançar de uma TERCEIRA máquina, na rede local (não o host, não o Windows do WSL2)** — nenhuma
 das três configs declara o slot `host:`, então o `TacviewOutput` já sobe no default `"0.0.0.0"`:
@@ -360,7 +385,7 @@ Mesmo padrão `shared/x<nome>` do `xtacview`/`xclock` (factory própria + classe
 `/dev/js%d`/`/dev/input/js%d` com `<linux/joystick.h>` cru (ioctl + `read()` não bloqueante).
 **Nenhuma dependência nova** (nem SDL, nem evdev) e nada no Conan mudou.
 
-**Desde que o `bandit1` virou o processo `src/poc/bandit-dis` (ver a seção própria mais abaixo), é lá
+**Desde que o `bandit1` virou o processo `src/poc/dis/bandit` (ver a seção própria mais abaixo), é lá
 que o `ioHandler:` mora** — `single-thread`/`multi-thread` não declaram mais nenhum. O cenário
 declara o dispositivo no slot **nomeado e específico** que `simulation::Station` já tem para
 isso — `ioHandler:` (`Station.hpp:34`, mesmo padrão do `dataRecorder:` do xtacview):
@@ -393,7 +418,7 @@ que vai no `channel:` do EDL). Trocar de joystick é só remapear estes 4 númer
 lê os canais do `IoData` e aplica em `AirVehicle::setControlStick()`/`setRudderPedalInput()`/
 `setThrottles()` do player nomeado no slot `player:`.
 
-`app/RealTimeRun.cpp` (de `bandit-dis`) sonda o handler no mesmo lugar e na mesma taxa do
+`app/RealTimeRun.cpp` (de `bandit`) sonda o handler no mesmo lugar e na mesma taxa do
 `xclock::TimeControls::poll()` das outras pocs (laço de background, 10 Hz) —
 `ioHandler->inputDevices(dt)`, chamado só se o cenário declarou `ioHandler:` (`nullptr` é aviso,
 não erro fatal, mesmo raciocínio do `clockStationOf`).
@@ -436,7 +461,7 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    (`simulation`/`models`/`terrain`/`recorder`) — sem `mixr::linkage::factory(name)` no
    `mixr_factory.cpp` de cada poc, o `devices: { ( UsbJoystick ... ) }` do `ioHandler:` não
    constrói nada, em silêncio (mesma armadilha do `mixr::terrain::factory`, documentada acima).
-7. **Fallback gracioso para o `Autopilot`, adicionado quando o `bandit1` virou `src/poc/bandit-dis`
+7. **Fallback gracioso para o `Autopilot`, adicionado quando o `bandit1` virou `src/poc/dis/bandit`
    (voando sozinho, sem as outras aeronaves por perto para "segurar" o cenário se ninguém
    pilotasse).** Como a armadilha 3 registra, `IoData::getAnalogInput()` não distingue "sem
    dispositivo" de "manche centralizado" — sem tratar isso à parte, um `bandit1` sem joystick
@@ -624,7 +649,7 @@ Mesma classe de armadilha já registrada para `RLBridgeBehavior` na seção `src
 (mesmo que só para ignorar), ou deixa de ser contrato-compatível com o cenário que os testes de
 plugin rodam contra ele.
 
-### `src/poc/bandit-dis` — o `bandit1` num processo próprio, emitindo DIS nativo do MIXR
+### `src/poc/dis/bandit` — o `bandit1` num processo próprio, emitindo DIS nativo do MIXR
 
 Terceiro subprojeto, de natureza diferente dos dois primeiros: não é uma pilha nova nem um
 agente novo, é **onde o `bandit1` mora agora** — antes um player local em `single-thread`/
@@ -636,14 +661,14 @@ nativo do MIXR** (`mixr::dis` — namespace real da lib, apesar do caminho do he
 qualquer outra prova de interoperabilidade DIS de verdade — duas ou mais instâncias separadas,
 não um truque de processo único.
 
-**É bidirecional.** O `bandit-dis` também **recebe** falcon1..4 (que as duas pocs gêmeas emitem
-de volta) — o próprio Tacview do `bandit-dis` (porta 1235) mostra as quatro falcons, não só o
+**É bidirecional.** O `bandit` também **recebe** falcon1..4 (que as duas pocs gêmeas emitem
+de volta) — o próprio Tacview do `bandit` (porta 1235) mostra as quatro falcons, não só o
 `bandit1`. Cada `DisNetIO` só precisa dos dois blocos que fazem sentido pro seu lado:
 `outputEntityTypes:` pra publicar os players locais, `inputEntityTypes:` pra materializar os da
 rede — os dois usam o **mesmo** `disEntityType`, porque `bandit1` e `falcon1..4` são a mesma
 classe/`type:` (`Aircraft`/`"C310"`) e o casamento de entrada é só pelo código numérico do fio,
 não pela string — não há ambiguidade porque cada `DisNetIO` só ouve tráfego de quem só emite UMA
-coisa (`bandit-dis` só emite `bandit1`; cada poc gêmea só emite `falcon1..4`).
+coisa (`bandit` só emite `bandit1`; cada poc gêmea só emite `falcon1..4`).
 
 **Por que dá pra confiar que o radar/UBF das falcons reage a um contato que só existe na rede —
 investigado antes de desenhar isto, não depois de quebrar:**
@@ -661,22 +686,22 @@ não precisam reproduzir `JSBSimModel`/`Autopilot`: a posição do fantasma nunc
 *dead reckoning* — `side:` também é irrelevante, quem manda é o Force ID do próprio PDU
 (`Nib_entity_state.cpp:463-469`), sobrescrito logo após o clone (`NetIO.cpp:684`).
 
-**Testado rodando, ponta a ponta, nas duas pocs, nos dois sentidos**: `bandit-dis` sozinho (sem
+**Testado rodando, ponta a ponta, nas duas pocs, nos dois sentidos**: `bandit` sozinho (sem
 joystick — o `Autopilot` de fallback mantém `hdg=225` scripted) + `single-thread`/`multi-thread`
 cada um por vez → as falcons produzem `pista=bandit1@13.6NM`, `bt=EVADE`/`alerta<-falcon1(bandit1)`
 se propagando, `bt=SUPPORT`, depois `bt=BREAK` — a cadeia UBF/BehaviorTree inteira reagindo a uma
-aeronave que não existe em processo nenhum além do `bandit-dis`. **E na volta**: a gravação
-`.acmi` do `bandit-dis` mostra os cinco `CallSign=` (`bandit1` + `falcon1..4`) — confirmando que
+aeronave que não existe em processo nenhum além do `bandit`. **E na volta**: a gravação
+`.acmi` do `bandit` mostra os cinco `CallSign=` (`bandit1` + `falcon1..4`) — confirmando que
 as falcons chegaram por DIS, não só o intruso. O nome de cada fantasma saiu **exatamente** igual
 ao do player original (aparentemente do campo Marking do PDU), então o `modelMap`/`typeMap`/
 `colorMap` do `TacviewOutput` de cada poc — incluindo as entradas `falcon1..4` acrescentadas no
-`bandit-dis` — não precisou de ajuste nenhum além de existir.
+`bandit` — não precisou de ajuste nenhum além de existir.
 
 **Esquema de portas** (mesma receita do exemplo do próprio MIXR — `MIXR-PATTERN-CONTEXT.md`
 §6.7 — estendida para 3 processos no mesmo host): todo mundo **escuta** em `3000`; cada processo
 **emite** de uma porta local diferente e ignora essa mesma porta como origem
 (`ignoreSourcePort:` == o próprio `localPort:`), pra ninguém ouvir o próprio eco.
-`bandit-dis`: `3001`. `single-thread`: `3002`. `multi-thread`: `3003`. Os três `DisNetIO`
+`bandit`: `3001`. `single-thread`: `3002`. `multi-thread`: `3003`. Os três `DisNetIO`
 declaram `outputEntityTypes:` **e** `inputEntityTypes:` — nenhum é receive-only — mas
 `netOutput:`/`netInput:` são obrigatórios de qualquer forma, mesmo num `DisNetIO` puramente
 receptor (ver armadilha 2), já que `initNetwork()` inicializa os dois incondicionalmente.
@@ -699,11 +724,11 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    `Station::processNetworkInputTasks()`/`processNetworkOutputTasks()` são chamadas de dentro de
    `updateData()` (ou de uma thread própria, só se o slot `netRate` pedir uma > 0); como o laço
    de tempo real de todas as pocs já chama `station->updateData(dt)` a cada frame de
-   background, **nenhuma chamada nova foi necessária** — nem em `bandit-dis`, nem nas outras.
+   background, **nenhuma chamada nova foi necessária** — nem em `bandit`, nem nas outras.
    `createNetworkProcess()` existe (`Station.hpp:248`) mas não é preciso chamá-lo aqui.
 4. **`mixr::dis::factory` não é encadeada por nenhuma outra factory nativa** — mesma armadilha
    do `terrain`/`linkage` já documentada acima; sem `mixr::dis::factory(name)` no
-   `mixr_factory.cpp` de cada poc (as três, incluindo `bandit-dis`), `networks: ( DisNetIO
+   `mixr_factory.cpp` de cada poc (as três, incluindo `bandit`), `networks: ( DisNetIO
    ... )` não constrói nada, em silêncio.
 5. **Comentários em `.epp`/`.epp.in` têm que ser ASCII puro.** Descoberto quebrando: um único
    caractere acentuado (`"só"`) dentro de um comentário `//`, em outro ponto do arquivo, sem
@@ -716,7 +741,7 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    `app/Fleet.hpp` das pocs gêmeas (o autopilot do c310 fecha malha de rumo/altitude mas não de
    velocidade; sem manete fixo a aeronave perde velocidade e estola) se aplicava ao `bandit1`
    antes também — ele estava na `Fleet` das duas pocs e recebia a mesma correção. Como
-   `bandit-dis` não tem `Fleet` (um player só), `main.cpp` aplica `setThrottles(0.95, 1)` uma vez
+   `bandit` não tem `Fleet` (um player só), `main.cpp` aplica `setThrottles(0.95, 1)` uma vez
    direto no `bandit1`, achado por nome via `getPlayers()`.
 
 ### `src/poc/python-flight` — as LEIS DE VOO em Python, dentro do frame
@@ -828,7 +853,8 @@ lado das outras quatro.
 cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/flight`, apontando para
 um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
 provar que a cadeia funciona, não para voar com ela. O host é cópia do da `multi-thread` com
-caminhos e banner trocados (a guarda `check_duplication.sh` cobra que continue byte a byte igual).
+caminhos e banner trocados (na época, com a guarda `check_duplication.sh` cobrando a igualdade byte
+a byte; hoje não há host por poc — ver "Estrutura de um subprojeto").
 
 **Uma folha só, e não quatro como na `python-flight` — a diferença é conceitual.** Um script é uma
 regra que você escreve por ramo, então preservar a forma da árvore de produção faz sentido; uma
@@ -888,10 +914,96 @@ threads T/C, com as quatro aeronaves inferindo em paralelo sobre **uma** sessão
 medido em `shared/xinfer` para este mesmo MLP).
 
 **Duas guardas foram generalizadas** ao acrescentar esta poc, pelo mesmo motivo já registrado em
-`check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` descobre as gêmeas
-por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exclui a `bandit-dis`
+`check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` — desde então
+aposentada, ver "Estrutura de um subprojeto" — descobria as gêmeas
+por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exclui a `bandit`
 sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.epp.in`
 por glob. Poc nova nasce cobrada pelas duas sem editar arquivo nenhum.
+
+### `src/poc/built-in_mixr_1` — o PLAYER MÁXIMO, só com componentes nativos
+
+Sexto subprojeto de `src/poc/`, e o único cuja diferença é **100% de cenário**: a aplicação é a da
+`single-thread` byte a byte (era o que `check_duplication.sh` cobrava, antes de o `./app` virar o
+runner único e a camada por poc deixar de existir), o agente continua sendo o
+`( SimAgent )` nativo na `Station`, o plugin é o mesmo `libflight.so`. **Nenhuma linha de C++ nova,
+nenhum nome de fábrica novo, nenhum rebuild do modelo.** Porta Tacview **1239**, cenário hermético
+(sem `networks:`), então roda ao lado das outras cinco.
+
+`falcon1` monta **53 das 96 classes** de `mixr::models` num único `( Aircraft )`. O teto é
+estrutural: `Player::updateSystemPointers()` resolve **dez** ponteiros com `findByType()`, que
+devolve o **primeiro** casamento — um segundo `( Navigation )` irmão seria invisível. Pluralidade só
+existe onde o framework deu um **contêiner**:
+
+| tipo primário | o que `falcon1` põe lá |
+|---|---|
+| `DynamicsModel` | `JSBSimModel` |
+| `Pilot` | `Autopilot` |
+| `Navigation` | `Ins` ← `Gps`; `Route` com 4 `Steerpoint` + as **4** `Action*`; `Bullseye` |
+| `Datalink` | `AlertDatalink` (única peça não nativa) |
+| `Radio` | `CommRadio` ← `Iff` |
+| `Gimbal` | `Gimbal` ← 6 `Antenna` + `StabilizingGimbal` + `IrSeeker` |
+| `RfSensor` | `SensorMgr` ← `Tws` `Stt` `Sar` `Gmti` `Rwr` `Jammer` |
+| `IrSystem` | `IrSensor` |
+| `OnboardComputer` | `AirTrkMgr` `RwrTrkMgr` `GmtiTrkMgr` `AirAngleOnlyTrkMgr` |
+| `StoresMgr` | 11 estações: `AamMissile`×2 `AgmMissile` `Sam` `Bomb` `Chaff` `Flare` `Decoy` `Gun`+`Bullet` `FuelTank` `AvionicsPod` |
+
+Fora dos dez: `CollisionDetect` (Component comum) e as assinaturas — `SigSwitch` com as **seis**
+classes de RCS como filhos, comutadas em runtime pelo `camouflageType`, mais `IrSignature` +
+`IrSphere`. `falcon2/3/4` ficam na pilha de produção: contraste, e alvo para o RWR de `falcon1`.
+
+**Três regras de montagem, lidas no fonte:** (1) `Iff` **é** um `Radio` e `Gps` **é** uma
+`Navigation`, então vão **aninhados**, não como irmãos — irmãos disputariam o mesmo ponteiro
+primário; (2) **uma antena por sensor de RF**, porque `Antenna::setSystem()` guarda um único
+ponteiro e o último a dar `reset()` vence em silêncio; (3) sensor→antena e sensor→trackmanager casam
+**por nome de slot**, e `Component::findByName()` é recursivo — antena pendurada em gimbal interno
+continua alcançável por nome simples.
+
+**O cenário NÃO se chama `scenario.epp.in`**, e é deliberado: `check_falcons_estrutura.sh` varre
+esse nome por glob e exige que `falcon1..4` tenham o mesmo esqueleto de slots — aqui `falcon1` é
+propositalmente diferente dos outros três. O arquivo é `configs/scenario_max_player.epp.in` (o
+default do `main.cpp`, sem precisar de `-f`), mesmo recurso que a `bandit` já usa. Pelo mesmo
+motivo a poc **não entra na lista `pocs`** de `tests/meson.build` (as suítes `scenario`/`memory`
+derivam fixtures de `scenario.epp.in` via `make_fixture.py`); o determinismo tem alvo próprio,
+`make check-built-in_mixr_1`, que roda contra o cenário da pasta — já hermético, sem fixture.
+
+**O que foi medido rodando (30.000 frames):** zero erro de parse e zero `was not found!` (as 6
+antenas, os 4 track managers e o seeker casam todos); a cadeia de produção intacta (`falcon1`
+detecta `bandit1` no TWS, `EVADE`, alerta propaga, os outros vão para `SUPPORT`); a rota sequenciou
+os **quatro** steerpoints numa volta — decoy solto em **t=37,0 s** (wp1, `ActionDecoyRelease`) e
+bomba em **t=225,3 s** (wp4, `ActionWeaponRelease`), os dois com ciclo `preRelease → active →
+detonated`, visíveis no `MsgFeed` e no Tacview; e dumps `frame=` **byte-idênticos** com 1, 2 e 4
+threads T/C.
+
+**Armadilhas confirmadas — não redescobrir:**
+
+1. **`AircraftIrSignature` derruba o processo** se declarada sem as 6 tabelas —
+   `getAirframeSignature()` desreferencia `airframeSignatureTable` sem checar nulo
+   (`AircraftIrSignature.cpp:566`). Por isso aqui é `( IrSignature )` simples.
+2. **`MergingIrSensor` é um beco sem saída neste fork**: `MergingIrSensor::reset()` exige um
+   `( AirAngleOnlyTrkMgrPT )` e avisa a cada partida quando não acha — e essa classe **não é
+   construível**, porque o header dela é incluído em `models/factory.cpp` mas não há branch para ela
+   (o irmão `AirAngleOnlyTrkMgr` tem). É a consequência medida de uma das seis classes órfãs da
+   factory.
+3. **`ActionWeaponRelease` ignora o slot `station`** — `trigger()` sempre chama
+   `sms->releaseOneBomb()`; quem sai é a primeira `( Bomb )` livre da lista.
+4. **`ActionDecoyRelease` conta o `interval` em relógio de PAREDE** (`getSimTimeOfDay()`), não em
+   tempo simulado: em `-deterministic` (que roda ~200× mais rápido) um `( Seconds 1.0 )` virou
+   ~190 s de tempo **simulado** entre um decoy e o seguinte.
+5. **`Table2`**: o `data:` é **lista de listas** (`{ [...] [...] }`), uma sublista por ponto de `y`
+   — `Table2::loadData()` exige `ny` sublistas de `nx` números, e a lista plana falha com *"Data
+   table aborted"*.
+6. **`sarLatitude`/`sarLongitude`/`targetLatitude`/`targetLongitude` são `base::LatLon`**, não
+   `base::Angle`: `( LatLon direction: "s" degrees: 22 minutes: 12 )`. E `IrSensor.sensorType` é
+   `base::String` com valor `"contrast"` ou `"hot spot"` (com espaço); o slot `FOR` da slottable
+   dele está **comentado** no fonte — usá-lo dá `slot not found`. `Bomb.arming` é `base::Identifier`
+   e o valor é `free_fall` (snake_case).
+7. **`dataLogTime:` em cada store liberável** — sem ele o flyout nasce, voa e detona sem nunca
+   aparecer no Tacview (armadilha 1 do `xtacview`, que vale igual para arma liberada). O `MsgFeed`
+   enxerga assim mesmo, porque lê o `Player` direto em vez de passar pelo gravador.
+8. **As `( Action )` só disparam se a aeronave PASSAR pelos steerpoints**, e quem pilota é a árvore
+   de comportamento (`navMode: false`) — assim que há contato ela abandona o circuito e nenhuma ação
+   roda mais. Daí o `bandit1` a 30 NM neste cenário: dá tempo de fechar a volta antes do primeiro
+   contato (medido: a 12 NM, nenhuma ação dispara).
 
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 
@@ -978,7 +1090,12 @@ gtest. Cinco camadas, da mais isolada para a mais integrada:
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads, **nos dois lacos de decisao e com a politica em Python**; e o CONTROLE NEGATIVO que prova de onde o determinismo vem | 4 execucoes por poc + `onde-a-decisao-roda` |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`models/plugins/`) | 6 testes, ~3 s |
-| `guard` | invariantes estruturais: a camada de aplicacao byte-identica entre as pocs gemeas, o host **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 5 testes, instantaneo |
+| `guard` | invariantes estruturais: o host **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 4 testes, instantaneo |
+
+> A guarda **`duplicacao`** foi aposentada quando o `./app` virou o runner unico: ela travava a
+> igualdade byte a byte da camada de aplicacao entre as pocs gemeas, e essa camada nao existe mais
+> em copia nenhuma. Uma guarda sem nada para comparar ou falha (era o caso: o `find` voltava vazio
+> e o script saia 1) ou passa vacuamente, que e pior.
 
 `make test-asan` e complementar e fica fora da suite: reconfigura com ASan, roda sob
 LeakSanitizer e reverte. Ver as supressoes em `tests/memory/asan.supp`.
@@ -999,7 +1116,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
 **Armadilhas confirmadas rodando — nao redescobrir:**
 
 1. **O modo `-deterministic` NAO e hermetico com o cenario de producao.** O bloco `networks:` abre
-   a porta DIS 3000 e ingere PDUs de quem estiver na LAN: com um `bandit-dis` de outra sessao no
+   a porta DIS 3000 e ingere PDUs de quem estiver na LAN: com um `bandit` de outra sessao no
    ar, duas execucoes identicas divergem e o `check-single-thread` acusa falso nao-determinismo
    (medido: `frame=600 falcon1` deu `PATROL` com 1 thread e `SUPPORT` com 2 — porque o intruso da
    rede apareceu em uma e nao na outra). Por isso **todas** as fixtures de teste removem
@@ -1008,7 +1125,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
 2. **As fixtures sao DERIVADAS do cenario de producao** (`tests/scenario/make_fixture.py`), nao
    copias versionadas: uma copia comecaria certa e envelheceria em silencio. O modo `intruder`
    reintroduz um `bandit1:` **local** — sem ele nao ha como exercitar `EVADE`/`SUPPORT` num
-   processo so, ja que o intruso hoje mora em `src/poc/bandit-dis` e chega apenas por DIS.
+   processo so, ja que o intruso hoje mora em `src/poc/dis/bandit` e chega apenas por DIS.
 3. **Os contadores de instancia do MIXR nao sao atomicos.** `MetaObject.count/mc/tc`
    (`MetaObject.hpp:31-33`) sao mantidos por `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR` com
    `int` cru (`macros.hpp:247-255`); com os agentes decidindo em paralelo no pool T/C os
@@ -1028,7 +1145,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
    `dec=`/`thr=` de `mixr::xboard::Readout`, incrementado no MESMO ponto de atuacao
    (`ubf::FlightAction::execute()`) nas duas pilhas — `app/StatusReport.cpp` e
    `app/DeterministicDump.cpp` saíram **byte-identicos** entre as pocs por causa disso (ver
-   `src/poc/multi-thread/README.md` §3.5/§6). `FlightAgentTC` ainda mantem os proprios atomicos
+   `src/poc/dis/multi-thread/README.md` §3.5/§6). `FlightAgentTC` ainda mantem os proprios atomicos
    (`decisions`/`lastThreadTag`), mas nada mais os le — sao redundantes, nao a fonte do dump.
    A assercao **nao** e `dec == frames`: a `multi-thread` decide uma vez a mais na inicializacao
    (601 em 600 frames, identico nas 3 configuracoes de thread) — o warm-up `tcFrame()` que
@@ -1045,6 +1162,16 @@ dump deterministico saiu identico ao de antes, byte a byte):
    `wrap180(180) == -180` (`fmod(360,360)==0`). Nao e inofensivo: `ThreatPolicy` escolhe o lado da
    quebra por `relBearingDeg >= 0`, entao um contato exatamente a re quebra sempre para o mesmo
    lado. O teste trava o comportamento observado, nao o comentario.
+9. **Onde um script de teste ESCREVE nao pode sair de aritmetica de caminho sobre o binario.**
+   `check_determinism.sh`/`check_patrol_seed.sh` montavam a pasta de saida como
+   `$(dirname "$BIN")/../../../<rotulo>-...`, o que so caia num lugar sensato enquanto o binario
+   estava a exatamente tres niveis (`build/src/poc/<poc>/src/<poc>`). Quando o `./app` virou o
+   runner unico (`build/app/src/app`, um nivel a menos), os tres `..` passaram a aterrissar na
+   **raiz do repositorio**, e cada `make check-*` largava uma pasta de lixo la -- nao versionada,
+   mas suja e facil de commitar por engano. Hoje os dois derivam de `RAIZ` e escrevem em
+   `build/tests-determinism/<rotulo>` e `build/tests-patrol-seed/<rotulo>`, junto com
+   `build/tests-fixtures`/`tests-recordings`/`tests-messages` -- um lugar so, ja gitignorado, que
+   nao depende de onde o binario mora.
 
 ### `shared/xmsg` — mensagens configuráveis por EDL
 
@@ -1236,7 +1363,7 @@ sustentadas por um teste de guarda; agora é uma árvore só, e a única diferen
 fica atrás de um `#ifdef`. O `make compare-single-multi` caiu de **11 para 5** arquivos.
 
 **A aeronave é dado do MODELO, não do cenário — e por isso mora aqui, não em `src/poc/<poc>/data/`.**
-As três pocs (`single-thread`, `multi-thread`, `bandit-dis`) pilotavam a mesma cópia
+As três pocs (`single-thread`, `multi-thread`, `bandit`) pilotavam a mesma cópia
 byte-idêntica de `data/jsbsim/` (o c310), vendorizada três vezes. Não é coincidência: o próprio
 `domain/`/`bt/` deste modelo é calibrado **para o c310** especificamente —
 `maxClimbRateMps`/`maxRateOfTurnDps` do `Autopilot`, a folga de `TerrainFloor` contra o piso
@@ -1245,7 +1372,7 @@ trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subd
 `data/jsbsim/` em `models/plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
 `install-host` de `models/flight/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos três
-cenários — inclusive o de `src/poc/bandit-dis`, que não carrega o plugin nenhum, mas pilota a mesma
+cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
 aeronave — aponta para lá. `make install` já encadeia `build` → `sync-plugins` → `models`, então
 a ordem normal (`configure → build → install`, ou só `test`, que já inclui `install`) garante o
 arquivo no lugar antes de qualquer binário RODAR — não antes de compilar, que não precisa dele.
@@ -1323,12 +1450,22 @@ falcon1 indo de 141° para 34°.
 1. Criar `src/poc/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
    executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
    `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`). `src/poc/` é a pasta que
-   agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis/python-flight/onnx-policy) — o dashboard (`./app/`)
+   agrupa as pocs de execução real (single-thread/multi-thread/bandit/python-flight/onnx-policy) — o dashboard (`./app/`)
    fica fora, na raiz, por ser o único ocupante da própria pasta. **Exceção**: `src/poc/rl-training/`
    também mora aqui, mas não segue esta receita — é só Python (o consumidor de treino de `src/rl`),
    sem `main.cpp`/`mixr_factory`/entrada em `src/poc/meson.build`.
 2. Adicionar `subdir('./<nome>')` em [src/poc/meson.build](src/poc/meson.build) — não em
-   `src/meson.build`, que só delega pra `subdir('./poc')`.
+   `src/meson.build`, que só delega pra `subdir('./poc')`. Se a poc nova pertencer a um GRUPO
+   (hoje só existe um, `src/poc/dis/`, das três que trocam DIS entre si), o `subdir()` vai no
+   `meson.build` do grupo, e `src/poc/meson.build` só chama o grupo.
+
+   **Guardas que já pagaram por profundidade de caminho — não redescobrir:**
+   `check_duplication.sh` descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
+   `check_falcons_estrutura.sh` varria o glob `src/poc/*/configs/scenario.epp.in`. Agrupar as três
+   pocs de DIS um nível abaixo fez as duas **deixarem de enxergá-las continuando VERDES** — o modo
+   de falha exato que esses arquivos existem para evitar. Hoje as duas descobrem por `find` com
+   `-path`, a qualquer profundidade; o mesmo vale para `tests/scenario/make_fixture.py` (que
+   procura a poc em vez de concatenar `src/poc/<nome>`) e para o `.gitignore` (`src/poc/**/data/`).
 3. Adicionar o alvo `run-<nome>` no [Makefile](Makefile) — apontando para
    `$(BUILD_DIR)/src/poc/<nome>/src/<nome>`.
 4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args`, `build_rpath: mixr_libdir`
@@ -1368,7 +1505,7 @@ Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (sil
 ## Demo: míssil guiado (segundo modelo, ativação de player em runtime, lançamento/detonação/destruição)
 
 Exemplo acadêmico, isolado da produção: `falcon1`, no cenário de demo
-`src/poc/single-thread/configs/scenario_missile_demo.epp.in` (rodado com `-f`, binário `single-thread`
+`src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in` (rodado com `-f`, binário `single-thread`
 já existente — nenhum host mudou), carrega **um** míssil guiado e o lança contra um `bandit1`
 LOCAL (sem `networks:`, mesmo motivo do `tests/scenario/make_fixture.py`: hermético). Existe para
 exemplificar três coisas, nesta ordem:
@@ -1445,7 +1582,7 @@ exemplificar três coisas, nesta ordem:
    alcance do primeiro contato nunca dispara: a janela de lançamento é o primeiro frame com
    contato, ou nunca.
 6. **Comentário de XML do JSBSim não aceita `--` (hífen duplo) em lugar nenhum do corpo**, mesma
-   classe de armadilha do parser EDL com acento (ver a armadilha 5 da seção `bandit-dis` acima) —
+   classe de armadilha do parser EDL com acento (ver a armadilha 5 da seção `bandit` acima) —
    aqui é o `xmllint`/parser XML do JSBSim que recusa, não o `edl_parser`. Confirmado quebrando
    várias vezes escrevendo os comentários longos de `aim1.xml`: `xmllint --noout <arquivo>` antes
    de rodar economiza o ciclo de "recompilar só para descobrir que é um typo de comentário".
@@ -1467,6 +1604,39 @@ herméticos, em `configs/` (`scenario_patrol`/`scenario_intercept`/`scenario_int
 com porta de Tacview (**1236**) e diretório de dados (`./app/data/`) próprios — dá para
 rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
 
+**O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
+`src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —
+`app -scenario <chave>` (as chaves estão em `app/ScenarioCatalog.cpp`) ou `app -f <arquivo>` para
+um cenário fora do catálogo, que é como as fixtures de teste entram. Ver "Estrutura de um
+subprojeto" acima para o porquê e para a prova de neutralidade.
+
+O que o `./app` precisou ganhar para isso, e nada mais:
+
+1. **`xmsg_dep`/`xjoystick_dep` linkadas e as duas factories encadeadas** — os cenários das pocs
+   declaram `( MsgFeed )` e `( JoystickIoHandler )`, e sem isso o parser recusa com "nome de
+   fábrica desconhecido".
+2. **`-f <arquivo>`** ao lado do `-scenario <chave>` — é por ele que todo teste roda (fixture
+   gerada por `make_fixture.py`).
+3. **A FROTA virou campo do cenário** (`ScenarioEntry::fleet`), não uma lista fixa no `main.cpp`:
+   o `bandit` tem UM player, e `falcon1..4` fixo abortaria nele (`collectFleet()` sai com erro
+   quando um nome não existe — e é isso que se quer).
+4. **O `ioHandler` passou a ser sondado no laço da TUI**, no mesmo lugar e taxa em que o laço de
+   tempo real das pocs o sondava (10 Hz, fora do frame T/C) — é o joystick do `bandit`.
+5. `MetaObjectReport` voltou a reportar `MsgFeed`/`MsgReport`, e `Options` recuperou o
+   `parseLongOrDie`/`parseIntOrDie` que só existia do lado das pocs.
+
+**Bug real encontrado NA TROCA, e é o tipo de coisa que só aparece assim:** os três cenários
+próprios do `./app` são herméticos, então a TUI nunca tinha aberto uma `Station` com `networks:`.
+Ao rodar as pocs de DIS, o app morria em segundos — `SIGSEGV` em `List::Item::getValue()` e, depois
+do primeiro conserto, `terminate` com `ExpInvalidRefCount` de dentro da própria
+`Station::processNetworkInputTasks()`. Causa: **`Station::getNetworks()` NÃO é pre-ref()'d** — ao
+contrário de `getPlayers()`, que o cabeçalho do framework marca como tal, ele devolve o membro cru
+(`Station.cpp:639-642`). Havia **três** `unref()` sobre ele (dois em `app/ComponentTreeQuery.cpp`,
+um em `app/DashboardState.cpp`, este último a 10 Hz), cada um soltando uma referência nunca tomada;
+em poucos segundos o contador chegava a zero e o `PairStream` era destruído embaixo de quem o
+percorria. Travado por `scenario-app-quit-dis`.
+
+
 **Duas decisões de arquitetura, e o "porquê" de cada uma:**
 
 - **FTXUI é a primeira dependência nova do HOST** nesta série de mudanças (as anteriores só
@@ -1486,6 +1656,15 @@ rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
 
 **Armadilhas confirmadas rodando — não redescobrir:**
 
+0. **A porta do Tacview do `./app` estava 1234 no fragmento, não 1236.**
+   `app/configs/fragments/tacview_recorder.epp.frag` é quem manda (os três cenários próprios o
+   incluem por `@include:@`), e ele trazia `port: 1234` — a porta das gêmeas — contra os 1236 que
+   `app/README.md` sempre documentou "de propósito, pra rodar junto sem colidir". Ficou inofensivo
+   enquanto cada binário rodava sozinho; deixou de ser quando o `./app` virou o runner das pocs e
+   dois testes de saída seguidos (`scenario-app-quit`, com `patrol`, e `scenario-app-quit-dis`, com
+   `multi-thread`) passaram a abrir a MESMA porta — um deles morreu com `SIGSEGV` no caso do
+   cliente pendurado, uma vez em duas execuções da suíte, e passava sempre quando rodado sozinho.
+   Corrigido no fragmento.
 1. **`shared/xclock::TimeControls`/`ConsoleKeyboard` NÃO entram aqui.** Os dois mexem em
    `termios` (modo bruto do terminal) por fora do FTXUI — que já é dono do terminal assim que
    `ScreenInteractive::Fullscreen()` começa (alternate screen buffer, o próprio modo bruto dele).
@@ -1993,7 +2172,7 @@ ganhou uma quarta aba mostrando o que roda na thread de tempo NÃO crítico.**
     `provides:`; remove os quatro blocos `agentN: ( SimAgent actorPlayerName: falconN ... )` de
     dentro de `components:` da `Station`; injeta `agent: ( FlightAgentTC state: ... behavior:
     ... )` como o ÚLTIMO componente de cada `falconN: ( Aircraft ... components: { ... } )` —
-    mesma ordem/motivo já documentado na seção `src/poc/multi-thread` deste arquivo (fase 3 roda
+    mesma ordem/motivo já documentado na seção `src/poc/dis/multi-thread` deste arquivo (fase 3 roda
     `Autopilot`/`AirTrkMgr`/decisão nessa ordem; decidir por último já vê as pistas atualizadas
     deste frame). O script usa casamento de parênteses "de verdade" (ignora `//` e `"..."` ao
     contar profundidade) — não regex ingênuo — porque o conteúdo de `state:`/`behavior:` de cada
@@ -2006,8 +2185,8 @@ ganhou uma quarta aba mostrando o que roda na thread de tempo NÃO crítico.**
   - **No cenário do míssil, `agent:` entra DEPOIS de `stores:`** (o `GuidedMissile` de
     `falcon1`) — a migração preserva a ordem "agente é o ÚLTIMO componente", com `stores:` ainda
     antes dele; conferido lendo o arquivo migrado.
-  - Cabeçalhos dos três `.epp.in` que citavam `src/poc/single-thread`/`SimAgent`/`libflight.so` como
-    a pilha de referência foram corrigidos para `src/poc/multi-thread`/`FlightAgentTC`/
+  - Cabeçalhos dos três `.epp.in` que citavam `src/poc/dis/single-thread`/`SimAgent`/`libflight.so` como
+    a pilha de referência foram corrigidos para `src/poc/dis/multi-thread`/`FlightAgentTC`/
     `libflight_tc.so`.
   - **Medido rodando (execução direta, não interativa — `timeout 3 ./build/app/src/app -scenario
     intercept`, redirecionado a arquivo): os 4 falcons saem `T3`, `T0`, `T1`, `T2`** — quatro
@@ -2605,11 +2784,11 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
   uma vez. Verificado nos dois sentidos: **falha** contra o código sem `SO_SNDTIMEO` e passa com
   ele. `make test` 37/37; `check-single-thread`/`check-multi-thread` inalterados.
 - **ATUALIZAÇÃO (passada posterior): as outras pocs ganharam a MESMA correção de ordem.** O
-  risco era real e não teórico — `single-thread`/`multi-thread`/`bandit-dis`/`python-flight`/
+  risco era real e não teórico — `single-thread`/`multi-thread`/`bandit`/`python-flight`/
   `onnx-policy` rodam o mesmo padrão de laço (`createTimeCriticalProcess()` +
   `updateData()` em loop) e faziam só `station->event(SHUTDOWN_EVENT); unref();` na saída, sem
   calar a thread T/C antes. Cada uma ganhou seu próprio `app/Shutdown.{hpp,cpp}` (cópia adaptada
-  do `./app`, comparada por `tests/guard/check_duplication.sh`; `bandit-dis` usa a variante sem
+  do `./app`, comparada na época por `tests/guard/check_duplication.sh`; `bandit` usava a variante sem
   `ClockStation`, só o fallback nativo `setFastForwardRate(0)`), com `main.cpp` chamando
   `quiesceTimeCritical()` antes de `shutdownStation()`. `tests/scenario/run_poc_quit_test.py`
   (SIGINT, sem pty — estas pocs não têm diálogo de confirmação nem TUI) cobre saída normal e
@@ -2747,6 +2926,102 @@ abas F1/F2.**
   `players` e chegando em `falcon1`, o card mostrando `modo ativo / BLUE / 1747 m MSL / 854 m AGL
   / 83.9 deg / 146.7 kt / EVADE / 361 decisoes / T0`, e `[o]`/`[f]` reenquadrando.
 
+**Vigésima primeira passada: na aba F6, `[Espaço]` passou a pausar a SIMULAÇÃO de verdade, `[n]`
+virou um passo de UM frame real, e a cadeia de chamadas do frame — nome de função, argumento e
+`dt` — virou um painel próprio.**
+
+- **O problema era honesto e mensurável**: `[Espaço]` mexia só no relógio da *animação*; a
+  simulação seguia correndo, e o cabeçalho (`t=`/`sim=`/`thr=`) não refletia nada do que se
+  comandava na aba. Agora `[Espaço]` chama o MESMO `doTogglePause()` do botão/tecla global, e a
+  animação virou **escrava** desse estado: `setComponentFlowPlaying(flow, !paused)` roda a cada
+  redesenho no Renderer mais externo — não na ação de tecla —, então a pausa vinda de qualquer
+  lugar (o botão da barra principal, `p`, um breakpoint de BT atingido) para o pulso junto.
+  `toggleComponentFlowPlaying()` deixou de existir: dois relógios independentes era exatamente o
+  defeito.
+- **`[n]` é um passo de verdade: um `Station::tcFrame(dt)`, com `dt = 1 / tcRate`.** Pausa antes,
+  se estiver rodando (o gesto de qualquer depurador; e sem isso haveria duas threads dentro do
+  mesmo frame). O passo é executado em `simThread`, **nunca** na thread de desenho, e só quando
+  `ClockStation::isPaused()` — é seguro porque `ClockStation::processTimeCriticalTasks()` retorna
+  cedo quando pausado, então a thread T/C nativa está viva mas não chama `tcFrame()`. Vai **antes**
+  do `station->updateData(dt)` da mesma iteração, para a passada de fundo já ver o estado novo e
+  drenar o gravador. Medido sob pty: 10 toques levaram `sim=` de 4,3 s a 4,5 s — **exatamente
+  10 × 0,020 s**.
+- **`app/FrameCallChain.{hpp,cpp}` (novo, puro — sem MIXR, sem FTXUI)**: a cadeia de chamadas de
+  cada fase, com `arquivo:linha` do fonte do framework em cada item e os **valores vivos** de `dt`
+  (de `getTimeCriticalRate()`/`getFastForwardRate()`). Não é traçado ao vivo — é a estrutura
+  estática do código do framework, lida de `contexts/src/mixr/src/`, preenchida com os números da
+  execução. As três coisas que ela existe para tornar óbvias, todas conferidas no fonte antes de
+  escritas:
+  1. **O `dt` desce dividido por 4 e volta multiplicado por 4.** `updateTcPlayerList` passa
+     `dt0/4` (`Simulation.cpp:595`), e dentro de `Player::updateTC` o `dt4 = dt * 4`
+     (`Player.cpp:561`) devolve o `dt` do frame inteiro para os módulos que rodam uma vez a cada
+     quatro fases.
+  2. **`execTime += dt` acontece ANTES do teste de freeze** (`Simulation.cpp:462` contra a 498) —
+     é a razão de pausar ter de deixar de chamar `tcFrame()`, e não só marcar o flag; a mesma
+     armadilha já registrada em `shared/xclock`.
+  3. **As duas recursões não são simétricas**: `Component::updateTC()` desce chamando
+     `obj->tcFrame(dt)` (`Component.cpp:243`), mas `Component::updateData()` chama
+     `obj->updateData(dt)` **direto** (`Component.cpp:269`) — não existe `bgFrame()`.
+- **A informação do passo mora DENTRO do desenho, não num painel de texto ao lado.** A primeira
+  tentativa foi um painel de cadeia de chamadas de 16 linhas embaixo do canvas — e ele roubava ~19
+  linhas justamente da árvore, que é a peça que se quer olhar. Desfeito na mesma passada; o que
+  ficou:
+  - **Faixa de fases** (`renderFramePhaseStrip`) — um diagrama de pipeline ocupando a MESMA linha
+    única que antes era um texto esmaecido: `FRAME T/C 50.0 Hz dt=0.020000s │ tcFrame → 0 dynamics
+    → 1 transmit / 2 receive → 3 process ⇒ FUNDO 10.0 Hz │ Agent::controller → updateData`. O
+    bloco da fase corrente vem preenchido com a cor da fase; os demais, esmaecidos. A seta dupla
+    `⇒` marca a fronteira entre as duas **threads**.
+  - **O caminho da recursão ACESO no próprio canvas.** Toda aresta que faz parte da descida desta
+    fase sai na cor da fase, contra o cinza das demais — é literalmente `Component::updateTC()`
+    chamando `obj->tcFrame(dt)` em cada filho, que é a recursão que a árvore representa. Uma
+    **onda** branca percorre esse caminho de cima para baixo, um nível por passo de animação,
+    usando o MESMO contador de redesenhos de `tickComponentFlowAnimation()` (não há relógio novo).
+  - **O rótulo da chamada no próprio nó** (`nodeCallLabel()`): quem participa da fase corrente
+    ganha, logo abaixo do nome, `dynamics(0.020s)` / `tx+rx(0.020s)` / `process(0.020s)` /
+    `updateData(0.100s)` em amarelo. É a resposta a "que função, com que argumento" colada no
+    componente que a executa.
+  - **O card de detalhe ganhou a seção "nesta fase"**: o que ESTE componente executa agora e o
+    **caminho da recursão** que chega até ele, com nome, argumento e `arquivo:linha`. Vai no card
+    porque ele já tinha espaço sobrando e porque a informação é por-componente, não global.
+  - **Estado grande e inequívoco**: `‖ SIMULAÇÃO PAUSADA` em amarelo / `▷ SIMULAÇÃO RODANDO` em
+    verde, ao lado da fase — e o rótulo do botão de passo carrega o `dt` real
+    (`[n] Passo 0.0200s`).
+
+**Armadilhas confirmadas — não redescobrir:**
+
+1. **`p.paused ? "texto" : {}` não compila** num parâmetro `const std::string&` — o `{}` não tem
+   tipo dedutível no ternário. Precisa de `std::string{}` dos dois lados.
+2. **`const bool x{a == b}`** dentro de uma lista de inicialização com comparação encadeada
+   confunde o parser em algumas formas; `const bool x = (a == b)` é o que se usou aqui.
+3. **O passo manual não pode rodar na thread de desenho.** `stepFrameRequests` é um
+   `std::atomic<int>` drenado por `exchange(0)` no laço de `simThread` — a thread que já é dona de
+   `updateData()`.
+4. **O caminho aceso tem de atravessar galho RETRAÍDO.** Com os players fechados (o estado
+   inicial), os participantes da fase 3 não estão no layout e o caminho não acendia nada — bem na
+   hora em que o usuário mais quer ver por onde a chamada desceria. Por isso
+   `ComponentTreeNode::subtreePhaseMask`, um bitmask das fases presentes na subárvore INTEIRA
+   (inclusive escondida), calculado de baixo para cima na descoberta; um galho retraído que
+   esconde um participante sai com o **rótulo na cor da fase**, convidando a abrir.
+5. **O caminho da recursão no card é mostrado pela CAUDA, não pela cabeça.** O card tem altura
+   fixa (a mesma de F1/F2) e o começo da cadeia é sempre o mesmo preâmbulo genérico — cortar pelo
+   fim escondia justamente a linha que interessa. Medido: com a cabeça, `case 3: process(dt4)`
+   ficava de fora. O `arquivo:linha` só aparece na linha ativa; nas outras competia por largura
+   com o nome da função e cortava os dois.
+
+- **Testado**: `tests/app/test_frame_call_chain.cpp` (alvo `app-frame-call-chain`, suíte `domain`,
+  11 testes, sem MIXR e sem FTXUI) — o `dt` que desce dividido e volta multiplicado, cada fase
+  destacando a chamada que de fato executa (as fases 1 e 2 destacam **as duas**), as fases de fundo
+  caindo na outra cadeia, `dt0` zerado quando pausado, o `fastForwardRate` aparecendo no laço, o
+  caminho da descida sendo um subconjunto coerente da cadeia (mantém a ativa e os ancestrais,
+  descarta os ramos não tomados, nunca salta profundidade), e o rótulo curto do nó (só quem
+  participa da fase corrente ganha um; o de fundo usa o `dt` de fundo). `tests/app/test_component_flow_state.cpp` acompanhou a
+  troca do toggle pelo setter, incluindo o caso que a motivou: chamar com o valor que já vale é
+  no-op, senão o contador de redesenhos zeraria a cada quadro e a animação nunca avançaria.
+  Verificado sob pty: `[Espaço]` leva o cabeçalho a `PAUSADO (1x)` e congela `sim=` em 4,3 s por
+  3 s de parede (com `t=` correndo, que é o certo — é tempo de parede); 10 × `[n]` movem `sim=` de
+  4,3 s para 4,5 s; `[Espaço]` volta a rodar; e a cadeia rola sozinha até as linhas `case 3:
+  process(dt4 = 0.020000 s)` quando a fase corrente é a 3.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
@@ -2788,8 +3063,8 @@ visibilidade oculta é frágil — o RTTI de `FlightState` não está pensado pr
 plugin. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico: `RLBridgeBehavior` virou o
 **oitavo** nome que `libflight`/`libflight_tc.so` exportam, e como `provides:` é igualdade EXATA de
 conjunto contra o que a `.so` exporta, TODO cenário que carrega esse plugin precisou de uma linha a
-mais em `provides:` — `src/poc/single-thread/configs/scenario.epp.in`,
-`src/poc/multi-thread/configs/scenario.epp.in` e os três `app/configs/scenario_*.epp.in` —
+mais em `provides:` — `src/poc/dis/single-thread/configs/scenario.epp.in`,
+`src/poc/dis/multi-thread/configs/scenario.epp.in` e os três `app/configs/scenario_*.epp.in` —
 nenhuma mudança de comportamento, só manter o
 contrato satisfeito. Pelo mesmo motivo, `models/fixtures/stub/src/stub.cpp` (o "modelo estranho" de
 teste) também ganhou uma `RLBridgeBehavior` trivial (`genAction()` sempre devolve `nullptr`) — sem

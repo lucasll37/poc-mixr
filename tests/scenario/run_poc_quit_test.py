@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prova que single-thread/multi-thread/bandit-dis ENCERRAM de verdade.
+"""Prova que single-thread/multi-thread/bandit ENCERRAM de verdade.
 
 POR QUE ISTO EXISTE (ver a "decima oitava passada" do ./app no CLAUDE.md
 raiz): sair do ./app com [q] costumava travar o processo para sempre. A causa
@@ -17,7 +17,7 @@ tinha DUAS metades:
      xclock/ClockStation.hpp) e/ou segue enfileirando registros numa fila sem
      teto depois que ninguem mais a drena. Essa metade so tinha sido aplicada
      ao ./app (app/Shutdown.hpp) -- este teste prova que agora tambem vale
-     para single-thread/multi-thread/bandit-dis (mesmo padrao, replicado em
+     para single-thread/multi-thread/bandit (mesmo padrao, replicado em
      cada app/Shutdown.hpp/.cpp local), que rodam a MESMA forma de laco
      (createTimeCriticalProcess() + updateData() em laco continuo).
 

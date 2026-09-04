@@ -52,7 +52,7 @@ repositório que publica um `Player`.
   trivial de explicar. **Proporcional-derivativo, não só proporcional**: o termo de taxa é o
   amortecimento que falta a um controlador só-P, e `tests/domain` trava essa propriedade.
 - **Plugin PRÓPRIO, ao lado do `flight`** — carregado por um segundo `( PluginModule )`, só no
-  cenário de demo `src/poc/single-thread/configs/scenario_missile_demo.epp.in`. O motivo é o
+  cenário de demo `src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in`. O motivo é o
   `provides:`, que é igualdade EXATA de conjunto: acrescentar `GuidedMissile` aos nomes do
   `flight` obrigaria TODO cenário que carrega aquele `.so` — os de produção inclusive — a
   atualizar a lista.

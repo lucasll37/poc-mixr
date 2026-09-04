@@ -1,7 +1,7 @@
 // A maquina de estados do caca, carregada do flight_tree.xml DE PRODUCAO.
 //
 // Nao ha copia do XML aqui de proposito: o caminho vem do meson
-// (FLIGHT_TREE_XML) e aponta para src/poc/single-thread/configs/flight_tree.xml.
+// (FLIGHT_TREE_XML) e aponta para src/poc/dis/single-thread/configs/flight_tree.xml.
 // Um teste contra uma copia provaria que a copia esta certa, o que nao
 // interessa a ninguem -- o que se quer travar e a arvore que voa.
 //

@@ -63,12 +63,10 @@ namespace {
 
 const double cruiseThrottle{0.95};
 
-// Mesmos quatro falcons das outras pocs -- bandit1 (quando presente, cenario
-// 'intercept'/'intercept_missile') e local ao .epp, nunca nesta lista (ver
-// o "porque" no comentario equivalente de single-thread/src/main.cpp).
-const std::vector<std::string> playerNames{
-   "falcon1", "falcon2", "falcon3", "falcon4"
-};
+// A FROTA nao mora mais aqui: e do CENARIO (ScenarioEntry::fleet). Foi o que
+// mudou quando o ./app virou o runner unico das pocs -- 'bandit' tem UM player
+// so, e uma lista fixa de falcon1..4 no main abortaria nele. Ver
+// app/ScenarioCatalog.hpp.
 
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
@@ -81,10 +79,17 @@ int main(int argc, char* argv[])
 
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
-   // Sem '-scenario': mostra a tela de selecao ANTES de tocar em Station
-   // nenhuma -- nao precisa de reexec aqui, e a primeira carga do processo.
+   // '-f <arquivo>' e o caminho de fora do catalogo (fixtures de teste): vira
+   // uma entrada sintetica e pula a tela de selecao.
+   const app::ScenarioEntry adHoc{opts.scenarioPath.empty()
+                                     ? app::ScenarioEntry{}
+                                     : app::adHocScenario(opts.scenarioPath)};
+
+   // Sem '-scenario' nem '-f': mostra a tela de selecao ANTES de tocar em
+   // Station nenhuma -- nao precisa de reexec aqui, e a primeira carga do
+   // processo.
    std::string scenarioKey{opts.scenarioKey};
-   if (scenarioKey.empty()) {
+   if (scenarioKey.empty() && opts.scenarioPath.empty()) {
       scenarioKey = app::runScenarioPicker();
       if (scenarioKey.empty()) {
          std::cout << "Nenhum cenario selecionado. Ate mais." << std::endl;
@@ -92,11 +97,15 @@ int main(int argc, char* argv[])
       }
    }
 
-   const app::ScenarioEntry* const entry{app::findScenario(scenarioKey)};
-   if (entry == nullptr) {
-      std::cerr << "app: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
-      return EXIT_FAILURE;
+   const app::ScenarioEntry* entry{&adHoc};
+   if (opts.scenarioPath.empty()) {
+      entry = app::findScenario(scenarioKey);
+      if (entry == nullptr) {
+         std::cerr << "app: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
+         return EXIT_FAILURE;
+      }
    }
+   const app::ScenarioEntry& cenario{*entry};
 
    if (opts.isDeterministic()) mixr::xlog::setLoggingEnabled(false);
 
@@ -108,24 +117,27 @@ int main(int argc, char* argv[])
    // do Mapa (ver app/TerrainQuery.hpp); nenhum cenario depende deles.
    app::ensureAllTerrainTiles(terrainDir);
 
-   const std::string generatedPath{"./app/configs/" + entry->key + ".generated.epp"};
+   const std::string generatedPath{"./app/configs/" + cenario.key + ".generated.epp"};
    const std::map<std::string, std::string> tacviewTokens{
-      {"SCENARIO_ID", entry->tacviewId},
-      {"MODEL_MAP", entry->tacviewModelMap},
-      {"TYPE_MAP", entry->tacviewTypeMap},
-      {"COLOR_MAP", entry->tacviewColorMap},
+      {"SCENARIO_ID", cenario.tacviewId},
+      {"MODEL_MAP", cenario.tacviewModelMap},
+      {"TYPE_MAP", cenario.tacviewTypeMap},
+      {"COLOR_MAP", cenario.tacviewColorMap},
    };
    const int numTcThreads{
-      app::generateScenario(entry->templatePath, generatedPath, opts.threadsOverride, tacviewTokens)};
+      app::generateScenario(cenario.templatePath, generatedPath, opts.threadsOverride, tacviewTokens)};
 
    mixr::simulation::Station* const station{app::buildStation(generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};
    mixr::xtacview::TacviewOutput* const tacviewOutput{app::tacviewOutputOf(station)};
+   // So o cenario 'bandit' declara 'ioHandler:'; nos demais isto e nullptr e
+   // vira um aviso, nao erro (ver StationBuilder.cpp).
+   mixr::linkage::IoHandler* const ioHandler{app::ioHandlerOf(station)};
 
    app::primeStation(station);
 
    mixr::models::WorldModel* const worldModel{app::worldModelOf(station)};
-   const app::Fleet fleet{app::collectFleet(worldModel, playerNames)};
+   const app::Fleet fleet{app::collectFleet(worldModel, cenario.fleet)};
    app::applyCruiseThrottle(fleet, cruiseThrottle);
 
    int rc{};
@@ -142,7 +154,7 @@ int main(int argc, char* argv[])
       // saber que a tecnologia de BT e o BehaviorTree.CPP.
       const app::BtNode behaviorTree{app::loadTreeForScenario(generatedPath)};
       action = app::runDashboard(station, worldModel, clockStation, tacviewOutput,
-                                 numTcThreads, entry->label, behaviorTree);
+                                 ioHandler, numTcThreads, cenario.label, behaviorTree);
    }
 
    // Nao e 'event(SHUTDOWN_EVENT) + unref()' cru: ver app/Shutdown.hpp para o
@@ -155,7 +167,7 @@ int main(int argc, char* argv[])
 
    switch (action) {
       case app::DashboardExit::Restart:
-         app::respawnSelf({"-scenario", entry->key});
+         app::respawnSelf({"-scenario", cenario.key});
          break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::ChangeScenario:
          app::respawnSelf({});

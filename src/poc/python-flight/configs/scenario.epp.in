@@ -33,12 +33,12 @@
 // avisa os outros e o C++, quem faz a manobra e o Python.
 //
 // AERONAVE: c310 (Cessna 310), a mesma das gemeas -- ver o cabecalho de
-// src/poc/multi-thread/configs/scenario.epp.in para o porque (e a unica
+// src/poc/dis/multi-thread/configs/scenario.epp.in para o porque (e a unica
 // aeronave distribuida com o JSBSim que tem autopilot 'ap/*' proprio, sem o
 // qual o ( Autopilot ) nativo nao comanda nada).
 //
 // PORTAS PROPRIAS, para rodar ao lado das outras pocs: Tacview 1237 (as
-// gemeas usam 1234, o bandit-dis 1235) e DIS 3004.
+// gemeas usam 1234, o bandit 1235) e DIS 3004.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -190,14 +190,14 @@
    } // components (mensageria)
 
    // --------------------------------------------------------------------
-   // bandit1 (o intruso) mora no processo proprio src/poc/bandit-dis, pilotado
+   // bandit1 (o intruso) mora no processo proprio src/poc/dis/bandit, pilotado
    // por joystick fisico ou pelo Autopilot scripted de fallback, que emite
    // seu estado via DIS NATIVO do MIXR (mixr::dis -- namespace real da lib,
    // apesar do caminho do header ser mixr/interop/dis/; factory names
    // 'DisNetIO'/'DisNtm').
    //
    // BIDIRECIONAL: esta Station RECEBE o bandit1 (inputEntityTypes:) e
-   // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit-dis recebe
+   // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit recebe
    // de volta e mostra as falcons no proprio Tacview dele (porta 1235).
    // Sem 'enableOutput: false', o output volta ao default nativo (true).
    //
@@ -214,12 +214,12 @@
    // publicar) -- falcon1..4 e bandit1 sao a MESMA classe/type
    // ("Aircraft"/"C310"), entao o mesmo disEntityType serve pros dois
    // sentidos sem ambiguidade: cada lado so ouve trafego de quem so emite
-   // UMA coisa (bandit-dis so emite bandit1; esta Station so emite
+   // UMA coisa (bandit so emite bandit1; esta Station so emite
    // falcon1..4).
    //
    // Esquema de portas (ver o comentario irmao em
-   // src/poc/bandit-dis/configs/scenario.epp): todo mundo escuta em 3000;
-   // bandit-dis emite da 3001, single-thread da 3002, multi-thread da 3003 e
+   // src/poc/dis/bandit/configs/scenario.epp): todo mundo escuta em 3000;
+   // bandit emite da 3001, single-thread da 3002, multi-thread da 3003 e
    // esta Station da 3004 -- as quatro podem rodar ao mesmo tempo.
    //
    // disEntityType TEM que ser identico dos dois lados -- e como o Ntm casa
@@ -782,7 +782,7 @@
             }
          )
 
-         // Intruso: nao mora aqui, e sim no processo src/poc/bandit-dis --
+         // Intruso: nao mora aqui, e sim no processo src/poc/dis/bandit --
          // recebido so pela rede via 'networks:' (ver o comentario logo
          // acima de 'dataRecorder:'). Mesma aeronave, mesmos valores
          // iniciais do lado de la.

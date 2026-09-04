@@ -49,7 +49,7 @@ para agrupar, não antes.
 
 O MIXR **não tem** broker, fila global, pub/sub nem roteamento declarativo no `.epp` — e essa
 ausência é deliberada, documentada em
-[`src/poc/single-thread/README.md` §9](../src/poc/single-thread/README.md#9-interação-entre-players).
+[`src/poc/dis/single-thread/README.md` §9](../src/poc/dis/single-thread/README.md#9-interação-entre-players).
 A única primitiva de interação entre objetos no MIXR inteiro é:
 
 ```cpp

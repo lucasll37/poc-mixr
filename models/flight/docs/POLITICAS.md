@@ -217,7 +217,7 @@ escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o `Fallback` segu
 make run-multi-thread
 
 # passo fixo, comparável, imprimindo o dump a cada 100 frames
-./build/src/poc/multi-thread/src/multi-thread -threads 4 -deterministic 600
+./build/src/poc/dis/multi-thread/src/multi-thread -threads 4 -deterministic 600
 ```
 
 No dump, a coluna `bt=` diz **qual nó decidiu**: `PATROL`/`EVADE`/… (C++), `PY` (Python), `ONNX`

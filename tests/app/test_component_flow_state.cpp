@@ -19,7 +19,7 @@ using app::EstimatedPhase;
 using app::kComponentFlowCycle;
 using app::kComponentFlowCycleLen;
 using app::tickComponentFlowAnimation;
-using app::toggleComponentFlowPlaying;
+using app::setComponentFlowPlaying;
 
 TEST(ComponentFlowState, ComecaNaPrimeiraFaseDoCiclo)
 {
@@ -48,16 +48,24 @@ TEST(ComponentFlowState, TodaFaseDoCicloEDistintaDeUnknown)
    }
 }
 
-TEST(ComponentFlowState, TogglePlayingAlternaEZeraContador)
+TEST(ComponentFlowState, SetPlayingAlternaEZeraContador)
 {
    ComponentFlowState flow;
    EXPECT_TRUE(flow.playing);
    flow.redrawsSincePlay = 3;
-   toggleComponentFlowPlaying(flow);
+   setComponentFlowPlaying(flow, false);
    EXPECT_FALSE(flow.playing);
    EXPECT_EQ(flow.redrawsSincePlay, 0);
-   toggleComponentFlowPlaying(flow);
+   setComponentFlowPlaying(flow, true);
    EXPECT_TRUE(flow.playing);
+
+   // Chamada com o valor que JA vale e no-op -- e o caso normal, porque
+   // DashboardLoop.cpp sincroniza a reproducao com a pausa da simulacao a
+   // CADA redesenho; sem essa guarda o contador de redesenhos zeraria toda
+   // vez e a animacao nunca avancaria.
+   flow.redrawsSincePlay = 3;
+   setComponentFlowPlaying(flow, true);
+   EXPECT_EQ(flow.redrawsSincePlay, 3);
 }
 
 TEST(ComponentFlowState, CycleSpeedPercorre1249)

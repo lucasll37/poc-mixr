@@ -1,19 +1,24 @@
-# As duas pocs são o MESMO modelo; o nome diz só onde a decisão do UBF roda
-# (SimAgent nativo, em updateData(), x FlightAgentTC próprio, na fase 3 do
-# frame). A simulação em si é multithread nas duas — ver src/poc/*/README.md.
-subdir('./single-thread')
-subdir('./multi-thread')
-
-# bandit1 num processo proprio (joystick/Autopilot + emissao DIS) -- as duas
-# pocs acima recebem esse player so pela rede, sem declara-lo localmente.
-subdir('./bandit-dis')
-
-# A MESMA pilha do multi-thread, com as leis de voo em PYTHON: a arvore chama
-# ( PyDecide ), que roda um decide(obs) de configs/policy/*.py dentro da fase 3
-# do frame. Editar a politica deixa de ser recompilar -- ver o README.
-subdir('./python-flight')
-
-# A MESMA pilha do multi-thread, com a decisao numa REDE NEURAL: a arvore tem
-# uma folha so, ( OnnxPolicy ), que infere um .onnx dentro da fase 3 do frame.
-# Trocar as regras pela rede foi trocar o 'treeFile:' -- ver o README.
-subdir('./onnx-policy')
+# ==============================================================================
+# As POCs NAO SAO MAIS ALVOS DE BUILD -- nao ha subdir() nenhum aqui.
+#
+# Cada pasta sob src/poc/ e hoje so DADO: 'configs/' (o cenario EDL), 'data/'
+# (o que a execucao escreve) e o README. Quem as executa e o ./app, o runner
+# unico -- 'app -scenario <chave>' (ver app/ScenarioCatalog.hpp) ou
+# 'app -f <arquivo>' para um cenario fora do catalogo.
+#
+# POR QUE: cada poc carregava uma copia byte a byte da camada de aplicacao
+# (~1.500 linhas: include/app/ + src/app/ + mixr_factory), sustentada pela
+# guarda tests/guard/check_duplication.sh. Era duplicacao real, e ja tinha
+# cobrado o preco: a correcao de ordem do encerramento (calar a thread T/C
+# antes do SHUTDOWN_EVENT) teve de ser copiada, uma a uma, para as cinco.
+# Hoje a duplicacao esta dissolvida POR CONSTRUCAO -- do mesmo jeito que
+# aconteceu quando o MODELO saiu para models/flight -- e a guarda que a
+# sustentava foi aposentada junto.
+#
+# PROVA DE NEUTRALIDADE (medida na troca): o dump 'frame=' de single-thread,
+# multi-thread, python-flight, onnx-policy e built-in_mixr_1 rodados pelo
+# ./app saiu BYTE-IDENTICO ao dos binarios proprios que existiam antes.
+#
+# Este arquivo continua existindo porque src/meson.build o chama por
+# subdir('./poc') -- e o lugar onde esta escrito o porque de ele estar vazio.
+# ==============================================================================

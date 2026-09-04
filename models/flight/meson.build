@@ -164,7 +164,7 @@ install_data('configs/policy_example.py',
 # nao e dado de CENARIO (que varia por poc), e sim do modelo (que nao varia). As
 # tres pocs vendorizavam a mesma copia byte-identica antes disto; agora e uma
 # so, instalada por aqui e referenciada por 'rootDir:' em todo cenario que usa
-# ( JSBSimModel model: "c310" ) -- inclusive src/poc/bandit-dis, que nao carrega o
+# ( JSBSimModel model: "c310" ) -- inclusive src/poc/dis/bandit, que nao carrega o
 # plugin mas pilota a mesma aeronave.
 install_subdir('data/jsbsim',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')

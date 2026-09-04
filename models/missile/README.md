@@ -7,7 +7,7 @@ verdade — não é um `Player` de brinquedo). Existe como exemplo de "criar um 
 guiado", para o passo a passo completo: lançamento → detonação → destruição).
 
 Carregado **ao lado** do `flight`, por um segundo `( PluginModule )`, só no cenário de demo
-(`src/poc/single-thread/configs/scenario_missile_demo.epp.in`) — `provides:` publica só
+(`src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in`) — `provides:` publica só
 `{ GuidedMissile }`, então os cenários de produção (que só carregam `libflight.so`) nunca precisam
 mudar.
 

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <sstream>
 
 namespace app {
@@ -123,6 +124,7 @@ double layoutSubtree(const ComponentTreeNode& node, const int depth, double& cur
    laid.depth = depth;
    laid.parentIndex = parentIndex;
    laid.childCount = static_cast<int>(node.children.size());
+   laid.subtreePhaseMask = node.subtreePhaseMask;
    laid.collapsed = !node.children.empty() && collapsed.count(node.nodeKey) > 0;
    laid.y = static_cast<double>(depth) * kRowSpacingPx;
    out.push_back(std::move(laid));
@@ -334,20 +336,71 @@ bool navigateComponentTree(const ComponentTreeLayout& layout, ComponentTreeViewS
    return false;
 }
 
+namespace {
+
+// Marca todo no que PARTICIPA da fase corrente ou que tem algum descendente
+// que participa -- ou seja, o CAMINHO que a recursao percorre nesta fase.
+// Como 'layout.nodes' esta em pre-ordem (pai sempre antes do filho), uma
+// passada de tras pra frente propaga a marca pra cima em O(n).
+std::vector<bool> markDescentPath(const ComponentTreeLayout& layout, const EstimatedPhase phase)
+{
+   std::vector<bool> onPath(layout.nodes.size(), false);
+   if (phase == EstimatedPhase::Unknown) return onPath;
+
+   for (std::size_t i = layout.nodes.size(); i-- > 0;) {
+      const auto& node{layout.nodes[i]};
+      // 'subtreePhaseMask' cobre tambem o que esta ESCONDIDO num galho
+      // retraido -- sem ele, fechar os players apagaria a fase 3 inteira,
+      // que e justamente quando o usuario mais quer ver por onde a chamada
+      // desceria.
+      if ((node.subtreePhaseMask & phaseBit(phase)) != 0u) onPath[i] = true;
+      if (onPath[i] && node.parentIndex >= 0) onPath[static_cast<std::size_t>(node.parentIndex)] = true;
+   }
+   return onPath;
+}
+
+// Fracao [0,1) do passo de animacao ja percorrida -- e a ONDA descendo. Sai
+// do MESMO contador de redesenhos que tickComponentFlowAnimation() usa pra
+// decidir quando trocar de fase (nao ha relogio novo aqui), entao ela e
+// exatamente "o quanto falta pra proxima fase".
+double flowSubStep(const ComponentFlowState& flow, const int redrawsPerSecond = 10)
+{
+   if (!flow.playing) return 0.0;
+   const int speed{std::clamp(flow.stepsPerSecond, 1, 4)};
+   const int redrawsPerStep{std::max(1, redrawsPerSecond / speed)};
+   const double f{static_cast<double>(flow.redrawsSincePlay) / static_cast<double>(redrawsPerStep)};
+   return std::clamp(f, 0.0, 1.0);
+}
+
+}   // namespace
+
 Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                            Box& outCanvasBox, const EstimatedPhase activeFlowPhase)
+                            Box& outCanvasBox, const ComponentFlowState& flow,
+                            const FrameCallParams& params)
 {
    const int canvasW{view.canvasWidthPx};
    const int canvasH{view.canvasHeightPx};
    auto c = Canvas(canvasW, canvasH);
 
+   const EstimatedPhase activeFlowPhase{currentFlowPhase(flow)};
    const int selectedIndex{findComponentNodeIndex(layout, view.selectedKey)};
+
+   // O CAMINHO DA RECURSAO nesta fase, e ate que profundidade ele vai -- a
+   // onda desce um nivel por passo de animacao ao longo dele.
+   const std::vector<bool> onPath{markDescentPath(layout, activeFlowPhase)};
+   const Color pathColor{phaseColor(activeFlowPhase)};
+   int maxPathDepth{};
+   for (std::size_t i = 0; i < layout.nodes.size(); i++) {
+      if (onPath[i]) maxPathDepth = std::max(maxPathDepth, layout.nodes[i].depth);
+   }
+   const double wave{flowSubStep(flow) * static_cast<double>(maxPathDepth + 1)};
 
    // Cotovelos pai->filho primeiro (ficam por BAIXO dos pontos/rótulos):
    // desce do pai até a barra horizontal, corre até a coluna do filho, desce
    // até ele. É o que dá a leitura de organograma -- uma diagonal direta,
    // com os irmãos lado a lado, viraria um leque ilegível.
-   for (const auto& node : layout.nodes) {
+   for (std::size_t i = 0; i < layout.nodes.size(); i++) {
+      const auto& node{layout.nodes[i]};
       if (node.parentIndex < 0) continue;
       const auto& parent{layout.nodes[static_cast<std::size_t>(node.parentIndex)]};
       const ProjectedNode a{projectTreeNode(parent.x, parent.y, view)};
@@ -355,13 +408,24 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       if (!a.onCanvas && !b.onCanvas) continue;
 
       const int elbowY{a.py + static_cast<int>(std::lround(kRowSpacingPx * kElbowFraction * view.zoom))};
-      const auto style = [](Cell& cell) {
-         cell.foreground_color = Color::GrayDark;
-         cell.dim = true;
+      // Aceso = esta aresta faz parte da descida desta fase; e literalmente
+      // Component::updateTC() chamando obj->tcFrame(dt) neste filho.
+      const bool lit{onPath[i]};
+      const auto style = [lit, pathColor](Cell& cell) {
+         cell.foreground_color = lit ? pathColor : Color::GrayDark;
+         cell.dim = !lit;
       };
       c.DrawPointLine(a.px, a.py, a.px, elbowY, style);
       c.DrawPointLine(a.px, elbowY, b.px, elbowY, style);
       c.DrawPointLine(b.px, elbowY, b.px, b.py, style);
+
+      // A frente da onda, quando ela esta atravessando ESTE nivel.
+      if (lit && flow.playing && static_cast<int>(wave) == parent.depth) {
+         const double f{wave - static_cast<double>(parent.depth)};
+         const int wx{a.px + static_cast<int>(std::lround((b.px - a.px) * f))};
+         const int wy{a.py + static_cast<int>(std::lround((b.py - a.py) * f))};
+         c.DrawPointCircleFilled(wx, wy, 1, Color::White);
+      }
    }
 
    // Pontos + rótulos numa segunda passada -- mesma razão de
@@ -393,7 +457,24 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
          const std::string label{drawnNodeLabel(node)};
          const int textX{p.px - labelWidthPx(label) / 2};
          const int textY{((p.py + 6) / 4) * 4};
-         c.DrawText(textX, textY, label, isSelected ? Color::White : col);
+         // Um galho RETRAIDO que esconde um participante desta fase sai na
+         // cor da fase (e nao na dele) -- junto com a aresta acesa, e o
+         // convite pra abrir ali. O no que participa ele mesmo ja tem o anel
+         // amarelo e o rotulo de chamada, entao nao ha ambiguidade.
+         const bool hidesParticipant{node.collapsed && node.phase != activeFlowPhase
+            && (node.subtreePhaseMask & phaseBit(activeFlowPhase)) != 0u
+            && activeFlowPhase != EstimatedPhase::Unknown};
+         const Color labelColor{isSelected ? Color::White : (hidesParticipant ? pathColor : col)};
+         c.DrawText(textX, textY, label, labelColor);
+
+         // A CHAMADA que este componente executa nesta fase, com o argumento
+         // de verdade -- desenhada logo abaixo do nome, no proprio no. Cabe
+         // porque kRowSpacingPx reserva 20 px por nivel e o nome ocupa so a
+         // faixa +6..+10.
+         const std::string call{nodeCallLabel(node.phase, activeFlowPhase, params)};
+         if (!call.empty()) {
+            c.DrawText(p.px - labelWidthPx(call) / 2, textY + 4, call, Color::YellowLight);
+         }
       }
    }
 
@@ -402,6 +483,14 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       + "%]  [-]/[+N] = galho expandido/retraido"};
    if (view.zoom < kLabelMinZoom) header += "  -- rotulos ocultos neste zoom, use []] pra ampliar";
    c.DrawText(2, 2, header, Color::GrayDark);
+
+   // Legenda do que o desenho esta dizendo AGORA -- dentro do proprio canvas,
+   // pra nao gastar altura fora dele (foi exatamente o erro da versao com
+   // painel de texto separado).
+   if (activeFlowPhase != EstimatedPhase::Unknown) {
+      c.DrawText(2, 6, "aceso = caminho da recursao nesta fase (mesmo por dentro de galho retraido)   "
+                 "amarelo = chamada que o no executa", pathColor);
+   }
 
    return canvas(std::move(c)) | reflect(outCanvasBox) | flex | border;
 }
@@ -424,7 +513,8 @@ int hitTestComponentTreeNode(const ComponentTreeLayout& layout, const ComponentT
    return bestIndex;
 }
 
-Element renderComponentDetail(const ComponentTreeLayoutNode& node)
+Element renderComponentDetail(const ComponentTreeLayoutNode& node, const ComponentFlowState& flow,
+                              const FrameCallParams& params)
 {
    const Color badge{phaseColor(node.phase)};
 
@@ -503,6 +593,57 @@ Element renderComponentDetail(const ComponentTreeLayoutNode& node)
       }));
    }
 
+   // ---- "nesta fase": a resposta por-COMPONENTE de "que funcao roda aqui,
+   //      com que argumento, e por onde a chamada chega". Fica no card (que
+   //      ja tinha espaco sobrando) e nao num painel proprio -- um painel
+   //      roubaria altura justamente do desenho da arvore.
+   const EstimatedPhase activePhase{currentFlowPhase(flow)};
+   const std::string call{nodeCallLabel(node.phase, activePhase, params)};
+
+   lines.push_back(separator());
+   lines.push_back(hbox({
+      text(" nesta fase ") | bgcolor(phaseColor(activePhase)) | color(Color::Black) | bold,
+      text(" " + phaseLabel(activePhase)) | dim,
+      filler(),
+   }));
+
+   if (call.empty()) {
+      lines.push_back(text("este componente nao participa da fase corrente") | dim);
+      lines.push_back(hbox({text("participa em ") | dim, text(phaseLabel(node.phase))}));
+   } else {
+      lines.push_back(hbox({text("executa ") | dim,
+                            text(call) | color(Color::YellowLight) | bold}));
+      lines.push_back(text("como a chamada chega ate aqui:") | dim);
+
+      // O caminho da recursao, do ponto de entrada ate a chamada desta fase.
+      // Mostra a CAUDA, nao a cabeca: o card tem altura fixa (a mesma de
+      // F1/F2) e o comeco da cadeia e sempre o mesmo preambulo generico --
+      // cortar pelo fim escondia justamente a linha que interessa, a chamada
+      // que este componente executa. Medido: com a cabeca, `case 3: process`
+      // ficava de fora do card.
+      const auto path{frameDescentPath(buildFrameCallChain(activePhase, params))};
+      const std::size_t kMaxDescent{10};
+      const std::size_t first{path.size() > kMaxDescent ? path.size() - kMaxDescent : 0};
+      if (first > 0) {
+         lines.push_back(text("  (" + std::to_string(first) + " chamadas antes, ate a thread)") | dim);
+      }
+      for (std::size_t i = first; i < path.size(); i++) {
+         const auto& l{path[i]};
+         Elements row{text(std::string(static_cast<std::size_t>(l.depth - path[first].depth), ' '))};
+         row.push_back(text(l.text) | color(l.active ? Color::YellowLight : Color::CyanLight));
+         if (!l.args.empty()) {
+            row.push_back(text((l.args.front() == '(' ? "" : " ") + l.args) | color(Color::Yellow));
+         }
+         // O arquivo:linha so na linha ATIVA -- nas outras ele competia por
+         // largura com o nome da funcao e cortava os dois.
+         if (l.active && !l.sourceRef.empty()) {
+            row.push_back(filler());
+            row.push_back(text(l.sourceRef) | color(Color::Blue) | dim);
+         }
+         lines.push_back(hbox(std::move(row)));
+      }
+   }
+
    return vbox(std::move(lines)) | border | color(badge);
 }
 
@@ -519,21 +660,88 @@ Element renderComponentFlowLegend()
    return hbox(std::move(swatches));
 }
 
-Element renderComponentFlowStatus(const ComponentFlowState& flow)
+Element renderComponentFlowStatus(const ComponentFlowState& flow, const FrameCallParams& params)
 {
    const EstimatedPhase phase{currentFlowPhase(flow)};
-   std::ostringstream line;
-   line << "ciclo de fluxo: fase atual " << (flow.cycleIndex + 1) << "/" << kComponentFlowCycleLen
-        << " -- " << phaseLabel(phase) << "   [" << (flow.playing ? "tocando" : "pausado")
-        << " @ " << flow.stepsPerSecond << "x/s]";
+
+   std::ostringstream state;
+   state << "SIMULACAO " << (params.paused ? "PAUSADA" : "RODANDO");
+
+   std::ostringstream step;
+   step << "[n] passo = Station::tcFrame(dt = " << std::fixed << std::setprecision(6)
+        << frameStepSeconds(params) << " s) -- UM frame de verdade: 'sim=' no cabecalho avanca "
+        << "esse tanto a cada toque";
 
    return vbox({
-      hbox({text(line.str()) | color(phaseColor(phase)) | bold}),
-      text("MODELO CONCEITUAL do ciclo do frame (fase 0 -> 1/2 -> 3 -> decisao de fundo -> fundo -> "
-           "volta pra fase 0) -- avanca por um relogio de ANIMACAO PROPRIO, NAO e um tracado ao vivo "
-           "de chamadas reais (o MIXR e dependencia binaria; ver CLAUDE.md/app/ComponentFlowState.hpp)")
-         | dim,
+      hbox({
+         text(params.paused ? " || " : " |> ")
+            | bgcolor(params.paused ? Color::Yellow : Color::Green) | color(Color::Black) | bold,
+         text(" " + state.str() + " ") | bold
+            | color(params.paused ? Color::Yellow : Color::Green),
+         separator(),
+         text(" fase " + std::to_string(flow.cycleIndex + 1) + "/"
+              + std::to_string(kComponentFlowCycleLen) + ": " + phaseLabel(phase) + " ")
+            | color(phaseColor(phase)) | bold,
+         filler(),
+      }),
+      text(step.str()) | color(Color::CyanLight),
    });
 }
+
+namespace {
+
+// Rotulo curto de cada bloco da faixa -- o nome do que RODA naquela fase,
+// nao o nome da fase (que ja esta na linha de status logo acima).
+std::string phaseStripLabel(const EstimatedPhase phase)
+{
+   switch (phase) {
+      case EstimatedPhase::Structural:         return "tcFrame";
+      case EstimatedPhase::DynamicsPhase0:      return "0 dynamics";
+      case EstimatedPhase::SensorPhase1And2:    return "1 transmit / 2 receive";
+      case EstimatedPhase::DecisionPhase3:      return "3 process";
+      case EstimatedPhase::DecisionBackground:  return "Agent::controller";
+      case EstimatedPhase::Background:          return "updateData";
+      case EstimatedPhase::Unknown:
+      default:                                 return "?";
+   }
+}
+
+}   // namespace
+
+Element renderFramePhaseStrip(const ComponentFlowState& flow, const FrameCallParams& params)
+{
+   const EstimatedPhase active{currentFlowPhase(flow)};
+
+   std::ostringstream tc;
+   tc << " FRAME T/C  " << std::fixed << std::setprecision(1) << params.tcRateHz << " Hz  dt="
+      << std::setprecision(6) << frameStepSeconds(params) << "s ";
+
+   Elements row{text(tc.str()) | bgcolor(Color::GrayDark) | color(Color::White) | bold};
+
+   for (std::size_t i = 0; i < kComponentFlowCycleLen; i++) {
+      const EstimatedPhase phase{kComponentFlowCycle[i]};
+
+      // A fronteira entre o grupo do frame de tempo critico e o de fundo:
+      // sao THREADS diferentes, e essa e a informacao que a faixa existe pra
+      // dar de um relance.
+      if (phase == EstimatedPhase::DecisionBackground) {
+         std::ostringstream bg;
+         bg << "  FUNDO  " << std::fixed << std::setprecision(1) << params.bgRateHz << " Hz ";
+         row.push_back(text(" =>") | color(Color::GrayDark) | bold);
+         row.push_back(text(bg.str()) | bgcolor(Color::GrayDark) | color(Color::White) | bold);
+      } else if (i > 0) {
+         row.push_back(text("->") | color(Color::GrayDark));
+      }
+
+      const bool isActive{phase == active};
+      Element block{text(" " + phaseStripLabel(phase) + " ")};
+      if (isActive) block = block | bgcolor(phaseColor(phase)) | color(Color::Black) | bold;
+      else          block = block | color(phaseColor(phase)) | dim;
+      row.push_back(block);
+   }
+   row.push_back(filler());
+   return hbox(std::move(row));
+}
+
 
 } // namespace app

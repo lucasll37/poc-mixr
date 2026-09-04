@@ -5,11 +5,14 @@
       "name": "Debug single-thread",
       "type": "cppdbg",
       "request": "launch",
-      "args": [],
+      "args": [
+        "-scenario",
+        "single-thread"
+      ],
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/poc/single-thread/src/single-thread",
+      "program": "${workspaceFolder}/build/app/src/app",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
@@ -24,11 +27,14 @@
       "name": "Debug multi-thread",
       "type": "cppdbg",
       "request": "launch",
-      "args": [],
+      "args": [
+        "-scenario",
+        "multi-thread"
+      ],
       "stopAtEntry": false,
       "externalConsole": false,
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/poc/multi-thread/src/multi-thread",
+      "program": "${workspaceFolder}/build/app/src/app",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
@@ -40,14 +46,36 @@
       ]
     },
     {
-      "name": "Debug bandit-dis",
+      "name": "Debug bandit",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [
+        "-scenario",
+        "bandit"
+      ],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/build/app/src/app",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/build/src/poc/bandit-dis/src/bandit-dis",
+      "cwd": "/home/lima/asa/poc-mixr/models/flight/src/ubf",
+      "program": "/home/lima/asa/poc-mixr/models/flight/src/ubf/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

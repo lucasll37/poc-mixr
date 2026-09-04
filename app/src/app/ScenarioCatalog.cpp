@@ -1,5 +1,7 @@
 #include "app/ScenarioCatalog.hpp"
 
+#include <filesystem>
+
 namespace app {
 
 namespace {
@@ -31,6 +33,12 @@ std::string withBandit1(const std::string& falcons, const std::string& bandit1Su
 
 } // namespace
 
+const std::vector<std::string>& falconFleet()
+{
+   static const std::vector<std::string> fleet{"falcon1", "falcon2", "falcon3", "falcon4"};
+   return fleet;
+}
+
 const std::vector<ScenarioEntry>& scenarioCatalog()
 {
    static const std::vector<ScenarioEntry> catalog{
@@ -39,6 +47,7 @@ const std::vector<ScenarioEntry>& scenarioCatalog()
          "4 falcons patrulhando, sem intruso -- bom para ver pausar/acelerar sem ruido",
          "./app/configs/scenario_patrol.epp.in",
          "patrol", kFalconsModelMap, kFalconsTypeMap, kFalconsColorMap,
+         falconFleet(),
       },
       {
          "intercept", "Intercepto",
@@ -48,6 +57,7 @@ const std::vector<ScenarioEntry>& scenarioCatalog()
          withBandit1(kFalconsModelMap, "\n                           bandit1: \"F-16C\""),
          withBandit1(kFalconsTypeMap, "  bandit1: \"Air+FixedWing\""),
          withBandit1(kFalconsColorMap, "  bandit1: \"Red\""),
+         falconFleet(),
       },
       {
          "intercept_missile", "Intercepto + Missil",
@@ -58,9 +68,72 @@ const std::vector<ScenarioEntry>& scenarioCatalog()
             + kMissileModelMap,
          withBandit1(kFalconsTypeMap, "  bandit1: \"Air+FixedWing\""),
          withBandit1(kFalconsColorMap, "  bandit1: \"Red\""),
+         falconFleet(),
+      },
+
+      // ---------------------------------------------------------------
+      // AS POCS. Cada uma traz o proprio bloco 'dataRecorder:' escrito no
+      // .epp.in (com a porta de Tacview e o diretorio de dados dela), entao
+      // os quatro campos de Tacview ficam vazios aqui -- nao ha token para
+      // substituir. O 'tacviewId' tambem: ele so alimenta o fragmento.
+      // ---------------------------------------------------------------
+      {
+         "single-thread", "single-thread (DIS)",
+         "decisao no ( SimAgent ) nativo da Station, em updateData() -- Tacview 1234",
+         "./src/poc/dis/single-thread/configs/scenario.epp.in",
+         "", "", "", "", falconFleet(),
+      },
+      {
+         "multi-thread", "multi-thread (DIS)",
+         "a mesma pilha decidindo na fase 3 do frame de tempo critico -- Tacview 1234",
+         "./src/poc/dis/multi-thread/configs/scenario.epp.in",
+         "", "", "", "", falconFleet(),
+      },
+      {
+         "bandit", "bandit (DIS)",
+         "so o intruso: joystick fisico ou Autopilot de fallback, emitindo DIS -- Tacview 1235",
+         "./src/poc/dis/bandit/configs/scenario.epp",
+         "", "", "", "", {"bandit1"},
+      },
+      {
+         "python-flight", "python-flight",
+         "a multi-thread com as leis de voo em .py, lidos em tempo de execucao -- Tacview 1237",
+         "./src/poc/python-flight/configs/scenario.epp.in",
+         "", "", "", "", falconFleet(),
+      },
+      {
+         "onnx-policy", "onnx-policy",
+         "a multi-thread com a decisao numa rede neural (.onnx) -- Tacview 1238",
+         "./src/poc/onnx-policy/configs/scenario.epp.in",
+         "", "", "", "", falconFleet(),
+      },
+      {
+         "built-in_mixr_1", "built-in_mixr_1",
+         "o player maximo: falcon1 com 53 classes nativas do mixr::models -- Tacview 1239",
+         "./src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in",
+         "", "", "", "", falconFleet(),
       },
    };
    return catalog;
+}
+
+ScenarioEntry adHocScenario(const std::string& path)
+{
+   // A chave sai do nome do arquivo (sem diretorio nem extensao) so para
+   // batizar o '.generated.epp' e o cabecalho da TUI -- nada mais depende
+   // dela quando o cenario vem por '-f'.
+   //
+   // O stem() do C++ tira UMA extensao so, e as fixtures se chamam
+   // '<nome>.epp.in' -- sem o corte abaixo a chave sairia '<nome>.epp' e o
+   // arquivo gerado viraria '<nome>.epp.generated.epp'.
+   std::string key{std::filesystem::path(path).stem().string()};
+   const std::string sufixo{".epp"};
+   if (key.size() > sufixo.size() && key.compare(key.size() - sufixo.size(), sufixo.size(), sufixo) == 0) {
+      key.erase(key.size() - sufixo.size());
+   }
+   if (key.empty()) key = "ad-hoc";
+   return ScenarioEntry{key, key, "cenario carregado por -f", path,
+                        "", "", "", "", falconFleet()};
 }
 
 const ScenarioEntry* findScenario(const std::string& key)

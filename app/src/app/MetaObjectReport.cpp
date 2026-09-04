@@ -3,6 +3,9 @@
 
 #include "xplugin/PluginRegistry.hpp"
 
+#include "xmsg/MsgFeed.hpp"
+#include "xmsg/MsgReport.hpp"
+
 #include "mixr/base/MetaObject.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/String.hpp"
@@ -34,10 +37,16 @@ void printMetaObjectReport()
    // reportClass<T>() precisa do TIPO em tempo de compilacao. Elas reaparecem
    // no laco de pluginMetaObjects(), no fim desta funcao, no MESMO formato.
 
-   // Sem shared/xmsg aqui (dashboard nao linka xmsg_dep -- nenhum cenario de
-   // configs/ declara 'msgFeed:', o proprio TUI ja e o "feed"), entao nada de
-   // mixr::xmsg::MsgFeed/MsgReport para reportar -- ao contrario das outras
-   // pocs.
+   // Mensageria: nascem no parse do EDL e nao devem se multiplicar. O 'count'
+   // aqui e o detector de clone acidental (BT::Tree e move-only, mas um
+   // PairStream de slot copiado sem cuidado duplicaria os objetos).
+   //
+   // O que este relatorio NAO enxerga sao os blocos de estado por player do
+   // MsgFeed -- eles ficam fora do ref-counting. Quem cobre isso e o campo
+   // 'states' da mensagem interna msgHealth, comparado por
+   // tests/memory/run_leak_test.py entre duas duracoes.
+   reportClass<mixr::xmsg::MsgFeed>();
+   reportClass<mixr::xmsg::MsgReport>();
 
    // Termometro geral do parser/EDL.
    reportClass<mixr::base::Pair>();

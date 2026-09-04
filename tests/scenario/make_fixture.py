@@ -8,7 +8,7 @@ cenario de verdade com um delta pequeno e explicito.
 
 Todas as fixtures sao HERMETICAS: o bloco 'networks:' sai. Sem isso o
 processo abre a porta DIS 3000 e ingere o que estiver na rede -- observado na
-pratica, com um bandit-dis de outra sessao mudando o resultado de duas
+pratica, com um bandit de outra sessao mudando o resultado de duas
 execucoes identicas (TacviewOutput/DIS nao fazem parte do que estes testes
 querem medir). O Tacview tambem e desviado de porta e de arquivo, para nao
 disputar a 1234 com uma poc que esteja rodando de verdade.
@@ -17,7 +17,7 @@ Modos:
 
   intruder  reintroduz o bandit1 LOCAL. Sem ele nao ha como exercitar
             EVADE/SUPPORT num processo so, porque o intruso hoje mora em
-            src/poc/bandit-dis e chega apenas por DIS.
+            src/poc/dis/bandit e chega apenas por DIS.
   lowfuel   sobe 'fuelReserve' acima da fracao real de combustivel, pelo slot
             que ja existe: o ramo de RTB vence desde o primeiro frame.
   terrain   sobe 'minAltitude' do AltitudeSafetyBehavior acima da altitude de
@@ -39,14 +39,14 @@ import re
 import sys
 from pathlib import Path
 
-# O intruso, identico ao de src/poc/bandit-dis/configs/scenario.epp, so que
+# O intruso, identico ao de src/poc/dis/bandit/configs/scenario.epp, so que
 # local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
 # (models/flight/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
          // ------------------------------------------------------------------
          // FIXTURE DE TESTE -- bandit1 LOCAL.
          //
-         // Em producao o intruso vive no processo src/poc/bandit-dis e chega por
+         // Em producao o intruso vive no processo src/poc/dis/bandit e chega por
          // DIS. Num teste de processo unico isso tornaria EVADE e SUPPORT
          // inalcancaveis, entao ele volta para ca, com os mesmos valores
          // iniciais do lado de la.
@@ -105,7 +105,15 @@ def main():
     args = ap.parse_args()
 
     raiz = Path(__file__).resolve().parents[2]
-    origem = raiz / "src" / "poc" / args.poc / "configs" / "scenario.epp.in"
+    # A poc e procurada, nao montada por concatenacao: desde que as tres pocs
+    # de DIS foram agrupadas em src/poc/dis/, o caminho deixou de ser
+    # 'src/poc/<poc>' para todas.
+    candidatos = sorted((raiz / "src" / "poc").glob("**/configs/scenario.epp.in"))
+    achados = [c for c in candidatos if c.parent.parent.name == args.poc]
+    if not achados:
+        raise SystemExit(f"poc '{args.poc}' nao encontrada sob src/poc/ "
+                         f"(procurei por */configs/scenario.epp.in)")
+    origem = achados[0]
     texto = origem.read_text(encoding="utf-8")
 
     # 1) hermetico: fora a rede

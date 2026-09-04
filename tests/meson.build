@@ -163,6 +163,7 @@ test_app_component_tree = executable('test-app-component-tree-layout',
         '../app/src/app/ComponentTreePanel.cpp',
         '../app/src/app/ComponentTreeQuery.cpp',
         '../app/src/app/ComponentFlowState.cpp',
+        '../app/src/app/FrameCallChain.cpp',
         '../app/src/app/FleetPanel.cpp',
     ),
     link_args           : rpath_link_args,
@@ -172,6 +173,19 @@ test_app_component_tree = executable('test-app-component-tree-layout',
     build_rpath         : mixr_libdir,
 )
 test('app-component-tree-layout', test_app_component_tree, suite: 'domain', timeout: 60)
+
+# A cadeia de chamadas do frame MIXR que a aba F6 mostra -- nomes, argumentos
+# e o dt que desce dividido por 4 e volta multiplicado por 4 -- mais a janela
+# de rolagem que mantem a linha da fase corrente visivel. Sem MIXR, sem FTXUI.
+test_app_call_chain = executable('test-app-frame-call-chain',
+    files('app/test_frame_call_chain.cpp') + files(
+        '../app/src/app/FrameCallChain.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-frame-call-chain', test_app_call_chain, suite: 'domain', timeout: 60)
 
 # A maquina de estados do breakpoint de arvore de comportamento --
 # extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
@@ -300,10 +314,14 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # recebeu, ninguem voou para dentro do terreno -- entao ela entra na bateria
 # que ja existe, normalizando o rotulo na entrada, em vez de ganhar uma copia
 # do runner que envelheceria em silencio ao lado dele.
+# O SEGUNDO campo era o binario de cada poc; hoje e SEMPRE 'app' -- as pocs
+# deixaram de ter executavel proprio quando o ./app virou o runner unico (ver
+# src/poc/meson.build). O que distingue uma poc da outra e a fixture, gerada
+# por make_fixture.py a partir do cenario dela, e passada com '-f'.
 pocs = [
-    ['single-thread', single_thread,  'nao-critico', ''],
-    ['multi-thread',  multi_thread,   'critico',     ''],
-    ['python-flight', python_flight,  'python',      'PY-'],
+    ['single-thread', app, 'nao-critico', ''],
+    ['multi-thread',  app, 'critico',     ''],
+    ['python-flight', app, 'python',      'PY-'],
 ]
 
 scenario_runner = files('scenario/run_scenario_test.py')
@@ -375,63 +393,38 @@ test('scenario-app-quit', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
-# A MESMA prova acima, agora para single-thread/multi-thread/bandit-dis -- ate
-# a decima oitava passada do ./app, so ele tinha a ORDEM de encerramento
-# corrigida (parar a thread T/C nativa ANTES do SHUTDOWN_EVENT); as tres pocs
-# rodam a MESMA forma de laco de tempo real (createTimeCriticalProcess() +
-# updateData() em laco continuo) e corriam o MESMO risco de auto-deadlock/
-# crescimento de memoria documentado em xclock/ClockStation.hpp. Sem TUI/pty
-# aqui -- ver o cabecalho do script para o porque.
-#
-# single-thread/multi-thread usam a porta 1234 (a mesma, uma poc por vez --
-# is_parallel:false serializa com TODO o resto desta suite); bandit-dis usa a
-# 1235.
-test('scenario-single-thread-quit', py,
-     args: files('scenario/run_poc_quit_test.py') + [
-         '--binario', single_thread.full_path(), '--porta-tacview', '1234'],
-     depends: single_thread, workdir: raiz, suite: 'scenario',
-     timeout: 120, is_parallel: false)
+# A MESMA prova, agora num cenario COM 'networks:'. Nao e redundante com a de
+# cima: os tres cenarios proprios do ./app sao hermeticos, e por isso a TUI
+# nunca tinha aberto uma Station com lista de redes -- foi exatamente ai que
+# tres over-unref de Station::getNetworks() (que, ao contrario de
+# getPlayers(), NAO e pre-ref()'d) ficaram latentes ate o ./app virar o runner
+# das pocs de DIS. Os sintomas eram SIGSEGV em List::Item::getValue() e
+# 'ExpInvalidRefCount' dentro da propria Station. Este teste e o que trava a
+# regressao.
+test('scenario-app-quit-dis', py,
+     args: files('scenario/run_app_quit_test.py') + [
+         '--binario', app.full_path(), '--scenario', 'multi-thread'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
 
-test('scenario-multi-thread-quit', py,
-     args: files('scenario/run_poc_quit_test.py') + [
-         '--binario', multi_thread.full_path(), '--porta-tacview', '1234'],
-     depends: multi_thread, workdir: raiz, suite: 'scenario',
-     timeout: 120, is_parallel: false)
-
-test('scenario-bandit-dis-quit', py,
-     args: files('scenario/run_poc_quit_test.py') + [
-         '--binario', bandit_dis.full_path(), '--porta-tacview', '1235'],
-     depends: bandit_dis, workdir: raiz, suite: 'scenario',
-     timeout: 120, is_parallel: false)
-
-# As outras duas GEMEAS (ver tests/guard/check_duplication.sh) tambem levaram
-# a mesma correcao -- include/app e src/app/RealTimeRun.cpp sao byte a byte
-# identicos entre as quatro, entao o mesmo risco existia aqui tambem.
-test('scenario-python-flight-quit', py,
-     args: files('scenario/run_poc_quit_test.py') + [
-         '--binario', python_flight.full_path(), '--porta-tacview', '1237'],
-     depends: python_flight, workdir: raiz, suite: 'scenario',
-     timeout: 120, is_parallel: false)
-
-test('scenario-onnx-policy-quit', py,
-     args: files('scenario/run_poc_quit_test.py') + [
-         '--binario', onnx_policy.full_path(), '--porta-tacview', '1238'],
-     depends: onnx_policy, workdir: raiz, suite: 'scenario',
-     timeout: 120, is_parallel: false)
+# NAO HA MAIS um teste de saida POR POC. Ate o ./app virar o runner unico,
+# cada poc tinha o proprio executavel com uma copia byte a byte do laco de
+# tempo real, e cada copia corria o mesmo risco de auto-deadlock/crescimento de
+# memoria documentado em xclock/ClockStation.hpp -- dai cinco testes quase
+# iguais. Hoje o laco e UM, o do ./app, e quem o cobre e o 'scenario-app-quit'
+# acima (com pty, porque agora ha TUI e dialogo de confirmacao). Rodar o mesmo
+# binario cinco vezes com cenarios diferentes nao acrescentaria cobertura
+# nenhuma sobre a ordem de encerramento, que e o que aquele teste afirma.
 
 # '-threads'/'-deterministic' com um token nao numerico nao pode derrubar o
 # processo com um sinal -- ver o cabecalho de run_bad_args_test.py e o fix em
-# app/Options.cpp (parseLongOrDie/parseIntOrDie). bandit-dis fica de fora: nao
-# tem app/Options.cpp (essa poc nao aceita CLI nenhuma, ver o cabecalho de
-# src/main.cpp dela).
+# app/src/app/Options.cpp (parseLongOrDie/parseIntOrDie). Era um teste por
+# poc; hoje ha um binario so, entao ha um teste so.
 bad_args_runner = files('scenario/run_bad_args_test.py')
-foreach par : [['single-thread', single_thread], ['multi-thread', multi_thread],
-               ['python-flight', python_flight], ['onnx-policy', onnx_policy]]
-    test('scenario-' + par[0] + '-bad-args', py,
-         args: bad_args_runner + ['--binario', par[1].full_path()],
-         depends: par[1], workdir: raiz, suite: 'scenario',
-         timeout: 60, is_parallel: false)
-endforeach
+test('scenario-bad-args', py,
+     args: bad_args_runner + ['--binario', app.full_path()],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 60, is_parallel: false)
 
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
@@ -446,9 +439,9 @@ foreach caso : [['onnx', 'flight_tree_onnx.xml', 'ONNX'],
                  ['python', 'flight_tree_py.xml', 'PY']]
     test('scenario-policy-' + caso[0], py,
          args: files('scenario/run_policy_test.py') + [
-             '--binario', multi_thread.full_path(),
+             '--binario', app.full_path(),
              '--tree', caso[1], '--label', caso[2], '--frames', '600'],
-         depends: multi_thread, workdir: raiz, suite: 'scenario',
+         depends: app, workdir: raiz, suite: 'scenario',
          timeout: 900, is_parallel: false)
 endforeach
 
@@ -476,29 +469,29 @@ endforeach
 # ------------------------------------------------------------------------------
 test('scenario-onnx-policy', py,
      args: files('scenario/run_policy_test.py') + [
-         '--binario', onnx_policy.full_path(),
+         '--binario', app.full_path(),
          '--poc', 'onnx-policy', '--label', 'ONNX', '--frames', '600'],
-     depends: onnx_policy, workdir: raiz, suite: 'scenario',
+     depends: app, workdir: raiz, suite: 'scenario',
      timeout: 900, is_parallel: false)
 
 test('scenario-terrain-onnx-policy', py,
-     args: scenario_runner + ['--binario', onnx_policy.full_path(),
+     args: scenario_runner + ['--binario', app.full_path(),
                               '--poc', 'onnx-policy', '--mode', 'terrain',
                               '--frames', '800'],
-     depends: onnx_policy, workdir: raiz, suite: 'scenario',
+     depends: app, workdir: raiz, suite: 'scenario',
      timeout: 900, is_parallel: false)
 
 test('memory-onnx-policy', py,
-     args: leak_runner + [onnx_policy.full_path(), 'onnx-policy'],
-     depends: onnx_policy, workdir: raiz, suite: 'memory',
+     args: leak_runner + [app.full_path(), 'onnx-policy'],
+     depends: app, workdir: raiz, suite: 'memory',
      timeout: 1800, is_parallel: false)
 
 # multi-thread NAO. Ver o cabecalho do script.
 test('onde-a-decisao-roda', py,
      args: files('determinism/check_onde_a_decisao_roda.py') + [
-         '--single', single_thread.full_path(),
-         '--multi', multi_thread.full_path()],
-     depends: [single_thread, multi_thread],
+         '--single', app.full_path(),
+         '--multi', app.full_path()],
+     depends: app,
      workdir: raiz, suite: 'determinism',
      timeout: 1800, is_parallel: false)
 
@@ -539,19 +532,19 @@ test('plugin-simbolo', bash,
 
 test('plugin-negativos', py,
      args: files('plugin/run_plugin_negatives.py') + [
-         '--binario', single_thread.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'single-thread',
          '--bad-nosym', bad_plugins['nosym'].full_path(),
          '--bad-abi', bad_plugins['abi'].full_path(),
          '--bad-collide', bad_plugins['collide'].full_path()],
-     depends: [single_thread, bad_plugins['nosym'], bad_plugins['abi'], bad_plugins['collide']],
+     depends: [app, bad_plugins['nosym'], bad_plugins['abi'], bad_plugins['collide']],
      workdir: raiz, suite: 'plugin', timeout: 900, is_parallel: false)
 
 test('plugin-hotswap', py,
      args: files('plugin/run_plugin_hotswap.py') + [
-         '--binario', single_thread.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'single-thread',
          '--so-a', model_build / 'libmodel_variant_a.so',
          '--so-b', model_build / 'libmodel_variant_b.so'],
-     depends: single_thread, workdir: raiz, suite: 'plugin',
+     depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
 # O MODELO DESCONHECIDO -- a prova que o resto nao da.
@@ -561,9 +554,9 @@ test('plugin-hotswap', py,
 # E o unico teste que pode falhar por "o contrato nao basta".
 test('plugin-modelo-estranho', py,
      args: files('plugin/run_stub_model.py') + [
-         '--binario', single_thread.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'single-thread',
          '--stub', dist_plugins / 'libstub.so'],
-     depends: single_thread, workdir: raiz, suite: 'plugin',
+     depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
 # O DEPOSITO DE TERCEIRO -- prova que models/plugins/ (o deposito pra um .so
@@ -574,17 +567,24 @@ test('plugin-modelo-estranho', py,
 # stub como o "terceiro" e a MESMA bateria de plugin-modelo-estranho.
 test('plugin-deposito-terceiro', py,
      args: files('plugin/run_thirdparty_deposit.py') + [
-         '--binario', single_thread.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'single-thread',
          '--source-so', dist_plugins / 'libstub.so',
          '--run-stub-model', raiz / 'tests' / 'plugin' / 'run_stub_model.py'],
-     depends: single_thread, workdir: raiz, suite: 'plugin',
+     depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
 # ------------------------------------------------------------------------------
 # Guardas estruturais
 # ------------------------------------------------------------------------------
-test('duplicacao', bash, args: files('guard/check_duplication.sh'),
-     workdir: raiz, suite: 'guard', timeout: 60)
+# A guarda 'duplicacao' foi APOSENTADA aqui. Ela existia para travar um
+# invariante que nao existe mais: cada poc carregava uma copia byte a byte da
+# camada de aplicacao (~1.500 linhas), e a guarda garantia que as copias nao
+# divergissem. Com o ./app virando o runner unico, as pocs deixaram de ter
+# codigo -- sao 'configs/' + 'data/' + README. Nao ha mais duas copias para
+# comparar, e uma guarda que nao acha nada para comparar ou falha (o caso
+# deste script, que sai 1 quando o find volta vazio) ou passa vacuamente, que
+# e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
+# MODELO quando ele saiu para models/flight.
 
 # O host nao pode voltar a conhecer o fonte do modelo.
 test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),

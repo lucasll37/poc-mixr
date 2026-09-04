@@ -19,7 +19,7 @@ host_sources = files(
     'app/MemoryPanel.cpp', 'app/BehaviorTreeView.cpp', 'app/BackgroundPanel.cpp',
     'app/TerrainQuery.cpp', 'app/LogPanel.cpp', 'app/Shutdown.cpp',
     'app/ComponentTreeQuery.cpp', 'app/ComponentTreePanel.cpp',
-    'app/ComponentFlowState.cpp',
+    'app/ComponentFlowState.cpp', 'app/FrameCallChain.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc
@@ -30,8 +30,10 @@ app = executable('app',
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
     include_directories : local_inc_dir,
-    dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep,
-                           xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, ftxui_dep],
+    # xmsg_dep/xjoystick_dep entraram quando o ./app virou o runner unico das
+    # pocs: os cenarios delas declaram ( MsgFeed ) e ( JoystickIoHandler ).
+    dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
+                           xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep, ftxui_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir + ':' + own_libs_rpath,

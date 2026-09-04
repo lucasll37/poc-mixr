@@ -8,19 +8,37 @@
 # ver o binario -- nao tocado, mesmo sha256 -- mudar de comportamento.
 #
 # A prova de verdade e a saida do ninja no passo 3: tem de listar DUAS edges e
-# NAO citar single-thread, multi-thread nem bandit-dis. Compare com o
-# contra-exemplo: mexer em src/poc/single-thread/include/app/Fleet.hpp
-# dispara um relink do executavel inteiro -- e o modelo nao e nem tocado.
+# NAO citar o executavel do host. Compare com o contra-exemplo: mexer em
+# app/include/app/Fleet.hpp dispara um relink do 'app' inteiro -- e o modelo
+# nao e nem tocado.
+#
+# O binario e o ./app: as pocs nao tem mais executavel proprio (ver
+# src/poc/meson.build). A fixture continua saindo do cenario da single-thread,
+# e entra por '-f', como em todo teste deste repositorio.
 #
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ"
 
-BIN=build/src/poc/single-thread/src/single-thread
+BIN=build/app/src/app
 SO=dist/lib/mixr-plugins/libflight.so
-MODEL_BUILD=build-flight
+# O diretorio de build do MODELO. Ficou apontando para 'build-flight' (um
+# layout que nao existe mais: models/flight/Makefile builda em ./build dentro
+# do proprio projeto), e como todas as chamadas de meson aqui terminam em
+# '|| true' ou com a saida descartada, o alvo falhava sem dizer por que.
+MODEL_BUILD=models/flight/build
 FIX=build/tests-fixtures/single-thread-hotswap-vivo.epp.in
+
+# 'meson install' do MODELO deposita em models/flight/dist/ -- o dist LOCAL
+# daquele projeto, nao o do host. Quem o host carrega e dist/lib/mixr-plugins/,
+# e o caminho normal ate la e 'make install-host' (-> models/plugins/) seguido
+# do 'sync-plugins' do Makefile raiz. Aqui a demonstracao precisa do .so novo
+# no lugar onde o ./app vai abri-lo, entao a copia e feita direto -- e a MESMA
+# copia que o sync-plugins faz, sem reconstruir mais nada.
+publica_so() {
+   cp -f models/flight/dist/lib/mixr-plugins/libflight.so "$SO"
+}
 
 [ -x "$BIN" ] || { echo "rode 'make build' primeiro"; exit 1; }
 
@@ -61,6 +79,7 @@ restaura() {
    rm -f "$BKP"
    meson compile -C "$MODEL_BUILD" flight > /dev/null 2>&1 || true
    meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1 || true
+   publica_so || true
 }
 trap restaura EXIT
 
@@ -72,6 +91,7 @@ echo "=== 0) normalizando o ponto de partida ==="
 sed -i 's/^\( *\)#define POC_MODEL_TURN_SIGN .*/\1#define POC_MODEL_TURN_SIGN 1.0/' "$HDR"
 meson compile -C "$MODEL_BUILD" flight > /dev/null 2>&1
 meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1
+publica_so
 echo "    default do modelo: curva de patrulha no sentido normal"
 
 echo "=== 1) estado inicial ==="
@@ -87,6 +107,7 @@ echo "=== 3) editando SO o modelo e rebuildando SO o .so ==="
 sed -i 's/^\( *\)#define POC_MODEL_TURN_SIGN .*/\1#define POC_MODEL_TURN_SIGN -1.0/' "$HDR"
 meson compile -C "$MODEL_BUILD" flight 2>&1 | grep -E "^\[|Compiling|Linking" | sed 's/^/    /'
 meson install -C "$MODEL_BUILD" --no-rebuild > /dev/null 2>&1
+publica_so
 
 echo "=== 4) o executavel foi tocado? ==="
 SHA_DEPOIS=$(sha256sum "$BIN" | cut -d' ' -f1)

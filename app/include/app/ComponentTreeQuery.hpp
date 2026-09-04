@@ -63,6 +63,9 @@ enum class EstimatedPhase {
 
 std::string phaseLabel(EstimatedPhase phase);
 
+// O bit de uma fase dentro de ComponentTreeNode::subtreePhaseMask.
+unsigned int phaseBit(EstimatedPhase phase);
+
 // true para toda fase que NAO seja 'Structural' -- usado so pra decidir se
 // o card de detalhe mostra o aviso "(estimado)"; 'Structural' tambem e uma
 // inferencia (nenhuma classe se autodeclara "eu sou estrutural"), mas e
@@ -103,6 +106,15 @@ struct ComponentTreeNode
    int playerId{-1};
 
    EstimatedPhase phase{EstimatedPhase::Unknown};
+
+   // Bitmask de todas as EstimatedPhase presentes na subarvore deste no,
+   // ele proprio incluido. Existe porque o desenho precisa acender o caminho
+   // da recursao ate quem participa da fase corrente MESMO quando o galho
+   // esta retraido -- ai os participantes nao estao no layout, e sem esta
+   // mascara o caminho simplesmente nao apareceria (medido: com os falcons
+   // fechados, a fase 3 nao acendia nada). Calculada de baixo para cima na
+   // descoberta, em O(n).
+   unsigned int subtreePhaseMask{};
 
    // Estado VIVO do objeto, lido por getter publico -- ver
    // captureLiveState() em ComponentTreeQuery.cpp para a lista por classe.

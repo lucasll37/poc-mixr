@@ -188,7 +188,7 @@ pkg.generate(
 subdir('./src')
 
 # O dashboard (TUI) -- unico ocupante de ./app/, fora de src/ de proposito
-# (nao e "mais uma poc" no molde single-thread/multi-thread/bandit-dis; e a
+# (nao e "mais uma poc" no molde single-thread/multi-thread/bandit; e a
 # ferramenta de controle/monitoramento das outras). Alvo se chama 'app'.
 subdir('./app')
 

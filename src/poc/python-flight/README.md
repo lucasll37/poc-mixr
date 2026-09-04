@@ -1,5 +1,15 @@
 # python-flight
 
+> **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
+> (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
+> cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
+> `app -scenario python-flight`, ou `make run-python-flight`. O que sobra nesta pasta é o **cenário**
+> (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
+> `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
+> cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
+> [src/poc/meson.build](../meson.build) para o porquê e para a prova de neutralidade (os dumps
+> saíram byte-idênticos).
+
 A [multi-thread](../multi-thread/) **inteira**, com **uma** diferença: as **leis de voo** não estão
 compiladas em lugar nenhum. São quatro arquivos `.py` em [`configs/policy/`](configs/policy/),
 lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo crítico** — mesma
@@ -235,7 +245,7 @@ resto não.
 
 1. `treeFile:` aponta para a árvore desta pasta, e não para a de produção instalada em `dist/`;
 2. Tacview na porta **1237** e gravação em `data/recordings/` próprio;
-3. DIS emitindo da porta **3004** (bandit-dis 3001, single-thread 3002, multi-thread 3003) — as
+3. DIS emitindo da porta **3004** (bandit 3001, single-thread 3002, multi-thread 3003) — as
    quatro pocs podem rodar ao mesmo tempo;
 4. o `MsgFileSink` grava no `data/messages/` próprio.
 

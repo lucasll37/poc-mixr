@@ -2,6 +2,7 @@
 
 #include "app/ComponentFlowState.hpp"
 #include "app/ComponentTreeQuery.hpp"
+#include "app/FrameCallChain.hpp"
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/box.hpp>
@@ -76,6 +77,11 @@ struct ComponentTreeLayoutNode
    // retraído (é o que permite desenhar "[+3]" e saber que há o que expandir).
    int childCount{};
    bool collapsed{};
+
+   // Copiada de ComponentTreeNode -- é o que permite acender o caminho da
+   // recursão até um participante que está DENTRO de um galho retraído (ver
+   // o comentário lá).
+   unsigned int subtreePhaseMask{};
 };
 
 struct ComponentTreeLayout
@@ -215,8 +221,17 @@ bool navigateComponentTree(const ComponentTreeLayout& layout, ComponentTreeViewS
 // distinta do anel branco de seleção, pra "selecionado" e "ativo no ciclo
 // agora" nunca se confundirem visualmente mesmo quando os dois calham no
 // mesmo nó.
+// Além do pulso, o desenho responde graficamente "o que está sendo chamado
+// agora, e por onde a chamada chega": (a) todo nó que participa da fase
+// corrente ganha, logo abaixo do nome, o RÓTULO DA CHAMADA com o argumento
+// de verdade -- `dynamics(0.020s)`, `process(0.020s)`; (b) as arestas do
+// CAMINHO DA RECURSÃO até esses nós saem acesas na cor da fase, contra o
+// cinza das demais -- é literalmente `Component::updateTC()` descendo por
+// `obj->tcFrame(dt)` em cada filho; e (c) uma ONDA percorre esse caminho de
+// cima para baixo, um nível por vez, enquanto a reprodução está tocando.
 ftxui::Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                                   ftxui::Box& outCanvasBox, EstimatedPhase activeFlowPhase);
+                                   ftxui::Box& outCanvasBox, const ComponentFlowState& flow,
+                                   const FrameCallParams& params);
 
 // Converte um clique em CELULAS de terminal relativas ao canvas (já
 // subtraído o canto do Box) no ÍNDICE do nó mais próximo em
@@ -233,7 +248,13 @@ int hitTestComponentTreeNode(const ComponentTreeLayout& layout, const ComponentT
 // NÃO fixa largura nem altura: quem dimensiona é o chamador, com o MESMO
 // 'detailPanelWidth'/'kDetailPanelHeight' das abas F1/F2 (pedido explícito:
 // o subquadro lateral tem de ter o mesmo tamanho nas três abas).
-ftxui::Element renderComponentDetail(const ComponentTreeLayoutNode& node);
+// Recebe também a fase corrente para acrescentar a seção "nesta fase": o
+// que ESTE componente executa agora (função, argumento, arquivo:linha) e o
+// CAMINHO DA RECURSÃO que chega até ele, de `Station::tcFrame` para baixo.
+// Vai aqui, e não num painel próprio, porque o card já tinha espaço
+// sobrando e porque a informação é por-componente, não global.
+ftxui::Element renderComponentDetail(const ComponentTreeLayoutNode& node,
+                                     const ComponentFlowState& flow, const FrameCallParams& params);
 
 // Legenda de cores -- uma linha por fase de kComponentFlowCycle, reusando
 // phaseColor()/phaseLabel() (não inventa vocabulário novo).
@@ -241,6 +262,15 @@ ftxui::Element renderComponentFlowLegend();
 
 // "fase atual: fase 3 (decisao, no frame T/C)" + play/pause/velocidade +
 // o aviso de MODELO CONCEITUAL (ver app/ComponentFlowState.hpp).
-ftxui::Element renderComponentFlowStatus(const ComponentFlowState& flow);
+ftxui::Element renderComponentFlowStatus(const ComponentFlowState& flow, const FrameCallParams& params);
+
+// A FAIXA DE FASES: um diagrama de pipeline, um bloco por fase do ciclo, com
+// a fase corrente preenchida. É a leitura de um relance ("estamos na fase
+// 3") que o texto sozinho não dá -- e separa visualmente o grupo do frame de
+// tempo crítico (as quatro fases, numa thread do pool) do grupo de fundo
+// (updateData, noutra thread).
+ftxui::Element renderFramePhaseStrip(const ComponentFlowState& flow, const FrameCallParams& params);
+
+
 
 } // namespace app

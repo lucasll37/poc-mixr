@@ -21,7 +21,7 @@ setSlotByIndex(), ver contexts/MIXR-CONTEXT.md), nao por posicao -- entao
 uma divergencia de ORDEM entre os blocos e inocua em runtime, mas ainda
 assim um sinal de que a duplicacao comentada-vs-terse entre falcon1 e os
 demais ja divergiu uma vez (foi o caso encontrado e corrigido em
-src/poc/multi-thread/configs/scenario.epp.in -- a ordem de
+src/poc/dis/multi-thread/configs/scenario.epp.in -- a ordem de
 evadeSpeed/supportSpeed/evadeHold/terrainClearance no BtBehavior de
 falcon1 nao batia com falcon2/3/4). Este guard existe para essa
 divergencia nao voltar a acontecer em silencio.

@@ -1,4 +1,4 @@
-# single-thread/multi-thread/bandit-dis moram em ./poc/ (as tres pocs de
+# single-thread/multi-thread/bandit moram em ./poc/ (as tres pocs de
 # execucao real -- ver src/poc/meson.build). O dashboard (TUI de
 # controle/monitoramento) NAO mora aqui -- ver ./app/meson.build,
 # subdir'ado direto da raiz. E o UNICO ocupante de ./app/, por isso o alvo

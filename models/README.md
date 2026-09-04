@@ -12,7 +12,7 @@ models/
 ├── flight/          # o modelo de produção das duas pocs gêmeas
 │   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
 │   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
-│   │                 # pocs (single-thread/multi-thread/bandit-dis) apontam pra cá
+│   │                 # pocs (single-thread/multi-thread/bandit) apontam pra cá
 │   ├── tests/{domain,tree,native}/        # 76 casos, e nenhum levanta Station
 │   ├── docs/ARCHITECTURE.md               # calibração + armadilhas deste modelo
 │   ├── Makefile      # build AUTOCONTIDO -- dist/ na raiz deste projeto (§1.1)
@@ -27,7 +27,7 @@ models/
 │   ├── src/domain/Guidance.{hpp,cpp}          # lei de guiagem, pura
 │   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
 │   │                     # flight (2º PluginModule) só no cenário de demo
-│   │                     # (src/poc/single-thread/configs/
+│   │                     # (src/poc/dis/single-thread/configs/
 │   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
 │   │                     # seção "Demo: míssil guiado", para o "porque" de
 │   │                     # ser um plugin à parte e não dentro do flight.
@@ -294,13 +294,13 @@ surpresa do terceiro.
 ## 4. Como criar uma poc nova que usa um modelo novo
 
 A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nada de modelo.
-`src/poc/bandit-dis/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
+`src/poc/dis/bandit/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
 
-1. **`src/poc/<nome>/`** seguindo o molde de `src/poc/single-thread/` (só `app/`, `main.cpp`,
+1. **`src/poc/<nome>/`** seguindo o molde de `src/poc/dis/single-thread/` (só `app/`, `main.cpp`,
    `mixr_factory.{hpp,cpp}`), e `subdir('./<nome>')` em [src/meson.build](../src/meson.build).
 2. **`mixr_factory.cpp`** encadeia `mixr::xplugin::factory` (as classes EDL `( PluginLoader )` e
    `( PluginModule )`) e, no fim, `mixr::xplugin::loadedFactory` — as classes que vieram do
-   plugin. Copie de `src/poc/bandit-dis/src/mixr_factory.cpp`.
+   plugin. Copie de `src/poc/dis/bandit/src/mixr_factory.cpp`.
 3. **`app/StationBuilder.cpp`** chama `xplugin::setBuiltinFactory(mixrFactoryBuiltin)` antes do
    `edl_parser` e `xplugin::seal()` depois.
 4. **`dependencies`** do `executable()`: `[thread_dep, mixr_dep, xtacview_dep, xclock_dep,
@@ -370,5 +370,5 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova
-- **[../src/poc/single-thread/README.md](../src/poc/single-thread/README.md)** — a dissecação profunda do
+- **[../src/poc/dis/single-thread/README.md](../src/poc/dis/single-thread/README.md)** — a dissecação profunda do
   modelo de produção (os arquivos moraram para cá, o texto continua valendo)

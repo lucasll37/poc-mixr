@@ -11,6 +11,8 @@ namespace xclock { class ClockStation; }
 namespace xtacview { class TacviewOutput; }
 }
 
+namespace mixr { namespace linkage { class IoHandler; } }
+
 namespace app {
 
 // O que fazer depois que o laco termina (main.cpp decide com isto: sair,
@@ -42,6 +44,7 @@ DashboardExit runDashboard(mixr::simulation::Station* station,
                            mixr::models::WorldModel* worldModel,
                            mixr::xclock::ClockStation* clockStation,
                            mixr::xtacview::TacviewOutput* tacviewOutput,
+                           mixr::linkage::IoHandler* ioHandler,
                            int numTcThreads, const std::string& scenarioLabel,
                            const BtNode& behaviorTree);
 

@@ -177,15 +177,29 @@ void addField(std::vector<ComponentStateField>& out, const std::string& label, c
    out.push_back(ComponentStateField{label, value});
 }
 
-// Conta as entradas de um PairStream pre-ref()'d, liberando-o. Usado pelos
-// contadores de 'players'/'networks' da Station -- getPlayers()/getNetworks()
-// devolvem ref()'d (ver o cabecalho de Station.hpp).
+// Conta as entradas de um PairStream PRE-REF()'d, liberando-o -- o caso de
+// getPlayers() e de getComponents(), os dois documentados como "pre-ref()'d"
+// no cabecalho do framework.
 int countAndRelease(mixr::base::PairStream* const stream)
 {
    if (stream == nullptr) return 0;
    const int n{static_cast<int>(stream->entries())};
    stream->unref();
    return n;
+}
+
+// ARMADILHA MEDIDA (nao redescobrir): Station::getNetworks() NAO e pre-ref()'d.
+// Ao contrario de getPlayers(), que o cabecalho marca como "pre-ref()'d", ele
+// devolve o membro cru (Station.cpp:639-642 -- 'return networks;'). Dar
+// unref() nele solta uma referencia que nunca se tomou: o contador cai a cada
+// redesenho da aba e, poucos segundos depois, o PairStream e destruido embaixo
+// do proprio laco que o percorre -- SIGSEGV em List::Item::getValue() com um
+// ponteiro de lixo. So aparece em cenario que declara 'networks:' (as pocs de
+// DIS), e por isso ficou latente enquanto o ./app so rodava os cenarios
+// hermeticos dele.
+int countBorrowed(const mixr::base::PairStream* const stream)
+{
+   return (stream != nullptr) ? static_cast<int>(stream->entries()) : 0;
 }
 
 std::vector<ComponentStateField> captureLiveState(mixr::base::Object* const obj)
@@ -203,7 +217,7 @@ std::vector<ComponentStateField> captureLiveState(mixr::base::Object* const obj)
       // teclas +/- desta app movem, via xclock::ClockStation::setTimeScale().
       addField(out, "fast-forward", std::to_string(station->getFastForwardRate()) + "x");
       addField(out, "players", std::to_string(countAndRelease(station->getPlayers())));
-      addField(out, "redes", std::to_string(countAndRelease(station->getNetworks())));
+      addField(out, "redes", std::to_string(countBorrowed(station->getNetworks())));
    }
 
    // ---- Simulation/WorldModel: o relogio do executivo ----
@@ -226,7 +240,7 @@ std::vector<ComponentStateField> captureLiveState(mixr::base::Object* const obj)
       addField(out, "dano", fmtNum(player->getDamage() * 100.0, 0) + " %");
       // Um fantasma que chegou por DIS e "remoto" -- ele nao tem
       // dynamicsModel/pilot locais, so dead reckoning (ver a secao
-      // src/poc/bandit-dis do CLAUDE.md). Distinguir isso explica de graca
+      // src/poc/dis/bandit do CLAUDE.md). Distinguir isso explica de graca
       // por que a subarvore dele e mais pobre que a de um player local.
       addField(out, "origem", player->isNetworkedPlayer()
                   ? ("remoto (rede " + std::to_string(player->getNetworkID()) + ")")
@@ -398,6 +412,8 @@ void appendPlayers(ComponentTreeNode& simNode, mixr::simulation::Simulation* con
    // lista e o unico estado que existe, e e justamente o que se quer saber
    // com o galho retraido.
    addField(playersNode.state, "itens", std::to_string(playersNode.children.size()));
+   playersNode.subtreePhaseMask = phaseBit(playersNode.phase);
+   for (const auto& kid : playersNode.children) playersNode.subtreePhaseMask |= kid.subtreePhaseMask;
    simNode.children.push_back(std::move(playersNode));
 }
 
@@ -421,7 +437,8 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
       addChild(stationNode, io, "ioHandler", depth, nodeCount);
    }
 
-   mixr::base::PairStream* const nets{station->getNetworks()};   // pre-ref()'d
+   // EMPRESTADO, nao pre-ref()'d -- ver countBorrowed() acima. Nada de unref().
+   mixr::base::PairStream* const nets{station->getNetworks()};
    if (nets != nullptr) {
       ComponentTreeNode netsNode;
       netsNode.slotName = "networks";
@@ -435,8 +452,9 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
          const std::string slotName{(pair->slot() != nullptr) ? pair->slot()->getString() : std::string{}};
          addChild(netsNode, pair->object(), slotName, depth, nodeCount);
       }
-      nets->unref();
       addField(netsNode.state, "itens", std::to_string(netsNode.children.size()));
+      netsNode.subtreePhaseMask = phaseBit(netsNode.phase);
+      for (const auto& kid : netsNode.children) netsNode.subtreePhaseMask |= kid.subtreePhaseMask;
       stationNode.children.push_back(std::move(netsNode));
    }
 }
@@ -491,6 +509,9 @@ void addChild(ComponentTreeNode& parent, mixr::base::Object* const obj, const st
       // conhecido da PRIMEIRA METADE da feature.
    }
 
+   node.subtreePhaseMask = phaseBit(node.phase);
+   for (const auto& child : node.children) node.subtreePhaseMask |= child.subtreePhaseMask;
+
    parent.children.push_back(std::move(node));
 }
 
@@ -508,6 +529,11 @@ std::string phaseLabel(const EstimatedPhase phase)
       case EstimatedPhase::Unknown:
       default:                                 return "desconhecida";
    }
+}
+
+unsigned int phaseBit(const EstimatedPhase phase)
+{
+   return 1u << static_cast<unsigned int>(phase);
 }
 
 bool isHeuristicPhase(const EstimatedPhase phase)
@@ -533,6 +559,9 @@ ComponentTreeNode discoverComponentTree(mixr::simulation::Station* const station
 
    appendComponentChildren(root, station, 1, nodeCount);
    appendStationExtras(root, station, 1, nodeCount);
+
+   root.subtreePhaseMask = phaseBit(root.phase);
+   for (const auto& child : root.children) root.subtreePhaseMask |= child.subtreePhaseMask;
 
    return root;
 }

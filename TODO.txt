@@ -1,9 +1,21 @@
 TODOS OS players devem informar a thread a qual está associado na tela F1 do app. acontece que o bandit não está informando.
 
-Contruir todos os modelos buildin do framework
 
-Formas eficiente de se documentar o código
 
 enxugar shared
 
-documentação iterativa
+inclua a velocidade real de execução no app
+
+no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
+
+abrir app gera uma compilação
+
+no readme, ensinar como instala dependecias
+
+.epp -> .edl
+
+app quebrando
+
+estrutura de pasta para modelos (herdar de mixr/model)
+
+gerar documentação

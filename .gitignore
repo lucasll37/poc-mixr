@@ -20,14 +20,16 @@ models/plugins/data/
 # e data/logs/ e versionado, nunca o conteudo gerado. 'app/' (o dashboard)
 # mora fora de 'src/', por isso o padrao repete pros dois prefixos. As tres
 # pocs de execucao real moram em 'src/poc/<nome>/' (um nivel a mais que
-# 'app/data/...', dai o 'src/poc/*/data/...' em vez de 'src/*/data/...').
-src/poc/*/data/recordings/*.acmi
-src/poc/*/data/logs/*.log*
+# 'app/data/...', dai o 'src/poc/*/data/...' em vez de 'src/*/data/...') -- e as
+# tres de DIS moram um nivel MAIS FUNDO ainda, em 'src/poc/dis/<nome>/', dai o
+# padrao '**' em vez de um '*' so.
+src/poc/**/data/recordings/*.acmi
+src/poc/**/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
 
 # saida do shared/xmsg (mensagens configuraveis)
-src/poc/*/data/messages/*.jsonl
+src/poc/**/data/messages/*.jsonl
 app/data/messages/*.jsonl
 
 # src/rl/: gravacoes Tacview de cada execucao do wrapper Gymnasium (mesmo

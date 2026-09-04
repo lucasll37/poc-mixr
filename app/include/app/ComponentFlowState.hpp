@@ -64,7 +64,12 @@ EstimatedPhase currentFlowPhase(const ComponentFlowState& flow);
 // verdade pausado) quanto pelo tick automatico de reproducao.
 void advanceComponentFlowStep(ComponentFlowState& flow);
 
-void toggleComponentFlowPlaying(ComponentFlowState& flow);
+// A reproducao da animacao e ESCRAVA da simulacao: ela toca enquanto a
+// simulacao roda e para quando ela pausa (ver DashboardLoop.cpp, que chama
+// isto a cada redesenho com '!paused'). Nao ha mais um toggle proprio --
+// tinha o efeito ruim de deixar os dois relogios divergirem, e o pedido foi
+// justamente que o controle da aba F6 mexesse na simulacao de verdade.
+void setComponentFlowPlaying(ComponentFlowState& flow, bool playing);
 
 // 1x -> 2x -> 4x -> 1x -- mesma escada pequena do resto do app (ver
 // shared/xclock/TimeControls, embora esta seja independente daquela: o
