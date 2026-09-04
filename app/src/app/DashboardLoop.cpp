@@ -414,6 +414,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    Box componentsCanvasBox{};
    bool componentsAutoFitted{};
 
+   // SEGUNDA METADE da feature (ver app/ComponentFlowState.hpp): o "pulso"
+   // que percorre as fases do ciclo conceitual. Avancado por
+   // tickComponentFlowAnimation() a cada redesenho (ver o Renderer mais
+   // externo, mais abaixo) -- MODELO CONCEITUAL, nao medicao ao vivo.
+   ComponentFlowState componentsFlow;
+
    // Largura do card de detalhe -- recalculada a cada redesenho (o
    // terminal pode ser redimensionado em qualquer frame), "ocupando por
    // referencia ate onde o mapa acaba": reserva 'kMapCanvasWidthCells' pro
@@ -572,6 +578,13 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       centerComponentTreeOn(componentsView,
          componentsLayout.nodes[static_cast<std::size_t>(componentsView.selectedIndex)]);
    };
+
+   // ---- animacao de fluxo da aba "Componentes" (SEGUNDA METADE, ver
+   // app/ComponentFlowState.hpp) -- mesma regra de sempre: uma lambda, usada
+   // por tecla E por botao ----
+   const auto doCompTogglePlay = [&] { toggleComponentFlowPlaying(componentsFlow); };
+   const auto doCompStep = [&] { advanceComponentFlowStep(componentsFlow); };
+   const auto doCompCycleSpeed = [&] { cycleComponentFlowSpeed(componentsFlow); };
 
    // ---- breakpoint de arvore de BT -- "marcar um estado da bt de um dado
    // elemento e rodar a simulacao ate que aquele no seja atingido,
@@ -922,7 +935,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          componentsAutoFitted = true;
       }
       return hbox({
-                renderComponentTree(componentsLayout, componentsView, componentsCanvasBox) | flex,
+                renderComponentTree(componentsLayout, componentsView, componentsCanvasBox,
+                                    currentFlowPhase(componentsFlow)) | flex,
                 separator(),
                 detail,
              })
@@ -932,7 +946,29 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnCompZoomOut{makeButton("[[] Zoom-", doCompZoomOut)};
    const Component btnCompZoomIn{makeButton("[]] Zoom+", doCompZoomIn)};
    const Component btnCompCenter{makeButton("[c] Centralizar", doCompCenterOnSelected)};
-   const Component componentsButtons{Container::Horizontal({btnCompZoomOut, btnCompZoomIn, btnCompCenter})};
+
+   // Play/pause com rotulo dinamico -- mesmo padrao de 'btnLogFollow'/
+   // 'logFilterOpt' acima (transform le estado vivo, nao so o clique).
+   ButtonOption compPlayOpt;
+   compPlayOpt.on_click = doCompTogglePlay;
+   compPlayOpt.transform = [&](const EntryState&) {
+      return text(std::string(" [Espaco] ") + (componentsFlow.playing ? "Pausar" : "Tocar") + " ")
+         | (componentsFlow.playing ? (bgcolor(Color::Blue) | bold) : dim);
+   };
+   const Component btnCompPlay{Button(compPlayOpt)};
+
+   const Component btnCompStep{makeButton("[n] Proximo passo", doCompStep)};
+
+   ButtonOption compSpeedOpt;
+   compSpeedOpt.on_click = doCompCycleSpeed;
+   compSpeedOpt.transform = [&](const EntryState&) {
+      return text(" [v] Velocidade " + std::to_string(componentsFlow.stepsPerSecond) + "x/s ")
+         | bgcolor(Color::Blue) | bold;
+   };
+   const Component btnCompSpeed{Button(compSpeedOpt)};
+
+   const Component componentsButtons{Container::Horizontal(
+      {btnCompZoomOut, btnCompZoomIn, btnCompCenter, btnCompPlay, btnCompStep, btnCompSpeed})};
 
    const Component componentsBody{Container::Vertical({componentsCanvasArea, componentsButtons})};
    const Component componentsTab{Renderer(componentsBody, [&]() -> Element {
@@ -940,7 +976,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          text(" arvore de componentes REAL (getComponents() + players/dataRecorder/ioHandler/"
               "networks) -- cor = fase ESTIMADA (heuristica, ver card de detalhe) ") | dim,
          componentsCanvasArea->Render() | flex,
-         text("[setas/arraste] mover  [clique] selecionar no  [ ]/roda] zoom") | dim,
+         separator(),
+         renderComponentFlowStatus(componentsFlow),
+         renderComponentFlowLegend(),
+         text("[setas/arraste] mover  [clique] selecionar no  [ ]/roda] zoom  "
+              "[Espaco] play/pause do fluxo  [n] passo manual  [v] velocidade") | dim,
          componentsButtons->Render(),
       });
    })};
@@ -1168,6 +1208,16 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // (hit-test/pan) precisa de 'componentsLayout' fresco independente de
       // qual aba esta ativa no momento do clique.
       componentsLayout = layoutComponentTree(discoverComponentTree(station));
+
+      // Relogio da animacao de fluxo (SEGUNDA METADE) -- avanca aqui, no
+      // MESMO Renderer mais externo que ja roda a cada redesenho
+      // (screen.PostEvent(Event::Custom), ~10 Hz, disparado por
+      // 'simThread' -- ver o comentario grande no topo deste arquivo),
+      // reaproveitando esse pulso como relogio em vez de medir tempo de
+      // parede. Roda mesmo com outra aba ativa, pelo mesmo motivo de
+      // 'componentsLayout' ser recalculado incondicionalmente aqui.
+      tickComponentFlowAnimation(componentsFlow);
+
       if (!componentsLayout.nodes.empty()) {
          componentsView.selectedIndex = std::clamp(componentsView.selectedIndex, -1,
             static_cast<int>(componentsLayout.nodes.size()) - 1);
@@ -1222,6 +1272,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    const Component withKeys{CatchEvent(withRenderer, [&](Event event) -> bool {
+      // Espaco/[n] da aba "Componentes" (F6) tem de ser tratado ANTES do
+      // espaco GLOBAL (pausa a simulacao, logo abaixo) -- dentro desta aba,
+      // Espaco controla o PLAY/PAUSE da animacao de fluxo (relogio proprio,
+      // ver app/ComponentFlowState.hpp), nao o relogio da simulacao. O
+      // botao [espaco] Pausar da barra principal continua acessivel por
+      // clique em qualquer aba; so a TECLA espaco muda de sentido aqui.
+      if (activeTab == 5) {
+         if (event == Event::Character(' ')) { doCompTogglePlay(); return true; }
+         if (event == Event::Character('n') || event == Event::Character('N')) { doCompStep(); return true; }
+         if (event == Event::Character('v') || event == Event::Character('V')) { doCompCycleSpeed(); return true; }
+      }
       if (event == Event::Character('+') || event == Event::Character('=')) { doAccelerate(); return true; }
       if (event == Event::Character('-') || event == Event::Character('_')) { doDecelerate(); return true; }
       if (event == Event::Character(' ') || event == Event::Character('p') ||

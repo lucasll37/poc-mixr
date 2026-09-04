@@ -135,6 +135,22 @@ test_app_log = executable('test-app-log',
 )
 test('app-log', test_app_log, suite: 'domain', timeout: 60)
 
+# A logica pura por tras da animacao de fluxo da aba "Componentes" (F6) --
+# app/ComponentFlowState.hpp/.cpp: ordem do ciclo de fases, avanco (com
+# volta), e o relogio de animacao por CONTAGEM DE REDESENHOS (nao tempo de
+# parede -- e um MODELO CONCEITUAL do ciclo do frame MIXR, nao uma medicao
+# ao vivo, ver o comentario grande do header). Sem MIXR de verdade, sem
+# FTXUI: ComponentTreeQuery.hpp so forward-declara mixr::simulation::Station.
+test_app_component_flow = executable('test-app-component-flow-state',
+    files('app/test_component_flow_state.cpp') + files(
+        '../app/src/app/ComponentFlowState.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-component-flow-state', test_app_component_flow, suite: 'domain', timeout: 60)
+
 # A maquina de estados do breakpoint de arvore de comportamento --
 # extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
 test_app_breakpoint = executable('test-app-breakpoint-controller',

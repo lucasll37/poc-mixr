@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/ComponentFlowState.hpp"
 #include "app/ComponentTreeQuery.hpp"
 
 #include <ftxui/dom/elements.hpp>
@@ -18,10 +19,15 @@
 // constante -- senão o mapa/a árvore só ocupa parte do quadro reservado em
 // terminais maiores, ou corta em terminais menores).
 //
-// PRIMEIRA METADE da feature (ver o pedido original): so a estrutura
-// estatica, navegavel, com selecao e card de detalhe -- SEM animacao de
-// fluxo entre fases nem controles de play/pause/step (isso fica pra
-// proxima iteracao).
+// PRIMEIRA METADE da feature: so a estrutura estatica, navegavel, com
+// selecao e card de detalhe.
+//
+// SEGUNDA METADE (esta): a animacao de fluxo entre fases (ver
+// app/ComponentFlowState.hpp para o "porque" e o aviso de que e um MODELO
+// CONCEITUAL, nao uma medicao) -- renderComponentTree() ganhou o parametro
+// 'activeFlowPhase' pra destacar os nos cuja fase estimada bate com a fase
+// atual do ciclo, e este header ganhou renderComponentFlowLegend()/
+// renderComponentFlowStatus().
 //------------------------------------------------------------------------------
 namespace app {
 
@@ -130,8 +136,15 @@ void fitComponentTreeToContent(ComponentTreeViewState& view, const ComponentTree
 // no selecionado. 'outCanvasBox' recebe a caixa de tela (ftxui::reflect),
 // mesmo uso de app::renderMap(): o chamador usa pra saber se um clique caiu
 // dentro do canvas antes de tratar como arrasto/selecao.
+//
+// 'activeFlowPhase' (SEGUNDA METADE) acrescenta um anel AMARELO -- o
+// "pulso" -- em todo no cuja 'phase' bate com ela; ver
+// app/ComponentFlowState.hpp para o que essa fase representa (o ciclo
+// CONCEITUAL, nao uma medicao). Cor deliberadamente distinta do anel branco
+// de selecao, pra "selecionado" e "ativo no ciclo agora" nunca se
+// confundirem visualmente mesmo quando os dois calham no mesmo no.
 ftxui::Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                                   ftxui::Box& outCanvasBox);
+                                   ftxui::Box& outCanvasBox, EstimatedPhase activeFlowPhase);
 
 // Converte um clique em CELULAS de terminal relativas ao canvas (ja
 // subtraido o canto do Box) no INDICE do no mais proximo em
@@ -146,5 +159,16 @@ int hitTestComponentTreeNode(const ComponentTreeLayout& layout, const ComponentT
 // o MESMO xboard::Readout que app/DashboardState.cpp/app/FleetPanel.cpp ja
 // usam, para nao divergir de vocabulario/valor entre abas).
 ftxui::Element renderComponentDetail(const ComponentTreeLayoutNode& node);
+
+// Legenda de cores -- uma linha por fase de kComponentFlowCycle, reusando
+// phaseColor()/phaseLabel() (nao inventa vocabulario novo). Estatica, sem
+// estado: so lista as seis fases do ciclo conceitual.
+ftxui::Element renderComponentFlowLegend();
+
+// "fase atual: fase 3 (decisao, no frame T/C)" + play/pause/velocidade +
+// o aviso de MODELO CONCEITUAL (ver app/ComponentFlowState.hpp) -- fica
+// pequeno de proposito, o aviso mais completo mora no comentario do header
+// e no card de detalhe (isHeuristicPhase()).
+ftxui::Element renderComponentFlowStatus(const ComponentFlowState& flow);
 
 } // namespace app

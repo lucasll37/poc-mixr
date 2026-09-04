@@ -179,7 +179,7 @@ void fitComponentTreeToContent(ComponentTreeViewState& view, const ComponentTree
 }
 
 Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                            Box& outCanvasBox)
+                            Box& outCanvasBox, const EstimatedPhase activeFlowPhase)
 {
    const int canvasW{view.canvasWidthPx};
    const int canvasH{view.canvasHeightPx};
@@ -207,6 +207,16 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       if (!p.onCanvas) continue;
 
       const Color col{phaseColor(node.phase)};
+      // "Pulso" do ciclo de fluxo (SEGUNDA METADE, ver
+      // app/ComponentFlowState.hpp) -- anel AMARELO, raio 3, deliberadamente
+      // diferente do anel branco (raio 4) de selecao logo abaixo, pra "esta
+      // no ciclo agora" e "esta selecionado" nunca se confundirem mesmo
+      // quando calham no MESMO no. So desenha quando a fase e conhecida --
+      // 'Unknown' nunca "pulsa" (nao ha no de verdade nela, ver o
+      // comentario de kComponentFlowCycle).
+      if (node.phase == activeFlowPhase && activeFlowPhase != EstimatedPhase::Unknown) {
+         c.DrawPointCircle(p.px, p.py, 3, Color::YellowLight);
+      }
       if (static_cast<int>(i) == view.selectedIndex) c.DrawPointCircle(p.px, p.py, 4, Color::White);
       c.DrawPointCircleFilled(p.px, p.py, 2, col);
       c.DrawText(p.px + 4, p.py - 2, shortNodeLabel(node), col);
@@ -283,6 +293,36 @@ Element renderComponentDetail(const ComponentTreeLayoutNode& node)
    }
 
    return vbox(std::move(lines)) | border | color(badge) | size(WIDTH, EQUAL, 56);
+}
+
+Element renderComponentFlowLegend()
+{
+   Elements swatches;
+   for (std::size_t i = 0; i < kComponentFlowCycleLen; i++) {
+      const EstimatedPhase phase{kComponentFlowCycle[i]};
+      swatches.push_back(hbox({
+         text("  ") | bgcolor(phaseColor(phase)),
+         text(" " + phaseLabel(phase) + "  ") | dim,
+      }));
+   }
+   return hbox(std::move(swatches));
+}
+
+Element renderComponentFlowStatus(const ComponentFlowState& flow)
+{
+   const EstimatedPhase phase{currentFlowPhase(flow)};
+   std::ostringstream line;
+   line << "ciclo de fluxo: fase atual " << (flow.cycleIndex + 1) << "/" << kComponentFlowCycleLen
+        << " -- " << phaseLabel(phase) << "   [" << (flow.playing ? "tocando" : "pausado")
+        << " @ " << flow.stepsPerSecond << "x/s]";
+
+   return vbox({
+      hbox({text(line.str()) | color(phaseColor(phase)) | bold}),
+      text("MODELO CONCEITUAL do ciclo do frame (fase 0 -> 1/2 -> 3 -> decisao de fundo -> fundo -> "
+           "volta pra fase 0) -- avanca por um relogio de ANIMACAO PROPRIO, NAO e um tracado ao vivo "
+           "de chamadas reais (o MIXR e dependencia binaria; ver CLAUDE.md/app/ComponentFlowState.hpp)")
+         | dim,
+   });
 }
 
 } // namespace app

@@ -2615,6 +2615,51 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
   (SIGINT, sem pty — estas pocs não têm diálogo de confirmação nem TUI) cobre saída normal e
   saída com cliente Tacview pendurado nas 5, registrados como `scenario-<poc>-quit`.
 
+**Décima nona passada: sexta aba, "Componentes" (F6) — a árvore REAL de componentes da `Station`
+em execução, navegável, e — a segunda metade, nesta mesma passada — uma animação de fluxo entre
+as fases do frame.**
+
+- **Primeira metade**: `app::discoverComponentTree()` (`app/ComponentTreeQuery.{hpp,cpp}`) percorre
+  `mixr::base::Component::getComponents()` recursivamente a partir da `Station`, mais os quatro
+  membros que NÃO passam por `components:` (`players`/`simulation`/`dataRecorder`/`ioHandler`/
+  `networks` — investigado no fonte antes de escrever a heurística, mesma classe de armadilha já
+  documentada pro `TacviewOutput::resolveInfo()`), acrescentados como filhos SINTÉTICOS via getter
+  público. Cada nó ganha uma `EstimatedPhase` — dynamics/transmit-receive/decisão no frame/decisão
+  em background/background — por heurística de nome de slot e classe: é o ÚNICO dado desta aba que
+  não é medido (o MIXR é dependência binária, não instrumentável sem recompilar o framework), e o
+  card de detalhe (`app/ComponentTreePanel.cpp`) avisa isso explicitamente sempre que a fase não é
+  `Structural`. Desenho em `ftxui::Canvas` responsivo, mesma receita de pan/zoom/clique/
+  `fitComponentTreeCanvasToBox()` já validada na aba Mapa.
+- **Segunda metade — a animação de fluxo (`app/ComponentFlowState.{hpp,cpp}`, novo módulo
+  pequeno, função pura, sem MIXR nem FTXUI — só `EstimatedPhase`)**: um "pulso" percorre, em ordem
+  CÍCLICA fixa (`kComponentFlowCycle`: `Structural → DynamicsPhase0 → SensorPhase1And2 →
+  DecisionPhase3 → DecisionBackground → Background → volta`), destacando com um anel AMARELO (raio
+  3, deliberadamente diferente do anel BRANCO de seleção) todo nó cuja fase estimada bate com a
+  fase corrente do ciclo. **Isto é um MODELO CONCEITUAL do ciclo documentado na seção "O modelo
+  MIXR em uma tela" acima — NÃO um traçado ao vivo de chamadas.** Não dá pra ser: o frame de tempo
+  crítico roda a até 50 Hz, rápido demais pra uma UI que amostra a ~10 Hz observar de verdade, e o
+  MIXR sendo dependência binária tira de cogitação instrumentar `updateTC()`/`updateData()` de
+  verdade. O relógio da animação é **próprio**, avançado por CONTAGEM DE REDESENHOS (não tempo de
+  parede) — `tickComponentFlowAnimation()` reaproveita o mesmo pulso de `screen.PostEvent
+  (Event::Custom)` a ~10 Hz que `simThread` já dispara pro resto do dashboard, contando quantos
+  redesenhos se passam entre um avanço e o próximo conforme `stepsPerSecond` (1/2/4 — `[v]` cicla).
+  O aviso de "modelo conceitual" aparece em TRÊS lugares: comentário do header, texto fixo na
+  própria aba (`renderComponentFlowStatus()`) e este parágrafo.
+- **Controles**: `[Espaço]` play/pause — tratado ANTES do `[Espaço]` GLOBAL (pausa a
+  *simulação*) no `CatchEvent` mais externo, só quando `activeTab == 5`: dentro desta aba a tecla
+  muda de sentido (o botão `[espaço] Pausar` da barra principal continua acessível por clique em
+  qualquer aba). `[n]` avança um passo manual (funciona tocando ou pausado — só faz sentido de
+  verdade pausado). `[v]` cicla a velocidade. Os três também são botões clicáveis
+  (`makeButton()`/`ButtonOption` com `transform` dinâmico, mesmo padrão de `btnLogFollow`).
+  `renderComponentFlowLegend()` lista as seis fases com a cor de `phaseColor()` — a mesma paleta do
+  desenho, sem vocabulário novo.
+- **Testado**: `tests/app/test_component_flow_state.cpp` (alvo `app-component-flow-state`, suíte
+  `domain`) — ordem do ciclo, volta ao início, `Unknown` fora do ciclo, toggle/velocidade, e o
+  relógio por contagem de redesenhos (inclusive que 4×/s avança mais rápido que 1×/s). Sem MIXR,
+  sem FTXUI, sem `Station`, no mesmo espírito de `test_map_canvas_fit.cpp`/
+  `test_meta_object_snapshot.cpp`. `make test` sem regressão (mesma falha pré-existente de sempre,
+  `onde-a-decisao-roda`).
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
