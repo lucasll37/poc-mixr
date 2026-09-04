@@ -381,6 +381,20 @@ test('scenario-onnx-policy-quit', py,
      depends: onnx_policy, workdir: raiz, suite: 'scenario',
      timeout: 120, is_parallel: false)
 
+# '-threads'/'-deterministic' com um token nao numerico nao pode derrubar o
+# processo com um sinal -- ver o cabecalho de run_bad_args_test.py e o fix em
+# app/Options.cpp (parseLongOrDie/parseIntOrDie). bandit-dis fica de fora: nao
+# tem app/Options.cpp (essa poc nao aceita CLI nenhuma, ver o cabecalho de
+# src/main.cpp dela).
+bad_args_runner = files('scenario/run_bad_args_test.py')
+foreach par : [['single-thread', single_thread], ['multi-thread', multi_thread],
+               ['python-flight', python_flight], ['onnx-policy', onnx_policy]]
+    test('scenario-' + par[0] + '-bad-args', py,
+         args: bad_args_runner + ['--binario', par[1].full_path()],
+         depends: par[1], workdir: raiz, suite: 'scenario',
+         timeout: 60, is_parallel: false)
+endforeach
+
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
 # thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a

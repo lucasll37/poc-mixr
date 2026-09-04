@@ -15,9 +15,9 @@ namespace {
 const char* const PLACEHOLDER{"@NUM_TC_THREADS@"};
 
 // Uma thread T/C por nucleo, menos a que roda o laco de background; no
-// maximo 4 por padrao. O '-threads N' do usuario ainda e limitado pelo
-// numero de nucleos -- pedir mais threads do que ha CPUs so acrescenta
-// troca de contexto.
+// maximo 8 por padrao (ver o README desta poc, secao 3). O '-threads N' do
+// usuario ainda e limitado pelo numero de nucleos -- pedir mais threads do
+// que ha CPUs so acrescenta troca de contexto.
 int resolveTcThreadCount(const int threadsOverride, unsigned int* const hwThreadsOut)
 {
    const unsigned int hwThreads{std::thread::hardware_concurrency()};
