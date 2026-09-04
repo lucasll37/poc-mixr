@@ -32,6 +32,35 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
    if (!built_) {
       station_ = buildStation(scenarioPath_);
       primeStation(station_);
+
+      // BUG CONFIRMADO E CORRIGIDO AQUI -- sem esta checagem, um 'playerName_'
+      // com typo (ou apontando pra um player que existe mas nao e o mesmo
+      // configurado com '( RLBridgeBehavior )' no .epp -- ex.: falcon2..4
+      // neste cenario) fazia step() rodar para sempre com 'terminated' preso
+      // em false, silenciosamente: findPlayerByName() abaixo devolvia nullptr
+      // (nome inexistente) e o Command/Observation continuavam fluindo
+      // normalmente pelo UNICO agente RL do processo (falcon1, fixo no
+      // .epp) -- ninguem percebia que o 'player_name' pedido nao tinha nada
+      // a ver com o que estava de fato sendo controlado/observado. Falha
+      // rapido e alto em vez de treinar contra um sinal errado.
+      //
+      // So confere EXISTENCIA do player -- nao da para confirmar daqui que e
+      // o MESMO player com RLBridgeBehavior: esse tipo mora no plugin do
+      // modelo (models/flight), que este host nao pode conhecer
+      // (tests/guard/check_host_opaco.sh). 'player_name' tem de bater com o
+      // player que o .epp configurou com RLBridgeBehavior -- ver
+      // src/rl/README.md.
+      const auto worldModel = dynamic_cast<mixr::models::WorldModel*>(station_->getSimulation());
+      const auto player = (worldModel != nullptr)
+         ? worldModel->findPlayerByName(playerName_.c_str())
+         : nullptr;
+      if (player == nullptr) {
+         throw std::runtime_error(
+            "NativeSimulation: player '" + playerName_ + "' nao existe no cenario '"
+            + scenarioPath_ + "'. player_name tem de ser o MESMO player configurado "
+            "com ( RLBridgeBehavior ) no .epp (default: falcon1) -- ver src/rl/README.md.");
+      }
+
       built_ = true;
    } else {
       // RISCO A VERIFICAR (ver o cabecalho .hpp) -- reset de cenario via

@@ -19,6 +19,22 @@ namespace rl {
 // mesmo limite em shared/xrlbridge/RLBridge.hpp e
 // models/flight/include/ubf/RLBridgeBehavior.hpp).
 //
+// 'playerName' TEM DE SER O MESMO PLAYER configurado com
+// ( RLBridgeBehavior ) no .epp (default: falcon1) -- BUG CONFIRMADO E
+// CORRIGIDO: como shared/xrlbridge nao tem chave por player id, o
+// Command/Observation trocados por step()/reset() sao SEMPRE os do player
+// que o .epp escolheu, nao os do 'playerName' passado aqui. Um valor
+// diferente (typo, ou um player que existe mas nao e o configurado com
+// RLBridgeBehavior -- ex.: falcon2..4 em src/rl/configs/scenario_rl.epp)
+// so afeta a checagem de 'terminated' (player->isCrashed()) em step(), que
+// passava a olhar um player TOTALMENTE DESLIGADO do Command/Observation
+// reais -- silenciosamente, sem erro nenhum, treinando contra um sinal de
+// termino que nao correspondia a aeronave de verdade sendo controlada.
+// reset() agora falha alto (std::runtime_error) se o player nao existir no
+// cenario; nao ha como validar daqui que e o MESMO player com
+// RLBridgeBehavior -- esse tipo mora no plugin do modelo, que este host
+// nao pode conhecer (tests/guard/check_host_opaco.sh).
+//
 // SO PODE EXISTIR UMA Station POR PROCESSO -- CONFIRMADO, nao e mais um
 // risco hipotetico. shared/xplugin sela o registro de plugins depois do
 // PRIMEIRO edl_parser() (mixr::xplugin::seal(), dentro de buildStation());

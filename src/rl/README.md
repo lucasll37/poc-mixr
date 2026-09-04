@@ -124,6 +124,21 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   `shared/xrlbridge` tem chave por `playerId` -- ver o "porque" nos dois
   cabecalhos. Rodar mais de um `falcon*` com `RLBridgeBehavior` no MESMO
   cenario misturaria os comandos/observacoes dos dois.
+- **`player_name` TEM DE bater com o player que o `.epp` configurou com
+  `( RLBridgeBehavior )`** (default: `falcon1`, em
+  `src/rl/configs/scenario_rl.epp`) -- BUG CONFIRMADO E CORRIGIDO: como a
+  ponte nao tem chave por player id (item acima), `step()`/`reset()` sempre
+  trocam Command/Observation com o player que o `.epp` escolheu, nunca com o
+  `player_name` passado ao construtor. Antes da correcao, pedir um
+  `player_name` diferente (typo, ou um player que existe mas nao e o
+  configurado com `RLBridgeBehavior` -- ex.: `falcon2..4`) fazia
+  `terminated` ficar preso em `False` para sempre, silenciosamente: a
+  checagem de `isCrashed()` olhava um player sem nenhuma relacao com o
+  Command/Observation reais. `NativeSimulation::reset()` agora falha com um
+  erro claro se o player pedido nao existir no cenario; nao ha como validar
+  daqui que e o MESMO player com `RLBridgeBehavior` -- esse tipo mora no
+  plugin do modelo, que este host nao pode conhecer
+  (`tests/guard/check_host_opaco.sh`).
 - **SO PODE EXISTIR UMA `Station` POR PROCESSO -- confirmado, nao e mais
   hipotese.** `shared/xplugin` sela o registro de plugins depois do
   primeiro `edl_parser()`; um SEGUNDO `MixrFlightEnv()` no mesmo processo

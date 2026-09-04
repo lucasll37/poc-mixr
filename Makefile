@@ -239,8 +239,10 @@ venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.v
 	src/rl/.venv/bin/pip install -q -r src/rl/requirements.txt
 	@echo "$(GREEN)venv-rl: OK$(NC) -> src/rl/.venv (ative com 'source src/rl/.venv/bin/activate', ou use direto: src/rl/.venv/bin/python3)"
 
-test-rl: install venv-rl ## Roda o smoke test Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'.
+test-rl: install venv-rl ## Roda os testes Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'. Cada script e um PROCESSO -- so pode existir uma Station por processo.
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
+	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_contract.py
+	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_bad_player.py
 
 venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (venv de treino -- separado do venv-rl da biblioteca; ver o "porque" la).
 	$(MAKE) -C src/poc/rl-training venv
