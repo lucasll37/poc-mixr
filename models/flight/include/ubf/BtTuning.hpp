@@ -3,6 +3,7 @@
 
 #include "domain/LaunchPolicy.hpp"
 
+#include <cstdint>
 #include <string>
 
 namespace mixr {
@@ -32,6 +33,14 @@ struct BtTuning
    double legTurnDeg{90.0};            // curva ao fim de cada perna
    double patrolAltitudeM{4000.0};
    double patrolSpeedKts{350.0};
+
+   // jitter de rumo da patrulha (opcional, desligado por padrao -- ver o
+   // cabecalho de domain/PatrolPlan.hpp para o "porque" do desenho e
+   // shared/xrandom/DeterministicRng.hpp para a hierarquia de derivacao)
+   double patrolJitterHeadingDeg{0.0};      // amplitude; 0 = recurso desligado
+   std::uint64_t patrolMasterSeed{0};       // mesmo valor em todo player do cenario
+   bool patrolSeedOverrideSet{false};       // true so se o slot abaixo foi de fato declarado
+   std::uint64_t patrolSeedOverride{0};     // pula a derivacao por nome para ESTE player
 
    // retorno a base
    double rtbAltitudeM{3000.0};

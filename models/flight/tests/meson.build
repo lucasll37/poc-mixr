@@ -95,7 +95,6 @@ test('tree', test_tree, suite: 'tree', timeout: 60)
 # Reusa os MESMOS fontes que vao para o .so, e nao uma copia.
 native_sources = files(
     '../src/xnative/AlertDatalink.cpp',
-    '../src/xnative/TacticalAlert.cpp',
     '../src/xnative/ThreadTag.cpp',
     '../src/xnative/RadarScan.cpp',
     '../src/xnative/FlightAgentTC.cpp',

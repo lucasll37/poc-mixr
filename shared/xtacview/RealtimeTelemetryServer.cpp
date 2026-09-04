@@ -1,5 +1,7 @@
 #include "xtacview/RealtimeTelemetryServer.hpp"
 
+#include "xlog/Log.hpp"
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -11,7 +13,6 @@
 #include <cstring>
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 namespace mixr {
@@ -73,7 +74,7 @@ bool RealtimeTelemetryServer::start(const std::string& host, const int port, con
 
    listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
    if (listenFd_ < 0) {
-      std::cerr << "[tacview] socket() failed: " << std::strerror(errno) << std::endl;
+      LOG(ERROR) << "[tacview] socket() failed: " << std::strerror(errno);
       return false;
    }
 
@@ -84,29 +85,29 @@ bool RealtimeTelemetryServer::start(const std::string& host, const int port, con
    addr.sin_family = AF_INET;
    addr.sin_port = htons(static_cast<std::uint16_t>(port));
    if (::inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1) {
-      std::cerr << "[tacview] invalid host: " << host << std::endl;
+      LOG(ERROR) << "[tacview] invalid host: " << host;
       return false;
    }
 
    if (::bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-      std::cerr << "[tacview] bind() failed on " << host << ":" << port
-                << ": " << std::strerror(errno) << std::endl;
+      LOG(ERROR) << "[tacview] bind() failed on " << host << ":" << port
+                 << ": " << std::strerror(errno);
       return false;
    }
 
    if (::listen(listenFd_, 1) < 0) {
-      std::cerr << "[tacview] listen() failed: " << std::strerror(errno) << std::endl;
+      LOG(ERROR) << "[tacview] listen() failed: " << std::strerror(errno);
       return false;
    }
 
    // A simulacao nao pode travar esperando o Tacview conectar.
    ::fcntl(listenFd_, F_SETFL, O_NONBLOCK);
 
-   std::cout << "[tacview] Real-Time Telemetry escutando em " << host << ":" << port
-             << " (Tacview: File > Real-Time Telemetry)" << std::endl;
-   std::cout << "[tacview] se o binario roda no WSL2 e o Tacview no Windows e 127.0.0.1 "
+   LOG(INFO) << "[tacview] Real-Time Telemetry escutando em " << host << ":" << port
+             << " (Tacview: File > Real-Time Telemetry)";
+   LOG(INFO) << "[tacview] se o binario roda no WSL2 e o Tacview no Windows e 127.0.0.1 "
              << "nao conectar, use `hostname -I` aqui dentro do WSL2 e conecte em "
-             << "<esse-ip>:" << port << std::endl;
+             << "<esse-ip>:" << port;
    return true;
 }
 
@@ -115,12 +116,12 @@ bool RealtimeTelemetryServer::startRecording(const std::string& filePath)
    recordingPath_ = filePath;
    file_.open(filePath, std::ios::out | std::ios::trunc);
    if (!file_.is_open()) {
-      std::cerr << "[tacview] falha ao abrir " << filePath << " para gravacao" << std::endl;
+      LOG(ERROR) << "[tacview] falha ao abrir " << filePath << " para gravacao";
       return false;
    }
    file_ << acmiHeader();
    file_.flush();
-   std::cout << "[tacview] gravando missao em " << filePath << std::endl;
+   LOG(INFO) << "[tacview] gravando missao em " << filePath;
    return true;
 }
 
@@ -170,7 +171,7 @@ void RealtimeTelemetryServer::acceptIfNeeded()
    }
 
    connectionCount_ += 1;
-   std::cout << "[tacview] cliente conectado, transmitindo telemetria" << std::endl;
+   LOG(INFO) << "[tacview] cliente conectado, transmitindo telemetria";
 }
 
 void RealtimeTelemetryServer::beginFrame(const double simTimeSec)
@@ -274,7 +275,7 @@ void RealtimeTelemetryServer::closeClient()
    if (clientFd_ >= 0) {
       ::close(clientFd_);
       clientFd_ = -1;
-      std::cout << "[tacview] cliente desconectado" << std::endl;
+      LOG(INFO) << "[tacview] cliente desconectado";
    }
 }
 

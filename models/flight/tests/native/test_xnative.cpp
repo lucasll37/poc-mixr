@@ -10,8 +10,9 @@
 // metodos chamados direto -- milissegundos, e o diagnostico aponta para a
 // linha errada em vez de para "o cenario divergiu".
 //
+#include "ubf/BtBehavior.hpp"
 #include "xnative/AlertDatalink.hpp"
-#include "xnative/TacticalAlert.hpp"
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 #include "xnative/ThreadTag.hpp"
 #include "xnative/factory.hpp"
 
@@ -134,7 +135,75 @@ TEST(Slots, BtBehaviorAceitaOsSlotsDoCenario)
    base::Float voto{50.0};
    EXPECT_TRUE(obj->setSlotByName("vote", &voto));
 
+   base::Degrees jitter{6.0};
+   EXPECT_TRUE(obj->setSlotByName("patrolJitterHeading", &jitter));
+
+   base::Float semente{20260903.0};
+   EXPECT_TRUE(obj->setSlotByName("patrolMasterSeed", &semente));
+   EXPECT_TRUE(obj->setSlotByName("patrolSeedOverride", &semente));
+
    obj->unref();
+}
+
+//------------------------------------------------------------------------------
+// Hierarquia de sementes -- override tem prioridade sobre a derivacao pelo
+// master seed. reset() (publico, chama configurePlans() por dentro) nao
+// precisa de Station/Player nenhum: sem container, o nome do player cai no
+// fallback "" -- e por isso os dois lados desta comparacao usam o MESMO
+// nome implicito, o que isola exatamente a variavel que importa (override
+// presente ou nao), sem depender de simulação nenhuma.
+//------------------------------------------------------------------------------
+TEST(Slots, PatrolSeedOverrideAusenteUsaDerivacaoDoMaster)
+{
+   auto* const a = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   auto* const b = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   ASSERT_NE(a, nullptr);
+   ASSERT_NE(b, nullptr);
+
+   base::Degrees jitter{10.0};
+   base::Float masterSeed{999.0};
+   for (auto* const obj : {a, b}) {
+      obj->setSlotByName("patrolJitterHeading", &jitter);
+      obj->setSlotByName("patrolMasterSeed", &masterSeed);
+   }
+
+   a->reset();
+   b->reset();
+
+   EXPECT_NEAR(a->patrolPlan().command().headingDeg, b->patrolPlan().command().headingDeg, 1e-9)
+      << "mesma master seed, sem override -- tem de reproduzir o mesmo jitter";
+
+   a->unref();
+   b->unref();
+}
+
+TEST(Slots, PatrolSeedOverridePresenteTemPrioridadeSobreOMaster)
+{
+   auto* const semOverride = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   auto* const comOverride = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   ASSERT_NE(semOverride, nullptr);
+   ASSERT_NE(comOverride, nullptr);
+
+   base::Degrees jitter{10.0};
+   base::Float mesmaMasterSeed{999.0};
+   base::Float override{42.0};
+
+   semOverride->setSlotByName("patrolJitterHeading", &jitter);
+   semOverride->setSlotByName("patrolMasterSeed", &mesmaMasterSeed);
+
+   comOverride->setSlotByName("patrolJitterHeading", &jitter);
+   comOverride->setSlotByName("patrolMasterSeed", &mesmaMasterSeed);
+   comOverride->setSlotByName("patrolSeedOverride", &override);
+
+   semOverride->reset();
+   comOverride->reset();
+
+   EXPECT_NE(semOverride->patrolPlan().command().headingDeg,
+             comOverride->patrolPlan().command().headingDeg)
+      << "com a MESMA master seed, o override tinha de mudar o resultado";
+
+   semOverride->unref();
+   comOverride->unref();
 }
 
 //------------------------------------------------------------------------------
@@ -149,7 +218,7 @@ TEST(AlertDatalink, AlertaSoValeNoFrameSEGUINTE)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const alerta = static_cast<xnative::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const alerta = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
    ASSERT_NE(alerta, nullptr);
    alerta->setSender(101, "falcon1");
    alerta->setContactName("bandit1");
@@ -177,7 +246,7 @@ TEST(AlertDatalink, AlertaEnvelheceEExpira)
    base::Seconds hold{1.0};
    ASSERT_TRUE(dl->setSlotByName("holdTime", &hold));
 
-   auto* const alerta = static_cast<xnative::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const alerta = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
    alerta->setSender(102, "falcon2");
    alerta->setContactName("bandit1");
    dl->onDatalinkMessageEvent(alerta);
@@ -201,9 +270,9 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const longe = static_cast<xnative::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const longe = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
    longe->setSender(101, "falcon1"); longe->setContactName("bandit1"); longe->setRangeM(30000.0);
-   auto* const perto = static_cast<xnative::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const perto = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
    perto->setSender(103, "falcon3"); perto->setContactName("bandit1"); perto->setRangeM(9000.0);
 
    // Os dois no MESMO frame -- o desempate tem de ser por distancia, e nao

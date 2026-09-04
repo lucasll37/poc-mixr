@@ -49,6 +49,13 @@ namespace xnative {
 //    launchMinRange  <Distance>  ! Alcance minimo de lancamento (default: 1500 m)
 //    launchMaxRange  <Distance>  ! Alcance maximo de lancamento (default: 9000 m)
 //    launchCone      <Angle>     ! Meio-angulo do cone de lancamento (default: 45 deg)
+//    patrolJitterHeading <Angle> ! Amplitude do jitter de rumo na patrulha, sorteado a
+//                                ! cada troca de perna (default: 0 deg = desligado)
+//    patrolMasterSeed <Number>   ! Semente do cenario; cada player deriva a sua propria
+//                                ! sequencia a partir do proprio nome (default: 0)
+//    patrolSeedOverride <Number> ! Opcional: substitui a derivacao acima so para ESTE
+//                                ! player (a presenca do slot e o que importa, nao o
+//                                ! valor -- 0 e uma semente valida)
 //
 // COMO UBF E BehaviorTree.CPP SE ENCAIXAM (o ponto desta poc):
 //
@@ -148,6 +155,9 @@ private:
    bool setSlotLaunchMinRange(const base::Distance* const);
    bool setSlotLaunchMaxRange(const base::Distance* const);
    bool setSlotLaunchCone(const base::Angle* const);
+   bool setSlotPatrolJitterHeading(const base::Angle* const);
+   bool setSlotPatrolMasterSeed(const base::Number* const);
+   bool setSlotPatrolSeedOverride(const base::Number* const);
 };
 
 } // namespace xnative

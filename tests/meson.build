@@ -53,6 +53,17 @@ test_domain_rules = executable('test-domain-rules',
 )
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
 
+# A derivacao de sementes de shared/xrandom -- fnv1a64/deriveSeed, puras, sem
+# MIXR. Header-only, entao nao ha .cpp companheiro (ao contrario de
+# test_domain_rules acima) -- so o include_directories ate shared/.
+test_xrandom = executable('test-xrandom',
+    files('domain/test_xrandom.cpp'),
+    include_directories : include_directories('../shared'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('xrandom', test_xrandom, suite: 'domain', timeout: 60)
+
 # A logica pura (sem MIXR, sem FTXUI) por tras da aba "Memoria" do dashboard
 # (./app/, fora de src/ -- ver o cabecalho de ../app/include/app/
 # MetaObjectSnapshot.hpp). Mesmo motivo de estar na suite 'domain': regra

@@ -37,6 +37,8 @@ void PatrolPlan::reset()
 {
    legTimer_ = 0.0;
    leg_ = 0;
+   jitterRng_.seed(jitterSeed_);
+   resampleJitter();
 }
 
 bool PatrolPlan::advance(const double dt)
@@ -46,6 +48,7 @@ bool PatrolPlan::advance(const double dt)
 
    legTimer_ -= legSeconds_;
    leg_ += 1;
+   resampleJitter();
    return true;
 }
 
@@ -53,10 +56,26 @@ FlightCommand PatrolPlan::command() const
 {
    FlightCommand cmd;
    cmd.headingDeg = wrap360(startHeadingDeg_
-                            + POC_MODEL_TURN_SIGN * turnPerLegDeg_ * static_cast<double>(leg_));
+                            + POC_MODEL_TURN_SIGN * turnPerLegDeg_ * static_cast<double>(leg_)
+                            + currentJitterDeg_);
    cmd.altitudeM = altitudeM_;
    cmd.speedKts = speedKts_;
    return cmd;
+}
+
+void PatrolPlan::setHeadingJitter(const double amplitudeDeg, const std::uint64_t seed)
+{
+   jitterAmplitudeDeg_ = (amplitudeDeg > 0.0) ? amplitudeDeg : 0.0;
+   jitterSeed_ = seed;
+   jitterRng_.seed(jitterSeed_);
+   resampleJitter();
+}
+
+void PatrolPlan::resampleJitter()
+{
+   currentJitterDeg_ = (jitterAmplitudeDeg_ > 0.0)
+      ? std::uniform_real_distribution<double>(-jitterAmplitudeDeg_, jitterAmplitudeDeg_)(jitterRng_)
+      : 0.0;
 }
 
 } // namespace domain

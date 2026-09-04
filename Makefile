@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl test test-asan
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl venv-rl-training test test-asan
 
 .DEFAULT_GOAL := help
 
@@ -68,12 +68,12 @@ configure: ## Configure the project for building.
 		$(BUILD_DIR)/ .
 
 
-sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack/libxrlbridge/libxinfer). Etapa PRÉVIA ao build do modelo.
+sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack/libxrlbridge/libxinfer/libevents). Etapa PRÉVIA ao build do modelo.
 	@# 'meson compile' com os NOMES dos alvos. Medido: o meson compile resolve
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
 	@# ter de escrever shared/xboard/libxboard.so a mao.
-	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer xpyembed
+	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer xpyembed events
 	@# '--tags sdk,devel' e nao '--tags sdk': install_headers() nao aceita
 	@# install_tag no meson 1.2, entao os headers ficam com a tag automatica
 	@# 'devel'. Com '--tags sdk' sozinho o SDK sai SEM os headers, e o erro so
@@ -212,6 +212,14 @@ check-onnx-policy: install ## Verifica o determinismo do onnx-policy (mesmo esta
 	@./tests/determinism/check_determinism.sh \
 		$(BUILD_DIR)/src/poc/onnx-policy/src/onnx-policy onnx-policy 2000 onnx-policy
 
+check-patrol-seed-single-thread: install ## Prova o RNG de patrulha no single-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
+	@./tests/determinism/check_patrol_seed.sh \
+		$(BUILD_DIR)/src/poc/single-thread/src/single-thread single-thread single-thread 600
+
+check-patrol-seed-multi-thread: install ## Prova o RNG de patrulha no multi-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
+	@./tests/determinism/check_patrol_seed.sh \
+		$(BUILD_DIR)/src/poc/multi-thread/src/multi-thread multi-thread multi-thread 600
+
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (deve ser só o agente do UBF + docs/build).
 	@diff -rq --exclude=data --exclude=scenario.generated.epp \
 		src/poc/single-thread src/poc/multi-thread || true
@@ -233,6 +241,9 @@ venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.v
 
 test-rl: install venv-rl ## Roda o smoke test Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'.
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
+
+venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (venv de treino -- separado do venv-rl da biblioteca; ver o "porque" la).
+	$(MAKE) -C src/poc/rl-training venv
 
 # ============================================
 # Test Targets

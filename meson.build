@@ -73,6 +73,12 @@ asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 # Subdiretórios
 # ============================================
 
+# Sistema de log (LOG(NIVEL) << ...;). Precisa vir ANTES de shared/xtacview
+# (que agora consome xlog_dep -- RealtimeTelemetryServer.cpp escreve via
+# LOG(...), nao mais direto em std::cout/std::cerr) e antes dos subprojetos,
+# que tambem consomem xlog_dep.
+subdir('./shared/xlog')
+
 # Bibliotecas compartilhadas entre subprojetos (padrao shared/x<nome> do
 # MIXR). Precisa vir ANTES de src/, que consome xtacview_dep.
 subdir('./shared/xtacview')
@@ -84,10 +90,6 @@ subdir('./shared/xclock')
 # Controle do ownship por joystick fisico. Tambem precisa vir ANTES dos
 # subprojetos, que consomem xjoystick_dep.
 subdir('./shared/xjoystick')
-
-# Sistema de log (LOG(NIVEL) << ...;). Tambem precisa vir ANTES dos
-# subprojetos, que consomem xlog_dep.
-subdir('./shared/xlog')
 
 # O quadro de leitura entre o host e o modelo. E a UNICA peca que o executavel
 # e o plugin de modelo compartilham -- por isso e shared_library() de verdade,
@@ -121,6 +123,15 @@ subdir('./shared/xinfer')
 # ver o cabecalho de PyEmbed.hpp. Tambem antes do SDK.
 subdir('./shared/xpyembed')
 
+# Contrato de eventos que atravessam fronteira de plugin (payload + token de
+# Component::event()) -- ver events/README.md. Mora em ./events/, na RAIZ, e
+# nao em shared/x<nome>/ como as outras seis desta lista -- excecao
+# deliberada: evento e o eixo central da modelagem deste projeto, entao
+# ganhou pasta propria em destaque em vez de mais um shared/x<nome> perdido
+# entre outros. O MECANISMO e o MESMO (shared_library(), entra antes do SDK
+# pelo mesmo motivo de xboard/xtrack) -- so o endereco do fonte mudou.
+subdir('./events')
+
 
 # ==============================================================================
 # O SDK DE PLUGIN
@@ -130,7 +141,7 @@ subdir('./shared/xpyembed')
 # fronteira. Publicado em dist/{include,lib,lib/pkgconfig}.
 #
 # COMO INSTALAR SO O SDK (e a etapa 'sdk' do Makefile):
-#     meson compile -C build xboard xlog xtrack xrlbridge xinfer xpyembed
+#     meson compile -C build xboard xlog xtrack xrlbridge xinfer xpyembed events
 #     meson install -C build --no-rebuild --tags sdk,devel
 #
 # DUAS ARMADILHAS MEDIDAS, nao supostas:
@@ -161,12 +172,15 @@ install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
 install_headers('shared/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
 install_headers('shared/xinfer/Infer.hpp',          subdir: 'xinfer')
 install_headers('shared/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
+install_headers('events/payloads/EID_ALERT/TacticalAlert.hpp', subdir: 'events/payloads/EID_ALERT')
+install_headers('events/EventTokens.hpp',                       subdir: 'events')
+install_headers('shared/xrandom/DeterministicRng.hpp', subdir: 'xrandom')
 
 pkg = import('pkgconfig')
 pkg.generate(
     name        : 'poc-mixr-sdk',
     description : 'SDK para compilar um modelo (plugin) do poc-mixr',
-    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib, xinfer_lib, xpyembed_lib],
+    libraries   : [xboard_lib, xlog_lib, xtrack_lib, xrlbridge_lib, xinfer_lib, xpyembed_lib, events_lib],
     requires    : ['mixr'],
     variables   : ['mixr_pkg_version=' + mixr_dep.version()],
 )

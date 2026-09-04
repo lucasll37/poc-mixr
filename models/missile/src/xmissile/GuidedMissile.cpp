@@ -1,6 +1,8 @@
 #include "xmissile/GuidedMissile.hpp"
 
 #include "domain/Guidance.hpp"
+#include "events/EventTokens.hpp"
+#include "xlog/Log.hpp"
 
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
@@ -132,6 +134,26 @@ void GuidedMissile::updateTC(const double dt)
       detonatedTof_ += dt * 4.0;
       if (detonatedTof_ > kLingerSec) setMode(DELETE_REQUEST);
    }
+}
+
+//------------------------------------------------------------------------------
+// EID_ALERT -- despacho pela macro de evento nativa (BEGIN_EVENT_HANDLER
+// expande um override de event()), NAO por um hook ja nomeado do framework
+// (ao contrario de AlertDatalink::onDatalinkMessageEvent()): este player nao
+// tem Datalink nenhum, entao o UNICO jeito de ser alcancado e o broadcast
+// direto que xnative::AlertDatalink::broadcastAlert() faz com
+// player->event(events::EID_ALERT, msg) (ver events/README.md e o
+// comentario correspondente em models/flight).
+//------------------------------------------------------------------------------
+BEGIN_EVENT_HANDLER(GuidedMissile)
+   ON_EVENT_OBJ(events::EID_ALERT, onAlertEvent, events::TacticalAlert)
+END_EVENT_HANDLER()
+
+bool GuidedMissile::onAlertEvent(events::TacticalAlert* const ev)
+{
+   LOG(INFO) << "GuidedMissile viu alerta de " << ev->getSenderName()
+             << " sobre " << ev->getContactName();
+   return true;
 }
 
 } // namespace xmissile

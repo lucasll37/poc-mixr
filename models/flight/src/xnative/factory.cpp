@@ -9,7 +9,7 @@
 #ifdef FLIGHT_TC_AGENT
    #include "xnative/FlightAgentTC.hpp"
 #endif
-#include "xnative/TacticalAlert.hpp"
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 #include "mixr/base/MetaObject.hpp"
 #include "mixr/base/Object.hpp"
@@ -38,14 +38,15 @@ namespace xnative {
 //   * AlertDatalink -- herda models::Datalink e so decide o que fazer com
 //     a mensagem recebida;
 //   * TacticalAlert -- a carga util do datalink e, por definicao, da
-//     aplicacao.
+//     aplicacao. Mora em events/, na raiz (nao em xnative/) desde que passou
+//     a ser reutilizavel por outros plugins -- ver events/README.md.
 //------------------------------------------------------------------------------
 base::Object* factory(const std::string& name)
 {
    base::Object* obj{};
 
-   if ( name == AlertDatalink::getFactoryName() )               obj = new AlertDatalink();
-   else if ( name == TacticalAlert::getFactoryName() )          obj = new TacticalAlert();
+   if ( name == AlertDatalink::getFactoryName() )                obj = new AlertDatalink();
+   else if ( name == events::TacticalAlert::getFactoryName() )  obj = new events::TacticalAlert();
 #ifdef FLIGHT_TC_AGENT
    else if ( name == FlightAgentTC::getFactoryName() )          obj = new FlightAgentTC();
 #endif
@@ -84,7 +85,7 @@ const char* const NOMES[] = {
 
 const base::MetaObject* const METAS[] = {
    AlertDatalink::getMetaObject(),
-   TacticalAlert::getMetaObject(),
+   events::TacticalAlert::getMetaObject(),
 #ifdef FLIGHT_TC_AGENT
    FlightAgentTC::getMetaObject(),
 #endif

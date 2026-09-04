@@ -37,3 +37,11 @@ src/rl/data/recordings/*.acmi
 src/rl/data/logs/*.log*
 src/rl/python/mixr_gym/__pycache__/
 src/rl/.venv/
+
+# src/poc/rl-training/: o consumidor que treina de fato contra o ambiente de
+# src/rl/ -- venv proprio (ver 'make venv-rl-training'), cache de bytecode e
+# os checkpoints/logs que 'train.py' escreve (ver Makefile local, alvo 'train').
+src/poc/rl-training/.venv/
+src/poc/rl-training/__pycache__/
+src/poc/rl-training/tools/__pycache__/
+src/poc/rl-training/runs/

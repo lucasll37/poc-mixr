@@ -20,10 +20,10 @@ errado -- nao um erro.
 USO
 
     # gera um .onnx de pesos ALEATORIOS para exercitar a cadeia (sem treino)
-    python3 src/rl/tools/export_onnx.py --random -o models/flight/configs/policy_example.onnx
+    python3 src/poc/rl-training/tools/export_onnx.py --random -o models/flight/configs/policy_example.onnx
 
     # exporta uma politica treinada com Stable-Baselines3
-    python3 src/rl/tools/export_onnx.py --sb3 runs/ppo_falcon.zip -o politica.onnx
+    python3 src/poc/rl-training/tools/export_onnx.py --sb3 runs/ppo_falcon.zip -o politica.onnx
 
 Rode com cwd na raiz do repositorio e PYTHONPATH=./dist/python -- a mesma
 convencao de src/rl/tests/test_smoke.py.
@@ -49,7 +49,7 @@ def carregar_native():
     import glob
     import importlib.util
 
-    raiz = pathlib.Path(__file__).resolve().parents[3]
+    raiz = pathlib.Path(__file__).resolve().parents[4]
     padrao = str(raiz / "dist" / "python" / "mixr_gym" / "_native*.so")
     achados = glob.glob(padrao)
     if not achados:
@@ -155,7 +155,7 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
     except ImportError as exc:
         sys.exit(
             f"--sb3 precisa de 'stable-baselines3' e 'torch': {exc}\n"
-            "  instale no venv de src/rl (ver 'make venv-rl')."
+            "  instale no venv de src/poc/rl-training (ver 'make venv-rl-training')."
         )
 
     modelo = PPO.load(caminho_zip, device="cpu")

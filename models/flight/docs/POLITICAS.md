@@ -58,7 +58,7 @@ def decide(obs):
 `obs` é uma lista de 28 floats na ordem canônica. Para descobrir os índices sem contar na mão:
 
 ```bash
-python3 src/rl/tools/export_onnx.py --campos
+python3 src/poc/rl-training/tools/export_onnx.py --campos
 ```
 
 ```
@@ -127,18 +127,19 @@ devolve `FAILURE`, a `Patrol` assume e a aeronave continua voando. O erro aparec
 
 ### 2.1 Treinar
 
-O ambiente Gymnasium já existe (ver `src/rl/README.md`):
+O ambiente Gymnasium já existe (ver `src/rl/README.md`); quem treina contra ele é o consumidor em
+`src/poc/rl-training/` (venv próprio, separado do de `src/rl`, com `stable-baselines3`+`torch` já em
+`requirements.txt`), via o `Makefile` autocontido de lá — `train.py` é o caso de uso completo (PPO
+de verdade, checkpoints periódicos, salvamento no `Ctrl+C`), não um trecho solto:
 
 ```bash
-make venv-rl
-src/rl/.venv/bin/pip install stable-baselines3
-PYTHONPATH=./dist/python src/rl/.venv/bin/python -c "
-from stable_baselines3 import PPO
-from mixr_gym import MixrFlightEnv
-env = MixrFlightEnv()
-PPO('MultiInputPolicy', env).learn(total_timesteps=50_000)
-"
+cd src/poc/rl-training
+make venv
+make train ARGS="--timesteps 200000"
 ```
+
+Ver `src/poc/rl-training/README.md` para as opções (`--player`, `--scenario`, `--seed`...) e
+`train.py --help`.
 
 > Um `MixrFlightEnv` por **processo** — o registro de plugins é selado depois do primeiro parse.
 > Para vários episódios em paralelo, um processo por env (`multiprocessing`).
@@ -146,7 +147,7 @@ PPO('MultiInputPolicy', env).learn(total_timesteps=50_000)
 ### 2.2 Exportar
 
 ```bash
-PYTHONPATH=./dist/python python3 src/rl/tools/export_onnx.py \
+PYTHONPATH=./dist/python python3 src/poc/rl-training/tools/export_onnx.py \
     --sb3 runs/ppo_falcon.zip -o models/flight/configs/policy_example.onnx
 ```
 
@@ -156,7 +157,7 @@ silenciosa: um `.onnx` treinado contra outra ordem produziria comandos errados s
 Para exercitar a cadeia sem treinar (pesos aleatórios):
 
 ```bash
-PYTHONPATH=./dist/python python3 src/rl/tools/export_onnx.py --random -o /tmp/teste.onnx
+PYTHONPATH=./dist/python python3 src/poc/rl-training/tools/export_onnx.py --random -o /tmp/teste.onnx
 ```
 
 ### 2.3 Implantar
@@ -250,7 +251,7 @@ semente **quebra aqui** — que é onde você quer descobrir isso.
 | o script de exemplo | `models/flight/configs/policy_example.py` |
 | a política de exemplo | `models/flight/configs/policy_example.onnx` (**pesos aleatórios**) |
 | as árvores | `models/flight/configs/flight_tree_{py,onnx}.xml` |
-| o exportador | `src/rl/tools/export_onnx.py` |
+| o exportador | `src/poc/rl-training/tools/export_onnx.py` |
 | a ordem canônica dos campos | `shared/xrlbridge/ObservationFields.hpp` |
 | o motor de inferência | `shared/xinfer/README.md` |
 | o interpretador embarcado | `shared/xpyembed/README.md` |

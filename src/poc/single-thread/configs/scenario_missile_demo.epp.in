@@ -61,7 +61,8 @@
             ( PluginModule
                file:     "libflight.so"
                provides: { AlertDatalink TacticalAlert FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction }
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
             )
             ( PluginModule
                file:     "libmissile.so"

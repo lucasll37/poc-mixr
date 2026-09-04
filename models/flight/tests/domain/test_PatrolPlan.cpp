@@ -5,6 +5,8 @@
 
 #include "domain/PatrolPlan.hpp"
 
+#include <cmath>
+
 #include <gtest/gtest.h>
 
 namespace {
@@ -94,6 +96,86 @@ TEST(PatrolPlan, PassoGrandeTrocaUmaVezEGuardaOResto)
    EXPECT_TRUE(p.advance(75.0));
    EXPECT_EQ(p.legIndex(), 1);
    EXPECT_NEAR(p.legTimeRemaining(), 45.0, TOL) << "o excedente tem de contar na perna nova";
+}
+
+//------------------------------------------------------------------------------
+// Jitter de rumo -- desligado por padrao (amplitude 0), sorteado uma vez por
+// troca de perna, nunca por dt (o que preservaria o determinismo entre 1/2/4
+// threads: o numero de trocas de perna por player independe de threads).
+//------------------------------------------------------------------------------
+
+TEST(PatrolPlanJitter, AmplitudeZeroNaoMudaOCircuito)
+{
+   auto p{quadrado()};
+   p.setHeadingJitter(0.0, 42);
+   EXPECT_NEAR(p.command().headingDeg, 90.0, TOL);
+   for (int leg = 0; leg < 4; ++leg) {
+      for (int s = 0; s < 60; ++s) p.advance(1.0);
+   }
+   EXPECT_NEAR(p.command().headingDeg, 90.0, TOL);
+}
+
+TEST(PatrolPlanJitter, MesmaSementeReproduzAMesmaSequencia)
+{
+   auto a{quadrado()};
+   auto b{quadrado()};
+   a.setHeadingJitter(10.0, 123456789ULL);
+   b.setHeadingJitter(10.0, 123456789ULL);
+
+   for (int leg = 0; leg < 8; ++leg) {
+      for (int s = 0; s < 60; ++s) { a.advance(1.0); b.advance(1.0); }
+      EXPECT_NEAR(a.command().headingDeg, b.command().headingDeg, TOL)
+         << "divergiu na perna " << leg;
+   }
+}
+
+TEST(PatrolPlanJitter, SementesDiferentesDaoSequenciasDiferentes)
+{
+   auto a{quadrado()};
+   auto b{quadrado()};
+   a.setHeadingJitter(10.0, 1);
+   b.setHeadingJitter(10.0, 2);
+
+   bool divergiuEmAlgumaPerna{false};
+   for (int leg = 0; leg < 8; ++leg) {
+      for (int s = 0; s < 60; ++s) { a.advance(1.0); b.advance(1.0); }
+      if (std::abs(a.command().headingDeg - b.command().headingDeg) > TOL) {
+         divergiuEmAlgumaPerna = true;
+      }
+   }
+   EXPECT_TRUE(divergiuEmAlgumaPerna);
+}
+
+TEST(PatrolPlanJitter, JitterNuncaExtrapolaAAmplitude)
+{
+   auto p{quadrado(0.0)};
+   constexpr double amplitude{6.0};
+   p.setHeadingJitter(amplitude, 999);
+
+   for (int leg = 0; leg < 20; ++leg) {
+      for (int s = 0; s < 60; ++s) p.advance(1.0);
+      // rumo sem jitter seria sempre um multiplo de 90 (0/90/180/270);
+      // a distancia angular ate o multiplo mais proximo nao pode passar
+      // da amplitude, respeitando o wrap em 360.
+      const double semJitter{std::fmod(90.0 * (leg + 1), 360.0)};
+      double delta{p.command().headingDeg - semJitter};
+      while (delta > 180.0) delta -= 360.0;
+      while (delta < -180.0) delta += 360.0;
+      EXPECT_LE(std::abs(delta), amplitude + TOL) << "estourou na perna " << leg;
+   }
+}
+
+TEST(PatrolPlanJitter, ResetReproduzOMesmoPrimeiroJitter)
+{
+   auto p{quadrado()};
+   p.setHeadingJitter(8.0, 77);
+   const double primeiroRumo{p.command().headingDeg};
+
+   for (int s = 0; s < 200; ++s) p.advance(1.0);
+   ASSERT_NE(p.legIndex(), 0);
+
+   p.reset();
+   EXPECT_NEAR(p.command().headingDeg, primeiroRumo, TOL);
 }
 
 } // namespace

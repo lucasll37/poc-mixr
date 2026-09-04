@@ -21,7 +21,7 @@ que eu sei escrever" e "uma rede que voa", e serve ao proposito desta poc,
 que e provar a CADEIA (rede -> comando -> Autopilot, dentro do frame), nao
 descobrir uma tatica nova. Uma politica de RL de verdade entra no lugar
 desta trocando o arquivo: e o mesmo contrato de 28 entradas e 3 saidas
-(src/rl/tools/export_onnx.py --sb3).
+(src/poc/rl-training/tools/export_onnx.py --sb3).
 
 A regra clonada e uma BARREIRA no paralelo norte=0, com quebra ao contato:
 
@@ -61,7 +61,7 @@ como o caminho, caso um dia se queira uma politica que orbite.)
 O QUE ESTE SCRIPT NAO INVENTA
 --------------------------------------------------------------------------
 
-A ordem dos 28 campos vem do C++ (src/rl/tools/export_onnx.py, que a le de
+A ordem dos 28 campos vem do C++ (src/poc/rl-training/tools/export_onnx.py, que a le de
 mixr_gym._native, que expande a X-macro de
 shared/xrlbridge/ObservationFields.hpp). Nao ha lista de campos escrita
 aqui: uma copia divergiria em silencio e a rede voaria errado sem erro
@@ -101,7 +101,7 @@ ESCALA_BARREIRA_M = 4000.0    # quao "apertada" e a virada da barreira
 # ------------------------------------------------------------------------------
 
 def ordem_canonica() -> list[str]:
-    caminho = RAIZ / "src/rl/tools/export_onnx.py"
+    caminho = RAIZ / "src/poc/rl-training/tools/export_onnx.py"
     spec = importlib.util.spec_from_file_location("export_onnx", caminho)
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)

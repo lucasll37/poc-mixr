@@ -517,6 +517,12 @@
                            // devolve o piso absoluto de 200 m -- e o controle
                            // negativo, sem recompilar.
                            terrainClearance: ( Meters 800 )
+                           // Jitter de rumo na patrulha (opcional, ver CLAUDE.md
+                           // secao shared/xrandom): mesma patrolMasterSeed nos 4
+                           // falcons -- cada um deriva a propria sequencia do
+                           // proprio NOME, nunca de ordem de descoberta/thread.
+                           patrolJitterHeading: ( Degrees 6 )
+                           patrolMasterSeed:    20260903
                         )
                      }
                   )
@@ -592,6 +598,7 @@
                            evadeSpeed: 185.0  supportSpeed: 180.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )
@@ -667,6 +674,7 @@
                            evadeSpeed: 190.0  supportSpeed: 185.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )
@@ -742,6 +750,7 @@
                            evadeSpeed: 185.0  supportSpeed: 180.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )

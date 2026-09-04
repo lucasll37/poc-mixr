@@ -17,8 +17,8 @@ make check-onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 **O ciclo de trabalho que esta poc existe para ter:**
 
 ```bash
-src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx
-make run-onnx-policy                                                 # veja o voo mudado
+src/poc/rl-training/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx
+make run-onnx-policy                                                              # veja o voo mudado
 ```
 
 Nada é recompilado entre as duas execuções — nem o host, nem o plugin. O `.onnx` é lido do disco na
@@ -140,7 +140,7 @@ frame= 20000  n=  -3.3  hdg= 90.0      seguindo a barreira para leste
 o `tanh` é a própria saturação suave que evita o *overshoot*.
 
 O treinador não tem uma lista de campos escrita nele: a ordem dos 28 vem do C++
-(`src/rl/tools/export_onnx.py`, que a lê de `mixr_gym._native`, que expande a X-macro de
+(`src/poc/rl-training/tools/export_onnx.py`, que a lê de `mixr_gym._native`, que expande a X-macro de
 `ObservationFields.hpp`). Uma cópia divergiria em silêncio e a rede voaria errado **sem erro
 nenhum**.
 
@@ -162,7 +162,7 @@ política treinada lá entra aqui trocando o arquivo.
 Para ver a ordem dos campos sem contar na mão:
 
 ```bash
-python3 src/rl/tools/export_onnx.py --campos
+python3 src/poc/rl-training/tools/export_onnx.py --campos
 ```
 
 ---
@@ -253,13 +253,16 @@ O sintoma no dump é `bt=PATROL` onde se esperava `bt=ONNX`; a causa está no `L
 ## 9. Trocar a rede por uma política treinada de verdade
 
 O treinador desta poc é uma conveniência, não o caminho principal. O caminho principal é
-[`src/rl`](../../rl/):
+[`src/rl`](../../rl/) (o ambiente) treinado por [`src/poc/rl-training`](../rl-training/) (o
+consumidor — venv próprio, separado do de `src/rl`, porque carrega dependências de treino que o
+ambiente em si não precisa conhecer):
 
 ```bash
-make venv-rl
-src/rl/.venv/bin/pip install stable-baselines3
+# acrescente as deps do seu algoritmo em src/poc/rl-training/requirements.txt
+# (ex.: descomente stable-baselines3) antes de criar o venv
+make venv-rl-training
 # treinar (ver models/flight/docs/POLITICAS.md, seção 2)
-PYTHONPATH=./dist/python python3 src/rl/tools/export_onnx.py \
+PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \
     --sb3 runs/ppo_falcon.zip -o src/poc/onnx-policy/configs/policy_barrier.onnx
 make run-onnx-policy
 ```
@@ -267,9 +270,12 @@ make run-onnx-policy
 Ou aponte o atributo `model` da árvore para outro arquivo e mantenha os dois. Em nenhum dos casos
 algo é recompilado.
 
-Para reproduzir a rede versionada (semente fixa, mesmos pesos):
+Para reproduzir a rede versionada (semente fixa, mesmos pesos) — o treinador desta poc só precisa
+de `numpy`+`onnx`, então o `venv-rl` da biblioteca (que já traz `numpy`) mais um `pip install onnx`
+avulso bastam, sem precisar do venv de treino inteiro:
 
 ```bash
+make venv-rl
 src/rl/.venv/bin/pip install onnx        # o venv de 'make venv-rl' traz só gymnasium+numpy
 src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 ```
@@ -283,7 +289,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
    `bt=PATROL`, porque a recusa acontece em tempo de execução, dentro de `xinfer::open()`. O
    treinador fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx` já versionado em
    `models/flight`). **Vale para qualquer `.onnx` gerado hoje** — inclusive o
-   `src/rl/tools/export_onnx.py --random`, que não fixa a versão e produz um arquivo que este ORT
+   `src/poc/rl-training/tools/export_onnx.py --random`, que não fixa a versão e produz um arquivo que este ORT
    recusa se o `onnx` instalado for recente.
 2. **A política é dado do CENÁRIO, não do modelo.** Por isso `.onnx` e árvore moram em `configs/`
    desta poc, lidos por caminho relativo, e não em `dist/share/mixr-plugins/flight/` (que é onde

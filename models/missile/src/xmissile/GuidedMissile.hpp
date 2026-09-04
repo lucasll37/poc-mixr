@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mixr/models/player/weapon/Missile.hpp"
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 namespace mixr {
 namespace xmissile {
@@ -36,6 +37,13 @@ namespace xmissile {
 // pequeno timer de permanencia (kLingerSec) faz esse passo que falta, depois
 // de detonar.
 //
+// TRATAMENTO DE EVENTO CUSTOMIZADO (events::EID_ALERT) -- prova de que um
+// evento definido uma vez em events/ e tratado por um handler escrito
+// DEPOIS, num plugin sem nenhuma relacao de compilacao com quem emite
+// (xnative::AlertDatalink, em models/flight). Ver events/README.md. Efeito
+// deliberadamente trivial (so log via shared/xlog) -- o ponto e a fiacao do
+// evento, nao dar ao missil uma tatica nova.
+//
 // ARMADILHA CONFIRMADA RODANDO: esse timer NAO pode morar em dynamics().
 // Player::updateTC() so chama dynamics() quando mode == ACTIVE || PRE_RELEASE
 // (mesmo gate documentado no CLAUDE.md) -- uma vez DETONATED, dynamics()
@@ -65,11 +73,15 @@ public:
 
    void updateTC(const double dt = 0.0) override;
 
+   bool event(const int event, base::Object* const obj = nullptr) override;
+
 protected:
    void dynamics(const double dt) override;
 
 private:
    void guide(const double dt);
+
+   bool onAlertEvent(events::TacticalAlert* const);
 
    static constexpr double kLingerSec{2.0};
 

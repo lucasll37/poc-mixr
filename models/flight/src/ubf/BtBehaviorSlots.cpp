@@ -42,6 +42,11 @@ BEGIN_SLOTTABLE(BtBehavior)
    "launchMinRange",   // 17
    "launchMaxRange",   // 18
    "launchCone",       // 19
+   "patrolJitterHeading", // 20
+   "patrolMasterSeed",    // 21
+   "patrolSeedOverride",  // 22 -- opcional; a PRESENCA do slot e o que importa,
+                          //       nao o valor (0 e semente valida) -- ver
+                          //       setSlotPatrolSeedOverride() abaixo
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -64,6 +69,9 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(17, setSlotLaunchMinRange, base::Distance)
    ON_SLOT(18, setSlotLaunchMaxRange, base::Distance)
    ON_SLOT(19, setSlotLaunchCone,     base::Angle)
+   ON_SLOT(20, setSlotPatrolJitterHeading, base::Angle)
+   ON_SLOT(21, setSlotPatrolMasterSeed,    base::Number)
+   ON_SLOT(22, setSlotPatrolSeedOverride,  base::Number)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -200,6 +208,36 @@ bool BtBehavior::setSlotLaunchCone(const base::Angle* const msg)
    if (msg == nullptr) return false;
    tune.launchEnv.coneDeg = base::Degrees::convertStatic(*msg);
    return (tune.launchEnv.coneDeg >= 0.0);
+}
+
+// Zero e o default e significa "recurso desligado" -- mesmo raciocinio do
+// terrainClearance acima: o dump determinístico so muda se este slot for
+// declarado com um valor positivo.
+bool BtBehavior::setSlotPatrolJitterHeading(const base::Angle* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.patrolJitterHeadingDeg = base::Degrees::convertStatic(*msg);
+   return (tune.patrolJitterHeadingDeg >= 0.0);
+}
+
+bool BtBehavior::setSlotPatrolMasterSeed(const base::Number* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.patrolMasterSeed = static_cast<std::uint64_t>(msg->getInt64());
+   return true;
+}
+
+// So chamado se 'patrolSeedOverride:' aparecer de fato no bloco deste
+// player -- e essa CHAMADA (nao o valor) que liga o override. 0 e uma
+// semente valida, entao nao pode servir de sentinela de ausencia (mesma
+// armadilha ja evitada acima para terrainClearance/patrolJitterHeading, so
+// que ali zero E o "desligado" -- aqui a ausencia do slot e que e).
+bool BtBehavior::setSlotPatrolSeedOverride(const base::Number* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.patrolSeedOverride = static_cast<std::uint64_t>(msg->getInt64());
+   tune.patrolSeedOverrideSet = true;
+   return true;
 }
 
 } // namespace xnative

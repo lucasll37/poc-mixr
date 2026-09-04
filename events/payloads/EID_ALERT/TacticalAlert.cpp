@@ -1,7 +1,7 @@
-#include "xnative/TacticalAlert.hpp"
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 namespace mixr {
-namespace xnative {
+namespace events {
 
 IMPLEMENT_SUBCLASS(TacticalAlert, "TacticalAlert")
 EMPTY_SLOTTABLE(TacticalAlert)
@@ -25,5 +25,5 @@ void TacticalAlert::copyData(const TacticalAlert& org, const bool)
    rangeM = org.rangeM;
 }
 
-} // namespace xnative
+} // namespace events
 } // namespace mixr

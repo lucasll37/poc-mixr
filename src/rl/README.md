@@ -89,6 +89,13 @@ Tacview (porta 1237, opcional, so para acompanhar visualmente um episodio):
 aponte o Tacview Real-Time Telemetry para `<host>:1237` enquanto o processo
 Python estiver rodando.
 
+**Isto aqui e so o AMBIENTE.** `src/rl/requirements.txt` fica minimo de proposito
+(so o que basta pra importar `mixr_gym` e rodar o smoke test acima) -- nenhuma
+dependencia de algoritmo de RL entra aqui. Quem de fato treina uma politica
+contra este ambiente e o consumidor em [`src/poc/rl-training/`](../poc/rl-training/),
+com venv proprio (`make venv-rl-training`) e as dependencias de treino
+(`stable-baselines3`, etc.) declaradas la, nao aqui.
+
 ## Contrato de dados
 
 **Observacao** (`spaces.Dict`): um item por campo numerico/booleano de

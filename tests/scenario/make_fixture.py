@@ -22,6 +22,16 @@ Modos:
             que ja existe: o ramo de RTB vence desde o primeiro frame.
   terrain   sobe 'minAltitude' do AltitudeSafetyBehavior acima da altitude de
             cruzeiro: o comportamento de voto 90 assume e a arvore perde.
+  plain     so o hermetico -- nenhum delta de comportamento. Existe para
+            testes que nao querem EVADE/RTB/SAFETY no caminho, so PATROL
+            (ex.: check_patrol_seed.sh, que precisa isolar o efeito da
+            semente sem outro ramo da arvore competindo).
+
+--patrol-seed, opcional e composto com QUALQUER --mode: substitui o valor de
+TODAS as ocorrencias de 'patrolMasterSeed:' no cenario (mesmo literal
+repetido nos 4 falcons, ver CLAUDE.md secao shared/xrandom) por um numero
+escolhido na hora -- para comparar duas fixtures com sementes diferentes sem
+duplicar o .epp.in inteiro.
 """
 
 import argparse
@@ -88,8 +98,10 @@ def remove_block(texto, marcador):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (single-thread, multi-thread, python-flight)")
-    ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "terrain"))
+    ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "terrain", "plain"))
     ap.add_argument("--out", required=True, help="caminho do .epp.in a gerar")
+    ap.add_argument("--patrol-seed", type=int, default=None,
+                     help="substitui patrolMasterSeed em todo player (composto com --mode)")
     args = ap.parse_args()
 
     raiz = Path(__file__).resolve().parents[2]
@@ -141,6 +153,15 @@ def main():
                               "minAltitude: ( Meters 2600 )")
         if texto == antes:
             raise SystemExit("nenhum slot minAltitude ajustado")
+    elif args.mode == "plain":
+        pass  # so o hermetico -- nenhum delta de comportamento
+
+    if args.patrol_seed is not None:
+        antes = texto
+        texto = re.sub(r"(patrolMasterSeed:\s*)\d+", rf"\g<1>{args.patrol_seed}", texto)
+        if texto == antes:
+            raise SystemExit("nenhum slot patrolMasterSeed ajustado -- "
+                              "este cenario declara o slot?")
 
     # O parser EDL deste fork recusa o arquivo INTEIRO se houver um unico
     # caractere acentuado, mesmo dentro de um comentario -- e aponta a linha

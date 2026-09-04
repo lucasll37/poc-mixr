@@ -1,12 +1,15 @@
 #include "xnative/AlertDatalink.hpp"
 
 #include "xboard/Board.hpp"
+#include "events/EventTokens.hpp"
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
-#include "xnative/TacticalAlert.hpp"
-
+#include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
 
 #include "mixr/base/Identifier.hpp"
+#include "mixr/base/Pair.hpp"
+#include "mixr/base/PairStream.hpp"
 #include "mixr/base/units/Times.hpp"
 
 namespace mixr {
@@ -59,28 +62,55 @@ void AlertDatalink::reset()
 }
 
 //------------------------------------------------------------------------------
-// Transmissao -- so monta a carga; quem entrega e o Datalink nativo.
+// Transmissao -- monta a carga e entrega por DOIS caminhos independentes.
 //------------------------------------------------------------------------------
 void AlertDatalink::broadcastAlert(const std::string& contactName,
                                    const double northM, const double eastM, const double altM,
                                    const double rangeM)
 {
-   const models::Player* const own{getOwnship()};
+   models::Player* const own{getOwnship()};
 
-   const auto msg = new TacticalAlert();
+   const auto msg = new events::TacticalAlert();
    msg->setSender((own != nullptr) ? own->getID() : 0,
                   (own != nullptr && own->getName() != nullptr) ? own->getName()->getString() : "?");
    msg->setContactName(contactName);
    msg->setPosition(northM, eastM, altM);
    msg->setRangeM(rangeM);
 
-   // sendMessage() e do framework: a varredura da lista de players, a
-   // entrega local por event(DATALINK_MESSAGE) e a fila de rede saem
-   // prontas daqui. ALCANCE NAO -- sem 'radioName' o envio e broadcast
-   // global (ver o cabecalho da classe).
+   // Caminho (a) -- sendMessage() e do framework: a varredura da lista de
+   // players, a entrega local por event(DATALINK_MESSAGE) e a fila de rede
+   // saem prontas daqui. ALCANCE NAO -- sem 'radioName' o envio e broadcast
+   // global (ver o cabecalho da classe). So alcanca player com Datalink.
    if (sendMessage(msg)) {
       std::lock_guard<std::mutex> lock(alertMutex);
       sentCount += 1;
+   }
+
+   // Caminho (b) -- broadcast DIRETO com o token proprio de events/,
+   // no MESMO idioma de Datalink::sendMessage() (varre getWorldModel()->
+   // getPlayers(), so player local ativo, nunca o proprio emissor). Alcanca
+   // QUALQUER player, com ou sem Datalink -- e o caminho que um plugin sem
+   // relacao nenhuma de compilacao com este (ex.: models/missile) usa para
+   // reagir ao mesmo TacticalAlert. Ver events/README.md.
+   models::WorldModel* const worldModel{getWorldModel()};
+   if (worldModel != nullptr) {
+      base::PairStream* players{worldModel->getPlayers()};
+      if (players != nullptr) {
+         base::List::Item* playerItem{players->getFirstItem()};
+         while (playerItem != nullptr) {
+            const auto playerPair = static_cast<base::Pair*>(playerItem->getValue());
+            const auto player = static_cast<models::Player*>(playerPair->object());
+            if (player->isLocalPlayer()) {
+               if ((player->isActive() || player->isMode(models::Player::PRE_RELEASE)) && player != own) {
+                  player->event(events::EID_ALERT, msg);
+               }
+               playerItem = playerItem->getNext();
+            } else {
+               playerItem = nullptr;   // networked ficam no fim da lista
+            }
+         }
+         players->unref();
+      }
    }
 
    msg->unref();
@@ -95,7 +125,7 @@ void AlertDatalink::broadcastAlert(const std::string& contactName,
 //------------------------------------------------------------------------------
 bool AlertDatalink::onDatalinkMessageEvent(base::Object* const msg)
 {
-   const auto alertMsg = dynamic_cast<const TacticalAlert*>(msg);
+   const auto alertMsg = dynamic_cast<const events::TacticalAlert*>(msg);
    if (alertMsg != nullptr) {
       std::lock_guard<std::mutex> lock(alertMutex);
       receivedCount += 1;

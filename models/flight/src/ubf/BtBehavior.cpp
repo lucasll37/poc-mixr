@@ -10,6 +10,9 @@
 #include "bt/bt_factory_sdk.hpp"
 #include "ubf/FlightAction.hpp"
 #include "xlog/Log.hpp"
+#include "xrandom/DeterministicRng.hpp"
+
+#include "mixr/models/player/Player.hpp"
 
 #include <exception>
 #include <mutex>
@@ -25,6 +28,13 @@ namespace {
 // createTreeFromFile() nao e reentrante e varios avioes chegam ao primeiro
 // genAction() ao mesmo tempo, em threads T/C diferentes.
 std::mutex g_treeBuildMutex;
+
+// Salt de PROPOSITO da segunda derivacao (instancia -> gerador do jitter de
+// patrulha) -- fixo e arbitrario, so precisa ser diferente de outros salts
+// de proposito que apareçam no futuro (ex.: se RtbPlan ganhar variacao
+// propria, deriva do MESMO instanceSeed com OUTRO salt, garantindo streams
+// sem correlacao entre si). "PATROLJ" em ASCII, soh para ser memoravel.
+constexpr std::uint64_t kPatrolJitterSalt{0x5041'5452'4F4C'4A00ULL};
 }
 
 BtBehavior::BtBehavior()
@@ -75,11 +85,32 @@ bool BtBehavior::shutdownNotification()
 //------------------------------------------------------------------------------
 // configurePlans() -- traduz os numeros do EDL para as regras de negocio
 // puras de domain/. E o unico ponto em que BtTuning encontra domain::*.
+//
+// E tambem o unico ponto em que a hierarquia de sementes de shared/xrandom
+// e calculada (ver o cabecalho de DeterministicRng.hpp e a secao "shared/
+// xrandom" do CLAUDE.md para o "porque" completo). Resumo: a sub-semente de
+// cada player vem de um HASH DO PROPRIO NOME, nunca de ordem de descoberta
+// ou de processamento entre players -- essa ordem nao e garantida neste
+// framework (a poc multi-thread decide em paralelo, um player por thread do
+// pool de tempo critico), e qualquer esquema baseado em ordem quebraria o
+// determinismo entre 1/2/4 threads. patrolSeedOverride, quando declarado,
+// pula so a derivacao por NOME -- a derivacao de PROPOSITO (kPatrolJitterSalt)
+// continua acontecendo do mesmo jeito nos dois casos.
 //------------------------------------------------------------------------------
 void BtBehavior::configurePlans()
 {
    patrol.configure(tune.patrolHeadingDeg, tune.legTimeSec, tune.legTurnDeg,
                     tune.patrolAltitudeM, tune.patrolSpeedKts);
+
+   const auto player = static_cast<models::Player*>(findContainerByType(typeid(models::Player)));
+   const char* const playerName = (player != nullptr && player->getName() != nullptr)
+                                   ? player->getName()->getString() : "";
+   const std::uint64_t instanceSeed = tune.patrolSeedOverrideSet
+      ? tune.patrolSeedOverride
+      : xrandom::deriveSeed(tune.patrolMasterSeed, xrandom::fnv1a64(playerName));
+   patrol.setHeadingJitter(tune.patrolJitterHeadingDeg,
+                            xrandom::deriveSeed(instanceSeed, kPatrolJitterSalt));
+
    rtb.configure(0.0, 0.0, tune.arrivalRadiusM, tune.rtbAltitudeM, tune.rtbSpeedKts);
 
    domain::EvasionLimits limits;

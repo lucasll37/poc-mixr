@@ -167,7 +167,7 @@ BEGIN_SLOTTABLE(BtBehavior)
    "treeFile", "patrolHeading", "legTime", "legTurn", "patrolAltitude",
    "patrolSpeed", "rtbAltitude", "rtbSpeed", "arrivalRadius", "fuelReserve",
    "breakTurn", "evadeClimb", "evadeSpeed", "supportSpeed", "evadeHold",
-   "terrainClearance",
+   "terrainClearance", "patrolJitterHeading", "patrolMasterSeed",
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -187,6 +187,8 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(14, setSlotIgnoraNumero,    base::Number)
    ON_SLOT(15, setSlotIgnoraTempo,     base::Time)
    ON_SLOT(16, setSlotIgnoraDistancia, base::Distance)
+   ON_SLOT(17, setSlotIgnoraAngulo,    base::Angle)
+   ON_SLOT(18, setSlotIgnoraNumero,    base::Number)
 END_SLOT_MAP()
 
 class AltitudeSafetyBehavior final : public base::ubf::AbstractBehavior

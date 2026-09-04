@@ -535,6 +535,86 @@ colorir por nível e alinhar o carimbo em coluna própria.
 - Testado em `tests/app/test_log_panel.cpp` (alvo `app-log`): ordem, `seq` monotônico, descarte do
   mais antigo passada a capacidade, e o desligamento não registrando nada.
 
+### `shared/xrandom` — semente reprodutível para variação de patrulha
+
+O MIXR **não tem nenhum gerador de números aleatórios nativo** — avaliado antes de escrever
+qualquer código: nada em `base::`, nada registrado em factory nenhuma. O único achado parecido
+(`Rng`/`AbstractRng`/`Uniform`/`Exponential`/`Lognormal`, em `contexts/MIXR-PATTERN-CONTEXT.md`
+§4.1/4.3) é só um exemplo pedagógico dos tutoriais oficiais (`examples/tutorial02-04`), nem
+compilado no pacote Conan `mixr/1.0.5` — não existe neste clone.
+
+**Header-only, ao contrário das seis `shared_library()` de `shared/`** (`xboard`/`xlog`/
+`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) **e de `events/`** (a sétima, na raiz — ver
+`events/README.md` para o porquê de não estar em `shared/`). Essas sete existem porque host e
+plugin precisam compartilhar UMA cópia de estado mutável em tempo de execução através do `dlopen`
+(ex.: `xlog::setLoggingEnabled()` tem que alcançar o `.so` do modelo). Derivação de semente não tem esse
+requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
+`install_headers()` no `meson.build` raiz, no mesmo molde de `shared/xplugin/PluginAbi.hpp`.
+
+**`domain::PatrolPlan` não inclui este header, de propósito.** `models/flight/tests/meson.build`
+compila `domain_sources` (que inclui `PatrolPlan.cpp`) em `test_domain`/`test_tree` **sem
+`sdk_dep`, sem MIXR** — a mesma pureza que motivou a separação `bt_sources`/`bt_sdk_sources` já
+documentada acima. Como `shared/xrandom/DeterministicRng.hpp` só fica visível via `dist/include`
+(publicado pelo SDK), `PatrolPlan` mantém seu próprio `std::mt19937_64` **privado**, seedado
+direto por um `std::uint64_t` que já chega pronto — a classe não sabe de master seed, nome de
+player nem salt de propósito. `shared/xrandom` fica só com as duas funções puras de derivação
+(`fnv1a64`/`deriveSeed`), consumidas exclusivamente em `BtBehavior::configurePlans()` (que já
+depende do SDK — já inclui `xlog/Log.hpp`).
+
+**A hierarquia de sementes, e por que a sub-semente de cada player vem do NOME, nunca de
+ordem**: uma `patrolMasterSeed` só (mesmo literal repetido nos 4 blocos `BtBehavior` do `.epp` —
+ao contrário de `patrolHeading`/`patrolAltitude`, que são distintos por falcon) deriva
+`instanceSeed = deriveSeed(patrolMasterSeed, fnv1a64(player->getName()))` dentro de
+`configurePlans()` (via `findContainerByType(typeid(models::Player))`, o mesmo mecanismo já usado
+em `AlertDatalink.cpp`/`FlightAgentTC.cpp`/`TacviewOutput.cpp`). Se a distribuição dependesse da
+ORDEM de descoberta/processamento dos players em vez do nome, o resultado divergiria entre 1/2/4
+threads T/C, porque essa ordem não é garantida neste framework (a poc `multi-thread` decide em
+paralelo, um player por thread do pool). Uma segunda derivação, com um salt de PROPÓSITO fixo
+(`kPatrolJitterSalt`, não o nome), separa "qual player" de "qual gerador dentro do player" — se
+`RtbPlan` ganhar variação própria depois, deriva do MESMO `instanceSeed` com outro salt, sem
+risco de repetir a sequência do `PatrolPlan` por acidente.
+
+**Escape hatch**: `patrolSeedOverride`, opcional — quando declarado no bloco de UM player
+específico, o `instanceSeed` daquele player vira o valor literal do slot, pulando a derivação por
+nome (mas não a de propósito). Não entra nos cenários de produção: `tests/guard/
+check_falcons_estrutura.sh` exige que os 4 blocos `BtBehavior` tenham o MESMO esqueleto de slots
+(é o que pega divergência acidental entre os falcons), e um slot presente em só um dos quatro
+quebraria essa checagem — a demonstração do override vive só na suíte `native`
+(`Slots.PatrolSeedOverrideAusenteUsaDerivacaoDoMaster`/`PresenteTemPrioridadeSobreOMaster`), sem
+precisar estar ligado ao vivo. `bool patrolSeedOverrideSet` (não `0` como sentinela — `0` é uma
+semente válida, mesmo raciocínio já usado para `terrainClearance`) é o que distingue "não
+declarado" de "declarado com valor zero".
+
+**O eixo de variação**: um pequeno offset de rumo (`patrolJitterHeading`, default `0 deg` =
+desligado), resorteado uma vez a cada troca de perna de patrulha — nunca por `dt`, que é o que
+preserva o determinismo entre 1/2/4 threads (o número de trocas de perna por player independe de
+quantas threads existem; a cadência de `dt` por frame, não). Não toca altitude (a folga anti-CFIT
+é sobre a manobra de EVASÃO, que não lê `PatrolPlan`) nem rótulos de estado (`bt=PATROL` continua
+`PATROL`). Medido: `make check-single-thread`/`check-multi-thread` com a semente ativa em
+produção (`patrolMasterSeed: 20260903` nos 4 falcons de `single-thread`/`multi-thread`) passam
+com 1, 2 e 4 threads T/C, dumps byte-idênticos.
+
+**A prova de que é a SEMENTE que muda o resultado, não o agendamento entre threads, tem alvo
+próprio**: `make check-patrol-seed-single-thread`/`check-patrol-seed-multi-thread`
+(`tests/determinism/check_patrol_seed.sh`). Gera duas fixtures **hermético, modo `plain`** do
+`make_fixture.py` (só `PATROL`, sem `EVADE`/`RTB`/`SAFETY` competindo — esses ramos não leem
+`PatrolPlan`, e só atrapalhariam isolar o efeito da semente), diferindo **apenas** em
+`patrolMasterSeed` (`--patrol-seed`, opção nova de `make_fixture.py`, substitui o literal nos 4
+falcons de uma vez). Duas propriedades, cada uma nas três configurações de thread: **(1)** a
+MESMA semente reproduz byte a byte entre 1/2/4 threads; **(2)** duas sementes DIFERENTES
+divergem, também em qualquer configuração de thread — prova que o jitter que muda é uma função
+da semente, não uma corrida entre threads. Medido: `hdg=89.811744657` (semente A) contra
+`hdg=89.800627203` (semente B), mesmo `frame=100 player=falcon1`, ambos ainda em `bt=PATROL`.
+
+**`models/fixtures/stub` precisou de dois slots novos** (`patrolJitterHeading`/
+`patrolMasterSeed`, reaproveitando os `setSlotIgnora*` já existentes) — sem eles, o cenário de
+produção (que agora declara esses dois slots nos 4 falcons) falha ao parsear contra o "modelo
+estranho" com `slot not found`, derrubando `plugin-modelo-estranho`/`plugin-deposito-terceiro`.
+Mesma classe de armadilha já registrada para `RLBridgeBehavior` na seção `src/rl`: toda vez que
+`BtBehavior` de produção ganha um slot novo que o `.epp` de produção usa, o stub precisa aceitá-lo
+(mesmo que só para ignorar), ou deixa de ser contrato-compatível com o cenário que os testes de
+plugin rodam contra ele.
+
 ### `src/poc/bandit-dis` — o `bandit1` num processo próprio, emitindo DIS nativo do MIXR
 
 Terceiro subprojeto, de natureza diferente dos dois primeiros: não é uma pilha nova nem um
@@ -770,7 +850,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    (`Unsupported model IR version: 13, max supported IR version: 9`), e o `Fallback` da árvore
    assume. `tools/train_policy.py` fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx`
    já versionado). **Vale para qualquer `.onnx` gerado hoje** — inclusive
-   `src/rl/tools/export_onnx.py --random`, que não fixa a versão; o arquivo versionado em
+   `src/poc/rl-training/tools/export_onnx.py --random`, que não fixa a versão; o arquivo versionado em
    `models/flight/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
 2. **Uma rede contínua NÃO consegue representar a órbita geométrica da `python-flight`** (marcação
    para a base − 90°). O comando de rumo sai de um `tanh` mapeado linearmente em `[0, 360]`; uma
@@ -1227,7 +1307,9 @@ falcon1 indo de 141° para 34°.
    executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
    `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`). `src/poc/` é a pasta que
    agrupa as pocs de execução real (single-thread/multi-thread/bandit-dis/python-flight/onnx-policy) — o dashboard (`./app/`)
-   fica fora, na raiz, por ser o único ocupante da própria pasta.
+   fica fora, na raiz, por ser o único ocupante da própria pasta. **Exceção**: `src/poc/rl-training/`
+   também mora aqui, mas não segue esta receita — é só Python (o consumidor de treino de `src/rl`),
+   sem `main.cpp`/`mixr_factory`/entrada em `src/poc/meson.build`.
 2. Adicionar `subdir('./<nome>')` em [src/poc/meson.build](src/poc/meson.build) — não em
    `src/meson.build`, que só delega pra `subdir('./poc')`.
 3. Adicionar o alvo `run-<nome>` no [Makefile](Makefile) — apontando para
@@ -2611,6 +2693,18 @@ de `dist/`). `make venv-rl` cria/atualiza um venv LOCAL em `src/rl/.venv` (gitig
 a `Station` de verdade — fora de `make test` de propósito, por depender de pacotes Python fora da
 toolchain Conan/Meson.
 
+**`src/rl` é só o AMBIENTE — quem treina de fato é `src/poc/rl-training/`.** A distinção é
+a mesma já usada em `models/flight` (o modelo) vs. `src/poc/*` (quem consome): `src/rl` expõe
+`mixr_gym.MixrFlightEnv` e nada mais — nenhuma dependência de algoritmo de RL (`stable-baselines3`,
+`torch`...) entra em `src/rl/requirements.txt`, que fica deliberadamente mínimo
+(`gymnasium`+`numpy`, o suficiente pra rodar `test_smoke.py`, que testa o CONTRATO do ambiente, não
+uma política). `src/poc/rl-training/` mora sob `src/poc/`, mas é de natureza diferente das outras
+pastas ali — não produz executável C++ nenhum, é só Python — e tem venv próprio
+(`make venv-rl-training`, separado de `make venv-rl`), onde entram as dependências de treino e
+`tools/export_onnx.py` (que converte um checkpoint treinado em `.onnx` de produção — consumo, não
+biblioteca). Nenhum dos dois entra no
+grafo do Meson: são só Python, wireados só pelo `Makefile`.
+
 ## `shared/xinfer` e `shared/xpyembed` — decisão por ONNX e por Python, dentro do frame
 
 Duas `shared_library()` novas no SDK (agora são seis: `xboard`, `xlog`, `xtrack`, `xrlbridge`,
@@ -2645,7 +2739,7 @@ mão em cinco lugares. Virou uma X-macro — `shared/xrlbridge/ObservationFields
 contra `domain::WorldView` no modelo e contra `xrlbridge::Observation` na ponte: **um nome que
 divergir entre as duas structs não compila**. O `env.py` deriva as listas de
 `_native.observation_field_names()` e levanta na importação se os conjuntos não baterem.
-`src/rl/tools/export_onnx.py` lê a mesma ordem do C++ — não há lista escrita em Python.
+`src/poc/rl-training/tools/export_onnx.py` lê a mesma ordem do C++ — não há lista escrita em Python.
 
 **Determinismo, medido no binário de verdade.** 600 frames, 4 aeronaves decidindo em paralelo na
 fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idênticos** nos dois casos

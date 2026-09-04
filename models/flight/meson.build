@@ -75,7 +75,6 @@ model_sources = files(
 
     # classes MIXR proprias
     'src/xnative/AlertDatalink.cpp',
-    'src/xnative/TacticalAlert.cpp',
     'src/xnative/factory.cpp',
     'src/xnative/ThreadTag.cpp',
     'src/xnative/RadarScan.cpp',
@@ -143,7 +142,7 @@ install_data('configs/flight_tree.xml',
 # politica foi treinada contra ESTA observacao e ESTA aeronave.
 #
 # O .onnx de exemplo tem pesos ALEATORIOS, nao treinados (ver
-# src/rl/tools/export_onnx.py --random). Ele existe para exercitar a cadeia
+# src/poc/rl-training/tools/export_onnx.py --random). Ele existe para exercitar a cadeia
 # inteira -- carga, forma, inferencia, desnormalizacao, atuacao -- sem
 # depender de uma sessao de treino. Uma politica de verdade substitui o
 # arquivo, sem recompilar nada.
