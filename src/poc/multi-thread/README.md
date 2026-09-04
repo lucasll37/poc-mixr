@@ -73,24 +73,29 @@ diferença em vez de argumentar sobre ela.
 > — e valem igual aqui, porque o modelo é o mesmo: **a taxa de decisão não tinha nada a ver com o
 > problema** (1, 2 ou 4 threads, 10 Hz ou 50 Hz, os números eram os mesmos).
 
-`make compare-single-multi` mostra o tamanho real da mudança:
+`make compare-single-multi` mostra o tamanho real da mudança — hoje, com o modelo já vivendo em
+`models/flight/` como plugin (ver a nota no topo deste README), a lista é bem menor do que quando
+`FlightAgentTC` ainda era um arquivo do HOST:
 
 ```
-Only in src/poc/multi-thread/include/xnative: FlightAgentTC.hpp     ← a classe nova (100 linhas, 24 de código)
-Only in src/poc/multi-thread/src/xnative:     FlightAgentTC.cpp     ← 104 linhas, 43 de código
-Files .../src/xnative/factory.cpp differ                        ← +1 linha: registra a classe
-Files .../src/meson.build differ                                ← +1 linha: compila o .cpp
-Files .../configs/scenario.epp.in differ                        ← os 4 agentes mudam de lugar e de classe
-Files .../src/app/StatusReport.cpp differ                       ← +1 bloco: os campos 'dec'/'thr'
-Files .../src/app/DeterministicDump.cpp differ                  ← +1 campo: 'dec'
-Files .../src/app/ScenarioTemplate.cpp differ                   ← só um comentário
-Files .../src/main.cpp differ                                   ← banner e comentários de cabeçalho
-Files .../README.md differ                                      ← este arquivo
+Only in src/poc/single-thread/configs: scenario_missile_demo.epp.in
+Files .../configs/scenario.epp.in differ            ← os 4 agentes mudam de lugar e de classe;
+                                                        libflight.so vs. libflight_tc.so
+Files .../src/app/ScenarioTemplate.cpp differ        ← teto padrão de threads T/C diferente
+                                                        (8 aqui, 4 na single-thread -- ver §6.1)
+Files .../src/main.cpp differ                        ← banner e comentários de cabeçalho
+Files .../src/meson.build differ                     ← só o nome do executable()
+Files .../README.md differ                           ← este arquivo
 ```
 
-**Nenhum arquivo de `domain/`, `ubf/`, `bt/` ou dos outros modelos de `xnative/` foi tocado**, e
-do lado da aplicação só mudou quem *imprime* os dois contadores novos. É essa a demonstração:
-**onde a decisão roda é uma escolha de integração, não do modelo.**
+**Nenhum arquivo de `domain/`, `ubf/`, `bt/` ou dos outros modelos de `xnative/` foi tocado** — a
+classe `FlightAgentTC` mora em `models/flight/`, compilada nos dois `.so` do mesmo `meson.build`
+(`libflight.so` sem ela, `libflight_tc.so` com ela, sob `-DFLIGHT_TC_AGENT`; ver "O MODELO é um
+plugin" no `CLAUDE.md`). `app/StatusReport.cpp` e `app/DeterministicDump.cpp` são hoje
+**byte-idênticos** nas duas pocs: os dois leem `dec=`/`thr=` do mesmo `xboard::Readout`, publicado
+no mesmo ponto (`ubf::FlightAction::execute()`) para as duas pilhas — ver a nota de §3.5 e a
+tabela da §6. É essa a demonstração: **onde a decisão roda é uma escolha de integração do
+cenário/modelo, não do host.**
 
 > **Sobre o namespace:** continua `mixr::xnative`, igual ao da single-thread, de propósito —
 > é o que permite que `diff -r` entre os dois subprojetos mostre exatamente a diferença que a poc
@@ -257,6 +262,15 @@ onde serve para mostrar que os quatro agentes rodam em threads diferentes.
 Os dois são `std::atomic` porque são escritos na thread T/C e lidos no laço de background.
 `memory_order_relaxed` basta: são contadores de diagnóstico, não sincronizam nada.
 
+> **Nota de arquitetura, mais recente que o parágrafo acima.** `getDecisionCount()`/
+> `getLastThreadTag()` continuam existindo, mas hoje **nada os chama** — `app/StatusReport.cpp` e
+> `app/DeterministicDump.cpp` (do host) leem `dec=`/`thr=` de `mixr::xboard::Readout`, publicado
+> por `ubf::FlightAction::execute()` (`xboard::bumpDecisionCount()`/`setThreadTag()`), o mesmo
+> ponto de atuação que a `single-thread` usa. `FlightAgentTC::controller()` ainda chama
+> `xboard::setThreadTag()` a mais, redundante mas inofensivo (ver a "oitava passada" do `./app`
+> no `CLAUDE.md`). Os dois atômicos desta classe ficaram como contadores internos, verificáveis
+> só por quem tem acesso direto ao objeto — não são mais a fonte do que aparece na tela.
+
 ### 3.6 `findFlightAgent()` — a busca por tipo
 
 ```cpp
@@ -358,17 +372,30 @@ Quase nada — e é esse o ponto:
 | `app/RealTimeRun.cpp` | **idêntico** — mas `station->updateData(dt)` drena o gravador **e** roda os agentes | **idêntico** — `updateData(dt)` só drena o gravador |
 | `app/DeterministicRun.cpp` | **idêntico** — `tcFrame()` + `updateData()` em lockstep é o que dá o determinismo | **idêntico** — o determinismo já vem do frame; `updateData()` está lá só para o Tacview |
 | `app/TerrainData.cpp` | **idêntico** | **idêntico** |
-| `app/StatusReport.cpp` | — | acrescenta `dec=` (decisões do agente) e `thr=` (thread que decidiu) |
-| `app/DeterministicDump.cpp` | conta pelo `BehaviorBoard`, no ponto da atuação | conta no próprio agente (`FlightAgentTC`) |
+| `app/ScenarioTemplate.cpp` | teto padrão de `numTcThreads` = **4** | teto padrão = **8** — única diferença real de código entre os dois hosts (ver §6.1) |
+| `app/StatusReport.cpp` | **idêntico** — `dec=`/`thr=` vêm do mesmo `xboard::Readout` | **idêntico** |
+| `app/DeterministicDump.cpp` | **idêntico** — conta pelo `xboard::Readout`, no ponto da atuação (`FlightAction::execute`) | **idêntico** |
 | `app/MetaObjectReport.cpp` | **idêntico** — contadores de instância do MIXR, para detectar vazamento | **idêntico** |
-| `src/xnative/factory.cpp` | 6 classes | **7** classes |
-| `src/meson.build` | — | +1 fonte |
+| `mixr_factory.cpp`/`src/meson.build` do HOST | **idêntico** — as 6 classes registradas são as mesmas; `FlightAgentTC` é registrada dentro de `models/flight/`, não aqui | **idêntico** |
 
 Os dois laços são o **mesmo arquivo** nas duas pocs, byte a byte: quem muda é onde o agente está
-declarado no `.epp`, não o código que roda o laço.
+declarado no `.epp` (e qual `.so` o `( PluginModule )` carrega), não o código do host.
 
-A observabilidade nova é de propósito: `dec` é a contagem que prova a mudança de taxa, e `thr` é o
-índice da thread do pool T/C que decidiu por último.
+`dec`/`thr` deixaram de ser uma diferença de código entre as pocs — as duas os publicam pelo mesmo
+`shared/xboard`. A única diferença de código que sobra no HOST, hoje, é o teto padrão de threads
+T/C em `ScenarioTemplate.cpp` (linha acima) — um número de calibração, não uma mudança de
+comportamento do agente.
+
+### 6.1 A diferença real e residual: o teto de `numTcThreads`
+
+`app/ScenarioTemplate.cpp` resolve `@NUM_TC_THREADS@` contra `std::min(maxByCpu, N)` quando o
+usuário não passa `-threads`. A `single-thread` usa `N=4` (ela decide fora do pool, então mais
+threads T/C só serve para tocar a física em paralelo); a `multi-thread` usa `N=8` (aqui os quatro
+agentes **também** competem pelo pool, então um teto maior dá mais chance de cada aeronave cair
+numa thread própria). Os dois continuam limitados por `maxByCpu` — pedir mais threads do que há
+núcleos só acrescenta troca de contexto — e os dois aceitam `-threads N` explícito, que ignora o
+teto. Não é uma inconsistência a corrigir: é a única calibração que de fato diverge entre as duas
+pocs, porque é a única que depende de quantos players competem pelo pool.
 
 ---
 

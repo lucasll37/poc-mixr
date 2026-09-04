@@ -511,6 +511,15 @@ macro: acumula em `operator<<` e escreve tudo — console **e** arquivo — no d
 4. **Substituiu `xnative::Log`** (`logLine(string)` + `setLoggingEnabled(bool)`, duplicado à mão
    nas duas pocs, só console, sem nível) — os 2 pontos de uso (`ubf/BtBehavior.cpp`, mensagem
    vazia/exceção ao carregar a árvore) migraram para `LOG(WARNING)`/`LOG(ERROR)`.
+5. **`setConsoleEnabled(false)` não bastava sozinho — o `PrintHandler` nativo tinha um segundo
+   caminho para `std::cout`.** `Stream::~Stream()` só checava `g_sink != nullptr` antes de chamar
+   `printToOutput()`; quando o arquivo falha ao abrir (armadilha 1), `PrintHandler::
+   printToOutput()` cai no próprio fallback nativo e escreve em `std::cout` **por fora** de
+   `g_consoleEnabled` (`PrintHandler.cpp`: `else { std::cout << msg << std::endl; }`). Efeito
+   duplo: com console ligado a linha saía DUAS vezes; com console desligado — o caso do `./app`,
+   que desliga exatamente para o FTXUI não ter o desenho sujado por baixo — a linha vazava do
+   mesmo jeito, o oposto do que `setConsoleEnabled(false)` promete. Corrigido gateando em
+   `g_sink->isOpen()`, não só no ponteiro — é o texto que já está em `Log.cpp` hoje.
 
 **Buffer em memória — a fonte da aba "Log" do `./app`** (acrescentado junto com aquela aba; ver a
 passada correspondente na seção `./app`). Além de console e arquivo, toda linha entra num buffer
@@ -1014,12 +1023,20 @@ dump deterministico saiu identico ao de antes, byte a byte):
    `DataRecorder::setSlotEventName`. Sem as supressoes de `tests/memory/asan.supp` o alvo nasce
    vermelho e vira ruido. Nenhuma delas cresce com os frames — confirmado por outro caminho pela
    suite `memory`.
-6. **`dec=` agora existe nas DUAS pocs.** A `multi-thread` ja o tinha, do `FlightAgentTC`; a
-   `single-thread` decide no laco de background, entao quem conta e o `shared/xboard`, no ponto da
-   atuacao (`FlightAction::execute`). A assercao **nao** e `dec == frames`: a `multi-thread` decide
-   uma vez a mais na inicializacao (601 em 600 frames, identico nas 3 configuracoes de thread). O
-   que se afirma e que `dec` avanca na **mesma taxa** que `frame` entre dumps consecutivos — mede a
-   propriedade certa e ignora o offset de partida.
+6. **`dec=` agora existe nas DUAS pocs, e as DUAS contam do MESMO jeito.** A `multi-thread`
+   contava no proprio `FlightAgentTC` quando este campo nasceu; hoje as duas pocs leem
+   `dec=`/`thr=` de `mixr::xboard::Readout`, incrementado no MESMO ponto de atuacao
+   (`ubf::FlightAction::execute()`) nas duas pilhas — `app/StatusReport.cpp` e
+   `app/DeterministicDump.cpp` saíram **byte-identicos** entre as pocs por causa disso (ver
+   `src/poc/multi-thread/README.md` §3.5/§6). `FlightAgentTC` ainda mantem os proprios atomicos
+   (`decisions`/`lastThreadTag`), mas nada mais os le — sao redundantes, nao a fonte do dump.
+   A assercao **nao** e `dec == frames`: a `multi-thread` decide uma vez a mais na inicializacao
+   (601 em 600 frames, identico nas 3 configuracoes de thread) — o warm-up `tcFrame()` que
+   `app/StationBuilder.cpp` dispara logo apos o `RESET_EVENT` roda a fase 3 (e portanto o agente)
+   uma vez antes do laco de frames comecar; a `single-thread` nao tem esse offset porque seu
+   `SimAgent` so decide em `updateData()`, nunca em `tcFrame()`. O que se afirma e que `dec`
+   avanca na **mesma taxa** que `frame` entre dumps consecutivos — mede a propriedade certa e
+   ignora o offset de partida.
 7. **`app/ScenarioTemplate` grava o cenario expandido sempre no mesmo caminho**
    (`src/poc/<poc>/configs/scenario.generated.epp`, nao configuravel por linha de comando), entao dois
    testes que rodem um binario ao mesmo tempo disputam o arquivo. Todos os `test()` que executam

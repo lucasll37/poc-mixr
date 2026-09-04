@@ -63,6 +63,17 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   o host guarda os artefatos dele: `dlopen()` só acontece em tempo de execução, então só RODAR
   algo precisa da união. (2026-09-03)
 
+### Corrigido
+
+- **`domain::PatrolPlan::advance()` só trocava UMA perna por chamada.** Um `dt` que cobrisse duas
+  ou mais fronteiras de perna na mesma chamada (passo de controle grande, ou `legSeconds`
+  configurado pequeno) deixava `legTimeRemaining()` negativo, e a folga só era recuperada aos
+  poucos, uma chamada por vez, até o acúmulo (`legTimer_`) cair de volta abaixo de `legSeconds_`.
+  Virou um `while`, e não um `if`: uma troca por fronteira cruzada, no mesmo `advance()`. Cobertura
+  nova em `tests/domain/test_PatrolPlan.cpp` (um `dt` cobrindo múltiplas pernas) e dois testes de
+  borda em `test_ThreatPolicy.cpp`/`test_flight_tree.cpp` (altitude igual conta como "acima"; o
+  limiar exato de combustível da árvore de decisão). (2026-09-04)
+
 ---
 
 ## [1.0.0] — 2026-09-02
