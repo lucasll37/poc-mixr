@@ -116,7 +116,18 @@ Stream::~Stream()
    const std::string line{"[" + stamp + "] [" + levelName(level) + "] " + text};
 
    if (g_consoleEnabled) std::cout << line << std::endl;
-   if (g_sink != nullptr) g_sink->printToOutput(line.c_str());
+
+   // 'g_sink->isOpen()' -- nao basta 'g_sink != nullptr'. Quando o arquivo
+   // falha ao abrir (armadilha 1: 'data/logs/' ausente no disco),
+   // PrintHandler::printToOutput() cai no proprio fallback nativo e escreve
+   // em std::cout por conta propria (PrintHandler.cpp: 'else { std::cout
+   // << msg << std::endl; }') -- por FORA de 'g_consoleEnabled'. Sem esta
+   // guarda, duas coisas quebravam ao mesmo tempo: (a) com console ligado,
+   // a linha saia DUAS vezes (a nossa mais a do PrintHandler); (b) com
+   // console desligado -- o caso do ./app, que desliga exatamente para o
+   // FTXUI nao ter o desenho sujado por baixo -- a linha vazava pro stdout
+   // do mesmo jeito, o oposto do que setConsoleEnabled(false) promete.
+   if (g_sink != nullptr && g_sink->isOpen()) g_sink->printToOutput(line.c_str());
 
    // O buffer guarda os campos SEPARADOS (nao a linha ja formatada) --
    // quem exibe quer colorir por nivel e alinhar o carimbo em coluna

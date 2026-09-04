@@ -78,3 +78,18 @@ TEST(TrackSelection, PistaSemAlvoResolvidoNuncaEFiltradaPorLado)
    };
    EXPECT_EQ(selectNearestHostileIndex(tracks, kBlue), 0);
 }
+
+TEST(TrackSelection, PistaSemAlvoResolvidoCompeteNormalmenteContraHostilResolvido)
+{
+   // Gap de cobertura: nenhum teste ate aqui misturava as tres categorias
+   // (amigo resolvido, hostil resolvido, sem alvo resolvido) na MESMA
+   // lista. A pista sem alvo resolvido tem de competir por ALCANCE como
+   // qualquer hostil -- nao e nem privilegiada nem penalizada por nao ter
+   // lado conhecido.
+   const std::vector<TrackCandidate> tracks{
+      {1, 500.0,  true,  kBlue},   // amigo, mais perto de todos -- ignorado
+      {2, 3000.0, true,  kRed},    // hostil, longe
+      {3, 1500.0, false, kBlue},   // sem alvo resolvido, mais perto que o hostil
+   };
+   EXPECT_EQ(selectNearestHostileIndex(tracks, kBlue), 2);
+}
