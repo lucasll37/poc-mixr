@@ -2,6 +2,10 @@ gymnasium>=0.29
 numpy>=1.24
 stable-baselines3>=2.0
 torch>=2.0
+# serve o .venv como kernel Jupyter selecionavel no VS Code (notebooks/) --
+# nao precisa de 'jupyter' completo nem de registro manual de kernelspec, o
+# VS Code detecta qualquer interprete com ipykernel instalado.
+ipykernel>=6.29
 # necessario para tools/export_onnx.py -- tanto --random (onnx.helper/save)
 # quanto --sb3 (torch.onnx.export usa o pacote onnx por baixo pra serializar
 # o .onnx, mesmo no caminho --sb3 -- confirmado rodando, nao documentado em

@@ -48,11 +48,19 @@ train: check-root venv ## Treina PPO contra MixrFlightEnv e salva o checkpoint e
 	@# resolvido por caminho relativo a raiz (mesma convencao de todo
 	@# binario deste projeto -- ver CLAUDE.md/src/rl/README.md). Interprete
 	@# e script vao por caminho ABSOLUTO ($(PY)/$(PWD)), entao o 'cd' abaixo
-	@# nao os afeta.
-	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/train.py $(ARGS)
+	@# nao os afeta. '--out-dir' explicito (nao so o default de train.py):
+	@# train.py ja ancora o proprio default em '<esta-pasta>/runs' (nao em
+	@# cwd), mas passar aqui deixa o Makefile a fonte de verdade do
+	@# caminho, sem depender de dois lugares concordarem por coincidencia.
+	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/train.py --out-dir $(RUNS_DIR) $(ARGS)
 
 export: check-root venv ## Exporta um checkpoint treinado para .onnx (ver 'tools/export_onnx.py --help'; ex.: make export ARGS="--sb3 runs/ppo_falcon1.zip -o politica.onnx").
-	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/tools/export_onnx.py $(ARGS)
+	@# SEM 'cd $(ROOT)' aqui, ao contrario de 'train' -- export_onnx.py nao
+	@# le cenario nenhum (resolve dist/python pelo PROPRIO __file__, nao por
+	@# cwd), entao nao ha motivo pra mudar de diretorio. cwd fica nesta
+	@# pasta, o que faz os caminhos de ARGS (ex.: 'runs/ppo_falcon1.zip')
+	@# resolverem contra ELA -- o mesmo lugar onde 'train' acima escreve.
+	PYTHONPATH=$(DIST_PYTHON) $(PY) tools/export_onnx.py $(ARGS)
 
 clean: ## Remove o venv local e os checkpoints de ./runs (NAO mexe no dist/ do host).
 	rm -rf $(VENV) $(RUNS_DIR)

@@ -139,7 +139,8 @@ make train ARGS="--timesteps 200000"
 ```
 
 Ver `src/poc/rl-training/README.md` para as opções (`--player`, `--scenario`, `--seed`...) e
-`train.py --help`.
+`train.py --help` — ou o equivalente interativo, célula a célula, em
+`src/poc/rl-training/notebooks/train.ipynb`.
 
 > Um `MixrFlightEnv` por **processo** — o registro de plugins é selado depois do primeiro parse.
 > Para vários episódios em paralelo, um processo por env (`multiprocessing`).
