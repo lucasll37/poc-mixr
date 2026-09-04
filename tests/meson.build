@@ -224,6 +224,32 @@ test_xpyembed = executable('test-xpyembed',
 )
 test('xpyembed-isolamento', test_xpyembed, suite: 'domain', timeout: 120)
 
+# shared/xrlbridge -- o contrato de dados com o treino (ordem canonica dos 28
+# campos de observacao, a desnormalizacao de acao) e o mutex por tras de
+# setPendingCommand/getPendingCommand/setObservation/getObservation. Nunca
+# tinha teste direto nenhum antes deste arquivo -- so a contagem de campos,
+# de relance, via a constante XRLBRIDGE_OBSERVATION_SIZE em test_xinfer.cpp.
+test_xrlbridge = executable('test-xrlbridge',
+    files('domain/test_xrlbridge.cpp'),
+    dependencies        : [gtest_dep, gtest_main_dep, xrlbridge_dep, thread_dep],
+    install             : false,
+)
+test('xrlbridge-contrato', test_xrlbridge, suite: 'domain', timeout: 60)
+
+# shared/xjoystick -- so o que da para isolar sem Station/Simulation/
+# AirVehicle/hardware de verdade: os setters de slot e o caminho de
+# DEGRADACAO sem joystick fisico. As armadilhas de verdade (desengate dos
+# hold modes do Autopilot, inversao do manete) continuam so validadas
+# manualmente -- ver o comentario no topo do .cpp para o porque.
+test_xjoystick = executable('test-xjoystick',
+    files('domain/test_xjoystick.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xjoystick_dep, thread_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
+
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
 #

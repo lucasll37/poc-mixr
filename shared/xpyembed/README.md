@@ -61,3 +61,13 @@ um subinterpretador por aeronave, e o pybind11 desta versão não os suporta.
    dois criaria uma segunda ordem de aquisição, e com ela a chance de deadlock.
 5. **`Py_file_input` é 257.** Vem de `Python.h`, que deliberadamente não é incluído — está fixado
    como constante, com o comentário explicando.
+6. **O container de scripts era `std::vector<Script>`, e isso era uma referência pendurada em
+   potencial.** `decide()` toma `Script&` para dentro do container e a solta ANTES de terminar —
+   só o GIL protege esse trecho, não o `g_mutex` (armadilha 4). Um `vector` realoca no
+   `push_back()`; se outra thread chamasse `loadScript()` com um caminho NOVO enquanto a primeira
+   ainda estivesse dentro de `decide()` (o caso real de `bt/nodes/PyDecideAction.cpp`: quatro
+   aeronaves em threads diferentes do pool, cada uma carregando um script diferente na primeira
+   vez que o próprio nó tica), a realocação invalidaria a referência em uso. Trocado por
+   `std::deque<Script>`: inserção no fim nunca invalida referência a elemento existente (só
+   iteradores). Travado por
+   `tests/domain/test_xpyembed.cpp::CarregarScriptsNovosNaoCorrompeDecideEmAndamento`.

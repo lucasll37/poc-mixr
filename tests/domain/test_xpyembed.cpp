@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -193,6 +194,75 @@ TEST(XPyEmbed, QuatroThreadsComChavesDistintasNaoSeMisturam)
    for (auto& th : threads) th.join();
    EXPECT_EQ(erros.load(), 0)
       << "o estado vazou entre chaves, ou uma chamada falhou sob concorrencia";
+}
+
+// O caso que motivou trocar o container interno de vector<Script> para
+// deque<Script>: decide() guarda uma REFERENCIA para dentro do container
+// (Script&), soltando o g_mutex antes de terminar -- so o GIL protege esse
+// trecho. Um vector realoca no push_back() e invalidaria essa referencia se
+// OUTRA thread chamasse loadScript() com um caminho NOVO enquanto a primeira
+// ainda estivesse dentro de decide(). E exatamente o caso real de
+// bt/nodes/PyDecideAction.cpp: quatro aeronaves em threads diferentes do
+// pool T/C, cada uma tickando o SEU no pela primeira vez no mesmo frame,
+// cada uma carregando um script DIFERENTE (a carga so e serializada POR
+// INSTANCIA de no, nao entre instancias). Sem a correcao, isto e
+// use-after-free sob ASan/TSan e corrupcao silenciosa sem eles; com deque,
+// insercao no fim nunca invalida referencia a elemento existente.
+TEST(XPyEmbed, CarregarScriptsNovosNaoCorrompeDecideEmAndamento)
+{
+   if (!temPython()) GTEST_SKIP() << "sem interpretador Python";
+
+   const ScriptTemporario base{
+      "contador = 0\n"
+      "def decide(obs):\n"
+      "    global contador\n"
+      "    contador += 1\n"
+      "    return (float(contador), 0.0, 0.0)\n"};
+   const auto idBase = xpyembed::loadScript(base.caminho());
+   ASSERT_NE(idBase, 0);
+
+   std::atomic<bool> parar{false};
+   std::atomic<int> erros{};
+
+   // Thread A: decide() repetido sobre o script JA carregado, com uma chave
+   // fixa -- o contador tem de avancar EXATAMENTE 1 por chamada, sem pular
+   // nem repetir, do inicio ao fim.
+   std::thread consumidor([&] {
+      const std::array<double, 1> obs{};
+      std::array<double, 3> cmd{};
+      int esperado{1};
+      while (!parar.load()) {
+         if (!xpyembed::decide(idBase, 42, obs.data(), 1, cmd.data(), 3)) {
+            erros.fetch_add(1);
+            break;
+         }
+         if (cmd[0] != static_cast<double>(esperado)) {
+            erros.fetch_add(1);
+            break;
+         }
+         ++esperado;
+      }
+   });
+
+   // Thread B: carrega dezenas de scripts NOVOS (caminhos distintos, nunca
+   // vistos), forcando o container interno a crescer repetidas vezes
+   // enquanto a thread A esta com uma referencia em maos.
+   constexpr int kNovosScripts{200};
+   std::vector<std::unique_ptr<ScriptTemporario>> novos;
+   novos.reserve(kNovosScripts);
+   for (int i = 0; i < kNovosScripts; ++i) {
+      novos.push_back(std::make_unique<ScriptTemporario>(
+         "def decide(obs):\n    return (0.0, 0.0, 0.0)\n"));
+      const auto id = xpyembed::loadScript(novos.back()->caminho());
+      EXPECT_NE(id, 0);
+   }
+
+   parar.store(true);
+   consumidor.join();
+
+   EXPECT_EQ(erros.load(), 0)
+      << "decide() em andamento foi corrompido por loadScript() concorrente"
+      << " crescendo o container de scripts";
 }
 
 } // namespace

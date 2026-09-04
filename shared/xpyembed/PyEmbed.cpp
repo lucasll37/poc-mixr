@@ -4,12 +4,12 @@
 
 #include <dlfcn.h>
 
+#include <deque>
 #include <fstream>
 #include <map>
 #include <mutex>
 #include <sstream>
 #include <string>
-#include <vector>
 
 namespace mixr {
 namespace xpyembed {
@@ -155,7 +155,19 @@ struct Script
    std::map<int, PyObj> globaisPorPlayer;
 };
 
-std::vector<Script> g_scripts{Script{}};      // indice 0 vazio: id 0 e invalido
+// deque, NAO vector: decide() toma uma REFERENCIA para dentro deste
+// container (Script& script{g_scripts[id]}, mais abaixo) e a SOLTA antes de
+// terminar -- mas so o GIL, nao g_mutex, protege esse trecho (ver o
+// comentario de decide()). Um vector realoca no push_back() e invalidaria
+// essa referencia se outra thread chamasse loadScript() para um caminho NOVO
+// enquanto a primeira ainda estivesse dentro de decide() -- um caso real:
+// quatro aeronaves em threads diferentes do pool, cada uma tickando o SEU
+// PyDecideAction pela primeira vez no mesmo frame, cada uma carregando um
+// script DIFERENTE (bt/nodes/PyDecideAction.cpp so serializa a carga POR
+// INSTANCIA de no, nao entre instancias). deque garante que
+// insercao no fim NUNCA invalida referencias a elementos ja existentes
+// (so iteradores) -- exatamente a garantia que falta aqui.
+std::deque<Script> g_scripts{Script{}};      // indice 0 vazio: id 0 e invalido
 std::map<std::string, ScriptId> g_porCaminho;
 
 // Prepara (uma vez) o dicionario de globais deste player e executa o script
