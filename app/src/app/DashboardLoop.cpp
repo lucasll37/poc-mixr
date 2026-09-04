@@ -3,6 +3,7 @@
 #include "app/BackgroundPanel.hpp"
 #include "app/BehaviorTreeView.hpp"
 #include "app/BreakpointController.hpp"
+#include "app/ComponentTreePanel.hpp"
 #include "app/DashboardState.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
@@ -402,6 +403,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    Box mapCanvasBox{};
    double lastTrailSimSec{-1.0};
 
+   // ---- aba "Componentes" (F6) -- ver app/ComponentTreePanel.hpp/
+   // app/ComponentTreeQuery.hpp. 'componentsLayout' e recalculado a cada
+   // redesenho dentro do Renderer mais externo (mesmo lugar que ja
+   // atualiza 'displayedEntities'/'displayedClasses'), barato o bastante
+   // (dezenas de nos) pra nao precisar de cache -- um missil liberado ou um
+   // fantasma DIS aparecem/somem sozinhos, sem invalidacao manual.
+   ComponentTreeViewState componentsView;
+   ComponentTreeLayout componentsLayout;
+   Box componentsCanvasBox{};
+   bool componentsAutoFitted{};
+
    // Largura do card de detalhe -- recalculada a cada redesenho (o
    // terminal pode ser redimensionado em qualquer frame), "ocupando por
    // referencia ate onde o mapa acaba": reserva 'kMapCanvasWidthCells' pro
@@ -548,6 +560,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
       centerMapOn(mapView, displayedEntities[idx]);
       doMapSnapGroundIfApplicable();
+   };
+
+   // ---- acoes da aba "Componentes" (F6) -- mesma regra de sempre: uma
+   // lambda, usada por tecla E por botao ----
+   const auto doCompZoomIn = [&] { zoomComponentTree(componentsView, true); };
+   const auto doCompZoomOut = [&] { zoomComponentTree(componentsView, false); };
+   const auto doCompCenterOnSelected = [&] {
+      if (componentsView.selectedIndex < 0
+          || componentsView.selectedIndex >= static_cast<int>(componentsLayout.nodes.size())) return;
+      centerComponentTreeOn(componentsView,
+         componentsLayout.nodes[static_cast<std::size_t>(componentsView.selectedIndex)]);
    };
 
    // ---- breakpoint de arvore de BT -- "marcar um estado da bt de um dado
@@ -870,6 +893,62 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // inclusive nos botoes [F1]/[F3] -- era engolido como "comecar a
    // arrastar o mapa" e nunca chegava ao botao, travando a troca de aba).
 
+   // ---- aba "Componentes" (F6): arvore de componentes REAL da Station,
+   // navegavel -- mesma receita de pan/zoom/clique/canvas-responsivo da aba
+   // Mapa (ver app/ComponentTreePanel.hpp/.cpp), PRIMEIRA METADE da feature:
+   // so a estrutura estatica (sem animacao de fluxo entre fases nem
+   // play/pause/step -- fica pra proxima iteracao). ----
+   const Component componentsCanvasArea{Renderer([&]() -> Element {
+      Element detail{text("(clique num no da arvore, ou navegue com as setas)")
+                     | dim | center | size(WIDTH, EQUAL, 56) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
+      if (componentsView.selectedIndex >= 0
+          && componentsView.selectedIndex < static_cast<int>(componentsLayout.nodes.size())) {
+         detail = renderComponentDetail(
+                     componentsLayout.nodes[static_cast<std::size_t>(componentsView.selectedIndex)])
+                  | size(HEIGHT, EQUAL, kDetailPanelHeight);
+      }
+      // Mesma tecnica de fitMapCanvasToBox() (ver o comentario grande em
+      // app/MapPanel.hpp e a "decima sexta passada" do CLAUDE.md) --
+      // 'componentsCanvasBox' e a caixa do quadro ANTERIOR.
+      fitComponentTreeCanvasToBox(componentsView, componentsCanvasBox);
+
+      // Uma vez so, assim que ha arvore E canvas de tamanho de verdade --
+      // ver o comentario grande de app::fitComponentTreeToContent(): sem
+      // isto, o pan/zoom DEFAULT deixa quase toda a arvore fora do canvas
+      // (a raiz nasce na linha MEDIA de toda a arvore). Depois desta
+      // primeira vez, pan/zoom manual do usuario nao e mais sobrescrito.
+      if (!componentsAutoFitted && !componentsLayout.nodes.empty()) {
+         fitComponentTreeToContent(componentsView, componentsLayout);
+         componentsAutoFitted = true;
+      }
+      return hbox({
+                renderComponentTree(componentsLayout, componentsView, componentsCanvasBox) | flex,
+                separator(),
+                detail,
+             })
+             | flex;
+   })};
+
+   const Component btnCompZoomOut{makeButton("[[] Zoom-", doCompZoomOut)};
+   const Component btnCompZoomIn{makeButton("[]] Zoom+", doCompZoomIn)};
+   const Component btnCompCenter{makeButton("[c] Centralizar", doCompCenterOnSelected)};
+   const Component componentsButtons{Container::Horizontal({btnCompZoomOut, btnCompZoomIn, btnCompCenter})};
+
+   const Component componentsBody{Container::Vertical({componentsCanvasArea, componentsButtons})};
+   const Component componentsTab{Renderer(componentsBody, [&]() -> Element {
+      return vbox({
+         text(" arvore de componentes REAL (getComponents() + players/dataRecorder/ioHandler/"
+              "networks) -- cor = fase ESTIMADA (heuristica, ver card de detalhe) ") | dim,
+         componentsCanvasArea->Render() | flex,
+         text("[setas/arraste] mover  [clique] selecionar no  [ ]/roda] zoom") | dim,
+         componentsButtons->Render(),
+      });
+   })};
+   // O tratamento de tecla/mouse desta aba, pelo MESMO motivo ja documentado
+   // no comentario grande sobre 'mapTab'/'withKeys' logo acima, NAO fica num
+   // CatchEvent local aqui -- fica no CatchEvent mais externo (ver
+   // 'activeTab == 5' la embaixo).
+
    // ---- aba "Memoria": contadores de instancia AO VIVO, ver
    // app/MetaObjectSnapshot.hpp para o criterio de "CRESCENDO" ----
    MenuOption classMenuOpt;
@@ -952,8 +1031,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       });
    })};
 
-   const Component contentTab{Container::Tab({fleetTab, mapTab, memoryTab, backgroundTab, logTab},
-                                             &activeTab)};
+   const Component contentTab{Container::Tab(
+      {fleetTab, mapTab, memoryTab, backgroundTab, logTab, componentsTab}, &activeTab)};
 
    // ---- barra de abas e barra de acoes, TODAS clicaveis (Button de
    // verdade), com a dica de atalho ja no rotulo ----
@@ -963,6 +1042,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnMemory{makeButton("[F3] Memoria", [&] { gotoTab(2); })};
    const Component btnBackground{makeButton("[F4] Tempo Nao-Critico", [&] { gotoTab(3); })};
    const Component btnLog{makeButton("[F5] Log", [&] { gotoTab(4); })};
+   const Component btnComponents{makeButton("[F6] Componentes", [&] { gotoTab(5); })};
 
    // Acelerar/Frear/Tempo-real ficam visualmente apagados enquanto
    // bloqueados -- QUALQUER breakpoint armado ('g' OU 'G', ver
@@ -1002,7 +1082,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnQuit{makeButton("[q] Sair", doQuit)};
 
    const Component toolbar{Container::Horizontal({
-      btnFleet, btnMap, btnMemory, btnBackground, btnLog,
+      btnFleet, btnMap, btnMemory, btnBackground, btnLog, btnComponents,
       btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
       btnLoad, btnRestart, btnStop, btnQuit,
    })};
@@ -1079,6 +1159,22 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
             static_cast<int>(treeLines.size()) - 1);
       }
 
+      // Aba Componentes -- recalculada a cada redesenho, direto de
+      // 'station' (mesmo raciocinio de 'makeTerrainSampler(worldModel)' na
+      // aba Mapa: barato, e um cache manual so arriscaria mostrar uma
+      // arvore velha depois de um missil ser liberado ou um fantasma DIS
+      // chegar pela rede). Feito aqui (Renderer mais externo, sempre roda)
+      // e nao dentro de 'componentsCanvasArea' porque o CatchEvent
+      // (hit-test/pan) precisa de 'componentsLayout' fresco independente de
+      // qual aba esta ativa no momento do clique.
+      componentsLayout = layoutComponentTree(discoverComponentTree(station));
+      if (!componentsLayout.nodes.empty()) {
+         componentsView.selectedIndex = std::clamp(componentsView.selectedIndex, -1,
+            static_cast<int>(componentsLayout.nodes.size()) - 1);
+      } else {
+         componentsView.selectedIndex = -1;
+      }
+
       // Recalculado a cada redesenho -- o terminal pode ser redimensionado
       // em qualquer frame. "+6" cobre a borda do canvas (2) + separador (1)
       // + borda do proprio card (2) + uma folga de 1.
@@ -1112,7 +1208,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                          | bold | bgcolor(Color::Blue) | color(Color::White) | center);
       }
       rows.push_back(hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
-               tabBadge(btnBackground, 3), tabBadge(btnLog, 4)}));
+               tabBadge(btnBackground, 3), tabBadge(btnLog, 4), tabBadge(btnComponents, 5)}));
       rows.push_back(separator());
       rows.push_back(contentTab->Render() | flex);
       rows.push_back(separator());
@@ -1136,6 +1232,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::F3) { gotoTab(2); return true; }
       if (event == Event::F4) { gotoTab(3); return true; }
       if (event == Event::F5) { gotoTab(4); return true; }
+      if (event == Event::F6) { gotoTab(5); return true; }
 
       // Navegacao por seta das listas (Frota/Memoria) -- tratada AQUI, no
       // CatchEvent mais externo, e nao deixada para o ftxui::Menu receber
@@ -1283,6 +1380,66 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          if (event == Event::Character('e') || event == Event::Character('E')) { doMapToggleTerrain(); return true; }
          if (event == Event::Character('v') || event == Event::Character('V')) { doMapTogglePerspective(); return true; }
          if (event == Event::Character('c') || event == Event::Character('C')) { doMapCenterOnSelected(); return true; }
+      }
+
+      // Interacao da aba "Componentes" -- MESMO raciocinio/estrutura do
+      // bloco do Mapa logo acima (CatchEvent mais externo, gate por
+      // 'componentsCanvasBox.Contain()' pro mouse, clique-vs-arrasto pelo
+      // deslocamento total entre Pressed e Released).
+      if (activeTab == 5) {
+         if (event.is_mouse()) {
+            const Mouse& m{event.mouse()};
+            const bool insideCanvas{componentsCanvasBox.Contain(m.x, m.y)};
+
+            if (componentsView.dragging) {
+               if (m.motion == Mouse::Released) {
+                  componentsView.dragging = false;
+                  const int totalMove{std::abs(m.x - componentsView.pressX)
+                                      + std::abs(m.y - componentsView.pressY)};
+                  if (totalMove <= 1) {
+                     const int cellX{m.x - componentsCanvasBox.x_min};
+                     const int cellY{m.y - componentsCanvasBox.y_min};
+                     const int hitIndex{hitTestComponentTreeNode(componentsLayout, componentsView,
+                                                                 cellX, cellY)};
+                     if (hitIndex >= 0) componentsView.selectedIndex = hitIndex;
+                  }
+                  return true;
+               }
+               if (m.motion == Mouse::Moved) {
+                  const int dx{m.x - componentsView.dragLastX};
+                  const int dy{m.y - componentsView.dragLastY};
+                  componentsView.dragLastX = m.x;
+                  componentsView.dragLastY = m.y;
+                  panComponentTree(componentsView, dx * 2.0, dy * 4.0);
+                  return true;
+               }
+               return true;
+            }
+
+            if (!insideCanvas) return false;
+            if (m.button == Mouse::WheelUp) { doCompZoomIn(); return true; }
+            if (m.button == Mouse::WheelDown) { doCompZoomOut(); return true; }
+            if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+               componentsView.dragging = true;
+               componentsView.pressX = m.x;
+               componentsView.pressY = m.y;
+               componentsView.dragLastX = m.x;
+               componentsView.dragLastY = m.y;
+               return true;
+            }
+            return false;
+         }
+
+         const double kNudgePx{24.0};
+         if (event == Event::ArrowLeft)  { panComponentTree(componentsView, -kNudgePx, 0.0); return true; }
+         if (event == Event::ArrowRight) { panComponentTree(componentsView,  kNudgePx, 0.0); return true; }
+         if (event == Event::ArrowUp)    { panComponentTree(componentsView, 0.0, -kNudgePx); return true; }
+         if (event == Event::ArrowDown)  { panComponentTree(componentsView, 0.0,  kNudgePx); return true; }
+         if (event == Event::Character('[')) { doCompZoomOut(); return true; }
+         if (event == Event::Character(']')) { doCompZoomIn(); return true; }
+         if (event == Event::Character('c') || event == Event::Character('C')) {
+            doCompCenterOnSelected(); return true;
+         }
       }
 
       return false;

@@ -18,6 +18,7 @@ host_sources = files(
     'app/MapGeometry.cpp', 'app/BreakpointController.cpp', 'app/SpeedLadder.cpp',
     'app/MemoryPanel.cpp', 'app/BehaviorTreeView.cpp', 'app/BackgroundPanel.cpp',
     'app/TerrainQuery.cpp', 'app/LogPanel.cpp', 'app/Shutdown.cpp',
+    'app/ComponentTreeQuery.cpp', 'app/ComponentTreePanel.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc
