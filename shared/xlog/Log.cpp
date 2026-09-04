@@ -5,6 +5,7 @@
 #include "mixr/base/safe_ptr.hpp"
 
 #include <chrono>
+#include <cstdio>
 #include <ctime>
 #include <deque>
 #include <iomanip>
@@ -60,6 +61,24 @@ const char* levelName(const Level level)
 void init(const std::string& filePath)
 {
    std::lock_guard<std::mutex> lock(g_mutex);
+
+   // PrintHandler::openFile() NUNCA reescreve um arquivo que ja existe --
+   // "we don't want to over write good data" (comentario do proprio
+   // framework): se './app/data/logs/app.log' ja esta no disco, ele tenta
+   // 'app.log_v01', 'app.log_v02', ... ate 99. Faz sentido para uma
+   // GRAVACAO de dados, mas nao para um log de diagnostico por PROCESSO --
+   // e aqui cada respawn do ./app (carregar cenario/reiniciar, ambos um
+   // execv() de si mesmo, ver app/Respawn.hpp) chama init() de novo. Sem
+   // este passo, cada respawn empurrava a versao pra frente, o diretorio
+   // enchia de dezenas de arquivos VAZIOS (o log real so vive no ultimo) e,
+   // esgotadas as 99 versoes, TODO log novo parava de ir pro disco em
+   // silencio -- so um aviso em stderr, que some sob o FTXUI (console
+   // desligado enquanto o painel esta em tela cheia, ver setConsoleEnabled)
+   // e nem aparece rodando via 'make run-*'. Apagar o arquivo alvo antes de
+   // abrir restaura a semantica esperada: cada PROCESSO tem o seu proprio
+   // 'data/logs/<nome>.log', do zero -- sem depender do mecanismo de
+   // versionamento do PrintHandler, que e para outro caso de uso.
+   std::remove(filePath.c_str());
 
    // 'new ..., false' via set(): o objeto ja nasce com refCount 1
    // (STANDARD_CONSTRUCTOR) -- refar aqui so vazaria uma referencia que
