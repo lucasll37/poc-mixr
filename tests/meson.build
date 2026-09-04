@@ -311,6 +311,50 @@ test('scenario-app-quit', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
+# A MESMA prova acima, agora para single-thread/multi-thread/bandit-dis -- ate
+# a decima oitava passada do ./app, so ele tinha a ORDEM de encerramento
+# corrigida (parar a thread T/C nativa ANTES do SHUTDOWN_EVENT); as tres pocs
+# rodam a MESMA forma de laco de tempo real (createTimeCriticalProcess() +
+# updateData() em laco continuo) e corriam o MESMO risco de auto-deadlock/
+# crescimento de memoria documentado em xclock/ClockStation.hpp. Sem TUI/pty
+# aqui -- ver o cabecalho do script para o porque.
+#
+# single-thread/multi-thread usam a porta 1234 (a mesma, uma poc por vez --
+# is_parallel:false serializa com TODO o resto desta suite); bandit-dis usa a
+# 1235.
+test('scenario-single-thread-quit', py,
+     args: files('scenario/run_poc_quit_test.py') + [
+         '--binario', single_thread.full_path(), '--porta-tacview', '1234'],
+     depends: single_thread, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
+test('scenario-multi-thread-quit', py,
+     args: files('scenario/run_poc_quit_test.py') + [
+         '--binario', multi_thread.full_path(), '--porta-tacview', '1234'],
+     depends: multi_thread, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
+test('scenario-bandit-dis-quit', py,
+     args: files('scenario/run_poc_quit_test.py') + [
+         '--binario', bandit_dis.full_path(), '--porta-tacview', '1235'],
+     depends: bandit_dis, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
+# As outras duas GEMEAS (ver tests/guard/check_duplication.sh) tambem levaram
+# a mesma correcao -- include/app e src/app/RealTimeRun.cpp sao byte a byte
+# identicos entre as quatro, entao o mesmo risco existia aqui tambem.
+test('scenario-python-flight-quit', py,
+     args: files('scenario/run_poc_quit_test.py') + [
+         '--binario', python_flight.full_path(), '--porta-tacview', '1237'],
+     depends: python_flight, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
+test('scenario-onnx-policy-quit', py,
+     args: files('scenario/run_poc_quit_test.py') + [
+         '--binario', onnx_policy.full_path(), '--porta-tacview', '1238'],
+     depends: onnx_policy, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
 # O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
 # (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
 # thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a

@@ -83,6 +83,7 @@ compara src/app/TerrainData.cpp
 compara src/app/Fleet.cpp
 compara src/app/DeterministicRun.cpp
 compara src/app/RealTimeRun.cpp
+compara src/app/Shutdown.cpp
 
 if [ $fail -eq 0 ]; then
    echo "duplicacao: OK (a camada de aplicacao e a mesma em $REF e em: $(echo $GEMEAS | tr '\n' ' '))"

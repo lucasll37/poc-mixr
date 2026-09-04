@@ -8,6 +8,7 @@ sources = files(
     'app/TerrainData.cpp',
     'app/StationBuilder.cpp',
     'app/RealTimeRun.cpp',
+    'app/Shutdown.cpp',
 )
 
 # Sem behavior_tree_dep: nao ha UBF/BehaviorTree aqui, so o bandit1 sozinho

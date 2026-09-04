@@ -35,6 +35,7 @@ host_sources = files(
     'app/DeterministicRun.cpp',
     'app/MetaObjectReport.cpp',
     'app/RealTimeRun.cpp',
+    'app/Shutdown.cpp',
 )
 
 python_flight = executable('python-flight',

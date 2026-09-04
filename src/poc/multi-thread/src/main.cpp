@@ -42,6 +42,7 @@
 #include "app/Options.hpp"
 #include "app/RealTimeRun.hpp"
 #include "app/ScenarioTemplate.hpp"
+#include "app/Shutdown.hpp"
 #include "app/StationBuilder.hpp"
 #include "app/TerrainData.hpp"
 
@@ -49,8 +50,6 @@
 #include "xtacview/TacviewOutput.hpp"
 
 #include "mixr/simulation/Station.hpp"
-
-#include "mixr/base/Component.hpp"
 
 #include <iostream>
 #include <string>
@@ -134,7 +133,12 @@ int main(int argc, char* argv[])
       std::cout << "=== fim ===" << std::endl;
    }
 
-   station->event(mixr::base::Component::SHUTDOWN_EVENT);
-   station->unref();
+   // ORDEM importa aqui -- ver app/Shutdown.hpp. Cala a thread de tempo
+   // critico nativa ANTES do SHUTDOWN_EVENT: sem isso, ela corre contra o
+   // teardown da Simulation (auto-deadlock, ver xclock/ClockStation.hpp) e
+   // pode seguir enfileirando registros numa fila sem teto depois que
+   // ninguem mais a drena.
+   app::quiesceTimeCritical(station, clockStation);
+   app::shutdownStation(station);
    return rc;
 }

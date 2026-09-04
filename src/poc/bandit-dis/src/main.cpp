@@ -17,6 +17,7 @@
 //
 
 #include "app/RealTimeRun.hpp"
+#include "app/Shutdown.hpp"
 #include "app/StationBuilder.hpp"
 #include "app/TerrainData.hpp"
 
@@ -27,7 +28,6 @@
 
 #include "mixr/models/player/air/AirVehicle.hpp"
 
-#include "mixr/base/Component.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/PairStream.hpp"
 
@@ -90,7 +90,10 @@ int main()
    app::runRealTime(station, ioHandler);
    std::cout << "=== fim ===" << std::endl;
 
-   station->event(mixr::base::Component::SHUTDOWN_EVENT);
-   station->unref();
+   // ORDEM importa aqui -- ver app/Shutdown.hpp. Cala a thread de tempo
+   // critico nativa ANTES do SHUTDOWN_EVENT (mesmo risco documentado em
+   // xclock/ClockStation.hpp, medido nas gemeas single-thread/multi-thread).
+   app::quiesceTimeCritical(station);
+   app::shutdownStation(station);
    return 0;
 }
