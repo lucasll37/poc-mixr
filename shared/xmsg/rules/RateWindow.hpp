@@ -38,7 +38,7 @@ public:
    // (a janela congela, como no Schmitt e no Deadband).
    void push(double dt, double value, bool valid);
 
-   // Ha dois pontos separados por tempo > 0 dentro da janela?
+   // Ha dois pontos separados por tempo > 0 DENTRO DA JANELA?
    bool ready() const;
 
    // Unidades do campo por segundo. Zero se !ready().
@@ -46,6 +46,16 @@ public:
 
 private:
    struct Sample { double t{}; double v{}; };
+
+   // Indice da amostra mais VELHA ainda dentro de 'window_', partindo da mais
+   // nova. Compartilhado por ready()/rate() de proposito -- os dois tem de
+   // concordar sobre o que "dentro da janela" significa; ready() checando so
+   // "existe alguma separacao no buffer inteiro" (sem bater contra window_)
+   // já mentiu no passado: com window_ menor que o intervalo entre amostras
+   // (janela mal configurada, ou uma pausa/retomada), ready() dizia que havia
+   // derivada e rate() devolvia 0.0 por falta de separacao DENTRO da janela --
+   // exatamente o "derivada zero" que MsgRate::evaluate() existe para evitar.
+   std::size_t oldestInWindow(std::size_t novo) const;
 
    double window_{1.0};
    double clock_{};

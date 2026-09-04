@@ -63,4 +63,34 @@ TEST(DeriveSeed, SementesDeInstanciaDiferentesPorNomeAindaQueOMasterSejaOMesmo)
    EXPECT_NE(seedFalcon1, seedFalcon2);
 }
 
+// A propriedade que 'make check-patrol-seed-*' trava em ponta a ponta (dois
+// masterSeed diferentes divergem, mesmo falcon): aqui travada na unidade, sem
+// precisar subir Station nenhuma. E o que faz 'patrolMasterSeed' no .epp
+// significar alguma coisa -- se dois masters colidissem no mesmo player, o
+// slot seria decorativo.
+TEST(DeriveSeed, MastersDiferentesDaoSementesDiferentesParaOMesmoPlayer)
+{
+   const auto salt = fnv1a64("falcon1");
+   EXPECT_NE(deriveSeed(20260903, salt), deriveSeed(1, salt));
+}
+
+// Overflow e comportamento DEFINIDO (aritmetica modular em uint64_t), nao
+// risco -- confirmado nos dois extremos da faixa, que sao exatamente os
+// valores mais propensos a expor um overflow tratado por acidente como UB.
+TEST(DeriveSeed, ExtremosDaFaixaDeUint64NaoQuebram)
+{
+   constexpr std::uint64_t maxU64{0xFFFFFFFFFFFFFFFFULL};
+   EXPECT_EQ(deriveSeed(maxU64, maxU64), deriveSeed(maxU64, maxU64));
+   EXPECT_NE(deriveSeed(maxU64, maxU64), deriveSeed(0, 0));
+}
+
+// fnv1a64 nao e so "estavel" -- strings de mesmo comprimento e conteudo
+// parecido (o caso realista: falconN) nao podem colidir nem nos bits baixos,
+// que e a parte que mais importa para quem consome com '% N' pequeno.
+TEST(Fnv1a64, PrefixoComumNaoColide)
+{
+   EXPECT_NE(fnv1a64("falcon1"), fnv1a64("falcon10"));
+   EXPECT_NE(fnv1a64("bandit1"), fnv1a64("falcon1"));
+}
+
 } // namespace

@@ -285,6 +285,42 @@ TEST(RateWindow, AmostraForaDaJanelaNaoContaMais)
    EXPECT_NEAR(w.rate(), 50.0, 1e-6) << "o trecho parado, ja fora da janela, contaminou";
 }
 
+// A janela e a fonte unica de verdade para ready() E rate() -- os dois tem
+// de concordar sobre "existe amostra suficiente DENTRO da janela?". Com uma
+// janela mais estreita que o intervalo entre amostras (config incomum, mas
+// nao rejeitada por configure()), a UNICA amostra anterior ja cai fora da
+// janela: ready() tinha um bug em que respondia 'true' so por existir
+// QUALQUER par com separacao > 0 no buffer inteiro, sem checar 'window_' --
+// e rate() (que ja checava a janela corretamente) devolvia 0.0 por falta de
+// separacao valida. Isso e exatamente o "derivada zero" que
+// MsgRate::evaluate() existe para nao confundir com "sem derivada".
+TEST(RateWindow, JanelaMenorQueOIntervaloDeAmostragemNaoFingeEstarPronta)
+{
+   RateWindow w;
+   w.configure(0.01);   // janela de 10 ms
+
+   w.push(0.1, 100.0, true);   // amostragem real a 10 Hz -- 100 ms entre pontos
+   EXPECT_FALSE(w.ready());
+   w.push(0.1, 200.0, true);
+   EXPECT_FALSE(w.ready()) << "a unica amostra anterior esta a 100 ms, fora da janela de 10 ms";
+   EXPECT_NEAR(w.rate(), 0.0, 1e-9);
+}
+
+// Contraprova: mesma configuracao, mas com um par de fato dentro da janela
+// (amostragem mais rapida que a janela) -- ready() tem de virar true assim
+// que ele aparece, nao ficar preso em false por causa do fix acima.
+TEST(RateWindow, JanelaCurtaFicaProntaAssimQueHaAmostraDeVerdadeDentroDela)
+{
+   RateWindow w;
+   w.configure(0.01);
+
+   w.push(0.005, 100.0, true);
+   EXPECT_FALSE(w.ready());
+   w.push(0.005, 101.0, true);   // 5 ms depois -- dentro da janela de 10 ms
+   ASSERT_TRUE(w.ready());
+   EXPECT_NEAR(w.rate(), 200.0, 1e-6);   // 1 unidade em 5 ms
+}
+
 TEST(RateWindow, AmostraInvalidaNaoEntraMasOTempoCorre)
 {
    RateWindow w;

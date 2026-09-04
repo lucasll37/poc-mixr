@@ -27,19 +27,33 @@ void RateWindow::push(const double dt, const double value, const bool valid)
    if (count_ < CAPACITY) ++count_;
 }
 
+//------------------------------------------------------------------------------
+// oldestInWindow() -- caminha do mais novo para tras ate sair de 'window_';
+// devolve 'novo' (dt=0 contra si mesma) se nem a amostra imediatamente
+// anterior couber na janela. Unica fonte de verdade sobre "o que esta dentro
+// da janela" -- ready() e rate() tem de concordar, ou um credencia uma
+// derivada que o outro nao consegue calcular (ver o "porque" no header).
+//------------------------------------------------------------------------------
+std::size_t RateWindow::oldestInWindow(const std::size_t novo) const
+{
+   const double tNovo{buf_[novo].t};
+
+   std::size_t escolhido{novo};
+   for (std::size_t k = 1; k < count_; ++k) {
+      const std::size_t idx{(novo + CAPACITY - k) % CAPACITY};
+      if (tNovo - buf_[idx].t > window_) break;   // saiu da janela
+      escolhido = idx;
+   }
+   return escolhido;
+}
+
 bool RateWindow::ready() const
 {
    if (count_ < 2) return false;
 
    const std::size_t novo{(head_ + CAPACITY - 1) % CAPACITY};
-
-   // Percorre do mais novo para tras ate sair da janela; basta existir um par
-   // com separacao positiva.
-   for (std::size_t k = 1; k < count_; ++k) {
-      const std::size_t idx{(novo + CAPACITY - k) % CAPACITY};
-      if (buf_[novo].t - buf_[idx].t > 0.0) return true;
-   }
-   return false;
+   const std::size_t escolhido{oldestInWindow(novo)};
+   return buf_[novo].t - buf_[escolhido].t > 0.0;
 }
 
 //------------------------------------------------------------------------------
@@ -51,16 +65,9 @@ double RateWindow::rate() const
    if (count_ < 2) return 0.0;
 
    const std::size_t novo{(head_ + CAPACITY - 1) % CAPACITY};
-   const double tNovo{buf_[novo].t};
+   const std::size_t escolhido{oldestInWindow(novo)};
 
-   std::size_t escolhido{novo};
-   for (std::size_t k = 1; k < count_; ++k) {
-      const std::size_t idx{(novo + CAPACITY - k) % CAPACITY};
-      if (tNovo - buf_[idx].t > window_) break;   // saiu da janela
-      escolhido = idx;
-   }
-
-   const double dt{tNovo - buf_[escolhido].t};
+   const double dt{buf_[novo].t - buf_[escolhido].t};
    if (dt <= 0.0) return 0.0;
 
    return (buf_[novo].v - buf_[escolhido].v) / dt;
