@@ -2587,10 +2587,16 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
   `.generated.epp` em vez de fixar o número, porque o fragmento compartilhado já mudou de porta
   uma vez. Verificado nos dois sentidos: **falha** contra o código sem `SO_SNDTIMEO` e passa com
   ele. `make test` 37/37; `check-single-thread`/`check-multi-thread` inalterados.
-- **As outras pocs (`src/poc/*`) têm a MESMA forma de risco no encerramento** — nenhuma
-  para a thread T/C antes do `SHUTDOWN_EVENT` — mas não foram tocadas nesta rodada (escopo
-  acordado). Elas já ganham o teto de escrita do `shared/xtacview`, que é a metade que de fato
-  travava. Registrado no `TODO.md`.
+- **ATUALIZAÇÃO (passada posterior): as outras pocs ganharam a MESMA correção de ordem.** O
+  risco era real e não teórico — `single-thread`/`multi-thread`/`bandit-dis`/`python-flight`/
+  `onnx-policy` rodam o mesmo padrão de laço (`createTimeCriticalProcess()` +
+  `updateData()` em loop) e faziam só `station->event(SHUTDOWN_EVENT); unref();` na saída, sem
+  calar a thread T/C antes. Cada uma ganhou seu próprio `app/Shutdown.{hpp,cpp}` (cópia adaptada
+  do `./app`, comparada por `tests/guard/check_duplication.sh`; `bandit-dis` usa a variante sem
+  `ClockStation`, só o fallback nativo `setFastForwardRate(0)`), com `main.cpp` chamando
+  `quiesceTimeCritical()` antes de `shutdownStation()`. `tests/scenario/run_poc_quit_test.py`
+  (SIGINT, sem pty — estas pocs não têm diálogo de confirmação nem TUI) cobre saída normal e
+  saída com cliente Tacview pendurado nas 5, registrados como `scenario-<poc>-quit`.
 
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
