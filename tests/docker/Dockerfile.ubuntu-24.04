@@ -1,0 +1,126 @@
+# ==============================================================================
+# Ubuntu 24.04 LIMPO -- a maquina de um recem-chegado.
+#
+# Esta imagem existe para responder UMA pergunta, e so ela: o README secao 2
+# ("Pre-requisitos") + secao 3 ("Build") bastam para alguem que nunca viu este
+# repositorio levantar o projeto?
+#
+# Por isso ela e deliberadamente POBRE. O bloco PERFIL=readme instala SO o que
+# aquela tabela lista, e nada mais. Tudo que precisa ser acrescentado alem dela
+# para o build andar e um ACHADO -- e a lista de achados e o resultado do teste
+# (ver README.md desta pasta).
+#
+# O contexto de build e um 'git archive HEAD' (ver run_docs_build_test.py), nao
+# a arvore de trabalho: o que um CLONE LIMPO entrega, sem build/, sem dist/, sem
+# contexts/src/ e sem o cache do Conan da maquina do desenvolvedor. Testar a
+# arvore de trabalho responderia a pergunta errada -- ela ja tem os artefatos
+# que o recem-chegado justamente nao tem.
+#
+# ARMADILHA (medida, nao redescobrir): a base tem de ser ubuntu:24.04 e nao uma
+# imagem com toolchain pronta. O que se testa aqui e a DOCUMENTACAO, e uma
+# imagem que ja traz conan/meson/pkg-config esconderia exatamente os achados 1 e
+# 2 -- passaria verde provando nada.
+# ==============================================================================
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# ------------------------------------------------------------------------------
+# BLOCO 1 -- EXATAMENTE o que o README secao 2 lista, nada mais.
+#
+#   Conan >= 2.0 | Meson >= 1.0 | Ninja (qualquer) | GCC >= 7 | gzip (qualquer)
+#
+# 'make' entra aqui porque a secao 3 o nomeia como o orquestrador ("Toolchain:
+# Conan 2.x -> Meson/Ninja -> Makefile"); nao esta na tabela, mas esta no texto
+# logo abaixo dela, entao conta como documentado.
+# ------------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ \
+        make \
+        ninja-build \
+        gzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------------------
+# ACHADO 1 -- o README nomeia Conan e Meson mas NAO diz como instalar, e no
+# Ubuntu 24.04 o caminho obvio nao funciona.
+#
+# 'pip install conan meson' morre com 'error: externally-managed-environment'
+# (PEP 668, /usr/lib/python3.12/EXTERNALLY-MANAGED): a partir do 24.04 o pip do
+# sistema recusa instalar fora de um venv. Um recem-chegado seguindo so a tabela
+# do README para exatamente aqui, e a mensagem de erro do pip nao menciona nem
+# Conan nem este projeto.
+#
+# A leitura de boa-fe abaixo -- um venv dedicado em /opt/toolchain, no PATH -- e
+# uma ESCOLHA NOSSA, nao uma instrucao do README. Ela existe para o teste
+# conseguir chegar aos achados seguintes; o achado 1 e o fato de ela ter sido
+# necessaria. python3-venv tambem nao esta documentado.
+# ------------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 python3-pip python3-venv ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# A SONDA. Tenta primeiro o caminho ingenuo -- o que um recem-chegado digita
+# depois de ler "Conan >= 2.0" numa tabela -- e GUARDA o resultado em vez de
+# deixar a imagem quebrar. E o que transforma o achado 1 de afirmacao em
+# MEDICAO: sem esta sonda, o Dockerfile contornaria o PEP 668 em silencio e o
+# teste jamais provaria que ele existe.
+RUN set +e; \
+    pip3 install --no-cache-dir 'conan>=2.0' > /tmp/sonda-pip.log 2>&1; \
+    echo "rc=$?" >> /tmp/sonda-pip.log; \
+    exit 0
+
+# So DEPOIS da sonda, o contorno -- uma escolha NOSSA, nao uma instrucao do
+# README (que nao tem instrucao nenhuma neste ponto).
+RUN python3 -m venv /opt/toolchain \
+    && /opt/toolchain/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/toolchain/bin/pip install --no-cache-dir 'conan>=2.0' 'meson>=1.0'
+
+ENV PATH="/opt/toolchain/bin:${PATH}"
+
+# ------------------------------------------------------------------------------
+# BLOCO 2 -- os achados de PACOTE DE SISTEMA, ligados so com PERFIL=completo.
+#
+# Nenhum destes esta no README. Com PERFIL=readme eles ficam de fora de
+# proposito: e assim que o teste mede que fazem falta. Com PERFIL=completo eles
+# entram, e e assim que o teste prova que a lista de achados esta COMPLETA --
+# isto e, que README + estes itens de fato bastam.
+#
+#   pkg-config  o meson resolve mixr/protobuf/gtest por dependency(method:
+#               'pkg-config') -- sem ele o 'meson setup' do 'make configure'
+#               falha, mesmo com o Conan tendo gerado os .pc corretamente
+#   git         varias receitas do Conan clonam o fonte (tudo e compilado do
+#               zero aqui -- ver o achado 6)
+#   curl        download de fontes por algumas receitas
+#   perl        exigido pelo build do openssl
+#   sudo        o 'make configure' passa '-c tools.system.package_manager:
+#               sudo=True' fixo; num container que ja roda como root nao ha
+#               binario 'sudo' e a receita que tentar instalar pacote de
+#               sistema quebra
+#   patch/pkgconf/zlib1g-dev  utilitarios que receitas autotools assumem
+# ------------------------------------------------------------------------------
+ARG PERFIL=readme
+RUN if [ "$PERFIL" = "completo" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+            pkg-config \
+            git \
+            curl \
+            perl \
+            sudo \
+            patch \
+            zlib1g-dev \
+        && rm -rf /var/lib/apt/lists/* ; \
+    fi
+
+# ------------------------------------------------------------------------------
+# O repositorio, como um clone limpo o entrega.
+# ------------------------------------------------------------------------------
+WORKDIR /repo
+COPY . /repo
+
+# 'gates.sh' e quem roda os comandos do README e reporta onde parou. Fica fora
+# do WORKDIR para nao se confundir com o conteudo do repositorio nem aparecer
+# num 'git status' de dentro do container.
+RUN cp /repo/tests/docker/gates.sh /usr/local/bin/gates.sh && chmod +x /usr/local/bin/gates.sh
+
+ENTRYPOINT ["/usr/local/bin/gates.sh"]

@@ -71,8 +71,28 @@ std::string phaseLabel(EstimatedPhase phase);
 // mais forte.
 bool isHeuristicPhase(EstimatedPhase phase);
 
+// Um par "rotulo: valor" de estado VIVO, lido do PROPRIO objeto MIXR por
+// getter publico no momento da descoberta -- ao contrario de
+// EstimatedPhase (que e palpite), tudo aqui e FATO observado. E texto ja
+// formatado, e nao um numero, de proposito: cada classe tem uma unidade
+// propria (graus, pes, nos, Hz, hertz, nm) e quem sabe qual e a certa e o
+// ponto que leu o getter, nao o painel que desenha.
+struct ComponentStateField
+{
+   std::string label;
+   std::string value;
+};
+
 struct ComponentTreeNode
 {
+   // Caminho ESTAVEL do no dentro da arvore ("/simulation/players/falcon1/
+   // dynamicsModel"), montado na descoberta. Existe porque a arvore e
+   // redescoberta a cada redesenho (ver discoverComponentTree() abaixo) e o
+   // INDICE de um no muda quando algo nasce/some no meio dela -- um missil
+   // liberado, um fantasma DIS -- ou quando um galho e retraido. Selecao e
+   // conjunto de retraidos sao guardados por esta chave, nunca por indice.
+   std::string nodeKey;
+
    std::string slotName;    // Pair::slot() -- nome do filho no EDL; "" na raiz
    std::string className;   // nome de classe C++ mais derivado (RTTI demangled)
 
@@ -83,6 +103,12 @@ struct ComponentTreeNode
    int playerId{-1};
 
    EstimatedPhase phase{EstimatedPhase::Unknown};
+
+   // Estado VIVO do objeto, lido por getter publico -- ver
+   // captureLiveState() em ComponentTreeQuery.cpp para a lista por classe.
+   // Vazio quando a classe nao e nenhuma das reconhecidas (o card de
+   // detalhe diz isso explicitamente, em vez de fingir que nao ha estado).
+   std::vector<ComponentStateField> state;
 
    std::vector<ComponentTreeNode> children;
 };

@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl venv-rl-training test test-asan
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit-dis run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24
 
 .DEFAULT_GOAL := help
 
@@ -292,6 +292,19 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1; \
 		if [ $$rc -eq 0 ]; then echo "asan: OK (sem vazamento reportado)"; \
 		else echo "asan: FALHOU (rc=$$rc)"; exit 1; fi
+
+check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os comandos do README, para medir se a documentacao basta. Opt-in (precisa de Docker) -- FORA de 'make test'.
+	@# Fora da suite de proposito, mesmo criterio de 'test-asan'/'test-rl': depende
+	@# de Docker e de rede, e o modo completo leva HORAS (ver o achado
+	@# 'sem-binarios-para-gcc13' em tests/docker/gaps_conhecidos.json). 'make test'
+	@# tem de continuar hermetico e rapido.
+	@# MODO=completo e PERFIL=completo passam direto para o runner. O remote
+	@# privado e as credenciais vem do AMBIENTE (CONAN_REMOTE_NOME/URL/USUARIO/
+	@# SENHA) -- nenhum endereco de registry esta escrito neste repositorio, e
+	@# sem eles o portao correspondente e pulado. Ver tests/docker/README.md.
+	@python3 ./tests/docker/run_docs_build_test.py \
+		--modo $(or $(MODO),rapido) \
+		--perfil $(or $(PERFIL),readme)
 
 # ============================================
 # Misc Targets

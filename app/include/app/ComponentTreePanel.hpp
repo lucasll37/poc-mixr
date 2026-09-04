@@ -6,6 +6,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/box.hpp>
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -16,71 +17,109 @@
 // RESPONSIVO, ver fitComponentTreeCanvasToBox() abaixo, que segue a MESMA
 // receita de app::fitMapCanvasToBox() documentada no CLAUDE.md: dimensionar
 // o Canvas pela caixa do quadro ANTERIOR via ftxui::reflect, nunca por uma
-// constante -- senão o mapa/a árvore só ocupa parte do quadro reservado em
-// terminais maiores, ou corta em terminais menores).
+// constante).
 //
-// PRIMEIRA METADE da feature: so a estrutura estatica, navegavel, com
-// selecao e card de detalhe.
+// A animação de fluxo entre fases (ver app/ComponentFlowState.hpp para o
+// "porque" e o aviso de que é um MODELO CONCEITUAL, não uma medição)
+// destaca os nós cuja fase estimada bate com a fase atual do ciclo.
 //
-// SEGUNDA METADE (esta): a animacao de fluxo entre fases (ver
-// app/ComponentFlowState.hpp para o "porque" e o aviso de que e um MODELO
-// CONCEITUAL, nao uma medicao) -- renderComponentTree() ganhou o parametro
-// 'activeFlowPhase' pra destacar os nos cuja fase estimada bate com a fase
-// atual do ciclo, e este header ganhou renderComponentFlowLegend()/
-// renderComponentFlowStatus().
+// TERCEIRA PASSADA (esta), três mudanças pedidas em conjunto:
+//
+//  1) A árvore é VERTICAL -- raiz no topo, filhos abaixo dela, irmãos lado a
+//     lado, ligados por cotovelos (o desenho clássico de organograma). Antes
+//     crescia da esquerda para a direita.
+//
+//  2) Dá para RETRAIR/EXPANDIR a árvore e cada galho (CollapsedNodes abaixo).
+//     É o que torna a forma vertical utilizável: sem retrair, a largura de
+//     uma árvore de produção (4 players x ~15 subsistemas) é dezenas de
+//     vezes a largura do terminal, porque na vertical cada FOLHA custa a
+//     largura do próprio rótulo -- ao contrário do layout horizontal antigo,
+//     em que cada folha custava só uma LINHA.
+//
+//  3) O card de detalhe passou a mostrar o ESTADO VIVO do componente
+//     selecionado (ComponentTreeNode::state, lido por getter público -- ver
+//     captureLiveState() em ComponentTreeQuery.cpp) e deixou de fixar o
+//     próprio tamanho: quem dimensiona é o chamador, com o MESMO
+//     'detailPanelWidth'/'kDetailPanelHeight' das abas F1/F2.
 //------------------------------------------------------------------------------
 namespace app {
 
-// Layout em ARVORE simples, esquerda->direita: profundidade vira coluna
-// (eixo X), ordem de folha (pos-ordem) vira linha (eixo Y) -- o mesmo
-// principio de qualquer desenho de arvore ('depth' determina X, a media
-// das linhas dos filhos determina a linha de um no interno). Sem
-// sofisticacao tipo Reingold-Tilford (sem evitar sobreposicao entre
-// subarvores de tamanhos muito diferentes) -- pedido explicito: "nao
-// precisa ser sofisticado, so legivel", e o cenario de producao (4 falcons,
-// ~10-15 nos cada) fica confortavel mesmo com o layout ingenuo.
+// Chaves (ComponentTreeNode::nodeKey) dos nós RETRAÍDOS -- os filhos deles
+// não entram no layout. Guardado por CHAVE e não por índice porque a árvore
+// é redescoberta a cada redesenho e o índice de um nó muda quando algo
+// nasce/some nela (um míssil liberado, um fantasma DIS).
+using CollapsedNodes = std::set<std::string>;
+
+// Um nó já posicionado. 'x'/'y' são PIXEL DE CANVAS em zoom 1.0 (braille:
+// 2px por célula na horizontal, 4px na vertical -- mesma unidade de
+// app::MapViewState::canvasWidthPx/HeightPx); a projeção para a tela aplica
+// pan e zoom por cima. São 'double' e não coluna/linha inteiras porque na
+// vertical a largura de uma folha é a do PRÓPRIO RÓTULO (folhas com nomes
+// de tamanhos diferentes não cabem numa grade uniforme sem ou sobrepor
+// texto ou desperdiçar largura).
 struct ComponentTreeLayoutNode
 {
+   std::string nodeKey;
    std::string slotName;
    std::string className;
    bool isPlayer{};
    int playerId{-1};
    EstimatedPhase phase{EstimatedPhase::Unknown};
+   std::vector<ComponentStateField> state;
 
-   int depth{};         // coluna (0 = raiz)
-   double row{};         // linha (fracionaria para nos internos -- media dos filhos)
-   int parentIndex{-1};  // indice em ComponentTreeLayout::nodes, -1 na raiz
+   int depth{};
+   double x{};
+   double y{};
+   int parentIndex{-1};   // índice em ComponentTreeLayout::nodes, -1 na raiz
+
+   // Filhos REAIS do nó na árvore descoberta -- continua > 0 mesmo com o nó
+   // retraído (é o que permite desenhar "[+3]" e saber que há o que expandir).
+   int childCount{};
+   bool collapsed{};
 };
 
 struct ComponentTreeLayout
 {
-   std::vector<ComponentTreeLayoutNode> nodes;   // ordem de pre-ordem (pai sempre antes do filho)
+   std::vector<ComponentTreeLayoutNode> nodes;   // pré-ordem (pai sempre antes do filho)
+
+   // Extensão ocupada, em px de canvas @zoom 1.0 -- usada por
+   // fitComponentTreeToContent().
+   double minX{};
+   double maxX{};
+   double minY{};
+   double maxY{};
 };
 
-// Achata a arvore (DFS) calculando (depth, row) de cada no -- funcao PURA,
-// sem FTXUI, testavel isolada (ver o padrao de app/MapGeometry.hpp/
+// Achata a árvore (DFS) calculando (x, y) de cada nó visível -- função PURA,
+// sem FTXUI, testável isolada (ver o padrão de app/MapGeometry.hpp/
 // app/BehaviorTreeView.hpp: geometria/estrutura separada do desenho).
-ComponentTreeLayout layoutComponentTree(const ComponentTreeNode& root);
+// Filhos de um nó cuja chave esteja em 'collapsed' não entram no resultado.
+ComponentTreeLayout layoutComponentTree(const ComponentTreeNode& root, const CollapsedNodes& collapsed);
 
-// Estado de navegacao (pan/zoom/selecao/arrasto) -- mantido pelo CHAMADOR
-// (app/DashboardLoop.cpp), no MESMO espirito de app::MapViewState.
+// Índice do nó com esta chave, ou -1. É como a seleção sobrevive à
+// redescoberta da árvore a cada redesenho.
+int findComponentNodeIndex(const ComponentTreeLayout& layout, const std::string& nodeKey);
+
+// Estado de navegação (pan/zoom/seleção/arrasto) -- mantido pelo CHAMADOR
+// (app/DashboardLoop.cpp), no MESMO espírito de app::MapViewState.
 struct ComponentTreeViewState
 {
-   double panDepth{};   // coluna que fica no centro horizontal da tela
-   double panRow{};      // linha que fica no centro vertical da tela
-   double zoom{1.0};      // multiplicador de espacamento (1.0 = kColSpacingPx/kRowSpacingPx)
+   // Ponto do layout (px @zoom 1.0) que fica no CENTRO do canvas.
+   double panX{};
+   double panY{};
+   double zoom{1.0};
 
-   int selectedIndex{-1};   // indice em ComponentTreeLayout::nodes, -1 = nenhum
+   std::string selectedKey;   // "" = nenhum
 
-   // Mesma tecnica de app::MapViewState::canvasWidthPx/HeightPx -- NAO e
-   // constante, acompanha a area que o layout de fato deu a aba (ver
+   // Mesma técnica de app::MapViewState::canvasWidthPx/HeightPx -- NÃO é
+   // constante, acompanha a área que o layout de fato deu à aba (ver
    // fitComponentTreeCanvasToBox()).
    int canvasWidthPx{240};
    int canvasHeightPx{120};
 
-   // Arrasto em andamento -- mesmos quatro campos e mesmo criterio de
-   // clique-vs-arrasto de app::MapViewState (ver o comentario la: deslocamento
-   // total entre Pressed e Released <= 1 celula e clique).
+   // Arrasto em andamento -- mesmos quatro campos e mesmo critério de
+   // clique-vs-arrasto de app::MapViewState (ver o comentário lá:
+   // deslocamento total entre Pressed e Released <= 1 célula é clique).
    bool dragging{};
    int pressX{};
    int pressY{};
@@ -95,80 +134,113 @@ const double kTreeMaxZoom{4.0};
 const int kTreeCanvasMinCellsW{20};
 const int kTreeCanvasMinCellsH{6};
 
-// Cor por fase estimada -- so um agrupamento visual (ver renderComponentTree());
-// a legenda/aviso de heuristica fica no card de detalhe, nao aqui.
+// Profundidade até a qual a árvore nasce EXPANDIDA (ver
+// collapseDeeperThan()). 3 = Station -> simulation/dataRecorder/networks ->
+// players -> os players em si, cada um retraído: dá para ver de cara QUEM
+// está no cenário sem estourar a largura do terminal (as subárvores de cada
+// player, essas sim largas, ficam a um [Enter] de distância).
+const int kTreeInitialExpandDepth{3};
+
+// Cor por fase estimada -- só um agrupamento visual (ver renderComponentTree());
+// a legenda/aviso de heurística fica no card de detalhe, não aqui.
 ftxui::Color phaseColor(EstimatedPhase phase);
 
-// Mesma receita de app::fitMapCanvasToBox() (ver o comentario grande la e
-// no CLAUDE.md, "decima sexta passada"): dimensiona o canvas pela caixa do
+// Mesma receita de app::fitMapCanvasToBox() (ver o comentário grande lá e
+// no CLAUDE.md, "décima sexta passada"): dimensiona o canvas pela caixa do
 // quadro ANTERIOR, nunca por uma constante. No-op se a caixa for degenerada
 // (primeiro quadro, ou terminal menor que o piso).
 void fitComponentTreeCanvasToBox(ComponentTreeViewState& view, const ftxui::Box& box);
 
 void zoomComponentTree(ComponentTreeViewState& view, bool zoomIn);
 
-// Desloca o pan em PIXEL DE CANVAS (o chamador ja converte celula->pixel,
-// mesmo fator 2/4 que app::panMap() usa -- ver o comentario grande no
-// CatchEvent do mapa em DashboardLoop.cpp) -- a conversao pixel->"unidade
-// de layout" (dividir pelo espacamento de coluna/linha vezes o zoom) fica
-// INTERNA (ver app/ComponentTreePanel.cpp), porque so o .cpp conhece o
-// espacamento de coluna/linha.
+// Desloca o pan em PIXEL DE CANVAS (o chamador já converte célula->pixel,
+// mesmo fator 2/4 que app::panMap() usa).
 void panComponentTree(ComponentTreeViewState& view, double screenRightPx, double screenDownPx);
 
-// Centraliza a vista num no (usado ao selecionar por clique ou por
-// navegacao no card de detalhe).
+// Centraliza a vista num nó (usado ao selecionar por clique, por navegação
+// de teclado, ou pelo botão [c]).
 void centerComponentTreeOn(ComponentTreeViewState& view, const ComponentTreeLayoutNode& node);
 
-// Enquadra a arvore INTEIRA na primeira vez que ela fica disponivel --
-// sem isto, o pan/zoom DEFAULT (0,0 / 1.0x) deixa a maior parte da arvore
-// fora do canvas: a raiz (depth=0) fica na linha MEDIA de toda a arvore
-// (ver layoutSubtree(), a media recursiva das linhas dos filhos), que num
-// cenario de producao (4 players x ~15-20 subsistemas cada) fica dezenas
-// de linhas abaixo do canto onde o pan comeca. Calcula o menor zoom que
-// cabe toda a extensao de profundidade/linha no canvas atual e centraliza
-// no meio dela -- chamada UMA VEZ (ver 'hasAutoFitted' em
-// DashboardLoop.cpp), nao a cada redesenho, para nao brigar com pan/zoom
-// manual do usuario depois.
+// Traz o nó para dentro do canvas SE ele estiver fora (ou coladinho na
+// borda) -- chamada depois de cada passo de navegação por teclado. Não mexe
+// no pan quando o nó já está confortavelmente visível, senão cada seta
+// arrastaria a vista inteira e o usuário perderia a referência do desenho.
+void ensureComponentNodeVisible(ComponentTreeViewState& view, const ComponentTreeLayoutNode& node);
+
+// Enquadra a árvore VISÍVEL inteira no canvas -- chamada uma vez na
+// primeira descoberta e de novo a cada "expandir/retrair tudo" (aí a
+// extensão muda de ordem de grandeza e o pan/zoom anterior perde sentido).
 void fitComponentTreeToContent(ComponentTreeViewState& view, const ComponentTreeLayout& layout);
 
-// Desenha a arvore inteira num ftxui::Canvas -- nos como pontos com
-// rotulo, linhas ligando pai-filho, cor por fase estimada, anel branco no
-// no selecionado. 'outCanvasBox' recebe a caixa de tela (ftxui::reflect),
-// mesmo uso de app::renderMap(): o chamador usa pra saber se um clique caiu
-// dentro do canvas antes de tratar como arrasto/selecao.
+//---- retrair/expandir -------------------------------------------------------
+// Todas operam sobre o CONJUNTO de chaves, não sobre a árvore -- é o que
+// faz o estado sobreviver à redescoberta a cada redesenho.
+
+// Alterna o nó (no-op se ele não tem filhos -- retrair uma folha não
+// significaria nada e só deixaria lixo no conjunto).
+void toggleComponentNodeCollapsed(CollapsedNodes& collapsed, const ComponentTreeLayoutNode& node);
+
+// Marca como retraído todo nó COM FILHOS a partir de 'maxDepth' (inclusive),
+// varrendo a árvore descoberta. 'maxDepth' 0 retrai a própria raiz.
+void collapseDeeperThan(const ComponentTreeNode& root, int maxDepth, CollapsedNodes& collapsed);
+
+// Retrai todo nó com filhos (equivale a collapseDeeperThan(root, 0)).
+void collapseAllComponentNodes(const ComponentTreeNode& root, CollapsedNodes& collapsed);
+
+//---- navegação por teclado --------------------------------------------------
+enum class TreeNavigation {
+   Parent,        // seta para cima
+   FirstChild,    // seta para baixo (expande antes, se estiver retraído)
+   PrevSibling,   // seta para a esquerda
+   NextSibling,   // seta para a direita
+};
+
+// Move 'view.selectedKey' pelo layout. Devolve false quando não há para onde
+// ir (já é a raiz, é folha, é o primeiro/último irmão) -- o chamador usa isso
+// para decidir se precisa reenquadrar. Sem seleção nenhuma, qualquer direção
+// seleciona a RAIZ (é o "entrar na árvore" pelo teclado).
+bool navigateComponentTree(const ComponentTreeLayout& layout, ComponentTreeViewState& view,
+                           TreeNavigation dir, CollapsedNodes& collapsed);
+
+// Desenha a árvore inteira num ftxui::Canvas -- nós como pontos com rótulo
+// centrado LOGO ABAIXO deles, cotovelos ligando pai-filho, cor por fase
+// estimada, anel branco no nó selecionado. 'outCanvasBox' recebe a caixa de
+// tela (ftxui::reflect), mesmo uso de app::renderMap(): o chamador usa pra
+// saber se um clique caiu dentro do canvas antes de tratar como
+// arrasto/seleção.
 //
-// 'activeFlowPhase' (SEGUNDA METADE) acrescenta um anel AMARELO -- o
-// "pulso" -- em todo no cuja 'phase' bate com ela; ver
-// app/ComponentFlowState.hpp para o que essa fase representa (o ciclo
-// CONCEITUAL, nao uma medicao). Cor deliberadamente distinta do anel branco
-// de selecao, pra "selecionado" e "ativo no ciclo agora" nunca se
-// confundirem visualmente mesmo quando os dois calham no mesmo no.
+// 'activeFlowPhase' acrescenta um anel AMARELO -- o "pulso" -- em todo nó
+// cuja 'phase' bate com ela; ver app/ComponentFlowState.hpp para o que essa
+// fase representa (o ciclo CONCEITUAL, não uma medição). Cor deliberadamente
+// distinta do anel branco de seleção, pra "selecionado" e "ativo no ciclo
+// agora" nunca se confundirem visualmente mesmo quando os dois calham no
+// mesmo nó.
 ftxui::Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
                                    ftxui::Box& outCanvasBox, EstimatedPhase activeFlowPhase);
 
-// Converte um clique em CELULAS de terminal relativas ao canvas (ja
-// subtraido o canto do Box) no INDICE do no mais proximo em
-// 'layout.nodes', ou -1. Mesma tolerancia de 1 celula de app::hitTestEntity().
+// Converte um clique em CELULAS de terminal relativas ao canvas (já
+// subtraído o canto do Box) no ÍNDICE do nó mais próximo em
+// 'layout.nodes', ou -1. Mesma tolerância de 1 célula de app::hitTestEntity().
 int hitTestComponentTreeNode(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
                              int clickCellX, int clickCellY);
 
-// O card de detalhe do no selecionado -- nome do slot, classe (factory
-// name/RTTI), fase estimada (SEMPRE com o aviso de heuristica quando
-// aplicavel -- ver app::isHeuristicPhase()), e o dado REAL de xboard/
-// getMode() quando o no e um Player (ver app/ComponentTreePanel.cpp: reusa
-// o MESMO xboard::Readout que app/DashboardState.cpp/app/FleetPanel.cpp ja
-// usam, para nao divergir de vocabulario/valor entre abas).
+// O card de detalhe do nó selecionado -- nome do slot, classe (factory
+// name/RTTI), fase estimada (SEMPRE com o aviso de heurística quando
+// aplicável -- ver app::isHeuristicPhase()), o ESTADO VIVO lido do objeto
+// (ComponentTreeNode::state) e, quando o nó é um Player, o mesmo
+// xboard::Readout que app/DashboardState.cpp/app/FleetPanel.cpp já usam.
+//
+// NÃO fixa largura nem altura: quem dimensiona é o chamador, com o MESMO
+// 'detailPanelWidth'/'kDetailPanelHeight' das abas F1/F2 (pedido explícito:
+// o subquadro lateral tem de ter o mesmo tamanho nas três abas).
 ftxui::Element renderComponentDetail(const ComponentTreeLayoutNode& node);
 
 // Legenda de cores -- uma linha por fase de kComponentFlowCycle, reusando
-// phaseColor()/phaseLabel() (nao inventa vocabulario novo). Estatica, sem
-// estado: so lista as seis fases do ciclo conceitual.
+// phaseColor()/phaseLabel() (não inventa vocabulário novo).
 ftxui::Element renderComponentFlowLegend();
 
 // "fase atual: fase 3 (decisao, no frame T/C)" + play/pause/velocidade +
-// o aviso de MODELO CONCEITUAL (ver app/ComponentFlowState.hpp) -- fica
-// pequeno de proposito, o aviso mais completo mora no comentario do header
-// e no card de detalhe (isHeuristicPhase()).
+// o aviso de MODELO CONCEITUAL (ver app/ComponentFlowState.hpp).
 ftxui::Element renderComponentFlowStatus(const ComponentFlowState& flow);
 
 } // namespace app

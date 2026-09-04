@@ -410,9 +410,22 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // (dezenas de nos) pra nao precisar de cache -- um missil liberado ou um
    // fantasma DIS aparecem/somem sozinhos, sem invalidacao manual.
    ComponentTreeViewState componentsView;
+   // A arvore DESCOBERTA (nao a posicionada) fica guardada porque
+   // "retrair/expandir tudo" varre a estrutura inteira -- inclusive os
+   // galhos que estao retraidos e portanto nem entram no layout.
+   ComponentTreeNode componentsRoot;
    ComponentTreeLayout componentsLayout;
+   // Chaves dos galhos retraidos -- ver app/ComponentTreePanel.hpp. Guardado
+   // por CHAVE (e nao por indice) porque a arvore e redescoberta a cada
+   // redesenho e o indice de um no muda quando algo nasce/some nela.
+   CollapsedNodes componentsCollapsed;
    Box componentsCanvasBox{};
    bool componentsAutoFitted{};
+   // Pedido de reenquadramento: "expandir/retrair tudo" muda a extensao da
+   // arvore em ordem de grandeza, e manter o pan/zoom de antes deixaria a
+   // vista num canto vazio. Um clique/tecla apenas ARMA o pedido; quem
+   // reenquadra e o Renderer da aba, que e onde o canvas ja tem tamanho.
+   bool componentsRefit{};
 
    // SEGUNDA METADE da feature (ver app/ComponentFlowState.hpp): o "pulso"
    // que percorre as fases do ciclo conceitual. Avancado por
@@ -573,10 +586,37 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto doCompZoomIn = [&] { zoomComponentTree(componentsView, true); };
    const auto doCompZoomOut = [&] { zoomComponentTree(componentsView, false); };
    const auto doCompCenterOnSelected = [&] {
-      if (componentsView.selectedIndex < 0
-          || componentsView.selectedIndex >= static_cast<int>(componentsLayout.nodes.size())) return;
-      centerComponentTreeOn(componentsView,
-         componentsLayout.nodes[static_cast<std::size_t>(componentsView.selectedIndex)]);
+      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
+      if (idx < 0) return;
+      centerComponentTreeOn(componentsView, componentsLayout.nodes[static_cast<std::size_t>(idx)]);
+   };
+
+   // ---- retrair/expandir (o galho selecionado, ou a arvore toda) ----
+   const auto doCompToggleCollapse = [&] {
+      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
+      if (idx < 0) return;
+      toggleComponentNodeCollapsed(componentsCollapsed,
+                                   componentsLayout.nodes[static_cast<std::size_t>(idx)]);
+   };
+   const auto doCompExpandAll = [&] {
+      componentsCollapsed.clear();
+      componentsRefit = true;
+   };
+   const auto doCompCollapseAll = [&] {
+      componentsCollapsed.clear();
+      collapseAllComponentNodes(componentsRoot, componentsCollapsed);
+      componentsRefit = true;
+   };
+
+   // Navegacao por teclado entre os nos -- e o que torna retrair/expandir
+   // usavel sem mouse (antes a selecao so existia por clique). Reenquadra
+   // SO quando o no escolhido saiu do canvas, pra vista nao "pular" a cada
+   // seta (ver ensureComponentNodeVisible()).
+   const auto doCompNavigate = [&](const TreeNavigation dir) {
+      if (!navigateComponentTree(componentsLayout, componentsView, dir, componentsCollapsed)) return;
+      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
+      if (idx >= 0) ensureComponentNodeVisible(componentsView,
+                                               componentsLayout.nodes[static_cast<std::size_t>(idx)]);
    };
 
    // ---- animacao de fluxo da aba "Componentes" (SEGUNDA METADE, ver
@@ -912,13 +952,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // so a estrutura estatica (sem animacao de fluxo entre fases nem
    // play/pause/step -- fica pra proxima iteracao). ----
    const Component componentsCanvasArea{Renderer([&]() -> Element {
+      // MESMO tamanho do card de detalhe das abas F1/F2 (pedido explicito):
+      // 'detailPanelWidth' e recalculado uma vez por redesenho no Renderer
+      // mais externo, e 'kDetailPanelHeight' e a constante que as outras
+      // duas abas ja usam -- nao ha mais largura propria escrita aqui.
       Element detail{text("(clique num no da arvore, ou navegue com as setas)")
-                     | dim | center | size(WIDTH, EQUAL, 56) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
-      if (componentsView.selectedIndex >= 0
-          && componentsView.selectedIndex < static_cast<int>(componentsLayout.nodes.size())) {
-         detail = renderComponentDetail(
-                     componentsLayout.nodes[static_cast<std::size_t>(componentsView.selectedIndex)])
-                  | size(HEIGHT, EQUAL, kDetailPanelHeight);
+                     | dim | center
+                     | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
+      const int selected{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
+      if (selected >= 0) {
+         detail = renderComponentDetail(componentsLayout.nodes[static_cast<std::size_t>(selected)])
+                  | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight);
       }
       // Mesma tecnica de fitMapCanvasToBox() (ver o comentario grande em
       // app/MapPanel.hpp e a "decima sexta passada" do CLAUDE.md) --
@@ -930,9 +974,10 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // isto, o pan/zoom DEFAULT deixa quase toda a arvore fora do canvas
       // (a raiz nasce na linha MEDIA de toda a arvore). Depois desta
       // primeira vez, pan/zoom manual do usuario nao e mais sobrescrito.
-      if (!componentsAutoFitted && !componentsLayout.nodes.empty()) {
+      if ((!componentsAutoFitted || componentsRefit) && !componentsLayout.nodes.empty()) {
          fitComponentTreeToContent(componentsView, componentsLayout);
          componentsAutoFitted = true;
+         componentsRefit = false;
       }
       return hbox({
                 renderComponentTree(componentsLayout, componentsView, componentsCanvasBox,
@@ -959,6 +1004,26 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component btnCompStep{makeButton("[n] Proximo passo", doCompStep)};
 
+   // Retrair/expandir -- tecla E botao, a regra de sempre. O rotulo do
+   // primeiro muda com o estado do no selecionado (transform roda a cada
+   // redesenho), pra dizer o que a tecla vai FAZER e nao so que existe.
+   ButtonOption compToggleOpt;
+   compToggleOpt.on_click = doCompToggleCollapse;
+   compToggleOpt.transform = [&](const EntryState&) {
+      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
+      const bool canToggle{idx >= 0
+         && componentsLayout.nodes[static_cast<std::size_t>(idx)].childCount > 0};
+      const bool isCollapsed{canToggle
+         && componentsLayout.nodes[static_cast<std::size_t>(idx)].collapsed};
+      if (!canToggle) return text(" [Enter] Retrair/Expandir ") | dim;
+      return text(std::string(" [Enter] ") + (isCollapsed ? "Expandir" : "Retrair") + " galho ")
+         | bgcolor(Color::Blue) | bold;
+   };
+   const Component btnCompToggle{Button(compToggleOpt)};
+
+   const Component btnCompExpandAll{makeButton("[o] Expandir tudo", doCompExpandAll)};
+   const Component btnCompCollapseAll{makeButton("[f] Retrair tudo", doCompCollapseAll)};
+
    ButtonOption compSpeedOpt;
    compSpeedOpt.on_click = doCompCycleSpeed;
    compSpeedOpt.transform = [&](const EntryState&) {
@@ -968,7 +1033,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnCompSpeed{Button(compSpeedOpt)};
 
    const Component componentsButtons{Container::Horizontal(
-      {btnCompZoomOut, btnCompZoomIn, btnCompCenter, btnCompPlay, btnCompStep, btnCompSpeed})};
+      {btnCompToggle, btnCompExpandAll, btnCompCollapseAll,
+       btnCompZoomOut, btnCompZoomIn, btnCompCenter, btnCompPlay, btnCompStep, btnCompSpeed})};
 
    const Component componentsBody{Container::Vertical({componentsCanvasArea, componentsButtons})};
    const Component componentsTab{Renderer(componentsBody, [&]() -> Element {
@@ -979,8 +1045,9 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          separator(),
          renderComponentFlowStatus(componentsFlow),
          renderComponentFlowLegend(),
-         text("[setas/arraste] mover  [clique] selecionar no  [ ]/roda] zoom  "
-              "[Espaco] play/pause do fluxo  [n] passo manual  [v] velocidade") | dim,
+         text("[setas] navegar entre nos  [Enter] retrair/expandir  [o]/[f] expandir/retrair tudo  "
+              "[clique] selecionar  [arraste] mover  [ [ ]/roda ] zoom  [c] centralizar  "
+              "[Espaco] play/pause do fluxo  [n] passo  [v] velocidade") | dim,
          componentsButtons->Render(),
       });
    })};
@@ -1207,7 +1274,18 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // e nao dentro de 'componentsCanvasArea' porque o CatchEvent
       // (hit-test/pan) precisa de 'componentsLayout' fresco independente de
       // qual aba esta ativa no momento do clique.
-      componentsLayout = layoutComponentTree(discoverComponentTree(station));
+      componentsRoot = discoverComponentTree(station);
+
+      // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth: na vertical
+      // cada FOLHA custa a largura do proprio rotulo (no layout horizontal
+      // antigo custava so uma LINHA), entao uma arvore de producao inteira
+      // aberta seria dezenas de vezes mais larga que o terminal. Uma vez so
+      // -- depois disso quem manda e o usuario, e reabrir tudo e [o].
+      if (!componentsAutoFitted && !componentsRoot.children.empty()) {
+         collapseDeeperThan(componentsRoot, kTreeInitialExpandDepth, componentsCollapsed);
+      }
+
+      componentsLayout = layoutComponentTree(componentsRoot, componentsCollapsed);
 
       // Relogio da animacao de fluxo (SEGUNDA METADE) -- avanca aqui, no
       // MESMO Renderer mais externo que ja roda a cada redesenho
@@ -1218,12 +1296,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // 'componentsLayout' ser recalculado incondicionalmente aqui.
       tickComponentFlowAnimation(componentsFlow);
 
-      if (!componentsLayout.nodes.empty()) {
-         componentsView.selectedIndex = std::clamp(componentsView.selectedIndex, -1,
-            static_cast<int>(componentsLayout.nodes.size()) - 1);
-      } else {
-         componentsView.selectedIndex = -1;
-      }
+      // A selecao NAO precisa de clamp: e uma CHAVE, nao um indice. Se o no
+      // sumiu da arvore (retraido junto com o pai, missil que detonou,
+      // fantasma DIS que saiu da rede), findComponentNodeIndex() devolve -1
+      // e o card mostra o texto de "nenhum selecionado" -- e se ele voltar,
+      // a selecao volta com ele.
 
       // Recalculado a cada redesenho -- o terminal pode ser redimensionado
       // em qualquer frame. "+6" cobre a borda do canvas (2) + separador (1)
@@ -1282,6 +1359,22 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          if (event == Event::Character(' ')) { doCompTogglePlay(); return true; }
          if (event == Event::Character('n') || event == Event::Character('N')) { doCompStep(); return true; }
          if (event == Event::Character('v') || event == Event::Character('V')) { doCompCycleSpeed(); return true; }
+
+         // Retrair/expandir. Ficam AQUI, no bloco que roda ANTES das teclas
+         // globais, pelo mesmo motivo do Espaco logo acima: 'f' ja significa
+         // outra coisa na aba Log e 'o' e livre hoje, mas depender disso
+         // seria uma armadilha esperando a proxima tecla global nascer.
+         if (event == Event::Return) { doCompToggleCollapse(); return true; }
+         if (event == Event::Character('o') || event == Event::Character('O')) { doCompExpandAll(); return true; }
+         if (event == Event::Character('f') || event == Event::Character('F')) { doCompCollapseAll(); return true; }
+
+         // Setas NAVEGAM entre os nos (antes moviam o pan). E o que permite
+         // escolher um galho sem mouse -- e sem escolher nao ha o que
+         // retrair. O pan continua acessivel por arrasto e por [c].
+         if (event == Event::ArrowUp)    { doCompNavigate(TreeNavigation::Parent); return true; }
+         if (event == Event::ArrowDown)  { doCompNavigate(TreeNavigation::FirstChild); return true; }
+         if (event == Event::ArrowLeft)  { doCompNavigate(TreeNavigation::PrevSibling); return true; }
+         if (event == Event::ArrowRight) { doCompNavigate(TreeNavigation::NextSibling); return true; }
       }
       if (event == Event::Character('+') || event == Event::Character('=')) { doAccelerate(); return true; }
       if (event == Event::Character('-') || event == Event::Character('_')) { doDecelerate(); return true; }
@@ -1462,7 +1555,10 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                      const int cellY{m.y - componentsCanvasBox.y_min};
                      const int hitIndex{hitTestComponentTreeNode(componentsLayout, componentsView,
                                                                  cellX, cellY)};
-                     if (hitIndex >= 0) componentsView.selectedIndex = hitIndex;
+                     if (hitIndex >= 0) {
+                        componentsView.selectedKey =
+                           componentsLayout.nodes[static_cast<std::size_t>(hitIndex)].nodeKey;
+                     }
                   }
                   return true;
                }
@@ -1491,11 +1587,9 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
             return false;
          }
 
-         const double kNudgePx{24.0};
-         if (event == Event::ArrowLeft)  { panComponentTree(componentsView, -kNudgePx, 0.0); return true; }
-         if (event == Event::ArrowRight) { panComponentTree(componentsView,  kNudgePx, 0.0); return true; }
-         if (event == Event::ArrowUp)    { panComponentTree(componentsView, 0.0, -kNudgePx); return true; }
-         if (event == Event::ArrowDown)  { panComponentTree(componentsView, 0.0,  kNudgePx); return true; }
+         // As setas nao chegam aqui -- sao tratadas no bloco de 'activeTab == 5'
+         // la em cima, onde passaram a NAVEGAR entre os nos em vez de mover
+         // o pan (o pan continua no arrasto e em [c] Centralizar).
          if (event == Event::Character('[')) { doCompZoomOut(); return true; }
          if (event == Event::Character(']')) { doCompZoomIn(); return true; }
          if (event == Event::Character('c') || event == Event::Character('C')) {

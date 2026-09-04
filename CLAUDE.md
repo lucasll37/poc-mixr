@@ -2660,6 +2660,93 @@ as fases do frame.**
   `test_meta_object_snapshot.cpp`. `make test` sem regressão (mesma falha pré-existente de sempre,
   `onde-a-decisao-roda`).
 
+**Vigésima passada: a aba "Componentes" (F6) virou uma árvore VERTICAL, retrátil galho a galho, e
+o card lateral passou a mostrar o ESTADO VIVO do componente selecionado, com o mesmo tamanho das
+abas F1/F2.**
+
+- **A árvore cresce para BAIXO** (raiz no topo, irmãos lado a lado, cotovelos de organograma
+  ligando pai e filhos) — antes crescia da esquerda para a direita. `ComponentTreeLayoutNode`
+  deixou de ter `depth`/`row` inteiros e passou a carregar `x`/`y` em **pixel de canvas @ zoom
+  1.0**: na vertical a largura de uma folha é a do PRÓPRIO RÓTULO (2 px por caractere, o passo de
+  `Canvas::DrawText`), e rótulos de tamanhos diferentes não cabem numa grade uniforme sem ou
+  sobrepor texto ou desperdiçar largura. O pai fica centrado entre o PRIMEIRO e o ÚLTIMO filho
+  (não na média de todos) — é o que o mantém no meio visual do bloco mesmo com prole assimétrica.
+- **Retrair/expandir é o que torna a forma vertical utilizável, não um enfeite.** No layout
+  horizontal cada folha custava uma LINHA; na vertical custa a largura do nome, então a árvore de
+  produção inteira aberta é dezenas de vezes mais larga que o terminal. Daí três coisas juntas:
+  `[Enter]` alterna o galho selecionado, `[o]`/`[f]` expandem/retraem tudo, e a árvore **nasce
+  expandida só até `kTreeInitialExpandDepth` (3)** — dá para ver de cara *quem* está no cenário
+  (`Station → simulation → players → falcon1..4`, cada player retraído) sem estourar a largura.
+- **O conjunto de retraídos é guardado por CHAVE (`ComponentTreeNode::nodeKey`), nunca por
+  índice** — e a seleção também. A árvore é redescoberta a cada redesenho (decisão da passada
+  anterior, para um míssil liberado ou um fantasma DIS aparecerem sozinhos), então todo índice é
+  volátil. `nodeKey` é o caminho (`/simulation/players/falcon1/pilot`), montado na descoberta,
+  com sufixo `#i` só quando um irmão anterior já usou o mesmo nome. Efeito de graça: a seleção
+  some quando o nó some e **volta quando ele volta** — nada de clamp para um vizinho arbitrário.
+- **As setas passaram a NAVEGAR entre nós** (cima = pai, baixo = primeiro filho, esquerda/direita
+  = irmãos) em vez de mover o pan. Sem isso não havia como escolher um galho pelo teclado — a
+  seleção era só por clique —, e sem escolher não há o que retrair. Descer para dentro de um galho
+  retraído **expande** ele (comportamento de qualquer navegador de árvore). O pan continua no
+  arrasto e em `[c]`; a vista só é reenquadrada quando o nó escolhido sai do canvas
+  (`ensureComponentNodeVisible()`), senão cada seta arrastaria o desenho inteiro.
+- **O card lateral usa `detailPanelWidth`/`kDetailPanelHeight` — os MESMOS de F1/F2** (era
+  `size(WIDTH, EQUAL, 56)` escrito à mão). Medido sob pty num terminal de 200 colunas: as três
+  abas põem o card exatamente nas colunas **126..199**, largura 74. `renderComponentDetail()`
+  deixou de fixar tamanho nenhum — quem dimensiona é o chamador, como já era em F1/F2.
+- **E o card ficou informativo: mostra o ESTADO VIVO do componente** (`captureLiveState()`, em
+  `app/ComponentTreeQuery.cpp`), lido por **getter público do próprio objeto MIXR** no instante da
+  descoberta — o oposto de `EstimatedPhase`, que continua sendo o único palpite da aba e continua
+  marcado como tal. Por classe: `Station` (taxas T/C/fundo/rede, fast-forward, nº de
+  players/redes), `Simulation` (tempo de execução, contador, hora sim, players), `Player`
+  (modo/lado/altitude/AGL/rumo/velocidade/mach/dano e **local vs. remoto** — o que explica de
+  graça por que a subárvore de um fantasma DIS é mais pobre), `Autopilot` (os três comandos com
+  os respectivos hold modes, nav, loiter), `Gimbal`/`Antenna` (az/el atual e comandado, nos
+  limites), `RfSensor` (transmitindo, varrendo, alcance, PRF), `TrackManager` (**nº de pistas**
+  agora), `Datalink`, `DynamicsModel` (combustível, peso bruto, motores, empuxo total),
+  `interop::NetIO` (id, inicializada, entrada/saída) e, para **qualquer** `Component` — inclusive
+  de um modelo de terceiro que este arquivo nunca viu —, filhos/congelado/desligado. Para um
+  `Player` o card ainda traz o `xboard::Readout` (comportamento, decisões, thread), o mesmo que
+  F1 usa.
+
+**Armadilhas confirmadas — não redescobrir:**
+
+1. **`interop::NetIO::getInputListSize()`/`getOutputListSize()` são `protected`** (confirmado
+   tentando: erro de compilação, não suposição) — não há contagem de NIBs nesta aba. Mesma regra
+   já registrada para o `outputHandler` do `DataRecorder`: o MIXR é dependência binária, e getter
+   sem acessor público simplesmente não aparece.
+2. **O enquadramento automático não pode AMPLIAR.** `fitComponentTreeToContent()` levava a árvore
+   recém-aberta (raiz + 3 filhos) a **180%** para preencher o canvas — e aí o primeiro galho que o
+   usuário expandia já nascia estourando a tela. Teto de `1.0`: o enquadramento só reduz.
+3. **Na vertical a raiz fica ANCORADA perto do topo, não centrada.** Uma árvore se lê de cima para
+   baixo; centrar verticalmente uma árvore rasa deixava uma faixa vazia acima da raiz do tamanho
+   da própria árvore. `panY` sai de `project()` (ramo vertical) resolvido para
+   `py == kTopMarginPx`.
+4. **Abaixo de ~50% de zoom os rótulos viram borrão e são escondidos** (só o do nó selecionado
+   sobrevive, como referência de "onde estou"). O layout reserva a largura de cada rótulo em zoom
+   1.0, mas o texto continua com a largura da fonte do terminal — afastando-se de 1.0 o espaço
+   reservado encolhe e o texto não. Medido com `[o] Expandir tudo` no cenário `intercept`, que
+   enquadra a árvore inteira em ~28%: sem o corte, nomes vizinhos se sobrepunham e nada era
+   legível; com ele, a ESTRUTURA aparece limpa e o cabeçalho avisa `rotulos ocultos neste zoom`.
+5. **`Enter`/`o`/`f` ficam no bloco de `activeTab == 5` que roda ANTES das teclas globais** — o
+   mesmo lugar do `Espaço`/`n`/`v` da passada anterior. `f` já significa outra coisa na aba Log e
+   `o` está livre hoje, mas depender disso seria uma armadilha esperando a próxima tecla global
+   nascer.
+6. **Os dois nós SINTÉTICOS (`players`/`networks`) não têm objeto MIXR por trás**, então
+   `captureLiveState()` não tem o que ler neles — ganharam um campo `itens` com o tamanho da
+   lista, que é justamente o que se quer saber com o galho retraído.
+
+- **Testado**: `tests/app/test_component_tree_layout.cpp` (alvo `app-component-tree-layout`, suíte
+  `domain`, 14 testes) — layout vertical (profundidade vira linha, irmãos compartilham a linha,
+  pai centrado entre o primeiro e o último filho), retrair/expandir (galho some do layout mas
+  `childCount` sobrevive, alternar é idempotente, folha não suja o conjunto, a chave sobrevive à
+  redescoberta), navegação (pai/filho/irmãos, o último irmão não "vaza" para o nó seguinte da
+  pré-ordem, descer num galho retraído abre ele, folha não desce) e o enquadramento (não amplia
+  além de 100%, encolhe quando precisa). Linka o `ComponentTreePanel.cpp`/`ComponentTreeQuery.cpp`
+  de PRODUÇÃO, não uma reimplementação. Verificado também sob pty (`pyte`) nos cenários `patrol` e
+  `intercept`: a árvore vertical com os marcadores `[-]`/`[+N]`, a navegação por seta abrindo
+  `players` e chegando em `falcon1`, o card mostrando `modo ativo / BLUE / 1747 m MSL / 854 m AGL
+  / 83.9 deg / 146.7 kt / EVADE / 361 decisoes / T0`, e `[o]`/`[f]` reenquadrando.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer

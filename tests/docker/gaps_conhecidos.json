@@ -1,0 +1,58 @@
+{
+  "_comentario": [
+    "Baseline dos ACHADOS -- o que falta no README secao 2/3 para um Ubuntu 24.04",
+    "limpo chegar de clone a binario. 'observados' e o conjunto que a ultima",
+    "execucao de run_docs_build_test.py mediu; o teste fica vermelho quando esse",
+    "conjunto MUDA (achado novo = regressao; achado sumido = README melhorou,",
+    "atualize com --atualizar-baseline).",
+    "",
+    "'achados' e o catalogo com o porque de cada um e a linha que falta escrever.",
+    "Ha entradas de catalogo que o runner NAO detecta sozinho (marcadas com",
+    "'auto_detectado': false) -- sao achados de leitura, nao de execucao, e ficam",
+    "aqui para nao se perderem."
+  ],
+  "observados": [
+    "ferramentas-sem-receita",
+    "pacotes-de-sistema-ausentes",
+    "conan-profile-detect",
+    "conan-remote-privado",
+    "conan-credenciais"
+  ],
+  "achados": {
+    "ferramentas-sem-receita": {
+      "auto_detectado": true,
+      "resumo": "A tabela da secao 2 nomeia 'Conan >= 2.0' e 'Meson >= 1.0' mas nao diz como instalar. No Ubuntu 24.04 o caminho obvio -- 'pip install conan meson' -- e recusado pelo PEP 668 ('error: externally-managed-environment'), e a mensagem do pip nao cita nem Conan nem este projeto.",
+      "correcao": "uma linha de instalacao de verdade, ex.: 'pipx install conan meson' (ou um venv dedicado), mais 'apt install python3-venv' se for por venv"
+    },
+    "pacotes-de-sistema-ausentes": {
+      "auto_detectado": true,
+      "resumo": "Alem de g++/make/ninja/gzip, o build exige pacotes que a tabela nao lista. O mais imediato e pkg-config: o meson raiz resolve mixr, protobuf e gtest por dependency(method:'pkg-config'), entao sem ele o 'meson setup' do 'make configure' falha mesmo com o Conan tendo gerado os .pc certos. git/curl/perl aparecem depois, quando as receitas do Conan compilam do fonte (ver 'sem-binarios-para-gcc13'), e 'sudo' porque o 'make configure' passa '-c tools.system.package_manager:sudo=True' fixo -- num container que ja e root, nao ha binario sudo.",
+      "correcao": "acrescentar a linha de apt na secao 2: 'apt install build-essential ninja-build pkg-config git curl perl gzip python3'"
+    },
+    "conan-profile-detect": {
+      "auto_detectado": true,
+      "resumo": "O Conan 2 nao cria perfil default sozinho. Numa maquina que nunca rodou Conan, o primeiro comando da secao 3 ('make configure') morre em 'The default build profile doesn't exist'. 'conan profile detect' nao aparece em NENHUM arquivo deste repositorio -- conferido com grep.",
+      "correcao": "'conan profile detect' como primeiro passo da secao 3, antes de 'make configure'"
+    },
+    "conan-remote-privado": {
+      "auto_detectado": true,
+      "resumo": "Parte dos pacotes que o conanfile.py pede NAO existe no conancenter -- vem de um remote privado. O README cita esses pacotes pelo nome e pela versao, o que sugere que o Conan os resolve sozinho, e nao ha uma linha sobre remote em lugar nenhum do repositorio (grep por 'conan remote': zero ocorrencias). Este e o achado que mais engana: a mensagem do Conan e 'package not found', que parece erro de versao e nao de configuracao. O teste nao embute nome nem endereco de registry -- descobre os pacotes lendo o conanfile.py, e recebe o remote de quem o executa; nao ter como adivinhar o endereco e exatamente o achado.",
+      "correcao": "documentar o remote na secao 2: 'conan remote add <nome> <url>', com o endereco de verdade e como pedir acesso"
+    },
+    "conan-credenciais": {
+      "auto_detectado": true,
+      "resumo": "O remote privado exige autenticacao -- medido: anonimo nao resolve. Sem credenciais nao ha como resolver as dependencias, ou seja o projeto e inconstruivel para quem nao as tem, e o README nao menciona que elas existem nem como pedi-las. ARMADILHA: sem TTY o sintoma nao e um 401 legivel -- o Conan tenta PERGUNTAR o usuario, acha stdin fechado e morre com 'not resolved: EOF when reading a line', que passa facil por erro de rede.",
+      "correcao": "dizer que o remote e autenticado e como obter acesso; o comando e 'conan remote login <nome> <usuario>'"
+    },
+    "sem-binarios-para-gcc13": {
+      "auto_detectado": true,
+      "resumo": "O remote publica binario de mixr/1.0.5 so para gcc 11 (Release e Debug) -- medido com 'conan list'. O Ubuntu 24.04 traz gcc 13, entao o package_id nao casa e o '--build=missing' do 'make configure' recompila a arvore INTEIRA do fonte: boost, onnxruntime, protobuf, openssl, jsbsim, mixr. Sao horas de relogio, sem nenhum aviso no README. Na pratica a base suportada e o Ubuntu 22.04 (gcc 11), e isso nao esta escrito.",
+      "correcao": "dizer qual e a base suportada (gcc 11 / Ubuntu 22.04) e avisar que fora dela o primeiro 'make configure' compila tudo do fonte"
+    },
+    "sem-lockfile": {
+      "auto_detectado": false,
+      "resumo": "Nao ha conan.lock versionado. O remote guarda varias revisoes de receita das dependencias privadas; um clone limpo pega a mais recente, que nao e necessariamente a que a maquina do desenvolvedor tem em cache -- medido: o cache local esta numa revisao que nem existe mais no remote. Duas pessoas seguindo o mesmo README podem compilar contra dependencias diferentes, sem nenhum sinal disso.",
+      "correcao": "versionar um conan.lock, ou fixar a revisao de receita no conanfile.py"
+    }
+  }
+}

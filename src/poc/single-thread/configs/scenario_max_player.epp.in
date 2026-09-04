@@ -1,0 +1,1136 @@
+//
+// single-thread -- DEMO "player maximo"
+//
+// Cenario de demo, DERIVADO manualmente de scenario.epp.in (mesma receita do
+// scenario_missile_demo.epp.in: e para RODAR, nao para um teste regenerar).
+// Roda no binario single-thread ja existente, sem tocar em nenhum host:
+//
+//    ./build/src/poc/single-thread/src/single-thread \
+//       -f src/poc/single-thread/configs/scenario_max_player.epp.in
+//
+// PERGUNTA QUE ESTE ARQUIVO RESPONDE: qual o player mais elaborado que da
+// para montar so com componentes NATIVOS do mixr::models?
+//
+// falcon1 e a resposta. Ele carrega, em UM unico ( Aircraft ), os DEZ
+// sistemas primarios que Player::updateSystemPointers() procura por TIPO
+// (Player.cpp:3139-3151) e, dentro de cada um, tudo o que a factory nativa
+// sabe construir:
+//
+//   1) DynamicsModel  -> ( JSBSimModel )         6-DOF
+//   2) Pilot          -> ( Autopilot )           leis de controle
+//   3) Navigation     -> ( Ins ) + ( Gps ) + ( Route ) + ( Steerpoint )
+//                        + ( Bullseye ) + as 4 ( Action* )
+//   4) Datalink       -> ( AlertDatalink )       (unica classe NAO nativa)
+//   5) Radio          -> ( CommRadio ) + ( Iff )
+//   6) Gimbal         -> ( Gimbal ) + ( StabilizingGimbal ) + 6 ( Antenna )
+//                        + ( IrSeeker )
+//   7) RfSensor       -> ( SensorMgr ) + ( Tws ) ( Stt ) ( Sar ) ( Gmti )
+//                        ( Rwr ) ( Jammer )
+//   8) IrSystem       -> ( MergingIrSensor )
+//   9) OnboardComputer-> ( AirTrkMgr ) ( RwrTrkMgr ) ( GmtiTrkMgr )
+//                        ( AirAngleOnlyTrkMgr )
+//  10) StoresMgr      -> ( StoresMgr ) + 11 estacoes: ( AamMissile )
+//                        ( AgmMissile ) ( Sam ) ( Bomb ) ( Chaff ) ( Flare )
+//                        ( Decoy ) ( Gun )+( Bullet ) ( FuelTank )
+//                        ( AvionicsPod )
+//  + ( CollisionDetect ) no fim de components: (nao e sistema primario --
+//    e um Component comum, atualizado como qualquer outro filho)
+//  + assinatura RF ( SigSwitch ) com ( SigSphere )/( SigPlate )/( SigAzEl )
+//    e assinatura IR ( IrSignature ) + ( IrSphere )
+//
+// REGRAS QUE O DESENHO OBEDECE (todas lidas no fonte do framework, nao
+// adivinhadas -- ver o comentario de cada bloco):
+//
+//   a) UM de cada tipo primario. updateSystemPointers() usa findByType(),
+//      que devolve o PRIMEIRO casamento (Component.cpp) -- um segundo
+//      ( Navigation ) irmao seria invisivel. Pluralidade so existe onde o
+//      framework deu um CONTENEDOR: ( SensorMgr ) para RfSensor, ( Gimbal )
+//      para Gimbal/Antenna, ( OnboardComputer ) para TrackManager,
+//      ( Stores ) para armamento.
+//   b) UMA antena por sensor de RF. Antenna::setSystem() guarda UM ponteiro
+//      (Antenna.cpp:168) -- dois sensores apontando o mesmo antennaName:
+//      fazem o ultimo vencer, em silencio. Por isso sao 6 antenas.
+//   c) O casamento sensor->antena e sensor->trackmanager e POR NOME, e o
+//      nome procurado e o do slot em components: (RfSystem::reset ->
+//      Player::getGimbalByName; RfSensor::reset -> OnboardComputer::
+//      getTrackManagerByName).
+//
+// O QUE MUDA em relacao a producao:
+//   1) 'networks:' SAI -- hermetico (mesmo motivo do make_fixture.py).
+//   2) bandit1 volta a ser LOCAL, e ganha irSignature: (sem isso o IRST
+//      nao tem o que ver -- IrSignature e do ALVO, nao do sensor).
+//   3) porta Tacview 1239 e arquivos de dados proprios: roda ao lado das
+//      outras pocs sem disputar porta nem sobrescrever gravacao.
+//   4) falcon2/3/4 continuam com a pilha de producao (radar + datalink +
+//      autopilot) -- servem de contraste e de alvo para o RWR de falcon1.
+//
+// O QUE FOI MEDIDO RODANDO (30000 frames, -deterministic):
+//
+//   * ZERO erro de parse e ZERO "was not found!" -- as 6 antenas, os 4
+//     track managers e o seeker casam todos por nome.
+//   * A cadeia de producao continua identica: falcon1 detecta bandit1 no
+//     TWS, vai para EVADE, propaga o alerta, falcon2/3/4 vao para SUPPORT.
+//     Nenhum dos sistemas acrescentados interfere.
+//   * A rota sequenciou os QUATRO steerpoints numa volta: decoy solto em
+//     t=37,0 s (wp1, ( ActionDecoyRelease )) e bomba solta em t=225,3 s
+//     (wp4, ( ActionWeaponRelease )) -- os dois aparecem como players novos
+//     no MsgFeed e no Tacview, com o ciclo preRelease -> active ->
+//     detonated. wp2 (SAR) e wp3 (camuflagem) nao criam player, mas a
+//     sequencia teve de passar por eles para chegar ao wp4.
+//   * Determinismo preservado: dumps 'frame=' BYTE-IDENTICOS com 1, 2 e 4
+//     threads de tempo critico (6000 frames).
+//
+// DUAS ARMADILHAS DE TEMPO, medidas aqui e nao documentadas em lugar nenhum:
+//
+//   * ActionDecoyRelease::process() conta o 'interval' em
+//     getSimTimeOfDay() -- relogio de PAREDE, nao tempo simulado. Em
+//     -deterministic (que roda ~200x mais rapido que o tempo real) um
+//     'interval: ( Seconds 1.0 )' virou ~190 s de tempo SIMULADO entre o
+//     primeiro e o segundo decoy. Por isso este arquivo usa numToLaunch: 2
+//     ciente disso; quem quiser rajada previsivel solta um por steerpoint.
+//   * As ( Action ) so disparam se a aeronave PASSAR pelos steerpoints, e
+//     quem pilota e a arvore de comportamento -- nao a rota (navMode:
+//     false). Assim que ha contato ela abandona o circuito. Daqui o
+//     bandit1 a 30 NM: da tempo de fechar a volta antes do primeiro
+//     contato.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+
+   ownship: falcon1
+
+   components: {
+
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libflight.so"
+               provides: { AlertDatalink TacticalAlert FlightState
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
+            )
+         }
+      )
+
+      agent1: ( SimAgent
+         actorPlayerName: falcon1
+         state: ( FlightState )
+         behavior: ( UbfArbiter
+            behaviors: {
+               ( AltitudeSafetyBehavior
+                  vote: 90
+                  minAltitude:      ( Meters 1200 )
+                  recoverAltitude:  ( Meters 1750 )
+                  recoverSpeed:     160.0
+                  minClearance:     ( Meters 400 )
+                  recoverClearance: ( Meters 800 )
+               )
+               ( BtBehavior
+                  vote: 50
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                  patrolHeading:  ( Degrees 90 )
+                  legTime:        ( Seconds 60 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 1750 )
+                  patrolSpeed:    160.0
+                  rtbAltitude:    ( Meters 2050 )
+                  rtbSpeed:       170.0
+                  arrivalRadius:  ( NauticalMiles 2.0 )
+                  fuelReserve:    0.35
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 700 )
+                  evadeSpeed:     185.0
+                  supportSpeed:   180.0
+                  evadeHold:      ( Seconds 30 )
+                  terrainClearance: ( Meters 800 )
+                  patrolJitterHeading: ( Degrees 0 )
+                  patrolMasterSeed: 20260903
+               )
+            }
+         )
+      )
+
+      agent2: ( SimAgent
+         actorPlayerName: falcon2
+         state: ( FlightState )
+         behavior: ( UbfArbiter
+            behaviors: {
+               ( AltitudeSafetyBehavior
+                  vote: 90
+                  minAltitude:      ( Meters 1300 )
+                  recoverAltitude:  ( Meters 1850 )
+                  recoverSpeed:     160.0
+                  minClearance:     ( Meters 400 )
+                  recoverClearance: ( Meters 800 )
+               )
+               ( BtBehavior
+                  vote: 50
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                  patrolHeading:  ( Degrees 180 )
+                  legTime:        ( Seconds 60 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 1850 )
+                  patrolSpeed:    160.0
+                  rtbAltitude:    ( Meters 2150 )
+                  rtbSpeed:       170.0
+                  arrivalRadius:  ( NauticalMiles 2.0 )
+                  fuelReserve:    0.35
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 700 )
+                  evadeSpeed:     185.0
+                  supportSpeed:   180.0
+                  evadeHold:      ( Seconds 30 )
+                  terrainClearance: ( Meters 800 )
+                  patrolJitterHeading: ( Degrees 0 )
+                  patrolMasterSeed: 20260903
+               )
+            }
+         )
+      )
+
+      agent3: ( SimAgent
+         actorPlayerName: falcon3
+         state: ( FlightState )
+         behavior: ( UbfArbiter
+            behaviors: {
+               ( AltitudeSafetyBehavior
+                  vote: 90
+                  minAltitude:      ( Meters 1500 )
+                  recoverAltitude:  ( Meters 2050 )
+                  recoverSpeed:     160.0
+                  minClearance:     ( Meters 400 )
+                  recoverClearance: ( Meters 800 )
+               )
+               ( BtBehavior
+                  vote: 50
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                  patrolHeading:  ( Degrees 270 )
+                  legTime:        ( Seconds 60 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 2050 )
+                  patrolSpeed:    160.0
+                  rtbAltitude:    ( Meters 2350 )
+                  rtbSpeed:       170.0
+                  arrivalRadius:  ( NauticalMiles 2.0 )
+                  fuelReserve:    0.35
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 700 )
+                  evadeSpeed:     185.0
+                  supportSpeed:   180.0
+                  evadeHold:      ( Seconds 30 )
+                  terrainClearance: ( Meters 800 )
+                  patrolJitterHeading: ( Degrees 0 )
+                  patrolMasterSeed: 20260903
+               )
+            }
+         )
+      )
+
+      agent4: ( SimAgent
+         actorPlayerName: falcon4
+         state: ( FlightState )
+         behavior: ( UbfArbiter
+            behaviors: {
+               ( AltitudeSafetyBehavior
+                  vote: 90
+                  minAltitude:      ( Meters 1550 )
+                  recoverAltitude:  ( Meters 2100 )
+                  recoverSpeed:     160.0
+                  minClearance:     ( Meters 400 )
+                  recoverClearance: ( Meters 800 )
+               )
+               ( BtBehavior
+                  vote: 50
+                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                  patrolHeading:  ( Degrees 0 )
+                  legTime:        ( Seconds 60 )
+                  legTurn:        ( Degrees 90 )
+                  patrolAltitude: ( Meters 2100 )
+                  patrolSpeed:    160.0
+                  rtbAltitude:    ( Meters 2400 )
+                  rtbSpeed:       170.0
+                  arrivalRadius:  ( NauticalMiles 2.0 )
+                  fuelReserve:    0.35
+                  breakTurn:      ( Degrees 110 )
+                  evadeClimb:     ( Meters 700 )
+                  evadeSpeed:     185.0
+                  supportSpeed:   180.0
+                  evadeHold:      ( Seconds 30 )
+                  terrainClearance: ( Meters 800 )
+                  patrolJitterHeading: ( Degrees 0 )
+                  patrolMasterSeed: 20260903
+               )
+            }
+         )
+      )
+
+      msgFeed: ( MsgFeed
+         trackManager: twsTrkMgr
+         maxPlayers:   64
+         healthEvery:  ( Seconds 10 )
+         sinks: {
+            ( MsgFileSink
+               fileName: "./src/poc/single-thread/data/messages/mission-max-player.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            // Todos os players, inclusive os que NASCEM em runtime (um decoy
+            // solto pela ( ActionDecoyRelease ) do steerpoint aparece aqui).
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { latDeg lonDeg altMslM altAglM hdgDeg speedKts fuelFrac }
+               every: ( Seconds 1.0 ) )
+         }
+      )
+
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "single-thread-max-player"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1239
+               callsign: "poc-mixr/single-thread-max-player"
+               fileName: "./src/poc/single-thread/data/recordings/mission-max-player.acmi"
+               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"
+                           falcon4: "F-16C"  bandit1: "F-16C" }
+               typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
+                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"
+                           bandit1: "Air+FixedWing" }
+               colorMap: { falcon1: "Blue"  falcon2: "Blue"  falcon3: "Blue"
+                           falcon4: "Blue"  bandit1: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         // ==============================================================
+         // falcon1 -- O PLAYER MAXIMO
+         // ==============================================================
+         falcon1: ( Aircraft
+            id: 101
+            side: blue
+            type: "C310"
+
+            // ASSINATURA RF COMUTAVEL. SigSwitch nao tem slots: ele escolhe
+            // o subcomponente de indice (camouflageType + 1) --
+            // Signatures.cpp, SigSwitch::getRCS(). Trocar camouflageType em
+            // runtime troca a RCS; e o que a ( ActionCamouflageType ) do
+            // steerpoint 3 faz, sem uma linha de codigo.
+            // camouflageType escolhe qual dos SEIS filhos responde -- as
+            // seis classes de assinatura RF que a factory nativa publica.
+            camouflageType: 0
+            signature: ( SigSwitch
+               components: {
+                  limpo: ( SigSphere radius: 3.0 )
+                  placa: ( SigPlate a: ( Meters 6.0 ) b: ( Meters 2.0 ) )
+                  // SigConstant tem UM slot, 'rcs'; SigDihedralCR e
+                  // SigTrihedralCR nao tem slottable propria -- herdam 'a' e
+                  // 'b' de SigPlate (Signatures.cpp).
+                  const: ( SigConstant rcs: ( SquareMeters 2.5 ) )
+                  died:  ( SigDihedralCR  a: ( Meters 1.5 ) b: ( Meters 1.5 ) )
+                  tried: ( SigTrihedralCR a: ( Meters 1.5 ) b: ( Meters 1.5 ) )
+                  azel:  ( SigAzEl
+                     inDegrees: true
+                     inDecibel: true
+                     table: ( Table2
+                        x: [ -180.0  -90.0  0.0  90.0  180.0 ]
+                        y: [  -30.0    0.0  30.0 ]
+                        // ARMADILHA: no Table2 o 'data' NAO e uma lista
+                        // plana de nx*ny numeros -- Table2::loadData() exige
+                        // ny SUBLISTAS de nx numeros cada (Table2.cpp), e a
+                        // lista plana falha com "Data table aborted".
+                        data: { [  3.0   8.0  12.0   8.0   3.0 ]
+                                [  5.0  10.0  15.0  10.0   5.0 ]
+                                [  3.0   8.0  12.0   8.0   3.0 ] }
+                     )
+                  )
+               }
+            )
+
+            // ASSINATURA IR -- e do ALVO, nao do sensor: e ela que o IRST
+            // dos OUTROS consulta. ( IrSignature ) simples de proposito:
+            // ( AircraftIrSignature ) desreferencia airframeSignatureTable
+            // SEM checar nulo (AircraftIrSignature.cpp:566), entao declarar
+            // a classe sem as 6 tabelas derruba o processo.
+            irSignature: ( IrSignature
+               baseHeatSignature: 320.0
+               emissivity:          0.75
+               effectiveArea:     ( SquareMeters 3.0 )
+               irShapeSignature:  ( IrSphere radius: ( Meters 2.0 ) )
+            )
+
+            initXPos:     ( NauticalMiles 5.0 )
+            initYPos:     ( NauticalMiles 0.0 )
+            initAlt:      ( Meters 1750.0 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 82.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+
+            components: {
+
+               // --- 1) DynamicsModel ------------------------------------
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  model:   "c310"
+                  debugLevel: 0
+               )
+
+               // --- 2) Pilot --------------------------------------------
+               // navMode FALSE de proposito: com true o Autopilot passa a
+               // tirar o rumo da ( Navigation ) a cada frame e sobrescreve
+               // o comando do agente. A rota abaixo continua sendo
+               // calculada e sequenciada -- so nao pilota.
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 3.0
+                  maxBankAngle:    30.0
+                  maxPitchAngle:   10.0
+                  maxClimbRateMps:  8.0
+                  maxAcceleration:  2.0
+               )
+
+               // --- 3) Navigation ---------------------------------------
+               // ( Ins ) E uma ( Navigation ) (Ins : public Navigation), e o
+               // ( Gps ) aninhado tambem -- por isso o Gps entra como FILHO,
+               // nao como irmao: findByType() pegaria o primeiro dos dois e
+               // o outro ficaria invisivel.
+               //
+               // Route::autoSequencer() sequencia por DISTANCIA + marcacao
+               // relativa (Route.cpp:166-179) e dispara a ( Action ) do
+               // steerpoint que acabou de passar -- independe de navMode.
+               nav: ( Ins
+                  bullseye: ( Bullseye
+                     latitude:  ( Degrees -22.25 )
+                     longitude: ( Degrees -42.48 )
+                  )
+                  // Os quatro pontos ficam EM CIMA das pernas do circuito
+                  // que a arvore de comportamento realmente voa (medido no
+                  // dump: perna leste em x~9290, sul em y~7370, oeste em
+                  // x~3230, norte em y~1600), nao nos "cantos" teoricos --
+                  // o autoSequencer so dispara a acao de um steerpoint que a
+                  // aeronave PASSA a menos de autoSeqDistance e deixa para
+                  // tras (Route.cpp:166-179).
+                  route: ( Route
+                     to: 1
+                     autoSequence: true
+                     autoSeqDistance: ( NauticalMiles 1.5 )
+                     wrap: true
+                     components: {
+                        wp1: ( Steerpoint
+                           stptType: DEST
+                           xPos: ( Meters 9290 )
+                           yPos: ( Meters 3000 )
+                           altitude: ( Meters 1750 )
+                           airspeed: 160.0
+                           description: "ponto 1 -- solta decoy ao passar"
+                           action: ( ActionDecoyRelease
+                              numToLaunch: 2
+                              interval: ( Seconds 1.0 )
+                           )
+                        )
+                        wp2: ( Steerpoint
+                           stptType: TGT
+                           xPos: ( Meters 6000 )
+                           yPos: ( Meters 7370 )
+                           altitude: ( Meters 1750 )
+                           airspeed: 160.0
+                           description: "ponto 2 -- imageamento SAR"
+                           // ARMADILHA: sarLatitude/sarLongitude sao
+                           // base::LatLon (ON_SLOT em Actions.cpp), nao
+                           // base::Angle -- ( Degrees -22.2 ) e recusado.
+                           action: ( ActionImagingSar
+                              sarLatitude:  ( LatLon direction: "s" degrees: 22 minutes: 12 )
+                              sarLongitude: ( LatLon direction: "w" degrees: 42 minutes: 24 )
+                              sarElevation: ( Meters 900 )
+                              resolution:   ( Meters 3 )
+                              imageSize:    512
+                           )
+                        )
+                        wp3: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters 3230 )
+                           yPos: ( Meters 4000 )
+                           altitude: ( Meters 1750 )
+                           airspeed: 160.0
+                           description: "ponto 3 -- troca a camuflagem (RCS)"
+                           action: ( ActionCamouflageType camouflageType: 1 )
+                        )
+                        wp4: ( Steerpoint
+                           stptType: IP
+                           xPos: ( Meters 6000 )
+                           yPos: ( Meters 1600 )
+                           altitude: ( Meters 1750 )
+                           airspeed: 160.0
+                           description: "ponto 4 -- liberacao de arma na estacao 1"
+                           action: ( ActionWeaponRelease
+                              targetLatitude:  ( LatLon direction: "s" degrees: 22 minutes: 18 )
+                              targetLongitude: ( LatLon direction: "w" degrees: 42 minutes: 33 )
+                              targetElevation: ( Meters 900 )
+                              // ARMADILHA: 'station' NAO escolhe a estacao.
+                              // ActionWeaponRelease::trigger() (Actions.cpp)
+                              // chama sms->releaseOneBomb() e ignora este
+                              // valor -- quem sai e a primeira ( Bomb )
+                              // livre da lista, aqui a da estacao 5.
+                              station: 5
+                           )
+                        )
+                     }
+                  )
+                  components: {
+                     gps: ( Gps )
+                  }
+               )
+
+               // --- 4) Datalink -----------------------------------------
+               // A UNICA classe nao nativa do player (herda de
+               // models::Datalink so para decidir o que fazer com a
+               // mensagem). 'radioName' NAO e declarado de proposito: com um
+               // radio amarrado, Datalink::sendMessage() para de entregar
+               // direto e passa a depender de propagacao de RF ate um
+               // CommRadio no OUTRO player (Datalink.cpp) -- falcon2/3/4 nao
+               // tem radio, e o alerta tatico morreria em silencio.
+               datalink: ( AlertDatalink
+                  holdTime: ( Seconds 25 )
+                  trackManagerName: twsTrkMgr
+                  maxRange: ( NauticalMiles 100 )
+               )
+
+               // --- 5) Radio --------------------------------------------
+               // UM Radio primario; o ( Iff ) tambem E um Radio, entao entra
+               // ANINHADO (mesma regra do Gps dentro do Ins).
+               comm1: ( CommRadio
+                  radioID: 1
+                  numChannels: 4
+                  channels: { ( MegaHertz 225.0 ) ( MegaHertz 243.0 )
+                              ( MegaHertz 251.0 ) ( MegaHertz 300.0 ) }
+                  channel: 1
+                  maxDetectRange: ( NauticalMiles 120 )
+                  powerPeak: ( Watts 10.0 )
+                  frequency: ( MegaHertz 225.0 )
+                  bandwidth: ( KiloHertz 25.0 )
+                  components: {
+                     iff: ( Iff
+                        radioID: 2
+                        powerPeak: ( Watts 5.0 )
+                        frequency: ( MegaHertz 1030.0 )
+                        bandwidth: ( MegaHertz 2.0 )
+                        mode1: 3
+                        mode2: 4096
+                        mode3a: 1200
+                        enableMode1: true
+                        enableMode2: true
+                        enableMode3a: true
+                        enableModeC: true
+                     )
+                  }
+               )
+
+               // --- 6) Gimbal -------------------------------------------
+               // UMA antena por sensor: Antenna::setSystem() guarda um unico
+               // ponteiro, entao compartilhar antena entre dois sensores faz
+               // o ultimo a dar reset() vencer, sem aviso.
+               antennas: ( Gimbal
+                  components: {
+
+                     ant_tws: ( Antenna
+                        polarization: horizontal
+                        gain: ( dB 42 )
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.01745  0.02618   0.04363   0.05236   0.061087  0.06981   0.07854 ]
+                           data: [ 0.0  -3.0    -10.0     -30.0     -20.0     -14.0     -25.0     -80.0 ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]
+                        maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth:   ( Degrees 60 )
+                        commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]
+                        searchVolume: [ 1.0472 0.05 ]
+                        numBars: 2
+                        maxPlayersOfInterest: 8
+                        playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+
+                     ant_stt: ( Antenna
+                        polarization: horizontal
+                        gain: ( dB 44 )
+                        initPosition: [ 0 0 ]
+                        maxRates: [ 1.5 1.5 ]
+                        maxPlayersOfInterest: 4
+                        playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 30.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+
+                     ant_gmti: ( Antenna
+                        polarization: vertical
+                        gain: ( dB 38 )
+                        initPosition: [ 0 -0.35 ]
+                        maxRates: [ 0.8727 0.8727 ]
+                        maxPlayersOfInterest: 8
+                        playerOfInterestTypes: { ground ship }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 30.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+
+                     // RWR: cobertura esferica, ganho baixo -- ele nao
+                     // ilumina nada, so escuta o que os outros transmitem.
+                     ant_rwr: ( Antenna
+                        polarization: vertical
+                        gain: ( dB 3 )
+                        initPosition: [ 0 0 ]
+                        maxPlayersOfInterest: 16
+                        playerOfInterestTypes: { air ground ship }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 80.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 180.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+
+                     ant_jam: ( Antenna
+                        polarization: vertical
+                        gain: ( dB 20 )
+                        initPosition: [ 3.1416 0 ]
+                        maxPlayersOfInterest: 8
+                        playerOfInterestTypes: { air ground }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 60.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 120.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+
+                     // Gimbal DENTRO de gimbal: a antena do SAR pendurada
+                     // num ( StabilizingGimbal ), que contra-rola o berco.
+                     // findByName() e recursivo, entao 'ant_sar' continua
+                     // alcancavel por nome simples.
+                     estab: ( StabilizingGimbal
+                        stabilizingMode: roll
+                        components: {
+                           ant_sar: ( Antenna
+                              polarization: vertical
+                              gain: ( dB 40 )
+                              initPosition: [ 0 -0.5 ]
+                              maxPlayersOfInterest: 4
+                              playerOfInterestTypes: { ground }
+                              maxRange2PlayersOfInterest: ( NauticalMiles 20.0 )
+                              maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                              localPlayersOfInterestOnly: false
+                              useWorldCoordinates: false
+                           )
+                        }
+                     )
+
+                     // O IRST: ( IrSeeker ) E um ScanGimbal, logo E um
+                     // Gimbal -- por isso mora aqui e nao solto no player
+                     // (solto, disputaria o ponteiro primario de Gimbal).
+                     irst: ( IrSeeker
+                        initPosition: [ 0 0 ]
+                        maxRates: [ 1.0 1.0 ]
+                        searchVolume: [ 0.5236 0.1745 ]
+                        numBars: 2
+                        maxPlayersOfInterest: 8
+                        playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 25.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 45.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+                  }
+               )
+
+               // --- 7) RfSensor -----------------------------------------
+               // ( SensorMgr ) E um RfSensor: e o conteiner que permite mais
+               // de um sensor de RF no mesmo player.
+               sensors: ( SensorMgr
+                  components: {
+
+                     tws: ( Tws
+                        trackManagerName: twsTrkMgr
+                        antennaName: ant_tws
+                        powerPeak:  ( KiloWatts 200.0 )
+                        frequency:  ( GigaHertz 3.0 )
+                        bandwidth:  ( GigaHertz 2.0 )
+                        PRF:        ( Hertz 500.0 )
+                        pulseWidth: ( MilliSeconds 0.01 )
+                        threshold:  ( dB 0.0 )
+                        igain: ( dB 0 )
+                        ranges:     [ 10 20 40 80 ]
+                        initRangeIdx: 2
+                     )
+
+                     stt: ( Stt
+                        trackManagerName: twsTrkMgr
+                        antennaName: ant_stt
+                        powerPeak:  ( KiloWatts 200.0 )
+                        frequency:  ( GigaHertz 3.0 )
+                        bandwidth:  ( GigaHertz 1.0 )
+                        PRF:        ( Hertz 2000.0 )
+                        pulseWidth: ( MilliSeconds 0.005 )
+                        threshold:  ( dB 0.0 )
+                        igain: ( dB 0 )
+                        ranges:     [ 10 20 40 ]
+                        initRangeIdx: 2
+                     )
+
+                     gmti: ( Gmti
+                        trackManagerName: gmtiTrkMgr
+                        antennaName: ant_gmti
+                        powerPeak:  ( KiloWatts 150.0 )
+                        frequency:  ( GigaHertz 9.5 )
+                        bandwidth:  ( MegaHertz 500.0 )
+                        PRF:        ( Hertz 1000.0 )
+                        pulseWidth: ( MilliSeconds 0.008 )
+                        threshold:  ( dB 0.0 )
+                        igain: ( dB 0 )
+                        ranges:     [ 10 20 30 ]
+                        initRangeIdx: 1
+                     )
+
+                     sar: ( Sar
+                        antennaName: ant_sar
+                        powerPeak:  ( KiloWatts 150.0 )
+                        frequency:  ( GigaHertz 9.5 )
+                        bandwidth:  ( MegaHertz 500.0 )
+                        PRF:        ( Hertz 1500.0 )
+                        pulseWidth: ( MilliSeconds 0.004 )
+                        threshold:  ( dB 0.0 )
+                        igain: ( dB 0 )
+                        chipSize: 512
+                     )
+
+                     rwr: ( Rwr
+                        trackManagerName: rwrTrkMgr
+                        antennaName: ant_rwr
+                        // O RWR so RECEBE: sem emissoes proprias, nao entrega
+                        // a posicao da aeronave a quem tambem tem RWR.
+                        disableEmissions: true
+                        frequency:  ( GigaHertz 6.0 )
+                        bandwidth:  ( GigaHertz 10.0 )
+                        threshold:  ( dB 0.0 )
+                     )
+
+                     jam: ( Jammer
+                        antennaName: ant_jam
+                        powerPeak: ( Watts 500.0 )
+                        frequency: ( GigaHertz 3.0 )
+                        bandwidth: ( GigaHertz 1.0 )
+                        // Ligado, este bloco JAMEIA os radares de falcon2/3/4
+                        // (o ruido entra no calculo de S/N do RfSensor deles).
+                        // Fica desligado por default: a demo e sobre o que
+                        // cabe no player, nao sobre degradar os vizinhos.
+                        disableEmissions: true
+                     )
+                  }
+               )
+
+               // --- 8) IrSystem -----------------------------------------
+               // 'seekerName' aponta para o ( IrSeeker ) la de cima, pelo
+               // MESMO mecanismo de nome do antennaName (IrSystem::reset ->
+               // Player::getGimbalByName).
+               //
+               // POR QUE NAO ( MergingIrSensor ), que seria a classe mais
+               // elaborada: MergingIrSensor::reset() exige um
+               // ( AirAngleOnlyTrkMgrPT ) e avisa em toda partida quando nao
+               // acha um -- e essa classe NAO E CONSTRUIVEL neste fork: o
+               // header dela e incluido em mixr::models::factory mas nao ha
+               // branch para ela (o irmao AirAngleOnlyTrkMgr tem). Medido:
+               // "MergingIrSensor::reset() : track manager is not an
+               // AirAngleOnlyTrkMgrPT" a cada reset, sem saida possivel
+               // pelo EDL.
+               irsystem: ( IrSensor
+                  seekerName: irst
+                  trackManagerName: irTrkMgr
+                  lowerWavelength: 3.0
+                  upperWavelength: 5.0
+                  nei: 0.00001
+                  threshold: 1.0
+                  IFOV: 0.0003
+                  // sensorType e base::String, e so aceita "contrast" ou
+                  // "hot spot" (com espaco). O slot "FOR" (field of regard)
+                  // aparece na slottable do IrSensor mas esta COMENTADO
+                  // (IrSensor.cpp) -- usa-lo da "slot not found".
+                  sensorType: "contrast"
+                  maximumRange: ( NauticalMiles 25 )
+               )
+
+               // --- 9) OnboardComputer ----------------------------------
+               // O conteiner de TrackManager. A ordem importa so para quem
+               // pede o "primario" por tipo; o resto do sistema pede por
+               // NOME (o modelo em shared/xtrack procura "twsTrkMgr").
+               obc: ( OnboardComputer
+                  components: {
+                     twsTrkMgr: ( AirTrkMgr
+                        maxTracks: 20   alpha: 1.0  beta: 0.5  gamma: 0.0
+                        positionGate: 1500  rangeGate: 500  velocityGate: 10
+                        firstTrackId: 1000
+                     )
+                     rwrTrkMgr: ( RwrTrkMgr
+                        maxTracks: 20   alpha: 2.0  beta: 0.0  gamma: 0.0
+                        firstTrackId: 2000
+                     )
+                     gmtiTrkMgr: ( GmtiTrkMgr
+                        maxTracks: 20   alpha: 1.0  beta: 0.5  gamma: 0.0
+                        firstTrackId: 3000
+                     )
+                     irTrkMgr: ( AirAngleOnlyTrkMgr
+                        maxTracks: 20   alpha: 1.0  beta: 0.5  gamma: 0.0
+                        azimuthBin:   ( Degrees 5 )
+                        elevationBin: ( Degrees 5 )
+                        firstTrackId: 4000
+                     )
+                  }
+               )
+
+               // --- 10) StoresMgr ---------------------------------------
+               // O nome de fabrica de SimpleStoresMgr e "StoresMgr" (a classe
+               // abstrata StoresMgr responde por "BaseStoresMgr" e nao e
+               // construivel). Stores::setSlotStores() aceita AbstractWeapon
+               // OU ExternalStore, e o nome do slot E o numero da estacao.
+               stores: ( StoresMgr
+                  numStations: 11
+                  stores: {
+                     1: ( AamMissile
+                        id: 501  side: blue  type: "AIM-9"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 60 )  lethalRange: ( Meters 30 )
+                        maxBurstRng: ( Meters 150 )  maxGimbal: ( Degrees 45 )
+                     )
+                     2: ( AamMissile
+                        id: 502  side: blue  type: "AIM-9"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 60 )  lethalRange: ( Meters 30 )
+                        maxBurstRng: ( Meters 150 )  maxGimbal: ( Degrees 45 )
+                     )
+                     3: ( AgmMissile
+                        id: 503  side: blue  type: "AGM-65"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 90 )  lethalRange: ( Meters 40 )
+                        maxBurstRng: ( Meters 200 )
+                     )
+                     4: ( Sam
+                        id: 504  side: blue  type: "SAM-demo"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 60 )  lethalRange: ( Meters 30 )
+                     )
+                     5: ( Bomb
+                        id: 505  side: blue  type: "MK-82"
+                        signature: ( SigSphere radius: 0.3 )
+                        dataLogTime: ( Seconds 0.1 )
+                        arming: free_fall
+                        noseFuze: true  tailFuze: true
+                        fuzeAltitude: ( Meters 0 )
+                        dragIndex: 0.0006
+                        maxTOF: ( Seconds 60 )  lethalRange: ( Meters 50 )
+                     )
+                     6: ( Chaff
+                        id: 506  side: blue  type: "chaff"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 20 )  dragIndex: 0.02
+                     )
+                     7: ( Flare
+                        id: 507  side: blue  type: "flare"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 20 )  dragIndex: 0.02
+                     )
+                     8: ( Decoy
+                        id: 508  side: blue  type: "decoy"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 30 )  dragIndex: 0.01
+                     )
+                     // dataLogTime EM CADA STORE: sem ele o flyout nasce,
+                     // voa e detona sem NUNCA aparecer no Tacview (medido --
+                     // e a armadilha 1 do xtacview, que vale igual para arma
+                     // liberada: dataLogTime e slot do Player e nasce zero).
+                     // O ( MsgFeed ) enxerga assim mesmo, porque le o player
+                     // direto em vez de passar pelo gravador.
+                     //
+                     // Gun/FuelTank/AvionicsPod NAO sao armas: sao
+                     // ( ExternalStore ), a outra familia que a mesma lista
+                     // aceita. O ( Bullet ) do 'bulletType' e o molde do
+                     // projetil, clonado a cada rajada.
+                     9: ( Gun
+                        type: "M61A1"
+                        rounds: 510
+                        rate: 6000
+                        burstRate: 10
+                        position: [ 2.0 0.0 -0.3 ]
+                        bulletType: ( Bullet
+                           id: 509  side: blue  type: "20mm"
+                           maxTOF: ( Seconds 6 )  lethalRange: ( Meters 3 )
+                        )
+                     )
+                     10: ( FuelTank
+                        type: "tanque-ventral"
+                        jettisonable: true
+                        fuelWt:   1200.0
+                        capacity: 1200.0
+                     )
+                     11: ( AvionicsPod
+                        type: "pod-recon"
+                        jettisonable: false
+                     )
+                  }
+               )
+
+               // --- extra: deteccao de colisao --------------------------
+               // Nao e sistema primario -- e um Component comum, entao pode
+               // haver quantos se queira. Roda na fase 3 e dispara
+               // CRASH_EVENT nativo quando alguem entra no raio.
+               colisao: ( CollisionDetect
+                  collisionRange: ( Meters 100 )
+                  maxPlayers: 20
+                  playerTypes: { air }
+                  maxRange2Players: ( NauticalMiles 5.0 )
+                  maxAngle2Players: ( Degrees 180.0 )
+                  localOnly: false
+                  useWorldCoordinates: false
+                  sendCrashEvents: false
+               )
+            }
+         )
+
+         // ==============================================================
+         // falcon2/3/4 -- pilha de PRODUCAO (contraste e alvo do RWR)
+         // ==============================================================
+         falcon2: ( Aircraft
+            id: 102  side: blue  type: "C310"
+            signature: ( SigSphere radius: 3.0 )
+            irSignature: ( IrSignature baseHeatSignature: 300.0 emissivity: 0.75
+                           effectiveArea: ( SquareMeters 3.0 )
+                           irShapeSignature: ( IrSphere radius: ( Meters 2.0 ) ) )
+            initXPos: ( NauticalMiles 0.0 )  initYPos: ( NauticalMiles 5.0 )
+            initAlt: ( Meters 1850.0 )  initHeading: ( Degrees 180 )
+            initVelocity: 82.0  dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0 )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0 )
+               datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
+               antennas: ( Gimbal
+                  components: {
+                     radar: ( Antenna
+                        polarization: horizontal  gain: ( dB 42 )
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.01745  0.02618   0.04363   0.05236   0.061087  0.06981   0.07854 ]
+                           data: [ 0.0  -3.0    -10.0     -30.0     -20.0     -14.0     -25.0     -80.0 ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]  maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth: ( Degrees 60 )  commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]  searchVolume: [ 1.0472 0.05 ]  numBars: 2
+                        maxPlayersOfInterest: 8  playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false  useWorldCoordinates: false )
+                  } )
+               sensors: ( SensorMgr
+                  components: {
+                     ( Tws
+                        trackManagerName: twsTrkMgr  antennaName: radar
+                        powerPeak: ( KiloWatts 200.0 )  frequency: ( GigaHertz 3.0 )
+                        bandwidth: ( GigaHertz 2.0 )  PRF: ( Hertz 500.0 )
+                        pulseWidth: ( MilliSeconds 0.01 )  threshold: ( dB 0.0 )
+                        igain: ( dB 0 )  ranges: [ 10 20 40 80 ]  initRangeIdx: 2 )
+                  } )
+               obc: ( OnboardComputer
+                  components: {
+                     twsTrkMgr: ( AirTrkMgr
+                        maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
+                        positionGate: 1500  rangeGate: 500  velocityGate: 10
+                        firstTrackId: 1000 )
+                  } )
+            }
+         )
+
+         falcon3: ( Aircraft
+            id: 103  side: blue  type: "C310"
+            signature: ( SigSphere radius: 3.0 )
+            irSignature: ( IrSignature baseHeatSignature: 300.0 emissivity: 0.75
+                           effectiveArea: ( SquareMeters 3.0 )
+                           irShapeSignature: ( IrSphere radius: ( Meters 2.0 ) ) )
+            initXPos: ( NauticalMiles -5.0 )  initYPos: ( NauticalMiles 0.0 )
+            initAlt: ( Meters 2050.0 )  initHeading: ( Degrees 270 )
+            initVelocity: 82.0  dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0 )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0 )
+               datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
+               antennas: ( Gimbal
+                  components: {
+                     radar: ( Antenna
+                        polarization: horizontal  gain: ( dB 42 )
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.01745  0.02618   0.04363   0.05236   0.061087  0.06981   0.07854 ]
+                           data: [ 0.0  -3.0    -10.0     -30.0     -20.0     -14.0     -25.0     -80.0 ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]  maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth: ( Degrees 60 )  commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]  searchVolume: [ 1.0472 0.05 ]  numBars: 2
+                        maxPlayersOfInterest: 8  playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false  useWorldCoordinates: false )
+                  } )
+               sensors: ( SensorMgr
+                  components: {
+                     ( Tws
+                        trackManagerName: twsTrkMgr  antennaName: radar
+                        powerPeak: ( KiloWatts 200.0 )  frequency: ( GigaHertz 3.0 )
+                        bandwidth: ( GigaHertz 2.0 )  PRF: ( Hertz 500.0 )
+                        pulseWidth: ( MilliSeconds 0.01 )  threshold: ( dB 0.0 )
+                        igain: ( dB 0 )  ranges: [ 10 20 40 80 ]  initRangeIdx: 2 )
+                  } )
+               obc: ( OnboardComputer
+                  components: {
+                     twsTrkMgr: ( AirTrkMgr
+                        maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
+                        positionGate: 1500  rangeGate: 500  velocityGate: 10
+                        firstTrackId: 1000 )
+                  } )
+            }
+         )
+
+         falcon4: ( Aircraft
+            id: 104  side: blue  type: "C310"
+            signature: ( SigSphere radius: 3.0 )
+            irSignature: ( IrSignature baseHeatSignature: 300.0 emissivity: 0.75
+                           effectiveArea: ( SquareMeters 3.0 )
+                           irShapeSignature: ( IrSphere radius: ( Meters 2.0 ) ) )
+            initXPos: ( NauticalMiles 0.0 )  initYPos: ( NauticalMiles -5.0 )
+            initAlt: ( Meters 2100.0 )  initHeading: ( Degrees 0 )
+            initVelocity: 82.0  dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0 )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0 )
+               datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
+               antennas: ( Gimbal
+                  components: {
+                     radar: ( Antenna
+                        polarization: horizontal  gain: ( dB 42 )
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.01745  0.02618   0.04363   0.05236   0.061087  0.06981   0.07854 ]
+                           data: [ 0.0  -3.0    -10.0     -30.0     -20.0     -14.0     -25.0     -80.0 ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]  maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth: ( Degrees 60 )  commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]  searchVolume: [ 1.0472 0.05 ]  numBars: 2
+                        maxPlayersOfInterest: 8  playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false  useWorldCoordinates: false )
+                  } )
+               sensors: ( SensorMgr
+                  components: {
+                     ( Tws
+                        trackManagerName: twsTrkMgr  antennaName: radar
+                        powerPeak: ( KiloWatts 200.0 )  frequency: ( GigaHertz 3.0 )
+                        bandwidth: ( GigaHertz 2.0 )  PRF: ( Hertz 500.0 )
+                        pulseWidth: ( MilliSeconds 0.01 )  threshold: ( dB 0.0 )
+                        igain: ( dB 0 )  ranges: [ 10 20 40 80 ]  initRangeIdx: 2 )
+                  } )
+               obc: ( OnboardComputer
+                  components: {
+                     twsTrkMgr: ( AirTrkMgr
+                        maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
+                        positionGate: 1500  rangeGate: 500  velocityGate: 10
+                        firstTrackId: 1000 )
+                  } )
+            }
+         )
+
+         // ==============================================================
+         // bandit1 -- o intruso LOCAL (com assinatura IR, para o IRST)
+         // ==============================================================
+         bandit1: ( Aircraft
+            id: 201
+            side: red
+            type: "C310"
+            signature: ( SigSphere radius: 4.0 )
+            irSignature: ( IrSignature
+               baseHeatSignature: 400.0
+               emissivity: 0.8
+               effectiveArea: ( SquareMeters 4.0 )
+               irShapeSignature: ( IrSphere radius: ( Meters 2.5 ) )
+            )
+            // 30 NM de cada lado (contra 12 NM da fixture 'intruder' de
+            // producao) DE PROPOSITO: as ( Action ) dos steerpoints so
+            // disparam se a aeronave PASSAR perto deles, e quem pilota e a
+            // arvore de comportamento -- assim que ha contato ela abandona o
+            // circuito e nenhuma acao dispara mais. Medido: com o intruso a
+            // 12 NM a arvore vai para EVADE nos primeiros segundos e nenhuma
+            // acao roda; a 22 NM roda so a primeira volta parcial; a 30 NM a
+            // volta inteira (~240 s) fecha antes do primeiro contato.
+            initXPos:     ( NauticalMiles 30.0 )
+            initYPos:     ( NauticalMiles 30.0 )
+            initAlt:      ( Meters 2400.0 )
+            initHeading:  ( Degrees 225 )
+            initVelocity: 92.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+               )
+               pilot: ( Autopilot
+                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
+                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
+                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

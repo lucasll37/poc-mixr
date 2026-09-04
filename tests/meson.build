@@ -151,6 +151,28 @@ test_app_component_flow = executable('test-app-component-flow-state',
 )
 test('app-component-flow-state', test_app_component_flow, suite: 'domain', timeout: 60)
 
+# A logica PURA da aba "Componentes" (F6) depois de ela virar VERTICAL e
+# retratil: layout (profundidade -> linha, pai centrado sobre os filhos),
+# conjunto de galhos RETRAIDOS (guardado por CHAVE, pra sobreviver a
+# redescoberta da arvore a cada redesenho) e navegacao por teclado. Linka o
+# ComponentTreePanel.cpp/ComponentTreeQuery.cpp de PRODUCAO (nao uma
+# reimplementacao) -- dai o mixr_dep/ftxui_dep, mesma receita de
+# 'app-map-canvas-fit'.
+test_app_component_tree = executable('test-app-component-tree-layout',
+    files('app/test_component_tree_layout.cpp') + files(
+        '../app/src/app/ComponentTreePanel.cpp',
+        '../app/src/app/ComponentTreeQuery.cpp',
+        '../app/src/app/ComponentFlowState.cpp',
+        '../app/src/app/FleetPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xboard_dep, xplugin_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-component-tree-layout', test_app_component_tree, suite: 'domain', timeout: 60)
+
 # A maquina de estados do breakpoint de arvore de comportamento --
 # extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
 test_app_breakpoint = executable('test-app-breakpoint-controller',
