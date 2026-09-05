@@ -6,6 +6,7 @@
 #include "ubf/FlightState.hpp"
 #include "ubf/RLBridgeBehavior.hpp"
 #include "xnative/AlertDatalink.hpp"
+#include "xnative/ThreadTagProbe.hpp"
 #ifdef FLIGHT_TC_AGENT
    #include "xnative/FlightAgentTC.hpp"
 #endif
@@ -47,6 +48,7 @@ base::Object* factory(const std::string& name)
 
    if ( name == AlertDatalink::getFactoryName() )                obj = new AlertDatalink();
    else if ( name == events::TacticalAlert::getFactoryName() )  obj = new events::TacticalAlert();
+   else if ( name == ThreadTagProbe::getFactoryName() )         obj = new ThreadTagProbe();
 #ifdef FLIGHT_TC_AGENT
    else if ( name == FlightAgentTC::getFactoryName() )          obj = new FlightAgentTC();
 #endif
@@ -72,6 +74,7 @@ namespace {
 const char* const NOMES[] = {
    "AlertDatalink",
    "TacticalAlert",
+   "ThreadTagProbe",
 #ifdef FLIGHT_TC_AGENT
    "FlightAgentTC",
 #endif
@@ -86,6 +89,7 @@ const char* const NOMES[] = {
 const base::MetaObject* const METAS[] = {
    AlertDatalink::getMetaObject(),
    events::TacticalAlert::getMetaObject(),
+   ThreadTagProbe::getMetaObject(),
 #ifdef FLIGHT_TC_AGENT
    FlightAgentTC::getMetaObject(),
 #endif

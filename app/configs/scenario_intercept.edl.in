@@ -28,9 +28,9 @@
          modules: {
             ( PluginModule
                file:     "libflight_tc.so"
-               provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
-                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
-                           FlightAction }
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction }
             )
          }
       )
@@ -395,6 +395,12 @@
                   velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
                   maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
                )
+               // bandit1 nao tem agente (e' so pilotado pelo Autopilot acima) --
+               // sem isto, a coluna 'thread' da aba Players do app fica '-' pra
+               // sempre (ver CLAUDE.md, secao xnative::ThreadTagProbe): so
+               // reporta a thread do pool T/C que esta processando o player,
+               // sem decidir nada.
+               threadTagProbe: ( ThreadTagProbe )
             }
          )
 

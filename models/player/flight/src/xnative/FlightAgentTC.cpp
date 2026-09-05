@@ -1,7 +1,5 @@
 #include "xnative/FlightAgentTC.hpp"
 
-#include "xnative/ThreadTag.hpp"
-
 #include "xboard/Board.hpp"
 
 #include "mixr/models/WorldModel.hpp"
@@ -86,7 +84,7 @@ void FlightAgentTC::controller(const double dt)
    // pertence a fase 3 ("logica e controle"), com o dt do frame inteiro.
    if (world->phase() != 3) return;
 
-   const int tag{threadTag()};
+   const int tag{xboard::threadTag()};
    lastThreadTag.store(tag, std::memory_order_relaxed);
 
    // Publica no quadro de leitura: e por ele que a linha de status mostra em

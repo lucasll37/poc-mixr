@@ -70,7 +70,7 @@
          modules: {
             ( PluginModule
                file:     "libflight.so"
-               provides: { AlertDatalink TacticalAlert FlightState
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightState
                            BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
                            FlightAction }
             )

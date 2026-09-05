@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>Ciclo de simulação MIXR — árvore de componentes</title>
+<title>MIXR — ciclo de fases e eventos do framework</title>
 <style>
   :root{
     --bg:#0a0e17;
@@ -24,6 +24,12 @@
     --phase-background:#e879f9;
     --phase-unknown:#4b5563;
 
+    --evt-emitter:#f59e0b;
+    --evt-handler:#38bdf8;
+    --evt-both:#a855f7;
+    --evt-cascade:#f472b6;
+    --evt-external:#94a3b8;
+
     --edge-dim:#2a3346;
   }
   *{ box-sizing:border-box; }
@@ -35,18 +41,23 @@
   h1,h2,h3{ margin:0; font-weight:600; }
   button{
     font-family:inherit; font-size:12.5px; color:var(--text);
-    background:var(--panel-bg-2); border:1px solid var(--border);
-    border-radius:6px; padding:6px 10px; cursor:pointer;
+    background:var(--panel-bg-2); border:1px solid var(--border); border-radius:6px;
+    padding:6px 10px; cursor:pointer;
   }
   button:hover{ border-color:var(--accent); color:var(--accent); }
   button:active{ transform: translateY(1px); }
 
   .app{ display:flex; flex-direction:column; min-height:100vh; }
 
-  /* ---------- banner de fase ---------- */
-  .banner{
-    padding:14px 20px; border-bottom:1px solid var(--border); background:var(--panel-bg);
+  /* ---------- banner ---------- */
+  .banner{ padding:12px 20px 14px; border-bottom:1px solid var(--border); background:var(--panel-bg); }
+  .mode-tabs{ display:flex; gap:6px; margin-bottom:10px; }
+  .mode-tab{
+    font-family:inherit; font-size:12px; padding:6px 14px; border-radius:8px 8px 0 0;
+    background:var(--panel-bg-2); border:1px solid var(--border); border-bottom:none; color:var(--dim);
   }
+  .mode-tab.active{ background:var(--bg); color:var(--text); font-weight:600; }
+  .mode-tab:hover{ color:var(--accent); }
   .banner-top{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
   .phase-badge{
     font-size:11px; padding:2px 8px; border-radius:999px;
@@ -59,7 +70,7 @@
   }
   .run-state.playing{ color:#22c55e; border-color:#22c55e55; }
   .run-state.paused{ color:#eab308; border-color:#eab30855; }
-  .banner p{ margin:8px 0 0; color:var(--dim); font-size:13px; max-width:80ch; }
+  .banner p{ margin:8px 0 0; color:var(--dim); font-size:13px; max-width:86ch; }
   .banner .empty-note{
     display:inline-block; margin-top:8px; padding:6px 10px; border-radius:6px;
     background:#1a1420; border:1px solid #7c3aed55; color:#c4b5fd; font-size:12.5px;
@@ -68,32 +79,45 @@
 
   /* ---------- corpo principal ---------- */
   .main{ flex:1; display:flex; gap:14px; padding:14px 20px; min-height:0; }
-  .tree-pane{
-    flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:8px;
-  }
+  .tree-pane{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:8px; }
   .hint{ margin:0; color:var(--dim2); font-size:12px; }
   .tree-frame{
     flex:1; border:1px solid var(--border); border-radius:10px; background:var(--panel-bg);
-    overflow:hidden; min-height:460px;
+    overflow:hidden; min-height:520px;
   }
   svg#treeSvg{ width:100%; height:100%; display:block; }
+
   .node-group{ cursor:pointer; }
+  .node-bg{ fill:var(--panel-bg); }
   .node-dot{ stroke:var(--bg); stroke-width:2; }
   .node-ring{ fill:none; stroke-width:2.5; opacity:0; }
   .node-ring.active{ opacity:1; }
+  .node-ring.emitter{ opacity:1; stroke:var(--evt-emitter); }
+  .node-ring.handler{ opacity:1; stroke:var(--evt-handler); }
+  .node-ring.both{ opacity:1; stroke:var(--evt-both); }
   .node-ring.selected{ opacity:1; stroke:#f8fafc; stroke-dasharray:2 3; }
+  .node-abstract-outline{ fill:none; stroke:var(--dim2); stroke-width:1.3; stroke-dasharray:2 2; opacity:.7; }
   .node-main{ fill:var(--text); font-size:12px; }
-  .node-sub{ fill:var(--dim); font-size:10px; }
+  .node-sub{ fill:var(--dim); font-size:9.5px; }
+  .node-sub.is-abstract{ fill:#a1a8b8; font-style:italic; }
   .node-call{ font-size:10.5px; font-style:italic; opacity:0; }
   .node-call.active{ opacity:1; }
-  .node-group.absent .node-main,
-  .node-group.absent .node-sub{ fill:var(--dim2); font-style:italic; }
-  .node-group.absent .node-dot{ opacity:.35; stroke-dasharray:2 2; }
   .node-group:hover .node-main{ fill:var(--accent); }
 
-  .side-pane{
-    flex:0 0 360px; display:flex; flex-direction:column; gap:14px; min-width:0;
+  .ref-line{ stroke:#475569; stroke-width:1; stroke-dasharray:2 3; opacity:.55; fill:none; }
+  .ref-label{ font-size:8.5px; fill:#64748b; font-style:italic; }
+
+  .event-path{
+    fill:none; stroke:var(--evt-emitter); stroke-width:2.5; stroke-dasharray:6 4;
+    animation: evflow .6s linear infinite; opacity:.95;
   }
+  .edge-cascade{
+    stroke:var(--evt-cascade) !important; stroke-width:2.5 !important; stroke-dasharray:5 4 !important;
+    animation: evflow .5s linear infinite;
+  }
+  @keyframes evflow{ to{ stroke-dashoffset:-20; } }
+
+  .side-pane{ flex:0 0 380px; display:flex; flex-direction:column; gap:14px; min-width:0; }
   .panel{
     border:1px solid var(--border); border-radius:10px; background:var(--panel-bg);
     padding:12px 14px; overflow:auto;
@@ -103,9 +127,9 @@
   #chainPanel{ flex:1 1 auto; min-height:220px; }
 
   .detail-title{ font-size:15px; margin-bottom:2px; }
-  .detail-sub{ color:var(--dim); font-size:12px; margin-bottom:8px; }
+  .detail-sub{ color:var(--dim); font-size:11.5px; margin-bottom:8px; }
   .detail-row{ display:flex; gap:8px; align-items:flex-start; margin:4px 0; font-size:12.5px; }
-  .detail-row .k{ color:var(--dim2); flex:0 0 78px; }
+  .detail-row .k{ color:var(--dim2); flex:0 0 88px; }
   .detail-row .v{ color:var(--text); }
   .phase-chip{
     display:inline-flex; align-items:center; gap:6px; font-size:11.5px;
@@ -114,7 +138,9 @@
   .phase-dot{ width:8px; height:8px; border-radius:999px; display:inline-block; }
   .detail-note{ margin-top:8px; padding:8px 10px; border-radius:6px; background:var(--panel-bg-2);
     color:var(--dim); font-size:12px; border:1px solid var(--border); }
-  .absent-flag{ color:#c4b5fd; }
+  .role-emitter{ color:var(--evt-emitter); }
+  .role-handler{ color:var(--evt-handler); }
+  .role-both{ color:var(--evt-both); }
 
   .chain-phase-label{ font-size:12.5px; color:var(--text); margin-bottom:8px; }
   .chain-row{
@@ -128,7 +154,21 @@
   .chain-row.active{ color:var(--text); font-weight:600; border-left-color: var(--phase-color, var(--accent)); }
   .chain-row.active .ref{ color:var(--phase-color, var(--accent)); }
 
-  /* ---------- controles + legenda ---------- */
+  .evt-mech{ font-size:11.5px; color:var(--dim); margin-bottom:10px; padding:6px 8px;
+    background:var(--panel-bg-2); border-radius:6px; border:1px solid var(--border); }
+  .evt-key{ font-size:10.5px; color:var(--dim2); margin-bottom:10px; }
+  .evt-section-title{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim2); margin:10px 0 4px; }
+  .evt-endpoint{ font-size:12px; padding:6px 8px; border-radius:6px; background:var(--panel-bg-2);
+    border:1px solid var(--border); margin-bottom:6px; }
+  .evt-endpoint .cls{ color:var(--text); }
+  .evt-endpoint .method{ color:var(--dim); font-size:11px; }
+  .evt-endpoint .ref{ color:var(--dim2); font-size:10px; }
+  .evt-endpoint.emitter{ border-left:3px solid var(--evt-emitter); }
+  .evt-endpoint.handler{ border-left:3px solid var(--evt-handler); }
+  .evt-external{ font-style:italic; color:var(--evt-external); }
+  .evt-app-badge{ display:inline-block; font-size:9.5px; padding:1px 6px; border-radius:999px;
+    background:#3b0764; color:#e9d5ff; margin-left:6px; }
+
   .controls{
     display:flex; align-items:center; gap:16px; flex-wrap:wrap;
     padding:10px 20px; border-top:1px solid var(--border); background:var(--panel-bg);
@@ -142,10 +182,7 @@
   .legend-item:hover{ background:var(--panel-bg-2); color:var(--text); }
   .legend-dot{ width:9px; height:9px; border-radius:999px; }
 
-  .disclaimer{
-    padding:10px 20px; font-size:11.5px; color:#facc15; background:#1c1706;
-    border-top:1px solid #4d3d05;
-  }
+  .disclaimer{ padding:10px 20px; font-size:11.5px; color:#facc15; background:#1c1706; border-top:1px solid #4d3d05; }
 
   @media (max-width: 900px){
     .main{ flex-direction:column; }
@@ -161,8 +198,12 @@
 <div class="app">
 
   <header class="banner" id="banner">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabPhases" data-mode="phases">Ciclo de fases</button>
+      <button class="mode-tab" id="tabEvents" data-mode="events">Eventos (emissão / tratamento)</button>
+    </div>
     <div class="banner-top">
-      <span class="phase-badge" id="phaseIndex">fase 1/6</span>
+      <span class="phase-badge" id="phaseIndex">1/6</span>
       <h1 id="phaseLabel">—</h1>
       <span class="run-state playing" id="runState">RODANDO</span>
     </div>
@@ -172,7 +213,7 @@
 
   <main class="main">
     <section class="tree-pane">
-      <p class="hint">clique num componente para ver detalhes · a árvore representa a poc <strong>multi-thread</strong> (src/poc/dis/multi-thread)</p>
+      <p class="hint">árvore das CLASSES que o framework MIXR fornece — não um cenário específico. Clique num componente para ver detalhes.</p>
       <div class="tree-frame">
         <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
@@ -184,7 +225,7 @@
         <div id="detailBody"></div>
       </div>
       <div class="panel" id="chainPanel">
-        <h2>Cadeia de chamadas desta fase</h2>
+        <h2 id="chainPanelTitle">Cadeia de chamadas desta fase</h2>
         <div class="chain-phase-label" id="chainPhaseLabel"></div>
         <div id="chainBody"></div>
       </div>
@@ -193,7 +234,7 @@
 
   <footer class="controls">
     <div class="btn-group">
-      <button id="btnReset" title="voltar à fase 1">⏮ início</button>
+      <button id="btnReset" title="voltar ao início">⏮ início</button>
       <button id="btnStepBack" title="um passo para trás">◀ passo</button>
       <button id="btnPlayPause" title="tocar/pausar">⏸ pausar</button>
       <button id="btnStepFwd" title="um passo para frente">passo ▶</button>
@@ -203,10 +244,11 @@
   </footer>
 
   <div class="disclaimer">
-    Isto é um modelo pedagógico, curado à mão a partir do código-fonte real do framework
-    (MIXR v1.0.5) — não é um trace instrumentado ao vivo de um processo rodando. A árvore e a
-    fase de cada componente foram atribuídas por leitura do cenário e do framework, não medidas
-    em tempo de execução. Ver <code>docs/README.md</code> para o que fica para os próximos incrementos.
+    Isto é um modelo pedagógico, curado à mão a partir do código-fonte real do framework MIXR
+    (fork v170600) — não é um trace instrumentado ao vivo de um processo rodando. A árvore mostra
+    as classes GENÉRICAS que o framework fornece (não um cenário específico); a fase/evento de
+    cada componente foi atribuída por leitura do fonte, não medida em tempo de execução.
+    Ver <code>docs/README.md</code> para o que fica para os próximos incrementos.
   </div>
 
 </div>
@@ -219,151 +261,146 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * (a) PHASES — os 6 passos do ciclo de frame do MIXR, na ordem real em
  * que eles se repetem. Mesma ideia de kComponentFlowCycle/EstimatedPhase
  * da aba "Componentes" (F6) do ./app (app/include/app/ComponentFlowState.hpp).
+ * Genérico: qualquer classe do framework que herde o método relevante
+ * participa aqui, independente de cenário.
  * =================================================================== */
 const PHASES = [
-  {
-    id: 'Structural', color: 'var(--phase-structural)',
-    label: 'Estrutural (orquestração)',
-    explanation: 'Station, Simulation e cada Player não "fazem" nada sozinhos nesta fase — eles orquestram: somam o tempo, testam o freeze e percorrem as quatro fases do frame de tempo crítico, uma vez por player.',
-  },
-  {
-    id: 'DynamicsPhase0', color: 'var(--phase-dynamics0)',
-    label: 'Fase 0 — Dinâmica',
-    explanation: 'Simulation::updateTC() está na fase 0: cada Player chama dynamics(dt) — o modelo de voo (JSBSimModel) integra mais um passo de 6 graus de liberdade.',
-  },
-  {
-    id: 'SensorPhase1And2', color: 'var(--phase-sensor12)',
-    label: 'Fases 1/2 — Sensores (transmite / recebe)',
-    explanation: 'System::updateTC() chama transmit(dt) na fase 1 e receive(dt) na fase 2 — a antena varre o espaço e o sensor forma a pista a partir do eco.',
-  },
-  {
-    id: 'DecisionPhase3', color: 'var(--phase-decision3)',
-    label: 'Fase 3 — Decisão (tempo crítico)',
-    explanation: 'Nesta poc (multi-thread) a decisão roda AQUI, dentro do frame: Autopilot::process(), AirTrkMgr::process() e o agente decidem, nessa ordem — o comentário do próprio cenário documenta essa ordem.',
-  },
-  {
-    id: 'DecisionBackground', color: 'var(--phase-decisionbg)',
-    label: 'Decisão em segundo plano',
-    explanation: 'Em uma poc como a single-thread, é aqui que um (SimAgent) decidiria, fora do frame de tempo crítico, via ubf::Agent::updateData()/controller().',
-    noParticipantsNote: 'Nenhum componente desta árvore participa desta fase — a poc multi-thread move a decisão para a fase 3 (ver acima). Isto não é a página travada: é a diferença entre as duas pocs, mostrada pela ausência.',
-  },
-  {
-    id: 'Background', color: 'var(--phase-background)',
-    label: 'Segundo plano (fora do frame T/C)',
-    explanation: 'Station::updateData() roda no laço de fundo: drena o gravador do Tacview, processa entrada/saída de rede DIS e amostra os players para o feed de mensagens.',
-  },
+  { id: 'Structural', color: 'var(--phase-structural)', label: 'Estrutural — orquestração',
+    explanation: 'Station, Simulation e Player não fazem trabalho de domínio aqui: orquestram — somam tempo, testam freeze, percorrem as 4 fases do frame e despacham cada subsistema filho.' },
+  { id: 'DynamicsPhase0', color: 'var(--phase-dynamics0)', label: 'Fase 0 — dynamics()',
+    explanation: 'Player::updateTC() está na fase 0: chama dynamics(dt) no próprio Player, que repassa ao DynamicsModel anexado — a física do voo/movimento integra mais um passo.' },
+  { id: 'SensorPhase1And2', color: 'var(--phase-sensor12)', label: 'Fases 1/2 — transmit() / receive()',
+    explanation: 'System::updateTC() chama transmit(dt) na fase 1 e receive(dt) na fase 2 — todo subsistema de comunicação/sensor (Gimbal, Antenna, RfSensor, IrSensor, Datalink, Navigation, Radio) herda esse par de System.' },
+  { id: 'DecisionPhase3', color: 'var(--phase-decision3)', label: 'Fase 3 — process()',
+    explanation: 'System::updateTC() chama process(dt) na fase 3 — é onde Pilot, TrackManager, StoresMgr, CollisionDetect e um Agent (na variante AgentTC) fazem o trabalho principal, cada um se estiver presente.' },
+  { id: 'DecisionBackground', color: 'var(--phase-decisionbg)', label: 'Fundo — Agent::controller()',
+    explanation: 'Fora do frame de tempo crítico: ubf::Agent::updateData() chama controller() no laço de fundo — a variante mais simples (e mais lenta) de decidir; AgentTC, acima, é a alternativa em tempo crítico.' },
+  { id: 'Background', color: 'var(--phase-background)', label: 'Fundo — updateData() (E/S)',
+    explanation: 'Station::updateData() roda no laço de fundo: drena o gravador de dados, processa entrada/saída de rede e alcança I/O de hardware — nada disso tem pressa de tempo crítico.' },
 ];
 const PHASE_BY_ID = Object.fromEntries(PHASES.map((p, i) => [p.id, { ...p, order: i }]));
 
 /* =====================================================================
- * (b) TREE — árvore de componentes autoral, modelada linha a linha em
- * cima de src/poc/dis/multi-thread/configs/scenario.edl.in real (não
- * inventada). `phase` é atribuída à mão aqui — não há um estimatePhase()
- * heurístico como na versão C++, porque esta árvore não é descoberta de
- * um processo vivo, é curada uma única vez.
+ * (b) TREE — árvore das CLASSES GENÉRICAS que o framework MIXR fornece
+ * (mixr::simulation/mixr::models/mixr::base/mixr::recorder/mixr::interop/
+ * mixr::linkage), não a instância de um cenário. `phase` é atribuída à
+ * mão (não há estimatePhase() heurístico aqui). `kind:'abstract'` marca
+ * uma classe que não é usada diretamente — sempre aparece como uma
+ * subclasse concreta em qualquer cenário real.
  * =================================================================== */
 const TREE = {
-  id: 'station', slot: '', className: 'ClockStation', phase: 'Structural',
+  id: 'station', slot: '', className: 'mixr::simulation::Station', phase: 'Structural',
   call: 'tcFrame(dt) / updateData(dt)',
-  note: 'Station: dona do laço de tempo crítico (T/C) e do laço de fundo.',
+  note: 'Dona do laço de tempo crítico (thread própria) e do laço de fundo. Concreta — instanciada direto (factory.cpp).',
   children: [
     {
-      id: 'simulation', slot: 'simulation', className: 'WorldModel', phase: 'Structural',
+      id: 'simulation', slot: 'simulation', className: 'mixr::simulation::Simulation', phase: 'Structural',
       call: 'updateTC(dt) / updateData(dt)',
-      note: 'Simulation/WorldModel: soma execTime, testa isFrozen() e percorre as 4 fases do frame T/C (Simulation.cpp:457-548).',
+      note: 'Dona do padrão de 4 fases (dynamics/transmit/receive/process). Concretizada em cenários reais como mixr::models::WorldModel, que estende Simulation agregando terreno/gaming area.',
       children: [
         {
-          id: 'players', slot: '', className: '(lista)', synthetic: true, phase: 'Structural',
-          note: 'Nó sintético: Simulation::getPlayers() não passa pelo slot components:, mas é exatamente essa lista que o frame percorre a cada fase.',
+          id: 'player', slot: 'players[]', className: 'mixr::models::Player', phase: 'Structural',
+          call: 'updateTC(dt/4) / updateData(dt)',
+          note: 'Estende simulation::AbstractPlayer — que existe no fonte (tem "Factory name: AbstractPlayer" documentado) mas nunca é ligada a nenhuma factory.cpp: na prática é sempre Player, ou uma subclasse dele (AirVehicle, GroundVehicle, Ship, SpaceVehicle, LifeForm, Building).',
           children: [
-            {
-              id: 'falcon1', slot: 'falcon1', className: 'Aircraft', phase: 'Structural',
-              call: 'updateTC(dt/4) / updateData(dt)',
+            { id: 'dynamicsModel', slot: 'dynamicsModel', className: 'mixr::models::DynamicsModel',
+              phase: 'DynamicsPhase0', call: 'dynamics(dt4)',
+              note: 'Estende base::Component diretamente (irmã de System, não filha). Concretizada em JSBSimModel/RacModel/LaeroModel (voo) ou SpaceDynamicsModel (espaço).', children: [] },
+            { id: 'pilot', slot: 'pilot', className: 'mixr::models::Pilot',
+              phase: 'DecisionPhase3', call: 'process(dt4)',
+              note: 'Estende System. Concretizada em Autopilot (nav/altitude/heading/velocity hold), a própria classe já registrada em factory.cpp.', children: [] },
+            { id: 'datalink', slot: 'datalink', className: 'mixr::models::Datalink',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende System, e também é a ÚNICA classe de comunicação com participação direta no sistema de eventos — ver aba Eventos (token DATALINK_MESSAGE).', children: [] },
+            { id: 'navigation', slot: 'navigation', className: 'mixr::models::Navigation',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende System. Concretizada em Ins/Gps.', children: [] },
+            { id: 'radio', slot: 'radio', className: 'mixr::models::Radio',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende RfSystem. Concretizada em CommRadio/Iff.', children: [] },
+            { id: 'gimbal', slot: 'gimbal', className: 'mixr::models::Gimbal',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende System. ScanGimbal adiciona padrão de varredura; StabilizingGimbal e IrSeeker são outras subclasses diretas.',
               children: [
-                { id: 'falcon1/dynamicsModel', slot: 'dynamicsModel', className: 'JSBSimModel',
-                  phase: 'DynamicsPhase0', call: 'dynamics(dt4)', children: [] },
-                { id: 'falcon1/pilot', slot: 'pilot', className: 'Autopilot',
+                { id: 'antenna', slot: '(componente)', className: 'mixr::models::Antenna',
+                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+                  note: 'Antenna HERDA de Gimbal (via ScanGimbal) — mas aqui aparece como FILHO de um Gimbal. É composição no EDL (um Gimbal físico carregando uma antena de RF), não herança: as duas relações coexistem sem conflito.', children: [] },
+              ] },
+            { id: 'rfSensor', slot: 'rfSensor', className: 'mixr::models::RfSensor',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende RfSystem. Concretizada em Radar → Sar/Gmti/Stt, ou diretamente em Rwr/Jammer. Referencia sua Antenna e seu TrackManager POR NOME (slots antennaName/trackManagerName) — não por composição; ver as linhas pontilhadas na árvore.',
+              children: [] },
+            { id: 'irSensor', slot: 'irSensor', className: 'mixr::models::IrSensor',
+              phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+              note: 'Estende IrSystem (que estende System). MergingIrSensor é a única subclasse concreta nativa.', children: [] },
+            { id: 'obc', slot: 'onboardComputer', className: 'mixr::models::OnboardComputer', phase: 'Structural',
+              note: 'Estende System. Apenas contêiner nesta árvore — quem de fato roda em fase é o TrackManager filho.',
+              children: [
+                { id: 'trackManager', slot: '(componente)', className: 'mixr::models::TrackManager',
                   phase: 'DecisionPhase3', call: 'process(dt4)',
-                  note: 'O comentário do scenario.edl.in é explícito: "3 coisas rodam na fase 3 — Autopilot::process(), AirTrkMgr::process() e a decisão".',
-                  children: [] },
-                { id: 'falcon1/datalink', slot: 'datalink', className: 'AlertDatalink',
-                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
-                { id: 'falcon1/antennas', slot: 'antennas', className: 'Gimbal',
-                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+                  note: 'Estende System. Concretizada em AirTrkMgr/GmtiTrkMgr/RwrTrkMgr/AirAngleOnlyTrkMgr. Recebe eco de um RfSensor por NOME (slot trackManagerName no sensor) — não por composição.', children: [] },
+              ] },
+            { id: 'storesMgr', slot: 'stores', className: 'mixr::models::StoresMgr',
+              phase: 'DecisionPhase3', call: 'process(dt4)',
+              note: 'Estende Stores. A classe C++ StoresMgr é abstrata na prática (Factory name: BaseStoresMgr) — quem tem "Factory name: StoresMgr" de verdade é a subclasse SimpleStoresMgr. Participa também da aba Eventos: uma detonação aqui pode levar a CRASH_EVENT/KILL_EVENT.', children: [] },
+            { id: 'collisionDetect', slot: 'collisionDetect', className: 'mixr::models::CollisionDetect',
+              phase: 'DecisionPhase3', call: 'process(dt4)',
+              note: 'Estende System. Também roda em updateData() (fundo), montando a lista de "pontos de interesse" — mas quem de fato compara distâncias e decide colisão é process(), na fase 3. É o EMISSOR de CRASH_EVENT — ver aba Eventos.', children: [] },
+            { id: 'agentGroup', slot: '', className: '(duas variantes do mesmo framework)', synthetic: true, phase: 'Structural',
+              note: 'mixr::base::ubf::Agent decide de DOIS pontos de entrada diferentes, dependendo de qual é usado — mesma lógica, timing diferente.',
+              children: [
+                { id: 'agent', slot: 'agent', className: 'mixr::base::ubf::Agent', phase: 'DecisionBackground',
+                  call: 'updateData(dt) → controller(dt)',
+                  note: 'updateData() só chama controller(dt) — a decisão roda no laço de FUNDO, uma vez por período de background.',
                   children: [
-                    { id: 'falcon1/antennas/radar', slot: 'radar', className: 'Antenna',
-                      phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
+                    { id: 'behavior', slot: 'behavior', className: 'mixr::base::ubf::AbstractBehavior', phase: 'Unknown', kind: 'abstract',
+                      note: 'genAction() é puro virtual — Agent nunca decide sozinho, sempre delega a uma subclasse concreta (uma árvore de comportamento, um árbitro por votação, uma política treinada, o que a aplicação escrever).', children: [] },
                   ] },
-                { id: 'falcon1/sensors', slot: 'sensors', className: 'SensorMgr',
-                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
-                  children: [
-                    { id: 'falcon1/sensors/tws', slot: '', className: 'Tws',
-                      phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
-                  ] },
-                { id: 'falcon1/obc', slot: 'obc', className: 'OnboardComputer', phase: 'Structural',
-                  note: 'Apenas contêiner — quem de fato executa na fase 3 é o track manager filho.',
-                  children: [
-                    { id: 'falcon1/obc/twsTrkMgr', slot: 'twsTrkMgr', className: 'AirTrkMgr',
-                      phase: 'DecisionPhase3', call: 'process(dt4)',
-                      note: 'Forma as pistas a partir do eco que o Tws já processou nas fases 1/2 — mas o próprio scenario.edl.in diz que quem chama process() nele é a fase 3, não a 2.',
-                      children: [] },
-                  ] },
-                { id: 'falcon1/agent', slot: 'agent', className: 'FlightAgentTC',
-                  phase: 'DecisionPhase3', call: 'process(dt4) → decide()',
-                  note: 'Declarado por ÚLTIMO na lista de componentes de propósito: assim já enxerga as pistas atualizadas deste mesmo frame (Autopilot e AirTrkMgr já rodaram acima).',
-                  children: [
-                    { id: 'falcon1/agent/state', slot: 'state', className: 'FlightState', phase: 'Unknown',
-                      note: 'Snapshot de leitura (domain::WorldView) — não é chamado por fase, é consultado pela decisão.', children: [] },
-                    { id: 'falcon1/agent/behavior', slot: 'behavior', className: 'UbfArbiter', phase: 'Unknown',
-                      note: 'Árbitro por votação entre os comportamentos abaixo — não tem fase própria, roda dentro de decide().',
-                      children: [
-                        { id: 'falcon1/agent/behavior/safety', slot: '', className: 'AltitudeSafetyBehavior',
-                          phase: 'Unknown', note: 'voto 90 — piso anti-CFIT, vence qualquer decisão da árvore.', children: [] },
-                        { id: 'falcon1/agent/behavior/bt', slot: '', className: 'BtBehavior',
-                          phase: 'Unknown', note: 'voto 50 — a árvore de comportamento (BehaviorTree.CPP) de produção.', children: [] },
-                      ] },
-                  ] },
-              ],
-            },
-            {
-              id: 'falcon234', slot: 'falcon2..4', className: '(mesma estrutura de falcon1)',
-              synthetic: true, phase: 'Structural',
-              note: '3 aeronaves omitidas por simplicidade nesta v1 — mesmíssimos componentes de falcon1, cada uma decidindo em paralelo numa thread diferente do pool de tempo crítico.',
-              children: [],
-            },
+                { id: 'agentTC', slot: 'agent', className: 'mixr::base::ubf::Agent::AgentTC', phase: 'DecisionPhase3',
+                  call: 'updateTC(dt4) → controller(dt4)',
+                  note: 'Subclasse de Agent que em vez de sobrescrever updateData(), sobrescreve updateTC() — a MESMA lógica de decisão, chamada de dentro do frame de tempo crítico (fase 3) em vez do laço de fundo.', children: [] },
+              ] },
           ],
         },
       ],
     },
-    { id: 'networks', slot: 'networks', className: 'DisNetIO', phase: 'Background',
-      call: 'processNetworkInput/OutputTasks(dt)',
-      note: 'É por aqui que bandit1 chega (processo à parte, src/poc/dis/bandit) — ele nunca aparece na lista de players local.',
-      children: [] },
-    { id: 'dataRecorder', slot: 'dataRecorder', className: 'ExposedDataRecorder', phase: 'Background',
-      call: 'processRecords()',
-      note: 'Subclasse que só existe para tornar getOutputHandler() público — o DataRecorder nativo do MIXR é opaco (protected).',
+    { id: 'abstractDataRecorder', slot: '', className: 'mixr::simulation::AbstractDataRecorder', phase: 'Unknown', kind: 'abstract',
+      note: 'processUnhandledId() é puro virtual — nunca instanciada diretamente.',
       children: [
-        { id: 'dataRecorder/outputHandler', slot: 'outputHandler', className: 'RecorderOutputHandler',
-          phase: 'Background', children: [
-            { id: 'dataRecorder/outputHandler/tacview', slot: '', className: 'TacviewOutput',
-              phase: 'Background', note: 'Exporta o replay para o Tacview (porta 1234).', children: [] },
+        { id: 'dataRecorder', slot: 'dataRecorder', className: 'mixr::recorder::DataRecorder', phase: 'Background',
+          call: 'processRecords()',
+          note: 'A concretização genérica do framework. getOutputHandler() é protected aqui — opaco por padrão para código externo ao próprio DataRecorder.',
+          children: [
+            { id: 'outputHandler', slot: 'outputHandler', className: 'mixr::recorder::OutputHandler', phase: 'Background', children: [] },
           ] },
       ] },
-    { id: 'msgFeed', slot: 'msgFeed', className: 'MsgFeed', phase: 'Background',
-      call: 'updateData(dt)',
-      note: 'Mensageria configurável por EDL — roda fora do frame T/C nas duas pocs gêmeas.',
-      children: [] },
-    { id: 'ioHandler', slot: 'ioHandler', className: 'JoystickIoHandler', phase: 'Background',
-      absent: true,
-      note: 'Ausente nesta cena: este cenário não declara ioHandler:. Só existe hoje no processo src/poc/dis/bandit, pilotando o intruso por joystick.',
-      children: [] },
+    { id: 'abstractNetIO', slot: '', className: 'mixr::simulation::AbstractNetIO', phase: 'Unknown', kind: 'abstract',
+      note: 'inputFrame()/outputFrame()/getNetworkID() são puro virtuais — nunca instanciada diretamente.',
+      children: [
+        { id: 'netIO', slot: 'networks[]', className: 'mixr::interop::NetIO', phase: 'Background',
+          call: 'processNetworkInput/OutputTasks(dt)',
+          note: 'A camada genérica de interoperabilidade. Ainda precisa de uma subclasse de PROTOCOLO concreta para funcionar — ex.: mixr::interop::dis::NetIO (EDL factory name "DisNetIO") ou o equivalente HLA.', children: [] },
+      ] },
+    { id: 'abstractIoHandler', slot: '', className: 'mixr::base::AbstractIoHandler', phase: 'Unknown', kind: 'abstract',
+      note: '6 métodos puro virtuais — nunca instanciada diretamente.',
+      children: [
+        { id: 'ioHandler', slot: 'ioHandler', className: 'mixr::linkage::IoHandler', phase: 'Background',
+          note: 'Implementa PARTE da funcionalidade de AbstractIoHandler — na prática ainda precisa de uma subclasse por dispositivo (ex.: um handler de joystick).', children: [] },
+      ] },
   ],
 };
 
+/* Referências por NOME (não composição) — a segunda forma de ligação
+ * que a árvore de componentes usa, ao lado de parent/child no EDL. */
+const REFERENCES = [
+  { from: 'rfSensor', to: 'antenna', label: 'antennaName' },
+  { from: 'rfSensor', to: 'trackManager', label: 'trackManagerName' },
+];
+
 /* =====================================================================
  * (c) CALL_CHAINS — a cadeia de chamadas real do framework para cada
- * fase, com arquivo:linha verificados contra o fonte do MIXR v1.0.5.
- * Curada à mão por fase (não uma função genérica de filtro) — ver
+ * fase, com arquivo:linha verificados contra o fonte do MIXR (fork
+ * v170600, contexts/src/mixr/). Curada à mão por fase — ver
  * app/src/app/FrameCallChain.cpp para o equivalente C++ completo.
  * kind: 'thread' | 'call' | 'loop' | 'assign' | 'note'
  * =================================================================== */
@@ -401,7 +438,7 @@ const CALL_CHAINS = {
   ]),
   DecisionPhase3: tcDescent([
     { depth: 12, kind: 'call', text: 'case 3: process(dt4)', ref: 'System.cpp:120', active: true },
-    { depth: 13, kind: 'note', text: 'nesta cena: Autopilot, AirTrkMgr e o agente, nessa ordem', ref: 'scenario.edl.in:460', active: true },
+    { depth: 13, kind: 'note', text: 'quem responde depende de quem existe: Pilot, TrackManager, StoresMgr, CollisionDetect, AgentTC — cada um se presente, na ordem declarada', ref: '', active: true },
   ]),
   DecisionBackground: [
     { depth: 0, kind: 'thread', text: 'laço de fundo (StationBgPeriodicThread)', ref: '' },
@@ -413,7 +450,6 @@ const CALL_CHAINS = {
     { depth: 5, kind: 'note', text: 'Component::updateData(dt)  — DIRETO nos filhos, sem bgFrame()', ref: 'Component.cpp:269' },
     { depth: 6, kind: 'call', text: 'ubf::Agent::updateData(dt)', ref: 'Agent.cpp:59', active: true },
     { depth: 7, kind: 'call', text: 'ubf::Agent::controller(dt)', ref: 'Agent.cpp:64', active: true },
-    { depth: 0, kind: 'note', text: 'nesta poc: nenhum player tem (SimAgent) — a decisão já saiu daqui na fase 3', ref: '', active: true },
   ],
   Background: [
     { depth: 0, kind: 'thread', text: 'laço de fundo (StationBgPeriodicThread)', ref: '' },
@@ -422,12 +458,78 @@ const CALL_CHAINS = {
     { depth: 1, kind: 'call', text: 'Station::processNetworkInputTasks(dt)', ref: 'Station.cpp:342', active: true },
     { depth: 1, kind: 'call', text: 'Station::processNetworkOutputTasks(dt)', ref: 'Station.cpp:343', active: true },
     { depth: 1, kind: 'call', text: 'AbstractDataRecorder::processRecords()', ref: 'Station.cpp:349', active: true },
-    { depth: 1, kind: 'note', text: 'MsgFeed também amostra os players aqui, pelo mesmo updateData()', ref: '' },
+    { depth: 1, kind: 'note', text: 'I/O de hardware (IoHandler) também é varrido aqui, se declarado', ref: '' },
   ],
 };
 
 /* =====================================================================
- * (d) helpers pequenos e puros
+ * (d) EVENTS — o mecanismo GENÉRICO de eventos do framework: macros
+ * BEGIN_EVENT_HANDLER/ON_EVENT/ON_EVENT_OBJ (base/macros.hpp:327-348)
+ * sobre o virtual Component::event(int, Object*) (Component.hpp:329).
+ * Emissão é sempre uma chamada direta -&gt;event(TOKEN, obj) — não existe
+ * sendEvent() nem um barramento de mensagens à parte. Cada entrada foi
+ * verificada linha a linha contra contexts/src/mixr/.
+ * =================================================================== */
+const EVENTS = [
+  {
+    id: 'RESET_EVENT', token: 'RESET_EVENT = 1301',
+    label: 'RESET_EVENT — reinicializar',
+    mechanism: 'event() genérico → hook nomeado (Component::onEventReset → reset()); reset() então recursa pelos filhos por CHAMADA DIRETA, não reemitindo o evento.',
+    description: 'Reinicializa a árvore inteira antes do primeiro frame. Component::event() já mapeia este token para reset() — nenhuma classe precisa da macro BEGIN_EVENT_HANDLER só para isto.',
+    externalEmitter: 'código hospedeiro (fora do framework) — ex.: app/StationBuilder.cpp',
+    handlerIds: ['station'], cascade: true,
+    handlerNote: 'Component::onEventReset() (Component.cpp:52) → reset() (Component.cpp:324) — todo componente da árvore trata, recursivamente, mas por chamada de método comum.',
+  },
+  {
+    id: 'SHUTDOWN_EVENT', token: 'SHUTDOWN_EVENT = 1001',
+    label: 'SHUTDOWN_EVENT — encerrar',
+    mechanism: 'event() genérico → shutdownNotification() → REEMITE o mesmo SHUTDOWN_EVENT para cada filho (Component.cpp:342). É o único evento nativo que se propaga reemitindo A SI MESMO.',
+    description: 'Libera recursos da árvore inteira antes de sair do processo.',
+    externalEmitter: 'código hospedeiro (fora do framework) — ex.: app/Shutdown.cpp',
+    handlerIds: ['station'], cascade: true,
+    handlerNote: 'Component::shutdownNotification() (Component.cpp:333-351) — recursivo, e desta vez via event() de verdade, não chamada direta.',
+  },
+  {
+    id: 'KILL_EVENT', token: 'KILL_EVENT = 1304',
+    label: 'KILL_EVENT — abatido',
+    mechanism: 'event() genérico via macro (BEGIN_EVENT_HANDLER/ON_EVENT_OBJ, Player.cpp:184-186).',
+    description: 'Player anuncia a SI MESMO que foi abatido — um evento AUTO-DIRIGIDO. Existe para permitir que uma subclasse intercepte via BEGIN_EVENT_HANDLER em vez de sobrescrever um método nomeado.',
+    emitterId: 'player', emitterMethod: 'Player::processDetonation() → event(KILL_EVENT, launcher)', emitterRef: 'Player.cpp:2337,2350',
+    handlerIds: ['player'], handlerMethod: 'killedNotification(...)', handlerRef: 'Player.cpp:184-186',
+  },
+  {
+    id: 'CRASH_EVENT', token: 'CRASH_EVENT = 1305',
+    label: 'CRASH_EVENT — colisão/impacto',
+    mechanism: 'event() genérico via macro — emitido por UM componente e tratado por OUTRO, subindo da posição de filho para o pai na árvore (o oposto do sentido da recursão de fase).',
+    description: 'CollisionDetect (filho de Player) mede distância entre players a cada process(); ao detectar colisão, dispara o evento no ALVO.',
+    emitterId: 'collisionDetect', emitterMethod: 'tgt->event(CRASH_EVENT, ownship)', emitterRef: 'CollisionDetect.cpp:401-402',
+    handlerIds: ['player'], handlerMethod: 'collisionNotification()/crashNotification()', handlerRef: 'Player.cpp:187-189 (sobrescrito em AbstractWeapon.cpp)',
+  },
+  {
+    id: 'DATALINK_MESSAGE', token: 'DATALINK_MESSAGE = 1310',
+    label: 'DATALINK_MESSAGE — mensagem de datalink',
+    mechanism: 'event() genérico via macro (Datalink.cpp:38-40) — também sobe de filho para pai.',
+    description: 'Datalink::sendMessage() varre os players do WorldModel e despacha o evento em cada um. O Player recebe primeiro e reencaminha internamente para o próprio Datalink (onDatalinkMessageEvent) — um "ida e volta" que não aparece nesta seta.',
+    emitterId: 'datalink', emitterMethod: 'Datalink::sendMessage() → player->event(DATALINK_MESSAGE, msg)', emitterRef: 'Datalink.cpp:316,348',
+    handlerIds: ['player'], handlerMethod: 'onDatalinkMessageEventPlayer(...) → repassa a getDatalink()', handlerRef: 'Player.cpp:202,2746-2750',
+  },
+  {
+    id: 'EID_ALERT', token: 'EID_ALERT = USER_EVENTS+1 (2001)', appDefined: true,
+    label: 'EID_ALERT — exemplo de extensão da aplicação',
+    mechanism: 'MESMO mecanismo genérico (event() + BEGIN_EVENT_HANDLER/ON_EVENT_OBJ) — só o token e as duas classes não são do MIXR.',
+    description: 'Nem emissor nem tratador são classes do framework (por isso não há destaque na árvore acima) — mostrado aqui de propósito, como prova de que o mecanismo nativo é genérico o bastante para qualquer aplicação estender com seus próprios tokens acima de USER_EVENTS.',
+    externalEmitter: 'AlertDatalink (subclasse desta aplicação) → broadcastAlert()', externalEmitterRef: 'AlertDatalink.cpp:107',
+    externalHandler: 'GuidedMissile (subclasse desta aplicação) → onAlertEvent(...)', externalHandlerRef: 'GuidedMissile.cpp:148-150',
+  },
+];
+function eventColor(evt) {
+  if (evt.cascade) return 'var(--evt-cascade)';
+  if (evt.appDefined) return 'var(--evt-both)';
+  return 'var(--evt-emitter)';
+}
+
+/* =====================================================================
+ * (e) helpers pequenos e puros
  * =================================================================== */
 function nodeLabelLines(node) {
   const hasSlot = node.slot && node.slot !== node.className;
@@ -439,17 +541,16 @@ function computeOnPath(node, phaseId, out) {
   if (onPath) out.add(node.id);
   return onPath;
 }
-function findNode(id) { return NODE_INDEX.get(id) || null; }
 
 /* =====================================================================
- * (e) layout — organograma top-down, uma única passada DFS. Porta
+ * (f) layout — organograma top-down, uma única passada DFS. Porta
  * layoutSubtree() de app/src/app/ComponentTreePanel.cpp: nó-folha ocupa
  * a largura do próprio rótulo, nó interno fica centralizado entre o x
  * do PRIMEIRO e do ÚLTIMO filho (não a média).
  * =================================================================== */
-const ROW_SPACING = 92;
-const COL_GAP = 26;
-const MIN_LABEL_WIDTH = 60;
+const ROW_SPACING = 96;
+const COL_GAP = 22;
+const MIN_LABEL_WIDTH = 56;
 let measureTextEl = null;
 
 function measureTextWidth(str) {
@@ -459,9 +560,9 @@ function measureTextWidth(str) {
 function nodeWidth(node) {
   const { main, sub } = nodeLabelLines(node);
   let w = measureTextWidth(main);
-  if (sub) w = Math.max(w, measureTextWidth(sub));
+  if (sub) w = Math.max(w, measureTextWidth(sub) * 0.86);
   if (node.call) w = Math.max(w, measureTextWidth(node.call));
-  return Math.max(w + 18, MIN_LABEL_WIDTH);
+  return Math.max(w + 16, MIN_LABEL_WIDTH);
 }
 function layoutTree(root) {
   const flat = [];
@@ -472,7 +573,7 @@ function layoutSubtree(node, depth, parentIndex, cursor, flat) {
   const myIndex = flat.length;
   const laid = {
     id: node.id, slot: node.slot, className: node.className, phase: node.phase,
-    call: node.call || null, note: node.note || null, absent: !!node.absent,
+    call: node.call || null, note: node.note || null, kind: node.kind || null,
     synthetic: !!node.synthetic, depth, parentIndex,
     x: 0, y: depth * ROW_SPACING, width: nodeWidth(node),
   };
@@ -504,19 +605,25 @@ function boundingBox(flat) {
 }
 
 /* =====================================================================
- * (f) render — construída UMA vez (buildTreeSvg); a cada troca de fase
- * ou seleção só se ligam/desligam classes e atributos (update()).
+ * (g) render — a árvore é construída UMA vez (buildTreeSvg); a cada
+ * troca de fase/evento/seleção só se ligam/desligam classes e atributos.
  * =================================================================== */
 let FLAT = [];
 let NODE_INDEX = new Map();
-let EDGE_ELS = [];   // { childId, line }
-let NODE_ELS = new Map(); // id -> { ring, call, dot }
+let EDGE_ELS = [];
+let NODE_ELS = new Map();
 let selectedId = 'station';
+const flow = { mode: 'phases', cycleIndex: 0, playing: true, stepsPerSecond: 1 };
 
 function svgEl(tag, attrs) {
   const el = document.createElementNS(SVG_NS, tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
   return el;
+}
+function phaseCssKey(phaseId) {
+  return { Structural: 'structural', DynamicsPhase0: 'dynamics0', SensorPhase1And2: 'sensor12',
+           DecisionPhase3: 'decision3', DecisionBackground: 'decisionbg', Background: 'background',
+           Unknown: 'unknown' }[phaseId] || 'unknown';
 }
 
 function buildTreeSvg() {
@@ -529,13 +636,19 @@ function buildTreeSvg() {
   const box = boundingBox(FLAT);
   const margin = 30;
   svg.setAttribute('viewBox',
-    `${box.minX - margin} ${-margin} ${box.maxX - box.minX + margin * 2} ${box.maxY + ROW_SPACING - 30 + margin * 2}`);
+    `${box.minX - margin} ${-margin} ${box.maxX - box.minX + margin * 2} ${box.maxY + ROW_SPACING - 34 + margin * 2}`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
 
+  const defs = svgEl('defs', {});
+  defs.innerHTML = '<marker id="evArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">' +
+    '<path d="M0,0 L10,5 L0,10 z" fill="var(--evt-emitter)"></path></marker>';
+  svg.appendChild(defs);
+
+  const refLayer = svgEl('g', { class: 'refs' });
   const edgesLayer = svgEl('g', { class: 'edges' });
   const nodesLayer = svgEl('g', { class: 'nodes' });
-  svg.appendChild(edgesLayer);
-  svg.appendChild(nodesLayer);
+  const eventLayer = svgEl('g', { id: 'eventLayer' });
+  svg.appendChild(refLayer); svg.appendChild(edgesLayer); svg.appendChild(nodesLayer); svg.appendChild(eventLayer);
 
   FLAT.forEach(n => {
     if (n.parentIndex >= 0) {
@@ -549,27 +662,28 @@ function buildTreeSvg() {
       EDGE_ELS.push({ childId: n.id, line });
     }
 
-    const g = svgEl('g', { class: 'node-group' + (n.absent ? ' absent' : ''), 'data-id': n.id });
-    const ring = svgEl('circle', { class: 'node-ring', cx: n.x, cy: n.y, r: 11 });
-    const dot = svgEl('circle', {
-      class: 'node-dot', cx: n.x, cy: n.y, r: 6.5, fill: `var(--phase-${phaseCssKey(n.phase)})`,
-    });
+    const g = svgEl('g', { class: 'node-group', 'data-id': n.id });
     const { main, sub } = nodeLabelLines(n);
+    const bgH = n.call ? 46 : (sub ? 33 : 19);
+    const bg = svgEl('rect', { class: 'node-bg', x: n.x - n.width / 2 - 2, y: n.y - 10, width: n.width + 4, height: bgH, rx: 5 });
+    g.appendChild(bg);
+    if (n.kind === 'abstract') {
+      g.appendChild(svgEl('circle', { class: 'node-abstract-outline', cx: n.x, cy: n.y, r: 9 }));
+    }
+    const ring = svgEl('circle', { class: 'node-ring', cx: n.x, cy: n.y, r: 11.5 });
+    const dot = svgEl('circle', { class: 'node-dot', cx: n.x, cy: n.y, r: 6.5, fill: `var(--phase-${phaseCssKey(n.phase)})` });
+    g.appendChild(ring); g.appendChild(dot);
     const mainText = svgEl('text', { class: 'node-main', x: n.x, y: n.y + 20, 'text-anchor': 'middle' });
     mainText.textContent = main;
-    g.appendChild(ring); g.appendChild(dot); g.appendChild(mainText);
-    let subText = null;
+    g.appendChild(mainText);
     if (sub) {
-      subText = svgEl('text', { class: 'node-sub', x: n.x, y: n.y + 33, 'text-anchor': 'middle' });
-      subText.textContent = sub;
+      const subText = svgEl('text', { class: 'node-sub' + (n.kind === 'abstract' ? ' is-abstract' : ''), x: n.x, y: n.y + 32, 'text-anchor': 'middle' });
+      subText.textContent = (n.kind === 'abstract' ? '«abstract» ' : '') + sub;
       g.appendChild(subText);
     }
     let callText = null;
     if (n.call) {
-      callText = svgEl('text', {
-        class: 'node-call', x: n.x, y: n.y + (sub ? 47 : 33), 'text-anchor': 'middle',
-        fill: `var(--phase-${phaseCssKey(n.phase)})`,
-      });
+      callText = svgEl('text', { class: 'node-call', x: n.x, y: n.y + (sub ? 45 : 33), 'text-anchor': 'middle', fill: `var(--phase-${phaseCssKey(n.phase)})` });
       callText.textContent = n.call;
       g.appendChild(callText);
     }
@@ -577,32 +691,75 @@ function buildTreeSvg() {
     nodesLayer.appendChild(g);
     NODE_ELS.set(n.id, { ring, call: callText });
   });
+
+  REFERENCES.forEach(r => {
+    const a = NODE_INDEX.get(r.from), b = NODE_INDEX.get(r.to);
+    if (!a || !b) return;
+    const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+    refLayer.appendChild(svgEl('path', { class: 'ref-line', d: `M ${a.x},${a.y} Q ${midX + 40},${midY} ${b.x},${b.y}` }));
+    const lbl = svgEl('text', { class: 'ref-label', x: midX + 30, y: midY - 4, 'text-anchor': 'middle' });
+    lbl.textContent = r.label + ' (por nome)';
+    refLayer.appendChild(lbl);
+  });
 }
-function phaseCssKey(phaseId) {
-  return { Structural: 'structural', DynamicsPhase0: 'dynamics0', SensorPhase1And2: 'sensor12',
-           DecisionPhase3: 'decision3', DecisionBackground: 'decisionbg', Background: 'background',
-           Unknown: 'unknown' }[phaseId] || 'unknown';
+
+function curvePathBetween(a, b) {
+  const mx = (a.x + b.x) / 2 + (a.x === b.x ? 46 : 0);
+  const my = (a.y + b.y) / 2 - 34;
+  return `M ${a.x},${a.y} Q ${mx},${my} ${b.x},${b.y}`;
+}
+function selfLoopPath(n) {
+  return `M ${n.x - 10},${n.y - 10} C ${n.x - 34},${n.y - 46} ${n.x + 34},${n.y - 46} ${n.x + 10},${n.y - 10}`;
 }
 
 function renderLegend() {
   const el = document.getElementById('legend');
   el.innerHTML = '';
-  PHASES.forEach((p, i) => {
-    const item = document.createElement('div');
-    item.className = 'legend-item';
-    item.innerHTML = `<span class="legend-dot" style="background:${p.color}"></span>${p.label}`;
-    item.addEventListener('click', () => { flow.cycleIndex = i; render(); });
-    el.appendChild(item);
+  const seq = currentSequence();
+  seq.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'legend-item';
+    const color = flow.mode === 'phases' ? item.color : eventColor(item);
+    div.innerHTML = `<span class="legend-dot" style="background:${color}"></span>${item.label}`;
+    div.addEventListener('click', () => { flow.cycleIndex = i; render(); });
+    el.appendChild(div);
   });
 }
 
+function currentSequence() { return flow.mode === 'events' ? EVENTS : PHASES; }
+
 function render() {
-  const phase = PHASES[flow.cycleIndex];
+  const seq = currentSequence();
+  const item = seq[flow.cycleIndex] || seq[0];
+
+  document.getElementById('phaseIndex').textContent = `${flow.cycleIndex + 1}/${seq.length}`;
+  const label = document.getElementById('phaseLabel');
+  label.textContent = item.label;
+  label.style.setProperty('--phase-color', flow.mode === 'phases' ? item.color : eventColor(item));
+  document.getElementById('phaseExplanation').textContent = flow.mode === 'phases' ? item.explanation : item.description;
+  const emptyNote = document.getElementById('phaseEmptyNote');
+  if (flow.mode === 'phases' && item.noParticipantsNote) { emptyNote.textContent = item.noParticipantsNote; emptyNote.hidden = false; }
+  else { emptyNote.hidden = true; }
+  const runState = document.getElementById('runState');
+  runState.textContent = flow.playing ? 'RODANDO' : 'PAUSADO';
+  runState.className = 'run-state ' + (flow.playing ? 'playing' : 'paused');
+
+  if (flow.mode === 'phases') renderPhaseHighlight(item); else renderEventHighlight(item);
+
+  renderDetail(selectedId, item);
+
+  document.getElementById('btnPlayPause').textContent = flow.playing ? '⏸ pausar' : '▶ tocar';
+  document.getElementById('btnSpeed').textContent = flow.stepsPerSecond + 'x';
+}
+
+function clearEventLayer() { document.getElementById('eventLayer').innerHTML = ''; }
+
+function renderPhaseHighlight(phase) {
+  clearEventLayer();
   const litIds = new Set();
   computeOnPath(TREE, phase.id, litIds);
-
-  // --- árvore: arestas e nós ---
   EDGE_ELS.forEach(({ childId, line }) => {
+    line.classList.remove('edge-cascade');
     const lit = litIds.has(childId);
     line.setAttribute('stroke', lit ? phase.color : 'var(--edge-dim)');
     line.setAttribute('stroke-width', lit ? '2.5' : '1.5');
@@ -610,102 +767,139 @@ function render() {
   NODE_ELS.forEach((els, id) => {
     const node = NODE_INDEX.get(id);
     const isActive = node.phase === phase.id;
+    els.ring.classList.remove('emitter', 'handler', 'both');
     els.ring.classList.toggle('active', isActive);
     els.ring.classList.toggle('selected', id === selectedId);
-    if (els.ring.classList.contains('active') && !els.ring.classList.contains('selected')) {
-      els.ring.setAttribute('stroke', phase.color);
-    } else if (els.ring.classList.contains('selected') && !isActive) {
-      els.ring.setAttribute('stroke', '#f8fafc');
-    } else if (isActive) {
-      els.ring.setAttribute('stroke', phase.color);
-    }
+    if (isActive) els.ring.setAttribute('stroke', phase.color);
+    else if (id === selectedId) els.ring.setAttribute('stroke', '#f8fafc');
     if (els.call) els.call.classList.toggle('active', isActive);
   });
 
-  // --- banner ---
-  document.getElementById('phaseIndex').textContent = `fase ${flow.cycleIndex + 1}/${PHASES.length}`;
-  const label = document.getElementById('phaseLabel');
-  label.textContent = phase.label;
-  label.style.setProperty('--phase-color', phase.color);
-  document.getElementById('phaseExplanation').textContent = phase.explanation;
-  const emptyNote = document.getElementById('phaseEmptyNote');
-  if (phase.noParticipantsNote) { emptyNote.textContent = phase.noParticipantsNote; emptyNote.hidden = false; }
-  else { emptyNote.hidden = true; }
-  const runState = document.getElementById('runState');
-  runState.textContent = flow.playing ? 'RODANDO' : 'PAUSADO';
-  runState.className = 'run-state ' + (flow.playing ? 'playing' : 'paused');
-
-  // --- painel de cadeia de chamadas ---
+  document.getElementById('chainPanelTitle').textContent = 'Cadeia de chamadas desta fase';
   document.getElementById('chainPhaseLabel').textContent = phase.label;
   document.getElementById('chainPhaseLabel').style.setProperty('--phase-color', phase.color);
   const chainBody = document.getElementById('chainBody');
   chainBody.innerHTML = '';
-  chainBody.style.setProperty('--phase-color', phase.color);
   (CALL_CHAINS[phase.id] || []).forEach(line => {
     const row = document.createElement('div');
     row.className = `chain-row kind-${line.kind}` + (line.active ? ' active' : '');
     row.style.paddingLeft = (line.depth * 13) + 'px';
     row.style.setProperty('--phase-color', phase.color);
     const icon = { thread: '▮', call: '›', loop: '↻', assign: '=', note: 'i' }[line.kind] || '·';
-    row.innerHTML = `<span class="icon">${icon}</span><span class="txt">${line.text}</span>` +
-      (line.ref ? `<span class="ref">${line.ref}</span>` : '');
+    row.innerHTML = `<span class="icon">${icon}</span><span class="txt">${line.text}</span>` + (line.ref ? `<span class="ref">${line.ref}</span>` : '');
     chainBody.appendChild(row);
   });
-
-  // --- painel de detalhe (recalcula o "ativo agora" do selecionado) ---
-  renderDetail(selectedId, phase);
-
-  // botões
-  document.getElementById('btnPlayPause').textContent = flow.playing ? '⏸ pausar' : '▶ tocar';
-  document.getElementById('btnSpeed').textContent = flow.stepsPerSecond + 'x';
 }
 
-function renderDetail(id, phase) {
+function renderEventHighlight(evt) {
+  EDGE_ELS.forEach(({ line }) => {
+    line.classList.toggle('edge-cascade', !!evt.cascade);
+    if (!evt.cascade) { line.setAttribute('stroke', 'var(--edge-dim)'); line.setAttribute('stroke-width', '1.5'); }
+  });
+  NODE_ELS.forEach((els, id) => {
+    els.ring.classList.remove('active');
+    els.ring.removeAttribute('stroke');
+    if (els.call) els.call.classList.remove('active');
+    const isEmitter = evt.emitterId === id;
+    const isHandler = (evt.handlerIds || []).includes(id);
+    els.ring.classList.toggle('emitter', isEmitter && !isHandler);
+    els.ring.classList.toggle('handler', isHandler && !isEmitter);
+    els.ring.classList.toggle('both', isEmitter && isHandler);
+    els.ring.classList.toggle('selected', id === selectedId);
+  });
+
+  clearEventLayer();
+  const layer = document.getElementById('eventLayer');
+  if (!evt.cascade && evt.emitterId && evt.handlerIds) {
+    evt.handlerIds.forEach(hid => {
+      const a = NODE_INDEX.get(evt.emitterId), b = NODE_INDEX.get(hid);
+      if (!a || !b) return;
+      const d = (a.id === b.id) ? selfLoopPath(a) : curvePathBetween(a, b);
+      layer.appendChild(svgEl('path', { class: 'event-path', d }));
+    });
+  }
+
+  document.getElementById('chainPanelTitle').textContent = 'Emissão / tratamento deste evento';
+  document.getElementById('chainPhaseLabel').textContent = evt.token;
+  document.getElementById('chainPhaseLabel').style.setProperty('--phase-color', eventColor(evt));
+  const body = document.getElementById('chainBody');
+  const emitterHtml = evt.externalEmitter
+    ? `<div class="evt-endpoint emitter"><span class="evt-external">${evt.externalEmitter}</span>${evt.externalEmitterRef ? `<div class="ref">${evt.externalEmitterRef}</div>` : ''}</div>`
+    : `<div class="evt-endpoint emitter"><span class="cls">${nodeLabelLines(NODE_INDEX.get(evt.emitterId) || {}).sub || evt.emitterId}</span><div class="method">${evt.emitterMethod || ''}</div><div class="ref">${evt.emitterRef || ''}</div></div>`;
+  const handlerHtml = evt.externalHandler
+    ? `<div class="evt-endpoint handler"><span class="evt-external">${evt.externalHandler}</span>${evt.externalHandlerRef ? `<div class="ref">${evt.externalHandlerRef}</div>` : ''}</div>`
+    : (evt.handlerIds || []).map(hid => `<div class="evt-endpoint handler"><span class="cls">${nodeLabelLines(NODE_INDEX.get(hid) || {}).sub || hid}</span><div class="method">${evt.handlerMethod || evt.handlerNote || ''}</div><div class="ref">${evt.handlerRef || ''}</div></div>`).join('');
+  body.innerHTML = `
+    <div class="evt-mech">${evt.mechanism}</div>
+    <div class="evt-key">🟠 emissor &nbsp; 🔵 tratador &nbsp; 🟣 auto-dirigido/ambos &nbsp; 🌸 cascata (todo mundo trata)</div>
+    ${evt.appDefined ? `<span class="evt-app-badge">definido por esta aplicação, não nativo do MIXR</span>` : ''}
+    <div class="evt-section-title">emite</div>
+    ${emitterHtml}
+    <div class="evt-section-title">trata</div>
+    ${handlerHtml}
+  `;
+}
+
+function renderDetail(id, currentItem) {
   const node = NODE_INDEX.get(id);
   const body = document.getElementById('detailBody');
   if (!node) { body.innerHTML = '<p class="detail-sub">nada selecionado</p>'; return; }
   const { main, sub } = nodeLabelLines(node);
   const phaseInfo = PHASE_BY_ID[node.phase];
-  const isActiveNow = node.phase === phase.id;
+  let roleHtml = '';
+  if (flow.mode === 'events') {
+    const isEmitter = currentItem.emitterId === id;
+    const isHandler = (currentItem.handlerIds || []).includes(id);
+    if (isEmitter && isHandler) roleHtml = '<div class="detail-row"><span class="k">papel:</span><span class="v role-both">emissor E tratador (auto-dirigido)</span></div>';
+    else if (isEmitter) roleHtml = '<div class="detail-row"><span class="k">papel:</span><span class="v role-emitter">emissor deste evento</span></div>';
+    else if (isHandler) roleHtml = '<div class="detail-row"><span class="k">papel:</span><span class="v role-handler">tratador deste evento</span></div>';
+    else if (currentItem.cascade) roleHtml = '<div class="detail-row"><span class="k">papel:</span><span class="v role-handler">trata (cascata alcança todo mundo)</span></div>';
+  }
   body.innerHTML = `
     <div class="detail-title">${main}</div>
-    ${sub ? `<div class="detail-sub">${sub}</div>` : ''}
+    ${sub ? `<div class="detail-sub">${node.kind === 'abstract' ? '«abstract» ' : ''}${sub}</div>` : ''}
     <div class="detail-row"><span class="k">fase:</span><span class="v">
       ${phaseInfo
-        ? `<span class="phase-chip" style="border-color:${phaseInfo.color}55">
-             <span class="phase-dot" style="background:${phaseInfo.color}"></span>${phaseInfo.label}
-           </span>`
-        : '<span class="phase-chip">sem fase própria — consultado, não chamado</span>'}
-      ${isActiveNow ? ' <strong>· ativo agora</strong>' : ''}
+        ? `<span class="phase-chip" style="border-color:${phaseInfo.color}55"><span class="phase-dot" style="background:${phaseInfo.color}"></span>${phaseInfo.label}</span>`
+        : '<span class="phase-chip">sem fase própria — consultada, não chamada</span>'}
     </span></div>
     ${node.call ? `<div class="detail-row"><span class="k">chamada:</span><span class="v">${node.call}</span></div>` : ''}
-    ${node.absent ? `<div class="detail-row"><span class="k">status:</span><span class="v absent-flag">ausente nesta cena</span></div>` : ''}
+    ${roleHtml}
     ${node.note ? `<div class="detail-note">${node.note}</div>` : ''}
   `;
 }
 
 /* =====================================================================
- * (g) animação — relógio próprio por setInterval, NÃO sincronizado a
- * nenhum processo real (é um pulso conceitual, não um trace ao vivo).
+ * (h) animação — relógio próprio por setInterval, NÃO sincronizado a
+ * nenhum processo real. A mesma sequência serve para fases OU eventos,
+ * conforme flow.mode.
  * =================================================================== */
-const flow = { cycleIndex: 0, playing: true, stepsPerSecond: 1 };
 let timer = null;
-function msPerStep() { return 1600 / flow.stepsPerSecond; }
-function startClock() { stopClock(); if (flow.playing) timer = setInterval(advancePhase, msPerStep()); }
+function msPerStep() { return 1700 / flow.stepsPerSecond; }
+function startClock() { stopClock(); if (flow.playing) timer = setInterval(advanceStep, msPerStep()); }
 function stopClock() { if (timer) { clearInterval(timer); timer = null; } }
-function advancePhase() { flow.cycleIndex = (flow.cycleIndex + 1) % PHASES.length; render(); }
+function advanceStep() { const n = currentSequence().length; flow.cycleIndex = (flow.cycleIndex + 1) % n; render(); }
 function setPlaying(v) { flow.playing = v; startClock(); render(); }
 function cycleSpeed() { flow.stepsPerSecond = flow.stepsPerSecond === 4 ? 1 : flow.stepsPerSecond * 2; startClock(); render(); }
 function stepManual(delta) {
   flow.playing = false; stopClock();
-  flow.cycleIndex = (flow.cycleIndex + delta + PHASES.length) % PHASES.length;
+  const n = currentSequence().length;
+  flow.cycleIndex = (flow.cycleIndex + delta + n) % n;
   render();
 }
 function resetCycle() { flow.cycleIndex = 0; render(); }
 function selectNode(id) { selectedId = id; render(); }
+function setMode(m) {
+  if (flow.mode === m) return;
+  flow.mode = m; flow.cycleIndex = 0;
+  document.getElementById('tabPhases').classList.toggle('active', m === 'phases');
+  document.getElementById('tabEvents').classList.toggle('active', m === 'events');
+  renderLegend();
+  render();
+}
 
 /* =====================================================================
- * (h) wiring de eventos
+ * (i) wiring de eventos
  * =================================================================== */
 function wireControls() {
   document.getElementById('btnPlayPause').addEventListener('click', () => setPlaying(!flow.playing));
@@ -713,12 +907,17 @@ function wireControls() {
   document.getElementById('btnStepBack').addEventListener('click', () => stepManual(-1));
   document.getElementById('btnSpeed').addEventListener('click', cycleSpeed);
   document.getElementById('btnReset').addEventListener('click', resetCycle);
+  document.getElementById('tabPhases').addEventListener('click', () => setMode('phases'));
+  document.getElementById('tabEvents').addEventListener('click', () => setMode('events'));
 }
 
 /* =====================================================================
- * (i) boot
+ * (j) boot — #events na URL abre direto na aba de eventos (link direto
+ * compartilhável), sem precisar clicar.
  * =================================================================== */
+if (location.hash === '#events') flow.mode = 'events';
 buildTreeSvg();
+if (flow.mode === 'events') { document.getElementById('tabPhases').classList.remove('active'); document.getElementById('tabEvents').classList.add('active'); }
 renderLegend();
 wireControls();
 render();

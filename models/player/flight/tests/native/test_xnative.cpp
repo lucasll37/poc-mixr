@@ -13,7 +13,6 @@
 #include "ubf/BtBehavior.hpp"
 #include "xnative/AlertDatalink.hpp"
 #include "events/payloads/EID_ALERT/TacticalAlert.hpp"
-#include "xnative/ThreadTag.hpp"
 #include "xnative/factory.hpp"
 
 #include "mixr/base/MetaObject.hpp"
@@ -28,8 +27,6 @@
 
 #include <set>
 #include <string>
-#include <thread>
-#include <vector>
 
 namespace {
 
@@ -285,22 +282,6 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    EXPECT_EQ(dl->getAlert().senderName, "falcon3") << "o mais proximo tem de vencer";
 
    longe->unref(); perto->unref(); dl->unref();
-}
-
-//------------------------------------------------------------------------------
-// ThreadTag -- indice pequeno e ESTAVEL por thread.
-//------------------------------------------------------------------------------
-TEST(ThreadTag, EstavelNaMesmaThreadEDistintoEntreThreads)
-{
-   const int meu{xnative::threadTag()};
-   EXPECT_EQ(meu, xnative::threadTag()) << "mudou na mesma thread";
-   EXPECT_GE(meu, 0);
-
-   int outro{-1};
-   std::thread t{[&outro] { outro = xnative::threadTag(); }};
-   t.join();
-   EXPECT_GE(outro, 0);
-   EXPECT_NE(outro, meu) << "duas threads receberam o mesmo indice";
 }
 
 } // namespace

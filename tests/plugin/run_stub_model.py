@@ -8,11 +8,11 @@ o modelo e conhecido e identico. Este pode.
 
 Ele roda o cenario de PRODUCAO -- as mesmas 13 construcoes, os mesmos ~20
 slots com tipo e unidade -- trocando UMA COISA: o 'file:' do ( PluginModule ).
-O 'provides:' nao muda, porque o stub declara exatamente os mesmos 6 nomes;
+O 'provides:' nao muda, porque o stub declara exatamente os mesmos 8 nomes;
 se declarasse outros, a assercao de igualdade do registro ja recusaria a carga.
 
 O que isso verifica, e nada mais verifica:
-   que os 6 nomes de fabrica + os slots + as classes base + a escrita no
+   que os 8 nomes de fabrica + os slots + as classes base + a escrita no
    xboard sao SUFICIENTES para um modelo desconhecido fazer a aplicacao
    funcionar.
 

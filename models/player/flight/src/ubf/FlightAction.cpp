@@ -1,7 +1,6 @@
 #include "ubf/FlightAction.hpp"
 
 #include "xnative/AlertDatalink.hpp"
-#include "xnative/ThreadTag.hpp"
 
 #include "xboard/Board.hpp"
 #include "xlog/Log.hpp"
@@ -188,7 +187,7 @@ bool FlightAction::execute(base::Component* actor)
    if (before.decisions > 0 && (before.decisions % kHeartbeatEveryDecisions) == 0) {
       LOG(DEBUG) << "[FlightAction] " << player->getName()->getString()
                  << ": " << before.decisions << " decisoes atuadas, em '" << label
-                 << "' (thread " << threadTag() << ")";
+                 << "' (thread " << xboard::threadTag() << ")";
    }
 
    // Qual thread decidiu -- unico ponto de atuacao comum aos DOIS agentes
@@ -201,7 +200,7 @@ bool FlightAction::execute(base::Component* actor)
    // thread_local), entao aqui sai sempre a MESMA tag pras 4 aeronaves --
    // resposta honesta: elas decidem, de fato, todas na mesma thread de
    // background.
-   xboard::setThreadTag(player->getID(), threadTag());
+   xboard::setThreadTag(player->getID(), xboard::threadTag());
 
    // O pedido de broadcast fica LIGADO enquanto a aeronave evade -- e
    // estado, nao evento. A linha de log sai so na BORDA: quando comeca a

@@ -10,6 +10,7 @@
 #include "mixr/models/player/Player.hpp"
 
 #include "xmissile/GuidedMissile.hpp"
+#include "xmissile/MissileThreadTagProbe.hpp"
 
 #include <cstring>
 
@@ -18,14 +19,16 @@ namespace {
 mixr::base::Object* fabrica(const char* const name)
 {
    if (name == nullptr) return nullptr;
-   if (std::strcmp(name, "GuidedMissile") == 0) return new mixr::xmissile::GuidedMissile();
+   if (std::strcmp(name, "GuidedMissile") == 0)          return new mixr::xmissile::GuidedMissile();
+   if (std::strcmp(name, "MissileThreadTagProbe") == 0)  return new mixr::xmissile::MissileThreadTagProbe();
    return nullptr;
 }
 
-const char* const NOMES[] = { "GuidedMissile", nullptr };
+const char* const NOMES[] = { "GuidedMissile", "MissileThreadTagProbe", nullptr };
 
 const mixr::base::MetaObject* const METAS[] = {
    mixr::xmissile::GuidedMissile::getMetaObject(),
+   mixr::xmissile::MissileThreadTagProbe::getMetaObject(),
    nullptr
 };
 

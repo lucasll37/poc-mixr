@@ -26,6 +26,7 @@
 #include "xplugin/PluginAbi.hpp"
 #include "xboard/Board.hpp"
 
+#include "mixr/base/Component.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/String.hpp"
 #include "mixr/base/numeric/Number.hpp"
@@ -245,6 +246,27 @@ EMPTY_DELETEDATA(RLBridgeBehavior)
 EMPTY_COPYDATA(RLBridgeBehavior)
 
 //------------------------------------------------------------------------------
+// ThreadTagProbe -- so precisa existir: nenhum cenario de teste que carrega o
+// stub declara ( ThreadTagProbe ) dentro de components: { } (so o app/, que
+// nao roda contra o stub, poe isso em bandit1). O cenario de PRODUCAO
+// declara o nome no seu 'provides:' porque o .so exporta a classe
+// incondicionalmente (nos dois artefatos, flight e flight_tc) -- o stub,
+// rodando esse MESMO cenario trocando so o 'file:', precisa responder pelo
+// nome pra nao quebrar a igualdade exata de conjunto. Mesmo raciocinio de
+// RLBridgeBehavior, acima.
+//------------------------------------------------------------------------------
+class ThreadTagProbe final : public base::Component
+{
+   DECLARE_SUBCLASS(ThreadTagProbe, base::Component)
+public:
+   ThreadTagProbe()                                      { STANDARD_CONSTRUCTOR() }
+};
+IMPLEMENT_SUBCLASS(ThreadTagProbe, "ThreadTagProbe")
+EMPTY_SLOTTABLE(ThreadTagProbe)
+EMPTY_DELETEDATA(ThreadTagProbe)
+EMPTY_COPYDATA(ThreadTagProbe)
+
+//------------------------------------------------------------------------------
 // A carga util do datalink e o datalink. O cenario poe ( AlertDatalink ) no
 // slot 'datalink:' de cada aviao, entao ele TEM de derivar de models::Datalink
 // -- Player::processComponents casa por findByType(typeid(models::Datalink)).
@@ -307,17 +329,19 @@ base::Object* fabrica(const char* const name)
    if (std::strcmp(name, "RLBridgeBehavior") == 0)       return new RLBridgeBehavior();
    if (std::strcmp(name, "TacticalAlert") == 0)          return new TacticalAlert();
    if (std::strcmp(name, "AlertDatalink") == 0)          return new AlertDatalink();
+   if (std::strcmp(name, "ThreadTagProbe") == 0)         return new ThreadTagProbe();
    return nullptr;
 }
 
 const char* const NOMES[] = {
-   "AlertDatalink", "TacticalAlert", "FlightState",
+   "AlertDatalink", "TacticalAlert", "ThreadTagProbe", "FlightState",
    "BtBehavior", "AltitudeSafetyBehavior", "RLBridgeBehavior", "FlightAction",
    nullptr
 };
 
 const base::MetaObject* const METAS[] = {
    AlertDatalink::getMetaObject(), TacticalAlert::getMetaObject(),
+   ThreadTagProbe::getMetaObject(),
    FlightState::getMetaObject(), BtBehavior::getMetaObject(),
    AltitudeSafetyBehavior::getMetaObject(), RLBridgeBehavior::getMetaObject(),
    FlightAction::getMetaObject(),

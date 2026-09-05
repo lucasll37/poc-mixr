@@ -7,8 +7,12 @@
 # decide nada, so voa (guiagem propria em cima do JSBSimModel anexado). E
 # carregado ao lado do flight, por um SEGUNDO ( PluginModule ) no cenario de
 # demo (src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in), publicando
-# so "GuidedMissile" -- os 6 nomes do flight nao mudam, entao 'provides:'
-# dos cenarios de PRODUCAO (que so carregam libflight.so) continua igual.
+# "GuidedMissile" e "MissileThreadTagProbe" (a segunda, so para o missil
+# tambem reportar thread na aba Players do app -- ver o cabecalho de
+# src/xmissile/MissileThreadTagProbe.hpp, inclusive o porque do nome NAO ser
+# igual ao gemeo de models/player/flight) -- os nomes do flight nao mudam,
+# entao 'provides:' dos cenarios de PRODUCAO (que so carregam libflight.so)
+# continua igual.
 #
 # Como todo projeto de modelo deste repositorio, este diretorio tambem tem
 # tests/, docs/, Makefile e README.md -- ver o README.md ao lado para o
@@ -35,6 +39,7 @@ missile_lib = shared_module('missile',
         'src/plugin.cpp',
         'src/domain/Guidance.cpp',
         'src/xmissile/GuidedMissile.cpp',
+        'src/xmissile/MissileThreadTagProbe.cpp',
     ),
     cpp_args : [
         '-DMIXR_PLUGIN_PKG_VERSION="' + mixr_dep.version() + '"',

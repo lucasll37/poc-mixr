@@ -3037,6 +3037,136 @@ virou um passo de UM frame real, e a cadeia de chamadas do frame — nome de fun
   4,3 s para 4,5 s; `[Espaço]` volta a rodar; e a cadeia rola sozinha até as linhas `case 3:
   process(dt4 = 0.020000 s)` quando a fase corrente é a 3.
 
+**Vigésima segunda passada: `bandit1` não mostrava thread nenhuma na coluna da aba F1
+Players (`-` fixo) nos cenários `intercept`/`intercept_missile` — corrigido com um
+componente novo, `xnative::ThreadTagProbe`, sem tocar em nenhum agente.**
+
+- **Por que era `-`, e por que isso não era exatamente um bug isolado.** A coluna `thread`
+  só é escrita em dois lugares, os dois DENTRO do ciclo de decisão UBF:
+  `FlightAgentTC::controller()` (fase 3, pool T/C) e `FlightAction::execute()` (a atuação,
+  comum aos dois agentes possíveis). `bandit1`, nos dois cenários do `app` onde existe
+  localmente, é só `dynamicsModel: (JSBSimModel)` + `pilot: (Autopilot ...)` — sem
+  `agent:` nenhum (nem `FlightAgentTC`, nem `SimAgent`) — porque ele é o intruso scriptado,
+  não um player pilotado pela árvore de comportamento. Sem agente, nenhum dos dois pontos
+  de escrita jamais roda para ele, e `xboard::get()` devolve o `Readout{}` default
+  (`threadTag=-1`) pra sempre. Isso já era o comportamento DOCUMENTADO e considerado
+  correto (ver a "oitava passada" acima) — mas o pedido aqui era outro: TODOS os players
+  devem informar a thread, não só os que decidem.
+- **A distinção que resolve isto: "qual thread decidiu" é diferente de "qual thread está
+  processando este player".** `bandit1` não decide nada, mas ELE CONTINUA sendo processado
+  pelo pool T/C nativo como qualquer outro player — suas 4 fases rodam, a cada frame, na
+  MESMA thread que a `Simulation` atribuiu a ele (round-robin por posição na lista). O que
+  faltava não era uma decisão fictícia, era só tornar essa thread OBSERVÁVEL.
+- **`xnative::ThreadTagProbe`** (`models/player/flight/{include,src}/xnative/
+  ThreadTagProbe.{hpp,cpp}`) — um `base::Component` genérico, sem slot nenhum, que só
+  publica `xboard::setThreadTag()` no `updateTC()`, filtrado à fase 3 (MESMO filtro de
+  `FlightAgentTC::controller()`, pelo MESMO motivo: `Player::updateTC()` chama
+  `BaseClass::updateTC()` — a recursão genérica de `Component::updateTC()`
+  (`Component.cpp:243`, confirmado no fonte) — em TODA fase, não só na 3; sem o filtro o
+  mesmo valor seria escrito 4x por frame à toa). Não deriva de `ubf::Agent`/`AgentTC`, não
+  tem `state:`/`behavior:`, não decide nada — só acha o `Player` container
+  (`findContainerByType`, o mesmo padrão de `AlertDatalink`) e escreve. Adicionado ao EDL
+  como mais um item comum de `components: { }`, no mesmo espírito de `agent:` nos falcons:
+  `threadTagProbe: ( ThreadTagProbe )`, no bloco de `bandit1` de
+  `app/configs/scenario_intercept.edl.in`/`scenario_intercept_missile.edl.in` (os dois
+  ÚNICOS cenários do `app` onde `bandit1` existe local — `patrol` não tem `bandit1` nenhum,
+  e nas pocs `single-thread`/`multi-thread` de produção ele só chega por DIS, que nem tem
+  aba F1 pra mostrar).
+- **Custou uma 9ª classe na factory — e por isso um `provides:` a mais em TODO cenário que
+  carrega `libflight.so`/`libflight_tc.so`**, pelo mesmo motivo já registrado na seção do
+  RLBridgeBehavior: `provides:` é igualdade EXATA de conjunto contra o que a `.so` exporta
+  (`shared/xplugin/PluginRegistry.cpp`, comparação de vetores ordenados). Registrada
+  INCONDICIONALMENTE em `xnative/factory.cpp` (sem `#ifdef FLIGHT_TC_AGENT` — ao contrário
+  de `FlightAgentTC`, faz sentido tanto pra `libflight.so` quanto `libflight_tc.so`, já que
+  qualquer player sem agente em QUALQUER dos dois pode precisar dela), então os DOIS
+  artefatos ganharam a classe e os DOIS grupos de `provides:` (7→8 nomes sem
+  `FlightAgentTC`, 8→9 com) precisaram de uma linha a mais — 11 arquivos `.edl`/`.edl.in`
+  ao todo (as 3 do `app`, as 2 do `dis/single-thread`, a do `dis/multi-thread`, a do
+  `built-in_mixr_1`, a do `python-flight`, a do `onnx-policy`, e as DUAS cópias idênticas
+  de `scenario_rl.edl` — `src/rl/configs/` e `src/poc/rl-training/configs/`). Os
+  `app/configs/*.generated.edl` NÃO entraram nessa lista — são artefato de runtime
+  (`app::generateScenario()`), gitignorados, e regeneram sozinhos do `.edl.in` na próxima
+  execução.
+- **`models/player/fixtures/stub/src/stub.cpp` ganhou a MESMA classe, trivial** (só
+  `base::Component` vazio, sem escrever no xboard) — mesmo raciocínio já registrado ali
+  para `RLBridgeBehavior`: o stub roda o cenário de PRODUÇÃO trocando só o `file:`, e o
+  `provides:` desse cenário agora inclui `ThreadTagProbe`; sem o stub também exportar o
+  nome, a igualdade de conjunto quebra e `plugin-modelo-estranho`/`plugin-deposito-terceiro`
+  cairiam — nenhum cenário que roda contra o stub de fato instancia
+  `( ThreadTagProbe )`, ela só precisa EXISTIR. Corrigido de quebra o comentário
+  desatualizado em `tests/plugin/run_stub_model.py` ("os mesmos 6 nomes" — já estava
+  errado antes desta passada, contando 7; agora são 8).
+- **Testado**: `test-native` (25/25, incluindo `Factory.ConstroiTudoQueDeclara`/
+  `TodaClasseDeclaradaExportaMetaObject`, que cobrem a classe nova automaticamente por
+  serem genéricos sobre `factoryNames()`/`metaObjects()` — nenhum teste dedicado foi
+  necessário, mesmo tratamento que `FlightAgentTC` já recebe, pelo mesmo motivo: o filtro
+  de fase precisa de um `WorldModel`/`Simulation` de verdade rodando `tcFrame()`, fora do
+  escopo da camada `native` "sem levantar Station"). `make test` 54/55 (a única falha,
+  `onde-a-decisao-roda`, é a mesma pré-existente de sempre, não relacionada). Verificado
+  RODANDO, sob pty com janela dimensionada corretamente (`TIOCSWINSZ` — sem isso o FTXUI
+  redesenha colunas erradas pro tamanho que ele PENSA que tem): cenário `intercept`,
+  `bandit1` aparece na aba Players com `bt=--` (correto — continua sem decisão) e
+  `thread=T0` (antes, `-`); `falcon1..4` inalterados (`T1..T4`, via `FlightAgentTC` como
+  sempre).
+
+**Vigésima terceira passada: o missil (`GuidedMissile`, cenário `intercept_missile`) tinha
+o MESMO problema do `bandit1` — sem agente, sem thread — e corrigi-lo expôs que a
+numeração de thread não podia continuar PRIVADA de cada `.so`.**
+
+- **`GuidedMissile` também não tem agente** (só `dynamicsModel` + guiagem própria em
+  `domain::Guidance`, nenhum UBF) — mesma causa raiz do `bandit1`, resposta óbvia: dar a
+  ele o mesmo `ThreadTagProbe`. Mas `GuidedMissile` mora em `models/player/missile`, um
+  **plugin Meson separado** (`libmissile.so`) — não linka nem conhece
+  `models/player/flight` — então a classe teve de ser reescrita lá (não reaproveitada por
+  `#include`), no mesmo molde do resto do repositório (`models/fixtures/stub` já duplica
+  trivialmente `AlertDatalink`/`TacticalAlert`/etc. pelo mesmo motivo: cada modelo é
+  autocontido).
+- **Erro real, achado rodando, não hipotético**: registrar a classe com o MESMO nome
+  `"ThreadTagProbe"` nos dois plugins faz `shared/xplugin/PluginRegistry.cpp` recusar a
+  carga assim que os dois `.so` abrem no MESMO processo (`scenario_intercept_missile.edl.in`
+  carrega os dois): *"o nome 'ThreadTagProbe' já foi registrado por flight... quem
+  ganharia dependeria da ordem de carga -- renomeie a classe de um dos dois"*. O registro
+  de nomes de fábrica é GLOBAL ao processo, não por-plugin — óbvio em retrospecto (é
+  exatamente o motivo de `provides:` existir), mas só apareceu ao tentar. Corrigido
+  renomeando o lado do missil para `MissileThreadTagProbe` (arquivo, classe e nome de
+  fábrica) — o do flight ficou como estava (já testado, já em produção via `bandit1`).
+- **A MESMA investigação expôs um segundo problema, mais sutil, ainda não medido em
+  produção mas real: `xnative::threadTag()` (o contador que dá o número T0/T1/...) era
+  PRIVADO de `models/player/flight`** — cada `.so` que o tivesse duplicado teria seu
+  PRÓPRIO contador (`thread_local` + `std::map<thread::id,int>` + `int g_nextTag` todos
+  `static` dentro daquele `.so`). Como o pool de threads T/C é o MESMO para todo o
+  processo (falcons, `bandit1` e o missil competem pelas MESMAS `numTcThreads` threads
+  físicas, round-robin por posição na lista de players), duas numerações independentes
+  dariam números DIFERENTES para a MESMA thread física dependendo de qual plugin chamou
+  primeiro — a aba Players mostraria, por exemplo, `falcon1: T2` e o missil `T0` no MESMO
+  frame, na MESMA thread física, uma coincidência praticamente garantida de acontecer (não
+  um caso de borda raro) e diretamente enganosa para o propósito da coluna ("quem decide
+  em paralelo com quem"). Resolvido promovendo `threadTag()`/`currentCpu()` de
+  `models/player/flight/include/xnative/ThreadTag.hpp` para `shared/xboard/Board.hpp`
+  — a MESMA `libxboard.so`, já compartilhada por dlopen entre os dois plugins, pelo MESMO
+  motivo estrutural de sempre (`bt=`/`dec=` já dependiam disso). O antigo
+  `xnative::ThreadTag.{hpp,cpp}` foi REMOVIDO (não deprecado, não mantido como wrapper) —
+  os três chamadores (`FlightAgentTC.cpp`, `FlightAction.cpp`, o novo
+  `xnative::ThreadTagProbe.cpp`) passaram a chamar `xboard::threadTag()` direto, e o
+  gêmeo do missil (`xmissile::MissileThreadTagProbe.cpp`) chama a MESMA função — dali em
+  diante "T5" significa a MESMA thread física em QUALQUER linha da lista, não importa de
+  qual plugin veio o player.
+- **O teste que existia para `xnative::threadTag()`** (`ThreadTag.EstavelNaMesmaThreadEDistintoEntreThreads`,
+  na suíte `native` do flight) **mudou de casa** para `tests/domain/test_xboard_concurrency.cpp`
+  (suíte `domain`, nível host) — não porque o teste tenha mudado de forma, mas porque a
+  função testada não é mais propriedade do flight; é da SDK, e o teste correto mora perto
+  de onde `xboard` já tem sua bateria de concorrência.
+- **Testado**: `test-xboard-concurrency` (9/9, incluindo o teste movido) e `test-native` do
+  flight (25/25, sem o teste que saiu). `make test` voltou a 54/55 (mesma falha
+  pré-existente de sempre) depois do ajuste do nome — antes dele, com o nome colidindo,
+  `scenario-app-intercept_missile` e `scenario-app-tacview-identidade` FALHAVAM os dois
+  (o segundo carrega os dois plugins juntos num teste de identidade Tacview, mesma causa).
+  Verificado RODANDO, sob pty acelerado (poll até `entidades=6` — o missil só existe
+  entre o lançamento e a detonação/`kLingerSec`, uma janela curta): `W10001` aparece na
+  aba Players com `bt=--` e `thread=T5`, distinto de `falcon1..4` (`T4,T1,T0,T2`) e de
+  `bandit1` (`T3`) no MESMO frame — prova de que a numeração compartilhada está de fato
+  dando um índice por thread física, não um por plugin.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer

@@ -89,6 +89,28 @@ void setRadarScan(int playerId, bool valid, double azDeg, double elDeg,
 
 Readout get(int playerId);
 
+//------------------------------------------------------------------------------
+// Identidade da thread que esta executando -- indice pequeno e ESTAVEL
+// (0,1,2...) para a thread chamadora.
+//
+// PROMOVIDO de models/player/flight/xnative/ThreadTag para CA -- ver o
+// "porque" no CLAUDE.md ("o do missil que nao aparece"): com a numeracao
+// como contador PRIVADO de cada .so, dois plugins DIFERENTES no MESMO
+// processo (models/player/flight e models/player/missile) numerariam a MESMA
+// thread fisica do pool T/C com indices DIFERENTES (cada .so ve sua propria
+// primeira chamada como "a primeira") -- o numero mostrado na aba Players
+// deixaria de significar "esta e a MESMA thread" entre um aviao e um missil
+// processados lado a lado no mesmo frame. Aqui, com uma unica libxboard.so
+// compartilhada por dlopen (mesmo motivo estrutural do resto do arquivo), o
+// contador e o mapa sao os MESMOS para qualquer chamador, em qualquer
+// plugin.
+//------------------------------------------------------------------------------
+int threadTag();
+
+// Nucleo em que a thread chamadora esta neste instante -- diagnostico de
+// afinidade; muda a qualquer momento, por conta do escalonador.
+int currentCpu();
+
 } // namespace xboard
 } // namespace mixr
 

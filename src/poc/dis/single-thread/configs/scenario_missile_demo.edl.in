@@ -21,8 +21,12 @@
 //      (so a dele -- falcon2/3/4 continuam na de producao) passa a ser
 //      flight_tree_missile_demo.xml, que tenta lancar antes de evadir.
 //   4) UM SEGUNDO ( PluginModule ), carregando libmissile.so --
-//      so publica "GuidedMissile". libflight.so continua publicando
-//      exatamente os mesmos 6 nomes de sempre; nenhum cenario de PRODUCAO
+//      publica "GuidedMissile" e "MissileThreadTagProbe" (a segunda, so pro
+//      missil tambem reportar thread na aba Players do app -- ele nao tem
+//      agente nenhum, so guiagem propria; nome DIFERENTE do gemeo do flight
+//      porque o registro de plugins recusa dois .so's no MESMO processo
+//      declarando a MESMA classe de fabrica). libflight.so continua
+//      publicando os mesmos nomes de sempre; nenhum cenario de PRODUCAO
 //      precisa mudar 'provides:' por causa disto (ver o "porque" no
 //      CLAUDE.md, secao do missil).
 //   5) msgFeed ganha um MsgReport do ciclo de vida do missil (mode do
@@ -60,13 +64,13 @@
          modules: {
             ( PluginModule
                file:     "libflight.so"
-               provides: { AlertDatalink TacticalAlert FlightState
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightState
                            BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
                            FlightAction }
             )
             ( PluginModule
                file:     "libmissile.so"
-               provides: { GuidedMissile }
+               provides: { GuidedMissile MissileThreadTagProbe }
             )
          }
       )
@@ -420,6 +424,7 @@
                               model:   "aim1"
                               debugLevel: 0
                            )
+                           threadTagProbe: ( MissileThreadTagProbe )
                         }
                      )
                   }

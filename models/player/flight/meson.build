@@ -76,7 +76,7 @@ model_sources = files(
     # classes MIXR proprias
     'src/xnative/AlertDatalink.cpp',
     'src/xnative/factory.cpp',
-    'src/xnative/ThreadTag.cpp',
+    'src/xnative/ThreadTagProbe.cpp',
     'src/xnative/RadarScan.cpp',
     'src/xnative/FlightAgentTC.cpp',
 

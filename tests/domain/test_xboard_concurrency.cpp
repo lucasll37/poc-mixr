@@ -170,3 +170,27 @@ TEST(XBoardConcurrency, EscritaConcorrenteDeTodosOsSettersNoMesmoPlayerNaoCorrom
    EXPECT_EQ(r.alertSender, "falconX");
    EXPECT_EQ(r.alertContact, "bandit1");
 }
+
+//------------------------------------------------------------------------------
+// threadTag()/currentCpu() -- PROMOVIDOS de models/player/flight/xnative/ThreadTag
+// para ca (ver CLAUDE.md, "o do missil que nao aparece"): um contador PRIVADO
+// por .so numeraria a MESMA thread fisica do pool T/C de forma DIFERENTE em
+// cada plugin (models/player/flight e models/player/missile sao dois .so's
+// distintos, cada um veria sua propria "primeira chamada" como indice 0) --
+// o numero mostrado na aba Players deixaria de significar "esta e a MESMA
+// thread" entre um aviao e um missil no mesmo frame. Uma unica libxboard.so
+// compartilhada por dlopen resolve isso do mesmo jeito que ja resolve
+// bt=/dec= entre host e modelo.
+//------------------------------------------------------------------------------
+TEST(XBoardConcurrency, ThreadTagEstavelNaMesmaThreadEDistintoEntreThreads)
+{
+   const int meu{mixr::xboard::threadTag()};
+   EXPECT_EQ(meu, mixr::xboard::threadTag()) << "mudou na mesma thread";
+   EXPECT_GE(meu, 0);
+
+   int outro{-1};
+   std::thread t{[&outro] { outro = mixr::xboard::threadTag(); }};
+   t.join();
+   EXPECT_GE(outro, 0);
+   EXPECT_NE(outro, meu) << "duas threads receberam o mesmo indice";
+}
