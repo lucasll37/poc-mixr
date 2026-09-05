@@ -12,6 +12,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgFileSink, "MsgFileSink")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgFileSink)
    "fileName", "flushEvery",
 END_SLOTTABLE(MsgFileSink)
@@ -22,6 +23,7 @@ BEGIN_SLOT_MAP(MsgFileSink)
 END_SLOT_MAP()
 
 MsgFileSink::MsgFileSink()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

@@ -22,6 +22,7 @@
 namespace mixr {
 namespace xnative {
 
+// clang-format off
 BEGIN_SLOTTABLE(BtBehavior)
    "treeFile",         //  1
    "patrolHeading",    //  2
@@ -75,6 +76,7 @@ BEGIN_SLOT_MAP(BtBehavior)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
+// clang-format on
 {
    if (msg == nullptr || msg->getString() == nullptr) return false;
    tune.treeFile = msg->getString();

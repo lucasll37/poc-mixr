@@ -163,6 +163,7 @@ IMPLEMENT_SUBCLASS(BtBehavior, "BtBehavior")
 EMPTY_DELETEDATA(BtBehavior)
 EMPTY_COPYDATA(BtBehavior)
 
+// clang-format off
 BEGIN_SLOTTABLE(BtBehavior)
    "treeFile", "patrolHeading", "legTime", "legTurn", "patrolAltitude",
    "patrolSpeed", "rtbAltitude", "rtbSpeed", "arrivalRadius", "fuelReserve",
@@ -192,6 +193,7 @@ BEGIN_SLOT_MAP(BtBehavior)
 END_SLOT_MAP()
 
 class AltitudeSafetyBehavior final : public base::ubf::AbstractBehavior
+// clang-format on
 {
    DECLARE_SUBCLASS(AltitudeSafetyBehavior, base::ubf::AbstractBehavior)
 public:
@@ -206,6 +208,7 @@ IMPLEMENT_SUBCLASS(AltitudeSafetyBehavior, "AltitudeSafetyBehavior")
 EMPTY_DELETEDATA(AltitudeSafetyBehavior)
 EMPTY_COPYDATA(AltitudeSafetyBehavior)
 
+// clang-format off
 BEGIN_SLOTTABLE(AltitudeSafetyBehavior)
    "minAltitude", "recoverAltitude", "recoverSpeed", "minClearance", "recoverClearance",
 END_SLOTTABLE(AltitudeSafetyBehavior)
@@ -228,6 +231,7 @@ END_SLOT_MAP()
 // quebrar a igualdade exata de conjunto.
 //------------------------------------------------------------------------------
 class RLBridgeBehavior final : public base::ubf::AbstractBehavior
+// clang-format on
 {
    DECLARE_SUBCLASS(RLBridgeBehavior, base::ubf::AbstractBehavior)
 public:
@@ -279,6 +283,7 @@ IMPLEMENT_SUBCLASS(AlertDatalink, "AlertDatalink")
 EMPTY_DELETEDATA(AlertDatalink)
 EMPTY_COPYDATA(AlertDatalink)
 
+// clang-format off
 BEGIN_SLOTTABLE(AlertDatalink)
    "holdTime",
 END_SLOTTABLE(AlertDatalink)
@@ -289,6 +294,7 @@ END_SLOT_MAP()
 //------------------------------------------------------------------------------
 // A fronteira C
 //------------------------------------------------------------------------------
+// clang-format on
 namespace {
 
 base::Object* fabrica(const char* const name)

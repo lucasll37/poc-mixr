@@ -9,6 +9,7 @@ namespace xmsg {
 
 IMPLEMENT_ABSTRACT_SUBCLASS(Condition, "XmsgCondition")
 
+// clang-format off
 BEGIN_SLOTTABLE(Condition)
    "field",
 END_SLOTTABLE(Condition)
@@ -20,6 +21,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(Condition)
 
 Condition::Condition()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

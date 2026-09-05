@@ -1,13 +1,26 @@
 # Explorador de Execução MIXR
 
-Reprodutor de trace (não uma animação) do frame de tempo crítico do MIXR: mostra, passo a
-passo, a ordem real de chamadas — `Station` → `Simulation` → 4 fases → cada `Player` → cada
-`System` — lado a lado com o trecho de código-fonte real que está executando, sobre a árvore
-de contenção **real** do cenário `src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in`
-("o player máximo": 53 das 96 classes de `mixr::models`).
+Reprodutor de trace (não uma animação) do MIXR, em **dois modos**, selecionáveis por aba no
+topo da página:
 
-Implementa `docs/TODO.md`, mas **não ao pé da letra** — a seção "O que mudou em relação ao
-TODO.md original", mais abaixo, documenta as correções feitas contra o fonte de verdade.
+1. **Cenário real (`built-in_mixr_1`)** — mostra, passo a passo, a ordem real de chamadas —
+   `Station` → `Simulation` → 4 fases → cada `Player` → cada `System` — lado a lado com o
+   trecho de código-fonte real que está executando, sobre a árvore de contenção **real** de
+   `src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in` ("o player máximo"). Três
+   cadeias (quadro/thread de fundo/reset), como o `docs/TODO.md` original pedia.
+2. **Catálogo `mixr::models`** — não uma instância, a **taxonomia de herança inteira** das
+   ~122 classes que `mixr::models::factory` publica (`contexts/src/mixr/src/models/` — não os
+   plugins deste repositório), navegável num único tour: para cada classe, o corpo real de
+   cada método de fase que ela sobrescreve (capturado automaticamente, não transcrito à mão) e
+   a **interface EDL** (os slots que um `.epp` pode configurar nela, com o comentário original).
+   Este modo nasceu de um pedido explícito do usuário, depois da primeira entrega: "quero...
+   a dinâmica passo a passo de chamada de função, interfaces e tudo mais de **todos** os
+   modelos implementados built-in no mixr" — generalização deliberada do modo 1, que cobre só
+   as 53 classes usadas numa instância.
+
+Implementa `docs/TODO.md` (modo 1), mas **não ao pé da letra** — a seção "O que mudou em
+relação ao TODO.md original", mais abaixo, documenta as correções feitas contra o fonte de
+verdade. O modo 2 é uma extensão além do TODO original, construída sobre a mesma UI.
 
 ## Como rodar
 
@@ -169,6 +182,72 @@ process`, medidos em `System.cpp:135-148`), sobrescreve algum dos 7 métodos com
 É uma aproximação estática (não sabe se o corpo faz algo *interessante*, só se faz *alguma
 coisa*) — mas é honesta, e verificável por qualquer um rodando o mesmo comando.
 
+### `--catalog`: o mesmo extrator, para TODAS as classes de `mixr::models`
+
+```
+python3 scripts/extract_execution_chain.py --catalog > catalogo.json
+```
+
+Em vez de analisar uma lista de classes dada (ou tirada de um `.epp`), enumera **todas** as
+classes registradas via `IMPLEMENT_*SUBCLASS` sob `contexts/src/mixr/src/models/` (de
+propósito, não `models/` deste repositório — esses são os plugins PRÓPRIOS, não "built-in no
+mixr"). Duas coisas a mais em relação ao modo normal:
+
+- **Corpo do método capturado como texto real**, não só arquivo:linha — `find_overrides(...,
+  capture_body=True)` recorta da linha da assinatura até o `}` que fecha, capado em
+  `MAX_BODY_LINES` (60) com `truncated: true` quando corta. É o que elimina a transcrição
+  manual ao catalogar ~120 classes (inviável no ritmo usado para o modo cenário, onde cada
+  trecho foi lido e conferido à mão).
+- **Slots extraídos de `BEGIN_SLOTTABLE(Classe) ... END_SLOTTABLE(Classe)`** (a interface EDL
+  de verdade — `extract_slots()`), com o nome e o comentário original de cada slot.
+- **Categoria derivada do CAMINHO do arquivo** (`category_of()`) — `contexts/src/mixr/src/
+  models/player/weapon/Aam.cpp` → `player/weapon` — porque os diretórios de `models/` já
+  espelham exatamente o agrupamento que os comentários de `factory.cpp` usam; mais robusto que
+  reimplementar um parser desses comentários.
+
+## `scripts/generate_catalog_js.py` — transforma o catálogo em dados da UI
+
+Passo de **geração** (roda uma vez, a mão, quando `contexts/src/mixr` mudar) — o `index.html`
+final continua estático, sem build nem servidor para quem só quer abrir a página:
+
+```
+python3 scripts/generate_catalog_js.py > /tmp/catalog_data.js
+# colar o conteudo dentro de um <script> em index.html, no lugar do bloco
+# que comeca com "/* gerado por scripts/generate_catalog_js.py -- nao editar a mao */"
+```
+
+Produz três constantes:
+
+- **`CATALOG_SRC`** — um `SRC` a mais (mesmo formato `{file, blocks}`), com o corpo capturado
+  de cada método sobrescrito por alguma das ~120 classes. `index.html` funde os dois com
+  `const ALL_SRC = Object.assign({}, CATALOG_SRC, SRC)` — `SRC` (curado à mão) **vence** nas 8
+  chaves em comum (ex.: `Player::updateTC`), porque o trecho curado tem contexto/omissões
+  pensados que o corte automático não tem.
+- **`TAXONOMY`** — a árvore de herança de verdade, `Object` no topo. Ao contrário de
+  `SCENARIO` (uma instância), aqui não há instância nenhuma — só classes — então a estrutura
+  que faz sentido é a cadeia `DECLARE_SUBCLASS` mesmo, reconstruída via `inheritance` (a mesma
+  função que já monta `chain` no modo normal). Nós que não são nenhuma das ~120 classes
+  catalogadas mas são necessários para conectar a árvore (`Component`, `Object`, `Agent`,
+  `AbstractPlayer`, `AbstractAction`, `Simulation`) entram marcados `bridge: true`.
+- **`CATALOG_TOUR`** — um passo por método sobrescrito encontrado, em pré-ordem da própria
+  `TAXONOMY` (mais um passo "ocioso pelos 7 métodos" para toda classe sem override nenhum) —
+  140 passos ao todo. O `hl` de cada passo é **recalculado no cliente** contra o que `ALL_SRC`
+  de fato contém (não confiando no valor pré-calculado do gerador), exatamente por causa da
+  prioridade de `SRC` sobre `CATALOG_SRC` nas 8 chaves em comum — sem isso, o destaque de
+  `Radar::process` (por exemplo) apontaria para uma linha que a versão vencedora nem tem mais.
+
+**Armadilha real, encontrada rodando (não hipotética)**: a primeira versão do `App` declarava
+`const step = visibleSteps[stepIndex] || null;` dentro do corpo de `App()` — e já existia uma
+FUNÇÃO GLOBAL `step(o)` (o factory de `data/traces.js`). Como a árvore de escopo do JS resolve
+`const` por hoisting (temporal dead zone) para a função INTEIRA onde é declarado, qualquer
+referência a `step` em `App()` — inclusive dentro do `useMemo` de `catalogSteps`, que chama
+`step(s)` e roda ANTES da linha `const step = ...` — passou a apontar para a variável local
+(ainda não inicializada), não mais para a função global. Sintoma: tela em branco, `#root`
+vazio, sem nenhum erro útil no console (`file://` suprime detalhe de erro entre scripts —
+diagnosticado injetando um `window.onerror` numa cópia de teste). Corrigido renomeando a
+variável local para `curStep`. Fica registrado porque é o tipo de bug que **não aparece** em
+`node --check` (sintaxe válida) nem numa leitura rápida — só rodando.
+
 ## O que mudou em relação ao `docs/TODO.md` original
 
 Antes de implementar, verifiquei cada premissa do TODO contra o estado real do repositório:
@@ -228,6 +307,17 @@ Antes de implementar, verifiquei cada premissa do TODO contra o estado real do r
   chamada).
 - Nenhum nome de classe/fábrica/slot usado em `SCENARIO` foi inventado — todos batem com
   `scenario_max_player.epp.in` e com a saída do extrator.
+- `python3 scripts/extract_execution_chain.py --catalog` roda sem dependências e devolve 122
+  classes catalogadas (0 em categoria "outro" — nenhuma escapou da categorização por caminho).
+- `TAXONOMY` tem 128 nós (122 catalogadas + 6 "ponte": `Object`, `Component`, `Simulation`,
+  `Agent`, `AbstractPlayer`, `AbstractAction`) — todos alcançáveis a partir de `Object`, sem
+  nó órfão. `CATALOG_TOUR` tem 140 passos, 100% das referências `node`/`src`/`hl` válidas
+  contra `TAXONOMY`/`ALL_SRC` (checado com o mesmo tipo de script de validação, adaptado).
+- O modo Catálogo renderiza em Chrome headless com conteúdo real — testado em três passos:
+  `Action` (ocioso, cadeia até `Object`), `SigSphere` (ocioso, interface com o slot `radius`
+  extraído automaticamente do comentário real de `Signatures.cpp`), e `RfSystem::updateData`
+  (ativo, corpo real mostrando a chamada a `processPlayersOfInterest()` — a mesma função já
+  citada por nome no modo Cenário, agora com o corpo de verdade ao lado).
 
 ## Extensão prevista (não implementada — o gancho para ela)
 

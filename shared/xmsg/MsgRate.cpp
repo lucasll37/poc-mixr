@@ -9,6 +9,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgRate, "MsgRate")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgRate)
    "above", "below", "clear", "window", "hold",
 END_SLOTTABLE(MsgRate)
@@ -24,6 +25,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(MsgRate)
 
 MsgRate::MsgRate()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

@@ -1,0 +1,41 @@
+# Espelha o estilo ja em uso no repositorio (o mesmo do proprio MIXR/OpenEaagles):
+# recuo de 3 espacos, chave em linha propria para classe/funcao/struct mas
+# colada na mesma linha para if/for/while/else, namespace sem recuo no
+# conteudo, ponteiro/referencia colados ao tipo. So padroniza formatacao --
+# nao reordena nem reescreve logica.
+BasedOnStyle: Mozilla
+
+IndentWidth: 3
+TabWidth: 3
+UseTab: Never
+ColumnLimit: 120
+AccessModifierOffset: -3
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+NamespaceIndentation: None
+SpaceBeforeParens: ControlStatements
+AlignAfterOpenBracket: Align
+Cpp11BracedListStyle: true
+
+AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterDefinitionReturnType: None
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+
+SortIncludes: false

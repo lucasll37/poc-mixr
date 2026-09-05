@@ -22,6 +22,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgFeed, "MsgFeed")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgFeed)
    "trackManager", "maxPlayers", "healthEvery", "sinks", "messages",
 END_SLOTTABLE(MsgFeed)
@@ -36,6 +37,7 @@ BEGIN_SLOT_MAP(MsgFeed)
 END_SLOT_MAP()
 
 MsgFeed::MsgFeed()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

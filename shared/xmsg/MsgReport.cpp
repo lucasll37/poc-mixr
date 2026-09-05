@@ -20,6 +20,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgReport, "MsgReport")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgReport)
    "name", "players", "labels", "fields", "when", "match", "every",
 END_SLOTTABLE(MsgReport)
@@ -36,6 +37,7 @@ BEGIN_SLOT_MAP(MsgReport)
 END_SLOT_MAP()
 
 MsgReport::MsgReport()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

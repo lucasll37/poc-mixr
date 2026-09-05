@@ -17,6 +17,7 @@ namespace xnative {
 
 IMPLEMENT_SUBCLASS(AlertDatalink, "AlertDatalink")
 
+// clang-format off
 BEGIN_SLOTTABLE(AlertDatalink)
    "holdTime",   // 1: validade do alerta recebido
 END_SLOTTABLE(AlertDatalink)
@@ -28,6 +29,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(AlertDatalink)
 
 AlertDatalink::AlertDatalink()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

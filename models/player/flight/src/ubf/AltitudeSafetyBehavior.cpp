@@ -14,6 +14,7 @@ namespace xnative {
 
 IMPLEMENT_SUBCLASS(AltitudeSafetyBehavior, "AltitudeSafetyBehavior")
 
+// clang-format off
 BEGIN_SLOTTABLE(AltitudeSafetyBehavior)
    "minAltitude",       // 1
    "recoverAltitude",   // 2
@@ -33,6 +34,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(AltitudeSafetyBehavior)
 
 AltitudeSafetyBehavior::AltitudeSafetyBehavior()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

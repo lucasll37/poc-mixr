@@ -10,6 +10,7 @@ namespace xmsg {
 
 IMPLEMENT_ABSTRACT_SUBCLASS(MsgSink, "XmsgSink")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgSink)
    "messages",
 END_SLOTTABLE(MsgSink)
@@ -21,6 +22,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(MsgSink)
 
 MsgSink::MsgSink()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

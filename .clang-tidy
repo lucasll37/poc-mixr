@@ -1,8 +1,10 @@
 Checks: >
   -*,
-  bugprone-*,
-  performance-*,
-  clang-analyzer-*
+  readability-*,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-uppercase-literal-suffix
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 FormatStyle: none

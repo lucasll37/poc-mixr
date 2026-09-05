@@ -11,6 +11,7 @@ namespace xplugin {
 
 IMPLEMENT_SUBCLASS(PluginModule, "PluginModule")
 
+// clang-format off
 BEGIN_SLOTTABLE(PluginModule)
    "file",       // 1: arquivo .so
    "provides",   // 2: nomes de fabrica esperados (assercao)
@@ -24,6 +25,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(PluginModule)
 
 PluginModule::PluginModule()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

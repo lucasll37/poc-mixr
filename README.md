@@ -174,6 +174,40 @@ Com os cinco respondendo, a máquina está pronta para a seção 3 (`make config
 make install`). O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13
 em §2.1 —, mas as próximas execuções reaproveitam o cache do Conan (`~/.conan2/`) e são rápidas.
 
+### 2.6. Editor: `clangd` + extensão do VS Code (opcional)
+
+O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json` e
+`.vscode/extensions.json`), não para o IntelliSense nativo do C/C++ da Microsoft
+(`C_Cpp.intelliSenseEngine` já vem `"disabled"`, e `ms-vscode.cpptools` está em
+`unwantedRecommendations`). `.clangd` aponta `CompilationDatabase: build` — o
+`compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
+`make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
+
+```bash
+sudo apt install -y clangd        # o language server em si
+code --install-extension llvm-vs-code-extensions.vscode-clangd
+```
+
+O VS Code também oferece a instalação da extensão sozinho: ao abrir a pasta, ele lê
+`.vscode/extensions.json` e sugere `llvm-vs-code-extensions.vscode-clangd` (identificador
+`llvm-vs-code-extensions.vscode-clangd`) no painel de extensões recomendadas — o `code
+--install-extension` acima é só o atalho por linha de comando, para instalar sem abrir o painel.
+
+**Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
+o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
+classe/função mas colada em `if`/`for`/`while`, `namespace` sem recuo, ponteiro colado ao tipo —
+o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoje restrito a
+`readability-*`, o mais permissivo possível — ver histórico do arquivo).
+
+> **Armadilha confirmada rodando — não redescobrir:** os blocos `BEGIN_SLOTTABLE`/`END_SLOTTABLE`
+> e `BEGIN_SLOT_MAP`/`END_SLOT_MAP` (a tabela de slots do EDL, presente em ~16 arquivos do
+> projeto) não têm `;` entre as macros — é assim que o framework original já os escreve. Sem
+> proteção, `clang-format` interpreta a ausência de `;` como uma "expressão sem fim" e cola tudo
+> numa única linha, destruindo a tabela. Por isso cada bloco desses já vem cercado por
+> `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
+> desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
+> primeira vez que alguém rodar "Format Document" em cima dele.
+
 ---
 
 ## 3. Build

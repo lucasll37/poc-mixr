@@ -9,6 +9,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgThreshold, "MsgThreshold")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgThreshold)
    "above", "below", "clear", "hold",
 END_SLOTTABLE(MsgThreshold)
@@ -23,6 +24,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(MsgThreshold)
 
 MsgThreshold::MsgThreshold()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

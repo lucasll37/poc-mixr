@@ -17,6 +17,7 @@ namespace xplugin {
 
 IMPLEMENT_SUBCLASS(PluginLoader, "PluginLoader")
 
+// clang-format off
 BEGIN_SLOTTABLE(PluginLoader)
    "searchPaths",   // 1: onde procurar as .so, na ordem
    "modules",       // 2: o que carregar
@@ -28,6 +29,7 @@ BEGIN_SLOT_MAP(PluginLoader)
 END_SLOT_MAP()
 
 PluginLoader::PluginLoader()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

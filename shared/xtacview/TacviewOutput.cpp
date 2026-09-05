@@ -30,6 +30,7 @@ namespace xtacview {
 
 IMPLEMENT_SUBCLASS(TacviewOutput, "TacviewOutput")
 
+// clang-format off
 BEGIN_SLOTTABLE(TacviewOutput)
    "host",        // 1: IP de escuta
    "port",        // 2: porta Real-Time Telemetry
@@ -53,6 +54,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(TacviewOutput)
 
 TacviewOutput::TacviewOutput()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

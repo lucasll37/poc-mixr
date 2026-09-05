@@ -23,6 +23,7 @@ namespace xjoystick {
 
 IMPLEMENT_SUBCLASS(JoystickIoHandler, "JoystickIoHandler")
 
+// clang-format off
 BEGIN_SLOTTABLE(JoystickIoHandler)
    "player",         // 1: nome do player a controlar
    "deviceIndex",    // 2: indice do dispositivo a checar (default: 0)
@@ -36,6 +37,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(JoystickIoHandler)
 
 JoystickIoHandler::JoystickIoHandler()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }

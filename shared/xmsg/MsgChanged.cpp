@@ -9,6 +9,7 @@ namespace xmsg {
 
 IMPLEMENT_SUBCLASS(MsgChanged, "MsgChanged")
 
+// clang-format off
 BEGIN_SLOTTABLE(MsgChanged)
    "by",
 END_SLOTTABLE(MsgChanged)
@@ -20,6 +21,7 @@ END_SLOT_MAP()
 EMPTY_DELETEDATA(MsgChanged)
 
 MsgChanged::MsgChanged()
+// clang-format on
 {
    STANDARD_CONSTRUCTOR()
 }
