@@ -12,7 +12,7 @@ namespace xrlbridge {
 //------------------------------------------------------------------------------
 // A ponte de comando/observacao entre um host de RL (src/rl/bindings, um modulo
 // de extensao Python) e o comportamento UBF que decide por fora do processo
-// MIXR (models/flight/include/ubf/RLBridgeBehavior.hpp).
+// MIXR (models/A4/include/ubf/RLBridgeBehavior.hpp).
 //
 // Uma unica questao: o comando que o host quer aplicar, e a observacao que o
 // modelo capturou no ultimo ciclo de decisao -- os dois lados de uma troca
@@ -38,7 +38,7 @@ namespace xrlbridge {
 // Uma lib estatica daria a cada lado a SUA PROPRIA copia do mapa -- o host
 // nunca veria o comando chegar no modelo, e vice-versa.
 //
-// Os campos de Observation espelham domain::WorldView (models/flight/include/
+// Os campos de Observation espelham domain::WorldView (models/A4/include/
 // domain/WorldView.hpp) CAMPO A CAMPO, mas deliberadamente NAO reusam o tipo:
 // esta lib nao pode incluir headers do modelo (ver
 // tests/guard/check_host_opaco.sh -- o host nao pode conhecer o fonte do

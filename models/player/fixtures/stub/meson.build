@@ -6,7 +6,7 @@
 # CONTRATO.md e em CLAUDE.md.
 #
 # Projeto Meson próprio, e isso é o ponto: ele não tem como ver os headers de
-# models/flight nem os de src/. As únicas coisas no include path dele são
+# models/A4 nem os de src/. As únicas coisas no include path dele são
 # o SDK publicado em dist/ e o MIXR.
 #
 # Ele NÃO linka a BehaviorTree.CPP — um modelo não precisa decidir com árvore.

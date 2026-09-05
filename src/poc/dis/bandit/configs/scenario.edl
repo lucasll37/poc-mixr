@@ -1,7 +1,7 @@
 //
 // src/poc/dis/bandit
 //
-// O bandit1 (o intruso), num processo proprio: mesma dinamica JSBSim c310 +
+// O bandit1 (o intruso), num processo proprio: mesma dinamica JSBSim A-4 +
 // Autopilot, mesmos valores iniciais dos players single-thread/multi-thread,
 // mais duas coisas:
 //
@@ -82,7 +82,7 @@
                       port: 3000  localPort: 3001          shared: true )
          outputEntityTypes: {
             ( DisNtm
-               template: ( Aircraft type: "C310" )
+               template: ( Aircraft type: "A4" )
                disEntityType: [ 1 2 225 1 99 0 0 ]
             )
          }
@@ -96,7 +96,7 @@
          // 'inputEntityTypes:' das duas pocs gemeas).
          inputEntityTypes: {
             ( DisNtm
-               template: ( Aircraft type: "C310"
+               template: ( Aircraft type: "A4"
                   signature: ( SigSphere radius: 3.0 )
                   dataLogTime: ( Seconds 0.1 )
                )
@@ -120,8 +120,8 @@
                port: 1235
                callsign: "poc-mixr/bandit"
                fileName: "./src/poc/dis/bandit/data/recordings/mission.acmi"
-               modelMap: { bandit1: "F-16C"  falcon1: "F-16C"  falcon2: "F-16C"
-                           falcon3: "F-16C"  falcon4: "F-16C" }
+               modelMap: { bandit1: "A-4E"  falcon1: "A-4E"  falcon2: "A-4E"
+                           falcon3: "A-4E"  falcon4: "A-4E" }
                typeMap:  { bandit1: "Air+FixedWing"  falcon1: "Air+FixedWing"
                            falcon2: "Air+FixedWing"  falcon3: "Air+FixedWing"
                            falcon4: "Air+FixedWing" }
@@ -152,23 +152,23 @@
          bandit1: ( Aircraft
             id: 201
             side: red
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 4.0 )
             initXPos:     ( NauticalMiles 12.0 )
             initYPos:     ( NauticalMiles 12.0 )
             initAlt:      ( Meters 2400.0 )
             initHeading:  ( Degrees 225 )
-            initVelocity: 92.0                   // ~180 kts
+            initVelocity: 195.0                   // ~380 kts
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
             }
          )

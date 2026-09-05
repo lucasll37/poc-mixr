@@ -1,7 +1,7 @@
 # Changelog — `events/`
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/) — com uma
-diferença do `CHANGELOG.md` de cada projeto de modelo (`models/flight`, `models/missile`,
+diferença do `CHANGELOG.md` de cada projeto de modelo (`models/A4`, `models/missile`,
 `models/fixtures/stub`): **não há número de versão aqui.** `events/` não é um projeto Meson
 próprio — não tem `project()`, se junta ao `poc-mixr` da raiz via `subdir('./events')` — então não
 existe um `project()` cuja versão datar as entradas. A unidade que importa aqui é o **evento**:
@@ -23,7 +23,7 @@ tokens em código — este arquivo é a HISTÓRIA de como ele cresceu, não subs
 
 - **`events::EID_ALERT` / `events::TacticalAlert`** ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) —
   primeiro evento da convenção, generalizando o `xnative::TacticalAlert` que já existia só dentro
-  de `models/flight`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
+  de `models/A4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
   `sendMessage()` nativo do `Datalink`) para alcançar um player **sem** Datalink —
   `xmissile::GuidedMissile` (`models/missile`) é o primeiro handler escrito num plugin diferente
   do que emite. Mesma classe, mesmo nome de fábrica `"TacticalAlert"` de antes — nenhuma mudança

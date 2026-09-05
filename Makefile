@@ -41,7 +41,7 @@ clean: ## Clean all generated build files in the project (host + os tres modelos
 	rm -rf ./subprojects/packagecache
 	@# Cada modelo limpa o PROPRIO build/dist (autocontido) -- '|| true' porque
 	@# um clean antes do primeiro 'make models' nao tem nada para limpar ali.
-	@$(MAKE) -C models/player/flight clean 2>/dev/null || true
+	@$(MAKE) -C models/player/A4 clean 2>/dev/null || true
 	@$(MAKE) -C models/player/missile clean 2>/dev/null || true
 	@$(MAKE) -C models/player/fixtures/stub clean 2>/dev/null || true
 	@# So os nomes que ESTE repositorio gera -- um .so de TERCEIRO com outro
@@ -82,7 +82,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# libxtrack pra dist/lib/ com mtime NOVO mesmo sem mudanca de conteudo --
 	@# e um destino mais novo que um input ja linkado faz o ninja dos modelos
 	@# (flight/missile/stub, que dependem do SDK) achar que precisa RELINKAR
-	@# na proxima chamada. Confirmado com 'ninja -C models/player/flight/build -d
+	@# na proxima chamada. Confirmado com 'ninja -C models/player/A4/build -d
 	@# explain libflight.so'. Sem isto, TODO 'make install'/'run-*'/'test'
 	@# relinkava os quatro plugins de producao, mesmo com tudo ja compilado.
 	meson install -C $(BUILD_DIR) --no-rebuild --tags sdk,devel --only-changed
@@ -114,7 +114,7 @@ ASAN ?= false
 # ==============================================================================
 
 models: sdk ## Compila e deposita flight/missile/stub em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
-	$(MAKE) -C models/player/flight install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
+	$(MAKE) -C models/player/A4 install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
 	@# O modelo ESTRANHO -- projeto proprio, ve so o SDK. E o unico artefato
 	@# que pode falhar por "o contrato nao basta". Ver models/player/fixtures/stub/CONTRATO.md.
 	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
@@ -258,10 +258,10 @@ venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/player/flight.
-	@# 'test' do Makefile de models/player/flight ja confere a contagem (>=3) e ja
+test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/player/A4.
+	@# 'test' do Makefile de models/player/A4 ja confere a contagem (>=3) e ja
 	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
-	$(MAKE) -C models/player/flight test
+	$(MAKE) -C models/player/A4 test
 
 test: test-models install ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true. 'install' garante dist/ populado p/ os testes que rodam binario.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \

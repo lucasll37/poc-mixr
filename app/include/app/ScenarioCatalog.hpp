@@ -25,7 +25,7 @@ namespace app {
 // Era uma camada de aplicacao de ~1.500 linhas copiada em cada pasta,
 // sustentada pela guarda check_duplication.sh; hoje a duplicacao esta
 // dissolvida por construcao, do mesmo jeito que aconteceu quando o MODELO
-// saiu para models/flight.
+// saiu para models/A4.
 //------------------------------------------------------------------------------
 struct ScenarioEntry
 {

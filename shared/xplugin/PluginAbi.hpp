@@ -159,7 +159,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 // escreve a assinatura, entao nao ha onde enfiar um 'static'.
 //
 // Uso -- o exemplo minimo completo e models/fixtures/stub/src/stub.cpp, e o de
-// producao e models/flight/src/plugin.cpp:
+// producao e models/A4/src/plugin.cpp:
 //
 //    namespace {
 //    const char* const NAMES[] = { "MinhaClasse", nullptr };

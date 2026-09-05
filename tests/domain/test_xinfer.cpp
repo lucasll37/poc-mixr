@@ -111,7 +111,7 @@ TEST(XInfer, RunComPonteiroNuloOuTamanhoZeroDevolveNegativo)
 //------------------------------------------------------------------------------
 // O CAMINHO FELIZ, contra o .onnx que o modelo de fato instala.
 //
-// POLICY_ONNX vem do meson (models/flight/configs/policy_example.onnx). Usar o
+// POLICY_ONNX vem do meson (models/A4/configs/policy_example.onnx). Usar o
 // arquivo DE VERDADE, e nao um gerado pelo teste, e o que faz estes casos
 // valerem: eles quebram se o contrato derivar -- se alguem acrescentar um
 // campo em ObservationFields.hpp sem reexportar o modelo, a forma deixa de

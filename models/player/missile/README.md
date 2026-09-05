@@ -1,6 +1,6 @@
 # `missile` — segundo modelo de exemplo
 
-Projeto Meson **independente** (não sabe nada de `models/flight/` nem de `src/`), publicando um
+Projeto Meson **independente** (não sabe nada de `models/A4/` nem de `src/`), publicando um
 único `Player` novo: `GuidedMissile`, guiado sobre um `JSBSimModel` anexado (física 6-DOF de
 verdade — não é um `Player` de brinquedo). Existe como exemplo de "criar um modelo novo" e de
 "ativar um player em runtime" (ver [../../CLAUDE.md](../../CLAUDE.md), seção "Demo: míssil

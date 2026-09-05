@@ -13,7 +13,7 @@
         <version> $Revision: 1.64 $ </version>
         <description>
             NAO E UM PERFIL DE MISSIL REAL: e o c310.xml do proprio JSBSim (ver
-            models/flight/README ou CLAUDE.md, secao do missil) com tres mudancas
+            models/A4/README ou CLAUDE.md, secao do missil) com tres mudancas
             deliberadas, para exemplificar um "aviao com aerodinamica propria e mais carga
             G" academicamente, sem escrever tabelas aerodinamicas do zero:
 

@@ -8,13 +8,18 @@
 // arbitro ( UbfArbiter ) e a percepcao/decisao/acao (FlightState/BtBehavior/
 // FlightAction) sao proprios -- o UBF nao traz implementacoes prontas.
 //
-// AERONAVE: c310 (Cessna 310). O motivo e concreto: o JSBSimModel nativo
+// AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
+// models/player/A4/data/jsbsim/aircraft/A4/, originados de
+// shared/data/jsbsim/aircraft/A4/). O motivo do proprio c310 (agora
+// substituido) era concreto e continua valendo aqui: o JSBSimModel nativo
 // comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
 // 'ap/airspeed_hold' (confirmado com `strings libmixr_models.so`),
 // propriedades que so existem se o MODELO JSBSim tiver um autopilot proprio.
-// O c310 tem (<autopilot file="c310ap">), entao a cadeia Autopilot ->
-// JSBSimModel -> superficies funciona sem uma linha de lei de controle
-// propria.
+// O A-4 de fabrica (Aeromatic) nao vem com nenhum -- por isso
+// models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
+// esta PoC-mixr, no mesmo papel que c310ap.xml cumpria: com ele, a cadeia
+// Autopilot -> JSBSimModel -> superficies funciona sem uma linha de lei de
+// controle propria.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -90,7 +95,7 @@
                   // elevacao; quem manda aqui e o piso AGL abaixo.
                   minAltitude:      ( Meters 1200 )
                   recoverAltitude:  ( Meters 1750 )
-                  recoverSpeed:     160.0
+                  recoverSpeed:     350.0
                   // minClearance TEM de ficar abaixo do terrainClearance do
                   // BtBehavior (800), senao este comportamento (voto 90)
                   // briga com o piso de evasao da arvore (voto 50).
@@ -104,7 +109,7 @@
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )
                   patrolAltitude: ( Meters 1750 )
-                  patrolSpeed:    160.0
+                  patrolSpeed:    350.0
                   // Jitter de rumo na patrulha (opcional, ver CLAUDE.md secao
                   // shared/xrandom): mesma patrolMasterSeed nos 4 falcons --
                   // cada um deriva a propria sequencia do proprio NOME, nunca
@@ -112,12 +117,12 @@
                   patrolJitterHeading: ( Degrees 6 )
                   patrolMasterSeed:    20260903
                   rtbAltitude:    ( Meters 2050 )
-                  rtbSpeed:       170.0
+                  rtbSpeed:       380.0
                   arrivalRadius:  ( NauticalMiles 2.0 )
                   fuelReserve:    0.35
                   breakTurn:      ( Degrees 110 )
                   evadeClimb:     ( Meters 700 )
-                  evadeSpeed:     185.0
+                  evadeSpeed:     420.0
                   // PISO ANTI-CFIT. O desconflito vertical da evasao desce
                   // 700 m a partir da altitude atual; com ~940 m de AGL de
                   // cruzeiro isso levaria a aeronave para ~240 m do chao. O
@@ -131,7 +136,7 @@
                   // setor do radar) e o ramo de apoio querer assumir -- sem
                   // isso os dois alternam e a aeronave voa "batendo asa".
                   evadeHold:      ( Seconds 30 )
-                  supportSpeed:   180.0
+                  supportSpeed:   400.0
                )
             }
          )
@@ -144,17 +149,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 170.0
+                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
+                  evadeSpeed: 420.0  supportSpeed: 400.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                   patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
@@ -170,17 +175,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                   legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                  patrolSpeed: 165.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 170.0
+                  patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                  evadeSpeed: 190.0  supportSpeed: 185.0
+                  evadeSpeed: 430.0  supportSpeed: 410.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                   patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
@@ -196,17 +201,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 170.0
+                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
+                  evadeSpeed: 420.0  supportSpeed: 400.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                   patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
@@ -258,8 +263,9 @@
             // "falha no motor". engThrustAsymFrac = (max-min)/max entre os
             // motores: 0 simetrico, ~1 um motor morto. E adimensional, entao
             // NAO precisa de calibracao por aeronave -- ao contrario de
-            // engRpmRaw, cuja unidade depende do tipo de motor (o c310 e
-            // pistao: ~2500, nao ~95).
+            // engRpmRaw, cuja unidade depende do tipo de motor (o A-4 e
+            // turbina: getEngRPM() devolve GetN2() em PERCENTUAL, ~60-100,
+            // nao RPM absoluto -- ver JSBSimModel.cpp).
             //
             // 'clear' e obrigatorio; 'hold' descarta o transiente dos
             // primeiros segundos (JSBSimModel::reset() nao roda FGTrim).
@@ -317,7 +323,7 @@
    // ID do proprio PDU. O template de SAIDA (outputEntityTypes:) so precisa
    // casar CLASSE + 'type:' (o que o Ntm usa pra achar qual player local
    // publicar) -- falcon1..4 e bandit1 sao a MESMA classe/type
-   // ("Aircraft"/"C310"), entao o mesmo disEntityType serve pros dois
+   // ("Aircraft"/"A4"), entao o mesmo disEntityType serve pros dois
    // sentidos sem ambiguidade: cada lado so ouve trafego de quem so emite
    // UMA coisa (bandit so emite bandit1; esta Station so emite
    // falcon1..4).
@@ -339,7 +345,7 @@
                       port: 3000  localPort: 3002          shared: true )
          inputEntityTypes: {
             ( DisNtm
-               template: ( Aircraft type: "C310"
+               template: ( Aircraft type: "A4"
                   signature: ( SigSphere radius: 4.0 )
                   dataLogTime: ( Seconds 0.1 )
                )
@@ -348,7 +354,7 @@
          }
          outputEntityTypes: {
             ( DisNtm
-               template: ( Aircraft type: "C310" )
+               template: ( Aircraft type: "A4" )
                disEntityType: [ 1 2 225 1 99 0 0 ]
             )
          }
@@ -382,16 +388,13 @@
                // para escolher o icone/modelo 3D (o nome do player vai em
                // CallSign/Pilot -- ver shared/xtacview).
                //
-               // NOTA: a DINAMICA aqui e a de um Cessna 310 (a unica com
-               // autopilot 'ap/*' entre as aeronaves distribuidas com o
-               // JSBSim -- ver o comentario no topo). "F-16C" e portanto uma
-               // escolha de APRESENTACAO: o replay desenha um caca, mas as
-               // velocidades e as taxas de curva continuam sendo as do c310.
-               // Para trocar o icone basta editar esta linha; para trocar a
-               // aeronave de verdade seria preciso um modelo JSBSim com
-               // autopilot proprio (o f16 distribuido nao tem).
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"
-                           falcon4: "F-16C"  bandit1: "F-16C" }
+               // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
+               // comentario no topo e models/player/A4/data/jsbsim/
+               // aircraft/A4/) -- "A-4E" no modelMap ja e a celula que
+               // esta voando, nao mais uma escolha de apresentacao por
+               // cima de outra dinamica.
+               modelMap: { falcon1: "A-4E"  falcon2: "A-4E"  falcon3: "A-4E"
+                           falcon4: "A-4E"  bandit1: "A-4E" }
                typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
                            falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"
                            bandit1: "Air+FixedWing" }
@@ -439,7 +442,7 @@
          falcon1: ( Aircraft
             id: 101
             side: blue
-            type: "C310"
+            type: "A4"
 
             // RCS: e dela que o radar dos OUTROS calcula a deteccao
             signature: ( SigSphere radius: 3.0 )
@@ -454,7 +457,7 @@
             // falcon1: pico 1435 m -> 1750 m (AGL tipico ~940 m).
             initAlt:      ( Meters 1750.0 )
             initHeading:  ( Degrees 90 )
-            initVelocity: 82.0                   // ~160 kts
+            initVelocity: 180.0                   // ~350 kts
 
             dataLogTime: ( Seconds 0.1 )
 
@@ -470,7 +473,7 @@
                // 6-DOF nativo: JSBSim pelo adaptador do framework.
                dynamicsModel: ( JSBSimModel
                   rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
-                  model:   "c310"
+                  model:   "A4"
                   debugLevel: 0
                )
 
@@ -481,11 +484,11 @@
                   headingHoldMode:  true
                   altitudeHoldMode: true
                   velocityHoldMode: true
-                  maxRateOfTurnDps: 3.0
-                  maxBankAngle:    30.0
-                  maxPitchAngle:   10.0
-                  maxClimbRateMps:  8.0
-                  maxAcceleration:  2.0
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   20.0
+                  maxClimbRateMps:  40.0
+                  maxAcceleration:  6.0
                )
 
                // Datalink NATIVO (subclasse minima): transporte, alcance,
@@ -568,23 +571,23 @@
          falcon2: ( Aircraft
             id: 102
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles 0.0 )
             initYPos:     ( NauticalMiles 5.0 )
             initAlt:      ( Meters 1850.0 )     // pico do circuito 1529 m + 300
             initHeading:  ( Degrees 180 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal
@@ -620,23 +623,23 @@
          falcon3: ( Aircraft
             id: 103
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles -5.0 )
             initYPos:     ( NauticalMiles  0.0 )
             initAlt:      ( Meters 2050.0 )     // pico do circuito 1738 m + 300
             initHeading:  ( Degrees 270 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.5  maxBankAngle: 33.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 7.0  maxBankAngle: 48.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal
@@ -672,23 +675,23 @@
          falcon4: ( Aircraft
             id: 104
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles  0.0 )
             initYPos:     ( NauticalMiles -5.0 )
             initAlt:      ( Meters 2100.0 )     // pico do circuito 1709 m + 300
             initHeading:  ( Degrees 0 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal

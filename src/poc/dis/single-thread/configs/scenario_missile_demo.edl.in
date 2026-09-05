@@ -84,7 +84,7 @@
                   vote: 90
                   minAltitude:      ( Meters 1200 )
                   recoverAltitude:  ( Meters 1750 )
-                  recoverSpeed:     160.0
+                  recoverSpeed:     350.0
                   minClearance:     ( Meters 400 )
                   recoverClearance: ( Meters 800 )
                )
@@ -94,22 +94,22 @@
                   // DEMO (tenta lancar antes de evadir) e os 3 slots do
                   // envelope de lancamento. O resto e identico ao falcon1
                   // de scenario.edl.in.
-                  treeFile: "./models/player/flight/configs/flight_tree_missile_demo.xml"
+                  treeFile: "./models/player/A4/configs/flight_tree_missile_demo.xml"
                   patrolHeading:  ( Degrees 90 )
                   legTime:        ( Seconds 60 )
                   legTurn:        ( Degrees 90 )
                   patrolAltitude: ( Meters 1750 )
-                  patrolSpeed:    160.0
+                  patrolSpeed:    350.0
                   rtbAltitude:    ( Meters 2050 )
-                  rtbSpeed:       170.0
+                  rtbSpeed:       380.0
                   arrivalRadius:  ( NauticalMiles 2.0 )
                   fuelReserve:    0.35
                   breakTurn:      ( Degrees 110 )
                   evadeClimb:     ( Meters 700 )
-                  evadeSpeed:     185.0
+                  evadeSpeed:     420.0
                   terrainClearance: ( Meters 800 )
                   evadeHold:      ( Seconds 30 )
-                  supportSpeed:   180.0
+                  supportSpeed:   400.0
                   // Envelope de lancamento (domain::LaunchPolicy).
                   //
                   // ARMADILHA CONFIRMADA RODANDO: o primeiro contato nesta
@@ -138,17 +138,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 170.0
+                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
+                  evadeSpeed: 420.0  supportSpeed: 400.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                )
@@ -163,17 +163,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                   legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                  patrolSpeed: 165.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 170.0
+                  patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                  evadeSpeed: 190.0  supportSpeed: 185.0
+                  evadeSpeed: 430.0  supportSpeed: 410.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                )
@@ -188,17 +188,17 @@
             behaviors: {
                ( AltitudeSafetyBehavior vote: 90
                   minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                  recoverSpeed: 160.0
+                  recoverSpeed: 350.0
                   minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                )
                ( BtBehavior vote: 50
                   treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                   patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                   legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                  patrolSpeed: 160.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 170.0
+                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
                   arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
                   breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 185.0  supportSpeed: 180.0
+                  evadeSpeed: 420.0  supportSpeed: 400.0
                   evadeHold: ( Seconds 30 )
                   terrainClearance: ( Meters 800 )
                )
@@ -257,8 +257,8 @@
                port: 1234
                callsign: "poc-mixr/single-thread-missile-demo"
                fileName: "./src/poc/dis/single-thread/data/recordings/mission-missile-demo.acmi"
-               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"  falcon3: "F-16C"
-                           falcon4: "F-16C"  bandit1: "F-16C" }
+               modelMap: { falcon1: "A-4E"  falcon2: "A-4E"  falcon3: "A-4E"
+                           falcon4: "A-4E"  bandit1: "A-4E" }
                typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
                            falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing"
                            bandit1: "Air+FixedWing" }
@@ -286,13 +286,13 @@
          falcon1: ( Aircraft
             id: 101
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles 5.0 )
             initYPos:     ( NauticalMiles 0.0 )
             initAlt:      ( Meters 1750.0 )
             initHeading:  ( Degrees 90 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
 
@@ -300,7 +300,7 @@
 
                dynamicsModel: ( JSBSimModel
                   rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
-                  model:   "c310"
+                  model:   "A4"
                   debugLevel: 0
                )
 
@@ -309,11 +309,11 @@
                   headingHoldMode:  true
                   altitudeHoldMode: true
                   velocityHoldMode: true
-                  maxRateOfTurnDps: 3.0
-                  maxBankAngle:    30.0
-                  maxPitchAngle:   10.0
-                  maxClimbRateMps:  8.0
-                  maxAcceleration:  2.0
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   20.0
+                  maxClimbRateMps:  40.0
+                  maxAcceleration:  6.0
                )
 
                datalink: ( AlertDatalink
@@ -435,23 +435,23 @@
          falcon2: ( Aircraft
             id: 102
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles 0.0 )
             initYPos:     ( NauticalMiles 5.0 )
             initAlt:      ( Meters 1850.0 )
             initHeading:  ( Degrees 180 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal
@@ -487,23 +487,23 @@
          falcon3: ( Aircraft
             id: 103
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles -5.0 )
             initYPos:     ( NauticalMiles  0.0 )
             initAlt:      ( Meters 2050.0 )
             initHeading:  ( Degrees 270 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.5  maxBankAngle: 33.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 7.0  maxBankAngle: 48.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal
@@ -539,23 +539,23 @@
          falcon4: ( Aircraft
             id: 104
             side: blue
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 3.0 )
             initXPos:     ( NauticalMiles  0.0 )
             initYPos:     ( NauticalMiles -5.0 )
             initAlt:      ( Meters 2100.0 )
             initHeading:  ( Degrees 0 )
-            initVelocity: 82.0
+            initVelocity: 180.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
                datalink: ( AlertDatalink holdTime: ( Seconds 25 ) )
                antennas: ( Gimbal
@@ -595,23 +595,23 @@
          bandit1: ( Aircraft
             id: 201
             side: red
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 4.0 )
             initXPos:     ( NauticalMiles 12.0 )
             initYPos:     ( NauticalMiles 12.0 )
             initAlt:      ( Meters 2400.0 )
             initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
+            initVelocity: 195.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
             }
          )

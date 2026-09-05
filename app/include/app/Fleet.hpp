@@ -39,16 +39,16 @@ Fleet collectFleet(mixr::models::WorldModel* wm, const std::vector<std::string>&
 std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm);
 
 //------------------------------------------------------------------------------
-// POTENCIA DE CRUZEIRO -- ver o comentario no scenario.edl: o autopilot do
-// c310 fecha malha de RUMO e de ALTITUDE, mas nao de VELOCIDADE (o
-// c310ap.xml apenas DECLARA ap/airspeed_hold e ap/throttle-cmd-norm, sem
-// canal que os implemente). Sem manete, a aeronave perdia velocidade, o
-// altitude hold empinava o nariz para compensar e acabava em perda de
-// sustentacao -- observado rodando (40 s: 160 -> 80 kts, arfagem 15 graus).
-//
-// Correcao no nivel do CENARIO, nao uma lei de controle nossa:
-// AirVehicle::setThrottles() e do proprio framework. A velocidade passa a
-// ser RESULTADO (potencia fixa + arrasto), nao comando.
+// POTENCIA DE CRUZEIRO -- historicamente a correcao para o c310 (cujo
+// autopilot fechava malha de RUMO e ALTITUDE, mas nao de VELOCIDADE, sem
+// manete fixo a aeronave perdia velocidade e estolava). Desde a troca para
+// o A-4, `models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml` tem um canal
+// de autothrottle proprio (fecha a malha de velocidade de verdade, via
+// `ap/airspeed_hold`/`ap/airspeed_setpoint`), entao esta chamada e so um
+// empurrao inicial -- o autothrottle recalcula `fcs/throttle-cmd-norm` a
+// cada frame e sobrescreve isto em seguida. Mantida por nao ser nociva
+// (`setThrottles()` e do proprio framework) e por dar um chute inicial
+// razoavel antes do primeiro ciclo do autothrottle.
 //------------------------------------------------------------------------------
 void applyCruiseThrottle(const Fleet& fleet, double throttle);
 

@@ -15,10 +15,10 @@ namespace xmissile {
 //
 // Slots: nenhum (EMPTY_SLOTTABLE).
 //
-// Mesma classe/motivo de models/player/flight/xnative/ThreadTagProbe (ver o
+// Mesma classe/motivo de models/player/A4/xnative/ThreadTagProbe (ver o
 // cabecalho de la para a explicacao completa) -- so que aqui dentro do
 // plugin 'missile', um projeto Meson INDEPENDENTE (nao linka nem conhece
-// models/player/flight). O missil (GuidedMissile) tambem nao tem UBF/agente
+// models/player/A4). O missil (GuidedMissile) tambem nao tem UBF/agente
 // nenhum -- so guiagem propria (domain::Guidance) sobre um dynamicsModel --
 // entao sem isto ele mostraria '-' na aba Players do app, exatamente como o
 // bandit1 antes desta classe existir.

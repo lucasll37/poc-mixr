@@ -1,7 +1,7 @@
 //
 // UM MODELO ESTRANHO -- escrito SO contra o SDK publicado.
 //
-// Este arquivo nao inclui, nao le e nao conhece nada de models/flight.
+// Este arquivo nao inclui, nao le e nao conhece nada de models/A4.
 // Ele foi escrito olhando APENAS:
 //    dist/include/xplugin/PluginAbi.hpp   (o contrato de empacotamento)
 //    dist/include/xboard/Board.hpp        (o quadro de leitura)
@@ -227,7 +227,7 @@ END_SLOT_MAP()
 // nenhum cenario de teste que carrega o stub liga a ponte de RL de verdade
 // (isso exigiria shared/xrlbridge, que o stub nao linka), so o cenario de
 // PRODUCAO declara RLBridgeBehavior no seu 'provides:' (ver
-// models/flight/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
+// models/A4/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
 // MESMO cenario trocando so o 'file:', precisa responder pelo nome pra nao
 // quebrar a igualdade exata de conjunto.
 //------------------------------------------------------------------------------

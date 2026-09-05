@@ -1,23 +1,15 @@
-TODOS OS players devem informar a thread a qual está associado na tela F1 do app. acontece que o bandit não está informando.
 
+- no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
 
+- configurar na moral os clangd*, entendendo o que de fato eles fazem
 
-enxugar shared
+- melhorar documentação
 
-no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
+- vou dormir nas próximas 8 horas. nesse intervalo, quero que vc rode em looping testando toda aplicação, revisando cada ponto, tanto em código quando documentação e comentários. procure por bugs, comportamentos não pretendidos e oportunidades de melhorias em termos de arquitetura e boas praticas de desenvolvimento
 
-no readme, ensinar como instala dependecias
+- validar geração de logs e mensagens
 
-app quebrando
+- enxugar shared
 
-gerar documentação
+-interface gráfica para montar edl
 
-interface gráfica para montar edl e interface gráfica para criar comportamento
-
-figura bonitinha no tacview
-
-dados de outras aeronaves
-
-pasta plugin fora do models
-
-dados do jsbsim

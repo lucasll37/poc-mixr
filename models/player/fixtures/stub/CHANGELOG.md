@@ -26,7 +26,7 @@ uma por commit.
 
 - **`RLBridgeBehavior` trivial** (`genAction()` devolve sempre `nullptr`) — sétimo nome de
   fábrica. **Não é feature: é manutenção de contrato.** O cenário de PRODUÇÃO ganhou
-  `RLBridgeBehavior` no `provides:` quando `models/flight` passou a publicá-lo, e `provides:` é
+  `RLBridgeBehavior` no `provides:` quando `models/A4` passou a publicá-lo, e `provides:` é
   igualdade EXATA de conjunto contra o que a `.so` exporta — sem esta classe, o stub deixava de
   ser contrato-compatível com o cenário que ele existe para rodar, e
   `plugin-modelo-estranho`/`plugin-deposito-terceiro` quebravam. Nenhum cenário de teste liga a

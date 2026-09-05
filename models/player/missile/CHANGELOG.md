@@ -75,7 +75,7 @@ repositório que publica um `Player`.
   `Player::updateTC()` para de chamar `dynamics()` e um timer ali nunca avança. E `updateTC()` é
   chamado 4× por frame, uma por fase, com `dt = dt_do_frame/4`: o acumulador só soma numa fase
   fixa **e** multiplica por 4.
-- **A definição JSBSim do míssil (`aim1.xml`) mora em `models/flight/data/jsbsim/aircraft/aim1/`**,
+- **A definição JSBSim do míssil (`aim1.xml`) mora em `models/A4/data/jsbsim/aircraft/aim1/`**,
   não aqui — é a árvore que todo `rootDir:` dos cenários já aponta
   (`./dist/share/mixr-plugins/flight/jsbsim/`). Este projeto publica só código.
 

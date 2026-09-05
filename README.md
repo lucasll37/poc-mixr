@@ -50,9 +50,9 @@ visualização é feita via **Tacview Real-Time Telemetry**.
 | 1 | Carga dinâmica de modelos — o modelo é um `.so` aberto em tempo de execução, não compilado junto do executável; o mesmo binário roda modelos diferentes sem recompilar | `models/` |
 | 2 | Elevação de terreno real (dados SRTM)| `shared/data/terrain/srtm/` |
 | 3 | Exportação da simulação para o Tacview (visualizador de voo em tempo real), reaproveitando o próprio mecanismo de gravação de dados do MIXR | `shared/xtacview/` |
-| 4 | Física de voo completa (6 graus de liberdade) via JSBSim, o simulador de voo já integrado ao MIXR | `models/flight/` |
+| 4 | Física de voo completa (6 graus de liberdade) via JSBSim, o simulador de voo já integrado ao MIXR | `models/A4/` |
 | 5 | Decisão em paralelo sem perder previsibilidade — várias aeronaves decidindo ao mesmo tempo, em threads diferentes, chegam ao mesmo resultado rodando com 1, 2 ou 4 threads | `src/poc/dis/multi-thread/` |
-| 6 | Lógica de decisão como uma árvore de comportamento (BehaviorTree.CPP) carregada de um arquivo XML — trocar a política não recompila nada | `models/flight/src/bt/` |
+| 6 | Lógica de decisão como uma árvore de comportamento (BehaviorTree.CPP) carregada de um arquivo XML — trocar a política não recompila nada | `models/A4/src/bt/` |
 | 7 | Controle por joystick físico, com o piloto automático assumindo sozinho quando não há joystick conectado | `shared/xjoystick/` |
 | 8 | Interoperabilidade entre processos via DIS (protocolo padrão de simulação distribuída): uma aeronave roda num processo separado e é vista pelas outras só pela rede | `src/poc/dis/bandit/` |
 | 9 | Log e telemetria configuráveis pelo próprio arquivo de cenário, sem recompilar nada | `shared/xlog/`, `shared/xmsg/` |

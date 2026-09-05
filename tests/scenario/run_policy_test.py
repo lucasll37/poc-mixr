@@ -37,7 +37,7 @@ def gerar_fixture(destino: pathlib.Path, poc: str, arvore: str | None) -> None:
     Sem '--tree' nao ha troca nenhuma: e o caso de uma poc cujo PROPRIO
     cenario ja aponta para a arvore da politica (src/poc/onnx-policy). Com
     '--tree', o cenario de producao da poc (que aponta para as regras em C++)
-    e desviado para a arvore de deploy que models/flight instala -- o caso
+    e desviado para a arvore de deploy que models/A4 instala -- o caso
     das gemeas, que nao tem cenario proprio de politica.
     """
     subprocess.run(

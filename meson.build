@@ -40,7 +40,7 @@ protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 
 # NAO ha behavior_tree_dep nem jsbsim_dep aqui, e a ausencia e deliberada:
-# depois que o modelo saiu para models/flight (projeto meson proprio),
+# depois que o modelo saiu para models/A4 (projeto meson proprio),
 # NENHUM alvo deste projeto linka BehaviorTree.CPP ou JSBSim. Quem precisa
 # delas e o modelo, e ele declara as suas.
 #
@@ -110,12 +110,12 @@ subdir('./shared/xmsg')
 subdir('./shared/xplugin')
 
 # A ponte de comando/observacao entre o host de RL (./rl) e RLBridgeBehavior
-# (models/flight). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
+# (models/A4). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
 # precisa existir antes de pkg.generate() listar as libs do SDK.
 subdir('./shared/xrlbridge')
 
 # Inferencia ONNX -- o motor, contido numa .so so (o ORT sao ~1,9 GB de .a em
-# Debug e models/flight gera QUATRO artefatos do mesmo fonte). Tambem antes do
+# Debug e models/A4 gera QUATRO artefatos do mesmo fonte). Tambem antes do
 # SDK, pelo mesmo motivo de xboard/xtrack/xrlbridge.
 subdir('./shared/xinfer')
 

@@ -46,7 +46,7 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
       //
       // So confere EXISTENCIA do player -- nao da para confirmar daqui que e
       // o MESMO player com RLBridgeBehavior: esse tipo mora no plugin do
-      // modelo (models/flight), que este host nao pode conhecer
+      // modelo (models/A4), que este host nao pode conhecer
       // (tests/guard/check_host_opaco.sh). 'player_name' tem de bater com o
       // player que o .edl configurou com RLBridgeBehavior -- ver
       // src/rl/README.md.

@@ -120,7 +120,7 @@ host, e a etapa `sdk` precisa desse `build/` já existir.
 | `make build` | os três executáveis do host — só depende do `sdk`, não dos modelos | ao mexer no host |
 | `make sync-plugins` | copia `plugins/*.so` (+ `data/`) para `dist/` — a ÚNICA ponte | raramente sozinho — `install` já chama |
 | `make install` | `build` + `sync-plugins` + copia os binários para `dist/bin/` | **necessário** para rodar/testar (ver abaixo) |
-| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` (delega pro Makefile de `models/player/flight`) | ao mexer no modelo |
+| `make test-models` | a suíte do modelo: `domain` + `tree` + `native` (delega pro Makefile de `models/player/A4`) | ao mexer no modelo |
 | `make test` | as **duas** suítes — dispara `test-models` **e** `install` | antes de commitar |
 | `make check-plugin-hotswap` | prova que trocar o modelo não recompila a aplicação — depende de `install` | demonstração |
 | `make clean` | apaga o `build/`+`dist/` do host, o `build/`+`dist/` de CADA modelo, e os `.so`/`data/` que `make models` gerou em `plugins/` | |
@@ -141,7 +141,7 @@ os constrói em sequência. É o fluxo de CI/produção e continua sendo a forma
 o repositório inteiro.
 
 **Cada projeto de modelo TAMBÉM tem o próprio `Makefile`, autocontido** — pensado para abrir o VS
-Code só naquele diretório (`models/player/flight/`, `models/player/missile/` ou `models/player/fixtures/stub/`) e
+Code só naquele diretório (`models/player/A4/`, `models/player/missile/` ou `models/player/fixtures/stub/`) e
 iterar sem o resto do repositório em mente:
 
 ```bash
@@ -149,7 +149,7 @@ iterar sem o resto do repositório em mente:
 make configure && make sdk
 
 # daqui em diante, de dentro de QUALQUER projeto de modelo:
-cd models/player/flight   # ou models/player/missile, ou models/player/fixtures/stub
+cd models/player/A4   # ou models/player/missile, ou models/player/fixtures/stub
 make               # configura (./build) + compila -> ./dist/lib/mixr-plugins/*.so
 make test          # roda a suite DAQUELE modelo, isolada
 make install-host  # deposita em ../../plugins/ -- so ai um cenario PODE vir a enxergar o .so
@@ -361,7 +361,7 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 6. **Nunca `dlclose`.** Toda instância viva guarda ponteiro para dentro do `.so`, e o destrutor
    **escreve** lá. *"Sem recompilar tudo"* — sim; *"sem reiniciar o processo"* — **não**.
 7. **O `ROOT` do Makefile autocontido (§1.1) é a profundidade do diretório, não um valor
-   universal.** `models/player/flight/` e `models/player/missile/` ficam três níveis abaixo da
+   universal.** `models/player/A4/` e `models/player/missile/` ficam três níveis abaixo da
    raiz (`ROOT := $(abspath ../../..)`); `models/player/fixtures/stub/` fica quatro
    (`../../../..`). Copiar o `Makefile` do `stub` para um modelo novo direto sob `models/player/`
    (o caminho recomendado em §2) e esquecer de tirar um `../` faz `check-root` apontar para um

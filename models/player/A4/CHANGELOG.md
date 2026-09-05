@@ -57,6 +57,36 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Mudado
 
+- **A aeronave trocou de Cessna 310 (c310) para Douglas A-4 Skyhawk**, com dados aerodinâmicos
+  em `data/jsbsim/aircraft/A4/` (originados de `shared/data/jsbsim/aircraft/A4/`, a base
+  Aeromatic vendorizada na raiz do repositório). `data/jsbsim/aircraft/A4/a4ap.xml` é um
+  `<autopilot>` JSBSim escrito para esta PoC-mixr — o A-4 de fábrica não vem com nenhum, e
+  `JSBSimModel` só amarra `ap/heading_hold`/`ap/altitude_hold`/`ap/airspeed_hold` quando essas
+  propriedades já existem no modelo (mesmo papel que `c310ap.xml`, agora removido, cumpria).
+  `model:`/`type:` nos `.edl`/`.edl.in` de todos os cenários passaram de `"c310"`/`"C310"` para
+  `"A4"`, as velocidades comandadas (`patrolSpeed`/`rtbSpeed`/`evadeSpeed`/`supportSpeed`) subiram
+  para a faixa do A-4 (~350-430 kt, contra ~160-190 kt do c310), e o `modelMap` do Tacview em cada
+  cenário passou de `"F-16C"` (uma skin de apresentação sobre a dinâmica do c310, ver o comentário
+  antigo removido) para `"A-4E"` — a partir de agora a dinâmica E a visualização são a mesma
+  aeronave. **Limite conhecido, documentado no cabeçalho de `a4ap.xml`**: os coeficientes
+  látero-direcionais do dado Aeromatic (`Clb=-0.1 Cnr=-0.15 Clr=0.15 Cnb=0.12`) violam o critério
+  clássico de estabilidade em espiral, e `JSBSimModel::reset()` não roda `FGTrim` — a aeronave
+  nasce destrimada e diverge em poucos segundos sem um SAS (amortecedores de taxa em
+  rolagem/arfagem + nivelador de asas, todos sempre ativos, não gateados por `ap/heading_hold`).
+  Com o SAS, o determinismo (`check-single-thread`/`check-multi-thread`, 1/2/4 threads) passa
+  byte-a-byte, mas o voo ainda deriva lentamente (dezenas de segundos, numa perna reta e longa)
+  antes de o nivelador reafirmar o controle — escolhido deliberadamente sobre a alternativa (um
+  nivelador forte o bastante para nunca derivar também impede a aeronave de completar curvas
+  comandadas, o que quebraria PATROL/EVADE/RTB de verdade). Recalibrar o SAS, ou reexportar a
+  aeronave com `Clr`/`Cnb` ajustados, fica registrado como trabalho futuro. (2026-09-05)
+- **A pasta deste modelo passou de `models/player/flight/` para `models/player/A4/`** — só o
+  título do diretório-fonte; o nome de fábrica do plugin (`MIXR_PLUGIN_DEFINE("flight", ...)`),
+  as bibliotecas (`libflight.so`/`libflight_tc.so`) e o destino de instalação
+  (`dist/share/mixr-plugins/flight/`) continuam `flight`, então nenhum `.edl`/`.edl.in` de
+  cenário precisou mudar por causa do rename em si (só pela troca de aeronave, acima). Makefile
+  raiz, `tests/meson.build`, `tests/guard/check_modelo_fresco.sh` e
+  `tests/plugin/check_hotswap_rebuild.sh` tinham o caminho antigo hardcoded e foram atualizados.
+  (2026-09-05)
 - **`make install-host` deposita em `models/plugins/`, nunca mais em `dist/`** — o mesmo depósito
   que um `.so` de terceiro usa. Quem sincroniza `models/plugins/` → `dist/lib(share)/mixr-plugins/`
   é o alvo `sync-plugins` do `make install` da raiz. Compilar este modelo deixou de presumir onde
@@ -79,7 +109,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 ## [1.0.0] — 2026-09-02
 
 O estado com que o modelo passou a existir como projeto próprio. Extraído em **2026-09-01** como
-`models/flight-model/` e renomeado para `models/flight/` no dia seguinte.
+`models/A4-model/` e renomeado para `models/A4/` no dia seguinte.
 
 ### Adicionado
 

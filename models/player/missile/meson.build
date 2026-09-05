@@ -10,7 +10,7 @@
 # "GuidedMissile" e "MissileThreadTagProbe" (a segunda, so para o missil
 # tambem reportar thread na aba Players do app -- ver o cabecalho de
 # src/xmissile/MissileThreadTagProbe.hpp, inclusive o porque do nome NAO ser
-# igual ao gemeo de models/player/flight) -- os nomes do flight nao mudam,
+# igual ao gemeo de models/player/A4) -- os nomes do flight nao mudam,
 # entao 'provides:' dos cenarios de PRODUCAO (que so carregam libflight.so)
 # continua igual.
 #
@@ -57,7 +57,7 @@ missile_lib = shared_module('missile',
 )
 
 # Camada 'domain' -- so a lei de guiagem, pura (sem MIXR). Mesmo molde de
-# models/flight/tests/meson.build, escalado para um modelo de uma classe so.
+# models/A4/tests/meson.build, escalado para um modelo de uma classe so.
 if get_option('tests')
     subdir('tests')
 endif

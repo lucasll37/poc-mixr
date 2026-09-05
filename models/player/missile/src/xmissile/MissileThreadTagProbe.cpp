@@ -19,7 +19,7 @@ MissileThreadTagProbe::MissileThreadTagProbe()
 }
 
 //------------------------------------------------------------------------------
-// updateTC() -- so na fase 3, mesmo filtro do gemeo em models/player/flight
+// updateTC() -- so na fase 3, mesmo filtro do gemeo em models/player/A4
 // (ver o cabecalho do .hpp): Player::updateTC() chama esta funcao 4x por
 // frame, uma vez por fase; sem o filtro o mesmo valor seria escrito 4x a
 // toa. Vale igual para o missil: AbstractWeapon::updateTC() (BaseClass de

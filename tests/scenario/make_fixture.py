@@ -41,7 +41,7 @@ from pathlib import Path
 
 # O intruso, identico ao de src/poc/dis/bandit/configs/scenario.edl, so que
 # local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
-# (models/flight/data/jsbsim), instalado uma unica vez em dist/.
+# (models/A4/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
          // ------------------------------------------------------------------
          // FIXTURE DE TESTE -- bandit1 LOCAL.
@@ -54,23 +54,23 @@ BANDIT = """
          bandit1: ( Aircraft
             id: 201
             side: red
-            type: "C310"
+            type: "A4"
             signature: ( SigSphere radius: 4.0 )
             initXPos:     ( NauticalMiles 12.0 )
             initYPos:     ( NauticalMiles 12.0 )
             initAlt:      ( Meters 2400.0 )
             initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
+            initVelocity: 195.0
             dataLogTime: ( Seconds 0.1 )
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
+                  velocityHoldMode: true  maxRateOfTurnDps: 6.0  maxBankAngle: 45.0
+                  maxPitchAngle: 20.0  maxClimbRateMps: 40.0  maxAcceleration: 6.0
                )
             }
          )

@@ -78,7 +78,7 @@ primitiva de um jeito reaproveitável, com dois passos deliberadamente desacopla
 
 | forma | quando usar | exemplo |
 |---|---|---|
-| **(a) Subsistema nativo** — reaproveitar um hook já exposto por uma classe do framework (`onDatalinkMessageEvent`, `shutdownNotification`, ...) | quando o alcance/lado/canal que o subsistema já filtra importa (rádio com `radioName`/`maxRange`, por exemplo) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (`models/flight`) — reage a `DATALINK_MESSAGE`, só alcança quem tem `Datalink` |
+| **(a) Subsistema nativo** — reaproveitar um hook já exposto por uma classe do framework (`onDatalinkMessageEvent`, `shutdownNotification`, ...) | quando o alcance/lado/canal que o subsistema já filtra importa (rádio com `radioName`/`maxRange`, por exemplo) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (`models/A4`) — reage a `DATALINK_MESSAGE`, só alcança quem tem `Datalink` |
 | **(b) Broadcast direto** — token próprio (`USER_EVENTS + N`) entregue com `player->event(TOKEN, obj)` varrendo `getWorldModel()->getPlayers()` | quando o efeito é geral/físico e não deve depender de o receptor ter um subsistema específico (explosão, colisão, qualquer "efeito de área") | `events::EID_ALERT`, entregue por `AlertDatalink::broadcastAlert()`, tratado por `GuidedMissile::onAlertEvent()` (`models/missile`) — um player **sem Datalink** reagindo ao mesmo evento |
 
 ## Por que o payload mora aqui, numa `shared_library()`, e não no plugin que o define primeiro
@@ -87,7 +87,7 @@ Um `dynamic_cast` de um `base::Object*` recebido de **outro** `.so` (carregado p
 seguro se a classe do payload vier de uma biblioteca **linkada por todos os lados envolvidos** —
 do contrário cada plugin compilado com `gnu_symbol_visibility: hidden` enxerga seu próprio
 `type_info` para o "mesmo" tipo, e o `dynamic_cast` falha silenciosamente. É o mesmo motivo, já
-documentado no `CLAUDE.md`, de `RLBridgeBehavior` ter ficado **dentro** de `models/player/flight`
+documentado no `CLAUDE.md`, de `RLBridgeBehavior` ter ficado **dentro** de `models/player/A4`
 em vez de virar um plugin próprio. A saída aqui é a oposta: em vez de manter o payload preso a um
 plugin, ele mora numa `shared_library()` de verdade (esta pasta), publicada pelo SDK
 (`dist/lib/`), que **qualquer** modelo pode linkar via `sdk_dep` sem precisar de uma dependência
@@ -106,20 +106,20 @@ um índice de leitura rápida, para não colidir números ao adicionar um evento
 
 | token | valor | payload (arquivo) | emitido por | tratado por |
 |---|---|---|---|---|
-| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/flight`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) **e** `xmissile::GuidedMissile::onAlertEvent()` (via `EID_ALERT` direto, caminho b) |
+| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/A4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) **e** `xmissile::GuidedMissile::onAlertEvent()` (via `EID_ALERT` direto, caminho b) |
 
 Próximo token livre: `USER_EVENTS + 2`.
 
 ## Caso de referência: o `TacticalAlert` generalizado
 
 `events::TacticalAlert` já existia como `xnative::TacticalAlert`, usado só dentro de
-`models/flight` (`AlertDatalink` emite e trata, via o subsistema `Datalink` nativo). Ele foi
+`models/A4` (`AlertDatalink` emite e trata, via o subsistema `Datalink` nativo). Ele foi
 promovido para cá — mesma classe, mesmo nome de fábrica `"TacticalAlert"`, nenhuma mudança em
 `provides:` de nenhum cenário — e ganhou uma segunda via de entrega (`EID_ALERT`/broadcast
 direto) além da original (`DATALINK_MESSAGE`/`Datalink`). Isso prova as duas metades da
 convenção ao mesmo tempo: (1) um payload definido uma vez pode ser tratado por mais de um
 caminho de despacho, e (2) um handler pode ser escrito num plugin (`models/missile`) sem nenhuma
-relação de compilação com quem define ou emite o evento (`models/flight`).
+relação de compilação com quem define ou emite o evento (`models/A4`).
 
 ## Um caso futuro conhecido, ainda não implementado
 

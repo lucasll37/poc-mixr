@@ -10,7 +10,7 @@ namespace bt_nodes {
 // shared/xpyembed) -- separados de bt/bt_factory.hpp DE PROPOSITO.
 //
 // O PORQUE: bt/bt_factory.cpp e compilado tanto pelo plugin quanto por
-// models/flight/tests (alvo 'test-tree'), e o test-tree tem uma propriedade
+// models/A4/tests (alvo 'test-tree'), e o test-tree tem uma propriedade
 // que vale a pena preservar -- ele NAO linka o MIXR, o que permite exercitar a
 // arvore de PRODUCAO em ~10 ms sem levantar Station nenhuma (ver o cabecalho
 // de bt/DecisionContext.hpp). As libs do SDK chegam por poc-mixr-sdk.pc, que

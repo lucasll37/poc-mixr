@@ -4,7 +4,7 @@
 # ==============================================================================
 # Makefile AUTOCONTIDO do modelo `flight` (o modelo de producao).
 #
-# "Autocontido" quer dizer: abra o VS Code AQUI (models/player/flight/), rode
+# "Autocontido" quer dizer: abra o VS Code AQUI (models/player/A4/), rode
 # `make`, e os dois artefatos (libflight.so / libflight_tc.so) + os dados
 # (flight_tree.xml, data/jsbsim/) saem em ./dist -- a raiz DESTE projeto, nao
 # a raiz do poc-mixr. Nao chama o Makefile raiz nem o alvo `models` dele.

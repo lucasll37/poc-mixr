@@ -45,7 +45,7 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	@mkdir -p $(BUILD_DIR)
 	@# So reconfigura (caro) se o build.ninja nao existe AINDA ou se
 	@# TESTS/BUILD_TYPE mudaram desde a ultima vez -- ver o "porque" no
-	@# Makefile de models/player/flight (mesmo padrao).
+	@# Makefile de models/player/A4 (mesmo padrao).
 	@# O native-file do Conan entra no STALE junto com os meson.build: um
 	@# 'make configure' na RAIZ reescreve conan_meson_native.ini, e o regen
 	@# AUTOMATICO do ninja dispara por causa dele -- sem repassar
@@ -94,7 +94,7 @@ build: configure ## Compila o .so.
 
 install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/libmissile.so.
 	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
-	@# Makefile de models/player/flight.
+	@# Makefile de models/player/A4.
 	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
 	@ldd $(DEST_DIR)/lib/mixr-plugins/libmissile.so | grep -q 'not found' && \
 		{ echo "$(RED)install: dependencia nao resolvida$(NC)"; exit 1; } || true

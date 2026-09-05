@@ -1,40 +1,42 @@
-# `docs/` — visualizador do ciclo de fases e dos eventos do framework MIXR
+# `docs/` — explorador de execução, EDL e classes built-in do MIXR
 
-`index.html` é uma página estática, sem dependências, sem build, com duas visões animadas
-sobre a árvore de CLASSES que o framework MIXR fornece — não um cenário específico:
+`index.html` é uma página estática, sem dependências de rede (React, ReactDOM e todo o app
+ficam embutidos no próprio arquivo), com duas visões sobre o framework:
 
-1. **Ciclo de fases** — o ciclo de 6 fases do frame (`Structural`, `dynamics()`,
-   `transmit()`/`receive()`, `process()`, `Agent::controller()` em segundo plano,
-   `updateData()` em segundo plano), avançando sozinho, destacando quem participa de cada
-   fase e com que método.
-2. **Eventos (emissão/tratamento)** — o mecanismo genérico de eventos do framework
-   (`Component::event()` + as macros `BEGIN_EVENT_HANDLER`/`ON_EVENT`/`ON_EVENT_OBJ`),
-   mostrando quem EMITE e quem TRATA cada token nativo (`RESET_EVENT`, `SHUTDOWN_EVENT`,
-   `KILL_EVENT`, `CRASH_EVENT`, `DATALINK_MESSAGE`), mais um exemplo de token definido pela
-   própria aplicação (`EID_ALERT`) provando que o mecanismo é genérico o bastante para
-   qualquer app estender.
+1. **Execução** — o mesmo ciclo de fases já visto na aba "Componentes" (F6) do `./app`
+   (dynamics/transmit/receive/process + as duas threads de decisão/fundo), aqui desenhado
+   sobre a árvore de classes do MIXR com um grafo navegável (pan/zoom), timeline com
+   transporte (tocar/pausar/velocidade/passo/reiniciar) e trilha "ociosos"/"ligações por
+   nome". Tem dois sub-modos, alternados por um toggle no topo:
+   - **Cenário ilustrativo** — a árvore pequena e curada (Station → WorldModel → 2 Aircraft
+     + Missile, ~24 nós) que a timeline acima percorre passo a passo.
+   - **Catálogo completo** — as 122 classes de `mixr::models` (`DECLARE_SUBCLASS`), **sem
+     exceção**, agrupadas pela própria cadeia de herança em 19 categorias (Veículos aéreos,
+     Sensores de RF, Armamento, Navegação, Assinaturas, ...). Geometria própria — um grid de
+     mini-árvores por categoria, não uma lista indentada única — para não empilhar 122 linhas
+     numa coluna só e não sobrepor rótulo nenhum. Sem timeline (não é um traço de execução);
+     clique num nó para ver herança e slots no painel abaixo, igual ao cenário ilustrativo.
+2. **Catálogo** — as 342 classes que `DECLARE_SUBCLASS` no fork, cruzadas com quem de fato
+   se registra em fábrica (`IMPLEMENT_*SUBCLASS`, 224 delas — 48 com nome de fábrica
+   divergente do nome da classe), quem tem slot (`BEGIN_SLOTTABLE`/`END_SLOTTABLE`, 644
+   slots em 135 classes) e quem participa do despacho por fase. Busca por classe, nome de
+   fábrica ou slot; filtros por "nome divergente", "trabalha em fase", "não registradas" e
+   "no cenário" (as classes que os cenários deste repositório de fato instanciam).
 
-A ideia não é nova neste repositório: o ciclo de fases é a mesma visão já comprovada na aba
-"Componentes" (F6) do `./app` (o dashboard FTXUI) — `app/src/app/ComponentTreeQuery.cpp`,
-`ComponentFlowState.cpp`, `FrameCallChain.cpp`, `ComponentTreePanel.cpp`. Esta página adapta
-esse modelo para o navegador e acrescenta a camada de eventos, que a aba F6 não tem.
-
-**Curada, não instrumentada.** Sem processo MIXR rodando por trás, a árvore, as fases e os
-eventos foram lidos direto do código-fonte do framework (`contexts/src/mixr/`, fork v170600)
-— cada afirmação da página (nome de classe, método, `arquivo:linha`) foi verificada contra
-esse fonte, não inventada. Isso está avisado na própria página (banner amarelo no rodapé) e
-não deve ser removido em incrementos futuros.
+**Curada, não instrumentada.** Sem processo MIXR rodando por trás — herança, nome de
+fábrica, registro, slots, fases e os trechos de código (com arquivo e linha reais) foram
+extraídos direto da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
+`scripts/extract.py` (fora deste diretório) e embutidos em `docs/doc.jsx` como os objetos
+`MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
+própria página e não deve ser removido em incrementos futuros.
 
 ## Como abrir
 
-Direto no navegador, sem servidor nenhum (zero requisições de rede):
+Direto no navegador, sem servidor nenhum (zero requisições de rede, inclusive React):
 
 ```
 xdg-open docs/index.html     # ou file://.../docs/index.html
-# make open-docs também funciona (ver Makefile)
 ```
-
-Abrir direto na aba de eventos: `docs/index.html#events` (link compartilhável).
 
 Ou servido (para simular hospedagem futura, ex. GitHub Pages):
 
@@ -43,40 +45,29 @@ python3 -m http.server --directory . 8000
 # abrir http://localhost:8000/docs/
 ```
 
-## O que a v2 mostra
+## `doc.jsx` → `index.html`
 
-- **A árvore é de CLASSES do framework, não de instâncias de um cenário**: `Station` →
-  `Simulation` → `Player` → os subsistemas genéricos (`DynamicsModel`, `Pilot`, `Datalink`,
-  `Navigation`, `Radio`, `Gimbal`→`Antenna`, `RfSensor`, `IrSensor`,
-  `OnboardComputer`→`TrackManager`, `StoresMgr`, `CollisionDetect`, e as duas variantes de
-  `ubf::Agent`), mais `AbstractDataRecorder`→`DataRecorder`→`OutputHandler`,
-  `AbstractNetIO`→`NetIO` e `AbstractIoHandler`→`IoHandler`. Nenhum nome de player, slot de
-  cenário ou classe própria desta aplicação aparece — só o que o MIXR em si fornece.
-- **Classes abstratas** (`AbstractDataRecorder`, `AbstractNetIO`, `AbstractIoHandler`,
-  `AbstractBehavior`) ganham um contorno tracejado e o prefixo «abstract» — nunca são
-  usadas diretamente, sempre por uma subclasse concreta.
-- **Duas relações distintas na árvore**: composição normal (linha sólida, pai→filho no
-  EDL) e referência POR NOME (linha pontilhada curva, ex. `RfSensor` → `Antenna`/
-  `TrackManager` pelos slots `antennaName`/`trackManagerName`) — a segunda não é
-  composição, é resolvida em tempo de execução por `findByName()`.
-- **Aba Eventos**: emissor em âmbar, tratador em azul, auto-dirigido (mesmo nó emite e
-  trata) em roxo, cascata (todo mundo trata) em rosa com as arestas da árvore inteira
-  "fluindo". Setas cruzam a árvore em QUALQUER direção — inclusive de filho para pai
-  (`CollisionDetect`→`Player`, `Datalink`→`Player`), o oposto do sentido da recursão de
-  fase, que só desce.
-- Os mesmos controles (tocar/pausar/velocidade/passo/reiniciar) funcionam nos dois modos —
-  é a mesma sequência animada, só troca o que ela percorre.
+`doc.jsx` é a fonte (um componente React único, `App`, com CSS embutido em uma string e os
+dados gerados embutidos como constantes — nenhum `fetch`/`import` além de `react`).
+`index.html` é gerado a partir dele: JSX transpilado para `React.createElement` (Babel,
+preset `react`) e React 18 + ReactDOM 18 (UMD, produção) inlinados no mesmo arquivo, para
+que abrir `index.html` não dispare nenhuma requisição de rede. Regenerar depois de editar
+`doc.jsx`:
 
-## O que fica para os próximos incrementos (cortado de propósito na v2)
+```bash
+cd /tmp && mkdir -p mixr-docbuild && cd mixr-docbuild
+npm install --no-save @babel/standalone
+curl -sL -o react.production.min.js      https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js
+curl -sL -o react-dom.production.min.js  https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js
+# transpila JSX -> JS (troca o import por `const {...} = React;` e o export default por mount)
+# e concatena <script> com react + react-dom + app compilado num docs/index.html
+```
 
-- Pan/zoom e colapsar/expandir ramos (a árvore inteira é sempre desenhada).
-- Mais tokens de evento (hoje só os 5 nativos mais usados + 1 exemplo de app; faltam
-  `WPN_REL_EVENT` e a família de tokens de HOTAS, documentados mas não emitidos por nada
-  hoje neste repositório).
-- Diferenciar visualmente "emitido por chamada direta" (`RESET_EVENT`) de "emitido por
-  reemissão recursiva" (`SHUTDOWN_EVENT`) — hoje as duas cascatas usam o mesmo estilo
-  visual; a distinção só está no texto do painel.
-- Uma "onda" de sub-passo percorrendo o caminho aceso entre um passo e o próximo (o
-  equivalente ao `flowSubStep()` da aba F6 do `./app`) — hoje a troca é discreta.
-- Carregar árvore/eventos de um JSON externo em vez de um literal inline, se um dia isto
-  precisar cobrir mais de uma versão do framework.
+Não há alvo de Makefile para isso (é edição ocasional, não parte do build C++/Meson).
+
+## O que fica para os próximos incrementos
+
+- Um alvo `make docs`/`make open-docs` que regenere `index.html` a partir de `doc.jsx`
+  automaticamente (hoje é manual, ver acima).
+- `scripts/extract.py` não está versionado neste diretório — os dados gerados vivem só
+  como as constantes já embutidas em `doc.jsx`.

@@ -35,7 +35,7 @@
   CAMINHOS RELATIVOS A RAIZ DO REPOSITORIO, como todo caminho de configs/ e
   data/ das pocs (o binario e executado de la). O .onnx mora ao lado deste
   arquivo, e nao em dist/share/mixr-plugins/flight/, porque a politica e do
-  CENARIO desta poc e nao do modelo: models/flight instala a sua propria
+  CENARIO desta poc e nao do modelo: models/A4 instala a sua propria
   (policy_example.onnx, de pesos aleatorios, usada pelo teste
   scenario-policy-onnx) e as duas convivem sem se pisar.
 

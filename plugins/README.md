@@ -12,7 +12,7 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 ## Os dois jeitos de algo chegar aqui
 
 1. **Compilado por este repositório** — `make models` (na raiz) chama `install-host` de cada
-   projeto de modelo (`models/flight/`, `models/missile/`, `models/fixtures/stub/`), e cada um
+   projeto de modelo (`models/A4/`, `models/missile/`, `models/fixtures/stub/`), e cada um
    copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
    diretamente — ver a seção "Desacoplando `models` de `dist/`" no `CLAUDE.md` da raiz para o
    "porquê".
@@ -30,7 +30,7 @@ simulada.
 
 - **Flat**: os `.so` vão direto na raiz desta pasta, sem subpasta por modelo.
 - **`data/`** é a única exceção ao depósito flat — hoje só `data/flight/` (a árvore de
-  comportamento + a aeronave JSBSim, publicadas por `models/flight/`, porque são dado do MODELO,
+  comportamento + a aeronave JSBSim, publicadas por `models/A4/`, porque são dado do MODELO,
   não do cenário).
 - **`.so` de terceiro não é versionado** (`.gitignore`: `plugins/*.so`, `plugins/data/`) — é
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o

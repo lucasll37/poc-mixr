@@ -2,7 +2,7 @@
 
 Segundo modelo de exemplo (ver [CLAUDE.md](../../../CLAUDE.md), seção "Demo: míssil guiado", para
 o contexto completo — lançamento/detonação/destruição, e o "porquê" de ser um plugin à parte em
-vez de entrar em `models/flight/`). Este arquivo é só a parte de **guiagem**, a peça própria deste
+vez de entrar em `models/A4/`). Este arquivo é só a parte de **guiagem**, a peça própria deste
 modelo.
 
 ## A lei de guiagem — `domain::pursuit()`

@@ -7,7 +7,7 @@
 // AirVehicle->OnboardComputer->TrackManager->Track que a alimenta. Regra
 // pura: sem Station, sem Player/Track ao vivo -- so os tres campos que a
 // decisao de fato le (ver o "porque" em xtrack/TrackQuery.hpp). Alimenta
-// models/flight/src/ubf/FlightState.cpp (a percepcao do modelo, que por
+// models/A4/src/ubf/FlightState.cpp (a percepcao do modelo, que por
 // sua vez alimenta a arvore de comportamento inteira).
 
 using mixr::xtrack::TrackCandidate;

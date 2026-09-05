@@ -12,7 +12,7 @@
 # cobrado o preco: a correcao de ordem do encerramento (calar a thread T/C
 # antes do SHUTDOWN_EVENT) teve de ser copiada, uma a uma, para as cinco.
 # Hoje a duplicacao esta dissolvida POR CONSTRUCAO -- do mesmo jeito que
-# aconteceu quando o MODELO saiu para models/flight -- e a guarda que a
+# aconteceu quando o MODELO saiu para models/A4 -- e a guarda que a
 # sustentava foi aposentada junto.
 #
 # PROVA DE NEUTRALIDADE (medida na troca): o dump 'frame=' de single-thread,

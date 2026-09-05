@@ -48,7 +48,7 @@ Este diretório também tem um `Makefile` próprio, independente do Makefile da 
 cd ../.. && make configure && make sdk
 
 # daqui em diante, so aqui dentro:
-cd models/flight
+cd models/A4
 make                 # -> ./dist/lib/mixr-plugins/{libflight,libflight_tc}.so + ./dist/share/...
 make test            # domain + tree + native, neste build isolado
 make install-host    # sincroniza ./dist para a raiz do poc-mixr (a UNICA escrita fora daqui)

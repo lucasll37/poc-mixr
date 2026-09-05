@@ -20,7 +20,7 @@ A [single-thread](../single-thread/) **inteira**, com **uma** diferença: o agen
 > o dump. Mais nada.
 >
 > A **política** descrita acima — `domain/`, `bt/`, `ubf/`, `xnative/` — não está aqui e nem é
-> compilada junto: mora em **[models/flight/](../../models/flight/)**, um projeto
+> compilada junto: mora em **[models/A4/](../../models/A4/)**, um projeto
 > Meson independente, construído numa etapa **anterior** e carregado com `dlopen` durante o parse
 > do cenário. O que este README descreve das seções 7 a 10 continua valendo, só que os arquivos
 > ficam lá.
@@ -84,7 +84,7 @@ diferença em vez de argumentar sobre ela.
 > problema** (1, 2 ou 4 threads, 10 Hz ou 50 Hz, os números eram os mesmos).
 
 `make compare-single-multi` mostra o tamanho real da mudança — hoje, com o modelo já vivendo em
-`models/flight/` como plugin (ver a nota no topo deste README), a lista é bem menor do que quando
+`models/A4/` como plugin (ver a nota no topo deste README), a lista é bem menor do que quando
 `FlightAgentTC` ainda era um arquivo do HOST:
 
 ```
@@ -99,7 +99,7 @@ Files .../README.md differ                           ← este arquivo
 ```
 
 **Nenhum arquivo de `domain/`, `ubf/`, `bt/` ou dos outros modelos de `xnative/` foi tocado** — a
-classe `FlightAgentTC` mora em `models/flight/`, compilada nos dois `.so` do mesmo `meson.build`
+classe `FlightAgentTC` mora em `models/A4/`, compilada nos dois `.so` do mesmo `meson.build`
 (`libflight.so` sem ela, `libflight_tc.so` com ela, sob `-DFLIGHT_TC_AGENT`; ver "O MODELO é um
 plugin" no `CLAUDE.md`). `app/StatusReport.cpp` e `app/DeterministicDump.cpp` são hoje
 **byte-idênticos** nas duas pocs: os dois leem `dec=`/`thr=` do mesmo `xboard::Readout`, publicado
@@ -146,8 +146,8 @@ headers de `models`, e é registrada na **camada 6** (`xnative/factory.cpp`). Na
 
 ## 3. Dissecação da `FlightAgentTC`, linha por linha
 
-[`include/xnative/FlightAgentTC.hpp`](../../models/flight/include/xnative/FlightAgentTC.hpp) ·
-[`src/xnative/FlightAgentTC.cpp`](../../models/flight/src/xnative/FlightAgentTC.cpp) — 43 linhas de código, e **cada
+[`include/xnative/FlightAgentTC.hpp`](../../models/A4/include/xnative/FlightAgentTC.hpp) ·
+[`src/xnative/FlightAgentTC.cpp`](../../models/A4/src/xnative/FlightAgentTC.cpp) — 43 linhas de código, e **cada
 bloco delas existe por causa de uma armadilha do framework**. É o resumo mais honesto do que
 custa mover uma decisão para dentro do frame.
 
@@ -175,7 +175,7 @@ private:
 apenas `"UbfAgent"` e `"UbfArbiter"` — escrever `( UbfAgentTC ... )` no EDL **não constrói nada**.
 
 **Um agente de tempo crítico é, na prática, código da aplicação**: a classe é do framework, o
-registro é seu. Uma linha em [`src/xnative/factory.cpp`](../../models/flight/src/xnative/factory.cpp):
+registro é seu. Uma linha em [`src/xnative/factory.cpp`](../../models/A4/src/xnative/factory.cpp):
 
 ```cpp
 else if ( name == FlightAgentTC::getFactoryName() )  obj = new FlightAgentTC();
@@ -386,7 +386,7 @@ Quase nada — e é esse o ponto:
 | `app/StatusReport.cpp` | **idêntico** — `dec=`/`thr=` vêm do mesmo `xboard::Readout` | **idêntico** |
 | `app/DeterministicDump.cpp` | **idêntico** — conta pelo `xboard::Readout`, no ponto da atuação (`FlightAction::execute`) | **idêntico** |
 | `app/MetaObjectReport.cpp` | **idêntico** — contadores de instância do MIXR, para detectar vazamento | **idêntico** |
-| `mixr_factory.cpp`/`src/meson.build` do HOST | **idêntico** — as 6 classes registradas são as mesmas; `FlightAgentTC` é registrada dentro de `models/flight/`, não aqui | **idêntico** |
+| `mixr_factory.cpp`/`src/meson.build` do HOST | **idêntico** — as 6 classes registradas são as mesmas; `FlightAgentTC` é registrada dentro de `models/A4/`, não aqui | **idêntico** |
 
 Os dois laços são o **mesmo arquivo** nas duas pocs, byte a byte: quem muda é onde o agente está
 declarado no `.edl` (e qual `.so` o `( PluginModule )` carrega), não o código do host.
@@ -584,7 +584,7 @@ emite ~50 alertas/s onde a single-thread emitia ~10. Nada quebra (a fusão é co
 Mesmo número de decisões, **threads diferentes**: os agentes rodam dentro do pool T/C, em
 paralelo, um por player — e ainda assim o dump é idêntico com 1, 2 ou 4 threads ([7.3](#73-o-paralelismo-continua-ligado)).
 Os índices de thread não são contíguos porque a numeração é por ordem de primeira chamada
-([`xnative::ThreadTag`](../../models/flight/include/xnative/ThreadTag.hpp)), e o laço de background também pega um
+([`xnative::ThreadTag`](../../models/A4/include/xnative/ThreadTag.hpp)), e o laço de background também pega um
 índice.
 
 ---

@@ -172,10 +172,10 @@ TEST(XBoardConcurrency, EscritaConcorrenteDeTodosOsSettersNoMesmoPlayerNaoCorrom
 }
 
 //------------------------------------------------------------------------------
-// threadTag()/currentCpu() -- PROMOVIDOS de models/player/flight/xnative/ThreadTag
+// threadTag()/currentCpu() -- PROMOVIDOS de models/player/A4/xnative/ThreadTag
 // para ca (ver CLAUDE.md, "o do missil que nao aparece"): um contador PRIVADO
 // por .so numeraria a MESMA thread fisica do pool T/C de forma DIFERENTE em
-// cada plugin (models/player/flight e models/player/missile sao dois .so's
+// cada plugin (models/player/A4 e models/player/missile sao dois .so's
 // distintos, cada um veria sua propria "primeira chamada" como indice 0) --
 // o numero mostrado na aba Players deixaria de significar "esta e a MESMA
 // thread" entre um aviao e um missil no mesmo frame. Uma unica libxboard.so

@@ -194,7 +194,7 @@ src/poc/<nome>/
 │                            # duas exceções, nenhuma vendorizada aqui: o tile SRTM
 │                            # mora em shared/data/terrain/ (é do cenário, o mesmo
 │                            # em todas) e a aeronave JSBSim mora em
-│                            # models/flight/data/jsbsim/ (é do MODELO — ver
+│                            # models/A4/data/jsbsim/ (é do MODELO — ver
 │                            # a seção "O MODELO é um plugin" mais abaixo)
 └── README.md                # o que ESTA poc isola, e o que foi medido nela
 ```
@@ -208,7 +208,7 @@ de aplicação — `include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas �
 guarda `tests/guard/check_duplication.sh`. Era duplicação real e já tinha cobrado o preço: a
 correção da ordem de encerramento (calar a thread T/C antes do `SHUTDOWN_EVENT`) teve de ser
 copiada, uma a uma, para as cinco. Hoje a duplicação está dissolvida **por construção** — o
-mesmo movimento que já tinha acontecido com o MODELO quando ele saiu para `models/flight` — e a
+mesmo movimento que já tinha acontecido com o MODELO quando ele saiu para `models/A4` — e a
 guarda que a sustentava foi aposentada junto.
 
 **Prova de neutralidade, medida na troca:** o dump `frame=` de `single-thread`, `multi-thread`,
@@ -230,7 +230,7 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 | `app/DashboardLoop.*` | o laço de tempo real: TUI, teclado, joystick, `Ctrl+C` |
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
-> `models/flight/`, um projeto Meson independente construído numa etapa **anterior**
+> `models/A4/`, um projeto Meson independente construído numa etapa **anterior**
 > (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver `models/README.md`.
 > A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
@@ -585,7 +585,7 @@ plugin precisam compartilhar UMA cópia de estado mutável em tempo de execuçã
 requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
 `install_headers()` no `meson.build` raiz, no mesmo molde de `shared/xplugin/PluginAbi.hpp`.
 
-**`domain::PatrolPlan` não inclui este header, de propósito.** `models/flight/tests/meson.build`
+**`domain::PatrolPlan` não inclui este header, de propósito.** `models/A4/tests/meson.build`
 compila `domain_sources` (que inclui `PatrolPlan.cpp`) em `test_domain`/`test_tree` **sem
 `sdk_dep`, sem MIXR** — a mesma pureza que motivou a separação `bt_sources`/`bt_sdk_sources` já
 documentada acima. Como `shared/xrandom/DeterministicRng.hpp` só fica visível via `dist/include`
@@ -755,7 +755,7 @@ recompilar. Portas próprias (Tacview **1237**, DIS **3004**), então roda ao la
 **Nenhuma linha de C++ foi escrita para isto**, e esse é o resultado a observar: `shared/xpyembed`
 (o interpretador embarcado) e `bt/nodes/PyDecideAction` (o nó `( PyDecide )`) já existiam; o que
 faltava era uma poc **completa** em cima deles. O que havia antes era um `flight_tree_py.xml` de
-exemplo no `models/flight`, com um nó e um script de dez linhas, exercitado só pelo teste
+exemplo no `models/A4`, com um nó e um script de dez linhas, exercitado só pelo teste
 `scenario-policy-python` — não havia como *rodar* e olhar no Tacview. O host desta pasta é cópia
 do da `multi-thread` com caminhos e banner trocados.
 
@@ -850,7 +850,7 @@ lado das outras quatro.
 
 **Nenhuma linha de C++ foi escrita para isto** — `shared/xinfer`, o nó `( OnnxPolicy )` e o
 `unscaleCommand()` de `shared/xrlbridge` já existiam; o que faltava era uma poc **completa** em
-cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/flight`, apontando para
+cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/A4`, apontando para
 um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
 provar que a cadeia funciona, não para voar com ela. O host é cópia do da `multi-thread` com
 caminhos e banner trocados (na época, com a guarda `check_duplication.sh` cobrando a igualdade byte
@@ -886,7 +886,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    assume. `tools/train_policy.py` fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx`
    já versionado). **Vale para qualquer `.onnx` gerado hoje** — inclusive
    `src/poc/rl-training/tools/export_onnx.py --random`, que não fixa a versão; o arquivo versionado em
-   `models/flight/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
+   `models/A4/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
 2. **Uma rede contínua NÃO consegue representar a órbita geométrica da `python-flight`** (marcação
    para a base − 90°). O comando de rumo sai de um `tanh` mapeado linearmente em `[0, 360]`; uma
    órbita percorre todos os rumos, então há um ponto do espaço de observação onde o alvo salta de
@@ -897,7 +897,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    `xrlbridge` — fica registrado como o caminho, não feito.
 3. **A política é dado do CENÁRIO, não do modelo** — por isso `.onnx` e árvore moram em `configs/`
    desta poc (lidos por caminho relativo à raiz, como o próprio `.edl`), e não em
-   `dist/share/mixr-plugins/flight/`, que é onde `models/flight` instala os **dele**. As duas
+   `dist/share/mixr-plugins/flight/`, que é onde `models/A4` instala os **dele**. As duas
    coisas convivem: `scenario-policy-onnx` continua rodando a árvore do modelo, com pesos
    aleatórios, sobre a `multi-thread`.
 4. **O árbitro nativo continua acima da rede.** `( AltitudeSafetyBehavior vote: 90 )` contra
@@ -1272,7 +1272,7 @@ discretos "no instante exato" — o que se alcança é o que se deriva por amost
 ### O MODELO é um plugin, construído numa etapa PRÉVIA
 
 **`src/poc/<poc>/` é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
-em `models/flight/`, que é um **projeto Meson independente**, construído antes do host
+em `models/A4/`, que é um **projeto Meson independente**, construído antes do host
 (`make models`). O host só consome o `.so` instalado em `dist/lib/mixr-plugins/` — mas
 `make models`, sozinho, **não escreve ali**: deposita em `plugins/` (decoplado de
 propósito de `dist/`), e é `make install` quem sincroniza os dois. Ver "Desacoplando `models` de
@@ -1289,7 +1289,10 @@ models/
 │                         # payload + token (EventTokens.hpp). Mora dentro de models/
 │                         # (nao e um modelo em si -- e' consumido POR eles e por app/).
 └── player/               # os projetos de modelo -- cada um um .so de producao
-    ├── flight/              # projeto meson proprio -> build-flight/ -- O MODELO de producao
+    ├── A4/                  # projeto meson proprio -> build-A4/ -- O MODELO de producao (o
+    │                        # nome de fabrica/biblioteca internos continuam "flight" --
+    │                        # libflight.so/libflight_tc.so, provides: { ... } -- so o titulo
+    │                        # da PASTA e o A4, a aeronave que este modelo pilota)
     │   ├── include/{domain,bt,ubf,xnative}/   src/...
     │   ├── configs/flight_tree.xml            # a arvore de comportamento
     │   ├── data/jsbsim/                       # a aeronave (ver abaixo)
@@ -1361,7 +1364,7 @@ models` no Makefile) e ambos sao alvos `.PHONY` -- toda chamada de `sync-plugins
 `models` (nao ha timestamp para pular). Isso e intencional (garante que o deposito esta fresco
 antes de sincronizar), mas significa que passar `ASAN=true`/`ASAN=false` por linha de comando
 (`make sync-plugins ASAN=true`) tem de propagar corretamente ate o `install-host` de
-`models/flight` -- confirmado funcionando (`test-asan` depende exatamente disso).
+`models/A4` -- confirmado funcionando (`test-asan` depende exatamente disso).
 
 **A duplicação entre as gêmeas foi dissolvida por construção.** Antes eram ~3.100 linhas copiadas
 sustentadas por um teste de guarda; agora é uma árvore só, e a única diferença (o `FlightAgentTC`)
@@ -1375,7 +1378,7 @@ byte-idêntica de `data/jsbsim/` (o c310), vendorizada três vezes. Não é coin
 anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
 trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
 `data/jsbsim/` em `plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
-`install-host` de `models/flight/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
+`install-host` de `models/A4/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos três
 cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
 aeronave — aponta para lá. `make install` já encadeia `build` → `sync-plugins` → `models`, então
@@ -1446,7 +1449,7 @@ Duas peças fecham isso:
 **Prova de neutralidade:** com o modelo fora do executável e carregado de `dist/`, o dump `frame=`
 das duas pocs saiu **byte-idêntico** ao de antes de existir plugin nenhum.
 
-`make check-plugin-hotswap` troca o sentido da curva em `models/flight/src/domain/PatrolPlan.cpp`,
+`make check-plugin-hotswap` troca o sentido da curva em `models/A4/src/domain/PatrolPlan.cpp`,
 rebuilda **só** o `.so` (2 edges), confere que o executável não foi tocado e mostra o rumo do
 falcon1 indo de 141° para 34°.
 
@@ -1531,7 +1534,7 @@ exemplificar três coisas, nesta ordem:
    `Simulation::addNewPlayer()` — materializado no próximo `updatePlayerList()` do laço de
    background, exatamente como `interop::NetIO::createIPlayer()` materializa o fantasma DIS do
    `bandit1` nas duas pocs gêmeas. `xnative::FlightAction::execute()`
-   (`models/flight/src/ubf/FlightAction.cpp`) é o único ponto do `flight` que toca esse
+   (`models/A4/src/ubf/FlightAction.cpp`) é o único ponto do `flight` que toca esse
    objeto MIXR de arma: resolve o alvo por nome
    (`player->getWorldModel()->findPlayerByName(...)`), libera o míssil e chama
    `setTargetPlayer(alvo, true)`.
@@ -1857,7 +1860,7 @@ escala por perspectiva, árvore de BT gráfica no card, e alinhamento tabular na
   bate com o rótulo ativo (`matchesLabel()`: nome da tag contém o rótulo OU vice-versa,
   normalizado). **Limite conhecido e aceito**: `ReportAndEvadeAction`/`ReturnToBaseAction`
   decidem em RUNTIME entre dois rótulos cada (`"EVADE"`/`"BREAK"`, `"RTB"`/`"HOME"` —
-  `models/flight/src/bt/nodes/ReportAndEvadeAction.cpp`/`ReturnToBaseAction.cpp`), e nenhum dos
+  `models/A4/src/bt/nodes/ReportAndEvadeAction.cpp`/`ReturnToBaseAction.cpp`), e nenhum dos
   dois é substring do nome da tag (`ReportAndEvade`, `ReturnToBase`) — a árvore ainda aparece, só
   sem destaque nesses dois casos. A alternativa seria uma tabela de mapeamento escrita à mão aqui,
   específica do modelo `flight` — o oposto do resto deste dashboard, por isso não foi feita.
@@ -2112,12 +2115,12 @@ tamanho fixo — não pula mais de layout ao navegar entre as opções.**
 
 - **`thread` sempre "-" não era so falta de destaque — era falta de DADO.** Investigado antes de
   mexer: `shared/xboard::Board.hpp::threadTag` só é escrito em UM lugar do modelo,
-  `models/flight/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
+  `models/A4/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
   pela `multi-thread`) — o caminho que este `app` usa (o mesmo `SimAgent` nativo da
   `single-thread`, decidindo no laço de background) nunca escrevia nada ali, então o campo ficava
   preso em `-1` ("-") pra sempre; não por já ser a "resposta certa" e sim por ninguém contar.
   Corrigido no ÚNICO ponto de atuação comum aos dois agentes,
-  `models/flight/src/ubf/FlightAction.cpp::execute()` (onde `xboard::setBehaviorLabel()`/
+  `models/A4/src/ubf/FlightAction.cpp::execute()` (onde `xboard::setBehaviorLabel()`/
   `bumpDecisionCount()` já rodavam para os dois caminhos): mais uma linha,
   `xboard::setThreadTag(player->getID(), threadTag())` (`xnative::ThreadTag.hpp`, cache
   `thread_local` por thread do SO, já existia, só nunca tinha sido chamada fora do
@@ -2633,7 +2636,7 @@ destinado a ele".**
   inclusive `onde-a-decisao-roda`, que passou aqui.
 
 **Décima sétima passada: quinta aba, "Log" (F5) — as linhas de `shared/xlog` (`LOG(NIVEL) << ...`)
-exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/flight`), de dentro do `.so`
+exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/A4`), de dentro do `.so`
 aberto por `dlopen`.**
 
 - **O que faltava era a FONTE, não a aba.** `xlog` escrevia em `std::cout` e no arquivo, e nada
@@ -2641,7 +2644,7 @@ aberto por `dlopen`.**
   (`snapshot()`/`lastSeq()`, 500 linhas) e `setConsoleEnabled(bool)`; ver a subseção "Buffer em
   memória" na seção `shared/xlog` acima, que também explica por que não é um `tail` do arquivo.
 - **Consequência de graça, e é a parte interessante:** `xlog` é `shared_library()`, então há uma
-  cópia só no processo — o `LOG(...)` do MODELO (`models/flight`, dentro do `.so` aberto por
+  cópia só no processo — o `LOG(...)` do MODELO (`models/A4`, dentro do `.so` aberto por
   `dlopen`) cai no mesmo buffer. Confirmado rodando: removendo `flight_tree.xml` do lugar, as 4
   linhas de `LOG(ERROR)` do `BtBehavior` (uma por falcon) aparecem na aba, sem ponte nenhuma.
 - **`setConsoleEnabled(false)` no início de `runDashboard()`, `true` no fim** — o FTXUI é dono do
@@ -2669,7 +2672,7 @@ aberto por `dlopen`.**
   desta aba — que tinha dois blocos `TRECHO DE TESTE` dentro do `DashboardLoop.cpp`, hoje
   removidos junto com os logs de evento do próprio app: o `app` não chama `LOG(...)` em lugar
   nenhum, só **exibe**; o único ponto em que ele mexe no `xlog` é o `setConsoleEnabled(false)`
-  acima). A instrumentação foi para `models/flight/src/ubf/FlightAction.cpp` —
+  acima). A instrumentação foi para `models/A4/src/ubf/FlightAction.cpp` —
   `FlightAction::execute()`, que já é a **única atuação comum aos dois agentes** (`SimAgent` de
   background e `FlightAgentTC` do pool T/C) e já é onde o rótulo vencedor chega:
   - `INFO` na **transição** de comportamento (`falcon1: PATROL -> EVADE (hdg=... alt=... vel=...)`)
@@ -3057,7 +3060,7 @@ componente novo, `xnative::ThreadTagProbe`, sem tocar em nenhum agente.**
   pelo pool T/C nativo como qualquer outro player — suas 4 fases rodam, a cada frame, na
   MESMA thread que a `Simulation` atribuiu a ele (round-robin por posição na lista). O que
   faltava não era uma decisão fictícia, era só tornar essa thread OBSERVÁVEL.
-- **`xnative::ThreadTagProbe`** (`models/player/flight/{include,src}/xnative/
+- **`xnative::ThreadTagProbe`** (`models/player/A4/{include,src}/xnative/
   ThreadTagProbe.{hpp,cpp}`) — um `base::Component` genérico, sem slot nenhum, que só
   publica `xboard::setThreadTag()` no `updateTC()`, filtrado à fase 3 (MESMO filtro de
   `FlightAgentTC::controller()`, pelo MESMO motivo: `Player::updateTC()` chama
@@ -3117,7 +3120,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   `domain::Guidance`, nenhum UBF) — mesma causa raiz do `bandit1`, resposta óbvia: dar a
   ele o mesmo `ThreadTagProbe`. Mas `GuidedMissile` mora em `models/player/missile`, um
   **plugin Meson separado** (`libmissile.so`) — não linka nem conhece
-  `models/player/flight` — então a classe teve de ser reescrita lá (não reaproveitada por
+  `models/player/A4` — então a classe teve de ser reescrita lá (não reaproveitada por
   `#include`), no mesmo molde do resto do repositório (`models/fixtures/stub` já duplica
   trivialmente `AlertDatalink`/`TacticalAlert`/etc. pelo mesmo motivo: cada modelo é
   autocontido).
@@ -3132,7 +3135,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   fábrica) — o do flight ficou como estava (já testado, já em produção via `bandit1`).
 - **A MESMA investigação expôs um segundo problema, mais sutil, ainda não medido em
   produção mas real: `xnative::threadTag()` (o contador que dá o número T0/T1/...) era
-  PRIVADO de `models/player/flight`** — cada `.so` que o tivesse duplicado teria seu
+  PRIVADO de `models/player/A4`** — cada `.so` que o tivesse duplicado teria seu
   PRÓPRIO contador (`thread_local` + `std::map<thread::id,int>` + `int g_nextTag` todos
   `static` dentro daquele `.so`). Como o pool de threads T/C é o MESMO para todo o
   processo (falcons, `bandit1` e o missil competem pelas MESMAS `numTcThreads` threads
@@ -3142,7 +3145,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   frame, na MESMA thread física, uma coincidência praticamente garantida de acontecer (não
   um caso de borda raro) e diretamente enganosa para o propósito da coluna ("quem decide
   em paralelo com quem"). Resolvido promovendo `threadTag()`/`currentCpu()` de
-  `models/player/flight/include/xnative/ThreadTag.hpp` para `shared/xboard/Board.hpp`
+  `models/player/A4/include/xnative/ThreadTag.hpp` para `shared/xboard/Board.hpp`
   — a MESMA `libxboard.so`, já compartilhada por dlopen entre os dois plugins, pelo MESMO
   motivo estrutural de sempre (`bt=`/`dec=` já dependiam disso). O antigo
   `xnative::ThreadTag.{hpp,cpp}` foi REMOVIDO (não deprecado, não mantido como wrapper) —
@@ -3186,7 +3189,7 @@ do MESMO `UbfArbiter` que já tinha `( AltitudeSafetyBehavior vote: 90 )`: uma p
 agente RL não derruba o avião no terreno, o árbitro nativo sobrepõe sem precisar de código novo.
 
 **`shared/xrlbridge` — quarta `shared_library()` de `shared/`, mesmo motivo estrutural de
-`shared/xboard::Board`.** `RLBridgeBehavior` (`models/flight/include/ubf/RLBridgeBehavior.hpp`)
+`shared/xboard::Board`.** `RLBridgeBehavior` (`models/A4/include/ubf/RLBridgeBehavior.hpp`)
 mora dentro do `.so` do modelo, aberto por `dlopen`; a ponte pybind11 mora no host, que **não pode**
 incluir headers do modelo nem linkar contra o `.so` dele em tempo de compilação —
 `tests/guard/check_host_opaco.sh` trava esse invariante. `shared/xrlbridge/RLBridge.hpp` define seu
@@ -3198,7 +3201,7 @@ hospeda sem subir a árvore de componentes por `container()`, caminho já docume
 neste framework pra objetos aninhados em slot — ver a armadilha de `TacviewOutput::resolveInfo()`
 na seção `shared/xtacview`).
 
-**Por que `RLBridgeBehavior` mora DENTRO de `models/flight` e não num plugin separado** (ao
+**Por que `RLBridgeBehavior` mora DENTRO de `models/A4` e não num plugin separado** (ao
 contrário do precedente do `models/missile`, que existe justamente pra não obrigar as pocs de
 produção a atualizar `provides:`): `RLBridgeBehavior::genAction()` precisa de
 `dynamic_cast<const xnative::FlightState*>` e construir um `xnative::FlightAction*` — tipos
@@ -3269,7 +3272,7 @@ a `Station` de verdade — fora de `make test` de propósito, por depender de pa
 toolchain Conan/Meson.
 
 **`src/rl` é só o AMBIENTE — quem treina de fato é `src/poc/rl-training/`.** A distinção é
-a mesma já usada em `models/flight` (o modelo) vs. `src/poc/*` (quem consome): `src/rl` expõe
+a mesma já usada em `models/A4` (o modelo) vs. `src/poc/*` (quem consome): `src/rl` expõe
 `mixr_gym.MixrFlightEnv` e nada mais — nenhuma dependência de algoritmo de RL (`stable-baselines3`,
 `torch`...) entra em `src/rl/requirements.txt`, que fica deliberadamente mínimo
 (`gymnasium`+`numpy`, o suficiente pra rodar `test_smoke.py`, que testa o CONTRATO do ambiente, não
@@ -3283,7 +3286,7 @@ grafo do Meson: são só Python, wireados só pelo `Makefile`.
 ## `shared/xinfer` e `shared/xpyembed` — decisão por ONNX e por Python, dentro do frame
 
 Duas `shared_library()` novas no SDK (agora são seis: `xboard`, `xlog`, `xtrack`, `xrlbridge`,
-`xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/flight`, que juntos fecham o ciclo
+`xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/A4`, que juntos fecham o ciclo
 que o `src/rl` tinha aberto pela metade.
 
 **O que mudou de direção.** O `RLBridgeBehavior` (a referência deste trabalho) é uma *caixa de
@@ -3303,7 +3306,7 @@ Um nome de fábrica novo custaria 10 pontos de edição (foi o preço pago pelo 
 árvore de **produção** fica intocada; trocar de política é apontar `treeFile:` para outro arquivo.
 
 **Por que as libs, e não código dentro do plugin.** Mesmo argumento de `shared/xboard/Board.hpp`,
-com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/flight` gera
+com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/A4` gera
 **quatro** artefatos do mesmo `model_sources` (~2,3 GB recopiados por `sync-plugins`); o
 `-Wl,--no-undefined` **proíbe** o plugin de chamar a API C do CPython sem linkar `libpython`; e as
 extensões C do Python só importam com `libpython` no escopo global. Contido nas libs, o plugin
@@ -3344,8 +3347,8 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
    `xpyembed` checa `dlsym(RTLD_DEFAULT, "Py_IsInitialized")` antes de carregar qualquer coisa.
 7. **`Py_InitializeEx` segura o GIL.** Sem `PyEval_SaveThread()` logo depois, a primeira
    `PyGILState_Ensure()` de outra thread trava para sempre.
-8. **O `.cpp` de um nó de BT novo entra em DOIS `meson.build`** — `models/flight/meson.build`
-   (`model_sources`) e `models/flight/tests/meson.build`. Nos que dependem do SDK vão em
+8. **O `.cpp` de um nó de BT novo entra em DOIS `meson.build`** — `models/A4/meson.build`
+   (`model_sources`) e `models/A4/tests/meson.build`. Nos que dependem do SDK vão em
    `bt_sdk_sources`, **não** em `bt_sources`: este último é compartilhado com o `test-tree`, que tem
    a propriedade de não linkar MIXR (o `poc-mixr-sdk.pc` declara `Requires: mixr`). O registro
    deles fica em `bt/bt_factory_sdk.cpp`, separado de `bt/bt_factory.cpp` pelo mesmo motivo.

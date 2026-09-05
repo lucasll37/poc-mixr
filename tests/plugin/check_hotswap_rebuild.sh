@@ -24,20 +24,20 @@ cd "$RAIZ"
 BIN=build/app/src/app
 SO=dist/lib/mixr-plugins/libflight.so
 # O diretorio de build do MODELO. Ficou apontando para 'build-flight' (um
-# layout que nao existe mais: models/player/flight/Makefile builda em ./build dentro
+# layout que nao existe mais: models/player/A4/Makefile builda em ./build dentro
 # do proprio projeto), e como todas as chamadas de meson aqui terminam em
 # '|| true' ou com a saida descartada, o alvo falhava sem dizer por que.
-MODEL_BUILD=models/player/flight/build
+MODEL_BUILD=models/player/A4/build
 FIX=build/tests-fixtures/single-thread-hotswap-vivo.edl.in
 
-# 'meson install' do MODELO deposita em models/player/flight/dist/ -- o dist LOCAL
+# 'meson install' do MODELO deposita em models/player/A4/dist/ -- o dist LOCAL
 # daquele projeto, nao o do host. Quem o host carrega e dist/lib/mixr-plugins/,
 # e o caminho normal ate la e 'make install-host' (-> plugins/) seguido
 # do 'sync-plugins' do Makefile raiz. Aqui a demonstracao precisa do .so novo
 # no lugar onde o ./app vai abri-lo, entao a copia e feita direto -- e a MESMA
 # copia que o sync-plugins faz, sem reconstruir mais nada.
 publica_so() {
-   cp -f models/player/flight/dist/lib/mixr-plugins/libflight.so "$SO"
+   cp -f models/player/A4/dist/lib/mixr-plugins/libflight.so "$SO"
 }
 
 [ -x "$BIN" ] || { echo "rode 'make build' primeiro"; exit 1; }
@@ -71,7 +71,7 @@ PYEOF
 
 # Backup em disco, e nao 'git checkout': o plugin pode ainda nao estar
 # versionado, e um alvo de demonstracao nao pode depender disso.
-HDR=models/player/flight/src/domain/PatrolPlan.cpp
+HDR=models/player/A4/src/domain/PatrolPlan.cpp
 BKP=$(mktemp)
 cp "$HDR" "$BKP"
 restaura() {
