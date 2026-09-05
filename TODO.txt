@@ -11,5 +11,7 @@
 
 - enxugar shared
 
--interface gráfica para montar edl
 
+-apresentação de slides
+
+-interface gráfica para montar edl

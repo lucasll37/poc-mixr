@@ -67,6 +67,9 @@ SRC_ROOTS = [MIXR_SRC, MODELS_DIR, SHARED_DIR]
 TARGET_METHODS = [
     "updateTC", "updateData", "dynamics", "transmit", "receive", "process",
     "processComponents",
+    # UBF (mixr::base::ubf): metodos do ciclo de decisao, a parte do switch(phase)
+    # acima -- ver docs/doc.jsx (trilha "Decisao (UBF)").
+    "genAction", "updateState", "execute", "genComplexAction", "controller",
 ]
 
 # Estas tres so fornecem o despacho GENERICO (percorrer filhos, dt4 = dt*4,

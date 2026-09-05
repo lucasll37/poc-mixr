@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 open-docs
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs
 
 .DEFAULT_GOAL := help
 
@@ -316,6 +316,9 @@ check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os c
 # ============================================
 # Documentation Targets
 # ============================================
+
+docs: ## Regenera docs/index.html a partir de docs/doc.jsx (Babel via docs/compile.js). So precisa de rede na 1a vez (cacheia em docs/.cache/).
+	node docs/compile.js
 
 open-docs: ## Abre docs/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
 	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/index.html \

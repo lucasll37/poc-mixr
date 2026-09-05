@@ -2,6 +2,11 @@ build*
 dist
 .claude/settings.local.json
 
+# cache do docs/build.js: React/ReactDOM UMD baixados uma vez + node_modules
+# do @babel/standalone -- so ferramenta de build de docs/doc.jsx -> index.html,
+# nunca dependencia do que index.html carrega em runtime.
+docs/.cache/
+
 # tile SRTM: versiona-se o .gz (12 MB); o .hgt descomprimido (25 MB) e
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
