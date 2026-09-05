@@ -7,7 +7,7 @@
 //
 // Existe para a demonstracao de recarga do modelo (make check-plugin-hotswap):
 // e a regra de negocio que muda quando SO o plugin e recompilado, sem tocar no
-// .epp e sem relinkar o executavel. O default 1.0 e o comportamento de sempre;
+// .edl e sem relinkar o executavel. O default 1.0 e o comportamento de sempre;
 // -1.0 inverte o circuito inteiro, e a divergencia aparece em TODAS as linhas
 // 'frame=' nos primeiros segundos.
 //

@@ -46,7 +46,7 @@ def main():
     out = RAIZ / "build" / "tests-fixtures"
     out.mkdir(parents=True, exist_ok=True)
 
-    base = out / f"{args.poc}-stub-base.epp.in"
+    base = out / f"{args.poc}-stub-base.edl.in"
     subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", args.poc, "--mode", "intruder", "--out", str(base)],
@@ -62,7 +62,7 @@ def main():
         print("FALHA: nao achei o 'file:' do ( PluginModule ) na fixture")
         return 1
 
-    fixture = out / f"{args.poc}-stub.epp.in"
+    fixture = out / f"{args.poc}-stub.edl.in"
     fixture.write_text(novo)
 
     r = subprocess.run(
@@ -114,7 +114,7 @@ def main():
     # publicar a varredura (CONTRATO.md) ficaria sem verificacao nenhuma para
     # um modelo estranho: o host degrada em silencio quando ninguem publica.
     acmi = RAIZ / "build" / "tests-recordings" / f"{args.poc}-stub.acmi"
-    fixture_rt = out / f"{args.poc}-stub-rt.epp.in"
+    fixture_rt = out / f"{args.poc}-stub-rt.edl.in"
     fixture_rt.write_text(re.sub(r'fileName:\s*"[^"]*\.acmi"',
                                  f'fileName: "{acmi}"', novo, count=1))
     acmi.parent.mkdir(parents=True, exist_ok=True)

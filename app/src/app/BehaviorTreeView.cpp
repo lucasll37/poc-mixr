@@ -161,9 +161,9 @@ BtNode parseBehaviorTreeXml(const std::string& xmlPath)
    return {};
 }
 
-BtNode loadTreeForScenario(const std::string& generatedEppPath)
+BtNode loadTreeForScenario(const std::string& generatedEdlPath)
 {
-   const std::string content{readFile(generatedEppPath)};
+   const std::string content{readFile(generatedEdlPath)};
    if (content.empty()) return {};
 
    const auto pos{content.find("treeFile:")};

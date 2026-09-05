@@ -181,7 +181,7 @@ Três leituras que valem guardar:
 Não existe registro nem callback. O MIXR dirige o nosso código porque **duas** coisas são
 verdade ao mesmo tempo:
 
-1. **o objeto está na árvore de componentes** (foi o `.epp` que o colocou lá), e
+1. **o objeto está na árvore de componentes** (foi o `.edl` que o colocou lá), e
 2. **a classe herda de algo que o framework já sabe dirigir**.
 
 O despacho é virtual, puro e simples:
@@ -221,7 +221,7 @@ as fases — e não faz nada, porque o ponteiro que ele procurava é nulo.
 
 ## 4. A árvore de objetos do cenário
 
-[`configs/scenario.epp.in`](configs/scenario.epp.in) monta isto (o `@NUM_TC_THREADS@` é
+[`configs/scenario.edl.in`](configs/scenario.edl.in) monta isto (o `@NUM_TC_THREADS@` é
 substituído por [`app/ScenarioTemplate.cpp`](src/app/ScenarioTemplate.cpp) antes do parse, porque
 o teto depende da máquina):
 
@@ -259,7 +259,7 @@ o teto depende da máquina):
 Cinco coisas que valem entender nessa árvore:
 
 - **`Player` não tem slot para subsistema nenhum.** Tudo entra por `components:` e é localizado
-  **por tipo** (`Player::updateSystemPointers()`). Por isso a ordem no `.epp` é irrelevante *para
+  **por tipo** (`Player::updateSystemPointers()`). Por isso a ordem no `.edl` é irrelevante *para
   encontrar*, os rótulos (`dynamicsModel:`, `pilot:`…) são livres, e um player sem um dado
   subsistema não é erro — é só um player que não tem aquilo.
 - **Mas a ordem é ordem de EXECUÇÃO dentro da fase.** `Component::updateTC()` percorre os
@@ -330,7 +330,7 @@ fábrica próprio; e `terrain` tem de estar lá, porque `models::factory` não a
 ### 5.3 Estrutura em EDL, comportamento em C++
 
 Nenhum exemplo oficial constrói a hierarquia de simulação em código. Quais players existem, com
-quais subsistemas, em que taxa, com quantas threads — é tudo `.epp`. Aqui isso vai ao extremo: o
+quais subsistemas, em que taxa, com quantas threads — é tudo `.edl`. Aqui isso vai ao extremo: o
 número de threads T/C é um marcador `@NUM_TC_THREADS@` resolvido **antes do parse**
 ([`app/ScenarioTemplate`](src/app/ScenarioTemplate.cpp)), porque `setSlotNumTcThreads()` é privado
 e não existe setter público — a única forma honesta de manter tudo instanciado via EDL.
@@ -389,7 +389,7 @@ Três cicatrizes desta peça estão em [13.1](#131-modelsjsbsimmodel-é-final),
 ### 6.3 `( Autopilot )` — o controle
 
 `models::Autopilot : Pilot : System`. Roda na fase 3 e converte comandos de alto nível (rumo,
-altitude, velocidade) em chamadas ao dynamics model, respeitando os limites declarados no `.epp`:
+altitude, velocidade) em chamadas ao dynamics model, respeitando os limites declarados no `.edl`:
 `maxRateOfTurnDps`, `maxBankAngle`, `maxPitchAngle`, `maxClimbRateMps`, `maxAcceleration`.
 
 Traz de graça `headingHoldMode`, `altitudeHoldMode`, `velocityHoldMode`, `navMode` (seguir uma
@@ -848,7 +848,7 @@ silenciosas, justificam este arquivo: o `SrtmHgtFile` **não lê `.gz`** (abre u
 tolerância, cujo `default` só produz *"ERROR in determining SRTM type"* — sem dizer qual arquivo
 nem por quê. Conferir o tamanho aqui é o antídoto.
 
-**3. [`app/ScenarioTemplate.*`](include/app/ScenarioTemplate.hpp)** — `.epp.in` → `.epp`,
+**3. [`app/ScenarioTemplate.*`](include/app/ScenarioTemplate.hpp)** — `.edl.in` → `.edl`,
 substituindo `@NUM_TC_THREADS@`. `resolveTcThreadCount()` usa `hardware_concurrency() - 1`
 (reservando a thread do laço de background), limitado a 8 por padrão, e o `-threads N` do usuário
 ainda é limitado pelo número de núcleos. Existe porque `setSlotNumTcThreads()` é **privado** e não
@@ -949,15 +949,15 @@ runDeterministic(...) | printBanner + runRealTime(...)
 station->event(SHUTDOWN_EVENT);  station->unref();
 ```
 
-**A ordem importa.** `ensureTerrainData` antes de `generateScenario` porque o `.epp` nomeia o
+**A ordem importa.** `ensureTerrainData` antes de `generateScenario` porque o `.edl` nomeia o
 `.hgt`; `primeStation` antes de `collectFleet` porque os players só existem depois do parse; e
 `applyCruiseThrottle` depois do frame de partida porque o `DynamicsModel` precisa estar resolvido.
 
 ### 7.9 Camada 9 — `configs/` e `data/`
 
-**[`configs/scenario.epp.in`](configs/scenario.epp.in)** — o cenário em EDL, dissecado na
-[seção 4](#4-a-árvore-de-objetos-do-cenário). É `.in` e não `.epp` por causa do
-`@NUM_TC_THREADS@`. O `.epp` gerado é *gitignored*.
+**[`configs/scenario.edl.in`](configs/scenario.edl.in)** — o cenário em EDL, dissecado na
+[seção 4](#4-a-árvore-de-objetos-do-cenário). É `.in` e não `.edl` por causa do
+`@NUM_TC_THREADS@`. O `.edl` gerado é *gitignored*.
 
 **[`configs/flight_tree.xml`](../../models/flight/configs/flight_tree.xml)** — a árvore, um `Fallback` de quatro
 ramos em ordem de prioridade:
@@ -1086,7 +1086,7 @@ só (a) quem varreu a lista de players para achar o destinatário e (b) o que va
 virtual bool event(const int event, base::Object* const obj = nullptr);
 ```
 
-Não existe broker, fila global, pub/sub, nem roteamento declarativo no `.epp`. A prova mais curta
+Não existe broker, fila global, pub/sub, nem roteamento declarativo no `.edl`. A prova mais curta
 é o próprio datalink nativo sem rádio (`Datalink.cpp:332-360`) — literalmente um `for` na lista:
 
 ```cpp
@@ -1149,7 +1149,7 @@ lista, em threads diferentes — essa é a parte não óbvia.
 
 **Filtro (thread de fundo, fora do frame).** `RfSystem::updateData` (`:165`) pega
 `sim->getPlayers()` (`:195`) e desce até `Tdb::processPlayers` — **o laço**, em `Tdb.cpp:280`.
-Ali são aplicados os filtros que você declarou no `.epp`: `maxPlayersOfInterest`,
+Ali são aplicados os filtros que você declarou no `.edl`: `maxPlayersOfInterest`,
 `playerOfInterestTypes`, `maxRange2PlayersOfInterest`, `maxAngle2PlayersOfInterest`, horizonte e
 **oclusão de terreno** (esta última só se o `Gimbal` declarar `terrainOcculting: true` — ver
 [10.5](#105-o-que-mais-o-terreno-destrava)). Quem sobrevive vira `targets[]`.
@@ -1166,7 +1166,7 @@ ida na fase 1, volta na fase 2:
 | 1 | 1 | `Radar::transmit()` monta a `Emission`; marca `setReturnRequest(...)` e `setTransmitter(this)` | `Radar.cpp:160-175` |
 | 2 | 1 | `Antenna::rfTransmit()` recalcula a geometria **agora**, aplica ganho/ERP e pré-calcula `lossRng = 1/(4πr²)` | `Antenna.cpp:393`, `Emission.cpp:58` |
 | 3 | 1 | **`targets[i]->event(RF_EMISSION, em)`** — chega no outro player | `Antenna.cpp:529` |
-| 4 | 1 | o alvo calcula o próprio RCS: `signature->getRCS(em)`. **Sem `signature:` no `.epp`, vira 0** | `Player.cpp:2593` / `:2596` |
+| 4 | 1 | o alvo calcula o próprio RCS: `signature->getRCS(em)`. **Sem `signature:` no `.edl`, vira 0** | `Player.cpp:2593` / `:2596` |
 | 5 | 1 | o eco volta **direto pelo ponteiro** que veio no pacote — não passa pela lista de players | `Player.cpp:2600` |
 | 6 | 1 | antena do emissor → sensor; sinal de **ida** = `power × rangeLoss × gain / losses`, enfileirado | `Antenna.cpp:707`, `RfSystem.cpp:230` |
 | 7 | 2 | `Radar::receive()` filtra o próprio eco (`em->getTransmitter() == this`), aplica `rcs × rangeLoss` de **volta** e testa o limiar S/I | `Radar.cpp:224`, `:233`, `:277` |
@@ -1174,7 +1174,7 @@ ida na fase 1, volta na fase 2:
 | 9 | 3 | `AirTrkMgr::processTrackList()` drena, correlaciona, roda alfa-beta, cria o `RfTrack` | `AirTrkMgr.cpp:334-338` |
 | 10 | — | você lê: `trkMgr->getTrackList(...)` | [`FlightState`](../../models/flight/src/ubf/FlightState.cpp) |
 
-Duas consequências práticas para quem escreve o `.epp`:
+Duas consequências práticas para quem escreve o `.edl`:
 
 - **`signature:` não é enfeite.** É o passo 4. Sem ele o alvo devolve RCS 0, o pacote morre no
   limiar do passo 7 e o avião simplesmente não existe para o radar.
@@ -1298,7 +1298,7 @@ Escolha primeiro **de qual canal** você precisa:
 
 | você quer… | use | custo em C++ |
 |---|---|---|
-| detecção física realista (RCS, potência, ruído, pistas filtradas) | RF nativo: `Antenna` + `Radar`/`Tws` + `AirTrkMgr` no `.epp` | **zero** |
+| detecção física realista (RCS, potência, ruído, pistas filtradas) | RF nativo: `Antenna` + `Radar`/`Tws` + `AirTrkMgr` no `.edl` | **zero** |
 | trocar uma **carga própria** entre players, sem modelar propagação | subclasse de `models::Datalink` | ~100 linhas — molde: [`AlertDatalink`](../../models/flight/src/xnative/AlertDatalink.cpp) |
 | um canal com regra própria (alcance, lado, quem ouve quem) | componente próprio + evento `>= 2000` | tudo seu |
 
@@ -1326,7 +1326,7 @@ E as regras que valem para os **três** canais:
 - `event()` roda na **thread do emissor**. Se o handler escreve, ou é comutativo, ou é
   determinístico só por sorte.
 - Escreva numa fase, **publique na fronteira**, leia na fase seguinte.
-- Ordem dos componentes no `.epp` é ordem de execução dentro da fase. Não é decoração.
+- Ordem dos componentes no `.edl` é ordem de execução dentro da fase. Não é decoração.
 - Nome errado em qualquer slot `*Name:` = componente inerte, **sem diagnóstico**.
 
 ---
@@ -1349,7 +1349,7 @@ lado do framework e nenhuma linha de meson mudou.**
 O caminho completo do dado:
 
 ```
-configs/scenario.epp.in     terrain: ( SrtmHgtFile path/file )
+configs/scenario.edl.in     terrain: ( SrtmHgtFile path/file )
    └─ mixr::terrain::factory  constrói o SrtmHgtFile
         └─ WorldModel::setSlotTerrain()
              └─ RESET_EVENT → WorldModel::reset() → Terrain::reset() → loadData()
@@ -1471,7 +1471,7 @@ A poc declara `modelMap: { falcon1: "F-16C" ... }`, então o replay desenha caç
 ```
 
 > **O ícone é apresentação, não física.** A dinâmica continua sendo a do c310 — a única aeronave
-> com autopilot `ap/*` entre as distribuídas com o JSBSim. Trocar o ícone é uma linha no `.epp`;
+> com autopilot `ap/*` entre as distribuídas com o JSBSim. Trocar o ícone é uma linha no `.edl`;
 > trocar a aeronave de verdade exigiria escrever as leis de controle à mão.
 
 **Posição:** o registro do gravador carrega ECEF, convertido com `base::nav::convertEcef2Geod()`
@@ -1578,7 +1578,7 @@ Repare que o pool T/C **continua ligado** — `-threads N` funciona igual nos do
 artifício não serializa a simulação; ele serializa apenas a fronteira **física → decisão**.
 
 Ordem entre os quatro agentes também é fixa: eles são componentes da `Station` e o
-`BaseClass::updateData()` percorre o `PairStream` na ordem de declaração do `.epp`.
+`BaseClass::updateData()` percorre o `PairStream` na ordem de declaração do `.edl`.
 
 ### 12.5 O que o `check` prova (e o que não prova)
 
@@ -1765,9 +1765,9 @@ make test-asan
 
 # o piso de terreno está vivo? (controle negativo, sem recompilar)
 sed 's/terrainClearance: ( Meters 800 )/terrainClearance: ( Meters 0 )/' \
-    src/poc/dis/single-thread/configs/scenario.epp.in > /tmp/sem-piso.epp.in
+    src/poc/dis/single-thread/configs/scenario.edl.in > /tmp/sem-piso.edl.in
 ./build/src/poc/dis/single-thread/src/single-thread -deterministic 12000 | grep '^frame=' > /tmp/com.txt
-./build/src/poc/dis/single-thread/src/single-thread -deterministic 12000 -f /tmp/sem-piso.epp.in \
+./build/src/poc/dis/single-thread/src/single-thread -deterministic 12000 -f /tmp/sem-piso.edl.in \
     | grep '^frame=' > /tmp/sem.txt
 diff -q /tmp/com.txt /tmp/sem.txt      # DEVEM diferir
 
@@ -1803,7 +1803,7 @@ falcon2  alt= 2022m elev= 906m agl= 1117m hdg= 51deg roll=-30deg spd=141kt ...
 
 ## 16. O que a poc responde
 
-- **O framework dirige pela herança e encontra pela árvore de componentes**: o `.epp` diz *onde*
+- **O framework dirige pela herança e encontra pela árvore de componentes**: o `.edl` diz *onde*
   o objeto está, a classe-base diz *quando* ele é chamado, e o `virtual` diz *o que* roda.
 - **Herdar tudo o que dá deixa a aplicação com 6 classes próprias** — nenhuma delas player,
   dinâmica, controle ou sensor — e traz junto coisas que ninguém escreve por gosto: equação do

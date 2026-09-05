@@ -5,14 +5,14 @@
 //
 //    ./build/src/poc/built-in_mixr_1/src/built-in_mixr_1
 //
-// DERIVADO manualmente do scenario.epp.in da single-thread, cuja aplicacao
+// DERIVADO manualmente do scenario.edl.in da single-thread, cuja aplicacao
 // esta poc reusa byte a byte -- a diferenca dela e 100% de cenario.
 //
-// POR QUE O ARQUIVO NAO SE CHAMA scenario.epp.in:
+// POR QUE O ARQUIVO NAO SE CHAMA scenario.edl.in:
 // tests/guard/check_falcons_estrutura.sh varre esse nome por glob e exige que
 // falcon1..4 tenham o MESMO esqueleto de slots. Aqui falcon1 e
 // propositalmente diferente dos outros tres, entao o cenario tem nome proprio
-// -- mesmo recurso que a bandit ja usa (o cenario dela e um scenario.epp).
+// -- mesmo recurso que a bandit ja usa (o cenario dela e um scenario.edl).
 //
 // PERGUNTA QUE ESTE ARQUIVO RESPONDE: qual o player mais elaborado que da
 // para montar so com componentes NATIVOS do mixr::models?

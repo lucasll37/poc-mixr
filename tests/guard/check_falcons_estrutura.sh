@@ -17,11 +17,11 @@ fail=0
 
 # Descoberto por glob, nao por lista fixa: poc nova com os quatro falcons
 # nasce cobrada sem editar este arquivo (a bandit fica de fora sozinha --
-# o cenario dela e um scenario.epp, sem template e sem falcon nenhum).
+# o cenario dela e um scenario.edl, sem template e sem falcon nenhum).
 # Por 'find', nao por glob de um nivel: agrupar as pocs de DIS em
 # src/poc/dis/<poc>/ empurrou tres cenarios um nivel para baixo, e o glob
 # 'src/poc/*/configs/...' deixaria de ve-los -- guarda verde cobrindo menos.
-for arquivo in $(find src/poc -type f -path '*/configs/scenario.epp.in' | sort); do
+for arquivo in $(find src/poc -type f -path '*/configs/scenario.edl.in' | sort); do
    if python3 tests/guard/skeleton_diff.py "$arquivo" falcon1 falcon2 falcon3 falcon4; then
       echo "  OK   $arquivo"
    else

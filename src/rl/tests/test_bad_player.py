@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regressao do bug corrigido em src/rl/bindings/NativeSimulation.cpp: um
 'player_name' que nao existe no cenario (typo, ou nome de um player real que
-nao e o configurado com ( RLBridgeBehavior ) no .epp) tem de FALHAR alto em
+nao e o configurado com ( RLBridgeBehavior ) no .edl) tem de FALHAR alto em
 reset(), nao rodar silenciosamente com 'terminated' preso em False para
 sempre -- ver o comentario em NativeSimulation.hpp/reset() e a secao
 "Limites conhecidos" do src/rl/README.md.
@@ -14,7 +14,7 @@ esta MixrFlightEnv aqui e a UNICA Station deste processo -- ver a armadilha
 import os
 import sys
 
-if not os.path.exists("./src/rl/configs/scenario_rl.epp"):
+if not os.path.exists("./src/rl/configs/scenario_rl.edl"):
     print("ERRO: rode este script com cwd na raiz do repositorio", file=sys.stderr)
     sys.exit(1)
 

@@ -73,7 +73,7 @@ def main():
 
     # Fixture HERMETICA de base, derivada do cenario de producao -- e nao uma
     # copia versionada, que comecaria certa e envelheceria em silencio.
-    base = out / f"{args.poc}-plugin-base.epp.in"
+    base = out / f"{args.poc}-plugin-base.edl.in"
     subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", args.poc, "--mode", "intruder", "--out", str(base)],
@@ -87,7 +87,7 @@ def main():
         return 1
 
     def variante(nome, transforma):
-        p = out / f"{args.poc}-plugin-{nome}.epp.in"
+        p = out / f"{args.poc}-plugin-{nome}.edl.in"
         p.write_text(transforma(texto))
         return p
 

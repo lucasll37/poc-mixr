@@ -25,8 +25,8 @@
 //    app/ScenarioCatalog.hpp     as chaves de cenario que este poc conhece
 //    app/ScenarioPickerScreen    tela de selecao (FTXUI), sem Station nenhuma
 //    app/TerrainData.hpp         .hgt em disco (copia verbatim de single-thread)
-//    app/ScenarioTemplate.hpp    .epp.in -> .epp (copia verbatim)
-//    app/StationBuilder.hpp      .epp -> Station de pe (copia verbatim)
+//    app/ScenarioTemplate.hpp    .edl.in -> .edl (copia verbatim)
+//    app/StationBuilder.hpp      .edl -> Station de pe (copia verbatim)
 //    app/Fleet.hpp               os players observados (copia verbatim)
 //    app/DeterministicRun.hpp    laco de passo fixo, '-deterministic' (copia verbatim)
 //    app/DashboardLoop.hpp       o laco de tempo real, com FTXUI (NOVO)
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
    // do Mapa (ver app/TerrainQuery.hpp); nenhum cenario depende deles.
    app::ensureAllTerrainTiles(terrainDir);
 
-   const std::string generatedPath{"./app/configs/" + cenario.key + ".generated.epp"};
+   const std::string generatedPath{"./app/configs/" + cenario.key + ".generated.edl"};
    const std::map<std::string, std::string> tacviewTokens{
       {"SCENARIO_ID", cenario.tacviewId},
       {"MODEL_MAP", cenario.tacviewModelMap},
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
                                  opts.parallelDecision);
       app::printMetaObjectReport();
    } else {
-      // Best-effort: le o MESMO '.epp' ja expandido pra achar 'treeFile:'
+      // Best-effort: le o MESMO '.edl' ja expandido pra achar 'treeFile:'
       // e desenhar a arvore no card de detalhe -- ver app/BehaviorTreeView
       // .hpp para o "porque" disso nao ser generico a ponto de dispensar
       // saber que a tecnologia de BT e o BehaviorTree.CPP.

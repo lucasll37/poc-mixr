@@ -81,7 +81,7 @@ primeira decisão.
 
 **Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da `multi-thread` com caminhos
 e banner trocados — `tests/guard/check_duplication.sh` exige que continue byte a byte igual — e o
-modelo não mudou. Trocar as regras pela rede foi trocar um caminho de arquivo no `.epp`.
+modelo não mudou. Trocar as regras pela rede foi trocar um caminho de arquivo no `.edl`.
 
 ---
 
@@ -358,7 +358,7 @@ continua byte a byte igual à da `single-thread`) e `tests/guard/check_falcons_e
 | a árvore | [`configs/flight_tree_onnx.xml`](configs/flight_tree_onnx.xml) |
 | a rede | `configs/policy_barrier.onnx` (25 KB, versionado) |
 | o treinador | [`tools/train_policy.py`](tools/train_policy.py) |
-| o cenário | [`configs/scenario.epp.in`](configs/scenario.epp.in) |
+| o cenário | [`configs/scenario.edl.in`](configs/scenario.edl.in) |
 | o motor de inferência | [`shared/xinfer/README.md`](../../../shared/xinfer/README.md) |
 | o nó `( OnnxPolicy )` | `models/flight/src/bt/nodes/OnnxPolicyAction.cpp` |
 | o guia de políticas | [`models/flight/docs/POLITICAS.md`](../../../models/flight/docs/POLITICAS.md) |

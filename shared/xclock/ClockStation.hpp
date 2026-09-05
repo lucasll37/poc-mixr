@@ -17,7 +17,7 @@ namespace xclock {
 // Factory name: ClockStation
 //
 // Slots: nenhum proprio -- a velocidade inicial continua sendo o slot NATIVO
-//        'fastForwardRate' da Station (ver o .epp do cenario).
+//        'fastForwardRate' da Station (ver o .edl do cenario).
 //
 // DIVISAO DELIBERADA entre o que e nativo e o que e nosso:
 //

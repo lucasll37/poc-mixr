@@ -36,7 +36,7 @@ mixr::simulation::Station* buildStation(const std::string& filename)
    int num_errors{};
 
    // A carga dos plugins acontece AQUI DENTRO, durante o parse: o
-   // ( PluginLoader ) declarado no .epp faz o dlopen no proprio isValid(),
+   // ( PluginLoader ) declarado no .edl faz o dlopen no proprio isValid(),
    // que o parser chama no fecha-parenteses do bloco -- antes, portanto, de
    // qualquer forma escrita depois dele no arquivo. Ver o cabecalho de
    // shared/xplugin/PluginLoader.hpp para a prova de ordem.
@@ -113,7 +113,7 @@ mixr::xtacview::TacviewOutput* tacviewOutputOf(mixr::simulation::Station* const 
    // Navegacao PARA BAIXO na arvore (slot -> filho) -- funciona; e o sentido
    // contrario (filho -> pai, container()) que esta quebrado, documentado em
    // TacviewOutput::resolveInfo(). getOutputHandler() so e alcancavel de
-   // fora porque o .epp declara ( ExposedDataRecorder ) em vez de
+   // fora porque o .edl declara ( ExposedDataRecorder ) em vez de
    // ( DataRecorder ) -- ver o cabecalho de ExposedDataRecorder.hpp.
    const auto dataRecorder = dynamic_cast<mixr::xtacview::ExposedDataRecorder*>(station->getDataRecorder());
    mixr::recorder::OutputHandler* const outputHandler{

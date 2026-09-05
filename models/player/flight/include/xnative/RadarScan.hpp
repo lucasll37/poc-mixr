@@ -18,7 +18,7 @@ namespace xnative {
 // ScanGimbal::getScanVolumeD().
 //
 // O caminho e sempre o mesmo do framework:
-//    AirVehicle -> Gimbal (nome "radar", ver scenario.epp.in)
+//    AirVehicle -> Gimbal (nome "radar", ver scenario.edl.in)
 //------------------------------------------------------------------------------
 struct RadarScanInfo
 {

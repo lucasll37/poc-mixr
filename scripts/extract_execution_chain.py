@@ -59,7 +59,7 @@ MIXR_MODELS_SRC = MIXR_SRC / "models"
 # rglob() sobre a pasta toda e imune a esse tipo de mudanca de endereco.
 MODELS_DIR = REPO_ROOT / "models"
 SHARED_DIR = REPO_ROOT / "shared"
-DEFAULT_SCENARIO = REPO_ROOT / "src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in"
+DEFAULT_SCENARIO = REPO_ROOT / "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in"
 
 INCLUDE_ROOTS = [MIXR_INCLUDE, MODELS_DIR, SHARED_DIR]
 SRC_ROOTS = [MIXR_SRC, MODELS_DIR, SHARED_DIR]
@@ -346,7 +346,7 @@ SLOT_ITEM_RE = re.compile(r'"([A-Za-z0-9_]+)"\s*,?\s*(?://\s*(.*))?')
 def extract_slots(cpp_roots):
     """Classe -> [{name, comment}], a partir de BEGIN_SLOTTABLE(Classe) ...
     END_SLOTTABLE(Classe) (macros.hpp:291-298) -- e a lista de nomes que um
-    .epp pode configurar nessa classe: a 'interface' publica dela, no sentido
+    .edl pode configurar nessa classe: a 'interface' publica dela, no sentido
     EDL. So le linhas comecando com uma string entre aspas (o formato real,
     confirmado lendo Antenna.cpp:29-37)."""
     slots: dict[str, list[dict]] = {}
@@ -450,7 +450,7 @@ def main():
         "classes",
         nargs="*",
         help="nomes de fabrica ou de classe C++; default: tokens de "
-        "src/poc/built-in_mixr_1/configs/scenario_max_player.epp.in",
+        "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     )
     ap.add_argument("--json", action="store_true", help="saida em JSON em vez de tabela")
     ap.add_argument(

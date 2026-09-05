@@ -13,7 +13,7 @@
 // generico -- ver app/DashboardState.cpp). A ESTRUTURA da arvore (quem e
 // filho de quem) nao existe em nenhum lugar acessivel em runtime -- por
 // isso este arquivo LE o mesmo arquivo XML que o cenario ja resolveu para
-// 'treeFile:' (achado no '.generated.epp', uma unica vez, no startup -- ver
+// 'treeFile:' (achado no '.generated.edl', uma unica vez, no startup -- ver
 // loadTreeForScenario()) e faz um parse minimo, so o suficiente pro formato
 // do BT.CPP (tags aninhadas, '<Tag/>' pra folha, '<Tag>...</Tag>' pra
 // controle).
@@ -39,7 +39,7 @@ bool isValid(const BtNode& node);
 // (invalido) se o arquivo nao existir ou nao tiver essa forma.
 BtNode parseBehaviorTreeXml(const std::string& xmlPath);
 
-// Varre 'generatedEppPath' (o '.epp' ja expandido do cenario) procurando a
+// Varre 'generatedEdlPath' (o '.edl' ja expandido do cenario) procurando a
 // PRIMEIRA ocorrencia de 'treeFile: "..."' e devolve a arvore ja parseada.
 // BtNode{} se o cenario nao declarar nenhuma (um modelo futuro sem BT, ou
 // um player sem BtBehavior). Cenarios de producao tem uma BtBehavior por
@@ -47,7 +47,7 @@ BtNode parseBehaviorTreeXml(const std::string& xmlPath);
 // pra mostrar a estrutura (limite conhecido: um player com arvore
 // DIFERENTE dos outros mostraria a arvore errada -- documentado no
 // CLAUDE.md, nao acontece em nenhum cenario deste repositorio hoje).
-BtNode loadTreeForScenario(const std::string& generatedEppPath);
+BtNode loadTreeForScenario(const std::string& generatedEdlPath);
 
 // MELHOR ESFORCO: compara o nome da tag normalizado (maiusculo, so
 // alfanumerico) contra o rotulo por CONTEM-EM-QUALQUER-DIRECAO. Cobre os

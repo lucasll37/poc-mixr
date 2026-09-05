@@ -1,6 +1,6 @@
 # `shared/xplugin` — carga dinâmica de modelos MIXR
 
-Compilar um modelo à parte, contra um contrato explícito, declará-lo no `.epp` e carregá-lo em
+Compilar um modelo à parte, contra um contrato explícito, declará-lo no `.edl` e carregá-lo em
 tempo de execução — **sem recompilar a aplicação**.
 
 > **Leia isto antes de qualquer outra coisa:** *"sem recompilar tudo"* — sim. *"sem reiniciar o

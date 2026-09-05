@@ -109,7 +109,7 @@ struct BackgroundInfo
 
    // Station::getNetworks()/getNetworkRate() -- 0/vazio nos tres cenarios
    // deste app (nenhum declara 'networks:', ver o cabecalho de cada
-   // scenario_*.epp.in: hermetico de proposito). Mostrado de qualquer jeito
+   // scenario_*.edl.in: hermetico de proposito). Mostrado de qualquer jeito
    // porque e o dado REAL, nao um valor fixo assumido -- se algum cenario
    // futuro declarar 'networks:', a aba passa a refletir isso sozinha.
    int networkHandlerCount{};

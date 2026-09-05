@@ -1,20 +1,34 @@
 //
-// dashboard -- cenario "Intercepto + Missil"
+// rl -- cenario para o wrapper Gymnasium (src/rl/python/mixr_gym).
 //
-// scenario_intercept.epp.in + falcon1 carregando UM missil guiado (mesmo
-// molde de src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in) --
-// lancamento/detonacao/destruicao, otimo pra demonstrar pausar/frear bem no
-// meio do engajamento. Carrega os DOIS plugins: libflight_tc.so (os 7 nomes
-// de sempre, incluindo FlightAgentTC) e libmissile.so (so "GuidedMissile")
-// -- ver CLAUDE.md, secao "Demo: missil guiado", para o "porque" de serem
-// dois plugins e nao um so.
+// Derivado de app/configs/scenario_patrol.edl.in (mesma pilha 100% nativa:
+// Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/FlightAgentTC, o mesmo
+// plugin libflight_tc.so), com o delta:
 //
-// @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
+//   1) falcon1 troca ( BtBehavior ... ) por ( RLBridgeBehavior vote: 50 )
+//      dentro do MESMO UbfArbiter -- o piso de seguranca nativo
+//      ( AltitudeSafetyBehavior, vote: 90 ) continua protegendo mesmo
+//      quando o agente RL manda um comando ruim (ver CLAUDE.md, secao
+//      AltitudeSafetyBehavior).
+//   2) falcon2..4 continuam com BtBehavior nativo -- trafego/companheiros
+//      de cenario, nao controlados pelo agente RL (ver "Escopo" do plano
+//      de implementacao: v1 e single-agent).
+//   3) ( Station ) no lugar de ( ClockStation ) -- este host nunca roda em
+//      tempo real, NativeSimulation::step() chama tcFrame()/updateData()
+//      direto, sem pool de tempo critico com pacing nem teclado.
+//   4) SEM 'networks:' -- hermetico, mesmo motivo de
+//      tests/scenario/make_fixture.py (nao competir por porta/trafego com
+//      outra sessao).
+//   5) Porta de Tacview PROPRIA (1237) e dataRecorder/data/ apontando pra
+//      ./src/rl/, pra poder rodar ao lado de single-thread/multi-thread/app
+//      (portas 1234/1236) sem colidir -- opcional, so para acompanhar
+//      visualmente um episodio; NativeSimulation nunca le o TacviewOutput
+//      de volta.
+//   6) numTcThreads FIXO em 1 -- nao ha argv aqui (chamado de Python via
+//      pybind11, nao por linha de comando), e um agente RL nao precisa do
+//      pool de threads para ir rapido; so precisa ser DETERMINISTICO.
 //
-
-( ClockStation
-
-   tcPriority: 0.5
+( Station
 
    ownship: falcon1
 
@@ -31,25 +45,37 @@
                            BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
                            FlightAction }
             )
-            ( PluginModule
-               file:     "libmissile.so"
-               provides: { GuidedMissile }
-            )
          }
       )
 
    } // components (plugins)
 
-   // Esqueleto compartilhado com scenario_patrol.epp.in/
-   // scenario_intercept.epp.in -- ver
-   // app/configs/fragments/tacview_recorder.epp.frag e
-   // app::generateScenario() (ScenarioTemplate.cpp).
-   @include:tacview_recorder.epp.frag@
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "rl"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1237
+               callsign: "poc-mixr/rl"
+               fileName: "./src/rl/data/recordings/mission.acmi"
+               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"
+                           falcon3: "F-16C"  falcon4: "F-16C" }
+               typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
+                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing" }
+               colorMap: { falcon1: "Blue"  falcon2: "Blue"
+                           falcon3: "Blue"  falcon4: "Blue" }
+            )
+         }
+      )
+   )
 
    simulation: ( WorldModel
 
-      numTcThreads: @NUM_TC_THREADS@
+      numTcThreads: 1
 
+      // Serra do Mar / regiao de Nova Friburgo (RJ) -- mesma referencia das
+      // demais pocs, ver CLAUDE.md.
       latitude:  -22.25
       longitude: -42.48
 
@@ -109,36 +135,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-
-               // ---------------------------------------------------------
-               // O MISSIL -- mesmo molde de scenario_missile_demo.epp.in.
-               // UM so, na unica estacao deste StoresMgr. GuidedMissile vem
-               // do plugin libmissile.so (ver plugins: acima); StoresMgr
-               // (SimpleStoresMgr, ver a armadilha do nome de fabrica no
-               // CLAUDE.md) e nativo do MIXR.
-               // ---------------------------------------------------------
-               stores: ( StoresMgr
-                  numStations: 1
-                  stores: {
-                     1: ( GuidedMissile
-                        id: 501
-                        side: blue
-                        type: "AIM1"
-                        signature: ( SigSphere radius: 0.3 )
-                        dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 45 )
-                        lethalRange: ( Meters 30 )
-                        maxBurstRng: ( Meters 150 )
-                        components: {
-                           dynamicsModel: ( JSBSimModel
-                              rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
-                              model:   "aim1"
-                              debugLevel: 0
-                           )
-                        }
-                     )
-                  }
-               )
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( UbfArbiter
@@ -151,33 +147,9 @@
                            minClearance:     ( Meters 400 )
                            recoverClearance: ( Meters 800 )
                         )
-                        ( BtBehavior
-                           vote: 50
-                           treeFile: "./models/player/flight/configs/flight_tree_missile_demo.xml"
-                           patrolHeading:  ( Degrees 90 )
-                           legTime:        ( Seconds 60 )
-                           legTurn:        ( Degrees 90 )
-                           patrolAltitude: ( Meters 1750 )
-                           patrolSpeed:    160.0
-                           rtbAltitude:    ( Meters 2050 )
-                           rtbSpeed:       170.0
-                           arrivalRadius:  ( NauticalMiles 2.0 )
-                           fuelReserve:    0.35
-                           breakTurn:      ( Degrees 110 )
-                           evadeClimb:     ( Meters 700 )
-                           evadeSpeed:     185.0
-                           terrainClearance: ( Meters 800 )
-                           evadeHold:      ( Seconds 30 )
-                           supportSpeed:   180.0
-                           // Envelope de lancamento -- ver a armadilha confirmada
-                           // rodando no CLAUDE.md ("Demo: missil guiado"): o primeiro
-                           // contato nesta geometria acontece a ~13.6 NM, e
-                           // ReportAndEvade FOGE do contato assim que ele aparece --
-                           // um launchMaxRange menor que isso nunca dispara.
-                           launchMinRange: ( NauticalMiles 0.8 )
-                           launchMaxRange: ( NauticalMiles 20.0 )
-                           launchCone:     ( Degrees 60 )
-                        )
+                        // Decisao vem de fora (Python), via shared/xrlbridge --
+                        // ver models/flight/include/ubf/RLBridgeBehavior.hpp.
+                        ( RLBridgeBehavior vote: 50 )
                      }
                   )
                )
@@ -405,36 +377,6 @@
                         )
                      }
                   )
-               )
-            }
-         )
-
-
-         // ------------------------------------------------------------------
-         // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
-         // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
-         // 'intruder') / src/poc/dis/bandit/configs/scenario.epp.
-         // ------------------------------------------------------------------
-         bandit1: ( Aircraft
-            id: 201
-            side: red
-            type: "C310"
-            signature: ( SigSphere radius: 4.0 )
-            initXPos:     ( NauticalMiles 12.0 )
-            initYPos:     ( NauticalMiles 12.0 )
-            initAlt:      ( Meters 2400.0 )
-            initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
-            dataLogTime: ( Seconds 0.1 )
-            interpolateTerrain: true
-            components: {
-               dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
-               )
-               pilot: ( Autopilot
-                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
                )
             }
          )

@@ -314,7 +314,7 @@ Três regras estruturam todo subprojeto e todo modelo:
 2. **Um arquivo, uma questão.** Nenhum `main.cpp` de centenas de linhas — cada etapa é um módulo
    próprio, cada header abrindo com o *porquê* daquele passo.
 3. **Estrutura vem do EDL, comportamento vem do C++.** Players, subsistemas, taxas, threads —
-   tudo isso é `configs/*.epp`, lido em tempo de carga. Reconfigurar não recompila nada.
+   tudo isso é `configs/*.edl`, lido em tempo de carga. Reconfigurar não recompila nada.
 
 ---
 

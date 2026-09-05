@@ -25,7 +25,7 @@ namespace xplugin {
 // mixrFactory() de cada poc, que e funcao livre; logo o estado tem de estar
 // em escopo de arquivo.
 //
-// CONCORRENCIA: escrito so durante o parse do .epp, na thread principal,
+// CONCORRENCIA: escrito so durante o parse do .edl, na thread principal,
 // antes de existir qualquer thread de tempo critico. Depois disso e so
 // leitura. seal() marca o fim da janela de escrita e transforma uma carga
 // tardia em erro, em vez de corrida silenciosa.

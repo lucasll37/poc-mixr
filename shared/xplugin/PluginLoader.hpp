@@ -11,7 +11,7 @@ namespace base { class PairStream; }
 namespace xplugin {
 
 //------------------------------------------------------------------------------
-// O bloco do .epp que carrega modelos em tempo de execucao.
+// O bloco do .edl que carrega modelos em tempo de execucao.
 //
 // Factory name: PluginLoader
 //
@@ -33,7 +33,7 @@ namespace xplugin {
 //------------------------------------------------------------------------------
 // A CARGA ACONTECE EM isValid(), E ESSE E O CORACAO DO DESENHO.
 //
-// A objecao obvia a declarar plugins no .epp e de ordem: o parser precisa da
+// A objecao obvia a declarar plugins no .edl e de ordem: o parser precisa da
 // factory ANTES de construir o primeiro objeto. Ela nao se sustenta, e a
 // razao e puramente sintatica. Da gramatica (edl_parser.y:143-174):
 //

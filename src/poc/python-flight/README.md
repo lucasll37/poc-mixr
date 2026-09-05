@@ -47,7 +47,7 @@ na primeira decisão de cada aeronave.
 6. [O que NÃO atravessa a fronteira: `dt`](#6-o-que-não-atravessa-a-fronteira-dt)
 7. [Determinismo](#7-determinismo)
 8. [Degradação: sem Python, a aeronave continua voando](#8-degradação-sem-python-a-aeronave-continua-voando)
-9. [O que muda no `.epp`](#9-o-que-muda-no-epp)
+9. [O que muda no `.edl`](#9-o-que-muda-no-epp)
 10. [O que foi medido rodando](#10-o-que-foi-medido-rodando)
 11. [Como verificar tudo](#11-como-verificar-tudo)
 
@@ -125,7 +125,7 @@ faz e **por que não é o que o C++ faz**.
 | `patrol.py` | a patrulha | o `( Patrol )` nativo voa **pernas cronometradas** e deriva; aqui a patrulha é **geométrica** — uma órbita de raio fixo em torno da base, com o rumo saindo da posição atual a cada tick, então qualquer desvio se corrige sozinho |
 | `evade.py` | a quebra | mesma regra de `domain::ThreatPolicy::breakCommand()`, inclusive a parte difícil: o alvo é **fixado na entrada** da manobra, nunca recalculado a cada tick (§5) |
 | `support.py` | ir ao ponto avisado | igual ao `( SupportAlert )`, mais um piso de terreno **local** — a altitude vem de outra aeronave, sobre outro ponto da serra |
-| `rtb.py` | voltar para a base | igual ao `( ReturnToBase )`, com a altitude de cruzeiro *latcheada* em vez de escrita no `.epp` |
+| `rtb.py` | voltar para a base | igual ao `( ReturnToBase )`, com a altitude de cruzeiro *latcheada* em vez de escrita no `.edl` |
 
 As duas funções de ângulo (`_wrap360`, `_rumo_para`) estão **repetidas** nos quatro arquivos, de
 propósito: um `import` traria o **mesmo** objeto de módulo para as quatro aeronaves, porque
@@ -160,7 +160,7 @@ Duas consequências, e as duas são usadas aqui:
 
 **(a) Uma variável global de módulo é estado _por aeronave_, e sobrevive entre ticks.** É assim
 que `patrol.py` e `rtb.py` guardam a altitude de cruzeiro: cada falcon nasce numa altitude própria
-(1750 a 2100 m, calculada no `.epp` contra o pico do circuito de cada um), e o script simplesmente
+(1750 a 2100 m, calculada no `.edl` contra o pico do circuito de cada um), e o script simplesmente
 guarda a altitude da **primeira** decisão. Ele não precisa saber que existem quatro aeronaves nem
 qual delas está rodando.
 
@@ -239,9 +239,9 @@ resto não.
 
 ---
 
-## 9. O que muda no `.epp`
+## 9. O que muda no `.edl`
 
-[`configs/scenario.epp.in`](configs/scenario.epp.in) é o da `multi-thread` com quatro deltas:
+[`configs/scenario.edl.in`](configs/scenario.edl.in) é o da `multi-thread` com quatro deltas:
 
 1. `treeFile:` aponta para a árvore desta pasta, e não para a de produção instalada em `dist/`;
 2. Tacview na porta **1237** e gravação em `data/recordings/` próprio;
@@ -270,7 +270,7 @@ O `( AltitudeSafetyBehavior )` continua no `( UbfArbiter )`, com **voto 90** con
 | determinismo, 2000 frames, 1 / 2 / 4 threads T/C + repetição | **dumps byte-idênticos**, mensagens inclusive |
 | cadeia entre players, na fixture com intruso | `PY-PATROL` → `PY-EVADE` em falcon1 → `PY-SUPPORT` nas outras três, com `sent`/`recv` batendo |
 | as quatro aeronaves decidindo em paralelo | `thread 1`, `thread 2`, `thread 3`, `thread 4` no `data/logs/` — quatro `decide()` no mesmo frame |
-| altitude de cruzeiro *latcheada* por aeronave | 1750 / 1850 / 2050 / 2100 m, exatamente as do `.epp`, sem o script saber quais são |
+| altitude de cruzeiro *latcheada* por aeronave | 1750 / 1850 / 2050 / 2100 m, exatamente as do `.edl`, sem o script saber quais são |
 | precisão da órbita geométrica | raio mantido a **menos de 1 m** dos 5 NM nominais, sem deriva |
 | degradação com o script removido | `bt=PATROL` (o nó nativo); a aeronave não cai nem congela |
 | custo do Python no frame | **~42 µs por decisão**, ~0,8% de um frame de 20 ms (ver abaixo) |
@@ -300,7 +300,7 @@ meson test -C build --suite memory          # inclui memory-python-flight
 meson test -C build --suite determinism     # inclui determinism-python
 ```
 
-As três fixtures de cenário são **derivadas** do `scenario.epp.in` desta pasta por
+As três fixtures de cenário são **derivadas** do `scenario.edl.in` desta pasta por
 `tests/scenario/make_fixture.py` — nunca cópias versionadas. Elas rodam a **mesma** bateria
 semântica das gêmeas (quem evadiu avisa, quem apoiou recebeu, ninguém voou para dentro do
 terreno), normalizando o prefixo `PY-` na entrada: as propriedades afirmadas são as do **modelo**,

@@ -4,7 +4,7 @@ A política das duas pocs gêmeas: percepção, decisão (uma árvore do Behavio
 voto), atuação, e as classes MIXR próprias que o cenário nomeia.
 
 **Não é compilado dentro de executável nenhum.** É um projeto Meson independente, construído numa
-etapa anterior (`make models`) e carregado com `dlopen` durante o parse do `.epp`. Ver
+etapa anterior (`make models`) e carregado com `dlopen` durante o parse do `.edl`. Ver
 [../README.md](../README.md) para o build em etapas e para escrever um modelo novo.
 
 ## As quatro camadas, e a dependência é de mão única

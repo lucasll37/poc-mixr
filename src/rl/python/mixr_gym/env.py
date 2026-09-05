@@ -24,7 +24,7 @@ from . import _native
 # projeto (ver CLAUDE.md: "todos os binarios leem configs/ por caminho
 # relativo e devem ser executados a partir da raiz do repositorio"). O
 # processo Python que importa mixr_gym tem que ter cwd = raiz do repo.
-DEFAULT_SCENARIO = "./src/rl/configs/scenario_rl.epp"
+DEFAULT_SCENARIO = "./src/rl/configs/scenario_rl.edl"
 DEFAULT_PLAYER = "falcon1"
 
 # OS LIMITES do observation_space -- GENEROSOS, nao fisicos: so para dar ao
@@ -127,7 +127,7 @@ def default_reward(obs_raw: dict[str, Any], prev_raw: Optional[dict[str, Any]],
 class MixrFlightEnv(gym.Env):
     """Um agente RL controla UMA aeronave (default: falcon1); as demais do
     cenario continuam decidindo pela arvore de comportamento nativa (ver
-    src/rl/configs/scenario_rl.epp) -- API padrao gymnasium.Env, single-agent.
+    src/rl/configs/scenario_rl.edl) -- API padrao gymnasium.Env, single-agent.
     """
 
     metadata = {"render_modes": []}

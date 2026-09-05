@@ -22,7 +22,7 @@ namespace xtacview {
 // para expor o que o framework nao da pronto, sem reimplementar nada.
 //
 // Trocar 'dataRecorder: ( DataRecorder ... )' por '( ExposedDataRecorder
-// ... )' no .epp continua rodando IDENTICO -- e o mesmo objeto nativo, so
+// ... )' no .edl continua rodando IDENTICO -- e o mesmo objeto nativo, so
 // mais acessivel; nenhum slot novo, nenhum comportamento novo.
 //------------------------------------------------------------------------------
 class ExposedDataRecorder : public recorder::DataRecorder

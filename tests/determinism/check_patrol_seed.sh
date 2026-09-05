@@ -63,8 +63,8 @@ roda() {   # roda <cenario> <n-threads> <arquivo-saida>
    fi
 }
 
-CEN_A="$FIXTURES/$POC-patrolseed-a.epp.in"
-CEN_B="$FIXTURES/$POC-patrolseed-b.epp.in"
+CEN_A="$FIXTURES/$POC-patrolseed-a.edl.in"
+CEN_B="$FIXTURES/$POC-patrolseed-b.edl.in"
 gera_fixture 111111 "$CEN_A" || exit 1
 gera_fixture 222222 "$CEN_B" || exit 1
 
@@ -94,7 +94,7 @@ done
 
 # 2) SEMENTES DIFERENTES -> estado DIVERGE, em qualquer numero de threads.
 #    (se isto der FALHA e a amplitude de jitter que zerou em algum lugar, nao
-#    um bug de threading -- ver patrolJitterHeading no .epp de producao)
+#    um bug de threading -- ver patrolJitterHeading no .edl de producao)
 for n in 1 2 4; do
    if diff -q "$OUT/a-$n.txt" "$OUT/b-$n.txt" > /dev/null; then
       echo "  FALHA a-$n == b-$n -- sementes diferentes tinham de divergir"

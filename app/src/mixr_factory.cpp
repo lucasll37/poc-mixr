@@ -26,7 +26,7 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    if (obj == nullptr) obj = mixr::xplugin::factory(name);
 
    // O MODELO nao entra mais aqui. domain/, bt/, ubf/ e xnative/ viraram um
-   // plugin (shared_module), carregado com dlopen durante o parse do .epp --
+   // plugin (shared_module), carregado com dlopen durante o parse do .edl --
    // e as classes deles chegam pelo ULTIMO elo de mixrFactory(), via
    // mixr::xplugin::loadedFactory(). Este arquivo ficou igual ao do
    // bandit, que nunca teve modelo.
@@ -54,14 +54,14 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
 
    // 6) banco de elevacao: SrtmHgtFile / DtedFile / DedFile / QuadMap.
    //    models::factory NAO encadeia esta -- sem a linha abaixo, o
-   //    'terrain: ( SrtmHgtFile ... )' do .epp nao constroi nada e o
+   //    'terrain: ( SrtmHgtFile ... )' do .edl nao constroi nada e o
    //    WorldModel fica sem terreno, em silencio.
    if (obj == nullptr) obj = mixr::terrain::factory(name);
 
    // 6.5) DIS nativo -- DisNetIO/DisNtm (namespace real e mixr::dis, apesar
    //      do caminho do header ser mixr/interop/dis/). NAO encadeada por
    //      nenhuma outra factory; sem esta linha o 'networks: ( DisNetIO
-   //      ... )' do .epp nao constroi nada, em silencio (mesma armadilha
+   //      ... )' do .edl nao constroi nada, em silencio (mesma armadilha
    //      do terrain: acima).
    if (obj == nullptr) obj = mixr::dis::factory(name);
 

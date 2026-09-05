@@ -18,7 +18,7 @@ base::Object* factory(const std::string& name);
 //
 // O registro de plugins usa isto ANTES de construir qualquer coisa: para
 // recusar a carga se um nome ja existir na cadeia do host, e para conferir o
-// 'provides:' declarado no .epp.
+// 'provides:' declarado no .edl.
 const char* const* factoryNames();
 
 // Os MetaObject das classes deste modelo, terminado em nullptr.

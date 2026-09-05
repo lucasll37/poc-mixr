@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 open-docs
 
 .DEFAULT_GOAL := help
 
@@ -120,7 +120,7 @@ models: sdk ## Compila e deposita flight/missile/stub em plugins/ -- NAO toca di
 	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
 	$(MAKE) -C models/player/fixtures/stub install-host TESTS=true
 	@# O SEGUNDO plugin de exemplo -- so o GuidedMissile, carregado ao lado do
-	@# flight no cenario de demo (scenario_missile_demo.epp.in). Mesmo molde
+	@# flight no cenario de demo (scenario_missile_demo.edl.in). Mesmo molde
 	@# do stub: projeto Meson proprio, so mixr_dep + sdk_dep.
 	$(MAKE) -C models/player/missile install-host TESTS=true
 	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ (rode 'make install' para sincronizar com dist/)"
@@ -286,12 +286,12 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 	@meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 	@mkdir -p $(BUILD_DIR)/tests-fixtures $(BUILD_DIR)/tests-recordings
 	@python3 ./tests/scenario/make_fixture.py --poc single-thread --mode intruder \
-		--out $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in
+		--out $(BUILD_DIR)/tests-fixtures/single-thread-intruder.edl.in
 	@echo "  rodando 500 frames sob ASan ..."
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
 		$(BUILD_DIR)/app/src/app \
-		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.epp.in \
+		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.edl.in \
 		-threads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
 		$(MAKE) --no-print-directory sync-plugins ASAN=false >/dev/null 2>&1; \
@@ -312,6 +312,14 @@ check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os c
 	@python3 ./tests/docker/run_docs_build_test.py \
 		--modo $(or $(MODO),rapido) \
 		--perfil $(or $(PERFIL),readme)
+
+# ============================================
+# Documentation Targets
+# ============================================
+
+open-docs: ## Abre docs/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/index.html \
+		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/index.html"
 
 # ============================================
 # Misc Targets

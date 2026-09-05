@@ -6,7 +6,7 @@ Ao contrario de run_scenario_test.py (single-thread/multi-thread), o
 dashboard NAO precisa de fixture nenhuma: seus tres cenarios (ver
 app/ScenarioCatalog.hpp) ja sao herméticos por si so, escolhidos por
 '-scenario <chave>' em vez de '-f <arquivo>'. Por isso este script e mais
-simples -- so confere que os .epp.in carregam e rodam sao, sem tentar provar
+simples -- so confere que os .edl.in carregam e rodam sao, sem tentar provar
 de novo o mecanismo de determinismo 1/2/4-threads (isso ja e nativo, e as
 outras pocs ja provam onde importa).
 """

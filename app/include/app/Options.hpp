@@ -17,7 +17,7 @@ namespace app {
 //                        -- e por aqui que as POCS rodam, ja que o ./app e o
 //                        runner unico delas. Tambem e o que o reexec de
 //                        app/Respawn.hpp usa.
-//   -f <arquivo>         um .epp/.epp.in qualquer, fora do catalogo -- o caso
+//   -f <arquivo>         um .edl/.edl.in qualquer, fora do catalogo -- o caso
 //                        das fixtures de teste (tests/scenario/make_fixture.py).
 //
 // Sem nenhum dos dois, main.cpp mostra a tela de selecao antes de tocar em

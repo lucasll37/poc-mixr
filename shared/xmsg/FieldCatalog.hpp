@@ -21,7 +21,7 @@ namespace xmsg {
 // Nome desconhecido e ERRO ALTO, nunca silencio: e o antidoto para a familia
 // de armadilhas "nao constroi nada e nao reclama" que este repositorio ja
 // catalogou quatro vezes (factory nao encadeada, dataLogTime zero, valor sem
-// aspas virando Identifier, comentario acentuado no .epp).
+// aspas virando Identifier, comentario acentuado no .edl).
 //------------------------------------------------------------------------------
 
 enum class Dim { None, Distance, Angle, Speed, Time };

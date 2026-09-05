@@ -24,7 +24,7 @@ namespace xmsg {
 //    field   <String>   ! nome do campo do catalogo (obrigatorio)
 //
 // ESTADO E POR PLAYER, E MORA NA CONDICAO. O objeto Condition e UM so, vindo
-// do .epp, mas cada aeronave tem a sua histerese, o seu ultimo valor emitido e
+// do .edl, mas cada aeronave tem a sua histerese, o seu ultimo valor emitido e
 // a sua janela. Por isso evaluate() recebe um 'slot' -- o indice estavel que o
 // MsgReport atribuiu aquele player -- e cada subclasse dimensiona seu vetor de
 // estado em prepare(). Depois disso nao ha mais alocacao.
@@ -37,7 +37,7 @@ public:
    Condition();
 
    // Resolve o nome do campo e dimensiona o estado. Devolve false (com
-   // LOG(ERROR)) se algo nao fecha -- e o .epp e recusado, nunca ignorado.
+   // LOG(ERROR)) se algo nao fecha -- e o .edl e recusado, nunca ignorado.
    virtual bool prepare(int maxPlayers);
 
    // true APENAS na borda em que a condicao passa a valer.

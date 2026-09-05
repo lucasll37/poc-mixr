@@ -17,7 +17,7 @@ const int kLadderSize{static_cast<int>(sizeof(kLadder) / sizeof(kLadder[0]))};
 const int kRealTimeIndex{3};   // kLadder[3] == 1.0
 
 // Degrau mais proximo do valor corrente -- usado na partida, para que a
-// primeira tecla continue de onde o 'fastForwardRate' do .epp parou, em vez
+// primeira tecla continue de onde o 'fastForwardRate' do .edl parou, em vez
 // de dar um salto.
 int nearestLadderIndex(const double scale)
 {

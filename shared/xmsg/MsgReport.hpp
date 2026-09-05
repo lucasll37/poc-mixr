@@ -36,7 +36,7 @@ class RecordWriter;
 // SEM 'when:' a mensagem e PERIODICA (sai todo ciclo, limitada por 'every:').
 // Com 'when:', sai na BORDA -- no instante em que o casamento passa a valer.
 //
-// O ESTADO E POR PLAYER. Este objeto e um so, vindo do .epp, mas cada aeronave
+// O ESTADO E POR PLAYER. Este objeto e um so, vindo do .edl, mas cada aeronave
 // tem a sua histerese e o seu piso de emissao. Por isso tudo aqui recebe um
 // 'slot' -- o indice estavel que o MsgFeed atribuiu aquele player.
 //------------------------------------------------------------------------------

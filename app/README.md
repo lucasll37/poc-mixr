@@ -67,7 +67,7 @@ deles.
 > **Este binário é o runner de TODAS as pocs.** Além dos três cenários próprios
 > (`patrol`/`intercept`/`intercept_missile`), o catálogo traz `single-thread`, `multi-thread`,
 > `bandit`, `python-flight`, `onnx-policy` e `built-in_mixr_1` — as pocs não têm mais executável
-> próprio, são só cenário. `-f <arquivo>` carrega um `.epp`/`.epp.in` fora do catálogo (é como as
+> próprio, são só cenário. `-f <arquivo>` carrega um `.edl`/`.edl.in` fora do catálogo (é como as
 > fixtures de teste entram). Ver `src/poc/meson.build`.
 
 | chave | rótulo | conteúdo |
@@ -76,8 +76,8 @@ deles.
 | `intercept` | Intercepto | + `bandit1` local — mostra evasão e apoio entre os falcons (`EVADE`/`SUPPORT`) |
 | `intercept_missile` | Intercepto + Míssil | + `falcon1` com um míssil guiado — lançamento/detonação, ótimo para pausar bem no meio (ver "Demo: míssil guiado" no [CLAUDE.md](../CLAUDE.md)) |
 
-Cada cenário tem seu próprio arquivo em [`configs/`](configs/) (`scenario_<chave>.epp.in`),
-expandido em tempo de execução para `configs/<chave>.generated.epp` (gitignored).
+Cada cenário tem seu próprio arquivo em [`configs/`](configs/) (`scenario_<chave>.edl.in`),
+expandido em tempo de execução para `configs/<chave>.generated.edl` (gitignored).
 
 ---
 
@@ -86,7 +86,7 @@ expandido em tempo de execução para `configs/<chave>.generated.epp` (gitignore
 | opção | efeito |
 |---|---|
 | `-scenario <chave>` | pula a tela de seleção e carrega o cenário direto — os três próprios (`patrol`, `intercept`, `intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`) |
-| `-f <arquivo>` | um `.epp`/`.epp.in` fora do catálogo — o caminho das fixtures de teste |
+| `-f <arquivo>` | um `.edl`/`.edl.in` fora do catálogo — o caminho das fixtures de teste |
 | `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico (sem isso: detecta `hardware_concurrency()`, limitado a 8) |
 | `-deterministic <N>` | roda **N frames de passo fixo** e sai — sem TUI, sem TTY; imprime linhas `frame=` e o relatório de instâncias no final (ver [tests/scenario/run_app_test.py](../tests/scenario/run_app_test.py)) |
 | `-parallel-decision` | só faz sentido junto com `-deterministic`: decide os 4 players em paralelo em vez de sequência (ver [`app/DeterministicRun.hpp`](include/app/DeterministicRun.hpp)) |
@@ -387,7 +387,7 @@ tela de seleção. `q` só encerra.
 | Tacview (*Real-Time Telemetry*) | porta **1236** — diferente de `single-thread`/`multi-thread` (1234) e `bandit` (1235), de propósito, pra rodar junto sem colidir |
 | log | `./app/data/logs/app.log` |
 | gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` |
-| cenário expandido | `./app/configs/<chave>.generated.epp` (gitignored — gerado a cada carga) |
+| cenário expandido | `./app/configs/<chave>.generated.edl` (gitignored — gerado a cada carga) |
 | terreno (SRTM) | `./shared/data/terrain/srtm/` — compartilhado com as outras pocs |
 
 Todos os cenários são **herméticos** (sem bloco `networks:`) — não abrem porta DIS nenhuma, então
@@ -397,7 +397,7 @@ não competem com `bandit` nem entre si.
 
 ## 14. Arquitetura interna, em resumo
 
-`main.cpp` só orquestra, na ordem: tela de seleção (se precisar) → expande o `.epp.in` →
+`main.cpp` só orquestra, na ordem: tela de seleção (se precisar) → expande o `.edl.in` →
 `StationBuilder` monta a `Station` → aplica o ajuste de manete de cruzeiro → roda
 `DashboardLoop` (interativo) ou `DeterministicRun` (`-deterministic`) → desliga a `Station` →
 `Respawn` se for o caso.

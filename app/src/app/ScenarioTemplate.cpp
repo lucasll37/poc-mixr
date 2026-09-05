@@ -59,10 +59,10 @@ void replaceAll(std::string& text, const std::string& from, const std::string& t
 // Acha '@include:NOME@' e troca pelo conteudo de 'kFragmentsDir/NOME' --
 // roda ANTES da substituicao de token (PLACEHOLDER/extraTokens), assim um
 // fragmento pode conter tokens que so fazem sentido resolvidos depois do
-// include (ex.: '@SCENARIO_ID@' dentro de tacview_recorder.epp.frag). O
+// include (ex.: '@SCENARIO_ID@' dentro de tacview_recorder.edl.frag). O
 // parser EDL nunca ve nem '@include:...@' nem '@TOKEN@' -- a mesma garantia
 // que ja vale para '@NUM_TC_THREADS@' desde sempre: a resolucao acontece
-// aqui, no .epp.in -> .epp, nao no '.epp' final que o edl_parser le.
+// aqui, no .edl.in -> .edl, nao no '.edl' final que o edl_parser le.
 //
 // Deliberadamente RASO -- um nivel so, sem include recursivo -- para nao
 // reintroduzir a complexidade que a auxsencia do preprocessador C evitou

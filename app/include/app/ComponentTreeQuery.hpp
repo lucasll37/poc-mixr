@@ -16,7 +16,7 @@ namespace simulation { class Station; }
 // filhos declarada pelo slot 'components:' de qualquer objeto -- e como
 // Station/WorldModel(Simulation)/Player/Gimbal/SensorMgr/OnboardComputer/
 // UbfArbiter/etc SAO Component, descer recursivamente por ela basta pra
-// reconstruir a arvore de verdade que o .epp descreveu (dynamicsModel,
+// reconstruir a arvore de verdade que o .edl descreveu (dynamicsModel,
 // pilot, sensores, obc, agent, e dentro deles o resto -- ver o cabecalho de
 // mixr::base::Component.hpp).
 //

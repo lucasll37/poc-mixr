@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("--scenario", default=DEFAULT_SCENARIO,
-                    help=f"cenario .epp (default: {DEFAULT_SCENARIO})")
+                    help=f"cenario .edl (default: {DEFAULT_SCENARIO})")
     ap.add_argument("--player", default=DEFAULT_PLAYER,
                     help=f"player controlado -- tem que ter RLBridgeBehavior no cenario (default: {DEFAULT_PLAYER})")
     ap.add_argument("--timesteps", type=int, default=200_000,

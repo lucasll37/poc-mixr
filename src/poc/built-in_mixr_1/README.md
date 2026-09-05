@@ -3,7 +3,7 @@
 Responde a **uma** pergunta: *qual o player mais elaborado que dá para montar
 usando o máximo de componentes built-in do framework?*
 
-A resposta é `falcon1` de [configs/scenario_max_player.epp.in](configs/scenario_max_player.epp.in):
+A resposta é `falcon1` de [configs/scenario_max_player.edl.in](configs/scenario_max_player.edl.in):
 um único `( Aircraft )` com **53 das 96 classes** que `mixr::models::factory`
 publica. A única peça não nativa dele é o `( AlertDatalink )`, que herda de
 `models::Datalink` só para decidir o que fazer com a mensagem recebida.
@@ -95,17 +95,17 @@ em runtime pelo `camouflageType`, mais `IrSignature` + `IrSphere`.
    contato ela abandona o circuito. Daí o `bandit1` a 30 NM: dá tempo de fechar
    a volta antes do primeiro contato.
 
-## Por que o cenário não se chama `scenario.epp.in`
+## Por que o cenário não se chama `scenario.edl.in`
 
 `tests/guard/check_falcons_estrutura.sh` varre esse nome por glob e exige que
 `falcon1..4` tenham o **mesmo esqueleto de slots**. Aqui `falcon1` é
 propositalmente diferente dos outros três — que ficam na pilha de produção,
 servindo de contraste e de alvo para o RWR dele. O arquivo tem nome próprio,
-mesmo recurso que a `bandit` já usa (o cenário dela é um `scenario.epp`).
+mesmo recurso que a `bandit` já usa (o cenário dela é um `scenario.edl`).
 
 Pelo mesmo motivo esta poc **não entra na lista `pocs`** de
 [tests/meson.build](../../../tests/meson.build): as suítes `scenario`/`memory`
-derivam fixtures de `configs/scenario.epp.in` via `make_fixture.py`. O
+derivam fixtures de `configs/scenario.edl.in` via `make_fixture.py`. O
 determinismo tem alvo próprio (`make check-built-in_mixr_1`), que roda contra o
 cenário desta pasta — já hermético, sem `networks:`.
 

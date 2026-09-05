@@ -98,7 +98,7 @@ def ultimo_states(cenario):
     pelos contadores de instancia. E o unico vazamento plausivel do shared/xmsg
     que o resto deste teste nao pegaria.
     """
-    nome = Path(cenario).name.replace(".epp.in", ".jsonl")
+    nome = Path(cenario).name.replace(".edl.in", ".jsonl")
     caminho = RAIZ / "build" / "tests-messages" / nome
     if not caminho.exists():
         return None
@@ -121,7 +121,7 @@ def main():
     binario, poc = sys.argv[1], sys.argv[2]
 
     # Gera a propria fixture: o teste nao pode depender de outro ter rodado antes.
-    cenario = RAIZ / "build" / "tests-fixtures" / f"{poc}-intruder.epp.in"
+    cenario = RAIZ / "build" / "tests-fixtures" / f"{poc}-intruder.edl.in"
     gerar = subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", poc, "--mode", "intruder", "--out", str(cenario)],

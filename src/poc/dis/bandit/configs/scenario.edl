@@ -13,10 +13,10 @@
 //    networks: ( DisNetIO ... )             -- emite o estado do bandit1
 //       via DIS nativo do MIXR. single-thread/multi-thread nao declaram
 //       nenhum bandit1 LOCAL: recebem este aqui so pela rede (ver o bloco
-//       'networks:' nos scenario.epp.in delas, com o MESMO disEntityType
+//       'networks:' nos scenario.edl.in delas, com o MESMO disEntityType
 //       usado abaixo).
 //
-// Sem @NUM_TC_THREADS@/.epp.in: nao ha CLI aqui (nada de -threads), entao o
+// Sem @NUM_TC_THREADS@/.edl.in: nao ha CLI aqui (nada de -threads), entao o
 // numero de threads T/C fica fixo no proprio arquivo.
 //
 // Sem -deterministic/make check-*: joystick e rede sao nao-deterministicos
@@ -137,7 +137,7 @@
       numTcThreads: 2
 
       // Mesma referencia das duas pocs gemeas -- Serra do Mar / regiao de
-      // Nova Friburgo (RJ). Ver o comentario completo no scenario.epp.in
+      // Nova Friburgo (RJ). Ver o comentario completo no scenario.edl.in
       // delas: o piloto humano agora pode voar contra a serra de verdade.
       latitude:  -22.25
       longitude: -42.48

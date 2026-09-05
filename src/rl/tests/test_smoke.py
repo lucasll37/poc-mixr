@@ -40,7 +40,7 @@ fora de ordem alfabetica/PEP8 -- de proposito.
 import os
 import sys
 
-if not os.path.exists("./src/rl/configs/scenario_rl.epp"):
+if not os.path.exists("./src/rl/configs/scenario_rl.edl"):
     print("ERRO: rode este script com cwd na raiz do repositorio", file=sys.stderr)
     sys.exit(1)
 

@@ -3,7 +3,7 @@
 Mapeador de eixos/botoes do joystick -- ferramenta TEMPORARIA, fora do build.
 
 Por que existe: para configurar o 'channel:' de cada ( AnalogInput ) no
-scenario.epp.in (ver shared/xjoystick/JoystickIoHandler.hpp e a secao
+scenario.edl.in (ver shared/xjoystick/JoystickIoHandler.hpp e a secao
 'shared/xjoystick' do CLAUDE.md) e preciso saber, no SEU joystick fisico,
 qual numero de canal corresponde a qual eixo/botao fisico -- e esse mapeamento
 muda de aparelho para aparelho.
@@ -133,7 +133,7 @@ def redraw(path: str, name: str, version: int, axes, buttons, last_touch: str):
     lines.append(f"Eixos (AI)  : {len(axes)}      Botoes (DI): {len(buttons)}")
     lines.append("")
     lines.append("Mova UM eixo de cada vez ate o batente e veja qual linha 'AI' se move --")
-    lines.append("esse numero e o 'channel:' do ( AnalogInput ) no scenario.epp.in (0-based).")
+    lines.append("esse numero e o 'channel:' do ( AnalogInput ) no scenario.edl.in (0-based).")
     lines.append("Aperte cada botao para achar o 'channel:' dos DIs. Ctrl+C sai.")
     lines.append("")
     for i, v in enumerate(axes):

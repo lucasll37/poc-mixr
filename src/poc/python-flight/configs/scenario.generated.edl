@@ -33,7 +33,7 @@
 // avisa os outros e o C++, quem faz a manobra e o Python.
 //
 // AERONAVE: c310 (Cessna 310), a mesma das gemeas -- ver o cabecalho de
-// src/poc/multi-thread/configs/scenario.epp.in para o porque (e a unica
+// src/poc/multi-thread/configs/scenario.edl.in para o porque (e a unica
 // aeronave distribuida com o JSBSim que tem autopilot 'ap/*' proprio, sem o
 // qual o ( Autopilot ) nativo nao comanda nada).
 //
@@ -218,7 +218,7 @@
    // falcon1..4).
    //
    // Esquema de portas (ver o comentario irmao em
-   // src/poc/bandit-dis/configs/scenario.epp): todo mundo escuta em 3000;
+   // src/poc/bandit-dis/configs/scenario.edl): todo mundo escuta em 3000;
    // bandit-dis emite da 3001, single-thread da 3002, multi-thread da 3003 e
    // esta Station da 3004 -- as quatro podem rodar ao mesmo tempo.
    //

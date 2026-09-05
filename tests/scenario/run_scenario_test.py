@@ -274,7 +274,7 @@ def main():
                     help="prefixo a remover de bt= antes de afirmar (ex.: PY-)")
     args = ap.parse_args()
 
-    fixture = RAIZ / "build" / "tests-fixtures" / f"{args.poc}-{args.mode}.epp.in"
+    fixture = RAIZ / "build" / "tests-fixtures" / f"{args.poc}-{args.mode}.edl.in"
     gerar = subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", args.poc, "--mode", args.mode, "--out", str(fixture)],

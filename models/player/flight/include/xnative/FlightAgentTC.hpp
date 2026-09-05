@@ -91,7 +91,7 @@ private:
 // a mesma que o framework usa para os subsistemas: por TIPO, na lista de
 // componentes.
 //
-// Devolve nullptr se a aeronave nao declarar um ( FlightAgentTC ) no .epp.
+// Devolve nullptr se a aeronave nao declarar um ( FlightAgentTC ) no .edl.
 //------------------------------------------------------------------------------
 const FlightAgentTC* findFlightAgent(const models::AirVehicle* air);
 

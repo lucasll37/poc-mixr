@@ -20,12 +20,12 @@ namespace rl {
 // models/flight/include/ubf/RLBridgeBehavior.hpp).
 //
 // 'playerName' TEM DE SER O MESMO PLAYER configurado com
-// ( RLBridgeBehavior ) no .epp (default: falcon1) -- BUG CONFIRMADO E
+// ( RLBridgeBehavior ) no .edl (default: falcon1) -- BUG CONFIRMADO E
 // CORRIGIDO: como shared/xrlbridge nao tem chave por player id, o
 // Command/Observation trocados por step()/reset() sao SEMPRE os do player
-// que o .epp escolheu, nao os do 'playerName' passado aqui. Um valor
+// que o .edl escolheu, nao os do 'playerName' passado aqui. Um valor
 // diferente (typo, ou um player que existe mas nao e o configurado com
-// RLBridgeBehavior -- ex.: falcon2..4 em src/rl/configs/scenario_rl.epp)
+// RLBridgeBehavior -- ex.: falcon2..4 em src/rl/configs/scenario_rl.edl)
 // so afeta a checagem de 'terminated' (player->isCrashed()) em step(), que
 // passava a olhar um player TOTALMENTE DESLIGADO do Command/Observation
 // reais -- silenciosamente, sem erro nenhum, treinando contra um sinal de

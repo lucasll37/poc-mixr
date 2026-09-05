@@ -53,7 +53,7 @@ diferença em vez de argumentar sobre ela.
 2. [O que é compartilhado (e onde ler)](#2-o-que-é-compartilhado-e-onde-ler)
 3. [Dissecação da `FlightAgentTC`, linha por linha](#3-dissecação-da-flightagenttc-linha-por-linha)
 4. [Onde a decisão entra no frame](#4-onde-a-decisão-entra-no-frame)
-5. [O que muda no `.epp`](#5-o-que-muda-no-epp)
+5. [O que muda no `.edl`](#5-o-que-muda-no-epp)
 6. [O que muda na aplicação](#6-o-que-muda-na-aplicação)
 7. [Determinismo — o ponto da poc](#7-determinismo--o-ponto-da-poc)
 8. [O que o terreno muda aqui](#8-o-que-o-terreno-muda-aqui)
@@ -88,8 +88,8 @@ diferença em vez de argumentar sobre ela.
 `FlightAgentTC` ainda era um arquivo do HOST:
 
 ```
-Only in src/poc/dis/single-thread/configs: scenario_missile_demo.epp.in
-Files .../configs/scenario.epp.in differ            ← os 4 agentes mudam de lugar e de classe;
+Only in src/poc/dis/single-thread/configs: scenario_missile_demo.edl.in
+Files .../configs/scenario.edl.in differ            ← os 4 agentes mudam de lugar e de classe;
                                                         libflight.so vs. libflight_tc.so
 Files .../src/app/ScenarioTemplate.cpp differ        ← teto padrão de threads T/C diferente
                                                         (8 aqui, 4 na single-thread -- ver §6.1)
@@ -123,7 +123,7 @@ gêmea, e vale aqui palavra por palavra:
 | o que vem do framework e o que sobra para escrever | [§1](../single-thread/README.md#1-o-que-vem-do-framework-e-o-que-é-nosso) |
 | anatomia de um frame (as 4 fases) | [§2](../single-thread/README.md#2-anatomia-de-um-frame) |
 | como o framework chama o nosso código | [§3](../single-thread/README.md#3-como-o-framework-chama-o-nosso-código) |
-| a árvore de objetos do `.epp` | [§4](../single-thread/README.md#4-a-árvore-de-objetos-do-cenário) |
+| a árvore de objetos do `.edl` | [§4](../single-thread/README.md#4-a-árvore-de-objetos-do-cenário) |
 | padrões dos exemplos oficiais | [§5](../single-thread/README.md#5-padrões-dos-exemplos-oficiais-usados-aqui) |
 | cada peça nativa (Aircraft, JSBSim, Autopilot, radar, datalink) | [§6](../single-thread/README.md#6-cada-peça-nativa-uma-a-uma) |
 | **dissecação de todos os arquivos em ordem de dependência** | [§7](../single-thread/README.md#7-dissecação-o-repositório-em-ordem-de-dependência) |
@@ -182,7 +182,7 @@ else if ( name == FlightAgentTC::getFactoryName() )  obj = new FlightAgentTC();
 ```
 
 > **Detalhe do slottable.** A classe usa `EMPTY_SLOTTABLE`, e ainda assim `state:` e `behavior:`
-> funcionam no `.epp`: a busca de slot **sobe a hierarquia**, e esses dois slots são de
+> funcionam no `.edl`: a busca de slot **sobe a hierarquia**, e esses dois slots são de
 > `ubf::Agent`. `EMPTY_SLOTTABLE` aqui significa "não acrescento slot nenhum", não "não tenho
 > slots".
 
@@ -293,7 +293,7 @@ const FlightAgentTC* findFlightAgent(const models::AirVehicle* air)
 
 Como o agente é componente do **player**, a busca é a mesma que o framework usa para os
 subsistemas: **por tipo**, na lista de componentes. Devolve `nullptr` se a aeronave não declarar
-um `( FlightAgentTC )` no `.epp` — o caso de qualquer player sem agente próprio (hoje, nenhum dos
+um `( FlightAgentTC )` no `.edl` — o caso de qualquer player sem agente próprio (hoje, nenhum dos
 `falcon1..4` cai nisso; o intruso `bandit1` nem é mais um player local aqui, ver a nota no
 [README do single-thread](../single-thread/README.md#4-a-árvore-de-objetos-do-cenário) sobre
 `src/poc/dis/bandit`).
@@ -326,14 +326,14 @@ thread de background (app/RealTimeRun.cpp, 10 Hz)
         (nenhum agente aqui: FlightAgentTC::updateData() é no-op)
 ```
 
-**A ordem dentro da fase 3 é ordem de declaração no `.epp`.** O `agent:` é declarado **por
+**A ordem dentro da fase 3 é ordem de declaração no `.edl`.** O `agent:` é declarado **por
 último** na lista de componentes do player, depois de `obc:` — de propósito: assim ele decide
 sobre as pistas que o `AirTrkMgr` acabou de criar **neste mesmo frame**, e não sobre as do frame
 anterior. Inverter a ordem no EDL custaria um frame de latência, sem uma linha de C++ mudar.
 
 ---
 
-## 5. O que muda no `.epp`
+## 5. O que muda no `.edl`
 
 A `Station` **perde** o bloco `components:` inteiro (os quatro `( SimAgent )` com
 `actorPlayerName`), e cada caça **ganha** um `agent:` no fim da sua lista de componentes:
@@ -367,7 +367,7 @@ O conteúdo do agente — estado, árbitro, votos, os **16** parâmetros do `BtB
 `AltitudeSafetyBehavior` — é **idêntico, linha por linha**. Muda a classe, o lugar na árvore e o
 fato de não haver mais `actorPlayerName`.
 
-Todo o resto do `.epp` também é igual: a mesma referência geográfica, o mesmo
+Todo o resto do `.edl` também é igual: a mesma referência geográfica, o mesmo
 `terrain: ( SrtmHgtFile ... )`, as mesmas altitudes derivadas do pico de cada circuito, o mesmo
 `dataRecorder` com `enabledList: [ 43 42 ]`, os mesmos `interpolateTerrain: true`.
 
@@ -389,7 +389,7 @@ Quase nada — e é esse o ponto:
 | `mixr_factory.cpp`/`src/meson.build` do HOST | **idêntico** — as 6 classes registradas são as mesmas; `FlightAgentTC` é registrada dentro de `models/flight/`, não aqui | **idêntico** |
 
 Os dois laços são o **mesmo arquivo** nas duas pocs, byte a byte: quem muda é onde o agente está
-declarado no `.epp` (e qual `.so` o `( PluginModule )` carrega), não o código do host.
+declarado no `.edl` (e qual `.so` o `( PluginModule )` carrega), não o código do host.
 
 `dec`/`thr` deixaram de ser uma diferença de código entre as pocs — as duas os publicam pelo mesmo
 `shared/xboard`. A única diferença de código que sobra no HOST, hoje, é o teto padrão de threads

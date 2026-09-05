@@ -17,9 +17,9 @@ namespace xmsg {
 //     by: ( Meters 100 )   objeto de unidade
 //
 // A validacao de dimensao NAO pode acontecer na hora de ler o slot: o 'field:'
-// pode vir depois no .epp, e ai ainda nao se sabe qual dimensao esperar. Por
+// pode vir depois no .edl, e ai ainda nao se sabe qual dimensao esperar. Por
 // isso o valor e capturado aqui com a sua natureza, e so e resolvido em
-// prepare(), quando o campo ja esta conhecido. Ordem no .epp deixa de importar.
+// prepare(), quando o campo ja esta conhecido. Ordem no .edl deixa de importar.
 //------------------------------------------------------------------------------
 struct SlotValue
 {

@@ -14,7 +14,7 @@ namespace xjoystick {
 // Class: JoystickIoHandler
 //
 // Description: Le um mixr::linkage::UsbJoystick (via IoData/AnalogInput,
-//              tudo nativo -- ver o bloco 'ioHandler:' do scenario.epp.in) e
+//              tudo nativo -- ver o bloco 'ioHandler:' do scenario.edl.in) e
 //              aplica roll/pitch/leme/manete diretamente no AirVehicle
 //              indicado pelo slot 'player'.
 //

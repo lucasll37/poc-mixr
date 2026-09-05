@@ -6,7 +6,7 @@ namespace xjoystick {
 
 //------------------------------------------------------------------------------
 // Canais AI (analógicos) do IoData usados pelo JoystickIoHandler -- únicos
-// entre o EDL (scenario.epp.in, "ai: ROLL_AI ...") e o C++
+// entre o EDL (scenario.edl.in, "ai: ROLL_AI ...") e o C++
 // (JoystickIoHandler.cpp) para não repetir os números em dois lugares.
 //
 // 1-based -- mesma convenção do mixr::linkage::IoData (ver IoData.hpp).

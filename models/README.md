@@ -2,7 +2,7 @@
 
 Um **modelo** é a política da simulação: percepção, decisão, atuação e as classes MIXR próprias
 que o cenário nomeia. Ele **não** é compilado dentro do executável — é um `shared_module`
-construído numa etapa anterior e aberto com `dlopen` durante o parse do `.epp`.
+construído numa etapa anterior e aberto com `dlopen` durante o parse do `.edl`.
 
 Isso existe para tornar verificável um cenário concreto: **um terceiro entrega só o binário**, o
 host nunca viu o fonte, e mesmo assim tudo funciona.
@@ -37,7 +37,7 @@ models/
 │   │   ├── src/plugin.cpp   # publica só "GuidedMissile" -- carregado ao LADO do
 │   │   │                     # flight (2º PluginModule) só no cenário de demo
 │   │   │                     # (src/poc/dis/single-thread/configs/
-│   │   │                     # scenario_missile_demo.epp.in). Ver CLAUDE.md,
+│   │   │                     # scenario_missile_demo.edl.in). Ver CLAUDE.md,
 │   │   │                     # seção "Demo: míssil guiado", para o "porque" de
 │   │   │                     # ser um plugin à parte e não dentro do flight.
 │   │   ├── tests/domain/     # domain::pursuit(), puro

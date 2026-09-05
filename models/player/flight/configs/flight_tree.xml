@@ -4,7 +4,7 @@
   Arvore de comportamento de UM caca. Ela e a politica interna do
   xnative::BtBehavior, que por sua vez e um AbstractBehavior do UBF nativo --
   ou seja, esta arvore concorre POR VOTO com outros comportamentos dentro
-  do UbfArbiter declarado no scenario.epp (hoje, com o
+  do UbfArbiter declarado no scenario.edl (hoje, com o
   AltitudeSafetyBehavior, que tem voto maior e so age se a aeronave furar
   o piso de altitude).
 

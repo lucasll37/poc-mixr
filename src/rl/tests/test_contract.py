@@ -34,7 +34,7 @@ importado antes de 'numpy'/'gymnasium' neste processo.
 import os
 import sys
 
-if not os.path.exists("./src/rl/configs/scenario_rl.epp"):
+if not os.path.exists("./src/rl/configs/scenario_rl.edl"):
     print("ERRO: rode este script com cwd na raiz do repositorio", file=sys.stderr)
     sys.exit(1)
 
@@ -46,7 +46,7 @@ from gymnasium import spaces  # noqa: E402
 
 def main() -> int:
     # --- 1) step() antes de reset() -- excecao C++ traduzida, sem Station --
-    sim = _native.NativeSimulation("./src/rl/configs/scenario_rl.epp", "falcon1")
+    sim = _native.NativeSimulation("./src/rl/configs/scenario_rl.edl", "falcon1")
     try:
         sim.step(90.0, 1000.0, 160.0)
         print("FALHOU: step() antes de reset() nao levantou nada", file=sys.stderr)

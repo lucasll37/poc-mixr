@@ -12,7 +12,7 @@
 # Sem factory.cpp: ao contrario de xtacview/xclock/xjoystick, nao ha nada
 # aqui para o parser EDL construir -- o mixr::recorder::PrintHandler usado
 # como sink e instanciado direto em C++ (ver o comentario em Log.hpp), sem
-# passar pelo .epp nem pela cadeia de mixr_factory.cpp.
+# passar pelo .edl nem pela cadeia de mixr_factory.cpp.
 
 xlog_inc_dir = include_directories('..')
 

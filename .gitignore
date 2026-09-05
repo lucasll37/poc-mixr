@@ -48,3 +48,4 @@ src/poc/rl-training/__pycache__/
 src/poc/rl-training/tools/__pycache__/
 src/poc/rl-training/runs/
 src/poc/rl-training/notebooks/.ipynb_checkpoints/
+scripts/__pycache__/

@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Ciclo de simulação MIXR — árvore de componentes</title>
+<style>
+  :root{
+    --bg:#0a0e17;
+    --panel-bg:#121826;
+    --panel-bg-2:#0d1220;
+    --border:#232b3d;
+    --text:#e2e8f0;
+    --dim:#8b96ab;
+    --dim2:#5b6577;
+    --accent:#38bdf8;
+
+    --phase-structural:#e5e7eb;
+    --phase-dynamics0:#eab308;
+    --phase-sensor12:#22d3ee;
+    --phase-decision3:#22c55e;
+    --phase-decisionbg:#86efac;
+    --phase-background:#e879f9;
+    --phase-unknown:#4b5563;
+
+    --edge-dim:#2a3346;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size:14px;
+  }
+  h1,h2,h3{ margin:0; font-weight:600; }
+  button{
+    font-family:inherit; font-size:12.5px; color:var(--text);
+    background:var(--panel-bg-2); border:1px solid var(--border);
+    border-radius:6px; padding:6px 10px; cursor:pointer;
+  }
+  button:hover{ border-color:var(--accent); color:var(--accent); }
+  button:active{ transform: translateY(1px); }
+
+  .app{ display:flex; flex-direction:column; min-height:100vh; }
+
+  /* ---------- banner de fase ---------- */
+  .banner{
+    padding:14px 20px; border-bottom:1px solid var(--border); background:var(--panel-bg);
+  }
+  .banner-top{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .phase-badge{
+    font-size:11px; padding:2px 8px; border-radius:999px;
+    background:var(--panel-bg-2); border:1px solid var(--border); color:var(--dim);
+  }
+  .banner-top h1{ font-size:17px; color:var(--phase-color, var(--text)); }
+  .run-state{
+    margin-left:auto; font-size:11px; letter-spacing:.04em; padding:3px 9px;
+    border-radius:999px; border:1px solid var(--border);
+  }
+  .run-state.playing{ color:#22c55e; border-color:#22c55e55; }
+  .run-state.paused{ color:#eab308; border-color:#eab30855; }
+  .banner p{ margin:8px 0 0; color:var(--dim); font-size:13px; max-width:80ch; }
+  .banner .empty-note{
+    display:inline-block; margin-top:8px; padding:6px 10px; border-radius:6px;
+    background:#1a1420; border:1px solid #7c3aed55; color:#c4b5fd; font-size:12.5px;
+  }
+  .banner .empty-note[hidden]{ display:none; }
+
+  /* ---------- corpo principal ---------- */
+  .main{ flex:1; display:flex; gap:14px; padding:14px 20px; min-height:0; }
+  .tree-pane{
+    flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:8px;
+  }
+  .hint{ margin:0; color:var(--dim2); font-size:12px; }
+  .tree-frame{
+    flex:1; border:1px solid var(--border); border-radius:10px; background:var(--panel-bg);
+    overflow:hidden; min-height:460px;
+  }
+  svg#treeSvg{ width:100%; height:100%; display:block; }
+  .node-group{ cursor:pointer; }
+  .node-dot{ stroke:var(--bg); stroke-width:2; }
+  .node-ring{ fill:none; stroke-width:2.5; opacity:0; }
+  .node-ring.active{ opacity:1; }
+  .node-ring.selected{ opacity:1; stroke:#f8fafc; stroke-dasharray:2 3; }
+  .node-main{ fill:var(--text); font-size:12px; }
+  .node-sub{ fill:var(--dim); font-size:10px; }
+  .node-call{ font-size:10.5px; font-style:italic; opacity:0; }
+  .node-call.active{ opacity:1; }
+  .node-group.absent .node-main,
+  .node-group.absent .node-sub{ fill:var(--dim2); font-style:italic; }
+  .node-group.absent .node-dot{ opacity:.35; stroke-dasharray:2 2; }
+  .node-group:hover .node-main{ fill:var(--accent); }
+
+  .side-pane{
+    flex:0 0 360px; display:flex; flex-direction:column; gap:14px; min-width:0;
+  }
+  .panel{
+    border:1px solid var(--border); border-radius:10px; background:var(--panel-bg);
+    padding:12px 14px; overflow:auto;
+  }
+  .panel h2{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:8px; }
+  #detailPanel{ flex:0 0 auto; }
+  #chainPanel{ flex:1 1 auto; min-height:220px; }
+
+  .detail-title{ font-size:15px; margin-bottom:2px; }
+  .detail-sub{ color:var(--dim); font-size:12px; margin-bottom:8px; }
+  .detail-row{ display:flex; gap:8px; align-items:flex-start; margin:4px 0; font-size:12.5px; }
+  .detail-row .k{ color:var(--dim2); flex:0 0 78px; }
+  .detail-row .v{ color:var(--text); }
+  .phase-chip{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px;
+    padding:2px 8px; border-radius:999px; border:1px solid var(--border);
+  }
+  .phase-dot{ width:8px; height:8px; border-radius:999px; display:inline-block; }
+  .detail-note{ margin-top:8px; padding:8px 10px; border-radius:6px; background:var(--panel-bg-2);
+    color:var(--dim); font-size:12px; border:1px solid var(--border); }
+  .absent-flag{ color:#c4b5fd; }
+
+  .chain-phase-label{ font-size:12.5px; color:var(--text); margin-bottom:8px; }
+  .chain-row{
+    display:flex; flex-wrap:wrap; column-gap:8px; align-items:baseline; padding:3px 0;
+    font-size:11.5px; color:var(--dim); border-left:2px solid transparent;
+  }
+  .chain-row .icon{ flex:0 0 14px; color:var(--dim2); }
+  .chain-row .txt{ flex:1 1 auto; min-width:140px; }
+  .chain-row .ref{ flex:0 0 auto; color:var(--dim2); font-size:10.5px; padding-left:22px; }
+  .chain-row.kind-note .txt{ font-style:italic; }
+  .chain-row.active{ color:var(--text); font-weight:600; border-left-color: var(--phase-color, var(--accent)); }
+  .chain-row.active .ref{ color:var(--phase-color, var(--accent)); }
+
+  /* ---------- controles + legenda ---------- */
+  .controls{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:10px 20px; border-top:1px solid var(--border); background:var(--panel-bg);
+  }
+  .btn-group{ display:flex; gap:6px; }
+  .legend{ display:flex; gap:10px; flex-wrap:wrap; margin-left:auto; }
+  .legend-item{
+    display:flex; align-items:center; gap:5px; font-size:11px; color:var(--dim);
+    cursor:pointer; padding:2px 6px; border-radius:6px;
+  }
+  .legend-item:hover{ background:var(--panel-bg-2); color:var(--text); }
+  .legend-dot{ width:9px; height:9px; border-radius:999px; }
+
+  .disclaimer{
+    padding:10px 20px; font-size:11.5px; color:#facc15; background:#1c1706;
+    border-top:1px solid #4d3d05;
+  }
+
+  @media (max-width: 900px){
+    .main{ flex-direction:column; }
+    .side-pane{ flex:0 0 auto; flex-direction:row; overflow-x:auto; }
+    .side-pane .panel{ flex:1 1 260px; }
+    .legend{ margin-left:0; width:100%; }
+  }
+</style>
+</head>
+<body>
+<noscript>Esta página precisa de JavaScript habilitado para desenhar a árvore de componentes.</noscript>
+
+<div class="app">
+
+  <header class="banner" id="banner">
+    <div class="banner-top">
+      <span class="phase-badge" id="phaseIndex">fase 1/6</span>
+      <h1 id="phaseLabel">—</h1>
+      <span class="run-state playing" id="runState">RODANDO</span>
+    </div>
+    <p id="phaseExplanation">—</p>
+    <p class="empty-note" id="phaseEmptyNote" hidden></p>
+  </header>
+
+  <main class="main">
+    <section class="tree-pane">
+      <p class="hint">clique num componente para ver detalhes · a árvore representa a poc <strong>multi-thread</strong> (src/poc/dis/multi-thread)</p>
+      <div class="tree-frame">
+        <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </section>
+
+    <aside class="side-pane">
+      <div class="panel" id="detailPanel">
+        <h2>Componente selecionado</h2>
+        <div id="detailBody"></div>
+      </div>
+      <div class="panel" id="chainPanel">
+        <h2>Cadeia de chamadas desta fase</h2>
+        <div class="chain-phase-label" id="chainPhaseLabel"></div>
+        <div id="chainBody"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="controls">
+    <div class="btn-group">
+      <button id="btnReset" title="voltar à fase 1">⏮ início</button>
+      <button id="btnStepBack" title="um passo para trás">◀ passo</button>
+      <button id="btnPlayPause" title="tocar/pausar">⏸ pausar</button>
+      <button id="btnStepFwd" title="um passo para frente">passo ▶</button>
+      <button id="btnSpeed" title="velocidade do ciclo">1x</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </footer>
+
+  <div class="disclaimer">
+    Isto é um modelo pedagógico, curado à mão a partir do código-fonte real do framework
+    (MIXR v1.0.5) — não é um trace instrumentado ao vivo de um processo rodando. A árvore e a
+    fase de cada componente foram atribuídas por leitura do cenário e do framework, não medidas
+    em tempo de execução. Ver <code>docs/README.md</code> para o que fica para os próximos incrementos.
+  </div>
+
+</div>
+
+<script>
+'use strict';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/* =====================================================================
+ * (a) PHASES — os 6 passos do ciclo de frame do MIXR, na ordem real em
+ * que eles se repetem. Mesma ideia de kComponentFlowCycle/EstimatedPhase
+ * da aba "Componentes" (F6) do ./app (app/include/app/ComponentFlowState.hpp).
+ * =================================================================== */
+const PHASES = [
+  {
+    id: 'Structural', color: 'var(--phase-structural)',
+    label: 'Estrutural (orquestração)',
+    explanation: 'Station, Simulation e cada Player não "fazem" nada sozinhos nesta fase — eles orquestram: somam o tempo, testam o freeze e percorrem as quatro fases do frame de tempo crítico, uma vez por player.',
+  },
+  {
+    id: 'DynamicsPhase0', color: 'var(--phase-dynamics0)',
+    label: 'Fase 0 — Dinâmica',
+    explanation: 'Simulation::updateTC() está na fase 0: cada Player chama dynamics(dt) — o modelo de voo (JSBSimModel) integra mais um passo de 6 graus de liberdade.',
+  },
+  {
+    id: 'SensorPhase1And2', color: 'var(--phase-sensor12)',
+    label: 'Fases 1/2 — Sensores (transmite / recebe)',
+    explanation: 'System::updateTC() chama transmit(dt) na fase 1 e receive(dt) na fase 2 — a antena varre o espaço e o sensor forma a pista a partir do eco.',
+  },
+  {
+    id: 'DecisionPhase3', color: 'var(--phase-decision3)',
+    label: 'Fase 3 — Decisão (tempo crítico)',
+    explanation: 'Nesta poc (multi-thread) a decisão roda AQUI, dentro do frame: Autopilot::process(), AirTrkMgr::process() e o agente decidem, nessa ordem — o comentário do próprio cenário documenta essa ordem.',
+  },
+  {
+    id: 'DecisionBackground', color: 'var(--phase-decisionbg)',
+    label: 'Decisão em segundo plano',
+    explanation: 'Em uma poc como a single-thread, é aqui que um (SimAgent) decidiria, fora do frame de tempo crítico, via ubf::Agent::updateData()/controller().',
+    noParticipantsNote: 'Nenhum componente desta árvore participa desta fase — a poc multi-thread move a decisão para a fase 3 (ver acima). Isto não é a página travada: é a diferença entre as duas pocs, mostrada pela ausência.',
+  },
+  {
+    id: 'Background', color: 'var(--phase-background)',
+    label: 'Segundo plano (fora do frame T/C)',
+    explanation: 'Station::updateData() roda no laço de fundo: drena o gravador do Tacview, processa entrada/saída de rede DIS e amostra os players para o feed de mensagens.',
+  },
+];
+const PHASE_BY_ID = Object.fromEntries(PHASES.map((p, i) => [p.id, { ...p, order: i }]));
+
+/* =====================================================================
+ * (b) TREE — árvore de componentes autoral, modelada linha a linha em
+ * cima de src/poc/dis/multi-thread/configs/scenario.edl.in real (não
+ * inventada). `phase` é atribuída à mão aqui — não há um estimatePhase()
+ * heurístico como na versão C++, porque esta árvore não é descoberta de
+ * um processo vivo, é curada uma única vez.
+ * =================================================================== */
+const TREE = {
+  id: 'station', slot: '', className: 'ClockStation', phase: 'Structural',
+  call: 'tcFrame(dt) / updateData(dt)',
+  note: 'Station: dona do laço de tempo crítico (T/C) e do laço de fundo.',
+  children: [
+    {
+      id: 'simulation', slot: 'simulation', className: 'WorldModel', phase: 'Structural',
+      call: 'updateTC(dt) / updateData(dt)',
+      note: 'Simulation/WorldModel: soma execTime, testa isFrozen() e percorre as 4 fases do frame T/C (Simulation.cpp:457-548).',
+      children: [
+        {
+          id: 'players', slot: '', className: '(lista)', synthetic: true, phase: 'Structural',
+          note: 'Nó sintético: Simulation::getPlayers() não passa pelo slot components:, mas é exatamente essa lista que o frame percorre a cada fase.',
+          children: [
+            {
+              id: 'falcon1', slot: 'falcon1', className: 'Aircraft', phase: 'Structural',
+              call: 'updateTC(dt/4) / updateData(dt)',
+              children: [
+                { id: 'falcon1/dynamicsModel', slot: 'dynamicsModel', className: 'JSBSimModel',
+                  phase: 'DynamicsPhase0', call: 'dynamics(dt4)', children: [] },
+                { id: 'falcon1/pilot', slot: 'pilot', className: 'Autopilot',
+                  phase: 'DecisionPhase3', call: 'process(dt4)',
+                  note: 'O comentário do scenario.edl.in é explícito: "3 coisas rodam na fase 3 — Autopilot::process(), AirTrkMgr::process() e a decisão".',
+                  children: [] },
+                { id: 'falcon1/datalink', slot: 'datalink', className: 'AlertDatalink',
+                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
+                { id: 'falcon1/antennas', slot: 'antennas', className: 'Gimbal',
+                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+                  children: [
+                    { id: 'falcon1/antennas/radar', slot: 'radar', className: 'Antenna',
+                      phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
+                  ] },
+                { id: 'falcon1/sensors', slot: 'sensors', className: 'SensorMgr',
+                  phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)',
+                  children: [
+                    { id: 'falcon1/sensors/tws', slot: '', className: 'Tws',
+                      phase: 'SensorPhase1And2', call: 'transmit(dt4) / receive(dt4)', children: [] },
+                  ] },
+                { id: 'falcon1/obc', slot: 'obc', className: 'OnboardComputer', phase: 'Structural',
+                  note: 'Apenas contêiner — quem de fato executa na fase 3 é o track manager filho.',
+                  children: [
+                    { id: 'falcon1/obc/twsTrkMgr', slot: 'twsTrkMgr', className: 'AirTrkMgr',
+                      phase: 'DecisionPhase3', call: 'process(dt4)',
+                      note: 'Forma as pistas a partir do eco que o Tws já processou nas fases 1/2 — mas o próprio scenario.edl.in diz que quem chama process() nele é a fase 3, não a 2.',
+                      children: [] },
+                  ] },
+                { id: 'falcon1/agent', slot: 'agent', className: 'FlightAgentTC',
+                  phase: 'DecisionPhase3', call: 'process(dt4) → decide()',
+                  note: 'Declarado por ÚLTIMO na lista de componentes de propósito: assim já enxerga as pistas atualizadas deste mesmo frame (Autopilot e AirTrkMgr já rodaram acima).',
+                  children: [
+                    { id: 'falcon1/agent/state', slot: 'state', className: 'FlightState', phase: 'Unknown',
+                      note: 'Snapshot de leitura (domain::WorldView) — não é chamado por fase, é consultado pela decisão.', children: [] },
+                    { id: 'falcon1/agent/behavior', slot: 'behavior', className: 'UbfArbiter', phase: 'Unknown',
+                      note: 'Árbitro por votação entre os comportamentos abaixo — não tem fase própria, roda dentro de decide().',
+                      children: [
+                        { id: 'falcon1/agent/behavior/safety', slot: '', className: 'AltitudeSafetyBehavior',
+                          phase: 'Unknown', note: 'voto 90 — piso anti-CFIT, vence qualquer decisão da árvore.', children: [] },
+                        { id: 'falcon1/agent/behavior/bt', slot: '', className: 'BtBehavior',
+                          phase: 'Unknown', note: 'voto 50 — a árvore de comportamento (BehaviorTree.CPP) de produção.', children: [] },
+                      ] },
+                  ] },
+              ],
+            },
+            {
+              id: 'falcon234', slot: 'falcon2..4', className: '(mesma estrutura de falcon1)',
+              synthetic: true, phase: 'Structural',
+              note: '3 aeronaves omitidas por simplicidade nesta v1 — mesmíssimos componentes de falcon1, cada uma decidindo em paralelo numa thread diferente do pool de tempo crítico.',
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+    { id: 'networks', slot: 'networks', className: 'DisNetIO', phase: 'Background',
+      call: 'processNetworkInput/OutputTasks(dt)',
+      note: 'É por aqui que bandit1 chega (processo à parte, src/poc/dis/bandit) — ele nunca aparece na lista de players local.',
+      children: [] },
+    { id: 'dataRecorder', slot: 'dataRecorder', className: 'ExposedDataRecorder', phase: 'Background',
+      call: 'processRecords()',
+      note: 'Subclasse que só existe para tornar getOutputHandler() público — o DataRecorder nativo do MIXR é opaco (protected).',
+      children: [
+        { id: 'dataRecorder/outputHandler', slot: 'outputHandler', className: 'RecorderOutputHandler',
+          phase: 'Background', children: [
+            { id: 'dataRecorder/outputHandler/tacview', slot: '', className: 'TacviewOutput',
+              phase: 'Background', note: 'Exporta o replay para o Tacview (porta 1234).', children: [] },
+          ] },
+      ] },
+    { id: 'msgFeed', slot: 'msgFeed', className: 'MsgFeed', phase: 'Background',
+      call: 'updateData(dt)',
+      note: 'Mensageria configurável por EDL — roda fora do frame T/C nas duas pocs gêmeas.',
+      children: [] },
+    { id: 'ioHandler', slot: 'ioHandler', className: 'JoystickIoHandler', phase: 'Background',
+      absent: true,
+      note: 'Ausente nesta cena: este cenário não declara ioHandler:. Só existe hoje no processo src/poc/dis/bandit, pilotando o intruso por joystick.',
+      children: [] },
+  ],
+};
+
+/* =====================================================================
+ * (c) CALL_CHAINS — a cadeia de chamadas real do framework para cada
+ * fase, com arquivo:linha verificados contra o fonte do MIXR v1.0.5.
+ * Curada à mão por fase (não uma função genérica de filtro) — ver
+ * app/src/app/FrameCallChain.cpp para o equivalente C++ completo.
+ * kind: 'thread' | 'call' | 'loop' | 'assign' | 'note'
+ * =================================================================== */
+const TC_HEAD = [
+  { depth: 0, kind: 'thread', text: 'thread T/C nativa (StationTcPeriodicThread)', ref: '' },
+  { depth: 0, kind: 'call', text: 'Station::processTimeCriticalTasks(dt = 1/tcRate)', ref: 'Station.cpp:506' },
+  { depth: 1, kind: 'loop', text: 'for (jj=0; jj<getFastForwardRate(); jj++)', ref: 'Station.cpp:508' },
+  { depth: 2, kind: 'call', text: 'Station::tcFrame(dt)', ref: 'Component.cpp:184' },
+  { depth: 3, kind: 'call', text: 'Station::updateTC(dt)', ref: 'Station.cpp:258' },
+  { depth: 4, kind: 'call', text: 'Simulation::updateTC(dt)', ref: 'Simulation.cpp:457' },
+];
+function tcDescent(caseLines) {
+  return [
+    ...TC_HEAD,
+    { depth: 5, kind: 'note', text: 'execTime += dt  — ANTES do teste de freeze', ref: 'Simulation.cpp:462' },
+    { depth: 5, kind: 'loop', text: 'for (f=0; f<4; f++) setPhase(f)', ref: 'Simulation.cpp:548' },
+    { depth: 6, kind: 'call', text: 'Simulation::updateTcPlayerList(players, dt/4)', ref: 'Simulation.cpp:595' },
+    { depth: 7, kind: 'call', text: 'Player::tcFrame(dt/4)', ref: 'Simulation.cpp:610' },
+    { depth: 8, kind: 'call', text: 'Player::updateTC(dt0 = dt/4)', ref: 'Player.cpp:528' },
+    { depth: 9, kind: 'assign', text: 'dt4 = dt0 * 4  — restaura o dt do frame inteiro', ref: 'Player.cpp:561' },
+    { depth: 9, kind: 'note', text: 'Component::updateTC(dt0)  — recursão para os filhos', ref: 'Component.cpp:243' },
+    { depth: 10, kind: 'call', text: 'System::updateTC(dt0)', ref: 'System.cpp:84' },
+    { depth: 11, kind: 'call', text: 'switch (simulation->phase())', ref: 'System.cpp:106' },
+    ...caseLines,
+  ];
+}
+const CALL_CHAINS = {
+  Structural: TC_HEAD.map(l => l),
+  DynamicsPhase0: tcDescent([
+    { depth: 12, kind: 'call', text: 'case 0: dynamics(dt4)', ref: 'System.cpp:108', active: true },
+  ]),
+  SensorPhase1And2: tcDescent([
+    { depth: 12, kind: 'call', text: 'case 1: transmit(dt4)', ref: 'System.cpp:112', active: true },
+    { depth: 12, kind: 'call', text: 'case 2: receive(dt4)', ref: 'System.cpp:116', active: true },
+  ]),
+  DecisionPhase3: tcDescent([
+    { depth: 12, kind: 'call', text: 'case 3: process(dt4)', ref: 'System.cpp:120', active: true },
+    { depth: 13, kind: 'note', text: 'nesta cena: Autopilot, AirTrkMgr e o agente, nessa ordem', ref: 'scenario.edl.in:460', active: true },
+  ]),
+  DecisionBackground: [
+    { depth: 0, kind: 'thread', text: 'laço de fundo (StationBgPeriodicThread)', ref: '' },
+    { depth: 0, kind: 'call', text: 'Station::updateData(dt = 1/bgRate)', ref: 'Station.cpp:323' },
+    { depth: 1, kind: 'call', text: 'Station::processBackgroundTasks(dt)', ref: 'Station.cpp:516' },
+    { depth: 2, kind: 'call', text: 'Simulation::updateData(dt)', ref: 'Station.cpp:527' },
+    { depth: 3, kind: 'call', text: 'Simulation::updateBgPlayerList(players, dt0)', ref: 'Simulation.cpp:639' },
+    { depth: 4, kind: 'call', text: 'Player::updateData(dt0)', ref: 'Player.cpp:619' },
+    { depth: 5, kind: 'note', text: 'Component::updateData(dt)  — DIRETO nos filhos, sem bgFrame()', ref: 'Component.cpp:269' },
+    { depth: 6, kind: 'call', text: 'ubf::Agent::updateData(dt)', ref: 'Agent.cpp:59', active: true },
+    { depth: 7, kind: 'call', text: 'ubf::Agent::controller(dt)', ref: 'Agent.cpp:64', active: true },
+    { depth: 0, kind: 'note', text: 'nesta poc: nenhum player tem (SimAgent) — a decisão já saiu daqui na fase 3', ref: '', active: true },
+  ],
+  Background: [
+    { depth: 0, kind: 'thread', text: 'laço de fundo (StationBgPeriodicThread)', ref: '' },
+    { depth: 0, kind: 'call', text: 'Station::updateData(dt = 1/bgRate)', ref: 'Station.cpp:323', active: true },
+    { depth: 1, kind: 'call', text: 'Station::processBackgroundTasks(dt)', ref: 'Station.cpp:516', active: true },
+    { depth: 1, kind: 'call', text: 'Station::processNetworkInputTasks(dt)', ref: 'Station.cpp:342', active: true },
+    { depth: 1, kind: 'call', text: 'Station::processNetworkOutputTasks(dt)', ref: 'Station.cpp:343', active: true },
+    { depth: 1, kind: 'call', text: 'AbstractDataRecorder::processRecords()', ref: 'Station.cpp:349', active: true },
+    { depth: 1, kind: 'note', text: 'MsgFeed também amostra os players aqui, pelo mesmo updateData()', ref: '' },
+  ],
+};
+
+/* =====================================================================
+ * (d) helpers pequenos e puros
+ * =================================================================== */
+function nodeLabelLines(node) {
+  const hasSlot = node.slot && node.slot !== node.className;
+  return { main: hasSlot ? node.slot : node.className, sub: hasSlot ? node.className : null };
+}
+function computeOnPath(node, phaseId, out) {
+  let onPath = node.phase === phaseId;
+  (node.children || []).forEach(child => { if (computeOnPath(child, phaseId, out)) onPath = true; });
+  if (onPath) out.add(node.id);
+  return onPath;
+}
+function findNode(id) { return NODE_INDEX.get(id) || null; }
+
+/* =====================================================================
+ * (e) layout — organograma top-down, uma única passada DFS. Porta
+ * layoutSubtree() de app/src/app/ComponentTreePanel.cpp: nó-folha ocupa
+ * a largura do próprio rótulo, nó interno fica centralizado entre o x
+ * do PRIMEIRO e do ÚLTIMO filho (não a média).
+ * =================================================================== */
+const ROW_SPACING = 92;
+const COL_GAP = 26;
+const MIN_LABEL_WIDTH = 60;
+let measureTextEl = null;
+
+function measureTextWidth(str) {
+  measureTextEl.textContent = str;
+  return measureTextEl.getComputedTextLength();
+}
+function nodeWidth(node) {
+  const { main, sub } = nodeLabelLines(node);
+  let w = measureTextWidth(main);
+  if (sub) w = Math.max(w, measureTextWidth(sub));
+  if (node.call) w = Math.max(w, measureTextWidth(node.call));
+  return Math.max(w + 18, MIN_LABEL_WIDTH);
+}
+function layoutTree(root) {
+  const flat = [];
+  layoutSubtree(root, 0, -1, { x: 0 }, flat);
+  return flat;
+}
+function layoutSubtree(node, depth, parentIndex, cursor, flat) {
+  const myIndex = flat.length;
+  const laid = {
+    id: node.id, slot: node.slot, className: node.className, phase: node.phase,
+    call: node.call || null, note: node.note || null, absent: !!node.absent,
+    synthetic: !!node.synthetic, depth, parentIndex,
+    x: 0, y: depth * ROW_SPACING, width: nodeWidth(node),
+  };
+  flat.push(laid);
+  const children = node.children || [];
+  if (children.length === 0) {
+    const x = cursor.x + laid.width / 2;
+    cursor.x += laid.width + COL_GAP;
+    laid.x = x;
+    return x;
+  }
+  let firstX, lastX;
+  children.forEach((child, i) => {
+    const cx = layoutSubtree(child, depth + 1, myIndex, cursor, flat);
+    if (i === 0) firstX = cx;
+    lastX = cx;
+  });
+  laid.x = (firstX + lastX) / 2;
+  return laid.x;
+}
+function boundingBox(flat) {
+  let minX = Infinity, maxX = -Infinity, maxY = 0;
+  flat.forEach(n => {
+    minX = Math.min(minX, n.x - n.width / 2);
+    maxX = Math.max(maxX, n.x + n.width / 2);
+    maxY = Math.max(maxY, n.y);
+  });
+  return { minX, maxX, maxY };
+}
+
+/* =====================================================================
+ * (f) render — construída UMA vez (buildTreeSvg); a cada troca de fase
+ * ou seleção só se ligam/desligam classes e atributos (update()).
+ * =================================================================== */
+let FLAT = [];
+let NODE_INDEX = new Map();
+let EDGE_ELS = [];   // { childId, line }
+let NODE_ELS = new Map(); // id -> { ring, call, dot }
+let selectedId = 'station';
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function buildTreeSvg() {
+  const svg = document.getElementById('treeSvg');
+  measureTextEl = svgEl('text', { x: -9999, y: -9999, 'font-size': '12', style: 'opacity:0' });
+  svg.appendChild(measureTextEl);
+
+  FLAT = layoutTree(TREE);
+  NODE_INDEX = new Map(FLAT.map(n => [n.id, n]));
+  const box = boundingBox(FLAT);
+  const margin = 30;
+  svg.setAttribute('viewBox',
+    `${box.minX - margin} ${-margin} ${box.maxX - box.minX + margin * 2} ${box.maxY + ROW_SPACING - 30 + margin * 2}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
+
+  const edgesLayer = svgEl('g', { class: 'edges' });
+  const nodesLayer = svgEl('g', { class: 'nodes' });
+  svg.appendChild(edgesLayer);
+  svg.appendChild(nodesLayer);
+
+  FLAT.forEach(n => {
+    if (n.parentIndex >= 0) {
+      const parent = FLAT[n.parentIndex];
+      const midY = parent.y + ROW_SPACING / 2;
+      const line = svgEl('polyline', {
+        points: `${parent.x},${parent.y} ${parent.x},${midY} ${n.x},${midY} ${n.x},${n.y}`,
+        fill: 'none', stroke: 'var(--edge-dim)', 'stroke-width': '1.5',
+      });
+      edgesLayer.appendChild(line);
+      EDGE_ELS.push({ childId: n.id, line });
+    }
+
+    const g = svgEl('g', { class: 'node-group' + (n.absent ? ' absent' : ''), 'data-id': n.id });
+    const ring = svgEl('circle', { class: 'node-ring', cx: n.x, cy: n.y, r: 11 });
+    const dot = svgEl('circle', {
+      class: 'node-dot', cx: n.x, cy: n.y, r: 6.5, fill: `var(--phase-${phaseCssKey(n.phase)})`,
+    });
+    const { main, sub } = nodeLabelLines(n);
+    const mainText = svgEl('text', { class: 'node-main', x: n.x, y: n.y + 20, 'text-anchor': 'middle' });
+    mainText.textContent = main;
+    g.appendChild(ring); g.appendChild(dot); g.appendChild(mainText);
+    let subText = null;
+    if (sub) {
+      subText = svgEl('text', { class: 'node-sub', x: n.x, y: n.y + 33, 'text-anchor': 'middle' });
+      subText.textContent = sub;
+      g.appendChild(subText);
+    }
+    let callText = null;
+    if (n.call) {
+      callText = svgEl('text', {
+        class: 'node-call', x: n.x, y: n.y + (sub ? 47 : 33), 'text-anchor': 'middle',
+        fill: `var(--phase-${phaseCssKey(n.phase)})`,
+      });
+      callText.textContent = n.call;
+      g.appendChild(callText);
+    }
+    g.addEventListener('click', () => selectNode(n.id));
+    nodesLayer.appendChild(g);
+    NODE_ELS.set(n.id, { ring, call: callText });
+  });
+}
+function phaseCssKey(phaseId) {
+  return { Structural: 'structural', DynamicsPhase0: 'dynamics0', SensorPhase1And2: 'sensor12',
+           DecisionPhase3: 'decision3', DecisionBackground: 'decisionbg', Background: 'background',
+           Unknown: 'unknown' }[phaseId] || 'unknown';
+}
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  PHASES.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<span class="legend-dot" style="background:${p.color}"></span>${p.label}`;
+    item.addEventListener('click', () => { flow.cycleIndex = i; render(); });
+    el.appendChild(item);
+  });
+}
+
+function render() {
+  const phase = PHASES[flow.cycleIndex];
+  const litIds = new Set();
+  computeOnPath(TREE, phase.id, litIds);
+
+  // --- árvore: arestas e nós ---
+  EDGE_ELS.forEach(({ childId, line }) => {
+    const lit = litIds.has(childId);
+    line.setAttribute('stroke', lit ? phase.color : 'var(--edge-dim)');
+    line.setAttribute('stroke-width', lit ? '2.5' : '1.5');
+  });
+  NODE_ELS.forEach((els, id) => {
+    const node = NODE_INDEX.get(id);
+    const isActive = node.phase === phase.id;
+    els.ring.classList.toggle('active', isActive);
+    els.ring.classList.toggle('selected', id === selectedId);
+    if (els.ring.classList.contains('active') && !els.ring.classList.contains('selected')) {
+      els.ring.setAttribute('stroke', phase.color);
+    } else if (els.ring.classList.contains('selected') && !isActive) {
+      els.ring.setAttribute('stroke', '#f8fafc');
+    } else if (isActive) {
+      els.ring.setAttribute('stroke', phase.color);
+    }
+    if (els.call) els.call.classList.toggle('active', isActive);
+  });
+
+  // --- banner ---
+  document.getElementById('phaseIndex').textContent = `fase ${flow.cycleIndex + 1}/${PHASES.length}`;
+  const label = document.getElementById('phaseLabel');
+  label.textContent = phase.label;
+  label.style.setProperty('--phase-color', phase.color);
+  document.getElementById('phaseExplanation').textContent = phase.explanation;
+  const emptyNote = document.getElementById('phaseEmptyNote');
+  if (phase.noParticipantsNote) { emptyNote.textContent = phase.noParticipantsNote; emptyNote.hidden = false; }
+  else { emptyNote.hidden = true; }
+  const runState = document.getElementById('runState');
+  runState.textContent = flow.playing ? 'RODANDO' : 'PAUSADO';
+  runState.className = 'run-state ' + (flow.playing ? 'playing' : 'paused');
+
+  // --- painel de cadeia de chamadas ---
+  document.getElementById('chainPhaseLabel').textContent = phase.label;
+  document.getElementById('chainPhaseLabel').style.setProperty('--phase-color', phase.color);
+  const chainBody = document.getElementById('chainBody');
+  chainBody.innerHTML = '';
+  chainBody.style.setProperty('--phase-color', phase.color);
+  (CALL_CHAINS[phase.id] || []).forEach(line => {
+    const row = document.createElement('div');
+    row.className = `chain-row kind-${line.kind}` + (line.active ? ' active' : '');
+    row.style.paddingLeft = (line.depth * 13) + 'px';
+    row.style.setProperty('--phase-color', phase.color);
+    const icon = { thread: '▮', call: '›', loop: '↻', assign: '=', note: 'i' }[line.kind] || '·';
+    row.innerHTML = `<span class="icon">${icon}</span><span class="txt">${line.text}</span>` +
+      (line.ref ? `<span class="ref">${line.ref}</span>` : '');
+    chainBody.appendChild(row);
+  });
+
+  // --- painel de detalhe (recalcula o "ativo agora" do selecionado) ---
+  renderDetail(selectedId, phase);
+
+  // botões
+  document.getElementById('btnPlayPause').textContent = flow.playing ? '⏸ pausar' : '▶ tocar';
+  document.getElementById('btnSpeed').textContent = flow.stepsPerSecond + 'x';
+}
+
+function renderDetail(id, phase) {
+  const node = NODE_INDEX.get(id);
+  const body = document.getElementById('detailBody');
+  if (!node) { body.innerHTML = '<p class="detail-sub">nada selecionado</p>'; return; }
+  const { main, sub } = nodeLabelLines(node);
+  const phaseInfo = PHASE_BY_ID[node.phase];
+  const isActiveNow = node.phase === phase.id;
+  body.innerHTML = `
+    <div class="detail-title">${main}</div>
+    ${sub ? `<div class="detail-sub">${sub}</div>` : ''}
+    <div class="detail-row"><span class="k">fase:</span><span class="v">
+      ${phaseInfo
+        ? `<span class="phase-chip" style="border-color:${phaseInfo.color}55">
+             <span class="phase-dot" style="background:${phaseInfo.color}"></span>${phaseInfo.label}
+           </span>`
+        : '<span class="phase-chip">sem fase própria — consultado, não chamado</span>'}
+      ${isActiveNow ? ' <strong>· ativo agora</strong>' : ''}
+    </span></div>
+    ${node.call ? `<div class="detail-row"><span class="k">chamada:</span><span class="v">${node.call}</span></div>` : ''}
+    ${node.absent ? `<div class="detail-row"><span class="k">status:</span><span class="v absent-flag">ausente nesta cena</span></div>` : ''}
+    ${node.note ? `<div class="detail-note">${node.note}</div>` : ''}
+  `;
+}
+
+/* =====================================================================
+ * (g) animação — relógio próprio por setInterval, NÃO sincronizado a
+ * nenhum processo real (é um pulso conceitual, não um trace ao vivo).
+ * =================================================================== */
+const flow = { cycleIndex: 0, playing: true, stepsPerSecond: 1 };
+let timer = null;
+function msPerStep() { return 1600 / flow.stepsPerSecond; }
+function startClock() { stopClock(); if (flow.playing) timer = setInterval(advancePhase, msPerStep()); }
+function stopClock() { if (timer) { clearInterval(timer); timer = null; } }
+function advancePhase() { flow.cycleIndex = (flow.cycleIndex + 1) % PHASES.length; render(); }
+function setPlaying(v) { flow.playing = v; startClock(); render(); }
+function cycleSpeed() { flow.stepsPerSecond = flow.stepsPerSecond === 4 ? 1 : flow.stepsPerSecond * 2; startClock(); render(); }
+function stepManual(delta) {
+  flow.playing = false; stopClock();
+  flow.cycleIndex = (flow.cycleIndex + delta + PHASES.length) % PHASES.length;
+  render();
+}
+function resetCycle() { flow.cycleIndex = 0; render(); }
+function selectNode(id) { selectedId = id; render(); }
+
+/* =====================================================================
+ * (h) wiring de eventos
+ * =================================================================== */
+function wireControls() {
+  document.getElementById('btnPlayPause').addEventListener('click', () => setPlaying(!flow.playing));
+  document.getElementById('btnStepFwd').addEventListener('click', () => stepManual(1));
+  document.getElementById('btnStepBack').addEventListener('click', () => stepManual(-1));
+  document.getElementById('btnSpeed').addEventListener('click', cycleSpeed);
+  document.getElementById('btnReset').addEventListener('click', resetCycle);
+}
+
+/* =====================================================================
+ * (i) boot
+ * =================================================================== */
+buildTreeSvg();
+renderLegend();
+wireControls();
+render();
+startClock();
+</script>
+</body>
+</html>

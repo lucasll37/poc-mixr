@@ -27,7 +27,7 @@
 // clockStationOf/ioHandlerOf/tacviewOutputOf avisam e seguem, porque naqueles
 // casos o cenario pode legitimamente nao querer aquilo.
 //
-// Um ( PluginLoader ) no .epp e uma declaracao explicita de intencao: nao
+// Um ( PluginLoader ) no .edl e uma declaracao explicita de intencao: nao
 // existe leitura razoavel de "o cenario pediu o plugin, ele nao carregou,
 // siga sem". E avisar-e-seguir produziria exatamente a patologia de
 // contexts/BTCPP-CONTEXT.md:2358 -- o aviso rola para fora da tela e a falha
@@ -212,7 +212,7 @@ void loadModule(const std::string& file,
    if (sealed_) {
       std::cerr << "[plugin] erro de programacao: loadModule('" << file << "') depois do parse."
                 << std::endl;
-      std::cerr << "[plugin]   o registro so pode ser escrito durante o parse do .epp,"
+      std::cerr << "[plugin]   o registro so pode ser escrito durante o parse do .edl,"
                 << " na thread principal." << std::endl;
       die();
    }
@@ -360,7 +360,7 @@ void loadModule(const std::string& file,
    std::vector<std::string> nomes;
    for (const char* const* p = desc->factory_names; *p != nullptr; ++p) nomes.emplace_back(*p);
 
-   // --- 8) 'provides:' do .epp como ASSERCAO ------------------------------
+   // --- 8) 'provides:' do .edl como ASSERCAO ------------------------------
    if (!provides.empty()) {
       std::vector<std::string> a{provides};
       std::vector<std::string> b{nomes};
@@ -469,7 +469,7 @@ void reportUnknownFactoryName(const std::string& name)
 
    std::cerr << "[plugin]   se a classe vem de um plugin, confira DUAS coisas:" << std::endl;
    std::cerr << "[plugin]     1) a grafia do nome;" << std::endl;
-   std::cerr << "[plugin]     2) a POSICAO do bloco ( PluginLoader ) no .epp. O edl_parser"
+   std::cerr << "[plugin]     2) a POSICAO do bloco ( PluginLoader ) no .edl. O edl_parser"
              << std::endl;
    std::cerr << "[plugin]        constroi cada forma no fecha-parenteses DELA, em ordem de"
              << std::endl;

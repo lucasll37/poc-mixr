@@ -64,7 +64,7 @@ Ou o fluxo de sempre: `make configure && make build && make install`.
 pip install -r src/rl/requirements.txt
 
 # cwd tem de ser a RAIZ do repositorio -- mesma convencao de todo binario
-# deste projeto (os caminhos de configs:/data: no .epp sao relativos).
+# deste projeto (os caminhos de configs:/data: no .edl sao relativos).
 PYTHONPATH=./dist/python python3 src/rl/tests/test_smoke.py
 ```
 
@@ -73,7 +73,7 @@ Uso basico:
 ```python
 from mixr_gym import MixrFlightEnv
 
-env = MixrFlightEnv()   # scenario_path default: ./src/rl/configs/scenario_rl.epp
+env = MixrFlightEnv()   # scenario_path default: ./src/rl/configs/scenario_rl.edl
 obs, info = env.reset()
 
 for _ in range(1000):
@@ -124,11 +124,11 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   `shared/xrlbridge` tem chave por `playerId` -- ver o "porque" nos dois
   cabecalhos. Rodar mais de um `falcon*` com `RLBridgeBehavior` no MESMO
   cenario misturaria os comandos/observacoes dos dois.
-- **`player_name` TEM DE bater com o player que o `.epp` configurou com
+- **`player_name` TEM DE bater com o player que o `.edl` configurou com
   `( RLBridgeBehavior )`** (default: `falcon1`, em
-  `src/rl/configs/scenario_rl.epp`) -- BUG CONFIRMADO E CORRIGIDO: como a
+  `src/rl/configs/scenario_rl.edl`) -- BUG CONFIRMADO E CORRIGIDO: como a
   ponte nao tem chave por player id (item acima), `step()`/`reset()` sempre
-  trocam Command/Observation com o player que o `.epp` escolheu, nunca com o
+  trocam Command/Observation com o player que o `.edl` escolheu, nunca com o
   `player_name` passado ao construtor. Antes da correcao, pedir um
   `player_name` diferente (typo, ou um player que existe mas nao e o
   configurado com `RLBridgeBehavior` -- ex.: `falcon2..4`) fazia

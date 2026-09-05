@@ -135,7 +135,7 @@ Três modos, um por ramo da árvore:
 
 As fixtures são **derivadas** do cenário de produção por
 [`scenario/make_fixture.py`](scenario/make_fixture.py), e não cópias versionadas: uma cópia
-começaria correta e envelheceria em silêncio — mexer no `scenario.epp.in` não quebraria teste
+começaria correta e envelheceria em silêncio — mexer no `scenario.edl.in` não quebraria teste
 nenhum, que é o oposto do que se quer.
 
 ## Camada 4 — vazamento ([memory/](memory/))
@@ -241,7 +241,7 @@ SIGSEGV mudo, e a causa era do próprio `edl_parser`: a mensagem `"undefined fac
 desconhecido de `mixrFactory()`, estes testes ficam vermelhos em vez de o repositório voltar a
 estourar em silêncio.
 
-**Cobertura de graça.** Como o `( PluginLoader )` vive no `.epp.in` de produção e as fixtures são
+**Cobertura de graça.** Como o `( PluginLoader )` vive no `.edl.in` de produção e as fixtures são
 **derivadas** dele, as camadas 3, 4 e 5 passaram a exercitar o plugin sem uma linha nova nos
 scripts.
 
@@ -282,7 +282,7 @@ passaram a rodar hermético. Assim, as duas pocs passam com 1, 2 e 4 threads em 
 entre si. O teste de vazamento roda com `-threads 1`.
 
 **3. Os testes que executam uma poc são `is_parallel: false`.** `app/ScenarioTemplate` grava o
-cenário expandido sempre no mesmo caminho (`src/poc/<poc>/configs/scenario.generated.epp`, não
+cenário expandido sempre no mesmo caminho (`src/poc/<poc>/configs/scenario.generated.edl`, não
 configurável por linha de comando), então duas execuções simultâneas disputam o arquivo.
 
 **4. `wrap180(180) == -180`.** O header documenta `(-180, 180]`, mas `fmod(360,360)==0` faz a
@@ -290,7 +290,7 @@ borda cair em -180. Não é inofensivo: `ThreatPolicy` escolhe o lado da quebra 
 `relBearingDeg >= 0`, então um contato exatamente a ré quebra sempre para o mesmo lado. O teste
 trava o comportamento **observado**, não o comentário — corrigir seria mudança de modelo.
 
-**5. Comentário de fixture tem de ser ASCII puro**, como todo `.epp`: um único acentuado faz o
+**5. Comentário de fixture tem de ser ASCII puro**, como todo `.edl`: um único acentuado faz o
 `edl_parser` recusar o arquivo inteiro com "syntax error", apontando a linha certa sem dizer o
 motivo. `make_fixture.py` valida antes de gravar, para a falha vir com a causa na mão.
 

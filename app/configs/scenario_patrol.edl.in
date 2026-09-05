@@ -1,14 +1,23 @@
 //
-// dashboard -- cenario "Intercepto"
+// dashboard -- cenario "Patrulha"
 //
-// scenario_patrol.epp.in + um bandit1 LOCAL (mesmo bloco BANDIT de
-// tests/scenario/make_fixture.py, modo 'intruder') -- mostra a evasao e o
-// apoio entre os falcons (EVADE/SUPPORT), sem sair do processo unico e sem
-// depender de src/poc/dis/bandit rodando a parte.
+// 4 falcons patrulhando, SEM intruso -- o mais calmo dos tres cenarios deste
+// poc, bom pra ver pausar/acelerar/frear sem nenhum outro comportamento
+// competindo pela atencao. Derivado de src/poc/dis/multi-thread/configs/
+// scenario.edl.in (mesma pilha 100% nativa: Aircraft/JSBSimModel/Autopilot/
+// radar/AlertDatalink/FlightAgentTC, o mesmo plugin libflight_tc.so -- os 4
+// falcons decidem em PARALELO, um por thread do pool de tempo critico, na
+// fase 3 do frame; nao mais um SimAgent so no laco de background), com o
+// delta:
 //
-// Mesmo delta de scenario_patrol.epp.in em relacao a producao (sem
-// 'networks:', porta de Tacview e dados PROPRIOS -- 1236,
-// ./app/ --, sem 'msgFeed:').
+//   1) SEM 'networks:' -- hermetico, mesmo motivo de
+//      tests/scenario/make_fixture.py (nao competir por porta/trafego com
+//      outra sessao).
+//   2) Porta de Tacview PROPRIA (1236) e dataRecorder/data/ apontando pra
+//      ./app/, pra poder rodar ao lado de single-thread/
+//      multi-thread (porta 1234) sem colidir.
+//   3) SEM 'msgFeed:' -- dashboard nao linka shared/xmsg (o proprio TUI ja e
+//      o "feed"), entao ( MsgFeed ) nao construiria nada aqui.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -37,11 +46,19 @@
 
    } // components (plugins)
 
-   // Esqueleto compartilhado com scenario_patrol.epp.in/
-   // scenario_intercept_missile.epp.in -- ver
-   // app/configs/fragments/tacview_recorder.epp.frag e
-   // app::generateScenario() (ScenarioTemplate.cpp).
-   @include:tacview_recorder.epp.frag@
+   // Esqueleto compartilhado com scenario_intercept.edl.in/
+   // scenario_intercept_missile.edl.in (era ~95% byte-identico entre os
+   // tres -- so eventName/callsign/fileName/os mapas mudavam). Ver
+   // app/configs/fragments/tacview_recorder.edl.frag e
+   // app::generateScenario() (ScenarioTemplate.cpp) -- os quatro tokens
+   // do fragmento vem de ScenarioCatalog.cpp, resolvidos ANTES do
+   // edl_parser ver este arquivo, igual o numero de threads ja fazia.
+   //
+   // ARMADILHA (encontrada rodando): NAO escrever a sintaxe literal de
+   // token (arroba-nome-arroba) num comentario deste arquivo -- a
+   // substituicao e texto puro, sem entender comentario EDL, e corrompe
+   // qualquer ocorrencia literal do marcador, comentario incluso.
+   @include:tacview_recorder.edl.frag@
 
    simulation: ( WorldModel
 
@@ -364,36 +381,6 @@
                         )
                      }
                   )
-               )
-            }
-         )
-
-
-         // ------------------------------------------------------------------
-         // bandit1 -- LOCAL neste cenario (sem 'networks:', ver o topo do
-         // arquivo). Mesmo bloco de tests/scenario/make_fixture.py (modo
-         // 'intruder') / src/poc/dis/bandit/configs/scenario.epp.
-         // ------------------------------------------------------------------
-         bandit1: ( Aircraft
-            id: 201
-            side: red
-            type: "C310"
-            signature: ( SigSphere radius: 4.0 )
-            initXPos:     ( NauticalMiles 12.0 )
-            initYPos:     ( NauticalMiles 12.0 )
-            initAlt:      ( Meters 2400.0 )
-            initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
-            dataLogTime: ( Seconds 0.1 )
-            interpolateTerrain: true
-            components: {
-               dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
-               )
-               pilot: ( Autopilot
-                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
                )
             }
          )

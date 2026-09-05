@@ -36,7 +36,7 @@ CHAVE="${5:-}"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CENARIO=""
 if [ -n "$POC" ]; then
-   CENARIO="$RAIZ/build/tests-fixtures/$POC-intruder.epp.in"
+   CENARIO="$RAIZ/build/tests-fixtures/$POC-intruder.edl.in"
    mkdir -p "$RAIZ/build/tests-recordings"
    python3 "$RAIZ/tests/scenario/make_fixture.py" --poc "$POC" --mode intruder \
       --out "$CENARIO" || exit 1

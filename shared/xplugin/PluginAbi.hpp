@@ -90,7 +90,7 @@ struct PluginDescV1
    const char* build_id;           // "gcc 13.3.0" -- SO DIAGNOSTICO
 
    // Terminado em nullptr. Obrigatorio: e o que permite detectar colisao de
-   // nome ANTES de construir qualquer coisa, e conferir o 'provides:' do .epp.
+   // nome ANTES de construir qualquer coisa, e conferir o 'provides:' do .edl.
    const char* const* factory_names;
 
    // Terminado em nullptr; pode ser nullptr inteiro. Existe por um motivo

@@ -65,7 +65,7 @@ TEST(DeriveSeed, SementesDeInstanciaDiferentesPorNomeAindaQueOMasterSejaOMesmo)
 
 // A propriedade que 'make check-patrol-seed-*' trava em ponta a ponta (dois
 // masterSeed diferentes divergem, mesmo falcon): aqui travada na unidade, sem
-// precisar subir Station nenhuma. E o que faz 'patrolMasterSeed' no .epp
+// precisar subir Station nenhuma. E o que faz 'patrolMasterSeed' no .edl
 // significar alguma coisa -- se dois masters colidissem no mesmo player, o
 // slot seria decorativo.
 TEST(DeriveSeed, MastersDiferentesDaoSementesDiferentesParaOMesmoPlayer)

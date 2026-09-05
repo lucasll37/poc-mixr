@@ -6,8 +6,6 @@ enxugar shared
 
 no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
 
-.epp -> .edl
-
 interface gráfica para montar edl e interface gráfica para criar comportamento
 
 figura bonitinha no tacview

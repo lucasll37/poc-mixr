@@ -180,7 +180,7 @@ std::string lookupOr(const std::map<std::string, std::string>& table,
 // ARMADILHA CONFIRMADA RODANDO -- REID_PLAYER_DATA traz um PlayerId
 // PARCIAL: so 'id' e 'name'. 'ac_type', 'major_type' e 'side' NAO vem
 // preenchidos, e REID_NEW_PLAYER (que traria o PlayerId completo) nunca e
-// emitido para os players que ja nascem declarados no .epp -- ele so
+// emitido para os players que ja nascem declarados no .edl -- ele so
 // dispara para entidades criadas em runtime (armas liberadas, entidades
 // que chegam pela rede).
 //

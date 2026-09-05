@@ -49,7 +49,7 @@ bool Condition::setSlotField(const base::String* const msg)
 // A alternativa (ignorar em silencio) e exatamente a familia de armadilhas que
 // este repositorio ja catalogou quatro vezes: factory nao encadeada,
 // dataLogTime zero, valor sem aspas virando Identifier, comentario acentuado
-// no .epp. Todas custaram tempo porque o sintoma era "nao acontece nada".
+// no .edl. Todas custaram tempo porque o sintoma era "nao acontece nada".
 //------------------------------------------------------------------------------
 bool Condition::prepare(const int maxPlayers)
 {

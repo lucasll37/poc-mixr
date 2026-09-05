@@ -2,7 +2,7 @@
 """Deriva um cenario de TESTE do cenario de PRODUCAO.
 
 Por que derivar em vez de versionar uma copia: uma copia comecaria correta e
-envelheceria em silencio -- mexer no scenario.epp.in nao quebraria teste
+envelheceria em silencio -- mexer no scenario.edl.in nao quebraria teste
 nenhum, que e exatamente o oposto do que se quer. Aqui a fixture e sempre o
 cenario de verdade com um delta pequeno e explicito.
 
@@ -31,7 +31,7 @@ Modos:
 TODAS as ocorrencias de 'patrolMasterSeed:' no cenario (mesmo literal
 repetido nos 4 falcons, ver CLAUDE.md secao shared/xrandom) por um numero
 escolhido na hora -- para comparar duas fixtures com sementes diferentes sem
-duplicar o .epp.in inteiro.
+duplicar o .edl.in inteiro.
 """
 
 import argparse
@@ -39,7 +39,7 @@ import re
 import sys
 from pathlib import Path
 
-# O intruso, identico ao de src/poc/dis/bandit/configs/scenario.epp, so que
+# O intruso, identico ao de src/poc/dis/bandit/configs/scenario.edl, so que
 # local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
 # (models/flight/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
@@ -99,7 +99,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (single-thread, multi-thread, python-flight)")
     ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "terrain", "plain"))
-    ap.add_argument("--out", required=True, help="caminho do .epp.in a gerar")
+    ap.add_argument("--out", required=True, help="caminho do .edl.in a gerar")
     ap.add_argument("--patrol-seed", type=int, default=None,
                      help="substitui patrolMasterSeed em todo player (composto com --mode)")
     args = ap.parse_args()
@@ -108,11 +108,11 @@ def main():
     # A poc e procurada, nao montada por concatenacao: desde que as tres pocs
     # de DIS foram agrupadas em src/poc/dis/, o caminho deixou de ser
     # 'src/poc/<poc>' para todas.
-    candidatos = sorted((raiz / "src" / "poc").glob("**/configs/scenario.epp.in"))
+    candidatos = sorted((raiz / "src" / "poc").glob("**/configs/scenario.edl.in"))
     achados = [c for c in candidatos if c.parent.parent.name == args.poc]
     if not achados:
         raise SystemExit(f"poc '{args.poc}' nao encontrada sob src/poc/ "
-                         f"(procurei por */configs/scenario.epp.in)")
+                         f"(procurei por */configs/scenario.edl.in)")
     origem = achados[0]
     texto = origem.read_text(encoding="utf-8")
 

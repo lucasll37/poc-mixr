@@ -70,7 +70,7 @@ def main():
     out = RAIZ / "build" / "tests-fixtures"
     out.mkdir(parents=True, exist_ok=True)
 
-    base = out / f"{args.poc}-hotswap-base.epp.in"
+    base = out / f"{args.poc}-hotswap-base.edl.in"
     subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", args.poc, "--mode", "intruder", "--out", str(base)],
@@ -102,7 +102,7 @@ def main():
         raise SystemExit("nao achei nenhum 'legTime: ( Seconds N )' na fixture")
 
     def fixture_para(so, nome):
-        p = out / f"{args.poc}-hotswap-{nome}.epp.in"
+        p = out / f"{args.poc}-hotswap-{nome}.edl.in"
         p.write_text(re.sub(r'file:\s*"[^"]*"', f'file: "{so}"', texto, count=1))
         return p
 

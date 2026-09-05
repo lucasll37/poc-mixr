@@ -6,7 +6,7 @@
 namespace app {
 
 //------------------------------------------------------------------------------
-// Geracao do cenario a partir do modelo .epp.in.
+// Geracao do cenario a partir do modelo .edl.in.
 //
 // Questao original: quantas threads de tempo critico o cenario vai declarar
 // e como esse numero entra no arquivo. O EDL nao tem variaveis, entao o
@@ -20,7 +20,7 @@ namespace app {
 //      app/configs/fragments/nome, permitindo que um bloco verdadeiramente
 //      identico entre cenarios (ex.: o dataRecorder/TacviewOutput, ~95%
 //      byte-identico entre os 3 cenarios de app/configs/) saia de cada
-//      '.epp.in' e va para UM fragmento so.
+//      '.edl.in' e va para UM fragmento so.
 //   2) 'extraTokens' -- um mapa de '@NOME@' -> valor, resolvido DEPOIS dos
 //      includes (um fragmento pode conter tokens que so o CHAMADOR sabe
 //      preencher, ex.: '@SCENARIO_ID@').

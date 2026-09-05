@@ -47,7 +47,7 @@ para agrupar, não antes.
 
 ## O que é um "evento" aqui
 
-O MIXR **não tem** broker, fila global, pub/sub nem roteamento declarativo no `.epp` — e essa
+O MIXR **não tem** broker, fila global, pub/sub nem roteamento declarativo no `.edl` — e essa
 ausência é deliberada, documentada em
 [`src/poc/dis/single-thread/README.md` §9](../src/poc/dis/single-thread/README.md#9-interação-entre-players).
 A única primitiva de interação entre objetos no MIXR inteiro é:

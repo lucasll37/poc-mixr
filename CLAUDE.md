@@ -188,7 +188,7 @@ e o pacote Conan, **quem vale é o pacote** — é ele que está linkado.
 
 ```
 src/poc/<nome>/
-├── configs/scenario.epp.in  # o cenário EDL (+ .xml das árvores de comportamento)
+├── configs/scenario.edl.in  # o cenário EDL (+ .xml das árvores de comportamento)
 ├── data/                    # dados de RUNTIME (recordings/, logs/, messages/) —
 │                            # gitignored, escritos pela execução
 │                            # duas exceções, nenhuma vendorizada aqui: o tile SRTM
@@ -222,8 +222,8 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 | `app/Options.*` | `argv` → struct (`-scenario`, `-f`, `-threads`, `-deterministic`) |
 | `app/ScenarioCatalog.*` | as chaves de cenário conhecidas, e a **frota** de cada uma |
 | `app/TerrainData.*` | garante o `.hgt` em disco, com o tamanho que o `SrtmHgtFile` aceita |
-| `app/ScenarioTemplate.*` | `.epp.in` → `.epp` (`@NUM_TC_THREADS@`, `@include:...@`, tokens) |
-| `app/StationBuilder.*` | `.epp` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
+| `app/ScenarioTemplate.*` | `.edl.in` → `.edl` (`@NUM_TC_THREADS@`, `@include:...@`, tokens) |
+| `app/StationBuilder.*` | `.edl` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
 | `app/Fleet.*` | acha os players do cenário e fixa a potência de cruzeiro |
 | `app/DeterministicDump.*` | o formato do dump `frame=` que os `make check-*` comparam |
 | `app/DeterministicRun.*` | o laço de passo fixo |
@@ -235,7 +235,7 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 > A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
-`main.cpp` não implementa comportamento. `src/poc/dis/single-thread/configs/scenario.epp.in` é a
+`main.cpp` não implementa comportamento. `src/poc/dis/single-thread/configs/scenario.edl.in` é a
 referência completa do padrão de cenário (a `src/poc/dis/multi-thread/` é o mesmo arquivo, trocando
 só o agente e a porta DIS — `make compare-single-multi` mostra).
 
@@ -253,7 +253,7 @@ separados do arquivo que trata da decisão; utilitários de runtime são um por 
 - **Factory por nome**: cada `mixr_factory.cpp` encadeia as factories na ordem
   `local → xtacview → simulation → models → recorder → base` — **a primeira que retorna
   não-nulo vence**, então a factory própria vem sempre antes das do framework.
-- **Estrutura vem do `.epp` (EDL), comportamento vem do C++**: reconfigurar o cenário
+- **Estrutura vem do `.edl` (EDL), comportamento vem do C++**: reconfigurar o cenário
   (players, sensores, taxas, threads) não recompila nada.
 - Hierarquia: `Station` → `WorldModel` → `players` → `Player` (`Aircraft`, `SpaceVehicle`, …)
   agregando `dynamicsModel`, sensores (`Antenna`/`RfSensor`/`Gimbal`/`Autopilot`/`Datalink`)
@@ -295,7 +295,7 @@ dataRecorder: ( DataRecorder
 5. Tokens de usuário (1000+) também não têm handler: eventos próprios são gravados como
    `REID_MARKER` (só dois `uint32`, sem texto).
 6. `REID_PLAYER_DATA` traz `PlayerId` **parcial** (só `id` e `name`; sem `ac_type`/`side`) e
-   `REID_NEW_PLAYER` nunca é emitido para players declarados no `.epp`. `typeMap`/`colorMap`/
+   `REID_NEW_PLAYER` nunca é emitido para players declarados no `.edl`. `typeMap`/`colorMap`/
    `modelMap` tentam a chave `ac_type` e caem no `name` — na prática **quem resolve é o nome**.
 7. O handler **não alcança a `Station`/`WorldModel`** por `findContainerByType()` (o
    `DataRecorder` não encadeia `container()` no objeto do slot `outputHandler`).
@@ -435,7 +435,7 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    armadilha 7.
 2. **Numeração dos canais é assimétrica**: `ai:`/`di:` (canal lógico do `IoData`) é **1-based**
    (`IoData.hpp:19-21`); `channel:` (canal físico do dispositivo) é **0-based**. Os números do
-   `ai:` têm de bater com `shared/xjoystick/ChannelMap.hpp` — repetidos no `.epp.in` com
+   `ai:` têm de bater com `shared/xjoystick/ChannelMap.hpp` — repetidos no `.edl.in` com
    comentário, não por `#include`: este fork do parser EDL não roda o pré-processador C (mesmo
    motivo já registrado no comentário do padrão de ganho do radar, mais acima neste arquivo).
 3. **Sem hardware, o `UsbJoystick` degrada sozinho** — `UsbJoystick::reset()` (Linux) só loga
@@ -479,7 +479,7 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
 
 Mesmo padrão `shared/x<nome>` das outras libs, com uma diferença: **sem `factory.cpp`**. Não há
 nada aqui para o parser EDL construir — `mixr::recorder::PrintHandler` (o sink por trás do log)
-é instanciado direto em C++, nunca aparece num `.epp`.
+é instanciado direto em C++, nunca aparece num `.edl`.
 
 **Por que não é o `mixr::recorder` "de verdade" (`DataRecorder`/`OutputHandler`/`recordData()`)
 — investigado antes de escrever uma linha de código.** O schema `DataRecord.proto` é fechado:
@@ -596,7 +596,7 @@ player nem salt de propósito. `shared/xrandom` fica só com as duas funções p
 depende do SDK — já inclui `xlog/Log.hpp`).
 
 **A hierarquia de sementes, e por que a sub-semente de cada player vem do NOME, nunca de
-ordem**: uma `patrolMasterSeed` só (mesmo literal repetido nos 4 blocos `BtBehavior` do `.epp` —
+ordem**: uma `patrolMasterSeed` só (mesmo literal repetido nos 4 blocos `BtBehavior` do `.edl` —
 ao contrário de `patrolHeading`/`patrolAltitude`, que são distintos por falcon) deriva
 `instanceSeed = deriveSeed(patrolMasterSeed, fnv1a64(player->getName()))` dentro de
 `configurePlans()` (via `findContainerByType(typeid(models::Player))`, o mesmo mecanismo já usado
@@ -645,7 +645,7 @@ da semente, não uma corrida entre threads. Medido: `hdg=89.811744657` (semente 
 produção (que agora declara esses dois slots nos 4 falcons) falha ao parsear contra o "modelo
 estranho" com `slot not found`, derrubando `plugin-modelo-estranho`/`plugin-deposito-terceiro`.
 Mesma classe de armadilha já registrada para `RLBridgeBehavior` na seção `src/rl`: toda vez que
-`BtBehavior` de produção ganha um slot novo que o `.epp` de produção usa, o stub precisa aceitá-lo
+`BtBehavior` de produção ganha um slot novo que o `.edl` de produção usa, o stub precisa aceitá-lo
 (mesmo que só para ignorar), ou deixa de ser contrato-compatível com o cenário que os testes de
 plugin rodam contra ele.
 
@@ -730,12 +730,12 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    do `terrain`/`linkage` já documentada acima; sem `mixr::dis::factory(name)` no
    `mixr_factory.cpp` de cada poc (as três, incluindo `bandit`), `networks: ( DisNetIO
    ... )` não constrói nada, em silêncio.
-5. **Comentários em `.epp`/`.epp.in` têm que ser ASCII puro.** Descoberto quebrando: um único
+5. **Comentários em `.edl`/`.edl.in` têm que ser ASCII puro.** Descoberto quebrando: um único
    caractere acentuado (`"só"`) dentro de um comentário `//`, em outro ponto do arquivo, sem
    relação nenhuma com o texto ao redor, fez o `edl_parser` (bison/flex) recusar o arquivo
    inteiro com `"syntax error"` — apontando a linha certa, mas sem dizer o motivo. É por isso
    que toda a base já escreve "não"/"está"/"é" sem acento em comentário: não é só estilo, é
-   requisito do parser. Confirmado: `scenario.epp.in` das duas pocs gêmeas são ASCII puro
+   requisito do parser. Confirmado: `scenario.edl.in` das duas pocs gêmeas são ASCII puro
    (`file` confirma); o arquivo desta poc também é, depois da correção.
 6. **`applyCruiseThrottle` tem que ser replicado aqui** — o mesmo problema documentado em
    `app/Fleet.hpp` das pocs gêmeas (o autopilot do c310 fecha malha de rumo/altitude mas não de
@@ -810,8 +810,8 @@ com `bt=PY` constante e o rótulo deixaria de significar alguma coisa. Assim sai
 5. **Uma variável global de módulo é estado POR AERONAVE** — cada `(script, aeronave)` recebe o
    seu próprio dicionário de globais em `shared/xpyembed`. É assim que `patrol.py`/`rtb.py`
    guardam a altitude de cruzeiro: cada falcon nasce numa altitude própria (1750/1850/2050/2100 m,
-   calculadas no `.epp` contra o pico do circuito de cada um) e o script simplesmente guarda a
-   altitude da **primeira** decisão — medido, sai exatamente igual ao `.epp`, sem o script saber
+   calculadas no `.edl` contra o pico do circuito de cada um) e o script simplesmente guarda a
+   altitude da **primeira** decisão — medido, sai exatamente igual ao `.edl`, sem o script saber
    que existem quatro aeronaves. O que **continua compartilhado** é o `sys.modules`, e é por isso
    que os dois helpers de ângulo estão **repetidos** nos quatro arquivos em vez de importados: um
    `import` seria a única porta de estado compartilhado da pasta.
@@ -896,7 +896,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    rumo) mudaria o contrato de 3 saídas, compartilhado com `src/rl` e com o `unscale` de
    `xrlbridge` — fica registrado como o caminho, não feito.
 3. **A política é dado do CENÁRIO, não do modelo** — por isso `.onnx` e árvore moram em `configs/`
-   desta poc (lidos por caminho relativo à raiz, como o próprio `.epp`), e não em
+   desta poc (lidos por caminho relativo à raiz, como o próprio `.edl`), e não em
    `dist/share/mixr-plugins/flight/`, que é onde `models/flight` instala os **dele**. As duas
    coisas convivem: `scenario-policy-onnx` continua rodando a árvore do modelo, com pesos
    aleatórios, sobre a `multi-thread`.
@@ -917,7 +917,7 @@ medido em `shared/xinfer` para este mesmo MLP).
 `check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` — desde então
 aposentada, ver "Estrutura de um subprojeto" — descobria as gêmeas
 por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exclui a `bandit`
-sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.epp.in`
+sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.edl.in`
 por glob. Poc nova nasce cobrada pelas duas sem editar arquivo nenhum.
 
 ### `src/poc/built-in_mixr_1` — o PLAYER MÁXIMO, só com componentes nativos
@@ -958,12 +958,12 @@ ponteiro e o último a dar `reset()` vence em silêncio; (3) sensor→antena e s
 **por nome de slot**, e `Component::findByName()` é recursivo — antena pendurada em gimbal interno
 continua alcançável por nome simples.
 
-**O cenário NÃO se chama `scenario.epp.in`**, e é deliberado: `check_falcons_estrutura.sh` varre
+**O cenário NÃO se chama `scenario.edl.in`**, e é deliberado: `check_falcons_estrutura.sh` varre
 esse nome por glob e exige que `falcon1..4` tenham o mesmo esqueleto de slots — aqui `falcon1` é
-propositalmente diferente dos outros três. O arquivo é `configs/scenario_max_player.epp.in` (o
+propositalmente diferente dos outros três. O arquivo é `configs/scenario_max_player.edl.in` (o
 default do `main.cpp`, sem precisar de `-f`), mesmo recurso que a `bandit` já usa. Pelo mesmo
 motivo a poc **não entra na lista `pocs`** de `tests/meson.build` (as suítes `scenario`/`memory`
-derivam fixtures de `scenario.epp.in` via `make_fixture.py`); o determinismo tem alvo próprio,
+derivam fixtures de `scenario.edl.in` via `make_fixture.py`); o determinismo tem alvo próprio,
 `make check-built-in_mixr_1`, que roda contra o cenário da pasta — já hermético, sem fixture.
 
 **O que foi medido rodando (30.000 frames):** zero erro de parse e zero `was not found!` (as 6
@@ -1013,7 +1013,7 @@ Conan lista `mixr-terrain` em `Requires:`), o `WorldModel` já tinha o slot `ter
 escrito do lado do framework e nenhuma linha de meson mudou.** O que faltava eram três coisas:
 
 1. **A factory.** `models::factory` **não** encadeia a de terreno — sem
-   `mixr::terrain::factory(name)` no `mixr_factory.cpp`, o `( SrtmHgtFile )` do `.epp` não
+   `mixr::terrain::factory(name)` no `mixr_factory.cpp`, o `( SrtmHgtFile )` do `.edl` não
    constrói nada e o `WorldModel` fica sem terreno, em silêncio.
 2. **O dado.** `shared/data/terrain/srtm/S23W043.hgt.gz` — tile SRTM1 da Serra do Mar (RJ),
    recuperado do histórico do git (era da `poc/05-formation-flight`). Fica em `shared/` e não
@@ -1155,7 +1155,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
    avanca na **mesma taxa** que `frame` entre dumps consecutivos — mede a propriedade certa e
    ignora o offset de partida.
 7. **`app/ScenarioTemplate` grava o cenario expandido sempre no mesmo caminho**
-   (`src/poc/<poc>/configs/scenario.generated.epp`, nao configuravel por linha de comando), entao dois
+   (`src/poc/<poc>/configs/scenario.generated.edl`, nao configuravel por linha de comando), entao dois
    testes que rodem um binario ao mesmo tempo disputam o arquivo. Todos os `test()` que executam
    uma poc sao `is_parallel: false`.
 8. **`wrap180()` tem borda em -180, nao em +180.** O header documenta `(-180, 180]`, mas
@@ -1466,7 +1466,7 @@ falcon1 indo de 141° para 34°.
 
    **Guardas que já pagaram por profundidade de caminho — não redescobrir:**
    `check_duplication.sh` descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
-   `check_falcons_estrutura.sh` varria o glob `src/poc/*/configs/scenario.epp.in`. Agrupar as três
+   `check_falcons_estrutura.sh` varria o glob `src/poc/*/configs/scenario.edl.in`. Agrupar as três
    pocs de DIS um nível abaixo fez as duas **deixarem de enxergá-las continuando VERDES** — o modo
    de falha exato que esses arquivos existem para evitar. Hoje as duas descobrem por `find` com
    `-path`, a qualquer profundidade; o mesmo vale para `tests/scenario/make_fixture.py` (que
@@ -1510,7 +1510,7 @@ Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (sil
 ## Demo: míssil guiado (segundo modelo, ativação de player em runtime, lançamento/detonação/destruição)
 
 Exemplo acadêmico, isolado da produção: `falcon1`, no cenário de demo
-`src/poc/dis/single-thread/configs/scenario_missile_demo.epp.in` (rodado com `-f`, binário `single-thread`
+`src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in` (rodado com `-f`, binário `single-thread`
 já existente — nenhum host mudou), carrega **um** míssil guiado e o lança contra um `bandit1`
 LOCAL (sem `networks:`, mesmo motivo do `tests/scenario/make_fixture.py`: hermético). Existe para
 exemplificar três coisas, nesta ordem:
@@ -1519,7 +1519,7 @@ exemplificar três coisas, nesta ordem:
    `models/fixtures/stub` (`models/README.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
    (sem `behavior_tree_dep` — o míssil não decide com árvore, só guia e voa), publicando **só**
    `GuidedMissile`. **Por que um plugin separado e não dentro do `flight`:** `provides:` no
-   `.epp` é igualdade exata de conjunto contra o que a `.so` exporta — acrescentar `GuidedMissile`
+   `.edl` é igualdade exata de conjunto contra o que a `.so` exporta — acrescentar `GuidedMissile`
    aos 6 nomes do `flight` obrigaria **todo** cenário que carrega essa `.so` (inclusive os de
    produção) a atualizar `provides:`. Um segundo `( PluginModule )` no cenário de demo, com seu
    próprio `provides: { GuidedMissile }`, evita isso — `flight` ganhou código novo (a
@@ -1662,7 +1662,7 @@ percorria. Travado por `scenario-app-quit-dis`.
 **Armadilhas confirmadas rodando — não redescobrir:**
 
 0. **A porta do Tacview do `./app` estava 1234 no fragmento, não 1236.**
-   `app/configs/fragments/tacview_recorder.epp.frag` é quem manda (os três cenários próprios o
+   `app/configs/fragments/tacview_recorder.edl.frag` é quem manda (os três cenários próprios o
    incluem por `@include:@`), e ele trazia `port: 1234` — a porta das gêmeas — contra os 1236 que
    `app/README.md` sempre documentou "de propósito, pra rodar junto sem colidir". Ficou inofensivo
    enquanto cada binário rodava sozinho; deixou de ser quando o `./app` virou o runner das pocs e
@@ -1701,7 +1701,7 @@ percorria. Travado por `scenario-app-quit-dis`.
    mostra `bandit1` no dump). `tests/scenario/run_dashboard_test.py` afirma exatamente os 4
    falcons nos três cenários, não 5 — a primeira versão do teste esperava `bandit1` também e
    falhava.
-6. **`SimpleStoresMgr` (o `StoresMgr` do `scenario_intercept_missile.epp.in`) é a mesma armadilha
+6. **`SimpleStoresMgr` (o `StoresMgr` do `scenario_intercept_missile.edl.in`) é a mesma armadilha
    de nome de fábrica já documentada na seção "Demo: míssil guiado"** — `( StoresMgr ... )` no EDL,
    não `( SimpleStoresMgr ... )`.
 
@@ -1846,7 +1846,7 @@ escala por perspectiva, árvore de BT gráfica no card, e alinhamento tabular na
 - **A árvore de BT agora é visualizável de verdade, dentro do card de detalhe (Frota E Mapa) —
   novo módulo `app/BehaviorTreeView.{hpp,cpp}`.** O dashboard nunca teve acesso à ESTRUTURA da
   árvore em runtime (só ao rótulo da folha vencedora, via `xboard::Readout::label`) — por isso
-  `loadTreeForScenario()` lê o MESMO `.generated.epp` que o cenário já resolveu, acha a primeira
+  `loadTreeForScenario()` lê o MESMO `.generated.edl` que o cenário já resolveu, acha a primeira
   ocorrência de `treeFile: "..."` e faz o parse do XML (parser mínimo escrito à mão, só o
   suficiente pro formato do BT.CPP — ver o cabeçalho do `.cpp`; não vale a pena puxar uma lib de
   XML pra isto). **Isto quebra a agnosticidade a MODELO só até onde o próprio projeto já quebra: é
@@ -2171,8 +2171,8 @@ ganhou uma quarta aba mostrando o que roda na thread de tempo NÃO crítico.**
   thread decidindo). "Quero que seja multithread" pedia trocar a pilha inteira para o padrão da
   `multi-thread`: agente `( FlightAgentTC )` DENTRO de cada player (não `( SimAgent )` na
   Station), decidindo na FASE 3 do frame de tempo crítico — aí sim um por thread do pool.
-  - **Migração mecânica dos três `.epp.in`** (`app/configs/scenario_{patrol,intercept,
-    intercept_missile}.epp.in`) via script Python de uso único (não versionado — descartado após
+  - **Migração mecânica dos três `.edl.in`** (`app/configs/scenario_{patrol,intercept,
+    intercept_missile}.edl.in`) via script Python de uso único (não versionado — descartado após
     o uso): troca `file: "libflight.so"` → `"libflight_tc.so"` e acrescenta `FlightAgentTC` ao
     `provides:`; remove os quatro blocos `agentN: ( SimAgent actorPlayerName: falconN ... )` de
     dentro de `components:` da `Station`; injeta `agent: ( FlightAgentTC state: ... behavior:
@@ -2190,7 +2190,7 @@ ganhou uma quarta aba mostrando o que roda na thread de tempo NÃO crítico.**
   - **No cenário do míssil, `agent:` entra DEPOIS de `stores:`** (o `GuidedMissile` de
     `falcon1`) — a migração preserva a ordem "agente é o ÚLTIMO componente", com `stores:` ainda
     antes dele; conferido lendo o arquivo migrado.
-  - Cabeçalhos dos três `.epp.in` que citavam `src/poc/dis/single-thread`/`SimAgent`/`libflight.so` como
+  - Cabeçalhos dos três `.edl.in` que citavam `src/poc/dis/single-thread`/`SimAgent`/`libflight.so` como
     a pilha de referência foram corrigidos para `src/poc/dis/multi-thread`/`FlightAgentTC`/
     `libflight_tc.so`.
   - **Medido rodando (execução direta, não interativa — `timeout 3 ./build/app/src/app -scenario
@@ -2787,7 +2787,7 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
 - **`AbstractThread::createThread()` ignora o retorno de `pthread_create`** e nunca chama
   `pthread_attr_setinheritsched(PTHREAD_EXPLICIT_SCHED)` — então o `SCHED_FIFO` que ele configura
   é **silenciosamente descartado** e as threads herdam `SCHED_OTHER`. Ou seja, o `tcPriority: 0.5`
-  dos `.epp` não vira prioridade de tempo real. Bom saber antes de acusar o escalonador.
+  dos `.edl` não vira prioridade de tempo real. Bom saber antes de acusar o escalonador.
 - **O teste que faltava**: `tests/scenario/run_app_quit_test.py` (alvo `scenario-app-quit`, suíte
   `scenario`). Os `scenario-app-*` que já existiam rodam **só** `-deterministic` — sem TUI, sem
   TTY e **sem thread T/C nativa** (esse modo chama `tcFrame()` direto) —, por isso o caminho
@@ -2795,7 +2795,7 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
   biblioteca padrão (não precisa de `pyte`: não lê a tela, só afirma que o processo **termina**),
   manda `q` + Enter (o diálogo de confirmação exige o Enter) e cobre os dois casos — saída normal
   e **saída com um cliente conectado que parou de ler**. Ele descobre a porta lendo o
-  `.generated.epp` em vez de fixar o número, porque o fragmento compartilhado já mudou de porta
+  `.generated.edl` em vez de fixar o número, porque o fragmento compartilhado já mudou de porta
   uma vez. Verificado nos dois sentidos: **falha** contra o código sem `SO_SNDTIMEO` e passa com
   ele. `make test` 37/37; `check-single-thread`/`check-multi-thread` inalterados.
 - **ATUALIZAÇÃO (passada posterior): as outras pocs ganharam a MESMA correção de ordem.** O
@@ -3050,7 +3050,7 @@ agente RL (v1 é single-agent, ver as armadilhas abaixo).
 **Arquitetura**: um módulo de extensão **pybind11** (`src/rl/bindings/`, compila pra `_native*.so`)
 mantém a `Station` viva no MESMO processo Python — sem round-trip de rede por passo. O pacote
 Python puro (`src/rl/python/mixr_gym/`) expõe isso como `gymnasium.Env`
-(`MixrFlightEnv.reset()`/`step()`). O cenário dedicado (`src/rl/configs/scenario_rl.epp`) troca só
+(`MixrFlightEnv.reset()`/`step()`). O cenário dedicado (`src/rl/configs/scenario_rl.edl`) troca só
 o `behavior:` de `falcon1` — de `( BtBehavior ... )` pra `( RLBridgeBehavior vote: 50 )` — dentro
 do MESMO `UbfArbiter` que já tinha `( AltitudeSafetyBehavior vote: 90 )`: uma política ruim do
 agente RL não derruba o avião no terreno, o árbitro nativo sobrepõe sem precisar de código novo.
@@ -3078,8 +3078,8 @@ visibilidade oculta é frágil — o RTTI de `FlightState` não está pensado pr
 plugin. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico: `RLBridgeBehavior` virou o
 **oitavo** nome que `libflight`/`libflight_tc.so` exportam, e como `provides:` é igualdade EXATA de
 conjunto contra o que a `.so` exporta, TODO cenário que carrega esse plugin precisou de uma linha a
-mais em `provides:` — `src/poc/dis/single-thread/configs/scenario.epp.in`,
-`src/poc/dis/multi-thread/configs/scenario.epp.in` e os três `app/configs/scenario_*.epp.in` —
+mais em `provides:` — `src/poc/dis/single-thread/configs/scenario.edl.in`,
+`src/poc/dis/multi-thread/configs/scenario.edl.in` e os três `app/configs/scenario_*.edl.in` —
 nenhuma mudança de comportamento, só manter o
 contrato satisfeito. Pelo mesmo motivo, `models/fixtures/stub/src/stub.cpp` (o "modelo estranho" de
 teste) também ganhou uma `RLBridgeBehavior` trivial (`genAction()` sempre devolve `nullptr`) — sem
@@ -3096,7 +3096,7 @@ contrato-compatível com o `provides:` (agora maior) do cenário de produção q
    numpy importado ANTES, não bastou; (b) importar `._native` ANTES de numpy, mesmo sem mexer nos
    dlopenflags, resolveu. Tudo indica estouro do excedente de TLS estático do glibc quando muitas
    extensões C já foram carregadas (numpy sozinho traz ~15 `.so`) antes da nossa — o mesmo `.so`
-   carrega perfeitamente fora do Python (`dist/bin/multi-thread -f src/rl/configs/scenario_rl.epp`
+   carrega perfeitamente fora do Python (`dist/bin/multi-thread -f src/rl/configs/scenario_rl.edl`
    não crasha nunca). Por isso `mixr_gym/__init__.py` importa `._native` (sob `RTLD_GLOBAL`) ANTES
    de deixar `env.py` importar `numpy`/`gymnasium`, e `src/rl/tests/test_smoke.py` importa
    `mixr_gym` antes de `numpy`, fora de ordem alfabética, de propósito.
@@ -3168,7 +3168,7 @@ um frame de latência. Isso treina, mas não põe em produção. Os nós novos d
 | `PyDecide` | roda um `decide(obs)` escrito em Python — prototipagem | `flight_tree_py.xml`; e as quatro folhas de `src/poc/python-flight` |
 
 **Nó de BT não custa nome de fábrica.** Os três são registrados na `BT::BehaviorTreeFactory`, não
-na factory MIXR — zero mudança em `provides:`, em `.epp`, em `stub.cpp` ou em `xnative/factory.cpp`.
+na factory MIXR — zero mudança em `provides:`, em `.edl`, em `stub.cpp` ou em `xnative/factory.cpp`.
 Um nome de fábrica novo custaria 10 pontos de edição (foi o preço pago pelo `RLBridgeBehavior`). A
 árvore de **produção** fica intocada; trocar de política é apontar `treeFile:` para outro arquivo.
 
@@ -3234,10 +3234,23 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
 ## Estado atual / pendências conhecidas
 
 - A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,
-  `.epp`/`.epp.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
+  `.edl`/`.edl.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
   `poc/<nome>`** — é só prosa, nenhum caminho depende disso.
-- Não há pasta `docs/`: a documentação vive no `README.md` da raiz, no de cada subprojeto
-  e em `tests/README.md`.
+- A documentação de referência continua vivendo no `README.md` da raiz, no de cada
+  subprojeto e em `tests/README.md`. `docs/` existe à parte disso — `docs/index.html` é
+  uma página estática (sem build, sem dependência) que visualiza de forma animada o
+  ciclo de fases do frame MIXR percorrendo a árvore de componentes, com os respectivos
+  métodos/funções chamados em cada fase; ver `docs/README.md`.
+- **A extensão dos cenários EDL passou de `.epp` para `.edl`** (`.epp.in`/`.generated.epp` →
+  `.edl.in`/`.generated.edl`, e `tacview_recorder.epp.frag` → `.edl.frag`) — alinha o nome do
+  arquivo com o nome da própria linguagem (EDL) e com a convenção dos exemplos oficiais do MIXR
+  (onde `.edl` já é o arquivo final que o `edl_parser` lê — ver `contexts/MIXR-PATTERN-CONTEXT.md`
+  §5.1; lá `.epp` continua correto, é o nome do TEMPLATE pré-processado por `cpp`, papel que este
+  fork não usa). Mudança mecânica: nenhuma lógica nova, só o literal `".epp"` → `".edl"` em
+  `app::adHocScenario()`/`ScenarioCatalog`/`make_fixture.py`/scripts de teste, e o rename dos
+  arquivos rastreados via `git mv`. `contexts/MIXR-PATTERN-CONTEXT.md`/`MIXR-CONTEXT.md` (a
+  destilação dos exemplos OFICIAIS do framework, um projeto diferente) foram deliberadamente
+  poupados desta renomeação — descrevem arquivos de terceiro, não desta aplicação.
 - `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
   destrackeado com `git rm -r --cached`.
 - Limitação conhecida na poc/09: chaff/flare saem no Tacview como `Misc`/`Grey` em vez de

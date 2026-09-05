@@ -56,7 +56,7 @@ def fixture_de_patrulha(poc: str) -> Path:
     """
     out = RAIZ / "build" / "tests-fixtures"
     out.mkdir(parents=True, exist_ok=True)
-    base = out / f"{poc}-nd-base.epp.in"
+    base = out / f"{poc}-nd-base.edl.in"
     subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
          "--poc", poc, "--mode", "intruder", "--out", str(base)],
@@ -82,7 +82,7 @@ def fixture_de_patrulha(poc: str) -> Path:
     if n == 0:
         raise SystemExit("nao achei 'legTime:' na fixture")
 
-    p = out / f"{poc}-nd.epp.in"
+    p = out / f"{poc}-nd.edl.in"
     p.write_text(t)
     return p
 

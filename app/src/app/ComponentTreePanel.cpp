@@ -59,7 +59,7 @@ ProjectedNode projectTreeNode(const double x, const double y, const ComponentTre
    return {px, py, onCanvas};
 }
 
-// Nome curto do nó: o do slot quando existe (é o que aparece no .epp), senão
+// Nome curto do nó: o do slot quando existe (é o que aparece no .edl), senão
 // a classe. O card de detalhe mostra os dois.
 std::string shortNodeLabel(const ComponentTreeLayoutNode& node)
 {

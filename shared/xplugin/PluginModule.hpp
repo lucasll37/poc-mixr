@@ -11,7 +11,7 @@ namespace base { class PairStream; class String; }
 namespace xplugin {
 
 //------------------------------------------------------------------------------
-// Uma .so a carregar, declarada no .epp.
+// Uma .so a carregar, declarada no .edl.
 //
 // Factory name: PluginModule
 //

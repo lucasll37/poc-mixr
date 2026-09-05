@@ -11,11 +11,11 @@ namespace app {
 //
 // Duas familias convivem aqui, e a diferenca entre elas e so de EDL:
 //
-//   * os cenarios DO PROPRIO app (configs/scenario_*.epp.in) -- herméticos,
+//   * os cenarios DO PROPRIO app (configs/scenario_*.edl.in) -- herméticos,
 //     porta de Tacview e diretorio de dados proprios (1236, ./app/data/), e
-//     escritos com '@include:tacview_recorder.epp.frag@' + os quatro tokens
+//     escritos com '@include:tacview_recorder.edl.frag@' + os quatro tokens
 //     de Tacview abaixo, que so eles usam;
-//   * os cenarios DAS POCS (src/poc/**/configs/*.epp.in) -- cada um com a
+//   * os cenarios DAS POCS (src/poc/**/configs/*.edl.in) -- cada um com a
 //     porta e o diretorio de dados dele, e com o bloco 'dataRecorder:'
 //     escrito inteiro no proprio arquivo. Para esses os quatro campos de
 //     Tacview ficam VAZIOS: a substituicao de token simplesmente nao acha
@@ -32,9 +32,9 @@ struct ScenarioEntry
    std::string key;            // '-scenario <chave>'
    std::string label;          // titulo curto, para a tela de selecao e o cabecalho do dashboard
    std::string description;    // uma linha, para a tela de selecao
-   std::string templatePath;   // o .epp.in
+   std::string templatePath;   // o .edl.in
 
-   // Os 4 tokens que app/configs/fragments/tacview_recorder.epp.frag
+   // Os 4 tokens que app/configs/fragments/tacview_recorder.edl.frag
    // precisa (ver app::generateScenario()/ScenarioTemplate.cpp) -- o
    // esqueleto do dataRecorder/TacviewOutput e IDENTICO nos tres cenarios
    // deste catalogo; so estes 4 pedacos mudam. 'tacviewId' pode divergir

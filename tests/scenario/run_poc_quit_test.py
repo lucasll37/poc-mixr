@@ -38,7 +38,7 @@ import subprocess
 import sys
 import time
 
-# Tempo para o binario subir (parse do .epp, JSBSim, createTimeCriticalProcess())
+# Tempo para o binario subir (parse do .edl, JSBSim, createTimeCriticalProcess())
 # antes de mandar qualquer coisa.
 ESPERA_ESTAVEL = 3.0
 # Tempo rodando com o cliente travado, para o buffer do socket encher.

@@ -1,30 +1,34 @@
 //
-// dashboard -- cenario "Patrulha"
+// rl -- cenario para o wrapper Gymnasium (src/rl/python/mixr_gym).
 //
-// 4 falcons patrulhando, SEM intruso -- o mais calmo dos tres cenarios deste
-// poc, bom pra ver pausar/acelerar/frear sem nenhum outro comportamento
-// competindo pela atencao. Derivado de src/poc/dis/multi-thread/configs/
-// scenario.epp.in (mesma pilha 100% nativa: Aircraft/JSBSimModel/Autopilot/
-// radar/AlertDatalink/FlightAgentTC, o mesmo plugin libflight_tc.so -- os 4
-// falcons decidem em PARALELO, um por thread do pool de tempo critico, na
-// fase 3 do frame; nao mais um SimAgent so no laco de background), com o
-// delta:
+// Derivado de app/configs/scenario_patrol.edl.in (mesma pilha 100% nativa:
+// Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/FlightAgentTC, o mesmo
+// plugin libflight_tc.so), com o delta:
 //
-//   1) SEM 'networks:' -- hermetico, mesmo motivo de
+//   1) falcon1 troca ( BtBehavior ... ) por ( RLBridgeBehavior vote: 50 )
+//      dentro do MESMO UbfArbiter -- o piso de seguranca nativo
+//      ( AltitudeSafetyBehavior, vote: 90 ) continua protegendo mesmo
+//      quando o agente RL manda um comando ruim (ver CLAUDE.md, secao
+//      AltitudeSafetyBehavior).
+//   2) falcon2..4 continuam com BtBehavior nativo -- trafego/companheiros
+//      de cenario, nao controlados pelo agente RL (ver "Escopo" do plano
+//      de implementacao: v1 e single-agent).
+//   3) ( Station ) no lugar de ( ClockStation ) -- este host nunca roda em
+//      tempo real, NativeSimulation::step() chama tcFrame()/updateData()
+//      direto, sem pool de tempo critico com pacing nem teclado.
+//   4) SEM 'networks:' -- hermetico, mesmo motivo de
 //      tests/scenario/make_fixture.py (nao competir por porta/trafego com
 //      outra sessao).
-//   2) Porta de Tacview PROPRIA (1236) e dataRecorder/data/ apontando pra
-//      ./app/, pra poder rodar ao lado de single-thread/
-//      multi-thread (porta 1234) sem colidir.
-//   3) SEM 'msgFeed:' -- dashboard nao linka shared/xmsg (o proprio TUI ja e
-//      o "feed"), entao ( MsgFeed ) nao construiria nada aqui.
+//   5) Porta de Tacview PROPRIA (1237) e dataRecorder/data/ apontando pra
+//      ./src/rl/, pra poder rodar ao lado de single-thread/multi-thread/app
+//      (portas 1234/1236) sem colidir -- opcional, so para acompanhar
+//      visualmente um episodio; NativeSimulation nunca le o TacviewOutput
+//      de volta.
+//   6) numTcThreads FIXO em 1 -- nao ha argv aqui (chamado de Python via
+//      pybind11, nao por linha de comando), e um agente RL nao precisa do
+//      pool de threads para ir rapido; so precisa ser DETERMINISTICO.
 //
-// @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
-//
-
-( ClockStation
-
-   tcPriority: 0.5
+( Station
 
    ownship: falcon1
 
@@ -46,24 +50,32 @@
 
    } // components (plugins)
 
-   // Esqueleto compartilhado com scenario_intercept.epp.in/
-   // scenario_intercept_missile.epp.in (era ~95% byte-identico entre os
-   // tres -- so eventName/callsign/fileName/os mapas mudavam). Ver
-   // app/configs/fragments/tacview_recorder.epp.frag e
-   // app::generateScenario() (ScenarioTemplate.cpp) -- os quatro tokens
-   // do fragmento vem de ScenarioCatalog.cpp, resolvidos ANTES do
-   // edl_parser ver este arquivo, igual o numero de threads ja fazia.
-   //
-   // ARMADILHA (encontrada rodando): NAO escrever a sintaxe literal de
-   // token (arroba-nome-arroba) num comentario deste arquivo -- a
-   // substituicao e texto puro, sem entender comentario EDL, e corrompe
-   // qualquer ocorrencia literal do marcador, comentario incluso.
-   @include:tacview_recorder.epp.frag@
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "rl"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1237
+               callsign: "poc-mixr/rl"
+               fileName: "./src/rl/data/recordings/mission.acmi"
+               modelMap: { falcon1: "F-16C"  falcon2: "F-16C"
+                           falcon3: "F-16C"  falcon4: "F-16C" }
+               typeMap:  { falcon1: "Air+FixedWing"  falcon2: "Air+FixedWing"
+                           falcon3: "Air+FixedWing"  falcon4: "Air+FixedWing" }
+               colorMap: { falcon1: "Blue"  falcon2: "Blue"
+                           falcon3: "Blue"  falcon4: "Blue" }
+            )
+         }
+      )
+   )
 
    simulation: ( WorldModel
 
-      numTcThreads: @NUM_TC_THREADS@
+      numTcThreads: 1
 
+      // Serra do Mar / regiao de Nova Friburgo (RJ) -- mesma referencia das
+      // demais pocs, ver CLAUDE.md.
       latitude:  -22.25
       longitude: -42.48
 
@@ -135,25 +147,9 @@
                            minClearance:     ( Meters 400 )
                            recoverClearance: ( Meters 800 )
                         )
-                        ( BtBehavior
-                           vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                           patrolHeading:  ( Degrees 90 )
-                           legTime:        ( Seconds 60 )
-                           legTurn:        ( Degrees 90 )
-                           patrolAltitude: ( Meters 1750 )
-                           patrolSpeed:    160.0
-                           rtbAltitude:    ( Meters 2050 )
-                           rtbSpeed:       170.0
-                           arrivalRadius:  ( NauticalMiles 2.0 )
-                           fuelReserve:    0.35
-                           breakTurn:      ( Degrees 110 )
-                           evadeClimb:     ( Meters 700 )
-                           evadeSpeed:     185.0
-                           terrainClearance: ( Meters 800 )
-                           evadeHold:      ( Seconds 30 )
-                           supportSpeed:   180.0
-                        )
+                        // Decisao vem de fora (Python), via shared/xrlbridge --
+                        // ver models/flight/include/ubf/RLBridgeBehavior.hpp.
+                        ( RLBridgeBehavior vote: 50 )
                      }
                   )
                )

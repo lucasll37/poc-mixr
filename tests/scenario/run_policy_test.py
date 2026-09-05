@@ -71,7 +71,7 @@ def main() -> None:
     args = ap.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
-        fixture = pathlib.Path(tmp) / "politica.epp.in"
+        fixture = pathlib.Path(tmp) / "politica.edl.in"
         gerar_fixture(fixture, args.poc, args.tree)
 
         dumps = {}

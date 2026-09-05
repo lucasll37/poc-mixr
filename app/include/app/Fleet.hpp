@@ -39,7 +39,7 @@ Fleet collectFleet(mixr::models::WorldModel* wm, const std::vector<std::string>&
 std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm);
 
 //------------------------------------------------------------------------------
-// POTENCIA DE CRUZEIRO -- ver o comentario no scenario.epp: o autopilot do
+// POTENCIA DE CRUZEIRO -- ver o comentario no scenario.edl: o autopilot do
 // c310 fecha malha de RUMO e de ALTITUDE, mas nao de VELOCIDADE (o
 // c310ap.xml apenas DECLARA ap/airspeed_hold e ap/throttle-cmd-norm, sem
 // canal que os implemente). Sem manete, a aeronave perdia velocidade, o

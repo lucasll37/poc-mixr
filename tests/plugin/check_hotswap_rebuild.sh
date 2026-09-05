@@ -28,7 +28,7 @@ SO=dist/lib/mixr-plugins/libflight.so
 # do proprio projeto), e como todas as chamadas de meson aqui terminam em
 # '|| true' ou com a saida descartada, o alvo falhava sem dizer por que.
 MODEL_BUILD=models/player/flight/build
-FIX=build/tests-fixtures/single-thread-hotswap-vivo.epp.in
+FIX=build/tests-fixtures/single-thread-hotswap-vivo.edl.in
 
 # 'meson install' do MODELO deposita em models/player/flight/dist/ -- o dist LOCAL
 # daquele projeto, nao o do host. Quem o host carrega e dist/lib/mixr-plugins/,

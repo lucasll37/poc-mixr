@@ -135,13 +135,13 @@ def roda(binario, cenario, porta_tacview, rotulo):
 
 
 def porta_do_cenario(cenario):
-    """Le a porta do TacviewOutput do .epp ja expandido que o app gera.
+    """Le a porta do TacviewOutput do .edl ja expandido que o app gera.
 
     Nao fixa o numero aqui de proposito: o fragmento compartilhado
-    (app/configs/fragments/tacview_recorder.epp.frag) e quem manda, e ele ja
+    (app/configs/fragments/tacview_recorder.edl.frag) e quem manda, e ele ja
     mudou de porta uma vez.
     """
-    caminho = os.path.join("app", "configs", f"{cenario}.generated.epp")
+    caminho = os.path.join("app", "configs", f"{cenario}.generated.edl")
     if not os.path.exists(caminho):
         return None
     dentro = False
@@ -165,7 +165,7 @@ def main():
 
     binario = os.path.abspath(args.binario)
 
-    # 1) Saida normal. Roda primeiro porque tambem GERA o .generated.epp de que
+    # 1) Saida normal. Roda primeiro porque tambem GERA o .generated.edl de que
     #    o passo 2 precisa para descobrir a porta.
     ok = roda(binario, args.scenario, None, "saida normal")
 

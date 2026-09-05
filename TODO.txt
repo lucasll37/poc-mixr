@@ -8,8 +8,6 @@ no pagina de componentes (epp), mostrar somente o que é time critical. quebrar 
 
 no readme, ensinar como instala dependecias
 
-.epp -> .edl
-
 app quebrando
 
 gerar documentação

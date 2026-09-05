@@ -4,7 +4,7 @@
 
 A aplicação deste repositório (o "host") não decide nada sozinha: ela carrega a lógica de
 percepção/decisão/ação de uma biblioteca compilada à parte (um "modelo", também chamado de
-"plugin"), aberta em tempo de execução via `dlopen`. Um cenário (arquivo `.epp`, o formato
+"plugin"), aberta em tempo de execução via `dlopen`. Um cenário (arquivo `.edl`, o formato
 declarativo do MIXR) diz qual arquivo `.so` carregar e quais classes esperar dele; o host nunca
 viu o código-fonte desse `.so`.
 
@@ -35,7 +35,7 @@ O `meson.build` deste diretório mostra as quatro linhas mínimas que fazem isso
 ## 2. Fornecer exatamente as classes que o cenário pede
 
 Quem decide **quais nomes de classe** e **quais parâmetros** (chamados de "slots" no MIXR) o seu
-modelo precisa fornecer não é este documento — é o arquivo `.epp` do cenário que vai carregá-lo.
+modelo precisa fornecer não é este documento — é o arquivo `.edl` do cenário que vai carregá-lo.
 Esse arquivo tem um bloco assim:
 
 ```
@@ -114,7 +114,7 @@ satisfazer as seções 1 a 4.
 ## Limites do que este documento garante
 
 - A tabela da seção 2 é um retrato do cenário de produção **de hoje**; ela muda se o cenário
-  mudar. O que não muda é o mecanismo: sempre é o `.epp` que manda.
+  mudar. O que não muda é o mecanismo: sempre é o `.edl` que manda.
 - Nada aqui é verificado pelo compilador — a única forma de conferir é rodar o modelo dentro do
   host de verdade. Uma interface abstrata em C++ resolveria isso, mas traria de volta o
   acoplamento binário (vtable) que este mecanismo de plugin existe justamente para evitar.

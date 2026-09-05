@@ -1,24 +1,15 @@
 //
-// onnx-policy
+// multi-thread
 //
-// O multi-thread INTEIRO, com UMA unica diferenca: o 'treeFile:' de cada
-// falcon aponta para uma arvore cuja folha e uma REDE NEURAL.
+// O single-thread INTEIRO, com UMA unica diferenca: o agente do UBF e um
+// AgentTC proprio (xnative::FlightAgentTC), que decide na FASE 3 do frame
+// de tempo critico, no lugar do ( SimAgent ) nativo, que decide em
+// updateData() (thread de background).
 //
-//   multi-thread:  treeFile: ".../flight_tree.xml"
-//                     -> Fallback de nos escritos a mao (Patrol, Evade,
-//                        Support, RTB), regras em C++ de models/flight
+// Todo o resto e identico ao single-thread -- mesma pilha nativa, mesmos
+// numeros, mesma arvore de comportamento:
 //
-//   onnx-policy:   treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
-//                     -> < OnnxPolicy model="configs/policy_barrier.onnx" >,
-//                        um MLP 28->3 inferido DENTRO da fase 3 do frame
-//                        (models/flight/src/bt/nodes/OnnxPolicyAction.cpp,
-//                        motor de inferencia em shared/xinfer)
-//
-// Nao ha uma linha de C++ nova nesta poc: o no, o motor e o plugin ja
-// existiam -- trocar as regras pela rede foi trocar um caminho de arquivo.
-// Todo o resto e identico ao multi-thread:
-//
-//   peca            multi-thread                onnx-policy
+//   peca            single-thread               multi-thread
 //   --------------  --------------------------  --------------------------
 //   player          ( Aircraft )                igual
 //   dinamica 6-DOF  ( JSBSimModel )             igual
@@ -27,18 +18,12 @@
 //                     AirTrkMgr )
 //   interacao       ( AlertDatalink )           igual
 //   arbitro         ( UbfArbiter )              igual
-//   agente UBF      ( FlightAgentTC ), fase 3   igual
-//   plugin          libflight_tc.so             igual
-//   QUEM DECIDE     arvore de regras (C++)      rede neural (.onnx)
-//
-// O ( AltitudeSafetyBehavior vote: 90 ) continua acima do ( BtBehavior
-// vote: 50 ): a rede NAO tem a ultima palavra sobre o piso anti-CFIT. E o
-// que torna seguro trocar de politica sem revalidar seguranca de voo.
-//
-// PORTAS PROPRIAS, para esta poc rodar ao lado das outras: Tacview 1238
-// (1234 single/multi, 1235 bandit-dis, 1236 app, 1237 python-flight) e DIS
-// localPort 3005 (3001 bandit-dis, 3002 single-thread, 3003 multi-thread,
-// 3004 python-flight).
+//   percepcao/      FlightState/BtBehavior/     igual
+//   decisao/acao    AltitudeSafetyBehavior/
+//                   FlightAction
+//   agente UBF      ( SimAgent ), na STATION,   ( FlightAgentTC ), DENTRO
+//                   ator por nome, decide em    do player, ator = container,
+//                   updateData()                decide na fase 3
 //
 // AERONAVE: c310 (Cessna 310). O motivo e concreto: o JSBSimModel nativo
 // comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
@@ -48,7 +33,7 @@
 // -> JSBSimModel -> superficies funciona sem uma linha de lei de controle
 // propria.
 //
-// 1 e substituido pelo main.cpp antes do parse.
+// @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
 
 ( ClockStation
@@ -58,8 +43,8 @@
    ownship: falcon1
 
    // --------------------------------------------------------------------
-   // Como na multi-thread, esta Station NAO tem AGENTE nenhum em
-   // 'components:'.
+   // A DIFERENCA DO single-thread ESTA AQUI: esta Station NAO tem AGENTE
+   // nenhum em 'components:'.
    //
    // No single-thread os quatro ( SimAgent ) moram neste ponto e amarram o
    // ator por nome (slot 'actorPlayerName'), porque e assim que o SimAgent
@@ -134,7 +119,7 @@
 
          sinks: {
             ( MsgFileSink
-               fileName: "./build/tests-messages/onnx-policy-intruder.jsonl"
+               fileName: "./src/poc/dis/multi-thread/data/messages/mission.jsonl"
                flushEvery: ( Seconds 2 ) )
          }
 
@@ -198,14 +183,14 @@
    } // components (mensageria)
 
    // --------------------------------------------------------------------
-   // bandit1 (o intruso) mora no processo proprio src/poc/bandit-dis, pilotado
+   // bandit1 (o intruso) mora no processo proprio src/poc/dis/bandit, pilotado
    // por joystick fisico ou pelo Autopilot scripted de fallback, que emite
    // seu estado via DIS NATIVO do MIXR (mixr::dis -- namespace real da lib,
    // apesar do caminho do header ser mixr/interop/dis/; factory names
    // 'DisNetIO'/'DisNtm').
    //
    // BIDIRECIONAL: esta Station RECEBE o bandit1 (inputEntityTypes:) e
-   // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit-dis recebe
+   // TAMBEM EMITE falcon1..4 (outputEntityTypes:) -- o bandit recebe
    // de volta e mostra as falcons no proprio Tacview dele (porta 1235).
    // Sem 'enableOutput: false', o output volta ao default nativo (true).
    //
@@ -222,26 +207,48 @@
    // publicar) -- falcon1..4 e bandit1 sao a MESMA classe/type
    // ("Aircraft"/"C310"), entao o mesmo disEntityType serve pros dois
    // sentidos sem ambiguidade: cada lado so ouve trafego de quem so emite
-   // UMA coisa (bandit-dis so emite bandit1; esta Station so emite
+   // UMA coisa (bandit so emite bandit1; esta Station so emite
    // falcon1..4).
    //
    // Esquema de portas (ver o comentario irmao em
-   // src/poc/bandit-dis/configs/scenario.epp): todo mundo escuta em 3000;
-   // bandit-dis emite da 3001, single-thread da 3002, multi-thread da 3003,
-   // python-flight da 3004, e esta Station da 3005.
+   // src/poc/dis/bandit/configs/scenario.edl): todo mundo escuta em 3000;
+   // bandit emite da 3001, single-thread da 3002, esta Station da 3003.
    //
    // disEntityType TEM que ser identico dos dois lados -- e como o Ntm casa
    // o PDU recebido com o template. Nao e enumeracao SISO-REF-010 real, so
    // um codigo interno consistente.
    // --------------------------------------------------------------------
-   
+   networks: {
+      ( DisNetIO
+         siteID: 3  applicationID: 1  exerciseID: 1
+         netInput:  ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
+                      port: 3000  ignoreSourcePort: 3003  shared: true )
+         netOutput: ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
+                      port: 3000  localPort: 3003          shared: true )
+         inputEntityTypes: {
+            ( DisNtm
+               template: ( Aircraft type: "C310"
+                  signature: ( SigSphere radius: 4.0 )
+                  dataLogTime: ( Seconds 0.1 )
+               )
+               disEntityType: [ 1 2 225 1 99 0 0 ]
+            )
+         }
+         outputEntityTypes: {
+            ( DisNtm
+               template: ( Aircraft type: "C310" )
+               disEntityType: [ 1 2 225 1 99 0 0 ]
+            )
+         }
+      )
+   }
 
    // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
    // publico -- e o que deixa app/StationBuilder.cpp achar o TacviewOutput
    // daqui de fora, pra alimentar a varredura de radar (ver
    // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
    dataRecorder: ( ExposedDataRecorder
-      eventName: "onnx-policy"
+      eventName: "multi-thread"
 
       // O gravador NATIVO ESTOURA (SEGV, via __dynamic_cast em
       // DataRecorder::recordNewTrack()) ao gravar a primeira pista que o
@@ -255,9 +262,9 @@
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
-               port: 12381
-               callsign: "poc-mixr/onnx-policy"
-               fileName: "./build/tests-recordings/onnx-policy-intruder.acmi"
+               port: 1234
+               callsign: "poc-mixr/multi-thread"
+               fileName: "./src/poc/dis/multi-thread/data/recordings/mission.acmi"
 
                // Name= e o MODELO que o Tacview procura na sua base de dados
                // para escolher o icone/modelo 3D (o nome do player vai em
@@ -285,7 +292,7 @@
 
    simulation: ( WorldModel
 
-      numTcThreads: 1
+      numTcThreads: @NUM_TC_THREADS@
 
       // Serra do Mar / regiao de Nova Friburgo (RJ). A referencia esta no
       // MIOLO da celula S23W043 (lat -23..-22, lon -43..-42): com os players
@@ -445,12 +452,10 @@
                )
 
                // ------------------------------------------------------
-               // O AGENTE -- identico ao da multi-thread.
+               // O AGENTE -- a diferenca deste subprojeto.
                //
-               // A diferenca DESTA poc nao esta aqui: esta no 'treeFile:'
-               // do ( BtBehavior ) mais abaixo, que aponta para a arvore
-               // com a rede neural. O agente, o arbitro e os votos sao os
-               // mesmos.
+               // Mesmo conteudo do ( SimAgent ) do single-thread (mesmo state,
+               // mesmo arbitro, mesmos numeros); muda a CLASSE e o LUGAR.
                //
                // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
                // percorrida na ordem declarada, e tres coisas rodam na
@@ -484,15 +489,7 @@
                         )
                         ( BtBehavior
                            vote: 50
-                           // A DIFERENCA DESTA POC, e so ela: a arvore
-                           // apontada aqui tem UMA folha util, < OnnxPolicy >,
-                           // que roda a rede neural de configs/. Os numeros
-                           // abaixo continuam valendo para o ramo de
-                           // FALLBACK dela (< Patrol >), que assume se o
-                           // .onnx nao carregar ou tiver a forma errada --
-                           // uma politica quebrada nao pode deixar a
-                           // aeronave sem comando.
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                            patrolHeading:  ( Degrees 90 )
                            legTime:        ( Seconds 60 )
                            legTurn:        ( Degrees 90 )
@@ -520,6 +517,12 @@
                            // devolve o piso absoluto de 200 m -- e o controle
                            // negativo, sem recompilar.
                            terrainClearance: ( Meters 800 )
+                           // Jitter de rumo na patrulha (opcional, ver CLAUDE.md
+                           // secao shared/xrandom): mesma patrolMasterSeed nos 4
+                           // falcons -- cada um deriva a propria sequencia do
+                           // proprio NOME, nunca de ordem de descoberta/thread.
+                           patrolJitterHeading: ( Degrees 6 )
+                           patrolMasterSeed:    20260903
                         )
                      }
                   )
@@ -586,7 +589,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                            patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
                            patrolSpeed: 160.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 170.0
@@ -595,6 +598,7 @@
                            evadeSpeed: 185.0  supportSpeed: 180.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )
@@ -661,7 +665,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                            patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                            legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
                            patrolSpeed: 165.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 170.0
@@ -670,6 +674,7 @@
                            evadeSpeed: 190.0  supportSpeed: 185.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )
@@ -736,7 +741,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
                            patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
                            patrolSpeed: 160.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 170.0
@@ -745,6 +750,7 @@
                            evadeSpeed: 185.0  supportSpeed: 180.0
                            evadeHold: ( Seconds 30 )
                            terrainClearance: ( Meters 800 )
+                           patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
                         )
                      }
                   )
@@ -752,43 +758,10 @@
             }
          )
 
-         // Intruso: nao mora aqui, e sim no processo src/poc/bandit-dis --
+         // Intruso: nao mora aqui, e sim no processo src/poc/dis/bandit --
          // recebido so pela rede via 'networks:' (ver o comentario logo
          // acima de 'dataRecorder:'). Mesma aeronave, mesmos valores
          // iniciais do lado de la.
-
-
-         // ------------------------------------------------------------------
-         // FIXTURE DE TESTE -- bandit1 LOCAL.
-         //
-         // Em producao o intruso vive no processo src/poc/bandit-dis e chega por
-         // DIS. Num teste de processo unico isso tornaria EVADE e SUPPORT
-         // inalcancaveis, entao ele volta para ca, com os mesmos valores
-         // iniciais do lado de la.
-         // ------------------------------------------------------------------
-         bandit1: ( Aircraft
-            id: 201
-            side: red
-            type: "C310"
-            signature: ( SigSphere radius: 4.0 )
-            initXPos:     ( NauticalMiles 12.0 )
-            initYPos:     ( NauticalMiles 12.0 )
-            initAlt:      ( Meters 2400.0 )
-            initHeading:  ( Degrees 225 )
-            initVelocity: 92.0
-            dataLogTime: ( Seconds 0.1 )
-            interpolateTerrain: true
-            components: {
-               dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
-               )
-               pilot: ( Autopilot
-                  navMode: false  headingHoldMode: true  altitudeHoldMode: true
-                  velocityHoldMode: true  maxRateOfTurnDps: 3.0  maxBankAngle: 30.0
-                  maxPitchAngle: 10.0  maxClimbRateMps: 8.0  maxAcceleration: 2.0
-               )
-            }
-         )
 
       } // players
 
