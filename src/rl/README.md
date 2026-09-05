@@ -31,7 +31,7 @@ MixrFlightEnv.step(action) ──call──>      NativeSimulation::step(cmd)
 Um modulo de extensao **pybind11** (`src/rl/bindings/`, compila para
 `_native*.so`) mantem a `Station` viva no MESMO processo Python -- sem
 round-trip de rede por passo. A troca de comando/observacao entre o host
-(este modulo) e o modelo (`models/A4`, um `.so` carregado por `dlopen`)
+(este modulo) e o modelo (`models/player/A4`, um `.so` carregado por `dlopen`)
 passa por `shared/xrlbridge` -- uma shared_library pequena, dedicada,
 mesmo motivo estrutural de `shared/xboard::Board` (ver o cabecalho de
 `shared/xrlbridge/RLBridge.hpp`): o host **nao pode** incluir headers do
@@ -39,7 +39,7 @@ modelo nem linkar contra o `.so` dele em tempo de compilacao
 (`tests/guard/check_host_opaco.sh` trava esse invariante), entao a troca
 so pode passar por uma peca que os dois lados linkam de verdade.
 
-`models/A4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior` que
+`models/player/A4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior` que
 faz esse papel do lado do modelo -- entra no `UbfArbiter` de `falcon1` no
 lugar de `BtBehavior`, ao lado do MESMO `AltitudeSafetyBehavior` (voto 90,
 maior que o voto 50 do bridge) que ja protege as outras aeronaves: uma

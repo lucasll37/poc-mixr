@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/lucas/Projects/poc-mixr/models/fixtures/stub/src",
-      "program": "/home/lucas/Projects/poc-mixr/models/fixtures/stub/src/build/Debug/outDebug",
+      "cwd": "/home/lucas/Projects/poc-mixr/models/player/fixtures/stub/src",
+      "program": "/home/lucas/Projects/poc-mixr/models/player/fixtures/stub/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

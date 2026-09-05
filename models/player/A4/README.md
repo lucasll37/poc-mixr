@@ -5,7 +5,7 @@ voto), atuação, e as classes MIXR próprias que o cenário nomeia.
 
 **Não é compilado dentro de executável nenhum.** É um projeto Meson independente, construído numa
 etapa anterior (`make models`) e carregado com `dlopen` durante o parse do `.edl`. Ver
-[../README.md](../README.md) para o build em etapas e para escrever um modelo novo.
+[../README.md](../../README.md) para o build em etapas e para escrever um modelo novo.
 
 ## As quatro camadas, e a dependência é de mão única
 
@@ -48,7 +48,7 @@ Este diretório também tem um `Makefile` próprio, independente do Makefile da 
 cd ../.. && make configure && make sdk
 
 # daqui em diante, so aqui dentro:
-cd models/A4
+cd models/player/A4
 make                 # -> ./dist/lib/mixr-plugins/{libflight,libflight_tc}.so + ./dist/share/...
 make test            # domain + tree + native, neste build isolado
 make install-host    # sincroniza ./dist para a raiz do poc-mixr (a UNICA escrita fora daqui)
@@ -56,7 +56,7 @@ make install-host    # sincroniza ./dist para a raiz do poc-mixr (a UNICA escrit
 
 `make help` lista os alvos. O fluxo de produção/CI continua sendo o Makefile da raiz (`make
 models`, que constrói **os três** modelos de uma vez) — este é só para iterar neste modelo
-sozinho. Ver [models/fixtures/stub/README.md](../fixtures/stub/README.md) para o "porquê" de
+sozinho. Ver [models/player/fixtures/stub/README.md](../fixtures/stub/README.md) para o "porquê" de
 `install-host` ser o único alvo que escreve fora de `./dist`.
 
 ## Testes
@@ -77,7 +77,7 @@ varredura, pela checagem do `.acmi` no teste do stub.
 
 ## A dissecação profunda
 
-O [README da single-thread](../../src/poc/dis/single-thread/README.md) descreve este modelo peça por peça —
+O [README da single-thread](../../../src/poc/dis/single-thread/README.md) descreve este modelo peça por peça —
 seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
 
 ## Ler também
@@ -85,5 +85,5 @@ seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — calibração do c310, armadilhas confirmadas
   específicas deste modelo
 - [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
-- [../README.md](../README.md) — visão geral de `models/`, o contrato de plugin, e o build
+- [../README.md](../../README.md) — visão geral de `models/`, o contrato de plugin, e o build
   orquestrado pelo Makefile da raiz

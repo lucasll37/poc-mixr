@@ -18,7 +18,7 @@
 // host e aparece aqui sem nenhuma ponte extra.
 //
 // E o MODELO que produz este conteudo, nao o app: quem escreve e
-// models/A4/src/ubf/FlightAction.cpp (transicao de comportamento,
+// models/player/A4/src/ubf/FlightAction.cpp (transicao de comportamento,
 // alerta tatico, lancamento de missil, batimento de decisoes) e
 // ubf/BtBehavior.cpp (falha ao carregar a arvore). O app nao chama
 // LOG(...) em lugar nenhum -- ele so EXIBE. O unico ponto em que ele mexe

@@ -1,7 +1,7 @@
 """gymnasium.Env sobre a simulacao MIXR/flight -- ver src/rl/README.md.
 
 O 'state' e o mesmo domain::WorldView que o UBF ja usa para decidir
-(models/A4/include/domain/WorldView.hpp); a 'action' e o mesmo
+(models/player/A4/include/domain/WorldView.hpp); a 'action' e o mesmo
 domain::FlightCommand que xnative::FlightAction ja aplica no Autopilot
 (heading/altitude/speed -- os tres unicos campos que execute() de fato
 atua). Nada disso e reimplementado aqui: o C++ (src/rl/bindings/) so publica os

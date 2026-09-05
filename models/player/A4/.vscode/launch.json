@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/lima/asa/poc-mixr/models/A4/src",
-      "program": "/home/lima/asa/poc-mixr/models/A4/src/build/Debug/outDebug",
+      "cwd": "/home/lima/asa/poc-mixr/models/player/A4/src",
+      "program": "/home/lima/asa/poc-mixr/models/player/A4/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

@@ -17,7 +17,7 @@
 // sementes a partir de identidade estavel. O gerador de verdade
 // (std::mt19937_64) mora dentro de cada consumidor (ex.: domain::PatrolPlan),
 // privado, sem incluir este header: domain/ e bt/ deste modelo sao
-// compilados por test_domain/test_tree SEM o SDK (ver models/A4/tests/
+// compilados por test_domain/test_tree SEM o SDK (ver models/player/A4/tests/
 // meson.build, "sem MIXR, sem BehaviorTree.CPP" / "test_tree NAO linka o
 // MIXR") -- fazer uma classe pura depender de um header publicado pelo SDK
 // quebraria essa fronteira. Por isso o unico consumidor real deste header e

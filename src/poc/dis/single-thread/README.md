@@ -36,14 +36,14 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 > o dump. Mais nada.
 >
 > A **política** descrita acima — `domain/`, `bt/`, `ubf/`, `xnative/` — não está aqui e nem é
-> compilada junto: mora em **[models/A4/](../../models/A4/)**, um projeto
+> compilada junto: mora em **[models/player/A4/](../../../../models/player/A4/)**, um projeto
 > Meson independente, construído numa etapa **anterior** e carregado com `dlopen` durante o parse
 > do cenário. O que este README descreve das seções 7 a 10 continua valendo, só que os arquivos
 > ficam lá.
 >
 > Isso não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o binário.
-> Ver [models/README.md](../../models/README.md) para escrever um modelo novo, e
-> [shared/xplugin/README.md](../../shared/xplugin/README.md) para o contrato.
+> Ver [models/README.md](../../../../models/README.md) para escrever um modelo novo, e
+> [shared/xplugin/README.md](../../../../shared/xplugin/README.md) para o contrato.
 
 ```bash
 make build
@@ -222,7 +222,7 @@ as fases — e não faz nada, porque o ponteiro que ele procurava é nulo.
 ## 4. A árvore de objetos do cenário
 
 [`configs/scenario.edl.in`](configs/scenario.edl.in) monta isto (o `@NUM_TC_THREADS@` é
-substituído por [`app/ScenarioTemplate.cpp`](src/app/ScenarioTemplate.cpp) antes do parse, porque
+substituído por [`app/ScenarioTemplate.cpp`](../../../../app/src/app/ScenarioTemplate.cpp) antes do parse, porque
 o teto depende da máquina):
 
 ```
@@ -274,7 +274,7 @@ Cinco coisas que valem entender nessa árvore:
   radares existam.
 - **`terrain:` é slot do `WorldModel`, e a factory dele não vem de graça.**
   `mixr::models::factory` **não** encadeia a de terreno; sem `mixr::terrain::factory` no
-  [`mixr_factory.cpp`](src/mixr_factory.cpp), o `( SrtmHgtFile )` não constrói nada e o mundo fica
+  [`mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp), o `( SrtmHgtFile )` não constrói nada e o mundo fica
   sem chão, em silêncio.
 - **O intruso (`bandit1`) não é declarado em `players:`.** Ele mora no processo
   [`src/poc/dis/bandit`](../bandit/), pilotado por joystick físico (ou pelo `Autopilot` nativo,
@@ -283,7 +283,7 @@ Cinco coisas que valem entender nessa árvore:
   `template:` do `DisNtm` (`signature`, `dataLogTime`) a cada PDU novo e insere o clone na
   **mesma** lista que `Simulation::getPlayers()` devolve, então o radar/UBF reagem ao `bandit1`
   de rede exatamente como reagiriam a um local. Detalhe completo, com os números de linha do
-  framework, na seção "`src/poc/dis/bandit`" do [CLAUDE.md](../../CLAUDE.md).
+  framework, na seção "`src/poc/dis/bandit`" do [CLAUDE.md](../../../../CLAUDE.md).
 
 **As altitudes não são arbitrárias.** Cada falcon voa no **pico do próprio circuito de patrulha
 + 300 m** (falcon1 1750, falcon2 1850, falcon3 2050, falcon4 2100 m), porque com terreno
@@ -305,7 +305,7 @@ este subprojeto usa e onde eles aparecem.
 Trinta e oito dos `main.cpp` oficiais fazem a mesma coisa: chamam `base::edl_parser(arquivo,
 minhaFactory, &erros)`, desembrulham o `base::Pair` de topo, fazem `dynamic_cast` para o tipo
 raiz esperado, e abortam se qualquer passo falhar. Aqui isso vive em
-[`app/StationBuilder.cpp`](src/app/StationBuilder.cpp), isolado do `main.cpp`:
+[`app/StationBuilder.cpp`](../../../../app/src/app/StationBuilder.cpp), isolado do `main.cpp`:
 
 ```cpp
 obj = pair->object();  obj->ref();  pair->unref();   // o desembrulho canônico
@@ -318,7 +318,7 @@ incrementar a contagem levaria a `Station` junto.
 
 Todo exemplo tem uma função `factory(const std::string&)` que tenta as suas classes e cai para as
 do framework. **A primeira que retorna não-nulo vence**, então a factory própria vem sempre
-antes. [`src/mixr_factory.cpp`](src/mixr_factory.cpp):
+antes. [`src/mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp):
 
 ```
 xnative → xtacview → xclock → simulation → models → terrain → recorder → base
@@ -332,7 +332,7 @@ fábrica próprio; e `terrain` tem de estar lá, porque `models::factory` não a
 Nenhum exemplo oficial constrói a hierarquia de simulação em código. Quais players existem, com
 quais subsistemas, em que taxa, com quantas threads — é tudo `.edl`. Aqui isso vai ao extremo: o
 número de threads T/C é um marcador `@NUM_TC_THREADS@` resolvido **antes do parse**
-([`app/ScenarioTemplate`](src/app/ScenarioTemplate.cpp)), porque `setSlotNumTcThreads()` é privado
+([`app/ScenarioTemplate`](../../../../app/src/app/ScenarioTemplate.cpp)), porque `setSlotNumTcThreads()` é privado
 e não existe setter público — a única forma honesta de manter tudo instanciado via EDL.
 
 ### 5.4 O gancho de sensor é `transmit()`, e a biblioteca `shared/x<nome>`
@@ -342,7 +342,7 @@ O único exemplo de sensor novo em toda a árvore oficial (`mainGndMapRdr/RealBe
 preguiçosamente (`if (terrain == nullptr) ... getWorldModel()->getTerrain()`). Esta poc não
 escreve sensor próprio, mas usa o **outro** padrão do mesmo exemplo: o de empacotar o que é
 transversal como `shared/x<nome>` com factory própria — é o que são
-[`shared/xtacview`](../../shared/xtacview/) e [`shared/xclock`](../../shared/xclock/).
+[`shared/xtacview`](../../../../shared/xtacview/) e [`shared/xclock`](../../../../shared/xclock/).
 
 ### 5.5 `dataRecorder` com cadeia de `OutputHandler`
 
@@ -397,7 +397,7 @@ Traz de graça `headingHoldMode`, `altitudeHoldMode`, `velocityHoldMode`, `navMo
 rumo→banco→aileron e a malha altitude→arfagem→profundor.
 
 > **Unidade:** `setCommandedAltitudeFt()` é em **pés**; o resto da poc trabalha em metros. A
-> conversão acontece na fronteira, em [`ubf/FlightAction.cpp`](../../models/A4/src/ubf/FlightAction.cpp).
+> conversão acontece na fronteira, em [`ubf/FlightAction.cpp`](../../../../models/player/A4/src/ubf/FlightAction.cpp).
 
 > **Limite que importa aqui:** `maxClimbRateMps: 8.0`. Combinado com `evadeHold: 30 s`, é o que
 > define quanto o avião consegue descer numa manobra de evasão — ~330 m, medido. Esse número
@@ -419,7 +419,7 @@ volta e limiar de detecção — e a correlação de pistas com *gates* de posi�
 velocidade. Ver o percurso completo em [9.3](#93-canal-1--rf-emissão-eco-pista).
 
 **Duas regras que o sensor nativo não implementa** e por isso moram em
-[`xtrack/TrackQuery`](../../shared/xtrack/TrackQuery.cpp): o radar **não filtra por lado**
+[`xtrack/TrackQuery`](../../../../shared/xtrack/TrackQuery.cpp): o radar **não filtra por lado**
 (`playerOfInterestTypes` filtra por *tipo* de player, não por *side* — a esquadrilha inteira
 aparece como pista), e a escolha do "contato mais próximo" precisa de desempate determinístico.
 
@@ -427,7 +427,7 @@ aparece como pista), e a escolha do "contato mais próximo" precisa de desempate
 
 Herda o transporte inteiro e acrescenta **só** o que o framework não tem como saber: o que fazer
 com a mensagem recebida. Detalhes em [9.4](#94-canal-2--datalink) e no
-[header da classe](../../models/A4/include/xnative/AlertDatalink.hpp), que documenta o que vem de graça e os dois
+[header da classe](../../../../models/player/A4/include/xnative/AlertDatalink.hpp), que documenta o que vem de graça e os dois
 enganos fáceis.
 
 ### 6.6 `( SimAgent )` + `( UbfArbiter )` — o agente e o árbitro
@@ -478,13 +478,13 @@ CAMADA 9  configs/ e data/ o que não é código
 
 Sete arquivos, **nenhum** deles inclui um header do MIXR, do BehaviorTree.CPP ou do JSBSim. É a
 camada que se pode compilar e testar sem levantar simulação nenhuma — e é o que
-[`tests/domain/`](../../tests/domain/) faz: 42 testes que rodam em ~10 ms, cobrindo a histerese da
+[`tests/domain/`](../../../../tests/domain/) faz: 42 testes que rodam em ~10 ms, cobrindo a histerese da
 evasão, o alvo fixado na entrada, o lado da quebra e o piso anti-CFIT (este com varredura de
 invariante sobre uma grade de elevação × altitude × marcação). Todas as unidades trazem a
 unidade no **nome do campo** (`altitudeM`, `speedKts`, `headingDeg`) — a armadilha clássica deste
 repositório é misturar pés, metros e nós.
 
-**1. [`domain/FlightCommand.hpp`](../../models/A4/include/domain/FlightCommand.hpp)** — a base de tudo. Um DTO de
+**1. [`domain/FlightCommand.hpp`](../../../../models/player/A4/include/domain/FlightCommand.hpp)** — a base de tudo. Um DTO de
 três campos:
 
 ```cpp
@@ -498,7 +498,7 @@ struct FlightCommand {
 Todo plano de voo e toda política produzem **isto**. É o contrato entre a decisão e a atuação, e
 é o motivo de a árvore de comportamento nunca tocar num objeto MIXR.
 
-**2. [`domain/geometry.*`](../../models/A4/include/domain/geometry.hpp)** — matemática de plano tangente. Opera no
+**2. [`domain/geometry.*`](../../../../models/player/A4/include/domain/geometry.hpp)** — matemática de plano tangente. Opera no
 NED da *gaming area* do `WorldModel` (x = Norte, y = Leste, metros a partir do ponto de
 referência do cenário):
 
@@ -513,7 +513,7 @@ referência do cenário):
 A ordem dos argumentos do `atan2` é a pegadinha: em navegação o ângulo é medido do Norte, então é
 `atan2(E, N)`, e não o `atan2(y, x)` matemático.
 
-**3. [`domain/PatrolPlan.*`](../../models/A4/include/domain/PatrolPlan.hpp)** — circuito cíclico. `configure()`
+**3. [`domain/PatrolPlan.*`](../../../../models/player/A4/include/domain/PatrolPlan.hpp)** — circuito cíclico. `configure()`
 recebe rumo inicial, duração da perna, curva por perna, altitude e velocidade; `advance(dt)`
 integra o relógio da perna e devolve `true` quando trocou; `command()` devolve
 `startHeading + turnPerLeg × leg`. Com `turnPerLegDeg=90` o circuito é um quadrado; com 120, um
@@ -523,12 +523,12 @@ triângulo; com 60, um hexágono.
 > o avião está em RTB ou evadindo, o relógio da perna **não corre** — a patrulha é retomada
 > exatamente de onde parou, em vez de "pular" o tempo em que esteve ocupado.
 
-**4. [`domain/RtbPlan.*`](../../models/A4/include/domain/RtbPlan.hpp)** — retorno à base (a origem da área de
+**4. [`domain/RtbPlan.*`](../../../../models/player/A4/include/domain/RtbPlan.hpp)** — retorno à base (a origem da área de
 jogo). `command(ownN, ownE, ownHeading)` aponta para a base; ao chegar dentro de
 `arrivalRadiusM`, mantém o rumo e reduz a velocidade a 60 %. Não modela reabastecimento — isso é
 estado do sistema de combustível, não do plano.
 
-**5. [`domain/TerrainFloor.*`](../../models/A4/include/domain/TerrainFloor.hpp)** — a regra de terreno, em duas
+**5. [`domain/TerrainFloor.*`](../../../../models/player/A4/include/domain/TerrainFloor.hpp)** — a regra de terreno, em duas
 funções e um struct:
 
 ```cpp
@@ -546,7 +546,7 @@ honesta de perguntar "estou coberto?" ([seção 10](#10-elevação-de-terreno)).
 desliga a camada de terreno sem desligar a rede, que é o que torna possível o controle negativo
 do cenário sem recompilar.
 
-**6. [`domain/ThreatPolicy.*`](../../models/A4/include/domain/ThreatPolicy.hpp)** — a manobra de evasão, e o único
+**6. [`domain/ThreatPolicy.*`](../../../../models/player/A4/include/domain/ThreatPolicy.hpp)** — a manobra de evasão, e o único
 arquivo de `domain/` com estado interno de máquina. Depende de `FlightCommand`, `geometry` e
 `TerrainFloor`.
 
@@ -573,7 +573,11 @@ Dois arquivos, um por questão, ambos independentes entre si e do MIXR. O log (a
 `xnative/Log.*`) virou `shared/xlog` — ver a seção `shared/xlog` do CLAUDE.md — porque é idêntico
 nas duas pocs irmãs, como `xtacview`/`xclock`/`xjoystick`.
 
-**[`xnative/ThreadTag.*`](../../models/A4/include/xnative/ThreadTag.hpp)** — `threadTag()` devolve um índice
+**`threadTag()`/`currentCpu()`** (antes `xnative/ThreadTag.*`, próprio deste modelo — hoje
+promovido para [`shared/xboard/Board.hpp`](../../../../shared/xboard/Board.hpp), ao lado de
+`BehaviorBoard`, porque mais de um plugin no mesmo processo — o modelo `flight` e o `missile` —
+precisa da MESMA numeração para a mesma thread física do pool, não uma por `.so`) —
+`threadTag()` devolve um índice
 pequeno e estável (0, 1, 2…) para a thread chamadora, e `currentCpu()` chama `sched_getcpu()`.
 Existe porque o MIXR **não expõe os handles do seu pool** (`tcThreads` é privado em
 `simulation::Simulation`), mas o nosso código *roda* nessas threads — então dá para registrar, de
@@ -589,7 +593,7 @@ if (cachedTag >= 0) return cachedTag;    // o mutex global é tocado UMA vez por
 Sem o cache haveria um lock global no caminho quente (todo player, todo frame) — exatamente o
 tipo de serialização que anularia o pool de threads do framework.
 
-**[`xnative/BehaviorBoard.*`](../../shared/xboard/Board.hpp)** — um `std::map<int,
+**[`xnative/BehaviorBoard.*`](../../../../shared/xboard/Board.hpp)** — um `std::map<int,
 std::string>` global sob mutex, com `setBehaviorLabel(id, label)` e `getBehaviorLabel(id)`.
 
 > **Este arquivo é um bom exemplo do preço de herdar tudo.** O player é o `models::Aircraft`
@@ -600,7 +604,10 @@ std::string>` global sob mutex, com `setBehaviorLabel(id, label)` e `getBehavior
 
 ### 7.3 Camada 3 — `xnative/`, as classes derivadas do MIXR
 
-**[`xnative/TacticalAlert.*`](../../models/A4/include/xnative/TacticalAlert.hpp)** — a carga útil do alerta. É um
+**`TacticalAlert`** (antes `xnative/TacticalAlert.*`, próprio deste modelo — hoje generalizado
+para [`events::TacticalAlert`](../../../../models/events/payloads/EID_ALERT/TacticalAlert.hpp),
+ver `models/events/README.md`, porque um payload passado por `dynamic_cast` através de um
+`dlopen()` só é seguro morando numa `shared_library()` linkada por AMBOS os lados) — a carga útil do alerta. É um
 `base::Object` de verdade (ref-contado, com a RTTI do framework), como a `Emission` do radar: é
 assim que o MIXR transporta dados em eventos, e não com um struct solto. Campos deliberadamente
 **crus** — posição NED em metros, alcance, nome do contato, id e nome do emissor. **O alerta não
@@ -610,7 +617,7 @@ comportamento do receptor.
 > Não use `models::Message` para isso: ela existe no framework e **ninguém a usa**;
 > `sendMessage()` recebe um `base::Object*` opaco.
 
-**[`xnative/AlertDatalink.*`](../../models/A4/include/xnative/AlertDatalink.hpp)** — depende de `TacticalAlert`.
+**[`xnative/AlertDatalink.*`](../../../../models/player/A4/include/xnative/AlertDatalink.hpp)** — depende de `TacticalAlert`.
 Herda `models::Datalink` e acrescenta um único slot (`holdTime`) e três métodos:
 
 | método | thread | o que faz |
@@ -629,7 +636,7 @@ setLocalSendEnabled(true);
 Por que a disciplina encena/promove existe, e por que a fusão é comutativa, está em
 [9.7](#97-o-caminho-desta-poc-fim-a-fim). É ela que sustenta o `make check-single-thread`.
 
-**[`xtrack/TrackQuery.*`](../../shared/xtrack/TrackQuery.hpp)** — uma função livre,
+**[`xtrack/TrackQuery.*`](../../../../shared/xtrack/TrackQuery.hpp)** — uma função livre,
 `nearestHostileTrack(air)`, que percorre
 `AirVehicle → OnboardComputer → TrackManager("twsTrkMgr") → Track` e devolve um `TrackInfo`. Está
 num arquivo só porque é consultada em **dois lugares muito diferentes** — a percepção do UBF e o
@@ -652,7 +659,7 @@ O ciclo não fecha porque **`bt/NodeContext.hpp` só faz *forward declaration***
 comportamento, mas não a definição — quem inclui a definição são os `.cpp` dos nós. É o padrão
 clássico de quebra de ciclo, e é a razão de `NodeContext` ser um struct de **um ponteiro só**.
 
-**1. [`ubf/FlightState.*`](../../models/A4/include/ubf/FlightState.hpp)** — a **percepção**. Herda
+**1. [`ubf/FlightState.*`](../../../../models/player/A4/include/ubf/FlightState.hpp)** — a **percepção**. Herda
 `base::ubf::AbstractState`. Um único método útil, `updateState(const base::Component* actor)`, que
 lê o ator e monta um `Snapshot` de números crus.
 
@@ -672,12 +679,12 @@ Repare na assinatura: **o ator chega como `const Component*`** — percepção l
 > recebe o ciclo normal de componentes — tudo o que ele precisa fazer tem de estar dentro de
 > `updateState()`.
 
-**2. [`ubf/BtTuning.hpp`](../../models/A4/include/ubf/BtTuning.hpp)** — um struct sem lógica e sem tipo MIXR, com
+**2. [`ubf/BtTuning.hpp`](../../../../models/player/A4/include/ubf/BtTuning.hpp)** — um struct sem lógica e sem tipo MIXR, com
 os 16 números que o EDL ajusta e os *defaults* visíveis lado a lado. Existe por dois motivos
 práticos: `BtBehavior::copyData()` copia **um** membro em vez de dezesseis, e acrescentar um
 parâmetro passa a ser uma linha aqui e uma no slot — sem risco de esquecer a cópia.
 
-**3. [`ubf/BtBehavior.*`](../../models/A4/include/ubf/BtBehavior.hpp) + [`ubf/BtBehaviorSlots.cpp`](../../models/A4/src/ubf/BtBehaviorSlots.cpp)**
+**3. [`ubf/BtBehavior.*`](../../../../models/player/A4/include/ubf/BtBehavior.hpp) + [`ubf/BtBehaviorSlots.cpp`](../../../../models/player/A4/src/ubf/BtBehaviorSlots.cpp)**
 — a **decisão**. Herda `base::ubf::AbstractBehavior`. São dois arquivos `.cpp` para a **mesma
 classe**, separados por questão:
 
@@ -712,7 +719,7 @@ Duas decisões de implementação que existem por causa de armadilhas do framewo
 Cada `BtBehavior` — isto é, **cada aeronave** — tem a sua própria `BT::BehaviorTreeFactory` e a
 sua própria `BT::Tree`. Não há árvore compartilhada.
 
-**4. [`ubf/FlightAction.*`](../../models/A4/include/ubf/FlightAction.hpp)** — a **atuação**. Herda
+**4. [`ubf/FlightAction.*`](../../../../models/player/A4/include/ubf/FlightAction.hpp)** — a **atuação**. Herda
 `base::ubf::AbstractAction`. É o **único** ponto da poc que escreve nos subsistemas a partir da
 decisão.
 
@@ -727,7 +734,7 @@ liga os três *hold modes*, comanda rumo/altitude/velocidade — **convertendo m
 na fronteira** — grava o rótulo no `BehaviorBoard` e, se pedido, chama
 `AlertDatalink::broadcastAlert()`.
 
-**5. [`ubf/AltitudeSafetyBehavior.*`](../../models/A4/include/ubf/AltitudeSafetyBehavior.hpp)** — o segundo
+**5. [`ubf/AltitudeSafetyBehavior.*`](../../../../models/player/A4/include/ubf/AltitudeSafetyBehavior.hpp)** — o segundo
 comportamento, com voto **90** (maior que o 50 da árvore). Depende de `FlightState`,
 `FlightAction` e `domain/TerrainFloor`.
 
@@ -747,7 +754,7 @@ comportamento é exatamente o de antes do terreno.
 
 ### 7.5 Camada 5 — `bt/`: a árvore de comportamento
 
-**1. [`bt/NodeContext.hpp`](../../models/A4/include/bt/NodeContext.hpp)** — dois tipos, e nenhum inclui MIXR.
+**1. [`bt/NodeContext.hpp`](../../../../models/player/A4/include/bt/NodeContext.hpp)** — dois tipos, e nenhum inclui MIXR.
 
 `FlightDecision` é o que a árvore **produz** num tick: um `FlightCommand`, um rótulo, e o pedido
 de transmissão do alerta. Os nós não tocam em objeto MIXR nenhum — eles só preenchem esta
@@ -757,7 +764,7 @@ a outra aeronave, outro atuador, ou a um teste unitário sem simulação.
 `NodeContext` é a dependência fixa dos nós: **um ponteiro** para o comportamento que os hospeda —
 mas para a **interface**, não para a classe concreta.
 
-> **[`bt/DecisionContext.hpp`](../../models/A4/include/bt/DecisionContext.hpp) existe por causa de um acoplamento
+> **[`bt/DecisionContext.hpp`](../../../../models/player/A4/include/bt/DecisionContext.hpp) existe por causa de um acoplamento
 > que só aparecia ao tentar testar.** Os headers dos nós sempre foram limpos, mas todo `.cpp`
 > incluía `ubf/BtBehavior.hpp` para chamar oito getters — e com ele vinha o MIXR inteiro. Na
 > prática, a árvore, que é a peça mais própria desta poc, só podia ser exercitada subindo uma
@@ -766,10 +773,10 @@ mas para a **interface**, não para a classe concreta.
 > `DecisionContext` é exatamente aquele conjunto de oito getters, e `BtBehavior` a implementa sem
 > escrever um método novo (as assinaturas já eram estas; só ganharam `override`). Junto com a
 > mudança irmã — `FlightState::Snapshot` virou
-> [`domain::WorldView`](../../models/A4/include/domain/WorldView.hpp), com um `using` mantendo os call sites —,
+> [`domain::WorldView`](../../../../models/player/A4/include/domain/WorldView.hpp), com um `using` mantendo os call sites —,
 > `bt/nodes/*.cpp` passaram a compilar contra BehaviorTree.CPP + `domain/` apenas.
 >
-> O resultado é [`tests/tree/`](../../models/A4/tests/tree/): carrega o `flight_tree.xml` **de produção**,
+> O resultado é [`tests/tree/`](../../../../models/player/A4/tests/tree/): carrega o `flight_tree.xml` **de produção**,
 > monta um `FakeDecisionContext` e verifica qual ramo venceu — `ldd` no binário mostra **zero**
 > bibliotecas do MIXR. As duas mudanças foram provadas neutras: o dump determinístico saiu byte a
 > byte idêntico ao de antes.
@@ -779,7 +786,7 @@ mas para a **interface**, não para a classe concreta.
 > registrada: `Blackboard::create(parent)` **não** compartilha entradas automaticamente via
 > `get`/`set`. Aqui a árvore é criada com um blackboard vazio, que ninguém usa para estado.
 
-**2. Os sete nós** ([`src/bt/nodes/`](../../models/A4/src/bt/nodes/)) — cada um guarda o `NodeContext` **por
+**2. Os sete nós** ([`src/bt/nodes/`](../../../../models/player/A4/src/bt/nodes/)) — cada um guarda o `NodeContext` **por
 valor** e não faz nada além de ler o comportamento e preencher a decisão:
 
 | nó | tipo BT | lê | escreve |
@@ -796,7 +803,7 @@ Repare no `ContactDetected`: ele **não** pergunta "estou vendo o intruso agora?
 a manobra de evasão está valendo — que continua verdadeiro por `evadeHold` segundos depois de a
 pista sumir. **A histerese é do modelo, não da árvore**: trocar o XML não a desliga.
 
-**3. [`bt/bt_factory.*`](../../models/A4/include/bt/bt_factory.hpp)** — registra os sete nós. O ponto de extensão
+**3. [`bt/bt_factory.*`](../../../../models/player/A4/include/bt/bt_factory.hpp)** — registra os sete nós. O ponto de extensão
 do BehaviorTree.CPP **v3** para construtores com argumentos extras é `registerBuilder<T>(ID,
 builder)`, com um lambda capturando o contexto:
 
@@ -812,10 +819,10 @@ factory.registerBuilder<NodeType>(id, builder);
 
 ### 7.6 Camada 6 — as duas factories
 
-**1. [`xnative/factory.cpp`](../../models/A4/src/xnative/factory.cpp)** — uma cadeia de `else if` sobre
+**1. [`xnative/factory.cpp`](../../../../models/player/A4/src/xnative/factory.cpp)** — uma cadeia de `else if` sobre
 `getFactoryName()`, registrando exatamente as **seis** classes próprias deste subprojeto.
 
-**2. [`mixr_factory.cpp`](src/mixr_factory.cpp)** — a factory que o `edl_parser` recebe. Oito
+**2. [`mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp)** — a factory que o `edl_parser` recebe. Oito
 tentativas em ordem:
 
 ```cpp
@@ -837,24 +844,24 @@ xnative → xtacview → xclock → simulation → models → terrain → record
 
 Dez módulos, na ordem em que o `main.cpp` os chama.
 
-**1. [`app/Options.*`](include/app/Options.hpp)** — `argv` → struct. Não abre arquivo, não
+**1. [`app/Options.*`](../../../../app/include/app/Options.hpp)** — `argv` → struct. Não abre arquivo, não
 constrói nada, não decide nada. Argumentos desconhecidos são **ignorados**, com a mesma tolerância
 dos exemplos do framework.
 
-**2. [`app/TerrainData.*`](include/app/TerrainData.hpp)** — garante que o `.hgt` existe em disco
+**2. [`app/TerrainData.*`](../../../../app/include/app/TerrainData.hpp)** — garante que o `.hgt` existe em disco
 **com o tamanho exato** que o `SrtmHgtFile` aceita. Duas armadilhas do framework, as duas
 silenciosas, justificam este arquivo: o `SrtmHgtFile` **não lê `.gz`** (abre um `ifstream` cru), e
 `determineSrtmInfo()` decide a resolução por um `switch` sobre o tamanho **em bytes**, sem
 tolerância, cujo `default` só produz *"ERROR in determining SRTM type"* — sem dizer qual arquivo
 nem por quê. Conferir o tamanho aqui é o antídoto.
 
-**3. [`app/ScenarioTemplate.*`](include/app/ScenarioTemplate.hpp)** — `.edl.in` → `.edl`,
+**3. [`app/ScenarioTemplate.*`](../../../../app/include/app/ScenarioTemplate.hpp)** — `.edl.in` → `.edl`,
 substituindo `@NUM_TC_THREADS@`. `resolveTcThreadCount()` usa `hardware_concurrency() - 1`
 (reservando a thread do laço de background), limitado a 8 por padrão, e o `-threads N` do usuário
 ainda é limitado pelo número de núcleos. Existe porque `setSlotNumTcThreads()` é **privado** e não
 há setter público — a única forma honesta de manter tudo instanciado via EDL.
 
-**4. [`app/StationBuilder.*`](include/app/StationBuilder.hpp)** — quatro funções:
+**4. [`app/StationBuilder.*`](../../../../app/include/app/StationBuilder.hpp)** — quatro funções:
 
 | função | o que faz | falha |
 |---|---|---|
@@ -867,7 +874,7 @@ O frame de partida em `primeStation()` não é enfeite: é ele que faz os subsis
 ponteiros entre si antes do primeiro uso. E é durante esse `RESET_EVENT` que
 `WorldModel::reset()` chama `terrain->reset()`, que carrega os 25 MB do tile.
 
-**5. [`app/Fleet.*`](include/app/Fleet.hpp)** — `using Fleet = std::vector<AirVehicle*>`.
+**5. [`app/Fleet.*`](../../../../app/include/app/Fleet.hpp)** — `using Fleet = std::vector<AirVehicle*>`.
 `collectFleet()` sai da árvore de objetos com ponteiros diretos; depois disso ninguém mais
 precisa varrer o `PairStream`. Um nome que não existe é **erro fatal** — seguir sem ele só
 adiaria a falha.
@@ -876,15 +883,19 @@ adiaria a falha.
 framework). É a correção da cicatriz [13.3](#133-o-autopilot-do-c310-não-fecha-malha-de-velocidade):
 **a velocidade passa a ser resultado (potência fixa + arrasto), não comando.**
 
-**6. [`app/StatusReport.*`](include/app/StatusReport.hpp)** — só **formato**. Não lê nada que
+**6. `app/StatusReport.*`** — só **formato**. Não lê nada que
 outros módulos não exponham e não muda estado. Quatro blocos por aeronave: voo
 (`alt`/`elev`/`agl`/`hdg`/`roll`/`spd`/`thrust`/`mach`/`g`/`fuel`), decisão (`bt=` + o que o
-`Autopilot` está comandando), sensor (`pista=`, `alerta<-`).
+`Autopilot` está comandando), sensor (`pista=`, `alerta<-`). **Não existe mais como arquivo
+próprio** — quando o `./app` virou o runner único (com TUI FTXUI em vez de linha de status em
+texto), estes mesmos quatro blocos passaram a ser desenhados pelos painéis
+([`app/FleetPanel.*`](../../../../app/include/app/FleetPanel.hpp) e
+[`app/DashboardState.*`](../../../../app/include/app/DashboardState.hpp)), não impressos.
 
 O cabeçalho traz `[t=<parede>s sim=<simulado>s <rótulo do relógio>]` — e é a **diferença entre os
 dois tempos** que prova que o controle de velocidade está agindo.
 
-**7. [`app/DeterministicDump.*`](include/app/DeterministicDump.hpp)** — um **contrato**, não um
+**7. [`app/DeterministicDump.*`](../../../../app/include/app/DeterministicDump.hpp)** — um **contrato**, não um
 relatório. As linhas produzidas aqui são o que os `make check-*` comparam. Duas regras seguem
 disso:
 
@@ -893,7 +904,7 @@ disso:
 - precisão fixa e alta (**9 casas**), para que uma divergência numérica mínima apareça em vez de
   ser arredondada.
 
-**8. [`app/DeterministicRun.*`](include/app/DeterministicRun.hpp)** — o laço de passo fixo. Chama
+**8. [`app/DeterministicRun.*`](../../../../app/include/app/DeterministicRun.hpp)** — o laço de passo fixo. Chama
 `station->tcFrame(dt)` **direto**, sem passar por `processTimeCriticalTasks()`, e em seguida
 `station->updateData(dt)` **no mesmo passo**. O que fica de fora ao pular o
 `processTimeCriticalTasks()` é a **thread periódica** e o controle de velocidade do tempo — o
@@ -901,13 +912,16 @@ disso:
 *lockstep* entre física e decisão que compra o determinismo — ver
 [12.4](#124-o-artifício-colapsar-as-duas-threads-numa-só).
 
-**9. [`app/RealTimeRun.*`](include/app/RealTimeRun.hpp)** — o laço normal, a 10 Hz. Cuida de três
+**9. `app/RealTimeRun.*`** — o laço normal, a 10 Hz. Cuida de três
 coisas e só delas: um `poll()` não bloqueante do teclado, o `station->updateData(dt)` que drena o
 gravador (e, aqui, roda os agentes), e o `msleep` que acerta o passo com o relógio de parede. **O
 frame de tempo crítico não acontece aqui** — quem o roda é o pool nativo criado por
-`createTimeCriticalProcess()`. O handler de `SIGINT` só marca uma flag.
+`createTimeCriticalProcess()`. O handler de `SIGINT` só marca uma flag. **Substituído por
+[`app/DashboardLoop.*`](../../../../app/include/app/DashboardLoop.hpp)** quando o `./app` virou o
+runner único — mesmas três responsabilidades, só que o `poll()` de teclado e a impressão de
+status viraram eventos/painéis FTXUI (ver `app/README.md`).
 
-**10. [`app/MetaObjectReport.*`](include/app/MetaObjectReport.hpp)** — imprime uma linha `meta=`
+**10. [`app/MetaObjectReport.*`](../../../../app/include/app/MetaObjectReport.hpp)** — imprime uma linha `meta=`
 por classe vigiada ao fim de uma corrida determinística, e existe para detectar **vazamento sem
 ferramenta externa**.
 
@@ -924,7 +938,7 @@ meta=FlightAction count=0 mc=1 tc=4000     # 4 aviões × 1000 frames, nenhuma v
 meta=FlightState  count=4 mc=4 tc=4        # uma por avião, criada no parse do EDL
 ```
 
-Quem transforma isso em teste é [`tests/memory/`](../../tests/memory/), comparando **duas
+Quem transforma isso em teste é [`tests/memory/`](../../../../tests/memory/), comparando **duas
 durações** — 500 e 1000 frames — e exigindo `count` igual com `tc` crescendo. Um retrato único não
 distinguiria "vazando" de "retido de propósito", e uma classe nunca instanciada passaria por
 inércia. **Armadilha:** os contadores não são atômicos (`++metaObject.count` em `int` cru), então
@@ -959,7 +973,7 @@ station->event(SHUTDOWN_EVENT);  station->unref();
 [seção 4](#4-a-árvore-de-objetos-do-cenário). É `.in` e não `.edl` por causa do
 `@NUM_TC_THREADS@`. O `.edl` gerado é *gitignored*.
 
-**[`configs/flight_tree.xml`](../../models/A4/configs/flight_tree.xml)** — a árvore, um `Fallback` de quatro
+**[`configs/flight_tree.xml`](../../../../models/player/A4/configs/flight_tree.xml)** — a árvore, um `Fallback` de quatro
 ramos em ordem de prioridade:
 
 ```xml
@@ -974,13 +988,13 @@ ramos em ordem de prioridade:
 Os itens 2 e 3 são os dois lados da interação entre players: quem viu transmite, quem recebeu
 reage. **Nenhum nó fala diretamente com outro avião.**
 
-**[`models/A4/data/jsbsim/`](../../models/A4/data/jsbsim/)** — a aeronave,
+**[`models/player/A4/data/jsbsim/`](../../../../models/player/A4/data/jsbsim/)** — a aeronave,
 vendorizada do pacote JSBSim com **duas** alterações nossas, as duas em *dados* e não em C++.
 Fora do subprojeto, de propósito: é dado do **modelo**, não do cenário — as três pocs pilotam o
 mesmo c310, e o próprio `domain::ThreatPolicy`/`Autopilot` deste modelo é calibrado para ele
 especificamente. `install_subdir()` publica em `dist/share/mixr-plugins/flight/jsbsim/`,
 e é lá que o `rootDir:` do `( JSBSimModel )` desta poc aponta — ver a seção "O MODELO é um
-plugin" do [CLAUDE.md](../../CLAUDE.md) da raiz.
+plugin" do [CLAUDE.md](../../../../CLAUDE.md) da raiz.
 
 | arquivo | alteração | por quê |
 |---|---|---|
@@ -1108,7 +1122,7 @@ A lista é sempre a mesma: `Simulation::getPlayers()` (`Simulation.cpp:711`, dev
 **pré-`ref()`'d** — quem chama tem que `unref()`). Há três formas de achar alguém nela:
 `findPlayer(id)`, `findPlayerByName(nome)` e `PairStream::findByName(nome)` sobre o retorno de
 `getPlayers()`. Os `main.cpp` deste repo usam a terceira, inclusive o
-[nosso](src/app/Fleet.cpp).
+[nosso](../../../../app/src/app/Fleet.cpp).
 
 Do lado do receptor, o despacho é a macro (`base/macros.hpp:327-347`): uma cadeia de `if`s sobre
 `_used`, **o primeiro que casa vence** — e por isso `ON_EVENT_OBJ` vem sempre antes de `ON_EVENT`
@@ -1172,7 +1186,7 @@ ida na fase 1, volta na fase 2:
 | 7 | 2 | `Radar::receive()` filtra o próprio eco (`em->getTransmitter() == this`), aplica `rcs × rangeLoss` de **volta** e testa o limiar S/I | `Radar.cpp:224`, `:233`, `:277` |
 | 8 | 3 | `Radar::process()` correlaciona e — **só no fim da varredura** (`endOfScanFlg`) — chama `tm->newReport(...)` | `Radar.cpp:344-351` |
 | 9 | 3 | `AirTrkMgr::processTrackList()` drena, correlaciona, roda alfa-beta, cria o `RfTrack` | `AirTrkMgr.cpp:334-338` |
-| 10 | — | você lê: `trkMgr->getTrackList(...)` | [`FlightState`](../../models/A4/src/ubf/FlightState.cpp) |
+| 10 | — | você lê: `trkMgr->getTrackList(...)` | [`FlightState`](../../../../models/player/A4/src/ubf/FlightState.cpp) |
 
 Duas consequências práticas para quem escreve o `.edl`:
 
@@ -1299,7 +1313,7 @@ Escolha primeiro **de qual canal** você precisa:
 | você quer… | use | custo em C++ |
 |---|---|---|
 | detecção física realista (RCS, potência, ruído, pistas filtradas) | RF nativo: `Antenna` + `Radar`/`Tws` + `AirTrkMgr` no `.edl` | **zero** |
-| trocar uma **carga própria** entre players, sem modelar propagação | subclasse de `models::Datalink` | ~100 linhas — molde: [`AlertDatalink`](../../models/A4/src/xnative/AlertDatalink.cpp) |
+| trocar uma **carga própria** entre players, sem modelar propagação | subclasse de `models::Datalink` | ~100 linhas — molde: [`AlertDatalink`](../../../../models/player/A4/src/xnative/AlertDatalink.cpp) |
 | um canal com regra própria (alcance, lado, quem ouve quem) | componente próprio + evento `>= 2000` | tudo seu |
 
 O caminho do meio, que é o mais barato, em cinco passos:
@@ -1342,9 +1356,9 @@ lado do framework e nenhuma linha de meson mudou.**
 
 | # | o quê | onde |
 |---|---|---|
-| 1 | **a factory** — `models::factory` não encadeia a de terreno | [`mixr_factory.cpp`](src/mixr_factory.cpp) |
-| 2 | **o dado** — tile SRTM1 `S23W043` da Serra do Mar, descomprimido e conferido | [`app/TerrainData`](src/app/TerrainData.cpp) + `shared/data/terrain/srtm/` |
-| 3 | **a ponte até a decisão** — três campos no `Snapshot`, uma regra pura, dois consumidores | [`FlightState`](../../models/A4/src/ubf/FlightState.cpp), [`domain/TerrainFloor`](../../models/A4/src/domain/TerrainFloor.cpp) |
+| 1 | **a factory** — `models::factory` não encadeia a de terreno | [`mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp) |
+| 2 | **o dado** — tile SRTM1 `S23W043` da Serra do Mar, descomprimido e conferido | [`app/TerrainData`](../../../../app/src/app/TerrainData.cpp) + `shared/data/terrain/srtm/` |
+| 3 | **a ponte até a decisão** — três campos no `Snapshot`, uma regra pura, dois consumidores | [`FlightState`](../../../../models/player/A4/src/ubf/FlightState.cpp), [`domain/TerrainFloor`](../../../../models/player/A4/src/domain/TerrainFloor.cpp) |
 
 O caminho completo do dado:
 
@@ -1451,7 +1465,7 @@ E uma que já está ligada sem ninguém pedir: o **radar-altímetro**.
 
 ## 11. Tacview
 
-A exportação é a de [shared/xtacview](../../shared/xtacview/), ligada na cadeia nativa do
+A exportação é a de [shared/xtacview](../../../../shared/xtacview/), ligada na cadeia nativa do
 `dataRecorder` (nenhum código de stream no `main.cpp`). Cada player precisa de
 `dataLogTime: ( Seconds 0.1 )` — o slot nasce zero e, sem ele, o player nunca aparece.
 
@@ -1524,7 +1538,7 @@ Do nosso lado, três decisões conscientes fecham as brechas que sobrariam:
   O relógio de parede decide apenas *quando* o frame roda, nunca *quanto* ele avança.
 - **Fusão comutativa dos alertas** ([9.7](#97-o-caminho-desta-poc-fim-a-fim)).
 - **Escolha da pista sem depender da lista** — menor distância e, em empate exato, menor id de
-  pista ([`TrackQuery`](../../shared/xtrack/TrackQuery.cpp)).
+  pista ([`TrackQuery`](../../../../shared/xtrack/TrackQuery.cpp)).
 
 E, com o terreno: **a consulta de elevação é uma leitura de um banco imutável depois de
 carregado**, feita sempre no mesmo ponto do passo. Não introduz dependência de ordem — o que o
@@ -1555,7 +1569,7 @@ Nenhum desses três se repete igual na execução seguinte.
 
 ### 12.4 O artifício: colapsar as duas threads numa só
 
-O modo `-deterministic N` ([`app/DeterministicRun.cpp`](src/app/DeterministicRun.cpp)) **não sobe
+O modo `-deterministic N` ([`app/DeterministicRun.cpp`](../../../../app/src/app/DeterministicRun.cpp)) **não sobe
 a thread periódica**. A mesma thread chama as duas coisas, em ordem fixa, com passo fixo:
 
 ```cpp
@@ -1592,7 +1606,7 @@ compara: os quatro dumps são **byte a byte idênticos**.
 - **Não prova**: que o modo de tempo real é reprodutível. Ele não é, pelos motivos de 12.3.
 - **Não prova**, e esta é a lacuna maior: que o modelo decide **certo**. Reprodutibilidade não é
   correção — um modelo que erra sempre igual passa aqui sem reclamar. É o que as camadas `domain`,
-  `tree` e `scenario` de [`tests/`](../../tests/README.md) fecham.
+  `tree` e `scenario` de [`tests/`](../../../../tests/README.md) fecham.
 
 > **Armadilha, encontrada rodando:** o `-deterministic` **não é hermético** com o cenário de
 > produção. O bloco `networks:` abre a porta DIS 3000 e ingere PDUs de quem estiver na rede — com
@@ -1632,7 +1646,7 @@ altitude hold empinando o nariz até a perda de sustentação
 ```
 
 Como a classe é `final`, a correção teve que ir para a **data da aeronave**:
-`models/A4/data/jsbsim/systems/engine-autostart.xml`.
+`models/player/A4/data/jsbsim/systems/engine-autostart.xml`.
 
 > Cuidado documentado no próprio arquivo: escrever `propulsion/set-running` (o global) por um
 > canal do FCS **reinicializa o motor a cada frame** — empuxo oscilando entre valores negativos e
@@ -1644,7 +1658,7 @@ O `c310ap.xml` original apenas **declara** `ap/airspeed_hold` e `ap/throttle-cmd
 que os implemente. Como o MIXR já escreve `ap/airspeed_setpoint`, bastou acrescentar o canal
 `AP Autothrottle` (PID → manete) à cópia vendorizada — de novo em **dados**, não em C++.
 
-[`app/Fleet.cpp`](src/app/Fleet.cpp) complementa fixando a potência de cruzeiro por
+[`app/Fleet.cpp`](../../../../app/src/app/Fleet.cpp) complementa fixando a potência de cruzeiro por
 `AirVehicle::setThrottles()`: a velocidade passa a ser **resultado**, não comando.
 
 ### 13.4 O gravador nativo **segfalta** ao gravar pista nova
@@ -1702,7 +1716,7 @@ Os quatro aviões chegam ao primeiro `genAction()` ao mesmo tempo, em threads T/
 ## 14. Controle de tempo — acelerar, frear, pausar
 
 O cenário declara **`( ClockStation )` no lugar de `( Station )`** — uma `simulation::Station` com
-um único *override*, vinda de [shared/xclock](../../shared/xclock/). Trocar de volta para
+um único *override*, vinda de [shared/xclock](../../../../shared/xclock/). Trocar de volta para
 `( Station )` continua rodando, só sem as teclas (o `main.cpp` avisa e segue).
 
 Teclas: `+`/`=` acelera, `-`/`_` freia, `espaço`/`p` pausa, `1` volta a tempo real, `h` ajuda.
@@ -1784,7 +1798,7 @@ meson configure build -Dasan=true && meson compile -C build single-thread
 
 > **Atenção ao rodar os comandos acima com `-deterministic` e cenário de produção:** o bloco
 > `networks:` faz o processo ingerir PDUs DIS de quem estiver na rede, então uma instância de
-> `bandit` no ar muda o resultado. Os testes de [`tests/`](../../tests/README.md) contornam
+> `bandit` no ar muda o resultado. Os testes de [`tests/`](../../../../tests/README.md) contornam
 > isso gerando fixtures sem o bloco de rede.
 
 O status impresso a cada 2 s traz, por aeronave: altitude, **elevação do terreno**, **AGL**,

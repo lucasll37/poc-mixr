@@ -44,7 +44,7 @@ long residentKb()
 // Nome de classe C++ mais derivada via RTTI pura -- sem incluir header
 // nenhum do modelo. E o fallback de 'typeLabel' quando o EDL nao declarou
 // 'type:'; funciona para QUALQUER .so carregado, inclusive um "modelo
-// desconhecido" (ver models/fixtures/stub/docs/CONTRATO.md).
+// desconhecido" (ver models/player/fixtures/stub/docs/CONTRATO.md).
 std::string demangledClassName(const mixr::models::Player& player)
 {
    int status{};

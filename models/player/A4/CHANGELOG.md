@@ -1,15 +1,15 @@
 # Changelog — `flight`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [../README.md](../README.md); a guarda
-[`tests/guard/check_modelo_estrutura.sh`](../../tests/guard/check_modelo_estrutura.sh) a trava.
+a regra, e o porquê dela, estão em [../README.md](../../README.md); a guarda
+[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a trava.
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../shared/xplugin/PluginAbi.hpp)). Subir a linha `version:`
+[`shared/xplugin/PluginAbi.hpp`](../../../shared/xplugin/PluginAbi.hpp)). Subir a linha `version:`
 do `meson.build` é o que "lançar" quer dizer aqui.
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
@@ -43,7 +43,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   oculta não é confiável atravessando dois `.so`. **Preço, e é mecânico:** virou o 7º nome de
   `libflight.so` (8º de `libflight_tc.so`), e como `provides:` é igualdade EXATA de conjunto,
   todo cenário que carrega este plugin precisou de uma linha a mais — inclusive
-  `models/fixtures/stub`, que roda o cenário de produção trocando só o `file:`. (2026-09-03)
+  `models/player/fixtures/stub`, que roda o cenário de produção trocando só o `file:`. (2026-09-03)
 - **Instrumentação de log** (`shared/xlog`) em `FlightAction::execute()` — o único ponto de
   atuação comum aos dois agentes: `INFO` na transição de comportamento, `WARNING` no alerta
   tático transmitido e nas duas formas de o lançamento não acontecer (alvo inexistente, cabide
@@ -109,7 +109,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 ## [1.0.0] — 2026-09-02
 
 O estado com que o modelo passou a existir como projeto próprio. Extraído em **2026-09-01** como
-`models/A4-model/` e renomeado para `models/A4/` no dia seguinte.
+`models/player/A4-model/` e renomeado para `models/player/A4/` no dia seguinte.
 
 ### Adicionado
 
@@ -130,7 +130,7 @@ O estado com que o modelo passou a existir como projeto próprio. Extraído em *
   `bt/nodes/LaunchMissileAction`, mais a resolução de alvo e a liberação em
   `FlightAction::execute()`. Usados só pela árvore de demo `configs/flight_tree_missile_demo.xml`
   — a árvore de produção fica intocada, e os nomes publicados pelo plugin não mudaram (o míssil
-  em si é o `models/missile`, um segundo `( PluginModule )`).
+  em si é o `models/player/missile`, um segundo `( PluginModule )`).
 - **`FlightAction::execute()` escreve o `threadTag` no `xboard`** — antes só o `FlightAgentTC`
   contava, então a coluna de thread do `./app` ficava presa em `-` para quem decidisse no laço de
   background: faltava o DADO, não o destaque.

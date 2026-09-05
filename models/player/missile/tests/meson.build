@@ -1,7 +1,7 @@
 # ==============================================================================
 # Suite 'domain' do missile -- so a lei de guiagem (domain::pursuit()), pura:
 # sem MIXR, sem JSBSim, sem Station. Mesma ideia da camada domain/ do flight
-# (models/A4/tests/meson.build) -- so muito menor, porque este modelo tem
+# (models/player/A4/tests/meson.build) -- so muito menor, porque este modelo tem
 # uma classe so.
 # ==============================================================================
 gtest_dep      = dependency('gtest', method: 'pkg-config')

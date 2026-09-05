@@ -2,7 +2,7 @@
 <!--
   Copia INTOCADA de aircraft/c310/c310ap.xml (autor original: Jon Berndt).
 
-  O GuidedMissile (models/missile) guia escrevendo direto em
+  O GuidedMissile (models/player/missile) guia escrevendo direto em
   fcs/elevator-cmd-norm e fcs/aileron-cmd-norm via
   Player::setControlStickPitchInput()/RollInput(), e nao usa o
   mixr::models::Autopilot nem os modos ap/attitude_hold, ap/heading_hold

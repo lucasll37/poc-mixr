@@ -1,15 +1,15 @@
 # Changelog — `events/`
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/) — com uma
-diferença do `CHANGELOG.md` de cada projeto de modelo (`models/A4`, `models/missile`,
-`models/fixtures/stub`): **não há número de versão aqui.** `events/` não é um projeto Meson
+diferença do `CHANGELOG.md` de cada projeto de modelo (`models/player/A4`, `models/player/missile`,
+`models/player/fixtures/stub`): **não há número de versão aqui.** `events/` não é um projeto Meson
 próprio — não tem `project()`, se junta ao `poc-mixr` da raiz via `subdir('./events')` — então não
 existe um `project()` cuja versão datar as entradas. A unidade que importa aqui é o **evento**:
 cada linha abaixo é um token/payload adicionado ou mudado, não um número de release.
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. Mesma convenção já usada nos `CHANGELOG.md` de `models/*` (ver, por exemplo,
-[`models/missile/CHANGELOG.md`](../models/missile/CHANGELOG.md)).
+[`models/player/missile/CHANGELOG.md`](../player/missile/CHANGELOG.md)).
 
 Ver [README.md](README.md) para a convenção completa (o que é um evento, como despachar, por que
 o payload mora numa `shared_library()`) e [EventTokens.hpp](EventTokens.hpp) para o registro de
@@ -23,9 +23,9 @@ tokens em código — este arquivo é a HISTÓRIA de como ele cresceu, não subs
 
 - **`events::EID_ALERT` / `events::TacticalAlert`** ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) —
   primeiro evento da convenção, generalizando o `xnative::TacticalAlert` que já existia só dentro
-  de `models/A4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
+  de `models/player/A4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
   `sendMessage()` nativo do `Datalink`) para alcançar um player **sem** Datalink —
-  `xmissile::GuidedMissile` (`models/missile`) é o primeiro handler escrito num plugin diferente
+  `xmissile::GuidedMissile` (`models/player/missile`) é o primeiro handler escrito num plugin diferente
   do que emite. Mesma classe, mesmo nome de fábrica `"TacticalAlert"` de antes — nenhuma mudança
   em `provides:` de nenhum cenário. (2026-09-03)
 - Este `CHANGELOG.md` e o `README.md` da convenção. (2026-09-03)

@@ -6,12 +6,12 @@
 //
 //   multi-thread:  treeFile: ".../flight_tree.xml"
 //                     -> Fallback de nos escritos a mao (Patrol, Evade,
-//                        Support, RTB), regras em C++ de models/A4
+//                        Support, RTB), regras em C++ de models/player/A4
 //
 //   onnx-policy:   treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
 //                     -> < OnnxPolicy model="configs/policy_barrier.onnx" >,
 //                        um MLP 28->3 inferido DENTRO da fase 3 do frame
-//                        (models/A4/src/bt/nodes/OnnxPolicyAction.cpp,
+//                        (models/player/A4/src/bt/nodes/OnnxPolicyAction.cpp,
 //                        motor de inferencia em shared/xinfer)
 //
 // Nao ha uma linha de C++ nova nesta poc: o no, o motor e o plugin ja

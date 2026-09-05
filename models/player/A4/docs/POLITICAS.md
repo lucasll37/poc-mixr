@@ -83,7 +83,7 @@ $EDITOR dist/share/mixr-plugins/flight/policy_example.py
 make run-multi-thread          # ou o comando de -deterministic abaixo
 ```
 
-Quando a regra se provar, copie de volta para `models/A4/configs/policy_example.py` — é essa a
+Quando a regra se provar, copie de volta para `models/player/A4/configs/policy_example.py` — é essa a
 versão versionada, e `make install` a republica.
 
 ### 1.3 Demonstração medida
@@ -149,7 +149,7 @@ Ver `src/poc/rl-training/README.md` para as opções (`--player`, `--scenario`, 
 
 ```bash
 PYTHONPATH=./dist/python python3 src/poc/rl-training/tools/export_onnx.py \
-    --sb3 runs/ppo_falcon.zip -o models/A4/configs/policy_example.onnx
+    --sb3 runs/ppo_falcon.zip -o models/player/A4/configs/policy_example.onnx
 ```
 
 O exportador **lê a ordem dos campos do C++**, não de uma lista em Python. É o que impede a deriva
@@ -249,9 +249,9 @@ semente **quebra aqui** — que é onde você quer descobrir isso.
 
 | | |
 |---|---|
-| o script de exemplo | `models/A4/configs/policy_example.py` |
-| a política de exemplo | `models/A4/configs/policy_example.onnx` (**pesos aleatórios**) |
-| as árvores | `models/A4/configs/flight_tree_{py,onnx}.xml` |
+| o script de exemplo | `models/player/A4/configs/policy_example.py` |
+| a política de exemplo | `models/player/A4/configs/policy_example.onnx` (**pesos aleatórios**) |
+| as árvores | `models/player/A4/configs/flight_tree_{py,onnx}.xml` |
 | o exportador | `src/poc/rl-training/tools/export_onnx.py` |
 | a ordem canônica dos campos | `shared/xrlbridge/ObservationFields.hpp` |
 | o motor de inferência | `shared/xinfer/README.md` |

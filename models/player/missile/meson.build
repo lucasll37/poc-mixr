@@ -2,7 +2,7 @@
 # missile -- SEGUNDO modelo, plugin proprio, exemplo de "criar um modelo
 # novo" (ver CLAUDE.md e models/README.md secao 2).
 #
-# Projeto Meson a parte, no molde EXATO de models/fixtures/stub/meson.build:
+# Projeto Meson a parte, no molde EXATO de models/player/fixtures/stub/meson.build:
 # so mixr_dep + sdk_dep. NAO linka behaviortree.cpp.asa -- este modelo nao
 # decide nada, so voa (guiagem propria em cima do JSBSimModel anexado). E
 # carregado ao lado do flight, por um SEGUNDO ( PluginModule ) no cenario de
@@ -57,7 +57,7 @@ missile_lib = shared_module('missile',
 )
 
 # Camada 'domain' -- so a lei de guiagem, pura (sem MIXR). Mesmo molde de
-# models/A4/tests/meson.build, escalado para um modelo de uma classe so.
+# models/player/A4/tests/meson.build, escalado para um modelo de uma classe so.
 if get_option('tests')
     subdir('tests')
 endif

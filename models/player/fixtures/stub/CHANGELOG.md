@@ -1,8 +1,8 @@
 # Changelog — `stub`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [../../README.md](../../README.md); a guarda
-[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a
+a regra, e o porquê dela, estão em [../../README.md](../../../README.md); a guarda
+[`tests/guard/check_modelo_estrutura.sh`](../../../../tests/guard/check_modelo_estrutura.sh) a
 trava. **Vale em dobro aqui**: este diretório é o ponto de partida copiável para um modelo novo
 (`cp -r`), então o que falta nele falta em todo modelo que nascer dele.
 
@@ -11,7 +11,7 @@ Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../../shared/xplugin/PluginAbi.hpp)).
+[`shared/xplugin/PluginAbi.hpp`](../../../../shared/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. As entradas anteriores à criação deste arquivo foram reconstruídas do código e dos
@@ -26,7 +26,7 @@ uma por commit.
 
 - **`RLBridgeBehavior` trivial** (`genAction()` devolve sempre `nullptr`) — sétimo nome de
   fábrica. **Não é feature: é manutenção de contrato.** O cenário de PRODUÇÃO ganhou
-  `RLBridgeBehavior` no `provides:` quando `models/A4` passou a publicá-lo, e `provides:` é
+  `RLBridgeBehavior` no `provides:` quando `models/player/A4` passou a publicá-lo, e `provides:` é
   igualdade EXATA de conjunto contra o que a `.so` exporta — sem esta classe, o stub deixava de
   ser contrato-compatível com o cenário que ele existe para rodar, e
   `plugin-modelo-estranho`/`plugin-deposito-terceiro` quebravam. Nenhum cenário de teste liga a
@@ -72,7 +72,7 @@ O fixture nasceu inteiro neste dia, com os dois papéis que justificam ele exist
 - **`Makefile` autocontido** e **`README.md`** — as outras peças obrigatórias à época (o
   `CHANGELOG.md`, a quinta, é desta rodada). **Armadilha
   ao copiar este diretório**: o `Makefile` calcula a raiz do repositório a partir de onde ele
-  está (`ROOT := $(abspath ../../..)`, três níveis, por morar em `models/fixtures/`); um modelo
+  está (`ROOT := $(abspath ../../..)`, três níveis, por morar em `models/player/fixtures/`); um modelo
   novo criado em `models/meu-modelo/` está só dois níveis abaixo e precisa de
   `ROOT := $(abspath ../..)`, ou o build procura o SDK no diretório **pai** do `poc-mixr`.
 - **Fica em `fixtures/`, e não como irmão de `flight`/`missile`, de propósito** — não é um

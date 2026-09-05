@@ -4,14 +4,14 @@ classes de fato fazem trabalho de fase.
 
 Nao existe check-edl.py neste repositorio para reaproveitar (docs/TODO.md presumia
 que existia) -- este e um extrator novo, pequeno, sem dependencias, que serve de
-oraculo para docs/explorador/index.html: qualquer nome de classe/fabrica e qualquer
+oraculo para docs/index.html: qualquer nome de classe/fabrica e qualquer
 afirmacao de "isto e ocioso" usada na arvore da UI tem de bater com a saida daqui.
 
 O que ele faz, dois passos:
 
-  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/A4/include
+  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/player/A4/include
      por DECLARE_SUBCLASS(Tipo, Base) -- monta a cadeia de heranca (Tipo -> Base).
-     varre os .cpp de contexts/src/mixr/src e models/A4/src por
+     varre os .cpp de contexts/src/mixr/src e models/player/A4/src por
      IMPLEMENT_SUBCLASS/IMPLEMENT_PARTIAL_SUBCLASS/IMPLEMENT_ABSTRACT_SUBCLASS
      (Tipo, "NomeDeFabrica") -- monta fabrica -> classe C++.
 
@@ -51,11 +51,11 @@ MIXR_SRC = REPO_ROOT / "contexts/src/mixr/src"
 # mixr::models::factory publica" -- o que o usuario pediu por "built-in no mixr".
 MIXR_MODELS_INCLUDE = MIXR_INCLUDE / "models"
 MIXR_MODELS_SRC = MIXR_SRC / "models"
-# 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/A4/include' como um
-# primeiro corte deste script supunha. models/ esta em reorganizacao (confirmado
+# 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/player/A4/include' como um
+# primeiro corte deste script supunha. models/ esteve em reorganizacao (confirmado
 # rodando: AlertDatalink.hpp saiu de models/A4/include/xnative/ para
 # models/player/A4/include/xnative/ ENQUANTO este script era escrito, por uma
-# sessao concorrente) -- qualquer subcaminho fixo aqui fica errado no proximo commit.
+# sessao concorrente) -- qualquer subcaminho fixo aqui ficaria errado no proximo commit.
 # rglob() sobre a pasta toda e imune a esse tipo de mudanca de endereco.
 MODELS_DIR = REPO_ROOT / "models"
 SHARED_DIR = REPO_ROOT / "shared"

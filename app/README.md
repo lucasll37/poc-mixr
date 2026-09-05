@@ -382,16 +382,35 @@ tela de seleção. `q` só encerra.
 
 ## 13. Portas, arquivos e dados
 
+**Desde que o `./app` virou o runner único de TODAS as pocs** (ver "Estrutura de um subprojeto"
+no CLAUDE.md), a tabela abaixo já não é "os valores fixos do `./app`" — varia por
+`-scenario <chave>`, porque Tacview/gravação/cenário expandido vêm do PRÓPRIO `.edl.in` de cada
+entrada do catálogo (`app/ScenarioCatalog.cpp`), não de um valor único deste binário:
+
+| item | cenários PRÓPRIOS do app (`patrol`/`intercept`/`intercept_missile`) | cenários das pocs (`single-thread`/`multi-thread`/`bandit`/`python-flight`/`onnx-policy`/`built-in_mixr_1`) |
+|---|---|---|
+| Tacview (*Real-Time Telemetry*) | porta **1236** | a porta de CADA poc (1234/1235/1237/1238/1239 — ver o README de cada uma) |
+| gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` | `./src/poc/.../data/recordings/mission.acmi` (o diretório da própria poc) |
+| cenário expandido | `./app/configs/<chave>.generated.edl` (gitignored) | `./src/poc/.../configs/scenario.generated.edl` (o da própria poc) |
+| bloco `networks:` (DIS) | nenhum — os três são herméticos | `single-thread`/`multi-thread`/`bandit` TÊM `networks:` (ver a migração pra `FlightAgentTC` na "nona passada"); os outros três são herméticos |
+
+**Duas coisas que NÃO variam por cenário, sempre as mesmas do processo inteiro:**
+
 | item | valor |
 |---|---|
-| Tacview (*Real-Time Telemetry*) | porta **1236** — diferente de `single-thread`/`multi-thread` (1234) e `bandit` (1235), de propósito, pra rodar junto sem colidir |
-| log | `./app/data/logs/app.log` |
-| gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` |
-| cenário expandido | `./app/configs/<chave>.generated.edl` (gitignored — gerado a cada carga) |
+| log | `./app/data/logs/app.log` — **sempre este caminho, mesmo rodando `-scenario single-thread`**; não existe um `data/logs/<poc>.log` por cenário quando a poc roda via `./app` (só o `data/logs/.gitkeep` de cada poc, vestigial de antes da unificação do runner — ver a nota abaixo) |
 | terreno (SRTM) | `./shared/data/terrain/srtm/` — compartilhado com as outras pocs |
 
-Todos os cenários são **herméticos** (sem bloco `networks:`) — não abrem porta DIS nenhuma, então
-não competem com `bandit` nem entre si.
+**Nota**: isto é uma inconsistência real, não um design deliberado documentado em lugar nenhum —
+`xlog::init("./app/data/logs/app.log")` é chamado uma vez, no topo de `main()`
+(`app/src/main.cpp`), **antes** até de `-scenario` ser lido, enquanto o caminho de gravação
+Tacview e o de mensagens (`xmsg`) já são resolvidos por-cenário via o próprio `.edl.in`. Rodar
+`single-thread` e depois `multi-thread` (duas invocações separadas) sobrescreve o MESMO
+`app/data/logs/app.log` a cada vez (`xlog::init()` apaga o arquivo antes de abrir, de propósito
+— ver `shared/xlog/Log.cpp` — então não acumula lixo entre execuções, mas também não sobra
+histórico por cenário). Corrigir exigiria adiar `xlog::init()` para depois da resolução do
+cenário e derivar o caminho por entrada do catálogo — não fiz essa mudança (é comportamento, não
+só documentação); registrado aqui para quem for decidir se vale a pena.
 
 ---
 

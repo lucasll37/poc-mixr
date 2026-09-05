@@ -374,7 +374,7 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 - **[player/fixtures/stub/docs/CONTRATO.md](player/fixtures/stub/docs/CONTRATO.md)** — o que um modelo TEM de fazer
 - **[player/fixtures/stub/README.md](player/fixtures/stub/README.md)** — o build autocontido do fixture/template,
   alvo por alvo (`make`, `make test`, `make install-host`)
-- **[player/flight/docs/ARCHITECTURE.md](player/flight/docs/ARCHITECTURE.md)** — calibração e armadilhas do
+- **[player/A4/docs/ARCHITECTURE.md](player/A4/docs/ARCHITECTURE.md)** — calibração e armadilhas do
   modelo de produção
 - **[player/missile/docs/DESIGN.md](player/missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil
 - **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção

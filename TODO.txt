@@ -7,8 +7,6 @@
 
 - create new NonCriticalTime?
 
-- vou dormir nas próximas 8 horas. nesse intervalo, quero que vc rode em looping testando toda aplicação, revisando cada ponto, tanto em código quando documentação e comentários. procure por bugs, comportamentos não pretendidos e oportunidades de melhorias em termos de arquitetura e boas praticas de desenvolvimento
-
 - validar geração de logs e mensagens
 
 - enxugar shared

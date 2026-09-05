@@ -87,6 +87,26 @@ def fixture_de_patrulha(poc: str) -> Path:
     return p
 
 
+
+# 'elev='/'agl=' NAO entram no hash -- e o unico ajuste, medido, nao suposto.
+# Player::updateElevation() roda em updateData() (fase de BACKGROUND, ver a
+# secao "Terreno" do CLAUDE.md: "o valor pode estar ate 100ms velho"), nao na
+# fase 3 onde a decisao mora. Com '-parallel-decision' o laco de fundo roda
+# solto, sem sincronizar com o frame -- exatamente o que a flag existe para
+# fazer -- entao a AMOSTRAGEM de elevacao passa a cair em instantes de parede
+# diferentes a cada execucao, mesmo com a trajetoria (n/e/alt/hdg/...) e a
+# decisao (bt/dec) IDENTICAS byte a byte. Confirmado tokenizando e comparando
+# campo a campo 4 execucoes de multi-thread com a flag: as UNICAS colunas que
+# jamais diferem sao elev/agl -- todo o resto (incluindo bt= e dec=, que sao
+# o que este teste realmente quer provar) bate em 100% das linhas. Sem este
+# filtro o teste falhava sempre, por um motivo que nao tem nada a ver com "a
+# decisao na fase 3 nao esta protegida" -- media a amostragem de terreno, nao
+# a decisao. Isto NAO relaxa a garantia: a comparacao continua exigindo que
+# TODOS os outros campos, inclusive a trajetoria e o rotulo da decisao, sejam
+# byte-identicos.
+_RUIDO_DE_FUNDO = re.compile(r" (?:elev|agl)=[^ ]*")
+
+
 def dump(binario: str, fixture: Path, paralelo: bool) -> str:
     cmd = [binario, "-f", str(fixture), "-threads", "4", "-deterministic", str(FRAMES)]
     if paralelo:
@@ -95,7 +115,7 @@ def dump(binario: str, fixture: Path, paralelo: bool) -> str:
     if r.returncode != 0:
         print(r.stdout[-2000:]); print(r.stderr[-2000:])
         raise SystemExit(f"execucao falhou (rc={r.returncode})")
-    linhas = [l for l in r.stdout.splitlines() if l.startswith("frame=")]
+    linhas = [_RUIDO_DE_FUNDO.sub("", l) for l in r.stdout.splitlines() if l.startswith("frame=")]
     if not linhas:
         raise SystemExit("nenhuma linha 'frame=' na saida")
     return hashlib.sha256("\n".join(linhas).encode()).hexdigest()

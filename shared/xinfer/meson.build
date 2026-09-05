@@ -2,7 +2,7 @@
 #
 # Terceira shared_library() do SDK pelo mesmo motivo estrutural de xboard e
 # xrlbridge (ver o cabecalho de Infer.hpp), com um agravante proprio: o ONNX
-# Runtime sao ~1,9 GB de .a em Debug, e models/A4 gera QUATRO artefatos do
+# Runtime sao ~1,9 GB de .a em Debug, e models/player/A4 gera QUATRO artefatos do
 # mesmo model_sources. Dentro do plugin seriam quatro copias; aqui e uma.
 #
 # O onnxruntime e declarado AQUI, e nao no meson.build raiz, porque este e o
@@ -18,7 +18,7 @@ xinfer_inc_dir = include_directories('..')
 #   --exclude-libs,ALL  esconde os simbolos que vem dos .a do ORT. Sem ela,
 #                       gnu_symbol_visibility:'hidden' NAO basta -- ela nao se
 #                       aplica a objetos vindos de arquivo estatico (a mesma
-#                       razao pela qual models/A4/meson.build precisa dela
+#                       razao pela qual models/player/A4/meson.build precisa dela
 #                       para a BehaviorTree.CPP). Medido: com a flag, o .so
 #                       exporta so a API desta lib.
 #

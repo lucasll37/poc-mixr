@@ -38,7 +38,7 @@
   falham com ele (Sequence), o ramo 4 tambem, e o ( Patrol ) nativo do fim
   assume. A aeronave continua voando, com a patrulha em C++ configurada
   pelos slots patrol*/legTime do cenario. E o mesmo desenho do
-  flight_tree_py.xml do models/A4, so que com quatro folhas em vez de
+  flight_tree_py.xml do models/player/A4, so que com quatro folhas em vez de
   uma.
 
   Os caminhos sao relativos a RAIZ DO REPOSITORIO, que e de onde todos os

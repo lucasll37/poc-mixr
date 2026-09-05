@@ -2,7 +2,7 @@
 # Suite do HOST -- so entra no build com -Dtests=true (ver meson_options.txt)
 #
 # As camadas 'domain' e 'tree' NAO estao mais aqui: elas compilam domain/ e bt/
-# direto, e esses fontes sairam para models/A4/. Moraram junto com o que
+# direto, e esses fontes sairam para models/player/A4/. Moraram junto com o que
 # testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
 #   domain-rules  as primitivas de deteccao do shared/xmsg (host, ficaram)
@@ -26,7 +26,7 @@ bash = find_program('bash')
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-# 'models/A4' e um projeto Meson AUTOCONTIDO (ver models/README.md
+# 'models/player/A4' e um projeto Meson AUTOCONTIDO (ver models/README.md
 # Sec1.1) -- constroi em './build' DENTRO da propria pasta, nao mais em
 # 'build-flight' na raiz (esse era o caminho do design anterior, quando
 # 'make models' fazia o setup do flight direto por aqui). As variantes A/B
@@ -218,7 +218,7 @@ test('app-speed-ladder', test_app_speed_ladder, suite: 'domain', timeout: 60)
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
 # de shared/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
-# shared/xtrack/TrackQuery.hpp. Alimenta models/A4/src/ubf/
+# shared/xtrack/TrackQuery.hpp. Alimenta models/player/A4/src/ubf/
 # FlightState.cpp (a percepcao do modelo).
 test_track_selection = executable('test-track-selection',
     files('domain/test_track_selection.cpp'),
@@ -248,8 +248,8 @@ test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
 # consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
 # verdade + determinismo com 1/2/4 threads) precisa de um .onnx e vem depois.
-# O .onnx DE VERDADE que models/A4 instala -- por caminho, nao uma copia.
-# Mesmo padrao de FLIGHT_TREE_XML em models/A4/tests/meson.build: um teste
+# O .onnx DE VERDADE que models/player/A4 instala -- por caminho, nao uma copia.
+# Mesmo padrao de FLIGHT_TREE_XML em models/player/A4/tests/meson.build: um teste
 # contra uma copia provaria que a copia esta certa, o que nao interessa.
 policy_onnx = raiz / 'models' / 'player' / 'A4' / 'configs' / 'policy_example.onnx'
 
@@ -584,7 +584,7 @@ test('plugin-deposito-terceiro', py,
 # comparar, e uma guarda que nao acha nada para comparar ou falha (o caso
 # deste script, que sai 1 quando o find volta vazio) ou passa vacuamente, que
 # e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
-# MODELO quando ele saiu para models/A4.
+# MODELO quando ele saiu para models/player/A4.
 
 # O host nao pode voltar a conhecer o fonte do modelo.
 test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),

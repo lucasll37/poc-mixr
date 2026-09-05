@@ -2,7 +2,7 @@
 """Exporta uma politica treinada para .onnx, no contrato que o modelo espera.
 
 O fecho do ciclo treino -> producao. O que sai daqui e carregado por
-`bt/nodes/OnnxPolicyAction` (models/A4) e roda DENTRO do frame de tempo
+`bt/nodes/OnnxPolicyAction` (models/player/A4) e roda DENTRO do frame de tempo
 critico, sem Python nenhum.
 
 O CONTRATO, e por que ele nao esta escrito aqui:
@@ -20,7 +20,7 @@ errado -- nao um erro.
 USO
 
     # gera um .onnx de pesos ALEATORIOS para exercitar a cadeia (sem treino)
-    python3 src/poc/rl-training/tools/export_onnx.py --random -o models/A4/configs/policy_example.onnx
+    python3 src/poc/rl-training/tools/export_onnx.py --random -o models/player/A4/configs/policy_example.onnx
 
     # exporta uma politica treinada com Stable-Baselines3
     python3 src/poc/rl-training/tools/export_onnx.py --sb3 runs/ppo_falcon.zip -o politica.onnx

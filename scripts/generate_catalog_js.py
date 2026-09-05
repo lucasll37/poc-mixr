@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Gera os dados JS do modo "Catálogo mixr::models" de docs/explorador/index.html,
+"""Gera os dados JS do modo "Catálogo mixr::models" de docs/index.html,
 a partir de scripts/extract_execution_chain.py --catalog.
 
 Isto é um passo de GERAÇÃO (roda uma vez, a mão, sempre que contexts/src/mixr
 mudar) -- o index.html final continua um arquivo estático autossuficiente, sem
-build nem servidor para quem só quer ABRIR a página. Ver docs/explorador/
-README.md, seção "Catálogo mixr::models", para o porquê da separação.
+build nem servidor para quem só quer ABRIR a página. Ver docs/README.md (o modo "Catálogo
+completo" da visão Execução) para o porquê da separação. NOTA: as três constantes que este
+script emite (CATALOG_SRC/TAXONOMY/CATALOG_TOUR) não são consumidas por docs/doc.jsx hoje --
+ver "próximos incrementos" em docs/README.md.
 
 Produz três coisas, em JS pronto para colar num <script> do index.html:
   - CATALOG_SRC   -- um SRC[] a mais, com o corpo REAL (capturado, nao
@@ -21,7 +23,7 @@ Produz três coisas, em JS pronto para colar num <script> do index.html:
 
 Uso:
     python3 scripts/generate_catalog_js.py > /tmp/catalog_data.js
-    # depois: colar o conteudo dentro de um <script> em docs/explorador/index.html
+    # depois: colar o conteudo dentro de um <script> em docs/index.html
 """
 from __future__ import annotations
 

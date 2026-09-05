@@ -1,15 +1,15 @@
 # Changelog — `missile`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [../README.md](../README.md); a guarda
-[`tests/guard/check_modelo_estrutura.sh`](../../tests/guard/check_modelo_estrutura.sh) a trava.
+a regra, e o porquê dela, estão em [../README.md](../../README.md); a guarda
+[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a trava.
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../shared/xplugin/PluginAbi.hpp)).
+[`shared/xplugin/PluginAbi.hpp`](../../../shared/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. As entradas anteriores à criação deste arquivo foram reconstruídas do código e dos
@@ -36,7 +36,7 @@ uma por commit.
 ## [1.0.0] — 2026-09-02
 
 O modelo nasceu inteiro neste dia, como **segundo exemplo** de "criar um modelo novo" — cópia da
-receita de `models/fixtures/stub` (ver [../README.md](../README.md) §2), e o primeiro modelo deste
+receita de `models/player/fixtures/stub` (ver [../README.md](../../README.md) §2), e o primeiro modelo deste
 repositório que publica um `Player`.
 
 ### Adicionado
@@ -75,7 +75,7 @@ repositório que publica um `Player`.
   `Player::updateTC()` para de chamar `dynamics()` e um timer ali nunca avança. E `updateTC()` é
   chamado 4× por frame, uma por fase, com `dt = dt_do_frame/4`: o acumulador só soma numa fase
   fixa **e** multiplica por 4.
-- **A definição JSBSim do míssil (`aim1.xml`) mora em `models/A4/data/jsbsim/aircraft/aim1/`**,
+- **A definição JSBSim do míssil (`aim1.xml`) mora em `models/player/A4/data/jsbsim/aircraft/aim1/`**,
   não aqui — é a árvore que todo `rootDir:` dos cenários já aponta
   (`./dist/share/mixr-plugins/flight/jsbsim/`). Este projeto publica só código.
 

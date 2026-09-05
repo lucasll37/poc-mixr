@@ -332,7 +332,7 @@ def exportar(caminho, rede, mu, sigma, nomes, erro_texto):
     #   [xinfer] falha ao abrir '...': Unsupported model IR version: 13,
     #            max supported IR version: 9
     #
-    # IR 8 e o mesmo do policy_example.onnx ja versionado em models/A4.
+    # IR 8 e o mesmo do policy_example.onnx ja versionado em models/player/A4.
     modelo.ir_version = 8
 
     modelo.doc_string = (

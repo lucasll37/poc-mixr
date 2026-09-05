@@ -1,7 +1,7 @@
 //
 // UM MODELO ESTRANHO -- escrito SO contra o SDK publicado.
 //
-// Este arquivo nao inclui, nao le e nao conhece nada de models/A4.
+// Este arquivo nao inclui, nao le e nao conhece nada de models/player/A4.
 // Ele foi escrito olhando APENAS:
 //    dist/include/xplugin/PluginAbi.hpp   (o contrato de empacotamento)
 //    dist/include/xboard/Board.hpp        (o quadro de leitura)
@@ -17,7 +17,7 @@
 // E ele ja pagou por si: escrever este arquivo foi o que revelou que as
 // obrigacoes de um modelo NAO ESTAVAM ESCRITAS em lugar nenhum -- em especial
 // o dever de escrever no xboard, sem o qual o host imprime 'bt=--' e 'dec=0'
-// sem erro nenhum. Ver models/fixtures/stub/docs/CONTRATO.md.
+// sem erro nenhum. Ver models/player/fixtures/stub/docs/CONTRATO.md.
 //
 // O comportamento e deliberadamente trivial: voa reto e nivelado. O que se
 // verifica aqui NAO e voo bonito, e que a aplicacao INTEIRA sobe, parseia o
@@ -227,7 +227,7 @@ END_SLOT_MAP()
 // nenhum cenario de teste que carrega o stub liga a ponte de RL de verdade
 // (isso exigiria shared/xrlbridge, que o stub nao linka), so o cenario de
 // PRODUCAO declara RLBridgeBehavior no seu 'provides:' (ver
-// models/A4/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
+// models/player/A4/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
 // MESMO cenario trocando so o 'file:', precisa responder pelo nome pra nao
 // quebrar a igualdade exata de conjunto.
 //------------------------------------------------------------------------------

@@ -32,7 +32,7 @@ host) e os pacotes de terceiros que o MIXR usa.
 cd ../../.. && make configure && make sdk
 
 # daqui em diante, só aqui dentro:
-cd models/fixtures/stub
+cd models/player/fixtures/stub
 make                  # compila -> ./dist/lib/mixr-plugins/libstub.so
 make test             # confere a forma do .so (1 simbolo exportado, sem dependencia faltando)
 make install-host     # copia o .so para a raiz do repositorio, onde os cenarios o procuram
@@ -57,11 +57,11 @@ Copiar esta pasta inteira já traz, prontos, os cinco itens que qualquer novo mo
 repositório precisa ter (um `Makefile` de build autocontido como este, uma pasta `tests/`, uma
 pasta `docs/`, um `README.md` e um `CHANGELOG.md`), além de um arquivo de projeto Meson mínimo que
 já satisfaz o empacotamento exigido. Os cinco são cobrados pela guarda
-[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh), que
+[`tests/guard/check_modelo_estrutura.sh`](../../../../tests/guard/check_modelo_estrutura.sh), que
 descobre os projetos sozinha — um modelo novo já nasce cobrado:
 
 ```bash
-cp -r models/fixtures/stub models/meu-modelo
+cp -r models/player/fixtures/stub models/meu-modelo
 mv models/meu-modelo/src/stub.cpp models/meu-modelo/src/meu_modelo.cpp
 sed -i "s/'stub'/'meu_modelo'/g; s|files('src/stub.cpp')|files('src/meu_modelo.cpp')|" \
     models/meu-modelo/meson.build
@@ -69,7 +69,7 @@ sed -i "s/'stub'/'meu_modelo'/g; s|files('src/stub.cpp')|files('src/meu_modelo.c
 
 Uma correção manual é necessária no `Makefile` copiado: ele calcula o caminho até a raiz do
 repositório a partir de **onde este diretório está** (três níveis acima, por estar dentro de
-`models/fixtures/`). Um modelo novo criado direto em `models/meu-modelo/` está só dois níveis
+`models/player/fixtures/`). Um modelo novo criado direto em `models/meu-modelo/` está só dois níveis
 abaixo da raiz — abra o `Makefile` copiado e troque a linha `ROOT := $(abspath ../../..)` por
 `ROOT := $(abspath ../..)`. Sem esse ajuste, `make` vai procurar o repositório no diretório
 **pai** dele e falhar dizendo que não encontrou o SDK, mesmo que ele exista.
@@ -89,4 +89,4 @@ abaixo da raiz — abra o `Makefile` copiado e troque a linha `ROOT := $(abspath
 
 Nada acima depende disto, mas se quiser entender como os modelos se encaixam na aplicação maior —
 outros modelos que existem, como um cenário aponta para um `.so`, o fluxo de build orquestrado que
-constrói tudo de uma vez — o ponto de entrada é [`../../README.md`](../../README.md).
+constrói tudo de uma vez — o ponto de entrada é [`../../README.md`](../../../README.md).

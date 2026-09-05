@@ -26,7 +26,7 @@
 // Funciona contra domain::WorldView E contra xrlbridge::Observation sem
 // nenhuma adaptacao, porque os nomes de campo das duas sao IDENTICOS -- o que
 // ate agora era coincidencia mantida a mao, e daqui em diante e verificado
-// (models/A4 compila a mesma macro contra WorldView; esta lib, contra
+// (models/player/A4 compila a mesma macro contra WorldView; esta lib, contra
 // Observation -- um nome que divergir nao compila).
 //
 // OS TRES CAMPOS DE TEXTO FICAM DE FORA de proposito (contactName,

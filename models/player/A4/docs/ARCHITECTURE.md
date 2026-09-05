@@ -3,7 +3,7 @@
 Complementa [../README.md](../README.md) (visão geral, as quatro camadas, o `#ifdef` que separa
 `libflight.so`/`libflight_tc.so`). Este documento junta as decisões de calibração e as armadilhas
 específicas deste modelo que, de outra forma, só existiam espalhadas em
-[../../../CLAUDE.md](../../../CLAUDE.md) — útil para quem abriu só `models/A4/` (ver o
+[../../../CLAUDE.md](../../../../CLAUDE.md) — útil para quem abriu só `models/player/A4/` (ver o
 `Makefile` ao lado para o build autocontido) e não tem o resto do repositório em mente.
 
 ## A aeronave é dado do MODELO, não do cenário

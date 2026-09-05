@@ -8,7 +8,7 @@ O tipo do ONNX Runtime não aparece na interface — ver o "porquê" no cabeçal
 
 O mesmo argumento de [`xboard`](../xboard/Board.hpp) e [`xrlbridge`](../xrlbridge/RLBridge.hpp),
 mais uma razão própria: o ONNX Runtime em Debug pesa **576 MB** depois de linkado, e
-`models/A4/meson.build` gera **quatro** artefatos do mesmo `model_sources`. Dentro do plugin
+`models/player/A4/meson.build` gera **quatro** artefatos do mesmo `model_sources`. Dentro do plugin
 seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui é uma.
 
 ## Números medidos
@@ -26,7 +26,7 @@ seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui
 ## Armadilhas
 
 1. **`-Wl,--exclude-libs,ALL` é obrigatória.** `gnu_symbol_visibility: 'hidden'` **não** se aplica
-   a objetos vindos de um `.a` — a mesma razão pela qual `models/A4/meson.build` precisa dela
+   a objetos vindos de um `.a` — a mesma razão pela qual `models/player/A4/meson.build` precisa dela
    para a BehaviorTree.CPP.
 2. **`xinfer_dep` não propaga `onnx_dep`.** É isso que mantém o ORT privado. Acrescentar
    `dependencies: [onnx_dep]` ao `declare_dependency()` vazaria o ORT para todo consumidor e

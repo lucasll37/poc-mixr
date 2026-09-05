@@ -1,6 +1,6 @@
 // A derivacao de sementes de shared/xrandom -- so as duas funcoes puras
 // (fnv1a64/deriveSeed). O gerador de verdade (std::mt19937_64) mora dentro de
-// cada consumidor (ex.: domain::PatrolPlan, testado em models/A4/tests/
+// cada consumidor (ex.: domain::PatrolPlan, testado em models/player/A4/tests/
 // domain/test_PatrolPlan.cpp) -- ver o "porque" no cabecalho de
 // DeterministicRng.hpp: domain/ e bt/ do modelo sao compilados sem o SDK, e
 // este header so fica visivel via dist/include (publicado pelo SDK).

@@ -8,7 +8,7 @@
 # que continua certo (tests/), o "porque" das decisoes (docs/), a porta de
 # entrada (README.md) e o que mudou desde a ultima vez (CHANGELOG.md).
 #
-# Vale em dobro para models/fixtures/stub: ele e o ponto de partida copiavel
+# Vale em dobro para models/player/fixtures/stub: ele e o ponto de partida copiavel
 # (models/README.md secao 2), entao o que falta la falta em todo modelo que
 # nascer dele.
 #
@@ -70,7 +70,7 @@ done <<< "$projetos"
 
 if [ "$fail" -ne 0 ]; then
    echo
-   echo "Ver models/README.md (a regra e o porque) e models/fixtures/stub/"
+   echo "Ver models/README.md (a regra e o porque) e models/player/fixtures/stub/"
    echo "(o ponto de partida copiavel, que ja traz as cinco pecas prontas)."
    exit 1
 fi

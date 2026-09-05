@@ -4,7 +4,7 @@ Sob `src/poc/` por escolha, mas de natureza diferente das outras pastas dali
 ([single-thread](../single-thread/)/[multi-thread](../multi-thread/)/etc. --
 executaveis C++ com `main.cpp`, ver a tabela em `CLAUDE.md`): esta pasta nao
 produz nenhum binario, e so Python. Separada de [`src/rl`](../../rl/) pelo
-mesmo motivo que separa `models/A4` (o modelo) de `src/poc/*` (quem
+mesmo motivo que separa `models/player/A4` (o modelo) de `src/poc/*` (quem
 consome): `src/rl` e so o AMBIENTE (`mixr_gym.MixrFlightEnv`, contrato
 reset/step/observacao); aqui e onde entram as dependencias de treino e o
 script que de fato roda um algoritmo de RL contra ele.
@@ -15,7 +15,7 @@ sempre: `make configure && make sdk && make build && make install`, pra
 
 ## Makefile AUTOCONTIDO
 
-Mesmo padrao dos `Makefile` de `models/*` (ver `models/fixtures/stub/Makefile`
+Mesmo padrao dos `Makefile` de `models/*` (ver `models/player/fixtures/stub/Makefile`
 para o "porque" completo): entre nesta pasta e rode `make` direto, sem
 precisar do Makefile raiz depois do pre-requisito unico (`dist/python/mixr_gym`
 publicado). O alvo `venv-rl-training` do Makefile raiz so DELEGA pra `venv`
@@ -71,7 +71,7 @@ MESMO `flatten_obs.py` -- nao ha duplicata dessa logica.
 ## Exportar para producao
 
 `tools/export_onnx.py` converte um checkpoint treinado em `.onnx`, no
-contrato que `bt/nodes/OnnxPolicyAction` (`models/A4`) espera -- ver o
+contrato que `bt/nodes/OnnxPolicyAction` (`models/player/A4`) espera -- ver o
 cabecalho do proprio arquivo para o contrato de entrada/saida e por que a
 ordem dos 28 campos nunca e escrita a mao aqui.
 

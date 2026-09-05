@@ -1,5 +1,5 @@
 # A ponte de comando/observacao entre o host de RL (src/rl/bindings) e
-# RLBridgeBehavior (models/A4). Mesmo motivo estrutural de shared/xboard
+# RLBridgeBehavior (models/player/A4). Mesmo motivo estrutural de shared/xboard
 # para ser shared_library() em vez de estatica -- ver o cabecalho de
 # RLBridge.hpp: escrita/leitura cruzam a fronteira host (executavel) / modelo
 # (.so aberto com dlopen), e uma lib estatica daria a cada lado a sua propria

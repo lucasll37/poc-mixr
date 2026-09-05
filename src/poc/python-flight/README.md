@@ -60,7 +60,7 @@ na primeira decisão de cada aeronave.
 | peça | onde |
 |---|---|
 | o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`shared/xpyembed`](../../../shared/xpyembed/) |
-| o nó de árvore `( PyDecide )` | `models/A4/src/bt/nodes/PyDecideAction.cpp` |
+| o nó de árvore `( PyDecide )` | `models/player/A4/src/bt/nodes/PyDecideAction.cpp` |
 | a ordem canônica dos 28 campos | [`shared/xrlbridge/ObservationFields.hpp`](../../../shared/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à das gêmeas |
 | o plugin | o **mesmo** `libflight_tc.so` das gêmeas, byte a byte |
@@ -69,7 +69,7 @@ na primeira decisão de cada aeronave.
 
 * um **subprojeto completo** em cima daquelas peças: cenário próprio, árvore própria, quatro
   scripts, portas próprias (Tacview **1237**, DIS **3004**), alvos de `make` próprios e a bateria
-  de testes de sempre. Antes havia um `flight_tree_py.xml` de **exemplo** no `models/A4`, com
+  de testes de sempre. Antes havia um `flight_tree_py.xml` de **exemplo** no `models/player/A4`, com
   um único nó e um script de dez linhas, exercitado só por um teste — não havia como *rodar* uma
   poc governada por Python e olhar para ela no Tacview.
 * **quatro** folhas em Python no lugar de uma, uma por ramo da árvore de produção. É isso que faz

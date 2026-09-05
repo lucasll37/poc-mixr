@@ -1,6 +1,6 @@
 //
-// A FRONTEIRA C do plugin -- mesmo molde de models/A4/src/plugin.cpp
-// e models/fixtures/stub/src/stub.cpp. So um nome, entao a factory compara
+// A FRONTEIRA C do plugin -- mesmo molde de models/player/A4/src/plugin.cpp
+// e models/player/fixtures/stub/src/stub.cpp. So um nome, entao a factory compara
 // direto -- sem a indirecao de um xnative/factory.{hpp,cpp} separado, que so
 // paga para si com mais de uma classe.
 //

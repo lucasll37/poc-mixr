@@ -26,9 +26,13 @@ ficam embutidos no próprio arquivo), com duas visões sobre o framework:
 **Curada, não instrumentada.** Sem processo MIXR rodando por trás — herança, nome de
 fábrica, registro, slots, fases e os trechos de código (com arquivo e linha reais) foram
 extraídos direto da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
-`scripts/extract.py` (fora deste diretório) e embutidos em `docs/doc.jsx` como os objetos
-`MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
-própria página e não deve ser removido em incrementos futuros.
+`scripts/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/doc.jsx` como os
+objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
+própria página e não deve ser removido em incrementos futuros. A constante `CATALOG` (a grade de
+122 classes por categoria do modo "Catálogo completo") também vem de
+`scripts/extract_execution_chain.py --catalog`, mas o agrupamento em categorias/"forests" é um
+passo manual sobre essa saída, ainda não versionado como script (ver "próximos incrementos"
+abaixo).
 
 ## Como abrir
 
@@ -67,7 +71,16 @@ Não há alvo de Makefile para isso (é edição ocasional, não parte do build 
 
 ## O que fica para os próximos incrementos
 
-- Um alvo `make docs`/`make open-docs` que regenere `index.html` a partir de `doc.jsx`
-  automaticamente (hoje é manual, ver acima).
-- `scripts/extract.py` não está versionado neste diretório — os dados gerados vivem só
-  como as constantes já embutidas em `doc.jsx`.
+- Um alvo `make docs` que regenere `index.html` a partir de `doc.jsx` automaticamente (hoje é
+  manual, ver acima). `make open-docs` já existe, mas só ABRE o `index.html` já gerado — não
+  regenera nada.
+- O passo que agrupa a saída de `scripts/extract_execution_chain.py --catalog` (uma lista plana
+  de classes) nas categorias/"forests" da constante `CATALOG` não está versionado como script —
+  foi feito uma vez, à mão, e o resultado vive só como a constante já embutida em `doc.jsx`.
+  Reproduzir depois de uma mudança em `contexts/src/mixr/` exigiria refazer esse agrupamento.
+- `scripts/generate_catalog_js.py` (versionado) gera `CATALOG_SRC`/`TAXONOMY`/`CATALOG_TOUR` a
+  partir de `extract_execution_chain.py --catalog`, mas **nenhuma das três constantes é usada por
+  `doc.jsx`** hoje — confirmado (`grep` não acha nenhuma delas na página). Parece um caminho
+  alternativo de geração que foi abandonado em favor do agrupamento manual acima antes de ser
+  ligado à página; vale decidir entre terminar de conectar (substituindo o agrupamento manual) ou
+  remover o script.

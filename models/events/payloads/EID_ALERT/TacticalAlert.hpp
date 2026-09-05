@@ -19,13 +19,13 @@ namespace events {
 //
 // Factory name: TacticalAlert
 //
-// Movida de models/A4/xnative/ para ca (ver events/README.md): um
+// Movida de models/player/A4/xnative/ para ca (ver events/README.md): um
 // payload que precisa ser dynamic_cast de DENTRO DE OUTRO PLUGIN (.so
 // carregado por dlopen) so e seguro se a classe morar numa shared library
 // de verdade, linkada por AMBOS os lados -- caso contrario cada .so
 // enxergaria um type_info diferente para o "mesmo" tipo (mesmo motivo
 // documentado no CLAUDE.md para RLBridgeBehavior ter ficado dentro de
-// models/A4 em vez de virar plugin proprio). Continua com o MESMO nome
+// models/player/A4 em vez de virar plugin proprio). Continua com o MESMO nome
 // de classe e de fabrica de antes -- so o namespace (xnative -> events) e o
 // local mudaram -- para nao mexer em 'provides:' de nenhum cenario.
 //

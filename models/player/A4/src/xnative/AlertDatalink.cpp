@@ -92,7 +92,7 @@ void AlertDatalink::broadcastAlert(const std::string& contactName,
    // no MESMO idioma de Datalink::sendMessage() (varre getWorldModel()->
    // getPlayers(), so player local ativo, nunca o proprio emissor). Alcanca
    // QUALQUER player, com ou sem Datalink -- e o caminho que um plugin sem
-   // relacao nenhuma de compilacao com este (ex.: models/missile) usa para
+   // relacao nenhuma de compilacao com este (ex.: models/player/missile) usa para
    // reagir ao mesmo TacticalAlert. Ver events/README.md.
    models::WorldModel* const worldModel{getWorldModel()};
    if (worldModel != nullptr) {

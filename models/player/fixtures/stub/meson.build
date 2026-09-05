@@ -1,18 +1,18 @@
 # ==============================================================================
 # stub — UM MODELO ESTRANHO, para verificação
 #
-# Fica em models/fixtures/ (não como irmão de flight/missile) de propósito:
+# Fica em models/player/fixtures/ (não como irmão de flight/missile) de propósito:
 # não é um modelo de produção, é um FIXTURE de teste -- ver o "porquê" no
 # CONTRATO.md e em CLAUDE.md.
 #
 # Projeto Meson próprio, e isso é o ponto: ele não tem como ver os headers de
-# models/A4 nem os de src/. As únicas coisas no include path dele são
+# models/player/A4 nem os de src/. As únicas coisas no include path dele são
 # o SDK publicado em dist/ e o MIXR.
 #
 # Ele NÃO linka a BehaviorTree.CPP — um modelo não precisa decidir com árvore.
 # Isso também é parte do que se verifica: o contrato não impõe a pilha interna.
 #
-# Ver models/fixtures/stub/docs/CONTRATO.md para as obrigações que este arquivo
+# Ver models/player/fixtures/stub/docs/CONTRATO.md para as obrigações que este arquivo
 # existe para exercitar.
 #
 # Como todo projeto de modelo deste repositório, este diretório também tem

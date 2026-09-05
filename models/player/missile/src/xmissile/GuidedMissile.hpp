@@ -40,7 +40,7 @@ namespace xmissile {
 // TRATAMENTO DE EVENTO CUSTOMIZADO (events::EID_ALERT) -- prova de que um
 // evento definido uma vez em events/ e tratado por um handler escrito
 // DEPOIS, num plugin sem nenhuma relacao de compilacao com quem emite
-// (xnative::AlertDatalink, em models/A4). Ver events/README.md. Efeito
+// (xnative::AlertDatalink, em models/player/A4). Ver events/README.md. Efeito
 // deliberadamente trivial (so log via shared/xlog) -- o ponto e a fiacao do
 // evento, nao dar ao missil uma tatica nova.
 //

@@ -12,7 +12,7 @@ class MixrHelloConan(ConanFile):
 
     # A BehaviorTree.CPP tem de ser ESTATICA: o plugin do modelo a linka com
     # -Wl,--exclude-libs,ALL para esconder os simbolos dela do .dynsym (ver
-    # models/A4/meson.build); o host nunca a linka, pra nao
+    # models/player/A4/meson.build); o host nunca a linka, pra nao
     # duplicar o contador estatico BT::getUID() entre host e plugin. A
     # receita da behaviortree.cpp.asa tem default_options={"shared": True},
     # entao sem este override o Conan resolve/constroi a variante .so e o

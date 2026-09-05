@@ -27,7 +27,7 @@ namespace xinfer {
 // RLBridge.hpp, aplicado a um terceiro caso, com tres razoes MEDIDAS:
 //
 //   1. TAMANHO. O ONNX Runtime e um conjunto de .a que, em Debug, pesa 576 MB
-//      depois de linkado (537 MB so de debug info). models/A4/meson.build
+//      depois de linkado (537 MB so de debug info). models/player/A4/meson.build
 //      gera QUATRO artefatos do mesmo model_sources (flight, flight_tc e as
 //      duas variantes de -Dvariants) -- seriam ~2,3 GB recopiados por
 //      'sync-plugins' a cada 'make install'. Aqui e uma copia so, e o plugin

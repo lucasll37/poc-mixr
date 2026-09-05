@@ -1,9 +1,9 @@
 # `missile` — segundo modelo de exemplo
 
-Projeto Meson **independente** (não sabe nada de `models/A4/` nem de `src/`), publicando um
+Projeto Meson **independente** (não sabe nada de `models/player/A4/` nem de `src/`), publicando um
 único `Player` novo: `GuidedMissile`, guiado sobre um `JSBSimModel` anexado (física 6-DOF de
 verdade — não é um `Player` de brinquedo). Existe como exemplo de "criar um modelo novo" e de
-"ativar um player em runtime" (ver [../../CLAUDE.md](../../CLAUDE.md), seção "Demo: míssil
+"ativar um player em runtime" (ver [../../CLAUDE.md](../../../CLAUDE.md), seção "Demo: míssil
 guiado", para o passo a passo completo: lançamento → detonação → destruição).
 
 Carregado **ao lado** do `flight`, por um segundo `( PluginModule )`, só no cenário de demo
@@ -31,7 +31,7 @@ missile/
 cd ../.. && make configure && make sdk
 
 # daqui em diante, so aqui dentro:
-cd models/missile
+cd models/player/missile
 make                 # -> ./dist/lib/mixr-plugins/libmissile.so
 make test            # roda tests/domain (domain::pursuit(), 5 casos)
 make install-host    # sincroniza ./dist para a raiz do poc-mixr
@@ -50,6 +50,6 @@ interna nenhuma.
 
 - [docs/DESIGN.md](docs/DESIGN.md) — a lei de guiagem e a armadilha de inércia/massa
 - [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
-- [../README.md](../README.md) — visão geral de `models/`, o contrato de plugin, e o build
+- [../README.md](../../README.md) — visão geral de `models/`, o contrato de plugin, e o build
   orquestrado pelo Makefile da raiz (`make models`)
-- [../../CLAUDE.md](../../CLAUDE.md) — seção "Demo: míssil guiado", a dissecação completa
+- [../../CLAUDE.md](../../../CLAUDE.md) — seção "Demo: míssil guiado", a dissecação completa

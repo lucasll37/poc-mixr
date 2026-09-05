@@ -542,7 +542,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return bp.isArmed();
    };
    // Nenhuma destas acoes chama LOG(...): o app e LEITOR do log, nao
-   // produtor. Quem escreve e o MODELO (models/A4) -- ver o cabecalho
+   // produtor. Quem escreve e o MODELO (models/player/A4) -- ver o cabecalho
    // de app/LogPanel.hpp.
    const auto doAccelerate = [&] {
       if (clockStation == nullptr || isBreakpointArmedNow()) return;

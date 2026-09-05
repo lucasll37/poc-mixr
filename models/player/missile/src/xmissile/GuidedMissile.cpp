@@ -143,7 +143,7 @@ void GuidedMissile::updateTC(const double dt)
 // tem Datalink nenhum, entao o UNICO jeito de ser alcancado e o broadcast
 // direto que xnative::AlertDatalink::broadcastAlert() faz com
 // player->event(events::EID_ALERT, msg) (ver events/README.md e o
-// comentario correspondente em models/A4).
+// comentario correspondente em models/player/A4).
 //------------------------------------------------------------------------------
 BEGIN_EVENT_HANDLER(GuidedMissile)
    ON_EVENT_OBJ(events::EID_ALERT, onAlertEvent, events::TacticalAlert)
