@@ -61,14 +61,17 @@ com `single-thread`/`multi-thread`/`bandit` sem colidir (ver [§13](#13-portas-a
 
 ## 2. Cenários
 
-A tela de seleção (sem `-scenario`) lista os cenários; `-scenario <chave>` pula direto para um
-deles.
+`-scenario <chave>` carrega um cenário do catálogo direto. **É obrigatório passar `-scenario`,
+`-f` ou `-folder`** — rodar o binário sem nenhum dos três é erro fatal (recusado antes de tocar
+em `Station`/tela nenhuma), não mais um convite a uma tela de seleção implícita.
 
 > **Este binário é o runner de TODAS as pocs.** Além dos três cenários próprios
 > (`patrol`/`intercept`/`intercept_missile`), o catálogo traz `single-thread`, `multi-thread`,
-> `bandit`, `python-flight`, `onnx-policy` e `built-in_mixr_1` — as pocs não têm mais executável
-> próprio, são só cenário. `-f <arquivo>` carrega um `.edl`/`.edl.in` fora do catálogo (é como as
-> fixtures de teste entram). Ver `src/poc/meson.build`.
+> `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` e `full-systems-nav` — as pocs não
+> têm mais executável próprio, são só cenário. `-f <arquivo>` carrega um `.edl`/`.edl.in` fora do
+> catálogo (é como as fixtures de teste entram); `-folder <pasta>` navega uma pasta de sandbox
+> (`<pasta>/<cenario>/configs/*.edl`, ver `app/ScenarioFolder.hpp`) sem precisar cadastrar nada
+> aqui. Ver `src/poc/meson.build`.
 
 | chave | rótulo | conteúdo |
 |---|---|---|
@@ -85,11 +88,18 @@ expandido em tempo de execução para `configs/<chave>.generated.edl` (gitignore
 
 | opção | efeito |
 |---|---|
-| `-scenario <chave>` | pula a tela de seleção e carrega o cenário direto — os três próprios (`patrol`, `intercept`, `intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`) |
+| `-scenario <chave>` | carrega o cenário do catálogo direto — os três próprios (`patrol`, `intercept`, `intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`, `full-systems-nav`) |
 | `-f <arquivo>` | um `.edl`/`.edl.in` fora do catálogo — o caminho das fixtures de teste |
+| `-folder <pasta>` | navega uma pasta de sandbox (`<pasta>/<cenario>/configs/*.edl`) — combinado com `-scenario <nome-da-subpasta>`, pula a tela e carrega direto; sem `-scenario`, abre a tela de navegação da pasta |
 | `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico (sem isso: detecta `hardware_concurrency()`, limitado a 8) |
 | `-deterministic <N>` | roda **N frames de passo fixo** e sai — sem TUI, sem TTY; imprime linhas `frame=` e o relatório de instâncias no final (ver [tests/scenario/run_app_test.py](../tests/scenario/run_app_test.py)) |
 | `-parallel-decision` | só faz sentido junto com `-deterministic`: decide os 4 players em paralelo em vez de sequência (ver [`app/DeterministicRun.hpp`](include/app/DeterministicRun.hpp)) |
+
+Nenhum dos três primeiros é opcional — sem `-scenario`/`-f`/`-folder`, o binário recusa com um
+erro (`"e obrigatorio passar -scenario <chave>, -f <arquivo> ou -folder <pasta>"`) e sai, sem abrir
+tela nenhuma. (Existe uma quarta flag, `-internal-picker`, mas ela **não é uso normal** — é
+reservada ao reexec interno de "carregar outro cenário"/"parar" de dentro do TUI, a única forma
+de esses dois voltarem à tela de seleção do catálogo depois desta mudança.)
 
 `-deterministic` é o caminho usado pela suíte automatizada (`make test`, suíte `scenario-app-*`) —
 não abre terminal interativo, então funciona em CI.

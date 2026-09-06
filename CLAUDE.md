@@ -3310,6 +3310,38 @@ sandbox, sem precisar cadastrar nada no catálogo.**
   com o título `"selecione um cenario -- ./sandbox"` e a descrição de cada uma sendo o caminho do
   `.edl` encontrado. `make test` 59/59, sem regressão.
 
+**Vigésima quinta passada: rodar `./app` sem NENHUMA opção deixou de abrir a tela de seleção do
+catálogo — virou erro fatal. É obrigatório passar `-scenario`/`-f`/`-folder` explicitamente.**
+
+- **O pedido**: uso normal desta aplicação não deve "adivinhar" o que abrir — sem uma das três
+  opções, `main.cpp` recusa com `"app: e obrigatorio passar -scenario <chave>, -f <arquivo> ou
+  -folder <pasta>"` e sai com `EXIT_FAILURE`, ANTES de tocar em `Station`/`ScreenInteractive`
+  nenhum.
+- **O que isso quebraria, e como foi preservado**: dentro do TUI, as ações "carregar outro
+  cenário" (`l`) e "parar" (`s`) já reiniciavam o processo (`app::respawnSelf()`) SEM nenhuma
+  opção — exatamente o mesmo caminho que rodar `./app` sem nada de fora — só pra cair de volta na
+  tela de seleção. Perguntado ao usuário (`AskUserQuestion`) se essas ações deveriam sumir junto;
+  escolhida a opção de preservá-las via um mecanismo interno: **`-internal-picker`** (novo,
+  `app/Options.hpp`) — flag SEM uso normal, documentada como tal, que só o reexec de
+  `DashboardExit::ChangeScenario` passa. `main.cpp` só chama `runScenarioPicker()` quando
+  `scenarioKey` está vazio E `-internal-picker` foi passado; sem essa flag E sem `-scenario`, cai
+  no erro fatal.
+- **`runScenarioPicker()` (o wrapper da tela do catálogo) continua existindo** — não virou morto:
+  é chamado tanto por `-scenario` vazio nesse ramo quanto por `-internal-picker`. O que sumiu foi
+  só o *fallback implícito* de "nenhuma opção → mostra a tela mesmo assim".
+- **Testado**: `tests/scenario/run_bad_args_test.py` ganhou um quarto caso, `sem-nenhuma-opcao`
+  (`[]`, sem nenhuma flag) — confirma saída limpa (não crash/hang) e que o stderr menciona
+  "obrigatorio". Confirmado também com pty: `-internal-picker` (sem `-scenario`) renderiza a
+  MESMA tela `"selecione um cenario"` de sempre — o mecanismo interno funciona idêntico ao
+  fallback antigo, só que não é mais alcançável de fora sem essa flag reservada.
+- **Achado incidental, não uma regressão desta mudança**: rodar QUALQUER modo interativo deste
+  `./app` (inclusive o já existente `-scenario <chave>` sem `-deterministic`) sem um TTY de
+  verdade (`stdin`/`stdout` redirecionados) trava indefinidamente dentro de
+  `ScreenInteractive::Fullscreen()`/`screen.Loop()` — confirmado comparando `-internal-picker` e
+  `-scenario patrol` (ambos sob `< /dev/null`, ambos travando até `timeout` matar o processo).
+  Não é causado por esta passada nem por `-internal-picker` especificamente; é uma característica
+  já existente de todo caminho interativo deste app, fora de escopo aqui.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
