@@ -23,7 +23,15 @@ namespace app {
 //      '.edl.in' e va para UM fragmento so.
 //   2) 'extraTokens' -- um mapa de '@NOME@' -> valor, resolvido DEPOIS dos
 //      includes (um fragmento pode conter tokens que so o CHAMADOR sabe
-//      preencher, ex.: '@SCENARIO_ID@').
+//      preencher, ex.: '@SCENARIO_ID@', ou '@RUN_ID@' -- um carimbo por
+//      PROCESSO que main.cpp injeta para TODO cenario, ver runIdNow() la).
+//
+// NAO HA DEFAULT: a substituicao so percorre os pares de 'extraTokens' e
+// troca cada um no texto -- nunca o caminho inverso (varrer o texto atras
+// de tokens e perguntar se ha valor). Um '@ALGO@' que sobra sem par no mapa
+// fica LITERAL no '.generated.edl' e quase sempre vira "syntax error" do
+// edl_parser, sem dizer qual token faltou -- quem usa um token novo num
+// '.edl.in' tem que garantir que o chamador (main.cpp) sempre o preenche.
 //
 // Encerra o processo se o modelo (ou um fragmento incluido) nao puder ser
 // lido: sem cenario nao ha simulacao, e um erro parcial aqui so produziria
