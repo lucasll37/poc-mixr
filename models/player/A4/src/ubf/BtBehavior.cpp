@@ -104,8 +104,8 @@ void BtBehavior::configurePlans()
                     tune.patrolAltitudeM, tune.patrolSpeedKts);
 
    const auto player = static_cast<models::Player*>(findContainerByType(typeid(models::Player)));
-   const char* const playerName = (player != nullptr && player->getName() != nullptr)
-                                   ? player->getName()->getString() : "";
+   const char* const rawPlayerName = (player != nullptr) ? player->getName()->getString() : nullptr;
+   const char* const playerName = (rawPlayerName != nullptr) ? rawPlayerName : "";
    const std::uint64_t instanceSeed = tune.patrolSeedOverrideSet
       ? tune.patrolSeedOverride
       : xrandom::deriveSeed(tune.patrolMasterSeed, xrandom::fnv1a64(playerName));

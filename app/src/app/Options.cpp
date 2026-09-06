@@ -24,6 +24,16 @@ namespace {
    std::exit(EXIT_FAILURE);
 }
 
+// Sem isto, uma flag conhecida como ULTIMO token de argv (usuario esqueceu o
+// valor) cai no silencio: nenhum 'else if' casa (o literal da flag nao bate
+// com os outros) e o token e' descartado sem mensagem -- o erro generico de
+// main.cpp aparece depois sem apontar qual flag ficou sem valor.
+[[noreturn]] void dieFaltouValor(const std::string& flag)
+{
+   std::cerr << "[app] " << flag << " espera um valor apos a flag" << std::endl;
+   std::exit(EXIT_FAILURE);
+}
+
 long parseLongOrDie(const std::string& flag, const std::string& token)
 {
    std::size_t consumido{};
@@ -64,15 +74,19 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
 
    for (int i = 1; i < argc; i++) {
       const std::string arg{argv[i]};
-      if (arg == "-scenario" && (i + 1) < argc) {
+      if (arg == "-scenario") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioKey = argv[++i];
-      } else if (arg == "-f" && (i + 1) < argc) {
+      } else if (arg == "-f") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioPath = argv[++i];
-      } else if (arg == "-folder" && (i + 1) < argc) {
+      } else if (arg == "-folder") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioFolder = argv[++i];
       } else if (arg == "-internal-picker") {
          opts.internalPicker = true;
-      } else if (arg == "-deterministic" && (i + 1) < argc) {
+      } else if (arg == "-deterministic") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.deterministicFrames = parseLongOrDie(arg, argv[++i]);
          // isDeterministic() (Options.hpp) e' 'deterministicFrames > 0' -- um
          // '-deterministic 0' ou negativo passava o parse (e' um numero
@@ -89,7 +103,8 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
          }
       } else if (arg == "-parallel-decision") {
          opts.parallelDecision = true;
-      } else if (arg == "-threads" && (i + 1) < argc) {
+      } else if (arg == "-threads") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.threadsOverride = parseIntOrDie(arg, argv[++i]);
       }
    }

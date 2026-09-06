@@ -30,7 +30,7 @@ ClockStation::ClockStation()
 void ClockStation::copyData(const ClockStation& org, const bool)
 {
    BaseClass::copyData(org);
-   slowFactor = org.slowFactor;
+   slowFactor = org.slowFactor.load();
    // 'tcStopRequested_'/'tcIdleTicks_' NAO sao copiados de proposito: sao
    // estado de CICLO DE VIDA desta instancia (a thread T/C que aponta para
    // ela), nao configuracao do cenario. Uma copia nasce sem pedido de parada.

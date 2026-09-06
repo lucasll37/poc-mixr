@@ -40,7 +40,7 @@ namespace domain {
 struct GuidanceCommand
 {
    double rollNorm{};    // -1 (banca esquerda) .. 1 (banca direita)
-   double pitchNorm{};   // -1 (cabra) .. 1 (pica), ver sinal em Player::setControlStickPitchInput
+   double pitchNorm{};   // -1 (pica) .. 1 (cabra), ver sinal em Player::setControlStickPitchInput
 };
 
 struct GuidanceGains

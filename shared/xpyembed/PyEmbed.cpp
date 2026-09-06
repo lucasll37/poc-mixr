@@ -155,11 +155,11 @@ struct Script
    std::map<int, PyObj> globaisPorPlayer;
 };
 
-// deque, NAO vector: decide() toma uma REFERENCIA para dentro deste
-// container (Script& script{g_scripts[id]}, mais abaixo) e a SOLTA antes de
-// terminar -- mas so o GIL, nao g_mutex, protege esse trecho (ver o
-// comentario de decide()). Um vector realoca no push_back() e invalidaria
-// essa referencia se outra thread chamasse loadScript() para um caminho NOVO
+// deque, NAO vector: decide() toma um PONTEIRO para dentro deste container
+// (ainda sob g_mutex, ver o comentario de decide()) e o usa depois de soltar
+// o lock -- por isso a referencia tem de sobreviver a um push_back()
+// concorrente. Um vector realocaria no push_back() e invalidaria essa
+// referencia se outra thread chamasse loadScript() para um caminho NOVO
 // enquanto a primeira ainda estivesse dentro de decide() -- um caso real:
 // quatro aeronaves em threads diferentes do pool, cada uma tickando o SEU
 // PyDecideAction pela primeira vez no mesmo frame, cada uma carregando um
@@ -244,20 +244,24 @@ bool decide(const ScriptId id, const int playerId,
 {
    if (obs == nullptr || cmd == nullptr || nObs <= 0 || nCmd <= 0) return false;
 
+   Script* scriptPtr{};
    {
       std::lock_guard<std::mutex> lock(g_mutex);
       if (!g_disponivel || id <= 0 || static_cast<std::size_t>(id) >= g_scripts.size()) {
          return false;
       }
+      scriptPtr = &g_scripts[static_cast<std::size_t>(id)];
    }
 
    // A partir daqui quem serializa e o GIL, nao o g_mutex -- segurar os dois
    // seria redundante e criaria uma segunda ordem de aquisicao (deadlock em
-   // potencial).
+   // potencial). O ponteiro ja saiu de dentro do lock acima, entao o acesso
+   // ao deque em si (nao so a referencia) nunca corre com o push_back() de
+   // loadScript().
    const int estado{g_api.GILStateEnsure()};
    bool ok{false};
 
-   Script& script{g_scripts[static_cast<std::size_t>(id)]};
+   Script& script{*scriptPtr};
    PyObj globais{globaisDoPlayer(script, playerId)};
    if (globais != nullptr) {
       PyObj fn{g_api.DictGetItemString(globais, "decide")};   // emprestada
@@ -268,30 +272,34 @@ bool decide(const ScriptId id, const int playerId,
             g_api.ListSetItem(lista, i, g_api.FloatFromDouble(obs[i]));
          }
          PyObj args{g_api.TupleNew(1)};
-         g_api.TupleSetItem(args, 0, lista);       // rouba 'lista' tambem
-
-         PyObj retorno{g_api.ObjectCallObject(fn, args)};
-         g_api.DecRef(args);
-
-         if (retorno == nullptr) {
-            LOG(ERROR) << "[xpyembed] decide() lancou em '" << script.caminho << "'";
-            if (g_api.ErrOccurred() != nullptr) { g_api.ErrPrint(); g_api.ErrClear(); }
+         if (args == nullptr) {
+            g_api.DecRef(lista);      // TupleSetItem nao chegou a roubar a referencia
          } else {
-            const long tamanho{g_api.SequenceSize(retorno)};
-            if (tamanho < nCmd) {
-               LOG(ERROR) << "[xpyembed] decide() devolveu " << tamanho
-                          << " valores, esperado " << nCmd;
-               if (g_api.ErrOccurred() != nullptr) g_api.ErrClear();
+            g_api.TupleSetItem(args, 0, lista);       // rouba 'lista' tambem
+
+            PyObj retorno{g_api.ObjectCallObject(fn, args)};
+            g_api.DecRef(args);
+
+            if (retorno == nullptr) {
+               LOG(ERROR) << "[xpyembed] decide() lancou em '" << script.caminho << "'";
+               if (g_api.ErrOccurred() != nullptr) { g_api.ErrPrint(); g_api.ErrClear(); }
             } else {
-               ok = true;
-               for (int i = 0; i < nCmd; ++i) {
-                  PyObj item{g_api.SequenceGetItem(retorno, i)};
-                  cmd[i] = (item != nullptr) ? g_api.FloatAsDouble(item) : 0.0;
-                  if (item != nullptr) g_api.DecRef(item);
+               const long tamanho{g_api.SequenceSize(retorno)};
+               if (tamanho < nCmd) {
+                  LOG(ERROR) << "[xpyembed] decide() devolveu " << tamanho
+                             << " valores, esperado " << nCmd;
+                  if (g_api.ErrOccurred() != nullptr) g_api.ErrClear();
+               } else {
+                  ok = true;
+                  for (int i = 0; i < nCmd; ++i) {
+                     PyObj item{g_api.SequenceGetItem(retorno, i)};
+                     cmd[i] = (item != nullptr) ? g_api.FloatAsDouble(item) : 0.0;
+                     if (item != nullptr) g_api.DecRef(item);
+                  }
+                  if (g_api.ErrOccurred() != nullptr) { g_api.ErrClear(); ok = false; }
                }
-               if (g_api.ErrOccurred() != nullptr) { g_api.ErrClear(); ok = false; }
+               g_api.DecRef(retorno);
             }
-            g_api.DecRef(retorno);
          }
       }
    }

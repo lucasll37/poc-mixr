@@ -96,7 +96,7 @@ const std::vector<LoadedTile>& tileRepository()
 
       for (const auto& entry : std::filesystem::directory_iterator(kTerrainDir, ec)) {
          if (ec) break;
-         if (!entry.is_regular_file()) continue;
+         if (!entry.is_regular_file(ec)) continue;
          const std::string name{entry.path().filename().string()};
          if (name.size() < 4 || name.substr(name.size() - 4) != ".hgt") continue;   // pula .hgt.gz
 

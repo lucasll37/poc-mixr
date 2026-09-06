@@ -38,8 +38,8 @@ CallChainLine line(const int depth, const CallLineKind kind, const std::string& 
 std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const FrameCallParams& p)
 {
    const double dt{frameStepSeconds(p)};
-   const double dtPhase{dt / 4.0};
    const double dt0{p.paused ? 0.0 : dt};
+   const double dtPhase{dt0 / 4.0};
 
    const bool ph0 = (phase == EstimatedPhase::DynamicsPhase0);
    const bool ph1 = (phase == EstimatedPhase::TransmitPhase1);
@@ -85,13 +85,13 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
                       "um QUARTO do dt do frame", "Simulation.cpp:610"));
    out.push_back(line(9, CallLineKind::Call, "Player::updateTC", "(dt0 = " + secs(dtPhase) + ")", {},
                       "Player.cpp:528"));
-   out.push_back(line(10, CallLineKind::Assign, "dt4 = dt * 4", "= " + secs(dt),
+   out.push_back(line(10, CallLineKind::Assign, "dt4 = dt * 4", "= " + secs(dt0),
                       "o dt desce dividido por 4 e volta multiplicado por 4: modulos que rodam UMA vez a "
                       "cada quatro fases veem o dt do FRAME inteiro",
                       "Player.cpp:561"));
    out.push_back(line(10, CallLineKind::Loop, "switch (getWorldModel()->phase())", {}, {},
                       "Player.cpp:562"));
-   out.push_back(line(11, CallLineKind::Call, "case 0: dynamics", "(dt4 = " + secs(dt) + ")",
+   out.push_back(line(11, CallLineKind::Call, "case 0: dynamics", "(dt4 = " + secs(dt0) + ")",
                       "6-DOF do player (JSBSimModel) + amostra REID_PLAYER_DATA pro Tacview",
                       "Player.cpp:567", ph0));
    out.push_back(line(11, CallLineKind::Call, "case 1: (vazio no Player)", {},
@@ -108,13 +108,13 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
                       "todo sensor/piloto/agente e um models::System", "System.cpp:84"));
    out.push_back(line(12, CallLineKind::Loop, "switch (sim->phase())", {},
                       "AQUI e onde a fase vira comportamento de verdade", "System.cpp:106"));
-   out.push_back(line(13, CallLineKind::Call, "case 0: dynamics", "(dt4 = " + secs(dt) + ")",
+   out.push_back(line(13, CallLineKind::Call, "case 0: dynamics", "(dt4 = " + secs(dt0) + ")",
                       "dinamica propria do subsistema", "System.cpp:108", ph0));
-   out.push_back(line(13, CallLineKind::Call, "case 1: transmit", "(dt4 = " + secs(dt) + ")",
+   out.push_back(line(13, CallLineKind::Call, "case 1: transmit", "(dt4 = " + secs(dt0) + ")",
                       "antena/radar EMITEM", "System.cpp:112", ph1));
-   out.push_back(line(13, CallLineKind::Call, "case 2: receive", "(dt4 = " + secs(dt) + ")",
+   out.push_back(line(13, CallLineKind::Call, "case 2: receive", "(dt4 = " + secs(dt0) + ")",
                       "antena/radar RECEBEM; o TrackManager forma as pistas", "System.cpp:116", ph2));
-   out.push_back(line(13, CallLineKind::Call, "case 3: process", "(dt4 = " + secs(dt) + ")",
+   out.push_back(line(13, CallLineKind::Call, "case 3: process", "(dt4 = " + secs(dt0) + ")",
                       "a DECISAO: Autopilot, UbfArbiter, FlightAgentTC -- e o ( FlightAgentTC ) das pocs "
                       "multi-thread decide exatamente aqui",
                       "System.cpp:120", ph3));

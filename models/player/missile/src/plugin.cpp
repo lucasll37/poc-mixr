@@ -1,8 +1,8 @@
 //
 // A FRONTEIRA C do plugin -- mesmo molde de models/player/A4/src/plugin.cpp
-// e models/player/fixtures/stub/src/stub.cpp. So um nome, entao a factory compara
+// e models/player/fixtures/stub/src/stub.cpp. So dois nomes, entao a factory compara
 // direto -- sem a indirecao de um xnative/factory.{hpp,cpp} separado, que so
-// paga para si com mais de uma classe.
+// paga para si com bem mais de duas classes.
 //
 #include "xplugin/PluginAbi.hpp"
 

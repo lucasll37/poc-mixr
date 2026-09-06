@@ -146,7 +146,7 @@ std::string defaultColorForSide(const unsigned int side)
       case 0x04: return "Yellow";   // YELLOW -- 3a forca
       case 0x08: return "Cyan";     // CYAN   -- 4a forca
       case 0x10: return "Green";    // GRAY   -- neutro (nao ha cinza no ACMI)
-      case 0x20: return "Green";    // WHITE  -- civil/comercial
+      case 0x20: return "Orange";   // WHITE  -- civil/comercial
       default:   return "Violet";
    }
 }
@@ -398,8 +398,11 @@ std::uint32_t TacviewOutput::declareObject(const recorder::pb::PlayerId& id,
    const std::uint32_t objectId{id.id()};
 
    if (declared.find(objectId) == declared.end() && state != nullptr) {
-      declared[objectId] = true;
-
+      // Nao marcar 'declared' aqui -- emitState() e quem marca (e quem
+      // decide 'first'). Marcar antes fazia o proprio check de primeira
+      // aparicao de emitState() falhar sempre, perdendo Name=/Type=/
+      // Color=/CallSign= na declaracao inicial.
+      //
       // A primeira linha ja leva posicao: o Tacview precisa de um T= junto
       // da declaracao para posicionar o objeto.
       emitState(id, *state);
@@ -514,6 +517,7 @@ void TacviewOutput::processRecordImp(const recorder::DataRecordHandle* const han
          syncFrame(t);
          server.removeObject(msg.id().id());
          declared.erase(msg.id().id());
+         resolvedCache.erase(msg.id().id());
          break;
       }
 
@@ -536,6 +540,7 @@ void TacviewOutput::processRecordImp(const recorder::DataRecordHandle* const han
          syncFrame(t);
          server.removeObject(msg.wpn_id().id());
          declared.erase(msg.wpn_id().id());
+         resolvedCache.erase(msg.wpn_id().id());
          break;
       }
 
@@ -544,8 +549,13 @@ void TacviewOutput::processRecordImp(const recorder::DataRecordHandle* const han
       // versao do MIXR nao tem handler para esse token e o degrada para
       // REID_UNHANDLED_ID_TOKEN (2), apesar do TrackManager nativo sinalizar
       // a pista nova. REID_TRACK_DATA (83, periodico) e REID_TRACK_REMOVED
-      // (82) SAO tratados normalmente -- entao o "primeiro contato" e
-      // deduzido aqui mesmo, pela primeira amostra de cada track_id.
+      // (82) tratariam normalmente o "primeiro contato" aqui mesmo, pela
+      // primeira amostra de cada track_id -- MAS todo cenario deste
+      // repositorio declara 'enabledList: [ 43 42 ]' no dataRecorder, e
+      // AbstractRecorderComponent::isDataEnabled() descarta qualquer id fora
+      // dessa lista antes de chegar aqui. Na pratica, hoje, os tres cases de
+      // pista abaixo (e REID_WEAPON_RELEASED/DETONATION/PLAYER_KILLED/MARKER)
+      // sao codigo morto -- mantidos para o dia em que o enabledList mudar.
       //
       // O case de REID_NEW_TRACK fica declarado assim mesmo: se uma versao
       // futura do framework passar a emiti-lo, ja funciona.

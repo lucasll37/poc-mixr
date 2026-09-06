@@ -133,7 +133,10 @@ protected:
 
 private:
    // 1.0 = sem camara lenta (a velocidade mora no fastForwardRate nativo).
-   double slowFactor{1.0};
+   // Escrito por setTimeScale() (thread de UI/console) e lido pela thread
+   // T/C dentro de processTimeCriticalTasks() -- mesmo padrao cross-thread
+   // dos dois campos abaixo, por isso atomico e nao um 'double' cru.
+   std::atomic<double> slowFactor{1.0};
 
    // Escritos pela thread que pede a parada, lidos/incrementados pela thread
    // T/C -- por isso atomicos, e nao 'bool'/'long' crus como o

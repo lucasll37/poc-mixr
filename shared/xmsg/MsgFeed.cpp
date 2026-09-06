@@ -1,5 +1,7 @@
 #include "xmsg/MsgFeed.hpp"
 
+#include <set>
+
 #include "mixr/base/Identifier.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/PairStream.hpp"
@@ -201,7 +203,17 @@ simulation::Station* MsgFeed::findStation()
 int MsgFeed::slotFor(const std::string& playerName)
 {
    const auto it = playerSlots_.find(playerName);
-   if (it != playerSlots_.end()) return it->second;
+   if (it != playerSlots_.end()) {
+      if (it->second < 0) {
+         // Slot marcado ausente por updateData(): o nome sumiu e voltou --
+         // reseta o estado (histerese/deadband/janela) antes de qualquer
+         // mensagem ler este slot de novo.
+         const int slot{-(it->second) - 1};
+         for (auto* m : messages_) m->resetSlot(slot);
+         it->second = slot;
+      }
+      return it->second;
+   }
 
    if (nextSlot_ >= maxPlayers_) { ++overCap_; return -1; }
 
@@ -260,6 +272,8 @@ void MsgFeed::updateData(const double dt)
    base::PairStream* const players{sim->getPlayers()};
    if (players == nullptr) return;
 
+   std::set<std::string> presentNow;
+
    base::List::Item* item{players->getFirstItem()};
    while (item != nullptr) {
       const auto pair = static_cast<base::Pair*>(item->getValue());
@@ -272,6 +286,7 @@ void MsgFeed::updateData(const double dt)
       const char* const nome{(player->getName() != nullptr)
                               ? player->getName()->getString() : nullptr};
       if (nome == nullptr) continue;
+      presentNow.insert(nome);
 
       // Uniao dos grupos de quem quer este player: a amostragem acontece UMA
       // vez por player, e so nos grupos pedidos. Quem nao pede motor nao paga
@@ -296,6 +311,15 @@ void MsgFeed::updateData(const double dt)
       }
    }
    players->unref();
+
+   // Nome que tinha slot e nao apareceu neste ciclo: marca o slot como
+   // ausente (codificado como -(slot+1), sem precisar de um mapa a mais) --
+   // slotFor() reconhece a marca numa eventual reocupacao e reseta o estado
+   // antes de qualquer mensagem voltar a ler aquele slot.
+   for (auto& kv : playerSlots_) {
+      if (kv.second < 0 || presentNow.count(kv.first) != 0) continue;
+      kv.second = -(kv.second + 1);
+   }
 
    sinceHealth_ += dt;
    if (healthEvery_ > 0.0 && rules::reached(sinceHealth_, healthEvery_)) {

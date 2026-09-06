@@ -117,7 +117,7 @@ Esta seção é sobre RISCO DE RUNTIME, não sobre estilo, e — como a seção 
 compilador nem por guarda nenhuma hoje: se ignorada, o sintoma aparece longe do lugar do erro.
 
 Um cenário pode carregar MAIS de um `.so` de modelo no mesmo processo (ver
-[`../../missile/`](../../missile/), carregado ao lado do `flight` no cenário de demo de míssil
+[`../../../missile/`](../../../missile/), carregado ao lado do `flight` no cenário de demo de míssil
 guiado). Os `.so` são abertos com `RTLD_LOCAL`, e sob esse modo a comparação de `type_info` deste
 toolchain degrada para `strcmp` do nome *mangled* — dois tipos DIFERENTES com o MESMO nome
 qualificado, em dois `.so` distintos, colidem silenciosamente.
@@ -128,12 +128,12 @@ TODO o próprio namespace — incluindo um eventual `domain::` — dentro de
 a exceção histórica, cara demais para corrigir agora — **não** é o exemplo a copiar.
 `models/player/missile` e `models/player/template` já nascem certos; o raciocínio completo (por
 que o RTTI degrada, por que aninhar resolve) está em
-[`../../template/docs/ARCHITECTURE.md`](../../template/docs/ARCHITECTURE.md), seção "Por que
+[`../../../template/docs/ARCHITECTURE.md`](../../../template/docs/ARCHITECTURE.md), seção "Por que
 `domain::` mora DENTRO de...".
 
 A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o namespace C++) é
 prima deste problema e já tem guarda automática —
-[`../../../../tests/guard/check_colisao_fabrica.py`](../../../../tests/guard/check_colisao_fabrica.py)
+[`../../../../../tests/guard/check_colisao_fabrica.py`](../../../../../tests/guard/check_colisao_fabrica.py)
 — que já pegou um caso real em produção (`ThreadTagProbe` → `MissileThreadTagProbe`, ver
 `CLAUDE.md` raiz). A colisão de `type_info` desta seção é mais difícil de flagrar
 automaticamente — por isso o namespace aninhado é a defesa que não depende de um teste pegar o

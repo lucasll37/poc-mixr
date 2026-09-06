@@ -19,7 +19,8 @@ namespace bt_nodes {
 // pratico era que a arvore, a peca mais propria desta poc, so podia ser
 // exercitada subindo uma Station.
 //
-// Esta interface e exatamente aquele conjunto de oito getters. BtBehavior a
+// Esta interface e aquele conjunto de getters (hoje nove -- launchEnvelope()
+// veio depois, para a demo de missil guiado). BtBehavior a
 // implementa sem escrever um metodo novo: as assinaturas ja eram estas.
 //
 // O que isso compra: bt/nodes/*.cpp e bt/bt_factory.cpp passam a compilar

@@ -11,18 +11,18 @@ compilar, testar e carregar num cenário de verdade.
 
 Se você só precisa da prova de que "o contrato de plugin basta" (sem nenhuma camada, sem
 `domain/`), o ponto de partida certo é
-[`../fixtures/stub`](../fixtures/stub/README.md) — leia
-[`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) primeiro. Este
+[`../../fixtures/stub`](../../fixtures/stub/README.md) — leia
+[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) primeiro. Este
 diretório aqui existe para o caso oposto: você **vai** escrever um modelo com mais de uma
 decisão, e quer começar já na forma que vai precisar mais cedo ou mais tarde. A tabela abaixo
 resume as diferenças entre os quatro pontos de referência que este repositório tem hoje:
 
 | projeto | por que existe | o que copiar dele |
 |---|---|---|
-| [`fixtures/stub`](../fixtures/stub/) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
+| [`fixtures/stub`](../../fixtures/stub/) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
 | **`template`** (este) | ponto de partida **em camadas**, para decisão nova, sem BehaviorTree.CPP ainda | a separação `domain/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
-| [`missile`](../missile/) | segundo modelo real: um `Player` **novo** (não um agente de decisão) | como anexar um `JSBSimModel`, como evitar a indireção de `xnative/factory.*` quando há só 1-2 classes |
-| [`A4`](../A4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as três referências acima já cobrem |
+| [`missile`](../../missile/) | segundo modelo real: um `Player` **novo** (não um agente de decisão) | como anexar um `JSBSimModel`, como evitar a indireção de `xnative/factory.*` quando há só 1-2 classes |
+| [`A4`](../../A4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as três referências acima já cobrem |
 
 ## As quatro camadas, e por que a separação existe
 
@@ -87,7 +87,7 @@ chame essas funções compila, carrega, satisfaz `provides:`, e o host sobe e ro
 diferença observável é que a tela de status e o dump `-deterministic` mostram `bt=--` e `dec=0`
 **para sempre**, sem nenhum erro em lugar nenhum. É a obrigação mais fácil de esquecer porque é a
 única sem sintoma de falha — leia
-[`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) seção 3 para a lista
+[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) seção 3 para a lista
 completa de funções do `xboard` (alerta tático, contadores de datalink, varredura de radar,
 thread de decisão) e quando cada uma se aplica ao SEU modelo.
 
@@ -136,8 +136,8 @@ separação em camadas existe para proteger.
 - [`PRIMEIROS-PASSOS.md`](PRIMEIROS-PASSOS.md) — o roteiro mecânico de copiar isto e transformar
   num modelo com nome próprio
 - [`../README.md`](../README.md) — como compilar, testar e instalar este diretório sozinho
-- [`../../README.md`](../../README.md) — visão geral de `models/`, o contrato de plugin, e o
+- [`../../../README.md`](../../../README.md) — visão geral de `models/`, o contrato de plugin, e o
   build orquestrado pelo Makefile da raiz
-- [`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) — a lista completa e
+- [`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) — a lista completa e
   autoritativa do que um modelo precisa fazer (este documento resume só as partes relevantes à
   arquitetura em camadas)

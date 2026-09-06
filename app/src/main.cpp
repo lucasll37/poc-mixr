@@ -305,31 +305,44 @@ int main(int argc, char* argv[])
    if (opts.isDeterministic()) return rc;
 
    switch (action) {
-      case app::DashboardExit::Restart:
+      case app::DashboardExit::Restart: {
          // Cenario de '-folder': 'cenario.key' e o nome da SUBPASTA, nao uma
          // chave do catalogo -- reexec precisa levar '-folder' junto, ou
          // '-scenario <nome-da-subpasta>' sozinho cairia no catalogo estatico
          // e provavelmente acharia cenario nenhum.
-         if (!opts.scenarioFolder.empty()) {
-            app::respawnSelf({"-folder", opts.scenarioFolder, "-scenario", cenario.key});
-         } else {
-            app::respawnSelf({"-scenario", cenario.key});
+         std::vector<std::string> args{!opts.scenarioFolder.empty()
+            ? std::vector<std::string>{"-folder", opts.scenarioFolder, "-scenario", cenario.key}
+            : std::vector<std::string>{"-scenario", cenario.key}};
+         // '-threads' e escolha explicita do usuario (opts.threadsOverride==0
+         // significa "sem override" -- ver resolveTcThreadCount()); sem
+         // repassar, o reexec recalcularia pelo default de hardware.
+         if (opts.threadsOverride > 0) {
+            args.push_back("-threads");
+            args.push_back(std::to_string(opts.threadsOverride));
          }
+         app::respawnSelf(args);
          break;   // [[noreturn]], nunca chega aqui
+      }
       case app::DashboardExit::ChangeScenario:
          // '-internal-picker', nao vazio -- ver app/Options.hpp. Sem essa
          // flag, o processo respawnado recusaria de cara (opcao obrigatoria).
          app::respawnSelf({"-internal-picker"});
          break;   // [[noreturn]], nunca chega aqui
-      case app::DashboardExit::RunEdited:
+      case app::DashboardExit::RunEdited: {
          // O texto ja foi escrito em editedScenarioPath() e validado pelo
          // 'edlcheck' dentro de runDashboard() -- so falta o reexec com
          // '-f', o MESMO caminho que uma fixture de teste ja usa (ver
          // app/Options.hpp). generateScenario() roda de novo sobre ele mais
          // adiante, mas e identidade: um '.edl' ja expandido nao tem mais
          // '@include:...@'/'@NUM_TC_THREADS@' para substituir.
-         app::respawnSelf({"-f", app::editedScenarioPath()});
+         std::vector<std::string> args{"-f", app::editedScenarioPath()};
+         if (opts.threadsOverride > 0) {
+            args.push_back("-threads");
+            args.push_back(std::to_string(opts.threadsOverride));
+         }
+         app::respawnSelf(args);
          break;   // [[noreturn]], nunca chega aqui
+      }
       case app::DashboardExit::Quit:
       default:
          break;

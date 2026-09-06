@@ -132,7 +132,7 @@ completa de "nome de fábrica → classe-base exigida → onde entra".
 
 `template` nunca aparece no alvo `models:` do Makefile raiz nem em `tests/meson.build` — mas não
 por estar de fora de uma lista manual: é porque `template/` é excluído **de propósito** da busca
-(`MODELOS_PRODUCAO` no [`../../../Makefile`](../../../Makefile) descobre projetos por `find`,
+(`MODELOS_PRODUCAO` no [`../../../../Makefile`](../../../../Makefile) descobre projetos por `find`,
 ignorando só `template/`/`tests/`/diretórios de build). O SEU modelo, uma vez copiado para fora de
 `template/` (Passo 1), já **entra sozinho** em `make models`/`make test` da raiz — não há linha
 nenhuma para adicionar. Confirme com `make models` na raiz: o log deve citar o nome do seu modelo
@@ -141,7 +141,7 @@ sem você ter tocado no Makefile.
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-scenario <chave>`) e, opcionalmente, ganhe cobertura de teste
 automática (`tests/meson.build`), isso é um passo separado, documentado em
-[`../../README.md`](../../README.md), seções 4.1 e 4.2 — não tem relação com este Passo 7.
+[`../../../README.md`](../../../README.md), seções 4.1 e 4.2 — não tem relação com este Passo 7.
 
 ## Checklist rápido, para revisar antes do primeiro commit
 

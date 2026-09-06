@@ -27,6 +27,7 @@
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/PairStream.hpp"
 #include "mixr/base/concepts/linkage/AbstractIoHandler.hpp"
+#include "mixr/base/safe_ptr.hpp"
 #include "mixr/base/units/angle_utils.hpp"
 
 #include <cctype>
@@ -291,7 +292,7 @@ std::vector<ComponentStateField> captureLiveState(mixr::base::Object* const obj)
       // verdade; 'kMaxTracks' e generoso pro maior cenario deste repositorio
       // e o retorno e o numero REALMENTE copiado.
       const unsigned int kMaxTracks{64};
-      const mixr::models::Track* tracks[kMaxTracks]{};
+      mixr::base::safe_ptr<const mixr::models::Track> tracks[kMaxTracks];
       const int n{tm->getTrackList(tracks, kMaxTracks)};
       addField(out, "pistas", std::to_string(n));
       addField(out, "idade max de pista", fmtNum(tm->getMaxTrackAge(), 1) + " s");

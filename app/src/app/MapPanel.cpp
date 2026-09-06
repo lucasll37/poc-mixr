@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -309,10 +310,18 @@ void snapPanToGroundLevel(MapViewState& view, const TerrainSampler& terrainSampl
 
 void updateTrails(MapViewState& view, const std::vector<EntityState>& entities)
 {
+   std::set<int> presentIds;
    for (const auto& e : entities) {
+      presentIds.insert(e.id);
       auto& trail{view.trails[e.id]};
       trail.push_back({e.northM, e.eastM, e.altitudeM});
       while (trail.size() > kMapTrailLength) trail.pop_front();
+   }
+   // Entidade que sumiu (missil detonado, fantasma DIS reconectado com novo id)
+   // nao deve manter rastro preso pra sempre em view.trails.
+   for (auto it{view.trails.begin()}; it != view.trails.end();) {
+      if (presentIds.count(it->first) == 0) it = view.trails.erase(it);
+      else ++it;
    }
 }
 

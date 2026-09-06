@@ -40,7 +40,7 @@ from itertools import combinations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import extract_execution_chain as ext  # noqa: E402
 

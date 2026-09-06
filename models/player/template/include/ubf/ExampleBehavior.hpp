@@ -19,8 +19,9 @@ namespace xtemplate {
 // Factory name: ExampleBehavior
 //
 // Slots:
-//    onValue  <Distance> ! Engaja quando a leitura sobe ATE ou ALEM disto (default: 1000 m)
-//    offValue <Distance> ! So desengaja quando a leitura cai ABAIXO disto (default: 800 m)
+//    onValue  <Distance> ! Engaja quando a leitura sobe ATE ou ALEM disto (default: 1.0 m --
+//                          sem declarar este slot no .edl, engaja com quase qualquer leitura)
+//    offValue <Distance> ! So desengaja quando a leitura cai ABAIXO disto (default: 0.0 m)
 //    vote     <Number>   ! (herdado de AbstractBehavior)
 //
 // PADRAO: percepcao (ExampleState) entra, decisao aplica UMA regra pura de
