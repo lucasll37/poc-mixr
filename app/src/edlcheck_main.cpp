@@ -1,5 +1,5 @@
 // edlcheck -- oraculo de validacao PROFUNDA para o editor grafico de .edl
-// (src/ui/edl_builder.jsx), para scripts/edl_lint.py (o lint LEVE, por
+// (src/ui/edl_builder.jsx), para tools/edl_lint.py (o lint LEVE, por
 // regex/paren-matching, nao pode garantir fidelidade 100% ao parser real) e
 // para o editor de .edl EM MEMORIA embutido no proprio dashboard (aba "EDL",
 // ver app/EdlEditorState.hpp/app/DashboardLoop.cpp) -- o botao "Validar" de

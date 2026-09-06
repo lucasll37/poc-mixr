@@ -452,7 +452,7 @@ const CSS = `
 
 // EDL_DEFAULT_SCENARIO e' injetado por compile.js (mesmo mecanismo de
 // EDL_CATALOG) a partir de src/ui/edl_default_scenario.generated.json --
-// gerado por `make edl-default-scenario` (scripts/edl_to_ui_project.js)
+// gerado por `make edl-default-scenario` (edl_to_ui_project.js)
 // contra src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in, o
 // cenario com mais componentes do repositorio (53 das 96 classes de
 // mixr::models num Aircraft so'). Abrir a ferramenta ja' com algo pra

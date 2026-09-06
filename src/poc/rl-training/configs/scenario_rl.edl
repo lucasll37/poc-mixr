@@ -1,9 +1,9 @@
 //
 // rl -- cenario para o wrapper Gymnasium (src/rl/python/mixr_gym).
 //
-// Derivado de app/configs/scenario_patrol.edl.in (mesma pilha 100% nativa:
-// Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/FlightAgentTC, o mesmo
-// plugin libflight_tc.so), com o delta:
+// Derivado de src/poc/dis/multi-thread/configs/scenario.edl.in (mesma pilha
+// 100% nativa: Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/
+// FlightAgentTC, o mesmo plugin libflight_tc.so), com o delta:
 //
 //   1) falcon1 troca ( BtBehavior ... ) por ( RLBridgeBehavior vote: 50 )
 //      dentro do MESMO UbfArbiter -- o piso de seguranca nativo

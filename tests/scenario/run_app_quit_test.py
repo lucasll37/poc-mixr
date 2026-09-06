@@ -139,9 +139,11 @@ def porta_do_cenario(cenario):
 
     Nao fixa o numero aqui de proposito: o fragmento compartilhado
     (app/configs/fragments/tacview_recorder.edl.frag) e quem manda, e ele ja
-    mudou de porta uma vez.
+    mudou de porta uma vez. O '.generated.edl' fica em 'build/generated-
+    scenarios/' -- artefato de runtime, decoplado de qualquer 'configs/'
+    rastreado no git (ver app/src/main.cpp).
     """
-    caminho = os.path.join("app", "configs", f"{cenario}.generated.edl")
+    caminho = os.path.join("build", "generated-scenarios", f"{cenario}.generated.edl")
     if not os.path.exists(caminho):
         return None
     dentro = False
@@ -160,7 +162,7 @@ def porta_do_cenario(cenario):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--binario", required=True)
-    ap.add_argument("--scenario", default="patrol")
+    ap.add_argument("--scenario", default="intercept_missile")
     args = ap.parse_args()
 
     binario = os.path.abspath(args.binario)

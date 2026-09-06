@@ -400,20 +400,20 @@ foreach poc : pocs
 endforeach
 
 # ------------------------------------------------------------------------------
-# app (o dashboard, ./app/ na raiz) -- os TRES cenarios PROPRIOS (ver
-# ../app/include/app/ScenarioCatalog.hpp), rodados com '-deterministic' (sem
-# TUI, sem TTY nenhum). Nao usa scenario_runner (que e '-f'/fixture-based,
-# especifico de single-thread/multi-thread) nem checa o canal de mensagens
-# (app nao linka shared/xmsg) -- ver o cabecalho de run_app_test.py.
+# app (o dashboard, ./app/ na raiz) -- o UNICO cenario PROPRIO (ver
+# ../app/include/app/ScenarioCatalog.hpp; havia tres -- "patrol"/"intercept"/
+# "intercept_missile" -- reduzidos a este, que ja e superset dos outros dois),
+# rodado com '-deterministic' (sem TUI, sem TTY nenhum). Nao usa
+# scenario_runner (que e '-f'/fixture-based, especifico de
+# single-thread/multi-thread) nem checa o canal de mensagens (app nao linka
+# shared/xmsg) -- ver o cabecalho de run_app_test.py.
 # ------------------------------------------------------------------------------
 app_runner = files('scenario/run_app_test.py')
-foreach chave : ['patrol', 'intercept', 'intercept_missile']
-    test('scenario-app-' + chave, py,
-         args: app_runner + ['--binario', app.full_path(),
-                             '--scenario', chave, '--frames', '300'],
-         depends: app, workdir: raiz, suite: 'scenario',
-         timeout: 300, is_parallel: false)
-endforeach
+test('scenario-app-intercept_missile', py,
+     args: app_runner + ['--binario', app.full_path(),
+                         '--scenario', 'intercept_missile', '--frames', '300'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
 
 # A IDENTIDADE dos objetos no stream ACMI: tipo, cor e modelo. Nenhum dos
 # testes acima olha o .acmi -- eles afirmam sobre as linhas 'frame=' do dump.
@@ -457,12 +457,12 @@ test('scenario-folder', py,
 # porta do Tacview que conecta e para de ler. Ver o cabecalho do script.
 test('scenario-app-quit', py,
      args: files('scenario/run_app_quit_test.py') + [
-         '--binario', app.full_path(), '--scenario', 'patrol'],
+         '--binario', app.full_path(), '--scenario', 'intercept_missile'],
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
 # A MESMA prova, agora num cenario COM 'networks:'. Nao e redundante com a de
-# cima: os tres cenarios proprios do ./app sao hermeticos, e por isso a TUI
+# cima: o cenario proprio do ./app e hermetico, e por isso a TUI
 # nunca tinha aberto uma Station com lista de redes -- foi exatamente ai que
 # tres over-unref de Station::getNetworks() (que, ao contrario de
 # getPlayers(), NAO e pre-ref()'d) ficaram latentes ate o ./app virar o runner
@@ -656,7 +656,7 @@ test('plugin-deposito-terceiro', py,
 # e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
 # MODELO quando ele saiu para models/player/A4.
 
-# O catalogo de --edl-catalog (scripts/extract_execution_chain.py), fonte
+# O catalogo de --edl-catalog (tools/extract_execution_chain.py), fonte
 # unica de verdade do editor grafico de .edl (src/ui/edl_builder.jsx): tipo/
 # unidade/cardinalidade por slot batendo com armadilhas ja confirmadas no
 # fonte (ON_SLOT duplicado, slot herdado, ON_SLOT comentado que nao pode
@@ -671,7 +671,7 @@ test('plugin-deposito-terceiro', py,
 test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
-# scripts/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo acima)
+# tools/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo acima)
 # nao pode acusar erro nos 12 cenarios REAIS do repositorio -- ver o
 # cabecalho de tools/test_edl_lint.py.
 test('edl-lint', py, args: files('tools/test_edl_lint.py'),

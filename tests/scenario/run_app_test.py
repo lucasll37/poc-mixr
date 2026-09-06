@@ -3,10 +3,10 @@
 TTY) e afirma comportamento basico sobre as linhas 'frame='.
 
 Ao contrario de run_scenario_test.py (single-thread/multi-thread), o
-dashboard NAO precisa de fixture nenhuma: seus tres cenarios (ver
-app/ScenarioCatalog.hpp) ja sao herméticos por si so, escolhidos por
+dashboard NAO precisa de fixture nenhuma: seu cenario proprio (ver
+app/ScenarioCatalog.hpp) ja e hermetico por si so, escolhido por
 '-scenario <chave>' em vez de '-f <arquivo>'. Por isso este script e mais
-simples -- so confere que os .edl.in carregam e rodam sao, sem tentar provar
+simples -- so confere que o .edl.in carrega e roda sao, sem tentar provar
 de novo o mecanismo de determinismo 1/2/4-threads (isso ja e nativo, e as
 outras pocs ja provam onde importa).
 """
@@ -28,8 +28,6 @@ CAMPO = re.compile(r"(\w+)=(\S+)")
 # repositorio (nem o modo 'intruder' de single-thread/multi-thread mostra
 # bandit1 no dump, so os quatro falcons -- ver run_scenario_test.py).
 JOGADORES_POR_CENARIO = {
-    "patrol": {"falcon1", "falcon2", "falcon3", "falcon4"},
-    "intercept": {"falcon1", "falcon2", "falcon3", "falcon4"},
     "intercept_missile": {"falcon1", "falcon2", "falcon3", "falcon4"},
 }
 

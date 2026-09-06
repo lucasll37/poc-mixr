@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regressao do catalogo de --edl-catalog (scripts/extract_execution_chain.py).
+"""Regressao do catalogo de --edl-catalog (tools/extract_execution_chain.py).
 
 Sem framework nenhum (nem pytest, nem gtest) -- mesmo estilo dos demais
 scripts deste repositorio: uma lista de casos, cada um um assert com
@@ -30,7 +30,7 @@ extrator para o raciocinio completo:
     para tirar interop/hla e interop/rprfom, fonte de colisao de nome barra
     com Aircraft/GroundVehicle/NetIO/Nib/Ntm) -- e nenhum outro nome de
     fabrica pode aparecer duas vezes no catalogo inteiro.
-  * Toda classe citada nos cenarios REAIS do repositorio (os 12
+  * Toda classe citada nos cenarios REAIS do repositorio (os 10
     .edl/.edl.in de producao) tem que aparecer no catalogo -- senao a
     ferramenta grafica nao consegue montar nem o que ja existe hoje.
 """
@@ -41,7 +41,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import extract_execution_chain as ext  # noqa: E402
 
@@ -52,9 +52,7 @@ REAL_SCENARIOS = [
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
-    "app/configs/scenario_intercept.edl.in",
     "app/configs/scenario_intercept_missile.edl.in",
-    "app/configs/scenario_patrol.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",
     "src/poc/rl-training/configs/scenario_rl.edl",
     "src/rl/configs/scenario_rl.edl",

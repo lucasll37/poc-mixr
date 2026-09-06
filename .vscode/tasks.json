@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run app",
+      "type": "shell",
+      "command": "gnome-terminal",
+      "args": [
+        "--",
+        "bash",
+        "-c",
+        "cd \"${workspaceFolder}\" && ./build/app/src/app -folder ./sandbox; exec bash"
+      ],
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

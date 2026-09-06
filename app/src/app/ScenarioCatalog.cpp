@@ -7,8 +7,8 @@ namespace app {
 
 namespace {
 
-// Os falcon1..4 sao IGUAIS nos tres cenarios (mesmo modelo/tipo/cor no
-// Tacview) -- so 'intercept'/'intercept_missile' acrescentam bandit1.
+// Modelo/tipo/cor dos falcon1..4 no Tacview -- 'intercept_missile' acrescenta
+// bandit1 por cima (ver withBandit1() abaixo).
 const char* const kFalconsModelMap{
    "falcon1: \"A-4E\"  falcon2: \"A-4E\"  falcon3: \"A-4E\"  falcon4: \"A-4E\""};
 const char* const kFalconsTypeMap{
@@ -43,23 +43,6 @@ const std::vector<std::string>& falconFleet()
 const std::vector<ScenarioEntry>& scenarioCatalog()
 {
    static const std::vector<ScenarioEntry> catalog{
-      {
-         "patrol", "Patrulha",
-         "4 falcons patrulhando, sem intruso -- bom para ver pausar/acelerar sem ruido",
-         "./app/configs/scenario_patrol.edl.in",
-         "patrol", kFalconsModelMap, kFalconsTypeMap, kFalconsColorMap,
-         falconFleet(),
-      },
-      {
-         "intercept", "Intercepto",
-         "+ bandit1 local -- mostra a evasao e o apoio entre os falcons (EVADE/SUPPORT)",
-         "./app/configs/scenario_intercept.edl.in",
-         "intercept",
-         withBandit1(kFalconsModelMap, "\n                           bandit1: \"A-4E\""),
-         withBandit1(kFalconsTypeMap, "  bandit1: \"Air+FixedWing\""),
-         withBandit1(kFalconsColorMap, "  bandit1: \"Red\""),
-         falconFleet(),
-      },
       {
          "intercept_missile", "Intercepto + Missil",
          "+ falcon1 com um missil guiado -- lancamento/detonacao, otimo pra pausar no meio",

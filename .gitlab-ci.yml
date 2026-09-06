@@ -1,0 +1,23 @@
+# PLACEHOLDER -- CI do GitLab ainda NAO esta configurado.
+#
+# Este arquivo existe so para reservar o lugar e documentar a intencao; nenhum job roda de
+# verdade hoje (o unico stage e um "echo" inofensivo). Quando for configurar de verdade, o
+# fluxo que faz sentido para este repositorio (ver CLAUDE.md, secao "Build & Run") e:
+#
+#   make configure   # conan install (Debug) + meson setup do HOST -> build/
+#   make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
+#   make models      # flight/missile/stub, cada um autocontido -> plugins/
+#   make build       # so o HOST (depende so de sdk) -> build/
+#   make install     # sync-plugins (plugins/ -> dist/) + meson install do host -> dist/
+#   make test        # as DUAS suites: a do modelo (test-models) e a do host
+
+stages:
+  - placeholder
+
+placeholder:
+  stage: placeholder
+  image: ubuntu:24.04
+  rules:
+    - when: never # desativado ate o pipeline de verdade ser escrito
+  script:
+    - echo "CI ainda nao configurado -- ver CLAUDE.md / este arquivo para o fluxo pretendido"

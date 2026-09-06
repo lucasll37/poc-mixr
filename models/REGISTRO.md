@@ -12,7 +12,7 @@ exatamente como já era antes deste arquivo existir. Ele existe só para respond
 modelo novo, acrescente a própria linha; ao mudar de status, edite a sua. Nunca edite a linha de
 um modelo que não é seu, e sempre acrescente linha nova no **fim** da tabela — dois PRs que só
 *acrescentam* linha no fim colidem da forma mais barata de resolver (a fusão de duas adições,
-nunca a escolha de uma só). Ver `CONTRIBUTING.md`, seção "Pontos de conflito de merge conhecidos".
+nunca a escolha de uma só).
 
 | Modelo | Pasta | Tipo | Status | Responsável | Cenário(s) | Última atualização |
 |---|---|---|---|---|---|---|

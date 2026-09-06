@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Regressao do binario 'edlcheck' (app/src/edlcheck_main.cpp): os 12
+"""Regressao do binario 'edlcheck' (app/src/edlcheck_main.cpp): os 10
 cenarios .edl/.edl.in REAIS deste repositorio tem que passar pelo parser
 MIXR de verdade (a mesma cadeia de fabricas de producao, mixr_factory.cpp)
 com exit code 0 -- e o oraculo DEFINITIVO, ao contrario do lint leve
-(scripts/edl_lint.py), que so aproxima a gramatica.
+(tools/edl_lint.py), que so aproxima a gramatica.
 
 Depende de 'make install' ja ter rodado (precisa de dist/lib/mixr-plugins/
 populado) -- mesma dependencia que toda suite 'scenario'/'plugin' ja tem;
@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import edl_lint  # noqa: E402
 
@@ -34,9 +34,7 @@ REAL_SCENARIOS = [
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
-    "app/configs/scenario_intercept.edl.in",
     "app/configs/scenario_intercept_missile.edl.in",
-    "app/configs/scenario_patrol.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",
     "src/poc/rl-training/configs/scenario_rl.edl",
     "src/rl/configs/scenario_rl.edl",

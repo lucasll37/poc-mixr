@@ -66,6 +66,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <unistd.h>
@@ -230,7 +231,21 @@ int main(int argc, char* argv[])
    // do Mapa (ver app/TerrainQuery.hpp); nenhum cenario depende deles.
    app::ensureAllTerrainTiles(terrainDir);
 
-   const std::string generatedPath{"./app/configs/" + cenario.key + ".generated.edl"};
+   // O '.generated.edl' e artefato de RUNTIME, nunca fonte -- vai para
+   // 'build/', decoplado de proposito de QUALQUER 'configs/' rastreado no
+   // git (o de 'app/' inclusive), mesmo raciocinio ja aplicado a
+   // 'build/tests-fixtures'/'build/tests-determinism' (ver a armadilha 9 da
+   // secao "Testes automatizados" do CLAUDE.md). Antes disto, TODO cenario
+   // rodado por este binario -- os proprios ou os de qualquer poc/fixture
+   // passados por '-f'/'-scenario' -- escrevia em './app/configs/<key>.
+   // generated.edl', poluindo a pasta de configuracao do app com o gerado de
+   // pocs inteiramente alheias. Chave-por-'cenario.key' e mantida (nao um
+   // nome fixo) para nao reabrir a colisao entre cenarios concorrentes que
+   // a chave ja evitava.
+   const std::filesystem::path generatedDir{"./build/generated-scenarios"};
+   std::error_code ecGeneratedDir;
+   std::filesystem::create_directories(generatedDir, ecGeneratedDir);
+   const std::string generatedPath{(generatedDir / (cenario.key + ".generated.edl")).string()};
    // 'RUN_ID' entra para TODO cenario, nao so os do proprio ./app -- ver o
    // comentario de runIdNow() acima. Um '.edl.in' que nao usa '@RUN_ID@'
    // simplesmente nao tem esse token pra substituir; a troca so acontece

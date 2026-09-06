@@ -52,12 +52,12 @@ tela de seleção do catálogo alcançável de fora (só via "carregar outro cen
 TUI, que reexecuta com `-internal-picker` — uso interno, ver `app/Options.hpp`):
 
 ```bash
-./build/app/src/app -scenario intercept    # pula direto pro cenário "Intercepto"
-./build/app/src/app -folder ./sandbox      # essa sim abre uma tela -- a das subpastas de ./sandbox
+./build/app/src/app -scenario intercept_missile   # o unico cenario proprio deste app
+./build/app/src/app -folder ./sandbox             # essa sim abre uma tela -- a das subpastas de ./sandbox
 ```
 
-Não precisa de nenhum outro processo rodando — os três cenários são **herméticos** (sem
-`networks:`) e usam porta de Tacview e diretório de dados **próprios**, então dá para rodar junto
+Não precisa de nenhum outro processo rodando — o cenário próprio é **hermético** (sem
+`networks:`) e usa porta de Tacview e diretório de dados **próprios**, então dá para rodar junto
 com `single-thread`/`multi-thread`/`bandit` sem colidir (ver [§13](#13-portas-arquivos-e-dados)).
 
 ---
@@ -68,8 +68,9 @@ com `single-thread`/`multi-thread`/`bandit` sem colidir (ver [§13](#13-portas-a
 `-f` ou `-folder`** — rodar o binário sem nenhum dos três é erro fatal (recusado antes de tocar
 em `Station`/tela nenhuma), não mais um convite a uma tela de seleção implícita.
 
-> **Este binário é o runner de TODAS as pocs.** Além dos três cenários próprios
-> (`patrol`/`intercept`/`intercept_missile`), o catálogo traz `single-thread`, `multi-thread`,
+> **Este binário é o runner de TODAS as pocs.** Além do cenário próprio
+> (`intercept_missile` — havia três, `patrol`/`intercept`/`intercept_missile`, reduzidos a este
+> por ser superset dos outros dois), o catálogo traz `single-thread`, `multi-thread`,
 > `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` e `full-systems-nav` — as pocs não
 > têm mais executável próprio, são só cenário. `-f <arquivo>` carrega um `.edl`/`.edl.in` fora do
 > catálogo (é como as fixtures de teste entram); `-folder <pasta>` navega uma pasta de sandbox
@@ -78,12 +79,11 @@ em `Station`/tela nenhuma), não mais um convite a uma tela de seleção implíc
 
 | chave | rótulo | conteúdo |
 |---|---|---|
-| `patrol` | Patrulha | 4 falcons patrulhando, sem intruso — bom para ver pausar/acelerar sem ruído |
-| `intercept` | Intercepto | + `bandit1` local — mostra evasão e apoio entre os falcons (`EVADE`/`SUPPORT`) |
-| `intercept_missile` | Intercepto + Míssil | + `falcon1` com um míssil guiado — lançamento/detonação, ótimo para pausar bem no meio (ver "Demo: míssil guiado" no [CLAUDE.md](../CLAUDE.md)) |
+| `intercept_missile` | Intercepto + Míssil | 4 falcons patrulhando + `bandit1` local (evasão/apoio, `EVADE`/`SUPPORT`) + `falcon1` com um míssil guiado — lançamento/detonação, ótimo para pausar bem no meio (ver "Demo: míssil guiado" no [CLAUDE.md](../CLAUDE.md)) |
 
 Cada cenário tem seu próprio arquivo em [`configs/`](configs/) (`scenario_<chave>.edl.in`),
-expandido em tempo de execução para `configs/<chave>.generated.edl` (gitignored).
+expandido em tempo de execução para `build/generated-scenarios/<chave>.generated.edl` — artefato
+de runtime, fora de qualquer `configs/` rastreado no git (gitignored via `build*`).
 
 ---
 
@@ -91,7 +91,7 @@ expandido em tempo de execução para `configs/<chave>.generated.edl` (gitignore
 
 | opção | efeito |
 |---|---|
-| `-scenario <chave>` | carrega o cenário do catálogo direto — os três próprios (`patrol`, `intercept`, `intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`, `full-systems-nav`) |
+| `-scenario <chave>` | carrega o cenário do catálogo direto — o próprio (`intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`, `full-systems-nav`) |
 | `-f <arquivo>` | um `.edl`/`.edl.in` fora do catálogo — o caminho das fixtures de teste |
 | `-folder <pasta>` | navega uma pasta de sandbox (`<pasta>/<cenario>/configs/*.edl`) — combinado com `-scenario <nome-da-subpasta>`, pula a tela e carrega direto; sem `-scenario`, abre a tela de navegação da pasta |
 | `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico (sem isso: detecta `hardware_concurrency()`, limitado a 8) |
@@ -400,12 +400,17 @@ no CLAUDE.md), a tabela abaixo já não é "os valores fixos do `./app`" — var
 `-scenario <chave>`, porque Tacview/gravação/cenário expandido vêm do PRÓPRIO `.edl.in` de cada
 entrada do catálogo (`app/ScenarioCatalog.cpp`), não de um valor único deste binário:
 
-| item | cenários PRÓPRIOS do app (`patrol`/`intercept`/`intercept_missile`) | cenários das pocs (`single-thread`/`multi-thread`/`bandit`/`python-flight`/`onnx-policy`/`built-in_mixr_1`) |
+| item | cenário PRÓPRIO do app (`intercept_missile`) | cenários das pocs (`single-thread`/`multi-thread`/`bandit`/`python-flight`/`onnx-policy`/`built-in_mixr_1`) |
 |---|---|---|
 | Tacview (*Real-Time Telemetry*) | porta **1236** | a porta de CADA poc (1234/1235/1237/1238/1239 — ver o README de cada uma) |
 | gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` | `./src/poc/.../data/recordings/mission.acmi` (o diretório da própria poc) |
-| cenário expandido | `./app/configs/<chave>.generated.edl` (gitignored) | `./src/poc/.../configs/scenario.generated.edl` (o da própria poc) |
-| bloco `networks:` (DIS) | nenhum — os três são herméticos | `single-thread`/`multi-thread`/`bandit` TÊM `networks:` (ver a migração pra `FlightAgentTC` na "nona passada"); os outros três são herméticos |
+| bloco `networks:` (DIS) | nenhum — hermético | `single-thread`/`multi-thread`/`bandit` TÊM `networks:` (ver a migração pra `FlightAgentTC` na "nona passada"); os outros três são herméticos |
+
+**Cenário expandido — não varia mais por origem.** Todo `.generated.edl` (o próprio do app ou o
+de qualquer poc/fixture carregado por `-scenario`/`-f`/`-folder`) vai para
+`./build/generated-scenarios/<chave>.generated.edl` — artefato de runtime, gitignored via `build*`
+e decoplado de QUALQUER `configs/` rastreado no git (antes ficava dentro de `./app/configs/`,
+poluindo a pasta de configuração deste app com o gerado de pocs alheias).
 
 **Duas coisas que NÃO variam por cenário, sempre as mesmas do processo inteiro:**
 

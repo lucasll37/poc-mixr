@@ -1,0 +1,147 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "EDL",
+  "scopeName": "source.edl",
+  "patterns": [
+    { "include": "#line-marker" },
+    { "include": "#comment-line" },
+    { "include": "#line-continuation" },
+    { "include": "#string-quoted" },
+    { "include": "#string-angled" },
+    { "include": "#form-head" },
+    { "include": "#form-head-multiline" },
+    { "include": "#slot-id" },
+    { "include": "#boolean" },
+    { "include": "#number-hex" },
+    { "include": "#number-float" },
+    { "include": "#number-octal" },
+    { "include": "#number-integer" },
+    { "include": "#punctuation" },
+    { "include": "#identifier" }
+  ],
+  "repository": {
+
+    "line-marker": {
+      "comment": "cpp line marker: # 21 \"test.edl\" -- injected by the preprocessor",
+      "match": "^(#(?:line)?)[ ]+(\\d+)[ ]+(\"(?:\\\\.|[^\\\\\"])*\").*$",
+      "captures": {
+        "1": { "name": "keyword.control.directive.line.edl" },
+        "2": { "name": "constant.numeric.integer.edl" },
+        "3": { "name": "string.quoted.double.edl" }
+      },
+      "name": "meta.preprocessor.edl"
+    },
+
+    "comment-line": {
+      "comment": "[/][/].*$ -- the only comment form in the scanner",
+      "name": "comment.line.double-slash.edl",
+      "match": "//.*$",
+      "captures": {
+        "0": { "name": "punctuation.definition.comment.edl" }
+      }
+    },
+
+    "line-continuation": {
+      "comment": "\\\\\\n -- backslash at end of line is ignored",
+      "name": "constant.character.escape.line-continuation.edl",
+      "match": "\\\\$"
+    },
+
+    "string-quoted": {
+      "comment": "\\\"(\\\\.|[^\\\\\"])*\\\"",
+      "name": "string.quoted.double.edl",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.edl" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.edl" } },
+      "patterns": [
+        { "name": "constant.character.escape.edl", "match": "\\\\." }
+      ]
+    },
+
+    "string-angled": {
+      "comment": "\\<(\\\\.|[^\\\\\"])*\\> -- second string form; constrained to one line to limit damage on an unclosed '<'",
+      "name": "string.quoted.other.angled.edl",
+      "begin": "<(?=[^<>\\n]*>)",
+      "end": ">",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.edl" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.edl" } },
+      "patterns": [
+        { "name": "constant.character.escape.edl", "match": "\\\\." }
+      ]
+    },
+
+    "form-head": {
+      "comment": "form : '(' IDENT arglist ')' -- IDENT is the class name resolved by the factory",
+      "match": "(\\()[ ,\\t\\v\\f]*([-a-zA-Z0-9~!@#$%^&*_+=<>?/]+)",
+      "captures": {
+        "1": { "name": "punctuation.section.form.begin.edl" },
+        "2": { "name": "entity.name.class.edl" }
+      }
+    },
+
+    "form-head-multiline": {
+      "comment": "same rule when the class name sits on the next line",
+      "begin": "(\\()[ ,\\t\\v\\f]*$",
+      "end": "([-a-zA-Z0-9~!@#$%^&*_+=<>?/]+)",
+      "beginCaptures": { "1": { "name": "punctuation.section.form.begin.edl" } },
+      "endCaptures": { "1": { "name": "entity.name.class.edl" } },
+      "patterns": [
+        { "include": "#comment-line" }
+      ]
+    },
+
+    "slot-id": {
+      "comment": "{L}+[:]",
+      "match": "([-a-zA-Z0-9~!@#$%^&*_+=<>?/]+)(:)",
+      "captures": {
+        "1": { "name": "support.type.property-name.edl" },
+        "2": { "name": "punctuation.separator.key-value.edl" }
+      }
+    },
+
+    "boolean": {
+      "comment": "BOOLconstant -- exactly these four spellings; True/False are plain identifiers",
+      "name": "constant.language.boolean.edl",
+      "match": "(?:true|TRUE|false|FALSE)(?![-a-zA-Z0-9~!@#$%^&*_+=<>?/])"
+    },
+
+    "number-hex": {
+      "comment": "0[xX]{H}+{IS}?",
+      "name": "constant.numeric.hex.edl",
+      "match": "0[xX][a-fA-F0-9]+[uUlL]*(?![-a-zA-Z0-9~!@#$%^&*_+=<>?/])"
+    },
+
+    "number-octal": {
+      "comment": "0{D}+{IS}?",
+      "name": "constant.numeric.octal.edl",
+      "match": "0\\d+[uUlL]*(?![-a-zA-Z0-9~!@#$%^&*_+=<>?/])"
+    },
+
+    "number-float": {
+      "comment": "the three FLOATINGconstant rules, longest alternative first",
+      "name": "constant.numeric.float.edl",
+      "match": "[+-]?(?:\\d*\\.\\d+(?:[Ee][+-]?\\d+)?|\\d+\\.\\d*(?:[Ee][+-]?\\d+)?|\\d+[Ee][+-]?\\d+)[fFlL]?(?![-a-zA-Z0-9~!@#$%^&*_+=<>?/])"
+    },
+
+    "number-integer": {
+      "comment": "[+-]?{D}+{IS}?",
+      "name": "constant.numeric.integer.edl",
+      "match": "[+-]?\\d+[uUlL]*(?![-a-zA-Z0-9~!@#$%^&*_+=<>?/])"
+    },
+
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.section.form.end.edl", "match": "\\)" },
+        { "name": "punctuation.section.block.edl", "match": "[{}]" },
+        { "name": "punctuation.section.numlist.edl", "match": "[\\[\\]]" }
+      ]
+    },
+
+    "identifier": {
+      "comment": "{L}+ used as a bare value in prim",
+      "name": "variable.other.constant.edl",
+      "match": "[-a-zA-Z0-9~!@#$%^&*_+=<>?/]+"
+    }
+  }
+}

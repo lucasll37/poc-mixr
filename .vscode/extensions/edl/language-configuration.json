@@ -1,0 +1,49 @@
+{
+  "comments": {
+    "lineComment": "//"
+  },
+
+  "brackets": [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"]
+  ],
+
+  "colorizedBracketPairs": [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"]
+  ],
+
+  "autoClosingPairs": [
+    { "open": "(", "close": ")", "notIn": ["string", "comment"] },
+    { "open": "{", "close": "}", "notIn": ["string", "comment"] },
+    { "open": "[", "close": "]", "notIn": ["string", "comment"] },
+    { "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
+  ],
+
+  "autoCloseBefore": ")}]\"\n\t ,",
+
+  "surroundingPairs": [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"],
+    ["\"", "\""]
+  ],
+
+  "wordPattern": "[-a-zA-Z0-9~!@#$%^&*_+=<>?/]+",
+
+  "indentationRules": {
+    "increaseIndentPattern": "^[^\\)\\}\\]]*[\\(\\{\\[][^\\)\\}\\]]*$",
+    "decreaseIndentPattern": "^\\s*[\\)\\}\\]]",
+    "unIndentedLinePattern": "^\\s*(//|#)"
+  },
+
+  "folding": {
+    "offSide": false,
+    "markers": {
+      "start": "^\\s*//\\s*#?region\\b",
+      "end": "^\\s*//\\s*#?endregion\\b"
+    }
+  }
+}

@@ -16,8 +16,8 @@ para poder rodar como regressão contra os cenários reais do repositório
 (nenhum dos 12 deveria acusar erro aqui).
 
 Uso:
-    python3 scripts/edl_lint.py <arquivo.edl>
-    python3 scripts/edl_lint.py --json <arquivo.edl>
+    python3 tools/edl_lint.py <arquivo.edl>
+    python3 tools/edl_lint.py --json <arquivo.edl>
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import extract_execution_chain as ext  # noqa: E402
 

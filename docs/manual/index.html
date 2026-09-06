@@ -327,7 +327,7 @@ const {
 /* ==================================================================== *
  * MIXR — Explorador de execução, EDL e classes built-in   (v6)
  *
- * MODEL, FACTORIES, SNIPPETS e STATS são GERADOS por scripts/extract_execution_chain.py
+ * MODEL, FACTORIES, SNIPPETS e STATS são GERADOS por tools/extract_execution_chain.py
  * a partir da árvore de fontes. Nada aqui é digitado à mão:
  *   - herança      <- DECLARE_SUBCLASS nos headers
  *   - nome fábrica <- IMPLEMENT_*SUBCLASS nos .cpp
@@ -337,7 +337,7 @@ const {
  *   - trechos      <- corpo do método, com arquivo e linha reais
  * ==================================================================== */
 
-/* GERADO por scripts/extract_execution_chain.py a partir da arvore de fontes do MIXR. Nao editar. */
+/* GERADO por tools/extract_execution_chain.py a partir da arvore de fontes do MIXR. Nao editar. */
 const MODEL = {
   "UsbJoystick": {
     "b": "IoDevice",
@@ -10257,7 +10257,7 @@ function ClassCard({
   // (a lista de overrides que o MODEL embutido guardou): e.ov só cobre os 7
   // métodos de fase originais na hora em que MODEL foi gerado -- controller/
   // genAction/updateState/execute/genComplexAction (acrescentados depois a
-  // TARGET_METHODS, ver scripts/extract_execution_chain.py) já têm corpo
+  // TARGET_METHODS, ver tools/extract_execution_chain.py) já têm corpo
   // real em SNIPPETS mas não em e.ov, que não foi regenerado. Varrer por
   // prefixo é imune a essa defasagem -- e também cobre método que a classe
   // DECLARA pela primeira vez (não "sobrescreve" nada), caso de Agent::

@@ -3,7 +3,8 @@
 Todo o resto de `tests/` pergunta se o **código** está certo. Esta pasta pergunta outra coisa:
 se a **documentação** está certa — se alguém que nunca viu este repositório, numa máquina
 recém-instalada, chega de `git clone` a binário rodando seguindo apenas o
-[README](../../README.md) §2 (Pré-requisitos) e §3 (Build).
+[README](../../README.md) (seção "Pré-requisitos", que aponta para [`INSTALL.md`](../../INSTALL.md))
+e a seção "Build".
 
 ```bash
 make check-docs-ubuntu24                    # minutos -- os achados que travam qualquer recem-chegado

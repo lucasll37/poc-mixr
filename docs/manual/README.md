@@ -136,7 +136,7 @@ ficam embutidos no próprio arquivo), com duas visões sobre o framework:
 **Curada, não instrumentada.** Sem processo MIXR rodando por trás, herança, nome de fábrica,
 registro, slots, fases e os trechos de código (com arquivo e linha reais) foram extraídos direto
 da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
-`scripts/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/manual/doc.jsx` como os
+`tools/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/manual/doc.jsx` como os
 objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
 própria página e não deve ser removido em incrementos futuros. A árvore do cenário
 (`SCENARIO`/`ALL`/`EDL_TEXT`) é composição manual sobre esses mesmos dados — cada classe usada já
@@ -186,4 +186,4 @@ arrastando classes de uma paleta), não documentação/visualização do framewo
 `CATALOG_TOUR` a partir de `--catalog`, mas nenhuma das três constantes chegou a ser consumida
 por `doc.jsx` — confirmado, `grep` não achava nenhuma na página. O papel que ele cumpriria
 (catálogo completo de classes) está coberto, e mais amplamente, pelo modo `--edl-catalog` de
-`scripts/extract_execution_chain.py` que alimenta o editor gráfico acima.
+`tools/extract_execution_chain.py` que alimenta o editor gráfico acima.

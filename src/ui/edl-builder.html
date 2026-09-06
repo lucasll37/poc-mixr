@@ -73686,7 +73686,7 @@ const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
 // Um item de lista pode ser um VETOR NUMERICO cru em vez de um
 // texto/identificador -- caso do Table2/Table3.data, cujo 'data:' e' uma
 // lista de SUBLISTAS numericas ('{ [ 1 2 3 ] [ 4 5 6 ] }', ver o comentario
-// de astValueToChildNode() em scripts/edl_to_ui_project.js). Emitir isso
+// de astValueToChildNode() em edl_to_ui_project.js). Emitir isso
 // como string entre aspas quebraria Table2::loadData() (espera um
 // base::List de verdade, nao uma base::String); reconhecer a FORMA
 // '[ numeros ]' e deixar passar cru resolve sem precisar de um tipo de nó
@@ -74454,7 +74454,7 @@ const CSS = `
 
 // EDL_DEFAULT_SCENARIO e' injetado por compile.js (mesmo mecanismo de
 // EDL_CATALOG) a partir de src/ui/edl_default_scenario.generated.json --
-// gerado por `make edl-default-scenario` (scripts/edl_to_ui_project.js)
+// gerado por `make edl-default-scenario` (edl_to_ui_project.js)
 // contra src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in, o
 // cenario com mais componentes do repositorio (53 das 96 classes de
 // mixr::models num Aircraft so'). Abrir a ferramenta ja' com algo pra

@@ -5,7 +5,7 @@
  * para o formato de PROJETO do editor grafico ({id,factory,slotValues,
  * children} -- ver src/ui/edl_builder_core.js). Nao e' um parser fiel a
  * gramatica bison/flex real (edl_parser.y) -- e' um parser recursivo-
- * descendente ESTRUTURAL, no mesmo espirito de scripts/edl_lint.py, so que
+ * descendente ESTRUTURAL, no mesmo espirito de tools/edl_lint.py, so que
  * em vez de so validar, CONSTROI a arvore.
  *
  * Reaproveita as MESMAS funcoes de src/ui/edl_builder_core.js
@@ -14,7 +14,7 @@
  * classes uma a uma, sem reimplementar esse modelo aqui.
  *
  * Uso:
- *   node scripts/edl_to_ui_project.js <arquivo.edl ou .edl.in> > saida.json
+ *   node src/ui/edl_to_ui_project.js <arquivo.edl ou .edl.in> > saida.json
  *
  * Existe para gerar o cenario DEFAULT que a ferramenta carrega ao abrir
  * (ver src/ui/README.md e o Makefile, alvo `edl-default-scenario`) --
@@ -28,7 +28,7 @@
  * 'ThreadTagProbe', type/model "A4" em vez de "C310", velocidades de
  * cruzeiro antigas) -- um artefato gerado, comitado uma vez, que nao
  * acompanhou edicoes seguintes do '.in'. Por isso este script aceita
- * '@TOKEN@'/'@include:frag@' (mesma mecanica de scripts/edl_lint.py,
+ * '@TOKEN@'/'@include:frag@' (mesma mecanica de tools/edl_lint.py,
  * expandTemplates() abaixo) e roda direto contra o template, que e' a
  * fonte de verdade.
  *
@@ -42,12 +42,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const REPO_ROOT = path.resolve(__dirname, "..");
-const core = require(path.join(REPO_ROOT, "src", "ui", "edl_builder_core.js"));
+const REPO_ROOT = path.resolve(__dirname, "..", "..");
+const core = require(path.join(__dirname, "edl_builder_core.js"));
 const CATALOG_PATH = path.join(REPO_ROOT, "src", "ui", "edl_catalog.generated.json");
 const FRAGMENTS_DIR = path.join(REPO_ROOT, "app", "configs", "fragments");
 
-// Mesma mecanica de scripts/edl_lint.py (expand_templates()): '@include:...@'
+// Mesma mecanica de tools/edl_lint.py (expand_templates()): '@include:...@'
 // puxa o fragmento de app/configs/fragments/, e qualquer '@TOKEN@' restante
 // (ex.: '@NUM_TC_THREADS@') vira um numero neutro -- aqui "2", o mesmo valor
 // que as pocs de producao usam por convencao (bandit/single-thread/
@@ -65,7 +65,7 @@ function expandTemplates(text) {
 
 /* ------------------------------- tokenizer -------------------------------- */
 // Mesmo charset de identificador nu do scanner real (edl_scanner.l:48),
-// repetido aqui igual a scripts/edl_lint.py (SLOT_KEY_RE) -- numero tem
+// repetido aqui igual a tools/edl_lint.py (SLOT_KEY_RE) -- numero tem
 // regra PROPRIA (com ponto decimal, que NAO esta no charset de
 // identificador), entao um valor como "0.1" so tokeniza inteiro se a regra
 // de numero for tentada e vencer por ter o casamento mais LONGO (o mesmo
@@ -257,7 +257,7 @@ function convert(text, byFactory) {
 function main() {
   const file = process.argv[2];
   if (!file) {
-    console.error("uso: node scripts/edl_to_ui_project.js <arquivo.edl>");
+    console.error("uso: node src/ui/edl_to_ui_project.js <arquivo.edl>");
     process.exit(1);
   }
   if (!fs.existsSync(CATALOG_PATH)) {

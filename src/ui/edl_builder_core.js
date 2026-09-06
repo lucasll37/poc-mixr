@@ -183,7 +183,7 @@ const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
 // Um item de lista pode ser um VETOR NUMERICO cru em vez de um
 // texto/identificador -- caso do Table2/Table3.data, cujo 'data:' e' uma
 // lista de SUBLISTAS numericas ('{ [ 1 2 3 ] [ 4 5 6 ] }', ver o comentario
-// de astValueToChildNode() em scripts/edl_to_ui_project.js). Emitir isso
+// de astValueToChildNode() em edl_to_ui_project.js). Emitir isso
 // como string entre aspas quebraria Table2::loadData() (espera um
 // base::List de verdade, nao uma base::String); reconhecer a FORMA
 // '[ numeros ]' e deixar passar cru resolve sem precisar de um tipo de nó

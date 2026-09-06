@@ -1372,7 +1372,7 @@ models/
             └── CHANGELOG.md
 ```
 
-**`make new-model NAME=<nome> KIND=stub|template`** (`scripts/new_model.py`) automatiza a cópia de
+**`make new-model NAME=<nome> KIND=stub|template`** (`scripts/models.sh`) automatiza a cópia de
 qualquer um dos dois: recalcula a profundidade de `ROOT :=` do `Makefile` copiado e corrige o
 namespace C++ — não escreve lógica de domínio nenhuma. **Não** precisa registrar o modelo no build
 da raiz: `models:` do Makefile descobre projetos sob `models/player/` por `find`
@@ -1677,10 +1677,11 @@ isso o alvo Meson e o binário se chamam `app`, não `dashboard`; mesma convenç
 das outras pocs). A MESMA pilha nativa de `single-thread` (`Aircraft`/`JSBSimModel`/`Autopilot`/
 radar/`SimAgent`, o mesmo plugin `libflight.so`, **nenhuma** mudança em `models/`) — só troca
 `app/RealTimeRun.cpp` (a linha de status em texto) por `app/DashboardLoop.cpp`, um painel FTXUI
-(cores, borda, medidor de combustível, navegação por teclado). Três cenários **próprios**,
-herméticos, em `configs/` (`scenario_patrol`/`scenario_intercept`/`scenario_intercept_missile`),
-com porta de Tacview (**1236**) e diretório de dados (`./app/data/`) próprios — dá para
-rodar ao lado de `single-thread`/`multi-thread` (porta 1234) sem colidir.
+(cores, borda, medidor de combustível, navegação por teclado). Um cenário **próprio**,
+hermético, em `configs/` (`scenario_intercept_missile` — ver a passada de consolidação mais
+abaixo para o porquê de não serem mais três), com porta de Tacview (**1236**) e diretório de
+dados (`./app/data/`) próprios — dá para rodar ao lado de `single-thread`/`multi-thread`
+(porta 1234) sem colidir.
 
 **O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
 `src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —
@@ -3351,6 +3352,48 @@ catálogo — virou erro fatal. É obrigatório passar `-scenario`/`-f`/`-folder
   Não é causado por esta passada nem por `-internal-picker` especificamente; é uma característica
   já existente de todo caminho interativo deste app, fora de escopo aqui.
 
+**Vigésima sexta passada: `app/configs` parou de acumular `.generated.edl` de QUALQUER poc/fixture
+que passasse pelo `./app`, e os três cenários próprios do app foram reduzidos a um só.**
+
+- **O bug, medido antes de mexer**: `main.cpp` gravava o `.edl` expandido de TODO cenário — os
+  três próprios do app, os de qualquer poc do catálogo (`single-thread`, `multi-thread`, `bandit`,
+  `onnx-policy`, `python-flight`, `built-in_mixr_1`, `full-systems-nav`) e toda fixture de teste
+  que chega por `-f` (`make_fixture.py`) — sempre em `./app/configs/<key>.generated.edl`. Como
+  `./app` é o runner único de todas as pocs, isso significava que rodar a suíte inteira uma vez
+  deixava dezenas de `.generated.edl` de pocs inteiramente alheias dentro da pasta de
+  CONFIGURAÇÃO do app (gitignorados, mas sujando o disco pra sempre — confirmado: 29 arquivos
+  acumulados de uma sessão de trabalho, de `bandit.generated.edl` a
+  `single-thread-plugin-slot-nomeado.generated.edl`). Corrigido: o gerado vai para
+  `./build/generated-scenarios/<key>.generated.edl` — decoplado de QUALQUER `configs/` rastreado
+  no git, mesmo raciocínio já usado por `build/tests-fixtures`/`build/tests-determinism` (armadilha
+  9 da seção "Testes automatizados" acima). A chave por `cenario.key` foi mantida (não virou nome
+  fixo) — é o que já evitava colisão entre cenários concorrentes. `app/.gitignore` (cuja única
+  regra era `configs/*.generated.edl`) foi removido — nada mais é gerado ali para ignorar.
+- **Pedido explícito, à parte do bug acima**: reduzir os três cenários próprios do app
+  (`patrol`/`intercept`/`intercept_missile`) a UM só — `app/configs` deve conter só um "cenário de
+  teste", não um catálogo de três. Mantido `intercept_missile`: é superset dos outros dois (4
+  falcons patrulhando + `bandit1` local + míssil guiado) e já era o único que
+  `scenario-app-tacview-identidade` exigia (carrega os DOIS plugins, `libflight_tc.so` E
+  `libmissile.so`, e prova taxonomia/cor pro míssil — algo que nem `patrol` nem `intercept`
+  sozinhos exercitam). `scenario_patrol.edl.in`/`scenario_intercept.edl.in` foram apagados;
+  `ScenarioCatalog.cpp` ficou com uma entrada só para o app (as das demais pocs continuam
+  intactas — a redução é só do que é PRÓPRIO deste app).
+- **O que precisou acompanhar a redução**: `tests/meson.build` (o `foreach chave : ['patrol',
+  'intercept', 'intercept_missile']` virou uma chamada só, `scenario-app-intercept_missile`;
+  `scenario-app-quit` trocou o `--scenario patrol` default por `intercept_missile`, já que
+  `patrol` deixou de existir), `run_app_test.py` (`JOGADORES_POR_CENARIO` de três chaves para
+  uma), `run_app_quit_test.py` (o default do `--scenario` e a leitura da porta do Tacview, que
+  lia direto de `app/configs/<cenario>.generated.edl` — acompanhou o novo caminho em
+  `build/generated-scenarios/`), e as três listas `REAL_SCENARIOS` de
+  `tests/tools/test_edl_{catalog,lint}.py`/`test_edlcheck.py` (12 cenários `.edl`/`.edl.in` reais
+  do repositório viraram 10 — os docstrings que citavam o número foram atualizados junto).
+  `src/rl/configs/scenario_rl.edl`/`src/poc/rl-training/configs/scenario_rl.edl` (as duas cópias
+  idênticas) citavam `scenario_patrol.edl.in` como proveniência em comentário — reapontado para
+  `src/poc/dis/multi-thread/configs/scenario.edl.in`, o ancestral comum que continua existindo.
+- `make test` não foi rerodado nesta passada para confirmar 60/60 — anotar aqui se a contagem
+  divergir da esperada (59 anterior − 2 `scenario-app-*` + 0, já que os dois viraram um só; os
+  outros ajustes são conteúdo de teste já existente, não teste novo).
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
@@ -3549,7 +3592,7 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
 
 `docs/` é conteúdo **lido**, nunca escrito por uma execução: páginas HTML estáticas (sem
 servidor, sem dependência de rede depois do primeiro carregamento). A peça viva é gerada por
-`scripts/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
+`tools/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
 `models/player/A4/` — não é desenho à mão do ciclo de fases, é extraído do código.
 
 - **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
@@ -3601,9 +3644,9 @@ navegador) e `compile.js` (Babel via CDN, sem bundler) — compilados num `edl-b
 **autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/manual/index.html`. **Não há
 servidor.**
 
-**Build**: `make edl-catalog` (`scripts/extract_execution_chain.py --edl-catalog` → todas as
+**Build**: `make edl-catalog` (`tools/extract_execution_chain.py --edl-catalog` → todas as
 classes/slots que as fábricas encadeadas publicam, em `edl_catalog.generated.json`) e
-`make edl-default-scenario` (`scripts/edl_to_ui_project.js` converte o próprio
+`make edl-default-scenario` (`edl_to_ui_project.js`, deste mesmo diretório, converte o próprio
 `src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in` — o cenário do "player máximo" — no
 projeto default que a ferramenta já abre carregado, `edl_default_scenario.generated.json`) são os
 dois insumos gerados; `make edl-builder` encadeia os dois e roda `compile.js`; `make
@@ -3612,7 +3655,7 @@ unitários puros, sem navegador).
 
 **Validação NÃO mora em `src/ui/`, em duas camadas — nenhuma das duas é a gramática real do
 EDL sozinha:**
-1. `make edl-lint FILE=...` (`scripts/edl_lint.py`) — lint estrutural rápido contra o catálogo
+1. `make edl-lint FILE=...` (`tools/edl_lint.py`) — lint estrutural rápido contra o catálogo
    (fábrica/slot desconhecido, ASCII, ordem de `plugins:`, referência solta a nome).
 2. `make edl-check FILE=...` (binário `edlcheck`, `app/src/edlcheck_main.cpp`) — o parser de
    verdade do MIXR, sem precisar de terreno/frota/`WorldModel` — é a validação que importa de

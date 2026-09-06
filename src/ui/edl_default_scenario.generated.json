@@ -154,156 +154,99 @@
                 "key": "1",
                 "node": {
                   "id": 15,
-                  "factory": "UbfArbiter",
-                  "slotValues": {},
-                  "children": {
-                    "behaviors": [
-                      {
-                        "key": "1",
-                        "node": {
-                          "id": 16,
-                          "factory": "AltitudeSafetyBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "90",
-                              "unit": ""
-                            },
-                            "minAltitude": {
-                              "kind": "unit",
-                              "value": "1200",
-                              "unit": "Meters"
-                            },
-                            "recoverAltitude": {
-                              "kind": "unit",
-                              "value": "1750",
-                              "unit": "Meters"
-                            },
-                            "recoverSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "minClearance": {
-                              "kind": "unit",
-                              "value": "400",
-                              "unit": "Meters"
-                            },
-                            "recoverClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            }
-                          },
-                          "children": {}
-                        }
-                      },
-                      {
-                        "key": "2",
-                        "node": {
-                          "id": 17,
-                          "factory": "BtBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "50",
-                              "unit": ""
-                            },
-                            "treeFile": {
-                              "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                            },
-                            "patrolHeading": {
-                              "kind": "unit",
-                              "value": "90",
-                              "unit": "Degrees"
-                            },
-                            "legTime": {
-                              "kind": "unit",
-                              "value": "60",
-                              "unit": "Seconds"
-                            },
-                            "legTurn": {
-                              "kind": "unit",
-                              "value": "90",
-                              "unit": "Degrees"
-                            },
-                            "patrolAltitude": {
-                              "kind": "unit",
-                              "value": "1750",
-                              "unit": "Meters"
-                            },
-                            "patrolSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "rtbAltitude": {
-                              "kind": "unit",
-                              "value": "2050",
-                              "unit": "Meters"
-                            },
-                            "rtbSpeed": {
-                              "kind": "number",
-                              "value": "380.0",
-                              "unit": ""
-                            },
-                            "arrivalRadius": {
-                              "kind": "unit",
-                              "value": "2.0",
-                              "unit": "NauticalMiles"
-                            },
-                            "fuelReserve": {
-                              "kind": "number",
-                              "value": "0.35",
-                              "unit": ""
-                            },
-                            "breakTurn": {
-                              "kind": "unit",
-                              "value": "110",
-                              "unit": "Degrees"
-                            },
-                            "evadeClimb": {
-                              "kind": "unit",
-                              "value": "700",
-                              "unit": "Meters"
-                            },
-                            "evadeSpeed": {
-                              "kind": "number",
-                              "value": "420.0",
-                              "unit": ""
-                            },
-                            "supportSpeed": {
-                              "kind": "number",
-                              "value": "400.0",
-                              "unit": ""
-                            },
-                            "evadeHold": {
-                              "kind": "unit",
-                              "value": "30",
-                              "unit": "Seconds"
-                            },
-                            "terrainClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            },
-                            "patrolJitterHeading": {
-                              "kind": "unit",
-                              "value": "0",
-                              "unit": "Degrees"
-                            },
-                            "patrolMasterSeed": {
-                              "kind": "number",
-                              "value": "20260903",
-                              "unit": ""
-                            }
-                          },
-                          "children": {}
-                        }
-                      }
-                    ]
-                  }
+                  "factory": "BtBehavior",
+                  "slotValues": {
+                    "treeFile": {
+                      "kind": "text",
+                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                    },
+                    "patrolHeading": {
+                      "kind": "unit",
+                      "value": "90",
+                      "unit": "Degrees"
+                    },
+                    "legTime": {
+                      "kind": "unit",
+                      "value": "60",
+                      "unit": "Seconds"
+                    },
+                    "legTurn": {
+                      "kind": "unit",
+                      "value": "90",
+                      "unit": "Degrees"
+                    },
+                    "patrolAltitude": {
+                      "kind": "unit",
+                      "value": "1750",
+                      "unit": "Meters"
+                    },
+                    "patrolSpeed": {
+                      "kind": "number",
+                      "value": "350.0",
+                      "unit": ""
+                    },
+                    "rtbAltitude": {
+                      "kind": "unit",
+                      "value": "2050",
+                      "unit": "Meters"
+                    },
+                    "rtbSpeed": {
+                      "kind": "number",
+                      "value": "380.0",
+                      "unit": ""
+                    },
+                    "arrivalRadius": {
+                      "kind": "unit",
+                      "value": "2.0",
+                      "unit": "NauticalMiles"
+                    },
+                    "fuelReserve": {
+                      "kind": "number",
+                      "value": "0.35",
+                      "unit": ""
+                    },
+                    "breakTurn": {
+                      "kind": "unit",
+                      "value": "110",
+                      "unit": "Degrees"
+                    },
+                    "evadeClimb": {
+                      "kind": "unit",
+                      "value": "700",
+                      "unit": "Meters"
+                    },
+                    "evadeSpeed": {
+                      "kind": "number",
+                      "value": "420.0",
+                      "unit": ""
+                    },
+                    "supportSpeed": {
+                      "kind": "number",
+                      "value": "400.0",
+                      "unit": ""
+                    },
+                    "evadeHold": {
+                      "kind": "unit",
+                      "value": "30",
+                      "unit": "Seconds"
+                    },
+                    "terrainClearance": {
+                      "kind": "unit",
+                      "value": "800",
+                      "unit": "Meters"
+                    },
+                    "patrolJitterHeading": {
+                      "kind": "unit",
+                      "value": "0",
+                      "unit": "Degrees"
+                    },
+                    "patrolMasterSeed": {
+                      "kind": "number",
+                      "value": "20260903",
+                      "unit": ""
+                    }
+                  },
+                  "children": {}
                 }
               }
             ]
@@ -313,7 +256,7 @@
       {
         "key": "agent2",
         "node": {
-          "id": 18,
+          "id": 16,
           "factory": "SimAgent",
           "slotValues": {
             "actorPlayerName": {
@@ -326,7 +269,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 19,
+                  "id": 17,
                   "factory": "FlightState",
                   "slotValues": {},
                   "children": {}
@@ -337,157 +280,100 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 20,
-                  "factory": "UbfArbiter",
-                  "slotValues": {},
-                  "children": {
-                    "behaviors": [
-                      {
-                        "key": "1",
-                        "node": {
-                          "id": 21,
-                          "factory": "AltitudeSafetyBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "90",
-                              "unit": ""
-                            },
-                            "minAltitude": {
-                              "kind": "unit",
-                              "value": "1300",
-                              "unit": "Meters"
-                            },
-                            "recoverAltitude": {
-                              "kind": "unit",
-                              "value": "1850",
-                              "unit": "Meters"
-                            },
-                            "recoverSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "minClearance": {
-                              "kind": "unit",
-                              "value": "400",
-                              "unit": "Meters"
-                            },
-                            "recoverClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            }
-                          },
-                          "children": {}
-                        }
-                      },
-                      {
-                        "key": "2",
-                        "node": {
-                          "id": 22,
-                          "factory": "BtBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "50",
-                              "unit": ""
-                            },
-                            "treeFile": {
-                              "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                            },
-                            "patrolHeading": {
-                              "kind": "unit",
-                              "value": "180",
-                              "unit": "Degrees"
-                            },
-                            "legTime": {
-                              "kind": "unit",
-                              "value": "60",
-                              "unit": "Seconds"
-                            },
-                            "legTurn": {
-                              "kind": "unit",
-                              "value": "90",
-                              "unit": "Degrees"
-                            },
-                            "patrolAltitude": {
-                              "kind": "unit",
-                              "value": "1850",
-                              "unit": "Meters"
-                            },
-                            "patrolSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "rtbAltitude": {
-                              "kind": "unit",
-                              "value": "2150",
-                              "unit": "Meters"
-                            },
-                            "rtbSpeed": {
-                              "kind": "number",
-                              "value": "380.0",
-                              "unit": ""
-                            },
-                            "arrivalRadius": {
-                              "kind": "unit",
-                              "value": "2.0",
-                              "unit": "NauticalMiles"
-                            },
-                            "fuelReserve": {
-                              "kind": "number",
-                              "value": "0.35",
-                              "unit": ""
-                            },
-                            "breakTurn": {
-                              "kind": "unit",
-                              "value": "110",
-                              "unit": "Degrees"
-                            },
-                            "evadeClimb": {
-                              "kind": "unit",
-                              "value": "700",
-                              "unit": "Meters"
-                            },
-                            "evadeSpeed": {
-                              "kind": "number",
-                              "value": "420.0",
-                              "unit": ""
-                            },
-                            "supportSpeed": {
-                              "kind": "number",
-                              "value": "400.0",
-                              "unit": ""
-                            },
-                            "evadeHold": {
-                              "kind": "unit",
-                              "value": "30",
-                              "unit": "Seconds"
-                            },
-                            "terrainClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            },
-                            "patrolJitterHeading": {
-                              "kind": "unit",
-                              "value": "0",
-                              "unit": "Degrees"
-                            },
-                            "patrolMasterSeed": {
-                              "kind": "number",
-                              "value": "20260903",
-                              "unit": ""
-                            }
-                          },
-                          "children": {}
-                        }
-                      }
-                    ]
-                  }
+                  "id": 18,
+                  "factory": "BtBehavior",
+                  "slotValues": {
+                    "treeFile": {
+                      "kind": "text",
+                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                    },
+                    "patrolHeading": {
+                      "kind": "unit",
+                      "value": "180",
+                      "unit": "Degrees"
+                    },
+                    "legTime": {
+                      "kind": "unit",
+                      "value": "60",
+                      "unit": "Seconds"
+                    },
+                    "legTurn": {
+                      "kind": "unit",
+                      "value": "90",
+                      "unit": "Degrees"
+                    },
+                    "patrolAltitude": {
+                      "kind": "unit",
+                      "value": "1850",
+                      "unit": "Meters"
+                    },
+                    "patrolSpeed": {
+                      "kind": "number",
+                      "value": "350.0",
+                      "unit": ""
+                    },
+                    "rtbAltitude": {
+                      "kind": "unit",
+                      "value": "2150",
+                      "unit": "Meters"
+                    },
+                    "rtbSpeed": {
+                      "kind": "number",
+                      "value": "380.0",
+                      "unit": ""
+                    },
+                    "arrivalRadius": {
+                      "kind": "unit",
+                      "value": "2.0",
+                      "unit": "NauticalMiles"
+                    },
+                    "fuelReserve": {
+                      "kind": "number",
+                      "value": "0.35",
+                      "unit": ""
+                    },
+                    "breakTurn": {
+                      "kind": "unit",
+                      "value": "110",
+                      "unit": "Degrees"
+                    },
+                    "evadeClimb": {
+                      "kind": "unit",
+                      "value": "700",
+                      "unit": "Meters"
+                    },
+                    "evadeSpeed": {
+                      "kind": "number",
+                      "value": "420.0",
+                      "unit": ""
+                    },
+                    "supportSpeed": {
+                      "kind": "number",
+                      "value": "400.0",
+                      "unit": ""
+                    },
+                    "evadeHold": {
+                      "kind": "unit",
+                      "value": "30",
+                      "unit": "Seconds"
+                    },
+                    "terrainClearance": {
+                      "kind": "unit",
+                      "value": "800",
+                      "unit": "Meters"
+                    },
+                    "patrolJitterHeading": {
+                      "kind": "unit",
+                      "value": "0",
+                      "unit": "Degrees"
+                    },
+                    "patrolMasterSeed": {
+                      "kind": "number",
+                      "value": "20260903",
+                      "unit": ""
+                    }
+                  },
+                  "children": {}
                 }
               }
             ]
@@ -497,7 +383,7 @@
       {
         "key": "agent3",
         "node": {
-          "id": 23,
+          "id": 19,
           "factory": "SimAgent",
           "slotValues": {
             "actorPlayerName": {
@@ -510,7 +396,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 24,
+                  "id": 20,
                   "factory": "FlightState",
                   "slotValues": {},
                   "children": {}
@@ -521,157 +407,100 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 25,
-                  "factory": "UbfArbiter",
-                  "slotValues": {},
-                  "children": {
-                    "behaviors": [
-                      {
-                        "key": "1",
-                        "node": {
-                          "id": 26,
-                          "factory": "AltitudeSafetyBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "90",
-                              "unit": ""
-                            },
-                            "minAltitude": {
-                              "kind": "unit",
-                              "value": "1500",
-                              "unit": "Meters"
-                            },
-                            "recoverAltitude": {
-                              "kind": "unit",
-                              "value": "2050",
-                              "unit": "Meters"
-                            },
-                            "recoverSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "minClearance": {
-                              "kind": "unit",
-                              "value": "400",
-                              "unit": "Meters"
-                            },
-                            "recoverClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            }
-                          },
-                          "children": {}
-                        }
-                      },
-                      {
-                        "key": "2",
-                        "node": {
-                          "id": 27,
-                          "factory": "BtBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "50",
-                              "unit": ""
-                            },
-                            "treeFile": {
-                              "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                            },
-                            "patrolHeading": {
-                              "kind": "unit",
-                              "value": "270",
-                              "unit": "Degrees"
-                            },
-                            "legTime": {
-                              "kind": "unit",
-                              "value": "60",
-                              "unit": "Seconds"
-                            },
-                            "legTurn": {
-                              "kind": "unit",
-                              "value": "90",
-                              "unit": "Degrees"
-                            },
-                            "patrolAltitude": {
-                              "kind": "unit",
-                              "value": "2050",
-                              "unit": "Meters"
-                            },
-                            "patrolSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "rtbAltitude": {
-                              "kind": "unit",
-                              "value": "2350",
-                              "unit": "Meters"
-                            },
-                            "rtbSpeed": {
-                              "kind": "number",
-                              "value": "380.0",
-                              "unit": ""
-                            },
-                            "arrivalRadius": {
-                              "kind": "unit",
-                              "value": "2.0",
-                              "unit": "NauticalMiles"
-                            },
-                            "fuelReserve": {
-                              "kind": "number",
-                              "value": "0.35",
-                              "unit": ""
-                            },
-                            "breakTurn": {
-                              "kind": "unit",
-                              "value": "110",
-                              "unit": "Degrees"
-                            },
-                            "evadeClimb": {
-                              "kind": "unit",
-                              "value": "700",
-                              "unit": "Meters"
-                            },
-                            "evadeSpeed": {
-                              "kind": "number",
-                              "value": "420.0",
-                              "unit": ""
-                            },
-                            "supportSpeed": {
-                              "kind": "number",
-                              "value": "400.0",
-                              "unit": ""
-                            },
-                            "evadeHold": {
-                              "kind": "unit",
-                              "value": "30",
-                              "unit": "Seconds"
-                            },
-                            "terrainClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            },
-                            "patrolJitterHeading": {
-                              "kind": "unit",
-                              "value": "0",
-                              "unit": "Degrees"
-                            },
-                            "patrolMasterSeed": {
-                              "kind": "number",
-                              "value": "20260903",
-                              "unit": ""
-                            }
-                          },
-                          "children": {}
-                        }
-                      }
-                    ]
-                  }
+                  "id": 21,
+                  "factory": "BtBehavior",
+                  "slotValues": {
+                    "treeFile": {
+                      "kind": "text",
+                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                    },
+                    "patrolHeading": {
+                      "kind": "unit",
+                      "value": "270",
+                      "unit": "Degrees"
+                    },
+                    "legTime": {
+                      "kind": "unit",
+                      "value": "60",
+                      "unit": "Seconds"
+                    },
+                    "legTurn": {
+                      "kind": "unit",
+                      "value": "90",
+                      "unit": "Degrees"
+                    },
+                    "patrolAltitude": {
+                      "kind": "unit",
+                      "value": "2050",
+                      "unit": "Meters"
+                    },
+                    "patrolSpeed": {
+                      "kind": "number",
+                      "value": "350.0",
+                      "unit": ""
+                    },
+                    "rtbAltitude": {
+                      "kind": "unit",
+                      "value": "2350",
+                      "unit": "Meters"
+                    },
+                    "rtbSpeed": {
+                      "kind": "number",
+                      "value": "380.0",
+                      "unit": ""
+                    },
+                    "arrivalRadius": {
+                      "kind": "unit",
+                      "value": "2.0",
+                      "unit": "NauticalMiles"
+                    },
+                    "fuelReserve": {
+                      "kind": "number",
+                      "value": "0.35",
+                      "unit": ""
+                    },
+                    "breakTurn": {
+                      "kind": "unit",
+                      "value": "110",
+                      "unit": "Degrees"
+                    },
+                    "evadeClimb": {
+                      "kind": "unit",
+                      "value": "700",
+                      "unit": "Meters"
+                    },
+                    "evadeSpeed": {
+                      "kind": "number",
+                      "value": "420.0",
+                      "unit": ""
+                    },
+                    "supportSpeed": {
+                      "kind": "number",
+                      "value": "400.0",
+                      "unit": ""
+                    },
+                    "evadeHold": {
+                      "kind": "unit",
+                      "value": "30",
+                      "unit": "Seconds"
+                    },
+                    "terrainClearance": {
+                      "kind": "unit",
+                      "value": "800",
+                      "unit": "Meters"
+                    },
+                    "patrolJitterHeading": {
+                      "kind": "unit",
+                      "value": "0",
+                      "unit": "Degrees"
+                    },
+                    "patrolMasterSeed": {
+                      "kind": "number",
+                      "value": "20260903",
+                      "unit": ""
+                    }
+                  },
+                  "children": {}
                 }
               }
             ]
@@ -681,7 +510,7 @@
       {
         "key": "agent4",
         "node": {
-          "id": 28,
+          "id": 22,
           "factory": "SimAgent",
           "slotValues": {
             "actorPlayerName": {
@@ -694,7 +523,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 29,
+                  "id": 23,
                   "factory": "FlightState",
                   "slotValues": {},
                   "children": {}
@@ -705,157 +534,100 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 30,
-                  "factory": "UbfArbiter",
-                  "slotValues": {},
-                  "children": {
-                    "behaviors": [
-                      {
-                        "key": "1",
-                        "node": {
-                          "id": 31,
-                          "factory": "AltitudeSafetyBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "90",
-                              "unit": ""
-                            },
-                            "minAltitude": {
-                              "kind": "unit",
-                              "value": "1550",
-                              "unit": "Meters"
-                            },
-                            "recoverAltitude": {
-                              "kind": "unit",
-                              "value": "2100",
-                              "unit": "Meters"
-                            },
-                            "recoverSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "minClearance": {
-                              "kind": "unit",
-                              "value": "400",
-                              "unit": "Meters"
-                            },
-                            "recoverClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            }
-                          },
-                          "children": {}
-                        }
-                      },
-                      {
-                        "key": "2",
-                        "node": {
-                          "id": 32,
-                          "factory": "BtBehavior",
-                          "slotValues": {
-                            "vote": {
-                              "kind": "number",
-                              "value": "50",
-                              "unit": ""
-                            },
-                            "treeFile": {
-                              "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                            },
-                            "patrolHeading": {
-                              "kind": "unit",
-                              "value": "0",
-                              "unit": "Degrees"
-                            },
-                            "legTime": {
-                              "kind": "unit",
-                              "value": "60",
-                              "unit": "Seconds"
-                            },
-                            "legTurn": {
-                              "kind": "unit",
-                              "value": "90",
-                              "unit": "Degrees"
-                            },
-                            "patrolAltitude": {
-                              "kind": "unit",
-                              "value": "2100",
-                              "unit": "Meters"
-                            },
-                            "patrolSpeed": {
-                              "kind": "number",
-                              "value": "350.0",
-                              "unit": ""
-                            },
-                            "rtbAltitude": {
-                              "kind": "unit",
-                              "value": "2400",
-                              "unit": "Meters"
-                            },
-                            "rtbSpeed": {
-                              "kind": "number",
-                              "value": "380.0",
-                              "unit": ""
-                            },
-                            "arrivalRadius": {
-                              "kind": "unit",
-                              "value": "2.0",
-                              "unit": "NauticalMiles"
-                            },
-                            "fuelReserve": {
-                              "kind": "number",
-                              "value": "0.35",
-                              "unit": ""
-                            },
-                            "breakTurn": {
-                              "kind": "unit",
-                              "value": "110",
-                              "unit": "Degrees"
-                            },
-                            "evadeClimb": {
-                              "kind": "unit",
-                              "value": "700",
-                              "unit": "Meters"
-                            },
-                            "evadeSpeed": {
-                              "kind": "number",
-                              "value": "420.0",
-                              "unit": ""
-                            },
-                            "supportSpeed": {
-                              "kind": "number",
-                              "value": "400.0",
-                              "unit": ""
-                            },
-                            "evadeHold": {
-                              "kind": "unit",
-                              "value": "30",
-                              "unit": "Seconds"
-                            },
-                            "terrainClearance": {
-                              "kind": "unit",
-                              "value": "800",
-                              "unit": "Meters"
-                            },
-                            "patrolJitterHeading": {
-                              "kind": "unit",
-                              "value": "0",
-                              "unit": "Degrees"
-                            },
-                            "patrolMasterSeed": {
-                              "kind": "number",
-                              "value": "20260903",
-                              "unit": ""
-                            }
-                          },
-                          "children": {}
-                        }
-                      }
-                    ]
-                  }
+                  "id": 24,
+                  "factory": "BtBehavior",
+                  "slotValues": {
+                    "treeFile": {
+                      "kind": "text",
+                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                    },
+                    "patrolHeading": {
+                      "kind": "unit",
+                      "value": "0",
+                      "unit": "Degrees"
+                    },
+                    "legTime": {
+                      "kind": "unit",
+                      "value": "60",
+                      "unit": "Seconds"
+                    },
+                    "legTurn": {
+                      "kind": "unit",
+                      "value": "90",
+                      "unit": "Degrees"
+                    },
+                    "patrolAltitude": {
+                      "kind": "unit",
+                      "value": "2100",
+                      "unit": "Meters"
+                    },
+                    "patrolSpeed": {
+                      "kind": "number",
+                      "value": "350.0",
+                      "unit": ""
+                    },
+                    "rtbAltitude": {
+                      "kind": "unit",
+                      "value": "2400",
+                      "unit": "Meters"
+                    },
+                    "rtbSpeed": {
+                      "kind": "number",
+                      "value": "380.0",
+                      "unit": ""
+                    },
+                    "arrivalRadius": {
+                      "kind": "unit",
+                      "value": "2.0",
+                      "unit": "NauticalMiles"
+                    },
+                    "fuelReserve": {
+                      "kind": "number",
+                      "value": "0.35",
+                      "unit": ""
+                    },
+                    "breakTurn": {
+                      "kind": "unit",
+                      "value": "110",
+                      "unit": "Degrees"
+                    },
+                    "evadeClimb": {
+                      "kind": "unit",
+                      "value": "700",
+                      "unit": "Meters"
+                    },
+                    "evadeSpeed": {
+                      "kind": "number",
+                      "value": "420.0",
+                      "unit": ""
+                    },
+                    "supportSpeed": {
+                      "kind": "number",
+                      "value": "400.0",
+                      "unit": ""
+                    },
+                    "evadeHold": {
+                      "kind": "unit",
+                      "value": "30",
+                      "unit": "Seconds"
+                    },
+                    "terrainClearance": {
+                      "kind": "unit",
+                      "value": "800",
+                      "unit": "Meters"
+                    },
+                    "patrolJitterHeading": {
+                      "kind": "unit",
+                      "value": "0",
+                      "unit": "Degrees"
+                    },
+                    "patrolMasterSeed": {
+                      "kind": "number",
+                      "value": "20260903",
+                      "unit": ""
+                    }
+                  },
+                  "children": {}
                 }
               }
             ]
@@ -865,7 +637,7 @@
       {
         "key": "msgFeed",
         "node": {
-          "id": 33,
+          "id": 25,
           "factory": "MsgFeed",
           "slotValues": {
             "trackManager": {
@@ -888,7 +660,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 34,
+                  "id": 26,
                   "factory": "MsgFileSink",
                   "slotValues": {
                     "fileName": {
@@ -909,7 +681,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 35,
+                  "id": 27,
                   "factory": "MsgReport",
                   "slotValues": {
                     "name": {
@@ -928,7 +700,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 36,
+                          "id": 28,
                           "isText": true,
                           "text": "player",
                           "children": {}
@@ -937,7 +709,7 @@
                       {
                         "key": "2",
                         "node": {
-                          "id": 37,
+                          "id": 29,
                           "isText": true,
                           "text": "side",
                           "children": {}
@@ -946,7 +718,7 @@
                       {
                         "key": "3",
                         "node": {
-                          "id": 38,
+                          "id": 30,
                           "isText": true,
                           "text": "mode",
                           "children": {}
@@ -957,7 +729,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 39,
+                          "id": 31,
                           "isText": true,
                           "text": "latDeg",
                           "children": {}
@@ -966,7 +738,7 @@
                       {
                         "key": "2",
                         "node": {
-                          "id": 40,
+                          "id": 32,
                           "isText": true,
                           "text": "lonDeg",
                           "children": {}
@@ -975,7 +747,7 @@
                       {
                         "key": "3",
                         "node": {
-                          "id": 41,
+                          "id": 33,
                           "isText": true,
                           "text": "altMslM",
                           "children": {}
@@ -984,7 +756,7 @@
                       {
                         "key": "4",
                         "node": {
-                          "id": 42,
+                          "id": 34,
                           "isText": true,
                           "text": "altAglM",
                           "children": {}
@@ -993,7 +765,7 @@
                       {
                         "key": "5",
                         "node": {
-                          "id": 43,
+                          "id": 35,
                           "isText": true,
                           "text": "hdgDeg",
                           "children": {}
@@ -1002,7 +774,7 @@
                       {
                         "key": "6",
                         "node": {
-                          "id": 44,
+                          "id": 36,
                           "isText": true,
                           "text": "speedKts",
                           "children": {}
@@ -1011,7 +783,7 @@
                       {
                         "key": "7",
                         "node": {
-                          "id": 45,
+                          "id": 37,
                           "isText": true,
                           "text": "fuelFrac",
                           "children": {}
@@ -1030,7 +802,7 @@
       {
         "key": "1",
         "node": {
-          "id": 46,
+          "id": 38,
           "factory": "ExposedDataRecorder",
           "slotValues": {
             "eventName": {
@@ -1047,7 +819,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 47,
+                  "id": 39,
                   "factory": "RecorderOutputHandler",
                   "slotValues": {},
                   "children": {
@@ -1055,7 +827,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 48,
+                          "id": 40,
                           "factory": "TacviewOutput",
                           "slotValues": {
                             "port": {
@@ -1077,7 +849,7 @@
                               {
                                 "key": "falcon1",
                                 "node": {
-                                  "id": 49,
+                                  "id": 41,
                                   "isText": true,
                                   "text": "A-4E",
                                   "children": {}
@@ -1086,7 +858,7 @@
                               {
                                 "key": "falcon2",
                                 "node": {
-                                  "id": 50,
+                                  "id": 42,
                                   "isText": true,
                                   "text": "A-4E",
                                   "children": {}
@@ -1095,7 +867,7 @@
                               {
                                 "key": "falcon3",
                                 "node": {
-                                  "id": 51,
+                                  "id": 43,
                                   "isText": true,
                                   "text": "A-4E",
                                   "children": {}
@@ -1104,7 +876,7 @@
                               {
                                 "key": "falcon4",
                                 "node": {
-                                  "id": 52,
+                                  "id": 44,
                                   "isText": true,
                                   "text": "A-4E",
                                   "children": {}
@@ -1113,7 +885,7 @@
                               {
                                 "key": "bandit1",
                                 "node": {
-                                  "id": 53,
+                                  "id": 45,
                                   "isText": true,
                                   "text": "A-4E",
                                   "children": {}
@@ -1124,7 +896,7 @@
                               {
                                 "key": "falcon1",
                                 "node": {
-                                  "id": 54,
+                                  "id": 46,
                                   "isText": true,
                                   "text": "Air+FixedWing",
                                   "children": {}
@@ -1133,7 +905,7 @@
                               {
                                 "key": "falcon2",
                                 "node": {
-                                  "id": 55,
+                                  "id": 47,
                                   "isText": true,
                                   "text": "Air+FixedWing",
                                   "children": {}
@@ -1142,7 +914,7 @@
                               {
                                 "key": "falcon3",
                                 "node": {
-                                  "id": 56,
+                                  "id": 48,
                                   "isText": true,
                                   "text": "Air+FixedWing",
                                   "children": {}
@@ -1151,7 +923,7 @@
                               {
                                 "key": "falcon4",
                                 "node": {
-                                  "id": 57,
+                                  "id": 49,
                                   "isText": true,
                                   "text": "Air+FixedWing",
                                   "children": {}
@@ -1160,7 +932,7 @@
                               {
                                 "key": "bandit1",
                                 "node": {
-                                  "id": 58,
+                                  "id": 50,
                                   "isText": true,
                                   "text": "Air+FixedWing",
                                   "children": {}
@@ -1171,7 +943,7 @@
                               {
                                 "key": "falcon1",
                                 "node": {
-                                  "id": 59,
+                                  "id": 51,
                                   "isText": true,
                                   "text": "Blue",
                                   "children": {}
@@ -1180,7 +952,7 @@
                               {
                                 "key": "falcon2",
                                 "node": {
-                                  "id": 60,
+                                  "id": 52,
                                   "isText": true,
                                   "text": "Blue",
                                   "children": {}
@@ -1189,7 +961,7 @@
                               {
                                 "key": "falcon3",
                                 "node": {
-                                  "id": 61,
+                                  "id": 53,
                                   "isText": true,
                                   "text": "Blue",
                                   "children": {}
@@ -1198,7 +970,7 @@
                               {
                                 "key": "falcon4",
                                 "node": {
-                                  "id": 62,
+                                  "id": 54,
                                   "isText": true,
                                   "text": "Blue",
                                   "children": {}
@@ -1207,7 +979,7 @@
                               {
                                 "key": "bandit1",
                                 "node": {
-                                  "id": 63,
+                                  "id": 55,
                                   "isText": true,
                                   "text": "Red",
                                   "children": {}
@@ -1230,7 +1002,7 @@
       {
         "key": "1",
         "node": {
-          "id": 64,
+          "id": 56,
           "factory": "WorldModel",
           "slotValues": {
             "numTcThreads": {
@@ -1254,7 +1026,7 @@
               {
                 "key": "1",
                 "node": {
-                  "id": 65,
+                  "id": 57,
                   "factory": "SrtmHgtFile",
                   "slotValues": {
                     "path": {
@@ -1274,7 +1046,7 @@
               {
                 "key": "falcon1",
                 "node": {
-                  "id": 66,
+                  "id": 58,
                   "factory": "Aircraft",
                   "slotValues": {
                     "id": {
@@ -1335,7 +1107,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 67,
+                          "id": 59,
                           "factory": "SigSwitch",
                           "slotValues": {},
                           "children": {
@@ -1343,7 +1115,7 @@
                               {
                                 "key": "limpo",
                                 "node": {
-                                  "id": 68,
+                                  "id": 60,
                                   "factory": "SigSphere",
                                   "slotValues": {
                                     "radius": {
@@ -1358,7 +1130,7 @@
                               {
                                 "key": "placa",
                                 "node": {
-                                  "id": 69,
+                                  "id": 61,
                                   "factory": "SigPlate",
                                   "slotValues": {
                                     "a": {
@@ -1378,7 +1150,7 @@
                               {
                                 "key": "const",
                                 "node": {
-                                  "id": 70,
+                                  "id": 62,
                                   "factory": "SigConstant",
                                   "slotValues": {
                                     "rcs": {
@@ -1393,7 +1165,7 @@
                               {
                                 "key": "died",
                                 "node": {
-                                  "id": 71,
+                                  "id": 63,
                                   "factory": "SigDihedralCR",
                                   "slotValues": {
                                     "a": {
@@ -1413,7 +1185,7 @@
                               {
                                 "key": "tried",
                                 "node": {
-                                  "id": 72,
+                                  "id": 64,
                                   "factory": "SigTrihedralCR",
                                   "slotValues": {
                                     "a": {
@@ -1433,7 +1205,7 @@
                               {
                                 "key": "azel",
                                 "node": {
-                                  "id": 73,
+                                  "id": 65,
                                   "factory": "SigAzEl",
                                   "slotValues": {
                                     "inDegrees": {
@@ -1450,7 +1222,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 74,
+                                          "id": 66,
                                           "factory": "Table2",
                                           "slotValues": {
                                             "x": {
@@ -1467,7 +1239,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 75,
+                                                  "id": 67,
                                                   "isText": true,
                                                   "text": "[ 3.0 8.0 12.0 8.0 3.0 ]",
                                                   "children": {}
@@ -1476,7 +1248,7 @@
                                               {
                                                 "key": "2",
                                                 "node": {
-                                                  "id": 76,
+                                                  "id": 68,
                                                   "isText": true,
                                                   "text": "[ 5.0 10.0 15.0 10.0 5.0 ]",
                                                   "children": {}
@@ -1485,7 +1257,7 @@
                                               {
                                                 "key": "3",
                                                 "node": {
-                                                  "id": 77,
+                                                  "id": 69,
                                                   "isText": true,
                                                   "text": "[ 3.0 8.0 12.0 8.0 3.0 ]",
                                                   "children": {}
@@ -1508,7 +1280,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 78,
+                          "id": 70,
                           "factory": "IrSignature",
                           "slotValues": {
                             "baseHeatSignature": {
@@ -1532,7 +1304,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 79,
+                                  "id": 71,
                                   "factory": "IrSphere",
                                   "slotValues": {
                                     "radius": {
@@ -1553,7 +1325,7 @@
                       {
                         "key": "dynamicsModel",
                         "node": {
-                          "id": 80,
+                          "id": 72,
                           "factory": "JSBSimModel",
                           "slotValues": {
                             "rootDir": {
@@ -1576,7 +1348,7 @@
                       {
                         "key": "pilot",
                         "node": {
-                          "id": 81,
+                          "id": 73,
                           "factory": "Autopilot",
                           "slotValues": {
                             "navMode": {
@@ -1627,7 +1399,7 @@
                       {
                         "key": "nav",
                         "node": {
-                          "id": 82,
+                          "id": 74,
                           "factory": "Ins",
                           "slotValues": {},
                           "children": {
@@ -1635,7 +1407,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 83,
+                                  "id": 75,
                                   "factory": "Bullseye",
                                   "slotValues": {
                                     "latitude": {
@@ -1657,7 +1429,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 84,
+                                  "id": 76,
                                   "factory": "Route",
                                   "slotValues": {
                                     "to": {
@@ -1684,7 +1456,7 @@
                                       {
                                         "key": "wp1",
                                         "node": {
-                                          "id": 85,
+                                          "id": 77,
                                           "factory": "Steerpoint",
                                           "slotValues": {
                                             "stptType": {
@@ -1721,7 +1493,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 86,
+                                                  "id": 78,
                                                   "factory": "ActionDecoyRelease",
                                                   "slotValues": {
                                                     "numToLaunch": {
@@ -1745,7 +1517,7 @@
                                       {
                                         "key": "wp2",
                                         "node": {
-                                          "id": 87,
+                                          "id": 79,
                                           "factory": "Steerpoint",
                                           "slotValues": {
                                             "stptType": {
@@ -1782,7 +1554,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 88,
+                                                  "id": 80,
                                                   "factory": "ActionImagingSar",
                                                   "slotValues": {
                                                     "sarElevation": {
@@ -1806,7 +1578,7 @@
                                                       {
                                                         "key": "1",
                                                         "node": {
-                                                          "id": 89,
+                                                          "id": 81,
                                                           "factory": "LatLon",
                                                           "slotValues": {
                                                             "direction": {
@@ -1832,7 +1604,7 @@
                                                       {
                                                         "key": "1",
                                                         "node": {
-                                                          "id": 90,
+                                                          "id": 82,
                                                           "factory": "LatLon",
                                                           "slotValues": {
                                                             "direction": {
@@ -1864,7 +1636,7 @@
                                       {
                                         "key": "wp3",
                                         "node": {
-                                          "id": 91,
+                                          "id": 83,
                                           "factory": "Steerpoint",
                                           "slotValues": {
                                             "stptType": {
@@ -1901,7 +1673,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 92,
+                                                  "id": 84,
                                                   "factory": "ActionCamouflageType",
                                                   "slotValues": {
                                                     "camouflageType": {
@@ -1920,7 +1692,7 @@
                                       {
                                         "key": "wp4",
                                         "node": {
-                                          "id": 93,
+                                          "id": 85,
                                           "factory": "Steerpoint",
                                           "slotValues": {
                                             "stptType": {
@@ -1957,7 +1729,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 94,
+                                                  "id": 86,
                                                   "factory": "ActionWeaponRelease",
                                                   "slotValues": {
                                                     "targetElevation": {
@@ -1976,7 +1748,7 @@
                                                       {
                                                         "key": "1",
                                                         "node": {
-                                                          "id": 95,
+                                                          "id": 87,
                                                           "factory": "LatLon",
                                                           "slotValues": {
                                                             "direction": {
@@ -2002,7 +1774,7 @@
                                                       {
                                                         "key": "1",
                                                         "node": {
-                                                          "id": 96,
+                                                          "id": 88,
                                                           "factory": "LatLon",
                                                           "slotValues": {
                                                             "direction": {
@@ -2040,7 +1812,7 @@
                               {
                                 "key": "gps",
                                 "node": {
-                                  "id": 97,
+                                  "id": 89,
                                   "factory": "Gps",
                                   "slotValues": {},
                                   "children": {}
@@ -2053,7 +1825,7 @@
                       {
                         "key": "datalink",
                         "node": {
-                          "id": 98,
+                          "id": 90,
                           "factory": "AlertDatalink",
                           "slotValues": {
                             "holdTime": {
@@ -2077,7 +1849,7 @@
                       {
                         "key": "comm1",
                         "node": {
-                          "id": 99,
+                          "id": 91,
                           "factory": "CommRadio",
                           "slotValues": {
                             "radioID": {
@@ -2121,7 +1893,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 100,
+                                  "id": 92,
                                   "factory": "MegaHertz",
                                   "slotValues": {},
                                   "children": {}
@@ -2130,7 +1902,7 @@
                               {
                                 "key": "2",
                                 "node": {
-                                  "id": 101,
+                                  "id": 93,
                                   "factory": "MegaHertz",
                                   "slotValues": {},
                                   "children": {}
@@ -2139,7 +1911,7 @@
                               {
                                 "key": "3",
                                 "node": {
-                                  "id": 102,
+                                  "id": 94,
                                   "factory": "MegaHertz",
                                   "slotValues": {},
                                   "children": {}
@@ -2148,7 +1920,7 @@
                               {
                                 "key": "4",
                                 "node": {
-                                  "id": 103,
+                                  "id": 95,
                                   "factory": "MegaHertz",
                                   "slotValues": {},
                                   "children": {}
@@ -2159,7 +1931,7 @@
                               {
                                 "key": "iff",
                                 "node": {
-                                  "id": 104,
+                                  "id": 96,
                                   "factory": "Iff",
                                   "slotValues": {
                                     "radioID": {
@@ -2224,7 +1996,7 @@
                       {
                         "key": "antennas",
                         "node": {
-                          "id": 105,
+                          "id": 97,
                           "factory": "Gimbal",
                           "slotValues": {},
                           "children": {
@@ -2232,7 +2004,7 @@
                               {
                                 "key": "ant_tws",
                                 "node": {
-                                  "id": 106,
+                                  "id": 98,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -2308,7 +2080,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 107,
+                                          "id": 99,
                                           "factory": "Func1",
                                           "slotValues": {},
                                           "children": {
@@ -2316,7 +2088,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 108,
+                                                  "id": 100,
                                                   "factory": "Table1",
                                                   "slotValues": {
                                                     "x": {
@@ -2340,7 +2112,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 109,
+                                          "id": 101,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -2353,7 +2125,7 @@
                               {
                                 "key": "ant_stt",
                                 "node": {
-                                  "id": 110,
+                                  "id": 102,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -2402,7 +2174,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 111,
+                                          "id": 103,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -2415,7 +2187,7 @@
                               {
                                 "key": "ant_gmti",
                                 "node": {
-                                  "id": 112,
+                                  "id": 104,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -2464,7 +2236,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 113,
+                                          "id": 105,
                                           "isText": true,
                                           "text": "ground",
                                           "children": {}
@@ -2473,7 +2245,7 @@
                                       {
                                         "key": "2",
                                         "node": {
-                                          "id": 114,
+                                          "id": 106,
                                           "isText": true,
                                           "text": "ship",
                                           "children": {}
@@ -2486,7 +2258,7 @@
                               {
                                 "key": "ant_rwr",
                                 "node": {
-                                  "id": 115,
+                                  "id": 107,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -2531,7 +2303,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 116,
+                                          "id": 108,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -2540,7 +2312,7 @@
                                       {
                                         "key": "2",
                                         "node": {
-                                          "id": 117,
+                                          "id": 109,
                                           "isText": true,
                                           "text": "ground",
                                           "children": {}
@@ -2549,7 +2321,7 @@
                                       {
                                         "key": "3",
                                         "node": {
-                                          "id": 118,
+                                          "id": 110,
                                           "isText": true,
                                           "text": "ship",
                                           "children": {}
@@ -2562,7 +2334,7 @@
                               {
                                 "key": "ant_jam",
                                 "node": {
-                                  "id": 119,
+                                  "id": 111,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -2607,7 +2379,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 120,
+                                          "id": 112,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -2616,7 +2388,7 @@
                                       {
                                         "key": "2",
                                         "node": {
-                                          "id": 121,
+                                          "id": 113,
                                           "isText": true,
                                           "text": "ground",
                                           "children": {}
@@ -2629,7 +2401,7 @@
                               {
                                 "key": "estab",
                                 "node": {
-                                  "id": 122,
+                                  "id": 114,
                                   "factory": "StabilizingGimbal",
                                   "slotValues": {
                                     "stabilizingMode": {
@@ -2642,7 +2414,7 @@
                                       {
                                         "key": "ant_sar",
                                         "node": {
-                                          "id": 123,
+                                          "id": 115,
                                           "factory": "Antenna",
                                           "slotValues": {
                                             "polarization": {
@@ -2687,7 +2459,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 124,
+                                                  "id": 116,
                                                   "isText": true,
                                                   "text": "ground",
                                                   "children": {}
@@ -2704,7 +2476,7 @@
                               {
                                 "key": "irst",
                                 "node": {
-                                  "id": 125,
+                                  "id": 117,
                                   "factory": "IrSeeker",
                                   "slotValues": {
                                     "initPosition": {
@@ -2753,7 +2525,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 126,
+                                          "id": 118,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -2770,7 +2542,7 @@
                       {
                         "key": "sensors",
                         "node": {
-                          "id": 127,
+                          "id": 119,
                           "factory": "SensorMgr",
                           "slotValues": {},
                           "children": {
@@ -2778,7 +2550,7 @@
                               {
                                 "key": "tws",
                                 "node": {
-                                  "id": 128,
+                                  "id": 120,
                                   "factory": "Tws",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -2840,7 +2612,7 @@
                               {
                                 "key": "stt",
                                 "node": {
-                                  "id": 129,
+                                  "id": 121,
                                   "factory": "Stt",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -2902,7 +2674,7 @@
                               {
                                 "key": "gmti",
                                 "node": {
-                                  "id": 130,
+                                  "id": 122,
                                   "factory": "Gmti",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -2964,7 +2736,7 @@
                               {
                                 "key": "sar",
                                 "node": {
-                                  "id": 131,
+                                  "id": 123,
                                   "factory": "Sar",
                                   "slotValues": {
                                     "antennaName": {
@@ -3018,7 +2790,7 @@
                               {
                                 "key": "rwr",
                                 "node": {
-                                  "id": 132,
+                                  "id": 124,
                                   "factory": "Rwr",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -3055,7 +2827,7 @@
                               {
                                 "key": "jam",
                                 "node": {
-                                  "id": 133,
+                                  "id": 125,
                                   "factory": "Jammer",
                                   "slotValues": {
                                     "antennaName": {
@@ -3092,7 +2864,7 @@
                       {
                         "key": "irsystem",
                         "node": {
-                          "id": 134,
+                          "id": 126,
                           "factory": "IrSensor",
                           "slotValues": {
                             "seekerName": {
@@ -3144,7 +2916,7 @@
                       {
                         "key": "obc",
                         "node": {
-                          "id": 135,
+                          "id": 127,
                           "factory": "OnboardComputer",
                           "slotValues": {},
                           "children": {
@@ -3152,7 +2924,7 @@
                               {
                                 "key": "twsTrkMgr",
                                 "node": {
-                                  "id": 136,
+                                  "id": 128,
                                   "factory": "AirTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -3202,7 +2974,7 @@
                               {
                                 "key": "rwrTrkMgr",
                                 "node": {
-                                  "id": 137,
+                                  "id": 129,
                                   "factory": "RwrTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -3237,7 +3009,7 @@
                               {
                                 "key": "gmtiTrkMgr",
                                 "node": {
-                                  "id": 138,
+                                  "id": 130,
                                   "factory": "GmtiTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -3272,7 +3044,7 @@
                               {
                                 "key": "irTrkMgr",
                                 "node": {
-                                  "id": 139,
+                                  "id": 131,
                                   "factory": "AirAngleOnlyTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -3321,7 +3093,7 @@
                       {
                         "key": "stores",
                         "node": {
-                          "id": 140,
+                          "id": 132,
                           "factory": "StoresMgr",
                           "slotValues": {
                             "numStations": {
@@ -3335,7 +3107,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 141,
+                                  "id": 133,
                                   "factory": "AamMissile",
                                   "slotValues": {
                                     "id": {
@@ -3382,7 +3154,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 142,
+                                          "id": 134,
                                           "factory": "SigSphere",
                                           "slotValues": {
                                             "radius": {
@@ -3401,7 +3173,7 @@
                               {
                                 "key": "2",
                                 "node": {
-                                  "id": 143,
+                                  "id": 135,
                                   "factory": "AamMissile",
                                   "slotValues": {
                                     "id": {
@@ -3448,7 +3220,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 144,
+                                          "id": 136,
                                           "factory": "SigSphere",
                                           "slotValues": {
                                             "radius": {
@@ -3467,7 +3239,7 @@
                               {
                                 "key": "3",
                                 "node": {
-                                  "id": 145,
+                                  "id": 137,
                                   "factory": "AgmMissile",
                                   "slotValues": {
                                     "id": {
@@ -3509,7 +3281,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 146,
+                                          "id": 138,
                                           "factory": "SigSphere",
                                           "slotValues": {
                                             "radius": {
@@ -3528,7 +3300,7 @@
                               {
                                 "key": "4",
                                 "node": {
-                                  "id": 147,
+                                  "id": 139,
                                   "factory": "Sam",
                                   "slotValues": {
                                     "id": {
@@ -3565,7 +3337,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 148,
+                                          "id": 140,
                                           "factory": "SigSphere",
                                           "slotValues": {
                                             "radius": {
@@ -3584,7 +3356,7 @@
                               {
                                 "key": "5",
                                 "node": {
-                                  "id": 149,
+                                  "id": 141,
                                   "factory": "Bomb",
                                   "slotValues": {
                                     "id": {
@@ -3643,7 +3415,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 150,
+                                          "id": 142,
                                           "factory": "SigSphere",
                                           "slotValues": {
                                             "radius": {
@@ -3662,7 +3434,7 @@
                               {
                                 "key": "6",
                                 "node": {
-                                  "id": 151,
+                                  "id": 143,
                                   "factory": "Chaff",
                                   "slotValues": {
                                     "id": {
@@ -3700,7 +3472,7 @@
                               {
                                 "key": "7",
                                 "node": {
-                                  "id": 152,
+                                  "id": 144,
                                   "factory": "Flare",
                                   "slotValues": {
                                     "id": {
@@ -3738,7 +3510,7 @@
                               {
                                 "key": "8",
                                 "node": {
-                                  "id": 153,
+                                  "id": 145,
                                   "factory": "Decoy",
                                   "slotValues": {
                                     "id": {
@@ -3776,7 +3548,7 @@
                               {
                                 "key": "9",
                                 "node": {
-                                  "id": 154,
+                                  "id": 146,
                                   "factory": "Gun",
                                   "slotValues": {
                                     "type": {
@@ -3808,7 +3580,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 155,
+                                          "id": 147,
                                           "factory": "Bullet",
                                           "slotValues": {
                                             "id": {
@@ -3845,7 +3617,7 @@
                               {
                                 "key": "10",
                                 "node": {
-                                  "id": 156,
+                                  "id": 148,
                                   "factory": "FuelTank",
                                   "slotValues": {
                                     "type": {
@@ -3873,7 +3645,7 @@
                               {
                                 "key": "11",
                                 "node": {
-                                  "id": 157,
+                                  "id": 149,
                                   "factory": "AvionicsPod",
                                   "slotValues": {
                                     "type": {
@@ -3895,7 +3667,7 @@
                       {
                         "key": "colisao",
                         "node": {
-                          "id": 158,
+                          "id": 150,
                           "factory": "CollisionDetect",
                           "slotValues": {
                             "collisionRange": {
@@ -3936,7 +3708,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 159,
+                                  "id": 151,
                                   "isText": true,
                                   "text": "air",
                                   "children": {}
@@ -3953,7 +3725,7 @@
               {
                 "key": "falcon2",
                 "node": {
-                  "id": 160,
+                  "id": 152,
                   "factory": "Aircraft",
                   "slotValues": {
                     "id": {
@@ -4009,7 +3781,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 161,
+                          "id": 153,
                           "factory": "SigSphere",
                           "slotValues": {
                             "radius": {
@@ -4026,7 +3798,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 162,
+                          "id": 154,
                           "factory": "IrSignature",
                           "slotValues": {
                             "baseHeatSignature": {
@@ -4050,7 +3822,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 163,
+                                  "id": 155,
                                   "factory": "IrSphere",
                                   "slotValues": {
                                     "radius": {
@@ -4071,7 +3843,7 @@
                       {
                         "key": "dynamicsModel",
                         "node": {
-                          "id": 164,
+                          "id": 156,
                           "factory": "JSBSimModel",
                           "slotValues": {
                             "rootDir": {
@@ -4094,7 +3866,7 @@
                       {
                         "key": "pilot",
                         "node": {
-                          "id": 165,
+                          "id": 157,
                           "factory": "Autopilot",
                           "slotValues": {
                             "navMode": {
@@ -4145,7 +3917,7 @@
                       {
                         "key": "datalink",
                         "node": {
-                          "id": 166,
+                          "id": 158,
                           "factory": "AlertDatalink",
                           "slotValues": {
                             "holdTime": {
@@ -4160,7 +3932,7 @@
                       {
                         "key": "antennas",
                         "node": {
-                          "id": 167,
+                          "id": 159,
                           "factory": "Gimbal",
                           "slotValues": {},
                           "children": {
@@ -4168,7 +3940,7 @@
                               {
                                 "key": "radar",
                                 "node": {
-                                  "id": 168,
+                                  "id": 160,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -4244,7 +4016,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 169,
+                                          "id": 161,
                                           "factory": "Func1",
                                           "slotValues": {},
                                           "children": {
@@ -4252,7 +4024,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 170,
+                                                  "id": 162,
                                                   "factory": "Table1",
                                                   "slotValues": {
                                                     "x": {
@@ -4276,7 +4048,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 171,
+                                          "id": 163,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -4293,7 +4065,7 @@
                       {
                         "key": "sensors",
                         "node": {
-                          "id": 172,
+                          "id": 164,
                           "factory": "SensorMgr",
                           "slotValues": {},
                           "children": {
@@ -4301,7 +4073,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 173,
+                                  "id": 165,
                                   "factory": "Tws",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -4367,7 +4139,7 @@
                       {
                         "key": "obc",
                         "node": {
-                          "id": 174,
+                          "id": 166,
                           "factory": "OnboardComputer",
                           "slotValues": {},
                           "children": {
@@ -4375,7 +4147,7 @@
                               {
                                 "key": "twsTrkMgr",
                                 "node": {
-                                  "id": 175,
+                                  "id": 167,
                                   "factory": "AirTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -4433,7 +4205,7 @@
               {
                 "key": "falcon3",
                 "node": {
-                  "id": 176,
+                  "id": 168,
                   "factory": "Aircraft",
                   "slotValues": {
                     "id": {
@@ -4489,7 +4261,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 177,
+                          "id": 169,
                           "factory": "SigSphere",
                           "slotValues": {
                             "radius": {
@@ -4506,7 +4278,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 178,
+                          "id": 170,
                           "factory": "IrSignature",
                           "slotValues": {
                             "baseHeatSignature": {
@@ -4530,7 +4302,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 179,
+                                  "id": 171,
                                   "factory": "IrSphere",
                                   "slotValues": {
                                     "radius": {
@@ -4551,7 +4323,7 @@
                       {
                         "key": "dynamicsModel",
                         "node": {
-                          "id": 180,
+                          "id": 172,
                           "factory": "JSBSimModel",
                           "slotValues": {
                             "rootDir": {
@@ -4574,7 +4346,7 @@
                       {
                         "key": "pilot",
                         "node": {
-                          "id": 181,
+                          "id": 173,
                           "factory": "Autopilot",
                           "slotValues": {
                             "navMode": {
@@ -4625,7 +4397,7 @@
                       {
                         "key": "datalink",
                         "node": {
-                          "id": 182,
+                          "id": 174,
                           "factory": "AlertDatalink",
                           "slotValues": {
                             "holdTime": {
@@ -4640,7 +4412,7 @@
                       {
                         "key": "antennas",
                         "node": {
-                          "id": 183,
+                          "id": 175,
                           "factory": "Gimbal",
                           "slotValues": {},
                           "children": {
@@ -4648,7 +4420,7 @@
                               {
                                 "key": "radar",
                                 "node": {
-                                  "id": 184,
+                                  "id": 176,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -4724,7 +4496,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 185,
+                                          "id": 177,
                                           "factory": "Func1",
                                           "slotValues": {},
                                           "children": {
@@ -4732,7 +4504,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 186,
+                                                  "id": 178,
                                                   "factory": "Table1",
                                                   "slotValues": {
                                                     "x": {
@@ -4756,7 +4528,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 187,
+                                          "id": 179,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -4773,7 +4545,7 @@
                       {
                         "key": "sensors",
                         "node": {
-                          "id": 188,
+                          "id": 180,
                           "factory": "SensorMgr",
                           "slotValues": {},
                           "children": {
@@ -4781,7 +4553,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 189,
+                                  "id": 181,
                                   "factory": "Tws",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -4847,7 +4619,7 @@
                       {
                         "key": "obc",
                         "node": {
-                          "id": 190,
+                          "id": 182,
                           "factory": "OnboardComputer",
                           "slotValues": {},
                           "children": {
@@ -4855,7 +4627,7 @@
                               {
                                 "key": "twsTrkMgr",
                                 "node": {
-                                  "id": 191,
+                                  "id": 183,
                                   "factory": "AirTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -4913,7 +4685,7 @@
               {
                 "key": "falcon4",
                 "node": {
-                  "id": 192,
+                  "id": 184,
                   "factory": "Aircraft",
                   "slotValues": {
                     "id": {
@@ -4969,7 +4741,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 193,
+                          "id": 185,
                           "factory": "SigSphere",
                           "slotValues": {
                             "radius": {
@@ -4986,7 +4758,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 194,
+                          "id": 186,
                           "factory": "IrSignature",
                           "slotValues": {
                             "baseHeatSignature": {
@@ -5010,7 +4782,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 195,
+                                  "id": 187,
                                   "factory": "IrSphere",
                                   "slotValues": {
                                     "radius": {
@@ -5031,7 +4803,7 @@
                       {
                         "key": "dynamicsModel",
                         "node": {
-                          "id": 196,
+                          "id": 188,
                           "factory": "JSBSimModel",
                           "slotValues": {
                             "rootDir": {
@@ -5054,7 +4826,7 @@
                       {
                         "key": "pilot",
                         "node": {
-                          "id": 197,
+                          "id": 189,
                           "factory": "Autopilot",
                           "slotValues": {
                             "navMode": {
@@ -5105,7 +4877,7 @@
                       {
                         "key": "datalink",
                         "node": {
-                          "id": 198,
+                          "id": 190,
                           "factory": "AlertDatalink",
                           "slotValues": {
                             "holdTime": {
@@ -5120,7 +4892,7 @@
                       {
                         "key": "antennas",
                         "node": {
-                          "id": 199,
+                          "id": 191,
                           "factory": "Gimbal",
                           "slotValues": {},
                           "children": {
@@ -5128,7 +4900,7 @@
                               {
                                 "key": "radar",
                                 "node": {
-                                  "id": 200,
+                                  "id": 192,
                                   "factory": "Antenna",
                                   "slotValues": {
                                     "polarization": {
@@ -5204,7 +4976,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 201,
+                                          "id": 193,
                                           "factory": "Func1",
                                           "slotValues": {},
                                           "children": {
@@ -5212,7 +4984,7 @@
                                               {
                                                 "key": "1",
                                                 "node": {
-                                                  "id": 202,
+                                                  "id": 194,
                                                   "factory": "Table1",
                                                   "slotValues": {
                                                     "x": {
@@ -5236,7 +5008,7 @@
                                       {
                                         "key": "1",
                                         "node": {
-                                          "id": 203,
+                                          "id": 195,
                                           "isText": true,
                                           "text": "air",
                                           "children": {}
@@ -5253,7 +5025,7 @@
                       {
                         "key": "sensors",
                         "node": {
-                          "id": 204,
+                          "id": 196,
                           "factory": "SensorMgr",
                           "slotValues": {},
                           "children": {
@@ -5261,7 +5033,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 205,
+                                  "id": 197,
                                   "factory": "Tws",
                                   "slotValues": {
                                     "trackManagerName": {
@@ -5327,7 +5099,7 @@
                       {
                         "key": "obc",
                         "node": {
-                          "id": 206,
+                          "id": 198,
                           "factory": "OnboardComputer",
                           "slotValues": {},
                           "children": {
@@ -5335,7 +5107,7 @@
                               {
                                 "key": "twsTrkMgr",
                                 "node": {
-                                  "id": 207,
+                                  "id": 199,
                                   "factory": "AirTrkMgr",
                                   "slotValues": {
                                     "maxTracks": {
@@ -5393,7 +5165,7 @@
               {
                 "key": "bandit1",
                 "node": {
-                  "id": 208,
+                  "id": 200,
                   "factory": "Aircraft",
                   "slotValues": {
                     "id": {
@@ -5449,7 +5221,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 209,
+                          "id": 201,
                           "factory": "SigSphere",
                           "slotValues": {
                             "radius": {
@@ -5466,7 +5238,7 @@
                       {
                         "key": "1",
                         "node": {
-                          "id": 210,
+                          "id": 202,
                           "factory": "IrSignature",
                           "slotValues": {
                             "baseHeatSignature": {
@@ -5490,7 +5262,7 @@
                               {
                                 "key": "1",
                                 "node": {
-                                  "id": 211,
+                                  "id": 203,
                                   "factory": "IrSphere",
                                   "slotValues": {
                                     "radius": {
@@ -5511,7 +5283,7 @@
                       {
                         "key": "dynamicsModel",
                         "node": {
-                          "id": 212,
+                          "id": 204,
                           "factory": "JSBSimModel",
                           "slotValues": {
                             "rootDir": {
@@ -5534,7 +5306,7 @@
                       {
                         "key": "pilot",
                         "node": {
-                          "id": 213,
+                          "id": 205,
                           "factory": "Autopilot",
                           "slotValues": {
                             "navMode": {

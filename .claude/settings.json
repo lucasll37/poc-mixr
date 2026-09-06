@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(make build)",
+      "Bash(make build *)",
+      "Bash(make sdk)",
+      "Bash(make models)",
+      "Bash(make install)",
+      "Bash(make install *)",
+      "Bash(make test)",
+      "Bash(make test-models)",
+      "Bash(make run-app)",
+      "Bash(make compare-single-multi)",
+      "Bash(make edl-lint *)",
+      "Bash(make edl-check *)",
+      "Bash(make edl-catalog)",
+      "Bash(make edl-default-scenario)",
+      "Bash(make edl-builder)",
+      "Bash(make edl-builder-test)",
+      "Bash(make open-edl-builder)",
+      "Bash(make docs)",
+      "Bash(make open-docs)",
+      "Bash(make venv-rl)",
+      "Bash(make test-rl)",
+      "Bash(make help)"
+    ],
+    "deny": [
+      "Edit(build/**)",
+      "Write(build/**)",
+      "Edit(dist/**)",
+      "Write(dist/**)",
+      "Edit(plugins/*.so)",
+      "Write(plugins/*.so)",
+      "Edit(plugins/data/**)",
+      "Write(plugins/data/**)",
+      "Edit(contexts/src/**)",
+      "Write(contexts/src/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-host-opaco.sh",
+            "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-colisao-fabrica.sh",
+            "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-edl-lint.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

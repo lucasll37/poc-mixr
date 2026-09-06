@@ -180,7 +180,7 @@ sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ --
 
 new-model: ## Gera um modelo novo em models/player/NAME/ a partir de fixtures/stub ou template/ (NAME= obrigatorio, KIND=stub|template, default stub). Ver CONTRIBUTING.md.
 	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo KIND=stub|template$(NC)"; exit 1; }
-	python3 scripts/new_model.py --name "$(NAME)" --kind "$(or $(KIND),stub)"
+	scripts/models.sh --name "$(NAME)" --kind "$(or $(KIND),stub)"
 
 build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -301,11 +301,11 @@ open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do 
 		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/manual/index.html"
 
 edl-catalog: ## Gera src/ui/edl_catalog.generated.json (todas as classes/slots das factories, para o editor grafico de .edl). So Python stdlib, sem MIXR.
-	python3 scripts/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json
+	python3 tools/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json
 	@echo "$(GREEN)edl-catalog:$(NC) OK -- $$(python3 -c 'import json; print(len(json.load(open("src/ui/edl_catalog.generated.json"))))') classes catalogadas"
 
 edl-default-scenario: edl-catalog ## Gera src/ui/edl_default_scenario.generated.json (o cenario que a ferramenta carrega por padrao -- o de mais componentes do repositorio, built-in_mixr_1).
-	node scripts/edl_to_ui_project.js src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in > src/ui/edl_default_scenario.generated.json
+	node src/ui/edl_to_ui_project.js src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in > src/ui/edl_default_scenario.generated.json
 	@echo "$(GREEN)edl-default-scenario:$(NC) OK"
 
 edl-builder: edl-catalog edl-default-scenario ## Regenera src/ui/edl-builder.html (editor grafico de cenario .edl) via src/ui/compile.js. So precisa de rede na 1a vez (cacheia em src/ui/.cache/).
@@ -319,7 +319,7 @@ edl-builder-test: ## Testes de unidade PUROS de src/ui/edl_builder_core.js (node
 	node src/ui/edl_builder.test.js
 
 edl-lint: ## Lint LEVE de um .edl/.edl.in contra o catalogo (FILE=caminho). Nao substitui 'make edl-check' (o parser real) -- so pega o erro mais comum antes de compilar/instalar.
-	python3 scripts/edl_lint.py $(FILE)
+	python3 tools/edl_lint.py $(FILE)
 
 edl-check: install ## Valida um .edl (ja expandido -- sem @token@/@include:@) com o parser MIXR de verdade (FILE=caminho), sem terreno/frota/WorldModel obrigatorios.
 	$(BUILD_DIR)/app/src/edlcheck $(FILE)

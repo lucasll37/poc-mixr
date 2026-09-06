@@ -21,7 +21,7 @@ cujas entradas são strings, não objetos MIXR (ver o comentário de `makeTextLe
 A ferramenta abre já com um cenário carregado por padrão — o de **maior número de componentes**
 do repositório (`src/poc/built-in_mixr_1/configs/scenario.generated.edl`, 53 das 96 classes de
 `mixr::models` num único `Aircraft`), convertido uma vez para o formato de projeto por
-`scripts/edl_to_ui_project.js` e embutido no `.html` como `EDL_DEFAULT_SCENARIO` (mesmo mecanismo
+`edl_to_ui_project.js` e embutido no `.html` como `EDL_DEFAULT_SCENARIO` (mesmo mecanismo
 de injeção de `EDL_CATALOG`, ver `compile.js`). Serve de ponto de partida pra explorar/editar em
 vez de começar de uma tela vazia — "Novo" (ou o "×" na raiz) descarta e volta pra uma `Station`
 em branco.
@@ -40,7 +40,8 @@ cada vez", complementar ao NavTree, que pula direto a qualquer nó).
 | `edl_builder.jsx` | UI (React): paleta, árvore (outline), painel de propriedades |
 | `edl_builder_core.js` | lógica PURA (catálogo, compatibilidade de slot, serializador `.edl`) — sem React/JSX, testável em Node puro |
 | `edl_builder.test.js` | testes de `edl_builder_core.js` (`node src/ui/edl_builder.test.js`) |
-| `edl_catalog.generated.json` | catálogo de classes+slots, gerado por `scripts/extract_execution_chain.py --edl-catalog` |
+| `edl_to_ui_project.js` | converte um `.edl`/`.edl.in` real para o formato de projeto (usado por `make edl-default-scenario`) |
+| `edl_catalog.generated.json` | catálogo de classes+slots, gerado por `tools/extract_execution_chain.py --edl-catalog` |
 | `edl_catalog_overrides.json` | curadoria manual pequena (só os slots "referência por nome" que o tipo C++ sozinho não distingue) |
 | `compile.js` | builda `edl_builder.jsx` → `edl-builder.html` (React+Babel via CDN, sem bundler) |
 | `edl-builder.html` | **gerado** — a página final, autocontida, zero-rede para abrir |
@@ -63,7 +64,7 @@ ferramenta não exige rodar nada antes.
 
 Duas camadas, nenhuma delas aqui (ver o topo de cada arquivo para os detalhes):
 
-- **Leve**: `scripts/edl_lint.py` — fábrica/slot desconhecido, ASCII-only, ordem de `plugins:`,
+- **Leve**: `tools/edl_lint.py` — fábrica/slot desconhecido, ASCII-only, ordem de `plugins:`,
   referência-por-nome pendurada (aviso, não bloqueia).
 - **Profunda**: `make edl-check FILE=<arquivo>` — o binário `edlcheck` (`app/src/
   edlcheck_main.cpp`), que reaproveita a MESMA cadeia de factories de produção e chama o parser

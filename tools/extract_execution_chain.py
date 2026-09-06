@@ -30,9 +30,9 @@ corpo faz algo INTERESSANTE, so se faz ALGUMA coisa) -- suficiente para a "regra
 ouro" do TODO: nao inventar, e dar uma resposta que bate com o fonte.
 
 Uso:
-    python3 scripts/extract_execution_chain.py                 # tabela, texto
-    python3 scripts/extract_execution_chain.py --json           # tabela, JSON
-    python3 scripts/extract_execution_chain.py Aircraft Gimbal  # classes/fabricas especificas
+    python3 tools/extract_execution_chain.py                 # tabela, texto
+    python3 tools/extract_execution_chain.py --json           # tabela, JSON
+    python3 tools/extract_execution_chain.py Aircraft Gimbal  # classes/fabricas especificas
 """
 from __future__ import annotations
 
@@ -736,7 +736,7 @@ def build_edl_catalog():
     # inheritance["NetIO"] == "NetIO"). Sintoma medido, antes deste
     # remendo: o catalogo perdia 'inputEntityTypes'/'outputEntityTypes'
     # (declarados em interop/common/NetIO.cpp, nunca alcancados) -- e o
-    # lint (scripts/edl_lint.py) acusava "slot desconhecido" em cenarios
+    # lint (tools/edl_lint.py) acusava "slot desconhecido" em cenarios
     # de PRODUCAO reais que usam exatamente esses dois slots. Corrigido
     # varrendo interop/common (que NAO entra no restante do catalogo -- ver
     # o comentario de EDL_CATALOG_MIXR_MODULES: nada de la e encadeado pelo

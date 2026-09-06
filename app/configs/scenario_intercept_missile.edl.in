@@ -1,13 +1,21 @@
 //
 // dashboard -- cenario "Intercepto + Missil"
 //
-// scenario_intercept.edl.in + falcon1 carregando UM missil guiado (mesmo
-// molde de src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in) --
+// O UNICO cenario proprio deste app (ver CLAUDE.md, secao "./app", passada de
+// consolidacao -- havia tres, "patrol"/"intercept"/"intercept_missile", os
+// outros dois foram removidos por serem subconjunto deste): 4 falcons
+// patrulhando, bandit1 LOCAL (evasao/apoio entre os falcons, EVADE/SUPPORT) e
+// falcon1 carregando UM missil guiado (mesmo molde de
+// src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in) --
 // lancamento/detonacao/destruicao, otimo pra demonstrar pausar/frear bem no
 // meio do engajamento. Carrega os DOIS plugins: libflight_tc.so (os 7 nomes
 // de sempre, incluindo FlightAgentTC) e libmissile.so (so "GuidedMissile")
 // -- ver CLAUDE.md, secao "Demo: missil guiado", para o "porque" de serem
 // dois plugins e nao um so.
+//
+// SEM 'networks:' -- hermetico, mesmo motivo de tests/scenario/
+// make_fixture.py (nao competir por porta/trafego com outra sessao). Porta
+// de Tacview e dados PROPRIOS -- 1236, ./app/ --, sem 'msgFeed:'.
 //
 // @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
 //
@@ -40,9 +48,7 @@
 
    } // components (plugins)
 
-   // Esqueleto compartilhado com scenario_patrol.edl.in/
-   // scenario_intercept.edl.in -- ver
-   // app/configs/fragments/tacview_recorder.edl.frag e
+   // Ver app/configs/fragments/tacview_recorder.edl.frag e
    // app::generateScenario() (ScenarioTemplate.cpp).
    @include:tacview_recorder.edl.frag@
 

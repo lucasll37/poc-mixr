@@ -1,8 +1,13 @@
 {
   "recommendations": [
-    "llvm-vs-code-extensions.vscode-clangd"
-  ],
-  "unwantedRecommendations": [
-    "ms-vscode.cpptools"
+    "llvm-vs-code-extensions.vscode-clangd",
+    "pkief.material-icon-theme",
+    "natqe.reload",
+    "anthropic.claude-code",
+    "ms-toolsai.jupyter",
+    "yzhang.markdown-all-in-one",
+    "ms-vscode.cpptools",
+    "spencerwmiles.vscode-task-buttons"
+
   ]
 }
