@@ -66,6 +66,8 @@
 #include <string>
 #include <vector>
 
+#include <unistd.h>
+
 namespace {
 
 const double cruiseThrottle{0.95};
@@ -78,26 +80,33 @@ const double cruiseThrottle{0.95};
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
 
-// Um carimbo por PROCESSO (nao por frame -- resolucao de segundo basta),
-// usado em dois lugares: o nome do log do cenario escolhido (montado mais
-// abaixo, depois que 'cenario' e conhecido -- ver o comentario la) e o
-// token '@RUN_ID@' (ver generateScenario()/scenarioTokens mais adiante),
-// que um '.edl.in' pode usar para nomear mission_<RUN_ID>.jsonl/.acmi.
-// Nenhum dos tres gravadores em jogo protege sozinho contra sobrescrita
-// entre EXECUCOES separadas: MsgFileSink::open() e
-// RealtimeTelemetryServer::startRecording() abrem com std::ios::trunc, sem
-// nenhum versionamento (ao contrario do recorder::PrintHandler nativo, que
-// tenta '_v01'.._v99' antes de desistir); e o proprio xlog::init() APAGA o
-// log anterior de proposito, para nao disparar esse versionamento nativo a
-// cada respawn (ver o comentario dentro de xlog::init()). Um carimbo novo
-// por processo cobre os tres.
+// Um carimbo por PROCESSO, usado em dois lugares: o nome do log do cenario
+// escolhido (montado mais abaixo, depois que 'cenario' e conhecido -- ver
+// o comentario la) e o token '@RUN_ID@' (ver generateScenario()/
+// scenarioTokens mais adiante), que um '.edl.in' pode usar para nomear
+// mission_<RUN_ID>.jsonl/.acmi. Nenhum dos tres gravadores em jogo protege
+// sozinho contra sobrescrita entre EXECUCOES separadas: MsgFileSink::
+// open() e RealtimeTelemetryServer::startRecording() abrem com
+// std::ios::trunc, sem nenhum versionamento (ao contrario do
+// recorder::PrintHandler nativo, que tenta '_v01'.._v99' antes de
+// desistir); e o proprio xlog::init() APAGA o log anterior de proposito,
+// para nao disparar esse versionamento nativo a cada respawn (ver o
+// comentario dentro de xlog::init()).
+//
+// O PID entra alem do timestamp -- achado rodando (stress-sweep desta
+// sessao): so o segundo NAO basta. Duas instancias do MESMO cenario de
+// sandbox lancadas com menos de 1s de diferenca caiam no MESMO RUN_ID e
+// escreviam no MESMO inode (confirmado com lsof: dois PIDs, um fd cada,
+// mesmo NODE) -- perda silenciosa de dado de uma das duas gravacoes. Dois
+// processos SEMPRE tem PIDs diferentes, entao isto fecha a classe inteira
+// de colisao por concorrencia, nao so o caso raro do mesmo segundo.
 std::string runIdNow()
 {
    const std::time_t t{std::time(nullptr)};
    std::tm tm{};
    localtime_r(&t, &tm);
    std::ostringstream oss;
-   oss << std::put_time(&tm, "%Y%m%d-%H%M%S");
+   oss << std::put_time(&tm, "%Y%m%d-%H%M%S") << '-' << ::getpid();
    return oss.str();
 }
 

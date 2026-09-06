@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <utility>
 
@@ -37,6 +39,21 @@ int resolveTcThreadCount(const int threadsOverride, unsigned int* const hwThread
 
 std::string readFileOrDie(const std::string& path)
 {
+   // Achado rodando (stress-sweep desta sessao), dois sintomas da MESMA
+   // causa: 'in.rdbuf()' le ate o EOF sem checar QUE TIPO de arquivo e' --
+   // um caractere-dispositivo de leitura infinita ('-f /dev/zero') nunca
+   // da EOF e o buffer cresce ate o processo morrer com std::bad_alloc
+   // (SIGABRT, core dump -- nao um EXIT_FAILURE limpo); um FIFO sem
+   // escritor ('-f <pipe-nomeado>') trava o proprio std::ifstream(path) NO
+   // OPEN, antes mesmo de chegar no rdbuf() -- sem timeout interno, so kill
+   // externo resolve. is_regular_file() rejeita os dois ANTES de abrir,
+   // com a mesma mensagem clara ja usada para "arquivo nao existe".
+   std::error_code ec;
+   if (!std::filesystem::is_regular_file(path, ec)) {
+      std::cerr << "[main] nao consegui ler " << path
+                << " (nao e um arquivo regular)" << std::endl;
+      std::exit(EXIT_FAILURE);
+   }
    std::ifstream in(path);
    if (!in.good()) {
       std::cerr << "[main] nao consegui ler " << path << std::endl;
