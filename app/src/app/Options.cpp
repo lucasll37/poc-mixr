@@ -16,26 +16,44 @@ namespace {
 // player ausente, banco de elevacao corrompido -- ver TerrainData/
 // StationBuilder/Fleet) sai por std::exit com uma mensagem clara; um
 // '-threads abc' devia se comportar da mesma forma, nao travar com um sinal.
+// Erro comum aos dois de baixo -- extraido para nao repetir a mensagem.
+[[noreturn]] void dieNaoNumero(const std::string& flag, const std::string& token)
+{
+   std::cerr << "[app] " << flag << " espera um numero inteiro, recebi '"
+             << token << "'" << std::endl;
+   std::exit(EXIT_FAILURE);
+}
+
 long parseLongOrDie(const std::string& flag, const std::string& token)
 {
+   std::size_t consumido{};
+   long valor{};
    try {
-      return std::stol(token);
+      valor = std::stol(token, &consumido);
    } catch (const std::exception&) {
-      std::cerr << "[app] " << flag << " espera um numero inteiro, recebi '"
-                << token << "'" << std::endl;
-      std::exit(EXIT_FAILURE);
+      dieNaoNumero(flag, token);
    }
+   // std::stol para no primeiro caractere que nao e' digito -- NAO lanca
+   // excecao para '3.5'/'7xyz' (converte so o prefixo numerico e ignora o
+   // resto, comportamento documentado da funcao). Achado rodando
+   // (stress-sweep desta sessao): '-threads 3.5' virava '3' sem nenhum
+   // aviso do '.5' descartado -- exatamente o tipo de entrada que este
+   // arquivo promete recusar com mensagem clara (ver o comentario acima).
+   if (consumido != token.size()) dieNaoNumero(flag, token);
+   return valor;
 }
 
 int parseIntOrDie(const std::string& flag, const std::string& token)
 {
+   std::size_t consumido{};
+   int valor{};
    try {
-      return std::stoi(token);
+      valor = std::stoi(token, &consumido);
    } catch (const std::exception&) {
-      std::cerr << "[app] " << flag << " espera um numero inteiro, recebi '"
-                << token << "'" << std::endl;
-      std::exit(EXIT_FAILURE);
+      dieNaoNumero(flag, token);
    }
+   if (consumido != token.size()) dieNaoNumero(flag, token);
+   return valor;
 }
 
 } // namespace

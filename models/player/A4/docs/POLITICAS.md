@@ -88,7 +88,7 @@ direto** — nenhum passo de build:
 
 ```bash
 $EDITOR dist/share/mixr-plugins/flight/policy_example.py
-make run-multi-thread          # ou o comando de -deterministic abaixo
+./build/app/src/app -scenario multi-thread          # ou o comando de -deterministic abaixo
 ```
 
 Quando a regra se provar, copie de volta para `models/player/A4/configs/policy_example.py` — é essa a
@@ -222,10 +222,10 @@ escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o `Fallback` segu
 
 ```bash
 # tempo real, com Tacview na porta 1234
-make run-multi-thread
+./build/app/src/app -scenario multi-thread
 
 # passo fixo, comparável, imprimindo o dump a cada 100 frames
-./build/src/poc/dis/multi-thread/src/multi-thread -threads 4 -deterministic 600
+./build/app/src/app -scenario multi-thread -threads 4 -deterministic 600
 ```
 
 No dump, a coluna `bt=` diz **qual nó decidiu**: `PATROL`/`EVADE`/… (C++), `PY` (Python), `ONNX`
@@ -235,7 +235,7 @@ No dump, a coluna `bt=` diz **qual nó decidiu**: `PATROL`/`EVADE`/… (C++), `P
 O `./app` (TUI) mostra o mesmo ao vivo, com a árvore desenhada e a folha ativa destacada:
 
 ```bash
-make run-app
+./build/app/src/app -folder ./sandbox
 ```
 
 ---
@@ -244,7 +244,7 @@ make run-app
 
 ```bash
 make test                    # 40 testes; inclui as duas políticas ponta a ponta
-make check-multi-thread      # dumps byte-idênticos com 1, 2 e 4 threads
+./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread      # dumps byte-idênticos com 1, 2 e 4 threads
 ```
 
 O segundo é o que importa se você mexeu em política: ele prova que a decisão continua

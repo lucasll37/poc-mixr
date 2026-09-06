@@ -236,8 +236,10 @@ reverte no final.
 ## 4. Rodar
 
 **Há um executável só: `app`.** Ele é o runner de todas as provas de conceito — cada uma é um
-cenário, não um programa. `app -scenario <chave>` carrega uma das chaves abaixo; sem `-scenario`
-ele abre a tela de seleção. `make run-<chave>` é atalho para a primeira forma.
+cenário, não um programa. É obrigatório passar `-scenario <chave>`, `-f <arquivo>` ou
+`-folder <pasta>` — rodar sem nenhum dos três é erro fatal, não mais um convite a uma tela de
+seleção implícita. **Não há mais atalho `make run-<chave>` por poc** (removido — ver o
+Makefile): use o binário direto, ou `make run-app` para a navegação por `./sandbox`.
 
 **Sempre a partir da raiz do repositório** — o binário resolve `configs/`/`data/` por caminho
 relativo. `single-thread`/`multi-thread` são alternativas entre si; qualquer um roda sozinho ou ao
@@ -246,13 +248,13 @@ indicada (*File > Real-Time Telemetry*).
 
 | chave | comando | Tacview | decisão |
 |---|---|---|---|
-| `patrol`/`intercept`/`intercept_missile` | `make run-app` | 1236 | os cenários do próprio painel — **comece por aqui** |
-| `single-thread` | `make run-single-thread` | 1234 | numa única thread, em segundo plano |
-| `multi-thread` | `make run-multi-thread` | 1234 | em paralelo, uma thread por aeronave |
-| `bandit` | `make run-bandit` | 1235 | nenhuma — só uma aeronave, por joystick ou piloto automático, emitida via rede (DIS) |
-| `python-flight` | `make run-python-flight` | 1237 | em Python, editável sem recompilar |
-| `onnx-policy` | `make run-onnx-policy` | 1238 | por uma rede neural (`.onnx`) |
-| `built-in_mixr_1` | `make run-built-in_mixr_1` | 1239 | a mesma da `single-thread` — o que muda é a aeronave, com 53 classes nativas |
+| `patrol`/`intercept`/`intercept_missile` | `make run-app` (dentro, escolha o cenário) | 1236 | os cenários do próprio painel — **comece por aqui** |
+| `single-thread` | `./build/app/src/app -scenario single-thread` | 1234 | numa única thread, em segundo plano |
+| `multi-thread` | `./build/app/src/app -scenario multi-thread` | 1234 | em paralelo, uma thread por aeronave |
+| `bandit` | `./build/app/src/app -scenario bandit` | 1235 | nenhuma — só uma aeronave, por joystick ou piloto automático, emitida via rede (DIS) |
+| `python-flight` | `./build/app/src/app -scenario python-flight` | 1237 | em Python, editável sem recompilar |
+| `onnx-policy` | `./build/app/src/app -scenario onnx-policy` | 1238 | por uma rede neural (`.onnx`) |
+| `built-in_mixr_1` | `./build/app/src/app -scenario built-in_mixr_1` | 1239 | a mesma da `single-thread` — o que muda é a aeronave, com 53 classes nativas |
 
 ---
 
@@ -262,10 +264,12 @@ indicada (*File > Real-Time Telemetry*).
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make test                            # as suítes do host e do(s) modelo(s)
 
-make check-single-thread   # determinismo com a decisão no laço de background
-make check-multi-thread    # determinismo com os agentes decidindo em paralelo, na fase 3
-make check-python-flight   # o mesmo, decidindo em Python (um GIL para os quatro)
-make check-onnx-policy     # o mesmo, inferindo uma rede neural (uma sessão ONNX)
+# Não há mais atalho 'make check-<chave>' por poc (removido) -- o script por
+# tras dele continua existindo, e recebe o binario/cenario/frames direto:
+./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread
+./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread
+./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight
+./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy
 make compare-single-multi  # lista o que difere entre os dois cenários (deve ser só o agente e a porta DIS)
 make test-asan             # LeakSanitizer na single-thread (build separado, lento)
 ```

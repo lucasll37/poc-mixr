@@ -18,8 +18,8 @@ não ouvir o próprio eco.
 
 ```bash
 # em três terminais, a partir da raiz do repositório
-make run-bandit
-make run-single-thread     # ou run-multi-thread
+./build/app/src/app -scenario bandit
+./build/app/src/app -scenario single-thread     # ou -scenario multi-thread
 ```
 
 **Não há executável por poc.** Cada pasta aqui é só `configs/` + `data/` +

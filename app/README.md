@@ -42,15 +42,18 @@ raiz e o alvo/binário se chamam `app`, não `dashboard`.
 
 ```bash
 make configure && make build   # a partir da raiz do repositório — ver README.md raiz
-make run-app                   # sem argumento nenhum: mostra a tela de seleção de cenário
+make run-app                   # abre a tela de seleção da pasta ./sandbox
 ```
 
 Ou direto pelo binário (sempre a partir da **raiz** do repositório — `configs/`/`data/` são lidos
-por caminho relativo):
+por caminho relativo). É obrigatório passar `-scenario`/`-f`/`-folder` — rodar sem nenhum dos três
+é erro fatal, não mais um convite a uma tela de seleção implícita (ver a Seção 2). Não há mais
+tela de seleção do catálogo alcançável de fora (só via "carregar outro cenário" de *dentro* do
+TUI, que reexecuta com `-internal-picker` — uso interno, ver `app/Options.hpp`):
 
 ```bash
-./build/app/src/app                        # tela de seleção
 ./build/app/src/app -scenario intercept    # pula direto pro cenário "Intercepto"
+./build/app/src/app -folder ./sandbox      # essa sim abre uma tela -- a das subpastas de ./sandbox
 ```
 
 Não precisa de nenhum outro processo rodando — os três cenários são **herméticos** (sem

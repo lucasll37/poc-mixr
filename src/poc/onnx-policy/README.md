@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `app -scenario onnx-policy`, ou `make run-onnx-policy`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -scenario onnx-policy`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -17,8 +17,8 @@ crítico**, sem Python no processo e sem um frame de latência.
 
 ```bash
 make build
-make run-onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
-make check-onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
+./build/app/src/app -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
+./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
 > **Rode sempre a partir da raiz do repositório**: cenário, árvore, `.onnx`, dados do JSBSim, tile
@@ -28,7 +28,7 @@ make check-onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 
 ```bash
 src/poc/rl-training/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx
-make run-onnx-policy                                                              # veja o voo mudado
+./build/app/src/app -scenario onnx-policy                                                              # veja o voo mudado
 ```
 
 Nada é recompilado entre as duas execuções — nem o host, nem o plugin. O `.onnx` é lido do disco na
@@ -205,7 +205,7 @@ Quatro aeronaves inferindo **em paralelo**, na fase 3, compartilhando **uma** se
 Runtime (o cache de `shared/xinfer` é por caminho, e as quatro apontam para o mesmo arquivo):
 
 ```bash
-make check-onnx-policy
+./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy
 ```
 
 ```
@@ -295,7 +295,7 @@ make venv-rl-training
 # treinar (ver models/player/A4/docs/POLITICAS.md, seção 2)
 PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \
     --sb3 runs/ppo_falcon.zip -o src/poc/onnx-policy/configs/policy_barrier.onnx
-make run-onnx-policy
+./build/app/src/app -scenario onnx-policy
 ```
 
 Ou aponte o atributo `model` da árvore para outro arquivo e mantenha os dois. Em nenhum dos casos
@@ -355,7 +355,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 
 ```bash
 make test                    # inclui os três testes desta poc
-make check-onnx-policy       # determinismo com 1, 2 e 4 threads, em cenário hermético
+./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy       # determinismo com 1, 2 e 4 threads, em cenário hermético
 ```
 
 Os testes próprios (`tests/meson.build`):

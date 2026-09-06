@@ -40,7 +40,7 @@ O preço é a tabela de ponteiros de função. Vale: **nenhum `main.cpp` de host
 ## Determinismo
 
 O GIL serializa, mas a **ordem** de aquisição não é determinística. O que mantém
-`make check-multi-thread` verde é cada `(script, chave)` ter o **seu próprio dicionário de globais**
+`./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread` verde é cada `(script, chave)` ter o **seu próprio dicionário de globais**
 — dois aviões rodando o mesmo arquivo não se enxergam. Travado por
 `tests/domain/test_xpyembed.cpp::QuatroThreadsComChavesDistintasNaoSeMisturam`.
 

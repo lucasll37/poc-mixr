@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `app -scenario python-flight`, ou `make run-python-flight`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -scenario python-flight`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -17,8 +17,8 @@ thread, mesmo tick, sem processo nem soquete no meio.
 
 ```bash
 make build
-make run-python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
-make check-python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
+./build/app/src/app -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
+./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
 > **Rode sempre a partir da raiz do repositório**: cenário, árvore, scripts, dados do JSBSim, tile
@@ -27,9 +27,9 @@ make check-python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 **O ciclo de trabalho que esta poc existe para ter:**
 
 ```bash
-make run-python-flight                       # veja o voo no Tacview
+./build/app/src/app -scenario python-flight                       # veja o voo no Tacview
 $EDITOR src/poc/python-flight/configs/policy/patrol.py
-make run-python-flight                       # veja o voo mudado
+./build/app/src/app -scenario python-flight                       # veja o voo mudado
 ```
 
 Não há compilação entre as duas execuções. Nem do host, nem do plugin — o `.py` é lido do disco
@@ -166,7 +166,7 @@ qual delas está rodando.
 
 **(b) Dois aviões rodando o mesmo arquivo não se enxergam** — que é o que mantém o resultado
 independente da ordem em que as threads do pool adquirem o GIL, e portanto o que mantém o
-`make check-python-flight` verde.
+`./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight` verde.
 
 **O caso difícil é o `evade.py`.** Recalcular o alvo da quebra a cada tick é a armadilha clássica:
 `meu_rumo + 110°` devolvido 50 vezes por segundo é um *setpoint* que foge na mesma velocidade em
@@ -204,7 +204,7 @@ integrar tempo, e é por isso que:
 
 ## 7. Determinismo
 
-`make check-python-flight` roda 2000 frames de passo fixo com **1, 2 e 4** threads de tempo
+`./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight` roda 2000 frames de passo fixo com **1, 2 e 4** threads de tempo
 crítico, mais uma repetição com 4, e exige que os quatro dumps `frame=` saiam **byte-idênticos** —
 e as mensagens do `shared/xmsg` também. Com quatro aeronaves chamando `decide()` **em paralelo**,
 na fase 3, sobre **um** interpretador cujo GIL é adquirido em ordem arbitrária.
@@ -305,7 +305,7 @@ jeito conhecido de gastar esse orçamento.
 ## 11. Como verificar tudo
 
 ```bash
-make check-python-flight                    # determinismo: 1, 2 e 4 threads T/C
+./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight                    # determinismo: 1, 2 e 4 threads T/C
 meson test -C build --suite scenario        # inclui scenario-{intruder,lowfuel}-python-flight
 meson test -C build --suite memory          # inclui memory-python-flight
 meson test -C build --suite determinism     # inclui determinism-python
@@ -317,5 +317,5 @@ semântica das gêmeas (quem evadiu avisa, quem apoiou recebeu, ninguém voou pa
 terreno), normalizando o prefixo `PY-` na entrada: as propriedades afirmadas são as do **modelo**,
 e valem igual quando o comando sai de um script.
 
-Para ver o voo: `make run-python-flight` e conecte o Tacview em `File > Real-Time Telemetry`,
+Para ver o voo: `./build/app/src/app -scenario python-flight` e conecte o Tacview em `File > Real-Time Telemetry`,
 porta **1237**.

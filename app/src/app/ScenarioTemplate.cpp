@@ -90,8 +90,23 @@ std::string expandIncludes(std::string text, const std::string& fragmentsDir)
    std::size_t pos{};
    while ((pos = text.find(marker, pos)) != std::string::npos) {
       const std::size_t nameStart{pos + marker.size()};
+      // O '@' de fechamento tem que estar na MESMA linha -- EDL e' linha a
+      // linha, e sem este limite um '@include:' com o '@' de fechamento
+      // ESQUECIDO "vaza" ate o proximo '@' de QUALQUER token seguinte no
+      // arquivo. Achado rodando (stress-sweep desta sessao): isso funde
+      // dois marcadores, produz um nome de fragmento com quebra de linha
+      // embutida (mensagem de erro ilegivel) e engole o segundo include
+      // inteiro sem processa-lo -- o antigo fallback "deixa como esta" so
+      // disparava quando NAO SOBRAVA nenhum outro '@' no resto do arquivo,
+      // o que e raro em EDL real.
+      const std::size_t lineEnd{text.find('\n', nameStart)};
       const std::size_t nameEnd{text.find('@', nameStart)};
-      if (nameEnd == std::string::npos) break;   // marcador malformado -- deixa como esta
+      if (nameEnd == std::string::npos || (lineEnd != std::string::npos && nameEnd > lineEnd)) {
+         const auto linha{1 + std::count(text.begin(), text.begin() + static_cast<std::ptrdiff_t>(pos), '\n')};
+         std::cerr << "[main] '@include:' sem '@' de fechamento na mesma linha (linha "
+                   << linha << ")." << std::endl;
+         std::exit(EXIT_FAILURE);
+      }
       const std::string fragName{text.substr(nameStart, nameEnd - nameStart)};
       const std::string fragText{readFileOrDie(fragmentsDir + "/" + fragName)};
       text.replace(pos, (nameEnd + 1) - pos, fragText);

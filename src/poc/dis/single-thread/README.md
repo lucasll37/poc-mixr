@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `app -scenario single-thread`, ou `make run-single-thread`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -scenario single-thread`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -48,8 +48,8 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 
 ```bash
 make build
-make run-single-thread        # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
-make check-single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
+./build/app/src/app -scenario single-thread        # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
+./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
 > **Rode sempre a partir da raiz do repositório**: o cenário, os dados do JSBSim, o tile SRTM e a
@@ -663,7 +663,7 @@ setLocalSendEnabled(true);
 ```
 
 Por que a disciplina encena/promove existe, e por que a fusão é comutativa, está em
-[9.7](#97-o-caminho-desta-poc-fim-a-fim). É ela que sustenta o `make check-single-thread`.
+[9.7](#97-o-caminho-desta-poc-fim-a-fim). É ela que sustenta o `./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread`.
 
 **[`xtrack/TrackQuery.*`](../../../../shared/xtrack/TrackQuery.hpp)** — uma função livre,
 `nearestHostileTrack(air)`, que percorre
@@ -1187,7 +1187,7 @@ players podem estar em **threads diferentes** do pool T/C. Então, do seu compon
 
 `event()` sozinho **não** resolve a corrida: ele também roda na thread do emissor. O que ele dá é
 um **ponto único de entrada**, que o receptor pode disciplinar. É exatamente o que o
-`AlertDatalink` faz, e é o que sustenta o `make check-single-thread`:
+`AlertDatalink` faz, e é o que sustenta o `./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread`:
 
 | passo | onde roda | por quê |
 |---|---|---|
@@ -1557,7 +1557,7 @@ voando ~900 m acima do relevo da Serra do Mar.
 ## 12. Determinismo
 
 **Determinístico** aqui quer dizer: rodar o mesmo cenário duas vezes e obter o mesmo estado, no
-mesmo frame, até o último decimal. É exatamente o que `make check-single-thread` compara — e não é
+mesmo frame, até o último decimal. É exatamente o que `./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread` compara — e não é
 de graça, porque a poc roda **em paralelo** em dois sentidos diferentes.
 
 ### 12.1 Dois paralelismos, um problema
@@ -1655,7 +1655,7 @@ Ordem entre os quatro agentes também é fixa: eles são componentes da `Station
 
 ### 12.5 O que o `check` prova (e o que não prova)
 
-`make check-single-thread` roda 2000 frames com **1, 2 e 4 threads** (mais uma repetição de 4) e
+`./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread` roda 2000 frames com **1, 2 e 4 threads** (mais uma repetição de 4) e
 compara: os quatro dumps são **byte a byte idênticos**.
 
 - **Prova**: que o paralelismo do pool T/C e as regras de fusão/desempate da poc não introduzem
@@ -1824,25 +1824,25 @@ simulação roda normalmente, só sem teclado.
 ```bash
 # build + execução. 'make build' ENCADEIA as três etapas:
 #   sdk (dist/include+lib) -> models (o plugin) -> host (o executável)
-make configure && make build && make run-single-thread
+make configure && make build && ./build/app/src/app -scenario single-thread
 
 # as DUAS suítes (a do modelo e a do host) -- 'make test' roda as duas
 meson configure build -Dtests=true && make build && make test
 
 # determinismo isolado: 1, 2 e 4 threads produzem o mesmo estado (cenário hermético)
-make check-single-thread
+./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread
 
 # vazamento: LeakSanitizer, com as supressões dos vazamentos conhecidos do framework
 make test-asan
 
 # o terreno chegou? elev= e agl= têm de ser plausíveis e NÃO-ZERO
-./build/src/poc/dis/single-thread/src/single-thread -deterministic 300 | grep "^frame=300 "
+./build/app/src/app -scenario single-thread -deterministic 300 | grep "^frame=300 "
 
 # o piso de terreno está vivo? (controle negativo, sem recompilar)
 sed 's/terrainClearance: ( Meters 800 )/terrainClearance: ( Meters 0 )/' \
     src/poc/dis/single-thread/configs/scenario.edl.in > /tmp/sem-piso.edl.in
-./build/src/poc/dis/single-thread/src/single-thread -deterministic 12000 | grep '^frame=' > /tmp/com.txt
-./build/src/poc/dis/single-thread/src/single-thread -deterministic 12000 -f /tmp/sem-piso.edl.in \
+./build/app/src/app -scenario single-thread -deterministic 12000 | grep '^frame=' > /tmp/com.txt
+./build/app/src/app -scenario single-thread -deterministic 12000 -f /tmp/sem-piso.edl.in \
     | grep '^frame=' > /tmp/sem.txt
 diff -q /tmp/com.txt /tmp/sem.txt      # DEVEM diferir
 
@@ -1854,7 +1854,7 @@ grep -o "Name=[^,]*,Type=[^,]*,Color=[^,]*,CallSign=[^,]*" \
 meson configure build -Dasan=true && meson compile -C build single-thread
 
 # vazamento sem ferramenta externa: os contadores de instância do próprio MIXR
-./build/src/poc/dis/single-thread/src/single-thread -threads 1 -deterministic 1000 | grep "^meta="
+./build/app/src/app -scenario single-thread -threads 1 -deterministic 1000 | grep "^meta="
 ```
 
 > **Atenção ao rodar os comandos acima com `-deterministic` e cenário de produção:** o bloco

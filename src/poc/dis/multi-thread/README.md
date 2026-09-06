@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `app -scenario multi-thread`, ou `make run-multi-thread`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -scenario multi-thread`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -31,8 +31,8 @@ A [single-thread](../single-thread/) **inteira**, com **uma** diferença: o agen
 
 ```bash
 make build
-make run-multi-thread          # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
-make check-multi-thread        # verifica o determinismo (1, 2 e 4 threads T/C)
+./build/app/src/app -scenario multi-thread          # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
+./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread        # verifica o determinismo (1, 2 e 4 threads T/C)
 make compare-single-multi      # lista o que difere entre os dois subprojetos
 ```
 
@@ -459,7 +459,7 @@ simulação continuaria evoluindo do mesmo jeito, frame a frame.
 
 ### 7.3 O paralelismo continua ligado
 
-`make check-multi-thread` roda 2000 frames com **1, 2 e 4 threads T/C** (mais uma repetição de 4)
+`./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread` roda 2000 frames com **1, 2 e 4 threads T/C** (mais uma repetição de 4)
 e compara os dumps: **byte a byte idênticos**. Ou seja, a decisão foi para dentro do pool de
 threads — quatro agentes decidindo em paralelo, em threads diferentes — e o resultado não muda.
 
@@ -492,7 +492,7 @@ mesmos slots, mesmos números. A dissecação completa está na
 Cem milissegundos a 82 m/s são ~8 m de deslocamento — irrelevante para um piso com 800 m de
 folga. E **não afeta o determinismo**: em `-deterministic` o laço faz `tcFrame()` e `updateData()`
 em sequência no mesmo passo, então a defasagem é sempre exatamente um frame, com qualquer número
-de threads T/C. `make check-multi-thread` confirma.
+de threads T/C. `./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread` confirma.
 
 > Se algum dia essa defasagem passar a importar (um seguidor de terreno rigoroso, por exemplo), a
 > saída é consultar o banco **direto** na percepção — `FlightState::updateState()` tem acesso a
@@ -509,7 +509,7 @@ Tudo abaixo saiu do binário, não de dedução.
 ### 9.1 Uma decisão por frame, em 1, 2 e 4 threads
 
 ```
-$ make check-multi-thread
+$ ./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread
   OK   threads-4 == threads-4b
   OK   threads-1 == threads-2
   OK   threads-1 == threads-4
@@ -536,10 +536,10 @@ vale para os dois lados. Na suíte, os dois casos são nomeados por **onde a dec
 ### 9.2 Em passo fixo, as duas pocs dão **praticamente** o mesmo estado
 
 ```
-$ ./build/src/poc/dis/single-thread/src/single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
+$ ./build/app/src/app -scenario single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
 frame=2000 player=falcon1 n=... e=... alt=... elev=... agl=... bt=EVADE ...
 
-$ ./build/src/poc/dis/multi-thread/src/multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
+$ ./build/app/src/app -scenario multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
 frame=2000 player=falcon1 n=... (mesmos campos) ... dec=2001
 ```
 
@@ -644,18 +644,18 @@ make build
 make compare-single-multi
 
 # determinismo com 1, 2 e 4 threads + a contagem de decisões por frame
-make check-multi-thread
+./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread
 
 # tempo real (Tacview na porta 1234; Ctrl+C encerra) -- olhe 'dec' e 'thr' no status
-make run-multi-thread
+./build/app/src/app -scenario multi-thread
 
 # a decisão está mesmo amarrada ao frame? dec tem de ser (frames + 1)
-./build/src/poc/dis/multi-thread/src/multi-thread -threads 1 -deterministic 500 \
+./build/app/src/app -scenario multi-thread -threads 1 -deterministic 500 \
   | grep 'frame=500 player=falcon1' | grep -o 'dec=[0-9]*'
 
 # as duas pocs, lado a lado, em passo fixo (iguais até ~1e-6 m -- ver 9.2)
-./build/src/poc/dis/single-thread/src/single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 '
-./build/src/poc/dis/multi-thread/src/multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 '
+./build/app/src/app -scenario single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 '
+./build/app/src/app -scenario multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 '
 ```
 
 Para tudo o mais — anatomia do frame, o que vem do framework, a dissecação arquivo por arquivo, o

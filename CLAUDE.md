@@ -138,17 +138,21 @@ ser executados a partir da raiz do repositório:**
 ./build/app/src/app -scenario single-thread
 ```
 
-Opções de linha de comando do `./app`: `-scenario <chave>` (uma das chaves do catálogo — sem ela
-abre a tela de seleção), `-f <arquivo>` (cenário fora do catálogo), `-threads <N>` (quantas threads
-de tempo crítico) e `-deterministic <N>` (N frames de passo fixo, sem TUI).
+Opções de linha de comando do `./app`: `-scenario <chave>` (uma das chaves do catálogo), `-f
+<arquivo>` (cenário fora do catálogo) ou `-folder <pasta>` (navega uma pasta de sandbox) — **é
+obrigatório passar um dos três**, rodar sem nenhum é erro fatal, não mais um convite a uma tela
+de seleção implícita; mais `-threads <N>` (quantas threads de tempo crítico) e `-deterministic
+<N>` (N frames de passo fixo, sem TUI).
 
 **A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
-a verificação de **determinismo** tem alvos próprios (`check-single-thread`, `check-multi-thread`,
-`check-python-flight` e `check-onnx-policy`): roda N frames de passo fixo com 1, 2 e 4 threads
-T/C e compara os dumps `frame=` — todos devem ser idênticos. Vale para as **quatro**, a
-`single-thread` inclusive: ela também roda os players no pool de threads T/C, só decide fora
-dele. Os mesmos alvos servem de modelo para validar qualquer poc nova que use multithread.
-O alvo `compare-single-multi` lista o que difere entre as duas pastas (deve ser só o agente).
+a verificação de **determinismo** é feita por `tests/determinism/check_determinism.sh <binário>
+<rótulo> [frames] [poc]` (não há mais alvo `make check-<chave>` por poc — removido junto com os
+`run-<chave>`, ver o Makefile): roda N frames de passo fixo com 1, 2 e 4 threads T/C e compara os
+dumps `frame=` — todos devem ser idênticos. Vale para as **quatro** (single-thread/multi-thread/
+python-flight/onnx-policy), a `single-thread` inclusive: ela também roda os players no pool de
+threads T/C, só decide fora dele. O mesmo script serve de modelo para validar qualquer poc nova
+que use multithread. O alvo `compare-single-multi` (esse continua existindo) lista o que difere
+entre as duas pastas (deve ser só o agente).
 
 **AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan apenas na
 `single-thread` (único alvo que consome `asan_cpp_args`/`asan_link_args`).
@@ -227,7 +231,8 @@ src/poc/<nome>/
 
 Quem executa é o `./app`: `app -scenario <chave>` (as chaves estão em
 `app/ScenarioCatalog.cpp`) ou `app -f <arquivo>` para um cenário fora do catálogo — que é como
-as fixtures de teste entram. `make run-<poc>` é atalho para a primeira forma.
+as fixtures de teste entram. Não há mais atalho `make run-<poc>` por poc (removido) — o binário
+é chamado direto.
 
 **O que havia antes, e por que saiu:** cada poc carregava uma cópia **byte a byte** da camada
 de aplicação — `include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas —, sustentada pela
@@ -1534,12 +1539,10 @@ subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
 4. Opcionalmente, cobertura de teste automática em `tests/meson.build` — três formas possíveis
    (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `models/README.md`
    §4.2, com marcadores no próprio arquivo.
-5. Adicionar o alvo `run-<nome>: install` no [Makefile](Makefile), no molde de `run-onnx-policy`:
 
-   ```makefile
-   run-<nome>: install ## Run <nome> (descrição curta).
-   	$(BUILD_DIR)/app/src/app -scenario <nome>
-   ```
+Não há mais um passo de Makefile aqui — os alvos `run-<chave>`/`check-<chave>` por poc foram
+removidos (ver "Estado atual" mais abaixo); rodar a poc nova é só `./build/app/src/app -scenario
+<chave>` direto, já coberto pelo passo 3.
 
 **Guardas que já pagaram por profundidade de caminho — não redescobrir:**
 `check_duplication.sh` (hoje aposentada) descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
@@ -3309,6 +3312,12 @@ sandbox, sem precisar cadastrar nada no catálogo.**
   via seleção direta, e a tela interativa (`-folder ./sandbox` sem `-scenario`) mostrando as três
   com o título `"selecione um cenario -- ./sandbox"` e a descrição de cada uma sendo o caminho do
   `.edl` encontrado. `make test` 59/59, sem regressão.
+
+**NOTA (achado no stress-sweep de 2026-09-06):** várias passadas acima citam `onde-a-decisao-roda`
+como falha pré-existente/intermitente ("23/24", "33/34", "54/55, só essa"). Confirmado rodando
+duas vezes seguidas que ela passa hoje de forma estável — o `59/59` logo acima já não carrega
+asterisco nenhum para ela. As menções antigas de "falha de sempre" ficaram desatualizadas; não
+foram reescritas (são diário de cada passada), mas não valem mais como estado atual.
 
 **Vigésima quinta passada: rodar `./app` sem NENHUMA opção deixou de abrir a tela de seleção do
 catálogo — virou erro fatal. É obrigatório passar `-scenario`/`-f`/`-folder` explicitamente.**

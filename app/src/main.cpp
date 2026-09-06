@@ -1,23 +1,25 @@
 //
-// dashboard
+// app
 //
-// Quarta aplicacao do repositorio: a MESMA pilha nativa de single-thread
-// (Aircraft/JSBSimModel/Autopilot/radar/SimAgent, o MESMO plugin
-// libflight.so, nenhuma mudanca em models/) -- so troca o laco de tempo
-// real por um painel FTXUI (estilo btop: cores, navegacao por teclado,
-// redesenho responsivo) capaz de pausar/parar/acelerar/frear e carregar um
-// dentre tres cenarios PROPRIOS (ver app/ScenarioCatalog.hpp), herméticos e
-// com porta de Tacview/diretorio de dados proprios (1236, ./app/data/) para
-// poder rodar ao lado de single-thread/multi-thread sem colidir. Mora fora
-// de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o alvo
-// se chama 'app', nao 'dashboard'.
+// O RUNNER UNICO deste repositorio -- nenhuma poc sob src/poc/ tem mais
+// executavel proprio (ver "Estrutura de um subprojeto" no CLAUDE.md). Um
+// painel FTXUI (estilo btop: cores, navegacao por teclado, redesenho
+// responsivo) capaz de pausar/parar/acelerar/frear, sobre TRES fontes de
+// cenario possiveis (mutuamente exclusivas, ver app/Options.hpp):
+// '-scenario <chave>' do catalogo (as tres proprias deste app, hermeticas,
+// e as pocs em src/poc/**), '-f <arquivo>' fora do catalogo (fixtures de
+// teste), '-folder <pasta>' navegando cenarios de sandbox em disco. Mora
+// fora de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o
+// alvo se chama 'app', nao 'dashboard' (nome interno das classes, que nao
+// mudou).
 //
 // "Carregar outro cenario"/"reiniciar"/"parar" sao um REEXEC de si mesmo
 // (app/Respawn.hpp) -- nunca uma segunda Station no mesmo processo. Ver o
 // cabecalho de Respawn.hpp para o "porque".
 //
-// Opcoes de linha de comando:
-//   -scenario <chave> | -threads <N> | -deterministic <N> | -parallel-decision
+// Opcoes de linha de comando (lista completa em app/Options.hpp):
+//   -scenario <chave> | -f <arquivo> | -folder <pasta>   (um dos tres)
+//   -threads <N> | -deterministic <N> | -parallel-decision | -internal-picker
 //
 // ESTE ARQUIVO SO ORQUESTRA -- mesma divisao de app/ das outras pocs:
 //

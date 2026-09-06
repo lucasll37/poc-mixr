@@ -213,7 +213,7 @@ compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (
 check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
-run-app: ## Run app (TUI; sem '-scenario' mostra a tela de seleção).
+run-app: ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dentro dela, mostra a tela de seleção de subpastas).
 	$(BUILD_DIR)/app/src/app -folder ./sandbox
 
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.

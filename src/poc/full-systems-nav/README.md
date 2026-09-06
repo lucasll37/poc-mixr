@@ -11,8 +11,8 @@ Responde a **duas** perguntas ao mesmo tempo:
    `Action`)?
 
 ```bash
-make run-full-systems-nav      # tempo real, Tacview na porta 1240
-make check-full-systems-nav    # determinismo com 1, 2 e 4 threads T/C
+./build/app/src/app -scenario full-systems-nav      # tempo real, Tacview na porta 1240
+./tests/determinism/check_determinism.sh ./build/app/src/app full-systems-nav 2000 '' full-systems-nav    # determinismo com 1, 2 e 4 threads T/C
 
 # quem executa é o ./app, o runner único -- esta poc não tem binário próprio
 ./build/app/src/app -scenario full-systems-nav -deterministic 30000
@@ -140,7 +140,7 @@ altitude e velocidade convergindo e estabilizando em cada perna da rota.
   (`mission.acmi`), confirmando que a `Route`/`Steerpoint` nativa está
   disparando ações reais, não só recalculando números.
 - Determinismo preservado: dumps `frame=` byte-idênticos com 1, 2 e 4
-  threads de tempo crítico (`make check-full-systems-nav`).
+  threads de tempo crítico (`./tests/determinism/check_determinism.sh ./build/app/src/app full-systems-nav 2000 '' full-systems-nav`).
 
 ## Por que o cenário não se chama `scenario.edl.in`
 
@@ -150,7 +150,7 @@ só, chamado `a4`. Mesmo recurso que `built-in_mixr_1`/`bandit` já usam.
 Consequência igual à deles: esta poc não entra na lista `pocs` de
 `tests/meson.build` (as suítes `scenario`/`memory` derivam fixtures de
 `configs/scenario.edl.in`); o determinismo tem alvo próprio
-(`make check-full-systems-nav`), rodando contra o cenário desta pasta — já
+(`./tests/determinism/check_determinism.sh ./build/app/src/app full-systems-nav 2000 '' full-systems-nav`), rodando contra o cenário desta pasta — já
 hermético, sem `networks:`.
 
 ## O que herda de `built-in_mixr_1`, sem mudança
