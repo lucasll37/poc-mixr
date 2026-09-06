@@ -47,7 +47,7 @@
   <BehaviorTree ID="MainTree">
     <Fallback name="root">
 
-      <OnnxPolicy model="./src/poc/onnx-policy/configs/policy_barrier.onnx"
+      <OnnxPolicy model="./sandbox/onnx-policy/configs/policy_barrier.onnx"
                   normalized="true"
                   label="ONNX"/>
 

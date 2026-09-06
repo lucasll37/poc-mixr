@@ -1,4 +1,4 @@
-# `docs/` — explorador de execução, EDL e classes built-in do MIXR
+# `docs/manual/` — explorador de execução, EDL e classes built-in do MIXR
 
 `index.html` é uma página estática, sem dependências de rede (React, ReactDOM e todo o app
 ficam embutidos no próprio arquivo), com duas visões sobre o framework:
@@ -136,7 +136,7 @@ ficam embutidos no próprio arquivo), com duas visões sobre o framework:
 **Curada, não instrumentada.** Sem processo MIXR rodando por trás, herança, nome de fábrica,
 registro, slots, fases e os trechos de código (com arquivo e linha reais) foram extraídos direto
 da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
-`scripts/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/doc.jsx` como os
+`scripts/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/manual/doc.jsx` como os
 objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
 própria página e não deve ser removido em incrementos futuros. A árvore do cenário
 (`SCENARIO`/`ALL`/`EDL_TEXT`) é composição manual sobre esses mesmos dados — cada classe usada já
@@ -147,14 +147,14 @@ vinha do `MODEL` gerado, só a escolha de QUAIS classes e em que arranjo é cura
 Direto no navegador, sem servidor nenhum (zero requisições de rede, inclusive React):
 
 ```
-xdg-open docs/index.html     # ou file://.../docs/index.html
+xdg-open docs/manual/index.html     # ou file://.../docs/manual/index.html
 ```
 
 Ou servido (para simular hospedagem futura, ex. GitHub Pages):
 
 ```
 python3 -m http.server --directory . 8000
-# abrir http://localhost:8000/docs/
+# abrir http://localhost:8000/docs/manual/
 ```
 
 ## `doc.jsx` → `index.html`
@@ -162,16 +162,16 @@ python3 -m http.server --directory . 8000
 `doc.jsx` é a fonte (um componente React único, `App`, com CSS embutido em uma string e os
 dados gerados embutidos como constantes — nenhum `fetch`/`import` além de `react`).
 `index.html` é gerado a partir dele: JSX transpilado para `React.createElement` (Babel,
-preset `react`, via `docs/compile.js`) e React 18 + ReactDOM 18 (UMD, produção) inlinados no
+preset `react`, via `docs/manual/compile.js`) e React 18 + ReactDOM 18 (UMD, produção) inlinados no
 mesmo arquivo, para que abrir `index.html` não dispare nenhuma requisição de rede. Regenerar
 depois de editar `doc.jsx`:
 
 ```bash
-make docs        # ou: node docs/compile.js
+make docs        # ou: node docs/manual/compile.js
 ```
 
 A primeira execução baixa React/ReactDOM 18.3.1 UMD e instala `@babel/standalone` em
-`docs/.cache/` (gitignored) — as próximas rodam sem rede nenhuma, direto do cache. `make
+`docs/manual/.cache/` (gitignored) — as próximas rodam sem rede nenhuma, direto do cache. `make
 open-docs` continua existindo à parte: só ABRE o `index.html` já gerado, nunca regenera.
 
 ## O editor gráfico de cenário .edl mora em `src/ui/`, não aqui

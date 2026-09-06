@@ -4,7 +4,7 @@ classes de fato fazem trabalho de fase.
 
 Nao existe check-edl.py neste repositorio para reaproveitar (docs/TODO.md presumia
 que existia) -- este e um extrator novo, pequeno, sem dependencias, que serve de
-oraculo para docs/index.html: qualquer nome de classe/fabrica e qualquer
+oraculo para docs/manual/index.html: qualquer nome de classe/fabrica e qualquer
 afirmacao de "isto e ocioso" usada na arvore da UI tem de bater com a saida daqui.
 
 O que ele faz, dois passos:
@@ -68,7 +68,7 @@ TARGET_METHODS = [
     "updateTC", "updateData", "dynamics", "transmit", "receive", "process",
     "processComponents",
     # UBF (mixr::base::ubf): metodos do ciclo de decisao, a parte do switch(phase)
-    # acima -- ver docs/doc.jsx (trilha "Decisao (UBF)").
+    # acima -- ver docs/manual/doc.jsx (trilha "Decisao (UBF)").
     "genAction", "updateState", "execute", "genComplexAction", "controller",
 ]
 
@@ -490,7 +490,7 @@ def build_catalog():
 # deste repositorio) com tipo/unidade/cardinalidade por slot, para dirigir a
 # paleta e os widgets do editor grafico de .edl (src/ui/edl_builder.jsx).
 #
-# Aditivo: nao toca build_catalog()/--catalog (usado por docs/doc.jsx, universo
+# Aditivo: nao toca build_catalog()/--catalog (usado por docs/manual/doc.jsx, universo
 # deliberadamente restrito a mixr::models -- ver o comentario de
 # MIXR_MODELS_SRC acima). Aqui o universo e SRC_ROOTS/INCLUDE_ROOTS, que ja
 # cobrem tudo (linha 64-65) -- generalizar a CHAMADA das funcoes que ja

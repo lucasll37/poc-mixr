@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
  * MIXR — Editor gráfico de cenário .edl
  *
  * EDL_CATALOG é GERADO por `make edl-catalog` (scripts/extract_execution_
- * chain.py --edl-catalog) e injetado num <script> próprio por docs/
+ * chain.py --edl-catalog) e injetado num <script> próprio por src/ui/
  * compile.js, ANTES deste arquivo -- ver o comentário de `dataFile` em
  * compile.js. Cobre TODAS as factories que app/src/mixr_factory.cpp de
  * fato encadeia (base/models/terrain/interop-dis/linkage/recorder/

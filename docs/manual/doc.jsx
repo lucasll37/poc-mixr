@@ -1018,7 +1018,7 @@ const CSS = `
 
 /* --- animacoes de fluxo: aresta "andando" (marcha de formigas) para o caminho   *
  * ativo, halo pulsando no no em execucao, tudo so com CSS/SMIL -- sem lib nova   *
- * (mantem docs/index.html sem nenhuma requisicao de rede pra abrir). --- */
+ * (mantem docs/manual/index.html sem nenhuma requisicao de rede pra abrir). --- */
 @keyframes mx-dash { to { stroke-dashoffset:-20; } }
 @keyframes mx-dashfast { to { stroke-dashoffset:-24; } }
 @keyframes mx-halo { 0% { transform:scale(0.55); opacity:0.65; } 100% { transform:scale(2.1); opacity:0; } }

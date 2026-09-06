@@ -2,8 +2,8 @@
 //
 // edl_builder.jsx -> edl-builder.html
 //
-// Mesmo padrao de docs/compile.js (doc.jsx -> index.html) -- copiado, nao
-// importado, de proposito: src/ui/ e um subprojeto AUTOCONTIDO (mesma
+// Mesmo padrao de docs/manual/compile.js (doc.jsx -> index.html) -- copiado,
+// nao importado, de proposito: src/ui/ e um subprojeto AUTOCONTIDO (mesma
 // convencao de qualquer coisa sob src/, ver CLAUDE.md), com seu proprio
 // cache (./src/ui/.cache/), sem depender de docs/ em nada. Unico passo que
 // precisa de rede (baixar React/ReactDOM 18 UMD + o transpilador JSX, uma

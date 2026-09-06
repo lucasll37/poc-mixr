@@ -57,8 +57,12 @@
 #include "mixr/base/Component.hpp"
 
 #include <algorithm>
+#include <ctime>
+#include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -74,11 +78,34 @@ const double cruiseThrottle{0.95};
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
 
+// Um carimbo por PROCESSO (nao por frame -- resolucao de segundo basta),
+// usado em dois lugares: o nome do log do cenario escolhido (montado mais
+// abaixo, depois que 'cenario' e conhecido -- ver o comentario la) e o
+// token '@RUN_ID@' (ver generateScenario()/scenarioTokens mais adiante),
+// que um '.edl.in' pode usar para nomear mission_<RUN_ID>.jsonl/.acmi.
+// Nenhum dos tres gravadores em jogo protege sozinho contra sobrescrita
+// entre EXECUCOES separadas: MsgFileSink::open() e
+// RealtimeTelemetryServer::startRecording() abrem com std::ios::trunc, sem
+// nenhum versionamento (ao contrario do recorder::PrintHandler nativo, que
+// tenta '_v01'.._v99' antes de desistir); e o proprio xlog::init() APAGA o
+// log anterior de proposito, para nao disparar esse versionamento nativo a
+// cada respawn (ver o comentario dentro de xlog::init()). Um carimbo novo
+// por processo cobre os tres.
+std::string runIdNow()
+{
+   const std::time_t t{std::time(nullptr)};
+   std::tm tm{};
+   localtime_r(&t, &tm);
+   std::ostringstream oss;
+   oss << std::put_time(&tm, "%Y%m%d-%H%M%S");
+   return oss.str();
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
 {
-   mixr::xlog::init("./app/data/logs/app.log");
+   const std::string runId{runIdNow()};
 
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
@@ -162,6 +189,17 @@ int main(int argc, char* argv[])
 
    const app::ScenarioEntry& cenario{chosen};
 
+   // O log vai para 'data/logs/' DENTRO da pasta do proprio cenario -- o
+   // mesmo lugar onde 'dataRecorder:'/'msgFeed:' do .edl ja escrevem
+   // recordings/mensagens (ver o comentario de runIdNow()) -- nunca um
+   // caminho global fixo. 'templatePath' e sempre '<pasta-do-cenario>/
+   // configs/<arquivo>' (catalogo, poc ou sandbox de '-folder'); subir dois
+   // niveis acha essa pasta sem o chamador ter de saber de qual familia o
+   // cenario veio.
+   const std::filesystem::path scenarioDir{
+      std::filesystem::path(cenario.templatePath).parent_path().parent_path()};
+   mixr::xlog::init((scenarioDir / "data" / "logs" / (cenario.key + "_" + runId + ".log")).string());
+
    if (opts.isDeterministic()) mixr::xlog::setLoggingEnabled(false);
 
    app::ensureTerrainData(terrainDir, terrainTile);
@@ -173,14 +211,19 @@ int main(int argc, char* argv[])
    app::ensureAllTerrainTiles(terrainDir);
 
    const std::string generatedPath{"./app/configs/" + cenario.key + ".generated.edl"};
-   const std::map<std::string, std::string> tacviewTokens{
+   // 'RUN_ID' entra para TODO cenario, nao so os do proprio ./app -- ver o
+   // comentario de runIdNow() acima. Um '.edl.in' que nao usa '@RUN_ID@'
+   // simplesmente nao tem esse token pra substituir; a troca so acontece
+   // onde o arquivo pede.
+   const std::map<std::string, std::string> scenarioTokens{
       {"SCENARIO_ID", cenario.tacviewId},
       {"MODEL_MAP", cenario.tacviewModelMap},
       {"TYPE_MAP", cenario.tacviewTypeMap},
       {"COLOR_MAP", cenario.tacviewColorMap},
+      {"RUN_ID", runId},
    };
    const int numTcThreads{
-      app::generateScenario(cenario.templatePath, generatedPath, opts.threadsOverride, tacviewTokens)};
+      app::generateScenario(cenario.templatePath, generatedPath, opts.threadsOverride, scenarioTokens)};
 
    mixr::simulation::Station* const station{app::buildStation(generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};

@@ -3,9 +3,10 @@
 // doc.jsx -> index.html
 //
 // Unico passo que precisa de rede neste diretorio (so pra buscar React/
-// ReactDOM 18 UMD e o transpilador JSX, uma vez, em docs/.cache/ -- depois
-// disso "node docs/compile.js" roda sem rede nenhuma) -- o ARQUIVO GERADO
-// continua zero-rede pra abrir (ver docs/README.md, "Como abrir").
+// ReactDOM 18 UMD e o transpilador JSX, uma vez, em docs/manual/.cache/ --
+// depois disso "node docs/manual/compile.js" roda sem rede nenhuma) -- o
+// ARQUIVO GERADO continua zero-rede pra abrir (ver docs/manual/README.md,
+// "Como abrir").
 //
 // O que faz, em ordem:
 //   1) troca a linha `import React, {...} from "react";` por
@@ -19,12 +20,12 @@
 //   4) concatena tres <script>: React, ReactDOM, o app transpilado -- e
 //      fecha com o mount (ReactDOM.createRoot(...).render(...)).
 //
-// Uso: node docs/compile.js   (ou `make docs`, que so chama isto)
+// Uso: node docs/manual/compile.js   (ou `make docs`, que so chama isto)
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, "..", "..");
 const SRC = path.join(__dirname, "doc.jsx");
 const OUT = path.join(__dirname, "index.html");
 const CACHE = path.join(__dirname, ".cache");
@@ -36,7 +37,7 @@ function ensureCached(relPath, url) {
   const dest = path.join(CACHE, relPath);
   if (fs.existsSync(dest)) return dest;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  console.log(`baixando (uma vez, cacheado em docs/.cache/): ${url}`);
+  console.log(`baixando (uma vez, cacheado em docs/manual/.cache/): ${url}`);
   execFileSync("curl", ["-sL", "--fail", "-o", dest, url]);
   return dest;
 }
@@ -44,7 +45,7 @@ function ensureCached(relPath, url) {
 function ensureBabelStandalone() {
   const modPath = path.join(CACHE, "node_modules", "@babel", "standalone");
   if (fs.existsSync(modPath)) return modPath;
-  console.log("instalando @babel/standalone em docs/.cache/ (uma vez)...");
+  console.log("instalando @babel/standalone em docs/manual/.cache/ (uma vez)...");
   fs.mkdirSync(CACHE, { recursive: true });
   execFileSync("npm", ["install", "--no-save", "--prefix", CACHE, "@babel/standalone"], { stdio: "inherit" });
   return modPath;

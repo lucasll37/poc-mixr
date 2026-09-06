@@ -122,7 +122,7 @@
          healthEvery:  ( Seconds 10 )
          sinks: {
             ( MsgFileSink
-               fileName: "./sandbox/full-systems-nav/data/messages/mission_@RUN_ID@.jsonl"
+               fileName: "./sandbox/full-systems-nav/data/messages/mission_20260906-035411.jsonl"
                flushEvery: ( Seconds 2 ) )
          }
          messages: {
@@ -143,7 +143,7 @@
             ( TacviewOutput
                port: 1240
                callsign: "poc-mixr/full-systems-nav"
-               fileName: "./sandbox/full-systems-nav/data/recordings/mission_@RUN_ID@.acmi"
+               fileName: "./sandbox/full-systems-nav/data/recordings/mission_20260906-035411.acmi"
                modelMap: { a4: "A-4E" }
                typeMap:  { a4: "Air+FixedWing" }
                colorMap: { a4: "Blue" }
@@ -154,7 +154,7 @@
 
    simulation: ( WorldModel
 
-      numTcThreads: @NUM_TC_THREADS@
+      numTcThreads: 7
 
       latitude:  -22.25
       longitude: -42.48

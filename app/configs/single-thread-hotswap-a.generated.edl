@@ -1,53 +1,34 @@
 //
-// python-flight
+// single-thread
 //
-// O multi-thread INTEIRO, com UMA unica diferenca: as LEIS DE VOO sao
-// escritas em PYTHON, num arquivo de texto que este cenario aponta, e nao
-// em C++ dentro do plugin.
-//
-//   peca                multi-thread                python-flight
-//   ------------------  --------------------------  --------------------------
-//   agente UBF          ( FlightAgentTC )           igual
-//   politica            ( BtBehavior )              igual
-//   arvore              flight_tree.xml             flight_tree_python.xml
-//   quem calcula o      nos C++ do plugin           configs/policy/*.py
-//   comando de voo      (ReportAndEvade, Patrol,
-//                        ReturnToBase, SupportAlert)
+// 4 avioes patrulhando + 1 intruso; quem detecta avisa os outros, que vao
+// apoiar. A pilha e 100% HERDADA/REAPROVEITADA do MIXR: ( Aircraft ),
+// ( JSBSimModel ), ( Autopilot ), radar ( Gimbal/Antenna + Tws + AirTrkMgr ),
+// ( AlertDatalink : models::Datalink ) e o agente ( SimAgent ). So a
+// percepcao/decisao/acao (FlightState/BtBehavior/FlightAction) sao proprios
+// -- o UBF nao traz implementacoes prontas.
 //
 // SEM ARBITRO: 'behavior:' do agente aponta direto para o ( BtBehavior ),
-// sem ( UbfArbiter )/( AltitudeSafetyBehavior ) no meio -- a .so continua
-// exportando AltitudeSafetyBehavior (ver 'provides:' abaixo), so este
-// cenario nao a instancia. O piso anti-CFIT que sobra e so o
-// 'terrainClearance:' do proprio BtBehavior (o mesmo usado pelo ramo nativo
-// de evasao), sem um piso independente por cima do que o script Python
-// comanda.
+// sem ( UbfArbiter )/( AltitudeSafetyBehavior ) no meio. A .so continua
+// exportando AltitudeSafetyBehavior (ver 'provides:' abaixo) -- so este
+// cenario nao a instancia. Sem ela, o piso anti-CFIT que sobra e so o
+// 'terrainClearance:' do proprio BtBehavior, que age apenas DENTRO do ramo
+// de evasao -- nao ha mais um piso independente cobrindo os outros ramos.
 //
-// O QUE FICA NATIVO, E POR QUE. A arvore continua escolhendo o RAMO com os
-// mesmos nos de condicao do modelo de producao ( FuelLow, ContactDetected,
-// AlertReceived ). Nao e preguica: ContactDetected consulta a histerese de
-// domain::ThreatPolicy, que envelhece com o 'dt' do frame -- e um script
-// Python nao recebe 'dt' (a fronteira de shared/xpyembed e "28 floats
-// entram, 3 saem"). Deixar a histerese onde ela ja esta mantem o script
-// PURO em relacao ao estado da propria aeronave, que e a condicao para os
-// dumps de 1, 2 e 4 threads sairem identicos.
+// AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
+// models/player/A4/data/jsbsim/aircraft/A4/, originados de
+// shared/data/jsbsim/aircraft/A4/). O motivo do proprio c310 (agora
+// substituido) era concreto e continua valendo aqui: o JSBSimModel nativo
+// comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
+// 'ap/airspeed_hold' (confirmado com `strings libmixr_models.so`),
+// propriedades que so existem se o MODELO JSBSim tiver um autopilot proprio.
+// O A-4 de fabrica (Aeromatic) nao vem com nenhum -- por isso
+// models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
+// esta PoC-mixr, no mesmo papel que c310ap.xml cumpria: com ele, a cadeia
+// Autopilot -> JSBSimModel -> superficies funciona sem uma linha de lei de
+// controle propria.
 //
-// O 'ReportAndEvade' tambem continua no ramo de evasao, ANTES do script,
-// por um motivo mecanico: e ele que marca o pedido de alerta tatico
-// (bt_nodes::FlightDecision::broadcastAlert), e FlightDecision::take() --
-// o que o script usa para entregar o comando -- sobrescreve rumo, altitude
-// e rotulo, mas NAO limpa esse pedido. O resultado e o desejado: quem
-// avisa os outros e o C++, quem faz a manobra e o Python.
-//
-// AERONAVE: A-4 (Douglas A-4 Skyhawk), a mesma das gemeas -- ver o
-// cabecalho de src/poc/dis/multi-thread/configs/scenario.edl.in para o
-// porque (models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml e o
-// autopilot 'ap/*' proprio escrito para esta PoC-mixr, sem o qual o
-// ( Autopilot ) nativo nao comanda nada).
-//
-// PORTAS PROPRIAS, para rodar ao lado das outras pocs: Tacview 1237 (as
-// gemeas usam 1234, o bandit 1235) e DIS 3004.
-//
-// @NUM_TC_THREADS@ e substituido pelo main.cpp antes do parse.
+// 1 e substituido pelo main.cpp antes do parse.
 //
 
 ( ClockStation
@@ -57,23 +38,13 @@
    ownship: falcon1
 
    // --------------------------------------------------------------------
-   // A DIFERENCA DO single-thread ESTA AQUI: esta Station NAO tem AGENTE
-   // nenhum em 'components:'.
-   //
-   // No single-thread os quatro ( SimAgent ) moram neste ponto e amarram o
-   // ator por nome (slot 'actorPlayerName'), porque e assim que o SimAgent
-   // nativo funciona -- e, por ser um ubf::Agent, decidem em updateData().
-   //
-   // Aqui cada agente e um ( FlightAgentTC ) DENTRO da aeronave, no fim da
-   // lista de componentes do player. Duas consequencias diretas:
-   //   * o ator e o proprio container, entao nao ha nome a amarrar;
-   //   * a decisao roda na fase 3 do frame de tempo critico, na thread do
-   //     pool que estiver processando aquele player.
-   //
-   // O 'components:' abaixo existe so para o ( MsgFeed ), que e identico ao
-   // da gemea: mensageria nao e decisao, e roda fora do frame T/C nas duas.
+   // Agentes do UBF: aqui eles moram na STATION e amarram o ator por NOME
+   // (actorPlayerName), que e como o models::SimAgent nativo funciona.
+   // Consequencia real desta escolha: SimAgent deriva de ubf::Agent, cujo
+   // ciclo roda em updateData() -- ou seja, a decisao acontece na thread de
+   // BACKGROUND, na taxa do laco do main.cpp, e nao na fase 3 do frame de
+   // tempo critico (ver src/poc/dis/multi-thread, que troca so essa peca).
    // --------------------------------------------------------------------
-
    components: {
 
       // ------------------------------------------------------------------
@@ -86,7 +57,7 @@
       //
       // Depois desta linha, os nomes de fabrica que a .so responde
       // ( FlightState, BtBehavior, AltitudeSafetyBehavior, FlightAction,
-      // AlertDatalink, TacticalAlert, FlightAgentTC )
+      // AlertDatalink, TacticalAlert )
       // valem no resto DESTE arquivo, como se fossem do framework.
       //
       // ESTE BLOCO TEM DE VIR ANTES DO PRIMEIRO USO -- por isso e a primeira
@@ -110,13 +81,105 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_tc.so"
-               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
-                           FlightState BtBehavior AltitudeSafetyBehavior
-                           RLBridgeBehavior FlightAction }
+               file: "/home/lucas/Projects/poc-mixr/models/player/A4/build/libmodel_variant_a.so"
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightState
+                           BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
+                           FlightAction }
             )
          }
       )
+
+      agent1: ( SimAgent
+         actorPlayerName: falcon1
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading:  ( Degrees 90 )
+            legTime:        ( Seconds 10 )
+            legTurn:        ( Degrees 90 )
+            patrolAltitude: ( Meters 1750 )
+            patrolSpeed:    350.0
+            // Jitter de rumo na patrulha (opcional, ver CLAUDE.md secao
+            // shared/xrandom): mesma patrolMasterSeed nos 4 falcons --
+            // cada um deriva a propria sequencia do proprio NOME, nunca
+            // de ordem de descoberta/thread.
+            patrolJitterHeading: ( Degrees 6 )
+            patrolMasterSeed:    20260903
+            rtbAltitude:    ( Meters 2050 )
+            rtbSpeed:       380.0
+            arrivalRadius:  ( NauticalMiles 2.0 )
+            fuelReserve:    0.35
+            breakTurn:      ( Degrees 110 )
+            evadeClimb:     ( Meters 700 )
+            evadeSpeed:     420.0
+            // PISO ANTI-CFIT. O desconflito vertical da evasao desce
+            // 700 m a partir da altitude atual; com ~940 m de AGL de
+            // cruzeiro isso levaria a aeronave para ~240 m do chao. O
+            // alvo e entao levantado para terreno+800. 0 desliga a
+            // camada de terreno e devolve o piso absoluto de 200 m --
+            // e o controle negativo, sem recompilar.
+            terrainClearance: ( Meters 800 )
+            // Histerese da evasao: por quanto tempo a manobra continua
+            // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
+            // entre perder o contato (a propria quebra tira o intruso do
+            // setor do radar) e o ramo de apoio querer assumir -- sem
+            // isso os dois alternam e a aeronave voa "batendo asa".
+            evadeHold:      ( Seconds 30 )
+            supportSpeed:   400.0
+         )
+      )
+
+      agent2: ( SimAgent
+         actorPlayerName: falcon2
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 180 )  legTime: ( Seconds 10 )
+            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
+            patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+            evadeSpeed: 420.0  supportSpeed: 400.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
+         )
+      )
+
+      agent3: ( SimAgent
+         actorPlayerName: falcon3
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 270 )  legTime: ( Seconds 10 )
+            legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
+            patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
+            evadeSpeed: 430.0  supportSpeed: 410.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
+         )
+      )
+
+      agent4: ( SimAgent
+         actorPlayerName: falcon4
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 0 )  legTime: ( Seconds 10 )
+            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
+            patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+            evadeSpeed: 420.0  supportSpeed: 400.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
+         )
+      )
+
 
       // ------------------------------------------------------------------
       // Mensagens configuraveis (shared/xmsg). Escolher O QUE sai da
@@ -133,7 +196,7 @@
 
          sinks: {
             ( MsgFileSink
-               fileName: "./sandbox/python-flight/data/messages/mission_@RUN_ID@.jsonl"
+               fileName: "./build/tests-messages/single-thread-intruder.jsonl"
                flushEvery: ( Seconds 2 ) )
          }
 
@@ -195,7 +258,7 @@
          }
       )
 
-   } // components (mensageria)
+   } // components (agentes)
 
    // --------------------------------------------------------------------
    // bandit1 (o intruso) mora no processo proprio src/poc/dis/bandit, pilotado
@@ -227,44 +290,20 @@
    //
    // Esquema de portas (ver o comentario irmao em
    // src/poc/dis/bandit/configs/scenario.edl): todo mundo escuta em 3000;
-   // bandit emite da 3001, single-thread da 3002, multi-thread da 3003 e
-   // esta Station da 3004 -- as quatro podem rodar ao mesmo tempo.
+   // bandit emite da 3001, esta Station da 3002, multi-thread da 3003.
    //
    // disEntityType TEM que ser identico dos dois lados -- e como o Ntm casa
    // o PDU recebido com o template. Nao e enumeracao SISO-REF-010 real, so
    // um codigo interno consistente.
    // --------------------------------------------------------------------
-   networks: {
-      ( DisNetIO
-         siteID: 3  applicationID: 1  exerciseID: 1
-         netInput:  ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
-                      port: 3000  ignoreSourcePort: 3004  shared: true )
-         netOutput: ( UdpBroadcastHandler localIpAddress: localhost networkMask: "255.0.0.0"
-                      port: 3000  localPort: 3004          shared: true )
-         inputEntityTypes: {
-            ( DisNtm
-               template: ( Aircraft type: "A4"
-                  signature: ( SigSphere radius: 4.0 )
-                  dataLogTime: ( Seconds 0.1 )
-               )
-               disEntityType: [ 1 2 225 1 99 0 0 ]
-            )
-         }
-         outputEntityTypes: {
-            ( DisNtm
-               template: ( Aircraft type: "A4" )
-               disEntityType: [ 1 2 225 1 99 0 0 ]
-            )
-         }
-      )
-   }
+   
 
    // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
    // publico -- e o que deixa app/StationBuilder.cpp achar o TacviewOutput
    // daqui de fora, pra alimentar a varredura de radar (ver
    // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
    dataRecorder: ( ExposedDataRecorder
-      eventName: "multi-thread"
+      eventName: "single-thread"
 
       // O gravador NATIVO ESTOURA (SEGV, via __dynamic_cast em
       // DataRecorder::recordNewTrack()) ao gravar a primeira pista que o
@@ -278,9 +317,9 @@
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
-               port: 1237
-               callsign: "poc-mixr/python-flight"
-               fileName: "./sandbox/python-flight/data/recordings/mission_@RUN_ID@.acmi"
+               port: 12341
+               callsign: "poc-mixr/single-thread"
+               fileName: "./build/tests-recordings/single-thread-intruder.acmi"
 
                // Name= e o MODELO que o Tacview procura na sua base de dados
                // para escolher o icone/modelo 3D (o nome do player vai em
@@ -305,7 +344,7 @@
 
    simulation: ( WorldModel
 
-      numTcThreads: @NUM_TC_THREADS@
+      numTcThreads: 1
 
       // Serra do Mar / regiao de Nova Friburgo (RJ). A referencia esta no
       // MIOLO da celula S23W043 (lat -23..-22, lon -43..-42): com os players
@@ -463,55 +502,6 @@
                      )
                   }
                )
-
-               // ------------------------------------------------------
-               // O AGENTE -- a diferenca deste subprojeto.
-               //
-               // Mesmo conteudo do ( SimAgent ) do single-thread (mesmo state,
-               // mesmo behavior, mesmos numeros); muda a CLASSE e o LUGAR.
-               //
-               // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
-               // percorrida na ordem declarada, e tres coisas rodam na
-               // fase 3 -- Autopilot::process(), AirTrkMgr::process() e a
-               // decisao. Declarado por ultimo, o agente ja enxerga as
-               // pistas ATUALIZADAS deste frame; o comando que ele grava
-               // no Autopilot vale a partir do frame seguinte. E a mesma
-               // disciplina do resto da poc: escreve numa fase, publica
-               // na fronteira, le na fase seguinte.
-               // ------------------------------------------------------
-               agent: ( FlightAgentTC
-                  state: ( FlightState )
-                  behavior: ( BtBehavior
-                     treeFile: "./sandbox/python-flight/configs/flight_tree_python.xml"
-                     patrolHeading:  ( Degrees 90 )
-                     legTime:        ( Seconds 60 )
-                     legTurn:        ( Degrees 90 )
-                     patrolAltitude: ( Meters 1750 )
-                     patrolSpeed:    350.0
-                     rtbAltitude:    ( Meters 2050 )
-                     rtbSpeed:       380.0
-                     arrivalRadius:  ( NauticalMiles 2.0 )
-                     fuelReserve:    0.35
-                     breakTurn:      ( Degrees 110 )
-                     evadeClimb:     ( Meters 700 )
-                     evadeSpeed:     420.0
-                     supportSpeed:   400.0
-                     // Histerese da evasao: por quanto tempo a manobra continua
-                     // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
-                     // entre perder o contato (a propria quebra tira o intruso do
-                     // setor do radar) e o ramo de apoio querer assumir -- sem
-                     // isso os dois alternam e a aeronave voa "batendo asa".
-                     evadeHold:      ( Seconds 30 )
-                     // PISO ANTI-CFIT. O desconflito vertical da evasao
-                     // desce 700 m a partir da altitude atual; com ~940 m
-                     // de AGL de cruzeiro isso levaria a aeronave para
-                     // ~240 m do chao. O alvo e entao levantado para
-                     // terreno+800. 0 desliga a camada de terreno e
-                     // devolve o piso absoluto de 200 m -- e o controle
-                     // negativo, sem recompilar.
-                     terrainClearance: ( Meters 800 )
-                  )
-               )
             }
          )
 
@@ -564,20 +554,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-               agent: ( FlightAgentTC
-                  state: ( FlightState )
-                  behavior: ( BtBehavior
-                     treeFile: "./sandbox/python-flight/configs/flight_tree_python.xml"
-                     patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
-                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                     evadeSpeed: 420.0  supportSpeed: 400.0
-                     evadeHold: ( Seconds 30 )
-                     terrainClearance: ( Meters 800 )
-                  )
-               )
             }
          )
 
@@ -630,20 +606,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-               agent: ( FlightAgentTC
-                  state: ( FlightState )
-                  behavior: ( BtBehavior
-                     treeFile: "./sandbox/python-flight/configs/flight_tree_python.xml"
-                     patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                     legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                     patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
-                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                     breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                     evadeSpeed: 430.0  supportSpeed: 410.0
-                     evadeHold: ( Seconds 30 )
-                     terrainClearance: ( Meters 800 )
-                  )
-               )
             }
          )
 
@@ -696,20 +658,6 @@
                obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
                   maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
-               agent: ( FlightAgentTC
-                  state: ( FlightState )
-                  behavior: ( BtBehavior
-                     treeFile: "./sandbox/python-flight/configs/flight_tree_python.xml"
-                     patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
-                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                     evadeSpeed: 420.0  supportSpeed: 400.0
-                     evadeHold: ( Seconds 30 )
-                     terrainClearance: ( Meters 800 )
-                  )
-               )
             }
          )
 
@@ -717,6 +665,17 @@
          // recebido so pela rede via 'networks:' (ver o comentario logo
          // acima de 'dataRecorder:'). Mesma aeronave, mesmos valores
          // iniciais do lado de la.
+
+
+         // ------------------------------------------------------------------
+         // FIXTURE DE TESTE -- bandit1 LOCAL.
+         //
+         // Em producao o intruso vive no processo src/poc/dis/bandit e chega por
+         // DIS. Num teste de processo unico isso tornaria EVADE e SUPPORT
+         // inalcancaveis, entao ele volta para ca, com os mesmos valores
+         // iniciais do lado de la.
+         // ------------------------------------------------------------------
+         
 
       } // players
 

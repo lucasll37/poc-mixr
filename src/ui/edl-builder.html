@@ -73503,7 +73503,7 @@ const EDL_DEFAULT_SCENARIO = {
 <script>
 // Lógica PURA do editor gráfico de .edl (src/ui/edl_builder.jsx) -- sem React,
 // sem JSX, sem `import`/`export` de verdade: é um arquivo <script> comum,
-// concatenado por docs/compile.js na MESMA tag <script> do app transpilado
+// concatenado por src/ui/compile.js na MESMA tag <script> do app transpilado
 // (compartilham escopo global, sem precisar de bundler nem de resolução de
 // módulo no navegador -- ver o comentário de `coreFile` em compile.js).
 //
@@ -73818,7 +73818,7 @@ const {
  * MIXR — Editor gráfico de cenário .edl
  *
  * EDL_CATALOG é GERADO por `make edl-catalog` (scripts/extract_execution_
- * chain.py --edl-catalog) e injetado num <script> próprio por docs/
+ * chain.py --edl-catalog) e injetado num <script> próprio por src/ui/
  * compile.js, ANTES deste arquivo -- ver o comentário de `dataFile` em
  * compile.js. Cobre TODAS as factories que app/src/mixr_factory.cpp de
  * fato encadeia (base/models/terrain/interop-dis/linkage/recorder/

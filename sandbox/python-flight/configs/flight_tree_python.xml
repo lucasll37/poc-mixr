@@ -50,24 +50,24 @@
 
       <Sequence name="rtb_sequence">
         <FuelLow margin="0.05"/>
-        <PyDecide script="./src/poc/python-flight/configs/policy/rtb.py"
+        <PyDecide script="./sandbox/python-flight/configs/policy/rtb.py"
                   label="PY-RTB"/>
       </Sequence>
 
       <Sequence name="engage_sequence">
         <ContactDetected/>
         <ReportAndEvade/>
-        <PyDecide script="./src/poc/python-flight/configs/policy/evade.py"
+        <PyDecide script="./sandbox/python-flight/configs/policy/evade.py"
                   label="PY-EVADE"/>
       </Sequence>
 
       <Sequence name="support_sequence">
         <AlertReceived/>
-        <PyDecide script="./src/poc/python-flight/configs/policy/support.py"
+        <PyDecide script="./sandbox/python-flight/configs/policy/support.py"
                   label="PY-SUPPORT"/>
       </Sequence>
 
-      <PyDecide script="./src/poc/python-flight/configs/policy/patrol.py"
+      <PyDecide script="./sandbox/python-flight/configs/policy/patrol.py"
                 label="PY-PATROL"/>
 
       <Patrol/>

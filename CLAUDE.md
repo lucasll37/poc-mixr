@@ -3543,8 +3543,10 @@ servidor, sem dependência de rede depois do primeiro carregamento). A peça viv
 `scripts/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
 `models/player/A4/` — não é desenho à mão do ciclo de fases, é extraído do código.
 
-- **`docs/index.html`** (`make docs`/`make open-docs`; fonte em `docs/doc.jsx` + `docs/compile.js`)
-  tem **três abas**:
+- **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
+  `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
+  `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
+  `docs/`) tem **três abas**:
   1. **Execução** — o ciclo de fases do frame MIXR (dynamics/transmit/receive/process/background)
      animado sobre a árvore de componentes de um `( Aircraft )` só com peças **built-in** (~72
      nós), com pan/zoom, tema claro/escuro, "seguir ramo" (auto-pan) e clique para pular de fase.
@@ -3560,8 +3562,9 @@ servidor, sem dependência de rede depois do primeiro carregamento). A peça viv
   bandit/DIS, python-flight, onnx-policy, built-in_mixr_1...). **Órfão**: nenhum alvo do Makefile
   o gera nem o abre, nenhum README aponta pra ele.
 - **`docs/explorador/`** existiu antes (dois modos: replay de cenário real + tour pelo catálogo de
-  `mixr::models`) e foi **removido** junto com `docs/TODO.md` — a aba Catálogo de `docs/index.html`
-  é a generalização do modo 2 dele; nada do resto sobrevive fora do que a aba absorveu.
+  `mixr::models`) e foi **removido** junto com `docs/TODO.md` — a aba Catálogo de
+  `docs/manual/index.html` é a generalização do modo 2 dele; nada do resto sobrevive fora do que
+  a aba absorveu.
 
 ## `src/ui` — editor visual de cenário EDL (autoria, não runtime)
 
@@ -3586,7 +3589,7 @@ mapa/inspector/paleta/árvore e um parser/lexer de EDL em TypeScript) foi commit
 como adição-seguida-de-remoção). No lugar ficou o desenho bem menor de hoje: **um** arquivo React
 (`edl_builder.jsx`), lógica pura à parte (`edl_builder_core.js`, testável em Node puro sem
 navegador) e `compile.js` (Babel via CDN, sem bundler) — compilados num `edl-builder.html`
-**autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/index.html`. **Não há
+**autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/manual/index.html`. **Não há
 servidor.**
 
 **Build**: `make edl-catalog` (`scripts/extract_execution_chain.py --edl-catalog` → todas as

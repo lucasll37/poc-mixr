@@ -69,7 +69,7 @@ test('xrandom', test_xrandom, suite: 'domain', timeout: 60)
 # MetaObjectSnapshot.hpp). Mesmo motivo de estar na suite 'domain': regra
 # isolada, milissegundos.
 test_app_meta = executable('test-app-meta',
-    files('app/test_meta_object_snapshot.cpp') + files(
+    files('../app/tests/test_meta_object_snapshot.cpp') + files(
         '../app/src/app/MetaObjectSnapshot.cpp',
     ),
     link_args           : rpath_link_args,
@@ -85,7 +85,7 @@ test('app-meta-object-snapshot', test_app_meta, suite: 'domain', timeout: 60)
 # dentro de app/MapPanel.cpp para app/MapGeometry.hpp/.cpp. Ver o "porque"
 # no cabecalho daquele header.
 test_app_map_geometry = executable('test-app-map-geometry',
-    files('app/test_map_geometry.cpp') + files(
+    files('../app/tests/test_map_geometry.cpp') + files(
         '../app/src/app/MapGeometry.cpp',
     ),
     link_args           : rpath_link_args,
@@ -104,7 +104,7 @@ test('app-map-geometry', test_app_map_geometry, suite: 'domain', timeout: 60)
 # BehaviorTreeView.cpp, e nao so a geometria pura. Sem Station, sem
 # terminal de verdade.
 test_app_map_fit = executable('test-app-map-canvas-fit',
-    files('app/test_map_canvas_fit.cpp') + files(
+    files('../app/tests/test_map_canvas_fit.cpp') + files(
         '../app/src/app/MapPanel.cpp',
         '../app/src/app/MapGeometry.cpp',
         '../app/src/app/FleetPanel.cpp',
@@ -124,7 +124,7 @@ test('app-map-canvas-fit', test_app_map_fit, suite: 'domain', timeout: 60)
 # do plugin do modelo (um .so aberto por dlopen) cair no MESMO lugar que o
 # do host, sem nenhuma ponte extra.
 test_app_log = executable('test-app-log',
-    files('app/test_log_panel.cpp') + files(
+    files('../app/tests/test_log_panel.cpp') + files(
         '../app/src/app/LogPanel.cpp',
     ),
     link_args           : rpath_link_args,
@@ -140,7 +140,7 @@ test('app-log', test_app_log, suite: 'domain', timeout: 60)
 # MIXR/FTXUI -- daí nao ter mixr_dep/ftxui_dep aqui, unico teste de app/ tao
 # enxuto quanto os de tests/domain/.
 test_app_scenario_folder = executable('test-app-scenario-folder',
-    files('app/test_scenario_folder.cpp') + files(
+    files('../app/tests/test_scenario_folder.cpp') + files(
         '../app/src/app/ScenarioFolder.cpp',
     ),
     include_directories : include_directories('../app/include'),
@@ -156,7 +156,7 @@ test('app-scenario-folder', test_app_scenario_folder, suite: 'domain', timeout: 
 # ao vivo, ver o comentario grande do header). Sem MIXR de verdade, sem
 # FTXUI: ComponentTreeQuery.hpp so forward-declara mixr::simulation::Station.
 test_app_component_flow = executable('test-app-component-flow-state',
-    files('app/test_component_flow_state.cpp') + files(
+    files('../app/tests/test_component_flow_state.cpp') + files(
         '../app/src/app/ComponentFlowState.cpp',
     ),
     include_directories : include_directories('../app/include'),
@@ -173,7 +173,7 @@ test('app-component-flow-state', test_app_component_flow, suite: 'domain', timeo
 # reimplementacao) -- dai o mixr_dep/ftxui_dep, mesma receita de
 # 'app-map-canvas-fit'.
 test_app_component_tree = executable('test-app-component-tree-layout',
-    files('app/test_component_tree_layout.cpp') + files(
+    files('../app/tests/test_component_tree_layout.cpp') + files(
         '../app/src/app/ComponentTreePanel.cpp',
         '../app/src/app/ComponentTreeQuery.cpp',
         '../app/src/app/ComponentFlowState.cpp',
@@ -192,7 +192,7 @@ test('app-component-tree-layout', test_app_component_tree, suite: 'domain', time
 # e o dt que desce dividido por 4 e volta multiplicado por 4 -- mais a janela
 # de rolagem que mantem a linha da fase corrente visivel. Sem MIXR, sem FTXUI.
 test_app_call_chain = executable('test-app-frame-call-chain',
-    files('app/test_frame_call_chain.cpp') + files(
+    files('../app/tests/test_frame_call_chain.cpp') + files(
         '../app/src/app/FrameCallChain.cpp',
     ),
     include_directories : include_directories('../app/include'),
@@ -204,7 +204,7 @@ test('app-frame-call-chain', test_app_call_chain, suite: 'domain', timeout: 60)
 # A maquina de estados do breakpoint de arvore de comportamento --
 # extraida de app/DashboardLoop.cpp para app/BreakpointController.hpp/.cpp.
 test_app_breakpoint = executable('test-app-breakpoint-controller',
-    files('app/test_breakpoint_controller.cpp') + files(
+    files('../app/tests/test_breakpoint_controller.cpp') + files(
         '../app/src/app/BreakpointController.cpp',
     ),
     link_args           : rpath_link_args,
@@ -218,7 +218,7 @@ test('app-breakpoint-controller', test_app_breakpoint, suite: 'domain', timeout:
 # A escada de velocidade e a decisao de rotulo/cor do cabecalho -- extraida
 # de app/DashboardLoop.cpp para app/SpeedLadder.hpp/.cpp.
 test_app_speed_ladder = executable('test-app-speed-ladder',
-    files('app/test_speed_ladder.cpp') + files(
+    files('../app/tests/test_speed_ladder.cpp') + files(
         '../app/src/app/SpeedLadder.cpp',
     ),
     link_args           : rpath_link_args,
@@ -235,7 +235,7 @@ test('app-speed-ladder', test_app_speed_ladder, suite: 'domain', timeout: 60)
 # 'runEdlCheck()' recebe o caminho do binario por parametro, entao o teste
 # roda contra /bin/true//bin/false/bin/echo, nunca contra o 'edlcheck' real.
 test_app_edl_editor = executable('test-app-edl-editor-state',
-    files('app/test_edl_editor_state.cpp') + files(
+    files('../app/tests/test_edl_editor_state.cpp') + files(
         '../app/src/app/EdlEditorState.cpp',
     ),
     include_directories : include_directories('../app/include'),

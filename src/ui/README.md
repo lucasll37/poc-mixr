@@ -56,7 +56,7 @@ make edl-builder-test  # testes de unidade puros (node, sem MIXR)
 
 A primeira execução de `make edl-builder` baixa React/ReactDOM 18.3.1 UMD e instala
 `@babel/standalone` em `src/ui/.cache/` (gitignored) — as próximas rodam sem rede nenhuma.
-`edl-builder.html` é **committed**, gerado, mesma convenção de `docs/index.html`: abrir a
+`edl-builder.html` é **committed**, gerado, mesma convenção de `docs/manual/index.html`: abrir a
 ferramenta não exige rodar nada antes.
 
 ## Validação do `.edl` exportado
@@ -71,7 +71,7 @@ Duas camadas, nenhuma delas aqui (ver o topo de cada arquivo para os detalhes):
 
 ## Por que `src/ui/` e não `docs/`
 
-`docs/` é documentação/visualização do framework (o `index.html` gerado de `doc.jsx`,
+`docs/manual/` é documentação/visualização do framework (o `index.html` gerado de `doc.jsx`,
 read-only, sem capacidade de editar nada) — este editor é uma ferramenta de trabalho de verdade,
 por isso mora sob `src/`, ao lado de `poc/`/`rl/`. Não tem `subdir()` em `src/meson.build`
 (mesma categoria de `src/poc/rl-training/`: só JS/Python, sem `main.cpp`/`mixr_factory`, fora do

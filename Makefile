@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-default-scenario edl-builder open-edl-builder edl-builder-test edl-lint edl-check new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-default-scenario edl-builder open-edl-builder edl-builder-test edl-lint edl-check new-model
 
 .DEFAULT_GOAL := help
 
@@ -199,60 +199,12 @@ package: ## Create the Conan package for this project.
 # Execution Targets
 # ============================================
 
-# --------------------------------------------------------------------------
-# single-thread e multi-thread são o MESMO modelo; o nome diz só ONDE
-# a decisão do UBF roda — e NÃO quantas threads a simulação usa. As duas
-# declaram numTcThreads e espalham os players pelo pool de threads de tempo
-# crítico do framework (é por isso que as duas têm check de determinismo com
-# 1, 2 e 4 threads):
-#   single-thread: ( SimAgent ) nativo, componente da Station, decide em
-#                  updateData() — os 4 em sequência, numa thread de
-#                  background, a 10 Hz.
-#   multi-thread:  ( FlightAgentTC ) próprio, componente do player, decide na
-#                  fase 3 do frame — os 4 em paralelo, um por thread do pool
-#                  de tempo crítico, a 50 Hz.
-# --------------------------------------------------------------------------
-# Todos os alvos abaixo RODAM um binario que faz dlopen() num modelo em
-# tempo de execucao -- por isso dependem de 'install' (que roda 'models' +
-# 'sync-plugins' + o build do host). 'build'/'models' sozinhos NAO deixam
-# nada rodavel: dist/lib/mixr-plugins/ so e populado no install (ver o
-# comentario grande acima de 'models'/'sync-plugins').
-
-run-single-thread: install ## Run single-thread (decisão no SimAgent nativo da Station, em updateData(); Tacview 1234, teclas +/- acelera/freia, espaço pausa).
-	$(BUILD_DIR)/app/src/app -scenario single-thread
-
-check-single-thread: install ## Verifica o determinismo do single-thread (mesmo estado com 1, 2 e 4 threads T/C, em cenário hermético — sem DIS).
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app single-thread 2000 single-thread
-
-run-multi-thread: install ## Run multi-thread (o single-thread trocando só o agente: FlightAgentTC próprio dentro do player, decisão na fase 3; Tacview 1234, teclas +/- e espaço).
-	$(BUILD_DIR)/app/src/app -scenario multi-thread
-
-check-multi-thread: install ## Verifica o determinismo do multi-thread (mesmo estado com 1, 2 e 4 threads T/C em cenário hermético, com os 4 agentes em paralelo).
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app multi-thread 2000 multi-thread
-
-run-python-flight: install ## Run python-flight (a mesma pilha do multi-thread com as leis de voo em Python: configs/policy/*.py, editáveis sem recompilar; Tacview 1237).
-	$(BUILD_DIR)/app/src/app -scenario python-flight
-
-check-python-flight: install ## Verifica o determinismo do python-flight (mesmo estado com 1, 2 e 4 threads T/C — os quatro scripts decidem em paralelo, serializados pelo GIL).
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app python-flight 2000 python-flight
-
-run-onnx-policy: install ## Run onnx-policy (a mesma pilha do multi-thread com a decisão numa REDE NEURAL: configs/policy_barrier.onnx, inferido na fase 3 do frame; Tacview 1238).
-	$(BUILD_DIR)/app/src/app -scenario onnx-policy
-
-check-onnx-policy: install ## Verifica o determinismo do onnx-policy (mesmo estado com 1, 2 e 4 threads T/C — as quatro aeronaves inferem em paralelo, numa sessão só do ONNX Runtime).
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app onnx-policy 2000 onnx-policy
-
-check-patrol-seed-single-thread: install ## Prova o RNG de patrulha no single-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
-	@./tests/determinism/check_patrol_seed.sh \
-		$(BUILD_DIR)/app/src/app single-thread single-thread 600
-
-check-patrol-seed-multi-thread: install ## Prova o RNG de patrulha no multi-thread: mesma patrolMasterSeed reproduz entre 1/2/4 threads T/C; sementes diferentes divergem, em qualquer thread.
-	@./tests/determinism/check_patrol_seed.sh \
-		$(BUILD_DIR)/app/src/app multi-thread multi-thread 600
+# Alvos de check/run por poc ou cenario PARTICULAR foram removidos daqui --
+# use './app -scenario <chave>'/'-f <arquivo>'/'-folder <pasta>' diretamente
+# (ver app/ScenarioCatalog.cpp para as chaves) e
+# 'tests/determinism/check_determinism.sh <binario> <cenario> <frames>
+# [fixture-poc] [fixture-modo]' para determinismo. 'make install' continua
+# sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
 
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (hoje só o cenário: o agente do UBF e a porta DIS).
 	@diff -rq --exclude=data \
@@ -261,25 +213,8 @@ compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (
 check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
-run-built-in_mixr_1: install ## Run built-in_mixr_1 (o PLAYER MAXIMO: falcon1 com 53 classes nativas do mixr::models num unico Aircraft; Tacview 1239).
-	$(BUILD_DIR)/app/src/app -scenario built-in_mixr_1
-
-check-built-in_mixr_1: install ## Verifica o determinismo do built-in_mixr_1 (mesmo estado com 1, 2 e 4 threads T/C). O cenario proprio ja e hermetico -- sem 'networks:', nao precisa de fixture.
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app built-in_mixr_1 2000 '' built-in_mixr_1
-
-run-full-systems-nav: install ## Run full-systems-nav (o PLAYER MAXIMO voando de verdade: BT de um no so segue Route/Steerpoint nativos; Tacview 1240).
-	$(BUILD_DIR)/app/src/app -scenario full-systems-nav
-
-check-full-systems-nav: install ## Verifica o determinismo do full-systems-nav (mesmo estado com 1, 2 e 4 threads T/C). O cenario proprio ja e hermetico -- sem 'networks:', nao precisa de fixture.
-	@./tests/determinism/check_determinism.sh \
-		$(BUILD_DIR)/app/src/app full-systems-nav 2000 '' full-systems-nav
-
-run-bandit: install ## Run bandit (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
-	$(BUILD_DIR)/app/src/app -scenario bandit
-
 run-app: ## Run app (TUI; sem '-scenario' mostra a tela de seleção).
-	$(BUILD_DIR)/app/src/app
+	$(BUILD_DIR)/app/src/app -folder ./sandbox
 
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
 	python3 -m venv src/rl/.venv
@@ -358,12 +293,12 @@ check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os c
 # Documentation Targets
 # ============================================
 
-docs: ## Regenera docs/index.html a partir de docs/doc.jsx (Babel via docs/compile.js). So precisa de rede na 1a vez (cacheia em docs/.cache/).
-	node docs/compile.js
+docs: ## Regenera docs/manual/index.html a partir de docs/manual/doc.jsx (Babel via docs/manual/compile.js). So precisa de rede na 1a vez (cacheia em docs/manual/.cache/).
+	node docs/manual/compile.js
 
-open-docs: ## Abre docs/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
-	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/index.html \
-		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/index.html"
+open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/manual/index.html \
+		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/manual/index.html"
 
 edl-catalog: ## Gera src/ui/edl_catalog.generated.json (todas as classes/slots das factories, para o editor grafico de .edl). So Python stdlib, sem MIXR.
 	python3 scripts/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json

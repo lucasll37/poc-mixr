@@ -1,6 +1,6 @@
 // Lógica PURA do editor gráfico de .edl (src/ui/edl_builder.jsx) -- sem React,
 // sem JSX, sem `import`/`export` de verdade: é um arquivo <script> comum,
-// concatenado por docs/compile.js na MESMA tag <script> do app transpilado
+// concatenado por src/ui/compile.js na MESMA tag <script> do app transpilado
 // (compartilham escopo global, sem precisar de bundler nem de resolução de
 // módulo no navegador -- ver o comentário de `coreFile` em compile.js).
 //
