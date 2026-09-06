@@ -94,23 +94,45 @@ Com os cinco respondendo, a máquina está pronta para a seção **Build** do [`
 O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13 em §1 —, mas
 as próximas execuções reaproveitam o cache do Conan (`~/.conan2/`) e são rápidas.
 
-## 6. Editor: `clangd` + extensão do VS Code (opcional)
+## 6. Editor: VS Code (opcional)
 
-O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json` e
-`.vscode/extensions.json`), não para o IntelliSense nativo do C/C++ da Microsoft
-(`C_Cpp.intelliSenseEngine` já vem `"disabled"`, e `ms-vscode.cpptools` está em
-`unwantedRecommendations`). `.clangd` aponta `CompilationDatabase: build` — o
+### 6.1. Extensões recomendadas
+
+O repositório declara recomendações em `.vscode/extensions.json` — ao abrir a pasta, o VS Code
+mostra um aviso ("This workspace has extension recommendations") e deixa instalar todas de uma vez
+pelo painel de Extensões (aba "Recommended"). Sem clicar em nada, instalar uma a uma:
+
+```bash
+code --install-extension llvm-vs-code-extensions.vscode-clangd
+code --install-extension pkief.material-icon-theme
+code --install-extension natqe.reload
+code --install-extension anthropic.claude-code
+code --install-extension ms-toolsai.jupyter
+code --install-extension yzhang.markdown-all-in-one
+code --install-extension ms-vscode.cpptools
+code --install-extension spencerwmiles.vscode-task-buttons
+```
+
+| extensão | para quê |
+|---|---|
+| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §6.2 |
+| `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
+| `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) |
+| `anthropic.claude-code` | a extensão do Claude Code em si |
+| `ms-toolsai.jupyter` | notebooks `.ipynb`, se usados em `src/poc/rl-training/` |
+| `yzhang.markdown-all-in-one` | edição confortável dos muitos `.md` deste repositório |
+| `pkief.material-icon-theme`, `natqe.reload` | cosméticas/conveniência, sem efeito no build |
+
+### 6.2. `clangd` (C++)
+
+O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
+IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
 `compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
 `make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
 
 ```bash
-sudo apt install -y clangd        # o language server em si
-code --install-extension llvm-vs-code-extensions.vscode-clangd
+sudo apt install -y clangd        # o language server em si -- a extensao so' fala com ele
 ```
-
-O VS Code também oferece a instalação da extensão sozinho: ao abrir a pasta, ele lê
-`.vscode/extensions.json` e sugere a mesma extensão no painel de extensões recomendadas — o
-`code --install-extension` acima é só o atalho por linha de comando.
 
 **Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
 o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
@@ -126,3 +148,24 @@ o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoj
 > `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
 > desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
 > primeira vez que alguém rodar "Format Document" em cima dele.
+
+### 6.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
+
+`.vscode/extensions/edl/` é uma extensão de sintaxe para `.edl`/`.edl.in` **vendorizada no próprio
+repositório** — só highlight/indentação/colchetes (sem `main`/código nenhum), não publicada no
+Marketplace, então o VS Code não a instala sozinho nem por `extensions.json`. Precisa ser aceita
+manualmente, uma vez por máquina — `.vscode/settings.json` já associa `*.edl.in` à linguagem `edl`
+que ela declara, então o highlight aparece assim que a extensão for reconhecida:
+
+```bash
+# Linux nativo
+ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode/extensions/edl-mixr-local
+
+# VS Code Remote (WSL2/SSH) -- o host de extensoes fica do lado remoto/Linux
+ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode-server/extensions/edl-mixr-local
+```
+
+Se o VS Code já estava aberto, "Developer: Reload Window" (`Ctrl+Shift+P`) — ela aparece em
+Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace), mas funcional.
+Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
+`vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.
