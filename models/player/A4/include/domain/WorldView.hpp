@@ -68,6 +68,18 @@ struct WorldView
    // perguntas separadas de proposito). false em qualquer aviao sem
    // 'stores:' declarado no EDL -- ou seja, inerte em producao.
    bool weaponReady{};
+
+   // navegacao NATIVA (Navigation/Route/Steerpoint) -- so leitura. Quem
+   // calcula estes numeros e o proprio mixr::models::Navigation::
+   // updateNavSteering(), o MESMO metodo que o Autopilot consulta quando
+   // navMode esta ligado (ver models/player/A4/src/ubf/FlightState.cpp).
+   // Aqui eles so atravessam a fronteira do framework, sem tipo do MIXR.
+   bool hasNavSteering{};    // Navigation::isNavSteeringValid()
+   double navTrueBrgDeg{};   // rumo verdadeiro ate o steerpoint "to"
+   bool hasNavCmdAlt{};      // Steerpoint::isCmdAltValid()
+   double navCmdAltM{};      // Steerpoint::getCmdAltitudeM()
+   bool hasNavCmdSpeed{};    // Steerpoint::isCmdAirspeedValid()
+   double navCmdSpeedKts{};  // Steerpoint::getCmdAirspeedKts()
 };
 
 } // namespace domain

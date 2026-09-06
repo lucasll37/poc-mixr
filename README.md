@@ -362,7 +362,8 @@ terceiro (compilado em outro lugar, só copiado para lá) são indistinguíveis 
 os dois viram visíveis ao host somente quando `make install` sincroniza para `dist/`.
 
 Para criar um modelo novo, comece por [`CONTRIBUTING.md`](CONTRIBUTING.md) — ele costura, na
-ordem certa, o resto da documentação de `models/`.
+ordem certa, o resto da documentação de `models/`. Para ver quais modelos já existem ou já têm
+alguém trabalhando neles, confira [`models/REGISTRO.md`](models/REGISTRO.md).
 
 ---
 
@@ -376,3 +377,5 @@ verdade) — `contexts/src/mixr/` e `contexts/src/BehaviorTree.CPP/`.
 | `contexts/MIXR-CONTEXT.md` | como o MIXR funciona por dentro |
 | `contexts/MIXR-PATTERN-CONTEXT.md` | Boas praticas de desenvolvimento no MIXR |
 | `contexts/BTCPP-CONTEXT.md` | BehaviorTree.CPP **3.5.6** — nada ali vale para a v4 |
+| `contexts/mixr-report.pdf` | manual técnico completo do MIXR (13 capítulos) — leitura contínua, complementar à destilação acima |
+| `contexts/bt-report.pdf` | manual técnico completo do BehaviorTree.CPP — mesma ideia |

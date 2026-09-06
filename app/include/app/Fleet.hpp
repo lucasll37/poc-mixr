@@ -39,6 +39,21 @@ Fleet collectFleet(mixr::models::WorldModel* wm, const std::vector<std::string>&
 std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm);
 
 //------------------------------------------------------------------------------
+// Como discoverPlayers() acima, mas filtrado para AirVehicle e ja no formato
+// que applyCruiseThrottle()/o dump deterministico esperam (Fleet). USO
+// EXCLUSIVO das entradas sinteticas de '-folder <pasta>' (app/ScenarioFolder.hpp)
+// quando ScenarioEntry::fleet vem vazio -- NUNCA do fallback de
+// ScenarioCatalog::adHocScenario()/'-f', que continua devolvendo
+// falconFleet() explicitamente. Essa funcao ja foi tentada como fallback
+// GENERICO de '-f' e revertida: quebrava as fixtures de teste 'intruder'
+// (tests/scenario/make_fixture.py), que tem um bandit1 LOCAL deliberadamente
+// FORA da frota rastreada -- uma descoberta generica pegava esse bandit1
+// tambem. Cenarios de '-folder' nao sao fixtures de teste, sao criacoes do
+// proprio usuario -- essa razao nao se aplica a eles.
+//------------------------------------------------------------------------------
+Fleet discoverFleet(mixr::models::WorldModel* wm);
+
+//------------------------------------------------------------------------------
 // POTENCIA DE CRUZEIRO -- historicamente a correcao para o c310 (cujo
 // autopilot fechava malha de RUMO e ALTITUDE, mas nao de VELOCIDADE, sem
 // manete fixo a aeronave perdia velocidade e estolava). Desde a troca para

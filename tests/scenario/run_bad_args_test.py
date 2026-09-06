@@ -17,6 +17,16 @@ para essas duas flags.
 Nao precisa de fixture nem de cenario -- o parse de argv acontece ANTES de
 qualquer coisa em main() (antes ate de app::ensureTerrainData()), entao o
 processo sai quase instantaneamente nos dois sentidos.
+
+O quarto caso ('sem-nenhuma-opcao') cobre uma mudanca de comportamento
+diferente: rodar o binario SEM '-scenario'/'-f'/'-folder' nenhum costumava
+abrir a tela de selecao do catalogo (FTXUI, ScreenInteractive::Fullscreen())
+-- hoje e erro fatal, recusado ANTES de qualquer Station (main.cpp exige uma
+das tres opcoes explicitamente; '-internal-picker', o unico jeito de chegar
+na tela de novo, e reservado para o reexec interno de "carregar outro
+cenario"/"parar" -- ver app/Options.hpp). 'stdin=DEVNULL' aqui teria, antes
+desta mudanca, arriscado travar contra uma tela interativa sem TTY nenhum
+pra ler -- hoje nem chega perto disso, mas o teste mantém a mesma cautela.
 """
 
 import argparse
@@ -27,6 +37,7 @@ CASOS = [
     (["-threads", "abc"], "threads-nao-numerico"),
     (["-deterministic", "xyz"], "deterministic-nao-numerico"),
     (["-threads", "99999999999999999999"], "threads-estoura-o-tipo"),
+    ([], "sem-nenhuma-opcao"),
 ]
 
 
@@ -49,6 +60,8 @@ def main():
             )
         elif proc.returncode == 0:
             falhas.append(f"{rotulo}: saiu com rc=0 -- deveria recusar o argumento invalido")
+        if rotulo == "sem-nenhuma-opcao" and "obrigatorio" not in proc.stderr:
+            falhas.append(f"{rotulo}: stderr nao menciona a opcao obrigatoria -- {proc.stderr.strip()!r}")
         print(f"  [{rotulo}] rc={proc.returncode} stderr={proc.stderr.strip()!r}")
 
     if falhas:
@@ -58,7 +71,7 @@ def main():
         print("argumentos invalidos: FALHOU")
         return 1
 
-    print("argumentos invalidos: OK (saida limpa, sem crash, nas tres formas)")
+    print("argumentos invalidos: OK (saida limpa, sem crash, nas quatro formas)")
     return 0
 
 

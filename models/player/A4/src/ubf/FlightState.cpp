@@ -6,6 +6,9 @@
 #include "xboard/Board.hpp"
 #include "xtrack/TrackQuery.hpp"
 
+#include "mixr/models/navigation/Navigation.hpp"
+#include "mixr/models/navigation/Route.hpp"
+#include "mixr/models/navigation/Steerpoint.hpp"
 #include "mixr/models/player/Player.hpp"
 #include "mixr/models/player/air/AirVehicle.hpp"
 #include "mixr/models/system/StoresMgr.hpp"
@@ -128,6 +131,31 @@ void FlightState::updateState(const base::Component* const actor)
    // devolve StoresMgr*, tipado -- ver Player.hpp).
    const auto storesMgr = air->getStoresManagement();
    s.weaponReady = (storesMgr != nullptr) && (storesMgr->available() > 0);
+
+   // --- navegacao NATIVA: Route/Steerpoint, so leitura ---
+   //
+   // mixr::models::Route::updateData() (chamado todo frame de BACKGROUND,
+   // incondicionalmente -- Route.cpp) atualiza os dados de guiagem de CADA
+   // steerpoint e sequencia a rota por DISTANCIA, independente do navMode
+   // do Autopilot. Navigation::updateNavSteering() copia o rumo/alcance do
+   // steerpoint "to" para os proprios campos da Navigation -- e o MESMO
+   // dado que Autopilot::processModeNavigation() consulta quando navMode
+   // esta ligado (ver o comentario do slot 'pilot:' em qualquer cenario que
+   // use o no ( Navigate )). Aqui a leitura e identica, so que por FORA do
+   // Autopilot -- quem decide o que fazer com ela e a arvore.
+   const auto nav = air->getNavigation();
+   if (nav != nullptr) {
+      s.hasNavSteering = nav->isNavSteeringValid();
+      s.navTrueBrgDeg = nav->getTrueBrgDeg();
+      const auto route = nav->getPriRoute();
+      const auto steerpoint = (route != nullptr) ? route->getSteerpoint() : nullptr;
+      if (steerpoint != nullptr) {
+         s.hasNavCmdAlt = steerpoint->isCmdAltValid();
+         s.navCmdAltM = steerpoint->getCmdAltitudeM();
+         s.hasNavCmdSpeed = steerpoint->isCmdAirspeedValid();
+         s.navCmdSpeedKts = steerpoint->getCmdAirspeedKts();
+      }
+   }
 
    snap = s;
 

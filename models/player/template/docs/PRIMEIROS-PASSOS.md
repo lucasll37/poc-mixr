@@ -128,15 +128,20 @@ bater **exatamente** com o que a sua `.so` exporta):
 este mesmo mecanismo, e `models/player/fixtures/stub/docs/CONTRATO.md` seção 2 para a tabela
 completa de "nome de fábrica → classe-base exigida → onde entra".
 
-## Passo 7 — decida se este modelo entra no build orquestrado da raiz
+## Passo 7 — nada a fazer aqui: o build orquestrado já descobre o seu modelo sozinho
 
-`template` nunca aparece no alvo `models:` do Makefile raiz nem em `tests/meson.build` — ele não é
-carregado por cenário nenhum. O SEU modelo, quando estiver pronto, provavelmente deveria: adicione
-uma linha `$(MAKE) -C models/<nome> install-host TESTS=true` ao alvo `models:` do
-[`../../../Makefile`](../../../Makefile) (no molde da linha do `missile`) se quiser que
-`make models`/`make test` da raiz o construam junto com os outros. Isto é opcional e depende só de
-até onde o seu modelo já está do resto do repositório — nada aqui quebra se você preferir manter o
-Makefile autocontido como único jeito de construí-lo por enquanto.
+`template` nunca aparece no alvo `models:` do Makefile raiz nem em `tests/meson.build` — mas não
+por estar de fora de uma lista manual: é porque `template/` é excluído **de propósito** da busca
+(`MODELOS_PRODUCAO` no [`../../../Makefile`](../../../Makefile) descobre projetos por `find`,
+ignorando só `template/`/`tests/`/diretórios de build). O SEU modelo, uma vez copiado para fora de
+`template/` (Passo 1), já **entra sozinho** em `make models`/`make test` da raiz — não há linha
+nenhuma para adicionar. Confirme com `make models` na raiz: o log deve citar o nome do seu modelo
+sem você ter tocado no Makefile.
+
+Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
+num cenário rodável pelo `./app` (`-scenario <chave>`) e, opcionalmente, ganhe cobertura de teste
+automática (`tests/meson.build`), isso é um passo separado, documentado em
+[`../../README.md`](../../README.md), seções 4.1 e 4.2 — não tem relação com este Passo 7.
 
 ## Checklist rápido, para revisar antes do primeiro commit
 

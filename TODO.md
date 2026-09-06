@@ -1,11 +1,6 @@
-> ver o cenário onnx e python
 > enxugar shared (validar geração de logs e mensagens)
-> apresentação de slides
 > interface gráfica para montar edl
-
-O próximo passo desse repositório é a implementação massiça de modelos para que alimente simulações de aeroespacial. Me ajude a pensar uma forma de estruturar/documentar/sugerir o uso do repositporio de modo a deixar o processo mais claro e documentado/mastigado para um novo modelista, tornando o pipeline mais amigável possível para trabalho simultâneo de varios desenvolvedores
-
-
+> testes exaustivos
 
 Estudei MIXR e BT
 -> crie app de debug de cenários
@@ -22,3 +17,5 @@ Estudei MIXR e BT
 -> disco_voador
 -> poc_satelite
 -> poc_foguete
+
+

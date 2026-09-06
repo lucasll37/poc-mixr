@@ -42,6 +42,7 @@
 #include "app/Options.hpp"
 #include "app/Respawn.hpp"
 #include "app/ScenarioCatalog.hpp"
+#include "app/ScenarioFolder.hpp"
 #include "app/ScenarioPickerScreen.hpp"
 #include "app/ScenarioTemplate.hpp"
 #include "app/Shutdown.hpp"
@@ -55,6 +56,7 @@
 
 #include "mixr/base/Component.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <string>
@@ -80,33 +82,85 @@ int main(int argc, char* argv[])
 
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
-   // '-f <arquivo>' e o caminho de fora do catalogo (fixtures de teste): vira
-   // uma entrada sintetica e pula a tela de selecao.
-   const app::ScenarioEntry adHoc{opts.scenarioPath.empty()
-                                     ? app::ScenarioEntry{}
-                                     : app::adHocScenario(opts.scenarioPath)};
+   // Tres modos, mutuamente exclusivos ('-folder' tem prioridade sobre os
+   // outros dois -- ver app/Options.hpp): '-folder <pasta>' navega uma
+   // pasta de sandbox em disco; '-f <arquivo>' e um .edl/.edl.in fora do
+   // catalogo (fixtures de teste); nenhum dos dois usa o catalogo estatico
+   // do '-scenario <chave>'/tela de selecao. 'chosen' e preenchido POR
+   // VALOR pelo ramo que se aplicar -- mais simples que balancear ponteiros
+   // pra storages de lifetimes diferentes (o design anterior).
+   app::ScenarioEntry chosen{};
 
-   // Sem '-scenario' nem '-f': mostra a tela de selecao ANTES de tocar em
-   // Station nenhuma -- nao precisa de reexec aqui, e a primeira carga do
-   // processo.
-   std::string scenarioKey{opts.scenarioKey};
-   if (scenarioKey.empty() && opts.scenarioPath.empty()) {
-      scenarioKey = app::runScenarioPicker();
-      if (scenarioKey.empty()) {
-         std::cout << "Nenhum cenario selecionado. Ate mais." << std::endl;
-         return 0;
+   if (!opts.scenarioFolder.empty()) {
+      const auto entradas = app::discoverFolderScenarios(opts.scenarioFolder);
+      if (entradas.empty()) {
+         std::cerr << "app: nenhum cenario encontrado em '" << opts.scenarioFolder << "'" << std::endl;
+         return EXIT_FAILURE;
       }
-   }
 
-   const app::ScenarioEntry* entry{&adHoc};
-   if (opts.scenarioPath.empty()) {
-      entry = app::findScenario(scenarioKey);
-      if (entry == nullptr) {
+      // '-scenario', combinado com '-folder', deixa de ser uma chave do
+      // catalogo e vira o NOME DA SUBPASTA -- pula a tela (ver app/Options.hpp).
+      std::string nome{opts.scenarioKey};
+      if (nome.empty()) {
+         std::vector<app::PickerItem> items;
+         items.reserve(entradas.size());
+         for (const auto& e : entradas) items.push_back(app::PickerItem{e.name, e.name, e.edlPath});
+         nome = app::runPickerScreen(items, "selecione um cenario -- " + opts.scenarioFolder);
+         if (nome.empty()) {
+            std::cout << "Nenhum cenario selecionado. Ate mais." << std::endl;
+            return 0;
+         }
+      }
+
+      const auto it = std::find_if(entradas.begin(), entradas.end(),
+                                   [&](const app::FolderScenarioEntry& e) { return e.name == nome; });
+      if (it == entradas.end()) {
+         std::cerr << "app: cenario desconhecido em '" << opts.scenarioFolder << "': '" << nome << "'" << std::endl;
+         return EXIT_FAILURE;
+      }
+
+      // Frota VAZIA -- sinal para main.cpp descobrir os players em runtime
+      // (app::discoverFleet(), mais abaixo) em vez de assumir falcon1..4:
+      // um cenario de sandbox pode ter qualquer nome de player. Ver o
+      // comentario de app::discoverFleet() (app/Fleet.hpp) para o porque
+      // isto NAO reabre o problema ja corrigido/revertido em adHocScenario().
+      chosen = app::ScenarioEntry{it->name, it->name, "cenario de pasta: " + opts.scenarioFolder,
+                                 it->edlPath, "", "", "", "", {}};
+
+   } else if (!opts.scenarioPath.empty()) {
+      chosen = app::adHocScenario(opts.scenarioPath);
+
+   } else if (opts.scenarioKey.empty() && !opts.internalPicker) {
+      // Nenhum dos tres modos foi passado -- e nao e '-internal-picker'
+      // (o reexec interno de "carregar outro cenario"/"parar", ver
+      // app/Options.hpp). Uso normal desta aplicacao NUNCA "adivinha" o que
+      // abrir: e obrigatorio passar uma das tres opcoes explicitamente.
+      std::cerr << "app: e obrigatorio passar -scenario <chave>, -f <arquivo> ou -folder <pasta>"
+                << std::endl;
+      return EXIT_FAILURE;
+
+   } else {
+      // '-scenario <chave>' direto, OU '-internal-picker' sem chave --
+      // mostra a tela de selecao do catalogo ANTES de tocar em Station
+      // nenhuma (nao precisa de reexec aqui, e a primeira carga do
+      // processo desse ramo).
+      std::string scenarioKey{opts.scenarioKey};
+      if (scenarioKey.empty()) {
+         scenarioKey = app::runScenarioPicker();
+         if (scenarioKey.empty()) {
+            std::cout << "Nenhum cenario selecionado. Ate mais." << std::endl;
+            return 0;
+         }
+      }
+      const app::ScenarioEntry* const found{app::findScenario(scenarioKey)};
+      if (found == nullptr) {
          std::cerr << "app: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
          return EXIT_FAILURE;
       }
+      chosen = *found;
    }
-   const app::ScenarioEntry& cenario{*entry};
+
+   const app::ScenarioEntry& cenario{chosen};
 
    if (opts.isDeterministic()) mixr::xlog::setLoggingEnabled(false);
 
@@ -138,7 +192,12 @@ int main(int argc, char* argv[])
    app::primeStation(station);
 
    mixr::models::WorldModel* const worldModel{app::worldModelOf(station)};
-   const app::Fleet fleet{app::collectFleet(worldModel, cenario.fleet)};
+   // Frota vazia == entrada sintetica de '-folder' (ver acima) -- descobre
+   // os players de verdade em vez de assumir uma lista de nomes que
+   // ninguem pode garantir para um cenario de sandbox.
+   const app::Fleet fleet{cenario.fleet.empty()
+                              ? app::discoverFleet(worldModel)
+                              : app::collectFleet(worldModel, cenario.fleet)};
    app::applyCruiseThrottle(fleet, cruiseThrottle);
 
    int rc{};
@@ -169,10 +228,20 @@ int main(int argc, char* argv[])
 
    switch (action) {
       case app::DashboardExit::Restart:
-         app::respawnSelf({"-scenario", cenario.key});
+         // Cenario de '-folder': 'cenario.key' e o nome da SUBPASTA, nao uma
+         // chave do catalogo -- reexec precisa levar '-folder' junto, ou
+         // '-scenario <nome-da-subpasta>' sozinho cairia no catalogo estatico
+         // e provavelmente acharia cenario nenhum.
+         if (!opts.scenarioFolder.empty()) {
+            app::respawnSelf({"-folder", opts.scenarioFolder, "-scenario", cenario.key});
+         } else {
+            app::respawnSelf({"-scenario", cenario.key});
+         }
          break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::ChangeScenario:
-         app::respawnSelf({});
+         // '-internal-picker', nao vazio -- ver app/Options.hpp. Sem essa
+         // flag, o processo respawnado recusaria de cara (opcao obrigatoria).
+         app::respawnSelf({"-internal-picker"});
          break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::RunEdited:
          // O texto ja foi escrito em editedScenarioPath() e validado pelo

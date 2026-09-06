@@ -1,7 +1,7 @@
 # `docs/` — explorador de execução, EDL e classes built-in do MIXR
 
 `index.html` é uma página estática, sem dependências de rede (React, ReactDOM e todo o app
-ficam embutidos no próprio arquivo), com três visões sobre o framework:
+ficam embutidos no próprio arquivo), com duas visões sobre o framework:
 
 1. **Execução** — o mesmo ciclo de fases já visto na aba "Componentes" (F6) do `./app`
    (dynamics/transmit/receive/process + as duas threads de decisão/fundo), aqui desenhado
@@ -116,31 +116,7 @@ ficam embutidos no próprio arquivo), com três visões sobre o framework:
    ordem de dois blocos JSX (banda antes, rótulos depois) — nenhuma mudança de geometria, só de
    ordem de pintura. Confirmado nos dois temas e nas duas orientações.
 
-2. **Eventos** — aba dedicada só a ilustrar os quatro momentos "kind" especiais que já existem
-   dentro de "Thread de Tempo Crítico"/"Reset" (`rf`/`name`/`release`/`vanish`) — fáceis de
-   perder no meio de ~258 passos de visita rotineira. Não reintroduz o grafo pan/zoom
-   completo: cada evento é uma ponte entre DOIS pontos da árvore sem relação de pai-filho, e o
-   que importa mostrar é de onde cada lado desce (a cadeia raiz→nó, um "breadcrumb" HTML) e o
-   que liga os dois — texto real, extraído como o resto da página, filtrado das MESMAS
-   `traceFrames()`/`traceReset()` (`eventTour()`, em vez de duplicar o texto: editar uma
-   descrição de evento em `walk()`/`traceReset()` atualiza esta aba de graça). Quatro cartões
-   clicáveis (RF/Nome/Liberação/Reset), setas do teclado, e uma nota fixa por evento explicando
-   POR QUE ele escapa de qualquer leitura estática:
-   - **RF** — `Radar::transmit()` → `Antenna::rfTransmit()` → `alvo->event(RF_EMISSION)`: o
-     sensor aponta pro alvo por PARÂMETRO de runtime, não por vizinhança na árvore.
-   - **Nome** — `Tws`/`Stt` apontam pro MESMO `AirTrkMgr` por uma STRING (`trackManagerName`)
-     resolvida em runtime; um erro de digitação não dá erro de carga, só um sistema mudo.
-   - **Liberação** — `Stores::releaseWeapon()` insere um player novo (`addNewPlayer()`) que
-     nenhum arquivo de configuração descreve; a árvore de contenção muda em execução.
-   - **Reset** — o inverso da liberação: `processComponents()` reconstrói a partir de
-     `origPlayers`, que NUNCA teve o míssil — ele some sem uma linha de código que o remova.
-
-   A direção de cada ponte é "quem SEGURA o ponteiro → quem é achado por ele", não sempre
-   `node`→`to` da trilha original: no evento de Nome, o push acontece no turno de visita do
-   PRÓPRIO track manager (`node: "ttm"`), mas quem guarda o slot é o sensor (`from: "tws"`) —
-   mostrar `ttm`→`tws` inverteria o sentido real da referência.
-
-3. **Catálogo** — as 342 classes que `DECLARE_SUBCLASS` no fork, cruzadas com quem de fato
+2. **Catálogo** — as 342 classes que `DECLARE_SUBCLASS` no fork, cruzadas com quem de fato
    se registra em fábrica (`IMPLEMENT_*SUBCLASS`, 224 delas — 48 com nome de fábrica
    divergente do nome da classe), quem tem slot (`BEGIN_SLOTTABLE`/`END_SLOTTABLE`, 644
    slots em 135 classes) e quem participa do despacho por fase. Busca por classe, nome de
@@ -157,69 +133,14 @@ ficam embutidos no próprio arquivo), com três visões sobre o framework:
    método curado para aquela classe (a maioria das 342 — `SNIPPETS` é uma curadoria pequena,
    não o fonte inteiro), o cartão diz isso explicitamente em vez de fingir que não há nada.
 
-4. **AgentTC→UBF→BT** — um ENSAIO, não uma quarta extração. As três abas acima mostram o
-   framework MIXR genérico (a aba Execução chega a modelar um `AgentTC`/`UbfArbiter` didático,
-   mas com "behaviors" e votos inventados — ver a nota no bloco `if (node.id === "agent")` de
-   `walk()`). Esta aba troca isso pela cadeia de decisão REAL deste repositório — o modelo de
-   voo em `models/player/A4/` que `single-thread`/`multi-thread`/`app` de fato rodam a 50 Hz, por
-   aeronave, na fase 3 do frame de tempo crítico:
-   `FlightAgentTC → Agent::controller → UbfArbiter → {AltitudeSafetyBehavior, BtBehavior} →
-   flight_tree.xml (Fallback) → FlightAction::execute() → Autopilot/xboard/LOG`.
-
-   Cinco cenários (Patrulha/Combustível baixo/Contato detectado/Alerta recebido/Piso de
-   segurança) — cada um fecha uma condição diferente do `Fallback` de produção (ou, no último,
-   nenhuma: a árvore recomenda `PATROL`, mas perde a votação para `AltitudeSafetyBehavior`,
-   voto 90 contra 50). Escolher um cenário reconstrói a trilha de passos inteira; "reproduzir"
-   avança sozinho (1500 ms/passo, mesmo padrão de `setTimeout` da aba Execução), `←`/`→`
-   também navegam.
-
-   **Segunda passada, motivada por feedback ("elabore mais em prol da clareza"), com dois
-   reforços — um de conteúdo, um visual:**
-
-   - **Um glossário recolhível** ("▸ o que são UBF e BT?", mesmo padrão de disclosure de
-     "▸ como ler um cartão" na aba Execução) — duas colunas lado a lado: os 4 papéis do UBF
-     (`State`/`Behavior`/`Arbiter`/`Action`, cada um amarrado à classe real deste modelo que o
-     preenche) e os 4 blocos do BT que aparecem em `flight_tree.xml` (`Fallback "?"`/
-     `Sequence "→"`/`Condition`/`Action`), fechando com a frase-chave: "`flight_tree.xml`
-     inteira é só a política de UM `Behavior` (`BtBehavior`) dentro do `UbfArbiter` — o UBF não
-     sabe que existe uma árvore ali dentro".
-   - **Cada ramo do `Fallback` deixou de ser UMA caixa e virou a `Sequence` que ele de fato É**
-     — `Condition` e `Action` como dois nós PRÓPRIOS, com estado próprio, dentro de uma moldura
-     tracejada rotulada com o nome da `Sequence` (`rtb_sequence`/`engage_sequence`/
-     `support_sequence`; `Patrol` continua sozinho, por não ter `Condition` — é o "senão" da
-     árvore). Uma `Sequence` vencedora agora anima em DOIS passos (a `Condition` sucede,
-     DEPOIS a `Action` sucede) em vez de um só — é a semântica de "→" (E lógico, para no
-     primeiro `FAILURE`) se revelando na prática, não só descrita em texto. Isso também separa
-     dois curto-circuitos que a primeira versão confundia num símbolo só: `✕` (uma `Condition`
-     foi perguntada e falhou — curto-circuito DENTRO da `Sequence`, e a `Action` irmã dela vira
-     `⋯`) contra `⋯` de um ramo inteiro (nem a própria `Condition` chegou a ser perguntada —
-     curto-circuito do `Fallback`, um nível acima).
-   - **Toda caixa do diagrama ganhou borda esquerda colorida por FRAMEWORK** — azul
-     (`var(--bgc)`) para um papel do UBF, roxa (`var(--new)`) para um nó do BT — então a
-     pergunta "isso que estou olhando é UBF ou é BT?" tem resposta visual imediata, sem
-     depender de ler o texto. A transição de cor acontece exatamente na caixa `BtBehavior`
-     (ainda UBF, azul) → `tree.tickRoot()` (já BT, roxa): o ponto exato onde um Behavior
-     delega sua decisão a uma árvore.
-
-**Curada, não instrumentada — com UMA exceção deliberada.** As três primeiras abas: sem
-processo MIXR rodando por trás, herança, nome de fábrica, registro, slots, fases e os trechos de
-código (com arquivo e linha reais) foram extraídos direto da árvore de fontes
-(`contexts/src/mixr/`, fork v170600) pelo script `scripts/extract_execution_chain.py` (fora deste
-diretório) e embutidos em `docs/doc.jsx` como os objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` —
-nada ali é digitado à mão. Isso está avisado na própria página e não deve ser removido em
-incrementos futuros. A árvore do cenário (`SCENARIO`/`ALL`/`EDL_TEXT`) é composição manual sobre
-esses mesmos dados — cada classe usada já vinha do `MODEL` gerado, só a escolha de QUAIS classes
-e em que arranjo é curada.
-
-A aba 4 é a exceção: não há script de extração para `models/player/A4/` (é código deste
-repositório, não do fork vendorizado), então `UBFBT_SCENARIOS`/`UBFBT_BRANCHES`/
-`buildUbfBtSteps()` em `docs/doc.jsx` foram escritos à mão, lendo `FlightAgentTC.{hpp,cpp}`,
-`Agent.cpp`/`Arbiter.cpp` (framework), `BtBehavior.cpp`, `AltitudeSafetyBehavior.cpp`,
-`flight_tree.xml`, `bt/nodes/*.cpp` e `FlightAction.cpp` linha a linha — cada passo cita
-arquivo:linha, mas nenhuma passada automática vigia se o texto ainda bate com o código. Se
-`BtBehavior`/a árvore/`FlightAction` mudarem, esta aba pode ficar desatualizada EM SILÊNCIO,
-diferente das outras três. Rótulo de "ensaio" no próprio texto da aba é proposital — é o convite
-para promovê-la a extração de verdade (ou pelo menos revisá-la) se o modelo mudar.
+**Curada, não instrumentada.** Sem processo MIXR rodando por trás, herança, nome de fábrica,
+registro, slots, fases e os trechos de código (com arquivo e linha reais) foram extraídos direto
+da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
+`scripts/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/doc.jsx` como os
+objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
+própria página e não deve ser removido em incrementos futuros. A árvore do cenário
+(`SCENARIO`/`ALL`/`EDL_TEXT`) é composição manual sobre esses mesmos dados — cada classe usada já
+vinha do `MODEL` gerado, só a escolha de QUAIS classes e em que arranjo é curada.
 
 ## Como abrir
 

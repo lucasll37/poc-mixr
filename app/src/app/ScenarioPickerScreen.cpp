@@ -28,13 +28,11 @@ const int kPickerDescLines{2};
 const int kPickerHeight{12};
 }
 
-std::string runScenarioPicker()
+std::string runPickerScreen(const std::vector<PickerItem>& items, const std::string& title)
 {
-   const auto& catalog{scenarioCatalog()};
-
    std::vector<std::string> labels;
-   labels.reserve(catalog.size());
-   for (const auto& entry : catalog) labels.push_back(entry.label);
+   labels.reserve(items.size());
+   for (const auto& item : items) labels.push_back(item.label);
 
    int selected{};
    bool confirmed{};
@@ -66,20 +64,20 @@ std::string runScenarioPicker()
    // deste catalogo, mesmo a mais comprida, no 'kPickerWidth' escolhido)
    // resolve pra qualquer selecao, sem depender do conteudo.
    const auto root = Renderer(menu, [&] {
-      Elements items;
-      items.push_back(text("selecione um cenario") | bold | color(Color::CyanLight));
-      items.push_back(separator());
-      items.push_back(menu->Render() | reflect(menuBox) | flex);
-      items.push_back(separator());
-      const std::string& desc{(selected >= 0 && selected < static_cast<int>(catalog.size()))
-                              ? catalog[static_cast<std::size_t>(selected)].description
+      Elements elems;
+      elems.push_back(text(title) | bold | color(Color::CyanLight));
+      elems.push_back(separator());
+      elems.push_back(menu->Render() | reflect(menuBox) | flex);
+      elems.push_back(separator());
+      const std::string& desc{(selected >= 0 && selected < static_cast<int>(items.size()))
+                              ? items[static_cast<std::size_t>(selected)].description
                               : std::string{}};
-      items.push_back(paragraphAlignLeft(desc) | color(Color::GrayLight)
+      elems.push_back(paragraphAlignLeft(desc) | color(Color::GrayLight)
                       | size(HEIGHT, EQUAL, kPickerDescLines));
-      items.push_back(separator());
-      items.push_back(text("[up/down] navegar   [enter] ou [clique] carregar   [q] sair") | dim);
+      elems.push_back(separator());
+      elems.push_back(text("[up/down] navegar   [enter] ou [clique] carregar   [q] sair") | dim);
 
-      return vbox(std::move(items)) | border | size(WIDTH, EQUAL, kPickerWidth)
+      return vbox(std::move(elems)) | border | size(WIDTH, EQUAL, kPickerWidth)
              | size(HEIGHT, EQUAL, kPickerHeight) | center;
    });
 
@@ -125,8 +123,19 @@ std::string runScenarioPicker()
    screen.Loop(withQuit);
 
    if (cancelled || !confirmed) return {};
-   if (selected < 0 || selected >= static_cast<int>(catalog.size())) return {};
-   return catalog[static_cast<std::size_t>(selected)].key;
+   if (selected < 0 || selected >= static_cast<int>(items.size())) return {};
+   return items[static_cast<std::size_t>(selected)].key;
+}
+
+std::string runScenarioPicker()
+{
+   const auto& catalog{scenarioCatalog()};
+
+   std::vector<PickerItem> items;
+   items.reserve(catalog.size());
+   for (const auto& entry : catalog) items.push_back(PickerItem{entry.key, entry.label, entry.description});
+
+   return runPickerScreen(items, "selecione um cenario");
 }
 
 } // namespace app

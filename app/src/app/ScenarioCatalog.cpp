@@ -1,6 +1,7 @@
 #include "app/ScenarioCatalog.hpp"
 
 #include <filesystem>
+#include <system_error>
 
 namespace app {
 
@@ -113,12 +114,46 @@ const std::vector<ScenarioEntry>& scenarioCatalog()
          "./src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
          "", "", "", "", falconFleet(),
       },
+      {
+         "full-systems-nav", "full-systems-nav",
+         "o player maximo voando de verdade: BT de um no so segue Route/Steerpoint nativos -- Tacview 1240",
+         "./src/poc/full-systems-nav/configs/scenario_full_nav.edl.in",
+         "", "", "", "", {"a4"},
+      },
+
+      // >>> PROXIMO MODELO/CENARIO AQUI -- acrescente seu bloco ACIMA desta
+      // linha, sempre no FIM da lista, nunca no meio das entradas de cima.
+      // Isto e um ponto de insercao unico de proposito: dois PRs de modelos
+      // diferentes que so ACRESCENTAM aqui colidem da forma mais barata de
+      // resolver (duas adicoes consecutivas -- a resolucao e sempre "manter
+      // as duas"). Ver models/README.md secao 4.1 para os campos, e
+      // CONTRIBUTING.md secao "Pontos de conflito de merge conhecidos". <<<
    };
    return catalog;
 }
 
 ScenarioEntry adHocScenario(const std::string& path)
 {
+   // Se o caminho de '-f' e o MESMO arquivo do templatePath de uma entrada
+   // ja catalogada, reusa a entrada INTEIRA -- inclusive a frota. Sem isto,
+   // um cenario com frota diferente de falcon1..4 (ex.: full-systems-nav,
+   // frota {"a4"}) abortava em collectFleet() quando carregado por '-f',
+   // mesmo ja cadastrado corretamente no catalogo -- o mesmo arquivo se
+   // comportando diferente conforme e invocado por chave ou por caminho.
+   // weakly_canonical() (nao a versao que lanca excecao -- isto e so uma
+   // checagem de UX) resolve os dois lados relativos ao MESMO CWD do
+   // processo, a mesma convencao que ja rege '-scenario'.
+   std::error_code ec;
+   const std::filesystem::path normalized{std::filesystem::weakly_canonical(path, ec)};
+   if (!ec) {
+      for (const auto& entry : scenarioCatalog()) {
+         std::error_code ecEntry;
+         const std::filesystem::path entryNormalized{
+            std::filesystem::weakly_canonical(entry.templatePath, ecEntry)};
+         if (!ecEntry && entryNormalized == normalized) return entry;
+      }
+   }
+
    // A chave sai do nome do arquivo (sem diretorio nem extensao) so para
    // batizar o '.generated.edl' e o cabecalho da TUI -- nada mais depende
    // dela quando o cenario vem por '-f'.
@@ -132,6 +167,18 @@ ScenarioEntry adHocScenario(const std::string& path)
       key.erase(key.size() - sufixo.size());
    }
    if (key.empty()) key = "ad-hoc";
+
+   // Fallback: falcon1..4. NAO e um palpite coincidente -- e o unico caso
+   // que de fato chega aqui hoje e o das fixtures de tests/scenario/
+   // make_fixture.py, e o formato delas garante exatamente essa frota. O
+   // modo 'intruder' daquele gerador acrescenta um bandit1 LOCAL de
+   // proposito FORA da frota rastreada (e o intruso que se detecta, nao um
+   // dos aviões observados) -- uma descoberta generica (tentada e revertida:
+   // ver o historico desta funcao) pegaria esse bandit1 tambem, quebrando
+   // exatamente a garantia que os testes de intruder dependem. Um cenario
+   // custom de verdade, sem fixture nenhuma, deve ser CADASTRADO no
+   // catalogo (ver a entrada 'full-systems-nav' acima) -- isso e' o que faz
+   // o casamento do bloco anterior encontrar a frota certa.
    return ScenarioEntry{key, key, "cenario carregado por -f", path,
                         "", "", "", "", falconFleet()};
 }

@@ -64,11 +64,23 @@ const std::vector<ScenarioEntry>& scenarioCatalog();
 // nullptr se a chave nao existir no catalogo.
 const ScenarioEntry* findScenario(const std::string& key);
 
-// Entrada SINTETICA para '-f <arquivo>': um cenario fora do catalogo (o caso
-// das fixtures de teste, geradas por tests/scenario/make_fixture.py). Herda a
-// frota dos falcons e nao substitui token de Tacview nenhum -- a fixture ja
-// traz o bloco 'dataRecorder:' inteiro, como o cenario de poc de que ela
-// deriva.
+// Entrada para '-f <arquivo>'. Duas saidas possiveis:
+//
+//   * o 'path' e o MESMO arquivo do templatePath de uma entrada JA
+//     catalogada (ex.: apontar '-f' para o .edl.in de 'full-systems-nav') --
+//     devolve essa entrada INTEIRA, frota e tokens de Tacview inclusive. E
+//     como se tivesse sido chamado por '-scenario <chave>'.
+//   * o arquivo e desconhecido do catalogo -- hoje, na pratica, so as
+//     fixtures de teste geradas por tests/scenario/make_fixture.py, que
+//     SEMPRE derivam de um cenario com falcon1..4. Herda essa frota (nao e
+//     descoberta em runtime -- ja foi tentado e revertido: o modo 'intruder'
+//     daquele gerador acrescenta um bandit1 LOCAL de proposito FORA da
+//     frota rastreada, e uma descoberta generica pegaria esse bandit1
+//     tambem) e nao substitui token de Tacview nenhum -- o arquivo ja traz o
+//     bloco 'dataRecorder:' inteiro, como o cenario de poc de que ele
+//     deriva. Um cenario custom de verdade deve ser CADASTRADO no catalogo
+//     (ver 'full-systems-nav') para cair no primeiro caso, com a frota
+//     certa.
 ScenarioEntry adHocScenario(const std::string& path);
 
 } // namespace app

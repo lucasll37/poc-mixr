@@ -13,6 +13,14 @@ Prova de conceito para desenvolver **novos modelos de simulação** sobre o fram
 **BehaviorTree.CPP v3** (`behaviortree.cpp.asa/3.5.6`). O MIXR **não** é o objeto de
 desenvolvimento — é dependência binária.
 
+> **Se você chegou aqui para escrever um MODELO novo** (a política de decisão de uma aeronave,
+> helicóptero, satélite etc. — não para mexer no host `app/`/`src/`/`shared/`), este arquivo é
+> referência de arquitetura, não o ponto de partida. Comece por
+> [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
+> (`make new-model NAME=... KIND=stub|template`), os dois pontos de partida
+> copiáveis (`models/player/fixtures/stub/`, achatado; `models/player/template/`, em camadas) e o
+> registro de coordenação entre devs, [`models/REGISTRO.md`](models/REGISTRO.md).
+
 As pocs vivem em `src/poc/`, e **três delas moram juntas em `src/poc/dis/`** — `bandit`,
 `single-thread` e `multi-thread`. Esse agrupamento não é arrumação: o que as junta é só fazerem
 sentido **juntas**, em processos separados trocando **DIS nativo do MIXR**. O intruso mora no
@@ -145,6 +153,19 @@ O alvo `compare-single-multi` lista o que difere entre as duas pastas (deve ser 
 **AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan apenas na
 `single-thread` (único alvo que consome `asan_cpp_args`/`asan_link_args`).
 
+**`deps/`** — receitas Conan (`deps/{mixr,behaviortree,jsbsim,openrti}/conanfile.py`) para compilar
+essas quatro dependências **a partir do fonte** (cada uma clona um commit fixo de upstream/fork),
+como alternativa a consumi-las prontas do remoto Conan privado da ASA (o caminho documentado no
+`README.md` §2.4, e o que `make configure` de fato usa). Orquestradas por `scripts/deps.sh`
+(ordem obrigatória: jsbsim → openrti → mixr → behaviortree, Debug e Release dos quatro) — **não é
+chamado por nenhum alvo do Makefile raiz**, é um escape hatch manual, standalone; o `conanfile.py`
+da raiz só declara `self.requires("mixr/1.0.5", ...)` etc. e não sabe (nem precisa saber) se o
+pacote no cache Conan veio do remoto ou de `deps.sh`.
+
+**Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make docs`/`open-docs` (a
+visualização em `docs/`, ver a seção própria) e a família `edl-*`/`new-model` (o editor visual de
+cenário em `src/ui/` e o scaffold de modelo novo, ambos com seção própria mais abaixo).
+
 ## Onde consultar o framework
 
 `contexts/` tem duas camadas: os `.md` destilados (leitura rápida) e o **código-fonte completo
@@ -157,6 +178,11 @@ das libs** em `contexts/src/` (a verdade).
 | `contexts/MIXR-CONTEXT.md` | como o MIXR funciona por dentro (classes, macros, ciclo de vida, EDL, recorder) |
 | `contexts/MIXR-PATTERN-CONTEXT.md` | como se escreve uma aplicação MIXR (padrões dos exemplos oficiais; §0 lista o que do fork **não** existe) |
 | `contexts/BTCPP-CONTEXT.md` | BehaviorTree.CPP **v3.5.6** — nada vale para a v4 |
+
+Os dois manuais técnicos completos por trás dessa destilação (LaTeX, 13 capítulos cada) também
+estão vendorizados e **não são só insumo de RAG** — são leitura contínua para quem está aprendendo
+o framework do zero: `contexts/mixr-report.pdf` (MIXR) e `contexts/bt-report.pdf`
+(BehaviorTree.CPP).
 
 **Camada 2 — fonte (`contexts/src/`), onde confirmar qualquer coisa que a destilação não cobre
 ou que pareça contraditória:**
@@ -1320,10 +1346,19 @@ models/
     ├── missile/              # projeto meson proprio -> build-missile/ -- SEGUNDO modelo,
     │                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
     │   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md  CHANGELOG.md
+    ├── template/             # projeto meson proprio -> build-template/ -- NAO e producao,
+    │                         # e o SEGUNDO ponto de partida copiavel (models/README.md §2.4):
+    │                         # camadas domain/ -> ubf/ -> xnative/ com UMA decisao de exemplo
+    │                         # (gatilho Schmitt sobre altitude) -- pra quem ja sabe que vai
+    │                         # coordenar mais de uma decisao e quer a separacao em camadas
+    │                         # pronta, ao contrario do stub (flat, uma decisao so)
+    │   ├── docs/ARCHITECTURE.md  docs/PRIMEIROS-PASSOS.md  Makefile  README.md  CHANGELOG.md
     └── fixtures/
         └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
             ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
-            │                 # ponto de partida copiavel para um modelo novo (models/README.md §2)
+            │                 # PRIMEIRO ponto de partida copiavel (models/README.md §2/§3):
+            │                 # flat, ~270 linhas, uma decisao so -- comece por aqui a menos
+            │                 # que ja saiba que vai coordenar mais de uma (ai e' o template)
             ├── tests/check_contract.sh   # forma do .so: 1 simbolo T, deps resolvidas
             ├── docs/CONTRATO.md          # ~270 linhas, escritas SO contra o SDK -- o que
             │                             # um modelo TEM de fazer
@@ -1331,6 +1366,15 @@ models/
             ├── README.md
             └── CHANGELOG.md
 ```
+
+**`make new-model NAME=<nome> KIND=stub|template`** (`scripts/new_model.py`) automatiza a cópia de
+qualquer um dos dois: recalcula a profundidade de `ROOT :=` do `Makefile` copiado e corrige o
+namespace C++ — não escreve lógica de domínio nenhuma. **Não** precisa registrar o modelo no build
+da raiz: `models:` do Makefile descobre projetos sob `models/player/` por `find`
+(`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — o diretório novo já
+entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
+— é registrar um CENÁRIO pra esse modelo (`app/src/app/ScenarioCatalog.cpp`, opcionalmente
+`tests/meson.build`; ver `models/README.md` §4.1/§4.2) e a linha em `models/REGISTRO.md`.
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
 guarda `tests/guard/check_modelo_estrutura.sh` (suite `guard`, alvo `modelo-estrutura`) cobra as
@@ -1468,35 +1512,45 @@ falcon1 indo de 141° para 34°.
 
 ## Ao adicionar um subprojeto novo
 
-1. Criar `src/poc/<nome>/` — nome descritivo, sem prefixo numérico, e é ele que vira o nome do
-   executável — seguindo a estrutura acima; sempre com `include/mixr_factory.hpp` +
-   `src/mixr_factory.cpp` (a factory **não** fica inline no `main.cpp`). `src/poc/` é a pasta que
-   agrupa as pocs de execução real (single-thread/multi-thread/bandit/python-flight/onnx-policy) — o dashboard (`./app/`)
-   fica fora, na raiz, por ser o único ocupante da própria pasta. **Exceção**: `src/poc/rl-training/`
-   também mora aqui, mas não segue esta receita — é só Python (o consumidor de treino de `src/rl`),
-   sem `main.cpp`/`mixr_factory`/entrada em `src/poc/meson.build`.
-2. Adicionar `subdir('./<nome>')` em [src/poc/meson.build](src/poc/meson.build) — não em
-   `src/meson.build`, que só delega pra `subdir('./poc')`. Se a poc nova pertencer a um GRUPO
-   (hoje só existe um, `src/poc/dis/`, das três que trocam DIS entre si), o `subdir()` vai no
-   `meson.build` do grupo, e `src/poc/meson.build` só chama o grupo.
+**Esta seção descrevia um regime anterior — cada poc com o próprio `main.cpp`/`mixr_factory.cpp`/
+`executable()` — que não existe mais desde que `./app` virou o runner único (ver "Estrutura de um
+subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
 
-   **Guardas que já pagaram por profundidade de caminho — não redescobrir:**
-   `check_duplication.sh` descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
-   `check_falcons_estrutura.sh` varria o glob `src/poc/*/configs/scenario.edl.in`. Agrupar as três
-   pocs de DIS um nível abaixo fez as duas **deixarem de enxergá-las continuando VERDES** — o modo
-   de falha exato que esses arquivos existem para evitar. Hoje as duas descobrem por `find` com
-   `-path`, a qualquer profundidade; o mesmo vale para `tests/scenario/make_fixture.py` (que
-   procura a poc em vez de concatenar `src/poc/<nome>`) e para o `.gitignore` (`src/poc/**/data/`).
-3. Adicionar o alvo `run-<nome>` no [Makefile](Makefile) — apontando para
-   `$(BUILD_DIR)/src/poc/<nome>/src/<nome>`.
-4. **Declarar o rpath no `executable()`**: `link_args: rpath_link_args`, `build_rpath: mixr_libdir`
-   e `install_rpath: mixr_libdir + ':' + own_libs_rpath` — o `own_libs_rpath` (`$ORIGIN/../lib`) é o
-   que faz o binário de `dist/bin/` achar `libxboard.so`/`libxlog.so`/`libxtrack.so` em `dist/lib/`.
-   **Não há `behavior_tree_dep` nem `jsbsim_dep` na raiz**: quem precisa delas é o modelo, e ele é
-   outro projeto (ver `models/README.md`).
-5. Para exportar ao Tacview: `dataRecorder:` na `Station` com `( TacviewOutput ... )`,
-   `dataLogTime:` em **cada** player, `mixr::xtacview::factory` + `mixr::recorder::factory`
-   encadeadas no `mixr_factory.cpp`, e `xtacview_dep` no `meson.build`.
+1. Criar `src/poc/<nome>/` — nome descritivo, sem prefixo numérico — com **só dado**:
+   `configs/scenario.edl.in` (o cenário) e `data/` (com os `.gitkeep` necessários —
+   `recordings/`, `logs/`, `messages/`, todos gitignorados via `src/poc/**/data/`) e `README.md`.
+   Nenhum `.cpp`/`.hpp`, nenhuma entrada em `src/poc/meson.build` (que está deliberadamente vazio —
+   ver o comentário no topo do próprio arquivo). Se a poc pertence a um GRUPO (hoje só
+   `src/poc/dis/`, as três que trocam DIS entre si), a pasta nova só precisa morar dentro do grupo;
+   não há `meson.build` de grupo para editar (`src/poc/dis/` não tem um).
+2. No `.edl.in`, o bloco `( PluginLoader )`/`( PluginModule )` de sempre, como primeira entrada de
+   `components:` — `mixr::xplugin::factory`/`mixr::xplugin::loadedFactory` já estão encadeadas no
+   **único** `mixr_factory.cpp` do host (`app/src/mixr_factory.cpp`); nenhuma poc precisa da
+   própria factory. Mesmo vale para Tacview: `dataRecorder:`/`dataLogTime:` são config do `.edl`,
+   não C++ — `mixr::xtacview::factory`/`mixr::recorder::factory` já estão na mesma cadeia.
+3. Registrar uma `ScenarioEntry` em `app/src/app/ScenarioCatalog.cpp` (comentário-marcador no fim
+   da lista mostra onde) — sem isso, o cenário existe em disco mas não aparece em
+   `./app -scenario <chave>`. Ver `models/README.md` §4.1 para os campos.
+4. Opcionalmente, cobertura de teste automática em `tests/meson.build` — três formas possíveis
+   (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `models/README.md`
+   §4.2, com marcadores no próprio arquivo.
+5. Adicionar o alvo `run-<nome>: install` no [Makefile](Makefile), no molde de `run-onnx-policy`:
+
+   ```makefile
+   run-<nome>: install ## Run <nome> (descrição curta).
+   	$(BUILD_DIR)/app/src/app -scenario <nome>
+   ```
+
+**Guardas que já pagaram por profundidade de caminho — não redescobrir:**
+`check_duplication.sh` (hoje aposentada) descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
+`check_falcons_estrutura.sh` varria o glob `src/poc/*/configs/scenario.edl.in`. Agrupar as três
+pocs de DIS um nível abaixo fez as duas **deixarem de enxergá-las continuando VERDES** — o modo
+de falha exato que esses arquivos existem para evitar. Hoje `check_falcons_estrutura.sh` descobre
+por `find` a qualquer profundidade; o mesmo vale para `tests/scenario/make_fixture.py` (que procura
+a poc em vez de concatenar `src/poc/<nome>`) e para o `.gitignore` (`src/poc/**/data/`).
+
+**Se a poc precisa de um MODELO novo** (não reaproveita um `.so` já existente), isso é um passo
+independente — não continua desta seção. Ver [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ### Gotcha: rpath das dependências Conan (`dist/` vs `build/`)
 
@@ -3195,6 +3249,67 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   `bandit1` (`T3`) no MESMO frame — prova de que a numeração compartilhada está de fato
   dando um índice por thread física, não um por plugin.
 
+**Vigésima quarta passada: `-folder <pasta>` — navegação por uma pasta de cenários de
+sandbox, sem precisar cadastrar nada no catálogo.**
+
+- **O pedido**: um modo além de `-scenario <chave>` (catálogo fixo) e `-f <arquivo>` (um único
+  `.edl` fora do catálogo) — apontar para uma PASTA com N subpastas, cada uma
+  `<cenario>/configs/*.edl`, e navegar entre elas (mesma UX da tela de seleção do catálogo).
+  `./sandbox/` é o primeiro exemplo real (`full-systems-nav`/`onnx-policy`/`python-flight`,
+  cópias da estrutura de `src/poc/<nome>/`) — não versionado, é o espaço de experimentação do
+  usuário.
+- **`app/ScenarioFolder.hpp`/`.cpp` (novo)** — `discoverFolderScenarios(pasta)`, descoberta pura
+  em disco (sem MIXR/FTXUI), mesmo estilo de `TerrainQuery.cpp`/`TerrainData.cpp`
+  (`std::error_code` em toda chamada, `directory_iterator(path, ec)` com `if (ec) break;`,
+  ausência tratada sem ser fatal). Uma subpasta sem `configs/` é ignorada; `configs/` com 0 ou
+  mais de 1 `.edl`/`.edl.in` gera aviso em stderr e é pulada — a navegação é por SUBPASTA,
+  precisa de exatamente um arquivo por pasta pra ser inequívoca.
+- **Armadilha real, batida testando contra `./sandbox/` de verdade (não hipotética)**:
+  `sandbox/onnx-policy/configs/` e `sandbox/python-flight/configs/` têm, cada uma, TANTO
+  `scenario.edl.in` (a fonte) QUANTO um `scenario.generated.edl` (artefato de saída, leftover de
+  uma execução anterior) — e `.generated.edl` também termina em `.edl`. Sem excluir esse sufixo
+  explicitamente, as duas pastas reais seriam descartadas como "ambíguas" (2 candidatos) por
+  engano. `hasEdlSuffix()` checa `.generated.edl` PRIMEIRO (recusa) antes de aceitar `.edl`/
+  `.edl.in`.
+- **`app/ScenarioPickerScreen.hpp`/`.cpp` generalizado** — o `Menu`/`Renderer`/`CatchEvent` de
+  mouse+quit que só existia para o catálogo virou `runPickerScreen(items, title)`, parametrizado
+  por uma lista de `PickerItem{key, label, description}` e por título. `runScenarioPicker()`
+  (inalterada por fora) virou um wrapper fino que monta `PickerItem` a partir de
+  `scenarioCatalog()`. `kPickerWidth`/`kPickerDescLines`/`kPickerHeight` (76/2/12) continuam os
+  mesmos para os dois usos — a descrição do item de pasta é o caminho do `.edl` descoberto, que
+  cabe na mesma janela.
+- **`-scenario`, combinado com `-folder`, muda de significado** — deixa de ser uma chave do
+  catálogo estático e vira o NOME DA SUBPASTA dentro de `<pasta>`, pulando a tela de navegação
+  (`./app -folder ./sandbox -scenario full-systems-nav`). Sem essa combinação a feature seria só
+  interativa, difícil de automatizar/testar — é o que os testes novos usam.
+- **A frota é descoberta GENERICAMENTE, não assumida como `falcon1..4`** — `main.cpp` monta a
+  `ScenarioEntry` sintética do cenário de pasta com `fleet` VAZIO, e isso aciona
+  `app::discoverFleet()` (reintroduzida em `app/Fleet.hpp`/`.cpp`) em vez de `collectFleet()`.
+  **Isto é deliberadamente DIFERENTE do fallback de `adHocScenario()`/`-f`** (que continua
+  assumindo `falcon1..4` — ver a entrada anterior desta seção): aquele fallback é compartilhado
+  com as fixtures de `tests/scenario/make_fixture.py`, que têm um `bandit1` LOCAL propositalmente
+  FORA da frota rastreada — descoberta genérica pegaria esse `bandit1` também, quebrando os
+  testes de intruder (já tentado e revertido uma vez nesta mesma sessão de trabalho). Cenários de
+  `-folder` não são fixtures de teste, são criações do próprio usuário — essa razão não se
+  aplica, e o mecanismo fica isolado: só a entrada sintética de `-folder` produz `fleet` vazio;
+  toda entrada do catálogo e o fallback de `-f` continuam com frota explícita e não-vazia.
+- **`DashboardExit::Restart` precisou saber a diferença** — `cenario.key`, para um cenário de
+  pasta, é o nome da SUBPASTA, não uma chave do catálogo; reexec com só `-scenario <key>`
+  cairia no catálogo estático e provavelmente não acharia nada. Reexec leva `-folder`/`-scenario`
+  juntos quando `opts.scenarioFolder` não está vazio.
+- **Testado**: `tests/app/test_scenario_folder.cpp` (`app-scenario-folder`, suíte `domain`) cobre
+  `discoverFolderScenarios()` isolada — inclusive os dois casos do `.generated.edl` (sozinho não
+  conta; ao lado do `.edl.in` de origem não gera ambiguidade) — com pastas temporárias, sem
+  MIXR/FTXUI. `tests/scenario/run_scenario_folder_test.py` (`scenario-folder`, suíte `scenario`)
+  prova ponta a ponta pelo caminho não-interativo (`-folder`+`-scenario`, sem depender de pty):
+  uma subpasta válida (cópia do `.edl.in` de `full-systems-nav`) ao lado de uma malformada
+  (`configs/` vazia) — a válida carrega (`player=a4`, frota descoberta), a malformada só gera
+  aviso, sem abortar o processo. Confirmado também rodando de verdade contra `./sandbox/`: as
+  três pastas reais (`full-systems-nav`/`onnx-policy`/`python-flight`) descobertas e carregadas
+  via seleção direta, e a tela interativa (`-folder ./sandbox` sem `-scenario`) mostrando as três
+  com o título `"selecione um cenario -- ./sandbox"` e a descrição de cada uma sendo o caminho do
+  `.edl` encontrado. `make test` 59/59, sem regressão.
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
@@ -3389,16 +3504,92 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
     dele e **não** repassa `-Dpkg_config_path` — `make test` quebrava com "Dependency poc-mixr-sdk
     not found" com o `.pc` presente em `dist/`.
 
+## `docs/` — visualização do framework, gerada do fonte real
+
+`docs/` é conteúdo **lido**, nunca escrito por uma execução: páginas HTML estáticas (sem
+servidor, sem dependência de rede depois do primeiro carregamento). A peça viva é gerada por
+`scripts/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
+`models/player/A4/` — não é desenho à mão do ciclo de fases, é extraído do código.
+
+- **`docs/index.html`** (`make docs`/`make open-docs`; fonte em `docs/doc.jsx` + `docs/compile.js`)
+  tem **três abas**:
+  1. **Execução** — o ciclo de fases do frame MIXR (dynamics/transmit/receive/process/background)
+     animado sobre a árvore de componentes de um `( Aircraft )` só com peças **built-in** (~72
+     nós), com pan/zoom, tema claro/escuro, "seguir ramo" (auto-pan) e clique para pular de fase.
+  2. **Catálogo** — as 342 classes `DECLARE_SUBCLASS` do fork, cruzadas com registro de fábrica
+     (224 classes), slots (644 slots em 135 classes) e participação por fase — buscável/filtrável.
+  3. **AgentTC→UBF→BT** — um "ensaio" escrito **à mão** (não extraído automaticamente, portanto
+     sujeito a envelhecer em silêncio — o próprio texto avisa disso) percorrendo a cadeia de
+     decisão real de produção — `FlightAgentTC → Agent::controller → UbfArbiter →
+     {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction` — através dos 5
+     cenários que a usam.
+- **`docs/presentation/index.html`** — um slide deck HTML/CSS autocontido (~20 slides: "o que é"/
+  "o que não é", as funcionalidades exploradas, EDL+C++, 6-DOF, single vs multi-thread,
+  bandit/DIS, python-flight, onnx-policy, built-in_mixr_1...). **Órfão**: nenhum alvo do Makefile
+  o gera nem o abre, nenhum README aponta pra ele.
+- **`docs/explorador/`** existiu antes (dois modos: replay de cenário real + tour pelo catálogo de
+  `mixr::models`) e foi **removido** junto com `docs/TODO.md` — a aba Catálogo de `docs/index.html`
+  é a generalização do modo 2 dele; nada do resto sobrevive fora do que a aba absorveu.
+
+## `src/ui` — editor visual de cenário EDL (autoria, não runtime)
+
+Complementa o `./app`, não o substitui: o `./app` é o painel de **runtime**, para observar uma
+simulação rodando; `src/ui/edl-builder.html` é uma ferramenta de **autoria offline** — monta um
+`.edl` do zero arrastando classes de uma paleta (as mesmas fábricas encadeadas em
+`app/src/mixr_factory.cpp`: `base`/`models`/`terrain`/`interop::dis`/`linkage`/`recorder`/
+`simulation`, mais os `shared/x*` e os plugins deste repositório) e exporta um arquivo que o
+`./app`/qualquer poc carrega depois com `-f`. Vive sob `src/` (ferramenta de verdade, como
+`poc/`/`rl`), não sob `docs/` (visualização só de leitura) — decisão explícita registrada em
+`src/ui/README.md`.
+
+**Escopo do v1 é deliberadamente estreito: só CRIA.** Abrir/editar um `.edl` real já existente
+fica para depois. A raiz do cenário é sempre `( Station )`/`( ClockStation )`; uma lista de slot
+pode conter tanto uma classe arrastada quanto uma folha de texto puro (necessário para slots como
+`TacviewOutput.modelMap`, que são mapa string→string, não objeto MIXR).
+
+**Já existiu, e foi jogada fora, uma versão bem maior — no MESMO dia.** Uma stack completa
+React+Vite+servidor Node (`src/ui/server/` com rotas Express, `src/ui/web/` com componentes de
+mapa/inspector/paleta/árvore e um parser/lexer de EDL em TypeScript) foi commitada e depois
+**inteiramente removida**, as duas coisas em 2026-09-03 (`git log` mostra os mesmos caminhos só
+como adição-seguida-de-remoção). No lugar ficou o desenho bem menor de hoje: **um** arquivo React
+(`edl_builder.jsx`), lógica pura à parte (`edl_builder_core.js`, testável em Node puro sem
+navegador) e `compile.js` (Babel via CDN, sem bundler) — compilados num `edl-builder.html`
+**autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/index.html`. **Não há
+servidor.**
+
+**Build**: `make edl-catalog` (`scripts/extract_execution_chain.py --edl-catalog` → todas as
+classes/slots que as fábricas encadeadas publicam, em `edl_catalog.generated.json`) e
+`make edl-default-scenario` (`scripts/edl_to_ui_project.js` converte o próprio
+`src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in` — o cenário do "player máximo" — no
+projeto default que a ferramenta já abre carregado, `edl_default_scenario.generated.json`) são os
+dois insumos gerados; `make edl-builder` encadeia os dois e roda `compile.js`; `make
+open-edl-builder` abre o resultado; `make edl-builder-test` roda `edl_builder.test.js` (testes
+unitários puros, sem navegador).
+
+**Validação NÃO mora em `src/ui/`, em duas camadas — nenhuma das duas é a gramática real do
+EDL sozinha:**
+1. `make edl-lint FILE=...` (`scripts/edl_lint.py`) — lint estrutural rápido contra o catálogo
+   (fábrica/slot desconhecido, ASCII, ordem de `plugins:`, referência solta a nome).
+2. `make edl-check FILE=...` (binário `edlcheck`, `app/src/edlcheck_main.cpp`) — o parser de
+   verdade do MIXR, sem precisar de terreno/frota/`WorldModel` — é a validação que importa de
+   fato antes de rodar o arquivo produzido.
+
+Fica fora do grafo do Meson (sem `subdir()` em `src/meson.build`), mesma categoria de
+`src/poc/rl-training/`: só Python/JS/Makefile, nenhum C++ novo.
+
 ## Estado atual / pendências conhecidas
 
 - A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,
   `.edl`/`.edl.in` e alvos do `Makefile`). **Comentários e banners de console ainda dizem
   `poc/<nome>`** — é só prosa, nenhum caminho depende disso.
 - A documentação de referência continua vivendo no `README.md` da raiz, no de cada
-  subprojeto e em `tests/README.md`. `docs/` existe à parte disso — `docs/index.html` é
-  uma página estática (sem build, sem dependência) que visualiza de forma animada o
-  ciclo de fases do frame MIXR percorrendo a árvore de componentes, com os respectivos
-  métodos/funções chamados em cada fase; ver `docs/README.md`.
+  subprojeto e em `tests/README.md`. `docs/` e `src/ui/` têm seção própria mais acima. Para
+  escrever um MODELO novo (não mexer no host), o ponto de entrada é
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) → `models/README.md` → `models/REGISTRO.md` (quem já está
+  fazendo o quê) — ver o quadro logo no início deste arquivo.
+- **`src/node/`** é um placeholder vazio — só `TODO.md` ("integração com o asa-engine"), nenhum
+  código, não wireado em nenhum build. Não confundir com `src/rl`/`src/poc/rl-training` (esses
+  têm venv/Makefile próprios e rodam de verdade).
 - **A extensão dos cenários EDL passou de `.epp` para `.edl`** (`.epp.in`/`.generated.epp` →
   `.edl.in`/`.generated.edl`, e `tacview_recorder.epp.frag` → `.edl.frag`) — alinha o nome do
   arquivo com o nome da própria linguagem (EDL) e com a convenção dos exemplos oficiais do MIXR

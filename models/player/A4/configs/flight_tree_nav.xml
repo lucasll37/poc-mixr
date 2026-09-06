@@ -1,0 +1,44 @@
+<!--
+  A arvore que SOMENTE segue a navegacao, para
+  src/poc/full-systems-nav/configs/scenario_full_nav.edl.in.
+
+  Ao contrario de flight_tree.xml (producao, 4 ramos: RTB/EVADE/SUPPORT/
+  PATROL), esta arvore tem UM no so: ( Navigate ), sem Fallback nenhum por
+  baixo. Nao ha rede de seguranca de proposito: "somente segue a
+  navegacao" quer dizer que esta arvore nao sabe evadir, nao sabe voltar
+  para a base por combustivel, nao sabe apoiar um alerta. So sabe ler o
+  Route/Steerpoint nativo e repassar o comando.
+
+  O QUE "NATIVO" QUER DIZER AQUI: mixr::models::Route::updateData() (que
+  roda todo frame de background, incondicional) ja calcula rumo e
+  distancia de cada Steerpoint e ja sequencia a rota por proximidade, e ja
+  dispara as ( Action ) de cada steerpoint (ActionDecoyRelease,
+  ActionImagingSar, ActionCamouflageType, ActionWeaponRelease no cenario
+  desta poc). Tudo isso e igual a qualquer outro cenario com ( Route ),
+  com ou sem esta arvore. O que ( Navigate ) faz e so LER o rumo/altitude/
+  velocidade que a Navigation ja calculou (Navigation::getTrueBrgDeg(),
+  Steerpoint::getCmdAltitudeM()/getCmdAirspeedKts()) e entregar via o
+  mesmo caminho de atuacao do UBF (xnative::FlightAction::execute() ->
+  Autopilot::setCommandedHeadingD/setCommandedAltitudeFt/
+  setCommandedVelocityKts) que Patrol/ReturnToBase/ReportAndEvade/
+  SupportAlert ja usam.
+
+  POR ISSO O PILOT CONTINUA COM navMode: false no EDL, mesmo esta arvore
+  sendo "so navegacao": quem atua e a arvore (via FlightAction), nao o
+  Autopilot::processModeNavigation() nativo, mesma convencao de toda
+  aeronave pilotada por este UBF. navMode:true faria o Autopilot ler a
+  MESMA Navigation por um segundo caminho e disputar o comando com a
+  arvore a cada frame (armadilha ja documentada em built-in_mixr_1).
+
+  Se a rota ainda nao tiver dado valido (raro: so no primeiro frame, antes
+  do primeiro updateData()) ou o aviao nao tiver ( Route ) nenhuma,
+  ( Navigate ) falha e a arvore nao produz decisao alguma naquele tick: o
+  Autopilot mantem o ultimo comando (headingHoldMode/altitudeHoldMode/
+  velocityHoldMode:true seguram o valor, o mesmo raciocinio de qualquer
+  ( BtBehavior ) cujo genAction() devolveu nullptr).
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Navigate/>
+  </BehaviorTree>
+</root>

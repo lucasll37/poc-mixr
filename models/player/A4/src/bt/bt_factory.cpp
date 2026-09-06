@@ -5,6 +5,7 @@
 #include "bt/nodes/FuelLowCondition.hpp"
 #include "bt/nodes/LaunchEnvelopeCondition.hpp"
 #include "bt/nodes/LaunchMissileAction.hpp"
+#include "bt/nodes/NavigateAction.hpp"
 #include "bt/nodes/PatrolAction.hpp"
 #include "bt/nodes/ReportAndEvadeAction.hpp"
 #include "bt/nodes/ReturnToBaseAction.hpp"
@@ -41,6 +42,7 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
    registerWithContext<AlertReceivedCondition>(factory, "AlertReceived", context);
    registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
    registerWithContext<PatrolAction>(factory, "Patrol", context);
+   registerWithContext<NavigateAction>(factory, "Navigate", context);
 }
 
 } // namespace bt_nodes

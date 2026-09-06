@@ -268,6 +268,13 @@ check-built-in_mixr_1: install ## Verifica o determinismo do built-in_mixr_1 (me
 	@./tests/determinism/check_determinism.sh \
 		$(BUILD_DIR)/app/src/app built-in_mixr_1 2000 '' built-in_mixr_1
 
+run-full-systems-nav: install ## Run full-systems-nav (o PLAYER MAXIMO voando de verdade: BT de um no so segue Route/Steerpoint nativos; Tacview 1240).
+	$(BUILD_DIR)/app/src/app -scenario full-systems-nav
+
+check-full-systems-nav: install ## Verifica o determinismo do full-systems-nav (mesmo estado com 1, 2 e 4 threads T/C). O cenario proprio ja e hermetico -- sem 'networks:', nao precisa de fixture.
+	@./tests/determinism/check_determinism.sh \
+		$(BUILD_DIR)/app/src/app full-systems-nav 2000 '' full-systems-nav
+
 run-bandit: install ## Run bandit (bandit1 sozinho: joystick físico ou Autopilot de fallback, emitindo DIS; Tacview 1235). Rode junto com single-thread ou multi-thread.
 	$(BUILD_DIR)/app/src/app -scenario bandit
 

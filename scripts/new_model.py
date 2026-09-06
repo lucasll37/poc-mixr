@@ -12,10 +12,11 @@ metade.
 
 O QUE ESTE SCRIPT NAO FAZ, de proposito:
   - nao escreve a logica de dominio (a razao do modelo existir);
-  - nao decide se o modelo entra no build orquestrado da raiz
-    (models/README.md secao 2, passo final / docs/PRIMEIROS-PASSOS.md
-    passo 7);
-  - nao registra nada em .github/CODEOWNERS;
+  - nao registra o modelo em cenario nenhum nem no catalogo do ./app
+    (models/README.md secoes 4.1/4.2 -- o .so entra sozinho em 'make
+    models'/'make test' por descoberta via find, mas so aparece num
+    cenario rodavel depois desse passo manual);
+  - nao adiciona a linha em models/REGISTRO.md;
   - nao faz commit nenhum.
 Tudo isso fica no checklist impresso ao final.
 
@@ -270,12 +271,11 @@ Falta, MANUALMENTE (nada disto e automatizavel):
   [ ] o bloco `provides:` do .edl do SEU cenario (tem que bater EXATAMENTE com o que o
       .so exporta)
   [ ] git add models/player/{nome}/ (este script nao commita nada)
-  [ ] decidir se este modelo entra em 'make models'/'make test' da raiz:
-      -> se o Makefile raiz ja descobre modelos por 'find' (confira 'models:' nele),
-         nao precisa fazer nada -- este diretorio ja entra sozinho.
-      -> senao, acrescente uma linha ao alvo `models:` do Makefile raiz, no molde de
-         'missile' (ver models/README.md, secao 2).
-  [ ] adicionar uma linha em .github/CODEOWNERS para models/player/{nome}/
+  [ ] este modelo ja entra sozinho em 'make models'/'make test' da raiz (descoberta por
+      'find' -- nao ha lista pra editar); falta so registrar um CENARIO pra ele: uma
+      ScenarioEntry em app/src/app/ScenarioCatalog.cpp e, se fizer sentido, cobertura em
+      tests/meson.build -- ver models/README.md, secoes 4.1 e 4.2
+  [ ] acrescentar sua linha em models/REGISTRO.md (nome, pasta, status, responsavel)
 """)
 
 

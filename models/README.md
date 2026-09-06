@@ -7,6 +7,10 @@ construído numa etapa anterior e aberto com `dlopen` durante o parse do `.edl`.
 Isso existe para tornar verificável um cenário concreto: **um terceiro entrega só o binário**, o
 host nunca viu o fonte, e mesmo assim tudo funciona.
 
+> **Quem já existe, quem cuida:** [`REGISTRO.md`](REGISTRO.md) é a tabela de coordenação entre
+> devs — antes de começar um modelo novo (ex.: os da fila em `TODO.md`), confira lá se alguém já
+> não começou o mesmo.
+
 ```
 models/
 ├── events/          # o contrato de eventos que atravessam fronteira de plugin --
@@ -194,12 +198,28 @@ um dos três, e continua sendo o que `make build`/`make test`/o CI usam. O Makef
 
 ## 2. Como criar um modelo novo
 
+**O caminho recomendado é o gerador automático**, não a cópia manual abaixo:
+
+```bash
+make new-model NAME=meu_modelo KIND=stub   # ou KIND=template
+```
+
+Ele automatiza exatamente a receita mecânica documentada nesta seção — copia o ponto de partida,
+renomeia projeto/módulo/namespace nos quatro lugares que têm que concordar (§2.1), calcula a linha
+`ROOT` do Makefile pela profundidade real do destino (em vez de copiá-la, a armadilha mais citada
+da seção 5), esvazia o `CHANGELOG.md` e roda `make test install` de verificação antes de devolver
+ao terminal — terminando com um checklist do que só um humano pode terminar (a lógica de domínio,
+o `provides:` do `.edl`, `git add`). Não decide **nada** sozinho: não escreve lógica de negócio,
+não registra o modelo em cenário nenhum, não comita.
+
 **Comece pelo stub, não pelo `flight`.** O `stub` é ~300 linhas e é o exemplo mínimo completo; o
 `flight` (a pasta é `A4/`, o nome de fábrica/biblioteca continua `flight`) tem 3.100 linhas e vai
 te distrair. Isto vale para o caso em que o seu modelo decide com **uma** coisa (uma regra, uma
 condição) — se você já sabe que vai coordenar mais de uma decisão e prefere nascer separado em
 camadas (`domain/`→`ubf/`→`xnative/`) em vez de um arquivo achatado, o ponto de partida é
 [`player/template/`](player/template/README.md) em vez do `stub` — ver §2.4.
+
+### O que o gerador faz por baixo dos panos (receita manual, se preferir não usá-lo)
 
 ```bash
 cp -r models/player/fixtures/stub models/player/meu-modelo
@@ -257,7 +277,10 @@ shared_module('meu_modelo',
    **Nunca** as libs de `shared/` que são estáticas (`xtacview`, `xclock`, `xjoystick`, `xmsg`) —
    você ganharia uma cópia privada dos estáticos delas.
 
-E acrescente o alvo ao `models:` do [Makefile](../Makefile), no molde do `stub`.
+**Nada a acrescentar ao `models:` do [Makefile](../Makefile).** Desde que ele migrou para
+descoberta automática por `find` (`MODELOS_PRODUCAO`, ver §1), todo projeto sob `models/player/`
+(fora de `template/`) já entra sozinho em `make models`/`make test` — confirme rodando `make
+models` na raiz e conferindo que o nome do seu modelo aparece no log.
 
 ### 2.2 O que o `.cpp` tem de ter
 
@@ -347,44 +370,76 @@ surpresa do terceiro.
 
 ## 4. Como criar uma poc nova que usa um modelo novo
 
-A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nada de modelo.
-`src/poc/dis/bandit/` é o exemplo mais enxuto — ele nunca teve modelo nenhum.
+**A poc não tem código.** Isto mudou desde que `./app` virou o runner único de todo o
+repositório — não existe mais um `main.cpp`/`mixr_factory.cpp` por poc (essa camada foi dissolvida
+por construção; ver `CLAUDE.md`, "Estrutura de um subprojeto"). Criar uma poc nova é, hoje, três
+passos de **dado**, não de código:
 
-1. **`src/poc/<nome>/`** seguindo o molde de `src/poc/dis/single-thread/` (só `app/`, `main.cpp`,
-   `mixr_factory.{hpp,cpp}`), e `subdir('./<nome>')` em [src/meson.build](../src/meson.build).
-2. **`mixr_factory.cpp`** encadeia `mixr::xplugin::factory` (as classes EDL `( PluginLoader )` e
-   `( PluginModule )`) e, no fim, `mixr::xplugin::loadedFactory` — as classes que vieram do
-   plugin. Copie de `src/poc/dis/bandit/src/mixr_factory.cpp`.
-3. **`app/StationBuilder.cpp`** chama `xplugin::setBuiltinFactory(mixrFactoryBuiltin)` antes do
-   `edl_parser` e `xplugin::seal()` depois.
-4. **`dependencies`** do `executable()`: `[thread_dep, mixr_dep, xtacview_dep, xclock_dep,
-   xjoystick_dep, xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep]` — **sem**
-   `behavior_tree_dep` (quem decide é o modelo).
-5. **`install_rpath`**: `mixr_libdir + ':' + own_libs_rpath` — o `$ORIGIN/../lib` é o que faz o
-   binário de `dist/bin/` achar a `libxboard.so` em `dist/lib/`.
-6. **No cenário**, o bloco de plugin como **primeira entrada de `components:`**:
+1. **`src/poc/<nome>/`**: `configs/scenario.edl.in` (o cenário) + `data/` (com os `.gitkeep`
+   necessários — `recordings/`, `logs/`, `messages/`, todos gitignorados) + `README.md` (o que
+   esta poc isola). Nenhum `.cpp`/`.hpp`, nenhum `subdir()` em Meson — `src/poc/meson.build` está
+   deliberadamente vazio desde essa mudança.
+2. **No `.edl.in`**, o bloco de plugin como **primeira entrada de `components:`** — isto **não**
+   mudou, é a mesma mecânica de sempre:
 
-```
-   components: {
-      plugins: ( PluginLoader
-         searchPaths: { "./dist/lib/mixr-plugins/" }
-         modules: {
-            ( PluginModule  file: "libmeu_modelo.so"
-               provides: { AlertDatalink TacticalAlert FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction } )
-         }
-      )
-      ...
-```
+   ```
+      components: {
+         plugins: ( PluginLoader
+            searchPaths: { "./dist/lib/mixr-plugins/" }
+            modules: {
+               ( PluginModule  file: "libmeu_modelo.so"
+                  provides: { AlertDatalink TacticalAlert FlightState
+                              BtBehavior AltitudeSafetyBehavior FlightAction } )
+            }
+         )
+         ...
+   ```
 
-> **O bloco tem de vir ANTES do primeiro uso**, e essa é a única regra que o autor do cenário
-> precisa lembrar. O motivo é mecânico: a produção `arglist` do `edl_parser` é recursiva à
-> esquerda, então formas irmãs são construídas **na ordem do texto**, e a carga acontece no
-> `isValid()` do `( PluginLoader )`. Fora de ordem, o `mixrFactory` aborta explicando isso — não
-> há silêncio nem SIGSEGV.
+   > **O bloco tem de vir ANTES do primeiro uso**, e essa é a única regra que o autor do cenário
+   > precisa lembrar. O motivo é mecânico: a produção `arglist` do `edl_parser` é recursiva à
+   > esquerda, então formas irmãs são construídas **na ordem do texto**, e a carga acontece no
+   > `isValid()` do `( PluginLoader )`. Fora de ordem, o `mixrFactory` aborta explicando isso —
+   > não há silêncio nem SIGSEGV.
 
-> **`provides:` é igualdade EXATA de conjunto.** Se a `.so` não entregar exatamente esses nomes, o
-> processo morre dizendo o que ela entrega. É o que pega uma `.so` velha esquecida no caminho.
+   > **`provides:` é igualdade EXATA de conjunto.** Se a `.so` não entregar exatamente esses
+   > nomes, o processo morre dizendo o que ela entrega. É o que pega uma `.so` velha esquecida no
+   > caminho. `mixr::xplugin::factory`/`mixr::xplugin::loadedFactory` já estão encadeadas no
+   > `mixr_factory.cpp` único do host (`app/src/mixr_factory.cpp`) — nenhuma poc precisa da
+   > própria cadeia de factory.
+3. **Registrar o cenário para ficar rodável e (opcionalmente) testável** — ver §4.1 e §4.2 abaixo.
+   Sem isso, o `.edl.in` existe mas não aparece em `./app -scenario <chave>` nem em `make test`.
+
+`src/poc/dis/bandit/` é o exemplo mais enxuto de poc — nunca teve modelo local nenhum (o intruso
+chega por DIS de fora), e ainda assim segue exatamente estes três passos.
+
+### 4.1 Registrar no catálogo do `./app`
+
+Uma `ScenarioEntry` nova em `app/src/app/ScenarioCatalog.cpp`, dentro de `scenarioCatalog()` — o
+comentário-marcador no fim da lista mostra onde entra. Campos: chave (a que vai depois de
+`-scenario`), título, descrição curta, caminho do `.edl.in`, e — só se o cenário **não** já
+declarar o próprio `dataRecorder:`/Tacview no `.edl.in` (a maioria das pocs declara) — os quatro
+tokens de identidade do Tacview (`modelMap`/`typeMap`/`colorMap`/id) e a frota (`fleet`, a lista de
+nomes de player que o dump/status mostra). Precedente mínimo: qualquer uma das entradas de
+"AS POCS" no próprio arquivo (ex.: `built-in_mixr_1`, que é cenário hermético e não precisa de
+tokens de Tacview aqui porque o `.edl.in` já traz os dela).
+
+Isto sozinho já basta para `make run-<nome>: install` no Makefile raiz (molde de `run-onnx-policy`
+— um `$(BUILD_DIR)/app/src/app -scenario <nome>`) e para rodar via `-scenario <nome>` sem nenhuma
+cobertura de teste automática — é exatamente o caso de `built-in_mixr_1` (aparece no catálogo, não
+entra em `tests/meson.build`, tem só um `make check-<nome>` de determinismo à parte).
+
+### 4.2 Cobertura de teste automática (opcional)
+
+Depois de registrado no catálogo, a árvore de decisão sobre **onde** a poc ganha cobertura em
+`tests/meson.build` (marcadores no próprio arquivo apontam de volta para cá):
+
+| a poc... | cobertura | precedente |
+|---|---|---|
+| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` (semântica de interceptação aérea) | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `single-thread`, `multi-thread`, `python-flight` |
+| não segue esse formato, mas tem uma propriedade que vale a pena provar (ex.: "decidiu em todos os frames", "dump byte-idêntico em 1/2/4 threads") | bloco(s) `test()` manuais, reaproveitando `scenario_runner`/`leak_runner`/`determinism_sh` (as mesmas ferramentas, fora do `foreach`) | `onnx-policy` (linhas 493-503 de `tests/meson.build`) |
+| não precisa de nenhuma das duas — o cenário é só mais uma composição de players já testados em outro lugar | nenhuma entrada em `tests/meson.build`; documente o porquê no `README.md` da própria poc; determinismo continua verificável por um `make check-<nome>` manual no Makefile raiz (`check_determinism.sh` direto) | `built-in_mixr_1` (zero linhas em `tests/meson.build`, só `check-built-in_mixr_1` no Makefile) |
+
+Nenhuma das três opções é obrigatória — a única coisa que toda poc precisa é §4.1.
 
 ---
 

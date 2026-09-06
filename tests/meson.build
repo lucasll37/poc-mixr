@@ -135,6 +135,20 @@ test_app_log = executable('test-app-log',
 )
 test('app-log', test_app_log, suite: 'domain', timeout: 60)
 
+# 'discoverFolderScenarios()' (app/ScenarioFolder.hpp) -- a descoberta em
+# disco por tras de './app -folder <pasta>'. So std::filesystem, sem
+# MIXR/FTXUI -- daí nao ter mixr_dep/ftxui_dep aqui, unico teste de app/ tao
+# enxuto quanto os de tests/domain/.
+test_app_scenario_folder = executable('test-app-scenario-folder',
+    files('app/test_scenario_folder.cpp') + files(
+        '../app/src/app/ScenarioFolder.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-scenario-folder', test_app_scenario_folder, suite: 'domain', timeout: 60)
+
 # A logica pura por tras da animacao de fluxo da aba "Componentes" (F6) --
 # app/ComponentFlowState.hpp/.cpp: ordem do ciclo de fases, avanco (com
 # volta), e o relogio de animacao por CONTAGEM DE REDESENHOS (nao tempo de
@@ -333,6 +347,17 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # deixaram de ter executavel proprio quando o ./app virou o runner unico (ver
 # src/poc/meson.build). O que distingue uma poc da outra e a fixture, gerada
 # por make_fixture.py a partir do cenario dela, e passada com '-f'.
+#
+# >>> ESTA LISTA NAO E O PONTO DE ENTRADA PADRAO PRA UM MODELO/POC NOVO. <<<
+# So entra aqui quem segue o formato dual 'intruder'/'lowfuel' com rotulos
+# EVADE/SUPPORT/RTB (semantica de interceptacao aerea, tipo A4/flight). Um
+# modelo novo que nao decide nesse formato (a maioria dos que vem por ai --
+# ver TODO.md) NAO deve ser forcado aqui; ele ganha cobertura por um bloco
+# test() manual (precedente: 'onnx-policy', mais abaixo neste arquivo) ou
+# nenhuma cobertura em tests/meson.build (precedente: 'built-in_mixr_1',
+# que so tem um 'make check-<nome>' no Makefile raiz). A arvore de decisao
+# completa esta em models/README.md secao 4.2 -- leia antes de editar esta
+# lista OU de escrever um bloco test() novo.
 pocs = [
     ['single-thread', app, 'nao-critico', ''],
     ['multi-thread',  app, 'critico',     ''],
@@ -402,6 +427,29 @@ test('scenario-app-tacview-identidade', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
+# 'adHocScenario()' (ScenarioCatalog.cpp) casa '-f <arquivo>' contra o
+# templatePath de entradas ja catalogadas antes de assumir falcon1..4 --
+# full-systems-nav (frota {"a4"}) provou que a suposicao cega quebrava.
+# Ver o cabecalho do script para o porque de NAO haver um segundo caso de
+# "descoberta generica" (tentado e revertido -- quebra o modo 'intruder').
+test('scenario-adhoc-fleet', py,
+     args: files('scenario/run_adhoc_fleet_test.py') + [
+         '--binario', app.full_path(), '--frames', '50'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
+
+# './app -folder <pasta>' -- a navegacao por pasta de cenarios de sandbox
+# (app/ScenarioFolder.hpp). Ponta a ponta pelo caminho NAO-INTERATIVO
+# ('-folder' + '-scenario <subpasta>'), que exercita a descoberta em disco,
+# a selecao direta sem UI e app::discoverFleet() (a frota generica que
+# cenarios de '-folder' usam -- ver o comentario em app/Fleet.hpp). Ver o
+# cabecalho do script.
+test('scenario-folder', py,
+     args: files('scenario/run_scenario_folder_test.py') + [
+         '--binario', app.full_path(), '--frames', '50'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
+
 # A SAIDA do app, no caminho INTERATIVO -- o unico que os testes acima nao
 # alcancam: eles rodam '-deterministic', que nao tem TUI nem thread de tempo
 # critico nativa. Este sobe o binario num pty de verdade, aperta [q] e afirma
@@ -465,6 +513,12 @@ foreach caso : [['onnx', 'flight_tree_onnx.xml', 'ONNX'],
          timeout: 900, is_parallel: false)
 endforeach
 
+# >>> BLOCO test() MANUAL PRA MODELO/CENARIO NOVO ENTRA POR AQUI (ou logo
+# abaixo) -- este e o padrao pra quem NAO serve a lista 'pocs' acima (ver o
+# comentario junto dela e models/README.md secao 4.2). O bloco de
+# 'scenario-onnx-policy'/'memory-onnx-policy' logo a seguir e o precedente a
+# copiar: mesmo scenario_runner/leak_runner, so que fora do 'foreach', com o
+# '--poc'/'--label' do SEU cenario. <<<
 # ------------------------------------------------------------------------------
 # src/poc/onnx-policy -- a poc em que a decisao E a rede neural.
 #

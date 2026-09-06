@@ -47,6 +47,7 @@ bt_sources = files(
     '../src/bt/nodes/FuelLowCondition.cpp',
     '../src/bt/nodes/LaunchEnvelopeCondition.cpp',
     '../src/bt/nodes/LaunchMissileAction.cpp',
+    '../src/bt/nodes/NavigateAction.cpp',
     '../src/bt/nodes/PatrolAction.cpp',
     '../src/bt/nodes/ReportAndEvadeAction.cpp',
     '../src/bt/nodes/ReturnToBaseAction.cpp',
@@ -74,11 +75,14 @@ bt_sdk_sources = files(
 # O XML de PRODUCAO, por caminho -- nao uma copia.
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
 flight_tree_missile_demo_xml = meson.current_source_dir() / '../configs/flight_tree_missile_demo.xml'
+flight_tree_nav_xml = meson.current_source_dir() / '../configs/flight_tree_nav.xml'
 
 test_tree = executable('test-tree',
-    files('tree/test_flight_tree.cpp', 'tree/test_flight_tree_missile_demo.cpp') + bt_sources + domain_sources,
+    files('tree/test_flight_tree.cpp', 'tree/test_flight_tree_missile_demo.cpp',
+          'tree/test_flight_tree_nav.cpp') + bt_sources + domain_sources,
     cpp_args            : ['-DFLIGHT_TREE_XML="' + flight_tree_xml + '"',
-                           '-DFLIGHT_TREE_MISSILE_DEMO_XML="' + flight_tree_missile_demo_xml + '"'],
+                           '-DFLIGHT_TREE_MISSILE_DEMO_XML="' + flight_tree_missile_demo_xml + '"',
+                           '-DFLIGHT_TREE_NAV_XML="' + flight_tree_nav_xml + '"'],
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : [model_inc, include_directories('.')],
     dependencies        : [gtest_dep, gtest_main_dep, behavior_tree_dep],

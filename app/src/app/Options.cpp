@@ -50,6 +50,10 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
          opts.scenarioKey = argv[++i];
       } else if (arg == "-f" && (i + 1) < argc) {
          opts.scenarioPath = argv[++i];
+      } else if (arg == "-folder" && (i + 1) < argc) {
+         opts.scenarioFolder = argv[++i];
+      } else if (arg == "-internal-picker") {
+         opts.internalPicker = true;
       } else if (arg == "-deterministic" && (i + 1) < argc) {
          opts.deterministicFrames = parseLongOrDie(arg, argv[++i]);
       } else if (arg == "-parallel-decision") {

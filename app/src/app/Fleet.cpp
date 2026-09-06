@@ -41,6 +41,15 @@ Fleet collectFleet(mixr::models::WorldModel* const wm, const std::vector<std::st
    return fleet;
 }
 
+Fleet discoverFleet(mixr::models::WorldModel* const wm)
+{
+   Fleet fleet;
+   for (auto* const player : discoverPlayers(wm)) {
+      if (auto* const air = dynamic_cast<mixr::models::AirVehicle*>(player)) fleet.push_back(air);
+   }
+   return fleet;
+}
+
 void applyCruiseThrottle(const Fleet& fleet, const double throttle)
 {
    for (const auto air : fleet) {
