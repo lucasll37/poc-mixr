@@ -233,8 +233,36 @@ void loadModule(const std::string& file,
    // --- 2) idempotencia ---------------------------------------------------
    // isValid() pode ser chamado mais de uma vez para o mesmo objeto
    // (Pair::isValid() repassa), entao carregar de novo nao pode duplicar.
+   // Mas um SEGUNDO ( PluginModule ), objeto DIFERENTE, que por coincidencia
+   // (ou copy-paste de fragmento) resolve ao MESMO caminho canonico tambem
+   // cai aqui -- e o 'provides:' DELE e uma assercao igual a de qualquer
+   // primeira carga (etapa 8, abaixo). Sem esta checagem, o curto-circuito
+   // aceitava QUALQUER 'provides:' no segundo bloco, inclusive inventado,
+   // porque nunca chegava na etapa 8 -- confirmado rodando (achado do
+   // stress-sweep desta sessao): um segundo bloco com nomes que a .so nunca
+   // exportou passava calado, sem aviso nenhum.
    for (const Loaded& l : loaded()) {
-      if (l.resolvedPath == path) return;
+      if (l.resolvedPath != path) continue;
+      if (!provides.empty()) {
+         std::vector<std::string> a{provides};
+         std::vector<std::string> b;
+         for (const char* const* p = l.desc->factory_names; *p != nullptr; ++p) b.emplace_back(*p);
+         std::sort(a.begin(), a.end());
+         std::sort(b.begin(), b.end());
+         if (a != b) {
+            std::cerr << "[plugin] '" << path << "': ja carregado (mesmo .so), mas este"
+                      << " ( PluginModule ) declara um 'provides:' DIFERENTE do primeiro."
+                      << std::endl;
+            std::cerr << "[plugin]   este bloco declarou:";
+            for (const std::string& s : a) std::cerr << " " << s;
+            std::cerr << std::endl;
+            std::cerr << "[plugin]   a .so entrega:      ";
+            for (const std::string& s : b) std::cerr << " " << s;
+            std::cerr << std::endl;
+            die();
+         }
+      }
+      return;
    }
 
    // --- 3) dlopen ---------------------------------------------------------

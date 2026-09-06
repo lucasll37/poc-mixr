@@ -196,8 +196,17 @@ int main(int argc, char* argv[])
    // configs/<arquivo>' (catalogo, poc ou sandbox de '-folder'); subir dois
    // niveis acha essa pasta sem o chamador ter de saber de qual familia o
    // cenario veio.
-   const std::filesystem::path scenarioDir{
+   std::filesystem::path scenarioDir{
       std::filesystem::path(cenario.templatePath).parent_path().parent_path()};
+   // Achado rodando (stress-sweep desta sessao): um '-f' apontando pra um
+   // arquivo com MENOS de dois niveis de diretorio acima (ex.: '-f
+   // ./x.edl' na propria raiz, ou um caminho absoluto de um componente so)
+   // faz os dois 'parent_path()' encalharem em "" ou na RAIZ do sistema de
+   // arquivos -- e o log tentaria abrir '/data/logs/...'. Nenhum cenario de
+   // catalogo/poc/sandbox cai aqui (todos tem a forma '<pasta>/configs/
+   // <arquivo>'); so um '-f' avulso foge do padrao. Fallback: o mesmo lugar
+   // que TODO log deste app usava antes desta mudanca.
+   if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./app";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (cenario.key + "_" + runId + ".log")).string());
 
    if (opts.isDeterministic()) mixr::xlog::setLoggingEnabled(false);

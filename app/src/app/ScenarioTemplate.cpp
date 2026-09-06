@@ -83,6 +83,37 @@ std::string expandIncludes(std::string text, const std::string& fragmentsDir)
    return text;
 }
 
+// Nao ha default para '@TOKEN@' (ver o comentario de generateScenario() no
+// .hpp) -- um token sem par em 'extraTokens' sobra LITERAL no texto final e
+// vira "syntax error" do edl_parser, sem dizer qual token faltou. Isto
+// varre o resultado ANTES de escrever o '.generated.edl' e avisa, com o
+// nome do token, enquanto ainda da pra apontar a causa real. So conta como
+// "token perdido" um '@...@' no MESMO formato que todo token deste
+// mecanismo ja usa (MAIUSCULAS/digitos/underscore, curto) -- um '@' solto
+// no meio de texto comum (comentario, email) nao e' isto, e' so pontuacao.
+// Deliberadamente um AVISO, nao um die(): o mecanismo em si e tolerante
+// (substitui so quem tem par), e forcar fatal aqui mudaria esse contrato.
+void warnUnresolvedTokens(const std::string& text)
+{
+   std::size_t pos{};
+   while ((pos = text.find('@', pos)) != std::string::npos) {
+      const std::size_t end{text.find('@', pos + 1)};
+      if (end == std::string::npos) break;
+      const std::string inner{text.substr(pos + 1, end - pos - 1)};
+      const bool pareceToken{!inner.empty() && inner.size() < 40 &&
+         std::all_of(inner.begin(), inner.end(), [](const char c) {
+            return (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9');
+         })};
+      if (pareceToken) {
+         std::cerr << "[main] AVISO: '@" << inner << "@' sobrou sem substituicao no"
+                   << " .generated.edl -- token ausente de 'extraTokens'? (o edl_parser"
+                   << " provavelmente vai recusar isto com \"syntax error\", sem dizer"
+                   << " o motivo real)" << std::endl;
+      }
+      pos = end + 1;
+   }
+}
+
 } // namespace
 
 int generateScenario(const std::string& templatePath, const std::string& outPath,
@@ -95,6 +126,7 @@ int generateScenario(const std::string& templatePath, const std::string& outPath
    text = expandIncludes(std::move(text), kFragmentsDir);
    replaceAll(text, PLACEHOLDER, std::to_string(numTcThreads));
    for (const auto& [name, value] : extraTokens) replaceAll(text, "@" + name + "@", value);
+   warnUnresolvedTokens(text);
 
    std::ofstream out(outPath);
    out << text;

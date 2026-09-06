@@ -56,6 +56,19 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
          opts.internalPicker = true;
       } else if (arg == "-deterministic" && (i + 1) < argc) {
          opts.deterministicFrames = parseLongOrDie(arg, argv[++i]);
+         // isDeterministic() (Options.hpp) e' 'deterministicFrames > 0' -- um
+         // '-deterministic 0' ou negativo passava o parse (e' um numero
+         // valido) e so se revelava depois, em main.cpp, caindo NO MODO
+         // INTERATIVO por omissao: sem TTY (script, CI, pipe), a TUI trava
+         // pra sempre em ScreenInteractive::Fullscreen(), sem mensagem
+         // nenhuma. Achado rodando: quem passa um N computado (nunca um
+         // literal digitado) pode legitimamente computar 0. Falhar aqui,
+         // alto e cedo, e' o mesmo padrao ja usado para token nao-numerico.
+         if (opts.deterministicFrames <= 0) {
+            std::cerr << "[app] -deterministic espera um numero de frames > 0, recebi '"
+                      << opts.deterministicFrames << "'" << std::endl;
+            std::exit(EXIT_FAILURE);
+         }
       } else if (arg == "-parallel-decision") {
          opts.parallelDecision = true;
       } else if (arg == "-threads" && (i + 1) < argc) {
