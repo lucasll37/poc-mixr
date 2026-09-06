@@ -256,10 +256,21 @@ seus. O que esses slots ainda governam está anotado no próprio arquivo: `fuelR
 inertes, de propósito, `rtbAltitude`, `rtbSpeed`, `arrivalRadius` e `supportSpeed` — esses papéis
 agora são de `rtb.py` e `support.py`.
 
-O `( AltitudeSafetyBehavior )` continua no `( UbfArbiter )`, com **voto 90** contra os 50 da
-árvore: uma política em Python que faça besteira não derruba a aeronave no terreno. É a razão de
-`patrol.py` e `rtb.py` manterem a folga de terreno em **850 m**, acima do `recoverClearance` de
-800 m — mantendo-se acima da rede de segurança, a política nunca entra em disputa com ela.
+**Este cenário não tem árbitro.** `behavior:` do agente aponta direto para o `( BtBehavior )` —
+sem `( UbfArbiter )`/`( AltitudeSafetyBehavior )` no meio. A `.so` continua exportando
+`AltitudeSafetyBehavior` (ver `provides:` em [`configs/scenario.edl.in`](configs/scenario.edl.in));
+a classe não saiu do plugin, só este cenário parou de instanciá-la. `src/rl`/`src/poc/rl-training`
+continuam usando o árbitro normalmente — mudança sem relação com esta poc.
+
+A consequência real: durante `PATROL`/`RTB`/`SUPPORT` não sobra **nenhum** piso independente por
+cima do que o script Python comanda. O que resta é só o `terrainClearance:` do próprio
+`( BtBehavior )`, e ele governa apenas o alvo de altitude do ramo **nativo** de evasão
+(`domain::ThreatPolicy::breakCommand()`) — não alcança o que `patrol.py`/`evade.py`/`support.py`/
+`rtb.py` calculam. Antes, `( AltitudeSafetyBehavior vote: 90 )` sobrepunha até um comando ruim
+vindo do Python; essa rede de segurança não existe mais neste cenário. `patrol.py` e `rtb.py`
+seguem mantendo a própria folga de terreno em **850 m** (`FOLGA_TERRENO_M`) — mas hoje é só
+disciplina do script, não mais um piso imposto de fora: um script com esse número errado não tem
+mais quem o corrija.
 
 ---
 
@@ -295,12 +306,12 @@ jeito conhecido de gastar esse orçamento.
 
 ```bash
 make check-python-flight                    # determinismo: 1, 2 e 4 threads T/C
-meson test -C build --suite scenario        # inclui scenario-{intruder,lowfuel,terrain}-python-flight
+meson test -C build --suite scenario        # inclui scenario-{intruder,lowfuel}-python-flight
 meson test -C build --suite memory          # inclui memory-python-flight
 meson test -C build --suite determinism     # inclui determinism-python
 ```
 
-As três fixtures de cenário são **derivadas** do `scenario.edl.in` desta pasta por
+As duas fixtures de cenário são **derivadas** do `scenario.edl.in` desta pasta por
 `tests/scenario/make_fixture.py` — nunca cópias versionadas. Elas rodam a **mesma** bateria
 semântica das gêmeas (quem evadiu avisa, quem apoiou recebeu, ninguém voou para dentro do
 terreno), normalizando o prefixo `PY-` na entrada: as propriedades afirmadas são as do **modelo**,

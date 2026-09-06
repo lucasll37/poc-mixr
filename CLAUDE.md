@@ -815,21 +815,25 @@ com `bt=PY` constante e o rótulo deixaria de significar alguma coisa. Assim sai
    que existem quatro aeronaves. O que **continua compartilhado** é o `sys.modules`, e é por isso
    que os dois helpers de ângulo estão **repetidos** nos quatro arquivos em vez de importados: um
    `import` seria a única porta de estado compartilhado da pasta.
-6. **A folga de terreno dos scripts é 850 m, acima do `recoverClearance` de 800 m** do
-   `( AltitudeSafetyBehavior )` (voto 90 contra os 50 da árvore). Mantendo-se acima da rede de
-   segurança, a política em Python nunca entra em disputa com ela — e a rede continua lá, para o
-   caso de um script novo fazer besteira.
+6. **A folga de terreno dos scripts é 850 m, acima do `terrainClearance` de 800 m** do próprio
+   `( BtBehavior )` (o piso que o ramo nativo de evasão já respeita). Mantendo-se acima dele, a
+   política em Python nunca entra em disputa com o ramo nativo. **Atualização:** o cenário de
+   produção não usa mais `( UbfArbiter )`/`( AltitudeSafetyBehavior )` — ver a seção "SEM
+   ARBITRO" no topo de `scenario.edl.in` — então a "rede de segurança" que justificava
+   originalmente esta margem não está mais presente; o valor continua registrado aqui como
+   margem de segurança do próprio script, não como distância de um segundo piso independente.
 7. **`tests/scenario/make_fixture.py` desviava a porta do Tacview com um `replace("port: 1234", ...)`
    literal** — que não alcançaria a 1237 desta poc, e a fixture disputaria a porta com uma
    execução de verdade. Virou uma regex sobre a faixa `123x` (o DIS usa `3000`/`300x` e já sai com
    o bloco `networks:`); a substituição das gêmeas continua idêntica, byte a byte.
 8. **`tests/scenario/run_scenario_test.py` afirma sobre rótulos literais** (`EVADE`, `SUPPORT`,
-   `RTB`, `SAFETY`). Em vez de uma cópia do runner que envelheceria em silêncio ao lado dele,
-   ganhou `--label-prefix`, que normaliza `PY-EVADE` → `EVADE` na entrada: as propriedades
-   afirmadas são as do **modelo** (quem evadiu avisa, quem apoiou recebeu, ninguém voou para
-   dentro do terreno) e valem igual quando o comando sai de um script. Rótulo que não começa com o
-   prefixo passa intacto — o caso dos nós nativos que sobrevivem na árvore (`SAFETY`, e o `PATROL`
-   de degradação).
+   `RTB`). Em vez de uma cópia do runner que envelheceria em silêncio ao lado dele, ganhou
+   `--label-prefix`, que normaliza `PY-EVADE` → `EVADE` na entrada: as propriedades afirmadas são
+   as do **modelo** (quem evadiu avisa, quem apoiou recebeu, ninguém voou para dentro do terreno)
+   e valem igual quando o comando sai de um script. Rótulo que não começa com o prefixo passa
+   intacto — o caso do nó nativo que sobrevive na árvore (`PATROL` de degradação). O modo
+   `terrain` (que exercitava `SAFETY`) foi removido junto com o arbitro — ver a atualização no
+   item 6.
 
 **O que foi medido rodando:** determinismo com 1, 2 e 4 threads T/C em 2000 frames (dumps e
 mensagens **byte-idênticos**, com quatro `decide()` em paralelo sobre um GIL só); a cadeia
@@ -862,9 +866,10 @@ política treinada **é** o mapa observação → ação inteiro, inclusive o "q
 ramos seria pedir à rede que decidisse dentro de um recorte que ela não conhece. O preço é que
 `bt=` deixa de ser um modo de voo e sai sempre `ONNX` — e é por isso que esta poc **não entra** na
 lista `pocs` de `tests/meson.build` (os modos `intruder`/`lowfuel` afirmam sobre
-`EVADE`/`SUPPORT`/`RTB`) e ganha três testes próprios: `scenario-onnx-policy` (a bateria de
-política, agora com `--poc`, sem troca de árvore), `scenario-terrain-onnx-policy` e
-`memory-onnx-policy`.
+`EVADE`/`SUPPORT`/`RTB`) e ganha dois testes próprios: `scenario-onnx-policy` (a bateria de
+política, agora com `--poc`, sem troca de árvore) e `memory-onnx-policy`. Havia um terceiro,
+`scenario-terrain-onnx-policy`, removido junto com o arbitro — ver a atualização no item 4 das
+armadilhas abaixo.
 
 **A rede é treinada por CLONAGEM DE COMPORTAMENTO, e o treinador é versionado**
 (`tools/train_policy.py`, numpy puro + `onnx`, semente fixa): amostra-se o espaço de observação,
@@ -900,10 +905,18 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    `dist/share/mixr-plugins/flight/`, que é onde `models/player/A4` instala os **dele**. As duas
    coisas convivem: `scenario-policy-onnx` continua rodando a árvore do modelo, com pesos
    aleatórios, sobre a `multi-thread`.
-4. **O árbitro nativo continua acima da rede.** `( AltitudeSafetyBehavior vote: 90 )` contra
-   `( BtBehavior vote: 50 )`: medido com a fixture `terrain`, **32/32** linhas do dump saem
-   `bt=SAFETY`. É o que torna barato trocar de política sem revalidar segurança de voo, e é a
-   propriedade que `scenario-terrain-onnx-policy` trava.
+4. **ATUALIZAÇÃO — o árbitro nativo SAIU de cima da rede.** Isto media uma propriedade que não
+   existe mais: `( AltitudeSafetyBehavior vote: 90 )` contra `( BtBehavior vote: 50 )`, com
+   **32/32** linhas do dump saindo `bt=SAFETY` na fixture `terrain`, provando que a rede não tinha
+   a última palavra sobre o piso anti-CFIT. O cenário de produção não usa mais
+   `( UbfArbiter )`/`( AltitudeSafetyBehavior )` — ver a seção "SEM ARBITRO" no topo de
+   `scenario.edl.in` — e o teste `scenario-terrain-onnx-policy` foi **removido** junto (não há mais
+   `minAltitude` em `behavior:` para a fixture `terrain` ajustar). Consequência real: enquanto o
+   `.onnx` carrega e infere normalmente, a rede tem a última palavra sobre altitude — não há mais
+   um piso independente por cima dela. `terrainClearance:` do `BtBehavior` só entra em jogo se o
+   `.onnx` FALHAR ao carregar e a árvore cair no `Fallback` nativo; não protege uma inferência
+   bem-sucedida porém ruim. Trocar de política aqui volta a exigir revalidar segurança de voo por
+   conta própria — deixou de ser barato.
 
 **O que foi medido rodando:** `bt=ONNX` em 100% das linhas; `falcon1`, começando 9,3 km ao norte da
 linha, entra na faixa de 100 m em **160 s** de simulação e depois fica com `|norte| ≤ 11,1 m` por

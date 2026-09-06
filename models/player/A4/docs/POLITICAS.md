@@ -21,10 +21,8 @@ Uma aeronave decide assim:
 ```
 Player (falcon1)
  └─ agent: ( FlightAgentTC )              fase 3 do frame, 50 Hz
-     └─ behavior: ( UbfArbiter )          escolhe por VOTO
-         ├─ ( AltitudeSafetyBehavior vote: 90 )   piso anti-CFIT — sempre vence
-         └─ ( BtBehavior vote: 50 treeFile: "..." )
-                └─ a ÁRVORE, que é onde as peças novas entram
+     └─ behavior: ( BtBehavior treeFile: "..." )
+            └─ a ÁRVORE, que é onde as peças novas entram
 ```
 
 O `treeFile:` do cenário decide qual árvore roda. **Trocar de política é apontar para outro
@@ -38,9 +36,19 @@ arquivo** — não recompilar. Três árvores vêm instaladas:
 
 Todas em `dist/share/mixr-plugins/flight/`.
 
-O `AltitudeSafetyBehavior` com voto 90 é a razão de você poder experimentar à vontade: uma
-política ruim que comande altitude contra o terreno é **sobreposta** pelo árbitro nativo. Você não
-precisa acertar a segurança no script.
+**Não há árbitro aqui — leia isto antes de testar algo arriscado.** Versões anteriores deste
+diagrama tinham um `( UbfArbiter )` entre o agente e o `( BtBehavior )`, com um
+`( AltitudeSafetyBehavior vote: 90 )` nativo por cima votando qualquer comando de altitude
+perigoso para fora. Os cenários de produção (inclusive `multi-thread`, o exemplo usado neste
+guia) não usam mais esse arranjo — `behavior:` aponta direto para `( BtBehavior )`, sem piso
+independente algum acima da árvore (ver o comentário "SEM ARBITRO" no topo do
+`scenario.edl.in` de cada poc). **Sua política é a última palavra sobre altitude**: se ela
+mandar a aeronave para dentro do terreno, nada a corrige — nem o `terrainClearance:` do
+`BtBehavior` ajuda aqui, porque ele só entra em jogo dentro do ramo nativo de evasão, não
+sobre o que um script/`.onnx` decide. `AltitudeSafetyBehavior`/`UbfArbiter` continuam
+existindo e exportados pelo plugin — se você QUISER esse piso de volta no seu próprio
+cenário, `src/rl/configs/scenario_rl.edl` é o exemplo vivo de como voltar a compor os dois com
+`( UbfArbiter behaviors: { ( AltitudeSafetyBehavior vote: 90 ... ) ( BtBehavior vote: 50 ) } )`.
 
 ---
 

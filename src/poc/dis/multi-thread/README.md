@@ -68,8 +68,8 @@ diferença em vez de argumentar sobre ela.
 | peça | single-thread | multi-thread |
 |---|---|---|
 | player / 6-DOF / controle / radar / datalink / terreno | `Aircraft` + `JSBSimModel` + `Autopilot` + `Gimbal/Antenna/Tws/AirTrkMgr` + `AlertDatalink` + `SrtmHgtFile` | **idêntico** |
-| percepção / decisão / atuação | `FlightState` / `BtBehavior` + `AltitudeSafetyBehavior` / `FlightAction` | **idêntico** |
-| árbitro | `( UbfArbiter )` nativo | **idêntico** |
+| percepção / decisão / atuação | `FlightState` / `BtBehavior` / `FlightAction` | **idêntico** |
+| árbitro | nenhum — `behavior:` aponta direto para `( BtBehavior )` | **idêntico** |
 | árvore de comportamento | `configs/flight_tree.xml` | **idêntico** |
 | regras puras (`domain/`) | `PatrolPlan`, `RtbPlan`, `ThreatPolicy`, `TerrainFloor`, `geometry` | **idêntico** |
 | histerese da evasão | `domain::ThreatPolicy` + slot `evadeHold` | **idêntico** |
@@ -82,6 +82,24 @@ diferença em vez de argumentar sobre ela.
 > diagnóstico e a correção estão na [seção 8 do README da single-thread](../single-thread/README.md#8-a-cadeia-de-decisão-ubf--behaviortree)
 > — e valem igual aqui, porque o modelo é o mesmo: **a taxa de decisão não tinha nada a ver com o
 > problema** (1, 2 ou 4 threads, 10 Hz ou 50 Hz, os números eram os mesmos).
+
+> **Sobre a linha *árbitro*.** As duas pocs já tiveram `behavior: ( UbfArbiter behaviors: {
+> ( AltitudeSafetyBehavior vote: 90 ... ) ( BtBehavior vote: 50 ... ) } )` — um piso anti-CFIT
+> independente da árvore, votando por cima dela em qualquer estado (`PATROL`/`EVADE`/`SUPPORT`/
+> `RTB`). Isso saiu: `behavior:` do agente aponta hoje **direto** para `( BtBehavior )`, sem
+> `( UbfArbiter )` nem `( AltitudeSafetyBehavior )` no meio (`configs/scenario.edl.in:26-29`,
+> comentário "SEM ARBITRO"). As duas classes continuam existindo e continuam nos 9 nomes de
+> `provides:` que `libflight_tc.so` exporta (`configs/scenario.edl.in:108-110`) — é só este
+> cenário (e o da `single-thread`) que deixou de instanciá-las. `base::ubf::UbfArbiter` em si é
+> uma classe **nativa** do MIXR (o mecanismo de composição por voto não mudou nem saiu do
+> framework); e o mecanismo continua em uso de verdade em `src/rl/configs/scenario_rl.edl`, que
+> existe justamente para demonstrar o árbitro protegendo uma política de RL ruim — ver a seção
+> `src/rl` do `CLAUDE.md`. A consequência prática: **não há mais piso anti-CFIT independente do
+> estado da árvore** nesta poc — a única proteção de terreno que sobra é o próprio
+> `terrainClearance:` do `BtBehavior` ([§8](#8-o-que-o-terreno-muda-aqui)), que só ajusta a
+> altitude-alvo **dentro do ramo de evasão**, não durante `PATROL`/`RTB`/`SUPPORT`. `bt=SAFETY` é
+> hoje um rótulo inalcançável nesta poc — `tests/scenario/run_scenario_test.py` e
+> `tests/scenario/make_fixture.py` documentam a remoção do modo `terrain` que afirmava sobre ele.
 
 `make compare-single-multi` mostra o tamanho real da mudança — hoje, com o modelo já vivendo em
 `models/player/A4/` como plugin (ver a nota no topo deste README), a lista é bem menor do que quando
@@ -315,7 +333,7 @@ thread de tempo crítico (dt = 1/tcRate FIXO — 50 Hz)
    └─ FASE 3  AirTrkMgr::process()      cria/atualiza as pistas
               FlightAgentTC::controller()  ←←← A DECISÃO ESTÁ AQUI
                  ├─ FlightState::updateState(ator)
-                 ├─ UbfArbiter::genAction()  → AltitudeSafety (90) / BtBehavior (50)
+                 ├─ BtBehavior::genAction()   (sem arbitro no meio -- ver §1)
                  └─ FlightAction::execute(ator) → Autopilot + AlertDatalink
               Autopilot::process()      consome o comando recém-escrito
 
@@ -343,7 +361,7 @@ A `Station` **perde** o bloco `components:` inteiro (os quatro `( SimAgent )` co
 -    components: {
 -       agent1: ( SimAgent  actorPlayerName: falcon1
 -          state: ( FlightState )
--          behavior: ( UbfArbiter ... ) )
+-          behavior: ( BtBehavior ... ) )
 -       ... agent2, agent3, agent4 ...
 -    }
      simulation: ( WorldModel
@@ -359,13 +377,16 @@ A `Station` **perde** o bloco `components:` inteiro (os quatro `( SimAgent )` co
                  obc:           ( OnboardComputer ... )
 +                agent: ( FlightAgentTC
 +                   state: ( FlightState )
-+                   behavior: ( UbfArbiter ... ) )   ← mesmos números da single-thread
++                   behavior: ( BtBehavior ... ) )   ← mesmos números da single-thread
               } )
 ```
 
-O conteúdo do agente — estado, árbitro, votos, os **16** parâmetros do `BtBehavior` e os **5** do
-`AltitudeSafetyBehavior` — é **idêntico, linha por linha**. Muda a classe, o lugar na árvore e o
-fato de não haver mais `actorPlayerName`.
+> Nenhuma das duas pontas deste diff passa por `( UbfArbiter )` — `behavior:` aponta direto para
+> `( BtBehavior )` nas duas pocs, hoje. O que este diff ilustra é só a mudança estrutural entre
+> elas (onde o agente mora, e como o ator é resolvido); ver a nota da §1 sobre a saída do árbitro.
+
+O conteúdo do agente — estado e os **16** parâmetros do `BtBehavior` — é **idêntico, linha por
+linha**. Muda a classe, o lugar na árvore e o fato de não haver mais `actorPlayerName`.
 
 Todo o resto do `.edl` também é igual: a mesma referência geográfica, o mesmo
 `terrain: ( SrtmHgtFile ... )`, as mesmas altitudes derivadas do pico de cada circuito, o mesmo

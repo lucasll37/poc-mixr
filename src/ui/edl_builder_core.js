@@ -180,6 +180,16 @@ const BARE_IDENT_RE = /^[a-zA-Z0-9~!@#$%^&*\-_+=<>?/]+$/;
 // base::Identifier/String. Força aspas nesse caso.
 const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
 
+// Um item de lista pode ser um VETOR NUMERICO cru em vez de um
+// texto/identificador -- caso do Table2/Table3.data, cujo 'data:' e' uma
+// lista de SUBLISTAS numericas ('{ [ 1 2 3 ] [ 4 5 6 ] }', ver o comentario
+// de astValueToChildNode() em scripts/edl_to_ui_project.js). Emitir isso
+// como string entre aspas quebraria Table2::loadData() (espera um
+// base::List de verdade, nao uma base::String); reconhecer a FORMA
+// '[ numeros ]' e deixar passar cru resolve sem precisar de um tipo de nó
+// novo no modelo de dados.
+const RAW_VECTOR_RE = /^\[\s*[+-]?\d+(\.\d+)?(\s+[+-]?\d+(\.\d+)?)*\s*\]$/;
+
 // Bare IDENT vira base::Identifier; "quoted" vira base::String. Identifier
 // É-UM String (DECLARE_SUBCLASS(Identifier, String)), então um IDENT nu
 // satisfaz um ON_SLOT que peça String OU Identifier -- o oposto (string
@@ -187,6 +197,7 @@ const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
 // forma nua é a escolha padrão sempre que o texto permitir.
 function serializeTextLiteral(value) {
   const v = String(value);
+  if (RAW_VECTOR_RE.test(v.trim())) return v.trim();
   if (v && BARE_IDENT_RE.test(v) && !LOOKS_LIKE_NUMBER_RE.test(v)) return v;
   return JSON.stringify(v);
 }
@@ -212,6 +223,21 @@ function serializeLeafValue(slotDef, sv) {
   return null;
 }
 
+// A ordem de emissao normalmente NAO importa (o setter de cada slot e'
+// independente) -- mas 'data' em Table1/Table2/Table3/Table4 e' EXCECAO
+// confirmada rodando: Table::loadData() valida o tamanho da tabela contra
+// os vetores de breakpoint ('x'/'y'/...) JA' atribuidos, entao 'data' tem
+// que ser emitido DEPOIS deles. O catalogo ordena por heranca (a base
+// Table declara 'data' antes de Table1 declarar 'x'), o oposto do que o
+// setter exige -- por isso 'data' e' empurrado pro fim da lista aqui, so'
+// para SERIALIZACAO (a ordem do catalogo em si, usada pelo painel de
+// propriedades, fica como esta -- nao afeta a UI).
+function orderedSlotsForSerialization(slots) {
+  const withoutData = slots.filter((s) => s.name !== "data");
+  const dataSlot = slots.find((s) => s.name === "data");
+  return dataSlot ? [...withoutData, dataSlot] : slots;
+}
+
 function serializeNode(node, indent, byFactory) {
   const pad = "   ".repeat(indent);
   const pad1 = "   ".repeat(indent + 1);
@@ -219,11 +245,17 @@ function serializeNode(node, indent, byFactory) {
   const lines = [];
   lines.push(`${pad}( ${node.factory}`);
 
-  for (const slotDef of entry ? entry.slots : []) {
+  for (const slotDef of entry ? orderedSlotsForSerialization(entry.slots) : []) {
     const sv = node.slotValues[slotDef.name];
     const kids = node.children[slotDef.name];
     if (kids && kids.length) {
-      if (slotDef.acceptsChildList) {
+      // Lista sempre que o catalogo diz que o slot aceita (acceptsChildList)
+      // OU quando ha mais de um item de qualquer jeito -- um '( A ) ( B )'
+      // nu nem e' sintaxe EDL valida pra dois itens; precisa de chaves. A
+      // classificacao estatica do catalogo pode nao ver isso (mesma razao
+      // do fallback permissivo de isCompatible(): o setter real aceita
+      // PairStream item-a-item, invisivel na assinatura do ON_SLOT.
+      if (slotDef.acceptsChildList || kids.length > 1) {
         lines.push(`${pad1}${slotDef.name}: {`);
         kids.forEach((it) => {
           const value = it.node.isText
@@ -238,7 +270,9 @@ function serializeNode(node, indent, byFactory) {
         // consumidor (RfSensor::setSlotModeStream vs setSlotModeSingle,
         // Component::setSlotComponent(PairStream) vs (Component) --
         // confirmado no fonte real).
-        lines.push(`${pad1}${slotDef.name}: ${serializeNode(kids[0].node, 0, byFactory).trim()}`);
+        const only = kids[0].node;
+        const value = only.isText ? serializeTextLiteral(only.text) : serializeNode(only, 0, byFactory).trim();
+        lines.push(`${pad1}${slotDef.name}: ${value}`);
       }
     } else if (sv !== undefined) {
       const text = serializeLeafValue(slotDef, sv);
@@ -255,122 +289,6 @@ function projectToEdl(root, byFactory) {
   return serializeNode(root, 0, byFactory) + "\n";
 }
 
-/* --------------------------------- presets -------------------------------- */
-
-// Transcrito à mão de src/poc/dis/bandit/configs/scenario.edl (o único
-// cenário deste repositório sem @token@/@include:@ -- hand-final, pronto
-// pra copiar direto), COM EXCEÇÃO dos players: 'simulation.players' fica
-// vazio de propósito, pronto pro usuário arrastar a própria aeronave.
-// 'ownship: bandit1' fica como está no original -- vira uma referência
-// pendurada até o usuário nomear (ou recriar) um player 'bandit1', o mesmo
-// aviso que scripts/edl_lint.py já dá para referência-por-nome sem alvo.
-function buildBanditPreset() {
-  const station = makeNode("Station");
-  station.slotValues.tcPriority = { kind: "number", value: 0.5 };
-  station.slotValues.ownship = { kind: "text", value: "bandit1" };
-
-  const joystick = makeNode("JoystickIoHandler");
-  joystick.slotValues.player = { kind: "text", value: "bandit1" };
-  joystick.slotValues.deviceIndex = { kind: "number", value: 0 };
-  const ioData = makeNode("IoData");
-  ioData.slotValues.numAI = { kind: "number", value: 4 };
-  joystick.children.inputData = [{ key: "1", node: ioData }];
-  const usbJoystick = makeNode("UsbJoystick");
-  usbJoystick.slotValues.deviceIndex = { kind: "number", value: 0 };
-  const adapters = [
-    { ai: 1, channel: 0 },
-    { ai: 2, channel: 1 },
-    { ai: 3, channel: 2 },
-    { ai: 4, channel: 3, offset: 1.0, gain: -0.5 },
-  ].map((a, i) => {
-    const n = makeNode("AnalogInput");
-    n.slotValues.ai = { kind: "number", value: a.ai };
-    n.slotValues.channel = { kind: "number", value: a.channel };
-    if (a.offset !== undefined) n.slotValues.offset = { kind: "number", value: a.offset };
-    if (a.gain !== undefined) n.slotValues.gain = { kind: "number", value: a.gain };
-    return { key: String(i + 1), node: n };
-  });
-  usbJoystick.children.adapters = adapters;
-  joystick.children.devices = [{ key: "1", node: usbJoystick }];
-  station.children.ioHandler = [{ key: "1", node: joystick }];
-
-  const netIn = makeNode("UdpBroadcastHandler");
-  netIn.slotValues.localIpAddress = { kind: "text", value: "localhost" };
-  netIn.slotValues.networkMask = { kind: "text", value: "255.0.0.0" };
-  netIn.slotValues.port = { kind: "number", value: 3000 };
-  netIn.slotValues.ignoreSourcePort = { kind: "number", value: 3001 };
-  netIn.slotValues.shared = { kind: "text", value: "true" };
-  const netOut = makeNode("UdpBroadcastHandler");
-  netOut.slotValues.localIpAddress = { kind: "text", value: "localhost" };
-  netOut.slotValues.networkMask = { kind: "text", value: "255.0.0.0" };
-  netOut.slotValues.port = { kind: "number", value: 3000 };
-  netOut.slotValues.localPort = { kind: "number", value: 3001 };
-  netOut.slotValues.shared = { kind: "text", value: "true" };
-
-  const outAircraft = makeNode("Aircraft");
-  outAircraft.slotValues.type = { kind: "text", value: "A4" };
-  const outNtm = makeNode("DisNtm");
-  outNtm.slotValues.disEntityType = { kind: "vector", value: "1 2 225 1 99 0 0" };
-  outNtm.children.template = [{ key: "1", node: outAircraft }];
-
-  const inAircraft = makeNode("Aircraft");
-  inAircraft.slotValues.type = { kind: "text", value: "A4" };
-  const sigSphere = makeNode("SigSphere");
-  sigSphere.slotValues.radius = { kind: "number", value: 3.0 };
-  inAircraft.children.signature = [{ key: "1", node: sigSphere }];
-  inAircraft.slotValues.dataLogTime = { kind: "unit", value: 0.1, unit: "Seconds" };
-  const inNtm = makeNode("DisNtm");
-  inNtm.slotValues.disEntityType = { kind: "vector", value: "1 2 225 1 99 0 0" };
-  inNtm.children.template = [{ key: "1", node: inAircraft }];
-
-  const disNetIo = makeNode("DisNetIO");
-  disNetIo.slotValues.siteID = { kind: "number", value: 1 };
-  disNetIo.slotValues.applicationID = { kind: "number", value: 1 };
-  disNetIo.slotValues.exerciseID = { kind: "number", value: 1 };
-  disNetIo.children.netInput = [{ key: "1", node: netIn }];
-  disNetIo.children.netOutput = [{ key: "1", node: netOut }];
-  disNetIo.children.outputEntityTypes = [{ key: "1", node: outNtm }];
-  disNetIo.children.inputEntityTypes = [{ key: "1", node: inNtm }];
-  station.children.networks = [{ key: "1", node: disNetIo }];
-
-  const tacview = makeNode("TacviewOutput");
-  tacview.slotValues.port = { kind: "number", value: 1235 };
-  tacview.slotValues.callsign = { kind: "text", value: "poc-mixr/bandit" };
-  tacview.slotValues.fileName = { kind: "text", value: "./src/poc/dis/bandit/data/recordings/mission.acmi" };
-  const mapEntries = (pairs) => pairs.map(([key, text]) => ({ key, node: makeTextLeaf(text) }));
-  tacview.children.modelMap = mapEntries([
-    ["bandit1", "A-4E"], ["falcon1", "A-4E"], ["falcon2", "A-4E"], ["falcon3", "A-4E"], ["falcon4", "A-4E"],
-  ]);
-  tacview.children.typeMap = mapEntries([
-    ["bandit1", "Air+FixedWing"], ["falcon1", "Air+FixedWing"], ["falcon2", "Air+FixedWing"],
-    ["falcon3", "Air+FixedWing"], ["falcon4", "Air+FixedWing"],
-  ]);
-  tacview.children.colorMap = mapEntries([
-    ["bandit1", "Red"], ["falcon1", "Blue"], ["falcon2", "Blue"], ["falcon3", "Blue"], ["falcon4", "Blue"],
-  ]);
-
-  const recorderOutputHandler = makeNode("RecorderOutputHandler");
-  recorderOutputHandler.children.components = [{ key: "1", node: tacview }];
-  const dataRecorder = makeNode("ExposedDataRecorder");
-  dataRecorder.slotValues.eventName = { kind: "text", value: "poc-bandit" };
-  dataRecorder.slotValues.enabledList = { kind: "vector", value: "43 42" };
-  dataRecorder.children.outputHandler = [{ key: "1", node: recorderOutputHandler }];
-  station.children.dataRecorder = [{ key: "1", node: dataRecorder }];
-
-  const terrain = makeNode("SrtmHgtFile");
-  terrain.slotValues.path = { kind: "text", value: "./shared/data/terrain/srtm/" };
-  terrain.slotValues.file = { kind: "text", value: "S23W043.hgt" };
-  const worldModel = makeNode("WorldModel");
-  worldModel.slotValues.numTcThreads = { kind: "number", value: 2 };
-  worldModel.slotValues.latitude = { kind: "number", value: -22.25 };
-  worldModel.slotValues.longitude = { kind: "number", value: -42.48 };
-  worldModel.children.terrain = [{ key: "1", node: terrain }];
-  worldModel.children.players = []; // de proposito: so os players ficam de fora do preset
-  station.children.simulation = [{ key: "1", node: worldModel }];
-
-  return station;
-}
-
 // UMD-lite: em Node (src/ui/edl_builder.test.js), exporta tudo via
 // module.exports; no navegador (concatenado por compile.js dentro do mesmo
 // <script> do app), os `function`/`const` acima ficam disponíveis como
@@ -382,6 +300,5 @@ if (typeof module !== "undefined" && module.exports) {
     isLeafSlot, isChildSlot, defaultKindFor,
     freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
     isAscii, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
-    buildBanditPreset,
   };
 }

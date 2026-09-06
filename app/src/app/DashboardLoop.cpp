@@ -1100,7 +1100,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       }
       return hbox({
                 renderComponentTree(componentsLayout, componentsView, componentsCanvasBox,
-                                    componentsFlow, frameCallParams) | flex,
+                                    componentsFlow) | flex,
                 separator(),
                 detail,
              })
@@ -1185,9 +1185,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          separator(),
          renderComponentFlowStatus(componentsFlow, frameCallParams),
          renderComponentFlowLegend(),
-         text("[setas] navegar entre nos  [Enter] retrair/expandir  [o]/[f] expandir/retrair tudo  "
-              "[clique] selecionar  [arraste] mover  [ [ ]/roda ] zoom  [c] centralizar  "
-              "[Espaco] pausar simulacao  [n] passo de 1 frame  [v] velocidade") | dim,
          componentsButtons->Render(),
       });
    })};

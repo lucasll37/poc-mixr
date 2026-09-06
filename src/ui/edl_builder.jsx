@@ -20,11 +20,14 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
  * Node puro, sem Babel/React/DOM, em src/ui/edl_builder.test.js).
  *
  * Escopo desta v1 (decidido explicitamente, não suposto): CRIAR um
- * cenário do zero -- arrastar classes da paleta, preencher campos,
- * exportar .edl. Reabrir um .edl REAL existente fica para uma fase
- * futura -- o formato de projeto (JSON) desta página é PRÓPRIO, não é o
- * EDL em si, e serve só para salvar/reabrir um trabalho em andamento
- * nesta ferramenta.
+ * cenário -- arrastar classes da paleta, preencher campos, exportar .edl.
+ * Reabrir um .edl REAL arbitrário (fora do que `initialRoot()` já carrega
+ * por padrão) fica para uma fase futura -- o formato de projeto (JSON)
+ * desta página é PRÓPRIO, não é o EDL em si, e serve pra salvar/reabrir um
+ * trabalho em andamento nesta ferramenta. A ferramenta abre já com o
+ * cenário de MAIS componentes do repositório carregado (ver o comentário
+ * de `initialRoot()`/EDL_DEFAULT_SCENARIO, mais abaixo) -- "Novo" descarta
+ * e volta para uma Station em branco.
  * ==================================================================== */
 
 const CATALOG_BY_FACTORY = buildCatalogIndex(EDL_CATALOG);
@@ -219,12 +222,20 @@ function ChildSlotRow({ node, slotDef, dragFactory, selectedId, onSelect, onDrop
   );
 }
 
-function OutlineNode({ node, dragFactory, selectedId, onSelect, onDrop, onRemoveItem, onRenameKey, onAddText, onChangeText, depth }) {
+// Um nível só: os slots de filho do nó DADO, com os controles completos de
+// arrastar/adicionar/renomear/remover -- usado dentro do PAINEL DE
+// PROPRIEDADES (coluna da direita), para o nó SELECIONADO. Não recursiona
+// (isso é papel do NavTree, na árvore central, que só navega): editar os
+// NETOS de um nó é selecioná-los (o clique em cada linha já chama
+// onSelect) e ver ESTE MESMO painel trocar de conteúdo para eles.
+function ComponentsEditor({ node, dragFactory, selectedId, onSelect, onDrop, onRemoveItem, onRenameKey, onAddText, onChangeText }) {
   const entry = CATALOG_BY_FACTORY[node.factory];
   const childSlots = entry ? entry.slots.filter(isChildSlot) : [];
-  if (!childSlots.length) return null;
+  if (!childSlots.length) {
+    return <p className="eb-muted">esta classe não tem slot de componente.</p>;
+  }
   return (
-    <div className="eb-children" style={{ marginLeft: depth ? 14 : 0 }}>
+    <div className="eb-components-editor">
       {childSlots.map((slotDef) => (
         <ChildSlotRow key={slotDef.name} node={node} slotDef={slotDef} dragFactory={dragFactory}
           selectedId={selectedId} onSelect={onSelect} onDrop={onDrop}
@@ -235,11 +246,66 @@ function OutlineNode({ node, dragFactory, selectedId, onSelect, onDrop, onRemove
   );
 }
 
+/* --------------------------- árvore de navegação ---------------------------- */
+
+// Visão LEVE da hierarquia inteira do cenário -- só pra pular direto a
+// qualquer nó (mesmo fundo, tipo um steerpoint dentro da rota de um
+// player) sem precisar descer um nível de cada vez pelo painel de
+// propriedades. Nenhum controle de editar/arrastar aqui -- isso é
+// ComponentsEditor, no painel da direita, para o nó SELECIONADO.
+function NavTreeNode({ node, keyLabel, selectedId, onSelect, depth }) {
+  if (node.isText) {
+    return (
+      <div className="eb-nav-row eb-nav-text" style={{ paddingLeft: depth * 14 }}>
+        <span className="eb-muted eb-nav-key">{keyLabel}:</span>
+        <span className="eb-nav-text-val">"{node.text}"</span>
+      </div>
+    );
+  }
+  return (
+    <div className="eb-nav-branch">
+      <div className={"eb-nav-row" + (selectedId === node.id ? " eb-nav-row-selected" : "")}
+        style={{ paddingLeft: depth * 14 }} onClick={() => onSelect(node.id)}>
+        {keyLabel != null && <span className="eb-muted eb-nav-key">{keyLabel}:</span>}
+        <span className="eb-node-factory">{node.factory}</span>
+      </div>
+      <NavTreeChildren node={node} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+    </div>
+  );
+}
+
+function NavTreeChildren({ node, selectedId, onSelect, depth }) {
+  const entry = CATALOG_BY_FACTORY[node.factory];
+  const childSlots = entry ? entry.slots.filter(isChildSlot) : [];
+  return childSlots.map((slotDef) => {
+    const items = node.children[slotDef.name] || [];
+    return items.map((it) => (
+      <NavTreeNode key={it.node.id} node={it.node}
+        keyLabel={slotDef.acceptsChildList ? `${slotDef.name}.${it.key}` : slotDef.name}
+        selectedId={selectedId} onSelect={onSelect} depth={depth} />
+    ));
+  });
+}
+
 /* ----------------------------- painel de propriedades ---------------------- */
 
-function PropertiesPanel({ node, onChangeSlot }) {
+// A coluna da direita mostra, JUNTAS, as duas coisas que descrevem o nó
+// selecionado: os valores diretos (campos de folha) e os COMPONENTES dele
+// (a antiga árvore recursiva que ficava no centro) -- clicar num
+// componente aqui seleciona ele e faz este mesmo painel trocar para o
+// filho, uma navegação por "descer um nível de cada vez" que complementa o
+// NavTree (que pula direto a qualquer profundidade).
+function PropertiesPanel({ node, onChangeSlot, dragFactory, selectedId, onSelect, onDrop, onRemoveItem, onRenameKey, onAddText, onChangeText }) {
   if (!node) {
     return <div className="eb-pane eb-props"><p className="eb-muted eb-empty-msg">selecione um nó na árvore</p></div>;
+  }
+  if (node.isText) {
+    return (
+      <div className="eb-pane eb-props">
+        <div className="eb-props-head"><div className="eb-props-title">valor de texto</div></div>
+        <TextField value={node.text} onChange={(v) => onChangeText(node.id, v)} />
+      </div>
+    );
   }
   const entry = CATALOG_BY_FACTORY[node.factory];
   if (!entry) {
@@ -253,7 +319,7 @@ function PropertiesPanel({ node, onChangeSlot }) {
         {node.factory !== entry.class && <div className="eb-muted">classe C++: {entry.class}</div>}
         <div className="eb-muted">origem: {originLabel(entry.origin)}</div>
       </div>
-      {leafSlots.length === 0 && <p className="eb-muted">esta classe não tem slot de valor direto (só filhos, na árvore).</p>}
+      {leafSlots.length === 0 && <p className="eb-muted">esta classe não tem slot de valor direto.</p>}
       {leafSlots.map((slotDef) => (
         <div key={slotDef.name} className="eb-field">
           <label className="eb-field-label" title={slotDef.comment}>
@@ -264,6 +330,10 @@ function PropertiesPanel({ node, onChangeSlot }) {
             onChange={(v) => onChangeSlot(node.id, slotDef.name, v)} />
         </div>
       ))}
+      <div className="eb-props-section-title">Componentes</div>
+      <ComponentsEditor node={node} dragFactory={dragFactory} selectedId={selectedId}
+        onSelect={onSelect} onDrop={onDrop} onRemoveItem={onRemoveItem} onRenameKey={onRenameKey}
+        onAddText={onAddText} onChangeText={onChangeText} />
     </div>
   );
 }
@@ -363,6 +433,16 @@ const CSS = `
 .eb-dropzone { font-size:11.5px; color:var(--muted); border:1px dashed var(--rule); border-radius:2px; padding:5px 8px; margin:4px 0; }
 .eb-dropzone.eb-drop-ok { border-color:var(--ok); color:var(--ok); }
 .eb-dropzone.eb-drop-bad { border-color:var(--bad); color:var(--bad); opacity:0.6; }
+.eb-props-section-title { font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--muted); margin:14px 0 4px; border-top:1px solid var(--rule); padding-top:10px; }
+.eb-components-editor { margin-top: 4px; }
+.eb-nav-branch { }
+.eb-nav-row { display:flex; align-items:baseline; gap:6px; padding:2px 4px; cursor:pointer; font-family:var(--mono); font-size:12px; border-radius:2px; }
+.eb-nav-row:hover { background:var(--paper); }
+.eb-nav-row-selected { background:var(--paper); outline:1px solid var(--hot); }
+.eb-nav-key { font-size:10.5px; }
+.eb-nav-text { cursor:default; }
+.eb-nav-text-val { color:var(--muted); }
 .eb-export { grid-column: 1 / -1; margin-top: 4px; }
 .eb-export-head { display:flex; justify-content:space-between; align-items:center; }
 .eb-edl-preview { font-family:var(--mono); font-size:11.5px; background:var(--paper); border:1px solid var(--rule);
@@ -370,8 +450,22 @@ const CSS = `
 .eb-warn { color:var(--bad); font-size:12.5px; }
 `;
 
+// EDL_DEFAULT_SCENARIO e' injetado por compile.js (mesmo mecanismo de
+// EDL_CATALOG) a partir de src/ui/edl_default_scenario.generated.json --
+// gerado por `make edl-default-scenario` (scripts/edl_to_ui_project.js)
+// contra src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in, o
+// cenario com mais componentes do repositorio (53 das 96 classes de
+// mixr::models num Aircraft so'). Abrir a ferramenta ja' com algo pra
+// explorar, em vez de uma tela vazia -- "Novo" ainda descarta e volta pra
+// uma Station em branco.
+function initialRoot() {
+  if (typeof EDL_DEFAULT_SCENARIO === "undefined" || !EDL_DEFAULT_SCENARIO) return null;
+  resetIdCounter(1 + maxId(EDL_DEFAULT_SCENARIO, 0));
+  return EDL_DEFAULT_SCENARIO;
+}
+
 export default function App() {
-  const [root, setRoot] = useState(null);
+  const [root, setRoot] = useState(initialRoot);
   const [selectedId, setSelectedId] = useState(null);
   const [dragFactory, setDragFactory] = useState(null);
   const [theme, setTheme] = useState(() => {
@@ -444,12 +538,6 @@ export default function App() {
   // mais descobrível do que só o botão "Novo" genérico.
   const handleRemoveRoot = handleNew;
 
-  const handleLoadPreset = (build, label) => {
-    if (root && !window.confirm(`Descartar o cenário atual e carregar o preset "${label}"?`)) return;
-    setRoot(build());
-    setSelectedId(null);
-  };
-
   const handleSaveProject = () => {
     const blob = new Blob([JSON.stringify(root, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -489,11 +577,6 @@ export default function App() {
           <button className="eb-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()}>Abrir projeto</button>
           <input ref={fileInputRef} type="file" accept="application/json" style={{ display: "none" }}
             onChange={(e) => { if (e.target.files[0]) handleOpenProject(e.target.files[0]); e.target.value = ""; }} />
-          <button className="eb-btn"
-            title="Tudo de src/poc/dis/bandit/configs/scenario.edl, exceto os players -- pronto pra arrastar a própria aeronave em cima"
-            onClick={() => handleLoadPreset(buildBanditPreset, "bandit (sem players)")}>
-            Preset: bandit
-          </button>
           <button className="eb-btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}>
             {theme === "light" ? "☾ escuro" : "☀ claro"}
           </button>
@@ -525,14 +608,14 @@ export default function App() {
                     onClick={(e) => { e.stopPropagation(); handleRemoveRoot(); }}>×</button>
                 </div>
               </div>
-              <OutlineNode node={root} dragFactory={dragFactory} selectedId={selectedId}
-                onSelect={setSelectedId} onDrop={handleDrop}
-                onRemoveItem={handleRemoveItem} onRenameKey={handleRenameKey}
-                onAddText={handleAddText} onChangeText={handleChangeText} depth={0} />
+              <NavTreeChildren node={root} selectedId={selectedId} onSelect={setSelectedId} depth={0} />
             </>
           )}
         </div>
-        <PropertiesPanel node={selectedNode} onChangeSlot={handleChangeSlot} />
+        <PropertiesPanel node={selectedNode} onChangeSlot={handleChangeSlot}
+          dragFactory={dragFactory} selectedId={selectedId} onSelect={setSelectedId}
+          onDrop={handleDrop} onRemoveItem={handleRemoveItem} onRenameKey={handleRenameKey}
+          onAddText={handleAddText} onChangeText={handleChangeText} />
         <ExportPanel root={root} />
       </div>
     </div>

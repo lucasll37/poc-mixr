@@ -1,4 +1,4 @@
-.PHONY: all configure build test install clean check-root help
+.PHONY: all configure build test install clean check-root help install-host uninstall-host
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -143,6 +143,15 @@ install-host: install ## Deposita em ../../../plugins/ (lib, flat) e .../data/fl
 	@cp -a $(DEST_DIR)/share/mixr-plugins/flight/. $(ROOT)/plugins/data/flight/
 	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/flight/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
+
+uninstall-host: ## Remove de ../../../plugins/ (+ data/flight/) o que ESTE modelo publicou -- nomes vindos do PROPRIO ./dist local, nunca escrito a mao. Nao mexe em .so de terceiro.
+	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
+	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+	      [ -e "$$so" ] || continue; \
+	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
+	   done; \
+	 fi
+	@rm -rf $(ROOT)/plugins/data/flight
 
 clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../../dist do host).
 	rm -rf $(BUILD_DIR) $(DEST_DIR)

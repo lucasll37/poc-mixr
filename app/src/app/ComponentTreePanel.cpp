@@ -376,8 +376,7 @@ double flowSubStep(const ComponentFlowState& flow, const int redrawsPerSecond = 
 }   // namespace
 
 Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                            Box& outCanvasBox, const ComponentFlowState& flow,
-                            const FrameCallParams& params)
+                            Box& outCanvasBox, const ComponentFlowState& flow)
 {
    const int canvasW{view.canvasWidthPx};
    const int canvasH{view.canvasHeightPx};
@@ -452,13 +451,21 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       const ProjectedNode p{projectTreeNode(node.x, node.y, view)};
       if (!p.onCanvas) continue;
 
-      const Color col{phaseColor(node.phase)};
       // Participa da fase corrente AGORA -- por MASCARA, nao por igualdade
       // escalar: e o que faz um no 'SensorBothPhases' (ownPhaseMask com os
       // DOIS bits de transmit+receive) acender nas duas fases de verdade,
       // em vez de so numa escolhida arbitrariamente.
       const bool participatesNow{activeFlowPhase != EstimatedPhase::Unknown
          && (node.ownPhaseMask & phaseBit(activeFlowPhase)) != 0u};
+
+      // No CAMINHO da recursao (aresta de entrada colorida na passada
+      // anterior) -- dot e rotulo usam a MESMA cor da aresta, para a linha
+      // nao "quebrar" bem em cima do no com a cor de classificacao ESTATICA
+      // dele (branco de Structural, amarelo de dynamics...). So quem esta
+      // FORA do caminho mantem a propria cor -- e o "mapa" da arvore
+      // inteira, sem relacao com a fase corrente.
+      const bool onRecursionPath{onPath[i]};
+      const Color col{onRecursionPath ? pathColor : phaseColor(node.phase)};
 
       // "Pulso" do ciclo de fluxo (ver app/ComponentFlowState.hpp) -- anel
       // AMARELO, raio 3, deliberadamente diferente do anel branco (raio 4)
@@ -480,27 +487,8 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
          const std::string label{drawnNodeLabel(node)};
          const int textX{p.px - labelWidthPx(label) / 2};
          const int textY{((p.py + 6) / 4) * 4};
-         // Um galho RETRAIDO que esconde um participante desta fase sai na
-         // cor da fase (e nao na dele) -- junto com a aresta acesa, e o
-         // convite pra abrir ali. O no que participa ele mesmo ja tem o anel
-         // amarelo e o rotulo de chamada, entao nao ha ambiguidade (por isso
-         // '!participatesNow', nao 'node.phase != activeFlowPhase' -- um no
-         // 'SensorBothPhases' participa de verdade mesmo sem igualdade
-         // escalar).
-         const bool hidesParticipant{node.collapsed && !participatesNow
-            && (node.subtreePhaseMask & phaseBit(activeFlowPhase)) != 0u
-            && activeFlowPhase != EstimatedPhase::Unknown};
-         const Color labelColor{isSelected ? Color::White : (hidesParticipant ? pathColor : col)};
+         const Color labelColor{isSelected ? Color::White : col};
          c.DrawText(textX, textY, label, labelColor);
-
-         // A CHAMADA que este componente executa nesta fase, com o argumento
-         // de verdade -- desenhada logo abaixo do nome, no proprio no. Cabe
-         // porque kRowSpacingPx reserva 20 px por nivel e o nome ocupa so a
-         // faixa +6..+10.
-         const std::string call{participatesNow ? nodeCallLabel(activeFlowPhase, params) : std::string{}};
-         if (!call.empty()) {
-            c.DrawText(p.px - labelWidthPx(call) / 2, textY + 4, call, Color::YellowLight);
-         }
       }
    }
 
@@ -509,14 +497,6 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       + "%]  [-]/[+N] = galho expandido/retraido"};
    if (view.zoom < kLabelMinZoom) header += "  -- rotulos ocultos neste zoom, use []] pra ampliar";
    c.DrawText(2, 2, header, Color::GrayDark);
-
-   // Legenda do que o desenho esta dizendo AGORA -- dentro do proprio canvas,
-   // pra nao gastar altura fora dele (foi exatamente o erro da versao com
-   // painel de texto separado).
-   if (activeFlowPhase != EstimatedPhase::Unknown) {
-      c.DrawText(2, 6, "aceso = caminho da recursao nesta fase (mesmo por dentro de galho retraido)   "
-                 "amarelo = chamada que o no executa", pathColor);
-   }
 
    return canvas(std::move(c)) | reflect(outCanvasBox) | flex | border;
 }
@@ -707,8 +687,15 @@ Element renderComponentFlowStatus(const ComponentFlowState& flow, const FrameCal
          text(" " + state.str() + " ") | bold
             | color(params.paused ? Color::Yellow : Color::Green),
          separator(),
-         text(" fase " + std::to_string(flow.cycleIndex + 1) + "/"
-              + std::to_string(kComponentFlowCycleLen) + ": " + phaseLabel(phase) + " ")
+         // 'passo X/5 do ciclo', NAO 'fase X/5': o CICLO da animacao tem
+         // cinco PASSOS ('Structural' mais as quatro fases de verdade do
+         // frame T/C -- ver kComponentFlowCycle), mas o frame em si so tem
+         // QUATRO fases (0..3). 'phaseLabel(phase)' ja numera certo dentro
+         // delas ("fase 0 (dynamics)" .. "fase 3 (decisao...)", ou
+         // "estrutural" para o passo que nao e' fase nenhuma) -- prefixar
+         // com "fase X/5" alegaria uma quinta fase que nao existe no frame.
+         text(" passo " + std::to_string(flow.cycleIndex + 1) + "/"
+              + std::to_string(kComponentFlowCycleLen) + " do ciclo -- " + phaseLabel(phase) + " ")
             | color(phaseColor(phase)) | bold,
          filler(),
       }),

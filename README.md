@@ -40,6 +40,7 @@ visualização é feita via **Tacview Real-Time Telemetry**.
 7. [Subprojetos](#7-subprojetos)
 8. [Os modelos são plugins](#8-os-modelos-são-plugins)
 9. [`contexts/` — onde consultar o framework](#9-contexts--onde-consultar-o-framework)
+10. [Contribuindo com um modelo novo](CONTRIBUTING.md)
 
 ---
 
@@ -293,13 +294,15 @@ poc-mixr/
 │   └── node/               aplicacao de verdade, nao poc: placeholder do no de producao que
 │                           atendera solicitacoes de execucao
 ├── models/                 o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (§8)
-│   ├── flight/             modelo de producao (carregado pelos subprojetos de voo)
-│   ├── missile/            segundo modelo -- demo academica de missil guiado 6-DOF
-│   ├── fixtures/stub/      modelo minimo, so contra o SDK -- prova que o contrato basta
-│   └── plugins/            deposito flat dos .so compilados (e onde um .so de terceiro
-│                           entraria) -- make install sincroniza daqui para dist/
+│   └── player/
+│       ├── A4/                 modelo de producao (nome de fabrica/biblioteca continua "flight")
+│       ├── missile/            segundo modelo -- demo academica de missil guiado 6-DOF
+│       ├── fixtures/stub/      modelo minimo, so contra o SDK -- prova que o contrato basta
+│       └── template/           segundo ponto de partida, EM CAMADAS -- NAO e producao
+├── plugins/                deposito flat dos .so compilados (proprios OU de terceiro) -- mora na
+│                           RAIZ, irmao de dist/ -- make install sincroniza daqui para dist/
 ├── shared/                 bibliotecas x<nome> reaproveitadas entre subprojetos
-├── tests/                  suite do HOST (a de cada modelo vive dentro do proprio models/<nome>/)
+├── tests/                  suite do HOST (a de cada modelo vive dentro do proprio models/player/<nome>/)
 ├── contexts/               material de consulta sobre MIXR e BehaviorTree.CPP (§9)
 ├── conanfile.py            dependencias binarias (mixr, BehaviorTree.CPP, ftxui, gtest)
 ├── meson.build             raiz: resolve as libs por pkg-config e da subdir() em cada subprojeto
@@ -357,6 +360,9 @@ make install  # sincroniza plugins/ -> dist/lib/mixr-plugins/ e instala o host -
 `plugins/` é um depósito comum: um `.so` compilado por este repositório e um `.so` de
 terceiro (compilado em outro lugar, só copiado para lá) são indistinguíveis a partir desse ponto —
 os dois viram visíveis ao host somente quando `make install` sincroniza para `dist/`.
+
+Para criar um modelo novo, comece por [`CONTRIBUTING.md`](CONTRIBUTING.md) — ele costura, na
+ordem certa, o resto da documentação de `models/`.
 
 ---
 

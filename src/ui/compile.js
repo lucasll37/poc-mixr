@@ -12,9 +12,12 @@
 //
 // O que faz, em ordem:
 //   1) injeta src/ui/edl_catalog.generated.json como 'const EDL_CATALOG = ...;'
-//      num <script> proprio, ANTES do app -- o catalogo muda toda vez que o
-//      fonte do MIXR muda (`make edl-catalog`), diferente de doc.jsx, que
-//      embute seus dados a mao dentro do proprio .jsx.
+//      e src/ui/edl_default_scenario.generated.json como
+//      'const EDL_DEFAULT_SCENARIO = ...;', nos dois casos num <script>
+//      proprio ANTES do app -- os dois mudam por fonte gerada
+//      separadamente (`make edl-catalog`/`make edl-default-scenario`),
+//      diferente de doc.jsx, que embute seus dados a mao dentro do proprio
+//      .jsx.
 //   2) concatena src/ui/edl_builder_core.js (a logica PURA do editor, sem
 //      React/JSX -- separado so pra poder ser testado em Node puro por
 //      edl_builder.test.js) na MESMA tag <script> do app, ANTES dele --
@@ -42,6 +45,8 @@ const SRC = path.join(__dirname, "edl_builder.jsx");
 const CORE = path.join(__dirname, "edl_builder_core.js");
 const DATA = path.join(__dirname, "edl_catalog.generated.json");
 const DATA_VAR = "EDL_CATALOG";
+const DEFAULT_SCENARIO = path.join(__dirname, "edl_default_scenario.generated.json");
+const DEFAULT_SCENARIO_VAR = "EDL_DEFAULT_SCENARIO";
 const OUT = path.join(__dirname, "edl-builder.html");
 const TITLE = "MIXR — Editor gráfico de cenário .edl";
 const CACHE = path.join(__dirname, ".cache");
@@ -94,7 +99,11 @@ function main() {
   if (!fs.existsSync(DATA)) {
     throw new Error(`${path.relative(ROOT, DATA)} nao existe -- rode 'make edl-catalog' antes.`);
   }
-  const dataScript = `<script>\nconst ${DATA_VAR} = ${fs.readFileSync(DATA, "utf8")};\n</script>\n`;
+  if (!fs.existsSync(DEFAULT_SCENARIO)) {
+    throw new Error(`${path.relative(ROOT, DEFAULT_SCENARIO)} nao existe -- rode 'make edl-default-scenario' antes.`);
+  }
+  const dataScript = `<script>\nconst ${DATA_VAR} = ${fs.readFileSync(DATA, "utf8")};\n` +
+    `const ${DEFAULT_SCENARIO_VAR} = ${fs.readFileSync(DEFAULT_SCENARIO, "utf8")};\n</script>\n`;
   const coreSrc = fs.readFileSync(CORE, "utf8") + "\n";
 
   const { code } = Babel.transform(src, { presets: ["react"], filename: "edl_builder.jsx", comments: true });

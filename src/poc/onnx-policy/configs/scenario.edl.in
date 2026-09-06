@@ -26,14 +26,21 @@
 //   sensor          ( Gimbal/Antenna+Tws+       igual
 //                     AirTrkMgr )
 //   interacao       ( AlertDatalink )           igual
-//   arbitro         ( UbfArbiter )              igual
 //   agente UBF      ( FlightAgentTC ), fase 3   igual
 //   plugin          libflight_tc.so             igual
 //   QUEM DECIDE     arvore de regras (C++)      rede neural (.onnx)
 //
-// O ( AltitudeSafetyBehavior vote: 90 ) continua acima do ( BtBehavior
-// vote: 50 ): a rede NAO tem a ultima palavra sobre o piso anti-CFIT. E o
-// que torna seguro trocar de politica sem revalidar seguranca de voo.
+// SEM ARBITRO: 'behavior:' do agente aponta direto para o ( BtBehavior ),
+// sem ( UbfArbiter )/( AltitudeSafetyBehavior ) no meio -- a .so continua
+// exportando AltitudeSafetyBehavior (ver 'provides:' abaixo), so este
+// cenario nao a instancia. CONSEQUENCIA REAL PARA ESTA POC: enquanto o
+// .onnx carrega e infere normalmente, a rede tem a ultima palavra sobre
+// altitude -- nao ha mais um piso anti-CFIT independente por cima dela. O
+// 'terrainClearance:' do BtBehavior (abaixo) so entra em jogo se o .onnx
+// FALHAR ao carregar e a arvore cair no ramo nativo de FALLBACK
+// (< Patrol >, ver o comentario junto ao agente); nao protege uma
+// inferencia bem-sucedida porem ruim. Trocar de politica aqui volta a
+// exigir revalidar seguranca de voo por conta propria.
 //
 // PORTAS PROPRIAS, para esta poc rodar ao lado das outras: Tacview 1238
 // (1234 single/multi, 1235 bandit, 1236 app, 1237 python-flight) e DIS
@@ -475,8 +482,7 @@
                //
                // A diferenca DESTA poc nao esta aqui: esta no 'treeFile:'
                // do ( BtBehavior ) mais abaixo, que aponta para a arvore
-               // com a rede neural. O agente, o arbitro e os votos sao os
-               // mesmos.
+               // com a rede neural. O agente e o behavior sao os mesmos.
                //
                // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
                // percorrida na ordem declarada, e tres coisas rodam na
@@ -489,65 +495,43 @@
                // ------------------------------------------------------
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior
-                           vote: 90
-                           // DOIS PISOS. O absoluto (minAltitude) nao sabe onde
-                           // esta o chao: sobre esta serra, 1200 m MSL fica
-                           // DENTRO da montanha. Ele fica so como rede para
-                           // quando nao ha elevacao; quem manda aqui e o piso
-                           // AGL abaixo.
-                           minAltitude:      ( Meters 1200 )
-                           recoverAltitude:  ( Meters 1750 )
-                           recoverSpeed:     350.0
-                           // minClearance TEM de ficar abaixo do
-                           // terrainClearance do BtBehavior (800), senao este
-                           // comportamento (voto 90) briga com o piso de
-                           // evasao da arvore (voto 50).
-                           minClearance:     ( Meters 400 )
-                           recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior
-                           vote: 50
-                           // A DIFERENCA DESTA POC, e so ela: a arvore
-                           // apontada aqui tem UMA folha util, < OnnxPolicy >,
-                           // que roda a rede neural de configs/. Os numeros
-                           // abaixo continuam valendo para o ramo de
-                           // FALLBACK dela (< Patrol >), que assume se o
-                           // .onnx nao carregar ou tiver a forma errada --
-                           // uma politica quebrada nao pode deixar a
-                           // aeronave sem comando.
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
-                           patrolHeading:  ( Degrees 90 )
-                           legTime:        ( Seconds 60 )
-                           legTurn:        ( Degrees 90 )
-                           patrolAltitude: ( Meters 1750 )
-                           patrolSpeed:    350.0
-                           rtbAltitude:    ( Meters 2050 )
-                           rtbSpeed:       380.0
-                           arrivalRadius:  ( NauticalMiles 2.0 )
-                           fuelReserve:    0.35
-                           breakTurn:      ( Degrees 110 )
-                           evadeClimb:     ( Meters 700 )
-                           evadeSpeed:     420.0
-                           supportSpeed:   400.0
-                           // Histerese da evasao: por quanto tempo a manobra continua
-                           // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
-                           // entre perder o contato (a propria quebra tira o intruso do
-                           // setor do radar) e o ramo de apoio querer assumir -- sem
-                           // isso os dois alternam e a aeronave voa "batendo asa".
-                           evadeHold:      ( Seconds 30 )
-                           // PISO ANTI-CFIT. O desconflito vertical da evasao
-                           // desce 700 m a partir da altitude atual; com ~940 m
-                           // de AGL de cruzeiro isso levaria a aeronave para
-                           // ~240 m do chao. O alvo e entao levantado para
-                           // terreno+800. 0 desliga a camada de terreno e
-                           // devolve o piso absoluto de 200 m -- e o controle
-                           // negativo, sem recompilar.
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     // A DIFERENCA DESTA POC, e so ela: a arvore
+                     // apontada aqui tem UMA folha util, < OnnxPolicy >,
+                     // que roda a rede neural de configs/. Os numeros
+                     // abaixo continuam valendo para o ramo de
+                     // FALLBACK dela (< Patrol >), que assume se o
+                     // .onnx nao carregar ou tiver a forma errada --
+                     // uma politica quebrada nao pode deixar a
+                     // aeronave sem comando.
+                     treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                     patrolHeading:  ( Degrees 90 )
+                     legTime:        ( Seconds 60 )
+                     legTurn:        ( Degrees 90 )
+                     patrolAltitude: ( Meters 1750 )
+                     patrolSpeed:    350.0
+                     rtbAltitude:    ( Meters 2050 )
+                     rtbSpeed:       380.0
+                     arrivalRadius:  ( NauticalMiles 2.0 )
+                     fuelReserve:    0.35
+                     breakTurn:      ( Degrees 110 )
+                     evadeClimb:     ( Meters 700 )
+                     evadeSpeed:     420.0
+                     supportSpeed:   400.0
+                     // Histerese da evasao: por quanto tempo a manobra continua
+                     // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
+                     // entre perder o contato (a propria quebra tira o intruso do
+                     // setor do radar) e o ramo de apoio querer assumir -- sem
+                     // isso os dois alternam e a aeronave voa "batendo asa".
+                     evadeHold:      ( Seconds 30 )
+                     // PISO ANTI-CFIT. O desconflito vertical da evasao
+                     // desce 700 m a partir da altitude atual; com ~940 m
+                     // de AGL de cruzeiro isso levaria a aeronave para
+                     // ~240 m do chao. O alvo e entao levantado para
+                     // terreno+800. 0 desliga a camada de terreno e
+                     // devolve o piso absoluto de 200 m -- e o controle
+                     // negativo, sem recompilar.
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -604,25 +588,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
-                           patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                     patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -679,25 +654,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
-                           patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                           legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                           patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                           evadeSpeed: 430.0  supportSpeed: 410.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                     patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
+                     legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
+                     patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
+                     evadeSpeed: 430.0  supportSpeed: 410.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -754,25 +720,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
-                           patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+                     patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }

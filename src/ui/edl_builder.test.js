@@ -304,21 +304,6 @@ test("findNode/removeNode atravessam um item de texto sem quebrar (children:{} g
   assert.strictEqual(removed.children.modes.length, 0);
 });
 
-/* --------------------------------- presets ---------------------------------- */
-
-test("buildBanditPreset: raiz e Station, players fica vazio de proposito", () => {
-  const preset = core.buildBanditPreset();
-  assert.strictEqual(preset.factory, "Station");
-  const worldModel = preset.children.simulation[0].node;
-  assert.strictEqual(worldModel.factory, "WorldModel");
-  assert.deepStrictEqual(worldModel.children.players, []);
-});
-
-test("buildBanditPreset: preserva ownship: bandit1 mesmo pendurado (sem nenhum player)", () => {
-  const preset = core.buildBanditPreset();
-  assert.strictEqual(preset.slotValues.ownship.value, "bandit1");
-});
-
 /* ----------------------- integração com o catálogo REAL --------------------- */
 // Carrega src/ui/edl_catalog.generated.json (gerado por `make edl-catalog`) e
 // monta uma arvore minima real (Station -> ... ), pra pegar qualquer
@@ -370,41 +355,6 @@ if (fs.existsSync(CATALOG_PATH)) {
     assert.ok(text.includes("pilot: ( Autopilot"), text);
   });
 
-  test("integração: buildBanditPreset() exporta ASCII puro e cobre os slots reais de src/poc/dis/bandit/configs/scenario.edl", () => {
-    const preset = core.buildBanditPreset();
-    const text = core.projectToEdl(preset, REAL_BY_FACTORY);
-    assert.ok(core.isAscii(text), "saida deveria ser ASCII puro");
-    assert.ok(text.startsWith("( Station"), text.slice(0, 40));
-    for (const expected of [
-      "ownship: bandit1", "( JoystickIoHandler", "( UsbJoystick", "( AnalogInput",
-      "( DisNetIO", "( UdpBroadcastHandler", "( DisNtm", "( ExposedDataRecorder",
-      "( TacviewOutput", "( WorldModel", "( SrtmHgtFile", "modelMap: {", "typeMap: {", "colorMap: {",
-    ]) {
-      assert.ok(text.includes(expected), `esperava encontrar ${JSON.stringify(expected)} na saida`);
-    }
-    // 'players:' nao pode aparecer -- e o proposito do preset. Os DOIS
-    // '( Aircraft ...)' que APARECEM sao os templates de DisNtm
-    // (outputEntityTypes/inputEntityTypes), que ja existiam no scenario.edl
-    // ORIGINAL para casar trafego DIS -- nao sao "um player", entao
-    // continuam (contados abaixo, pra travar exatamente 2, nem 0 nem 3).
-    assert.ok(!text.includes("players:"), "'players:' nao deveria aparecer -- e a lista vazia de proposito");
-    const aircraftCount = (text.match(/\( Aircraft\b/g) || []).length;
-    assert.strictEqual(aircraftCount, 2, "esperava exatamente os 2 templates de DisNtm, nenhum player de verdade");
-  });
-
-  test("integração: buildBanditPreset() e aceito pelo parser leve (edl_lint via subprocesso nao roda aqui -- so a forma)", () => {
-    // Cobertura mais forte (o parser C++ DE VERDADE) mora em
-    // tests/tools/test_edlcheck.py, que ja inclui este preset -- aqui so
-    // trava a FORMA que aquele teste depende de encontrar.
-    const preset = core.buildBanditPreset();
-    const text = core.projectToEdl(preset, REAL_BY_FACTORY);
-    const opens = (text.match(/\(/g) || []).length;
-    const closes = (text.match(/\)/g) || []).length;
-    assert.strictEqual(opens, closes, "parenteses desbalanceados");
-    const bracesOpen = (text.match(/\{/g) || []).length;
-    const bracesClose = (text.match(/\}/g) || []).length;
-    assert.strictEqual(bracesOpen, bracesClose, "chaves desbalanceadas");
-  });
 }
 
 /* --------------------------------------------------------------------------- */

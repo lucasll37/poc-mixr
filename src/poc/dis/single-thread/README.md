@@ -12,8 +12,9 @@
 
 Quatro caças patrulham quadrantes distintos sobre a Serra do Mar; um intruso cruza a área;
 **quem detecta avisa os outros** pelo datalink, e quem recebe o aviso muda de comportamento e vai
-apoiar. Sobre terreno real, com dinâmica 6-DOF real, radar real, e a decisão saindo de uma árvore
-de comportamento arbitrada por voto.
+apoiar. Sobre terreno real, com dinâmica 6-DOF real, radar real, e a decisão saindo **direto** de
+uma árvore de comportamento — sem árbitro por voto no meio (ver a [seção 6.6](#66-simagent--o-agente)
+para o que isso significa e onde o árbitro ainda é usado de verdade neste repositório).
 
 A regra de projeto do subprojeto é uma só: **herdar do MIXR tudo o que o framework já tem
 pronto**. Player, dinâmica 6-DOF, controle de voo, radar, datalink, banco de elevação e agente
@@ -93,9 +94,19 @@ make check-single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
 | sensor | `( Gimbal/Antenna )` + `( Tws )` + `( AirTrkMgr )` |
 | interação | `( AlertDatalink : models::Datalink )` |
 | agente UBF | `( SimAgent )` |
-| árbitro | `( UbfArbiter )` |
 | terreno | `( SrtmHgtFile )` + `Player::updateElevation()` |
 | percepção / decisão / atuação | `FlightState` / `BtBehavior` / `FlightAction` — o UBF não traz implementações prontas |
+
+> **SEM ÁRBITRO.** `behavior:` do `( SimAgent )` aponta **direto** para o `( BtBehavior )` — não
+> há `( UbfArbiter )`/`( AltitudeSafetyBehavior )` no meio
+> ([`configs/scenario.edl.in`](configs/scenario.edl.in), comentário "SEM ARBITRO" no topo). As
+> duas classes continuam existindo e sendo exportadas pelo plugin — `AltitudeSafetyBehavior` é
+> uma das seis próprias, ver a tabela abaixo —, só não são mais instanciadas por este cenário. Sem
+> o árbitro, o piso anti-CFIT que sobra é só o `terrainClearance:` do próprio `BtBehavior`, que
+> age apenas **dentro do ramo de evasão** — não há mais um piso independente cobrindo
+> `PATROL`/`RTB`/`SUPPORT`. O mecanismo em si — `base::ubf::UbfArbiter`, composto **nativo** do
+> MIXR — segue em uso de verdade em [`src/rl`](../../../../src/rl/), onde protege contra uma
+> política de RL ruim. Detalhes em [6.6](#66-simagent--o-agente) e [10.2](#102-o-que-a-elevação-faz-com-o-comportamento).
 
 **Sobraram seis classes próprias**, e nenhuma delas é player, dinâmica, controle ou sensor:
 
@@ -103,7 +114,7 @@ make check-single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
 |---|---|---|
 | `xnative::FlightState` | `base::ubf::AbstractState` | o UBF define a **interface** de percepção; `models/` só acrescenta `SimAgent` e `MultiActorAgent` |
 | `xnative::BtBehavior` | `base::ubf::AbstractBehavior` | idem, para decisão |
-| `xnative::AltitudeSafetyBehavior` | `base::ubf::AbstractBehavior` | idem |
+| `xnative::AltitudeSafetyBehavior` | `base::ubf::AbstractBehavior` | idem — ainda exportada pelo plugin, mas não instanciada por este cenário (ver a nota acima) |
 | `xnative::FlightAction` | `base::ubf::AbstractAction` | idem, para atuação |
 | `xnative::AlertDatalink` | `models::Datalink` | o framework transporta; **o que fazer com a mensagem** é da aplicação |
 | `xnative::TacticalAlert` | `base::Object` | a carga útil é, por definição, da aplicação |
@@ -150,9 +161,8 @@ thread de background (laço de app/RealTimeRun.cpp, bgRate = 10 Hz)
    │     └─ Player::updateData() → updateElevation()   ← consulta ao banco de terreno
    ├─ SimAgent::updateData() → Agent::controller()
    │     ├─ FlightState::updateState(ator)      PERCEPÇÃO
-   │     ├─ UbfArbiter::genAction()             DECISÃO (por voto)
-   │     │     ├─ AltitudeSafetyBehavior  (voto 90)
-   │     │     └─ BtBehavior              (voto 50) → tick da árvore
+   │     ├─ BtBehavior::genAction()             DECISÃO — direto, SEM árbitro no meio
+   │     │     └─ tick da árvore
    │     └─ FlightAction::execute(ator)         ATUAÇÃO → Autopilot + Datalink
    └─ DataRecorder::processRecords() → TacviewOutput → stream/arquivo ACMI
 ```
@@ -430,15 +440,34 @@ com a mensagem recebida. Detalhes em [9.4](#94-canal-2--datalink) e no
 [header da classe](../../../../models/player/A4/include/xnative/AlertDatalink.hpp), que documenta o que vem de graça e os dois
 enganos fáceis.
 
-### 6.6 `( SimAgent )` + `( UbfArbiter )` — o agente e o árbitro
+### 6.6 `( SimAgent )` — o agente
 
 `models::SimAgent : base::ubf::Agent` roda o ciclo do UBF em `updateData()` e amarra o ator por
-nome. `base::ubf::UbfArbiter` é o comportamento composto: ele mesmo é um `AbstractBehavior`, pede
-uma ação a cada filho e devolve a de **maior voto**.
+nome. `behavior:` aponta **direto** para o `( BtBehavior )` — sem `( UbfArbiter )` no meio.
 
-Aqui os dois filhos são `AltitudeSafetyBehavior` (voto 90) e `BtBehavior` (voto 50). Um
-comportamento pode devolver `nullptr` — "não recomendo nada" —, que é como a regra dura fica em
-silêncio enquanto a aeronave estiver acima do piso.
+**Nem sempre foi assim, e vale entender o que mudou.** `base::ubf::UbfArbiter` é o comportamento
+composto **nativo** do MIXR: ele mesmo é um `AbstractBehavior`, pede uma ação a cada filho e
+devolve a de **maior voto** — um comportamento pode devolver `nullptr` ("não recomendo nada"), que
+é como uma regra dura fica em silêncio enquanto não precisa agir. Esta poc já usou exatamente
+isso: `behavior:` tinha dois filhos, `AltitudeSafetyBehavior` (voto 90) e `BtBehavior` (voto 50),
+com a regra dura de piso vencendo por voto sempre que a árvore furava o piso, sem que ela
+precisasse saber que isso existia.
+
+O cenário de produção não monta mais esse árbitro
+([`configs/scenario.edl.in`](configs/scenario.edl.in), comentário "SEM ARBITRO" no topo do
+arquivo): `behavior:` foi simplificado para apontar direto ao `BtBehavior`. A classe
+`AltitudeSafetyBehavior` continua compilada e exportada pelo plugin (`provides:` do `.edl.in`
+ainda a lista — ver a árvore em [seção 4](#4-a-árvore-de-objetos-do-cenário)), só não é mais
+instanciada por nenhum dos quatro agentes. O mecanismo de árbitro em si segue vivo e em uso real
+no repositório: [`src/rl`](../../../../src/rl/) usa o mesmíssimo par — `( UbfArbiter behaviors: {
+( AltitudeSafetyBehavior vote: 90 ... ) ( RLBridgeBehavior vote: 50 ) } )` — para garantir que uma
+política de RL ruim nunca consiga jogar o avião contra o chão.
+
+**Consequência real de tirar o árbitro daqui:** não sobra piso anti-CFIT independente algum, que
+agisse sobre **qualquer** ramo da árvore sem que ela soubesse. O que resta é só o
+`terrainClearance:` do próprio `BtBehavior`, que ajusta a altitude-alvo calculada **dentro do ramo
+de evasão** — nada intervém durante `PATROL`/`RTB`/`SUPPORT`. Ver a
+[seção 10](#10-elevação-de-terreno) para os números medidos.
 
 ### 6.7 As peças que continuam nossas
 
@@ -709,9 +738,12 @@ if (!currentDecision.taken) return nullptr;
 
 Duas decisões de implementação que existem por causa de armadilhas do framework:
 
-- **`configurePlans()` é preguiçoso.** `reset()` nunca chega a um comportamento aninhado num
-  `UbfArbiter` dentro de um `Agent` ([13.7](#137-o-agent-não-propaga-o-ciclo-de-componentes)), então a
-  configuração vinda dos slots é aplicada na primeira decisão.
+- **`configurePlans()` é preguiçoso.** `reset()` nunca chega ao `behavior` de um `Agent`
+  ([13.7](#137-o-agent-não-propaga-o-ciclo-de-componentes)) — vale tanto para o `BtBehavior`
+  **direto**, que é a configuração de hoje (ver [6.6](#66-simagent--o-agente)), quanto para um
+  comportamento aninhado mais fundo dentro de um `UbfArbiter`, como esta poc já teve e como
+  [`src/rl`](../../../../src/rl/) ainda usa —, então a configuração vinda dos slots é aplicada na
+  primeira decisão.
 - **`buildTree()` é protegido por mutex global.** `BT::BehaviorTreeFactory::createTreeFromFile()`
   **não é reentrante**, e os quatro aviões chegam ao primeiro `genAction()` ao mesmo tempo, em
   threads T/C diferentes.
@@ -735,14 +767,20 @@ na fronteira** — grava o rótulo no `BehaviorBoard` e, se pedido, chama
 `AlertDatalink::broadcastAlert()`.
 
 **5. [`ubf/AltitudeSafetyBehavior.*`](../../../../models/player/A4/include/ubf/AltitudeSafetyBehavior.hpp)** — o segundo
-comportamento, com voto **90** (maior que o 50 da árvore). Depende de `FlightState`,
-`FlightAction` e `domain/TerrainFloor`.
+comportamento que o modelo exporta, pensado para votar **90** (maior que o 50 da árvore) dentro de
+um `( UbfArbiter )`. Depende de `FlightState`, `FlightAction` e `domain/TerrainFloor`.
 
-Existe para mostrar **composição do UBF que não passa pela árvore**: uma regra dura fica fora da
-política tática, e quando a aeronave fura o piso a ação dele vence sem que a árvore precise saber
-que ele existe. Devolver `nullptr` — "não recomendo nada" — é legítimo e é o caso normal.
+**Este cenário não a instancia mais** — ver a nota "SEM ARBITRO" em
+[`configs/scenario.edl.in`](configs/scenario.edl.in) e a [seção 6.6](#66-simagent--o-agente). A
+classe continua compilada e exportada pelo plugin (`provides:` do `.edl.in` ainda a lista), só não
+faz parte do `behavior:` de nenhum dos quatro agentes desta poc. Ela existe para mostrar
+**composição do UBF que não passa pela árvore**: uma regra dura ficaria fora da política tática, e
+quando a aeronave furasse o piso a ação dela venceria por voto, sem que a árvore precisasse saber
+que ela existe. Devolver `nullptr` — "não recomendo nada" — é legítimo e é o caso normal quando
+ela roda. É exatamente esse desenho que [`src/rl`](../../../../src/rl/) usa hoje, de verdade, para
+blindar uma política de RL ruim.
 
-Tem **dois pisos**, e o de cima é quem manda:
+Tem **dois pisos**, e o de cima é quem manda, quando o comportamento está em uso:
 
 ```cpp
 const bool belowAbsolute{snap.altitudeM < minAltitudeM};
@@ -1015,7 +1053,7 @@ O **UBF** (*Unified Behavior Framework*) define **três papéis** e nada mais:
 | papel | interface do MIXR | nossa implementação |
 |---|---|---|
 | percepção | `base::ubf::AbstractState` | `xnative::FlightState` |
-| decisão | `base::ubf::AbstractBehavior` | `xnative::BtBehavior`, `xnative::AltitudeSafetyBehavior` |
+| decisão | `base::ubf::AbstractBehavior` | `xnative::BtBehavior` (e `xnative::AltitudeSafetyBehavior`, exportada mas não instanciada por esta poc — ver [6.6](#66-simagent--o-agente)) |
 | atuação | `base::ubf::AbstractAction` | `xnative::FlightAction` |
 
 O que o UBF **não** diz é *como* decidir. É aí que entra a árvore: `BtBehavior` é um
@@ -1025,10 +1063,9 @@ comportamento do UBF cuja política interna é uma `BT::Tree` do BehaviorTree.CP
 SimAgent (nativo)
  └─ Agent::controller(dt)                          o ciclo, do framework
       ├─ FlightState::updateState(ator)            PERCEPÇÃO → Snapshot (números crus)
-      ├─ UbfArbiter::genAction(state, dt)          DECISÃO por voto
-      │    ├─ AltitudeSafetyBehavior  vote 90  → ação só se furar o piso (senão nullptr)
-      │    └─ BtBehavior              vote 50  → Snapshot → ThreatPolicy → tick da árvore
-      │                                            └─ FlightDecision (comando + rótulo)
+      ├─ BtBehavior::genAction(state, dt)          DECISÃO — direto, SEM árbitro no meio
+      │    └─ Snapshot → ThreatPolicy → tick da árvore
+      │                    └─ FlightDecision (comando + rótulo)
       └─ FlightAction::execute(ator)               ATUAÇÃO → Autopilot + AlertDatalink
 ```
 
@@ -1036,13 +1073,19 @@ SimAgent (nativo)
 árvore não sabe que existe um UBF. `BtBehavior` é o adaptador entre os dois, e é por isso que ele
 concentra as três responsabilidades feias: construir a árvore (uma vez, sob mutex), traduzir o
 `Snapshot` para `domain::ThreatPolicy`, e empacotar a `FlightDecision` num `FlightAction` com o
-voto certo.
+voto certo (o `setVote(getVote())` continua existindo mesmo sem árbitro — é assim que o UBF espera
+receber a ação de qualquer `AbstractBehavior`, arbitrado ou não).
 
 Quatro lições de projeto que a poc paga para aprender:
 
-- **Uma regra dura não precisa virar ramo da árvore.** O `AltitudeSafetyBehavior` é irmão do
-  `BtBehavior` no árbitro, não um nó dentro dele. Ele vence por **voto**, sem que a árvore saiba
-  que ele existe — e sem contaminar a política tática com uma condição de segurança.
+- **Uma regra dura não precisa virar ramo da árvore — a lição ficou, o desenho mudou.** Esta poc
+  já teve o `AltitudeSafetyBehavior` como irmão do `BtBehavior` dentro de um `( UbfArbiter )`,
+  vencendo por **voto** sem que a árvore soubesse que ele existia. O cenário de produção não monta
+  mais esse árbitro (ver [6.6](#66-simagent--o-agente)): hoje o único piso anti-CFIT é o
+  `terrainClearance:` do próprio `BtBehavior`, que só age dentro do ramo de evasão. A composição
+  "regra dura por voto, fora da árvore" continua válida como padrão de projeto — é o que
+  [`src/rl`](../../../../src/rl/) usa, de verdade, para blindar uma política de RL — só não é mais
+  o que este cenário faz.
 - **A histerese é do modelo, não da árvore.** `ContactDetected` consulta
   `domain::ThreatPolicy::engaged()`, não `snapshot().hasContact`.
 - **Os nós são burros de propósito.** Nenhum nó toca em objeto MIXR; todos leem o `BtBehavior` e
@@ -1375,7 +1418,9 @@ configs/scenario.edl.in     terrain: ( SrtmHgtFile path/file )
    FlightState::updateState()  → snap.terrainElevM / altitudeAglM / terrainValid
         └─ BtBehavior::feedThreatPolicy()  → domain::GroundReference
              └─ domain::ThreatPolicy::breakCommand() → clampToTerrain(...)
-        └─ AltitudeSafetyBehavior::genAction()      → terrainFloorM(...)
+                  (o único piso anti-CFIT vivo neste cenário -- só dentro do ramo de evasao;
+                   ver 10.2. AltitudeSafetyBehavior::genAction() -> terrainFloorM(...) existe
+                   no plugin mas nao roda aqui -- sem arbitro no behavior:, ver 6.6)
 ```
 
 ### 10.2 O que a elevação faz com o comportamento
@@ -1387,13 +1432,27 @@ embaixo. A regra descia `evadeClimb` a partir da altitude corrente contra um pis
 sobrando como rede. Como o alvo é fixado **uma vez, na entrada da manobra**, o piso também é
 avaliado uma vez.
 
-**Piso AGL do comportamento de segurança.** O `AltitudeSafetyBehavior` ganhou dois slots
-(`minClearance`, `recoverClearance`) e passou a disparar por AGL, não só por altitude absoluta. O
-piso absoluto de 1200 m continua como rede; sobre este terreno quem manda é o AGL.
+**Piso AGL do comportamento de segurança — histórico nesta poc, não mais ligado.** O
+`AltitudeSafetyBehavior` ganhou dois slots (`minClearance`, `recoverClearance`) para disparar por
+AGL, não só por altitude absoluta, e por um tempo foi exatamente esse o piso independente desta
+poc: vencia por voto (90 contra 50) qualquer ramo da árvore que o furasse. O cenário de produção
+não monta mais o `( UbfArbiter )` que o hospedava (ver a nota "SEM ARBITRO" em
+[`configs/scenario.edl.in`](configs/scenario.edl.in) e a [seção 6.6](#66-simagent--o-agente)): a
+classe continua no plugin, com os mesmos dois slots, mas nenhum dos quatro agentes a instancia.
 
-> **Regra de ajuste:** `minClearance` (400 m) tem de ficar **abaixo** de `terrainClearance`
-> (800 m). Senão o comportamento de segurança (voto 90) passa a brigar com o piso de evasão da
-> árvore (voto 50) que ele mesmo deveria estar respeitando.
+**Consequência real, não cosmética:** sem o árbitro não sobra piso independente nenhum cobrindo
+`PATROL`/`RTB`/`SUPPORT` — só o `terrainClearance:` do próprio `BtBehavior`, que ajusta o alvo
+calculado **dentro do ramo de evasão** (parágrafo anterior). Uma aeronave patrulhando ou
+retornando à base sobre um relevo que sobe rápido não tem mais uma segunda camada checando isso.
+Quem quiser esse piso de volta precisa reintroduzir o árbitro no `behavior:` do agente — é
+exatamente o que [`src/rl`](../../../../src/rl/) já faz hoje:
+`( UbfArbiter behaviors: { ( AltitudeSafetyBehavior vote: 90 minClearance: ( Meters 400 )
+recoverClearance: ( Meters 800 ) ... ) ( RLBridgeBehavior vote: 50 ) } )`.
+
+> **Regra de ajuste, válida onde o árbitro estiver montado** (hoje, `src/rl`): `minClearance`
+> (400 m) tem de ficar **abaixo** de `terrainClearance` (800 m). Senão o comportamento de
+> segurança (voto 90) passa a brigar com o piso de evasão da árvore (voto 50) que ele mesmo
+> deveria estar respeitando.
 
 ### 10.3 O que foi medido
 
@@ -1701,9 +1760,11 @@ decisão roda no laço de background. A [multi-thread](../multi-thread/) paga es
 
 ### 13.7 O `Agent` não propaga o ciclo de componentes
 
-Nem `updateData()` nem `reset()` chegam ao `state`/`behavior` (e um comportamento dentro do
-`UbfArbiter` está dois níveis abaixo). Sintoma medido: os planos de voo ficavam com os
-**defaults** do `domain::PatrolPlan` em vez dos valores dos slots, sem erro nenhum. Por isso o
+Nem `updateData()` nem `reset()` chegam ao `state`/`behavior` — vale tanto para o `BtBehavior`
+**direto** (a configuração de hoje, ver [6.6](#66-simagent--o-agente)) quanto para um comportamento
+aninhado mais fundo dentro de um `UbfArbiter` (dois níveis abaixo do `Agent`; esta poc já usou essa
+forma, e [`src/rl`](../../../../src/rl/) ainda usa). Sintoma medido: os planos de voo ficavam com
+os **defaults** do `domain::PatrolPlan` em vez dos valores dos slots, sem erro nenhum. Por isso o
 `BtBehavior` configura os planos **preguiçosamente**, no primeiro `genAction()`.
 
 ### 13.8 `BT::BehaviorTreeFactory::createTreeFromFile()` não é reentrante

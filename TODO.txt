@@ -1,10 +1,24 @@
-
-- no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
-
-
-- melhorar documentação
-> clang-tidy bem frouxo
 > ver o cenário onnx e python
 > enxugar shared (validar geração de logs e mensagens)
 > apresentação de slides
 > interface gráfica para montar edl
+
+O próximo passo desse repositório é a implementação massiça de modelos para que alimente simulações de aeroespacial. Me ajude a pensar uma forma de estruturar/documentar/sugerir o uso do repositporio de modo a deixar o processo mais claro e documentado/mastigado para um novo modelista, tornando o pipeline mais amigável possível para trabalho simultâneo de varios desenvolvedores
+
+
+
+Estudei MIXR e BT
+-> crie app de debug de cenários
+-> criei ui para criação de .edl
+-> criei documentação do mixr
+-> criei metaprojeto com boas praticas de organização desenvolvimento
+-> criei manual do MIXR
+-> manual do BT
+-> criei repositório de curso de CPP
+-> Criei apresentação para transmitir o que foi criado
+-> criei provas de conceito
+-> poc_A4
+-> poc_helicoptero
+-> disco_voador
+-> poc_satelite
+-> poc_foguete

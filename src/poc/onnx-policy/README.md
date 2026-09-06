@@ -44,7 +44,7 @@ primeira decisão.
 4. [O contrato: 28 entram, 3 saem](#4-o-contrato-28-entram-3-saem)
 5. [Por que a política não orbita: o corte dos 360°](#5-por-que-a-política-não-orbita-o-corte-dos-360)
 6. [Determinismo](#6-determinismo)
-7. [A rede não tem a última palavra](#7-a-rede-não-tem-a-última-palavra)
+7. [A rede TEM a última palavra — não há mais árbitro neste cenário](#7-a-rede-tem-a-última-palavra--não-há-mais-árbitro-neste-cenário)
 8. [Degradação: sem `.onnx`, a aeronave continua voando](#8-degradação-sem-onnx-a-aeronave-continua-voando)
 9. [Trocar a rede por uma política treinada de verdade](#9-trocar-a-rede-por-uma-política-treinada-de-verdade)
 10. [Armadilhas confirmadas rodando](#10-armadilhas-confirmadas-rodando)
@@ -222,22 +222,43 @@ de quebra, **mais rápido** neste tamanho de modelo: 50,1 µs contra 76,0 µs.
 
 ---
 
-## 7. A rede não tem a última palavra
+## 7. A rede TEM a última palavra — não há mais árbitro neste cenário
 
-A rede é o `( BtBehavior vote: 50 )`. Acima dela, no mesmo `UbfArbiter`, está o
-`( AltitudeSafetyBehavior vote: 90 )` — nativo, escrito em C++, calibrado contra o terreno. Uma
-política ruim que comande altitude contra a montanha é **sobreposta**, sem que a árvore precise
-saber disso.
+**Isto mudou, e é uma regressão de segurança real, não cosmética.** Versões anteriores desta poc
+enrolavam o `( BtBehavior vote: 50 )` num `( UbfArbiter )` junto com um
+`( AltitudeSafetyBehavior vote: 90 )` nativo — um piso anti-CFIT independente, calibrado contra o
+terreno, que sobrepunha qualquer comando de altitude perigoso vindo da árvore, voto contra voto,
+sem que a rede precisasse saber disso. `src/poc/onnx-policy/configs/scenario.edl.in` **não faz mais
+isso**: `behavior:` do `( FlightAgentTC )` aponta direto para o `( BtBehavior )`, sem `( UbfArbiter
+)`/`( AltitudeSafetyBehavior )` no meio (ver o bloco de comentário "SEM ARBITRO" no topo do
+arquivo).
 
-Medido, com a fixture `terrain` (que sobe `minAltitude` acima da altitude de cruzeiro):
+`AltitudeSafetyBehavior`/`UbfArbiter` continuam existindo como classes — o `libflight_tc.so` ainda
+as exporta e `provides:` deste cenário ainda as lista — só que **este** cenário não instancia mais
+nenhuma das duas. `src/rl`/`src/poc/rl-training` continuam usando o árbitro de propósito (não
+mudaram); a mudança é só aqui.
 
-```
-  32 amostras, 4 players
-    falcon1: SAFETY   falcon2: SAFETY   falcon3: SAFETY   falcon4: SAFETY
-```
+**A consequência real, sem suavizar:** enquanto o `.onnx` carrega e infere com sucesso, a rede tem
+a última palavra sobre altitude. Não há mais um piso anti-CFIT independente por cima dela — uma
+política que comande altitude contra a montanha **não é mais interceptada por ninguém**. O
+`terrainClearance: ( Meters 800 )` que o `( BtBehavior )` ainda declara (ver a
+[seção 4](#4-o-contrato-28-entram-3-saem)/o `.edl.in`) só entra em jogo no ramo de **FALLBACK** da
+árvore — `< Patrol >`, que só assume se o `.onnx` **falhar ao carregar** (arquivo ausente, forma
+diferente de 28→3, erro de inferência). Ele não protege uma inferência bem-sucedida porém ruim: se
+a rede infere normalmente e devolve um comando de altitude ruim, esse comando vai para o
+`Autopilot` sem revisão nenhuma.
 
-É a propriedade que torna barato experimentar: trocar de política não exige revalidar segurança de
-voo. O teste `scenario-terrain-onnx-policy` a trava.
+O teste que antes travava essa proteção, `scenario-terrain-onnx-policy` (fixture `terrain`, com
+`minAltitude` acima da altitude de cruzeiro, afirmando `bt=SAFETY` em 32/32 linhas — a prova de que
+o voto 90 vencia a rede), **foi removido** de `tests/meson.build` junto com o árbitro: `bt=SAFETY`
+é hoje **inalcançável** neste cenário, porque não há mais `( AltitudeSafetyBehavior )` para produzir
+esse rótulo. Não sobrou um teste equivalente — a propriedade que ele provava não é mais verdadeira.
+
+Trocar de política aqui **volta a exigir revalidar segurança de voo por conta própria** — a rede
+tem de ser confiável sozinha, do jeito que uma árvore de regras nua também precisaria ser sem um
+árbitro por cima. Isto **não é** mais "barato experimentar" no sentido de segurança garantida; é
+barato no sentido operacional de "troca-se um caminho de arquivo, nada recompila" — os dois
+sentidos eram verdadeiros antes, só o segundo continua.
 
 ---
 
@@ -324,7 +345,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 | altitude | segue `terreno + 900 m` (limitada pelo `maxClimbRateMps: 8.0` do c310, como toda subida nesta poc-mixr) |
 | erro da rede contra a regra clonada | rumo 0,27° médio (2,50° máx.), altitude 6,6 m (42,9 máx.), velocidade 0,08 kt (1,01 máx.) |
 | determinismo | dumps byte-idênticos com 1, 2 e 4 threads T/C, mais repetição com 4 |
-| piso anti-CFIT | fixture `terrain`: 32/32 linhas com `bt=SAFETY` — o voto 90 vence a rede |
+| piso anti-CFIT | **não existe mais neste cenário** — sem `( UbfArbiter )`/`( AltitudeSafetyBehavior )`, `bt=SAFETY` é inalcançável; ver a [seção 7](#7-a-rede-tem-a-última-palavra--não-há-mais-árbitro-neste-cenário) |
 | degradação | `.onnx` recusado → `bt=PATROL` + `LOG(ERROR)`, sem abortar |
 | custo da inferência | 50,1 µs médios (medido em `shared/xinfer`, para este mesmo MLP) — 0,25% de um frame de 20 ms |
 
@@ -342,8 +363,16 @@ Os testes próprios (`tests/meson.build`):
 | teste | o que trava |
 |---|---|
 | `scenario-onnx-policy` | a rede decidiu em todos os frames (`bt=ONNX`), os dumps de 1, 2 e 4 threads são byte-idênticos, e `dec` avança na taxa de `frame` |
-| `scenario-terrain-onnx-policy` | com o piso do `AltitudeSafetyBehavior` acima da altitude de cruzeiro, **toda** linha sai `bt=SAFETY` |
 | `memory-onnx-policy` | os contadores de instância do MIXR não crescem entre 500 e 1000 frames |
+
+**Removido, e por que ele não foi só apagado da tabela em silêncio**: havia um terceiro teste,
+`scenario-terrain-onnx-policy` (modo `terrain`: com o piso do `( AltitudeSafetyBehavior vote: 90 )`
+acima da altitude de cruzeiro, **toda** linha saía `bt=SAFETY` — a prova de que o voto 90 vencia a
+rede, voto 50). Ele foi removido de `tests/meson.build` **junto com o árbitro**: o cenário de
+produção desta poc não instancia mais `( UbfArbiter )`/`( AltitudeSafetyBehavior )`, então
+`bt=SAFETY` é hoje **inalcançável** — não há mais nada equivalente para esse teste travar. Ver a
+[seção 7](#7-a-rede-tem-a-última-palavra--não-há-mais-árbitro-neste-cenário) para a consequência de
+segurança que isso representa.
 
 Mais os que valem para todas as gêmeas: `tests/guard/check_duplication.sh` (a camada de aplicação
 continua byte a byte igual à da `single-thread`) e `tests/guard/check_falcons_estrutura.sh`

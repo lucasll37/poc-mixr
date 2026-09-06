@@ -230,21 +230,22 @@ bool navigateComponentTree(const ComponentTreeLayout& layout, ComponentTreeViewS
 // para o que essa fase representa (o ciclo CONCEITUAL, não uma medição).
 // Cor deliberadamente distinta do anel branco de seleção, pra "selecionado"
 // e "ativo no ciclo agora" nunca se confundirem visualmente mesmo quando os
-// dois calham no mesmo nó.
-// Além do pulso, o desenho responde graficamente "o que está sendo chamado
-// agora, e por onde a chamada chega": (a) todo nó que participa da fase
-// corrente ganha, logo abaixo do nome, o RÓTULO DA CHAMADA com o argumento
-// de verdade -- `dynamics(0.020s)`, `transmit(0.020s)`; (b) as arestas do
-// CAMINHO DA RECURSÃO até esses nós saem acesas na cor da fase, contra o
-// cinza das demais -- é literalmente `Component::updateTC()` descendo por
-// `obj->tcFrame(dt)` em cada filho; e (c) uma ONDA visita esse caminho UM
-// COMPONENTE POR VEZ, na MESMA ordem sequencial que a recursão real usa
-// (um filho de cada vez, terminando a subárvore inteira de um antes do
-// próximo irmão) -- não mais "um nível inteiro simultaneamente", que
-// sugeria um paralelismo que `Component::updateTC()` não tem.
+// dois calham no mesmo nó. NÃO desenha o nome da função chamada (isso fica
+// só no card de detalhe, ver renderComponentDetail() -- o desenho já é
+// denso o bastante sem texto extra por nó).
+// Além do pulso, o desenho responde graficamente "por onde a chamada
+// chega": (a) as arestas do CAMINHO DA RECURSÃO até os participantes saem
+// acesas na cor da fase, contra o cinza das demais -- é literalmente
+// `Component::updateTC()` descendo por `obj->tcFrame(dt)` em cada filho; o
+// PONTO e o RÓTULO de todo nó no caminho (não só das arestas) usam a MESMA
+// cor da fase, pra a linha nunca "quebrar" visualmente em cima de um nó com
+// cor de classificação estática diferente; e (b) uma ONDA visita esse
+// caminho UM COMPONENTE POR VEZ, na MESMA ordem sequencial que a recursão
+// real usa (um filho de cada vez, terminando a subárvore inteira de um
+// antes do próximo irmão) -- não "um nível inteiro simultaneamente", que
+// sugeriria um paralelismo que `Component::updateTC()` não tem.
 ftxui::Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
-                                   ftxui::Box& outCanvasBox, const ComponentFlowState& flow,
-                                   const FrameCallParams& params);
+                                   ftxui::Box& outCanvasBox, const ComponentFlowState& flow);
 
 // Converte um clique em CELULAS de terminal relativas ao canvas (já
 // subtraído o canto do Box) no ÍNDICE do nó mais próximo em

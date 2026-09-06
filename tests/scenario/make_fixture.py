@@ -20,12 +20,20 @@ Modos:
             src/poc/dis/bandit e chega apenas por DIS.
   lowfuel   sobe 'fuelReserve' acima da fracao real de combustivel, pelo slot
             que ja existe: o ramo de RTB vence desde o primeiro frame.
-  terrain   sobe 'minAltitude' do AltitudeSafetyBehavior acima da altitude de
-            cruzeiro: o comportamento de voto 90 assume e a arvore perde.
   plain     so o hermetico -- nenhum delta de comportamento. Existe para
-            testes que nao querem EVADE/RTB/SAFETY no caminho, so PATROL
+            testes que nao querem EVADE/RTB no caminho, so PATROL
             (ex.: check_patrol_seed.sh, que precisa isolar o efeito da
             semente sem outro ramo da arvore competindo).
+
+O modo 'terrain' EXISTIU aqui (subia 'minAltitude' do AltitudeSafetyBehavior
+acima da altitude de cruzeiro, provando que o comportamento de voto 90
+assumia da arvore) e foi REMOVIDO quando os cenarios de producao pararam de
+usar ( UbfArbiter )/( AltitudeSafetyBehavior ) -- ver a secao "SEM ARBITRO"
+no topo de cada scenario.edl.in. Sem o arbitro, nao ha mais um piso
+independente que vença a arvore por votacao: o unico piso anti-CFIT que
+resta e o 'terrainClearance:' do proprio BtBehavior, que so age DENTRO do
+ramo de evasao -- nao ha mais uma propriedade equivalente para testar com
+um simples ajuste de 'minAltitude'.
 
 --patrol-seed, opcional e composto com QUALQUER --mode: substitui o valor de
 TODAS as ocorrencias de 'patrolMasterSeed:' no cenario (mesmo literal
@@ -98,7 +106,7 @@ def remove_block(texto, marcador):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (single-thread, multi-thread, python-flight)")
-    ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "terrain", "plain"))
+    ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "plain"))
     ap.add_argument("--out", required=True, help="caminho do .edl.in a gerar")
     ap.add_argument("--patrol-seed", type=int, default=None,
                      help="substitui patrolMasterSeed em todo player (composto com --mode)")
@@ -153,14 +161,6 @@ def main():
         texto = re.sub(r"fuelReserve:(\s*)0\.35", r"fuelReserve:\g<1>0.99", texto)
         if texto == antes:
             raise SystemExit("nenhum slot fuelReserve ajustado")
-    elif args.mode == "terrain":
-        antes = texto
-        texto = texto.replace("minAltitude:      ( Meters 1200 )",
-                              "minAltitude:      ( Meters 2600 )")
-        texto = texto.replace("minAltitude: ( Meters 1200 )",
-                              "minAltitude: ( Meters 2600 )")
-        if texto == antes:
-            raise SystemExit("nenhum slot minAltitude ajustado")
     elif args.mode == "plain":
         pass  # so o hermetico -- nenhum delta de comportamento
 

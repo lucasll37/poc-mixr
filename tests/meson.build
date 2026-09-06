@@ -349,7 +349,12 @@ foreach poc : pocs
     laco    = poc[2]
     prefixo = poc[3]
 
-    foreach modo : ['intruder', 'lowfuel', 'terrain']
+    # 'terrain' EXISTIU aqui (afirmava que o AltitudeSafetyBehavior, voto 90,
+    # ganhava do BtBehavior, voto 50) e foi REMOVIDO junto com o arbitro --
+    # os cenarios de producao nao instanciam mais ( UbfArbiter )/
+    # ( AltitudeSafetyBehavior ), entao 'bt=SAFETY' e inalcancavel hoje. Ver
+    # a secao "SEM ARBITRO" no topo de cada scenario.edl.in.
+    foreach modo : ['intruder', 'lowfuel']
         test('scenario-' + modo + '-' + nome, py,
              args: scenario_runner + ['--binario', bin.full_path(), '--poc', nome,
                                       '--mode', modo, '--frames', '800',
@@ -469,30 +474,26 @@ endforeach
 # ARVORE INTEIRA, ao contrario da python-flight, que troca as FOLHAS e por isso
 # preserva a forma que aqueles modos medem.
 #
-# O que sobra dela e afirmado por dois testes, e os dois dizem algo que nenhum
-# outro diz:
+# O que sobra dela e afirmado pela bateria de politica (a mesma de
+# scenario-policy-*, agora apontada para o cenario PROPRIO desta poc, sem
+# troca de arvore): a rede decidiu em todos os frames (bt=ONNX, ou seja nao
+# caiu no Fallback), os dumps de 1, 2 e 4 threads sao byte-identicos com as
+# quatro aeronaves inferindo em paralelo, e 'dec' avanca na taxa de 'frame'.
 #
-#   1. a bateria de politica (a mesma de scenario-policy-*, agora apontada para
-#      o cenario PROPRIO desta poc, sem troca de arvore): a rede decidiu em
-#      todos os frames (bt=ONNX, ou seja nao caiu no Fallback), os dumps de 1, 2
-#      e 4 threads sao byte-identicos com as quatro aeronaves inferindo em
-#      paralelo, e 'dec' avanca na taxa de 'frame';
-#   2. o modo 'terrain': com o piso do ( AltitudeSafetyBehavior vote: 90 ) acima
-#      da altitude de cruzeiro, TODA linha sai bt=SAFETY -- a prova de que a
-#      rede (voto 50) nao tem a ultima palavra sobre o terreno. E a propriedade
-#      que torna seguro trocar de politica sem revalidar seguranca de voo.
+# HAVIA um segundo teste aqui, 'scenario-terrain-onnx-policy' (modo
+# 'terrain': com o piso do ( AltitudeSafetyBehavior vote: 90 ) acima da
+# altitude de cruzeiro, TODA linha saia bt=SAFETY -- a prova de que a rede,
+# voto 50, nao tinha a ultima palavra sobre o terreno). Foi REMOVIDO junto
+# com o arbitro: o cenario de producao desta poc nao instancia mais
+# ( UbfArbiter )/( AltitudeSafetyBehavior ), entao bt=SAFETY e inalcancavel
+# hoje -- ver a secao "SEM ARBITRO" no topo de
+# src/poc/onnx-policy/configs/scenario.edl.in. Trocar de politica aqui volta
+# a exigir revalidar seguranca de voo por conta propria.
 # ------------------------------------------------------------------------------
 test('scenario-onnx-policy', py,
      args: files('scenario/run_policy_test.py') + [
          '--binario', app.full_path(),
          '--poc', 'onnx-policy', '--label', 'ONNX', '--frames', '600'],
-     depends: app, workdir: raiz, suite: 'scenario',
-     timeout: 900, is_parallel: false)
-
-test('scenario-terrain-onnx-policy', py,
-     args: scenario_runner + ['--binario', app.full_path(),
-                              '--poc', 'onnx-policy', '--mode', 'terrain',
-                              '--frames', '800'],
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 900, is_parallel: false)
 

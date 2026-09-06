@@ -19,7 +19,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "SAFETY", "LAUNCH", "?"}
+ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "LAUNCH", "?"}
 
 CAMPO = re.compile(r"(\w+)=(\S+)")
 

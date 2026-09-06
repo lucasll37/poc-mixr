@@ -18,7 +18,10 @@ models/
 │   └── payloads/EID_ALERT/TacticalAlert.{hpp,cpp}   # um payload, uma pasta,
 │                     # nomeada igual ao token que carrega (ver EventTokens.hpp)
 ├── player/          # os projetos de modelo -- cada um um .so de PRODUCAO
-│   ├── flight/          # o modelo de produção das duas pocs gêmeas
+│   │                # (exceto fixtures/stub e template/, ver abaixo)
+│   ├── A4/              # o modelo de produção das pocs de DIS (nome de fábrica/
+│   │   │                # biblioteca continuam "flight" -- libflight.so/
+│   │   │                # libflight_tc.so; só o título da PASTA é o A4)
 │   │   ├── include/{domain,bt,ubf,xnative}/   src/...   configs/flight_tree.xml
 │   │   ├── data/jsbsim/  # a aeronave (c310) -- é do modelo, não do cenário; as três
 │   │   │                 # pocs (single-thread/multi-thread/bandit) apontam pra cá
@@ -58,6 +61,18 @@ models/
 │           ├── Makefile                 # build AUTOCONTIDO (§1.1)
 │           ├── README.md
 │           └── CHANGELOG.md
+├── template/        # o OUTRO ponto de partida copiável (§2.4) -- ao contrário do
+│   │                # stub (achatado, um arquivo, prova que o contrato BASTA),
+│   │                # mostra a separação em CAMADAS (domain/ubf/xnative) com uma
+│   │                # única decisão de exemplo. NÃO é produção: nenhum cenário
+│   │                # aponta para ele, e ele NUNCA entra no alvo `models:` abaixo.
+│   ├── include/{domain,ubf,xnative}/   src/...
+│   ├── tests/domain/test_ExampleThreshold.cpp   tests/check_contract.sh
+│   ├── docs/ARCHITECTURE.md   # as camadas, o porquê, quando crescer p/ BehaviorTree.CPP
+│   ├── docs/PRIMEIROS-PASSOS.md   # o roteiro de copiar isto e virar um modelo com nome próprio
+│   ├── Makefile          # build AUTOCONTIDO (§1.1)
+│   ├── README.md
+│   └── CHANGELOG.md
 └── README.md        # este arquivo
 ```
 
@@ -180,7 +195,11 @@ um dos três, e continua sendo o que `make build`/`make test`/o CI usam. O Makef
 ## 2. Como criar um modelo novo
 
 **Comece pelo stub, não pelo `flight`.** O `stub` é ~300 linhas e é o exemplo mínimo completo; o
-`flight` tem 3.100 e vai te distrair.
+`flight` (a pasta é `A4/`, o nome de fábrica/biblioteca continua `flight`) tem 3.100 linhas e vai
+te distrair. Isto vale para o caso em que o seu modelo decide com **uma** coisa (uma regra, uma
+condição) — se você já sabe que vai coordenar mais de uma decisão e prefere nascer separado em
+camadas (`domain/`→`ubf/`→`xnative/`) em vez de um arquivo achatado, o ponto de partida é
+[`player/template/`](player/template/README.md) em vez do `stub` — ver §2.4.
 
 ```bash
 cp -r models/player/fixtures/stub models/player/meu-modelo
@@ -260,6 +279,31 @@ ldd dist/lib/mixr-plugins/libmeu_modelo.so | grep 'not found'             # tem 
 ```
 
 Depois aponte um cenário para ele (§4) e rode.
+
+### 2.4 A alternativa em camadas: `player/template/`
+
+O `stub` (§3) é deliberadamente achatado — um arquivo, sem `domain/`, sem separação nenhuma —
+porque o papel dele é provar que o contrato de plugin **basta**, não ensinar arquitetura.
+[`player/template/`](player/template/README.md) existe para o caso oposto: você já sabe que vai
+escrever mais de uma decisão coordenada e quer começar já na forma que `A4`/`missile` usam, só que
+reduzida ao mínimo que ainda compila e roda — `domain/` (uma regra pura, um Schmitt trigger),
+`ubf/` (percepção → decisão → ação, incluindo a escrita obrigatória no `xboard`) e `xnative/`
+(o registro que a fronteira do plugin chama).
+
+A cópia funciona igual à do `stub`, só que com mais arquivos para renomear (o namespace C++
+incluído — `player/template/docs/PRIMEIROS-PASSOS.md` tem o roteiro completo, com os comandos
+exatos):
+
+```bash
+cp -r models/player/template models/player/meu-modelo
+```
+
+`player/template/docs/ARCHITECTURE.md` explica o porquê de cada camada, o porquê de `domain::`
+morar aninhado no namespace do próprio modelo (evita colisão de `type_info` quando dois plugins
+carregam juntos no mesmo processo — mesmo raciocínio do `missile`), e o roteiro para crescer até
+uma árvore do BehaviorTree.CPP quando uma regra só deixar de bastar. Como o `stub`, `template`
+**nunca** entra no alvo `models:` do Makefile raiz nem em `tests/meson.build` — não é produção,
+nenhum cenário aponta para ele.
 
 ---
 
@@ -372,8 +416,15 @@ A poc é o **host**: `main.cpp`, `mixr_factory.cpp` e os módulos de `app/`. Nad
 ## Ler também
 
 - **[player/fixtures/stub/docs/CONTRATO.md](player/fixtures/stub/docs/CONTRATO.md)** — o que um modelo TEM de fazer
-- **[player/fixtures/stub/README.md](player/fixtures/stub/README.md)** — o build autocontido do fixture/template,
+- **[player/fixtures/stub/README.md](player/fixtures/stub/README.md)** — o build autocontido do fixture,
   alvo por alvo (`make`, `make test`, `make install-host`)
+- **[player/template/README.md](player/template/README.md)** — o build autocontido do template (mesmo
+  molde do stub)
+- **[player/template/docs/ARCHITECTURE.md](player/template/docs/ARCHITECTURE.md)** — as quatro camadas,
+  o porquê de `domain::` morar aninhado no namespace do modelo, e quando crescer para uma árvore do
+  BehaviorTree.CPP
+- **[player/template/docs/PRIMEIROS-PASSOS.md](player/template/docs/PRIMEIROS-PASSOS.md)** — o roteiro
+  mecânico de copiar o template e transformá-lo num modelo com nome próprio
 - **[player/A4/docs/ARCHITECTURE.md](player/A4/docs/ARCHITECTURE.md)** — calibração e armadilhas do
   modelo de produção
 - **[player/missile/docs/DESIGN.md](player/missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil

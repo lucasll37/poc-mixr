@@ -8,13 +8,19 @@
 //   peca                multi-thread                python-flight
 //   ------------------  --------------------------  --------------------------
 //   agente UBF          ( FlightAgentTC )           igual
-//   arbitro             ( UbfArbiter )              igual
-//   rede de seguranca   ( AltitudeSafetyBehavior )  igual (voto 90, C++)
-//   politica            ( BtBehavior ), voto 50     igual
+//   politica            ( BtBehavior )              igual
 //   arvore              flight_tree.xml             flight_tree_python.xml
 //   quem calcula o      nos C++ do plugin           configs/policy/*.py
 //   comando de voo      (ReportAndEvade, Patrol,
 //                        ReturnToBase, SupportAlert)
+//
+// SEM ARBITRO: 'behavior:' do agente aponta direto para o ( BtBehavior ),
+// sem ( UbfArbiter )/( AltitudeSafetyBehavior ) no meio -- a .so continua
+// exportando AltitudeSafetyBehavior (ver 'provides:' abaixo), so este
+// cenario nao a instancia. O piso anti-CFIT que sobra e so o
+// 'terrainClearance:' do proprio BtBehavior (o mesmo usado pelo ramo nativo
+// de evasao), sem um piso independente por cima do que o script Python
+// comanda.
 //
 // O QUE FICA NATIVO, E POR QUE. A arvore continua escolhendo o RAMO com os
 // mesmos nos de condicao do modelo de producao ( FuelLow, ContactDetected,
@@ -462,7 +468,7 @@
                // O AGENTE -- a diferenca deste subprojeto.
                //
                // Mesmo conteudo do ( SimAgent ) do single-thread (mesmo state,
-               // mesmo arbitro, mesmos numeros); muda a CLASSE e o LUGAR.
+               // mesmo behavior, mesmos numeros); muda a CLASSE e o LUGAR.
                //
                // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
                // percorrida na ordem declarada, e tres coisas rodam na
@@ -475,82 +481,35 @@
                // ------------------------------------------------------
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior
-                           vote: 90
-                           // DOIS PISOS. O absoluto (minAltitude) nao sabe onde
-                           // esta o chao: sobre esta serra, 1200 m MSL fica
-                           // DENTRO da montanha. Ele fica so como rede para
-                           // quando nao ha elevacao; quem manda aqui e o piso
-                           // AGL abaixo.
-                           minAltitude:      ( Meters 1200 )
-                           recoverAltitude:  ( Meters 1750 )
-                           recoverSpeed:     350.0
-                           // minClearance TEM de ficar abaixo do
-                           // terrainClearance do BtBehavior (800), senao este
-                           // comportamento (voto 90) briga com o piso de
-                           // evasao da arvore (voto 50).
-                           minClearance:     ( Meters 400 )
-                           recoverClearance: ( Meters 800 )
-                        )
-                        // ---------------------------------------------
-                        // OS NUMEROS ABAIXO NAO SAO MAIS A POLITICA.
-                        //
-                        // Cada script de configs/policy/ carrega os SEUS
-                        // proprios numeros -- e esse e o ponto do
-                        // subprojeto: mexer no voo e editar um .py e rodar
-                        // de novo, sem recompilar nem re-parsear nada.
-                        //
-                        // O que estes slots ainda governam, e por isso
-                        // continuam aqui, com os mesmos valores das gemeas:
-                        //
-                        //   fuelReserve      o ( FuelLow ) da arvore
-                        //   breakTurn        a histerese de
-                        //   evadeClimb       domain::ThreatPolicy, que e
-                        //   evadeSpeed       quem responde ao
-                        //   evadeHold        ( ContactDetected ) e quem
-                        //   terrainClearance marca o alerta tatico
-                        //   patrol*/legTime  o ( Patrol ) nativo, que so
-                        //                    entra se nao houver Python
-                        //
-                        // Ficam inertes, e de proposito -- para o diff
-                        // contra a gemea ser so a arvore: rtbAltitude,
-                        // rtbSpeed, arrivalRadius e supportSpeed. Quem faz
-                        // esses tres papeis agora e rtb.py e support.py.
-                        // ---------------------------------------------
-                        ( BtBehavior
-                           vote: 50
-                           treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
-                           patrolHeading:  ( Degrees 90 )
-                           legTime:        ( Seconds 60 )
-                           legTurn:        ( Degrees 90 )
-                           patrolAltitude: ( Meters 1750 )
-                           patrolSpeed:    350.0
-                           rtbAltitude:    ( Meters 2050 )
-                           rtbSpeed:       380.0
-                           arrivalRadius:  ( NauticalMiles 2.0 )
-                           fuelReserve:    0.35
-                           breakTurn:      ( Degrees 110 )
-                           evadeClimb:     ( Meters 700 )
-                           evadeSpeed:     420.0
-                           supportSpeed:   400.0
-                           // Histerese da evasao: por quanto tempo a manobra continua
-                           // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
-                           // entre perder o contato (a propria quebra tira o intruso do
-                           // setor do radar) e o ramo de apoio querer assumir -- sem
-                           // isso os dois alternam e a aeronave voa "batendo asa".
-                           evadeHold:      ( Seconds 30 )
-                           // PISO ANTI-CFIT. O desconflito vertical da evasao
-                           // desce 700 m a partir da altitude atual; com ~940 m
-                           // de AGL de cruzeiro isso levaria a aeronave para
-                           // ~240 m do chao. O alvo e entao levantado para
-                           // terreno+800. 0 desliga a camada de terreno e
-                           // devolve o piso absoluto de 200 m -- e o controle
-                           // negativo, sem recompilar.
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
+                     patrolHeading:  ( Degrees 90 )
+                     legTime:        ( Seconds 60 )
+                     legTurn:        ( Degrees 90 )
+                     patrolAltitude: ( Meters 1750 )
+                     patrolSpeed:    350.0
+                     rtbAltitude:    ( Meters 2050 )
+                     rtbSpeed:       380.0
+                     arrivalRadius:  ( NauticalMiles 2.0 )
+                     fuelReserve:    0.35
+                     breakTurn:      ( Degrees 110 )
+                     evadeClimb:     ( Meters 700 )
+                     evadeSpeed:     420.0
+                     supportSpeed:   400.0
+                     // Histerese da evasao: por quanto tempo a manobra continua
+                     // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
+                     // entre perder o contato (a propria quebra tira o intruso do
+                     // setor do radar) e o ramo de apoio querer assumir -- sem
+                     // isso os dois alternam e a aeronave voa "batendo asa".
+                     evadeHold:      ( Seconds 30 )
+                     // PISO ANTI-CFIT. O desconflito vertical da evasao
+                     // desce 700 m a partir da altitude atual; com ~940 m
+                     // de AGL de cruzeiro isso levaria a aeronave para
+                     // ~240 m do chao. O alvo e entao levantado para
+                     // terreno+800. 0 desliga a camada de terreno e
+                     // devolve o piso absoluto de 200 m -- e o controle
+                     // negativo, sem recompilar.
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -607,25 +566,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
-                           patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
+                     patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -682,25 +632,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
-                           patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                           legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                           patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                           evadeSpeed: 430.0  supportSpeed: 410.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
+                     patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
+                     legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
+                     patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
+                     evadeSpeed: 430.0  supportSpeed: 410.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -757,25 +698,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
-                           patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
+                     patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }

@@ -4,9 +4,16 @@
 // 4 avioes patrulhando + 1 intruso; quem detecta avisa os outros, que vao
 // apoiar. A pilha e 100% HERDADA/REAPROVEITADA do MIXR: ( Aircraft ),
 // ( JSBSimModel ), ( Autopilot ), radar ( Gimbal/Antenna + Tws + AirTrkMgr ),
-// ( AlertDatalink : models::Datalink ) e o agente ( SimAgent ). So o
-// arbitro ( UbfArbiter ) e a percepcao/decisao/acao (FlightState/BtBehavior/
-// FlightAction) sao proprios -- o UBF nao traz implementacoes prontas.
+// ( AlertDatalink : models::Datalink ) e o agente ( SimAgent ). So a
+// percepcao/decisao/acao (FlightState/BtBehavior/FlightAction) sao proprios
+// -- o UBF nao traz implementacoes prontas.
+//
+// SEM ARBITRO: 'behavior:' do agente aponta direto para o ( BtBehavior ),
+// sem ( UbfArbiter )/( AltitudeSafetyBehavior ) no meio. A .so continua
+// exportando AltitudeSafetyBehavior (ver 'provides:' abaixo) -- so este
+// cenario nao a instancia. Sem ela, o piso anti-CFIT que sobra e so o
+// 'terrainClearance:' do proprio BtBehavior, que age apenas DENTRO do ramo
+// de evasao -- nao ha mais um piso independente cobrindo os outros ramos.
 //
 // AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
 // models/player/A4/data/jsbsim/aircraft/A4/, originados de
@@ -85,138 +92,91 @@
       agent1: ( SimAgent
          actorPlayerName: falcon1
          state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior
-                  vote: 90
-                  // DOIS PISOS. O absoluto (minAltitude) nao sabe onde esta
-                  // o chao: sobre esta serra, 1200 m MSL fica DENTRO da
-                  // montanha. Ele fica so como rede para quando nao ha
-                  // elevacao; quem manda aqui e o piso AGL abaixo.
-                  minAltitude:      ( Meters 1200 )
-                  recoverAltitude:  ( Meters 1750 )
-                  recoverSpeed:     350.0
-                  // minClearance TEM de ficar abaixo do terrainClearance do
-                  // BtBehavior (800), senao este comportamento (voto 90)
-                  // briga com o piso de evasao da arvore (voto 50).
-                  minClearance:     ( Meters 400 )
-                  recoverClearance: ( Meters 800 )
-               )
-               ( BtBehavior
-                  vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                  patrolHeading:  ( Degrees 90 )
-                  legTime:        ( Seconds 60 )
-                  legTurn:        ( Degrees 90 )
-                  patrolAltitude: ( Meters 1750 )
-                  patrolSpeed:    350.0
-                  // Jitter de rumo na patrulha (opcional, ver CLAUDE.md secao
-                  // shared/xrandom): mesma patrolMasterSeed nos 4 falcons --
-                  // cada um deriva a propria sequencia do proprio NOME, nunca
-                  // de ordem de descoberta/thread.
-                  patrolJitterHeading: ( Degrees 6 )
-                  patrolMasterSeed:    20260903
-                  rtbAltitude:    ( Meters 2050 )
-                  rtbSpeed:       380.0
-                  arrivalRadius:  ( NauticalMiles 2.0 )
-                  fuelReserve:    0.35
-                  breakTurn:      ( Degrees 110 )
-                  evadeClimb:     ( Meters 700 )
-                  evadeSpeed:     420.0
-                  // PISO ANTI-CFIT. O desconflito vertical da evasao desce
-                  // 700 m a partir da altitude atual; com ~940 m de AGL de
-                  // cruzeiro isso levaria a aeronave para ~240 m do chao. O
-                  // alvo e entao levantado para terreno+800. 0 desliga a
-                  // camada de terreno e devolve o piso absoluto de 200 m --
-                  // e o controle negativo, sem recompilar.
-                  terrainClearance: ( Meters 800 )
-                  // Histerese da evasao: por quanto tempo a manobra continua
-                  // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
-                  // entre perder o contato (a propria quebra tira o intruso do
-                  // setor do radar) e o ramo de apoio querer assumir -- sem
-                  // isso os dois alternam e a aeronave voa "batendo asa".
-                  evadeHold:      ( Seconds 30 )
-                  supportSpeed:   400.0
-               )
-            }
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading:  ( Degrees 90 )
+            legTime:        ( Seconds 60 )
+            legTurn:        ( Degrees 90 )
+            patrolAltitude: ( Meters 1750 )
+            patrolSpeed:    350.0
+            // Jitter de rumo na patrulha (opcional, ver CLAUDE.md secao
+            // shared/xrandom): mesma patrolMasterSeed nos 4 falcons --
+            // cada um deriva a propria sequencia do proprio NOME, nunca
+            // de ordem de descoberta/thread.
+            patrolJitterHeading: ( Degrees 6 )
+            patrolMasterSeed:    20260903
+            rtbAltitude:    ( Meters 2050 )
+            rtbSpeed:       380.0
+            arrivalRadius:  ( NauticalMiles 2.0 )
+            fuelReserve:    0.35
+            breakTurn:      ( Degrees 110 )
+            evadeClimb:     ( Meters 700 )
+            evadeSpeed:     420.0
+            // PISO ANTI-CFIT. O desconflito vertical da evasao desce
+            // 700 m a partir da altitude atual; com ~940 m de AGL de
+            // cruzeiro isso levaria a aeronave para ~240 m do chao. O
+            // alvo e entao levantado para terreno+800. 0 desliga a
+            // camada de terreno e devolve o piso absoluto de 200 m --
+            // e o controle negativo, sem recompilar.
+            terrainClearance: ( Meters 800 )
+            // Histerese da evasao: por quanto tempo a manobra continua
+            // valendo DEPOIS de a pista sumir. Precisa cobrir o intervalo
+            // entre perder o contato (a propria quebra tira o intruso do
+            // setor do radar) e o ramo de apoio querer assumir -- sem
+            // isso os dois alternam e a aeronave voa "batendo asa".
+            evadeHold:      ( Seconds 30 )
+            supportSpeed:   400.0
          )
       )
 
       agent2: ( SimAgent
          actorPlayerName: falcon2
          state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                  recoverSpeed: 350.0
-                  minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                  patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                  legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 420.0  supportSpeed: 400.0
-                  evadeHold: ( Seconds 30 )
-                  terrainClearance: ( Meters 800 )
-                  patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
-               )
-            }
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
+            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
+            patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+            evadeSpeed: 420.0  supportSpeed: 400.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
          )
       )
 
       agent3: ( SimAgent
          actorPlayerName: falcon3
          state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                  recoverSpeed: 350.0
-                  minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                  patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                  legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                  patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                  evadeSpeed: 430.0  supportSpeed: 410.0
-                  evadeHold: ( Seconds 30 )
-                  terrainClearance: ( Meters 800 )
-                  patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
-               )
-            }
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
+            legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
+            patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
+            evadeSpeed: 430.0  supportSpeed: 410.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
          )
       )
 
       agent4: ( SimAgent
          actorPlayerName: falcon4
          state: ( FlightState )
-         behavior: ( UbfArbiter
-            behaviors: {
-               ( AltitudeSafetyBehavior vote: 90
-                  minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                  recoverSpeed: 350.0
-                  minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-               )
-               ( BtBehavior vote: 50
-                  treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                  patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                  legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                  patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
-                  arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                  breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                  evadeSpeed: 420.0  supportSpeed: 400.0
-                  evadeHold: ( Seconds 30 )
-                  terrainClearance: ( Meters 800 )
-                  patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
-               )
-            }
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
+            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
+            patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
+            arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+            breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+            evadeSpeed: 420.0  supportSpeed: 400.0
+            evadeHold: ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )  patrolMasterSeed: 20260903
          )
       )
 

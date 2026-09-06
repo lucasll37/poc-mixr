@@ -8631,6 +8631,61 @@ const CSS = `
  * ainda cabe sem caixa de rolagem, so ficando mais larga que alta. */
 .mx-slotgrid { columns:230px; column-gap:18px; }
 .mx-slotgrid .mx-slot { break-inside:avoid; }
+
+/* --- AgentTC -> UBF -> BT: ensaio de animacao sobre a cadeia de decisao   *
+ * REAL deste repositorio (models/player/A4), nao do framework generico.   *
+ * Layout em HTML/CSS, nao SVG: a topologia e fixa e pequena (~15 nos) --  *
+ * um ensaio nao precisa da mesma pilha de pan/zoom do grafo de Execucao.  *
+ * Ver docs/README.md. */
+.mx-uflow { display:flex; flex-direction:column; align-items:center; gap:2px; max-width:1040px; margin:0 auto; }
+.mx-ubox { border:1px solid var(--rule); border-radius:3px; background:var(--panel);
+  padding:7px 14px; text-align:center; min-width:150px;
+  transition:border-color 160ms, background 160ms, opacity 160ms; }
+.mx-ubox b { display:block; font-family:var(--mono); font-weight:600; font-size:12.5px; }
+.mx-ubox span { display:block; font-size:10.5px; color:var(--muted); margin-top:2px; }
+.mx-ubox[data-visited="1"] { background:var(--active-bg); border-color:var(--sub-muted); }
+.mx-ubox[data-active="1"] { border-color:var(--hot); background:var(--phase-now-bg);
+  animation:mx-uhalo 1100ms ease-out infinite; }
+.mx-ubox[data-fires="0"] { opacity:0.55; }
+.mx-ubox[data-fires="1"] { border-color:var(--rf); }
+/* Codigo de cor por FRAMEWORK, nao por estado -- borda esquerda so, pra nao *
+ * competir com active/visited/fires (que continuam no contorno inteiro).   *
+ * Responde "isso e UBF ou e BT?" so de bater o olho, sem ler o texto.      */
+.mx-ubox[data-cat="ubf"] { border-left:3px solid var(--bgc); }
+.mx-ubox[data-cat="bt"] { border-left:3px solid var(--new); }
+@keyframes mx-uhalo { 0%,100% { box-shadow:0 0 0 0 var(--hot); } 55% { box-shadow:0 0 0 6px transparent; } }
+.mx-uarrow { font-size:15px; line-height:1.3; color:var(--rule); }
+.mx-uarrow[data-on="1"] { color:var(--hot); animation:mx-glow 900ms ease-in-out infinite; }
+.mx-ulabel { font-size:11px; color:var(--muted); font-family:var(--mono); text-align:center;
+  margin:3px 0; max-width:640px; }
+.mx-ufork { display:flex; gap:26px; align-items:flex-start; justify-content:center; flex-wrap:wrap;
+  width:100%; margin-top:2px; }
+.mx-ucol { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.mx-uvote { font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:2px;
+  display:inline-block; background:var(--paper); border:1px solid var(--rule); color:var(--muted);
+  margin-top:5px; }
+.mx-ufallback { display:flex; gap:10px; justify-content:center; align-items:flex-start;
+  flex-wrap:wrap; margin-top:2px; max-width:720px; }
+.mx-uleaf { min-width:126px; }
+.mx-uleaf[data-result="fail"] { opacity:0.5; }
+.mx-uleaf[data-result="skip"] { opacity:0.32; border-style:dashed; }
+.mx-uleaf b::after { font-family:var(--sans); font-weight:400; }
+.mx-uleaf[data-result="fail"] b::after { content:" \\2717"; color:var(--rf); }
+.mx-uleaf[data-result="win"] b::after { content:" \\2713"; color:var(--ok); }
+.mx-uleaf[data-result="skip"] b::after { content:" \\22ef"; color:var(--muted); }
+/* Sequence = Condition -> Action, agrupados visualmente numa moldura       *
+ * tracejada com a MESMA borda roxa (BT) das outras caixas do BT -- a       *
+ * moldura em si nao tem estado (fail/win/skip): quem muda de cor sao os    *
+ * dois filhos dentro dela. mx-umini reusa mx-ubox/mx-uleaf (active/        *
+ * visited/result), so encolhe padding/fonte pra caber lado a lado. */
+.mx-useq { border:1px dashed var(--rule); border-left:3px solid var(--new); border-radius:4px;
+  padding:6px 8px 7px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.mx-useq-head { font-family:var(--mono); font-size:10px; color:var(--muted); }
+.mx-useq-kids { display:flex; align-items:center; gap:5px; }
+.mx-useq-arrow { font-size:12px; color:var(--muted); }
+.mx-umini { min-width:0; padding:4px 8px; }
+.mx-umini b { font-size:10.5px; }
+.mx-umini span { font-size:9px; }
 @media (prefers-reduced-motion:reduce) { .mx * { transition:none !important; animation:none !important; } }
 `;
 
@@ -8687,6 +8742,10 @@ function App() {
     onClick: () => setMode("events")
   }, "Eventos"), /*#__PURE__*/React.createElement("button", {
     className: "mx-tab",
+    "data-on": mode === "ubfbt" ? 1 : 0,
+    onClick: () => setMode("ubfbt")
+  }, "AgentTC\u2192UBF\u2192BT"), /*#__PURE__*/React.createElement("button", {
+    className: "mx-tab",
     "data-on": mode === "cat" ? 1 : 0,
     onClick: () => setMode("cat")
   }, "Cat\xE1logo")), /*#__PURE__*/React.createElement("button", {
@@ -8701,7 +8760,7 @@ function App() {
       setCatalogFocus(c);
       setMode("cat");
     }
-  }), mode === "events" && /*#__PURE__*/React.createElement(Events, null), mode === "cat" && /*#__PURE__*/React.createElement(Catalog, {
+  }), mode === "events" && /*#__PURE__*/React.createElement(Events, null), mode === "ubfbt" && /*#__PURE__*/React.createElement(AgentUbfBt, null), mode === "cat" && /*#__PURE__*/React.createElement(Catalog, {
     onOpen: c => {
       setFocus(c);
       setMode("exec");
@@ -10306,6 +10365,735 @@ function Events() {
       alignSelf: "center"
     }
   }, idx + 1, "/", tour.length)));
+}
+
+/* ------------------------- AgentTC -> UBF -> BT ---------------------- */
+//
+// ENSAIO, nao extracao. As tres abas acima leem contexts/src/mixr/ (o FORK do
+// framework) e ficam em sincronia automatica com ele porque um script
+// (scripts/extract_execution_chain.py) as gera. Esta aba e diferente por
+// desenho: mostra a cadeia de decisao REAL deste repositorio -- o MODELO de
+// voo em models/player/A4/ (FlightAgentTC -> UbfArbiter -> BtBehavior ->
+// flight_tree.xml) --, composta a mao, com citacoes de arquivo:linha em vez
+// de trecho extraido. Se a implementacao mudar, este texto pode ficar
+// desatualizado SEM avisar -- nao ha passada de extracao vigiando a
+// divergencia, ao contrario das outras tres. Ver a nota "Curada, nao
+// instrumentada" no topo do README e docs/README.md.
+//
+// Fontes conferidas linha a linha para montar isto (nao adivinhadas):
+//   models/player/A4/include/xnative/FlightAgentTC.hpp (as 3 armadilhas)
+//   models/player/A4/src/xnative/FlightAgentTC.cpp     (controller())
+//   contexts/src/mixr/src/base/ubf/Agent.cpp            (Agent::controller)
+//   contexts/src/mixr/src/base/ubf/Arbiter.cpp          (genAction/genComplexAction)
+//   models/player/A4/src/ubf/BtBehavior.cpp             (genAction() -- tick da arvore)
+//   models/player/A4/src/ubf/AltitudeSafetyBehavior.cpp (o behavior irmao, voto 90)
+//   models/player/A4/configs/flight_tree.xml            (o Fallback de producao)
+//   models/player/A4/src/bt/nodes/*.cpp                 (as 4 folhas + rotulos)
+//   models/player/A4/src/ubf/FlightAction.cpp           (execute() -- a atuacao)
+//
+// SEGUNDA PASSADA (clareza de UBF x BT): a primeira versao desta aba tratava
+// cada ramo do Fallback como UMA folha so ("rtb_sequence: FuelLow -> X"),
+// escondendo que ele e na verdade uma Sequence com DOIS filhos (Condition,
+// depois Action). Isso apagava justamente a distincao Fallback/Sequence que
+// e o cerne de "entender BT". Agora cada ramo tem uma Condition e uma Action
+// com estado PROPRIO (ver UBFBT_BRANCHES/nodeState abaixo), e a aba ganhou
+// um glossario recolhivel (UBF: State/Behavior/Arbiter/Action; BT: Fallback/
+// Sequence/Condition/Action) mais um codigo de cor por FRAMEWORK (borda azul
+// = papel do UBF, borda roxa = no do BT) em cada caixa do diagrama --
+// respondendo visualmente "isso e UBF ou e BT?" sem precisar ler o texto.
+
+// Os 3 ramos do Fallback que SAO uma Sequence (Condition -> Action). O quarto
+// filho (Patrol) nao e uma Sequence -- e uma Action direta, sem Condition
+// (ver UBFBT_PATROL) -- e essa assimetria e proposital: e o "senao" da
+// arvore, por isso sempre sucede.
+const UBFBT_BRANCHES = {
+  rtb: {
+    key: "rtb",
+    seq: "rtb_sequence",
+    label: "RTB",
+    condId: "cond-rtb",
+    cond: "FuelLow",
+    condFile: "bt/nodes/FuelLowCondition.cpp:19",
+    actId: "act-rtb",
+    act: "ReturnToBase",
+    actFile: "bt/nodes/ReturnToBaseAction.cpp:13"
+  },
+  evade: {
+    key: "evade",
+    seq: "engage_sequence",
+    label: "EVADE",
+    condId: "cond-evade",
+    cond: "ContactDetected",
+    condFile: "bt/nodes/ContactDetectedCondition.cpp:25",
+    actId: "act-evade",
+    act: "ReportAndEvade",
+    actFile: "bt/nodes/ReportAndEvadeAction.cpp:24"
+  },
+  support: {
+    key: "support",
+    seq: "support_sequence",
+    label: "SUPPORT",
+    condId: "cond-support",
+    cond: "AlertReceived",
+    condFile: "bt/nodes/AlertReceivedCondition.cpp:14",
+    actId: "act-support",
+    act: "SupportAlert",
+    actFile: "bt/nodes/SupportAlertAction.cpp:14"
+  }
+};
+const UBFBT_PATROL = {
+  actId: "act-patrol",
+  act: "Patrol",
+  actFile: "bt/nodes/PatrolAction.cpp:13",
+  label: "PATROL"
+};
+// Ordem real do Fallback em flight_tree.xml -- rtb_sequence primeiro,
+// engage_sequence depois, support_sequence depois, Patrol por ultimo.
+const UBFBT_FALLBACK_ORDER = ["rtb", "evade", "support", "patrol"];
+const UBFBT_EMPTY_NODES = {
+  "cond-rtb": "pending",
+  "act-rtb": "pending",
+  "cond-evade": "pending",
+  "act-evade": "pending",
+  "cond-support": "pending",
+  "act-support": "pending",
+  "act-patrol": "pending"
+};
+
+// Cinco cenarios -- a MESMA arvore, so muda quem fecha a condicao (e, no
+// ultimo, quem o Arbiter escolhe). "safety" e o mais didatico dos cinco: a
+// arvore continua recomendando PATROL, mas perde a votacao.
+const UBFBT_SCENARIOS = [{
+  key: "patrol",
+  label: "Patrulha",
+  winner: "patrol",
+  safety: false,
+  desc: "Nenhuma condição da árvore fecha — nem falta combustível, nem há contato, nem alerta. O Fallback cai no último filho, sem condição própria."
+}, {
+  key: "rtb",
+  label: "Combustível baixo",
+  winner: "rtb",
+  safety: false,
+  desc: "fuelFraction já está abaixo de fuelReserve + margin (0.05) — a PRIMEIRA condição do Fallback já fecha, e nenhuma das outras três chega a ser perguntada."
+}, {
+  key: "evade",
+  label: "Contato detectado",
+  winner: "evade",
+  safety: false,
+  desc: "domain::ThreatPolicy::engaged() está true — pista no radar, ou ainda dentro dos evadeHold segundos depois de ela sumir (a histerese que evita o avião \"bater asa\" entre evadir e patrulhar)."
+}, {
+  key: "support",
+  label: "Alerta recebido",
+  winner: "support",
+  safety: false,
+  desc: "Outro falcon transmitiu um alerta tático na fase 1 do quadro anterior (AlertDatalink); esta aeronave não está evadindo nem sem combustível."
+}, {
+  key: "safety",
+  label: "Piso de segurança",
+  winner: "patrol",
+  safety: true,
+  desc: "A árvore continua recomendando PATROL — mas a aeronave furou o piso AGL/absoluto. AltitudeSafetyBehavior tem voto 90 contra 50: vence a votação sem que a árvore precise saber que ele existe."
+}];
+
+// Corpo do passo "Action da Sequence vencedora → SUCCESS" -- só chamado para
+// os 3 ramos que SÃO Sequence (Patrol tem o próprio texto, mais abaixo).
+function ubfBtWinActionBody(key) {
+  switch (key) {
+    case "rtb":
+      return "Segundo (e último) filho também sucedeu — a Sequence inteira retorna SUCCESS, e o Fallback para de tentar irmãos. domain::RtbPlan calcula o comando de volta para a base; o rótulo sai \"HOME\" em vez de \"RTB\" se a aeronave já entrou no raio de chegada.";
+    case "evade":
+      return "Segundo (e último) filho também sucedeu. O comando já estava fixado na ENTRADA da manobra (este nó só entrega, não recalcula). Rótulo \"EVADE\" com a pista ainda viva, \"BREAK\" no arrasto da histerese sem contato — e só com a pista viva que o pedido de alerta tático é marcado, para os outros falcons reagirem no próximo quadro.";
+    default:
+      return "Segundo (e último) filho também sucedeu — reage a um alerta de OUTRO falcon (o alerta só diz onde está o intruso; apoiar é decisão desta aeronave, tomada aqui).";
+  }
+}
+
+// Constrói a trilha de passos para UM cenário. Cada passo carrega um
+// "retrato" do estado de cada Condition/Action da árvore (nodeState) para o
+// diagrama colorir progressivamente -- construído ACUMULANDO em `node`
+// conforme os passos são empilhados, não recalculado por passo. Ao contrário
+// da primeira versão, uma Sequence vencedora agora gera DOIS passos (a
+// Condition sucede, DEPOIS a Action sucede) -- é a animação da semântica de
+// "->" (E lógico) da própria Sequence, não só do "?" do Fallback.
+function buildUbfBtSteps(scenarioKey) {
+  const scn = UBFBT_SCENARIOS.find(s => s.key === scenarioKey) || UBFBT_SCENARIOS[0];
+  const winIdx = UBFBT_FALLBACK_ORDER.indexOf(scn.winner);
+  const node = {
+    ...UBFBT_EMPTY_NODES
+  };
+  const steps = [];
+  const push = o => steps.push({
+    ...o,
+    nodeState: {
+      ...node
+    }
+  });
+  push({
+    id: "frame",
+    title: "Fase 3 do frame — a recursão genérica alcança o agente",
+    code: "models/player/A4/include/xnative/FlightAgentTC.hpp:38-53",
+    body: "Player::updateTC(dt/4) desce a lista de componentes do player, e FlightAgentTC é um deles — mas é um beco sem saída para essa recursão: quem de fato dispara a decisão é AgentTC::updateTC(), chamado direto pelo ciclo de fases (nem Agent nem AgentTC repassam a chamada a 'state'/'behavior', que não são filhos do ciclo de componentes)."
+  });
+  push({
+    id: "agenttc",
+    title: "AgentTC::updateTC(dt) → controller(dt·4)",
+    code: "models/player/A4/src/xnative/FlightAgentTC.cpp:72-99",
+    body: "Sem filtro, controller() rodaria 4× por quadro — 3 delas em fases erradas (dinâmica, transmissão, recepção). FlightAgentTC::controller() só segue quando world->phase() == 3, e reconstitui o dt do QUADRO INTEIRO (dt·4) antes de repassar a base::ubf::Agent — a mesma correção dt/4 → dt·4 que qualquer models::System faz nas próprias 4 fases."
+  });
+  push({
+    id: "controller",
+    title: "Agent::controller(dt) — o CICLO do UBF, corpo do FRAMEWORK",
+    code: "contexts/src/mixr/src/base/ubf/Agent.cpp:64-80",
+    body: "Só roda se actor, state (o State) e behavior (aqui, um Arbiter) estiverem TODOS presentes. O EDL de cada falcon declara os três dentro de agent: ( FlightAgentTC state: (FlightState) behavior: (UbfArbiter behaviors: {...}) ) — o ator é o próprio player que contém o agente (initActor sobe a cadeia de containers)."
+  });
+  push({
+    id: "state",
+    title: "state->updateState(actor) — a PERCEPÇÃO (State)",
+    code: "models/player/A4/src/ubf/FlightState.cpp:46",
+    body: "FlightState (o State deste UBF) lê o Airplane (Autopilot, JSBSimModel, sensores, xboard de alertas...) e monta um domain::WorldView — números crus, sem nenhum tipo do MIXR vazando para quem decide. É o mesmo 'Snapshot' que BtBehavior e AltitudeSafetyBehavior vão ler daqui a dois passos."
+  });
+  push({
+    id: "arbiter",
+    title: "behavior->genAction(state, dt) — a ARBITRAGEM começa",
+    code: "contexts/src/mixr/src/base/ubf/Arbiter.cpp:38-68",
+    body: "UbfArbiter (nativo) é ele mesmo um Behavior — um Arbiter é só um Behavior que pergunta a OUTROS behaviors: percorre, NA ORDEM do EDL, a lista declarada — ( AltitudeSafetyBehavior vote:90 ) primeiro, ( BtBehavior vote:50 ) depois — chama genAction() em cada um e guarda quem respondeu num actionSet."
+  });
+  push({
+    id: "safety",
+    title: "1º da lista: AltitudeSafetyBehavior::genAction() — voto 90",
+    code: "models/player/A4/src/ubf/AltitudeSafetyBehavior.cpp:52-91",
+    body: (scn.safety ? "A aeronave furou o piso (altitude abaixo de minAltitude, ou AGL abaixo de minClearance com terreno carregado). Devolve uma FlightAction de recuperação com rótulo \"SAFETY\" e o próprio voto (90)." : "Nem o piso absoluto nem o AGL foram furados — devolve nullptr. No UBF, não recomendar nada é uma resposta legítima: quem decide fica só com quem de fato votou.") + " Este Behavior NÃO tem árvore nenhuma por baixo — é uma regra fixa, e é assim que ele consegue vencer o BT abaixo sem que a árvore precise sabê-lo."
+  });
+  push({
+    id: "bt",
+    title: "2º da lista: BtBehavior::genAction() — voto 50",
+    code: "models/player/A4/src/ubf/BtBehavior.cpp:190-201",
+    body: "Publica snap = flightState->snapshot(), alimenta domain::ThreatPolicy (é aqui que a histerese da evasão envelhece, ANTES do tick) e chama tree.tickRoot() — é este Behavior, e só ele, que DELEGA sua decisão a uma árvore (BT), ao contrário do AltitudeSafetyBehavior acima."
+  });
+  push({
+    id: "tick",
+    title: "tree.tickRoot() — entra no Fallback \"root\" (o primeiro nó do BT)",
+    code: "models/player/A4/configs/flight_tree.xml",
+    body: "flight_tree.xml: a raiz é um Fallback (\"?\" na notação usual de árvore de comportamento) com 4 filhos, avaliados NESTA ORDEM — o primeiro que retornar SUCCESS vence, e o resto do Fallback nem chega a ser tickado neste quadro."
+  });
+
+  // Ramos ANTES do vencedor na ordem do Fallback: cada um é uma Sequence
+  // cujo PRIMEIRO filho (a Condition) já falha -- e por isso o SEGUNDO
+  // filho (a Action) nem chega a ser chamado. Um passo só, com os dois
+  // efeitos (Condition=fail, Action=skip) visíveis ao mesmo tempo.
+  UBFBT_FALLBACK_ORDER.slice(0, winIdx).forEach(k => {
+    const B = UBFBT_BRANCHES[k];
+    node[B.condId] = "fail";
+    node[B.actId] = "skip";
+    push({
+      id: B.condId,
+      title: `Sequence "${B.seq}": ${B.cond} (Condition) → FAILURE`,
+      code: B.condFile,
+      body: `Uma Sequence ("→", E lógico) exige que TODOS os filhos sucedam, em ordem — o primeiro FAILURE aborta o resto. ${B.act} (a Action, segundo e último filho) nunca chega a ser chamado. A Sequence inteira devolve FAILURE ao Fallback, que tenta o próximo irmão.`
+    });
+  });
+  if (scn.winner === "patrol") {
+    node[UBFBT_PATROL.actId] = "win";
+    push({
+      id: UBFBT_PATROL.actId,
+      title: "Patrol (Action) → SUCCESS — filho direto do Fallback, sem Condition",
+      code: UBFBT_PATROL.actFile,
+      body: "Patrol não mora dentro de uma Sequence: é o quarto filho do Fallback, sem nenhuma condição própria — por isso sempre sucede quando chamado. É o \"senão\" da árvore (o comentário do XML de produção o chama de prioridade 4)."
+    });
+  } else {
+    const B = UBFBT_BRANCHES[scn.winner];
+    node[B.condId] = "win";
+    push({
+      id: B.condId,
+      title: `Sequence "${B.seq}": ${B.cond} (Condition) → SUCCESS`,
+      code: B.condFile,
+      body: "Primeiro filho da Sequence sucedeu — ela SEGUE para o segundo filho em vez de parar aqui (é isso que distingue uma Sequence, que precisa de TODOS, de uma Condition solta, que decidiria sozinha)."
+    });
+    node[B.actId] = "win";
+    push({
+      id: B.actId,
+      title: `Sequence "${B.seq}": ${B.act} (Action) → SUCCESS`,
+      code: B.actFile,
+      body: ubfBtWinActionBody(B.key)
+    });
+  }
+  const after = UBFBT_FALLBACK_ORDER.slice(winIdx + 1);
+  if (after.length) {
+    const names = after.map(k => k === "patrol" ? "Patrol" : UBFBT_BRANCHES[k].seq);
+    after.forEach(k => {
+      if (k === "patrol") node[UBFBT_PATROL.actId] = "skip";else {
+        const B = UBFBT_BRANCHES[k];
+        node[B.condId] = "skip";
+        node[B.actId] = "skip";
+      }
+    });
+    push({
+      id: "fallback-skip",
+      title: "Os irmãos seguintes do Fallback NUNCA são tickados",
+      code: "flight_tree.xml",
+      body: `Um Fallback para no primeiro filho que retorna SUCCESS. ${names.join(", ")} nem chegam a ter a PRÓPRIA Condition perguntada (ou, no caso de Patrol, a própria Action chamada) — diferente do(s) ramo(s) acima, onde a Condition FOI perguntada e falhou. São dois curto-circuitos diferentes: "nunca perguntado" (aqui, no nível do Fallback) contra "perguntado e recusado" (a Sequence que falhou, um nível abaixo).`
+    });
+  }
+  push({
+    id: "pick",
+    title: "Arbiter::genComplexAction(actionSet) — a ARBITRAGEM decide, critério \">\"",
+    code: "contexts/src/mixr/src/base/ubf/Arbiter.cpp:75-104",
+    body: scn.safety ? "actionSet tem DUAS ações: SAFETY (voto 90) e PATROL (voto 50). 90 > 50 — a de segurança vence, e a árvore nunca fica sabendo que perdeu a votação." : "AltitudeSafetyBehavior não votou (devolveu nullptr) — só a ação da árvore entra no actionSet, e vence por ser a única."
+  });
+  push({
+    id: "execute",
+    title: "action->execute(actor); action->unref(); — a ATUAÇÃO (Action do UBF)",
+    code: "models/player/A4/src/ubf/FlightAction.cpp:129-162",
+    body: "A ação é efêmera: nasce em genAction(), atua e é liberada no mesmo ciclo (contrato do UBF: \"returns a pre-ref'd Action\"). FlightAction::execute() é o ÚNICO ponto deste modelo que toca um Autopilot de verdade — nenhuma lei de controle própria no caminho: setCommandedHeadingD/AltitudeFt/VelocityKts, e os 3 hold modes ligados antes."
+  });
+  const finalLabel = scn.safety ? "SAFETY" : scn.winner === "patrol" ? UBFBT_PATROL.label : UBFBT_BRANCHES[scn.winner].label;
+  push({
+    id: "effect",
+    title: `Resultado: bt=${finalLabel}`,
+    code: "models/player/A4/src/ubf/FlightAction.cpp:171-183",
+    body: "xboard::setBehaviorLabel + bumpDecisionCount (o que a coluna 'bt=' e 'dec=' do dashboard mostram), e um LOG(INFO) \"X -> Y\" se o rótulo mudou desde o quadro anterior — a linha que conta a história da missão na aba Log (F5) do ./app."
+  });
+  return steps;
+}
+
+// cat: "ubf" (papel do Unified Behavior Framework), "bt" (nó do Behavior
+// Tree) ou omitido (glue de frame, nem um nem outro) -- vira a cor da borda
+// esquerda de cada caixa (ver CSS [data-cat]), pra responder visualmente
+// "isso é UBF ou é BT?" sem depender só do texto.
+const UBFBT_STAGES = [{
+  id: "frame",
+  b: "Fase 3 do frame",
+  s: "Player::updateTC(dt/4)"
+}, {
+  id: "agenttc",
+  cat: "ubf",
+  b: "AgentTC::updateTC(dt)",
+  s: "FlightAgentTC — filtro de fase"
+}, {
+  id: "controller",
+  cat: "ubf",
+  b: "Agent::controller(dt·4)",
+  s: "ciclo do UBF: actor + state + behavior"
+}, {
+  id: "state",
+  cat: "ubf",
+  b: "FlightState::updateState",
+  s: "percepção (State) → domain::WorldView"
+}, {
+  id: "arbiter",
+  cat: "ubf",
+  b: "UbfArbiter::genAction",
+  s: "arbitragem (Arbiter) — pergunta a cada Behavior"
+}];
+const UBFBT_TAIL = [{
+  id: "pick",
+  cat: "ubf",
+  b: "Arbiter::genComplexAction",
+  s: "arbitragem (Arbiter) — maior voto vence"
+}, {
+  id: "execute",
+  cat: "ubf",
+  b: "FlightAction::execute(actor)",
+  s: "atuação (Action) — único ponto que toca o Autopilot"
+}, {
+  id: "effect",
+  cat: "ubf",
+  b: "Autopilot + xboard + LOG",
+  s: "efeito da atuação, publicado"
+}];
+function AgentUbfBt() {
+  const [scenario, setScenario] = useState("patrol");
+  const [showGlossary, setShowGlossary] = useState(false);
+  const steps = useMemo(() => buildUbfBtSteps(scenario), [scenario]);
+  const [i, setI] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    setI(0);
+    setPlaying(false);
+  }, [scenario]);
+  const idx = Math.min(i, steps.length - 1);
+  const step = steps[idx];
+  const nodeState = step.nodeState || UBFBT_EMPTY_NODES;
+  const scn = UBFBT_SCENARIOS.find(s => s.key === scenario);
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => setI(p => p + 1 >= steps.length ? (setPlaying(false), p) : p + 1), 1500);
+    return () => clearTimeout(t);
+  }, [playing, i, steps.length]);
+  const move = useCallback(d => {
+    setPlaying(false);
+    setI(p => Math.max(0, Math.min(steps.length - 1, p + d)));
+  }, [steps.length]);
+  useEffect(() => {
+    const h = e => {
+      if (e.key === "ArrowRight") move(1);else if (e.key === "ArrowLeft") move(-1);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [move]);
+
+  // "ativo" = passo atual; "percorrido" = já visitado, mas não o atual --
+  // cada id de nó aparece no máximo uma vez em toda a trilha (ramos pulados
+  // por curto-circuito nunca ganham passo próprio -- ver nodeState pra eles).
+  const on = id => step.id === id;
+  const visited = id => !on(id) && steps.slice(0, idx + 1).some(s => s.id === id);
+  const reached = id => on(id) || visited(id);
+  const Stage = ({
+    n,
+    arrow = true
+  }) => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: n.id
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-ubox",
+    "data-cat": n.cat,
+    "data-active": on(n.id) ? 1 : 0,
+    "data-visited": visited(n.id) ? 1 : 0
+  }, /*#__PURE__*/React.createElement("b", null, n.b), /*#__PURE__*/React.createElement("span", null, n.s)), arrow && /*#__PURE__*/React.createElement("div", {
+    className: "mx-uarrow",
+    "data-on": reached(n.id) ? 1 : 0
+  }, "\u2193"));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "mx-body",
+    style: {
+      paddingBottom: 40
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      lineHeight: 1.6,
+      color: "var(--muted)",
+      maxWidth: 900,
+      margin: "0 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: "var(--ink)"
+    }
+  }, "Ensaio"), ", n\xE3o extra\xE7\xE3o: ao contr\xE1rio de Execu\xE7\xE3o/Eventos/Cat\xE1logo (geradas por script a partir do fork do framework, contexts/src/mixr/), esta aba \xE9 composta \xE0 m\xE3o sobre o ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "MODELO DE VOO"), " deste reposit\xF3rio (", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "models/player/A4/"), ") \u2014 a cadeia que single-thread/multi-thread/app de fato rodam a 50 Hz, por aeronave, na fase 3 do frame de tempo cr\xEDtico: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "FlightAgentTC \u2192 UbfArbiter \u2192 BtBehavior \u2192 flight_tree.xml"), ". Duas coisas DIFERENTES se comp\xF5em aqui: o ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: "var(--bgc)"
+    }
+  }, "UBF"), " decide QUEM vota e quem vence (arbitragem); o ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: "var(--new)"
+    }
+  }, "BT"), " \u2014 a pol\xEDtica interna de s\xF3 UM dos votantes \u2014 decide COMO essa pol\xEDtica se organiza em prioridades. Cada passo cita arquivo:linha da implementa\xE7\xE3o real; a borda de cada caixa do diagrama \xE9 azul (UBF) ou roxa (BT) pra deixar claro de qual dos dois se est\xE1 falando."), /*#__PURE__*/React.createElement("button", {
+    className: "mx-leg-toggle",
+    onClick: () => setShowGlossary(v => !v),
+    style: {
+      marginBottom: 14
+    }
+  }, showGlossary ? "▾" : "▸", " o que s\xE3o UBF e BT?"), showGlossary && /*#__PURE__*/React.createElement("div", {
+    className: "mx-card",
+    style: {
+      maxWidth: 900,
+      margin: "0 0 18px",
+      display: "flex",
+      gap: 26,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: "1 1 260px",
+      minWidth: 240
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-lbl",
+    style: {
+      borderLeft: "3px solid var(--bgc)",
+      paddingLeft: 8,
+      fontWeight: 600,
+      color: "var(--ink)"
+    }
+  }, "UBF \u2014 Unified Behavior Framework (nativo do MIXR)"), /*#__PURE__*/React.createElement("ul", {
+    style: {
+      margin: "6px 0 0",
+      paddingLeft: 18,
+      fontSize: 12.5,
+      lineHeight: 1.6
+    }
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "State"), " (percep\xE7\xE3o) \u2014 s\xF3 l\xEA o mundo, nunca decide. Aqui: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "FlightState"), " \u2192 ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "domain::WorldView"), "."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Behavior"), " (decis\xE3o) \u2014 recomenda uma a\xE7\xE3o, ou nada (", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "nullptr"), "). Aqui, DOIS: um com regra fixa (", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "AltitudeSafetyBehavior"), ") e um que delega a uma \xE1rvore (", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "BtBehavior"), ")."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Arbiter"), " (arbitragem) \u2014 \xE9 ELE MESMO um Behavior: pergunta a uma LISTA de outros behaviors e escolhe o de maior voto. Aqui: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "UbfArbiter"), " (90 contra 50)."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Action"), " (atua\xE7\xE3o) \u2014 ef\xEAmera: nasce, executa, morre no mesmo ciclo. Aqui: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "FlightAction"), ", o \xFAnico ponto que toca o Autopilot."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: "1 1 260px",
+      minWidth: 240
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-lbl",
+    style: {
+      borderLeft: "3px solid var(--new)",
+      paddingLeft: 8,
+      fontWeight: 600,
+      color: "var(--ink)"
+    }
+  }, "Behavior Tree \u2014 os 4 blocos de flight_tree.xml"), /*#__PURE__*/React.createElement("ul", {
+    style: {
+      margin: "6px 0 0",
+      paddingLeft: 18,
+      fontSize: 12.5,
+      lineHeight: 1.6
+    }
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Fallback (\"?\")"), " \u2014 tenta cada filho em ordem; PARA no primeiro SUCCESS. \xC9 a \"prioridade\" da \xE1rvore (o coment\xE1rio do XML de produ\xE7\xE3o lista 4)."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Sequence (\"\u2192\")"), " \u2014 exige que TODOS os filhos sucedam, em ordem; PARA (com FAILURE) no primeiro que falhar. Aqui, sempre \"Condi\xE7\xE3o \u2192 A\xE7\xE3o\"."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Condition"), " \u2014 folha que s\xF3 verifica algo, devolve SUCCESS/FAILURE sem mudar o mundo. Ex.: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "FuelLow"), "."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Action"), " \u2014 folha que decide o comando de verdade e o publica. Ex.: ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "ReturnToBase"), "."))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      flexBasis: "100%",
+      margin: "2px 0 0",
+      fontSize: 12,
+      color: "var(--muted)",
+      borderTop: "1px solid var(--rule)",
+      paddingTop: 8,
+      lineHeight: 1.55
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "flight_tree.xml"), " inteira \xE9 s\xF3 a POL\xCDTICA de UM Behavior (", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "BtBehavior"), ") dentro do ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "UbfArbiter"), " \u2014 o UBF n\xE3o sabe que existe uma \xE1rvore ali dentro; pra ele, ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "BtBehavior"), " \xE9 s\xF3 mais um Behavior que \xE0s vezes recomenda uma a\xE7\xE3o. Nenhum n\xF3 desta \xE1rvore devolve", " ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "RUNNING"), " (todos s\xE3o ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "ConditionNode"), "/", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "SyncActionNode"), ", resolvidos no mesmo tick) \u2014", " ", /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "RUNNING"), " existe no BT.CPP para a\xE7\xF5es que atravessam v\xE1rios frames; esta \xE1rvore decide tudo de uma vez, a cada frame.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap",
+      marginBottom: 8
+    }
+  }, UBFBT_SCENARIOS.map(s => /*#__PURE__*/React.createElement("button", {
+    key: s.key,
+    className: "mx-tab",
+    "data-on": s.key === scenario ? 1 : 0,
+    onClick: () => setScenario(s.key)
+  }, s.label))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12.5,
+      color: "var(--muted)",
+      marginTop: 0,
+      marginBottom: 18,
+      maxWidth: 820
+    }
+  }, scn.desc), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uflow"
+  }, UBFBT_STAGES.map(n => /*#__PURE__*/React.createElement(Stage, {
+    key: n.id,
+    n: n
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ulabel"
+  }, "pergunta, EM ORDEM, cada behavior de behaviors: ", "{", " ... ", "}"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ufork"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-ucol"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-ubox",
+    "data-cat": "ubf",
+    "data-active": on("safety") ? 1 : 0,
+    "data-visited": visited("safety") ? 1 : 0,
+    "data-fires": reached("safety") ? scn.safety ? 1 : 0 : undefined
+  }, /*#__PURE__*/React.createElement("b", null, "AltitudeSafetyBehavior"), /*#__PURE__*/React.createElement("span", null, "Behavior n\xBA1 \u2014 regra fixa, SEM \xE1rvore"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uvote"
+  }, "voto 90"))), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ucol"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-ubox",
+    "data-cat": "ubf",
+    "data-active": on("bt") ? 1 : 0,
+    "data-visited": visited("bt") ? 1 : 0
+  }, /*#__PURE__*/React.createElement("b", null, "BtBehavior"), /*#__PURE__*/React.createElement("span", null, "Behavior n\xBA2 \u2014 DELEGA a uma \xE1rvore (BT)"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uvote"
+  }, "voto 50")), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uarrow",
+    "data-on": reached("bt") ? 1 : 0
+  }, "\u2193"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ubox",
+    "data-cat": "bt",
+    "data-active": on("tick") ? 1 : 0,
+    "data-visited": visited("tick") ? 1 : 0
+  }, /*#__PURE__*/React.createElement("b", null, "tree.tickRoot()"), /*#__PURE__*/React.createElement("span", null, "Fallback \"root\" \u2014 aqui come\xE7a o BT")), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uarrow",
+    "data-on": reached("tick") ? 1 : 0
+  }, "\u2193"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ufallback"
+  }, UBFBT_FALLBACK_ORDER.map(k => {
+    if (k === "patrol") {
+      const st = nodeState[UBFBT_PATROL.actId];
+      return /*#__PURE__*/React.createElement("div", {
+        key: "patrol",
+        className: "mx-ubox mx-uleaf",
+        "data-cat": "bt",
+        "data-active": on(UBFBT_PATROL.actId) ? 1 : 0,
+        "data-visited": visited(UBFBT_PATROL.actId) ? 1 : 0,
+        "data-result": st !== "pending" ? st : undefined
+      }, /*#__PURE__*/React.createElement("b", null, UBFBT_PATROL.act), /*#__PURE__*/React.createElement("span", null, "Action \u2014 sem Condition"));
+    }
+    const B = UBFBT_BRANCHES[k];
+    const cs = nodeState[B.condId],
+      as = nodeState[B.actId];
+    return /*#__PURE__*/React.createElement("div", {
+      key: k,
+      className: "mx-useq",
+      "data-cat": "bt"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mx-useq-head"
+    }, "\u2192 ", B.seq), /*#__PURE__*/React.createElement("div", {
+      className: "mx-useq-kids"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mx-ubox mx-uleaf mx-umini",
+      "data-active": on(B.condId) ? 1 : 0,
+      "data-visited": visited(B.condId) ? 1 : 0,
+      "data-result": cs !== "pending" ? cs : undefined
+    }, /*#__PURE__*/React.createElement("b", null, B.cond), /*#__PURE__*/React.createElement("span", null, "Condition")), /*#__PURE__*/React.createElement("span", {
+      className: "mx-useq-arrow"
+    }, "\u2192"), /*#__PURE__*/React.createElement("div", {
+      className: "mx-ubox mx-uleaf mx-umini",
+      "data-active": on(B.actId) ? 1 : 0,
+      "data-visited": visited(B.actId) ? 1 : 0,
+      "data-result": as !== "pending" ? as : undefined
+    }, /*#__PURE__*/React.createElement("b", null, B.act), /*#__PURE__*/React.createElement("span", null, "Action"))));
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "mx-ulabel",
+    style: {
+      marginTop: 6
+    }
+  }, "as duas respostas (ou s\xF3 uma, se a outra votou nullptr) convergem aqui"), /*#__PURE__*/React.createElement("div", {
+    className: "mx-uarrow",
+    "data-on": reached("pick") ? 1 : 0
+  }, "\u2193"), UBFBT_TAIL.map((n, k) => /*#__PURE__*/React.createElement(Stage, {
+    key: n.id,
+    n: n,
+    arrow: k < UBFBT_TAIL.length - 1
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "mx-card",
+    style: {
+      maxWidth: 900,
+      margin: "18px auto 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      fontWeight: 600,
+      fontSize: 13.5
+    }
+  }, step.title), step.code && /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      fontSize: 11,
+      color: "var(--muted)"
+    }
+  }, step.code)), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "10px 0 0",
+      fontSize: 13,
+      lineHeight: 1.55
+    }
+  }, step.body)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 16,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "mx-btn",
+    disabled: idx === 0,
+    onClick: () => move(-1)
+  }, "\u2190 anterior"), /*#__PURE__*/React.createElement("button", {
+    className: "mx-btn",
+    "data-primary": playing ? 1 : 0,
+    onClick: () => setPlaying(p => !p)
+  }, playing ? "❙❙ pausar" : "▸ reproduzir"), /*#__PURE__*/React.createElement("button", {
+    className: "mx-btn",
+    disabled: idx === steps.length - 1,
+    onClick: () => move(1)
+  }, "pr\xF3ximo \u2192"), /*#__PURE__*/React.createElement("button", {
+    className: "mx-btn",
+    onClick: () => {
+      setPlaying(false);
+      setI(0);
+    }
+  }, "\u21BA reiniciar"), /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      fontSize: 11.5,
+      color: "var(--muted)"
+    }
+  }, idx + 1, "/", steps.length)), /*#__PURE__*/React.createElement("div", {
+    className: "mx-leg",
+    style: {
+      marginTop: 18,
+      maxWidth: 900,
+      borderRadius: 2
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      color: "var(--hot)"
+    }
+  }, "\u25C6"), " passo atual"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "\u25A6"), " j\xE1 percorrido"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      color: "var(--ok)"
+    }
+  }, "\u2713"), " Condition/Action sucedeu"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      color: "var(--rf)"
+    }
+  }, "\u2715"), " Condition avaliada, falhou"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono"
+  }, "\u22EF"), " nunca tickado (curto-circuito do Fallback ou da Sequence)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      color: "var(--bgc)",
+      fontWeight: 700
+    }
+  }, "\u2503"), " papel do UBF"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "mx-mono",
+    style: {
+      color: "var(--new)",
+      fontWeight: 700
+    }
+  }, "\u2503"), " n\xF3 do BT")));
 }
 
 /* ---------------------------- catálogo ----------------------------- */

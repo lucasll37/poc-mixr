@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-builder open-edl-builder edl-builder-test edl-lint edl-check
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-default-scenario edl-builder open-edl-builder edl-builder-test edl-lint edl-check new-model
 
 .DEFAULT_GOAL := help
 
@@ -35,19 +35,24 @@ NC := \033[0m # No Color
 # C++ Build Targets
 # ============================================
 
-clean: ## Clean all generated build files in the project (host + os tres modelos + o deposito que 'make models' gerou).
+clean: ## Clean all generated build files in the project (host + TODOS os modelos descobertos + template + o deposito que 'make models' gerou).
 	rm -rf $(BUILD_DIR)/
 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
-	@# Cada modelo limpa o PROPRIO build/dist (autocontido) -- '|| true' porque
-	@# um clean antes do primeiro 'make models' nao tem nada para limpar ali.
-	@$(MAKE) -C models/player/A4 clean 2>/dev/null || true
-	@$(MAKE) -C models/player/missile clean 2>/dev/null || true
-	@$(MAKE) -C models/player/fixtures/stub clean 2>/dev/null || true
-	@# So os nomes que ESTE repositorio gera -- um .so de TERCEIRO com outro
-	@# nome (ver plugins/README.md) nao e apagado por um 'make clean'.
-	@rm -f $(PLUGINS_DIR)/libflight.so $(PLUGINS_DIR)/libflight_tc.so \
-	       $(PLUGINS_DIR)/libstub.so $(PLUGINS_DIR)/libmissile.so
+	@# Descoberto por find (mesma lista de MODELOS_PRODUCAO, ver alvo 'models'
+	@# abaixo), + template (nunca entra em 'models:', mas alguem pode ter
+	@# rodado 'make'/'make install-host' nele a mao enquanto experimentava --
+	@# ver models/player/template/README.md). 'uninstall-host' roda ANTES do
+	@# 'clean' de cada um: ele precisa do ./dist LOCAL ainda intacto para
+	@# saber quais basenames remover de plugins/ -- 'clean' apaga esse ./dist
+	@# logo em seguida. '|| true' nos dois porque um clean antes do primeiro
+	@# 'make models' nao tem nada para limpar/desinstalar ali. So os nomes
+	@# que CADA modelo de fato publicou sao removidos -- um .so de TERCEIRO
+	@# com outro nome (ver plugins/README.md) nunca e tocado.
+	@for d in $(MODELOS_PRODUCAO) models/player/template; do \
+	   $(MAKE) -C $$d uninstall-host 2>/dev/null || true; \
+	   $(MAKE) -C $$d clean 2>/dev/null || true; \
+	 done
 	@rm -rf $(PLUGINS_DIR)/data
 
 configure: ## Configure the project for building.
@@ -96,34 +101,55 @@ ASAN ?= false
 # ==============================================================================
 # 'models' e 'sync-plugins' -- DECOPLADOS de proposito.
 #
-# 'models' compila e instala flight/missile/stub, cada um projeto Meson
-# AUTOCONTIDO (ver models/README.md §1.1) -- delegando pro Makefile de CADA
-# um (`$(MAKE) -C models/<nome> install-host`), nao reimplementando o setup
-# aqui. O resultado -- so os .so, flat, mais os dados do flight -- pousa em
-# plugins/ (e plugins/data/flight/), o MESMO deposito que um
+# 'models' compila e instala TODO modelo de producao sob models/player/,
+# cada um projeto Meson AUTOCONTIDO (ver models/README.md §1.1) --
+# DESCOBERTO POR FIND (nao por lista fixa: um modelo novo so precisa
+# existir, nunca precisa de uma linha nova aqui -- mesma filosofia ja usada
+# por tests/guard/check_modelo_estrutura.sh/check_colisao_fabrica.py),
+# delegando pro Makefile de CADA um (`$(MAKE) -C models/player/<nome>
+# install-host TESTS=true VARIANTS=true ASAN=...`), nao reimplementando o
+# setup aqui. Exclui so models/player/template/ (nunca e producao -- ver
+# models/README.md secao 2.4); models/player/fixtures/<nome>/ ENTRAM (o
+# stub, por exemplo, e um FIXTURE de teste, mas o .so dele precisa estar em
+# plugins/ para os testes de plugin que o carregam). O resultado -- so os
+# .so, flat, mais os dados de cada um que publicar (hoje, so o flight/A4)
+# -- pousa em plugins/ (e plugins/data/<nome>/), o MESMO deposito que um
 # terceiro usaria (ver plugins/README.md). Este alvo NUNCA escreve em
 # dist/ -- e por isso "desacoplado do restante": compilar/instalar um
 # modelo nao presume nada sobre onde o HOST guarda os artefatos dele.
 #
+# Sem mecanismo de CI neste repositorio (nao ha pipeline nenhum rodando em
+# lugar nenhum) -- so este Makefile e quem "orquestra". Por isso as flags
+# de build completo (TESTS/VARIANTS/ASAN) vao direto na chamada abaixo, nao
+# atras de um alvo `install-host-ci` a parte: um modelo que nao usa alguma
+# delas (stub/missile nao tem `variants`) so a ignora, o GNU Make nao
+# reclama de variavel de linha de comando nao consumida.
+#
 # 'sync-plugins' e a UNICA ponte para dist/ -- copia plugins/*.so
-# (de QUALQUER origem: flight/missile/stub OU terceiro, ja indistinguiveis
-# neste ponto) para dist/lib/mixr-plugins/, e plugins/data/ para
-# dist/share/mixr-plugins/. So roda como parte de 'install' -- e por isso
-# "so no install do restante do projeto": nem 'build' nem 'models' tocam
-# dist/lib/mixr-plugins/ sozinhos.
+# (de QUALQUER origem: os modelos deste repositorio OU terceiro, ja
+# indistinguiveis neste ponto) para dist/lib/mixr-plugins/, e plugins/data/
+# para dist/share/mixr-plugins/. So roda como parte de 'install' -- e por
+# isso "so no install do restante do projeto": nem 'build' nem 'models'
+# tocam dist/lib/mixr-plugins/ sozinhos.
 # ==============================================================================
 
-models: sdk ## Compila e deposita flight/missile/stub em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
-	$(MAKE) -C models/player/A4 install-host TESTS=true VARIANTS=true ASAN=$(ASAN)
-	@# O modelo ESTRANHO -- projeto proprio, ve so o SDK. E o unico artefato
-	@# que pode falhar por "o contrato nao basta". Ver models/player/fixtures/stub/CONTRATO.md.
-	@# Fica em fixtures/ porque nao e um modelo de producao -- e um fixture de teste.
-	$(MAKE) -C models/player/fixtures/stub install-host TESTS=true
-	@# O SEGUNDO plugin de exemplo -- so o GuidedMissile, carregado ao lado do
-	@# flight no cenario de demo (scenario_missile_demo.edl.in). Mesmo molde
-	@# do stub: projeto Meson proprio, so mixr_dep + sdk_dep.
-	$(MAKE) -C models/player/missile install-host TESTS=true
-	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ (rode 'make install' para sincronizar com dist/)"
+# Mesma logica de descoberta de tests/guard/check_modelo_estrutura.sh (todo
+# diretorio sob models/player/ com um meson.build de PROJETO -- aqui,
+# "nao dentro de tests/", que e o mesmo criterio na pratica: so o
+# meson.build da RAIZ de cada projeto de modelo declara project(), os de
+# tests/ so tem subdir()), restrita a models/player/ (nao models/events/,
+# que e SDK, nao modelo) e excluindo template/ (nunca e producao).
+# 'fixtures/stub' PERMANECE -- ver o comentario acima.
+MODELOS_PRODUCAO := $(shell find models/player -mindepth 2 -name meson.build \
+                       -not -path '*/build/*' -not -path '*/dist/*' -not -path '*/subprojects/*' \
+                       -not -path '*/template/*' -not -path '*/tests/*' \
+                     | xargs -r -n1 dirname | sort -u)
+
+models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob models/player/, exceto template/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+	@for d in $(MODELOS_PRODUCAO); do \
+	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
+	 done
+	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s): $(notdir $(MODELOS_PRODUCAO)); rode 'make install' para sincronizar com dist/)"
 
 sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
 	@# plugins/ ja mistura o que os tres modelos locais depositaram
@@ -147,6 +173,14 @@ sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ --
 	   cp -a $(PLUGINS_DIR)/data/. $(DEST_DIR)/share/mixr-plugins/; \
 	 fi
 	@echo "$(GREEN)sync-plugins: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
+
+# ============================================
+# Scaffold de modelo novo
+# ============================================
+
+new-model: ## Gera um modelo novo em models/player/NAME/ a partir de fixtures/stub ou template/ (NAME= obrigatorio, KIND=stub|template, default stub). Ver CONTRIBUTING.md.
+	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo KIND=stub|template$(NC)"; exit 1; }
+	python3 scripts/new_model.py --name "$(NAME)" --kind "$(or $(KIND),stub)"
 
 build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -328,7 +362,11 @@ edl-catalog: ## Gera src/ui/edl_catalog.generated.json (todas as classes/slots d
 	python3 scripts/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json
 	@echo "$(GREEN)edl-catalog:$(NC) OK -- $$(python3 -c 'import json; print(len(json.load(open("src/ui/edl_catalog.generated.json"))))') classes catalogadas"
 
-edl-builder: edl-catalog ## Regenera src/ui/edl-builder.html (editor grafico de cenario .edl) via src/ui/compile.js. So precisa de rede na 1a vez (cacheia em src/ui/.cache/).
+edl-default-scenario: edl-catalog ## Gera src/ui/edl_default_scenario.generated.json (o cenario que a ferramenta carrega por padrao -- o de mais componentes do repositorio, built-in_mixr_1).
+	node scripts/edl_to_ui_project.js src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in > src/ui/edl_default_scenario.generated.json
+	@echo "$(GREEN)edl-default-scenario:$(NC) OK"
+
+edl-builder: edl-catalog edl-default-scenario ## Regenera src/ui/edl-builder.html (editor grafico de cenario .edl) via src/ui/compile.js. So precisa de rede na 1a vez (cacheia em src/ui/.cache/).
 	node src/ui/compile.js
 
 open-edl-builder: ## Abre src/ui/edl-builder.html no navegador (editor grafico de cenario .edl: arrastar classe da paleta, preencher campos, exportar). Pagina estatica -- nao depende de build/install.

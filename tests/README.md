@@ -119,13 +119,19 @@ Roda o binário com `-f <fixture> -deterministic N` e afirma **comportamento** s
 `frame=`, não igualdade byte a byte. Um *golden* exato quebraria por ruído de ponto flutuante
 entre máquinas e diria apenas "os arquivos diferem"; aqui a falha diz qual propriedade caiu.
 
-Três modos, um por ramo da árvore:
+Dois modos, um por ramo da árvore:
 
 | modo | força | como |
 |---|---|---|
 | `intruder` | a cadeia inteira: detecta → evade → avisa → os outros apoiam | reintroduz um `bandit1:` **local** |
 | `lowfuel` | o ramo de RTB vence tudo | sobe `fuelReserve` acima do combustível real, pelo slot |
-| `terrain` | `AltitudeSafetyBehavior` (voto 90) ganha do `BtBehavior` (voto 50) | sobe `minAltitude` acima da altitude de cruzeiro |
+
+> **Havia um terceiro modo, `terrain`** (`AltitudeSafetyBehavior`, voto 90, ganhando do
+> `BtBehavior`, voto 50, subindo `minAltitude` acima da altitude de cruzeiro). Foi **removido**
+> quando os cenários de produção pararam de usar `( UbfArbiter )`/`( AltitudeSafetyBehavior )` —
+> ver a seção "SEM ARBITRO" no topo de cada `scenario.edl.in`. Sem o árbitro, `bt=SAFETY` é um
+> rótulo inalcançável: não há mais um piso independente que vença a árvore por votação, só o
+> `terrainClearance:` do próprio `BtBehavior`, que age apenas dentro do ramo de evasão.
 
 > **Correção de um bug latente, feita aqui:** `make_fixture.py` reescrevia `fileName:` com um
 > `re.sub` **global**, e isso só funcionava porque havia exatamente **um** `fileName:` em cada

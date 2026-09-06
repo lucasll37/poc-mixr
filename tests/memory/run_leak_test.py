@@ -37,10 +37,16 @@ LONGA = 1000
 PLAYERS = 4
 
 # Classes criadas uma unica vez, no parse do EDL: uma por aviao.
+#
+# AltitudeSafetyBehavior SAIU desta lista quando os cenarios de producao
+# pararam de usar ( UbfArbiter )/( AltitudeSafetyBehavior ) -- ver a secao
+# "SEM ARBITRO" no topo de cada scenario.edl.in. A classe continua exportada
+# pelo plugin (por isso ainda aparece no relatorio, com o 'tc=1' nascente do
+# probe de carga descrito na NOTA abaixo), mas nenhum cenario a instancia
+# mais por aviao: count ficaria em 0, nao em PLAYERS.
 UMA_POR_AVIAO = (
     "FlightState",
     "BtBehavior",
-    "AltitudeSafetyBehavior",
     "AlertDatalink",
 )
 

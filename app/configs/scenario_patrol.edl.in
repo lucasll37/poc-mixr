@@ -125,36 +125,23 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior
-                           vote: 90
-                           minAltitude:      ( Meters 1200 )
-                           recoverAltitude:  ( Meters 1750 )
-                           recoverSpeed:     350.0
-                           minClearance:     ( Meters 400 )
-                           recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior
-                           vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                           patrolHeading:  ( Degrees 90 )
-                           legTime:        ( Seconds 60 )
-                           legTurn:        ( Degrees 90 )
-                           patrolAltitude: ( Meters 1750 )
-                           patrolSpeed:    350.0
-                           rtbAltitude:    ( Meters 2050 )
-                           rtbSpeed:       380.0
-                           arrivalRadius:  ( NauticalMiles 2.0 )
-                           fuelReserve:    0.35
-                           breakTurn:      ( Degrees 110 )
-                           evadeClimb:     ( Meters 700 )
-                           evadeSpeed:     420.0
-                           terrainClearance: ( Meters 800 )
-                           evadeHold:      ( Seconds 30 )
-                           supportSpeed:   400.0
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                     patrolHeading:  ( Degrees 90 )
+                     legTime:        ( Seconds 60 )
+                     legTurn:        ( Degrees 90 )
+                     patrolAltitude: ( Meters 1750 )
+                     patrolSpeed:    350.0
+                     rtbAltitude:    ( Meters 2050 )
+                     rtbSpeed:       380.0
+                     arrivalRadius:  ( NauticalMiles 2.0 )
+                     fuelReserve:    0.35
+                     breakTurn:      ( Degrees 110 )
+                     evadeClimb:     ( Meters 700 )
+                     evadeSpeed:     420.0
+                     terrainClearance: ( Meters 800 )
+                     evadeHold:      ( Seconds 30 )
+                     supportSpeed:   400.0
                   )
                )
             }
@@ -211,25 +198,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 1850 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                           patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                     patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -286,25 +264,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2050 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                           patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
-                           legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
-                           patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
-                           evadeSpeed: 430.0  supportSpeed: 410.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                     patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
+                     legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
+                     patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 130 )  evadeClimb: ( Meters 750 )
+                     evadeSpeed: 430.0  supportSpeed: 410.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }
@@ -361,25 +330,16 @@
                   positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
                agent: ( FlightAgentTC
                   state: ( FlightState )
-                  behavior: ( UbfArbiter
-                     behaviors: {
-                        ( AltitudeSafetyBehavior vote: 90
-                           minAltitude: ( Meters 1200 )  recoverAltitude: ( Meters 2100 )
-                           recoverSpeed: 350.0
-                           minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
-                        )
-                        ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
-                           patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
-                           legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
-                           patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
-                           arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
-                           breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
-                           evadeSpeed: 420.0  supportSpeed: 400.0
-                           evadeHold: ( Seconds 30 )
-                           terrainClearance: ( Meters 800 )
-                        )
-                     }
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                     patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
+                     legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
+                     patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0
+                     arrivalRadius: ( NauticalMiles 2.0 )  fuelReserve: 0.35
+                     breakTurn: ( Degrees 110 )  evadeClimb: ( Meters 700 )
+                     evadeSpeed: 420.0  supportSpeed: 400.0
+                     evadeHold: ( Seconds 30 )
+                     terrainClearance: ( Meters 800 )
                   )
                )
             }

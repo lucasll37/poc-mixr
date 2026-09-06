@@ -16,7 +16,12 @@ entra na checagem, sem editar este arquivo) -- EXCETO models/player/
 fixtures/<nome>/, que existem justamente para IMITAR o contrato de outro
 modelo (docs/CONTRATO.md) e nunca sao carregados JUNTO com o modelo que
 imitam; colisao ali e o proposito, nao um bug (ver CLAUDE.md sobre o
-stub reaproveitando os mesmos nomes de A4 de proposito).
+stub reaproveitando os mesmos nomes de A4 de proposito) -- e EXCETO
+models/player/template/, pelo mesmo motivo conceitual: nunca e producao,
+nenhum cenario aponta pra ele, nunca e carregado ao lado de outro modelo
+(models/README.md, secao 2.4). Comparar os nomes de exemplo dele
+(ExampleState/ExampleBehavior/...) contra A4/missile seria ruido, nao
+sinal.
 
 Limitacao conhecida, documentada em vez de escondida: so olha o que cada
 models/player/<nome>/src/ implementa DIRETAMENTE. Uma classe compartilhada
@@ -42,12 +47,16 @@ import extract_execution_chain as ext  # noqa: E402
 MODELS_PLAYER = REPO_ROOT / "models" / "player"
 
 
+NAO_PRODUCAO = {"fixtures", "template"}
+
+
 def discover_models():
     """{nome: {nomes-de-fabrica}} para cada models/player/<nome>/ que NAO
-    seja 'fixtures' -- ver o "porque" da exclusao no docstring do modulo."""
+    seja fixture/template -- ver o "porque" da exclusao no docstring do
+    modulo."""
     models = {}
     for d in sorted(MODELS_PLAYER.iterdir()):
-        if not d.is_dir() or d.name == "fixtures":
+        if not d.is_dir() or d.name in NAO_PRODUCAO:
             continue
         src = d / "src"
         if not src.exists():
@@ -60,7 +69,7 @@ def discover_models():
 def main():
     models = discover_models()
     if len(models) < 2:
-        print(f"OK -- so {len(models)} modelo(s) sob models/player/ (fora fixtures/); nada para comparar.")
+        print(f"OK -- so {len(models)} modelo(s) sob models/player/ (fora {'/'.join(sorted(NAO_PRODUCAO))}/); nada para comparar.")
         return 0
 
     failures = []

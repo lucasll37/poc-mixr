@@ -111,6 +111,34 @@ framework de decisão em particular, nenhuma separação de camadas. `stub.cpp` 
 de código e não linka nenhuma biblioteca de árvore de comportamento — só o necessário para
 satisfazer as seções 1 a 4.
 
+## 6. Nomear certo: namespace aninhado sob `mixr::models::x<nome>`
+
+Esta seção é sobre RISCO DE RUNTIME, não sobre estilo, e — como a seção 3 — não é imposta pelo
+compilador nem por guarda nenhuma hoje: se ignorada, o sintoma aparece longe do lugar do erro.
+
+Um cenário pode carregar MAIS de um `.so` de modelo no mesmo processo (ver
+[`../../missile/`](../../missile/), carregado ao lado do `flight` no cenário de demo de míssil
+guiado). Os `.so` são abertos com `RTLD_LOCAL`, e sob esse modo a comparação de `type_info` deste
+toolchain degrada para `strcmp` do nome *mangled* — dois tipos DIFERENTES com o MESMO nome
+qualificado, em dois `.so` distintos, colidem silenciosamente.
+
+Por isso, todo modelo NOVO (qualquer coisa além deste fixture, que já segue isto) precisa aninhar
+TODO o próprio namespace — incluindo um eventual `domain::` — dentro de
+`mixr::models::x<nome-do-modelo>`, nunca solto. `models/player/A4` (`domain::` solto no global) é
+a exceção histórica, cara demais para corrigir agora — **não** é o exemplo a copiar.
+`models/player/missile` e `models/player/template` já nascem certos; o raciocínio completo (por
+que o RTTI degrada, por que aninhar resolve) está em
+[`../../template/docs/ARCHITECTURE.md`](../../template/docs/ARCHITECTURE.md), seção "Por que
+`domain::` mora DENTRO de...".
+
+A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o namespace C++) é
+prima deste problema e já tem guarda automática —
+[`../../../../tests/guard/check_colisao_fabrica.py`](../../../../tests/guard/check_colisao_fabrica.py)
+— que já pegou um caso real em produção (`ThreadTagProbe` → `MissileThreadTagProbe`, ver
+`CLAUDE.md` raiz). A colisão de `type_info` desta seção é mais difícil de flagrar
+automaticamente — por isso o namespace aninhado é a defesa que não depende de um teste pegar o
+problema depois.
+
 ## Limites do que este documento garante
 
 - A tabela da seção 2 é um retrato do cenário de produção **de hoje**; ela muda se o cenário

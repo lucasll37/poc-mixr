@@ -16,9 +16,22 @@ próprio nó raiz descarta o cenário inteiro (não há "Station vazia": a raiz 
 slot-lista pode receber tanto uma classe (arrastada/escolhida) quanto um valor de TEXTO simples
 (botão "+ texto") — necessário para slots como `TacviewOutput.modelMap`/`typeMap`/`colorMap`,
 cujas entradas são strings, não objetos MIXR (ver o comentário de `makeTextLeaf()` em
-`edl_builder_core.js`). O botão "Preset: bandit" carrega tudo de `src/poc/dis/bandit/configs/
-scenario.edl` **exceto os players** (`simulation.players` fica vazio de propósito) — um ponto de
-partida pronto pra arrastar a própria aeronave em cima.
+`edl_builder_core.js`).
+
+A ferramenta abre já com um cenário carregado por padrão — o de **maior número de componentes**
+do repositório (`src/poc/built-in_mixr_1/configs/scenario.generated.edl`, 53 das 96 classes de
+`mixr::models` num único `Aircraft`), convertido uma vez para o formato de projeto por
+`scripts/edl_to_ui_project.js` e embutido no `.html` como `EDL_DEFAULT_SCENARIO` (mesmo mecanismo
+de injeção de `EDL_CATALOG`, ver `compile.js`). Serve de ponto de partida pra explorar/editar em
+vez de começar de uma tela vazia — "Novo" (ou o "×" na raiz) descarta e volta pra uma `Station`
+em branco.
+
+A árvore central (NavTree) é só NAVEGAÇÃO — clique num nó, em qualquer profundidade, pra
+selecioná-lo. Quem edita é a coluna da direita (painel de propriedades): campos de valor direto
+do nó selecionado, e logo abaixo uma seção "Componentes" com os mesmos controles de
+arrastar/adicionar/renomear/remover que a árvore central tinha antes — clicar num componente ali
+seleciona ele e troca o próprio painel para mostrar os dados dele (navegação "descer um nível de
+cada vez", complementar ao NavTree, que pula direto a qualquer nó).
 
 ## Arquivos
 

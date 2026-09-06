@@ -1,8 +1,0 @@
-Checks: >
-  -*,
-  bugprone-*,
-  performance-*,
-  clang-analyzer-*
-WarningsAsErrors: ''
-HeaderFilterRegex: ''
-FormatStyle: none

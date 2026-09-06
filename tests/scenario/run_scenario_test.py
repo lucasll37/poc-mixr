@@ -12,7 +12,12 @@ Cada modo exercita um ramo diferente da arvore:
             recebem e vao apoiar. E o unico modo que fecha o laco entre
             players (AlertDatalink), e por isso o mais valioso.
   lowfuel   o ramo de RTB vence tudo, do primeiro frame ao ultimo.
-  terrain   o AltitudeSafetyBehavior (voto 90) ganha do BtBehavior (voto 50).
+
+O modo 'terrain' EXISTIU aqui (afirmava que o AltitudeSafetyBehavior, voto
+90, ganhava do BtBehavior, voto 50) e foi REMOVIDO junto com o arbitro: os
+cenarios de producao nao instanciam mais ( UbfArbiter )/
+( AltitudeSafetyBehavior ), entao 'bt=SAFETY' e um rotulo inalcancavel hoje
+-- ver a secao "SEM ARBITRO" no topo de cada scenario.edl.in.
 
 Todos rodam contra fixtures HERMETICAS geradas por make_fixture.py.
 
@@ -35,7 +40,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "SAFETY", "?",
+ROTULOS_CONHECIDOS = {"PATROL", "EVADE", "BREAK", "SUPPORT", "RTB", "HOME", "?",
                       # src/poc/onnx-policy: a arvore inteira e uma rede neural, e o
                       # rotulo dela nao e um modo de voo -- e o no que decidiu.
                       "ONNX"}
@@ -152,7 +157,7 @@ def a_ultimo(série):
 
 def checa_lowfuel(amostras, falhas):
     for nome, série in por_player(amostras).items():
-        fora = {a["bt"] for a in série} - {"RTB", "HOME", "SAFETY"}
+        fora = {a["bt"] for a in série} - {"RTB", "HOME"}
         if fora:
             falhas.append(
                 f"{nome}: com a reserva acima do combustivel disponivel, o ramo de RTB tinha de "
@@ -160,20 +165,9 @@ def checa_lowfuel(amostras, falhas):
             )
 
 
-def checa_terrain(amostras, falhas):
-    viram_safety = {n for n, s in por_player(amostras).items()
-                    if any(a["bt"] == "SAFETY" for a in s)}
-    if not viram_safety:
-        falhas.append(
-            "nenhum aviao entrou em SAFETY, com minAltitude acima da altitude de cruzeiro -- "
-            "o AltitudeSafetyBehavior (voto 90) nao esta ganhando do BtBehavior (voto 50)"
-        )
-
-
 CHECAGENS = {
     "intruder": checa_intruder,
     "lowfuel": checa_lowfuel,
-    "terrain": checa_terrain,
 }
 
 
