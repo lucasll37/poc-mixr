@@ -90,10 +90,10 @@ Color phaseColor(const EstimatedPhase phase)
    switch (phase) {
       case EstimatedPhase::Structural:         return Color::White;
       case EstimatedPhase::DynamicsPhase0:      return Color::Yellow;
-      case EstimatedPhase::SensorPhase1And2:    return Color::Cyan;
+      case EstimatedPhase::TransmitPhase1:      return Color::Cyan;
+      case EstimatedPhase::ReceivePhase2:       return Color::Blue;
+      case EstimatedPhase::SensorBothPhases:    return Color::CyanLight;
       case EstimatedPhase::DecisionPhase3:      return Color::Green;
-      case EstimatedPhase::DecisionBackground:  return Color::GreenLight;
-      case EstimatedPhase::Background:          return Color::Magenta;
       case EstimatedPhase::Unknown:
       default:                                 return Color::GrayDark;
    }
@@ -120,6 +120,7 @@ double layoutSubtree(const ComponentTreeNode& node, const int depth, double& cur
    laid.isPlayer = node.isPlayer;
    laid.playerId = node.playerId;
    laid.phase = node.phase;
+   laid.ownPhaseMask = node.ownPhaseMask;
    laid.state = node.state;
    laid.depth = depth;
    laid.parentIndex = parentIndex;
@@ -385,15 +386,30 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
    const EstimatedPhase activeFlowPhase{currentFlowPhase(flow)};
    const int selectedIndex{findComponentNodeIndex(layout, view.selectedKey)};
 
-   // O CAMINHO DA RECURSAO nesta fase, e ate que profundidade ele vai -- a
-   // onda desce um nivel por passo de animacao ao longo dele.
+   // O CAMINHO DA RECURSAO nesta fase -- as arestas (pai->filho) que
+   // Component::updateTC() de fato percorre para chegar aos participantes.
    const std::vector<bool> onPath{markDescentPath(layout, activeFlowPhase)};
    const Color pathColor{phaseColor(activeFlowPhase)};
-   int maxPathDepth{};
+
+   // A ONDA visita um COMPONENTE POR VEZ, na MESMA ordem sequencial que a
+   // recursao real usa: 'layout.nodes' ja esta em pre-ordem DFS (a mesma
+   // ordem de 'obj->tcFrame(dt) em CADA filho', um de cada vez, terminando
+   // a subarvore inteira de um antes do proximo irmao -- ver o cabecalho de
+   // FrameCallChain.hpp) -- filtrar so quem esta no caminho, na ordem em
+   // que aparece, ja da a sequencia de visita correta. Antes disto a onda
+   // avancava por NIVEL (todas as arestas de uma profundidade acendendo
+   // juntas), o que sugeria um paralelismo que o framework nao tem.
+   std::vector<std::size_t> litSequence;
    for (std::size_t i = 0; i < layout.nodes.size(); i++) {
-      if (onPath[i]) maxPathDepth = std::max(maxPathDepth, layout.nodes[i].depth);
+      if (onPath[i] && layout.nodes[i].parentIndex >= 0) litSequence.push_back(i);
    }
-   const double wave{flowSubStep(flow) * static_cast<double>(maxPathDepth + 1)};
+   int waveEdgePos{-1};
+   double waveEdgeFrac{};
+   if (!litSequence.empty() && flow.playing) {
+      const double wave{flowSubStep(flow) * static_cast<double>(litSequence.size())};
+      waveEdgePos = std::min(static_cast<int>(wave), static_cast<int>(litSequence.size()) - 1);
+      waveEdgeFrac = wave - static_cast<double>(waveEdgePos);
+   }
 
    // Cotovelos pai->filho primeiro (ficam por BAIXO dos pontos/rótulos):
    // desce do pai até a barra horizontal, corre até a coluna do filho, desce
@@ -419,11 +435,11 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       c.DrawPointLine(a.px, elbowY, b.px, elbowY, style);
       c.DrawPointLine(b.px, elbowY, b.px, b.py, style);
 
-      // A frente da onda, quando ela esta atravessando ESTE nivel.
-      if (lit && flow.playing && static_cast<int>(wave) == parent.depth) {
-         const double f{wave - static_cast<double>(parent.depth)};
-         const int wx{a.px + static_cast<int>(std::lround((b.px - a.px) * f))};
-         const int wy{a.py + static_cast<int>(std::lround((b.py - a.py) * f))};
+      // A onda esta atravessando ESTA aresta especifica agora -- um
+      // componente por vez, na posicao 'waveEdgePos' dentro de 'litSequence'.
+      if (lit && waveEdgePos >= 0 && litSequence[static_cast<std::size_t>(waveEdgePos)] == i) {
+         const int wx{a.px + static_cast<int>(std::lround((b.px - a.px) * waveEdgeFrac))};
+         const int wy{a.py + static_cast<int>(std::lround((b.py - a.py) * waveEdgeFrac))};
          c.DrawPointCircleFilled(wx, wy, 1, Color::White);
       }
    }
@@ -437,11 +453,18 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
       if (!p.onCanvas) continue;
 
       const Color col{phaseColor(node.phase)};
+      // Participa da fase corrente AGORA -- por MASCARA, nao por igualdade
+      // escalar: e o que faz um no 'SensorBothPhases' (ownPhaseMask com os
+      // DOIS bits de transmit+receive) acender nas duas fases de verdade,
+      // em vez de so numa escolhida arbitrariamente.
+      const bool participatesNow{activeFlowPhase != EstimatedPhase::Unknown
+         && (node.ownPhaseMask & phaseBit(activeFlowPhase)) != 0u};
+
       // "Pulso" do ciclo de fluxo (ver app/ComponentFlowState.hpp) -- anel
       // AMARELO, raio 3, deliberadamente diferente do anel branco (raio 4)
       // de seleção logo abaixo, pra "está no ciclo agora" e "está
       // selecionado" nunca se confundirem mesmo quando calham no MESMO nó.
-      if (node.phase == activeFlowPhase && activeFlowPhase != EstimatedPhase::Unknown) {
+      if (participatesNow) {
          c.DrawPointCircle(p.px, p.py, 3, Color::YellowLight);
       }
       if (static_cast<int>(i) == selectedIndex) c.DrawPointCircle(p.px, p.py, 4, Color::White);
@@ -460,8 +483,11 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
          // Um galho RETRAIDO que esconde um participante desta fase sai na
          // cor da fase (e nao na dele) -- junto com a aresta acesa, e o
          // convite pra abrir ali. O no que participa ele mesmo ja tem o anel
-         // amarelo e o rotulo de chamada, entao nao ha ambiguidade.
-         const bool hidesParticipant{node.collapsed && node.phase != activeFlowPhase
+         // amarelo e o rotulo de chamada, entao nao ha ambiguidade (por isso
+         // '!participatesNow', nao 'node.phase != activeFlowPhase' -- um no
+         // 'SensorBothPhases' participa de verdade mesmo sem igualdade
+         // escalar).
+         const bool hidesParticipant{node.collapsed && !participatesNow
             && (node.subtreePhaseMask & phaseBit(activeFlowPhase)) != 0u
             && activeFlowPhase != EstimatedPhase::Unknown};
          const Color labelColor{isSelected ? Color::White : (hidesParticipant ? pathColor : col)};
@@ -471,7 +497,7 @@ Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTr
          // de verdade -- desenhada logo abaixo do nome, no proprio no. Cabe
          // porque kRowSpacingPx reserva 20 px por nivel e o nome ocupa so a
          // faixa +6..+10.
-         const std::string call{nodeCallLabel(node.phase, activeFlowPhase, params)};
+         const std::string call{participatesNow ? nodeCallLabel(activeFlowPhase, params) : std::string{}};
          if (!call.empty()) {
             c.DrawText(p.px - labelWidthPx(call) / 2, textY + 4, call, Color::YellowLight);
          }
@@ -598,7 +624,9 @@ Element renderComponentDetail(const ComponentTreeLayoutNode& node, const Compone
    //      ja tinha espaco sobrando) e nao num painel proprio -- um painel
    //      roubaria altura justamente do desenho da arvore.
    const EstimatedPhase activePhase{currentFlowPhase(flow)};
-   const std::string call{nodeCallLabel(node.phase, activePhase, params)};
+   const bool participatesNow{activePhase != EstimatedPhase::Unknown
+      && (node.ownPhaseMask & phaseBit(activePhase)) != 0u};
+   const std::string call{participatesNow ? nodeCallLabel(activePhase, params) : std::string{}};
 
    lines.push_back(separator());
    lines.push_back(hbox({
@@ -697,11 +725,9 @@ std::string phaseStripLabel(const EstimatedPhase phase)
    switch (phase) {
       case EstimatedPhase::Structural:         return "tcFrame";
       case EstimatedPhase::DynamicsPhase0:      return "0 dynamics";
-      case EstimatedPhase::SensorPhase1And2:    return "1 transmit / 2 receive";
+      case EstimatedPhase::TransmitPhase1:      return "1 transmit";
+      case EstimatedPhase::ReceivePhase2:       return "2 receive";
       case EstimatedPhase::DecisionPhase3:      return "3 process";
-      case EstimatedPhase::DecisionBackground:  return "Agent::controller";
-      case EstimatedPhase::Background:          return "updateData";
-      case EstimatedPhase::Unknown:
       default:                                 return "?";
    }
 }
@@ -721,17 +747,7 @@ Element renderFramePhaseStrip(const ComponentFlowState& flow, const FrameCallPar
    for (std::size_t i = 0; i < kComponentFlowCycleLen; i++) {
       const EstimatedPhase phase{kComponentFlowCycle[i]};
 
-      // A fronteira entre o grupo do frame de tempo critico e o de fundo:
-      // sao THREADS diferentes, e essa e a informacao que a faixa existe pra
-      // dar de um relance.
-      if (phase == EstimatedPhase::DecisionBackground) {
-         std::ostringstream bg;
-         bg << "  FUNDO  " << std::fixed << std::setprecision(1) << params.bgRateHz << " Hz ";
-         row.push_back(text(" =>") | color(Color::GrayDark) | bold);
-         row.push_back(text(bg.str()) | bgcolor(Color::GrayDark) | color(Color::White) | bold);
-      } else if (i > 0) {
-         row.push_back(text("->") | color(Color::GrayDark));
-      }
+      if (i > 0) row.push_back(text("->") | color(Color::GrayDark));
 
       const bool isActive{phase == active};
       Element block{text(" " + phaseStripLabel(phase) + " ")};

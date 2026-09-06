@@ -215,6 +215,21 @@ test_app_speed_ladder = executable('test-app-speed-ladder',
 )
 test('app-speed-ladder', test_app_speed_ladder, suite: 'domain', timeout: 60)
 
+# A parte sem FTXUI da aba "EDL" (F7) -- io de arquivo (nunca sobre o
+# '.edl.in'/'.generated.edl' de producao, so sobre editedScenarioPath()) e a
+# interpretacao do exit code do oraculo 'edlcheck'. Sem MIXR, sem FTXUI --
+# 'runEdlCheck()' recebe o caminho do binario por parametro, entao o teste
+# roda contra /bin/true//bin/false/bin/echo, nunca contra o 'edlcheck' real.
+test_app_edl_editor = executable('test-app-edl-editor-state',
+    files('app/test_edl_editor_state.cpp') + files(
+        '../app/src/app/EdlEditorState.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-edl-editor-state', test_app_edl_editor, suite: 'domain', timeout: 60)
+
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
 # de shared/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
@@ -586,6 +601,36 @@ test('plugin-deposito-terceiro', py,
 # e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
 # MODELO quando ele saiu para models/player/A4.
 
+# O catalogo de --edl-catalog (scripts/extract_execution_chain.py), fonte
+# unica de verdade do editor grafico de .edl (src/ui/edl_builder.jsx): tipo/
+# unidade/cardinalidade por slot batendo com armadilhas ja confirmadas no
+# fonte (ON_SLOT duplicado, slot herdado, ON_SLOT comentado que nao pode
+# vazar), sem duplicar nome de fabrica, e cobrindo toda classe usada nos
+# cenarios REAIS do repositorio. Puro Python, sem MIXR, sem 'install' --
+# suite propria ('tools') porque nao e nem C++ (suite 'domain') nem
+# invariante estrutural sobre arquivos do repo (suite 'guard').
+# timeout mais folgado que os outros de 'tools' (60s): varre ~600 arquivos
+# .cpp/.hpp com regex, ~4-5s sem contencao mas medido estourando 60s sob
+# carga alta da maquina (varias suites/sessoes rodando junto) -- nao e um
+# hang, e so uma margem apertada demais.
+test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
+     workdir: raiz, suite: 'tools', timeout: 120)
+
+# scripts/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo acima)
+# nao pode acusar erro nos 12 cenarios REAIS do repositorio -- ver o
+# cabecalho de tools/test_edl_lint.py.
+test('edl-lint', py, args: files('tools/test_edl_lint.py'),
+     workdir: raiz, suite: 'tools', timeout: 60)
+
+# O ORACULO definitivo (o parser MIXR de verdade, via edlcheck) tem que
+# aceitar os MESMOS 12 cenarios reais -- ver o cabecalho de
+# tools/test_edlcheck.py. depends:edlcheck garante o binario compilado;
+# precisa TAMBEM de 'make install' ja ter rodado (dist/lib/mixr-plugins/
+# populado) -- mesma dependencia que toda suite 'scenario'/'plugin' ja tem.
+test('edl-check', py,
+     args: files('tools/test_edlcheck.py') + ['--binario', edlcheck.full_path()],
+     depends: edlcheck, workdir: raiz, suite: 'tools', timeout: 60)
+
 # O host nao pode voltar a conhecer o fonte do modelo.
 test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
@@ -606,4 +651,13 @@ test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
 # mesma estrutura -- so os VALORES podem diferir (posicao/altitude/velocidade
 # calibrados por aviao). Ver skeleton_diff.py para o metodo.
 test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
+     workdir: raiz, suite: 'guard', timeout: 60)
+
+# Nenhum PAR de modelos "de verdade" sob models/player/ (fora fixtures/,
+# que existem pra IMITAR outro de proposito) pode publicar o MESMO nome
+# de fabrica -- ja aconteceu uma vez (ThreadTagProbe, A4 vs missile) e
+# derruba o processo em runtime se algum .edl carregar os dois .so juntos.
+# Descobre os modelos por find (mesma filosofia das guardas acima) -- um
+# modelo novo ja entra na checagem, sem editar este arquivo.
+test('colisao-fabrica', py, args: files('guard/check_colisao_fabrica.py'),
      workdir: raiz, suite: 'guard', timeout: 60)

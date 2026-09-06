@@ -3,6 +3,7 @@
 #include "mixr/base/Component.hpp"
 
 namespace mixr {
+namespace models {
 namespace xmissile {
 
 //------------------------------------------------------------------------------
@@ -49,4 +50,5 @@ protected:
 };
 
 } // namespace xmissile
+} // namespace models
 } // namespace mixr

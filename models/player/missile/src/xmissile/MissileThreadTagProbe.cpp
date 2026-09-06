@@ -6,6 +6,7 @@
 #include "mixr/models/player/Player.hpp"
 
 namespace mixr {
+namespace models {
 namespace xmissile {
 
 IMPLEMENT_SUBCLASS(MissileThreadTagProbe, "MissileThreadTagProbe")
@@ -41,4 +42,5 @@ void MissileThreadTagProbe::updateTC(const double dt)
 }
 
 } // namespace xmissile
+} // namespace models
 } // namespace mixr

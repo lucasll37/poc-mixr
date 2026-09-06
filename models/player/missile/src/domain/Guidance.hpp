@@ -1,5 +1,24 @@
 #pragma once
 
+// namespace domain ANINHADO em mixr::xmissile (nao um "domain" solto no
+// escopo global) -- o flight (models/player/A4) TAMBEM tem seu proprio
+// "namespace domain { ... }" solto, e as duas .so's (libflight*.so,
+// libmissile.so) carregam JUNTAS no mesmo processo (ver
+// src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in,
+// app/configs/scenario_intercept_missile.edl.in) -- dois namespaces
+// "domain" IDENTICOS, cada um privado ao seu .so (visibility hidden), nao
+// colidem HOJE (nomes de tipo diferentes dos dois lados: GuidanceCommand
+// aqui, WorldView/ThreatPolicy/etc. no flight), mas e uma mina para o
+// futuro: dois tipos com o MESMO nome qualificado ("domain::X") em dois
+// .so's carregados juntos teriam o mesmo nome mangled, e a comparacao de
+// type_info deste toolchain degrada para strcmp entre objetos RTLD_LOCAL
+// (ver o comentario correspondente em shared/xplugin/PluginRegistry.cpp).
+// Aninhar aqui elimina a colisao sem tocar no flight (que ja tem
+// "domain::" espalhado e documentado em dezenas de lugares) -- so este
+// lado, o menor e mais novo dos dois, muda.
+namespace mixr {
+namespace models {
+namespace xmissile {
 namespace domain {
 
 //------------------------------------------------------------------------------
@@ -74,3 +93,6 @@ GuidanceCommand pursuit(double relNorthM, double relEastM, double relDownM,
 double slewTowards(double current, double target, double maxDelta);
 
 } // namespace domain
+} // namespace xmissile
+} // namespace models
+} // namespace mixr

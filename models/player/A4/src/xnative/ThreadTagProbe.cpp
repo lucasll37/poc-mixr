@@ -6,6 +6,7 @@
 #include "mixr/models/player/Player.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(ThreadTagProbe, "ThreadTagProbe")
@@ -38,4 +39,5 @@ void ThreadTagProbe::updateTC(const double dt)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

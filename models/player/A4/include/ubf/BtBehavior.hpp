@@ -17,6 +17,7 @@
 namespace mixr {
 namespace base { class Angle; class Distance; class Number; class String; class Time; }
 
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -161,6 +162,7 @@ private:
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

@@ -100,7 +100,7 @@ não abre terminal interativo, então funciona em CI.
 
 ```
 ╭──────────────────────────────────────────────────────────────────────╮
-│ app  <cenário>  entidades=N                t=Xs  sim=Ys  <vel>  thr=N │
+│ app  <cenário>  entidades=N          t=Xs  sim=Ys  <vel>  n_thread=N │
 ╰──────────────────────────────────────────────────────────────────────╯
 [F1] Players  [F2] Mapa  [F3] Memória  [F4] Tempo Não-Crítico
 ──────────────────────────────────────────────────────────────────────

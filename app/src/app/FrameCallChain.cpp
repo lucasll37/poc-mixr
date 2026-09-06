@@ -42,7 +42,8 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
    const double dt0{p.paused ? 0.0 : dt};
 
    const bool ph0 = (phase == EstimatedPhase::DynamicsPhase0);
-   const bool ph12 = (phase == EstimatedPhase::SensorPhase1And2);
+   const bool ph1 = (phase == EstimatedPhase::TransmitPhase1);
+   const bool ph2 = (phase == EstimatedPhase::ReceivePhase2);
    const bool ph3 = (phase == EstimatedPhase::DecisionPhase3);
    const bool structural = (phase == EstimatedPhase::Structural);
 
@@ -94,9 +95,9 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
                       "6-DOF do player (JSBSimModel) + amostra REID_PLAYER_DATA pro Tacview",
                       "Player.cpp:567", ph0));
    out.push_back(line(11, CallLineKind::Call, "case 1: (vazio no Player)", {},
-                      "quem transmite sao os SISTEMAS, logo abaixo", "Player.cpp:592", ph12));
+                      "quem transmite sao os SISTEMAS, logo abaixo", "Player.cpp:592", ph1));
    out.push_back(line(11, CallLineKind::Call, "case 2: (vazio no Player)", {},
-                      "idem para receber", "Player.cpp:596", ph12));
+                      "idem para receber", "Player.cpp:596", ph2));
    out.push_back(line(11, CallLineKind::Call, "case 3: (vazio no Player)", {},
                       "idem para a decisao", "Player.cpp:600", ph3));
    out.push_back(line(10, CallLineKind::Call, "Component::updateTC", "(dt = " + secs(dtPhase) + ")",
@@ -110,75 +111,13 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
    out.push_back(line(13, CallLineKind::Call, "case 0: dynamics", "(dt4 = " + secs(dt) + ")",
                       "dinamica propria do subsistema", "System.cpp:108", ph0));
    out.push_back(line(13, CallLineKind::Call, "case 1: transmit", "(dt4 = " + secs(dt) + ")",
-                      "antena/radar EMITEM", "System.cpp:112", ph12));
+                      "antena/radar EMITEM", "System.cpp:112", ph1));
    out.push_back(line(13, CallLineKind::Call, "case 2: receive", "(dt4 = " + secs(dt) + ")",
-                      "antena/radar RECEBEM; o TrackManager forma as pistas", "System.cpp:116", ph12));
+                      "antena/radar RECEBEM; o TrackManager forma as pistas", "System.cpp:116", ph2));
    out.push_back(line(13, CallLineKind::Call, "case 3: process", "(dt4 = " + secs(dt) + ")",
                       "a DECISAO: Autopilot, UbfArbiter, FlightAgentTC -- e o ( FlightAgentTC ) das pocs "
                       "multi-thread decide exatamente aqui",
                       "System.cpp:120", ph3));
-   return out;
-}
-
-//------------------------------------------------------------------------------
-// A cadeia de FUNDO. Neste app ela nao parte de uma thread do framework: o
-// proprio laco de simThread (DashboardLoop.cpp) faz o papel da
-// StationBgPeriodicThread, chamando station->updateData(dt) -- ver o
-// comentario grande de app::BackgroundInfo (aba F4).
-//------------------------------------------------------------------------------
-std::vector<CallChainLine> backgroundChain(const EstimatedPhase phase, const FrameCallParams& p)
-{
-   const double dt{p.bgRateHz > 0.0 ? (1.0 / p.bgRateHz) : 0.0};
-   const double dt0{p.paused ? 0.0 : dt};
-   const bool decision = (phase == EstimatedPhase::DecisionBackground);
-   const bool background = (phase == EstimatedPhase::Background);
-
-   std::ostringstream rate;
-   rate << std::fixed << std::setprecision(1) << p.bgRateHz;
-
-   std::vector<CallChainLine> out;
-   out.push_back(line(0, CallLineKind::Thread, "laco de fundo do ./app (simThread)", {},
-                      "este app NAO cria a StationBgPeriodicThread nativa -- o proprio laco a "
-                      "~" + rate.str() + " Hz faz esse papel (ver a aba F4)"));
-   out.push_back(line(0, CallLineKind::Call, "Station::updateData", "(dt = " + secs(dt) + ")", {},
-                      "Station.cpp:323", background));
-   out.push_back(line(1, CallLineKind::Call, "Station::processBackgroundTasks", "(dt)",
-                      "so quando bgRate == 0 e nao ha thread de fundo propria", "Station.cpp:516"));
-   out.push_back(line(2, CallLineKind::Call, "AbstractIoHandler::updateData", "(dt)",
-                      "e por aqui que o joystick entra (shared/xjoystick)", "Station.cpp:523"));
-   out.push_back(line(2, CallLineKind::Call, "Simulation::updateData", "(dt)", {},
-                      "Station.cpp:527"));
-   out.push_back(line(3, CallLineKind::Assign, "dt0 = isFrozen() ? 0.0 : dt", "= " + secs(dt0),
-                      p.paused ? std::string{"PAUSADO: o caminho de fundo tambem congela"} : std::string{},
-                      "Simulation.cpp:625"));
-   out.push_back(line(3, CallLineKind::Call, "Simulation::updatePlayerList", "()",
-                      "materializa quem nasceu no frame: o missil liberado, o fantasma que chegou por DIS",
-                      "Simulation.cpp:631"));
-   out.push_back(line(3, CallLineKind::Call, "Simulation::updateBgPlayerList", "(players, dt0, idx, n)",
-                      "mesma divisao por thread da versao T/C", "Simulation.cpp:639"));
-   out.push_back(line(4, CallLineKind::Call, "Player::updateData", "(" + secs(dt0) + ")", {},
-                      "Player.cpp:619"));
-   out.push_back(line(5, CallLineKind::Call, "Player::updateElevation", "()",
-                      "o terreno e consultado AQUI, no fundo -- nao no frame T/C; e por isso que o AGL "
-                      "pode estar ate 100 ms velho na poc multi-thread",
-                      "Player.cpp:630"));
-   out.push_back(line(5, CallLineKind::Call, "Component::updateData", "(dt)",
-                      "RECURSAO: obj->updateData(dt) DIRETO nos filhos -- nao ha bgFrame(); as duas "
-                      "recursoes (T/C e fundo) NAO sao simetricas",
-                      "Component.cpp:269"));
-   out.push_back(line(6, CallLineKind::Call, "ubf::Agent::updateData", "(dt)",
-                      "o ( SimAgent ) da poc single-thread decide AQUI, fora do frame", "Agent.cpp:59", decision));
-   out.push_back(line(7, CallLineKind::Call, "ubf::Agent::controller", "(dt)",
-                      "updateState(actor) -> genAction(state, dt) -> action->execute(actor)",
-                      "Agent.cpp:64", decision));
-   out.push_back(line(1, CallLineKind::Call, "Station::processNetworkInputTasks", "(dt)",
-                      "DIS entra por aqui", "Station.cpp:342", background));
-   out.push_back(line(1, CallLineKind::Call, "Station::processNetworkOutputTasks", "(dt)", {},
-                      "Station.cpp:343", background));
-   out.push_back(line(1, CallLineKind::Call, "AbstractDataRecorder::processRecords", "()",
-                      "drena a fila do gravador -> shared/xtacview -> Tacview. Sem esta chamada o "
-                      "Tacview nao recebe nada",
-                      "Station.cpp:349", background));
    return out;
 }
 
@@ -189,8 +128,10 @@ std::vector<CallChainLine> frameDescentPath(const std::vector<CallChainLine>& ch
    // Varre de TRAS pra frente: ao achar uma linha ativa, passa a aceitar
    // qualquer linha de profundidade estritamente menor -- que e exatamente
    // a definicao de "ancestral" numa lista indentada em pre-ordem. Uma
-   // segunda linha ativa mais acima reabre o limite (as fases 1 e 2 marcam
-   // duas chamadas irmas, por exemplo).
+   // segunda linha ativa mais acima reabre o limite (generico o bastante
+   // pra cobrir uma fase futura que marque mais de uma chamada irma, mesmo
+   // que nenhuma das quatro de hoje faca isso mais -- transmit/receive
+   // foram desmembradas, cada uma so marca a propria linha).
    std::vector<CallChainLine> reversed;
    int wanted{-1};   // profundidade maxima ainda aceita; -1 = nada aceito ainda
    for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
@@ -203,36 +144,35 @@ std::vector<CallChainLine> frameDescentPath(const std::vector<CallChainLine>& ch
    return std::vector<CallChainLine>(reversed.rbegin(), reversed.rend());
 }
 
-std::string nodeCallLabel(const EstimatedPhase nodePhase, const EstimatedPhase flowPhase,
-                          const FrameCallParams& params)
+std::string nodeCallLabel(const EstimatedPhase flowPhase, const FrameCallParams& params)
 {
-   if (nodePhase != flowPhase) return {};
-
+   // A PARTICIPACAO (o "se") ja foi decidida pelo chamador, via
+   // ownPhaseMask -- ver o comentario grande no header. Aqui so resta o
+   // "o que", que depende so da fase corrente.
+   //
    // Curto de proposito: isto e desenhado NO CANVAS, embaixo do nome do no,
    // e cada caractere custa 2 px de largura (Canvas::DrawText) num espaco
    // que ja e disputado pelos irmaos.
    std::ostringstream os;
    os << std::fixed << std::setprecision(3);
 
-   switch (nodePhase) {
+   switch (flowPhase) {
       case EstimatedPhase::Structural:
          os << "tcFrame(" << frameStepSeconds(params) << "s)";
          break;
       case EstimatedPhase::DynamicsPhase0:
          os << "dynamics(" << frameStepSeconds(params) << "s)";
          break;
-      case EstimatedPhase::SensorPhase1And2:
-         os << "tx+rx(" << frameStepSeconds(params) << "s)";
+      case EstimatedPhase::TransmitPhase1:
+         os << "transmit(" << frameStepSeconds(params) << "s)";
+         break;
+      case EstimatedPhase::ReceivePhase2:
+         os << "receive(" << frameStepSeconds(params) << "s)";
          break;
       case EstimatedPhase::DecisionPhase3:
          os << "process(" << frameStepSeconds(params) << "s)";
          break;
-      case EstimatedPhase::DecisionBackground:
-         os << "controller(" << (params.bgRateHz > 0.0 ? 1.0 / params.bgRateHz : 0.0) << "s)";
-         break;
-      case EstimatedPhase::Background:
-         os << "updateData(" << (params.bgRateHz > 0.0 ? 1.0 / params.bgRateHz : 0.0) << "s)";
-         break;
+      case EstimatedPhase::SensorBothPhases:
       case EstimatedPhase::Unknown:
       default:
          return {};
@@ -245,22 +185,9 @@ double frameStepSeconds(const FrameCallParams& params)
    return (params.tcRateHz > 0.0) ? (1.0 / params.tcRateHz) : 0.0;
 }
 
-bool isTimeCriticalPhase(const EstimatedPhase phase)
-{
-   switch (phase) {
-      case EstimatedPhase::Structural:
-      case EstimatedPhase::DynamicsPhase0:
-      case EstimatedPhase::SensorPhase1And2:
-      case EstimatedPhase::DecisionPhase3:
-         return true;
-      default:
-         return false;
-   }
-}
-
 std::vector<CallChainLine> buildFrameCallChain(const EstimatedPhase phase, const FrameCallParams& params)
 {
-   return isTimeCriticalPhase(phase) ? timeCriticalChain(phase, params) : backgroundChain(phase, params);
+   return timeCriticalChain(phase, params);
 }
 
 } // namespace app

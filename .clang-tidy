@@ -1,10 +1,21 @@
+# -readability-else-after-return / -readability-redundant-member-init: ruido puro do
+# IMPLEMENT_SUBCLASS do MIXR (macros.hpp) -- toda classe expande um "if(...) return true;
+# else return Base::...;" e um "Tipo(const Tipo& org) : BaseClass() {...}" que o proprio
+# framework escreve assim; nao ha nada para corrigir do lado de ca.
 Checks: >
   -*,
   readability-*,
   -readability-magic-numbers,
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
-  -readability-uppercase-literal-suffix
+  -readability-uppercase-literal-suffix,
+  -readability-else-after-return,
+  -readability-redundant-member-init
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 FormatStyle: none
+CheckOptions:
+  # Reconcilia com o .clang-format (AllowShortIfStatementsOnASingleLine: WithoutElse):
+  # um corpo de 1 linha (o "if (cond) return;" idiomatico deste projeto) nao exige chaves;
+  # continua acusando corpo de mais de 1 linha e cadeia if/else-if/else com estilo misto.
+  readability-braces-around-statements.ShortStatementLines: '1'

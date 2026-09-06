@@ -1,17 +1,10 @@
 
 - no pagina de componentes (epp), mostrar somente o que é time critical. quebrar transmite e receive?
 
-- configurar na moral os clangd*, entendendo o que de fato eles fazem
 
 - melhorar documentação
-
-- create new NonCriticalTime?
-
-- validar geração de logs e mensagens
-
-- enxugar shared
-
-
--apresentação de slides
-
--interface gráfica para montar edl
+> clang-tidy bem frouxo
+> ver o cenário onnx e python
+> enxugar shared (validar geração de logs e mensagens)
+> apresentação de slides
+> interface gráfica para montar edl

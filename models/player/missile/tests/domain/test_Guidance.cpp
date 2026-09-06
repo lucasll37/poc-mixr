@@ -4,6 +4,13 @@
 
 #include <cmath>
 
+// domain:: mora aninhado em mixr::xmissile (ver o "porque" em
+// domain/Guidance.hpp) -- este alias preserva as chamadas 'domain::pursuit'
+// abaixo sem qualificar cada uma; test-domain e um binario PURO, sem MIXR
+// (nem sequer o -Imixr chega aqui), entao o alias e so acucar de sintaxe,
+// nao introduz dependencia nenhuma.
+namespace domain = mixr::models::xmissile::domain;
+
 // A lei de guiagem e pura (ver domain/Guidance.hpp) -- estes casos travam o
 // comportamento observado, nao reimplementam a formula.
 

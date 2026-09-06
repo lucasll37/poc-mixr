@@ -5,6 +5,7 @@
 #include "mixr/models/system/ScanGimbal.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 namespace {
@@ -34,4 +35,5 @@ RadarScanInfo radarScanOf(const models::AirVehicle* const air)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

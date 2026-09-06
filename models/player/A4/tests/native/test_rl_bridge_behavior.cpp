@@ -24,6 +24,7 @@
 namespace {
 
 using namespace mixr;
+using namespace mixr::models;
 
 TEST(RLBridgeBehavior, GenActionComEstadoNuloDevolveNulo)
 {

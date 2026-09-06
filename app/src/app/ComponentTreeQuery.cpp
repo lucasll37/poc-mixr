@@ -94,20 +94,22 @@ bool containsAny(const std::string& hay, const std::initializer_list<const char*
 //
 //   1) estrutural (Station/Simulation/Player) -- decidido pelo TIPO C++
 //      exato antes de chegar aqui (ver classifyNode()), nao por string.
-//   2) 'SimAgent' por CLASSE -- decide em updateData() (ver
-//      ubf::Agent::updateData() no CLAUDE.md), diferente de todo resto do
-//      grupo "decisao".
-//   3) classes/slots de decisao dentro do frame (fase 3): Autopilot/
+//   2) classes/slots de decisao dentro do frame (fase 3): Autopilot/
 //      BtBehavior/FlightAgentTC/RLBridgeBehavior/UbfArbiter/
 //      AltitudeSafetyBehavior por classe, ou slot 'pilot'/'behavior'/
 //      'agent' por nome -- cobre tanto o agente em si quanto os nos do
 //      arbitro UBF pendurados nele.
-//   4) slot 'dynamicsModel' -- fase 0.
-//   5) sensor/antena/gimbal/datalink, por slot OU classe -- fases 1 e 2
-//      (a heuristica nao distingue as duas: um Gimbal/Antenna participa
-//      de transmit() E receive() dependendo do papel).
-//   6) dataRecorder/ioHandler/networks -- updateData(), thread de fundo.
-//   7) sem regra -> Unknown (mostrado como tal na UI, nao escondido).
+//   3) slot 'dynamicsModel' -- fase 0.
+//   4) sensor/antena/gimbal/datalink, por slot OU classe -- SensorBothPhases
+//      (a heuristica nao distingue transmit de receive: um Gimbal/Antenna
+//      participa das DUAS, dependendo do papel -- ver ownPhaseMaskFor()).
+//   5) sem regra -> Unknown. Cobre tanto "slot/classe nao reconhecidos"
+//      quanto "reconhecido, mas fora do escopo desta aba" -- SimAgent (que
+//      decide em updateData(), nao no frame T/C) e dataRecorder/ioHandler/
+//      networks/msgfeed/outputhandler (que so rodam em updateData()) caem
+//      aqui de proposito: a aba "Componentes" (F6) so modela as QUATRO
+//      fases do frame de tempo critico; a thread de fundo e' o assunto da
+//      aba "Tempo Nao-Critico" (F4).
 //------------------------------------------------------------------------------
 EstimatedPhase estimatePhase(const std::string& slotName, const std::string& className,
                              const bool isStructural)
@@ -116,8 +118,6 @@ EstimatedPhase estimatePhase(const std::string& slotName, const std::string& cla
 
    const std::string slot{toLowerAscii(slotName)};
    const std::string cls{toLowerAscii(className)};
-
-   if (cls.find("simagent") != std::string::npos) return EstimatedPhase::DecisionBackground;
 
    if (containsAny(cls, {"flightagenttc", "btbehavior", "rlbridgebehavior", "autopilot",
                          "ubfarbiter", "altitudesafetybehavior", "onnxpolicy", "pydecide"})
@@ -129,14 +129,23 @@ EstimatedPhase estimatePhase(const std::string& slotName, const std::string& cla
 
    if (containsAny(slot, {"sensor", "antenna", "gimbal", "rfsensor", "radar", "datalink"})
        || containsAny(cls, {"gimbal", "antenna", "sensormgr", "datalink", "rfsensor"})) {
-      return EstimatedPhase::SensorPhase1And2;
-   }
-
-   if (containsAny(slot, {"datarecorder", "iohandler", "networks", "msgfeed", "outputhandler"})) {
-      return EstimatedPhase::Background;
+      return EstimatedPhase::SensorBothPhases;
    }
 
    return EstimatedPhase::Unknown;
+}
+
+// A mascara de fases que o NO ELE MESMO executa -- um unico bit, exceto
+// para 'SensorBothPhases' (ver o comentario de ComponentTreeNode::
+// ownPhaseMask no header): esse caso carrega OS DOIS bits de
+// transmit/receive, porque o objeto de verdade participa das duas fases,
+// so que a heuristica nao sabe distinguir qual e qual.
+unsigned int ownPhaseMaskFor(const EstimatedPhase phase)
+{
+   if (phase == EstimatedPhase::SensorBothPhases) {
+      return phaseBit(EstimatedPhase::TransmitPhase1) | phaseBit(EstimatedPhase::ReceivePhase2);
+   }
+   return phaseBit(phase);
 }
 
 //------------------------------------------------------------------------------
@@ -412,7 +421,8 @@ void appendPlayers(ComponentTreeNode& simNode, mixr::simulation::Simulation* con
    // lista e o unico estado que existe, e e justamente o que se quer saber
    // com o galho retraido.
    addField(playersNode.state, "itens", std::to_string(playersNode.children.size()));
-   playersNode.subtreePhaseMask = phaseBit(playersNode.phase);
+   playersNode.ownPhaseMask = ownPhaseMaskFor(playersNode.phase);
+   playersNode.subtreePhaseMask = playersNode.ownPhaseMask;
    for (const auto& kid : playersNode.children) playersNode.subtreePhaseMask |= kid.subtreePhaseMask;
    simNode.children.push_back(std::move(playersNode));
 }
@@ -443,7 +453,11 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
       ComponentTreeNode netsNode;
       netsNode.slotName = "networks";
       netsNode.className = "(lista)";
-      netsNode.phase = EstimatedPhase::Background;
+      // 'Unknown', nao um lugar dedicado: a rede so roda em
+      // processNetworkInputTasks()/processNetworkOutputTasks(), chamados de
+      // updateData() -- fora do escopo desta aba (ver o comentario grande
+      // de EstimatedPhase no header).
+      netsNode.phase = EstimatedPhase::Unknown;
       netsNode.nodeKey = makeNodeKey(stationNode, "networks");
       for (mixr::base::List::Item* item = nets->getFirstItem();
            item != nullptr && nodeCount <= kMaxNodes; item = item->getNext()) {
@@ -453,7 +467,8 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
          addChild(netsNode, pair->object(), slotName, depth, nodeCount);
       }
       addField(netsNode.state, "itens", std::to_string(netsNode.children.size()));
-      netsNode.subtreePhaseMask = phaseBit(netsNode.phase);
+      netsNode.ownPhaseMask = ownPhaseMaskFor(netsNode.phase);
+      netsNode.subtreePhaseMask = netsNode.ownPhaseMask;
       for (const auto& kid : netsNode.children) netsNode.subtreePhaseMask |= kid.subtreePhaseMask;
       stationNode.children.push_back(std::move(netsNode));
    }
@@ -509,7 +524,8 @@ void addChild(ComponentTreeNode& parent, mixr::base::Object* const obj, const st
       // conhecido da PRIMEIRA METADE da feature.
    }
 
-   node.subtreePhaseMask = phaseBit(node.phase);
+   node.ownPhaseMask = ownPhaseMaskFor(node.phase);
+   node.subtreePhaseMask = node.ownPhaseMask;
    for (const auto& child : node.children) node.subtreePhaseMask |= child.subtreePhaseMask;
 
    parent.children.push_back(std::move(node));
@@ -522,12 +538,12 @@ std::string phaseLabel(const EstimatedPhase phase)
    switch (phase) {
       case EstimatedPhase::Structural:         return "estrutural";
       case EstimatedPhase::DynamicsPhase0:      return "fase 0 (dynamics)";
-      case EstimatedPhase::SensorPhase1And2:    return "fases 1/2 (transmit/receive)";
+      case EstimatedPhase::TransmitPhase1:      return "fase 1 (transmit)";
+      case EstimatedPhase::ReceivePhase2:       return "fase 2 (receive)";
+      case EstimatedPhase::SensorBothPhases:    return "fases 1/2 (transmit e receive -- indistinto)";
       case EstimatedPhase::DecisionPhase3:      return "fase 3 (decisao, no frame T/C)";
-      case EstimatedPhase::DecisionBackground:  return "decisao em updateData() (fundo)";
-      case EstimatedPhase::Background:          return "updateData() (fundo)";
       case EstimatedPhase::Unknown:
-      default:                                 return "desconhecida";
+      default:                                 return "desconhecida (ou fora do frame T/C -- ver aba F4)";
    }
 }
 
@@ -560,7 +576,8 @@ ComponentTreeNode discoverComponentTree(mixr::simulation::Station* const station
    appendComponentChildren(root, station, 1, nodeCount);
    appendStationExtras(root, station, 1, nodeCount);
 
-   root.subtreePhaseMask = phaseBit(root.phase);
+   root.ownPhaseMask = ownPhaseMaskFor(root.phase);
+   root.subtreePhaseMask = root.ownPhaseMask;
    for (const auto& child : root.children) root.subtreePhaseMask |= child.subtreePhaseMask;
 
    return root;

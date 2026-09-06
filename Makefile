@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-single-thread check-single-thread run-multi-thread check-multi-thread check-patrol-seed-single-thread check-patrol-seed-multi-thread compare-single-multi run-python-flight check-python-flight run-onnx-policy check-onnx-policy run-bandit run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-builder open-edl-builder edl-builder-test edl-lint edl-check
 
 .DEFAULT_GOAL := help
 
@@ -323,6 +323,26 @@ docs: ## Regenera docs/index.html a partir de docs/doc.jsx (Babel via docs/compi
 open-docs: ## Abre docs/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
 	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/index.html \
 		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/index.html"
+
+edl-catalog: ## Gera src/ui/edl_catalog.generated.json (todas as classes/slots das factories, para o editor grafico de .edl). So Python stdlib, sem MIXR.
+	python3 scripts/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json
+	@echo "$(GREEN)edl-catalog:$(NC) OK -- $$(python3 -c 'import json; print(len(json.load(open("src/ui/edl_catalog.generated.json"))))') classes catalogadas"
+
+edl-builder: edl-catalog ## Regenera src/ui/edl-builder.html (editor grafico de cenario .edl) via src/ui/compile.js. So precisa de rede na 1a vez (cacheia em src/ui/.cache/).
+	node src/ui/compile.js
+
+open-edl-builder: ## Abre src/ui/edl-builder.html no navegador (editor grafico de cenario .edl: arrastar classe da paleta, preencher campos, exportar). Pagina estatica -- nao depende de build/install.
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open src/ui/edl-builder.html \
+		|| echo "$(YELLOW)open-edl-builder:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/src/ui/edl-builder.html"
+
+edl-builder-test: ## Testes de unidade PUROS de src/ui/edl_builder_core.js (node, sem Babel/React/DOM, sem MIXR).
+	node src/ui/edl_builder.test.js
+
+edl-lint: ## Lint LEVE de um .edl/.edl.in contra o catalogo (FILE=caminho). Nao substitui 'make edl-check' (o parser real) -- so pega o erro mais comum antes de compilar/instalar.
+	python3 scripts/edl_lint.py $(FILE)
+
+edl-check: install ## Valida um .edl (ja expandido -- sem @token@/@include:@) com o parser MIXR de verdade (FILE=caminho), sem terreno/frota/WorldModel obrigatorios.
+	$(BUILD_DIR)/app/src/edlcheck $(FILE)
 
 # ============================================
 # Misc Targets

@@ -20,6 +20,7 @@
 #include <string>
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 namespace {
@@ -269,4 +270,5 @@ bool FlightAction::execute(base::Component* actor)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

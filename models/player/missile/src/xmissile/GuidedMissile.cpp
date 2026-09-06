@@ -9,6 +9,7 @@
 #include "mixr/base/osg/Vec3d"
 
 namespace mixr {
+namespace models {
 namespace xmissile {
 
 IMPLEMENT_SUBCLASS(GuidedMissile, "GuidedMissile")
@@ -157,4 +158,5 @@ bool GuidedMissile::onAlertEvent(events::TacticalAlert* const ev)
 }
 
 } // namespace xmissile
+} // namespace models
 } // namespace mixr

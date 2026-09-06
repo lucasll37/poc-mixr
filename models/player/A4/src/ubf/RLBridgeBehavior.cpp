@@ -8,6 +8,7 @@
 #include "xrlbridge/RLBridge.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(RLBridgeBehavior, "RLBridgeBehavior")
@@ -105,4 +106,5 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

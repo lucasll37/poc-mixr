@@ -4,6 +4,7 @@
 #include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 namespace mixr {
+namespace models {
 namespace xmissile {
 
 //------------------------------------------------------------------------------
@@ -100,4 +101,5 @@ private:
 };
 
 } // namespace xmissile
+} // namespace models
 } // namespace mixr

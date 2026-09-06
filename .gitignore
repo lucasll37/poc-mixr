@@ -7,6 +7,10 @@ dist
 # nunca dependencia do que index.html carrega em runtime.
 docs/.cache/
 
+# mesma coisa, cache PROPRIO (nao compartilhado com docs/) de src/ui/compile.js
+# -- ver src/ui/README.md ("Por que src/ui/ e nao docs/").
+src/ui/.cache/
+
 # tile SRTM: versiona-se o .gz (12 MB); o .hgt descomprimido (25 MB) e
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
@@ -32,6 +36,11 @@ src/poc/**/data/recordings/*.acmi
 src/poc/**/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
+
+# arquivo de TRABALHO do editor de .edl embutido no dashboard (aba F7) --
+# escrito a cada "Validar"/"Rodar versao editada", nunca o '.edl.in'/
+# '.generated.edl' do cenario (ver app/EdlEditorState.hpp).
+app/data/edl_editor/*.edl
 
 # saida do shared/xmsg (mensagens configuraveis)
 src/poc/**/data/messages/*.jsonl

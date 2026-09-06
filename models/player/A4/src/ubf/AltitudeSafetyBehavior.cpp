@@ -10,6 +10,7 @@
 #include <algorithm>
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(AltitudeSafetyBehavior, "AltitudeSafetyBehavior")
@@ -127,4 +128,5 @@ bool AltitudeSafetyBehavior::setSlotRecoverClearance(const base::Distance* const
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

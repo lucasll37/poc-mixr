@@ -16,6 +16,7 @@
 #include "mixr/base/Object.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -107,4 +108,5 @@ const char* const* factoryNames()             { return NOMES; }
 const base::MetaObject* const* metaObjects()  { return METAS; }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

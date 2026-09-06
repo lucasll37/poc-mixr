@@ -7,8 +7,11 @@
 
 //------------------------------------------------------------------------------
 // "O que exatamente acontece num passo da simulação" -- a cadeia de chamadas
-// REAL do frame MIXR, com os nomes de função, os argumentos e os valores de
-// `dt` que de fato circulam, para a aba "Componentes" (F6).
+// REAL do frame de TEMPO CRÍTICO do MIXR, com os nomes de função, os
+// argumentos e os valores de `dt` que de fato circulam, para a aba
+// "Componentes" (F6). Só o frame T/C -- a thread de FUNDO (updateData()) é
+// o assunto inteiro da aba "Tempo Não-Crítico" (F4, ver
+// app/BackgroundPanel.hpp), e não faz mais parte desta cadeia.
 //
 // Isto NÃO é um traçado ao vivo (o MIXR é dependência binária, ver o topo do
 // CLAUDE.md -- não há como instrumentar `updateTC()` sem recompilar o
@@ -60,24 +63,19 @@ struct CallChainLine
 
 // Os números VIVOS que entram nos argumentos. Lidos da Station em execução
 // (ver DashboardLoop.cpp) -- não são constantes.
+// So o frame T/C -- sem 'bgRateHz' de proposito: a aba nao modela mais a
+// thread de fundo (ver o comentario grande no topo deste arquivo).
 struct FrameCallParams
 {
    double tcRateHz{50.0};
-   double bgRateHz{10.0};
    unsigned int fastForwardRate{1};
    int numTcThreads{1};
    bool paused{};
 };
 
-// A cadeia do frame de TEMPO CRÍTICO (fases 0..3) ou a de FUNDO
-// (updateData), conforme a fase pedida. As linhas marcadas 'active' são as
-// que essa fase de fato executa.
+// A cadeia do frame de TEMPO CRÍTICO (fases 0..3, ou o contorno estrutural
+// delas). As linhas marcadas 'active' são as que essa fase de fato executa.
 std::vector<CallChainLine> buildFrameCallChain(EstimatedPhase phase, const FrameCallParams& params);
-
-// true quando a fase é uma das quatro do frame de tempo crítico (ou o
-// contorno estrutural dele) -- isto é, quando buildFrameCallChain() devolve
-// a cadeia T/C e não a de fundo. Usado pelo cabeçalho do painel.
-bool isTimeCriticalPhase(EstimatedPhase phase);
 
 // O CAMINHO DA DESCIDA até a chamada desta fase: as linhas marcadas
 // `active` mais todos os ancestrais delas (as linhas anteriores de
@@ -86,17 +84,20 @@ bool isTimeCriticalPhase(EstimatedPhase phase);
 // que é onde ela mora agora.
 std::vector<CallChainLine> frameDescentPath(const std::vector<CallChainLine>& chain);
 
-// O rótulo CURTO da chamada que um nó desta fase executa AGORA, para ser
-// desenhado ao lado do próprio nó no canvas -- "dynamics(0.020s)",
-// "process(0.020s)". Vazio quando o nó não participa da fase corrente (a
-// esmagadora maioria, em qualquer instante), e vazio também para os nós
-// estruturais fora do contorno do frame.
+// O rótulo CURTO da chamada que a fase corrente executa AGORA, para ser
+// desenhado ao lado do nó no canvas -- "dynamics(0.020s)", "process(0.020s)".
+// O chamador decide SE desenha (comparando `ComponentTreeNode::ownPhaseMask`
+// contra `phaseBit(flowPhase)` -- ver app/ComponentTreePanel.cpp): esta
+// função só decide O QUÊ escrever para uma fase que já se sabe ativa, daí
+// não receber mais a fase do nó. É o que permite um nó com
+// `ownPhaseMask == TransmitPhase1 | ReceivePhase2` (ver
+// `EstimatedPhase::SensorBothPhases`) ganhar o rótulo CERTO em CADA uma das
+// duas fases, em vez de um rótulo combinado fixo.
 //
 // É a resposta gráfica a "que função é chamada aqui, com que argumento":
 // fica NO DESENHO, junto do componente que a executa, em vez de num painel
 // de texto separado que roubaria espaço da árvore.
-std::string nodeCallLabel(EstimatedPhase nodePhase, EstimatedPhase flowPhase,
-                          const FrameCallParams& params);
+std::string nodeCallLabel(EstimatedPhase flowPhase, const FrameCallParams& params);
 
 // O `dt` de um frame de tempo crítico, em segundos: 1 / tcRate. Zero (e não
 // infinito) quando a taxa é inválida -- é o valor que o passo manual usa,

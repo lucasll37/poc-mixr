@@ -11,6 +11,7 @@
 #include "mixr/models/system/StoresMgr.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(FlightState, "FlightState")
@@ -146,4 +147,5 @@ void FlightState::updateState(const base::Component* const actor)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

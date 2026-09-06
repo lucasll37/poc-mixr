@@ -6,6 +6,7 @@
 namespace mixr {
 namespace base { class Distance; class Number; }
 
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -71,6 +72,7 @@ private:
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

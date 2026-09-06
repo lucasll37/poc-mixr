@@ -19,16 +19,16 @@ namespace {
 mixr::base::Object* fabrica(const char* const name)
 {
    if (name == nullptr) return nullptr;
-   if (std::strcmp(name, "GuidedMissile") == 0)          return new mixr::xmissile::GuidedMissile();
-   if (std::strcmp(name, "MissileThreadTagProbe") == 0)  return new mixr::xmissile::MissileThreadTagProbe();
+   if (std::strcmp(name, "GuidedMissile") == 0)          return new mixr::models::xmissile::GuidedMissile();
+   if (std::strcmp(name, "MissileThreadTagProbe") == 0)  return new mixr::models::xmissile::MissileThreadTagProbe();
    return nullptr;
 }
 
 const char* const NOMES[] = { "GuidedMissile", "MissileThreadTagProbe", nullptr };
 
 const mixr::base::MetaObject* const METAS[] = {
-   mixr::xmissile::GuidedMissile::getMetaObject(),
-   mixr::xmissile::MissileThreadTagProbe::getMetaObject(),
+   mixr::models::xmissile::GuidedMissile::getMetaObject(),
+   mixr::models::xmissile::MissileThreadTagProbe::getMetaObject(),
    nullptr
 };
 

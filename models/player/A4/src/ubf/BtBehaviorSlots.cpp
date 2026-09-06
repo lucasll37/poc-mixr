@@ -20,6 +20,7 @@
 #include "mixr/base/units/Times.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 // clang-format off
@@ -243,4 +244,5 @@ bool BtBehavior::setSlotPatrolSeedOverride(const base::Number* const msg)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

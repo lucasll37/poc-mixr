@@ -35,6 +35,7 @@
 
 #include "app/BehaviorTreeView.hpp"
 #include "app/DashboardLoop.hpp"
+#include "app/EdlEditorState.hpp"
 #include "app/DeterministicRun.hpp"
 #include "app/Fleet.hpp"
 #include "app/MetaObjectReport.hpp"
@@ -154,7 +155,8 @@ int main(int argc, char* argv[])
       // saber que a tecnologia de BT e o BehaviorTree.CPP.
       const app::BtNode behaviorTree{app::loadTreeForScenario(generatedPath)};
       action = app::runDashboard(station, worldModel, clockStation, tacviewOutput,
-                                 ioHandler, numTcThreads, cenario.label, behaviorTree);
+                                 ioHandler, numTcThreads, cenario.label, behaviorTree,
+                                 generatedPath);
    }
 
    // Nao e 'event(SHUTDOWN_EVENT) + unref()' cru: ver app/Shutdown.hpp para o
@@ -171,6 +173,15 @@ int main(int argc, char* argv[])
          break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::ChangeScenario:
          app::respawnSelf({});
+         break;   // [[noreturn]], nunca chega aqui
+      case app::DashboardExit::RunEdited:
+         // O texto ja foi escrito em editedScenarioPath() e validado pelo
+         // 'edlcheck' dentro de runDashboard() -- so falta o reexec com
+         // '-f', o MESMO caminho que uma fixture de teste ja usa (ver
+         // app/Options.hpp). generateScenario() roda de novo sobre ele mais
+         // adiante, mas e identidade: um '.edl' ja expandido nao tem mais
+         // '@include:...@'/'@NUM_TC_THREADS@' para substituir.
+         app::respawnSelf({"-f", app::editedScenarioPath()});
          break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::Quit:
       default:

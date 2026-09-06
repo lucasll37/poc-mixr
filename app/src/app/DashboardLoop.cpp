@@ -7,6 +7,7 @@
 #include "app/BreakpointController.hpp"
 #include "app/ComponentTreePanel.hpp"
 #include "app/DashboardState.hpp"
+#include "app/EdlEditorState.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
 #include "app/LogPanel.hpp"
@@ -61,13 +62,17 @@
 // dica de atalho" sem duplicar logica (ver a barra de botoes no fim desta
 // funcao).
 //
-// CINCO ABAS (ftxui::Container::Tab) -- Players/Mapa/Memoria/Log sao cada uma
+// SETE ABAS (ftxui::Container::Tab) -- Players/Mapa/Memoria/Log sao cada uma
 // um ftxui::Menu dentro de frame()/vscroll_indicator() (padrao oficial do
 // FTXUI para lista rolavel -- ver o exemplo menu_in_frame.cpp da propria
 // lib): e o que deixa a UI caber QUALQUER quantidade de entidades/classes
 // sem crescer a tela. Tempo Nao-Critico e um painel estatico -- ver
 // app/BackgroundPanel.hpp. A aba Log le o buffer em memoria de
-// shared/xlog (ver app/LogPanel.hpp).
+// shared/xlog (ver app/LogPanel.hpp). A aba "EDL" (F7) e a UNICA que
+// precisa de foco de TECLADO de verdade (um ftxui::Input multilinha, ver
+// app/EdlEditorState.hpp) -- as outras seis nunca precisaram porque cada
+// tecla e tratada a mao no CatchEvent mais externo (ver o comentario grande
+// sobre 'edlInput->TakeFocus()' mais abaixo, no motivo do porque).
 //
 // DUAS THREADS, no molde do que app/RealTimeRun.cpp (das outras pocs) ja faz
 // sozinho: a de SIMULACAO avanca a 10 Hz independente de quando o terminal
@@ -149,7 +154,7 @@ Element renderHeader(const DashboardState& st)
              filler(),
              text(tw.str() + "  " + ts.str() + "  "),
              text(" " + speedLabel + " ") | bold | bgcolor(speedColor) | color(Color::Black),
-             text("  thr=" + std::to_string(st.numTcThreads) + " "),
+             text("  n_thread=" + std::to_string(st.numTcThreads) + " "),
           })
           | border;
 }
@@ -179,7 +184,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                            mixr::xtacview::TacviewOutput* const tacviewOutput,
                            mixr::linkage::IoHandler* const ioHandler,
                            const int numTcThreads, const std::string& scenarioLabel,
-                           const BtNode& behaviorTree)
+                           const BtNode& behaviorTree, const std::string& generatedEdlPath)
 {
    std::mutex stateMutex;
    DashboardState latest;
@@ -521,6 +526,21 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    for (const auto& line : treeLines) treeLineLabels.push_back(line.display);
    int selectedBtLineIndex{};
 
+   // ---- aba "EDL" (F7) -- editor de .edl EM MEMORIA (ver
+   // app/EdlEditorState.hpp para o "sem persistir no arquivo real"). O
+   // texto ORIGINAL e o que este processo carregou (lido uma vez, fora de
+   // qualquer Renderer -- igual a 'treeLines' acima); 'editedEdlText' e o
+   // buffer mutavel que o ftxui::Input escreve direto (bind por ponteiro,
+   // ver 'edlInput' mais abaixo) -- nunca escrito de volta em
+   // 'generatedEdlPath'. 'edlHasStatus'/'edlStatusOk'/'edlStatusMessage' sao
+   // o resultado da ULTIMA chamada a "Validar"/"Rodar" (ver
+   // app::runEdlCheck()), mostrados no rodape da aba.
+   const std::string originalEdlText{readEdlFileOrEmpty(generatedEdlPath)};
+   std::string editedEdlText{originalEdlText};
+   bool edlHasStatus{};
+   bool edlStatusOk{};
+   std::string edlStatusMessage;
+
    // ---- acoes nomeadas: cada una e usada por TECLA e por BOTAO ----
    //
    // Acelerar/frear/voltar-a-tempo-real MANUAIS ficam BLOQUEADOS enquanto
@@ -587,6 +607,37 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto doStop = [&] { pendingAction = PendingAction::Stop; uiDepth = 1; };
    const auto doQuit = [&] { pendingAction = PendingAction::Quit; uiDepth = 1; };
    const auto gotoTab = [&](const int index) { activeTab = index; };
+
+   // ---- acoes da aba "EDL" (F7) -- ver app/EdlEditorState.hpp. As tres
+   // escrevem SEMPRE em editedScenarioPath(), nunca em 'generatedEdlPath'
+   // (o arquivo que este processo carregou) nem no '.edl.in' de origem --
+   // "sem persistir no arquivo real" e a premissa da aba inteira. ----
+   const auto doEdlRevert = [&] {
+      editedEdlText = originalEdlText;
+      edlHasStatus = false;
+      edlStatusMessage.clear();
+   };
+   const auto doEdlValidate = [&] {
+      writeEdlFile(editedScenarioPath(), editedEdlText);
+      const EdlValidationResult r{runEdlCheck(edlcheckSiblingPath(), editedScenarioPath())};
+      edlHasStatus = true;
+      edlStatusOk = r.ok;
+      edlStatusMessage = r.message;
+   };
+   // "Rodar" reaproveita a MESMA validacao de 'doEdlValidate' antes de sair
+   // do laco -- nunca reexecuta com um '.edl' que o oraculo ja rejeitou (um
+   // erro de parse so apareceria depois do reexec, como um processo que
+   // morre sem TUI nenhuma pra explicar o motivo).
+   const auto doEdlRun = [&] {
+      writeEdlFile(editedScenarioPath(), editedEdlText);
+      const EdlValidationResult r{runEdlCheck(edlcheckSiblingPath(), editedScenarioPath())};
+      edlHasStatus = true;
+      edlStatusOk = r.ok;
+      edlStatusMessage = r.message;
+      if (!r.ok) return;
+      action = DashboardExit::RunEdited;
+      screen.Exit();
+   };
 
    // Fabrica de Button comum a TODAS as barras (principal e a do mapa) --
    // precisa vir antes de qualquer barra que a use.
@@ -1227,8 +1278,69 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       });
    })};
 
+   // ---- aba "EDL" (F7): editor de .edl EM MEMORIA -- ver
+   // app/EdlEditorState.hpp e o comentario grande sobre 'edlInput->
+   // TakeFocus()' mais abaixo (a UNICA aba que precisa de foco de teclado
+   // de verdade, porque o ftxui::Input multilinha ja trata sozinho toda
+   // tecla de edicao -- cursor, insercao, backspace, Enter/nova linha --
+   // que este arquivo nao teria motivo nenhum para reimplementar). ----
+   InputOption edlInputOpt;
+   edlInputOpt.multiline = true;
+   edlInputOpt.placeholder = "(cenario vazio -- " + generatedEdlPath + " nao pode ser lido)";
+   const Component edlInput{Input(&editedEdlText, edlInputOpt)};
+
+   const Component btnEdlValidate{makeButton("[F8] Validar", doEdlValidate)};
+   const Component btnEdlRun{makeButton("[F9] Rodar versao editada", doEdlRun)};
+   const Component btnEdlRevert{makeButton("[F10] Reverter", doEdlRevert)};
+   const Component edlButtons{Container::Horizontal({btnEdlValidate, btnEdlRun, btnEdlRevert})};
+
+   const Component edlBody{Container::Vertical({edlInput, edlButtons})};
+   const Component edlTab{Renderer(edlBody, [&]() -> Element {
+      const bool dirty{editedEdlText != originalEdlText};
+
+      // Indicador de foco DESENHADO PELO APP -- alem do cursor nativo do
+      // terminal (que o ftxui::Input ja pede via DECTCEM/DECSCUSR quando
+      // 'Focused()' e verdadeiro; confirmado emitido byte a byte com um
+      // clique sintetico), porque nem todo terminal/multiplexador honra a
+      // troca de estilo de cursor -- um badge proprio nao depende disso.
+      // 'Focused()' aqui reflete 'edlInput->TakeFocus()', chamado a cada
+      // redesenho enquanto esta aba esta ativa (ver o comentario grande no
+      // Renderer mais externo).
+      const bool edlFocused{edlInput->Focused()};
+
+      Element statusLine{text("(ainda nao validado nesta sessao)") | dim};
+      if (edlHasStatus) {
+         statusLine = paragraphAlignLeft((edlStatusOk ? "OK -- " : "INVALIDO -- ") + edlStatusMessage)
+                     | color(edlStatusOk ? Color::Green : Color::Red) | bold;
+      }
+
+      Element editorBox{edlInput->Render() | vscroll_indicator | frame | flex | border};
+      if (edlFocused) editorBox = editorBox | color(Color::Blue);
+
+      return vbox({
+         hbox({
+            text(" carregado de " + generatedEdlPath + " ") | dim,
+            filler(),
+            text(edlFocused ? " EDITANDO -- cursor ativo " : " clique no texto para editar ")
+               | (edlFocused ? (bgcolor(Color::Blue) | color(Color::White) | bold) : dim),
+            text(dirty ? " editado, em memoria " : " sem alteracoes ")
+               | (dirty ? (bgcolor(Color::Yellow) | color(Color::Black) | bold) : dim),
+         }),
+         separator(),
+         editorBox,
+         separator(),
+         statusLine,
+         text("as alteracoes ficam SO em memoria: nunca sao escritas no cenario original. "
+              "[F8]/[Validar] roda o oraculo 'edlcheck'; [F9]/[Rodar versao editada] "
+              "reexecuta o app com o texto atual (via -f, o mesmo caminho de uma fixture de "
+              "teste), sem tocar em nenhum '.edl'/'.edl.in' de origem; "
+              "[F10]/[Reverter] descarta a edicao. Roda do mouse rola o texto.") | dim,
+         edlButtons->Render(),
+      });
+   })};
+
    const Component contentTab{Container::Tab(
-      {fleetTab, mapTab, memoryTab, backgroundTab, logTab, componentsTab}, &activeTab)};
+      {fleetTab, mapTab, memoryTab, backgroundTab, logTab, componentsTab, edlTab}, &activeTab)};
 
    // ---- barra de abas e barra de acoes, TODAS clicaveis (Button de
    // verdade), com a dica de atalho ja no rotulo ----
@@ -1239,6 +1351,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnBackground{makeButton("[F4] Tempo Nao-Critico", [&] { gotoTab(3); })};
    const Component btnLog{makeButton("[F5] Log", [&] { gotoTab(4); })};
    const Component btnComponents{makeButton("[F6] Componentes", [&] { gotoTab(5); })};
+   const Component btnEdl{makeButton("[F7] EDL", [&] { gotoTab(6); })};
 
    // Acelerar/Frear/Tempo-real ficam visualmente apagados enquanto
    // bloqueados -- QUALQUER breakpoint armado ('g' OU 'G', ver
@@ -1278,7 +1391,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnQuit{makeButton("[q] Sair", doQuit)};
 
    const Component toolbar{Container::Horizontal({
-      btnFleet, btnMap, btnMemory, btnBackground, btnLog, btnComponents,
+      btnFleet, btnMap, btnMemory, btnBackground, btnLog, btnComponents, btnEdl,
       btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
       btnLoad, btnRestart, btnStop, btnQuit,
    })};
@@ -1393,7 +1506,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       tickComponentFlowAnimation(componentsFlow);
 
       frameCallParams.tcRateHz = station->getTimeCriticalRate();
-      frameCallParams.bgRateHz = static_cast<double>(bgRate);
       frameCallParams.fastForwardRate = station->getFastForwardRate();
       frameCallParams.numTcThreads = snap.numTcThreads;
       frameCallParams.paused = snap.paused;
@@ -1437,7 +1549,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                          | bold | bgcolor(Color::Blue) | color(Color::White) | center);
       }
       rows.push_back(hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
-               tabBadge(btnBackground, 3), tabBadge(btnLog, 4), tabBadge(btnComponents, 5)}));
+               tabBadge(btnBackground, 3), tabBadge(btnLog, 4), tabBadge(btnComponents, 5),
+               tabBadge(btnEdl, 6)}));
       rows.push_back(separator());
       rows.push_back(contentTab->Render() | flex);
       rows.push_back(separator());
@@ -1451,6 +1564,67 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    const Component withKeys{CatchEvent(withRenderer, [&](Event event) -> bool {
+      // Troca de aba (F1..F7) vem PRIMEIRO de tudo, incondicional -- movida
+      // pra cima do bloco de 'activeTab == 5' (que ja rodava antes das
+      // teclas "globais" de baixo) porque a aba "EDL" (F7, logo abaixo)
+      // precisa devolver 'false' pra QUALQUER outra tecla, e só pode fazer
+      // isso depois de F1..F7 já terem sido tratadas -- senão nunca daria
+      // pra trocar de aba a partir de dentro do editor.
+      if (event == Event::F1) { gotoTab(0); return true; }
+      if (event == Event::F2) { gotoTab(1); return true; }
+      if (event == Event::F3) { gotoTab(2); return true; }
+      if (event == Event::F4) { gotoTab(3); return true; }
+      if (event == Event::F5) { gotoTab(4); return true; }
+      if (event == Event::F6) { gotoTab(5); return true; }
+      if (event == Event::F7) { gotoTab(6); return true; }
+
+      // A aba "EDL" precisa de TODA tecla que nao seja troca de aba -- o
+      // ftxui::Input multilinha (edlInput) e quem trata cursor/insercao/
+      // backspace/Enter, e qualquer atalho global capturado aqui (mesmo
+      // 'espaco'/'+'/'-'/'q'/'g'...) tornaria impossivel digitar EDL de
+      // verdade (que usa exatamente esses caracteres). 'return false' deixa
+      // o evento cair pro roteamento normal de foco -- que so alcanca
+      // 'edlInput' porque o Renderer mais externo chama
+      // 'edlInput->TakeFocus()' sempre que esta aba esta ativa (ver o
+      // comentario grande la, no motivo do "porque" disso ser necessario:
+      // sem ele, 'root' nunca tira o foco de 'toolbar' sozinho).
+      //
+      // As tres acoes da aba (Validar/Rodar/Reverter) so tem BOTAO E uma
+      // tecla de FUNCAO -- nunca Ctrl+<letra>. Ctrl+Z pareceria seguro (o
+      // terminal manda um Event::CtrlZ distinto de Event::Character('z'),
+      // que o Input nem reconhece), mas medido QUEBRANDO: em pelo menos um
+      // terminal real ele ainda chega como o SUSP de job control (SIGTSTP)
+      // e mata/suspende o processo antes de qualquer CatchEvent nosso ver o
+      // evento -- FTXUI desliga ISIG no MODO BRUTO dele, mas isso nao cobre
+      // toda combinacao de terminal/multiplexador possivel. F8/F9/F10 nunca
+      // tiveram esse tipo de significado de sistema em terminal nenhum
+      // (mesma familia seguranca de F1..F7, ja comprovados aqui).
+      if (activeTab == 6) {
+         if (event == Event::F8) { doEdlValidate(); return true; }
+         if (event == Event::F9) { doEdlRun(); return true; }
+         if (event == Event::F10) { doEdlRevert(); return true; }
+
+         // Rolagem de mouse rola o TEXTO -- o ftxui::Input nao trata roda
+         // nenhuma sozinho (HandleMouse() so reage a Mouse::Left+Pressed,
+         // confirmado lendo o fonte da lib), entao sem isto a roda nao
+         // fazia NADA aqui, ao contrario de toda lista deste app (Players/
+         // Memoria/Log ja rolam por 'ContainerBase::OnMouseEvent' mover a
+         // selecao e o 'frame' seguir ela). Mesma receita: traduzir a roda
+         // em teclas de seta de verdade, entregues DIRETO ao componente
+         // (Component::OnEvent chamado a mao, sem depender de roteamento
+         // por foco) -- o 'frame' que ja envolve 'edlInput' acompanha a
+         // NOVA posicao do cursor sozinho, sem estado de rolagem proprio.
+         if (event.is_mouse() && event.mouse().button == Mouse::WheelDown) {
+            for (int i = 0; i < 3; i++) edlInput->OnEvent(Event::ArrowDown);
+            return true;
+         }
+         if (event.is_mouse() && event.mouse().button == Mouse::WheelUp) {
+            for (int i = 0; i < 3; i++) edlInput->OnEvent(Event::ArrowUp);
+            return true;
+         }
+         return false;
+      }
+
       // Espaco/[n] da aba "Componentes" (F6) tem de ser tratado ANTES do
       // espaco GLOBAL (pausa a simulacao, logo abaixo) -- dentro desta aba,
       // Espaco controla o PLAY/PAUSE da animacao de fluxo (relogio proprio,
@@ -1483,12 +1657,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::Character(' ') || event == Event::Character('p') ||
           event == Event::Character('P')) { doTogglePause(); return true; }
       if (event == Event::Character('1')) { doRealTime(); return true; }
-      if (event == Event::F1) { gotoTab(0); return true; }
-      if (event == Event::F2) { gotoTab(1); return true; }
-      if (event == Event::F3) { gotoTab(2); return true; }
-      if (event == Event::F4) { gotoTab(3); return true; }
-      if (event == Event::F5) { gotoTab(4); return true; }
-      if (event == Event::F6) { gotoTab(5); return true; }
 
       // Navegacao por seta das listas (Frota/Memoria) -- tratada AQUI, no
       // CatchEvent mais externo, e nao deixada para o ftxui::Menu receber
@@ -1730,6 +1898,30 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component appLayers{Container::Tab({withKeys, confirmDialog}, &uiDepth)};
    const Component appRoot{Renderer(appLayers, [&]() -> Element {
+      // ForCa o foco de TECLADO em 'edlInput' toda vez que a aba "EDL" esta
+      // em cena, com o dialogo de confirmacao FECHADO. Sem isto, o Input
+      // nunca receberia uma tecla sequer por roteamento normal: 'root'
+      // (Container::Vertical{toolbar, breakpointBar, contentTab}) usa um
+      // seletor PROPRIO, nunca alterado em lugar nenhum -- por isso todas
+      // as OUTRAS abas leem/escrevem o estado delas direto no CatchEvent
+      // mais externo (ArrowUp/Down em 'selectedEntityIndex' etc.), em vez
+      // de confiar no foco. O ftxui::Input, ao contrario de um Menu, nao
+      // tem como ser operado assim -- cursor/insercao/selecao sao dele por
+      // dentro -- entao aqui a rota e a INVERSA: usar TakeFocus() (que sobe
+      // a cadeia de pais chamando SetActiveChild em cada nivel, incluindo
+      // 'root') pra fazer o roteamento de verdade funcionar, so nesta aba.
+      // Chamado a cada redesenho (idempotente, barato -- ~9 niveis de
+      // ponteiro) em vez de so na troca de aba: um clique num botao desta
+      // MESMA aba (ex.: "[Validar]") tambem chama TakeFocus() nele mesmo
+      // (comportamento nativo do ftxui::Button ao ser clicado), e sem
+      // reafirmar o foco aqui o proximo caractere digitado se perderia. A
+      // guarda 'uiDepth == 0' e o que impede isto de fechar o dialogo de
+      // confirmacao sozinho: TakeFocus() tambem reajusta 'appLayers' (o
+      // Container::Tab que seleciona 'withKeys' vs. 'confirmDialog' por
+      // 'uiDepth'), e sem a guarda o dialogo nunca conseguiria aparecer
+      // enquanto a aba EDL estivesse ativa.
+      if (activeTab == 6 && uiDepth == 0) edlInput->TakeFocus();
+
       Element doc{withKeys->Render()};
       if (uiDepth == 1) {
          doc = dbox({doc, confirmDialog->Render() | clear_under | center});

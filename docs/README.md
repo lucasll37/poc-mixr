@@ -70,6 +70,23 @@ ficam embutidos no próprio arquivo), com três visões sobre o framework:
    `click` segue o alvo normal; um arrasto de verdade continua capturando (e panando) exatamente
    como antes, só um evento mais tarde.
 
+   Clicar num dos **quatro quadradinhos de fase** dentro do cartão (não o cartão inteiro) pula
+   a reprodução **direto pro passo em que aquele nó roda naquela fase** — sem procurar
+   manualmente na timeline. `e.stopPropagation()` no clique do pip evita que o mesmo clique
+   TAMBÉM fixe/abra o popup do cartão (os dois clicáveis convivem sem disputa: pip pula o
+   passo, o resto do cartão fixa). Só quadradinhos **preenchidos** (o nó de fato participa
+   daquela fase — `has`, o mesmo dado que já colore o pip) são clicáveis; um quadradinho vazio
+   deixa o clique atravessar pro cartão de baixo, como sempre foi. A busca (`performPhaseJump`)
+   começa no passo SEGUINTE ao atual e dá a volta — clicar de novo no MESMO pip avança pro
+   próximo quadro em vez de ficar preso no primeiro achado, útil pra comparar frames diferentes.
+   Como fase só existe de verdade na trilha "Thread de Tempo Crítico", clicar um pip com
+   "Thread de fundo"/"Reset" selecionada troca pra ela primeiro e resolve o salto assim que o
+   trace novo estiver pronto (`phaseJumpRequest` + um efeito que dispara só depois do `trace`
+   já refletir a trilha nova — sem isso o salto rodaria contra o trace ANTIGO, ainda em memória
+   por um render). Testado nos dois temas e nas duas orientações, e com "Seguir ramo" ligado
+   (o pan de acompanhamento já reage a qualquer mudança de `idx`, então o salto por fase herda
+   esse comportamento de graça).
+
    A trilha "Quadro" chama-se **"Thread de Tempo Crítico"**: o ciclo de decisão do
    `mixr::base::ubf` (`AgentTC`/`Arbiter`/`AbstractState`/`AbstractBehavior`/`AbstractAction`
    — percepção → cada behavior vota → `Arbiter::genComplexAction()` escolhe o de maior voto →
@@ -181,11 +198,16 @@ A primeira execução baixa React/ReactDOM 18.3.1 UMD e instala `@babel/standalo
 `docs/.cache/` (gitignored) — as próximas rodam sem rede nenhuma, direto do cache. `make
 open-docs` continua existindo à parte: só ABRE o `index.html` já gerado, nunca regenera.
 
-## O que fica para os próximos incrementos
+## O editor gráfico de cenário .edl mora em `src/ui/`, não aqui
 
-- `scripts/generate_catalog_js.py` (versionado) gera `CATALOG_SRC`/`TAXONOMY`/`CATALOG_TOUR` a
-  partir de `extract_execution_chain.py --catalog`, mas **nenhuma das três constantes é usada por
-  `doc.jsx`** hoje — confirmado (`grep` não acha nenhuma delas na página). Parece um caminho
-  alternativo de geração, de uma época em que a página ainda tinha um segundo modo ("Catálogo
-  completo", removido — o cenário único de hoje já cobre a maior parte das classes built-in);
-  vale decidir entre reaproveitar ou remover o script.
+`src/ui/edl_builder.jsx` (+ `edl-builder.html` gerado) é uma página irmã no MESMO padrão sem-
+bundler deste diretório (React + Babel via um `compile.js` próprio, `src/ui/compile.js`) — mas
+vive fora de `docs/` de propósito: é uma ferramenta de verdade (criar um cenário `.edl` do zero
+arrastando classes de uma paleta), não documentação/visualização do framework. Ver
+`src/ui/README.md`.
+
+**`scripts/generate_catalog_js.py` foi removido**: gerava `CATALOG_SRC`/`TAXONOMY`/
+`CATALOG_TOUR` a partir de `--catalog`, mas nenhuma das três constantes chegou a ser consumida
+por `doc.jsx` — confirmado, `grep` não achava nenhuma na página. O papel que ele cumpriria
+(catálogo completo de classes) está coberto, e mais amplamente, pelo modo `--edl-catalog` de
+`scripts/extract_execution_chain.py` que alimenta o editor gráfico acima.

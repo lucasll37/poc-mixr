@@ -7,6 +7,7 @@
 #include <string>
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -64,6 +65,7 @@ struct BtTuning
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

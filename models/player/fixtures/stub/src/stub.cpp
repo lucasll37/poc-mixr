@@ -47,6 +47,7 @@
 #include <string>
 
 namespace mixr {
+namespace models {
 namespace xstub {
 
 //------------------------------------------------------------------------------
@@ -350,9 +351,10 @@ const base::MetaObject* const METAS[] = {
 
 } // namespace
 } // namespace xstub
+} // namespace models
 } // namespace mixr
 
 MIXR_PLUGIN_DEFINE("stub",
-                   mixr::xstub::fabrica,
-                   mixr::xstub::NOMES,
-                   mixr::xstub::METAS)
+                   mixr::models::xstub::fabrica,
+                   mixr::models::xstub::NOMES,
+                   mixr::models::xstub::METAS)

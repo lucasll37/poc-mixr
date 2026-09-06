@@ -8,15 +8,21 @@
 // SEGUNDA METADE da feature "Componentes" (F6) -- ver o comentario grande
 // no topo de app/ComponentTreeQuery.hpp/app/ComponentTreePanel.hpp para a
 // PRIMEIRA (arvore estatica, navegavel). Isto acrescenta a "animacao de
-// fluxo": um pulso que percorre, em ordem fixa, as fases do ciclo do frame
-// MIXR documentado no CLAUDE.md (secao "O modelo MIXR em uma tela") --
-// fase 0 dynamics -> fases 1/2 sensor -> fase 3 decisao -> decisao em
-// updateData() -> updateData() de fundo -> volta pra fase 0.
+// fluxo": um pulso que percorre, em ordem fixa, as fases do FRAME DE TEMPO
+// CRITICO do MIXR documentado no CLAUDE.md (secao "O modelo MIXR em uma
+// tela") -- fase 0 dynamics -> fase 1 transmit -> fase 2 receive -> fase 3
+// decisao -> volta pra fase 0.
+//
+// ESCOPO: so o frame T/C. A thread de FUNDO (updateData()) NAO faz parte
+// deste ciclo -- e o assunto inteiro da aba "Tempo Nao-Critico" (F4, ver
+// app/BackgroundPanel.hpp); misturar as duas threads num unico "ciclo"
+// sugeria uma ordem/sincronismo entre elas que o framework nao tem (sao
+// duas threads independentes, rodando a taxas diferentes).
 //
 // ISTO NAO E UMA MEDICAO. O MIXR e dependencia BINARIA (ver o topo do
 // CLAUDE.md) -- nao ha como instrumentar de verdade cada chamada de
-// updateTC()/updateData() dentro do framework sem recompila-lo, o que esta
-// fora de cogitacao. 'EstimatedPhase' (app/ComponentTreeQuery.hpp) ja e uma
+// updateTC() dentro do framework sem recompila-lo, o que esta fora de
+// cogitacao. 'EstimatedPhase' (app/ComponentTreeQuery.hpp) ja e uma
 // HEURISTICA sobre nome de slot/classe; o "pulso" desta animacao anda por
 // um relogio de ANIMACAO PROPRIO (steps por segundo, avancado a cada
 // REDESENHO da UI -- ver tickComponentFlowAnimation()), NUNCA tentando
@@ -29,21 +35,24 @@
 //------------------------------------------------------------------------------
 namespace app {
 
-// Ordem ciclica FIXA do "ciclo conceitual". 'Structural' abre o ciclo (nao
-// "roda" em fase nenhuma -- e onde Station/WorldModel/Player orquestram as
-// quatro fases -- mas e o ponto de partida visual mais natural: tudo
-// comeca e termina passando por ali). 'Unknown' fica DE FORA -- nenhum no
-// de verdade "esta" nela, e' so o fallback de estimatePhase() quando a
-// heuristica nao reconhece nada.
+// Ordem ciclica FIXA do "ciclo conceitual" -- as QUATRO fases do frame T/C,
+// mais 'Structural' abrindo o ciclo (nao "roda" em fase nenhuma -- e onde
+// Station/WorldModel/Player orquestram as quatro -- mas e o ponto de
+// partida visual mais natural: tudo comeca e termina passando por ali).
+// 'Unknown' e 'SensorBothPhases' ficam DE FORA: 'Unknown' e' so o fallback
+// de estimatePhase() quando a heuristica nao reconhece nada (ou quando o
+// no e' de fundo -- fora do escopo desta aba); 'SensorBothPhases' e' uma
+// classificacao de NO (ver ComponentTreeNode::ownPhaseMask), nunca "a fase
+// corrente" do pulso -- o pulso sempre esta EXATAMENTE em transmit OU em
+// receive, nunca nos dois ao mesmo tempo.
 inline constexpr EstimatedPhase kComponentFlowCycle[]{
    EstimatedPhase::Structural,
    EstimatedPhase::DynamicsPhase0,
-   EstimatedPhase::SensorPhase1And2,
+   EstimatedPhase::TransmitPhase1,
+   EstimatedPhase::ReceivePhase2,
    EstimatedPhase::DecisionPhase3,
-   EstimatedPhase::DecisionBackground,
-   EstimatedPhase::Background,
 };
-inline constexpr std::size_t kComponentFlowCycleLen{6};
+inline constexpr std::size_t kComponentFlowCycleLen{5};
 
 // Estado da animacao -- mantido pelo CHAMADOR (app/DashboardLoop.cpp),
 // mesmo espirito de ComponentTreeViewState/MapViewState. Deliberadamente

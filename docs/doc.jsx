@@ -1258,6 +1258,41 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
   const step = trace[idx] || {};
 
   useEffect(() => { setI(0); setPopup(null); }, [traceKey, showIdle]);
+
+  // Clicar num QUADRADINHO DE FASE (dentro do cartão do nó, não o cartão
+  // inteiro) pula a reprodução direto pro passo em que ESTE nó roda NAQUELA
+  // fase -- "quero ver o agent na fase 3" sem procurar manualmente na
+  // timeline. Só faz sentido na trilha "tc" (a única com fase de verdade);
+  // clicar num pip com outra trilha selecionada troca pra "tc" primeiro e
+  // resolve o salto só quando o trace novo estiver pronto -- o efeito
+  // abaixo roda DEPOIS do "zera i pra 0" logo acima (mesma ordem de
+  // declaração = mesma ordem de execução no commit), então o índice certo
+  // vence por último, sem um "pulo visual" passando por 0.
+  const [phaseJumpRequest, setPhaseJumpRequest] = useState(null);
+  const performPhaseJump = (nodeId, phaseN, traceArr, fromIdx) => {
+    // Busca A PARTIR do passo seguinte ao atual, em ciclo -- clicar de novo
+    // no MESMO pip avança pro próximo quadro em vez de ficar preso no
+    // primeiro achado; fromIdx=-1 (vindo de outra trilha) começa do zero.
+    for (let k = 0; k < traceArr.length; k++) {
+      const c = (fromIdx + 1 + k) % traceArr.length;
+      const s = traceArr[c];
+      if (s.node === nodeId && s.counters && s.counters.phase === phaseN) { setI(c); return; }
+    }
+  };
+  const jumpToPhase = (nodeId, phaseN) => {
+    setPlaying(false);
+    if (traceKey !== "tc") { setPhaseJumpRequest({ nodeId, phase: phaseN }); setTraceKey("tc"); return; }
+    performPhaseJump(nodeId, phaseN, trace, idx);
+  };
+  useEffect(() => {
+    if (!phaseJumpRequest || traceKey !== "tc") return;
+    performPhaseJump(phaseJumpRequest.nodeId, phaseJumpRequest.phase, trace, -1);
+    setPhaseJumpRequest(null);
+    // performPhaseJump não entra nas deps: é recriada a cada render (barata,
+    // sem estado próprio), e incluí-la quebraria o "só uma vez quando o
+    // trace novo chegar" -- rodaria de novo a cada render à toa.
+  }, [phaseJumpRequest, traceKey, trace]);
+
   useEffect(() => {
     if (!playing) return;
     const t = setTimeout(() => setI((p) => (p + 1 >= trace.length ? (setPlaying(false), p) : p + 1)), speed);
@@ -1673,9 +1708,15 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
                           const has = n.phases.includes(p.n);
                           const own = has && phaseOwner(n.cls, p.n) === n.cls;
                           const now = has && curPhase === p.n;
-                          return <rect key={p.n} x={p.n * 10} y="0" width="7" height="7" rx="1" className={now ? "mx-phase-now" : ""}
-                            fill={now ? (running ? "var(--phase-now-bg)" : "var(--hot)") : has ? (running ? "var(--phase-has-running-bg)" : own ? "var(--ink)" : "var(--phase-inherited)") : "none"}
-                            stroke={has ? "none" : running ? "var(--phase-stroke-running)" : "var(--rule)"} strokeWidth="1" />;
+                          return (
+                            <rect key={p.n} x={p.n * 10} y="0" width="7" height="7" rx="1" className={now ? "mx-phase-now" : ""}
+                              fill={now ? (running ? "var(--phase-now-bg)" : "var(--hot)") : has ? (running ? "var(--phase-has-running-bg)" : own ? "var(--ink)" : "var(--phase-inherited)") : "none"}
+                              stroke={has ? "none" : running ? "var(--phase-stroke-running)" : "var(--rule)"} strokeWidth="1"
+                              style={{ cursor: has ? "pointer" : "default" }}
+                              onClick={has ? (e) => { e.stopPropagation(); jumpToPhase(n.id, p.n); } : undefined}>
+                              {has && <title>ir ao passo da fase {p.n} ({p.label}) para {n.cls}</title>}
+                            </rect>
+                          );
                         })}
                       </g>
                       {v > 0 && <text x={NW - 7} y="14" textAnchor="end" className="mx-mono" style={{ fontSize: 9, fill: running ? "var(--running-fg)" : "var(--muted)" }}>×{v}</text>}

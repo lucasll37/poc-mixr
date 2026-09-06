@@ -9,6 +9,7 @@
 #include "mixr/base/Pair.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(FlightAgentTC, "FlightAgentTC")
@@ -107,4 +108,5 @@ const FlightAgentTC* findFlightAgent(const models::AirVehicle* const air)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

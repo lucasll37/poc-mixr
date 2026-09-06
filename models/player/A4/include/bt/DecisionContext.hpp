@@ -13,7 +13,7 @@ namespace bt_nodes {
 // DecisionContext -- o que um no da arvore precisa do comportamento que o
 // hospeda, e NADA ALEM DISSO.
 //
-// Antes, NodeContext carregava um mixr::xnative::BtBehavior* cru. Os headers
+// Antes, NodeContext carregava um mixr::models::xnative::BtBehavior* cru. Os headers
 // dos nos ja eram limpos, mas todo .cpp tinha de incluir "ubf/BtBehavior.hpp"
 // para chamar oito getters -- e com ele vinha o MIXR inteiro. O efeito
 // pratico era que a arvore, a peca mais propria desta poc, so podia ser

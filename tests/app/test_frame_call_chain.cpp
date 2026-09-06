@@ -24,7 +24,6 @@ using app::buildFrameCallChain;
 using app::frameDescentPath;
 using app::nodeCallLabel;
 using app::frameStepSeconds;
-using app::isTimeCriticalPhase;
 
 namespace {
 
@@ -32,7 +31,6 @@ FrameCallParams params50Hz(const bool paused = false)
 {
    FrameCallParams p;
    p.tcRateHz = 50.0;
-   p.bgRateHz = 10.0;
    p.fastForwardRate = 1;
    p.numTcThreads = 4;
    p.paused = paused;
@@ -90,31 +88,18 @@ TEST(FrameCallChain, CadaFaseDestacaAChamadaQueElaDeFatoExecuta)
    EXPECT_TRUE(hasActiveContaining(buildFrameCallChain(EstimatedPhase::DynamicsPhase0, p), "dynamics"));
    EXPECT_TRUE(hasActiveContaining(buildFrameCallChain(EstimatedPhase::DecisionPhase3, p), "process"));
 
-   // A fase 1/2 do ciclo cobre DUAS fases do frame -- as duas tem de ficar
-   // destacadas, senao a faixa mentiria sobre o que roda ali.
-   const auto sensors{buildFrameCallChain(EstimatedPhase::SensorPhase1And2, p)};
-   EXPECT_TRUE(hasActiveContaining(sensors, "transmit"));
-   EXPECT_TRUE(hasActiveContaining(sensors, "receive"));
-   EXPECT_FALSE(hasActiveContaining(sensors, "process"));
-}
+   // Transmit e receive foram DESMEMBRADAS: cada fase so pode destacar a
+   // PROPRIA chamada, nunca a irma -- senao a faixa mentiria sobre qual das
+   // duas de fato roda naquele instante.
+   const auto tx{buildFrameCallChain(EstimatedPhase::TransmitPhase1, p)};
+   EXPECT_TRUE(hasActiveContaining(tx, "transmit"));
+   EXPECT_FALSE(hasActiveContaining(tx, "receive"));
+   EXPECT_FALSE(hasActiveContaining(tx, "process"));
 
-TEST(FrameCallChain, FasesDeFundoUsamAOutraCadeia)
-{
-   const FrameCallParams p{params50Hz()};
-
-   EXPECT_TRUE(isTimeCriticalPhase(EstimatedPhase::Structural));
-   EXPECT_TRUE(isTimeCriticalPhase(EstimatedPhase::DecisionPhase3));
-   EXPECT_FALSE(isTimeCriticalPhase(EstimatedPhase::Background));
-   EXPECT_FALSE(isTimeCriticalPhase(EstimatedPhase::DecisionBackground));
-
-   const auto bg{buildFrameCallChain(EstimatedPhase::Background, p)};
-   EXPECT_TRUE(hasAnyContaining(bg, "Station::updateData"));
-   EXPECT_FALSE(hasAnyContaining(bg, "processTimeCriticalTasks"));
-
-   // O ( SimAgent ) da poc single-thread decide no caminho de FUNDO -- e o
-   // que separa esta fase da de tempo critico.
-   EXPECT_TRUE(hasActiveContaining(buildFrameCallChain(EstimatedPhase::DecisionBackground, p),
-                                   "Agent::controller"));
+   const auto rx{buildFrameCallChain(EstimatedPhase::ReceivePhase2, p)};
+   EXPECT_TRUE(hasActiveContaining(rx, "receive"));
+   EXPECT_FALSE(hasActiveContaining(rx, "transmit"));
+   EXPECT_FALSE(hasActiveContaining(rx, "process"));
 }
 
 TEST(FrameCallChain, PausadoZeraODtQueDesce)
@@ -168,40 +153,38 @@ TEST(FrameDescentPath, ProfundidadeNuncaRetrocedeMaisDeUmNivelDeCadaVez)
    }
 }
 
-TEST(FrameDescentPath, DuasChamadasIrmasAtivasSobrevivemJuntas)
+TEST(FrameDescentPath, TransmitEReceiveMantemSoAPropriaChamada)
 {
-   // As fases 1 e 2 do ciclo marcam DUAS chamadas irmas -- o caminho tem de
-   // manter as duas, senao o card mentiria sobre o que roda ali.
-   const auto path{frameDescentPath(buildFrameCallChain(EstimatedPhase::SensorPhase1And2, params50Hz()))};
-   EXPECT_TRUE(hasActiveContaining(path, "transmit"));
-   EXPECT_TRUE(hasActiveContaining(path, "receive"));
+   // Desmembradas: o caminho de CADA fase agora tem so a chamada dela --
+   // ao contrario da versao antiga (fase unica "1/2"), que marcava as duas
+   // como irmas ativas na MESMA cadeia.
+   const auto txPath{frameDescentPath(buildFrameCallChain(EstimatedPhase::TransmitPhase1, params50Hz()))};
+   EXPECT_TRUE(hasActiveContaining(txPath, "transmit"));
+   EXPECT_FALSE(hasActiveContaining(txPath, "receive"));
+
+   const auto rxPath{frameDescentPath(buildFrameCallChain(EstimatedPhase::ReceivePhase2, params50Hz()))};
+   EXPECT_TRUE(hasActiveContaining(rxPath, "receive"));
+   EXPECT_FALSE(hasActiveContaining(rxPath, "transmit"));
 }
 
 //------------------------------------------------------------------------------
-// O rotulo curto desenhado NO PROPRIO NO do canvas.
+// O rotulo curto desenhado NO PROPRIO NO do canvas. A PARTICIPACAO (se
+// desenha ou nao) e' responsabilidade do CHAMADOR agora (ComponentTreeNode::
+// ownPhaseMask, ver app/ComponentTreePanel.cpp) -- nodeCallLabel() so decide
+// O QUE escrever para uma fase ja sabida ativa, daí o teste so cobrir "o
+// rotulo bate com a fase", nao mais "so quem participa ganha rotulo".
 //------------------------------------------------------------------------------
-TEST(NodeCallLabel, SoQuemParticipaDaFaseCorrenteGanhaRotulo)
+TEST(NodeCallLabel, RotuloDependeSoDaFaseCorrente)
 {
    const FrameCallParams p{params50Hz()};
 
-   EXPECT_EQ(nodeCallLabel(EstimatedPhase::DynamicsPhase0, EstimatedPhase::DynamicsPhase0, p),
-             "dynamics(0.020s)");
-   EXPECT_EQ(nodeCallLabel(EstimatedPhase::DecisionPhase3, EstimatedPhase::DecisionPhase3, p),
-             "process(0.020s)");
+   EXPECT_EQ(nodeCallLabel(EstimatedPhase::DynamicsPhase0, p), "dynamics(0.020s)");
+   EXPECT_EQ(nodeCallLabel(EstimatedPhase::TransmitPhase1, p), "transmit(0.020s)");
+   EXPECT_EQ(nodeCallLabel(EstimatedPhase::ReceivePhase2, p), "receive(0.020s)");
+   EXPECT_EQ(nodeCallLabel(EstimatedPhase::DecisionPhase3, p), "process(0.020s)");
 
-   // Fase diferente -> nada desenhado. E o caso da esmagadora maioria dos
-   // nos em qualquer instante; sem isso o canvas viraria uma sopa de texto.
-   EXPECT_TRUE(nodeCallLabel(EstimatedPhase::DynamicsPhase0, EstimatedPhase::DecisionPhase3, p).empty());
-   EXPECT_TRUE(nodeCallLabel(EstimatedPhase::Unknown, EstimatedPhase::Unknown, p).empty());
-}
-
-TEST(NodeCallLabel, ArgumentoDeFundoUsaODtDeFundo)
-{
-   FrameCallParams p{params50Hz()};
-   p.bgRateHz = 10.0;
-   // 1/10 Hz = 0.100 s -- e o dt do laco de fundo, nao o do frame T/C.
-   EXPECT_EQ(nodeCallLabel(EstimatedPhase::Background, EstimatedPhase::Background, p),
-             "updateData(0.100s)");
-   EXPECT_EQ(nodeCallLabel(EstimatedPhase::DecisionBackground, EstimatedPhase::DecisionBackground, p),
-             "controller(0.100s)");
+   // 'Unknown' (e 'SensorBothPhases', que nunca e' "a fase corrente" --
+   // ver o comentario de kComponentFlowCycle) nao tem chamada propria.
+   EXPECT_TRUE(nodeCallLabel(EstimatedPhase::Unknown, p).empty());
+   EXPECT_TRUE(nodeCallLabel(EstimatedPhase::SensorBothPhases, p).empty());
 }

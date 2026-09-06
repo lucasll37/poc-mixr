@@ -66,6 +66,14 @@ struct ComponentTreeLayoutNode
    bool isPlayer{};
    int playerId{-1};
    EstimatedPhase phase{EstimatedPhase::Unknown};
+
+   // Copiado de ComponentTreeNode::ownPhaseMask -- as fases que o NO ELE
+   // MESMO executa (quase sempre so phaseBit(phase); os dois bits de
+   // transmit+receive para 'SensorBothPhases'). E o que o desenho usa pra
+   // decidir se ESTE no participa da fase corrente (em vez de comparar o
+   // 'phase' escalar, que so caberia numa fase por vez).
+   unsigned int ownPhaseMask{};
+
    std::vector<ComponentStateField> state;
 
    int depth{};
@@ -216,19 +224,24 @@ bool navigateComponentTree(const ComponentTreeLayout& layout, ComponentTreeViewS
 // arrasto/seleção.
 //
 // 'activeFlowPhase' acrescenta um anel AMARELO -- o "pulso" -- em todo nó
-// cuja 'phase' bate com ela; ver app/ComponentFlowState.hpp para o que essa
-// fase representa (o ciclo CONCEITUAL, não uma medição). Cor deliberadamente
-// distinta do anel branco de seleção, pra "selecionado" e "ativo no ciclo
-// agora" nunca se confundirem visualmente mesmo quando os dois calham no
-// mesmo nó.
+// cujo 'ownPhaseMask' CONTÉM ela (não um `==` escalar: é o que faz um nó
+// 'SensorBothPhases' acender nas DUAS fases -- transmit e receive -- em vez
+// de só numa escolhida arbitrariamente); ver app/ComponentFlowState.hpp
+// para o que essa fase representa (o ciclo CONCEITUAL, não uma medição).
+// Cor deliberadamente distinta do anel branco de seleção, pra "selecionado"
+// e "ativo no ciclo agora" nunca se confundirem visualmente mesmo quando os
+// dois calham no mesmo nó.
 // Além do pulso, o desenho responde graficamente "o que está sendo chamado
 // agora, e por onde a chamada chega": (a) todo nó que participa da fase
 // corrente ganha, logo abaixo do nome, o RÓTULO DA CHAMADA com o argumento
-// de verdade -- `dynamics(0.020s)`, `process(0.020s)`; (b) as arestas do
+// de verdade -- `dynamics(0.020s)`, `transmit(0.020s)`; (b) as arestas do
 // CAMINHO DA RECURSÃO até esses nós saem acesas na cor da fase, contra o
 // cinza das demais -- é literalmente `Component::updateTC()` descendo por
-// `obj->tcFrame(dt)` em cada filho; e (c) uma ONDA percorre esse caminho de
-// cima para baixo, um nível por vez, enquanto a reprodução está tocando.
+// `obj->tcFrame(dt)` em cada filho; e (c) uma ONDA visita esse caminho UM
+// COMPONENTE POR VEZ, na MESMA ordem sequencial que a recursão real usa
+// (um filho de cada vez, terminando a subárvore inteira de um antes do
+// próximo irmão) -- não mais "um nível inteiro simultaneamente", que
+// sugeria um paralelismo que `Component::updateTC()` não tem.
 ftxui::Element renderComponentTree(const ComponentTreeLayout& layout, const ComponentTreeViewState& view,
                                    ftxui::Box& outCanvasBox, const ComponentFlowState& flow,
                                    const FrameCallParams& params);
@@ -264,11 +277,10 @@ ftxui::Element renderComponentFlowLegend();
 // o aviso de MODELO CONCEITUAL (ver app/ComponentFlowState.hpp).
 ftxui::Element renderComponentFlowStatus(const ComponentFlowState& flow, const FrameCallParams& params);
 
-// A FAIXA DE FASES: um diagrama de pipeline, um bloco por fase do ciclo, com
-// a fase corrente preenchida. É a leitura de um relance ("estamos na fase
-// 3") que o texto sozinho não dá -- e separa visualmente o grupo do frame de
-// tempo crítico (as quatro fases, numa thread do pool) do grupo de fundo
-// (updateData, noutra thread).
+// A FAIXA DE FASES: um diagrama de pipeline, um bloco por fase do ciclo (as
+// quatro fases do frame de tempo crítico, numa única thread do pool), com a
+// fase corrente preenchida. É a leitura de um relance ("estamos na fase 3")
+// que o texto sozinho não dá.
 ftxui::Element renderFramePhaseStrip(const ComponentFlowState& flow, const FrameCallParams& params);
 
 

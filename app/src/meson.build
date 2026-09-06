@@ -20,6 +20,7 @@ host_sources = files(
     'app/TerrainQuery.cpp', 'app/LogPanel.cpp', 'app/Shutdown.cpp',
     'app/ComponentTreeQuery.cpp', 'app/ComponentTreePanel.cpp',
     'app/ComponentFlowState.cpp', 'app/FrameCallChain.cpp',
+    'app/EdlEditorState.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc
@@ -34,6 +35,27 @@ app = executable('app',
     # pocs: os cenarios delas declaram ( MsgFeed ) e ( JoystickIoHandler ).
     dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
                            xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep, ftxui_dep],
+    install             : true,
+    install_dir         : get_option('bindir'),
+    install_rpath       : mixr_libdir + ':' + own_libs_rpath,
+    build_rpath         : mixr_libdir,
+)
+
+# Oraculo de validacao de .edl para o editor grafico -- ver o cabecalho de
+# edlcheck_main.cpp para o porque de existir separado do 'app' (sem
+# terreno/frota/WorldModel obrigatorios). Recompila mixr_factory.cpp de
+# proposito (mesmo padrao ja usado por src/rl/bindings/meson.build -- nao
+# ha lib estatica pronta pra isto no repositorio) para reusar a MESMA
+# cadeia de factories de producao, byte a byte. xlog_dep/xboard_dep/
+# xtrack_dep/ftxui_dep ficam de fora -- nenhum e tocado por mixr_factory.cpp
+# nem por edlcheck_main.cpp, so pelo resto do 'app' (TUI).
+edlcheck = executable('edlcheck',
+    files('edlcheck_main.cpp', 'mixr_factory.cpp'),
+    cpp_args            : asan_cpp_args,
+    link_args           : asan_link_args + rpath_link_args,
+    include_directories : local_inc_dir,
+    dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
+                           xplugin_dep, xmsg_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir + ':' + own_libs_rpath,

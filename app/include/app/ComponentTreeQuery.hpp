@@ -49,16 +49,25 @@ namespace app {
 // contadores de instancia, timing) sempre mostrou dado real, entao a UI
 // (ver app/ComponentTreePanel.hpp) tem de deixar essa diferenca obvia, nao
 // so este comentario.
+//
+// ESCOPO: so as QUATRO fases do frame de tempo CRITICO (mais 'Structural',
+// o contorno delas) -- a aba "Componentes" (F6) nao modela mais a thread de
+// FUNDO (updateData()); isso e' inteiramente o assunto da aba "Tempo
+// Nao-Critico" (F4, ver app/BackgroundPanel.hpp). Um componente que so
+// participa de updateData() (dataRecorder/ioHandler/networks/SimAgent) cai
+// em 'Unknown' aqui -- nao e' erro de heuristica, e' fora do escopo desta
+// aba.
 enum class EstimatedPhase {
-   Unknown,             // sem heuristica aplicavel (slot/classe nao reconhecidos)
+   Unknown,             // sem heuristica aplicavel, OU participa so de updateData() (fundo -- ver F4)
    Structural,          // Station/WorldModel/Player -- orquestra as fases, nao "roda" numa so
    DynamicsPhase0,      // dynamicsModel -- fase 0 do frame T/C
-   SensorPhase1And2,    // antena/gimbal/sensor/datalink -- fases 1 (transmit) e 2 (receive)
+   TransmitPhase1,      // fase 1 do frame T/C (transmit)
+   ReceivePhase2,       // fase 2 do frame T/C (receive)
+   SensorBothPhases,    // antena/gimbal/sensor/datalink -- a heuristica NAO distingue qual das
+                        // duas (ver ComponentTreeNode::ownPhaseMask, que carrega os DOIS bits
+                        // pra esses nos participarem visualmente das duas fases de verdade)
    DecisionPhase3,      // pilot/Autopilot/BtBehavior/FlightAgentTC/RLBridgeBehavior/UbfArbiter --
                         // fase 3 do frame T/C (agente que decide DENTRO do frame)
-   DecisionBackground,  // SimAgent -- decide em updateData(), fora do frame T/C (ver
-                        // ubf::Agent::updateData() no CLAUDE.md, secao xclock)
-   Background,          // dataRecorder/ioHandler/networks -- updateData(), thread de fundo
 };
 
 std::string phaseLabel(EstimatedPhase phase);
@@ -107,13 +116,23 @@ struct ComponentTreeNode
 
    EstimatedPhase phase{EstimatedPhase::Unknown};
 
-   // Bitmask de todas as EstimatedPhase presentes na subarvore deste no,
-   // ele proprio incluido. Existe porque o desenho precisa acender o caminho
-   // da recursao ate quem participa da fase corrente MESMO quando o galho
-   // esta retraido -- ai os participantes nao estao no layout, e sem esta
-   // mascara o caminho simplesmente nao apareceria (medido: com os falcons
-   // fechados, a fase 3 nao acendia nada). Calculada de baixo para cima na
-   // descoberta, em O(n).
+   // Bitmask das fases que o NO ELE MESMO executa -- quase sempre um unico
+   // bit (phaseBit(phase)), EXCETO para 'SensorBothPhases': a heuristica
+   // nao sabe se um Gimbal/Antenna especifico transmite ou recebe (ele faz
+   // as DUAS coisas de verdade, so em instantes diferentes do frame), entao
+   // esse caso carrega os dois bits (TransmitPhase1 | ReceivePhase2) -- e o
+   // que faz o no acender o anel/rotulo de chamada nas DUAS fases, nao so
+   // numa escolhida arbitrariamente. Ver ownPhaseMaskFor() em
+   // ComponentTreeQuery.cpp.
+   unsigned int ownPhaseMask{};
+
+   // Bitmask de todas as EstimatedPhase presentes na subarvore deste no
+   // (ownPhaseMask ORed com o de cada filho). Existe porque o desenho
+   // precisa acender o caminho da recursao ate quem participa da fase
+   // corrente MESMO quando o galho esta retraido -- ai os participantes nao
+   // estao no layout, e sem esta mascara o caminho simplesmente nao
+   // apareceria (medido: com os falcons fechados, a fase 3 nao acendia
+   // nada). Calculada de baixo para cima na descoberta, em O(n).
    unsigned int subtreePhaseMask{};
 
    // Estado VIVO do objeto, lido por getter publico -- ver

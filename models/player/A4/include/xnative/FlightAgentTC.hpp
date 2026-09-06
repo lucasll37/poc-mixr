@@ -8,6 +8,7 @@
 namespace mixr {
 namespace models { class AirVehicle; }
 
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -96,6 +97,7 @@ private:
 const FlightAgentTC* findFlightAgent(const models::AirVehicle* air);
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

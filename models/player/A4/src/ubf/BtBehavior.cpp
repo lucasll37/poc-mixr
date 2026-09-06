@@ -18,6 +18,7 @@
 #include <mutex>
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(BtBehavior, "BtBehavior")
@@ -220,4 +221,5 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

@@ -31,6 +31,7 @@
 namespace {
 
 using namespace mixr;
+using namespace mixr::models;
 
 //------------------------------------------------------------------------------
 // receive() e onDatalinkMessageEvent() sao PROTECTED -- em producao quem os

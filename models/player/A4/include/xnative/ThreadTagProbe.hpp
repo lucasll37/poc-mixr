@@ -4,6 +4,7 @@
 #include "mixr/base/Component.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -46,6 +47,7 @@ protected:
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

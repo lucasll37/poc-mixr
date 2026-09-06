@@ -16,10 +16,13 @@ namespace mixr { namespace linkage { class IoHandler; } }
 namespace app {
 
 // O que fazer depois que o laco termina (main.cpp decide com isto: sair,
-// reexecutar com o MESMO cenario, ou reexecutar sem '-scenario' -- ver
-// app/Respawn.hpp para o "porque" de ser sempre um reexec, nunca uma
-// segunda Station no mesmo processo).
-enum class DashboardExit { Quit, Restart, ChangeScenario };
+// reexecutar com o MESMO cenario, reexecutar sem '-scenario', ou reexecutar
+// com '-f app::editedScenarioPath()' -- ver app/Respawn.hpp para o "porque"
+// de ser sempre um reexec, nunca uma segunda Station no mesmo processo).
+// 'RunEdited' vem da aba "EDL" (F7, ver app/EdlEditorState.hpp): o cenario
+// editado ja foi escrito em editedScenarioPath() e validado pelo 'edlcheck'
+// antes de sair do laco -- main.cpp so precisa reexecutar com '-f'.
+enum class DashboardExit { Quit, Restart, ChangeScenario, RunEdited };
 
 //------------------------------------------------------------------------------
 // O laco de tempo real desta poc -- substitui app/RealTimeRun.{hpp,cpp} das
@@ -40,12 +43,16 @@ enum class DashboardExit { Quit, Restart, ChangeScenario };
 //
 // Bloqueia ate o usuario sair/reiniciar/trocar de cenario.
 //------------------------------------------------------------------------------
+// 'generatedEdlPath' e o '.edl' que este processo carregou (o que
+// main.cpp/app::generateScenario() ja produziu) -- e o texto inicial da aba
+// "EDL" (F7); editar la nunca escreve nele, so em app::editedScenarioPath().
 DashboardExit runDashboard(mixr::simulation::Station* station,
                            mixr::models::WorldModel* worldModel,
                            mixr::xclock::ClockStation* clockStation,
                            mixr::xtacview::TacviewOutput* tacviewOutput,
                            mixr::linkage::IoHandler* ioHandler,
                            int numTcThreads, const std::string& scenarioLabel,
-                           const BtNode& behaviorTree);
+                           const BtNode& behaviorTree,
+                           const std::string& generatedEdlPath);
 
 } // namespace app

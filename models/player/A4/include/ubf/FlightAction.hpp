@@ -8,6 +8,7 @@
 #include <string>
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -66,6 +67,7 @@ private:
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

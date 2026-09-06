@@ -44,6 +44,7 @@
 namespace {
 
 using namespace mixr;
+using namespace mixr::models;
 
 //------------------------------------------------------------------------------
 // Bench -- um AirVehicle "de bancada". air->reset() e chamado uma unica vez,

@@ -4,6 +4,7 @@
 #include "mixr/base/ubf/AbstractBehavior.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -45,6 +46,7 @@ public:
 };
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

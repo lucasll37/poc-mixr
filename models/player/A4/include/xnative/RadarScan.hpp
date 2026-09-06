@@ -4,6 +4,7 @@
 namespace mixr {
 namespace models { class AirVehicle; }
 
+namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
@@ -33,6 +34,7 @@ struct RadarScanInfo
 RadarScanInfo radarScanOf(const models::AirVehicle* air);
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr
 
 #endif

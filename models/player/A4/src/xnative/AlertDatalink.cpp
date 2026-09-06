@@ -13,6 +13,7 @@
 #include "mixr/base/units/Times.hpp"
 
 namespace mixr {
+namespace models {
 namespace xnative {
 
 IMPLEMENT_SUBCLASS(AlertDatalink, "AlertDatalink")
@@ -229,4 +230,5 @@ bool AlertDatalink::setSlotHoldTime(const base::Time* const msg)
 }
 
 } // namespace xnative
+} // namespace models
 } // namespace mixr

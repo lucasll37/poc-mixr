@@ -2,6 +2,9 @@
 
 #include <cmath>
 
+namespace mixr {
+namespace models {
+namespace xmissile {
 namespace domain {
 
 namespace {
@@ -66,3 +69,6 @@ double slewTowards(const double current, const double target, const double maxDe
 }
 
 } // namespace domain
+} // namespace xmissile
+} // namespace models
+} // namespace mixr
