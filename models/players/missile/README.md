@@ -50,6 +50,7 @@ interna nenhuma.
 
 - [docs/DESIGN.md](docs/DESIGN.md) — a lei de guiagem e a armadilha de inércia/massa
 - [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
-- [../README.md](../../README.md) — visão geral de `models/`, o contrato de plugin, e o build
-  orquestrado pelo Makefile da raiz (`make models`)
+- [../../../CLAUDE.md](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
+  PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o build orquestrado pelo Makefile
+  da raiz (`make models`)
 - [../../CLAUDE.md](../../../CLAUDE.md) — seção "Demo: míssil guiado", a dissecação completa

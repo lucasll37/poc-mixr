@@ -6,9 +6,10 @@
 # models/players/fixtures/stub/docs/CONTRATO.md) e nao pode ter dependencia
 # dinamica nao resolvida.
 #
-# Nao afirma nada sobre COMPORTAMENTO -- so a forma do artefato. Copia
-# literal de models/players/fixtures/stub/tests/check_contract.sh: o script ja
-# era generico (nao cita "stub" em lugar nenhum).
+# Nao afirma nada sobre COMPORTAMENTO -- so a forma do artefato. Mesma logica
+# de models/players/fixtures/stub/tests/check_contract.sh (o script ja era
+# generico, nao cita "stub" em lugar nenhum) -- este comentario foi adaptado
+# aqui, nao e copia byte a byte do de la.
 #
 set -euo pipefail
 

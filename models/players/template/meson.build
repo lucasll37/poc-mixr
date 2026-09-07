@@ -16,7 +16,7 @@
 # ser COPIADO e RENOMEADO. Ver docs/PRIMEIROS-PASSOS.md.
 #
 # Em que difere de models/players/fixtures/stub, o outro "ponto de partida"
-# documentado em models/README.md secao 2: o stub e propositalmente achatado
+# documentado em CONTRIBUTING.md secao 2 (raiz): o stub e propositalmente achatado
 # (~270 linhas, um arquivo so) e amarrado ao 'provides:' EXATO do cenario de
 # producao deste repositorio -- ele existe para PROVAR que o contrato de
 # plugin basta, nao para ensinar arquitetura. Este diretorio mostra a
@@ -85,7 +85,8 @@ model_sources = files(
 #
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
 # transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
-# dlopen. Nenhum dos dois e opcional -- ver models/README.md secao 2.1.
+# dlopen. Nenhum dos dois e opcional -- ver
+# models/players/fixtures/stub/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']
 model_deps = [mixr_dep, sdk_dep]
 

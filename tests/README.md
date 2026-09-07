@@ -267,9 +267,10 @@ Se as duas divergissem, metade do modelo ficaria sem teste em silêncio.
 
 [`guard/check_modelo_estrutura.sh`](guard/check_modelo_estrutura.sh) afirma que **todo** projeto
 sob `models/` tem `tests/`, `docs/`, `README.md`, `CHANGELOG.md` e `Makefile` — a regra escrita em
-[models/README.md](../models/README.md), que antes só existia como prosa. É o que faz cada modelo
-autocontido: quem abre o editor só em `models/<nome>/` tem ali como compilar, como provar que
-continua certo, o "porquê" das decisões, a porta de entrada e o que mudou desde a última vez.
+[`.claude/rules/models-plugin.md`](../.claude/rules/models-plugin.md), que antes só existia como
+prosa solta. É o que faz cada modelo autocontido: quem abre o editor só em `models/<nome>/` tem
+ali como compilar, como provar que continua certo, o "porquê" das decisões, a porta de entrada e
+o que mudou desde a última vez.
 
 Ela **descobre os projetos por `find`** (todo diretório com `project()` no `meson.build`), não por
 lista fixa — mesma lição já registrada no cabeçalho de `check_host_opaco.sh`, onde um glob de dois

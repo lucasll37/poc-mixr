@@ -155,5 +155,7 @@ problema depois.
   empacotamento binário completo
 - [`libs/xboard/Board.hpp`](../../../../../libs/xboard/Board.hpp) — todos os campos e funções do
   quadro de leitura da seção 3
-- [`../../README.md`](../../../../README.md) — visão geral de como os modelos deste repositório se
-  encaixam no host, e como registrar um modelo novo num cenário
+- [`../../../../CONTRIBUTING.md`](../../../../../CONTRIBUTING.md) — como registrar um modelo novo
+  num cenário
+- [`../../../../CLAUDE.md`](../../../../../CLAUDE.md), seção "O MODELO é um plugin, construído
+  numa etapa PRÉVIA" — visão geral de como os modelos deste repositório se encaixam no host

@@ -1,7 +1,8 @@
 # Changelog — `missile`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [../README.md](../../README.md); a guarda
+a regra, e o porquê dela, estão em
+[`../../../.claude/rules/models-plugin.md`](../../../.claude/rules/models-plugin.md); a guarda
 [`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a trava.
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
@@ -39,8 +40,8 @@ uma por commit.
 ## [1.0.0] — 2026-09-02
 
 O modelo nasceu inteiro neste dia, como **segundo exemplo** de "criar um modelo novo" — cópia da
-receita de `models/players/fixtures/stub` (ver [../README.md](../../README.md) §2), e o primeiro modelo deste
-repositório que publica um `Player`.
+receita de `models/players/fixtures/stub` (ver `CONTRIBUTING.md` §2, na raiz), e o primeiro
+modelo deste repositório que publica um `Player`.
 
 ### Adicionado
 

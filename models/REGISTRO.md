@@ -23,6 +23,7 @@ Quem começar um dos quatro planejados: troque `models/players/<a definir>/` pel
 
 ## Ler também
 
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — o roteiro completo de contribuir com um modelo novo
-- [`README.md`](README.md) — visão geral de `models/`, o build em etapas, como registrar um
-  cenário novo (seções 4.1 e 4.2)
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — o roteiro completo de contribuir com um modelo novo,
+  inclusive registrar um cenário novo (seção 5) e decidir a cobertura de teste (seção 5.3)
+- [`../CLAUDE.md`](../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa PRÉVIA" —
+  visão geral de `models/` e o build em etapas do repositório inteiro

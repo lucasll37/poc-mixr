@@ -120,7 +120,8 @@ Isso significa:
 1. Adicionar `behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config',
    required: true)` ao `meson.build` e colocá-la em `model_deps`/`model_link_args` (a
    `-Wl,--exclude-libs,ALL` já está lá, mas ela só importa a partir do momento em que você linka
-   uma biblioteca **estática** — o que a BehaviorTree.CPP é, ver `models/README.md` seção 2.1).
+   uma biblioteca **estática** — o que a BehaviorTree.CPP é, ver
+[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md), seção 1).
 2. Criar um diretório `bt/nodes/` com um nó por decisão (condição ou ação), registrados numa
    `BT::BehaviorTreeFactory` própria — `models/players/A-4/src/bt/bt_factory.cpp` é a referência.
 3. Trocar o corpo de `ExampleBehavior::genAction()` por um `tree.tickRoot()` sobre um

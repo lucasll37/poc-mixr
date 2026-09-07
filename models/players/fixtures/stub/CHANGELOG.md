@@ -68,10 +68,10 @@ O fixture nasceu inteiro neste dia, com os dois papéis que justificam ele exist
 - **`docs/CONTRATO.md`** — a lista escrita dessas obrigações, incluindo a única que falha em
   **silêncio**: sem escrever no `xboard`, o host sobe, o cenário parseia, os aviões voam pelo
   `Autopilot` nativo e o dump sai com `bt=--` e `dec=0`, com todos os outros testes verdes.
-- **`tests/check_contract.sh`** — a forma do artefato, automatizando os dois critérios que
-  `models/README.md` §2.3 documentava à mão: exatamente **um** símbolo `T` exportado e nenhuma
-  dependência dinâmica não resolvida. Não afirma nada sobre comportamento (isso é
-  `tests/plugin/run_stub_model.py`, na raiz).
+- **`tests/check_contract.sh`** — a forma do artefato, automatizando os dois critérios que a
+  documentação de `models/` (hoje `CONTRIBUTING.md` §5.1, na raiz) documentava à mão: exatamente
+  **um** símbolo `T` exportado e nenhuma dependência dinâmica não resolvida. Não afirma nada sobre
+  comportamento (isso é `tests/plugin/run_stub_model.py`, na raiz).
 - **`Makefile` autocontido** e **`README.md`** — as outras peças obrigatórias à época (o
   `CHANGELOG.md`, a quinta, é desta rodada). **Armadilha
   ao copiar este diretório**: o `Makefile` calcula a raiz do repositório a partir de onde ele

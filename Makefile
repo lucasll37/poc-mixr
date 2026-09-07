@@ -151,7 +151,7 @@ models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por 
 	 done
 	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s): $(notdir $(MODELOS_PRODUCAO)); rode 'make install' para sincronizar com dist/)"
 
-sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
+sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
 	@# plugins/ ja mistura o que os tres modelos locais depositaram
 	@# (via 'models', acima) com qualquer .so de terceiro (ver
 	@# plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,

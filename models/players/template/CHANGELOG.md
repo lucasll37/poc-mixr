@@ -1,7 +1,8 @@
 # Changelog — `template`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [`../../README.md`](../../README.md); a guarda
+a regra, e o porquê dela, estão em
+[`../../../.claude/rules/models-plugin.md`](../../../.claude/rules/models-plugin.md); a guarda
 [`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a
 trava (ela descobre projetos por `find`, então este diretório já nasce coberto). **Vale em
 dobro aqui**: este diretório é um dos dois pontos de partida copiáveis deste repositório (o outro

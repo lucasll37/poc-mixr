@@ -200,5 +200,5 @@ decisão de design — e as armadilhas encontradas rodando — está na seção 
 | [CLAUDE.md](../CLAUDE.md), seção `./app` | toda decisão de design e armadilha, rodada por rodada |
 | [README.md](../README.md) (raiz) | pré-requisitos, build, como o repositório se organiza |
 | [libs/README.md](../libs/README.md) | as bibliotecas que este app consome (`xboard`, `xtrack`, `xlog`...) |
-| [models/README.md](../models/README.md) | como um modelo vira plugin |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) (raiz) | como um modelo vira plugin, como escrever um novo |
 | [tests/README.md](../tests/README.md) | a suíte automatizada, inclusive `scenario-app-*` |

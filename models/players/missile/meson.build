@@ -1,6 +1,6 @@
 # ==============================================================================
 # missile -- SEGUNDO modelo, plugin proprio, exemplo de "criar um modelo
-# novo" (ver CLAUDE.md e models/README.md secao 2).
+# novo" (ver CLAUDE.md e CONTRIBUTING.md secao 2, na raiz).
 #
 # Projeto Meson a parte, no molde EXATO de models/players/fixtures/stub/meson.build:
 # so mixr_dep + sdk_dep. NAO linka behaviortree.cpp.asa -- este modelo nao

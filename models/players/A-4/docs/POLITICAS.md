@@ -213,8 +213,10 @@ treinar a escrever.
 </Fallback>
 ```
 
-A entrada é a mesma observação de 28 campos; a saída pode ter qualquer número de valores, e `index`
-escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o `Fallback` segue para o próximo ramo.
+A entrada é a mesma observação de 28 campos; a saída é lida num buffer fixo de até 16 valores
+(`std::array<float, 16>` em `OnnxScoreCondition.cpp` — um `.onnx` com mais de 16 saídas perde as
+extras em silêncio), e `index` escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o
+`Fallback` segue para o próximo ramo.
 
 ---
 

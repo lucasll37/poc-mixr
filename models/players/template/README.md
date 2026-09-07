@@ -5,8 +5,9 @@
 A aplicação principal deste repositório (o "host") não decide nada sozinha: ela carrega a lógica
 de simulação — percepção, decisão, ação — de uma biblioteca compartilhada (`.so`) compilada à
 parte e aberta em tempo de execução, sem que o host precise conhecer o código-fonte dela. Essa
-biblioteca é o que este repositório chama de **modelo** (ver [`../README.md`](../../README.md)
-para a visão geral de como isso se encaixa no resto do repositório).
+biblioteca é o que este repositório chama de **modelo** (ver [`../../../CLAUDE.md`](../../../../CLAUDE.md),
+seção "O MODELO é um plugin, construído numa etapa PRÉVIA", para a visão geral de como isso se
+encaixa no resto do repositório).
 
 Este diretório **não é um modelo de produção** — é um esqueleto compilável e testável, do tamanho
 mínimo necessário para mostrar a separação em camadas (`domain/` → `ubf/` → `xnative/`) que os
@@ -96,6 +97,6 @@ exemplo pela sua decisão de verdade.
   crescer para uma árvore de comportamento
 - [`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) — a lista completa e
   autoritativa do que QUALQUER modelo precisa fazer para o host carregá-lo e rodar com ele
-- [`../README.md`](../../README.md) — visão geral de `models/`, o contrato de plugin, e o fluxo
-  de build orquestrado pelo Makefile da raiz
-- [`../../../CLAUDE.md`](../../../CLAUDE.md) — visão geral do repositório inteiro
+- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
+  PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
+  Makefile da raiz

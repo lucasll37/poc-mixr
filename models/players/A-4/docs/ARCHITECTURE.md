@@ -20,7 +20,10 @@ são calibrados **para a aeronave que voa aqui** especificamente:
   aeronave por documentação.
 - A folga de `domain/TerrainFloor.hpp` contra o piso anti-CFIT é uma margem de segurança sobre o
   terreno, independente do tipo de aeronave — não precisou mudar na troca para o A-4.
-- Os limiares de combustível em `bt/nodes/FuelLowCondition.cpp`.
+- O limiar de combustível do RTB — não é calibração fixa em `bt/nodes/FuelLowCondition.cpp` (esse
+  arquivo não tem número nenhum, só compara `fuelFraction` contra a reserva); o valor real é o
+  slot EDL `fuelReserve:` do `BtBehavior`, com default `0.35` em `include/ubf/BtTuning.hpp`,
+  ajustável por CENÁRIO, não por aeronave.
 
 Trocar de aeronave sem recalibrar pelo menos as velocidades comandadas (`patrolSpeed`/`rtbSpeed`/
 `evadeSpeed`/`supportSpeed`, no `.edl` de cada cenário) e o próprio `<autopilot>` JSBSim (que

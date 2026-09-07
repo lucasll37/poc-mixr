@@ -1,4 +1,4 @@
-.PHONY: clean check-root configure build test install install-host uninstall-host help
+.PHONY: clean check-root configure build test install install-host uninstall-host help dump-tree-model tree-skeleton sync-tree-models check-tree-models
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -160,6 +160,18 @@ uninstall-host: ## Remove de ../../../plugins/ (+ data/flight/) o que ESTE model
 	   done; \
 	 fi
 	@rm -rf $(ROOT)/plugins/data/flight
+
+dump-tree-model: build ## Imprime o <TreeNodesModel> atual (BT::writeTreeNodesModelXML sobre bt_factory.cpp/bt_factory_sdk.cpp) -- cole dentro do <root> de uma arvore .xml existente.
+	@$(BUILD_DIR)/tests/dump-tree-model
+
+tree-skeleton: build ## Gera um .xml NOVO e completo (arvore vazia + TreeNodesModel), pronto pra abrir no Groot. Uso: make tree-skeleton ID=MinhaArvore > /tmp/nova.xml
+	@$(BUILD_DIR)/tests/dump-tree-model --skeleton $(ID)
+
+sync-tree-models: build ## Resincroniza o <TreeNodesModel> nos 5 flight_tree*.xml de producao (configs/) com o que bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE.
+	python3 tools/sync_tree_models.py --binary $(BUILD_DIR)/tests/dump-tree-model
+
+check-tree-models: build ## So verifica (sem escrever) se os 5 flight_tree*.xml batem com o registro real -- o mesmo que 'meson test tree-model-sync' ja roda dentro de 'make test'.
+	python3 tools/sync_tree_models.py --check --binary $(BUILD_DIR)/tests/dump-tree-model
 
 help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

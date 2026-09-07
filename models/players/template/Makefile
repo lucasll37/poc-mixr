@@ -98,16 +98,24 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
 	 fi
 
-build: configure ## Compila libtemplate.so.
+build: configure ## Compila o .so deste projeto.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/libtemplate.so.
+install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/.
 	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
 	@# Makefile de models/players/A-4.
+	@# NAO hardcodear o nome do .so aqui: depois de renomear o projeto (ver
+	@# docs/PRIMEIROS-PASSOS.md), ele deixa de se chamar libtemplate.so, e um
+	@# 'ldd' contra um caminho que nao existe mais sai (exit 1, sem a string
+	@# "not found") -- o '|| true' absorvia isso e a linha seguinte imprimia
+	@# "install: OK" apontando pra um arquivo inexistente, incondicionalmente.
 	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
-	@ldd $(DEST_DIR)/lib/mixr-plugins/libtemplate.so | grep -q 'not found' && \
-		{ echo "$(RED)install: dependencia nao resolvida$(NC)"; exit 1; } || true
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/libtemplate.so"
+	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+		[ -e "$$so" ] || continue; \
+		ldd "$$so" | grep -q 'not found' && \
+			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
+	done
+	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
 
 test: build ## Roda a suite deste template (domain + forma do .so).
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \

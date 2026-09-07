@@ -216,7 +216,7 @@ Três regras valem para todo subprojeto e todo modelo:
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | referência completa de arquitetura — todo subprojeto, biblioteca compartilhada e armadilha já confirmada rodando |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | escrever um MODELO novo (não mexer no host) |
-| [`models/README.md`](models/README.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
 | [`libs/README.md`](libs/README.md) | as 12 bibliotecas compartilhadas host↔modelo, uma por pasta |
 | [`tests/README.md`](tests/README.md) | as suítes de teste, o que cada uma prova |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |

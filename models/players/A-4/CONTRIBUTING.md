@@ -4,7 +4,8 @@ Este é o roteiro para mexer **neste modelo** — só o `.so` (`domain/`, `bt/`,
 os `configs/flight_tree*.xml`, `data/jsbsim/`). Ele é um passo **anterior e independente** de
 qualquer cenário: nada aqui sabe, ou precisa saber, quem vai carregá-lo. Terminar o roteiro abaixo
 é ter um `.so` publicado e testado isoladamente — apontar um `.edl` para ele é decisão de quem
-monta o cenário, feita depois, em outro lugar (`models/README.md` §4, `.claude/rules/models-plugin.md`).
+monta o cenário, feita depois, em outro lugar (`CONTRIBUTING.md` §5 na raiz,
+`.claude/rules/models-plugin.md`).
 
 Para criar um modelo **novo** do zero (não mexer neste), o ponto de entrada é
 [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — este arquivo assume que o modelo já
@@ -178,7 +179,7 @@ cenário; rodar os dois é o que "publicar o plugin" quer dizer aqui.
 **Este passo termina o trabalho deste diretório.** Fazer um cenário carregar o `.so` publicado —
 escrever o bloco `( PluginModule file: "libflight.so" provides: {...} )`, escolher a porta do
 Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste modelo; ver
-`models/README.md` §4 (raiz) para essa parte, se for você quem for fazer os dois.
+`CONTRIBUTING.md` §5 (raiz) para essa parte, se for você quem for fazer os dois.
 
 ## 5. Antes de propor a mudança
 
@@ -214,7 +215,8 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
   (este incluído) tem que fazer
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) — arquitetura do repositório inteiro; seção "Groot —
   editor e monitor ao vivo" tem a lista completa de armadilhas do editor/monitor
-- [`../../README.md`](../../README.md) — o build em etapas do repositório (`configure` → `sdk` →
-  `models` → `build` → `install`) e por que `plugins/`/`dist/` são decoplados de propósito
+- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
+  PRÉVIA" — o build em etapas do repositório (`configure` → `sdk` → `models` → `build` →
+  `install`) e por que `plugins/`/`dist/` são decoplados de propósito
 - [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — criar um modelo **novo** (não é este
   roteiro, que é sobre mexer no `A-4` já existente)

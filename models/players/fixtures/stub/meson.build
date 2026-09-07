@@ -52,8 +52,8 @@ stub_lib = shared_module('stub',
 # A suite de CONTRATO -- nao a suite de comportamento do host (essa e
 # tests/plugin/run_stub_model.py, na raiz, e continua rodando so a partir do
 # Makefile raiz). Esta e local a este projeto: os dois criterios "medidos"
-# que models/README.md §2.3 ja documentava a mao (1 simbolo T exportado, zero
-# dependencia "not found") viram um `meson test` de verdade, sem precisar de
+# que CONTRIBUTING.md §5.1 (raiz) ja documentava a mao (1 simbolo T exportado,
+# zero dependencia "not found") viram um `meson test` de verdade, sem precisar de
 # gtest -- e por isso o default de -Dtests aqui e so um script, nao uma
 # suite C++.
 if get_option('tests')

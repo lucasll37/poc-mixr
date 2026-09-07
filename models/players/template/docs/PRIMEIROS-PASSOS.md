@@ -7,8 +7,8 @@ todo projeto de modelo precisa (publica o SDK de plugin e os pacotes do Conan):
 cd ../../.. && make configure && make sdk
 ```
 
-Sem isso, `check-root` (o primeiro alvo que qualquer outro alvo deste `Makefile` depende) falha
-com uma mensagem dizendo exatamente o que rodar.
+Sem isso, `check-root` (dependência de `configure`/`build`/`test`/`install` — não de `clean`,
+`help` nem `uninstall-host`) falha com uma mensagem dizendo exatamente o que rodar.
 
 ## Passo 0 — confirme que o template, do jeito que está, funciona
 

@@ -12,10 +12,10 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 ## Os dois jeitos de algo chegar aqui
 
 1. **Compilado por este repositório** — `make models` (na raiz) chama `install-host` de cada
-   projeto de modelo (`models/player/A4/`, `models/player/missile/`, `models/player/fixtures/stub/`), e cada um
-   copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
-   diretamente — ver a seção "Desacoplando `models` de `dist/`" no `CLAUDE.md` da raiz para o
-   "porquê".
+   projeto de modelo (`models/players/A-4/`, `models/players/missile/`,
+   `models/players/fixtures/stub/`), e cada um copia o próprio `.so` (e dados, se houver) para cá.
+   Nenhum deles escreve em `dist/` diretamente — ver a seção "Desacoplando `models` de `dist/`" no
+   `CLAUDE.md` da raiz para o "porquê".
 2. **Um `.so` de terceiro** — já compilado fora deste repositório (por outra equipe, outro
    fornecedor), entra aqui do mesmo jeito: solto nesta pasta, com o nome que ele já tem.
 
@@ -30,8 +30,8 @@ simulada.
 
 - **Flat**: os `.so` vão direto na raiz desta pasta, sem subpasta por modelo.
 - **`data/`** é a única exceção ao depósito flat — hoje só `data/flight/` (a árvore de
-  comportamento + a aeronave JSBSim, publicadas por `models/player/A4/`, porque são dado do MODELO,
-  não do cenário).
+  comportamento + a aeronave JSBSim, publicadas por `models/players/A-4/`, porque são dado do
+  MODELO, não do cenário).
 - **`.so` de terceiro não é versionado** (`.gitignore`: `plugins/*.so`, `plugins/data/`) — é
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o
   que sobrevive num clone limpo.
@@ -48,7 +48,7 @@ não como falha.
 ## Ler também
 
 - [`../CLAUDE.md`](../CLAUDE.md), seção "Desacoplando `models` de `dist/`" — o "porquê" completo
-  da separação entre este depósito e `dist/`
-- [`../models/README.md`](../models/README.md) — a estrutura de `models/` e o build em etapas
+  da separação entre este depósito e `dist/`, e a seção "O MODELO é um plugin, construído numa
+  etapa PRÉVIA" para a estrutura de `models/` e o build em etapas
 - [`../tests/plugin/run_thirdparty_deposit.py`](../tests/plugin/run_thirdparty_deposit.py) — a
   prova de que um `.so` depositado aqui roda a simulação de produção de verdade

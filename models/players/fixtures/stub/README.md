@@ -89,4 +89,5 @@ abaixo da raiz — abra o `Makefile` copiado e troque a linha `ROOT := $(abspath
 
 Nada acima depende disto, mas se quiser entender como os modelos se encaixam na aplicação maior —
 outros modelos que existem, como um cenário aponta para um `.so`, o fluxo de build orquestrado que
-constrói tudo de uma vez — o ponto de entrada é [`../../README.md`](../../../README.md).
+constrói tudo de uma vez — o ponto de entrada é [`../../../CLAUDE.md`](../../../../CLAUDE.md),
+seção "O MODELO é um plugin, construído numa etapa PRÉVIA".

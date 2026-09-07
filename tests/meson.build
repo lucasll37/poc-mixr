@@ -26,8 +26,9 @@ bash = find_program('bash')
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-# 'models/players/A-4' e um projeto Meson AUTOCONTIDO (ver models/README.md
-# Sec1.1) -- constroi em './build' DENTRO da propria pasta, nao mais em
+# 'models/players/A-4' e um projeto Meson AUTOCONTIDO (ver CLAUDE.md, secao
+# "O MODELO e um plugin, construido numa etapa PREVIA") -- constroi em
+# './build' DENTRO da propria pasta, nao mais em
 # 'build-flight' na raiz (esse era o caminho do design anterior, quando
 # 'make models' fazia o setup do flight direto por aqui). As variantes A/B
 # de teste ('libmodel_variant_a.so'/'_b.so', para plugin-hotswap) saem la.
@@ -457,7 +458,7 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # test() manual (precedente: 'onnx-policy', mais abaixo neste arquivo) ou
 # nenhuma cobertura em tests/meson.build (precedente: 'built-in_mixr_1',
 # que so tem um 'make check-<nome>' no Makefile raiz). A arvore de decisao
-# completa esta em models/README.md secao 4.2 -- leia antes de editar esta
+# completa esta em CONTRIBUTING.md secao 5.3 -- leia antes de editar esta
 # lista OU de escrever um bloco test() novo.
 pocs = [
     ['single-thread', app, 'nao-critico', ''],
@@ -587,7 +588,7 @@ endforeach
 
 # >>> BLOCO test() MANUAL PRA MODELO/CENARIO NOVO ENTRA POR AQUI (ou logo
 # abaixo) -- este e o padrao pra quem NAO serve a lista 'pocs' acima (ver o
-# comentario junto dela e models/README.md secao 4.2). O bloco de
+# comentario junto dela e CONTRIBUTING.md secao 5.3). O bloco de
 # 'scenario-onnx-policy'/'memory-onnx-policy' logo a seguir e o precedente a
 # copiar: mesmo scenario_runner/leak_runner, so que fora do 'foreach', com o
 # '--poc'/'--label' do SEU cenario. <<<

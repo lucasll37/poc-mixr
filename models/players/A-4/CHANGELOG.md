@@ -1,7 +1,8 @@
 # Changelog — `flight`
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
-a regra, e o porquê dela, estão em [../README.md](../../README.md); a guarda
+a regra, e o porquê dela, estão em
+[`.claude/rules/models-plugin.md`](../../../.claude/rules/models-plugin.md); a guarda
 [`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a trava.
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).

@@ -7,7 +7,7 @@
 # compartilha o namespace entre um project() e os subdir() dele) -- nao sao
 # redeclarados aqui.
 #
-# ARMADILHA MEDIDA (documentada em models/README.md e em todo meson.build de
+# ARMADILHA MEDIDA (documentada em CLAUDE.md, raiz, e em todo meson.build de
 # modelo deste repositorio): 'meson test' devolve rc=0 para suite VAZIA
 # ("No tests defined."), e o default de -Dtests e false. O Makefile confere
 # a contagem com 'meson introspect --tests' antes de rodar -- ver o alvo
@@ -33,7 +33,7 @@ test('domain', test_domain, suite: 'domain', timeout: 60)
 # simbolo T exportado (o ponto de entrada de MIXR_PLUGIN_DEFINE) e nenhuma
 # dependencia dinamica nao resolvida. Mesmo script de
 # models/players/fixtures/stub/tests/check_contract.sh -- os dois criterios que
-# models/README.md secao 2.3 ja documentava a mao.
+# CONTRIBUTING.md secao 5.1 (raiz) ja documentava a mao.
 check_contract = find_program('check_contract.sh')
 test('contrato-simbolo-unico-e-deps-resolvidas', check_contract,
     args    : [template_lib],

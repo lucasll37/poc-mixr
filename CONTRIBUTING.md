@@ -10,7 +10,8 @@ novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivale
 
 Um **modelo** é uma biblioteca (`.so`) compilada à parte, aberta em tempo de execução via
 `dlopen` — o host nunca vê seu código-fonte. Se este parágrafo é novidade, leia primeiro
-[`models/README.md`](models/README.md) antes de continuar.
+[`CLAUDE.md`](CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de
+continuar.
 
 Antes de começar, confira [`models/REGISTRO.md`](models/REGISTRO.md) — a tabela de quem já está
 mexendo em qual modelo. Se o modelo que você quer escrever já tem alguém trabalhando nele, evite
@@ -30,7 +31,8 @@ exatamente isto.
 
 ## 2. Escolha o ponto de partida
 
-→ [`models/README.md`](models/README.md), seção 2, com a receita completa. Resumo:
+Dois pontos de partida copiáveis — o "porquê" de cada camada está no `README.md`/`docs/` do
+respectivo diretório:
 
 | se o seu modelo... | comece por | por quê |
 |---|---|---|
@@ -45,9 +47,10 @@ make new-model NAME=meu_modelo KIND=stub   # ou KIND=template
 
 Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespace, `ROOT` do Makefile
 pela profundidade real) e termina com um checklist do que sobra manual. Se preferir fazer à mão, o
-roteiro completo está em [`stub`, receita em `models/README.md` §2](models/README.md#2-como-criar-um-modelo-novo)
-ou [`template`, `docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) passo
-a passo, dos dois — mas o gerador cobre exatamente essa receita.
+roteiro completo está em [`stub`, `README.md`](models/players/fixtures/stub/README.md), seção
+"Usando este diretório como ponto de partida para um modelo novo", ou [`template`,
+`docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) passo a passo, dos
+dois — mas o gerador cobre exatamente essa receita.
 
 ## 3. O contrato: o que TODO modelo tem que fazer
 
@@ -166,13 +169,35 @@ implementação) → [`CLAUDE.md`](CLAUDE.md), seção "Groot — editor e monit
 
 ## 5. Publique e aponte um cenário
 
-→ `models/README.md`, seção 2.3 (verificar o `.so`) e seção 4 (registrar num `.edl`), ou
-`PRIMEIROS-PASSOS.md`, passo 6, se veio do `template`.
+### 5.1 Verificar o `.so`
 
-O `.so` compilando e um `.edl` apontando pra ele já bastam para rodar via `./app -folder <pasta>
--scenario <nome>` (não há catálogo estático para registrar — ver `models/README.md`, seção **4.1**)
-— o que ainda é opcional é a cobertura de teste automática, seção **4.2** (decidir se/como o
-cenário ganha teste em `tests/meson.build`).
+```bash
+make models
+nm -D --defined-only dist/lib/mixr-plugins/libmeu_modelo.so | grep ' T '   # 1 linha só
+ldd dist/lib/mixr-plugins/libmeu_modelo.so | grep 'not found'             # vazio
+```
+
+Se veio do `template`, o mesmo passo está em `docs/PRIMEIROS-PASSOS.md`, passo 6.
+
+### 5.2 Registrar num cenário
+
+A poc não tem código — três passos de **dado**, detalhados em [`CLAUDE.md`](CLAUDE.md), seção "Ao
+adicionar um subprojeto novo": uma pasta `src/poc/<nome>/` com `configs/scenario.edl.in` + `data/`
++ `README.md`; o bloco `( PluginLoader )`/`( PluginModule provides: {...} )` como **primeira**
+entrada de `components:` no `.edl.in` (`provides:` é igualdade EXATA de conjunto contra o que o
+`.so` exporta); e nada mais a registrar — sem catálogo estático, a poc já fica alcançável por
+`./app -folder <pasta> -scenario <nome>` assim que `configs/` tiver um único `.edl`/`.edl.in`.
+
+### 5.3 Cobertura de teste automática (opcional)
+
+A poc já roda sem nenhuma linha em `tests/meson.build`. Decida se vale a pena por esta tabela
+(marcadores no próprio `tests/meson.build` apontam de volta pra cá):
+
+| a poc... | cobertura | precedente |
+|---|---|---|
+| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `single-thread`, `multi-thread`, `python-flight` |
+| não segue esse formato, mas tem uma propriedade que vale a pena provar | bloco(s) `test()` manuais, reaproveitando `scenario_runner`/`leak_runner`/`determinism_sh` fora do `foreach` | `onnx-policy` |
+| nenhuma das duas — é só composição de players já testados em outro lugar | nenhuma entrada; documente o porquê no `README.md` da própria poc | `built-in_mixr_1`, `full-systems-nav` |
 
 ## 6. Teste
 

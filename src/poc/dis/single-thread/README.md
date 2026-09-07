@@ -43,7 +43,7 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 > ficam lá.
 >
 > Isso não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o binário.
-> Ver [models/README.md](../../../../models/README.md) para escrever um modelo novo, e
+> Ver [CONTRIBUTING.md](../../../../CONTRIBUTING.md) para escrever um modelo novo, e
 > [libs/xplugin/README.md](../../../../libs/xplugin/README.md) para o contrato.
 
 ```bash

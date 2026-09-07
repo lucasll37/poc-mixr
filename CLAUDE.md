@@ -284,8 +284,9 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
 > `models/players/A-4/`, um projeto Meson independente construído numa etapa **anterior**
-> (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver `models/README.md`.
-> A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
+> (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver, mais abaixo, a seção
+> "O MODELO é um plugin, construído numa etapa PRÉVIA". A guarda `tests/guard/check_host_opaco.sh`
+> trava esse invariante.
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
 `main.cpp` não implementa comportamento. `src/poc/dis/single-thread/configs/scenario.edl.in` é a
@@ -1146,8 +1147,8 @@ aeronave nunca alcançaria: o dump sai idêntico ao do controle negativo.
 `make test` roda a suíte do HOST (`meson test -C build`); exige `configure` com `-Dtests=true`.
 Builda e sincroniza o(s) modelo(s) antes (via `install` — os testes que rodam binário precisam do
 `.so` em `dist/`), mas não roda a suíte deles — essa é `make test-models`, um alvo separado que
-delega para o Makefile autocontido de cada modelo (`domain`/`tree`/`native`, ver "Testes
-automatizados" em `models/README.md`). CI (`.gitlab-ci.yml`, job `test`) roda os dois. O framework
+delega para o Makefile autocontido de cada modelo (`domain`/`tree`/`native`). CI
+(`.gitlab-ci.yml`, job `test`) roda os dois. O framework
 é o **GTest**, declarado como `test_requires` no `conanfile.py` — nenhum binario da aplicacao
 linka gtest. Oito camadas, da mais isolada para a mais integrada — as três primeiras (`domain`/
 `tree`/`native`) são do MODELO, rodadas por `make test-models`; as cinco seguintes são do HOST,
@@ -1382,7 +1383,7 @@ models/
     │                         # demo academica (ver a secao "Demo: missil guiado" abaixo)
     │   ├── tests/domain/  docs/DESIGN.md  Makefile  README.md  CHANGELOG.md
     ├── template/             # projeto meson proprio -> build-template/ -- NAO e producao,
-    │                         # e o SEGUNDO ponto de partida copiavel (models/README.md §2.4):
+    │                         # e o SEGUNDO ponto de partida copiavel (ver models/players/template/README.md):
     │                         # camadas domain/ -> ubf/ -> xnative/ com UMA decisao de exemplo
     │                         # (gatilho Schmitt sobre altitude) -- pra quem ja sabe que vai
     │                         # coordenar mais de uma decisao e quer a separacao em camadas
@@ -1391,7 +1392,7 @@ models/
     └── fixtures/
         └── stub/             # projeto meson proprio -> build-stub/ -- NAO e producao, e
             ├── src/stub.cpp  # um FIXTURE de teste (fica em fixtures/ de proposito) E o
-            │                 # PRIMEIRO ponto de partida copiavel (models/README.md §2/§3):
+            │                 # PRIMEIRO ponto de partida copiavel (ver models/players/fixtures/stub/README.md e docs/CONTRATO.md):
             │                 # flat, ~270 linhas, uma decisao so -- comece por aqui a menos
             │                 # que ja saiba que vai coordenar mais de uma (ai e' o template)
             ├── tests/check_contract.sh   # forma do .so: 1 simbolo T, deps resolvidas
@@ -1410,7 +1411,7 @@ da raiz: `models:` do Makefile descobre projetos sob `models/players/` por `find
 entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
 alcançável por `-folder`/`-f` sem registrar em lugar nenhum — não há mais catálogo estático;
-opcionalmente cobertura em `tests/meson.build`; ver `models/README.md` §4.1/§4.2) e a linha em
+opcionalmente cobertura em `tests/meson.build`; ver `CONTRIBUTING.md` §5.2/§5.3) e a linha em
 `models/REGISTRO.md`.
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
@@ -1430,8 +1431,9 @@ diante cada modelo se basta, e `make install-host` (o unico alvo que escreve for
 local) deposita em `plugins/` da raiz -- **nao** em `dist/`, ver o "porque" logo abaixo. O
 fluxo orquestrado da raiz (`make models`, usado por CI e pelo dia a dia) continua sendo a forma
 canonica de construir os tres de uma vez -- o Makefile por projeto e para iterar num modelo so,
-sem o resto do repositorio aberto. Detalhes e as armadilhas de profundidade de caminho:
-`models/README.md` §1.1 e §5.7.
+sem o resto do repositorio aberto. Detalhes e as armadilhas de profundidade de caminho: o
+`README.md` de cada projeto de modelo (ex.: `models/players/fixtures/stub/README.md`, seção
+"Usando este diretório como ponto de partida para um modelo novo").
 
 ### Desacoplando `models` de `dist/` -- `plugins/` e o unico deposito
 
@@ -1565,13 +1567,13 @@ subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
    **único** `mixr_factory.cpp` do host (`app/src/mixr_factory.cpp`); nenhuma poc precisa da
    própria factory. Mesmo vale para Tacview: `dataRecorder:`/`dataLogTime:` são config do `.edl`,
    não C++ — `mixr::xtacview::factory`/`mixr::recorder::factory` já estão na mesma cadeia.
-3. Nada a registrar — não há mais catálogo estático de cenários no `./app` (ver `models/README.md`
-   §4.1). Assim que `configs/` tiver um único `.edl.in`, a poc já roda via
+3. Nada a registrar — não há mais catálogo estático de cenários no `./app` (ver `CONTRIBUTING.md`
+   §5.2). Assim que `configs/` tiver um único `.edl.in`, a poc já roda via
    `./build/app/src/app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis` se entrar no
    grupo DIS), sem tocar em C++.
 4. Opcionalmente, cobertura de teste automática em `tests/meson.build` — três formas possíveis
-   (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `models/README.md`
-   §4.2, com marcadores no próprio arquivo.
+   (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `CONTRIBUTING.md`
+   §5.3, com marcadores no próprio arquivo.
 
 Não há mais um passo de Makefile aqui — os alvos `run-<chave>`/`check-<chave>` por poc foram
 removidos (ver "Estado atual" mais abaixo); rodar a poc nova é só o comando do passo 3.
@@ -1621,7 +1623,7 @@ LOCAL (sem `networks:`, mesmo motivo do `tests/scenario/make_fixture.py`: hermé
 exemplificar três coisas, nesta ordem:
 
 1. **Criar um modelo novo, num plugin próprio.** `models/players/missile/` — cópia da receita de
-   `models/players/fixtures/stub` (`models/README.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
+   `models/players/fixtures/stub` (`CONTRIBUTING.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
    (sem `behavior_tree_dep` — o míssil não decide com árvore, só guia e voa), publicando **só**
    `GuidedMissile`. **Por que um plugin separado e não dentro do `flight`:** `provides:` no
    `.edl` é igualdade exata de conjunto contra o que a `.so` exporta — acrescentar `GuidedMissile`
@@ -4279,8 +4281,8 @@ capacidade real (`@include:` continua confirmado não usado por nenhum `.edl` de
 - A documentação de referência continua vivendo no `README.md` da raiz, no de cada
   subprojeto e em `tests/README.md`. `docs/` e `src/ui/` têm seção própria mais acima. Para
   escrever um MODELO novo (não mexer no host), o ponto de entrada é
-  [`CONTRIBUTING.md`](CONTRIBUTING.md) → `models/README.md` → `models/REGISTRO.md` (quem já está
-  fazendo o quê) — ver o quadro logo no início deste arquivo.
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) → `models/REGISTRO.md` (quem já está fazendo o quê) — ver o
+  quadro logo no início deste arquivo.
 - **`src/node/`** é um placeholder vazio — só `TODO.md` ("integração com o asa-engine"), nenhum
   código, não wireado em nenhum build. Não confundir com `src/rl`/`src/poc/rl-training` (esses
   têm venv/Makefile próprios e rodam de verdade).

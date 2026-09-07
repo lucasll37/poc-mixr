@@ -72,5 +72,6 @@ Coberto pelas suítes `scenario`/`determinism` do host, fora deste diretório.
 - [`docs/POLITICAS.md`](docs/POLITICAS.md) — decidir com um script Python ou com uma política ONNX
   em vez da árvore nativa
 - [`CHANGELOG.md`](CHANGELOG.md) — o que mudou neste modelo, e por quê
-- [`../../README.md`](../../README.md) — visão geral de `models/`, o contrato de plugin, o build
-  em etapas do repositório inteiro
+- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
+  PRÉVIA" — visão geral de `models/`, o contrato de plugin, o build em etapas do repositório
+  inteiro

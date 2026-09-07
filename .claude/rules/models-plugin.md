@@ -23,9 +23,9 @@ paths:
   um nome novo de fábrica obriga atualizar `provides:` em **todo** cenário que carrega essa `.so`
   (produção e testes) — não só o cenário que motivou a mudança.
 - Modelo novo: `make new-model NAME=<nome> KIND=stub|template` (não escreve lógica nenhuma, só
-  copia o esqueleto certo). Depois, siga `CONTRIBUTING.md` → `models/README.md` §4 para o cenário
-  (não há catálogo para registrar — basta um `.edl.in` em `configs/`) e anote em
-  `models/REGISTRO.md` (coordenação humana, sem enforcement automático).
+  copia o esqueleto certo). Depois, siga `CONTRIBUTING.md` §5 para o cenário (não há catálogo
+  para registrar — basta um `.edl.in` em `configs/`) e anote em `models/REGISTRO.md` (coordenação
+  humana, sem enforcement automático).
 - `models/players/fixtures/stub/` e `models/players/template/` **não são produção** — não entram na
   checagem de colisão de fábrica. Exceção: quando `plugin-modelo-estranho`/`plugin-deposito-terceiro`
   rodam o cenário de produção contra o stub, ele precisa continuar aceitando/publicando os mesmos

@@ -894,6 +894,7 @@ html, body { margin:0; padding:0; }
 .mx { --paper:#E6E9E3; --panel:#DCE0D9; --ink:#16232E; --muted:#6E7A76;
   --rule:#C6CDC3; --hot:#B4661E; --rf:#8C2F3D; --bgc:#3D6C8C; --ok:#4A6B4F;
   --new:#7A5B9B; --code:#1B2730; --codeink:#CFD8CE;
+  --py-accent:#3E7C4F; --onnx-accent:#6A4C93;
   --active-bg:#F0EAE2; --never-bg:#E2E5DF; --running-fg:#F0E2D4;
   --sub-muted:#8F9A93; --band-bg:#E0E4DC; --graph-bg:#EAEDE7;
   --phase-inherited:#8B9691; --phase-now-bg:#F5E7D8; --phase-has-running-bg:#E0C9AF;
@@ -922,6 +923,7 @@ html, body { margin:0; padding:0; }
 .mx[data-theme="dark"] { --paper:#181C19; --panel:#232722; --ink:#E7EAE4; --muted:#8B968E;
   --rule:#3A413B; --hot:#D98A4A; --rf:#E0808F; --bgc:#7FB3D9; --ok:#7FBE8B;
   --new:#B79BDB; --code:#12171B; --codeink:#C7D0C6;
+  --py-accent:#6FCB86; --onnx-accent:#B08FE0;
   --active-bg:#2C2F27; --never-bg:#1F231E; --running-fg:#2A1A0A;
   --sub-muted:#77827A; --band-bg:#20251F; --graph-bg:#1D211C;
   --phase-inherited:#5B655D; --phase-now-bg:#3A2A16; --phase-has-running-bg:#4A3620;
@@ -1965,6 +1967,15 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
  * que se aplica a QUALQUER player (ver a faixa 'escopo: framework UBF' e
  * o cartao 'Agent vs. AgentTC' dentro do componente).
  *
+ * DUAS trilhas a mais espelham as pocs irmas que trocam so a FOLHA de
+ * decisao, mantendo o mesmo agente/estado/acao/autopilot:
+ * src/poc/python-flight (flight_tree_python.xml, folhas PyDecideAction,
+ * delegando para libs/xpyembed) e src/poc/onnx-policy (flight_tree_onnx.xml,
+ * folha OnnxPolicyAction, delegando para libs/xinfer). Cada uma troca a
+ * ARVORE (FLIGHT_TREE_PYTHON/FLIGHT_TREE_ONNX) via a entrada de
+ * FLIGHT_TRACES correspondente -- ver buildFlightIndex()/flightSkeleton()
+ * logo abaixo, e activeTree/activeIndex dentro de FlightDecision().
+ *
  * tools/extract_execution_chain.py so cobre contexts/src/mixr/ (ver
  * docs/manual/README.md) -- FLIGHT_SNIPPETS/FLIGHT_MODEL abaixo foram
  * conferidos a mao, direto do fonte de models/players/A-4/, arquivo e linha
@@ -2481,6 +2492,139 @@ const FLIGHT_SNIPPETS = {
       "}"
     ],
     "trunc": false
+  },
+  "PyDecideAction::tick": {
+    "file": "models/players/A-4/src/bt/nodes/PyDecideAction.cpp",
+    "line": 36,
+    "lines": [
+      "BT::NodeStatus PyDecideAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   if (!tentouCarregar_) {",
+      "      tentouCarregar_ = true;",
+      "      const BT::Optional<std::string> caminho{getInput<std::string>(\"script\")};",
+      "      if (!caminho || caminho.value().empty()) {",
+      "         LOG(ERROR) << \"[PyDecide] porta 'script' ausente ou vazia no XML da arvore\";",
+      "      } else if (!mixr::xpyembed::isAvailable()) {",
+      "         LOG(WARNING) << \"[PyDecide] sem interpretador Python -- o no fica inerte\";",
+      "      } else {",
+      "         scriptId_ = mixr::xpyembed::loadScript(caminho.value());",
+      "      }",
+      "   }",
+      "   if (scriptId_ == 0) return BT::NodeStatus::FAILURE;",
+      "",
+      "   // A observacao na ordem canonica -- a MESMA macro do .onnx e do treino.",
+      "   const domain::WorldView& snap{context_.behavior->snapshot()};",
+      "   std::array<double, XRLBRIDGE_OBSERVATION_SIZE> entrada{};",
+      "   {",
+      "      int i{};",
+      "#define XRLBRIDGE_F(nome) entrada[i++] = static_cast<double>(snap.nome);",
+      "#define XRLBRIDGE_B(nome) entrada[i++] = snap.nome ? 1.0 : 0.0;",
+      "      XRLBRIDGE_OBSERVATION_FIELDS",
+      "#undef XRLBRIDGE_F",
+      "#undef XRLBRIDGE_B",
+      "   }",
+      "",
+      "   std::array<double, XRLBRIDGE_ACTION_SIZE> saida{};",
+      "   if (!mixr::xpyembed::decide(scriptId_, instanciaId_,",
+      "                               entrada.data(), static_cast<int>(entrada.size()),",
+      "                               saida.data(), static_cast<int>(saida.size()))) {",
+      "      return BT::NodeStatus::FAILURE;",
+      "   }",
+      "",
+      "   domain::FlightCommand cmd;",
+      "   cmd.headingDeg = saida[0];",
+      "   cmd.altitudeM = saida[1];",
+      "   cmd.speedKts = saida[2];",
+      "",
+      "   std::string rotulo{\"PY\"};",
+      "   if (const BT::Optional<std::string> in{getInput<std::string>(\"label\")}) rotulo = in.value();",
+      "",
+      "   context_.behavior->decision().take(cmd, rotulo);",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "OnnxPolicyAction::tick": {
+    "file": "models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp",
+    "line": 30,
+    "lines": [
+      "BT::NodeStatus OnnxPolicyAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   if (!tentouAbrir_) {",
+      "      tentouAbrir_ = true;",
+      "      const BT::Optional<std::string> caminho{getInput<std::string>(\"model\")};",
+      "      if (!caminho || caminho.value().empty()) {",
+      "         LOG(ERROR) << \"[OnnxPolicy] porta 'model' ausente ou vazia no XML da arvore\";",
+      "      } else {",
+      "         modelId_ = mixr::xinfer::open(caminho.value());",
+      "         if (modelId_ != 0) {",
+      "            int nIn{}, nOut{};",
+      "            if (mixr::xinfer::shape(modelId_, nIn, nOut)) {",
+      "               // A forma e contrato, nao sugestao: 28 entrada, 3 saida. Um",
+      "               // .onnx com outra forma foi treinado contra outra observacao",
+      "               // ou outra acao, e comandar com ele seria pior que nao",
+      "               // comandar.",
+      "               if (nIn != XRLBRIDGE_OBSERVATION_SIZE || nOut != XRLBRIDGE_ACTION_SIZE) {",
+      "                  LOG(ERROR) << \"[OnnxPolicy] '\" << caminho.value() << \"' tem forma \"",
+      "                             << nIn << \"->\" << nOut << \", mas o contrato e \"",
+      "                             << XRLBRIDGE_OBSERVATION_SIZE << \"->\" << XRLBRIDGE_ACTION_SIZE",
+      "                             << \" (ver xrlbridge/ObservationFields.hpp)\";",
+      "                  modelId_ = 0;",
+      "               }",
+      "            }",
+      "         }",
+      "      }",
+      "   }",
+      "   if (modelId_ == 0) return BT::NodeStatus::FAILURE;",
+      "",
+      "   // A observacao na ordem canonica -- a MESMA macro do treino.",
+      "   const domain::WorldView& snap{context_.behavior->snapshot()};",
+      "   std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};",
+      "   {",
+      "      int i{};",
+      "#define XRLBRIDGE_F(nome) entrada[i++] = static_cast<float>(snap.nome);",
+      "#define XRLBRIDGE_B(nome) entrada[i++] = snap.nome ? 1.0F : 0.0F;",
+      "      XRLBRIDGE_OBSERVATION_FIELDS",
+      "#undef XRLBRIDGE_F",
+      "#undef XRLBRIDGE_B",
+      "   }",
+      "",
+      "   std::array<float, XRLBRIDGE_ACTION_SIZE> saida{};",
+      "   const int escritos{mixr::xinfer::run(modelId_, entrada.data(),",
+      "                                        static_cast<int>(entrada.size()),",
+      "                                        saida.data(), static_cast<int>(saida.size()))};",
+      "   if (escritos != XRLBRIDGE_ACTION_SIZE) return BT::NodeStatus::FAILURE;",
+      "",
+      "   bool normalizada{true};",
+      "   if (const BT::Optional<bool> in{getInput<bool>(\"normalized\")}) normalizada = in.value();",
+      "",
+      "   domain::FlightCommand cmd;",
+      "   if (normalizada) {",
+      "      // Uma unica implementacao da desnormalizacao, em libs/xrlbridge, com",
+      "      // os mesmos limites que o lado Python usa para montar o action_space.",
+      "      const mixr::xrlbridge::Command c{mixr::xrlbridge::unscaleCommand(saida.data())};",
+      "      cmd.headingDeg = c.headingDeg;",
+      "      cmd.altitudeM = c.altitudeM;",
+      "      cmd.speedKts = c.speedKts;",
+      "   } else {",
+      "      cmd.headingDeg = static_cast<double>(saida[0]);",
+      "      cmd.altitudeM = static_cast<double>(saida[1]);",
+      "      cmd.speedKts = static_cast<double>(saida[2]);",
+      "   }",
+      "",
+      "   std::string rotulo{\"ONNX\"};",
+      "   if (const BT::Optional<std::string> in{getInput<std::string>(\"label\")}) rotulo = in.value();",
+      "",
+      "   context_.behavior->decision().take(cmd, rotulo);",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
   }
 };
 const flightSnip = (key) => (key ? (FLIGHT_SNIPPETS[key] || SNIPPETS[key] || null) : null);
@@ -2516,59 +2660,107 @@ function flightLayout(root) {
   return nodes;
 }
 
-const FLIGHT_TREE = N("agent", "FlightAgentTC", {
-  edl: "agent:", sub: "extends AgentTC (decide na fase 3) -- um EXEMPLO de player concreto",
-  note: "Único override necessário sobre AgentTC: filtrar a fase 3 e reescalar o dt para o do frame inteiro. O ciclo em si (controller()) é herdado, genérico -- qualquer player poderia estender AgentTC (ou Agent) do mesmo jeito.",
-  children: [
-    N("state", "FlightState", {
-      edl: "state:", sub: "percepção -- implementa AbstractState (domain::WorldView, sem MIXR)",
-      note: "AbstractState é a INTERFACE genérica de percepção do UBF -- FlightState é só UMA implementação possível, específica de aeronave. Qualquer player pode ter a sua própria.",
-    }),
-    N("behavior", "BtBehavior", {
-      edl: "behavior:", sub: "decisão -- implementa AbstractBehavior (tick de uma árvore BehaviorTree.CPP)",
-      note: "AbstractBehavior é a INTERFACE genérica de decisão do UBF -- BtBehavior é só UMA implementação possível (delega a uma árvore). Outra classe poderia decidir por tabela, por rede neural, por regra fixa, etc., sem mudar Agent/AgentTC.",
-      children: [
-        N("fuelLow", "FuelLow", { edl: "flight_tree.xml", sub: "ramo 1 -- combustível abaixo de 5% aciona ReturnToBase" }),
-        N("contact", "ContactDetected", { edl: "flight_tree.xml", sub: "ramo 2 -- evasão em curso (com histerese) aciona ReportAndEvade" }),
-        N("alert", "AlertReceived", { edl: "flight_tree.xml", sub: "ramo 3 -- alerta recebido aciona SupportAlert" }),
-        N("patrol", "Patrol", { edl: "flight_tree.xml", sub: "ramo 4 -- fallback incondicional" }),
-      ],
-    }),
-    N("action", "FlightAction", {
-      edl: "-- efêmero --", sub: "ação -- implementa AbstractAction (nasce em genAction(), liberada em unref())",
-      note: "AbstractAction é a INTERFACE genérica de atuação do UBF -- FlightAction é só UMA implementação possível (comanda um Autopilot). Um player sem piloto automático teria uma AbstractAction totalmente diferente.",
-      children: [
-        N("autopilot", "Autopilot", {
-          edl: "pilot:", sub: "nativo mixr::models -- alvo comum a qualquer player com piloto automático",
-          note: "setCommandedHeadingD/AltitudeFt/VelocityKts -- os três comandos que de fato chegam ao JSBSimModel via ap/heading_hold, ap/altitude_hold, ap/airspeed_hold.",
-        }),
-      ],
-    }),
-  ],
-});
-normalize(FLIGHT_TREE, null);
-const FLIGHT_ALL = flat(FLIGHT_TREE);
-const flightById = Object.fromEntries(FLIGHT_ALL.map((n) => [n.id, n]));
-const flightEdges = [];
-FLIGHT_ALL.forEach((n) => (n.children || []).forEach((c) => flightEdges.push([n.id, c.id])));
-const flightAncestors = (id) => {
-  const o = []; let c = flightById[id];
-  while (c && c.parent) { o.push([c.parent, c.id]); c = flightById[c.parent]; }
-  return o;
-};
+// Miolo comum às 3 árvores desta aba (produção + as 2 variantes Python/ONNX    *
+// mais abaixo) -- SÓ as folhas de "behavior" mudam entre elas; agente,        *
+// estado, ação e autopilot são o MESMO nas 3 pocs (multi-thread,              *
+// python-flight, onnx-policy só trocam o treeFile: do BtBehavior).
+function flightSkeleton(behaviorChildren) {
+  return N("agent", "FlightAgentTC", {
+    edl: "agent:", sub: "extends AgentTC (decide na fase 3) -- um EXEMPLO de player concreto",
+    note: "Único override necessário sobre AgentTC: filtrar a fase 3 e reescalar o dt para o do frame inteiro. O ciclo em si (controller()) é herdado, genérico -- qualquer player poderia estender AgentTC (ou Agent) do mesmo jeito.",
+    children: [
+      N("state", "FlightState", {
+        edl: "state:", sub: "percepção -- implementa AbstractState (domain::WorldView, sem MIXR)",
+        note: "AbstractState é a INTERFACE genérica de percepção do UBF -- FlightState é só UMA implementação possível, específica de aeronave. Qualquer player pode ter a sua própria.",
+      }),
+      N("behavior", "BtBehavior", {
+        edl: "behavior:", sub: "decisão -- implementa AbstractBehavior (tick de uma árvore BehaviorTree.CPP)",
+        note: "AbstractBehavior é a INTERFACE genérica de decisão do UBF -- BtBehavior é só UMA implementação possível (delega a uma árvore). Outra classe poderia decidir por tabela, por rede neural, por regra fixa, etc., sem mudar Agent/AgentTC.",
+        children: behaviorChildren,
+      }),
+      N("action", "FlightAction", {
+        edl: "-- efêmero --", sub: "ação -- implementa AbstractAction (nasce em genAction(), liberada em unref())",
+        note: "AbstractAction é a INTERFACE genérica de atuação do UBF -- FlightAction é só UMA implementação possível (comanda um Autopilot). Um player sem piloto automático teria uma AbstractAction totalmente diferente.",
+        children: [
+          N("autopilot", "Autopilot", {
+            edl: "pilot:", sub: "nativo mixr::models -- alvo comum a qualquer player com piloto automático",
+            note: "setCommandedHeadingD/AltitudeFt/VelocityKts -- os três comandos que de fato chegam ao JSBSimModel via ap/heading_hold, ap/altitude_hold, ap/airspeed_hold.",
+          }),
+        ],
+      }),
+    ],
+  });
+}
 
-// Escopo da BehaviorTree.CPP (o "board" pedido): os 4 ramos são, cada um,      *
+// Deriva {all, byId, edges, ancestorsOf} de uma árvore -- extraído (em vez de   *
+// ficar solto no escopo do módulo, como antes) porque agora HÁ TRÊS árvores:   *
+// FLIGHT_TREE (produção, default) e as duas variantes logo abaixo. Cada        *
+// entrada de FLIGHT_TRACES que declarar "tree:" faz FlightDecision() chamar    *
+// isto de novo (activeIndex, via useMemo) em cima da árvore escolhida.
+function buildFlightIndex(tree) {
+  normalize(tree, null);
+  const all = flat(tree);
+  const byId = Object.fromEntries(all.map((n) => [n.id, n]));
+  const edges = [];
+  all.forEach((n) => (n.children || []).forEach((c) => edges.push([n.id, c.id])));
+  const ancestorsOf = (id) => {
+    const o = []; let c = byId[id];
+    while (c && c.parent) { o.push([c.parent, c.id]); c = byId[c.parent]; }
+    return o;
+  };
+  return { all, byId, edges, ancestorsOf };
+}
+
+const FLIGHT_TREE = flightSkeleton([
+  N("fuelLow", "FuelLow", { edl: "flight_tree.xml", sub: "ramo 1 -- combustível abaixo de 5% aciona ReturnToBase" }),
+  N("contact", "ContactDetected", { edl: "flight_tree.xml", sub: "ramo 2 -- evasão em curso (com histerese) aciona ReportAndEvade" }),
+  N("alert", "AlertReceived", { edl: "flight_tree.xml", sub: "ramo 3 -- alerta recebido aciona SupportAlert" }),
+  N("patrol", "Patrol", { edl: "flight_tree.xml", sub: "ramo 4 -- fallback incondicional" }),
+]);
+// Índice default (o de produção) -- os 3 nomes seguem existindo no escopo do   *
+// módulo, do jeito que o resto do arquivo (fora de FlightDecision()) já        *
+// espera; dentro do componente, quem lê é activeIndex (ver mais abaixo).
+const FLIGHT_INDEX = buildFlightIndex(FLIGHT_TREE);
+const flightById = FLIGHT_INDEX.byId;
+const flightEdges = FLIGHT_INDEX.edges;
+const flightAncestors = FLIGHT_INDEX.ancestorsOf;
+
+// Duas variantes que trocam SÓ as folhas de "behavior", reaproveitando o        *
+// MESMO flightSkeleton() (mesmo agente/estado/ação/autopilot) -- espelham       *
+// src/poc/python-flight/configs/flight_tree_python.xml e                       *
+// src/poc/onnx-policy/configs/flight_tree_onnx.xml, lidas por inteiro. Cada     *
+// caixa funde Sequence(condição, ação) numa única folha, mesma convenção já    *
+// usada acima para o FLIGHT_TREE de produção (ver o comentário perto de        *
+// FLIGHT_BT_LEAVES, mais abaixo).
+const FLIGHT_TREE_PYTHON = flightSkeleton([
+  N("pyRtb", "PyDecideAction", { edl: "flight_tree_python.xml", sub: "ramo 1 -- combustível baixo (FuelLow) aciona policy/rtb.py via libs/xpyembed", runtime: "python" }),
+  N("pyEvade", "PyDecideAction", { edl: "flight_tree_python.xml", sub: "ramo 2 -- evasão valendo (ContactDetected + ReportAndEvade) aciona policy/evade.py via libs/xpyembed", runtime: "python" }),
+  N("pySupport", "PyDecideAction", { edl: "flight_tree_python.xml", sub: "ramo 3 -- alerta recebido (AlertReceived) aciona policy/support.py via libs/xpyembed", runtime: "python" }),
+  N("pyPatrol", "PyDecideAction", { edl: "flight_tree_python.xml", sub: "ramo 4 -- nada acontecendo, sem condição -- aciona policy/patrol.py via libs/xpyembed", runtime: "python" }),
+  N("patrolFallbackPy", "Patrol", { edl: "flight_tree_python.xml", sub: "degradação -- sem Python no sistema, script ausente/sem decide()/exceção: cai no Patrol nativo" }),
+]);
+const FLIGHT_TREE_ONNX = flightSkeleton([
+  N("onnxPolicy", "OnnxPolicyAction", { edl: "flight_tree_onnx.xml", sub: "único ramo condicional -- infere policy_barrier.onnx via libs/xinfer (28 entradas -> 3 saídas)", runtime: "onnx" }),
+  N("patrolFallbackOnnx", "Patrol", { edl: "flight_tree_onnx.xml", sub: "rede de segurança -- só roda se a inferência FALHAR (modelo ausente, forma errada, erro)" }),
+]);
+
+// Escopo da BehaviorTree.CPP (o "board" pedido): os ramos são, cada um,      *
 // uma subclasse de BT::ConditionNode/BT::SyncActionNode -- código de         *
 // TERCEIRO, não deste modelo. "behavior" (BtBehavior) fica DE FORA da faixa: *
 // é dele o tree.tickRoot() que cruza a fronteira, mas a classe em si é do    *
-// plugin (models/players/A-4), não da lib.
+// plugin (models/players/A-4), não da lib. Uma lista por árvore -- os ids    *
+// das folhas mudam entre produção/Python/ONNX.
 const FLIGHT_BTCPP_SCOPE = ["fuelLow", "contact", "alert", "patrol"];
+const FLIGHT_BTCPP_SCOPE_PYTHON = ["pyRtb", "pyEvade", "pySupport", "pyPatrol", "patrolFallbackPy"];
+const FLIGHT_BTCPP_SCOPE_ONNX = ["onnxPolicy", "patrolFallbackOnnx"];
 // Escopo do framework UBF (mixr::base::ubf) -- o segundo "board" pedido.
-// Deliberadamente SEM os 4 ramos: a BehaviorTree.CPP é código de TERCEIRO
+// Deliberadamente SEM as folhas: a BehaviorTree.CPP é código de TERCEIRO
 // (nem deste modelo, nem do MIXR) -- fica ao LADO do escopo UBF, não dentro
 // dele, ainda que "behavior" (BtBehavior, papel AbstractBehavior) seja quem
 // cruza a fronteira ao chamar tree.tickRoot(). "autopilot" também fica DE
 // FORA: é o alvo nativo que a ação alcança, não parte do ciclo UBF em si.
+// Os 4 ids (agent/state/behavior/action) são os MESMOS nas 3 árvores -- só
+// as folhas sob "behavior" mudam -- então um escopo só serve para as 3.
 const FLIGHT_UBF_SCOPE = ["agent", "state", "behavior", "action"];
 
 /* ---------- Classe: dados que o extrator NÃO cobre (models/players/A-4/) ---------- *
@@ -2635,6 +2827,41 @@ const FLIGHT_BT_LEAVES = {
     cond: null,
     act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
   },
+  // -------- src/poc/python-flight (flight_tree_python.xml) --------
+  pyRtb: {
+    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+      delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
+  },
+  pyEvade: {
+    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+      delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
+  },
+  pySupport: {
+    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+      delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
+  },
+  pyPatrol: {
+    cond: null,
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+      delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no Patrol nativo (degradação)" } },
+  },
+  patrolFallbackPy: {
+    cond: null,
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+  },
+  // -------- src/poc/onnx-policy (flight_tree_onnx.xml) --------
+  onnxPolicy: {
+    cond: null,
+    act: { cls: "OnnxPolicyAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/OnnxPolicyAction.hpp", ports: [["model", "std::string"], ["normalized", "bool"], ["label", "std::string"]],
+      delegate: { lib: "libs/xinfer", to: "mixr::xinfer::run()", cost: "~50,1 µs/inferência (medido, ver CLAUDE.md)", fail: "modelo ausente, forma diferente de 28->3 ou erro de inferência -> FAILURE, o Fallback cai no Patrol nativo (a \"rede de segurança\")" } },
+  },
+  patrolFallbackOnnx: {
+    cond: null,
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+  },
 };
 
 /* EDL real (condensado) de src/poc/dis/multi-thread/configs/scenario.edl.in --      *
@@ -2688,7 +2915,110 @@ const FLIGHT_EDL_TEXT = `falcon1: ( Aircraft
 const FLIGHT_EDL_RANGE = {
   agent: [20, 42], state: [21, 21], behavior: [22, 41], autopilot: [6, 16],
 };
-const flightEdlRangeFor = (id) => FLIGHT_EDL_RANGE[id] || FLIGHT_EDL_RANGE.agent;
+// Um segundo parâmetro opcional (default = a de produção) -- as trilhas
+// Python/ONNX passam FLIGHT_EDL_RANGE_PYTHON/_ONNX, cujos números de linha
+// divergem só porque o excerto delas não tem patrolJitterHeading/
+// patrolMasterSeed (a produção tem; python-flight/onnx-policy não).
+const flightEdlRangeFor = (id, rangeMap = FLIGHT_EDL_RANGE) => rangeMap[id] || rangeMap.agent;
+
+/* EDL real (condensado) de src/poc/python-flight/configs/scenario.edl.in --   *
+ * mesmo falcon1, mesmo pilot:/agent: da produção -- só o treeFile: muda      *
+ * (flight_tree_python.xml) e faltam patrolJitterHeading/patrolMasterSeed     *
+ * (esta poc não os declara). */
+const FLIGHT_EDL_TEXT_PYTHON = `falcon1: ( Aircraft
+   side: blue   type: "A4"   id: 101
+   components: {
+      // ... dynamics/navegacao/datalink/radar/track manager omitidos ...
+
+      pilot: ( Autopilot
+         navMode: false
+         headingHoldMode:  true
+         altitudeHoldMode: true
+         velocityHoldMode: true
+         maxRateOfTurnDps: 6.0
+         maxBankAngle:    45.0
+         maxPitchAngle:   20.0
+         maxClimbRateMps:  40.0
+         maxAcceleration:  6.0
+      )
+
+      // ... stores/colisao omitidos ...
+
+      agent: ( FlightAgentTC
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./src/poc/python-flight/configs/flight_tree_python.xml"
+            patrolHeading:  ( Degrees 90 )
+            legTime:        ( Seconds 60 )
+            legTurn:        ( Degrees 90 )
+            patrolAltitude: ( Meters 1750 )
+            patrolSpeed:    350.0
+            rtbAltitude:    ( Meters 2050 )
+            rtbSpeed:       380.0
+            arrivalRadius:  ( NauticalMiles 2.0 )
+            fuelReserve:    0.35
+            breakTurn:      ( Degrees 110 )
+            evadeClimb:     ( Meters 700 )
+            evadeSpeed:     420.0
+            supportSpeed:   400.0
+            evadeHold:      ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+         )
+      )
+   }
+)`.split("\n");
+const FLIGHT_EDL_RANGE_PYTHON = {
+  agent: [20, 40], state: [21, 21], behavior: [22, 39], autopilot: [6, 16],
+};
+
+/* EDL real (condensado) de src/poc/onnx-policy/configs/scenario.edl.in --     *
+ * mesmíssima forma da de python-flight -- só o treeFile: muda                *
+ * (flight_tree_onnx.xml). */
+const FLIGHT_EDL_TEXT_ONNX = `falcon1: ( Aircraft
+   side: blue   type: "A4"   id: 101
+   components: {
+      // ... dynamics/navegacao/datalink/radar/track manager omitidos ...
+
+      pilot: ( Autopilot
+         navMode: false
+         headingHoldMode:  true
+         altitudeHoldMode: true
+         velocityHoldMode: true
+         maxRateOfTurnDps: 6.0
+         maxBankAngle:    45.0
+         maxPitchAngle:   20.0
+         maxClimbRateMps:  40.0
+         maxAcceleration:  6.0
+      )
+
+      // ... stores/colisao omitidos ...
+
+      agent: ( FlightAgentTC
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./src/poc/onnx-policy/configs/flight_tree_onnx.xml"
+            patrolHeading:  ( Degrees 90 )
+            legTime:        ( Seconds 60 )
+            legTurn:        ( Degrees 90 )
+            patrolAltitude: ( Meters 1750 )
+            patrolSpeed:    350.0
+            rtbAltitude:    ( Meters 2050 )
+            rtbSpeed:       380.0
+            arrivalRadius:  ( NauticalMiles 2.0 )
+            fuelReserve:    0.35
+            breakTurn:      ( Degrees 110 )
+            evadeClimb:     ( Meters 700 )
+            evadeSpeed:     420.0
+            supportSpeed:   400.0
+            evadeHold:      ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+         )
+      )
+   }
+)`.split("\n");
+const FLIGHT_EDL_RANGE_ONNX = {
+  agent: [20, 40], state: [21, 21], behavior: [22, 39], autopilot: [6, 16],
+};
 
 const FLIGHT_STAGES = [
   { n: 0, label: "Percepção" },
@@ -2811,9 +3141,125 @@ function traceFlightEvade() {
   return st;
 }
 
+/* Duas trilhas a mais, sobre FLIGHT_TREE_PYTHON/FLIGHT_TREE_ONNX (não mais    *
+ * FLIGHT_TREE) -- espelham src/poc/python-flight e src/poc/onnx-policy: o     *
+ * MESMO agente/estado/ação/autopilot de sempre, só a folha de decisão sob     *
+ * "behavior" delega para fora do plugin (libs/xpyembed / libs/xinfer). */
+
+function traceFlightPython() {
+  const st = [];
+  const p = (s) => st.push({ ...s, i: st.length });
+  p({ node: "agent", src: "AgentTC::updateTC", hl: [2, 2], stage: null, call: "controller(dt)",
+    title: "AgentTC::updateTC(dt) → controller(dt)",
+    body: "Chamado pelo passeio de componentes da fase 3 (Component::updateTC() desce até aqui, dentro do próprio ( Aircraft )). O método do framework é trivial -- só repassa para o controller() virtual, que por polimorfismo cai na versão que FlightAgentTC sobrescreve." });
+  p({ node: "agent", src: "FlightAgentTC::controller", hl: [12, 24], stage: null, call: "BaseClass::controller(dt * 4.0)",
+    title: "FlightAgentTC::controller(dt) -- o gate de fase",
+    body: "Este componente é chamado 4x por frame (uma por fase, dt/4 cada) -- só age quando world->phase()==3. BaseClass::controller(dt*4.0) reconstrói o dt do FRAME INTEIRO antes de entrar no ciclo genérico -- o MESMO código de sempre, não importa se a folha da árvore é C++, Python ou ONNX.",
+    warn: "Sem esse filtro de fase, o mesmo ciclo rodaria 4x por frame -- a MESMA decisão repetida." });
+  p({ node: "agent", src: "Agent::controller", hl: [7, 7], stage: 0, call: "state->updateState(actor)",
+    title: "Agent::controller(dt) -- state->updateState(actor)",
+    body: "Ciclo GENÉRICO do framework (mixr::base::ubf::Agent) -- idêntico nas 3 pocs (produção, Python, ONNX); só a folha sob 'behavior' muda entre elas." });
+  p({ node: "state", src: "FlightState::updateState", hl: [13, 20], stage: 0, call: "updateState(actor)",
+    title: "FlightState::updateState() -- percepção",
+    body: "Lê só acessores nativos do Player/AirVehicle e preenche um domain::WorldView puro -- os MESMOS 28 campos, na MESMA ordem canônica de xrlbridge/ObservationFields.hpp, que PyDecideAction empacota para o script logo mais." });
+  p({ node: "agent", src: "Agent::controller", hl: [10, 10], stage: 1, call: "behavior->genAction(state, dt)",
+    title: "Agent::controller(dt) -- behavior->genAction(state, dt)",
+    body: "Com o estado atualizado, a vez é do comportamento plugado -- a MESMA classe BtBehavior de sempre; treeFile: aqui aponta para flight_tree_python.xml." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [15, 26], stage: 1, call: "tree.tickRoot()",
+    title: "BtBehavior::genAction() -- tree.tickRoot()",
+    body: "Dispara o tick real da BehaviorTree.CPP sobre um Fallback de 5 ramos: 3 Sequence(condição, PyDecide), um PyDecide incondicional (PY-PATROL) e um Patrol nativo de degradação -- o primeiro que suceder vence." });
+  p({ node: "pyRtb", src: null, stage: 1, call: "FuelLow::tick()",
+    title: "Sequence(FuelLow, PyDecide \"PY-RTB\") -- FAILURE",
+    body: "Primeiro ramo: combustível acima da reserva de 5%. A CONDIÇÃO falha e a Sequence curto-circuita -- o PyDecide deste ramo (policy/rtb.py) nem chega a tickar; tickRoot() tenta o próximo ramo." });
+  p({ node: "pyEvade", src: "ContactDetectedCondition::tick", hl: [11, 17], stage: 1, call: "tick()",
+    title: "Sequence(ContactDetected, ReportAndEvade, PyDecide \"PY-EVADE\") -- FAILURE",
+    body: "threatPolicy().engaged() == false: sem contato nem histerese de evasão pendente. Segundo ramo falha antes de chegar no PyDecide (policy/evade.py)." });
+  p({ node: "pySupport", src: null, stage: 1, call: "AlertReceived::tick()",
+    title: "Sequence(AlertReceived, PyDecide \"PY-SUPPORT\") -- FAILURE",
+    body: "hasAlert == false: nenhum outro caça avisou nada neste frame. Terceiro ramo falha antes de chegar no PyDecide (policy/support.py)." });
+  p({ node: "pyPatrol", src: "PyDecideAction::tick", hl: [30, 32], stage: 1, call: "mixr::xpyembed::decide(scriptId_, ...)",
+    title: "PyDecide (script=policy/patrol.py, label=PY-PATROL) -- SUCCESS",
+    body: "Quarto ramo -- sem condição, mesmo papel do Patrol nativo de produção. Empacota os 28 floats de domain::WorldView na ordem canônica e chama mixr::xpyembed::decide(), que executa decide(obs) dentro do interpretador Python embarcado (libs/xpyembed) e devolve (heading_deg, altitude_m, speed_kts) em UNIDADES FÍSICAS diretas -- ao contrário de OnnxPolicyAction, que por padrão devolve [-1,1] e desnormaliza depois.",
+    warn: "Este nó NÃO é C++ do plugin: quem calcula o comando é o arquivo ./src/poc/python-flight/configs/policy/patrol.py apontado pela porta 'script' -- editar a política deixa de ser recompilar. Sem interpretador Python, script ausente, sem decide() ou exceção: FAILURE, e o Fallback cai no Patrol NATIVO (o último ramo desta árvore)." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [30, 32], stage: 1, call: "new FlightAction(); action->setCommand(...)",
+    title: "BtBehavior::genAction() -- new FlightAction() (pré-referenciada)",
+    body: "tickRoot() retornou com currentDecision.taken=true -- o CONTEÚDO veio de Python, o código de BtBehavior::genAction() não mudou. Copia comando e rótulo ('PY-PATROL'), devolve pré-referenciada -- mesmo contrato do UBF de sempre." });
+  p({ node: "agent", src: "Agent::controller", hl: [12, 13], stage: 2, call: "action->execute(actor)",
+    title: "Agent::controller(dt) -- action->execute(actor)",
+    body: "A FlightAction retornada por genAction() é executada AQUI -- e só aqui que ela de fato toca o Autopilot." });
+  p({ node: "action", src: "FlightAction::execute", hl: [2, 9], stage: 2, call: "player->getPilotByType(typeid(Autopilot))",
+    title: "FlightAction::execute() -- resolve o Autopilot",
+    body: "O ator chega por PARÂMETRO -- a ação nunca guarda ponteiro pra aeronave. getPilotByType(typeid(Autopilot)) acha o piloto automático." });
+  p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    body: "Os três comandos que de fato chegam ao JSBSimModel. O Autopilot não sabe (nem precisa saber) que o comando veio de um script Python -- recebe os MESMOS três números que receberia de qualquer outro ramo.",
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a chamada ao interpretador, é código deste modelo/SDK (models/players/A-4, libs/xpyembed)." });
+  p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
+    title: "FlightAction::execute() -- xboard + log de transição",
+    body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo ('PY-PATROL') pro dashboard/dump (dec=) -- o MESMO ponto de atuação, comum aos dois agentes UBF, que a seção 'libs/xlog' do CLAUDE.md documenta como fonte das transições logadas." });
+  p({ node: "agent", src: "Agent::controller", hl: [13, 13], stage: 2, call: "action->unref()",
+    title: "action->unref() -- a ação é liberada",
+    body: "A FlightAction é efêmera: nasceu em genAction(), atuou em execute(actor), e é liberada AQUI, no mesmo ciclo -- nunca fica guardada em lugar nenhum." });
+  return st;
+}
+
+function traceFlightOnnx() {
+  const st = [];
+  const p = (s) => st.push({ ...s, i: st.length });
+  p({ node: "agent", src: "AgentTC::updateTC", hl: [2, 2], stage: null, call: "controller(dt)",
+    title: "AgentTC::updateTC(dt) → controller(dt)",
+    body: "Chamado pelo passeio de componentes da fase 3 (Component::updateTC() desce até aqui, dentro do próprio ( Aircraft )). O método do framework é trivial -- só repassa para o controller() virtual, que por polimorfismo cai na versão que FlightAgentTC sobrescreve." });
+  p({ node: "agent", src: "FlightAgentTC::controller", hl: [12, 24], stage: null, call: "BaseClass::controller(dt * 4.0)",
+    title: "FlightAgentTC::controller(dt) -- o gate de fase",
+    body: "Este componente é chamado 4x por frame (uma por fase, dt/4 cada) -- só age quando world->phase()==3. BaseClass::controller(dt*4.0) reconstrói o dt do FRAME INTEIRO antes de entrar no ciclo genérico.",
+    warn: "Sem esse filtro de fase, o mesmo ciclo rodaria 4x por frame -- a MESMA decisão repetida." });
+  p({ node: "agent", src: "Agent::controller", hl: [7, 7], stage: 0, call: "state->updateState(actor)",
+    title: "Agent::controller(dt) -- state->updateState(actor)",
+    body: "Ciclo GENÉRICO do framework (mixr::base::ubf::Agent) -- o MESMO nas 3 pocs (produção, Python, ONNX): só a folha sob 'behavior' muda." });
+  p({ node: "state", src: "FlightState::updateState", hl: [13, 20], stage: 0, call: "updateState(actor)",
+    title: "FlightState::updateState() -- percepção",
+    body: "Lê só acessores nativos do Player/AirVehicle e preenche um domain::WorldView puro -- a MESMA ordem canônica de 28 campos que xrlbridge/ObservationFields.hpp define, e que o .onnx foi TREINADO para receber (src/rl/tools/export_onnx.py usa a mesma ordem, nunca uma lista escrita à mão)." });
+  p({ node: "agent", src: "Agent::controller", hl: [10, 10], stage: 1, call: "behavior->genAction(state, dt)",
+    title: "Agent::controller(dt) -- behavior->genAction(state, dt)",
+    body: "Com o estado atualizado, a vez é do comportamento plugado -- a MESMA classe BtBehavior de sempre; treeFile: aqui aponta para flight_tree_onnx.xml." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [15, 26], stage: 1, call: "tree.tickRoot()",
+    title: "BtBehavior::genAction() -- tree.tickRoot()",
+    body: "Dispara o tick real da BehaviorTree.CPP -- aqui sobre um Fallback de só 2 ramos: OnnxPolicy (a rede) e Patrol (rede de segurança)." });
+  p({ node: "onnxPolicy", src: "OnnxPolicyAction::tick", hl: [44, 46], stage: 1, call: "mixr::xinfer::run(modelId_, ...)",
+    title: "OnnxPolicy (model=policy_barrier.onnx, label=ONNX) -- SUCCESS",
+    body: "Único ramo condicional desta árvore -- tenta SEMPRE primeiro. Empacota os 28 floats na mesma ordem canônica, chama mixr::xinfer::run() -- uma sessão do ONNX Runtime, cacheada por CAMINHO em libs/xinfer e compartilhada pelas 4 aeronaves -- e, com normalized=true (o default), desnormaliza a saída [-1,1] via xrlbridge::unscaleCommand().",
+    warn: "Este nó NÃO tem árvore de decisão nenhuma por trás: a política treinada É o mapa observação→ação inteiro, inclusive o 'quando' agir. Modelo ausente, forma diferente de 28→3 ou falha de inferência: FAILURE, e o Fallback cai no Patrol nativo -- a 'rede de segurança' que o próprio flight_tree_onnx.xml documenta no cabeçalho." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [30, 32], stage: 1, call: "new FlightAction(); action->setCommand(...)",
+    title: "BtBehavior::genAction() -- new FlightAction() (pré-referenciada)",
+    body: "tickRoot() retornou com currentDecision.taken=true. genAction() cria a FlightAction, copia comando e rótulo ('ONNX'), e devolve pré-referenciada -- o CÓDIGO de BtBehavior::genAction() não sabe (nem precisa saber) que quem decidiu foi uma rede neural." });
+  p({ node: "agent", src: "Agent::controller", hl: [12, 13], stage: 2, call: "action->execute(actor)",
+    title: "Agent::controller(dt) -- action->execute(actor)",
+    body: "A FlightAction retornada por genAction() é executada AQUI -- e só aqui que ela de fato toca o Autopilot." });
+  p({ node: "action", src: "FlightAction::execute", hl: [2, 9], stage: 2, call: "player->getPilotByType(typeid(Autopilot))",
+    title: "FlightAction::execute() -- resolve o Autopilot",
+    body: "O ator chega por PARÂMETRO -- a ação nunca guarda ponteiro pra aeronave. getPilotByType(typeid(Autopilot)) acha o piloto automático." });
+  p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    body: "Os três comandos que de fato chegam ao JSBSimModel. O Autopilot não sabe (nem precisa saber) que o comando veio de uma rede neural -- recebe os MESMOS três números que receberia de qualquer outro ramo.",
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a inferência, é código deste modelo/SDK (models/players/A-4, libs/xinfer)." });
+  p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
+    title: "FlightAction::execute() -- xboard + log de transição",
+    body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo ('ONNX') pro dashboard/dump (dec=) -- é o que faz bt=ONNX aparecer em 100% das linhas do dump desta poc (medido, ver CLAUDE.md)." });
+  p({ node: "agent", src: "Agent::controller", hl: [13, 13], stage: 2, call: "action->unref()",
+    title: "action->unref() -- a ação é liberada",
+    body: "A FlightAction é efêmera: nasceu em genAction(), atuou em execute(actor), e é liberada AQUI, no mesmo ciclo -- nunca fica guardada em lugar nenhum." });
+  return st;
+}
+
 const FLIGHT_TRACES = {
   patrol: { label: "Patrulha (fallback)", build: traceFlightPatrol },
   evade: { label: "Contato → Evasão (alerta)", build: traceFlightEvade },
+  python: { label: "Decisão em Python (PyDecide)", build: traceFlightPython,
+    tree: FLIGHT_TREE_PYTHON, btcppScope: FLIGHT_BTCPP_SCOPE_PYTHON,
+    edlText: FLIGHT_EDL_TEXT_PYTHON, edlRange: FLIGHT_EDL_RANGE_PYTHON },
+  onnx: { label: "Decisão por rede neural (OnnxPolicy)", build: traceFlightOnnx,
+    tree: FLIGHT_TREE_ONNX, btcppScope: FLIGHT_BTCPP_SCOPE_ONNX,
+    edlText: FLIGHT_EDL_TEXT_ONNX, edlRange: FLIGHT_EDL_RANGE_ONNX },
 };
 
 /* ---------------------------- decisao de voo ------------------------- */
@@ -2836,18 +3282,25 @@ function FlightDecision({ onOpenCatalog }) {
   const drag = useRef(null);
   const sliderActive = useRef(false);
 
-  const trace = useMemo(() => FLIGHT_TRACES[traceKey].build(), [traceKey]);
+  // Entrada ATIVA de FLIGHT_TRACES -- "tree"/"btcppScope"/"edlText"/"edlRange" *
+  // só existem nas trilhas Python/ONNX; Patrulha/Evasão caem nos defaults de   *
+  // produção (FLIGHT_TREE/FLIGHT_BTCPP_SCOPE/FLIGHT_EDL_TEXT/FLIGHT_EDL_RANGE) *
+  // -- é essa troca que permite a mesma aba mostrar 3 árvores diferentes.
+  const activeTrace = FLIGHT_TRACES[traceKey];
+  const activeTree = activeTrace.tree || FLIGHT_TREE;
+  const activeIndex = useMemo(() => buildFlightIndex(activeTree), [activeTree]);
+  const trace = useMemo(() => activeTrace.build(), [traceKey]);
   // "autopilot" é empurrado pra FORA da coluna dos ramos da BT.CPP (que          *
   // também é a coluna natural de qualquer neto de "agent") -- sem isso, a       *
   // faixa "escopo: framework UBF" (que precisa envolver os ramos) também        *
   // envolveria o Autopilot, que é nativo e está FORA do ciclo UBF em si. Ver    *
   // ubfBand/FLIGHT_UBF_SCOPE mais abaixo.
   const nodes = useMemo(() => {
-    const ns = flightLayout(FLIGHT_TREE);
+    const ns = flightLayout(activeTree);
     const auto = ns.find((n) => n.id === "autopilot");
     if (auto) auto.x = 3 * FCOL;
     return ns;
-  }, []);
+  }, [activeTree]);
   const pos = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
 
   useEffect(() => { setI(0); setPinned(null); setView({ k: 1, x: 0, y: 0 }); }, [traceKey]);
@@ -2873,24 +3326,25 @@ function FlightDecision({ onOpenCatalog }) {
   }, [move]);
 
   const visitedNodes = useMemo(() => new Set(trace.map((s) => s.node)), [trace]);
-  const detail = pinned ? flightById[pinned] : flightById[step.node] || flightById.agent;
+  const detail = pinned ? activeIndex.byId[pinned] : activeIndex.byId[step.node] || activeIndex.byId.agent;
 
   const activeChainIds = useMemo(() => {
     const ids = new Set([step.node]);
-    flightAncestors(step.node || "agent").forEach(([a, b]) => { ids.add(a); ids.add(b); });
+    activeIndex.ancestorsOf(step.node || "agent").forEach(([a, b]) => { ids.add(a); ids.add(b); });
     return ids;
-  }, [step.node]);
-  const pathEdges = useMemo(() => new Set(flightAncestors(step.node || "agent").map(([a, b]) => a + ">" + b)), [step.node]);
+  }, [step.node, activeIndex]);
+  const pathEdges = useMemo(() => new Set(activeIndex.ancestorsOf(step.node || "agent").map(([a, b]) => a + ">" + b)), [step.node, activeIndex]);
 
   const snip = flightSnip(step.src);
-  const edlRange = flightEdlRangeFor(detail.id);
+  const edlRange = flightEdlRangeFor(detail.id, activeTrace.edlRange);
   // Prévia mais curta (12 linhas) embutida na própria aba "Passo" -- pedido  *
   // explícito de mostrar o código de cada passo sem precisar trocar de aba; *
   // a aba "Código" continua com a janela cheia (22 linhas) para quem quiser *
   // mais contexto ao redor do trecho destacado.
   const previewWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 12) : null), [snip, step.hl]);
   const codeWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 22) : null), [snip, step.hl]);
-  const edlWin = useMemo(() => windowLines(FLIGHT_EDL_TEXT, edlRange, 22), [edlRange]);
+  const activeEdlText = activeTrace.edlText || FLIGHT_EDL_TEXT;
+  const edlWin = useMemo(() => windowLines(activeEdlText, edlRange, 22), [activeEdlText, edlRange]);
   useEffect(() => { if (detailTab === "code" && !snip) setDetailTab("step"); }, [detailTab, snip]);
 
   const W = Math.max(...nodes.map((n) => n.x)) + FNW + 30;
@@ -2915,7 +3369,7 @@ function FlightDecision({ onOpenCatalog }) {
     };
   };
   const ubfBand = useMemo(() => bandFor(FLIGHT_UBF_SCOPE, 46), [pos]);
-  const btcppBand = useMemo(() => bandFor(FLIGHT_BTCPP_SCOPE, 30), [pos]);
+  const btcppBand = useMemo(() => bandFor(activeTrace.btcppScope || FLIGHT_BTCPP_SCOPE, 30), [pos, activeTrace]);
 
   const followViewFor = (nodeId, k) => {
     const n = pos[nodeId];
@@ -3036,7 +3490,7 @@ function FlightDecision({ onOpenCatalog }) {
                     </text>
                   </g>
                 )}
-                {flightEdges.map(([a, b]) => {
+                {activeIndex.edges.map(([a, b]) => {
                   const p = pos[a], q = pos[b];
                   const onPath = pathEdges.has(a + ">" + b);
                   const isCurrent = onPath && b === step.node;
@@ -3054,6 +3508,12 @@ function FlightDecision({ onOpenCatalog }) {
                   const active = step.node === n.id;
                   const visited = visitedNodes.has(n.id);
                   const inChain = activeChainIds.has(n.id);
+                  // "runtime" -- só as folhas PyDecideAction/OnnxPolicyAction   *
+                  // (FLIGHT_TREE_PYTHON/FLIGHT_TREE_ONNX) carregam este campo:  *
+                  // marca visualmente QUANDO um nó delega a decisão pra fora   *
+                  // do plugin (libs/xpyembed / libs/xinfer), mesmo fora do     *
+                  // passo ativo -- não só no instante em que ele tica.
+                  const runtimeColor = n.runtime === "python" ? "var(--py-accent)" : n.runtime === "onnx" ? "var(--onnx-accent)" : null;
                   return (
                     <g key={n.id}>
                       <g className="mx-node"
@@ -3062,12 +3522,23 @@ function FlightDecision({ onOpenCatalog }) {
                         {active && <circle cx={FNW / 2} cy={FNH / 2} r={FNH / 2} className="mx-halo" stroke="var(--hot)" strokeWidth="2.5" />}
                         <rect x="0" y="0" width={FNW} height={FNH} rx="3"
                           fill={active ? "var(--hot)" : "var(--paper)"}
-                          stroke={pinned === n.id ? "var(--ink)" : active ? "var(--hot)" : inChain ? "var(--muted)" : "var(--rule)"}
-                          strokeWidth={active || pinned === n.id ? 1.6 : 1}
+                          stroke={pinned === n.id ? "var(--ink)" : active ? "var(--hot)" : runtimeColor || (inChain ? "var(--muted)" : "var(--rule)")}
+                          strokeWidth={active || pinned === n.id || runtimeColor ? 1.6 : 1}
                           opacity={visited ? 1 : 0.4} strokeDasharray={visited ? "0" : "4 3"} />
                         <foreignObject x="10" y="4" width={FNW - 20} height="16" className="mx-fo">
                           <div className="mx-fo-row" title={n.cls}><span className="mx-fo-cls" style={{ fontSize: 11.5, color: active ? "var(--paper)" : "var(--ink)" }}>{n.cls}</span></div>
                         </foreignObject>
+                        {/* Selo PY/ONNX -- mesmo idioma visual do "📌 fixado"    *
+                           * já usado no painel de detalhe (mono, pequeno, fundo *
+                           * colorido), sem inventar um novo elemento de UI. */}
+                        {runtimeColor && (
+                          <g>
+                            <rect x={FNW - 34} y="3" width="30" height="13" rx="2" fill={runtimeColor} opacity={active ? 1 : 0.9} />
+                            <text x={FNW - 19} y="12.5" textAnchor="middle" className="mx-mono" style={{ fontSize: 8.5, fontWeight: 700, fill: "var(--paper)" }}>
+                              {n.runtime === "python" ? "PY" : "ONNX"}
+                            </text>
+                          </g>
+                        )}
                         {/* Subtítulo com QUEBRA DE LINHA (não trunca/abrevia) -- *
                            * diferente do resto da página: aqui o texto é maior  *
                            * e o cartão (FNW/FNH) foi dimensionado pra caber 2   *
@@ -3105,6 +3576,8 @@ function FlightDecision({ onOpenCatalog }) {
             <span><b style={{ color: "var(--hot)" }}>■</b> executando agora (rótulo abaixo = chamada em curso)</span>
             <span>borda tracejada e apagada = não visitado nesta trilha (curto-circuito do Fallback)</span>
             <span>faixa tracejada = escopo de terceiro (framework UBF e BehaviorTree.CPP, lado a lado)</span>
+            <span><b className="mx-mono" style={{ color: "var(--py-accent)" }}>PY</b> = delega a decisão para um script Python embarcado (libs/xpyembed)</span>
+            <span><b className="mx-mono" style={{ color: "var(--onnx-accent)" }}>ONNX</b> = delega a decisão para uma rede neural via ONNX Runtime (libs/xinfer)</span>
             <span>roda = zoom · arrastar = mover</span>
           </div>
           {/* "Figura" Agent vs. AgentTC -- pedido explícito, mas discreta de     *
@@ -3142,10 +3615,10 @@ function FlightDecision({ onOpenCatalog }) {
 
         {showDetail && (
         <div className="mx-pane">
-          {pinned && flightById[pinned] && (
+          {pinned && activeIndex.byId[pinned] && (
             <div className="mx-card" style={{ marginBottom: 10, borderLeft: "3px solid var(--hot)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                <span className="mx-mono" style={{ fontWeight: 600, fontSize: 12.5 }}>📌 fixado — {flightById[pinned].cls}</span>
+                <span className="mx-mono" style={{ fontWeight: 600, fontSize: 12.5 }}>📌 fixado — {activeIndex.byId[pinned].cls}</span>
                 <button className="mx-btn" style={{ fontSize: 11, padding: "2px 8px" }} onClick={() => setPinned(null)}>soltar</button>
               </div>
             </div>
@@ -3200,7 +3673,7 @@ function FlightDecision({ onOpenCatalog }) {
                     const on = abs >= edlRange[0] && abs <= edlRange[1];
                     return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{abs + 1}</span><span className="mx-src">{ln || " "}</span></div>;
                   })}
-                  {edlWin.cutAfter && <div className="mx-codecut">⋯ {FLIGHT_EDL_TEXT.length - edlWin.offset - edlWin.lines.length} linhas abaixo ⋯</div>}
+                  {edlWin.cutAfter && <div className="mx-codecut">⋯ {activeEdlText.length - edlWin.offset - edlWin.lines.length} linhas abaixo ⋯</div>}
                 </div>
                 {detail.id !== "agent" && detail.id !== "state" && detail.id !== "behavior" && detail.id !== "autopilot" && (
                   <p className="mx-warn">Este nó não tem slot próprio no EDL -- a árvore de comportamento é referenciada por treeFile: (destacado acima), não por um bloco EDL separado.</p>
@@ -3236,6 +3709,18 @@ function FlightDecision({ onOpenCatalog }) {
                               ? <>ports: {leaf.ports.map(([pn, pt]) => <span key={pn} className="mx-mono" style={{ marginRight: 10 }}>{pn} {"<"}{pt}{">"}</span>)}</>
                               : <span style={{ color: "var(--muted)" }}>sem ports (providedPorts() vazio)</span>}
                           </div>
+                          {/* Só PyDecideAction/OnnxPolicyAction têm "delegate" -- *
+                             * o que distingue estas duas folhas de qualquer      *
+                             * outra: quem calcula o comando não é este .cpp, é   *
+                             * uma biblioteca de PONTE (libs/xpyembed/libs/xinfer)*
+                             * chamando pra FORA do plugin. */}
+                          {leaf.delegate && (
+                            <p className="mx-warn" style={{ marginTop: 6 }}>
+                              Delega para <b className="mx-mono">{leaf.delegate.lib}</b> via{" "}
+                              <b className="mx-mono">{leaf.delegate.to}</b> -- custo medido{" "}
+                              <b>{leaf.delegate.cost}</b>. Degradação: {leaf.delegate.fail}.
+                            </p>
+                          )}
                         </div>
                       );
                     })}
