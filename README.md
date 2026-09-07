@@ -83,6 +83,37 @@ Determinismo (mesmo resultado com 1, 2 e 4 threads de tempo crítico) tem script
 
 O que cada suíte prova e quanto custa → [`tests/README.md`](tests/README.md).
 
+## CI (GitLab)
+
+[`.gitlab-ci.yml`](.gitlab-ci.yml) hoje **não tem nenhum job de verdade** — é só um texto de
+intenção: o único job (`placeholder`) está desligado (`rules: - when: never`) e existe só para
+documentar em comentário o que a esteira vai fazer quando alguém escrever de verdade (a mesma
+sequência da seção Build acima).
+
+Para testar a esteira **a partir do próprio arquivo** — sem reescrever a lógica em comandos
+manuais — use [`gitlab-ci-local`](https://github.com/firecow/gitlab-ci-local): lê
+`stages:`/`rules:`/`needs:`/`image:` direto do `.gitlab-ci.yml` e executa cada job ativo em
+Docker. Não precisa instalar nada permanente:
+
+```bash
+npx gitlab-ci-local              # roda os jobs ativos (hoje, nenhum -- o unico esta desligado)
+npx gitlab-ci-local --list-all   # mostra TODOS os jobs definidos, mesmo os fora de rules/when
+npx gitlab-ci-local <job>        # roda so um job
+```
+
+Exige Docker + Node (mesmo pré-requisito opcional de `make check-docs-ubuntu24`, e o Node já usado
+em `docs/manual/`/`src/ui/`).
+
+Alternativa sem essa dependência, útil pra depurar uma suspeita de diferença de **ambiente**
+("funciona na minha máquina, quebraria no runner do GitLab"): rodar a sequência à mão dentro do
+mesmo container que o `image:` declara, do zero:
+
+```bash
+docker run --rm -it -v "$PWD":/repo -w /repo ubuntu:24.04 bash
+# dentro do container, do zero (nada que sua maquina ja tem instalado):
+make configure && make sdk && make models && make build && make install && make test
+```
+
 ## Rodar
 
 Um executável só, `app` — cada prova de conceito é um **cenário**, não um binário próprio.

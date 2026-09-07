@@ -10,6 +10,9 @@
 #   make build       # so o HOST (depende so de sdk) -> build/
 #   make install     # sync-plugins (plugins/ -> dist/) + meson install do host -> dist/
 #   make test        # as DUAS suites: a do modelo (test-models) e a do host
+#
+# Como testar isto localmente, a partir deste proprio arquivo (npx gitlab-ci-local) -> README.md,
+# secao "CI (GitLab)".
 
 stages:
   - placeholder

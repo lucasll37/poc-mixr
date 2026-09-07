@@ -3562,13 +3562,53 @@ ignorado pelo executor).
 não tem o bloco ainda — copie (nunca edite um `.xml` que algum cenário já usa), cole o bloco acima
 (ou a versão com os IDs do SEU `bt_factory.cpp`) dentro do `<root>` da cópia, e abra a cópia.
 
-**Bloco pode ficar desatualizado — é manual, não gerado.** Os 13 nós vêm de
-`bt_factory.cpp`/`bt_factory_sdk.cpp`; se um nó novo for registrado ali, os 5 arquivos de produção
-**não** se atualizam sozinhos (não há gerador automático hoje — `BT::writeTreeNodesModelXML()`
-faria isso a partir de uma `BehaviorTreeFactory` já povoada, mas nenhum programa deste repositório
-chama essa função). Ao registrar um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`, atualize o
-bloco nos 5 `flight_tree*.xml` — sem isso, o Groot mostra `FuelLow`/etc. certos e o nó novo com
-"This model has not been registered" na hora de carregar.
+**O bloco é gerado, não mantido a mão — `models/player/A4/tools/dump_tree_model.cpp`.** Um
+executável pequeno (`models/player/A4/tests/meson.build`, alvo `dump-tree-model`, junto dos
+outros que reusam `bt_sources`/`bt_sdk_sources`/`domain_sources`) monta a MESMA
+`BT::BehaviorTreeFactory` que o modelo de verdade monta (`registerNodes()` + `registerSdkNodes()`,
+com um `NodeContext{}` vazio — seguro, porque `registerBuilder<T>()` só guarda um construtor,
+nunca instancia nó nenhum) e chama a função nativa do BT.CPP para isto,
+`BT::writeTreeNodesModelXML(factory)`. Ela devolve o bloco inteiro envolto num `<root>` próprio
+(pensado pra virar um `.xml` sozinho); o programa extrai só o miolo
+`<TreeNodesModel>...</TreeNodesModel>`, pronto pra colar dentro do `<root>` de qualquer árvore:
+
+```bash
+meson compile -C models/player/A4/build dump-tree-model   # se ainda nao compilou
+./models/player/A4/build/tests/dump-tree-model
+```
+
+**Segundo modo, `--skeleton [ID]`** — imprime não só o fragmento, mas um `.xml` **completo e
+pronto pra abrir no Groot**: uma árvore vazia (`<Fallback name="root"/>`, único nó — builtin do
+BT.CPP, não precisa de modelo) mais o mesmo `<TreeNodesModel>`, os dois dentro do mesmo `<root>`.
+É a resposta para "como eu crio uma árvore nova com os nós que já implementei em C++": antes desta
+opção, só o `<TreeNodesModel>` era gerado — o resto do arquivo (`<BehaviorTree><Fallback/>...`)
+tinha que ser digitado à mão como exemplo em prosa, o que já causou confusão real (ver a pergunta
+que motivou este parágrafo). `dump-tree-model --skeleton MinhaArvore > /tmp/nova.xml` já sai
+validado (`xmllint --noout` limpo) e carrega direto no Groot com a paleta populada.
+
+**`models/player/A4/tools/sync_tree_models.py`** automatiza o primeiro modo: roda o binário,
+extrai o fragmento e substitui o `<TreeNodesModel>` nos 5 `flight_tree*.xml` de produção de uma
+vez (testado detectando E corrigindo uma divergência introduzida de propósito, não só confirmando
+"sem mudança"). Ao registrar um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`, rodar esse
+script é o processo que mantém os 5 arquivos em dia — sem isso, o Groot mostra os nós antigos
+certos e o nó novo com "This model has not been registered" na hora de carregar. Os 5 arquivos de
+produção deste repositório já foram resincronizados com a saída do gerador (confirmado idêntico ao
+bloco escrito à mão antes, salvo `default="1"`/`default="true"` para booleanos —
+`writeTreeNodesModelXML()` usa a representação nativa do C++, não uma string amigável).
+
+**A checagem virou teste do próprio Meson — `tree-model-sync` (suite `tree`,
+`models/player/A4/tests/meson.build`).** `sync_tree_models.py` ganhou um modo `--check` (só
+verifica, não escreve, `exit 1` se algum arquivo estiver desatualizado) e um `--binary` que aceita
+o caminho de verdade do executável — o `test()` passa o objeto `dump_tree_model` direto, e o
+Meson resolve pro caminho de saída real e já encadeia a dependência de build (não presume que o
+diretório de build se chama `build`, ao contrário do uso manual por linha de comando). Antes desta
+passada, esquecer de rodar o script era um "verde silencioso" — nenhum teste via a divergência, só
+quem tentasse abrir a árvore no Groot. Agora `make test` pega isso sozinho. **Testado nos dois
+sentidos, não só que passa**: com uma divergência introduzida de propósito
+(`FuelLow` → `FuelLowDIVERGENTE` num dos 5 arquivos), `meson test tree-model-sync` falha com
+`"Desatualizados: flight_tree.xml"` — restaurado o arquivo, volta a passar. A guarda de contagem
+mínima de testes do modelo (`models/player/A4/Makefile`, alvo `test`) já era `-ge 3`, não uma
+igualdade — o quarto teste não quebrou essa checagem.
 
 **Verificado sem precisar abrir a janela**: compilei um teste isolado (`ReadTreeNodesModel()` +
 `BuildTreeFromXML()`, as duas funções reais do Groot que decidem se um arquivo carrega) contra

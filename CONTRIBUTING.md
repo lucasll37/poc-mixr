@@ -100,8 +100,9 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
    ```
 3. Sem um `<TreeNodesModel>`, o Groot não conhece os nós customizados do SEU modelo (eles só
    existem registrados dentro do `.so`, que o Groot nunca viu) — aparecem sem porta/genéricos.
-   Cole um bloco assim dentro de `<root>` (a lista de `ID`s e portas é a mesma que você passou
-   para `factory.registerBuilder<T>(ID, ...)`/`providedPorts()` no seu `bt_factory.cpp`; o
+   Se o seu modelo já tem o gerador nativo (próxima seção), use-o em vez de escrever o bloco à
+   mão. Sem ele, cole algo assim dentro de `<root>` (a lista de `ID`s e portas é a mesma que você
+   passou para `factory.registerBuilder<T>(ID, ...)`/`providedPorts()` no seu `bt_factory.cpp`; o
    exemplo abaixo é o do modelo de produção `A4`, só para mostrar a forma):
    ```xml
    <TreeNodesModel>
@@ -115,6 +116,32 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
 4. `make open-groot` → `File > Load...` → `/tmp/arvore_groot.xml`. Edite arrastando/soltando,
    salve. O arquivo salvo continua carregando normalmente em `createTreeFromFile()` — o
    `<TreeNodesModel>` é ignorado pelo executor, só existe para o Groot.
+
+#### Criar uma árvore nova (com os nós que você já implementou)
+
+Nada aqui monta a árvore por você — o Groot não tem "começar em branco com meus nós" (a paleta só
+é populada a partir do `<TreeNodesModel>` de um arquivo já carregado). O que existe é um gerador
+que produz o **arquivo inteiro, pronto pra abrir**: uma árvore vazia (um `<Fallback>` só, de
+partida) mais o `<TreeNodesModel>` com os nós do SEU `bt_factory.cpp`, os dois no mesmo `<root>`.
+
+No modelo `A4` (produção), já está pronto:
+
+```bash
+meson compile -C models/player/A4/build dump-tree-model      # se ainda nao compilou
+models/player/A4/build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova_arvore.xml
+```
+
+`make open-groot` → `File > Load...` → `/tmp/nova_arvore.xml`. A paleta já mostra todos os nós
+do modelo (em azul, distintos dos nativos do BT.CPP); arraste da paleta pro canvas, conecte
+arrastando de uma saída pra uma entrada, e `File > Save` — esse arquivo salvo é a árvore de
+verdade, aponte o `treeFile:` do seu `.edl` pra ele.
+
+**Se o SEU modelo não é o `A4`**, este gerador não existe automaticamente pra ele — é código
+(`models/player/A4/tools/dump_tree_model.cpp` + o alvo `dump-tree-model` em
+`models/player/A4/tests/meson.build`, ~15 linhas de CMake/Meson no total). Copie o padrão de lá:
+o `.cpp` só monta uma `BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()`
+(ou equivalente) do SEU `bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a
+função nativa do BT.CPP que faz o trabalho de verdade.
 
 #### Depurar/monitorar ao vivo
 

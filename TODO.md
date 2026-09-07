@@ -4,6 +4,8 @@
 > ci gitlab
 > testes exaustivos
 > revisar documentação
+> highlight de .edl
+> gerar arvore "editável" [indo]
 
 
 ----------------------------------------------------

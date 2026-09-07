@@ -77,6 +77,35 @@ flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
 flight_tree_missile_demo_xml = meson.current_source_dir() / '../configs/flight_tree_missile_demo.xml'
 flight_tree_nav_xml = meson.current_source_dir() / '../configs/flight_tree_nav.xml'
 
+# Gerador do <TreeNodesModel> para o Groot (CLAUDE.md, "Groot -- editor e
+# monitor ao vivo") -- reusa bt_sources/bt_sdk_sources/domain_sources, os
+# MESMOS fontes que test-tree/test-native ja compilam, entao herda a mesma
+# propriedade de test-tree (linka BehaviorTree.CPP + SDK, nao levanta MIXR
+# sozinho -- so' bt_sdk_sources arrasta mixr via poc-mixr-sdk.pc).
+dump_tree_model = executable('dump-tree-model',
+    files('../tools/dump_tree_model.cpp') + bt_sources + bt_sdk_sources + domain_sources,
+    link_args           : ['-Wl,--disable-new-dtags'],
+    include_directories : model_inc,
+    dependencies        : [behavior_tree_dep, sdk_dep],
+    install             : false,
+    build_rpath         : mixr_libdir + ':' + sdk_libdir,
+)
+
+# Guarda: os 5 flight_tree*.xml de producao tem que bater com o que
+# bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE -- sem isto, um
+# no novo registrado e' um "verde silencioso" ate alguem tentar abrir a
+# arvore no Groot e levar "This model has not been registered". Passa o
+# caminho de VERDADE do binario (nao o default de sync_tree_models.py, que
+# supoe um diretorio chamado 'build') -- Meson resolve o objeto
+# dump_tree_model pro caminho de saida e ja adiciona a dependencia de build.
+py3 = find_program('python3')
+test('tree-model-sync',
+    py3,
+    args      : [files('../tools/sync_tree_models.py'), '--check', '--binary', dump_tree_model],
+    suite     : 'tree',
+    timeout   : 60,
+)
+
 test_tree = executable('test-tree',
     files('tree/test_flight_tree.cpp', 'tree/test_flight_tree_missile_demo.cpp',
           'tree/test_flight_tree_nav.cpp') + bt_sources + domain_sources,
