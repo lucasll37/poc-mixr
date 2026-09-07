@@ -7,7 +7,7 @@
     "ms-toolsai.jupyter",
     "yzhang.markdown-all-in-one",
     "ms-vscode.cpptools",
-    "spencerwmiles.vscode-task-buttons"
-
+    "spencerwmiles.vscode-task-buttons",
+    "local.edl"
   ]
 }
