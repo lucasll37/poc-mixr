@@ -26,6 +26,10 @@ struct WorldView
    bool valid{};
 
    // proprio
+   std::string ownerName;   // nome EDL do ator -- ver o comentario em
+                            // FlightState::updateState() sobre por que este
+                            // e' o jeito confiavel de saber "quem decide",
+                            // independente de single-thread/multi-thread
    double northM{};
    double eastM{};
    double altitudeM{};

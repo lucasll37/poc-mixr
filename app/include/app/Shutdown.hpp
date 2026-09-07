@@ -19,7 +19,7 @@ namespace app {
 // spin puro, sem yield -- atomics_linux.hpp:18-24) e o RSS subindo ~1,9 MB/s
 // porque a thread de tempo critico seguia enfileirando registros numa fila
 // que e uma base::List SEM TETO. O terminal nunca voltava. As duas metades da
-// correcao sao o teto de escrita no socket (shared/xtacview) e as duas
+// correcao sao o teto de escrita no socket (libs/xtacview) e as duas
 // funcoes abaixo.
 //
 // A ordem CORRETA de encerramento, e o porque de cada passo:

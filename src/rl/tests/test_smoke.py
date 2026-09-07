@@ -15,7 +15,7 @@ Cobre:
      mudar a API de MixrFlightEnv.
 
 ARMADILHA CONFIRMADA (nao redescobrir): so pode existir UMA Station por
-PROCESSO -- shared/xplugin sela o registro de plugins depois do PRIMEIRO
+PROCESSO -- libs/xplugin sela o registro de plugins depois do PRIMEIRO
 edl_parser() (ver mixr::xplugin::seal(), chamado dentro de
 rl::buildStation()); um SEGUNDO MixrFlightEnv() no mesmo processo, ao chamar
 reset() pela primeira vez, cai em rl::buildStation() -> edl_parser() de novo

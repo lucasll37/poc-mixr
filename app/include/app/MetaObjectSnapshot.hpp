@@ -13,7 +13,7 @@
 // vivo, sem esperar o processo terminar.
 //
 // AGNOSTICO A MODELO por construcao: a fonte e
-// mixr::xplugin::pluginMetaObjects() (shared/xplugin/PluginRegistry.hpp),
+// mixr::xplugin::pluginMetaObjects() (libs/xplugin/PluginRegistry.hpp),
 // que devolve os MetaObject* que O PROPRIO PLUGIN carregado declarou no seu
 // descritor (campo 'metas' de PluginDescV1) -- automaticamente cobre
 // flight/missile/stub e qualquer modelo futuro, sem um nome de classe sequer

@@ -3,7 +3,7 @@
 Este arquivo não repete o que já está escrito em outro lugar — ele COSTURA, na ordem certa, os
 documentos que já são autoridade sobre cada assunto. Cada passo abaixo aponta para o documento
 certo; leia-o antes de seguir para o próximo passo. Este roteiro é sobre escrever um **modelo**
-novo — para mudar o *host* (`app/`, `src/`, `shared/`) não há roteiro equivalente; o mais próximo
+novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivalente; o mais próximo
 é [`CLAUDE.md`](CLAUDE.md), que é referência de arquitetura, não passo a passo.
 
 ## 0. O que você vai construir
@@ -69,17 +69,83 @@ Depois do contrato, é trabalho de domínio — não tem receita mecânica. Se v
 `docs/PRIMEIROS-PASSOS.md`, passo 5, sugere a ordem (domain → ubf/State → ubf/Behavior →
 ubf/Action → xnative/factory).
 
+### Editando e depurando a árvore com o Groot
+
+Se a decisão é uma árvore do BehaviorTree.CPP (o caso da maioria dos modelos deste repositório),
+o **Groot** ajuda em duas pontas: edita o `.xml` visualmente, e monitora ao vivo uma árvore
+rodando dentro da simulação. Instalação, uma vez por máquina → [`INSTALL.md`](INSTALL.md) §7
+(`./scripts/deps.sh`, ou só `conan create ./deps/groot ...` se as outras dependências já vierem
+do remote privado). Depois de instalado, `make open-groot` sempre abre a janela.
+
+#### Editar uma árvore
+
+**Para experimentar agora, sem esperar seu próprio modelo compilar**: os `models/player/A4/
+configs/flight_tree*.xml` de produção já têm tudo isso resolvido (comentário sem `--`, bloco
+`<TreeNodesModel>` colado) — abrem direto no Groot, `File > Load...`, sem nenhum passo abaixo.
+São o exemplo de referência para o que sua própria árvore precisa ter.
+
+**Para a árvore do SEU modelo**, que ainda não tem nada disso:
+
+1. Nunca abra o `.xml` de produção direto — copie:
+   ```bash
+   cp models/player/<seu-modelo>/configs/<sua-arvore>.xml /tmp/arvore_groot.xml
+   ```
+2. **Verifique se o comentário de cabeçalho tem `--` (hífen duplo)** — o parser XML do Groot
+   (`QDomDocument`, estrito) recusa o arquivo **inteiro** se tiver; o parser que o host usa
+   (`tinyxml2`) é tolerante e deixa passar, então esse problema só aparece no Groot, nunca ao
+   rodar a simulação de verdade. Sintoma: Groot recusa o arquivo com um erro genérico de sintaxe,
+   sem apontar a causa real.
+   ```bash
+   grep -n -- '--' /tmp/arvore_groot.xml   # se aparecer fora de <!-- / -->, troque por "-" e pronto
+   ```
+3. Sem um `<TreeNodesModel>`, o Groot não conhece os nós customizados do SEU modelo (eles só
+   existem registrados dentro do `.so`, que o Groot nunca viu) — aparecem sem porta/genéricos.
+   Cole um bloco assim dentro de `<root>` (a lista de `ID`s e portas é a mesma que você passou
+   para `factory.registerBuilder<T>(ID, ...)`/`providedPorts()` no seu `bt_factory.cpp`; o
+   exemplo abaixo é o do modelo de produção `A4`, só para mostrar a forma):
+   ```xml
+   <TreeNodesModel>
+       <Condition ID="FuelLow">
+           <input_port name="margin" type="double" default="0.0">descricao da porta</input_port>
+       </Condition>
+       <Action ID="ReturnToBase"/>
+       <!-- um <Condition>/<Action> por nó customizado que o SEU bt_factory.cpp registra -->
+   </TreeNodesModel>
+   ```
+4. `make open-groot` → `File > Load...` → `/tmp/arvore_groot.xml`. Edite arrastando/soltando,
+   salve. O arquivo salvo continua carregando normalmente em `createTreeFromFile()` — o
+   `<TreeNodesModel>` é ignorado pelo executor, só existe para o Groot.
+
+#### Depurar/monitorar ao vivo
+
+O modelo de produção (`A4`) já tem esse hook pronto, opt-in por variável de ambiente:
+
+```bash
+MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder src/poc/dis -scenario multi-thread
+```
+
+Em outro terminal com display: `make open-groot` → aba **Monitor** → conectar em `localhost`
+(portas 1666/1667, fixas). A árvore daquele player aparece se colorindo em tempo real conforme
+tica. **Se o SEU modelo também usa uma árvore do BT.CPP e você quer essa mesma capacidade**, ela
+não vem de graça do framework — é código do modelo. Replique o padrão de
+`models/player/A4/src/ubf/BtBehavior.cpp` (função `startGrootMonitorIfRequested()`): depois de
+`btFactory.createTreeFromFile(...)` ter sucesso, construa um `BT::PublisherZMQ(tree)` se uma
+variável de ambiente bater com o nome do player, e derrube esse objeto (`.reset()`) **antes** de
+qualquer recriação da árvore (`reset()`, `shutdownNotification()`, cópia) — ele guarda uma
+referência a ela.
+
+Lista completa de armadilhas já pagas (o motivo de cada regra acima, com detalhe de
+implementação) → [`CLAUDE.md`](CLAUDE.md), seção "Groot — editor e monitor ao vivo".
+
 ## 5. Publique e aponte um cenário
 
 → `models/README.md`, seção 2.3 (verificar o `.so`) e seção 4 (registrar num `.edl`), ou
 `PRIMEIROS-PASSOS.md`, passo 6, se veio do `template`.
 
-O `.so` compilando e um `.edl` apontando pra ele **não** bastam para rodar via `./app -scenario
-<chave>` nem para ganhar cobertura de teste automática — isso é um passo a mais, documentado em
-`models/README.md`, seções **4.1** (registrar no catálogo do `./app`, em
-`app/src/app/ScenarioCatalog.cpp`) e **4.2** (decidir se/como o cenário ganha teste automático em
-`tests/meson.build`). Sem a 4.1, seu modelo compila e passa nos testes de plugin, mas ninguém
-consegue rodá-lo pelo `./app`.
+O `.so` compilando e um `.edl` apontando pra ele já bastam para rodar via `./app -folder <pasta>
+-scenario <nome>` (não há catálogo estático para registrar — ver `models/README.md`, seção **4.1**)
+— o que ainda é opcional é a cobertura de teste automática, seção **4.2** (decidir se/como o
+cenário ganha teste em `tests/meson.build`).
 
 ## 6. Teste
 
@@ -112,11 +178,11 @@ devolve só o resumo, sem despejar C++ de terceiro na conversa.
 **`.claude/` — automação e contexto para quem trabalha com um agente Claude Code neste repo**:
 
 - `.claude/rules/*.md` carregam contexto extra sozinhas quando você edita um caminho que casa com
-  o glob delas (`app/`+`src/`+`shared/`, `models/`, arquivos `.edl`/`.edl.in`/`.edl.frag`) — não
+  o glob delas (`app/`+`src/`+`libs/`, `models/`, arquivos `.edl`/`.edl.in`/`.edl.frag`) — não
   precisam ser lidas à mão, mas valem uma olhada se quiser entender por que um hook bloqueou algo.
 - `.claude/hooks/*.sh` rodam automaticamente depois de editar os arquivos correspondentes: host
   opaco (`check-host-opaco.sh`), colisão de nome de fábrica (`check-colisao-fabrica.sh`) e lint de
-  EDL (`check-edl-lint.sh`) — a mesma checagem que `make test`/`make edl-lint` fariam, só que sem
-  esperar o próximo build.
+  EDL (`check-edl-lint.sh`) — a mesma checagem que `make test` (suíte `tools`) ou
+  `python3 src/ui/scripts/edl_lint.py <arquivo>` direto fariam, só que sem esperar o próximo build.
 - `.claude/skills/README.md` e `.claude/mcp/README.md` documentam por que não há nenhum dos dois
   hoje, e quando criar um.

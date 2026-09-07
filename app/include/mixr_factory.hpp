@@ -9,7 +9,7 @@
 //
 // mixrFactoryBuiltin()  a cadeia SEM plugin. Devolve nullptr para nome
 //                       desconhecido. E usada como SONDA pelo registro de
-//                       plugins (shared/xplugin), para recusar na CARGA um
+//                       plugins (libs/xplugin), para recusar na CARGA um
 //                       plugin cujo nome de fabrica ja exista -- em vez de
 //                       deixa-lo silenciosamente inerte.
 //

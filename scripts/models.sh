@@ -13,10 +13,10 @@
 #
 # O QUE ESTE SCRIPT NAO FAZ, de proposito:
 #   - nao escreve a logica de dominio (a razao do modelo existir);
-#   - nao registra o modelo em cenario nenhum nem no catalogo do ./app
-#     (models/README.md secoes 4.1/4.2 -- o .so entra sozinho em 'make
-#     models'/'make test' por descoberta via find, mas so aparece num
-#     cenario rodavel depois desse passo manual);
+#   - nao escreve o cenario que carrega o modelo (models/README.md secao 4 --
+#     o .so entra sozinho em 'make models'/'make test' por descoberta via
+#     find, mas so aparece num cenario rodavel depois de um '.edl.in' novo
+#     apontar pra ele; nao ha catalogo pra registrar, so o arquivo);
 #   - nao adiciona a linha em models/REGISTRO.md;
 #   - nao faz commit nenhum.
 # Tudo isso fica no checklist impresso ao final.
@@ -162,9 +162,10 @@ Falta, MANUALMENTE (nada disto e automatizavel):
       .so exporta)
   [ ] git add models/player/${nome}/ (este script nao commita nada)
   [ ] este modelo ja entra sozinho em 'make models'/'make test' da raiz (descoberta por
-      'find' -- nao ha lista pra editar); falta so registrar um CENARIO pra ele: uma
-      ScenarioEntry em app/src/app/ScenarioCatalog.cpp e, se fizer sentido, cobertura em
-      tests/meson.build -- ver models/README.md, secoes 4.1 e 4.2
+      'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
+      '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
+      registrar em lugar nenhum) e, se fizer sentido, cobertura em tests/meson.build --
+      ver models/README.md, secoes 4.1 e 4.2
   [ ] acrescentar sua linha em models/REGISTRO.md (nome, pasta, status, responsavel)
 EOF
 }
@@ -261,7 +262,7 @@ Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 **A versão é a do \`project()\` em [\`meson.build\`](meson.build)** — hoje \`$VERSAO\`. Não existe
 outra: não há tag de git, e o descritor do plugin não carrega versão do modelo (\`PluginDescV1\` tem
 \`plugin_name\`, \`mixr_pkg_version\` e \`build_id\`, e nada mais — ver
-[\`../../../shared/xplugin/PluginAbi.hpp\`](../../../shared/xplugin/PluginAbi.hpp)).
+[\`../../../libs/xplugin/PluginAbi.hpp\`](../../../libs/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — ver
 [\`CONTRIBUTING.md\`](../../../CONTRIBUTING.md), na raiz do repositório, para a convenção de

@@ -306,7 +306,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
       <li><b>O fork é headless.</b> Não publica <code>mixr_graphics</code>/<code>glut</code>/
       <code>instruments</code>/<code>ighost</code> — não existe janela GLUT neste repositório.</li>
       <li>Toda visualização passa por telemetria de verdade: <b>Tacview Real-Time Telemetry</b>,
-      via <code>shared/xtacview</code>.</li>
+      via <code>libs/xtacview</code>.</li>
     </ul>
     <div class="callout">
       <span class="k">Regra de consulta</span>
@@ -355,7 +355,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
         <tbody>
           <tr><td class="n">01</td><td class="what">Carga dinâmica de modelos — o mesmo binário roda modelos diferentes sem recompilar</td><td class="where">models/</td></tr>
           <tr><td class="n">02</td><td class="what">Elevação de terreno real (dados SRTM)</td><td class="where">shared/data/terrain/srtm/</td></tr>
-          <tr><td class="n">03</td><td class="what">Exportação para o Tacview, reaproveitando o gravador nativo do MIXR</td><td class="where">shared/xtacview/</td></tr>
+          <tr><td class="n">03</td><td class="what">Exportação para o Tacview, reaproveitando o gravador nativo do MIXR</td><td class="where">libs/xtacview/</td></tr>
           <tr><td class="n">04</td><td class="what">Física de voo completa (6 graus de liberdade) via JSBSim</td><td class="where">models/player/A4/</td></tr>
           <tr><td class="n">05</td><td class="what">Decisão em paralelo sem perder previsibilidade — 1, 2 ou 4 threads, mesmo resultado</td><td class="where">src/poc/dis/multi-thread/</td></tr>
           <tr><td class="n">06</td><td class="what">Lógica de decisão como árvore de comportamento (XML) — trocar a política não recompila</td><td class="where">models/player/A4/src/bt/</td></tr>
@@ -366,10 +366,10 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
       <table class="cmp feat-table">
         <thead><tr><th class="n">#</th><th>Funcionalidade</th><th>Onde</th></tr></thead>
         <tbody>
-          <tr><td class="n">07</td><td class="what">Controle por joystick físico, com o autopilot assumindo sozinho sem hardware</td><td class="where">shared/xjoystick/</td></tr>
+          <tr><td class="n">07</td><td class="what">Controle por joystick físico, com o autopilot assumindo sozinho sem hardware</td><td class="where">libs/xjoystick/</td></tr>
           <tr><td class="n">08</td><td class="what">Interoperabilidade entre processos via DIS — uma aeronave só pela rede</td><td class="where">src/poc/dis/bandit/</td></tr>
-          <tr><td class="n">09</td><td class="what">Log e telemetria configuráveis pelo próprio cenário, sem recompilar</td><td class="where">shared/xlog/, shared/xmsg/</td></tr>
-          <tr><td class="n">10</td><td class="what">Detecção de vazamento de memória pelos contadores de instância do MIXR</td><td class="where">shared/xboard/</td></tr>
+          <tr><td class="n">09</td><td class="what">Log e telemetria configuráveis pelo próprio cenário, sem recompilar</td><td class="where">libs/xlog/, libs/xmsg/</td></tr>
+          <tr><td class="n">10</td><td class="what">Detecção de vazamento de memória pelos contadores de instância do MIXR</td><td class="where">libs/xboard/</td></tr>
           <tr><td class="n">11</td><td class="what">Painel de controle interativo em terminal — tempo, mapa, breakpoint na árvore</td><td class="where">app/</td></tr>
           <tr><td class="n">12</td><td class="what">Decisão por rede neural treinada (.onnx), sem Python em runtime</td><td class="where">src/poc/onnx-policy/</td></tr>
           <tr><td class="n">13</td><td class="what">Decisão em Python, editável em .py sem recompilar</td><td class="where">src/poc/python-flight/</td></tr>
@@ -592,9 +592,9 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   </ul>
 </section>
 
-<section class="slide" data-title="Padrão shared/x">
+<section class="slide" data-title="Padrão libs/x">
   <p class="eyebrow">B · Princípios de padronização</p>
-  <h2 class="headline">O padrão <code>shared/x&lt;nome&gt;</code></h2>
+  <h2 class="headline">O padrão <code>libs/x&lt;nome&gt;</code></h2>
   <div class="grid-2">
     <div>
       <p class="lede muted" style="margin-bottom:10px">Atravessa o <code>dlopen</code> — precisa de
@@ -647,7 +647,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <div class="card-grid">
     <div class="card"><span class="path">src/poc/</span><span class="role">dado — configs/+data/+README, nunca código</span></div>
     <div class="card"><span class="path">models/player/</span><span class="role">o modelo, plugin Meson independente</span></div>
-    <div class="card"><span class="path">shared/x*/</span><span class="role">libs que atravessam host↔plugin ou ficam no host</span></div>
+    <div class="card"><span class="path">libs/x*/</span><span class="role">libs que atravessam host↔plugin ou ficam no host</span></div>
     <div class="card"><span class="path">app/</span><span class="role">o dashboard/runner único, na raiz</span></div>
     <div class="card"><span class="path">tests/</span><span class="role">as 8 camadas de teste</span></div>
     <div class="card"><span class="path">contexts/</span><span class="role">fonte do framework para consulta — git-ignored</span></div>
@@ -780,7 +780,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
     </figure>
     <div>
       <ul class="list tight">
-        <li><b>Joystick físico</b> — <code>shared/xjoystick</code> lê <code>/dev/input/js*</code>
+        <li><b>Joystick físico</b> — <code>libs/xjoystick</code> lê <code>/dev/input/js*</code>
         cru (ioctl, sem SDL/evdev); um Logitech Extreme 3D mapeia 4 eixos (roll/pitch/pedal/manete)
         via <code>UsbJoystick</code> declarado no EDL, canal por canal.</li>
         <li><b>Sem hardware, o <code>Autopilot</code> assume sozinho</b> —
@@ -822,7 +822,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
     <div class="callout" style="border-left-color:var(--teal); background:var(--teal-soft)">
       <span class="k" style="color:var(--teal)">Por que a condição não migra</span>
       <p><code>ContactDetected</code> depende de uma histerese que envelhece com o <code>dt</code>
-      do frame — e a fronteira de <code>shared/xpyembed</code> é <b>28 floats entram, 3 saem</b>,
+      do frame — e a fronteira de <code>libs/xpyembed</code> é <b>28 floats entram, 3 saem</b>,
       sem <code>dt</code>. Sem essa histerese os dois ramos de evasão/apoio alternariam para sempre
       a cada vez que a pista piscasse.</p>
     </div>
@@ -932,10 +932,8 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
     <span class="feat-badge">README · Funcionalidade <b>11</b></span>
   </div>
   <h2 class="headline"><code>./app</code> — o runner vira também o instrumento</h2>
-  <p class="lede muted">TUI estilo btop (FTXUI), na raiz do repositório. Mesma pilha nativa das
-  outras pocs — hoje decidindo via <code>FlightAgentTC</code> no pool T/C, de verdade multithread.
-  Cenários próprios (<code>patrol</code>/<code>intercept</code>/<code>intercept_missile</code>),
-  porta Tacview 1236.</p>
+  <p class="lede muted">TUI estilo btop (FTXUI), na raiz do repositório. Runner único de todas as
+  pocs — agnóstico de cenário, roda qualquer modelo carregado, não uma pilha fixa.</p>
   <div class="tag-row">
     <span class="tag">Players</span><span class="tag">Mapa</span><span class="tag">Memória</span>
     <span class="tag">Fundo</span><span class="tag">Log</span><span class="tag">Componentes</span>
@@ -1009,7 +1007,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
       <div class="card-grid" style="grid-template-columns:1fr">
         <div class="card"><span class="path">Breakpoint na árvore de BT</span><span class="role">arma (player, nó); roda em velocidade máxima real (64×) até atingir — pausa a simulação de verdade, sem timeout</span></div>
         <div class="card"><span class="path">Mapa com terreno real (SRTM)</span><span class="role">TopDown/Lateral, curvas de nível de dado real, múltiplos tiles, clique para selecionar</span></div>
-        <div class="card"><span class="path">Controle de tempo</span><span class="role">acelerar/frear/pausar via shared/xclock, escada 0,10×…64×</span></div>
+        <div class="card"><span class="path">Controle de tempo</span><span class="role">acelerar/frear/pausar via libs/xclock, escada 0,10×…64×</span></div>
       </div>
       <div class="callout" style="margin-top:14px">
         <span class="k">Armadilha real, com custo medido</span>
@@ -1084,10 +1082,10 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <h2 class="headline">Log e telemetria — configuração, não recompilação</h2>
   <div class="grid-2">
     <div class="body-copy">
-      <p><code>LOG(NIVEL) &lt;&lt; ...;</code> (<code>shared/xlog</code>) escreve em console,
+      <p><code>LOG(NIVEL) &lt;&lt; ...;</code> (<code>libs/xlog</code>) escreve em console,
       arquivo <b>e</b> num buffer circular em memória ao mesmo tempo — a mesma cópia é lida tanto
       pelo host quanto pelo modelo, aberto por <code>dlopen</code>.</p>
-      <p><code>shared/xmsg</code> vai além: um <code>( MsgFeed )</code> no EDL escolhe <b>o quê</b>
+      <p><code>libs/xmsg</code> vai além: um <code>( MsgFeed )</code> no EDL escolhe <b>o quê</b>
       sai da simulação e <b>quando</b> — condições de mudança/limiar/taxa (<code>MsgChanged</code>,
       <code>MsgThreshold</code>, <code>MsgRate</code>) — sem tocar em C++.</p>
     </div>
@@ -1258,7 +1256,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
     <span class="pipe-step">src/rl <span style="opacity:.6">(treino, Gymnasium)</span></span><span class="pipe-arrow">→</span>
     <span class="pipe-step">export_onnx.py</span><span class="pipe-arrow">→</span>
     <span class="pipe-step">policy.onnx</span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">shared/xinfer <span style="opacity:.6">(produção)</span></span>
+    <span class="pipe-step">libs/xinfer <span style="opacity:.6">(produção)</span></span>
   </div>
   <p class="body-copy" style="max-width:68ch">A ordem dos 28 campos de observação vem de uma
   X-macro só (<code>ObservationFields.hpp</code>), expandida contra <code>domain::WorldView</code>

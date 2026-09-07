@@ -246,7 +246,7 @@ Element renderEntityDetail(const EntityState& e)
    }
 
    // "decisoes" = quantas decisoes da arvore/UBF ja foram efetivamente
-   // ATUADAS nesta entidade (nao candidaturas -- ver shared/xboard/
+   // ATUADAS nesta entidade (nao candidaturas -- ver libs/xboard/
    // Board.hpp). "thread" saiu do card -- mudou pra coluna da LISTA (F1,
    // renderEntityRow()), com o cabecalho explicando a coluna
    // (renderEntityListHeader()); nao faz sentido repetir aqui.

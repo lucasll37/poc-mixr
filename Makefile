@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs edl-catalog edl-default-scenario edl-builder open-edl-builder edl-builder-test edl-lint edl-check new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs open-edl-builder open-groot new-model
 
 .DEFAULT_GOAL := help
 
@@ -77,7 +77,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# 'meson compile' com os NOMES dos alvos. Medido: o meson compile resolve
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
-	@# ter de escrever shared/xboard/libxboard.so a mao.
+	@# ter de escrever libs/xboard/libxboard.so a mao.
 	meson compile -C $(BUILD_DIR) xboard xlog xtrack xrlbridge xinfer xpyembed events
 	@# '--tags sdk,devel' e nao '--tags sdk': install_headers() nao aceita
 	@# install_tag no meson 1.2, entao os headers ficam com a tag automatica
@@ -200,11 +200,12 @@ package: ## Create the Conan package for this project.
 # ============================================
 
 # Alvos de check/run por poc ou cenario PARTICULAR foram removidos daqui --
-# use './app -scenario <chave>'/'-f <arquivo>'/'-folder <pasta>' diretamente
-# (ver app/ScenarioCatalog.cpp para as chaves) e
-# 'tests/determinism/check_determinism.sh <binario> <cenario> <frames>
-# [fixture-poc] [fixture-modo]' para determinismo. 'make install' continua
-# sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
+# use './app -folder <pasta> -scenario <nome>'/'-f <arquivo>' diretamente (nao
+# ha mais catalogo estatico -- qualquer poc com um unico .edl(.in) em
+# configs/ ja e alcancavel) e
+# 'tests/determinism/check_determinism.sh <binario> <rotulo> <frames>
+# [fixture-poc] [arquivo-de-cenario]' para determinismo. 'make install'
+# continua sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
 
 compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (hoje só o cenário: o agente do UBF e a porta DIS).
 	@diff -rq --exclude=data \
@@ -300,29 +301,18 @@ open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do 
 	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/manual/index.html \
 		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/manual/index.html"
 
-edl-catalog: ## Gera src/ui/edl_catalog.generated.json (todas as classes/slots das factories, para o editor grafico de .edl). So Python stdlib, sem MIXR.
-	python3 tools/extract_execution_chain.py --edl-catalog > src/ui/edl_catalog.generated.json
-	@echo "$(GREEN)edl-catalog:$(NC) OK -- $$(python3 -c 'import json; print(len(json.load(open("src/ui/edl_catalog.generated.json"))))') classes catalogadas"
-
-edl-default-scenario: edl-catalog ## Gera src/ui/edl_default_scenario.generated.json (o cenario que a ferramenta carrega por padrao -- o de mais componentes do repositorio, built-in_mixr_1).
-	node src/ui/edl_to_ui_project.js src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in > src/ui/edl_default_scenario.generated.json
-	@echo "$(GREEN)edl-default-scenario:$(NC) OK"
-
-edl-builder: edl-catalog edl-default-scenario ## Regenera src/ui/edl-builder.html (editor grafico de cenario .edl) via src/ui/compile.js. So precisa de rede na 1a vez (cacheia em src/ui/.cache/).
-	node src/ui/compile.js
-
-open-edl-builder: ## Abre src/ui/edl-builder.html no navegador (editor grafico de cenario .edl: arrastar classe da paleta, preencher campos, exportar). Pagina estatica -- nao depende de build/install.
+open-edl-builder: ## Regenera (catalogo+cenario padrao+testes+self-lint+compilacao, tudo automatico via src/ui/scripts/build.js) e abre src/ui/edl-builder.html no navegador. UNICO alvo make deste editor -- as demais rotinas (geracao do catalogo, do cenario padrao, lint, o binario edlcheck) sao scripts chamados direto, ver src/ui/README.md.
+	node src/ui/scripts/build.js
 	@command -v xdg-open >/dev/null 2>&1 && xdg-open src/ui/edl-builder.html \
 		|| echo "$(YELLOW)open-edl-builder:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/src/ui/edl-builder.html"
 
-edl-builder-test: ## Testes de unidade PUROS de src/ui/edl_builder_core.js (node, sem Babel/React/DOM, sem MIXR).
-	node src/ui/edl_builder.test.js
-
-edl-lint: ## Lint LEVE de um .edl/.edl.in contra o catalogo (FILE=caminho). Nao substitui 'make edl-check' (o parser real) -- so pega o erro mais comum antes de compilar/instalar.
-	python3 tools/edl_lint.py $(FILE)
-
-edl-check: install ## Valida um .edl (ja expandido -- sem @token@/@include:@) com o parser MIXR de verdade (FILE=caminho), sem terreno/frota/WorldModel obrigatorios.
-	$(BUILD_DIR)/app/src/edlcheck $(FILE)
+open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (deps/groot/conanfile.py) e abre o Groot -- editor/monitor visual de arvores do BT.CPP v3. Precisa de 'conan create ./deps/groot --build=missing --settings=build_type=Release' rodado antes (ver INSTALL.md secao 7).
+	@GROOT_BIN="$$(scripts/find_groot.sh 2>/dev/null)"; \
+	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
+		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
+	else \
+		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan -- rode 'conan create ./deps/groot --build=missing --settings=build_type=Release' primeiro (ver INSTALL.md secao 7)."; \
+	fi
 
 # ============================================
 # Misc Targets

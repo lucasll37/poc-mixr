@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # PostToolUse (Edit|Write) em arquivos .edl/.edl.in/.edl.frag: roda o lint
-# leve (tools/edl_lint.py) contra o catalogo de fabricas/slots. E SO UM
-# AVISO -- best-effort, nao substitui 'make edl-check FILE=...' (o parser
-# C++ de verdade, ver o docstring do proprio edl_lint.py).
+# leve (src/ui/scripts/edl_lint.py) contra o catalogo de fabricas/slots. E SO
+# UM AVISO -- best-effort, nao substitui o binario 'edlcheck' (o parser C++
+# de verdade, ver o docstring do proprio edl_lint.py).
 #
 # Fail-safe: sai 0 em silencio se faltar python3, se o catalogo ainda nao
-# foi gerado (make edl-catalog) ou se o arquivo editado nao for relevante --
-# nunca trava a sessao por causa de infraestrutura que nao foi montada.
+# foi gerado (rode 'make open-edl-builder' uma vez) ou se o arquivo editado
+# nao for relevante -- nunca trava a sessao por causa de infraestrutura que
+# nao foi montada.
 set -u
 
 command -v python3 >/dev/null 2>&1 || exit 0
@@ -31,7 +32,7 @@ esac
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 CATALOG="$ROOT/src/ui/edl_catalog.generated.json"
-LINT="$ROOT/tools/edl_lint.py"
+LINT="$ROOT/src/ui/scripts/edl_lint.py"
 
 [ -f "$CATALOG" ] || exit 0
 [ -f "$LINT" ] || exit 0
@@ -42,7 +43,8 @@ case "$OUTPUT" in
     *ERRO:*|*AVISO:*)
         {
             echo "edl_lint.py encontrou algo em $FILE_PATH (lint leve, best-effort -- confirme com"
-            echo "'make edl-check FILE=$FILE_PATH' antes de considerar a tarefa concluida):"
+            echo "o binario 'edlcheck $FILE_PATH' (dist/bin/edlcheck ou build/app/src/edlcheck)"
+            echo "antes de considerar a tarefa concluida):"
             echo "$OUTPUT"
         } >&2
         exit 2

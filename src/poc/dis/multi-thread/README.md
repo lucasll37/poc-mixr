@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `./build/app/src/app -scenario multi-thread`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -27,11 +27,11 @@ A [single-thread](../single-thread/) **inteira**, com **uma** diferença: o agen
 >
 > Isso não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o binário.
 > Ver [models/README.md](../../../../models/README.md) para escrever um modelo novo, e
-> [shared/xplugin/README.md](../../../../shared/xplugin/README.md) para o contrato.
+> [libs/xplugin/README.md](../../../../libs/xplugin/README.md) para o contrato.
 
 ```bash
 make build
-./build/app/src/app -scenario multi-thread          # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in          # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread        # verifica o determinismo (1, 2 e 4 threads T/C)
 make compare-single-multi      # lista o que difere entre os dois subprojetos
 ```
@@ -413,7 +413,7 @@ Os dois laços são o **mesmo arquivo** nas duas pocs, byte a byte: quem muda é
 declarado no `.edl` (e qual `.so` o `( PluginModule )` carrega), não o código do host.
 
 `dec`/`thr` deixaram de ser uma diferença de código entre as pocs — as duas os publicam pelo mesmo
-`shared/xboard`. A única diferença de código que sobra no HOST, hoje, é o teto padrão de threads
+`libs/xboard`. A única diferença de código que sobra no HOST, hoje, é o teto padrão de threads
 T/C em `ScenarioTemplate.cpp` (linha acima) — um número de calibração, não uma mudança de
 comportamento do agente.
 
@@ -536,10 +536,10 @@ vale para os dois lados. Na suíte, os dois casos são nomeados por **onde a dec
 ### 9.2 Em passo fixo, as duas pocs dão **praticamente** o mesmo estado
 
 ```
-$ ./build/app/src/app -scenario single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
+$ ./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
 frame=2000 player=falcon1 n=... e=... alt=... elev=... agl=... bt=EVADE ...
 
-$ ./build/app/src/app -scenario multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
+$ ./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in   -threads 1 -deterministic 2000 | grep 'frame=2000 player=falcon1'
 frame=2000 player=falcon1 n=... (mesmos campos) ... dec=2001
 ```
 
@@ -606,7 +606,7 @@ Mesmo número de decisões, **threads diferentes**: os agentes rodam dentro do p
 paralelo, um por player — e ainda assim o dump é idêntico com 1, 2 ou 4 threads ([7.3](#73-o-paralelismo-continua-ligado)).
 Os índices de thread não são contíguos porque a numeração é por ordem de primeira chamada
 (`threadTag()`, antes `xnative::ThreadTag`, hoje promovido para
-[`shared/xboard/Board.hpp`](../../../../shared/xboard/Board.hpp) — ver 7.2 do README do
+[`libs/xboard/Board.hpp`](../../../../libs/xboard/Board.hpp) — ver 7.2 do README do
 `single-thread`), e o laço de background também pega um
 índice.
 
@@ -647,15 +647,15 @@ make compare-single-multi
 ./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread
 
 # tempo real (Tacview na porta 1234; Ctrl+C encerra) -- olhe 'dec' e 'thr' no status
-./build/app/src/app -scenario multi-thread
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in
 
 # a decisão está mesmo amarrada ao frame? dec tem de ser (frames + 1)
-./build/app/src/app -scenario multi-thread -threads 1 -deterministic 500 \
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in -threads 1 -deterministic 500 \
   | grep 'frame=500 player=falcon1' | grep -o 'dec=[0-9]*'
 
 # as duas pocs, lado a lado, em passo fixo (iguais até ~1e-6 m -- ver 9.2)
-./build/app/src/app -scenario single-thread -threads 1 -deterministic 2000 | grep 'frame=2000 '
-./build/app/src/app -scenario multi-thread   -threads 1 -deterministic 2000 | grep 'frame=2000 '
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in -threads 1 -deterministic 2000 | grep 'frame=2000 '
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in   -threads 1 -deterministic 2000 | grep 'frame=2000 '
 ```
 
 Para tudo o mais — anatomia do frame, o que vem do framework, a dissecação arquivo por arquivo, o

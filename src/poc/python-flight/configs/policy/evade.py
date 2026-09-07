@@ -31,7 +31,7 @@ estados na mao.
 
 Um script daqui nao tem: `decide()` e chamado sem contexto nenhum sobre o que
 aconteceu antes. O que ele TEM e o dicionario de globais proprio de cada
-aeronave, que sobrevive entre ticks (ver shared/xpyembed/README.md), e a
+aeronave, que sobrevive entre ticks (ver libs/xpyembed/README.md), e a
 propria posicao. Dai o detector de episodio abaixo: entre dois ticks
 CONSECUTIVOS a aeronave anda ~1,6 m (82 m/s a 50 Hz), enquanto entre dois
 episodios de evasao ela passa minutos patrulhando. Um salto de posicao maior
@@ -44,7 +44,7 @@ execucao. Nao ha relogio nem contador de tempo em lugar nenhum desta pasta.
 
 import math
 
-# Indices na ordem canonica de shared/xrlbridge/ObservationFields.hpp.
+# Indices na ordem canonica de libs/xrlbridge/ObservationFields.hpp.
 NORTH_M = 0
 EAST_M = 1
 ALTITUDE_M = 2

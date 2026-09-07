@@ -6,13 +6,13 @@
   um missil se houver arma disponivel (WorldView::weaponReady) e o contato
   estiver dentro do envelope (domain::LaunchPolicy).
 
-  So falcon1 (o unico com 'stores:' no cenario de demo) usa esta arvore --
+  So falcon1 (o unico com 'stores:' no cenario de demo) usa esta arvore -
   os outros tres falcons continuam com o flight_tree.xml de producao. Em
   qualquer aviao SEM StoresMgr, LaunchEnvelope falha sempre (weaponReady fica
-  false), entao o ramo extra e um no-op inerte -- por isso e seguro esta
+  false), entao o ramo extra e um no-op inerte - por isso e seguro esta
   arvore existir sem duplicar a producao byte a byte.
 
-  Prioridade (Fallback, de cima para baixo) -- identica a producao, so com
+  Prioridade (Fallback, de cima para baixo) - identica a producao, so com
   o passo de lancamento inserido dentro do item 2:
     1) combustivel abaixo da reserva      -> volta para a base
     2) manobra de evasao valendo          -> tenta lancar, senao quebra e avisa
@@ -20,7 +20,7 @@
     4) caso contrario                     -> patrulha
 
   So ha 1 missil no cenario de demo: depois do lancamento, weaponReady vira
-  false e os ciclos seguintes caem direto em ReportAndEvade -- a progressao
+  false e os ciclos seguintes caem direto em ReportAndEvade - a progressao
   "detecta -> lanca -> evade" acontece sozinha, sem estado extra na arvore.
 -->
 <root main_tree_to_execute="MainTree">
@@ -52,4 +52,34 @@
 
     </Fallback>
   </BehaviorTree>
+
+  <TreeNodesModel>
+    <Condition ID="FuelLow">
+      <input_port name="margin" type="double" default="0.0">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+    </Condition>
+    <Action ID="ReturnToBase"/>
+    <Condition ID="ContactDetected"/>
+    <Action ID="ReportAndEvade"/>
+    <Condition ID="LaunchEnvelope"/>
+    <Action ID="LaunchMissile"/>
+    <Condition ID="AlertReceived"/>
+    <Action ID="SupportAlert"/>
+    <Action ID="Patrol"/>
+    <Action ID="Navigate"/>
+    <Condition ID="OnnxScore">
+      <input_port name="model" type="std::string" default="">caminho do .onnx (entrada float32[1,28])</input_port>
+      <input_port name="threshold" type="double" default="0.5">limiar de comparacao</input_port>
+      <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+      <input_port name="above" type="bool" default="true">true: SUCCESS se saida > limiar</input_port>
+    </Condition>
+    <Action ID="OnnxPolicy">
+      <input_port name="model" type="std::string" default="">caminho do .onnx da politica</input_port>
+      <input_port name="normalized" type="bool" default="true">saida em [-1,1]</input_port>
+      <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+    </Action>
+    <Action ID="PyDecide">
+      <input_port name="script" type="std::string" default="">caminho do .py que define decide(obs)</input_port>
+      <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+    </Action>
+  </TreeNodesModel>
 </root>

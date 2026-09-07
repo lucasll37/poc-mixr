@@ -35,7 +35,7 @@
 //      mesmo `dt` desce dividido e volta multiplicado.
 //   2) `Simulation::updateTC()` faz `execTime += dt` ANTES do teste de
 //      freeze -- é por isso que pausar tem de deixar de chamar `tcFrame()`,
-//      e não apenas marcar o flag (ver `shared/xclock/ClockStation.cpp`).
+//      e não apenas marcar o flag (ver `libs/xclock/ClockStation.cpp`).
 //   3) `Component::updateTC()` recorre chamando `obj->tcFrame(dt)` nos
 //      filhos, mas `Component::updateData()` chama `obj->updateData(dt)`
 //      DIRETO -- não há `bgFrame()`. As duas recursões não são simétricas.

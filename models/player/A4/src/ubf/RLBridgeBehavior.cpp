@@ -29,7 +29,7 @@ namespace {
 
 // domain::WorldView -> xrlbridge::Observation, campo a campo. E a UNICA
 // traducao entre o tipo do modelo e o tipo da ponte -- ver o "porque" no
-// cabecalho de shared/xrlbridge/RLBridge.hpp.
+// cabecalho de libs/xrlbridge/RLBridge.hpp.
 xrlbridge::Observation toObservation(const domain::WorldView& snap)
 {
    xrlbridge::Observation obs;
@@ -80,7 +80,7 @@ domain::FlightCommand toFlightCommand(const xrlbridge::Command& cmd)
 
 //------------------------------------------------------------------------------
 // genAction() -- chamado pelo Agent (fase 3), depois de updateState(). Nao
-// decide nada: publica o WorldView deste frame em shared/xrlbridge (para o
+// decide nada: publica o WorldView deste frame em libs/xrlbridge (para o
 // host ler depois que o tcFrame() atual terminar) e devolve o comando que o
 // host deixou pendente na chamada anterior.
 //------------------------------------------------------------------------------

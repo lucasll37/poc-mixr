@@ -4,27 +4,29 @@
 // O RUNNER UNICO deste repositorio -- nenhuma poc sob src/poc/ tem mais
 // executavel proprio (ver "Estrutura de um subprojeto" no CLAUDE.md). Um
 // painel FTXUI (estilo btop: cores, navegacao por teclado, redesenho
-// responsivo) capaz de pausar/parar/acelerar/frear, sobre TRES fontes de
-// cenario possiveis (mutuamente exclusivas, ver app/Options.hpp):
-// '-scenario <chave>' do catalogo (as tres proprias deste app, hermeticas,
-// e as pocs em src/poc/**), '-f <arquivo>' fora do catalogo (fixtures de
-// teste), '-folder <pasta>' navegando cenarios de sandbox em disco. Mora
+// responsivo) capaz de pausar/acelerar/frear, sobre DUAS fontes de cenario
+// possiveis (mutuamente exclusivas, ver app/Options.hpp): '-f <arquivo>'
+// (fixtures de teste, ou qualquer cenario apontado direto -- assume a frota
+// falcon1..4), '-folder <pasta>' navegando cenarios de sandbox em disco
+// (frota descoberta em runtime -- e o caminho para carregar as pocs de
+// src/poc/**, ex.: '-f src/poc/dis/single-thread/configs/scenario.edl.in'). Mora
 // fora de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o
 // alvo se chama 'app', nao 'dashboard' (nome interno das classes, que nao
 // mudou).
 //
-// "Carregar outro cenario"/"reiniciar"/"parar" sao um REEXEC de si mesmo
-// (app/Respawn.hpp) -- nunca uma segunda Station no mesmo processo. Ver o
-// cabecalho de Respawn.hpp para o "porque".
+// "Reiniciar" e um REEXEC de si mesmo (app/Respawn.hpp) -- nunca uma
+// segunda Station no mesmo processo. Ver o cabecalho de Respawn.hpp para o
+// "porque".
 //
 // Opcoes de linha de comando (lista completa em app/Options.hpp):
-//   -scenario <chave> | -f <arquivo> | -folder <pasta>   (um dos tres)
-//   -threads <N> | -deterministic <N> | -parallel-decision | -internal-picker
+//   -f <arquivo> | -folder <pasta>   (um dos dois)
+//   -threads <N> | -deterministic <N> | -parallel-decision
 //
 // ESTE ARQUIVO SO ORQUESTRA -- mesma divisao de app/ das outras pocs:
 //
 //    app/Options.hpp             argv -> struct
-//    app/ScenarioCatalog.hpp     as chaves de cenario que este poc conhece
+//    app/AdHocScenario.hpp       ScenarioEntry, e a entrada de '-f <arquivo>'
+//    app/ScenarioFolder.hpp      descoberta de '-folder <pasta>' em disco
 //    app/ScenarioPickerScreen    tela de selecao (FTXUI), sem Station nenhuma
 //    app/TerrainData.hpp         .hgt em disco (copia verbatim de single-thread)
 //    app/ScenarioTemplate.hpp    .edl.in -> .edl (copia verbatim)
@@ -35,6 +37,7 @@
 //    app/Respawn.hpp             reexec de si mesmo (NOVO)
 //
 
+#include "app/AdHocScenario.hpp"
 #include "app/BehaviorTreeView.hpp"
 #include "app/DashboardLoop.hpp"
 #include "app/EdlEditorState.hpp"
@@ -43,7 +46,6 @@
 #include "app/MetaObjectReport.hpp"
 #include "app/Options.hpp"
 #include "app/Respawn.hpp"
-#include "app/ScenarioCatalog.hpp"
 #include "app/ScenarioFolder.hpp"
 #include "app/ScenarioPickerScreen.hpp"
 #include "app/ScenarioTemplate.hpp"
@@ -78,7 +80,7 @@ const double cruiseThrottle{0.95};
 // A FROTA nao mora mais aqui: e do CENARIO (ScenarioEntry::fleet). Foi o que
 // mudou quando o ./app virou o runner unico das pocs -- 'bandit' tem UM player
 // so, e uma lista fixa de falcon1..4 no main abortaria nele. Ver
-// app/ScenarioCatalog.hpp.
+// app/AdHocScenario.hpp.
 
 const std::string terrainDir{"./shared/data/terrain/srtm/"};
 const std::string terrainTile{"S23W043"};
@@ -121,13 +123,12 @@ int main(int argc, char* argv[])
 
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
-   // Tres modos, mutuamente exclusivos ('-folder' tem prioridade sobre os
-   // outros dois -- ver app/Options.hpp): '-folder <pasta>' navega uma
-   // pasta de sandbox em disco; '-f <arquivo>' e um .edl/.edl.in fora do
-   // catalogo (fixtures de teste); nenhum dos dois usa o catalogo estatico
-   // do '-scenario <chave>'/tela de selecao. 'chosen' e preenchido POR
-   // VALOR pelo ramo que se aplicar -- mais simples que balancear ponteiros
-   // pra storages de lifetimes diferentes (o design anterior).
+   // Dois modos, mutuamente exclusivos ('-folder' tem prioridade sobre
+   // '-f' -- ver app/Options.hpp): '-folder <pasta>' navega uma pasta de
+   // sandbox em disco; '-f <arquivo>' e um .edl/.edl.in qualquer (fixtures
+   // de teste inclusive). 'chosen' e preenchido POR VALOR pelo ramo que se
+   // aplicar -- mais simples que balancear ponteiros pra storages de
+   // lifetimes diferentes (o design anterior).
    app::ScenarioEntry chosen{};
 
    if (!opts.scenarioFolder.empty()) {
@@ -137,8 +138,8 @@ int main(int argc, char* argv[])
          return EXIT_FAILURE;
       }
 
-      // '-scenario', combinado com '-folder', deixa de ser uma chave do
-      // catalogo e vira o NOME DA SUBPASTA -- pula a tela (ver app/Options.hpp).
+      // '-scenario', combinado com '-folder', e o NOME DA SUBPASTA -- pula
+      // a tela (ver app/Options.hpp).
       std::string nome{opts.scenarioKey};
       if (nome.empty()) {
          std::vector<app::PickerItem> items;
@@ -169,34 +170,13 @@ int main(int argc, char* argv[])
    } else if (!opts.scenarioPath.empty()) {
       chosen = app::adHocScenario(opts.scenarioPath);
 
-   } else if (opts.scenarioKey.empty() && !opts.internalPicker) {
-      // Nenhum dos tres modos foi passado -- e nao e '-internal-picker'
-      // (o reexec interno de "carregar outro cenario"/"parar", ver
-      // app/Options.hpp). Uso normal desta aplicacao NUNCA "adivinha" o que
-      // abrir: e obrigatorio passar uma das tres opcoes explicitamente.
-      std::cerr << "app: e obrigatorio passar -scenario <chave>, -f <arquivo> ou -folder <pasta>"
+   } else {
+      // Nenhum dos dois modos foi passado. Uso normal desta aplicacao NUNCA
+      // "adivinha" o que abrir: e obrigatorio passar uma das duas opcoes
+      // explicitamente.
+      std::cerr << "app: e obrigatorio passar -f <arquivo> ou -folder <pasta>"
                 << std::endl;
       return EXIT_FAILURE;
-
-   } else {
-      // '-scenario <chave>' direto, OU '-internal-picker' sem chave --
-      // mostra a tela de selecao do catalogo ANTES de tocar em Station
-      // nenhuma (nao precisa de reexec aqui, e a primeira carga do
-      // processo desse ramo).
-      std::string scenarioKey{opts.scenarioKey};
-      if (scenarioKey.empty()) {
-         scenarioKey = app::runScenarioPicker();
-         if (scenarioKey.empty()) {
-            std::cout << "Nenhum cenario selecionado. Ate mais." << std::endl;
-            return 0;
-         }
-      }
-      const app::ScenarioEntry* const found{app::findScenario(scenarioKey)};
-      if (found == nullptr) {
-         std::cerr << "app: cenario desconhecido: '" << scenarioKey << "'" << std::endl;
-         return EXIT_FAILURE;
-      }
-      chosen = *found;
    }
 
    const app::ScenarioEntry& cenario{chosen};
@@ -205,7 +185,7 @@ int main(int argc, char* argv[])
    // mesmo lugar onde 'dataRecorder:'/'msgFeed:' do .edl ja escrevem
    // recordings/mensagens (ver o comentario de runIdNow()) -- nunca um
    // caminho global fixo. 'templatePath' e sempre '<pasta-do-cenario>/
-   // configs/<arquivo>' (catalogo, poc ou sandbox de '-folder'); subir dois
+   // configs/<arquivo>' (poc via '-f', ou sandbox de '-folder'); subir dois
    // niveis acha essa pasta sem o chamador ter de saber de qual familia o
    // cenario veio.
    std::filesystem::path scenarioDir{
@@ -215,9 +195,9 @@ int main(int argc, char* argv[])
    // ./x.edl' na propria raiz, ou um caminho absoluto de um componente so)
    // faz os dois 'parent_path()' encalharem em "" ou na RAIZ do sistema de
    // arquivos -- e o log tentaria abrir '/data/logs/...'. Nenhum cenario de
-   // catalogo/poc/sandbox cai aqui (todos tem a forma '<pasta>/configs/
-   // <arquivo>'); so um '-f' avulso foge do padrao. Fallback: o mesmo lugar
-   // que TODO log deste app usava antes desta mudanca.
+   // poc/sandbox cai aqui (todos tem a forma '<pasta>/configs/<arquivo>');
+   // so um '-f' avulso foge do padrao. Fallback: o mesmo lugar que TODO log
+   // deste app usava antes desta mudanca.
    if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./app";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (cenario.key + "_" + runId + ".log")).string());
 
@@ -237,7 +217,7 @@ int main(int argc, char* argv[])
    // 'build/tests-fixtures'/'build/tests-determinism' (ver a armadilha 9 da
    // secao "Testes automatizados" do CLAUDE.md). Antes disto, TODO cenario
    // rodado por este binario -- os proprios ou os de qualquer poc/fixture
-   // passados por '-f'/'-scenario' -- escrevia em './app/configs/<key>.
+   // passados por '-f'/'-folder' -- escrevia em './app/configs/<key>.
    // generated.edl', poluindo a pasta de configuracao do app com o gerado de
    // pocs inteiramente alheias. Chave-por-'cenario.key' e mantida (nao um
    // nome fixo) para nao reabrir a colisao entre cenarios concorrentes que
@@ -306,13 +286,13 @@ int main(int argc, char* argv[])
 
    switch (action) {
       case app::DashboardExit::Restart: {
-         // Cenario de '-folder': 'cenario.key' e o nome da SUBPASTA, nao uma
-         // chave do catalogo -- reexec precisa levar '-folder' junto, ou
-         // '-scenario <nome-da-subpasta>' sozinho cairia no catalogo estatico
-         // e provavelmente acharia cenario nenhum.
+         // Cenario de '-folder': 'cenario.key' e o nome da SUBPASTA -- reexec
+         // precisa levar '-folder' junto. Senao, o cenario veio de '-f'
+         // ('cenario.templatePath' e o mesmo caminho que 'opts.scenarioPath'
+         // ja tinha).
          std::vector<std::string> args{!opts.scenarioFolder.empty()
             ? std::vector<std::string>{"-folder", opts.scenarioFolder, "-scenario", cenario.key}
-            : std::vector<std::string>{"-scenario", cenario.key}};
+            : std::vector<std::string>{"-f", cenario.templatePath}};
          // '-threads' e escolha explicita do usuario (opts.threadsOverride==0
          // significa "sem override" -- ver resolveTcThreadCount()); sem
          // repassar, o reexec recalcularia pelo default de hardware.
@@ -323,11 +303,6 @@ int main(int argc, char* argv[])
          app::respawnSelf(args);
          break;   // [[noreturn]], nunca chega aqui
       }
-      case app::DashboardExit::ChangeScenario:
-         // '-internal-picker', nao vazio -- ver app/Options.hpp. Sem essa
-         // flag, o processo respawnado recusaria de cara (opcao obrigatoria).
-         app::respawnSelf({"-internal-picker"});
-         break;   // [[noreturn]], nunca chega aqui
       case app::DashboardExit::RunEdited: {
          // O texto ja foi escrito em editedScenarioPath() e validado pelo
          // 'edlcheck' dentro de runDashboard() -- so falta o reexec com

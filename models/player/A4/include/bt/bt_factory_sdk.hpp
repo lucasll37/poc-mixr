@@ -6,8 +6,8 @@
 
 namespace bt_nodes {
 
-// Registra os nos que dependem do SDK do poc-mixr (shared/xinfer,
-// shared/xpyembed) -- separados de bt/bt_factory.hpp DE PROPOSITO.
+// Registra os nos que dependem do SDK do poc-mixr (libs/xinfer,
+// libs/xpyembed) -- separados de bt/bt_factory.hpp DE PROPOSITO.
 //
 // O PORQUE: bt/bt_factory.cpp e compilado tanto pelo plugin quanto por
 // models/player/A4/tests (alvo 'test-tree'), e o test-tree tem uma propriedade

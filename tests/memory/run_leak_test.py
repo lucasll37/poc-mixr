@@ -101,7 +101,7 @@ def ultimo_states(cenario):
 
     Essa estrutura fica FORA do ref-counting do MIXR, entao o relatorio 'meta='
     nao a enxerga: um mapa que crescesse a cada player visto passaria batido
-    pelos contadores de instancia. E o unico vazamento plausivel do shared/xmsg
+    pelos contadores de instancia. E o unico vazamento plausivel do libs/xmsg
     que o resto deste teste nao pegaria.
     """
     nome = Path(cenario).name.replace(".edl.in", ".jsonl")

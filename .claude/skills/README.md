@@ -2,7 +2,7 @@
 
 Nenhuma skill foi criada na reestruturação da camada de extensão (sessão de 2026-09-06): todo
 procedimento repetível deste repositório já é um alvo de `Makefile` de uma linha
-(`build`/`test`/`edl-lint`/`edl-check`/`docs`/...) — a premissa declarada do projeto é que "o
+(`build`/`test`/`docs`/`open-edl-builder`/...) — a premissa declarada do projeto é que "o
 Makefile é a única fonte de automação" (não há CI configurado). O único fluxo multi-passo
 genuinamente humano ("criar um modelo novo") já está coberto por `CONTRIBUTING.md` →
 `models/README.md` → `models/REGISTRO.md`; duplicar isso numa skill não agregaria.

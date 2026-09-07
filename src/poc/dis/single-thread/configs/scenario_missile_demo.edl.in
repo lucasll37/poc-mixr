@@ -30,7 +30,7 @@
 //      precisa mudar 'provides:' por causa disto (ver o "porque" no
 //      CLAUDE.md, secao do missil).
 //   5) msgFeed ganha um MsgReport do ciclo de vida do missil (mode do
-//      player, via shared/xmsg) -- a forma mais barata e confiavel de ver
+//      player, via libs/xmsg) -- a forma mais barata e confiavel de ver
 //      lancamento/detonacao/destruicao no NDJSON, sem depender do
 //      REID_WEAPON_RELEASED/REID_WEAPON_DETONATION nativos (que abortam o
 //      processo -- mesma familia do bug ja documentado no CLAUDE.md; por

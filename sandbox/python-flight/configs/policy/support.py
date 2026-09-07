@@ -24,7 +24,7 @@ precisa lembrar de nada.
 
 import math
 
-# Indices na ordem canonica de shared/xrlbridge/ObservationFields.hpp.
+# Indices na ordem canonica de libs/xrlbridge/ObservationFields.hpp.
 NORTH_M = 0
 EAST_M = 1
 TERRAIN_ELEV_M = 11

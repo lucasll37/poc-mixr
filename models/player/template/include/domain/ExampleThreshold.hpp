@@ -10,7 +10,7 @@
 // comparacao de type_info deste toolchain degrada para strcmp entre objetos
 // RTLD_LOCAL (ver o comentario equivalente, mais detalhado, em
 // models/player/missile/src/domain/Guidance.hpp e em
-// shared/xplugin/PluginRegistry.cpp). Aninhar sob o namespace proprio deste
+// libs/xplugin/PluginRegistry.cpp). Aninhar sob o namespace proprio deste
 // modelo elimina a colisao de graca -- troque "xtemplate" pelo nome do SEU
 // modelo ao copiar este diretorio (ver docs/PRIMEIROS-PASSOS.md).
 namespace mixr {
@@ -28,7 +28,7 @@ namespace domain {
 // desengajar quando ele cai BEM abaixo" evita alternar a cada amostra
 // quando o sinal de entrada oscila perto de UM limiar so. Ver
 // domain::ThreatPolicy/PatrolPlan em models/player/A4 para versoes de
-// producao da mesma ideia, e shared/xmsg/rules/Schmitt.hpp para outra.
+// producao da mesma ideia, e libs/xmsg/rules/Schmitt.hpp para outra.
 //
 // onValue engaja (a partir de onValue, inclusive); offValue desengaja
 // (abaixo de offValue, exclusive). Espera-se offValue <= onValue -- com os

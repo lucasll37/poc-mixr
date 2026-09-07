@@ -9,7 +9,7 @@ Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../../shared/xplugin/PluginAbi.hpp)).
+[`libs/xplugin/PluginAbi.hpp`](../../../libs/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. As entradas anteriores à criação deste arquivo foram reconstruídas do código e dos

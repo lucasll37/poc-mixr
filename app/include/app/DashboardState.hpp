@@ -70,7 +70,7 @@ struct EntityState
    bool hasThrust{};
    double thrustLb{};
 
-   // shared/xboard::Readout -- ja agnostico por construcao (chave e int
+   // libs/xboard::Readout -- ja agnostico por construcao (chave e int
    // playerId, valor e string livre que o MODELO escreve).
    std::string behaviorLabel{"--"};
    long decisions{};
@@ -80,7 +80,7 @@ struct EntityState
    std::string alertSender;
    std::string alertContact;
 
-   // shared/xtrack::nearestHostileTrack -- exclusivo de AirVehicle hoje (ver
+   // libs/xtrack::nearestHostileTrack -- exclusivo de AirVehicle hoje (ver
    // o comentario no .cpp); so preenchido quando o cast funciona.
    bool hasTrack{};
    std::string trackName;
@@ -122,7 +122,7 @@ struct BackgroundInfo
    // O SOCKET, nao so um "ligado/desligado": e a duvida real ao depurar
    // ("o Tacview nao mostra nada" -- a porta subiu? alguem conectou? caiu?
    // esta saindo byte?). Tudo vem de getters de leitura de
-   // shared/xtacview (TacviewOutput::telemetry()), sem amostrar nada novo.
+   // libs/xtacview (TacviewOutput::telemetry()), sem amostrar nada novo.
    bool tacviewEnabled{};          // ha um ( TacviewOutput ) no cenario
    bool tacviewInitialized{};      // socket de escuta de pe
    bool tacviewInitFailed{};       // nem socket nem arquivo subiram

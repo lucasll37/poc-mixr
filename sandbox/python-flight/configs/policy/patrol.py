@@ -7,7 +7,7 @@ CONTRATO (o mesmo dos quatro scripts desta pasta)
 
     def decide(obs) -> (heading_deg, altitude_m, speed_kts)
 
-`obs` sao 28 floats na ORDEM CANONICA de shared/xrlbridge/ObservationFields.hpp
+`obs` sao 28 floats na ORDEM CANONICA de libs/xrlbridge/ObservationFields.hpp
 -- a MESMA ordem da entrada de um .onnx, o que permite trocar um script destes
 por uma politica treinada sem mexer em mais nada.
 
@@ -21,7 +21,7 @@ Aqui a patrulha e GEOMETRICA: uma orbita de raio fixo em torno da base
 (a origem da area de jogo, o mesmo ponto para onde o rtb.py volta). O comando
 sai da posicao ATUAL a cada tick, entao qualquer desvio se corrige sozinho e
 a figura fecha. E tambem o unico desenho possivel aqui: um script Python NAO
-recebe 'dt' (a fronteira de shared/xpyembed e "28 floats entram, 3 saem"),
+recebe 'dt' (a fronteira de libs/xpyembed e "28 floats entram, 3 saem"),
 entao nada nesta pasta pode integrar tempo.
 
     rumo = marcacao_para_a_base - 90 graus + correcao_de_raio
@@ -36,7 +36,7 @@ O cenario da uma altitude inicial diferente para cada falcon (1750 a 2100 m),
 calculada a mao contra o pico do circuito de cada um. Este script nao precisa
 saber disso: ele guarda a altitude da PRIMEIRA decisao como a sua altitude de
 cruzeiro -- cada aeronave tem o seu proprio dicionario de globais, entao a
-variavel abaixo e POR AERONAVE (ver shared/xpyembed/README.md). Sobre isso
+variavel abaixo e POR AERONAVE (ver libs/xpyembed/README.md). Sobre isso
 vai um piso de terreno + FOLGA_TERRENO_M, que substitui a conta manual: onde
 a serra sobe, a orbita sobe junto.
 
@@ -59,7 +59,7 @@ compartilhado desta pasta.)
 
 import math
 
-# Indices na ordem canonica de shared/xrlbridge/ObservationFields.hpp.
+# Indices na ordem canonica de libs/xrlbridge/ObservationFields.hpp.
 NORTH_M = 0
 EAST_M = 1
 ALTITUDE_M = 2

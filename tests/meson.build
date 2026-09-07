@@ -5,7 +5,7 @@
 # direto, e esses fontes sairam para models/player/A4/. Moraram junto com o que
 # testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
-#   domain-rules  as primitivas de deteccao do shared/xmsg (host, ficaram)
+#   domain-rules  as primitivas de deteccao do libs/xmsg (host, ficaram)
 #   scenario      o binario de verdade, com fixture, asserções sobre 'frame='
 #   memory        vazamento, pelos contadores de instancia do MIXR
 #   determinism   o mesmo estado com 1, 2 e 4 threads
@@ -34,12 +34,12 @@ dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
 model_build  = raiz / 'models' / 'player' / 'A4' / 'build'
 
 # ------------------------------------------------------------------------------
-# Camada 1 -- as primitivas de deteccao do shared/xmsg
+# Camada 1 -- as primitivas de deteccao do libs/xmsg
 #
-# Sao do HOST (shared/xmsg), nao do modelo, entao ficaram. Tao livres de MIXR
+# Sao do HOST (libs/xmsg), nao do modelo, entao ficaram. Tao livres de MIXR
 # quanto o domain/ que foi embora: regra pura, milissegundos.
 # ------------------------------------------------------------------------------
-xmsg_rules_dir = raiz / 'shared' / 'xmsg'
+xmsg_rules_dir = raiz / 'libs' / 'xmsg'
 test_domain_rules = executable('test-domain-rules',
     files('domain/test_xmsg_rules.cpp') + files(
         xmsg_rules_dir / 'rules/Deadband.cpp',
@@ -47,18 +47,18 @@ test_domain_rules = executable('test-domain-rules',
         xmsg_rules_dir / 'rules/RateWindow.cpp',
         xmsg_rules_dir / 'rules/Schmitt.cpp',
     ),
-    include_directories : include_directories('../shared'),
+    include_directories : include_directories('../libs'),
     dependencies        : [gtest_dep, gtest_main_dep],
     install             : false,
 )
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
 
-# A derivacao de sementes de shared/xrandom -- fnv1a64/deriveSeed, puras, sem
+# A derivacao de sementes de libs/xrandom -- fnv1a64/deriveSeed, puras, sem
 # MIXR. Header-only, entao nao ha .cpp companheiro (ao contrario de
-# test_domain_rules acima) -- so o include_directories ate shared/.
+# test_domain_rules acima) -- so o include_directories ate libs/.
 test_xrandom = executable('test-xrandom',
     files('domain/test_xrandom.cpp'),
-    include_directories : include_directories('../shared'),
+    include_directories : include_directories('../libs'),
     dependencies        : [gtest_dep, gtest_main_dep],
     install             : false,
 )
@@ -118,7 +118,7 @@ test_app_map_fit = executable('test-app-map-canvas-fit',
 )
 test('app-map-canvas-fit', test_app_map_fit, suite: 'domain', timeout: 60)
 
-# O buffer em memoria de shared/xlog -- a fonte da aba "Log" do ./app -- e
+# O buffer em memoria de libs/xlog -- a fonte da aba "Log" do ./app -- e
 # as duas regras puras do painel (filtro por nivel minimo e o ciclo dele).
 # O buffer e estado GLOBAL do processo de proposito: e o que faz o LOG(...)
 # do plugin do modelo (um .so aberto por dlopen) cair no MESMO lugar que o
@@ -245,9 +245,9 @@ test_app_edl_editor = executable('test-app-edl-editor-state',
 test('app-edl-editor-state', test_app_edl_editor, suite: 'domain', timeout: 60)
 
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
-# de shared/xtrack, separada da travessia AirVehicle->OnboardComputer->
+# de libs/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
-# shared/xtrack/TrackQuery.hpp. Alimenta models/player/A4/src/ubf/
+# libs/xtrack/TrackQuery.hpp. Alimenta models/player/A4/src/ubf/
 # FlightState.cpp (a percepcao do modelo).
 test_track_selection = executable('test-track-selection',
     files('domain/test_track_selection.cpp'),
@@ -258,10 +258,10 @@ test_track_selection = executable('test-track-selection',
 )
 test('track-selection', test_track_selection, suite: 'domain', timeout: 60)
 
-# A UNICA responsabilidade de shared/xboard -- ser um mapa seguro entre N
+# A UNICA responsabilidade de libs/xboard -- ser um mapa seguro entre N
 # escritores concorrentes (o pool T/C, um por player) e 1 leitor (o laco
 # de background) -- ver o "porque" de ser a UNICA shared_library() de
-# shared/ em xboard/Board.hpp. Nunca tinha teste direto antes desta
+# libs/ em xboard/Board.hpp. Nunca tinha teste direto antes desta
 # suite: so validacao indireta pelos dumps end-to-end.
 test_xboard_concurrency = executable('test-xboard-concurrency',
     files('domain/test_xboard_concurrency.cpp'),
@@ -272,7 +272,7 @@ test_xboard_concurrency = executable('test-xboard-concurrency',
 )
 test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60)
 
-# shared/xinfer -- a DEGRADACAO do motor de inferencia: modelo ausente,
+# libs/xinfer -- a DEGRADACAO do motor de inferencia: modelo ausente,
 # arquivo que nao e .onnx, id invalido. Nenhuma dessas entradas pode derrubar
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
 # consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
@@ -292,7 +292,7 @@ test_xinfer = executable('test-xinfer',
 )
 test('xinfer-degradacao', test_xinfer, suite: 'domain', timeout: 120)
 
-# shared/xpyembed -- degradacao E isolamento por chave. O segundo e o que
+# libs/xpyembed -- degradacao E isolamento por chave. O segundo e o que
 # mantem o check-multi-thread verde: a ordem de aquisicao do GIL nao e
 # deterministica, entao dois avioes rodando o mesmo script NAO podem
 # compartilhar globais.
@@ -305,7 +305,7 @@ test_xpyembed = executable('test-xpyembed',
 )
 test('xpyembed-isolamento', test_xpyembed, suite: 'domain', timeout: 120)
 
-# shared/xrlbridge -- o contrato de dados com o treino (ordem canonica dos 28
+# libs/xrlbridge -- o contrato de dados com o treino (ordem canonica dos 28
 # campos de observacao, a desnormalizacao de acao) e o mutex por tras de
 # setPendingCommand/getPendingCommand/setObservation/getObservation. Nunca
 # tinha teste direto nenhum antes deste arquivo -- so a contagem de campos,
@@ -317,7 +317,7 @@ test_xrlbridge = executable('test-xrlbridge',
 )
 test('xrlbridge-contrato', test_xrlbridge, suite: 'domain', timeout: 60)
 
-# shared/xjoystick -- so o que da para isolar sem Station/Simulation/
+# libs/xjoystick -- so o que da para isolar sem Station/Simulation/
 # AirVehicle/hardware de verdade: os setters de slot e o caminho de
 # DEGRADACAO sem joystick fisico. As armadilhas de verdade (desengate dos
 # hold modes do Autopilot, inversao do manete) continuam so validadas
@@ -399,44 +399,15 @@ foreach poc : pocs
          timeout: 1800, is_parallel: false)
 endforeach
 
-# ------------------------------------------------------------------------------
-# app (o dashboard, ./app/ na raiz) -- o UNICO cenario PROPRIO (ver
-# ../app/include/app/ScenarioCatalog.hpp; havia tres -- "patrol"/"intercept"/
-# "intercept_missile" -- reduzidos a este, que ja e superset dos outros dois),
-# rodado com '-deterministic' (sem TUI, sem TTY nenhum). Nao usa
-# scenario_runner (que e '-f'/fixture-based, especifico de
-# single-thread/multi-thread) nem checa o canal de mensagens (app nao linka
-# shared/xmsg) -- ver o cabecalho de run_app_test.py.
-# ------------------------------------------------------------------------------
-app_runner = files('scenario/run_app_test.py')
-test('scenario-app-intercept_missile', py,
-     args: app_runner + ['--binario', app.full_path(),
-                         '--scenario', 'intercept_missile', '--frames', '300'],
-     depends: app, workdir: raiz, suite: 'scenario',
-     timeout: 300, is_parallel: false)
-
-# A IDENTIDADE dos objetos no stream ACMI: tipo, cor e modelo. Nenhum dos
-# testes acima olha o .acmi -- eles afirmam sobre as linhas 'frame=' do dump.
-# Este abre a gravacao do cenario com missil e exige taxonomia e cor validas,
-# inclusive no objeto criado em RUNTIME (o missil, cujo nome sintetico
-# "W%05d" nao esta em mapa nenhum do EDL e so resolve pela identidade que o
-# host publica). Ver o cabecalho do script.
-test('scenario-app-tacview-identidade', py,
-     args: files('scenario/run_tacview_identity_test.py') + [
-         '--binario', app.full_path(), '--frames', '1200'],
-     depends: app, workdir: raiz, suite: 'scenario',
-     timeout: 300, is_parallel: false)
-
-# 'adHocScenario()' (ScenarioCatalog.cpp) casa '-f <arquivo>' contra o
-# templatePath de entradas ja catalogadas antes de assumir falcon1..4 --
-# full-systems-nav (frota {"a4"}) provou que a suposicao cega quebrava.
-# Ver o cabecalho do script para o porque de NAO haver um segundo caso de
-# "descoberta generica" (tentado e revertido -- quebra o modo 'intruder').
-test('scenario-adhoc-fleet', py,
-     args: files('scenario/run_adhoc_fleet_test.py') + [
-         '--binario', app.full_path(), '--frames', '50'],
-     depends: app, workdir: raiz, suite: 'scenario',
-     timeout: 300, is_parallel: false)
+# NAO HA MAIS um teste 'scenario-adhoc-fleet' aqui: ele provava que
+# adHocScenario() ('-f <arquivo>') casava o caminho contra um catalogo
+# estatico de cenarios antes de assumir falcon1..4 -- esse catalogo foi
+# removido (ver CLAUDE.md). '-f' hoje SEMPRE assume falcon1..4; um cenario
+# com frota diferente (ex.: full-systems-nav, frota {"a4"}) deve ser
+# carregado por '-folder <pasta>' em vez de '-f' -- a mesma propriedade que
+# este teste defendia (full-systems-nav com a frota certa) continua coberta
+# por 'scenario-folder' logo abaixo, que carrega o MESMO .edl.in via
+# '-folder'.
 
 # './app -folder <pasta>' -- a navegacao por pasta de cenarios de sandbox
 # (app/ScenarioFolder.hpp). Ponta a ponta pelo caminho NAO-INTERATIVO
@@ -457,12 +428,12 @@ test('scenario-folder', py,
 # porta do Tacview que conecta e para de ler. Ver o cabecalho do script.
 test('scenario-app-quit', py,
      args: files('scenario/run_app_quit_test.py') + [
-         '--binario', app.full_path(), '--scenario', 'intercept_missile'],
+         '--binario', app.full_path(), '--scenario', 'onnx-policy'],
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
 # A MESMA prova, agora num cenario COM 'networks:'. Nao e redundante com a de
-# cima: o cenario proprio do ./app e hermetico, e por isso a TUI
+# cima: o cenario acima e hermetico, e por isso a TUI
 # nunca tinha aberto uma Station com lista de redes -- foi exatamente ai que
 # tres over-unref de Station::getNetworks() (que, ao contrario de
 # getPlayers(), NAO e pre-ref()'d) ficaram latentes ate o ./app virar o runner
@@ -589,7 +560,7 @@ test_plugin_load = executable('test-plugin-load',
     files('plugin/test_plugin_load.cpp'),
     cpp_args            : ['-DMODEL_PLUGIN_SO="' + modelo_so + '"'],
     link_args           : rpath_link_args,
-    include_directories : include_directories('../shared'),
+    include_directories : include_directories('../libs'),
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_abi_dep],
     install             : false,
     build_rpath         : mixr_libdir,
@@ -671,8 +642,8 @@ test('plugin-deposito-terceiro', py,
 test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
-# tools/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo acima)
-# nao pode acusar erro nos 12 cenarios REAIS do repositorio -- ver o
+# src/ui/scripts/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo
+# acima) nao pode acusar erro nos cenarios REAIS do repositorio -- ver o
 # cabecalho de tools/test_edl_lint.py.
 test('edl-lint', py, args: files('tools/test_edl_lint.py'),
      workdir: raiz, suite: 'tools', timeout: 60)

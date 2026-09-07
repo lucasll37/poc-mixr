@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# O RNG de patrulha (shared/xrandom + domain::PatrolPlan::setHeadingJitter):
+# O RNG de patrulha (libs/xrandom + domain::PatrolPlan::setHeadingJitter):
 # a MESMA patrolMasterSeed tem de dar o MESMO estado com 1, 2 e 4 threads de
 # tempo critico -- e DUAS sementes DIFERENTES tem de dar estados DIFERENTES,
 # tambem em qualquer numero de threads (prova que quem muda o resultado e a

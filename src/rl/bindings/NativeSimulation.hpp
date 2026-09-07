@@ -16,12 +16,12 @@ namespace rl {
 // que pybind11 embutido promete (sem round-trip de rede por passo).
 //
 // V1 -- UM UNICO agente RL por processo, sem chave por player id (ver o
-// mesmo limite em shared/xrlbridge/RLBridge.hpp e
+// mesmo limite em libs/xrlbridge/RLBridge.hpp e
 // models/player/A4/include/ubf/RLBridgeBehavior.hpp).
 //
 // 'playerName' TEM DE SER O MESMO PLAYER configurado com
 // ( RLBridgeBehavior ) no .edl (default: falcon1) -- BUG CONFIRMADO E
-// CORRIGIDO: como shared/xrlbridge nao tem chave por player id, o
+// CORRIGIDO: como libs/xrlbridge nao tem chave por player id, o
 // Command/Observation trocados por step()/reset() sao SEMPRE os do player
 // que o .edl escolheu, nao os do 'playerName' passado aqui. Um valor
 // diferente (typo, ou um player que existe mas nao e o configurado com
@@ -36,7 +36,7 @@ namespace rl {
 // nao pode conhecer (tests/guard/check_host_opaco.sh).
 //
 // SO PODE EXISTIR UMA Station POR PROCESSO -- CONFIRMADO, nao e mais um
-// risco hipotetico. shared/xplugin sela o registro de plugins depois do
+// risco hipotetico. libs/xplugin sela o registro de plugins depois do
 // PRIMEIRO edl_parser() (mixr::xplugin::seal(), dentro de buildStation());
 // um SEGUNDO NativeSimulation no mesmo processo, ao chamar reset() pela
 // primeira vez, cai em buildStation() -> edl_parser() de novo e o registro
@@ -70,7 +70,7 @@ public:
    // RESET_EVENT + o frame de assentamento).
    mixr::xrlbridge::Observation reset();
 
-   // 1. publica 'cmd' em shared/xrlbridge (RLBridgeBehavior::genAction() o
+   // 1. publica 'cmd' em libs/xrlbridge (RLBridgeBehavior::genAction() o
    //    consome dentro do tcFrame() abaixo);
    // 2. station->tcFrame(dt); station->updateData(dt) -- mesma dupla chamada
    //    de app::runDeterministic(), ja provada deterministica;

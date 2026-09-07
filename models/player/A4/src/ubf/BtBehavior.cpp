@@ -14,6 +14,7 @@
 
 #include "mixr/models/player/Player.hpp"
 
+#include <cstdlib>
 #include <exception>
 #include <mutex>
 
@@ -49,6 +50,12 @@ void BtBehavior::copyData(const BtBehavior& org, const bool)
 
    tune = org.tune;
 
+   // O monitor do Groot (se ligado) referencia a 'tree' antiga -- derrubar
+   // ANTES dela sumir (mesmo motivo do reset()/shutdownNotification()
+   // abaixo). Reconstroi sozinho no proximo buildTree(), se o env var ainda
+   // apontar para o nome deste player.
+   treePublisher_.reset();
+
    // A arvore NAO e copiada (BT::Tree e move-only e cada aeronave precisa
    // da sua): a copia reconstroi no primeiro genAction().
    treeBuilt = false;
@@ -67,6 +74,7 @@ void BtBehavior::reset()
    patrol.reset();
    plansReady = true;
 
+   treePublisher_.reset();  // ver o comentario de copyData()
    if (treeValid) tree.haltTree();
    tree = BT::Tree();
    treeBuilt = false;
@@ -76,6 +84,7 @@ void BtBehavior::reset()
 
 bool BtBehavior::shutdownNotification()
 {
+   treePublisher_.reset();  // ver o comentario de copyData()
    if (treeValid) tree.haltTree();
    tree = BT::Tree();
    treeValid = false;
@@ -87,8 +96,8 @@ bool BtBehavior::shutdownNotification()
 // configurePlans() -- traduz os numeros do EDL para as regras de negocio
 // puras de domain/. E o unico ponto em que BtTuning encontra domain::*.
 //
-// E tambem o unico ponto em que a hierarquia de sementes de shared/xrandom
-// e calculada (ver o cabecalho de DeterministicRng.hpp e a secao "shared/
+// E tambem o unico ponto em que a hierarquia de sementes de libs/xrandom
+// e calculada (ver o cabecalho de DeterministicRng.hpp e a secao "libs/
 // xrandom" do CLAUDE.md para o "porque" completo). Resumo: a sub-semente de
 // cada player vem de um HASH DO PROPRIO NOME, nunca de ordem de descoberta
 // ou de processamento entre players -- essa ordem nao e garantida neste
@@ -143,9 +152,46 @@ void BtBehavior::buildTree()
    try {
       tree = btFactory.createTreeFromFile(tune.treeFile, BT::Blackboard::create());
       treeValid = true;
+      startGrootMonitorIfRequested();
    } catch (const std::exception& ex) {
       LOG(ERROR) << "[BtBehavior] falha ao carregar a arvore: " << ex.what();
       treeValid = false;
+   }
+}
+
+//------------------------------------------------------------------------------
+// startGrootMonitorIfRequested() -- liga o modo Monitor do Groot (PublisherZMQ
+// nativo do BT.CPP, ver a secao 'shared/xrlbridge'/'deps/groot' do CLAUDE.md)
+// para ESTE player, se e so' se MIXR_GROOT_MONITOR (variavel de ambiente) for
+// exatamente o nome dele. Desligado por padrao -- sem a variavel, nenhum
+// custo, nenhuma porta aberta.
+//
+// O nome vem de 'snap.ownerName' (preenchido em FlightState::updateState(),
+// que recebe o ator direto do Agent nativo) -- NAO de
+// 'findContainerByType(Player)' a partir daqui. Medido rodando: essa busca
+// funciona em multi-thread (BtBehavior aninhado no proprio player, via
+// FlightAgentTC) mas devolve vazio em single-thread (BtBehavior mora dentro
+// do SimAgent, componente da Station -- a ligacao com o player e' por NOME
+// via 'actorPlayerName:', nunca por container()).
+//
+// So' um player por PROCESSO: o proprio PublisherZMQ lanca LogicError numa
+// segunda instancia (so' faz sentido de qualquer forma -- cada player tem a
+// sua 'tree', e so' ha uma janela do Groot olhando de cada vez). Portas
+// 1666 (status) e 1667 (topologia) -- livres neste projeto (Tacview usa
+// 1234-1239, DIS usa 3000-3005).
+//------------------------------------------------------------------------------
+void BtBehavior::startGrootMonitorIfRequested()
+{
+   const char* const target = std::getenv("MIXR_GROOT_MONITOR");
+   if (target == nullptr || target[0] == '\0') return;
+   if (snap.ownerName != target) return;
+
+   try {
+      treePublisher_ = std::make_unique<BT::PublisherZMQ>(tree);
+      LOG(INFO) << "[BtBehavior] monitor do Groot ligado para " << snap.ownerName
+                << " (tcp://*:1666 status, tcp://*:1667 topologia)";
+   } catch (const std::exception& ex) {
+      LOG(WARNING) << "[BtBehavior] falha ao ligar o monitor do Groot: " << ex.what();
    }
 }
 

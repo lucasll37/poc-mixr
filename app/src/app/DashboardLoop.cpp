@@ -49,15 +49,15 @@
 // app/DashboardState.hpp so carrega numeros, sem nenhum tipo do FTXUI, para
 // poder ser testado/mexido sem levantar tela nenhuma.
 //
-// POR QUE NAO shared/xclock::TimeControls/ConsoleKeyboard: os dois mexem em
+// POR QUE NAO libs/xclock::TimeControls/ConsoleKeyboard: os dois mexem em
 // termios (modo bruto do terminal) por fora do FTXUI, que ja e dono do
 // terminal assim que ScreenInteractive::Fullscreen() comeca. As acoes de
 // controle de tempo aqui chamam ClockStation::setTimeScale()/
 // togglePaused()/setPaused() DIRETO -- a mesma API que TimeControls::apply()
 // ja usa por baixo.
 //
-// CADA ACAO (acelerar/frear/pausar/trocar de aba/carregar/reiniciar/parar/
-// sair) e uma UNICA lambda nomeada, chamada tanto pelo atalho de teclado
+// CADA ACAO (acelerar/frear/pausar/trocar de aba/reiniciar/sair) e uma
+// UNICA lambda nomeada, chamada tanto pelo atalho de teclado
 // quanto pelo Button correspondente -- e o que da "elemento clicavel com
 // dica de atalho" sem duplicar logica (ver a barra de botoes no fim desta
 // funcao).
@@ -68,7 +68,7 @@
 // lib): e o que deixa a UI caber QUALQUER quantidade de entidades/classes
 // sem crescer a tela. Tempo Nao-Critico e um painel estatico -- ver
 // app/BackgroundPanel.hpp. A aba Log le o buffer em memoria de
-// shared/xlog (ver app/LogPanel.hpp). A aba "EDL" (F7) e a UNICA que
+// libs/xlog (ver app/LogPanel.hpp). A aba "EDL" (F7) e a UNICA que
 // precisa de foco de TECLADO de verdade (um ftxui::Input multilinha, ver
 // app/EdlEditorState.hpp) -- as outras seis nunca precisaram porque cada
 // tecla e tratada a mao no CatchEvent mais externo (ver o comentario grande
@@ -90,17 +90,15 @@ using namespace ftxui;
 const int bgRate{10};
 const int settleMs{1000};
 
-// As quatro acoes disruptivas (mudam de cenario ou encerram o processo) --
+// As duas acoes disruptivas (reiniciam o cenario ou encerram o processo) --
 // pedido explicito: confirmar antes de executar. Ver 'uiDepth'/'pendingAction'
 // em runDashboard().
-enum class PendingAction { None, Load, Restart, Stop, Quit };
+enum class PendingAction { None, Restart, Quit };
 
 std::string pendingActionLabel(const PendingAction a)
 {
    switch (a) {
-      case PendingAction::Load:    return "carregar outro cenario";
       case PendingAction::Restart: return "reiniciar o cenario atual";
-      case PendingAction::Stop:    return "parar e voltar a selecao de cenario";
       case PendingAction::Quit:    return "sair do dashboard";
       default:                    return "";
    }
@@ -299,7 +297,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // antes de o ./app virar o runner unico delas -- 10 Hz, fora do
          // frame de tempo critico. Sem hardware conectado o
          // JoystickIoHandler nao toca em nada e o Autopilot segue no
-         // controle (ver a armadilha 7 de shared/xjoystick no CLAUDE.md).
+         // controle (ver a armadilha 7 de libs/xjoystick no CLAUDE.md).
          if (ioHandler != nullptr) ioHandler->inputDevices(dt);
 
          station->updateData(dt);
@@ -579,32 +577,23 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       clockStation->setPaused(false);
       clockStation->setTimeScale(ladder.scale());
    };
-   // As quatro versoes de VERDADE (o que 'l'/'r'/'s'/'q' faziam direto
-   // antes) -- agora so rodam depois de confirmadas (ver 'confirmDialog'
-   // mais abaixo). "Parar": derruba a Station (main.cpp faz isso ao sair do
-   // laco) e volta para a tela de selecao -- diferente de pausar (congela
-   // no lugar).
-   const auto doLoadConfirmed = [&] { action = DashboardExit::ChangeScenario; screen.Exit(); };
+   // As duas versoes de VERDADE (o que 'r'/'q' faziam direto antes) -- agora
+   // so rodam depois de confirmadas (ver 'confirmDialog' mais abaixo).
    const auto doRestartConfirmed = [&] { action = DashboardExit::Restart; screen.Exit(); };
-   const auto doStopConfirmed = [&] { action = DashboardExit::ChangeScenario; screen.Exit(); };
    const auto doQuitConfirmed = [&] { action = DashboardExit::Quit; screen.Exit(); };
 
    const auto runPendingAction = [&] {
       switch (pendingAction) {
-         case PendingAction::Load:    doLoadConfirmed(); break;
          case PendingAction::Restart: doRestartConfirmed(); break;
-         case PendingAction::Stop:    doStopConfirmed(); break;
          case PendingAction::Quit:    doQuitConfirmed(); break;
          default: break;
       }
    };
    const auto cancelPendingAction = [&] { pendingAction = PendingAction::None; uiDepth = 0; };
 
-   // As quatro que TECLA/BOTAO chamam de verdade -- so ARMAM o dialogo,
-   // pedido explicito de confirmacao pras quatro acoes disruptivas.
-   const auto doLoad = [&] { pendingAction = PendingAction::Load; uiDepth = 1; };
+   // As duas que TECLA/BOTAO chamam de verdade -- so ARMAM o dialogo,
+   // pedido explicito de confirmacao pras duas acoes disruptivas.
    const auto doRestart = [&] { pendingAction = PendingAction::Restart; uiDepth = 1; };
-   const auto doStop = [&] { pendingAction = PendingAction::Stop; uiDepth = 1; };
    const auto doQuit = [&] { pendingAction = PendingAction::Quit; uiDepth = 1; };
    const auto gotoTab = [&](const int index) { activeTab = index; };
 
@@ -1220,7 +1209,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return renderBackgroundPanel(displayedBackground) | frame | flex;
    })};
 
-   // ---- aba "Log": as ultimas linhas de shared/xlog, do host E do plugin
+   // ---- aba "Log": as ultimas linhas de libs/xlog, do host E do plugin
    // do modelo (uma copia so de libxlog.so no processo -- ver o cabecalho
    // de app/LogPanel.hpp). Mesmo padrao de lista rolavel das abas
    // Players/Memoria: ftxui::Menu dentro de frame()/vscroll_indicator(). ----
@@ -1382,15 +1371,13 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return text(" [1] Tempo real ") | (displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnReal{Button(realOpt)};
-   const Component btnLoad{makeButton("[l] Carregar", doLoad)};
    const Component btnRestart{makeButton("[r] Reiniciar", doRestart)};
-   const Component btnStop{makeButton("[s] Parar", doStop)};
    const Component btnQuit{makeButton("[q] Sair", doQuit)};
 
    const Component toolbar{Container::Horizontal({
       btnFleet, btnMap, btnMemory, btnBackground, btnLog, btnComponents, btnEdl,
       btnAccel, btnDecel, btnPause, btnReal, btnViewOnMap,
-      btnLoad, btnRestart, btnStop, btnQuit,
+      btnRestart, btnQuit,
    })};
 
    const Component breakpointBar{Container::Horizontal({
@@ -1554,7 +1541,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       rows.push_back(hbox({
          hbox(std::move(primaryButtons)),
          filler(),
-         btnLoad->Render(), btnRestart->Render(), btnStop->Render(), btnQuit->Render(),
+         btnRestart->Render(), btnQuit->Render(),
       }));
 
       return vbox(std::move(rows));
@@ -1709,14 +1696,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::Character('G')) { doArmBreakpoint(true); return true; }
       if (event == Event::Character('x') || event == Event::Character('X')) { doCancelBreakpoint(); return true; }
 
-      // As quatro pedem CONFIRMACAO agora (ver 'confirmDialog' mais abaixo)
-      // -- 'Escape' saiu daqui de proposito: dentro do dialogo ele significa
+      // As duas pedem CONFIRMACAO agora (ver 'confirmDialog' mais abaixo) --
+      // 'Escape' saiu daqui de proposito: dentro do dialogo ele significa
       // "cancelar", e mante-lo tambem como atalho de 'q' aqui geraria o
       // efeito estranho de Escape armar a confirmacao de sair e o Escape
       // SEGUINTE cancelar ela na hora.
-      if (event == Event::Character('l') || event == Event::Character('L')) { doLoad(); return true; }
       if (event == Event::Character('r') || event == Event::Character('R')) { doRestart(); return true; }
-      if (event == Event::Character('s') || event == Event::Character('S')) { doStop(); return true; }
       if (event == Event::Character('q') || event == Event::Character('Q')) { doQuit(); return true; }
 
       // Interacao do MAPA -- so quando a aba esta ativa, tratada aqui (nao
@@ -1867,7 +1852,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return false;
    })};
 
-   // ---- dialogo de confirmacao (carregar/reiniciar/parar/sair) --
+   // ---- dialogo de confirmacao (reiniciar/sair) --
    // MESMO padrao do exemplo oficial modal_dialog_custom.cpp do FTXUI:
    // Container::Tab so pra ROTEAR evento (so o filho ATIVO recebe -- ver
    // TabContainer::OnEvent, container.cpp) e a composicao visual (dbox +

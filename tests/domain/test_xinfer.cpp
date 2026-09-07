@@ -1,12 +1,12 @@
 //
-// shared/xinfer -- o motor de inferencia, na camada mais isolada possivel:
+// libs/xinfer -- o motor de inferencia, na camada mais isolada possivel:
 // sem Station, sem player, sem plugin. So a lib e um arquivo em disco.
 //
 // O que ESTE arquivo cobre e a DEGRADACAO. Nenhuma das entradas aqui e um
 // .onnx valido, e essa e a questao: um modelo ausente ou quebrado nao pode
 // derrubar a simulacao no meio do frame -- tem de devolver 0 e deixar o
 // consumidor decidir, exatamente como o joystick ausente cai pro Autopilot
-// (shared/xjoystick) e a arvore que nao carrega vira nullptr
+// (libs/xjoystick) e a arvore que nao carrega vira nullptr
 // (ubf/BtBehavior). O caminho FELIZ (inferencia de verdade, determinismo com
 // 1/2/4 threads) exige um .onnx e mora em 'xinfer-determinismo'.
 //

@@ -88,7 +88,7 @@ direto** — nenhum passo de build:
 
 ```bash
 $EDITOR dist/share/mixr-plugins/flight/policy_example.py
-./build/app/src/app -scenario multi-thread          # ou o comando de -deterministic abaixo
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in          # ou o comando de -deterministic abaixo
 ```
 
 Quando a regra se provar, copie de volta para `models/player/A4/configs/policy_example.py` — é essa a
@@ -222,10 +222,10 @@ escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o `Fallback` segu
 
 ```bash
 # tempo real, com Tacview na porta 1234
-./build/app/src/app -scenario multi-thread
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in
 
 # passo fixo, comparável, imprimindo o dump a cada 100 frames
-./build/app/src/app -scenario multi-thread -threads 4 -deterministic 600
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in -threads 4 -deterministic 600
 ```
 
 No dump, a coluna `bt=` diz **qual nó decidiu**: `PATROL`/`EVADE`/… (C++), `PY` (Python), `ONNX`
@@ -261,6 +261,6 @@ semente **quebra aqui** — que é onde você quer descobrir isso.
 | a política de exemplo | `models/player/A4/configs/policy_example.onnx` (**pesos aleatórios**) |
 | as árvores | `models/player/A4/configs/flight_tree_{py,onnx}.xml` |
 | o exportador | `src/poc/rl-training/tools/export_onnx.py` |
-| a ordem canônica dos campos | `shared/xrlbridge/ObservationFields.hpp` |
-| o motor de inferência | `shared/xinfer/README.md` |
-| o interpretador embarcado | `shared/xpyembed/README.md` |
+| a ordem canônica dos campos | `libs/xrlbridge/ObservationFields.hpp` |
+| o motor de inferência | `libs/xinfer/README.md` |
+| o interpretador embarcado | `libs/xpyembed/README.md` |

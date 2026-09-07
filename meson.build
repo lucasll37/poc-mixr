@@ -20,7 +20,7 @@ thread_dep = dependency('threads')
 cpp = meson.get_compiler('cpp')
 
 # dlopen/dlsym, para a carga de modelos em tempo de execucao
-# (shared/xplugin). Em glibc >= 2.34 as duas moram na libc e este
+# (libs/xplugin). Em glibc >= 2.34 as duas moram na libc e este
 # find_library nao acha nada -- por isso required: false, que cobre as duas
 # eras. NAO vem de graca por nenhum .pc: conferido que o da
 # behaviortree.cpp.asa traz so '-lbehaviortree_cpp_v3 -lpthread'.
@@ -28,7 +28,7 @@ dl_dep = cpp.find_library('dl', required: false)
 
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 
-# Usado diretamente por shared/xtacview: o recorder nativo entrega os dados
+# Usado diretamente por libs/xtacview: o recorder nativo entrega os dados
 # como mensagens protobuf (DataRecord.pb.h).
 protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 
@@ -73,61 +73,61 @@ asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 # Subdiretórios
 # ============================================
 
-# Sistema de log (LOG(NIVEL) << ...;). Precisa vir ANTES de shared/xtacview
+# Sistema de log (LOG(NIVEL) << ...;). Precisa vir ANTES de libs/xtacview
 # (que agora consome xlog_dep -- RealtimeTelemetryServer.cpp escreve via
 # LOG(...), nao mais direto em std::cout/std::cerr) e antes dos subprojetos,
 # que tambem consomem xlog_dep.
-subdir('./shared/xlog')
+subdir('./libs/xlog')
 
-# Bibliotecas compartilhadas entre subprojetos (padrao shared/x<nome> do
+# Bibliotecas compartilhadas entre subprojetos (padrao libs/x<nome> do
 # MIXR). Precisa vir ANTES de src/, que consome xtacview_dep.
-subdir('./shared/xtacview')
+subdir('./libs/xtacview')
 
 # Controle de velocidade do tempo (acelerar/frear/pausar). Tambem precisa vir
 # ANTES dos subprojetos, que consomem xclock_dep.
-subdir('./shared/xclock')
+subdir('./libs/xclock')
 
 # Controle do ownship por joystick fisico. Tambem precisa vir ANTES dos
 # subprojetos, que consomem xjoystick_dep.
-subdir('./shared/xjoystick')
+subdir('./libs/xjoystick')
 
 # O quadro de leitura entre o host e o modelo. E a UNICA peca que o executavel
 # e o plugin de modelo compartilham -- por isso e shared_library() de verdade,
-# e nao static como as demais de shared/ (ver shared/xboard/Board.hpp).
-subdir('./shared/xboard')
+# e nao static como as demais de libs/ (ver libs/xboard/Board.hpp).
+subdir('./libs/xboard')
 
 # Consulta ao radar nativo -- disputada pelo host (dump) e pelo modelo
 # (percepcao), por isso .so e por isso no SDK.
-subdir('./shared/xtrack')
+subdir('./libs/xtrack')
 
 # Mensagens configuraveis por EDL (telemetria e eventos). Tambem antes dos
 # subprojetos, que consomem xmsg_dep.
-subdir('./shared/xmsg')
+subdir('./libs/xmsg')
 
 # Carga de modelos em tempo de execucao (dlopen). Exporta xplugin_abi_dep (o
 # contrato, header-only, usado pelos plugins) e xplugin_dep (o registro,
 # usado pelos executaveis). Precisa vir ANTES de src/.
-subdir('./shared/xplugin')
+subdir('./libs/xplugin')
 
 # A ponte de comando/observacao entre o host de RL (./rl) e RLBridgeBehavior
 # (models/player/A4). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
 # precisa existir antes de pkg.generate() listar as libs do SDK.
-subdir('./shared/xrlbridge')
+subdir('./libs/xrlbridge')
 
 # Inferencia ONNX -- o motor, contido numa .so so (o ORT sao ~1,9 GB de .a em
 # Debug e models/player/A4 gera QUATRO artefatos do mesmo fonte). Tambem antes do
 # SDK, pelo mesmo motivo de xboard/xtrack/xrlbridge.
-subdir('./shared/xinfer')
+subdir('./libs/xinfer')
 
 # Python embarcado (nos de arvore escritos em script). Nao linka libpython --
 # ver o cabecalho de PyEmbed.hpp. Tambem antes do SDK.
-subdir('./shared/xpyembed')
+subdir('./libs/xpyembed')
 
 # Contrato de eventos que atravessam fronteira de plugin (payload + token de
 # Component::event()) -- ver events/README.md. Mora em ./events/, na RAIZ, e
-# nao em shared/x<nome>/ como as outras seis desta lista -- excecao
+# nao em libs/x<nome>/ como as outras seis desta lista -- excecao
 # deliberada: evento e o eixo central da modelagem deste projeto, entao
-# ganhou pasta propria em destaque em vez de mais um shared/x<nome> perdido
+# ganhou pasta propria em destaque em vez de mais um libs/x<nome> perdido
 # entre outros. O MECANISMO e o MESMO (shared_library(), entra antes do SDK
 # pelo mesmo motivo de xboard/xtrack) -- so o endereco do fonte mudou.
 subdir('./models/events')
@@ -146,7 +146,7 @@ subdir('./models/events')
 #
 # DUAS ARMADILHAS MEDIDAS, nao supostas:
 #
-#   1. 'meson compile -C build shared/xboard/libxboard.so' NAO funciona --
+#   1. 'meson compile -C build libs/xboard/libxboard.so' NAO funciona --
 #      "target not found". O meson compile resolve por NOME de alvo; quem
 #      resolve por caminho de saida e o ninja. Dai o 'ninja' acima.
 #
@@ -164,17 +164,17 @@ subdir('./models/events')
 # reportarem o mesmo numero por construcao, e a checagem viraria tautologia.
 # O .pc expoe 'mixr_pkg_version' como VARIAVEL, para conferencia cruzada.
 # ==============================================================================
-install_headers('shared/xplugin/PluginAbi.hpp',     subdir: 'xplugin')
-install_headers('shared/xboard/Board.hpp',          subdir: 'xboard')
-install_headers('shared/xlog/Log.hpp',              subdir: 'xlog')
-install_headers('shared/xtrack/TrackQuery.hpp',     subdir: 'xtrack')
-install_headers('shared/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
-install_headers('shared/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
-install_headers('shared/xinfer/Infer.hpp',          subdir: 'xinfer')
-install_headers('shared/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
+install_headers('libs/xplugin/PluginAbi.hpp',     subdir: 'xplugin')
+install_headers('libs/xboard/Board.hpp',          subdir: 'xboard')
+install_headers('libs/xlog/Log.hpp',              subdir: 'xlog')
+install_headers('libs/xtrack/TrackQuery.hpp',     subdir: 'xtrack')
+install_headers('libs/xrlbridge/RLBridge.hpp',    subdir: 'xrlbridge')
+install_headers('libs/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
+install_headers('libs/xinfer/Infer.hpp',          subdir: 'xinfer')
+install_headers('libs/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
 install_headers('models/events/payloads/EID_ALERT/TacticalAlert.hpp', subdir: 'events/payloads/EID_ALERT')
 install_headers('models/events/EventTokens.hpp',                       subdir: 'events')
-install_headers('shared/xrandom/DeterministicRng.hpp', subdir: 'xrandom')
+install_headers('libs/xrandom/DeterministicRng.hpp', subdir: 'xrandom')
 
 pkg = import('pkgconfig')
 pkg.generate(

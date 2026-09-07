@@ -2,7 +2,7 @@
 """Guarda: nenhum PAR de modelos "de verdade" sob models/player/ pode
 publicar o MESMO nome de fabrica.
 
-Por que isso e fatal, nao so feio: shared/xplugin/PluginRegistry.cpp,
+Por que isso e fatal, nao so feio: libs/xplugin/PluginRegistry.cpp,
 loadModule(), passo "colisao" -- se dois .so carregados no MESMO processo
 tentam registrar o mesmo nome, o segundo chama die() (std::exit) na hora.
 Ja aconteceu de verdade uma vez (ThreadTagProbe, A4 vs missile -- ver
@@ -79,7 +79,7 @@ def main():
             failures.append(
                 f"{name_a} e {name_b} publicam o(s) MESMO(S) nome(s) de fabrica {sorted(overlap)} -- "
                 f"isso derruba o processo (die()) na hora se algum .edl algum dia carregar os dois "
-                f".so juntos (shared/xplugin/PluginRegistry.cpp, passo 'colisao'). Renomeie a classe "
+                f".so juntos (libs/xplugin/PluginRegistry.cpp, passo 'colisao'). Renomeie a classe "
                 f"do lado que NAO e producao (ver CLAUDE.md, precedente 'ThreadTagProbe' -> "
                 f"'MissileThreadTagProbe')."
             )

@@ -29,10 +29,10 @@ namespace {
 // LOG(...) DESTE MODELO -- e daqui que vem o conteudo da aba "Log" (F5) do
 // ./app.
 //
-// Nada disso e ponte: shared/xlog e uma shared_library(), entao ha UMA copia
+// Nada disso e ponte: libs/xlog e uma shared_library(), entao ha UMA copia
 // no processo e o LOG(...) emitido de dentro deste .so (aberto por dlopen)
 // cai no mesmo buffer em memoria que o host le -- ver o cabecalho de
-// app/LogPanel.hpp e a secao shared/xlog do CLAUDE.md. O log tambem vai pro
+// app/LogPanel.hpp e a secao libs/xlog do CLAUDE.md. O log tambem vai pro
 // console e pro arquivo das outras pocs (single-thread/multi-thread), que
 // nao tem aba nenhuma; sob '-deterministic' o main.cpp desliga tudo
 // (setLoggingEnabled(false)), entao os dumps comparaveis nao mudam.
@@ -161,10 +161,10 @@ bool FlightAction::execute(base::Component* actor)
    autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);
    autopilot->setCommandedVelocityKts(command.speedKts);
 
-   // O quadro de leitura (shared/xboard) e a UNICA coisa que este modelo e o
+   // O quadro de leitura (libs/xboard) e a UNICA coisa que este modelo e o
    // host compartilham: escrevemos aqui, o dump e a linha de status leem la.
    // Ele mora numa .so de verdade justamente porque este codigo passou a rodar
-   // dentro de um plugin -- ver o cabecalho de shared/xboard/Board.hpp.
+   // dentro de um plugin -- ver o cabecalho de libs/xboard/Board.hpp.
    //
    // Conta DECISAO, nao candidatura: estamos depois de o UbfArbiter ter
    // escolhido o vencedor.

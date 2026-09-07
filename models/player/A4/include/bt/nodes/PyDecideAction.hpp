@@ -15,7 +15,7 @@ namespace bt_nodes {
 // em C++ como um no de verdade. E a tensao registrada no TODO.md ("testar em
 // python facilita a prototipagem mas abre margem para desafios de
 // integracao") com os desafios de integracao ja resolvidos em
-// shared/xpyembed.
+// libs/xpyembed.
 //
 // O SCRIPT tem de definir:
 //
@@ -31,7 +31,7 @@ namespace bt_nodes {
 //
 // ISOLAMENTO POR AERONAVE: cada BtBehavior constroi a SUA arvore, entao cada
 // aeronave tem a SUA instancia deste no -- e cada instancia recebe um id
-// proprio, que vira um dicionario de globais proprio em shared/xpyembed. Dois
+// proprio, que vira um dicionario de globais proprio em libs/xpyembed. Dois
 // avioes rodando o mesmo arquivo nao compartilham estado, que e o que mantem o
 // resultado independente da ordem em que as threads pegam o GIL.
 //

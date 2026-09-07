@@ -21,7 +21,7 @@ meson test -C build --suite plugin   # só uma camada do host
 
 > **Cuidado, e isto foi medido:** `meson test` devolve **rc=0 para suíte vazia** ("No tests
 > defined."), e o default de `-Dtests` é `false`. `meson test -C build --suite domain` continua
-> existindo, mas hoje ele roda só as primitivas do `shared/xmsg` — as regras do modelo estão em
+> existindo, mas hoje ele roda só as primitivas do `libs/xmsg` — as regras do modelo estão em
 > `build-flight`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
 > `make test-models` conferem a contagem com `meson introspect --tests` **antes** de rodar.
 
@@ -48,7 +48,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | suite | pergunta | como | custo |
 |---|---|---|---|
 | `domain` (modelo) | as regras estão certas? | GTest sobre `models/player/A4/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
-| `domain` (host) | as primitivas do `shared/xmsg` estão certas? | GTest sobre `shared/xmsg/rules/` | 24 testes, ~10 ms |
+| `domain` (host) | as primitivas do `libs/xmsg` estão certas? | GTest sobre `libs/xmsg/rules/` | 24 testes, ~10 ms |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 9 execuções |
@@ -64,7 +64,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 `domain/` nunca dependeu de MIXR nem de BehaviorTree.CPP, então já era testável — só não estava
 sendo testado. Cinco arquivos, um por regra.
 
-Desde o `shared/xmsg`, esta camada cobre também as quatro primitivas de detecção que o MIXR não
+Desde o `libs/xmsg`, esta camada cobre também as quatro primitivas de detecção que o MIXR não
 tem — limiar com histerese (`Schmitt`), deadband com memória (`Deadband`), derivada em janela
 (`RateWindow`) e o piso de emissão que **adia em vez de descartar** (`EmitGate`). Foi aqui que
 apareceu a armadilha de acumulador de tempo: `0.1` somado 10 vezes fica **abaixo** de 1,0 e `0.02`
@@ -135,7 +135,7 @@ Dois modos, um por ramo da árvore:
 
 > **Correção de um bug latente, feita aqui:** `make_fixture.py` reescrevia `fileName:` com um
 > `re.sub` **global**, e isso só funcionava porque havia exatamente **um** `fileName:` em cada
-> cenário. Quando o `shared/xmsg` acrescentou o segundo (o `.jsonl`), os dois passariam a apontar
+> cenário. Quando o `libs/xmsg` acrescentou o segundo (o `.jsonl`), os dois passariam a apontar
 > para o mesmo `.acmi` — dois `ofstream` truncando a mesma gravação, em silêncio, ao longo da suíte.
 > As substituições agora são ancoradas na extensão (`\.acmi"` e `\.jsonl"`).
 
@@ -207,9 +207,9 @@ partida, não perda de vínculo com o frame. Comparar deltas mede a propriedade 
 
 **2. A `single-thread` ganhou o campo `dec=`,** que antes só existia na `multi-thread`. Como ali a
 decisão roda no laço de background, quem conta é o
-[`BehaviorBoard`](../shared/xboard/Board.hpp), no ponto da atuação.
+[`BehaviorBoard`](../libs/xboard/Board.hpp), no ponto da atuação.
 
-**A saída de mensagens entra na mesma comparação.** O `shared/xmsg` **não** é desligado em
+**A saída de mensagens entra na mesma comparação.** O `libs/xmsg` **não** é desligado em
 `-deterministic` (ao contrário do `xlog`): tudo que ele emite carrega tempo simulado, nunca
 relógio de parede nem id de thread. Então o `.jsonl` tem de ser byte-idêntico com 1, 2 e 4
 threads, e isso é asserção — não precaução.

@@ -3,7 +3,7 @@ import sys
 
 # ARMADILHA CONFIRMADA (nao redescobrir): sem isto, a PRIMEIRA chamada a
 # NativeSimulation.reset() -- que carrega libflight_tc.so via dlopen() por
-# dentro de shared/xplugin/PluginRegistry.cpp -- SEGFAULTA dentro de
+# dentro de libs/xplugin/PluginRegistry.cpp -- SEGFAULTA dentro de
 # std::cout (libstdc++, num codecvt de PluginRegistry::loadModule()), so
 # quando roda embutido em Python E depois de 'numpy' ja ter sido importado.
 # Fora do Python (executando dist/bin/single-thread etc.) ou importando

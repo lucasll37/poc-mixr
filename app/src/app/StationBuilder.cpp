@@ -39,7 +39,7 @@ mixr::simulation::Station* buildStation(const std::string& filename)
    // ( PluginLoader ) declarado no .edl faz o dlopen no proprio isValid(),
    // que o parser chama no fecha-parenteses do bloco -- antes, portanto, de
    // qualquer forma escrita depois dele no arquivo. Ver o cabecalho de
-   // shared/xplugin/PluginLoader.hpp para a prova de ordem.
+   // libs/xplugin/PluginLoader.hpp para a prova de ordem.
    mixr::base::Object* obj{mixr::base::edl_parser(filename, mixrFactory, &num_errors)};
 
    // Fecha a janela de escrita do registro: dai em diante ele e so leitura,

@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 #
-# Constroi, do FONTE, as quatro dependencias que este repositorio empacota ele
+# Constroi, do FONTE, as cinco dependencias que este repositorio empacota ele
 # mesmo (as demais -- protobuf, boost, ftxui, onnxruntime... -- vem prontas do
 # conancenter e sao resolvidas pelo 'conan install' da raiz).
 #
 # A ORDEM IMPORTA: mixr requer jsbsim e openrti, entao as duas tem de estar no
-# cache antes dele. behaviortree e independente e vai por ultimo.
+# cache antes dele. behaviortree e independente e vai por ultimo. groot NAO
+# e' opcional -- ao contrario das outras quatro (que por padrao vem prontas
+# do remote Conan privado da ASA, e deps/ e' so uma alternativa de build a
+# partir do fonte), o Groot nao tem pacote em remoto nenhum: rodar este
+# script e' a UNICA forma de te-lo. Ele builda so uma vez (Release), fora do
+# laco de Debug/Release abaixo, so porque nao e' dependencia de BUILD do
+# host/modelo (e' um app Qt standalone que o usuario roda a parte, ver
+# deps/groot/conanfile.py) -- ver INSTALL.md secao 7 para os pacotes de
+# sistema (Qt5/ZeroMQ/libdw) que a maquina precisa ter ANTES de rodar isto.
 #
 # Debug E Release: o projeto configura em Debug por padrao (BUILD_TYPE do
 # Makefile da raiz), mas o perfil default do conan e Release -- ter os dois
@@ -44,3 +52,9 @@ for BUILD_TYPE in Debug Release; do
         --settings=build_type="${BUILD_TYPE}" \
         --options='behaviortree.cpp.asa/*:shared=False'
 done
+
+# Nao e' opcional (ver o comentario no topo do arquivo) -- so nao entra no
+# laco Debug/Release acima porque, ao contrario das quatro dependencias
+# acima, nao e' linkado por nada deste repositorio (e' um app Qt standalone
+# que o usuario roda a parte): uma build (Release) basta.
+conan create ./deps/groot --build=missing --settings=build_type=Release

@@ -1,79 +1,70 @@
 # `src/ui` — editor gráfico de cenário `.edl`
 
-Ferramenta gráfica para **montar um cenário `.edl` do zero**: arrastar classes de uma paleta
-completa (todas as factories que `app/src/mixr_factory.cpp` de fato encadeia — `base`/`models`/
-`terrain`/`interop::dis`/`linkage`/`recorder`/`simulation`, mais `shared/x*` e os plugins deste
-repositório), preencher campos e exportar `.edl` válido — sem precisar ler C++ nem decorar a
-gramática do `edl_parser`.
+Ferramenta gráfica (React, no navegador, sem servidor) para montar um cenário `.edl` do zero ou
+**carregar um `.edl`/`.edl.in` REAL já existente**: arrastar classes de uma paleta completa (todas
+as factories do host, `libs/x*` e os plugins deste repositório), preencher campos e exportar `.edl`
+válido — sem ler C++ nem decorar a gramática do `edl_parser`.
 
-**Escopo desta v1, decidido explicitamente:** só CRIAR. Abrir/editar um `.edl` real já existente
-do repositório fica para uma fase futura — o formato de projeto (`.json`, salvo/aberto pela
-própria página) é próprio da ferramenta, não é o `.edl` em si.
-
-A raiz do cenário é fixa em alguma classe que implementa `Station` (`Station`/`ClockStation`,
-hoje) — a paleta/drag-and-drop e o `<select>` de fallback só oferecem essas; um botão "×" no
-próprio nó raiz descarta o cenário inteiro (não há "Station vazia": a raiz É o cenário). Um
-slot-lista pode receber tanto uma classe (arrastada/escolhida) quanto um valor de TEXTO simples
-(botão "+ texto") — necessário para slots como `TacviewOutput.modelMap`/`typeMap`/`colorMap`,
-cujas entradas são strings, não objetos MIXR (ver o comentário de `makeTextLeaf()` em
-`edl_builder_core.js`).
-
-A ferramenta abre já com um cenário carregado por padrão — o de **maior número de componentes**
-do repositório (`src/poc/built-in_mixr_1/configs/scenario.generated.edl`, 53 das 96 classes de
-`mixr::models` num único `Aircraft`), convertido uma vez para o formato de projeto por
-`edl_to_ui_project.js` e embutido no `.html` como `EDL_DEFAULT_SCENARIO` (mesmo mecanismo
-de injeção de `EDL_CATALOG`, ver `compile.js`). Serve de ponto de partida pra explorar/editar em
-vez de começar de uma tela vazia — "Novo" (ou o "×" na raiz) descarta e volta pra uma `Station`
-em branco.
-
-A árvore central (NavTree) é só NAVEGAÇÃO — clique num nó, em qualquer profundidade, pra
-selecioná-lo. Quem edita é a coluna da direita (painel de propriedades): campos de valor direto
-do nó selecionado, e logo abaixo uma seção "Componentes" com os mesmos controles de
-arrastar/adicionar/renomear/remover que a árvore central tinha antes — clicar num componente ali
-seleciona ele e troca o próprio painel para mostrar os dados dele (navegação "descer um nível de
-cada vez", complementar ao NavTree, que pula direto a qualquer nó).
-
-## Arquivos
-
-| arquivo | papel |
-|---|---|
-| `edl_builder.jsx` | UI (React): paleta, árvore (outline), painel de propriedades |
-| `edl_builder_core.js` | lógica PURA (catálogo, compatibilidade de slot, serializador `.edl`) — sem React/JSX, testável em Node puro |
-| `edl_builder.test.js` | testes de `edl_builder_core.js` (`node src/ui/edl_builder.test.js`) |
-| `edl_to_ui_project.js` | converte um `.edl`/`.edl.in` real para o formato de projeto (usado por `make edl-default-scenario`) |
-| `edl_catalog.generated.json` | catálogo de classes+slots, gerado por `tools/extract_execution_chain.py --edl-catalog` |
-| `edl_catalog_overrides.json` | curadoria manual pequena (só os slots "referência por nome" que o tipo C++ sozinho não distingue) |
-| `compile.js` | builda `edl_builder.jsx` → `edl-builder.html` (React+Babel via CDN, sem bundler) |
-| `edl-builder.html` | **gerado** — a página final, autocontida, zero-rede para abrir |
-
-## Build & uso
+## Como se usar
 
 ```bash
-make edl-catalog       # gera edl_catalog.generated.json a partir do fonte do MIXR
-make edl-builder       # (encadeia edl-catalog) gera edl-builder.html
-make open-edl-builder  # abre no navegador
-make edl-builder-test  # testes de unidade puros (node, sem MIXR)
+make open-edl-builder   # gera tudo do zero e abre no navegador -- unico alvo make deste editor
 ```
 
-A primeira execução de `make edl-builder` baixa React/ReactDOM 18.3.1 UMD e instala
-`@babel/standalone` em `src/ui/.cache/` (gitignored) — as próximas rodam sem rede nenhuma.
-`edl-builder.html` é **committed**, gerado, mesma convenção de `docs/manual/index.html`: abrir a
-ferramenta não exige rodar nada antes.
+A árvore nasce vazia, só com a raiz (`Station`/`ClockStation`). Clique num nó para selecioná-lo
+(o painel à direita edita os campos dele); arraste uma classe da paleta esquerda para um slot para
+adicionar um filho — só classes EM CONFORMIDADE com o que aquele slot de fato aceita aparecem como
+opção (um slot que só aceita texto, como `TacviewOutput.typeMap`, nunca sugere classe nenhuma —
+só o botão "+ texto"). "Expandir tudo"/"Recolher tudo" abrem ou fecham todo nó de uma vez, útil no
+preset de 53 componentes. Três abas ao lado da árvore: **Mapa** (posição de cada `Player`),
+**Pendências** (todo papel/slot esperado ainda vazio, com contagem sempre visível no rótulo da
+aba — clique num item para pular direto ao nó) e a **prévia `.edl`** (sempre visível, embaixo das
+outras duas). O botão "Carregar preset" troca a árvore vazia pelo cenário de mais componentes do
+repositório (`built-in_mixr_1`), como ponto de partida. "Exportar .edl" baixa o arquivo; em
+Chrome/Edge, "Escolher pasta sandbox/…" aponta a ferramenta pra pasta `sandbox/` deste
+repositório e o botão vira "Salvar em sandbox/", escrevendo direto em
+`sandbox/<nome>/configs/scenario.edl` — sem passo manual de mover o arquivo baixado.
 
-## Validação do `.edl` exportado
+### "Carregar .edl" — abrir um cenário real
 
-Duas camadas, nenhuma delas aqui (ver o topo de cada arquivo para os detalhes):
+O botão "Carregar .edl" lê um `.edl`/`.edl.in` do disco e mapeia TUDO para a mesma árvore de
+cartões que a ferramenta já edita — pronto pra mexer e reexportar. Fábrica ou slot que o catálogo
+gerado ainda não conhece (classe em desenvolvimento, plugin de terceiro nunca introspectado, erro
+de digitação) **nunca é descartado**: fica preservado byte-fiel como valor bruto (marcado com um
+`?` tracejado, editável no painel de propriedades como texto — "slots não catalogados") em vez de
+sumir silenciosamente numa próxima exportação. Depois de carregar, uma faixa dispensável lista os
+avisos não-bloqueantes (fábrica/slot não catalogado, ASCII fora do padrão, placeholder de template
+ainda literal); um clique num aviso pula direto pro cartão correspondente, e um contador "N não
+catalogados" continua visível na barra de abas mesmo depois de dispensar a faixa.
 
-- **Leve**: `tools/edl_lint.py` — fábrica/slot desconhecido, ASCII-only, ordem de `plugins:`,
-  referência-por-nome pendurada (aviso, não bloqueia).
-- **Profunda**: `make edl-check FILE=<arquivo>` — o binário `edlcheck` (`app/src/
-  edlcheck_main.cpp`), que reaproveita a MESMA cadeia de factories de produção e chama o parser
-  MIXR de verdade, sem as amarras de terreno/frota/`WorldModel` que o `./app` completo exige.
+Dois limites explícitos:
 
-## Por que `src/ui/` e não `docs/`
+- **`@include:frag@` não é suportado por este botão** — o identificador nu do scanner real inclui
+  `@` e para no `:`, então deixar sem expandir corromperia a estrutura em silêncio (viraria um slot
+  fantasma), não só falharia; por isso é sempre um erro claro, nomeando o fragmento. Nenhum `.edl`
+  deste repositório usa isso hoje; se algum dia precisar, substitua a diretiva pelo conteúdo do
+  fragmento direto no arquivo antes de carregar.
+- **`@TOKEN@` (fora de `@include:`) carrega literal**, sem adivinhar um valor — um aviso aponta
+  cada ocorrência; edite o campo com o valor real antes de exportar, como qualquer outro campo.
 
-`docs/manual/` é documentação/visualização do framework (o `index.html` gerado de `doc.jsx`,
-read-only, sem capacidade de editar nada) — este editor é uma ferramenta de trabalho de verdade,
-por isso mora sob `src/`, ao lado de `poc/`/`rl/`. Não tem `subdir()` em `src/meson.build`
-(mesma categoria de `src/poc/rl-training/`: só JS/Python, sem `main.cpp`/`mixr_factory`, fora do
-grafo do Meson) — quem builda é o `Makefile` da raiz.
+### Não há mais "Salvar projeto"/"Abrir projeto" (formato JSON próprio)
+
+Existia um formato de projeto JSON PRÓPRIO desta ferramenta (a mesma árvore `{id,factory,
+slotValues,children}` serializada crua), usado só pra salvar/reabrir um trabalho em andamento
+antes de "Carregar .edl" existir. Removido — era um formato paralelo ao `.edl` de verdade, e agora
+que a ferramenta abre `.edl`/`.edl.in` reais diretamente, mantê-lo só duplicaria o caminho de
+"salvar trabalho em andamento" sem necessidade: o próprio `.edl` exportado (via "Exportar .edl"/
+"Salvar em sandbox/") já É o formato de troca — reabra-o com "Carregar .edl" a qualquer momento
+pra continuar editando, sem precisar de um JSON intermediário que nenhuma outra ferramenta lê.
+
+Validar o `.edl` exportado, fora da própria ferramenta:
+
+```bash
+python3 src/ui/scripts/edl_lint.py <arquivo>   # leve -- fabrica/slot desconhecido, ASCII, etc.
+dist/bin/edlcheck <arquivo>                    # o parser MIXR de verdade, apos 'make install'
+```
+
+## Leia mais
+
+[CLAUDE.md](../../CLAUDE.md), seção `src/ui` — toda decisão de design e armadilha confirmada
+rodando.

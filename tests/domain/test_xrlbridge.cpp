@@ -1,5 +1,5 @@
 //
-// shared/xrlbridge -- a ponte de comando/observacao entre o host de RL e o
+// libs/xrlbridge -- a ponte de comando/observacao entre o host de RL e o
 // modelo, na camada mais isolada possivel: sem Station, sem plugin, sem
 // pybind11. So a lib.
 //

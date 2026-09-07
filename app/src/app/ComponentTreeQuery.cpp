@@ -518,7 +518,7 @@ void addChild(ComponentTreeNode& parent, mixr::base::Object* const obj, const st
       // 'ioHandler'/'networks' (todos getters PUBLICOS de Station/
       // Simulation), o outputHandler do gravador simplesmente NAO tem
       // acessor publico -- e o MIXR e dependencia binaria, sem remendar
-      // header nenhum (mesma regra ja aplicada a shared/xlog/shared/xmsg).
+      // header nenhum (mesma regra ja aplicada a libs/xlog/libs/xmsg).
       // Por isso o no 'dataRecorder' aparece na arvore SEM filhos: e honesto
       // (nao inventa uma cadeia que este app nao consegue alcancar), nao um
       // bug -- registrado tambem no relatorio desta tarefa como limite

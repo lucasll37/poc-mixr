@@ -5,11 +5,11 @@ POR QUE ISTO EXISTE (ver a "decima oitava passada" do ./app no CLAUDE.md
 raiz): sair do ./app com [q] costumava travar o processo para sempre. A causa
 tinha DUAS metades:
 
-  1. um ::send() SEM TETO em shared/xtacview/RealtimeTelemetryServer.cpp --
+  1. um ::send() SEM TETO em libs/xtacview/RealtimeTelemetryServer.cpp --
      um cliente Tacview que conecta e para de ler enchia o buffer do socket e
      o send() bloqueava para sempre, dentro de station->updateData(). Ja
      corrigido com SO_SNDTIMEO, e a correcao vale para as TRES pocs porque a
-     lib e a MESMA (shared/xtacview e uma unica copia, sem variante por poc).
+     lib e a MESMA (libs/xtacview e uma unica copia, sem variante por poc).
 
   2. a ORDEM de encerramento nao parar a thread de tempo critico nativa ANTES
      do SHUTDOWN_EVENT -- ela sobrevive ao fim do laco de tempo real e corre

@@ -16,13 +16,13 @@ namespace mixr { namespace linkage { class IoHandler; } }
 namespace app {
 
 // O que fazer depois que o laco termina (main.cpp decide com isto: sair,
-// reexecutar com o MESMO cenario, reexecutar sem '-scenario', ou reexecutar
-// com '-f app::editedScenarioPath()' -- ver app/Respawn.hpp para o "porque"
-// de ser sempre um reexec, nunca uma segunda Station no mesmo processo).
+// reexecutar com o MESMO cenario, ou reexecutar com
+// '-f app::editedScenarioPath()' -- ver app/Respawn.hpp para o "porque" de
+// ser sempre um reexec, nunca uma segunda Station no mesmo processo).
 // 'RunEdited' vem da aba "EDL" (F7, ver app/EdlEditorState.hpp): o cenario
 // editado ja foi escrito em editedScenarioPath() e validado pelo 'edlcheck'
 // antes de sair do laco -- main.cpp so precisa reexecutar com '-f'.
-enum class DashboardExit { Quit, Restart, ChangeScenario, RunEdited };
+enum class DashboardExit { Quit, Restart, RunEdited };
 
 //------------------------------------------------------------------------------
 // O laco de tempo real desta poc -- substitui app/RealTimeRun.{hpp,cpp} das
@@ -32,7 +32,7 @@ enum class DashboardExit { Quit, Restart, ChangeScenario, RunEdited };
 // abas -- Frota (lista rolavel + detalhe), Mapa (navegavel) e Memoria
 // (contadores de instancia ao vivo, ver app/MetaObjectSnapshot.hpp) -- e as
 // teclas de controle de tempo chamam ClockStation DIRETO (nao usa
-// shared/xclock::TimeControls/ConsoleKeyboard -- o FTXUI ja e dono do
+// libs/xclock::TimeControls/ConsoleKeyboard -- o FTXUI ja e dono do
 // terminal, ver o cabecalho de DashboardLoop.cpp).
 //
 // SEM 'Fleet' no parametro: a descoberta de entidades (para exibir E para

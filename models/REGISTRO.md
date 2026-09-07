@@ -16,7 +16,7 @@ nunca a escolha de uma só).
 
 | Modelo | Pasta | Tipo | Status | Responsável | Cenário(s) | Última atualização |
 |---|---|---|---|---|---|---|
-| A4 (flight) | `models/player/A4/` | produção | produção | — | `single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`, `app` (patrol/intercept/intercept_missile) | — |
+| A4 (flight) | `models/player/A4/` | produção | produção | — | `single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` | — |
 | missile | `models/player/missile/` | demo acadêmica | produção | — | `scenario_missile_demo.edl.in` (via `single-thread`) | — |
 | fixtures/stub | `models/player/fixtures/stub/` | fixture de teste | não é modelo de produção — não reivindicar | — | nenhum (só testes de plugin) | — |
 | template | `models/player/template/` | ponto de partida | não é modelo de produção — não reivindicar | — | nenhum | — |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regressao do catalogo de --edl-catalog (tools/extract_execution_chain.py).
+"""Regressao do catalogo do editor grafico de .edl (src/ui/scripts/generate_edl_catalog.py).
 
 Sem framework nenhum (nem pytest, nem gtest) -- mesmo estilo dos demais
 scripts deste repositorio: uma lista de casos, cada um um assert com
@@ -33,17 +33,37 @@ extrator para o raciocinio completo:
   * Toda classe citada nos cenarios REAIS do repositorio (os 10
     .edl/.edl.in de producao) tem que aparecer no catalogo -- senao a
     ferramenta grafica nao consegue montar nem o que ja existe hoje.
+  * Os 10 'papeis primarios' que Player::updateSystemPointers() resolve por
+    TIPO (dynamicsModel/pilot/navigation/datalink/radio/gimbal/rfSensor/
+    irSystem/onboardComputer/storesMgr) tem que aparecer em
+    primaryComponents, herdados por qualquer descendente de Player -- e a
+    unica coisa deste catalogo que NAO vem de slot nenhum (ver o comentario
+    de extract_primary_components() no proprio gerador).
+  * introspect_thirdparty_plugins() (o caminho de RUNTIME, via o binario
+    'plugininfo', para .so de plugins/ sem fonte C++ neste repositorio):
+    um nome de fabrica ja conhecido pelo scan estatico nao pode duplicar
+    entrada; um nome NOVO tem que aparecer, com slot herdado de um
+    ancestral CONHECIDO (ex.: 'components') recebendo o TIPO de verdade
+    (nao 'typeUnknown'), e um slot PROPRIO da classe (sem fonte) caindo no
+    fallback texto-ou-numero com 'typeUnknown': True.
+  * LIST_SLOT_TYPE_OVERRIDES/TEXT_ONLY_LIST_SLOTS -- os ~35 slots-lista cujo
+    ON_SLOT so declara 'base::PairStream' (o dynamic_cast/isClassType() de
+    cada item mora dentro do CORPO do setter, nao na assinatura) precisam
+    sair do catalogo com objectTypes preenchido OU textOnly=True -- nunca os
+    dois vazios, que seria um slot sem NENHUM jeito de preencher na UI
+    (isCompatible() nao tem mais fallback permissivo).
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools"))
+sys.path.insert(0, str(REPO_ROOT / "src" / "ui" / "scripts"))
 
-import extract_execution_chain as ext  # noqa: E402
+import generate_edl_catalog as ext  # noqa: E402
 
 REAL_SCENARIOS = [
     "src/poc/dis/single-thread/configs/scenario.edl.in",
@@ -52,11 +72,9 @@ REAL_SCENARIOS = [
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
-    "app/configs/scenario_intercept_missile.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",
     "src/poc/rl-training/configs/scenario_rl.edl",
     "src/rl/configs/scenario_rl.edl",
-    "app/configs/fragments/tacview_recorder.edl.frag",
 ]
 
 STRING_RE = re.compile(r'"[^"]*"')
@@ -135,6 +153,30 @@ def main():
         check(slot(dis_ntm, "template") is not None, "DisNtm.template (herdado de interop::Ntm) nao encontrado")
         check(slot(dis_ntm, "disEntityType") is not None, "DisNtm.disEntityType (proprio) nao encontrado")
 
+    # -- primaryComponents (papeis por TIPO, nao por slot) de Player --------
+    EXPECTED_ROLES = {
+        "dynamicsModel": "DynamicsModel", "pilot": "Pilot", "navigation": "Navigation",
+        "datalink": "Datalink", "radio": "Radio", "gimbal": "Gimbal",
+        "rfSensor": "RfSensor", "irSystem": "IrSystem",
+        "onboardComputer": "OnboardComputer", "storesMgr": "StoresMgr",
+    }
+    player = by_factory.get("Player")
+    check(player is not None, "Player nao esta no catalogo")
+    if player:
+        roles = {r["role"]: r["baseClass"] for r in player.get("primaryComponents", [])}
+        check(roles == EXPECTED_ROLES,
+              f"Player.primaryComponents == {roles}, esperado {EXPECTED_ROLES} -- regressao na "
+              f"extracao mecanica de Player::updateSystemPointers() (Player.cpp)")
+    aircraft = by_factory.get("Aircraft")
+    check(aircraft is not None, "Aircraft nao esta no catalogo")
+    if aircraft:
+        roles = {r["role"]: r["baseClass"] for r in aircraft.get("primaryComponents", [])}
+        check(roles == EXPECTED_ROLES,
+              f"Aircraft.primaryComponents == {roles}, esperado {EXPECTED_ROLES} -- deveria herdar "
+              f"de Player (Aircraft nao sobrescreve updateSystemPointers())")
+    antenna_primary = (by_factory.get("Antenna") or {}).get("primaryComponents", [])
+    check(antenna_primary == [], "Antenna.primaryComponents deveria ser vazio -- Antenna nao e um Player")
+
     # -- origem de QUALQUER coisa sob ./models/, nao so models/player/<x>/ ---
     a4_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:A4"]
     check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A4' -- models/player/A4 sumiu do catalogo")
@@ -204,7 +246,38 @@ def main():
     dupes = sorted({f for f in factory_names if factory_names.count(f) > 1})
     check(not dupes, f"nomes de fabrica duplicados no catalogo: {dupes}")
 
-    # -- toda classe usada nos 12 cenarios reais aparece no catalogo ---------
+    # -- LIST_SLOT_TYPE_OVERRIDES/TEXT_ONLY_LIST_SLOTS: nenhum slot-lista ----
+    # sobra com objectTypes vazio E textOnly=False -- isCompatible() nao tem
+    # mais fallback permissivo (edl_builder_core.js), entao um slot assim
+    # seria um beco sem saida (nao aceita classe nenhuma, nem tem "+texto"
+    # oferecido pela UI). Ver o comentario de LIST_SLOT_TYPE_OVERRIDES no
+    # proprio gerador para a lista dos ~35 casos ja cobertos.
+    orphans = sorted({
+        (s["declaredIn"], s["name"])
+        for e in catalog
+        for s in e["slots"]
+        if s.get("acceptsChildList") and not s.get("objectTypes") and not s.get("textOnly")
+    })
+    check(not orphans,
+          f"slot-lista sem objectTypes e sem textOnly (beco sem saida na UI): {orphans} -- "
+          f"acrescente em LIST_SLOT_TYPE_OVERRIDES ou TEXT_ONLY_LIST_SLOTS")
+
+    # -- spot-check de dois casos reais de cada categoria --------------------
+    station = by_factory.get("Station")
+    check(station is not None, "Station nao esta no catalogo")
+    if station:
+        networks = slot(station, "networks")
+        check(networks is not None and networks["objectTypes"] == ["AbstractNetIO"],
+              f"Station.networks.objectTypes == {networks and networks['objectTypes']}, esperado ['AbstractNetIO'] "
+              f"-- Station::setSlotNetworks() faz dynamic_cast<AbstractNetIO*> (simulation/Station.cpp)")
+    tacview = by_factory.get("TacviewOutput")
+    check(tacview is not None, "TacviewOutput nao esta no catalogo")
+    if tacview:
+        type_map = slot(tacview, "typeMap")
+        check(type_map is not None and type_map.get("textOnly") is True and type_map["objectTypes"] == [],
+              f"TacviewOutput.typeMap deveria ser textOnly com objectTypes vazio, veio {type_map}")
+
+    # -- toda classe usada nos 9 cenarios reais aparece no catalogo ---------
     used_tokens = set()
     for rel in REAL_SCENARIOS:
         path = REPO_ROOT / rel
@@ -218,6 +291,64 @@ def main():
     missing = sorted(t for t in used_tokens if t not in by_factory)
     check(not missing,
           f"classes usadas em cenarios reais mas ausentes do catalogo: {missing}")
+
+    # -- introspeccao de plugin de terceiro (runtime, via plugininfo) --------
+    # Nao depende do binario 'plugininfo' de verdade (pode nao estar
+    # compilado nesta maquina) -- injeta um PLUGININFO_CANDIDATES falso que
+    # devolve JSON fixo, do mesmo jeito que o binario real devolveria.
+    inheritance = ext.build_inheritance(ext.EDL_CATALOG_INCLUDE_ROOTS + ext.EDL_CATALOG_SRC_ROOTS)
+    descendants = ext.build_descendants(inheritance)
+    slot_names_map = ext.extract_slots(ext.EDL_CATALOG_SRC_ROOTS)
+    slot_types_map = ext.extract_slot_types(ext.EDL_CATALOG_SRC_ROOTS)
+    factory_map_test = ext.build_factory_map(ext.EDL_CATALOG_SRC_ROOTS)
+    class_to_factory = {}
+    for fname, cls in factory_map_test.items():
+        class_to_factory.setdefault(cls, fname)
+    reference_slots = set(ext.load_edl_catalog_overrides().get("referenceSlots", {}))
+    primary = ext.extract_primary_components()
+
+    fake_plugins_dir = REPO_ROOT / "build" / "tests-tmp-fake-plugins"
+    fake_plugins_dir.mkdir(parents=True, exist_ok=True)
+    (fake_plugins_dir / "libAcmeThirdParty.so").write_bytes(b"")
+    fake_binary = fake_plugins_dir / "fake_plugininfo.py"
+    fake_binary.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json\n"
+        "print(json.dumps({'classes': [{'factory': 'AcmeRadar', 'class': 'AcmeRadar',"
+        " 'chain': ['AcmeRadar', 'RfSensor', 'System', 'Component', 'Object'],"
+        " 'slots': ['components', 'acmeGain']}]}))\n",
+        encoding="utf-8",
+    )
+    fake_binary.chmod(0o755)
+    try:
+        old_candidates = ext.PLUGININFO_CANDIDATES
+        old_dir = ext.PLUGINS_DIR
+        ext.PLUGININFO_CANDIDATES = [fake_binary]
+        ext.PLUGINS_DIR = fake_plugins_dir
+        thirdparty = ext.introspect_thirdparty_plugins(
+            set(factory_map_test.keys()), inheritance, slot_names_map, slot_types_map,
+            descendants, class_to_factory, reference_slots, primary,
+        )
+    finally:
+        ext.PLUGININFO_CANDIDATES = old_candidates
+        ext.PLUGINS_DIR = old_dir
+        fake_binary.unlink()
+        (fake_plugins_dir / "libAcmeThirdParty.so").unlink()
+        fake_plugins_dir.rmdir()
+
+    check(len(thirdparty) == 1, f"esperava 1 classe nova (AcmeRadar), achou {len(thirdparty)}")
+    if thirdparty:
+        acme = thirdparty[0]
+        check(acme["origin"] == "plugin:AcmeThirdParty",
+              f"origin deveria vir do nome do arquivo (libAcmeThirdParty.so -> plugin:AcmeThirdParty), veio {acme['origin']!r}")
+        check(acme.get("runtimeOnly") is True, "classe de terceiro deveria vir marcada runtimeOnly")
+        slots_by_name = {s["name"]: s for s in acme["slots"]}
+        comp = slots_by_name.get("components")
+        check(comp is not None and comp["acceptsChildList"] and not comp.get("typeUnknown"),
+              f"'components' deveria herdar o TIPO de verdade de base::Component, veio {comp}")
+        gain = slots_by_name.get("acmeGain")
+        check(gain is not None and gain.get("typeUnknown") is True and gain["acceptsText"] and gain["acceptsNumber"],
+              f"'acmeGain' (sem fonte) deveria cair no fallback texto-ou-numero com typeUnknown, veio {gain}")
 
     if failures:
         print(f"FALHOU ({len(failures)}):")

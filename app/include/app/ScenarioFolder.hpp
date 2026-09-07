@@ -7,10 +7,11 @@ namespace app {
 
 //------------------------------------------------------------------------------
 // A pasta navegavel de '-folder <pasta>': N subpastas, cada uma com uma UNICA
-// 'configs/*.edl' (ou '.edl.in') dentro. Ao contrario do catalogo estatico
-// (ScenarioCatalog.hpp, uma tabela fixa no codigo), isto e descoberta em
-// DISCO, em tempo de execucao -- pensado para cenarios de sandbox/
-// experimentacao do usuario, que nao precisam entrar em C++ pra isso.
+// 'configs/*.edl' (ou '.edl.in') dentro. Ao contrario do '-f <arquivo>' (um
+// caminho so, passado por linha de comando), isto e descoberta em DISCO, em
+// tempo de execucao -- pensado para navegar varios cenarios de uma vez
+// (pocs de src/poc/** inclusive) sem precisar saber o caminho exato de cada
+// um.
 //------------------------------------------------------------------------------
 struct FolderScenarioEntry
 {

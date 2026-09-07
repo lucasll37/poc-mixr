@@ -32,9 +32,9 @@ Um modulo de extensao **pybind11** (`src/rl/bindings/`, compila para
 `_native*.so`) mantem a `Station` viva no MESMO processo Python -- sem
 round-trip de rede por passo. A troca de comando/observacao entre o host
 (este modulo) e o modelo (`models/player/A4`, um `.so` carregado por `dlopen`)
-passa por `shared/xrlbridge` -- uma shared_library pequena, dedicada,
-mesmo motivo estrutural de `shared/xboard::Board` (ver o cabecalho de
-`shared/xrlbridge/RLBridge.hpp`): o host **nao pode** incluir headers do
+passa por `libs/xrlbridge` -- uma shared_library pequena, dedicada,
+mesmo motivo estrutural de `libs/xboard::Board` (ver o cabecalho de
+`libs/xrlbridge/RLBridge.hpp`): o host **nao pode** incluir headers do
 modelo nem linkar contra o `.so` dele em tempo de compilacao
 (`tests/guard/check_host_opaco.sh` trava esse invariante), entao a troca
 so pode passar por uma peca que os dois lados linkam de verdade.
@@ -121,7 +121,7 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
 ## Limites conhecidos e armadilhas confirmadas rodando
 
 - **Um agente RL por processo.** Nem `RLBridgeBehavior` nem
-  `shared/xrlbridge` tem chave por `playerId` -- ver o "porque" nos dois
+  `libs/xrlbridge` tem chave por `playerId` -- ver o "porque" nos dois
   cabecalhos. Rodar mais de um `falcon*` com `RLBridgeBehavior` no MESMO
   cenario misturaria os comandos/observacoes dos dois.
 - **`player_name` TEM DE bater com o player que o `.edl` configurou com
@@ -140,7 +140,7 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   plugin do modelo, que este host nao pode conhecer
   (`tests/guard/check_host_opaco.sh`).
 - **SO PODE EXISTIR UMA `Station` POR PROCESSO -- confirmado, nao e mais
-  hipotese.** `shared/xplugin` sela o registro de plugins depois do
+  hipotese.** `libs/xplugin` sela o registro de plugins depois do
   primeiro `edl_parser()`; um SEGUNDO `MixrFlightEnv()` no mesmo processo
   aborta no primeiro `reset()` dele com "loadModule(...) depois do parse".
   Precisa de mais de um cenario/episodio independente no mesmo run? Um
@@ -160,7 +160,7 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   `gymnasium` DEPOIS de `._native`, mas isso so ajuda se `mixr_gym` for o
   PRIMEIRO a tocar essas bibliotecas no processo). Sem isso, a primeira
   chamada a `reset()` SEGFAULTA dentro de libstdc++ (dentro de um
-  `std::cout` de `shared/xplugin/PluginRegistry.cpp`, ao carregar
+  `std::cout` de `libs/xplugin/PluginRegistry.cpp`, ao carregar
   `libflight_tc.so`) -- confirmado rodando, tudo indica estouro do
   excedente de TLS estatico do glibc quando muitas extensoes C ja foram
   carregadas (numpy sozinho traz ~15) antes da nossa. `mixr_gym/__init__.py`

@@ -5,7 +5,7 @@
 #include <thread>
 #include <vector>
 
-// shared/xboard e a UNICA shared_library() de shared/ (as outras cinco sao
+// libs/xboard e a UNICA shared_library() de libs/ (as outras cinco sao
 // estaticas) -- precisamente porque e escrita pelo MODELO (num .so aberto
 // com dlopen, ate N threads do pool T/C) e lida pelo HOST (thread de
 // background). Ver o "porque" completo em xboard/Board.hpp. Esta e a
@@ -74,7 +74,7 @@ TEST(XBoardConcurrency, GetEmPlayerIdDesconhecidoDevolveDefault)
 // direto -- so bumpDecisionCount()/setThreadTag() tinham, na bateria acima.
 // Correcao, nao so cobertura: sao exatamente os campos que
 // FlightAction::execute() escreve a cada decisao (ver CLAUDE.md, secao
-// "shared/xboard"), e cada um grava por conta propria sob o MESMO mutex --
+// "libs/xboard"), e cada um grava por conta propria sob o MESMO mutex --
 // o que faltava provar e que nenhum deles pisa no que os outros ja
 // escreveram no mesmo Readout.
 TEST(XBoardConcurrency, SetBehaviorLabelGravaOTextoExato)

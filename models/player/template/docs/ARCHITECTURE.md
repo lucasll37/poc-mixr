@@ -100,7 +100,7 @@ thread de decisão) e quando cada uma se aplica ao SEU modelo.
   compilar contra qualquer `Player`, não só aeronaves. Substitua o corpo por chamadas a
   `models::Autopilot`/`models::StoresMgr`/o que for relevante para o SEU player — veja
   `models/player/A4/src/ubf/FlightAction.cpp` para o padrão completo (incluindo o log de
-  transição de estado via `shared/xlog`, que também foi deixado de fora daqui por simplicidade).
+  transição de estado via `libs/xlog`, que também foi deixado de fora daqui por simplicidade).
 - **Dados próprios do modelo** (uma árvore XML, um `.onnx`, uma aeronave JSBSim) — nenhum
   `install_data()`/`install_subdir()` no `meson.build`. Se o seu modelo precisar de um arquivo
   próprio, publique-o do mesmo jeito que `models/player/A4/meson.build` publica `flight_tree.xml` e

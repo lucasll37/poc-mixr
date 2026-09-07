@@ -2,8 +2,8 @@
 // RLBridgeBehavior -- camada 3 (classes MIXR proprias, SEM levantar Station).
 //
 // O que ESTE teste cobre: o contrato de genAction() com um estado invalido
-// (dynamic_cast falha -> nullptr, sem tocar shared/xrlbridge) e o
-// round-trip completo de shared/xrlbridge -- setPendingCommand()/
+// (dynamic_cast falha -> nullptr, sem tocar libs/xrlbridge) e o
+// round-trip completo de libs/xrlbridge -- setPendingCommand()/
 // getPendingCommand() como par leitura/escrita simples, e setObservation()/
 // getObservation() idem.
 //

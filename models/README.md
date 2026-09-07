@@ -274,7 +274,7 @@ shared_module('meu_modelo',
 3. **`-Wl,--no-undefined`** — o executável não exporta símbolo nenhum, então um modelo não pode
    chamar código da aplicação. Esta flag transforma isso em erro de **link**, não de `dlopen`.
 4. **`dependencies` só pode ter `mixr_dep`, `sdk_dep`** e, se precisar, `behavior_tree_dep`.
-   **Nunca** as libs de `shared/` que são estáticas (`xtacview`, `xclock`, `xjoystick`, `xmsg`) —
+   **Nunca** as libs de `libs/` que são estáticas (`xtacview`, `xclock`, `xjoystick`, `xmsg`) —
    você ganharia uma cópia privada dos estáticos delas.
 
 **Nada a acrescentar ao `models:` do [Makefile](../Makefile).** Desde que ele migrou para
@@ -406,40 +406,42 @@ passos de **dado**, não de código:
    > caminho. `mixr::xplugin::factory`/`mixr::xplugin::loadedFactory` já estão encadeadas no
    > `mixr_factory.cpp` único do host (`app/src/mixr_factory.cpp`) — nenhuma poc precisa da
    > própria cadeia de factory.
-3. **Registrar o cenário para ficar rodável e (opcionalmente) testável** — ver §4.1 e §4.2 abaixo.
-   Sem isso, o `.edl.in` existe mas não aparece em `./app -scenario <chave>` nem em `make test`.
+3. **Nada a registrar para ficar rodável** — não há mais catálogo estático de cenários no `./app`.
+   Assim que `configs/` tiver um único `.edl`/`.edl.in`, a poc já é alcançável por
+   `-folder src/poc -scenario <nome>` (ou `-folder src/poc/dis -scenario <nome>` se entrar no
+   grupo DIS) — ver §4.1. Cobertura de teste automática é o único passo opcional, em §4.2.
 
 `src/poc/dis/bandit/` é o exemplo mais enxuto de poc — nunca teve modelo local nenhum (o intruso
 chega por DIS de fora), e ainda assim segue exatamente estes três passos.
 
-### 4.1 Registrar no catálogo do `./app`
+### 4.1 Como a poc fica alcançável
 
-Uma `ScenarioEntry` nova em `app/src/app/ScenarioCatalog.cpp`, dentro de `scenarioCatalog()` — o
-comentário-marcador no fim da lista mostra onde entra. Campos: chave (a que vai depois de
-`-scenario`), título, descrição curta, caminho do `.edl.in`, e — só se o cenário **não** já
-declarar o próprio `dataRecorder:`/Tacview no `.edl.in` (a maioria das pocs declara) — os quatro
-tokens de identidade do Tacview (`modelMap`/`typeMap`/`colorMap`/id) e a frota (`fleet`, a lista de
-nomes de player que o dump/status mostra). Precedente mínimo: qualquer uma das entradas de
-"AS POCS" no próprio arquivo (ex.: `built-in_mixr_1`, que é cenário hermético e não precisa de
-tokens de Tacview aqui porque o `.edl.in` já traz os dela).
+Nenhum código/registro é necessário — `./app` não tem mais catálogo estático embutido no binário
+(`app::ScenarioEntry`/`app::adHocScenario()`, em `app/src/app/AdHocScenario.cpp`, cobrem hoje só a
+entrada de `-f <arquivo>`, com frota sempre `falcon1..4`). Duas formas de rodar a poc nova, ambas
+sem tocar em C++:
 
-Isto sozinho já basta para `make run-<nome>: install` no Makefile raiz (molde de `run-onnx-policy`
-— um `$(BUILD_DIR)/app/src/app -scenario <nome>`) e para rodar via `-scenario <nome>` sem nenhuma
-cobertura de teste automática — é exatamente o caso de `built-in_mixr_1` (aparece no catálogo, não
-entra em `tests/meson.build`, tem só um `make check-<nome>` de determinismo à parte).
+- `./build/app/src/app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis -scenario <nome>`
+  se a poc entrar no grupo DIS) — pula a tela de navegação. A frota é descoberta em runtime
+  (`app::discoverFleet()`), então funciona com qualquer nome de player, não só `falcon1..4`.
+- `./build/app/src/app -f src/poc/<nome>/configs/scenario.edl.in` — direto pelo caminho; assume a
+  frota `falcon1..4` (não serve para uma poc com frota diferente, como `full-systems-nav`).
+
+Único requisito estrutural: `configs/` precisa ter **exatamente um** `.edl`/`.edl.in` para
+`-folder` conseguir descobrir a poc sem ambiguidade (ver `app/ScenarioFolder.hpp`).
 
 ### 4.2 Cobertura de teste automática (opcional)
 
-Depois de registrado no catálogo, a árvore de decisão sobre **onde** a poc ganha cobertura em
-`tests/meson.build` (marcadores no próprio arquivo apontam de volta para cá):
+A árvore de decisão sobre **onde** a poc ganha cobertura em `tests/meson.build` (marcadores no
+próprio arquivo apontam de volta para cá):
 
 | a poc... | cobertura | precedente |
 |---|---|---|
 | segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` (semântica de interceptação aérea) | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `single-thread`, `multi-thread`, `python-flight` |
 | não segue esse formato, mas tem uma propriedade que vale a pena provar (ex.: "decidiu em todos os frames", "dump byte-idêntico em 1/2/4 threads") | bloco(s) `test()` manuais, reaproveitando `scenario_runner`/`leak_runner`/`determinism_sh` (as mesmas ferramentas, fora do `foreach`) | `onnx-policy` (linhas 493-503 de `tests/meson.build`) |
-| não precisa de nenhuma das duas — o cenário é só mais uma composição de players já testados em outro lugar | nenhuma entrada em `tests/meson.build`; documente o porquê no `README.md` da própria poc; determinismo continua verificável por um `make check-<nome>` manual no Makefile raiz (`check_determinism.sh` direto) | `built-in_mixr_1` (zero linhas em `tests/meson.build`, só `check-built-in_mixr_1` no Makefile) |
+| não precisa de nenhuma das duas — o cenário é só mais uma composição de players já testados em outro lugar | nenhuma entrada em `tests/meson.build`; documente o porquê no `README.md` da própria poc; determinismo continua verificável rodando `check_determinism.sh <binario> <rotulo> [frames] [poc] [arquivo-de-cenario]` direto (sem alvo de Makefile próprio) | `built-in_mixr_1`, `full-systems-nav` (zero linhas em `tests/meson.build`) |
 
-Nenhuma das três opções é obrigatória — a única coisa que toda poc precisa é §4.1.
+Nenhuma das duas opções é obrigatória — a poc nova já roda (§4.1) sem cobertura de teste nenhuma.
 
 ---
 
@@ -483,7 +485,7 @@ Nenhuma das três opções é obrigatória — a única coisa que toda poc preci
 - **[player/A4/docs/ARCHITECTURE.md](player/A4/docs/ARCHITECTURE.md)** — calibração e armadilhas do
   modelo de produção
 - **[player/missile/docs/DESIGN.md](player/missile/docs/DESIGN.md)** — a lei de guiagem da demo de míssil
-- **[../shared/xplugin/README.md](../shared/xplugin/README.md)** — o contrato de ABI e a seção
+- **[../libs/xplugin/README.md](../libs/xplugin/README.md)** — o contrato de ABI e a seção
   **Limites**, que diz o que ele **não** garante
 - **[../tests/README.md](../tests/README.md)** — as duas suítes e o que cada camada prova
 - **[../src/poc/dis/single-thread/README.md](../src/poc/dis/single-thread/README.md)** — a dissecação profunda do

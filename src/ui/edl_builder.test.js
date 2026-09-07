@@ -30,6 +30,13 @@ function test(name, fn) {
 
 const CATALOG = [
   { class: "Aircraft", factory: "Aircraft", baseClass: "Player", chain: ["Aircraft", "Player", "Object"], origin: "models",
+    // primaryComponents com so' DOIS papeis (nao os 10 reais) -- suficiente
+    // pra exercitar o mecanismo sem depender do catalogo real (esse ganha
+    // teste de integracao a parte, mais abaixo).
+    primaryComponents: [
+      { role: "dynamicsModel", baseClass: "DynamicsModel" },
+      { role: "pilot", baseClass: "Pilot" },
+    ],
     slots: [
       { name: "type", declaredIn: "Aircraft", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: true, acceptsVector: false, acceptsChildList: false, unitFamilies: [], objectTypes: [], isReference: false },
       { name: "initAlt", declaredIn: "Aircraft", comment: "", acceptsNumber: true, acceptsBoolean: false, acceptsText: false, acceptsVector: false, acceptsChildList: false, unitFamilies: [{ family: "Distance", options: ["Meters", "Feet"] }], objectTypes: [], isReference: false },
@@ -38,21 +45,26 @@ const CATALOG = [
       { name: "ranges", declaredIn: "Player", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: false, acceptsVector: true, acceptsChildList: false, unitFamilies: [], objectTypes: [], isReference: false },
       { name: "modes", declaredIn: "Player", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: false, acceptsVector: false, acceptsChildList: true, unitFamilies: [], objectTypes: ["Aircraft"], isReference: false },
       { name: "trackManagerName", declaredIn: "Player", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: true, acceptsVector: false, acceptsChildList: false, unitFamilies: [], objectTypes: [], isReference: true },
+      // 'components' generico -- o mesmo mecanismo que o Player de verdade
+      // usa pra hospedar os itens que satisfazem primaryComponents acima
+      // (ver o comentario de roleFillStatus() em edl_builder_core.js).
+      { name: "components", declaredIn: "Component", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: false, acceptsVector: false, acceptsChildList: true, unitFamilies: [], objectTypes: ["Component"], isReference: false },
     ] },
-  { class: "JSBSimModel", factory: "JSBSimModel", baseClass: "DynamicsModel", chain: ["JSBSimModel", "DynamicsModel", "Object"], origin: "models",
+  { class: "JSBSimModel", factory: "JSBSimModel", baseClass: "DynamicsModel", chain: ["JSBSimModel", "DynamicsModel", "Component", "Object"], origin: "models",
     slots: [
       { name: "model", declaredIn: "JSBSimModel", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: true, acceptsVector: false, acceptsChildList: false, unitFamilies: [], objectTypes: [], isReference: false },
     ] },
-  { class: "Autopilot", factory: "Autopilot", baseClass: "Pilot", chain: ["Autopilot", "Pilot", "Object"], origin: "models",
+  { class: "Autopilot", factory: "Autopilot", baseClass: "Pilot", chain: ["Autopilot", "Pilot", "Component", "Object"], origin: "models",
     slots: [
-      // acceptsChildList sem NENHUM objectType declarado -- mesmo padrao real
-      // de Station.networks/JoystickIoHandler.devices/UsbJoystick.adapters:
-      // o tipo de cada ITEM so e checado por dentro do setter, nao aparece
-      // no ON_SLOT. Simula isso pra testar o fallback permissivo.
+      // acceptsChildList sem NENHUM objectType declarado -- o caso que
+      // generate_edl_catalog.py cobre com LIST_SLOT_TYPE_OVERRIDES/
+      // TEXT_ONLY_LIST_SLOTS (ex.: Station.networks, TacviewOutput.typeMap);
+      // aqui simula um slot que NENHUMA das duas tabelas cobriu -- deve
+      // recusar toda candidata, nao aceitar qualquer uma.
       { name: "wildcardList", declaredIn: "Autopilot", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: false, acceptsVector: false, acceptsChildList: true, unitFamilies: [], objectTypes: [], isReference: false },
     ] },
   { class: "Station", factory: "Station", baseClass: "Component", chain: ["Station", "Component", "Object"], origin: "simulation", slots: [] },
-  { class: "ClockStation", factory: "ClockStation", baseClass: "Station", chain: ["ClockStation", "Station", "Component", "Object"], origin: "shared", slots: [] },
+  { class: "ClockStation", factory: "ClockStation", baseClass: "Station", chain: ["ClockStation", "Station", "Component", "Object"], origin: "libs", slots: [] },
 ];
 const BY_FACTORY = core.buildCatalogIndex(CATALOG);
 
@@ -129,22 +141,25 @@ test("isCompatible com fabrica desconhecida nao explode, so devolve false", () =
   assert.strictEqual(core.isCompatible("NadaAVerComIsso", slot, BY_FACTORY), false);
 });
 
-test("isCompatible: slot-lista SEM objectTypes declarado aceita QUALQUER candidata (fallback permissivo)", () => {
-  // Station.networks/JoystickIoHandler.devices/UsbJoystick.adapters no
-  // catalogo real tem objectTypes:[] -- sem o fallback, NENHUMA classe
-  // "serviria" ali, um beco sem saida na UI (confirmado rodando antes
-  // deste fallback existir).
+test("isCompatible: slot-lista SEM objectTypes declarado NAO aceita nenhuma candidata (sem fallback permissivo)", () => {
+  // generate_edl_catalog.py cobre os casos reais conhecidos (Station.
+  // networks -> AbstractNetIO, TacviewOutput.typeMap -> textOnly, etc, ver
+  // LIST_SLOT_TYPE_OVERRIDES/TEXT_ONLY_LIST_SLOTS) -- o que sobra vazio
+  // aqui, no NIVEL DE isCompatible(), e' porque generate_edl_catalog.py nao
+  // sabe o tipo de verdade, e a resposta certa e' recusar toda classe (o
+  // usuario so pode adicionar um item de TEXTO), nunca "aceitar qualquer
+  // coisa" (o comportamento antigo, removido).
   const slot = BY_FACTORY.Autopilot.slots.find((s) => s.name === "wildcardList");
-  assert.ok(core.isCompatible("Aircraft", slot, BY_FACTORY));
-  assert.ok(core.isCompatible("JSBSimModel", slot, BY_FACTORY));
+  assert.strictEqual(core.isCompatible("Aircraft", slot, BY_FACTORY), false);
+  assert.strictEqual(core.isCompatible("JSBSimModel", slot, BY_FACTORY), false);
 });
 
-test("isCompatible: o fallback permissivo NAO se aplica a slot de objeto UNICO sem tipo (so a slot-lista)", () => {
+test("isCompatible: slot de objeto UNICO sem tipo tambem recusa toda candidata", () => {
   // Um slot que NAO aceita lista (acceptsChildList:false) e tambem nao
   // declara objectTypes e, por definicao, um slot so de folha (numero/
   // texto/etc) -- nunca deveria aparecer como "aceita filho" pra comecar
   // (isChildSlot() ja o excluiria), mas isCompatible() sozinho tem que
-  // continuar recusando candidatas nesse caso, sem o fallback.
+  // recusar candidatas nesse caso tambem.
   const slotSemLista = { acceptsChildList: false, objectTypes: [] };
   assert.strictEqual(core.isCompatible("Aircraft", slotSemLista, BY_FACTORY), false);
 });
@@ -154,6 +169,77 @@ test("isCompatible: raiz restrita a Station serve para ClockStation (subclasse) 
   assert.ok(core.isCompatible("Station", slotRaiz, BY_FACTORY));
   assert.ok(core.isCompatible("ClockStation", slotRaiz, BY_FACTORY), "ClockStation deriva de Station, deveria servir");
   assert.ok(!core.isCompatible("Aircraft", slotRaiz, BY_FACTORY), "Aircraft nao deriva de Station, nao deveria servir");
+});
+
+/* --------------------- papéis primários / placeholders --------------------- */
+// dynamicsModel/pilot/.../storesMgr NÃO são slots de verdade (ver o
+// comentário de primaryRolesFor() em edl_builder_core.js) -- são resolvidos
+// por TIPO dentro da lista genérica 'components'. Aqui a árvore de teste
+// simula isso com o CATALOG sintético acima (só 2 papéis, não os 10 reais).
+
+test("primaryRolesFor devolve os papeis declarados pelo catalogo", () => {
+  const roles = core.primaryRolesFor("Aircraft", BY_FACTORY);
+  assert.deepStrictEqual(roles.map((r) => r.role), ["dynamicsModel", "pilot"]);
+});
+
+test("primaryRolesFor devolve lista vazia pra classe sem primaryComponents (nao explode)", () => {
+  assert.deepStrictEqual(core.primaryRolesFor("Station", BY_FACTORY), []);
+  assert.deepStrictEqual(core.primaryRolesFor("NadaAVerComIsso", BY_FACTORY), []);
+});
+
+test("roleFillStatus acha o item cuja cadeia de heranca bate com o baseClass do papel", () => {
+  const root = core.makeNode("Aircraft");
+  const engine = core.makeNode("JSBSimModel");
+  root.children.components = [{ key: "dynamicsModel", node: engine }];
+  const role = core.primaryRolesFor("Aircraft", BY_FACTORY)[0]; // dynamicsModel
+  const found = core.roleFillStatus(root, role, BY_FACTORY);
+  assert.strictEqual(found && found.node, engine);
+});
+
+test("roleFillStatus devolve null quando nenhum item satisfaz o papel -- vira placeholder", () => {
+  const root = core.makeNode("Aircraft");
+  root.children.components = [{ key: "dynamicsModel", node: core.makeNode("JSBSimModel") }];
+  const pilotRole = core.primaryRolesFor("Aircraft", BY_FACTORY)[1]; // pilot
+  assert.strictEqual(core.roleFillStatus(root, pilotRole, BY_FACTORY), null);
+});
+
+test("roleFillStatus: primeiro item que casa vence, igual a findByType() real", () => {
+  const root = core.makeNode("Aircraft");
+  const first = core.makeNode("JSBSimModel");
+  const second = core.makeNode("JSBSimModel");
+  root.children.components = [{ key: "1", node: first }, { key: "2", node: second }];
+  const role = core.primaryRolesFor("Aircraft", BY_FACTORY)[0];
+  const found = core.roleFillStatus(root, role, BY_FACTORY);
+  assert.strictEqual(found.node, first, "deveria devolver o PRIMEIRO candidato, nao o segundo");
+});
+
+test("roleFillStatus atravessa item de texto sem quebrar (children:{} generico, ver makeTextLeaf)", () => {
+  const root = core.makeNode("Aircraft");
+  root.children.components = [
+    { key: "apelido", node: core.makeTextLeaf("nao e um componente de verdade") },
+    { key: "dynamicsModel", node: core.makeNode("JSBSimModel") },
+  ];
+  const role = core.primaryRolesFor("Aircraft", BY_FACTORY)[0];
+  const found = core.roleFillStatus(root, role, BY_FACTORY);
+  assert.strictEqual(found.key, "dynamicsModel");
+});
+
+test("emptyChildSlots lista os slots-filho sem NENHUM item, na ordem do catalogo", () => {
+  const root = core.makeNode("Aircraft");
+  const names = core.emptyChildSlots(root, BY_FACTORY).map((s) => s.name);
+  assert.deepStrictEqual(names, ["dynamicsModel", "modes", "components"]);
+});
+
+test("emptyChildSlots para de listar um slot assim que ele ganha um item", () => {
+  const root = core.makeNode("Aircraft");
+  root.children.dynamicsModel = [{ key: "1", node: core.makeNode("JSBSimModel") }];
+  const names = core.emptyChildSlots(root, BY_FACTORY).map((s) => s.name);
+  assert.deepStrictEqual(names, ["modes", "components"]);
+});
+
+test("emptyChildSlots devolve vazio pra classe desconhecida (nao explode)", () => {
+  const fake = core.makeNode("NadaAVerComIsso");
+  assert.deepStrictEqual(core.emptyChildSlots(fake, BY_FACTORY), []);
 });
 
 /* ---------------------------------- ascii ---------------------------------- */
@@ -220,6 +306,33 @@ test("serializeLeafValue: texto-ou-numero (Component.select) emite numero cru qu
 
 test("serializeLeafValue: sem valor (undefined) devolve null -- slot fica de fora do .edl", () => {
   assert.strictEqual(core.serializeLeafValue({}, undefined), null);
+});
+
+test("serializeLeafValue: texto limpo de volta pra vazio ('' ou so' espaco) tambem devolve null -- limpar o campo REMOVE o slot, nao vira 'chave: \"\"'", () => {
+  assert.strictEqual(core.serializeLeafValue({}, { kind: "text", value: "" }), null);
+  assert.strictEqual(core.serializeLeafValue({}, { kind: "text", value: "   " }), null);
+});
+
+test("serializeLeafValue: vetor limpo de volta pra vazio tambem devolve null (nao vira '[  ]')", () => {
+  assert.strictEqual(core.serializeLeafValue({}, { kind: "vector", value: "" }), null);
+});
+
+test("isEmptyLeafValue: numero 0 e booleano false NAO sao 'vazios' -- sao valores legitimos", () => {
+  assert.strictEqual(core.isEmptyLeafValue({ kind: "number", value: 0 }), false);
+  assert.strictEqual(core.isEmptyLeafValue({ kind: "boolean", value: false }), false);
+});
+
+test("projectToEdl: editar um campo e depois limpar de volta pra vazio nao deixa o slot no .edl exportado", () => {
+  const n = core.makeNode("JSBSimModel");
+  n.slotValues.model = { kind: "text", value: "A4" };
+  let text = core.projectToEdl(n, BY_FACTORY);
+  assert.ok(text.includes("model: A4"), text);
+  // "limpar o campo" -- o widget continua mandando um valor (nao apaga a
+  // chave do objeto), so' com texto vazio. E' esse valor vazio que
+  // serializeLeafValue/isEmptyLeafValue tem que tratar como "sem valor".
+  n.slotValues.model = { kind: "text", value: "" };
+  text = core.projectToEdl(n, BY_FACTORY);
+  assert.ok(!text.includes("model:"), text);
 });
 
 /* --------------------------------- projeto inteiro -------------------------- */
@@ -305,7 +418,8 @@ test("findNode/removeNode atravessam um item de texto sem quebrar (children:{} g
 });
 
 /* ----------------------- integração com o catálogo REAL --------------------- */
-// Carrega src/ui/edl_catalog.generated.json (gerado por `make edl-catalog`) e
+// Carrega src/ui/edl_catalog.generated.json (gerado por
+// src/ui/scripts/generate_edl_catalog.py, via `make open-edl-builder`) e
 // monta uma arvore minima real (Station -> ... ), pra pegar qualquer
 // divergencia entre o catalogo de verdade e as regras acima que o catalogo
 // sintetico, pequeno demais de proposito, nao exercitaria.
@@ -353,9 +467,263 @@ if (fs.existsSync(CATALOG_PATH)) {
     assert.ok(text.includes("dynamicsModel: ( JSBSimModel"), text);
     assert.ok(text.includes("model: A4"), text);
     assert.ok(text.includes("pilot: ( Autopilot"), text);
+
+    // Os placeholders da arvore se apoiam em primaryRolesFor/roleFillStatus
+    // sobre o CATALOGO REAL -- confirma que os dois papeis preenchidos
+    // acima (dynamicsModel/pilot) sao encontrados, e que um papel ausente
+    // (ex.: storesMgr, nao adicionado neste cenario minimo) vira null.
+    const roles = core.primaryRolesFor("Aircraft", REAL_BY_FACTORY);
+    assert.strictEqual(roles.length, 10, `Aircraft deveria herdar os 10 papeis de Player, achou ${roles.length}`);
+    const dynRole = roles.find((r) => r.role === "dynamicsModel");
+    const pilotRole = roles.find((r) => r.role === "pilot");
+    const storesRole = roles.find((r) => r.role === "storesMgr");
+    assert.strictEqual(core.roleFillStatus(plane, dynRole, REAL_BY_FACTORY).node, engine);
+    assert.strictEqual(core.roleFillStatus(plane, pilotRole, REAL_BY_FACTORY).node, pilot);
+    assert.strictEqual(core.roleFillStatus(plane, storesRole, REAL_BY_FACTORY), null,
+      "storesMgr nao foi adicionado neste cenario minimo -- deveria virar placeholder, nao um falso-positivo");
   });
 
 }
+
+/* ------------------------- destaque de sintaxe .edl ------------------------ */
+// Porta as regras de .vscode/extensions/edl/syntaxes/edl.tmLanguage.json --
+// o invariante mais importante e' o ROUND-TRIP (nunca perder/duplicar um
+// caractere só por colorir), testado explicitamente abaixo.
+
+function joinTokens(tokens) {
+  return tokens.map((t) => t.text).join("");
+}
+function clsOf(tokens, text) {
+  const t = tokens.find((tk) => tk.text === text);
+  return t ? t.cls : undefined;
+}
+
+test("tokenizeEdlText: round-trip -- concatenar os tokens reproduz o texto original", () => {
+  const sample = '( ClockStation\n   tcRate: ( Hertz 50 )\n   // comentario\n   ownship: "bandit1"\n   ativo: true\n   cor: <ff00ff>\n   ranges: [ 1 2 3 ]\n) // ClockStation\n';
+  const tokens = core.tokenizeEdlText(sample);
+  assert.strictEqual(joinTokens(tokens), sample);
+});
+
+test("tokenizeEdlText: nome de classe logo apos '(' vira tok-class", () => {
+  const tokens = core.tokenizeEdlText("( Aircraft type: C310 )");
+  assert.strictEqual(clsOf(tokens, "Aircraft"), "tok-class");
+});
+
+test("tokenizeEdlText: nome de slot logo antes de ':' vira tok-slot", () => {
+  const tokens = core.tokenizeEdlText("( Aircraft type: C310 )");
+  assert.strictEqual(clsOf(tokens, "type"), "tok-slot");
+});
+
+test("tokenizeEdlText: comentario // vira tok-comment ate o fim da linha", () => {
+  const tokens = core.tokenizeEdlText("( Aircraft ) // fim\n");
+  assert.strictEqual(clsOf(tokens, "// fim"), "tok-comment");
+});
+
+test("tokenizeEdlText: string entre aspas vira tok-string", () => {
+  const tokens = core.tokenizeEdlText('nome: "falcon 1"');
+  assert.strictEqual(clsOf(tokens, '"falcon 1"'), "tok-string");
+});
+
+test("tokenizeEdlText: string entre < > (angled) tambem vira tok-string", () => {
+  const tokens = core.tokenizeEdlText("cor: <ff00ff>");
+  assert.strictEqual(clsOf(tokens, "<ff00ff>"), "tok-string");
+});
+
+test("tokenizeEdlText: true/false (so' minusculo ou MAIUSCULO) vira tok-bool", () => {
+  const tokens = core.tokenizeEdlText("a: true b: FALSE");
+  assert.strictEqual(clsOf(tokens, "true"), "tok-bool");
+  assert.strictEqual(clsOf(tokens, "FALSE"), "tok-bool");
+});
+
+test("tokenizeEdlText: True/False (case mista) NAO e' booleano -- vira valor solto (regra da gramatica original)", () => {
+  const tokens = core.tokenizeEdlText("a: True");
+  assert.strictEqual(clsOf(tokens, "True"), "tok-value");
+});
+
+test("tokenizeEdlText: numero float e inteiro viram tok-num", () => {
+  const tokens = core.tokenizeEdlText("x: 1750.5 y: 42");
+  assert.strictEqual(clsOf(tokens, "1750.5"), "tok-num");
+  assert.strictEqual(clsOf(tokens, "42"), "tok-num");
+});
+
+test("tokenizeEdlText: pontuacao de bloco/lista vira tok-punct", () => {
+  const tokens = core.tokenizeEdlText("components: { 1: ( A ) } ranges: [ 1 2 ]");
+  assert.strictEqual(clsOf(tokens, "{"), "tok-punct");
+  assert.strictEqual(clsOf(tokens, "}"), "tok-punct");
+  assert.strictEqual(clsOf(tokens, "["), "tok-punct");
+  assert.strictEqual(clsOf(tokens, "]"), "tok-punct");
+});
+
+test("tokenizeEdlText: identificador solto (nem apos '(' nem antes de ':') vira tok-value", () => {
+  const tokens = core.tokenizeEdlText("alvo: falcon1");
+  assert.strictEqual(clsOf(tokens, "falcon1"), "tok-value");
+});
+
+test("tokenizeEdlText: round-trip tambem no .edl REAL do preset (se o catalogo existir)", () => {
+  if (!fs.existsSync(CATALOG_PATH)) return;
+  const REAL_CATALOG = JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8"));
+  const REAL_BY_FACTORY = core.buildCatalogIndex(REAL_CATALOG);
+  const PRESET_PATH = path.join(__dirname, "preset.json");
+  if (!fs.existsSync(PRESET_PATH)) return;
+  const scenario = JSON.parse(fs.readFileSync(PRESET_PATH, "utf8"));
+  const text = core.projectToEdl(scenario, REAL_BY_FACTORY);
+  const tokens = core.tokenizeEdlText(text);
+  assert.strictEqual(joinTokens(tokens), text, "round-trip deveria reproduzir o .edl real byte a byte");
+});
+
+/* ------------------------- mapa: posições georreferenciadas ------------- */
+
+test("leafValueToMeters: unidade escolhida converte pro fator certo", () => {
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "NauticalMiles", value: 5 }), 5 * 1852);
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "KiloMeters", value: 2 }), 2000);
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "Feet", value: 1000 }), 1000 * 0.3048);
+});
+
+test("leafValueToMeters: sem unidade escolhida, o numero cru JA e' em metros (convencao do slot Player)", () => {
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "", value: 42 }), 42);
+});
+
+test("leafValueToMeters: slot-valor ausente ou unidade desconhecida devolve undefined, nao NaN", () => {
+  assert.strictEqual(core.leafValueToMeters(undefined), undefined);
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "NaoExiste", value: 5 }), undefined);
+});
+
+test("leafValueToMeters: campo numerico limpo ('') conta como 0 -- number/unit nao tem nocao de 'vazio' (mesma decisao ja registrada em isEmptyLeafValue)", () => {
+  assert.strictEqual(core.leafValueToMeters({ kind: "unit", unit: "", value: "" }), 0);
+});
+
+test("extractPlacements: so pega nos cuja cadeia inclui Player, nao qualquer componente", () => {
+  const station = core.makeNode("Aircraft");
+  const dyn = core.makeNode("JSBSimModel");
+  station.children.components = [{ key: "dynamicsModel", node: dyn }];
+  const placements = core.extractPlacements(station, BY_FACTORY);
+  assert.strictEqual(placements.length, 1);
+  assert.strictEqual(placements[0].factory, "Aircraft");
+});
+
+test("extractPlacements: le initXPos/initYPos/initAlt convertidos pra metros", () => {
+  const n = core.makeNode("Aircraft");
+  n.slotValues.initXPos = { kind: "unit", unit: "NauticalMiles", value: 5 };
+  n.slotValues.initYPos = { kind: "unit", unit: "NauticalMiles", value: -2 };
+  n.slotValues.initAlt = { kind: "unit", unit: "Meters", value: 1750 };
+  const [p] = core.extractPlacements(n, BY_FACTORY);
+  assert.strictEqual(p.north, 5 * 1852);
+  assert.strictEqual(p.east, -2 * 1852);
+  assert.strictEqual(p.alt, 1750);
+  assert.strictEqual(p.hasExplicitPosition, true);
+});
+
+test("extractPlacements: posicao ausente conta como 0 (aparece na origem, nao some do mapa)", () => {
+  const n = core.makeNode("Aircraft");
+  const [p] = core.extractPlacements(n, BY_FACTORY);
+  assert.strictEqual(p.north, 0);
+  assert.strictEqual(p.east, 0);
+  assert.strictEqual(p.hasExplicitPosition, false);
+});
+
+test("extractPlacements: percorre players ANINHADOS (ex.: missil dentro de stores)", () => {
+  const root = core.makeNode("Aircraft");
+  const missile = core.makeNode("Aircraft"); // reaproveita a classe sintetica so pra testar aninhamento
+  root.children.components = [{ key: "stores", node: missile }];
+  const placements = core.extractPlacements(root, BY_FACTORY);
+  assert.strictEqual(placements.length, 2);
+});
+
+test("extractPlacements: arvore vazia (null) devolve lista vazia", () => {
+  assert.deepStrictEqual(core.extractPlacements(null, BY_FACTORY), []);
+});
+
+test("extractPlacements: rotulo usa a CHAVE do pai (convencao 'falcon1: (Aircraft...)'), nao um slot -- Player nao tem slot 'name'", () => {
+  const root = core.makeNode("Aircraft");
+  const child = core.makeNode("Aircraft");
+  root.children.components = [{ key: "falcon1", node: child }];
+  const placements = core.extractPlacements(root, BY_FACTORY);
+  const rootPlacement = placements.find((p) => p.id === root.id);
+  const childPlacement = placements.find((p) => p.id === child.id);
+  assert.strictEqual(rootPlacement.label, "Aircraft", "raiz nao tem chave de pai -- cai no nome da fabrica");
+  assert.strictEqual(childPlacement.label, "falcon1", "item de lista usa a chave que o pai deu a ele");
+});
+
+/* ------------------------------- pendências ------------------------------ */
+
+// NOTA sobre o fixture: o Aircraft sintético (CATALOG, acima) tem tanto o
+// PAPEL 'dynamicsModel' (via primaryComponents, resolvido por TIPO dentro
+// de 'components:') quanto um SLOT LITERAL de mesmo nome, de objeto único
+// ('dynamicsModel', objectTypes:["DynamicsModel"], usado por outro teste
+// deste arquivo pra exercitar isCompatible) -- os dois são coisas
+// DIFERENTES aqui (incidental deste fixture; um Player de verdade nunca
+// declara os dois). isChildSlot() conta esse slot literal (objectTypes não
+// vazio) como mais uma pendência própria, à parte do papel.
+test("nodePendencies: papel primario vazio + slot-filho vazio, sem contar 'components' 2x quando ha papeis", () => {
+  const n = core.makeNode("Aircraft");
+  const items = core.nodePendencies(n, BY_FACTORY);
+  // dynamicsModel + pilot (papeis) + 'modes' + 'dynamicsModel' (slot LITERAL,
+  // ver nota acima) -- 'components' fica de fora por ja' coberto pelos papeis.
+  assert.strictEqual(items.length, 4);
+  assert.ok(items.some((p) => p.kind === "role" && p.role === "dynamicsModel"));
+  assert.ok(items.some((p) => p.kind === "role" && p.role === "pilot"));
+  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "modes"));
+  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "dynamicsModel"));
+  assert.ok(!items.some((p) => p.kind === "slot" && p.slotName === "components"));
+});
+
+test("nodePendencies: papel preenchido (via 'components') e slot 'modes' preenchido somem da lista", () => {
+  const n = core.makeNode("Aircraft");
+  const dyn = core.makeNode("JSBSimModel");
+  n.children.components = [{ key: "dynamicsModel", node: dyn }];
+  const other = core.makeNode("Aircraft");
+  n.children.modes = [{ key: "1", node: other }];
+  const items = core.nodePendencies(n, BY_FACTORY);
+  // sobra 'pilot' (papel) e o slot LITERAL 'dynamicsModel' (ver nota acima --
+  // preencher o PAPEL não toca o slot de mesmo nome, são coisas diferentes).
+  assert.strictEqual(items.length, 2);
+  assert.ok(items.some((p) => p.kind === "role" && p.role === "pilot"));
+  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "dynamicsModel"));
+});
+
+test("nodePendencies: classe desconhecida ou sem primaryComponents/slot-filho devolve lista vazia", () => {
+  assert.deepStrictEqual(core.nodePendencies(core.makeNode("JSBSimModel"), BY_FACTORY), []);
+  assert.deepStrictEqual(core.nodePendencies({ id: 1, factory: "NadaAVer", slotValues: {}, children: {} }, BY_FACTORY), []);
+});
+
+test("collectPendencies: soma as pendencias de TODOS os nos da arvore, com o rotulo vindo da CHAVE do pai", () => {
+  const root = core.makeNode("Aircraft");
+  const child = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "falcon2", node: child }];
+  const all = core.collectPendencies(root, BY_FACTORY);
+  // raiz: 4 pendencias de um Aircraft bare (ver nota do fixture acima) menos
+  // 'modes' (que a raiz JA tem preenchido, com o proprio child) = 3;
+  // child (dentro de modes, bare tambem): as 4 pendencias completas.
+  const rootItems = all.filter((p) => p.nodeId === root.id);
+  const childItems = all.filter((p) => p.nodeId === child.id);
+  assert.strictEqual(rootItems.length, 3);
+  assert.strictEqual(childItems.length, 4);
+  assert.ok(childItems.every((p) => p.label === "falcon2"), "rotulo do filho vem da chave que o pai deu a ele");
+  assert.strictEqual(all.find((p) => p.nodeId === root.id).label, "Aircraft", "raiz sem chave de pai cai no nome da fabrica");
+});
+
+test("collectPendencies: arvore vazia (null) devolve lista vazia", () => {
+  assert.deepStrictEqual(core.collectPendencies(null, BY_FACTORY), []);
+});
+
+test("findAncestorPath: caminho da raiz ate um no profundo, incluindo as duas pontas", () => {
+  const root = core.makeNode("Aircraft");
+  const mid = core.makeNode("Aircraft");
+  const leaf = core.makeNode("JSBSimModel");
+  root.children.modes = [{ key: "1", node: mid }];
+  mid.children.components = [{ key: "dynamicsModel", node: leaf }];
+  const path = core.findAncestorPath(root, leaf.id);
+  assert.deepStrictEqual(path, [root.id, mid.id, leaf.id]);
+});
+
+test("findAncestorPath: id inexistente devolve null", () => {
+  const root = core.makeNode("Aircraft");
+  assert.strictEqual(core.findAncestorPath(root, 999999), null);
+});
+
+test("findAncestorPath: arvore vazia (null) devolve null", () => {
+  assert.strictEqual(core.findAncestorPath(null, 1), null);
+});
 
 /* --------------------------------------------------------------------------- */
 

@@ -42,7 +42,7 @@ namespace xmissile {
 // evento definido uma vez em events/ e tratado por um handler escrito
 // DEPOIS, num plugin sem nenhuma relacao de compilacao com quem emite
 // (xnative::AlertDatalink, em models/player/A4). Ver events/README.md. Efeito
-// deliberadamente trivial (so log via shared/xlog) -- o ponto e a fiacao do
+// deliberadamente trivial (so log via libs/xlog) -- o ponto e a fiacao do
 // evento, nao dar ao missil uma tatica nova.
 //
 // ARMADILHA CONFIRMADA RODANDO: esse timer NAO pode morar em dynamics().

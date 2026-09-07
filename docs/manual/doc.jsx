@@ -887,6 +887,10 @@ const THREAD_COLOR = { tc: "var(--ink)", fundo: "var(--bgc)", rede: "var(--ok)",
 /* =============================== CSS ================================ */
 
 const CSS = `
+/* Reset da margem padrão do user-agent (~8px em <body>) -- sem isto sobra   *
+ * uma faixa da cor de fundo do PRÓPRIO NAVEGADOR (não de --paper) ao redor  *
+ * da página inteira, visível principalmente no tema escuro. */
+html, body { margin:0; padding:0; }
 .mx { --paper:#E6E9E3; --panel:#DCE0D9; --ink:#16232E; --muted:#6E7A76;
   --rule:#C6CDC3; --hot:#B4661E; --rf:#8C2F3D; --bgc:#3D6C8C; --ok:#4A6B4F;
   --new:#7A5B9B; --code:#1B2730; --codeink:#CFD8CE;
@@ -1103,7 +1107,8 @@ export default function App() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div className="mx-tabs">
-            <button className="mx-tab" data-on={mode === "exec" ? 1 : 0} onClick={() => setMode("exec")}>Execução</button>
+            <button className="mx-tab" data-on={mode === "exec" ? 1 : 0} onClick={() => setMode("exec")}>Simulação</button>
+            <button className="mx-tab" data-on={mode === "dec" ? 1 : 0} onClick={() => setMode("dec")}>Comportamento</button>
             <button className="mx-tab" data-on={mode === "cat" ? 1 : 0} onClick={() => setMode("cat")}>Catálogo</button>
           </div>
           <button className="mx-zbtn" data-w="1" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Alternar modo claro/escuro">
@@ -1114,6 +1119,9 @@ export default function App() {
       {mode === "exec" && (
         <Exec focus={focus} setFocus={setFocus}
               onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }} />
+      )}
+      {mode === "dec" && (
+        <FlightDecision onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }} />
       )}
       {mode === "cat" && (
         <Catalog onOpen={(c) => { setFocus(c); setMode("exec"); }}
@@ -1938,6 +1946,1361 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
         </label>
         <select className="mx-input" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Velocidade">
           <option value={1100}>Lento</option><option value={650}>Normal</option><option value={240}>Rápido</option>
+        </select>
+      </div>
+    </>
+  );
+}
+
+/* ==================================================================== *
+ * DECISAO DE VOO (producao) -- do updateTC() do agente ate o Autopilot
+ *
+ * Ao contrario da trilha "Thread de Tempo Critico" (framework puro,
+ * escopo deliberado so em mixr::base::ubf -- ver a nota em walk() e no
+ * README.md), esta aba mostra a cadeia REAL do MODELO de voo deste
+ * repositorio (models/player/A4/): FlightAgentTC, FlightState, BtBehavior,
+ * os 4 ramos do Fallback de producao (flight_tree.xml) e FlightAction
+ * escrevendo no Autopilot nativo -- UM EXEMPLO concreto do padrao
+ * generico Agent/AgentTC + AbstractState/AbstractBehavior/AbstractAction,
+ * que se aplica a QUALQUER player (ver a faixa 'escopo: framework UBF' e
+ * o cartao 'Agent vs. AgentTC' dentro do componente).
+ *
+ * tools/extract_execution_chain.py so cobre contexts/src/mixr/ (ver
+ * docs/manual/README.md) -- FLIGHT_SNIPPETS/FLIGHT_MODEL abaixo foram
+ * conferidos a mao, direto do fonte de models/player/A4/, arquivo e linha
+ * reais, mesma pratica ja usada por EDL_TEXT/SCENARIO (curadoria manual
+ * sobre dado real, nao invencao). Agent/AgentTC/AbstractState/
+ * AbstractBehavior/AbstractAction JA estao no MODEL global (extraidos de
+ * verdade) -- FLIGHT_MODEL so preenche o que o extrator nao cobre, e as
+ * duas fontes se emendam na mesma cadeia (flightChainOf).
+ * ==================================================================== */
+
+const FLIGHT_SNIPPETS = {
+  "FlightAgentTC::controller": {
+    "file": "models/player/A4/src/xnative/FlightAgentTC.cpp",
+    "line": 72,
+    "lines": [
+      "void FlightAgentTC::controller(const double dt)",
+      "{",
+      "   if (dt <= 0.0) return;",
+      "",
+      "   if (getActor() == nullptr) initActor();",
+      "",
+      "   const auto player = dynamic_cast<models::Player*>(getActor());",
+      "   if (player == nullptr) return;",
+      "",
+      "   const models::WorldModel* const world{player->getWorldModel()};",
+      "   if (world == nullptr) return;",
+      "",
+      "   // 4 passagens por frame, uma por fase, cada uma com dt/4. A decisao",
+      "   // pertence a fase 3 (\"logica e controle\"), com o dt do frame inteiro.",
+      "   if (world->phase() != 3) return;",
+      "",
+      "   const int tag{xboard::threadTag()};",
+      "   lastThreadTag.store(tag, std::memory_order_relaxed);",
+      "",
+      "   // Publica no quadro de leitura: e por ele que a linha de status mostra em",
+      "   // que thread do pool T/C este aviao decidiu. O host nao alcanca mais esta",
+      "   // classe -- ela mora no plugin do modelo.",
+      "   xboard::setThreadTag(player->getID(), tag);",
+      "",
+      "   BaseClass::controller(dt * 4.0);",
+      "",
+      "   decisions.fetch_add(1, std::memory_order_relaxed);",
+      "}"
+    ],
+    "trunc": false
+  },
+  "FlightState::updateState": {
+    "file": "models/player/A4/src/ubf/FlightState.cpp",
+    "line": 49,
+    "lines": [
+      "void FlightState::updateState(const base::Component* const actor)",
+      "{",
+      "   BaseClass::updateState(actor);",
+      "",
+      "   const auto air = dynamic_cast<const models::AirVehicle*>(actor);",
+      "   if (air == nullptr) {",
+      "      snap = Snapshot{};",
+      "      return;",
+      "   }",
+      "",
+      "   Snapshot s;",
+      "   s.valid = true;",
+      "",
+      "   const base::Vec3d& pos{air->getPosition()};",
+      "   s.northM = pos[models::Player::INORTH];",
+      "   s.eastM = pos[models::Player::IEAST];",
+      "   s.altitudeM = air->getAltitudeM();",
+      "   s.headingDeg = air->getHeadingD();",
+      "   s.speedKts = air->getTotalVelocityKts();",
+      "   s.rollDeg = air->getRollD();",
+      "   s.pitchDeg = air->getPitchD();",
+      "",
+      "   // Referencia de solo, tambem pela pilha nativa: quem consulta o banco de",
+      "   // elevacao do WorldModel e o proprio Player::updateElevation(), na fase de",
+      "   // BACKGROUND (Player.cpp:630, dentro de updateData()) -- nao numa das",
+      "   // quatro fases do frame de tempo critico. Consequencia pratica: onde a",
+      "   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz (ver a poc",
+      "   // multi-thread), este valor pode estar ate 100 ms velho (~8 m percorridos), o que",
+      "   // e irrelevante para um piso com centenas de metros de folga. E continua",
+      "   // deterministico: em -deterministic o laco faz tcFrame() e updateData()",
+      "   // em sequencia no mesmo passo, com qualquer numero de threads T/C.",
+      "   //",
+      "   // ARMADILHA: terrainValid NAO garante cobertura. O updateElevation()",
+      "   // nativo ignora o retorno de getElevation(), entao uma aeronave fora da",
+      "   // celula do tile recebe elevacao 0.0 com o flag LIGADO. Quem trata isso e",
+      "   // o piso absoluto de domain/TerrainFloor.hpp, nao este campo.",
+      "   s.terrainValid = air->isTerrainElevationValid();",
+      "   s.terrainElevM = air->getTerrainElevationM();",
+      "   s.altitudeAglM = air->getAltitudeAglM();",
+      "",
+      "   // Telemetria do 6-DOF -- tudo via AirVehicle, que repassa ao JSBSimModel",
+      "   const double fuelMax{air->getFuelWtMax()};",
+      "   s.fuelFraction = (fuelMax > 0.0) ? (air->getFuelWt() / fuelMax) : 1.0;",
+      "   s.mach = air->getMach();",
+      "   s.gLoad = air->getGload();",
+      "   s.alphaDeg = air->getAngleOfAttack() * RAD2DEG;",
+      "",
+      "   // --- contato: pista do radar NATIVO (Antenna/Tws -> AirTrkMgr) ---",
+      "   const xtrack::TrackInfo track{xtrack::nearestHostileTrack(air)};",
+      "   if (track.found) {",
+      "      s.hasContact = true;",
+      "      s.contactName = track.name;",
+      "      s.contactRangeM = track.rangeM;",
+      "      s.contactRelBearingDeg = track.relBearingDeg;",
+      "      s.contactDeltaAltM = track.deltaAltM;",
+      "",
+      "      // A pista vem RELATIVA ao ownship; somando a nossa posicao sai a",
+      "      // posicao absoluta, que e o que vai no alerta para os outros avioes.",
+      "      s.contactNorthM = s.northM + track.relNorthM;",
+      "      s.contactEastM = s.eastM + track.relEastM;",
+      "      s.contactAltitudeM = s.altitudeM + track.deltaAltM;",
+      "   }",
+      "",
+      "   // --- alerta recebido pelo datalink NATIVO ---",
+      "   const auto datalink = dynamic_cast<const AlertDatalink*>(air->getDatalink());",
+      "   if (datalink != nullptr) {",
+      "      const auto alert = datalink->getAlert();",
+      "      s.hasAlert = alert.valid;",
+      "      if (alert.valid) {",
+      "         s.alertSender = alert.senderName;",
+      "         s.alertContactName = alert.contactName;",
+      "         s.alertNorthM = alert.northM;",
+      "         s.alertEastM = alert.eastM;",
+      "         s.alertAltitudeM = alert.altitudeM;",
+      "         s.alertRangeM = alert.rangeM;",
+      "      }",
+      "   }",
+      "",
+      "   // --- arma: StoresMgr e opcional (nenhum aviao de producao declara",
+      "   // 'stores:'). available() e o numero de armas disponiveis para",
+      "   // LIBERACAO -- ao contrario de isWeaponAvailable(), nao depende de uma",
+      "   // estacao ter sido SELECIONADA primeiro (getStoresManagement() ja",
+      "   // devolve StoresMgr*, tipado -- ver Player.hpp).",
+      "   const auto storesMgr = air->getStoresManagement();",
+      "   s.weaponReady = (storesMgr != nullptr) && (storesMgr->available() > 0);",
+      "",
+      "   // --- navegacao NATIVA: Route/Steerpoint, so leitura ---",
+      "   //",
+      "   // mixr::models::Route::updateData() (chamado todo frame de BACKGROUND,",
+      "   // incondicionalmente -- Route.cpp) atualiza os dados de guiagem de CADA",
+      "   // steerpoint e sequencia a rota por DISTANCIA, independente do navMode",
+      "   // do Autopilot. Navigation::updateNavSteering() copia o rumo/alcance do",
+      "   // steerpoint \"to\" para os proprios campos da Navigation -- e o MESMO",
+      "   // dado que Autopilot::processModeNavigation() consulta quando navMode",
+      "   // esta ligado (ver o comentario do slot 'pilot:' em qualquer cenario que",
+      "   // use o no ( Navigate )). Aqui a leitura e identica, so que por FORA do",
+      "   // Autopilot -- quem decide o que fazer com ela e a arvore.",
+      "   const auto nav = air->getNavigation();",
+      "   if (nav != nullptr) {",
+      "      s.hasNavSteering = nav->isNavSteeringValid();",
+      "      s.navTrueBrgDeg = nav->getTrueBrgDeg();",
+      "      const auto route = nav->getPriRoute();",
+      "      const auto steerpoint = (route != nullptr) ? route->getSteerpoint() : nullptr;",
+      "      if (steerpoint != nullptr) {",
+      "         s.hasNavCmdAlt = steerpoint->isCmdAltValid();",
+      "         s.navCmdAltM = steerpoint->getCmdAltitudeM();",
+      "         s.hasNavCmdSpeed = steerpoint->isCmdAirspeedValid();",
+      "         s.navCmdSpeedKts = steerpoint->getCmdAirspeedKts();",
+      "      }",
+      "   }",
+      "",
+      "   snap = s;",
+      "",
+      "   // Para onde a antena esta apontando AGORA -- publicado no quadro de leitura",
+      "   // para o host empurrar ao Tacview.",
+      "   //",
+      "   // Isto e do MODELO e nao do host: quem sabe o que a aeronave esta",
+      "   // enxergando e quem percebe. O host so relaia o que o quadro disser, e se",
+      "   // um modelo nunca publicar, ele simplesmente nao desenha varredura -- um",
+      "   // modelo sem radar e legitimo.",
+      "   //",
+      "   // Nao entra no dump deterministico: a varredura so alimenta o caminho de",
+      "   // tempo real (ver app/RealTimeRun.cpp).",
+      "   const RadarScanInfo scan{radarScanOf(air)};",
+      "   xboard::setRadarScan(air->getID(), scan.found, scan.azimuthDeg, scan.elevationDeg,",
+      "                        scan.rangeM, scan.horizontalBeamwidthDeg, scan.verticalBeamwidthDeg);",
+      "}"
+    ],
+    "trunc": false
+  },
+  "BtBehavior::genAction": {
+    "file": "models/player/A4/src/ubf/BtBehavior.cpp",
+    "line": 175,
+    "lines": [
+      "base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState* const state,",
+      "                                                 const double dt)",
+      "{",
+      "   const auto flightState = dynamic_cast<const FlightState*>(state);",
+      "   if (flightState == nullptr) return nullptr;",
+      "",
+      "   // Ver a armadilha no cabecalho: reset() pode nunca chegar a um",
+      "   // comportamento aninhado no Arbiter, entao a configuracao vinda dos",
+      "   // slots e aplicada aqui, na primeira decisao.",
+      "   if (!plansReady) {",
+      "      configurePlans();",
+      "      patrol.reset();",
+      "      plansReady = true;",
+      "   }",
+      "",
+      "   snap = flightState->snapshot();",
+      "   if (!snap.valid) return nullptr;",
+      "",
+      "   frameDt = dt;",
+      "   feedThreatPolicy(dt);",
+      "",
+      "   if (!treeBuilt) buildTree();",
+      "   if (!treeValid) return nullptr;",
+      "",
+      "   currentDecision.reset();",
+      "   tree.tickRoot();",
+      "   if (!currentDecision.taken) return nullptr;",
+      "",
+      "   // Acao PRE-REF'd (o Agent chama unref() depois de executar) -- contrato",
+      "   // do UBF: \"returns a pre-ref'd Action\".",
+      "   const auto action = new FlightAction();",
+      "   action->setCommand(currentDecision.command);",
+      "   action->setLabel(currentDecision.label);",
+      "   if (currentDecision.broadcastAlert) {",
+      "      action->setAlertBroadcast(currentDecision.alertContactName,",
+      "                                currentDecision.alertNorthM, currentDecision.alertEastM,",
+      "                                currentDecision.alertAltitudeM, currentDecision.alertRangeM);",
+      "   }",
+      "   if (currentDecision.launchRequested) {",
+      "      action->setLaunchRequest(currentDecision.launchTargetName);",
+      "   }",
+      "",
+      "   // O voto do comportamento vai junto: e por ele que o UbfArbiter escolhe",
+      "   // entre esta acao e a de outro comportamento no mesmo frame.",
+      "   action->setVote(getVote());",
+      "   return action;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "ContactDetectedCondition::tick": {
+    "file": "models/player/A4/src/bt/nodes/ContactDetectedCondition.cpp",
+    "line": 14,
+    "lines": [
+      "//------------------------------------------------------------------------------",
+      "// A condicao NAO e \"estou vendo o intruso agora\", e sim \"a manobra de evasao",
+      "// esta valendo\" -- que continua true por alguns segundos depois de a pista",
+      "// sumir (domain::ThreatPolicy::engaged()).",
+      "//",
+      "// E essa diferenca que impede a alternancia com o ramo de apoio: a propria",
+      "// quebra tira o intruso do setor do radar (+-30 graus, contra uma quebra de",
+      "// 110), entao \"vendo agora\" pisca -- e o ramo de baixo assumia, trazia a",
+      "// aeronave de volta e ela reaquisitava. Resultado observado no Tacview:",
+      "// aeronaves oscilando +-25 graus de banco, com periodo de ~24 s.",
+      "//------------------------------------------------------------------------------",
+      "BT::NodeStatus ContactDetectedCondition::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   return context_.behavior->threatPolicy().engaged() ? BT::NodeStatus::SUCCESS",
+      "                                                      : BT::NodeStatus::FAILURE;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "PatrolAction::tick": {
+    "file": "models/player/A4/src/bt/nodes/PatrolAction.cpp",
+    "line": 13,
+    "lines": [
+      "BT::NodeStatus PatrolAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   auto& plan = context_.behavior->patrolPlan();",
+      "   plan.advance(context_.behavior->getFrameDt());",
+      "",
+      "   context_.behavior->decision().take(plan.command(), \"PATROL\");",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "ReportAndEvadeAction::tick": {
+    "file": "models/player/A4/src/bt/nodes/ReportAndEvadeAction.cpp",
+    "line": 15,
+    "lines": [
+      "//------------------------------------------------------------------------------",
+      "// O no NAO calcula a manobra: ele so entrega o comando que a politica fixou",
+      "// na entrada da evasao (ver domain/ThreatPolicy.hpp -- o alvo e calculado uma",
+      "// vez e mantido, para o piloto automatico ter para onde convergir).",
+      "//",
+      "// Dois rotulos, porque sao dois estados diferentes e vale ve-los no status:",
+      "//    EVADE  -- quebrando COM o intruso na tela",
+      "//    BREAK  -- terminando a quebra no arrasto da histerese, ja sem pista",
+      "//------------------------------------------------------------------------------",
+      "BT::NodeStatus ReportAndEvadeAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const domain::ThreatPolicy& policy{context_.behavior->threatPolicy()};",
+      "   if (!policy.engaged()) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& snap = context_.behavior->snapshot();",
+      "   FlightDecision& decision{context_.behavior->decision()};",
+      "",
+      "   decision.take(policy.command(), policy.contactLive() ? \"EVADE\" : \"BREAK\");",
+      "",
+      "   // O \"influencia os demais\": este no NAO alcanca outro player -- ele so",
+      "   // marca o pedido. Quem transmite e o AlertDatalink, na fase 1 do frame",
+      "   // seguinte, com a mensagem chegando aos outros como evento nativo.",
+      "   //",
+      "   // So se avisa o que se esta VENDO: no arrasto da histerese a posicao do",
+      "   // contato ja e velha, e retransmiti-la manteria os outros convergindo",
+      "   // para um ponto que nao vale mais.",
+      "   if (policy.contactLive()) {",
+      "      decision.broadcastAlert = true;",
+      "      decision.alertContactName = snap.contactName;",
+      "      decision.alertNorthM = snap.contactNorthM;",
+      "      decision.alertEastM = snap.contactEastM;",
+      "      decision.alertAltitudeM = snap.contactAltitudeM;",
+      "      decision.alertRangeM = snap.contactRangeM;",
+      "   }",
+      "",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "ReturnToBaseAction::tick": {
+    "file": "models/player/A4/src/bt/nodes/ReturnToBaseAction.cpp",
+    "line": 13,
+    "lines": [
+      "BT::NodeStatus ReturnToBaseAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& snap = context_.behavior->snapshot();",
+      "   auto& plan = context_.behavior->rtbPlan();",
+      "",
+      "   const domain::FlightCommand cmd{plan.command(snap.northM, snap.eastM, snap.headingDeg)};",
+      "   const bool home{plan.arrived(snap.northM, snap.eastM)};",
+      "",
+      "   context_.behavior->decision().take(cmd, home ? \"HOME\" : \"RTB\");",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "SupportAlertAction::tick": {
+    "file": "models/player/A4/src/bt/nodes/SupportAlertAction.cpp",
+    "line": 14,
+    "lines": [
+      "BT::NodeStatus SupportAlertAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& snap = context_.behavior->snapshot();",
+      "   if (!snap.hasAlert) return BT::NodeStatus::FAILURE;",
+      "",
+      "   // Reacao ao evento de OUTRO player: voa para a posicao que o alerta",
+      "   // trouxe. O alerta nao mandou fazer isso -- ele so disse onde esta o",
+      "   // intruso; a decisao de apoiar e desta aeronave.",
+      "   domain::FlightCommand cmd;",
+      "   cmd.headingDeg = domain::headingToDeg(snap.northM, snap.eastM,",
+      "                                         snap.alertNorthM, snap.alertEastM);",
+      "   cmd.altitudeM = snap.alertAltitudeM;",
+      "   cmd.speedKts = context_.behavior->getSupportSpeedKts();",
+      "",
+      "   context_.behavior->decision().take(cmd, \"SUPPORT\");",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}"
+    ],
+    "trunc": false
+  },
+  "FlightAction::execute": {
+    "file": "models/player/A4/src/ubf/FlightAction.cpp",
+    "line": 129,
+    "lines": [
+      "bool FlightAction::execute(base::Component* actor)",
+      "{",
+      "   const auto player = dynamic_cast<models::Player*>(actor);",
+      "   if (player == nullptr) return false;",
+      "",
+      "   base::Pair* const pilotPair{player->getPilotByType(typeid(models::Autopilot))};",
+      "   const auto autopilot = (pilotPair != nullptr)",
+      "                           ? dynamic_cast<models::Autopilot*>(pilotPair->object())",
+      "                           : nullptr;",
+      "   if (autopilot == nullptr) {",
+      "      // Ate aqui esta falha era MUDA: o comportamento decidia, o arbitro",
+      "      // escolhia, e a atuacao voltava 'false' sem nada em lugar nenhum --",
+      "      // a aeronave simplesmente nao obedecia. Uma vez por player (ver",
+      "      // firstTimeFor()).",
+      "      static std::map<int, std::string> reported;",
+      "      if (changedFor(reported, player->getID(), \"sem-autopilot\")) {",
+      "         LOG(ERROR) << \"[FlightAction] \" << player->getName()->getString()",
+      "                    << \": sem Autopilot -- decisao '\" << label << \"' nao pode ser atuada\";",
+      "      }",
+      "      return false;",
+      "   }",
+      "",
+      "   // Estado ANTERIOR do quadro, lido antes de sobrescrever logo abaixo --",
+      "   // e o que permite logar a TRANSICAO de comportamento (evento raro) em",
+      "   // vez do comportamento corrente (50 Hz por aeronave).",
+      "   const xboard::Readout before{xboard::get(player->getID())};",
+      "",
+      "   autopilot->setHeadingHoldMode(true);",
+      "   autopilot->setAltitudeHoldMode(true);",
+      "   autopilot->setVelocityHoldMode(true);",
+      "",
+      "   autopilot->setCommandedHeadingD(command.headingDeg);",
+      "   autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);",
+      "   autopilot->setCommandedVelocityKts(command.speedKts);",
+      "",
+      "   // O quadro de leitura (libs/xboard) e a UNICA coisa que este modelo e o",
+      "   // host compartilham: escrevemos aqui, o dump e a linha de status leem la.",
+      "   // Ele mora numa .so de verdade justamente porque este codigo passou a rodar",
+      "   // dentro de um plugin -- ver o cabecalho de libs/xboard/Board.hpp.",
+      "   //",
+      "   // Conta DECISAO, nao candidatura: estamos depois de o UbfArbiter ter",
+      "   // escolhido o vencedor.",
+      "   xboard::setBehaviorLabel(player->getID(), label);",
+      "   xboard::bumpDecisionCount(player->getID());",
+      "",
+      "   // Transicao de comportamento -- o evento que conta a historia da missao",
+      "   // (\"falcon1: PATROL -> EVADE\"). A primeira decisao de cada aeronave",
+      "   // aparece como \"-- -> PATROL\", que e o valor inicial do quadro.",
+      "   if (before.label != label) {",
+      "      LOG(INFO) << \"[FlightAction] \" << player->getName()->getString()",
+      "                << \": \" << before.label << \" -> \" << label",
+      "                << \"  (hdg=\" << command.headingDeg",
+      "                << \"deg alt=\" << command.altitudeM",
+      "                << \"m vel=\" << command.speedKts << \"kt)\";",
+      "   }",
+      "",
+      "   // Batimento: prova que a aeronave continua decidindo mesmo sem trocar",
+      "   // de comportamento, e da a cadencia real de decisao. Cadenciado pela",
+      "   // contagem do proprio quadro (ver kHeartbeatEveryDecisions).",
+      "   if (before.decisions > 0 && (before.decisions % kHeartbeatEveryDecisions) == 0) {",
+      "      LOG(DEBUG) << \"[FlightAction] \" << player->getName()->getString()",
+      "                 << \": \" << before.decisions << \" decisoes atuadas, em '\" << label",
+      "                 << \"' (thread \" << xboard::threadTag() << \")\";",
+      "   }",
+      "",
+      "   // Qual thread decidiu -- unico ponto de atuacao comum aos DOIS agentes",
+      "   // (o SimAgent nativo, background, e o FlightAgentTC, pool T/C), entao e",
+      "   // aqui que o quadro fica correto pros dois: FlightAgentTC::controller()",
+      "   // ja escreve o mesmo valor antes de chegar aqui (redundante, inofensivo,",
+      "   // mesma tag); o SimAgent nunca escrevia nada -- o campo ficava preso em",
+      "   // -1 (\"-\") pra sempre, nao porque a decisao nao tivesse thread, mas",
+      "   // porque ninguem contava qual. threadTag() e por-thread (cache",
+      "   // thread_local), entao aqui sai sempre a MESMA tag pras 4 aeronaves --",
+      "   // resposta honesta: elas decidem, de fato, todas na mesma thread de",
+      "   // background.",
+      "   xboard::setThreadTag(player->getID(), xboard::threadTag());",
+      "",
+      "   // O pedido de broadcast fica LIGADO enquanto a aeronave evade -- e",
+      "   // estado, nao evento. A linha de log sai so na BORDA: quando comeca a",
+      "   // alertar, ou quando troca de contato (ver changedFor()). Sair do",
+      "   // alerta zera a chave, entao um episodio novo volta a logar.",
+      "   static std::map<int, std::string> lastAlertContact;",
+      "   if (broadcast) {",
+      "      const auto datalink = dynamic_cast<AlertDatalink*>(player->getDatalink());",
+      "      if (datalink != nullptr) {",
+      "         datalink->broadcastAlert(alertContactName, alertNorthM, alertEastM,",
+      "                                  alertAltitudeM, alertRangeM);",
+      "         // WARNING e nivel OPERACIONAL aqui, nao \"defeito de software\": e",
+      "         // literalmente um alerta tatico saindo pro resto da esquadrilha, e",
+      "         // e o que se quer enxergar destacado no meio das transicoes.",
+      "         if (changedFor(lastAlertContact, player->getID(), alertContactName)) {",
+      "            LOG(WARNING) << \"[FlightAction] \" << player->getName()->getString()",
+      "                         << \": alerta tatico -- contato '\" << alertContactName",
+      "                         << \"' a \" << (alertRangeM * base::distance::M2NM) << \" NM\";",
+      "         }",
+      "      }",
+      "   } else {",
+      "      changedFor(lastAlertContact, player->getID(), std::string{});",
+      "   }",
+      "",
+      "   // --- lancamento de missil -------------------------------------------",
+      "   //",
+      "   // O UNICO ponto deste modelo que toca um objeto MIXR de arma. StoresMgr e",
+      "   // opcional (getStoresManagement() devolve nullptr sem 'stores:' no EDL) --",
+      "   // inerte em qualquer aviao de producao.",
+      "   //",
+      "   // releaseOneMissile() ja faz tudo que o framework nativo oferece: clona o",
+      "   // 'missile' do EDL num flyout e o enfileira em Simulation::addNewPlayer()",
+      "   // (materializado no proximo updatePlayerList(), no laco de background) --",
+      "   // e assim, sem nenhum codigo nosso, que um player novo entra na simulacao",
+      "   // EM EXECUCAO. Devolve pre-ref()'d (ver StoresMgr.hpp) -- por isso o",
+      "   // unref() no fim.",
+      "   if (launch) {",
+      "      models::StoresMgr* const storesMgr{player->getStoresManagement()};",
+      "      models::WorldModel* const world{player->getWorldModel()};",
+      "      if (storesMgr != nullptr && world != nullptr) {",
+      "         const auto target = dynamic_cast<models::Player*>(",
+      "            world->findPlayerByName(launchTargetName.c_str()));",
+      "         if (target != nullptr) {",
+      "            models::AbstractWeapon* const flyout{storesMgr->releaseOneMissile()};",
+      "            if (flyout != nullptr) {",
+      "               flyout->setTargetPlayer(target, true);",
+      "               LOG(INFO) << \"[FlightAction] \" << player->getName()->getString()",
+      "                         << \": missil lancado contra '\" << launchTargetName",
+      "                         << \"' (flyout '\" << flyout->getName()->getString() << \"')\";",
+      "               flyout->unref();",
+      "            } else {",
+      "               // Pediu-se lancamento e o cabide esta vazio -- a arvore",
+      "               // continuaria pedindo a cada frame sem nada acontecer.",
+      "               LOG(WARNING) << \"[FlightAction] \" << player->getName()->getString()",
+      "                            << \": lancamento pedido, mas releaseOneMissile() nao devolveu arma\";",
+      "            }",
+      "         } else {",
+      "            LOG(WARNING) << \"[FlightAction] \" << player->getName()->getString()",
+      "                         << \": lancamento pedido contra '\" << launchTargetName",
+      "                         << \"', que nao existe na simulacao\";",
+      "         }",
+      "      }",
+      "   }",
+      "",
+      "   return true;",
+      "}"
+    ],
+    "trunc": false
+  }
+};
+const flightSnip = (key) => (key ? (FLIGHT_SNIPPETS[key] || SNIPPETS[key] || null) : null);
+
+/* Constantes de layout PRÓPRIAS desta aba -- deliberadamente maiores que    *
+ * NW/NH/ROW/COL do resto da página: os cartões aqui carregam legendas mais *
+ * longas (percepção/decisão/ação, "aciona Fulano") e um rótulo de CHAMADA  *
+ * embaixo do nó ativo -- caber isso sem abreviar exigiu mais espaço.       */
+const FNW = 250, FNH = 58, FROW = 78, FCOL = 300;
+
+// Mesmo algoritmo de layout() (DFS, folha empilha, pai centraliza entre o    *
+// primeiro e o último filho) -- não reaproveitado porque layout() fecha     *
+// sobre as constantes GLOBAIS (NW/NH/ROW/COL); aqui as constantes são       *
+// outras. Só orientação horizontal (a vertical não se aplica: sem "árvore   *
+// vertical" nesta aba).
+function flightLayout(root) {
+  const nodes = []; let i = 0;
+  (function place(n, depth) {
+    const kids = n.children || [];
+    const x = depth * FCOL;
+    if (!kids.length) {
+      const y = i * FROW;
+      nodes.push({ ...n, x, y, depth });
+      i += 1;
+    } else {
+      kids.forEach((k) => place(k, depth + 1));
+      const f = nodes.find((m) => m.id === kids[0].id);
+      const l = nodes.find((m) => m.id === kids[kids.length - 1].id);
+      const y = (f.y + l.y) / 2;
+      nodes.push({ ...n, x, y, depth });
+    }
+  })(root, 0);
+  return nodes;
+}
+
+const FLIGHT_TREE = N("agent", "FlightAgentTC", {
+  edl: "agent:", sub: "extends AgentTC (decide na fase 3) -- um EXEMPLO de player concreto",
+  note: "Único override necessário sobre AgentTC: filtrar a fase 3 e reescalar o dt para o do frame inteiro. O ciclo em si (controller()) é herdado, genérico -- qualquer player poderia estender AgentTC (ou Agent) do mesmo jeito.",
+  children: [
+    N("state", "FlightState", {
+      edl: "state:", sub: "percepção -- implementa AbstractState (domain::WorldView, sem MIXR)",
+      note: "AbstractState é a INTERFACE genérica de percepção do UBF -- FlightState é só UMA implementação possível, específica de aeronave. Qualquer player pode ter a sua própria.",
+    }),
+    N("behavior", "BtBehavior", {
+      edl: "behavior:", sub: "decisão -- implementa AbstractBehavior (tick de uma árvore BehaviorTree.CPP)",
+      note: "AbstractBehavior é a INTERFACE genérica de decisão do UBF -- BtBehavior é só UMA implementação possível (delega a uma árvore). Outra classe poderia decidir por tabela, por rede neural, por regra fixa, etc., sem mudar Agent/AgentTC.",
+      children: [
+        N("fuelLow", "FuelLow", { edl: "flight_tree.xml", sub: "ramo 1 -- combustível abaixo de 5% aciona ReturnToBase" }),
+        N("contact", "ContactDetected", { edl: "flight_tree.xml", sub: "ramo 2 -- evasão em curso (com histerese) aciona ReportAndEvade" }),
+        N("alert", "AlertReceived", { edl: "flight_tree.xml", sub: "ramo 3 -- alerta recebido aciona SupportAlert" }),
+        N("patrol", "Patrol", { edl: "flight_tree.xml", sub: "ramo 4 -- fallback incondicional" }),
+      ],
+    }),
+    N("action", "FlightAction", {
+      edl: "-- efêmero --", sub: "ação -- implementa AbstractAction (nasce em genAction(), liberada em unref())",
+      note: "AbstractAction é a INTERFACE genérica de atuação do UBF -- FlightAction é só UMA implementação possível (comanda um Autopilot). Um player sem piloto automático teria uma AbstractAction totalmente diferente.",
+      children: [
+        N("autopilot", "Autopilot", {
+          edl: "pilot:", sub: "nativo mixr::models -- alvo comum a qualquer player com piloto automático",
+          note: "setCommandedHeadingD/AltitudeFt/VelocityKts -- os três comandos que de fato chegam ao JSBSimModel via ap/heading_hold, ap/altitude_hold, ap/airspeed_hold.",
+        }),
+      ],
+    }),
+  ],
+});
+normalize(FLIGHT_TREE, null);
+const FLIGHT_ALL = flat(FLIGHT_TREE);
+const flightById = Object.fromEntries(FLIGHT_ALL.map((n) => [n.id, n]));
+const flightEdges = [];
+FLIGHT_ALL.forEach((n) => (n.children || []).forEach((c) => flightEdges.push([n.id, c.id])));
+const flightAncestors = (id) => {
+  const o = []; let c = flightById[id];
+  while (c && c.parent) { o.push([c.parent, c.id]); c = flightById[c.parent]; }
+  return o;
+};
+
+// Escopo da BehaviorTree.CPP (o "board" pedido): os 4 ramos são, cada um,      *
+// uma subclasse de BT::ConditionNode/BT::SyncActionNode -- código de         *
+// TERCEIRO, não deste modelo. "behavior" (BtBehavior) fica DE FORA da faixa: *
+// é dele o tree.tickRoot() que cruza a fronteira, mas a classe em si é do    *
+// plugin (models/player/A4), não da lib.
+const FLIGHT_BTCPP_SCOPE = ["fuelLow", "contact", "alert", "patrol"];
+// Escopo do framework UBF (mixr::base::ubf) -- o segundo "board" pedido.
+// Deliberadamente SEM os 4 ramos: a BehaviorTree.CPP é código de TERCEIRO
+// (nem deste modelo, nem do MIXR) -- fica ao LADO do escopo UBF, não dentro
+// dele, ainda que "behavior" (BtBehavior, papel AbstractBehavior) seja quem
+// cruza a fronteira ao chamar tree.tickRoot(). "autopilot" também fica DE
+// FORA: é o alvo nativo que a ação alcança, não parte do ciclo UBF em si.
+const FLIGHT_UBF_SCOPE = ["agent", "state", "behavior", "action"];
+
+/* ---------- Classe: dados que o extrator NÃO cobre (models/player/A4/) ---------- *
+ * tools/extract_execution_chain.py só varre contexts/src/mixr/, então as      *
+ * classes deste modelo não têm entrada em MODEL. Preenchido à mão, uma vez,   *
+ * a partir do PRÓPRIO header (DECLARE_SUBCLASS + BEGIN_SLOTTABLE) -- mesma    *
+ * curadoria manual-sobre-dado-real já usada para EDL_TEXT/FLIGHT_SNIPPETS.    *
+ * O "ch" de cada uma já EMENDA no "ch" real de MODEL (AgentTC/AbstractState/  *
+ * AbstractBehavior/AbstractAction, todos de fato extraídos, com slots reais   *
+ * como state/behavior em Agent e vote em AbstractBehavior) -- então andar a   *
+ * cadeia inteira (flightChainOf) mistura dado curado e dado extraído sem      *
+ * costura visível. */
+const FLIGHT_MODEL = {
+  FlightAgentTC: { b: "AgentTC", ch: ["FlightAgentTC", "AgentTC", "Agent", "Component"], sl: [], own: 0,
+    f: "FlightAgentTC", r: true, m: "models/player/A4",
+    hd: "models/player/A4/include/xnative/FlightAgentTC.hpp", src: "models/player/A4/src/xnative/FlightAgentTC.cpp" },
+  FlightState: { b: "AbstractState", ch: ["FlightState", "AbstractState", "Component"], sl: [], own: 0,
+    f: "FlightState", r: true, m: "models/player/A4",
+    hd: "models/player/A4/include/ubf/FlightState.hpp", src: "models/player/A4/src/ubf/FlightState.cpp" },
+  BtBehavior: { b: "AbstractBehavior", ch: ["BtBehavior", "AbstractBehavior", "Component"],
+    sl: ["treeFile", "patrolHeading", "legTime", "legTurn", "patrolAltitude", "patrolSpeed", "rtbAltitude", "rtbSpeed", "arrivalRadius", "fuelReserve", "breakTurn", "evadeClimb", "evadeSpeed", "evadeHold", "supportSpeed", "terrainClearance", "launchMinRange", "launchMaxRange", "launchCone", "patrolJitterHeading", "patrolMasterSeed", "patrolSeedOverride"], own: 22,
+    f: "BtBehavior", r: true, m: "models/player/A4",
+    hd: "models/player/A4/include/ubf/BtBehavior.hpp", src: "models/player/A4/src/ubf/BtBehavior.cpp" },
+  FlightAction: { b: "AbstractAction", ch: ["FlightAction", "AbstractAction"], sl: [], own: 0,
+    f: "FlightAction", r: true, m: "models/player/A4",
+    hd: "models/player/A4/include/ubf/FlightAction.hpp", src: "models/player/A4/src/ubf/FlightAction.cpp" },
+};
+// Tipo de cada slot -- só BtBehavior tem slots próprios nesta curadoria;      *
+// o resto do catálogo (MODEL) não anota tipo, então esta é uma camada extra  *
+// só aqui, opcional na hora de renderizar.
+const FLIGHT_SLOT_TYPES = { BtBehavior: {"treeFile": "String", "patrolHeading": "Angle", "legTime": "Time", "legTurn": "Angle", "patrolAltitude": "Distance", "patrolSpeed": "Number", "rtbAltitude": "Distance", "rtbSpeed": "Number", "arrivalRadius": "Distance", "fuelReserve": "Number", "breakTurn": "Angle", "evadeClimb": "Distance", "evadeSpeed": "Number", "evadeHold": "Time", "supportSpeed": "Number", "terrainClearance": "Distance", "launchMinRange": "Distance", "launchMaxRange": "Distance", "launchCone": "Angle", "patrolJitterHeading": "Angle", "patrolMasterSeed": "Number", "patrolSeedOverride": "Number"} };
+
+const flightEntry = (cls) => FLIGHT_MODEL[cls] || MODEL[cls] || null;
+const flightChainOf = (cls) => { const e = flightEntry(cls); return e ? e.ch : [cls]; };
+const flightAllSlotsOf = (cls) => {
+  const out = [];
+  flightChainOf(cls).forEach((a) => { const e = flightEntry(a); (e ? e.sl : []).forEach((s) => out.push([s, a])); });
+  return out;
+};
+const flightSlotType = (fromClass, slotName) => (FLIGHT_SLOT_TYPES[fromClass] || {})[slotName] || null;
+const flightModuleOf = (cls) => { const e = flightEntry(cls); return e ? (e.m || "base") : "?"; };
+const flightFactoryOf = (cls) => (FLIGHT_MODEL[cls] ? (FLIGHT_MODEL[cls].f || cls) : factoryOf(cls));
+
+// As 4 folhas da árvore não são objetos MIXR (não têm "slot" nenhum) --      *
+// cada uma mistura uma CONDIÇÃO e uma AÇÃO da BehaviorTree.CPP (a árvore     *
+// real usa Sequence[condição, ação]; esta aba funde os dois numa única       *
+// caixa por simplicidade visual). O mecanismo próprio da lib é "port"        *
+// (par chave/valor lido do atributo XML do nó, via providedPorts()) -- só    *
+// FuelLowCondition declara um de verdade (margin).
+const FLIGHT_BT_LEAVES = {
+  fuelLow: {
+    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/player/A4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
+    act: { cls: "ReturnToBaseAction", base: "BT::SyncActionNode", hd: "models/player/A4/include/bt/nodes/ReturnToBaseAction.hpp", ports: [] },
+  },
+  contact: {
+    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/player/A4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
+    act: { cls: "ReportAndEvadeAction", base: "BT::SyncActionNode", hd: "models/player/A4/include/bt/nodes/ReportAndEvadeAction.hpp", ports: [] },
+  },
+  alert: {
+    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/player/A4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
+    act: { cls: "SupportAlertAction", base: "BT::SyncActionNode", hd: "models/player/A4/include/bt/nodes/SupportAlertAction.hpp", ports: [] },
+  },
+  patrol: {
+    cond: null,
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/player/A4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+  },
+};
+
+/* EDL real (condensado) de src/poc/dis/multi-thread/configs/scenario.edl.in --      *
+ * dois trechos do MESMO falcon1 (pilot:/agent: não são vizinhos no arquivo real,   *
+ * há dezenas de linhas de outros sistemas entre os dois -- omitidas e marcadas     *
+ * abaixo, mesma prática já usada por EDL_TEXT/SCENARIO). */
+const FLIGHT_EDL_TEXT = `falcon1: ( Aircraft
+   side: blue   type: "A4"   id: 101
+   components: {
+      // ... dynamics/navegacao/datalink/radar/track manager omitidos ...
+
+      pilot: ( Autopilot
+         navMode: false
+         headingHoldMode:  true
+         altitudeHoldMode: true
+         velocityHoldMode: true
+         maxRateOfTurnDps: 6.0
+         maxBankAngle:    45.0
+         maxPitchAngle:   20.0
+         maxClimbRateMps:  40.0
+         maxAcceleration:  6.0
+      )
+
+      // ... stores/colisao omitidos ...
+
+      agent: ( FlightAgentTC
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading:  ( Degrees 90 )
+            legTime:        ( Seconds 60 )
+            legTurn:        ( Degrees 90 )
+            patrolAltitude: ( Meters 1750 )
+            patrolSpeed:    350.0
+            rtbAltitude:    ( Meters 2050 )
+            rtbSpeed:       380.0
+            arrivalRadius:  ( NauticalMiles 2.0 )
+            fuelReserve:    0.35
+            breakTurn:      ( Degrees 110 )
+            evadeClimb:     ( Meters 700 )
+            evadeSpeed:     420.0
+            supportSpeed:   400.0
+            evadeHold:      ( Seconds 30 )
+            terrainClearance: ( Meters 800 )
+            patrolJitterHeading: ( Degrees 6 )
+            patrolMasterSeed:    20260903
+         )
+      )
+   }
+)`.split("\n");
+const FLIGHT_EDL_RANGE = {
+  agent: [20, 42], state: [21, 21], behavior: [22, 41], autopilot: [6, 16],
+};
+const flightEdlRangeFor = (id) => FLIGHT_EDL_RANGE[id] || FLIGHT_EDL_RANGE.agent;
+
+const FLIGHT_STAGES = [
+  { n: 0, label: "Percepção" },
+  { n: 1, label: "Decisão" },
+  { n: 2, label: "Ação" },
+];
+
+/* ---------- as duas trilhas: mesmo esqueleto de passo do resto da página ---------- */
+
+function traceFlightPatrol() {
+  const st = [];
+  const p = (s) => st.push({ ...s, i: st.length });
+  p({ node: "agent", src: "AgentTC::updateTC", hl: [2, 2], stage: null, call: "controller(dt)",
+    title: "AgentTC::updateTC(dt) → controller(dt)",
+    body: "Chamado pelo passeio de componentes da fase 3 (Component::updateTC() desce até aqui, dentro do próprio ( Aircraft )). O método do framework é trivial -- só repassa para o controller() virtual, que por polimorfismo cai na versão que FlightAgentTC sobrescreve." });
+  p({ node: "agent", src: "FlightAgentTC::controller", hl: [12, 24], stage: null, call: "BaseClass::controller(dt * 4.0)",
+    title: "FlightAgentTC::controller(dt) -- o gate de fase",
+    body: "Este componente é chamado 4x por frame (uma por fase, dt/4 cada) -- só age quando world->phase()==3. Antes de repassar, grava qual thread do pool decidiu (só para a coluna de status). BaseClass::controller(dt*4.0) reconstrói o dt do FRAME INTEIRO antes de entrar no ciclo genérico: histerese e planos de patrulha precisam dele por completo, não de uma fatia de fase.",
+    warn: "Sem esse filtro de fase, o mesmo ciclo rodaria 4x por frame -- a MESMA decisão repetida." });
+  p({ node: "agent", src: "Agent::controller", hl: [7, 7], stage: 0, call: "state->updateState(actor)",
+    title: "Agent::controller(dt) -- state->updateState(actor)",
+    body: "A partir daqui é o ciclo GENÉRICO do framework (mixr::base::ubf::Agent), o mesmo usado por QUALQUER agente UBF -- SimAgent ou AgentTC, deste modelo ou de outro qualquer. Primeiro perceber, só depois decidir." });
+  p({ node: "state", src: "FlightState::updateState", hl: [13, 20], stage: 0, call: "updateState(actor)",
+    title: "FlightState::updateState() -- percepção",
+    body: "Lê só acessores nativos do Player/AirVehicle (posição, atitude, velocidade) e preenche um domain::WorldView puro, sem nenhum tipo do MIXR dentro -- é o que permite testar a árvore de comportamento isolada de qualquer Station." });
+  p({ node: "agent", src: "Agent::controller", hl: [10, 10], stage: 1, call: "behavior->genAction(state, dt)",
+    title: "Agent::controller(dt) -- behavior->genAction(state, dt)",
+    body: "Com o estado atualizado, a vez é do comportamento plugado -- aqui, uma árvore de comportamento (BtBehavior)." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [15, 26], stage: 1, call: "tree.tickRoot()",
+    title: "BtBehavior::genAction() -- tree.tickRoot()",
+    body: "Copia o snapshot, envelhece a histerese de evasão (feedThreatPolicy) e dispara o tick real da BehaviorTree.CPP sobre um Fallback de 4 ramos -- o primeiro que suceder vence." });
+  p({ node: "fuelLow", src: null, stage: 1, call: "FuelLow::tick()",
+    title: "FuelLow (margin=0.05) -- FAILURE",
+    body: "Primeiro ramo do Fallback: combustível acima da reserva de 5%. Condição falha, tickRoot() tenta o próximo ramo." });
+  p({ node: "contact", src: "ContactDetectedCondition::tick", hl: [11, 17], stage: 1, call: "tick()",
+    title: "ContactDetected -- FAILURE (sem contato ativo)",
+    body: "threatPolicy().engaged() == false: não há alvo nem histerese de evasão pendente. Segundo ramo também falha." });
+  p({ node: "alert", src: null, stage: 1, call: "AlertReceived::tick()",
+    title: "AlertReceived -- FAILURE (sem alerta pendente)",
+    body: "hasAlert == false: nenhum outro caça da esquadrilha avisou nada neste frame. Terceiro ramo falha." });
+  p({ node: "patrol", src: "PatrolAction::tick", hl: [0, 9], stage: 1, call: "tick()",
+    title: "Patrol -- SUCCESS (fallback incondicional)",
+    body: "Sem condição alguma: SEMPRE sucede. decision().take(plan.command(), 'PATROL') grava o comando desta vez -- e dá o rótulo bt=PATROL no dump/status." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [30, 32], stage: 1, call: "new FlightAction(); action->setCommand(...)",
+    title: "BtBehavior::genAction() -- new FlightAction() (pré-referenciada)",
+    body: "tickRoot() retornou com currentDecision.taken=true. genAction() cria a FlightAction, copia comando e rótulo, e devolve pré-referenciada -- contrato do UBF." });
+  p({ node: "agent", src: "Agent::controller", hl: [12, 13], stage: 2, call: "action->execute(actor)",
+    title: "Agent::controller(dt) -- action->execute(actor)",
+    body: "A FlightAction retornada por genAction() é executada AQUI -- e só aqui que ela de fato toca o Autopilot." });
+  p({ node: "action", src: "FlightAction::execute", hl: [2, 9], stage: 2, call: "player->getPilotByType(typeid(Autopilot))",
+    title: "FlightAction::execute() -- resolve o Autopilot",
+    body: "O ator chega por PARÂMETRO -- a ação nunca guarda ponteiro pra aeronave. getPilotByType(typeid(Autopilot)) acha o piloto automático; sem ele, a decisão não pode ser atuada (LOG(ERROR), uma vez por player, via um detector de borda)." });
+  p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    body: "Os três comandos que de fato chegam ao JSBSimModel (via ap/heading_hold, ap/altitude_hold, ap/airspeed_hold). Gotcha de unidade: setCommandedAltitudeFt() é em PÉS -- domain::FlightCommand.altitudeM fica em METROS até esta linha; a conversão (M2FT) acontece exatamente aqui, na fronteira.",
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso é código deste modelo (models/player/A4)." });
+  p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
+    title: "FlightAction::execute() -- xboard + log de transição",
+    body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo pro dashboard/dump (dec=). O log só registra a TRANSIÇÃO (before.label != label) -- não a cada tick, senão seria uma linha a 50 Hz por avião." });
+  p({ node: "agent", src: "Agent::controller", hl: [13, 13], stage: 2, call: "action->unref()",
+    title: "action->unref() -- a ação é liberada",
+    body: "A FlightAction é efêmera: nasceu em genAction(), atuou em execute(actor), e é liberada AQUI, no mesmo ciclo -- nunca fica guardada em lugar nenhum." });
+  return st;
+}
+
+function traceFlightEvade() {
+  const st = [];
+  const p = (s) => st.push({ ...s, i: st.length });
+  p({ node: "agent", src: "AgentTC::updateTC", hl: [2, 2], stage: null, call: "controller(dt)",
+    title: "AgentTC::updateTC(dt) → controller(dt)",
+    body: "Chamado pelo passeio de componentes da fase 3 (Component::updateTC() desce até aqui, dentro do próprio ( Aircraft )). O método do framework é trivial -- só repassa para o controller() virtual, que por polimorfismo cai na versão que FlightAgentTC sobrescreve." });
+  p({ node: "agent", src: "FlightAgentTC::controller", hl: [12, 24], stage: null, call: "BaseClass::controller(dt * 4.0)",
+    title: "FlightAgentTC::controller(dt) -- o gate de fase",
+    body: "Este componente é chamado 4x por frame (uma por fase, dt/4 cada) -- só age quando world->phase()==3. Antes de repassar, grava qual thread do pool decidiu (só para a coluna de status). BaseClass::controller(dt*4.0) reconstrói o dt do FRAME INTEIRO antes de entrar no ciclo genérico.",
+    warn: "Sem esse filtro de fase, o mesmo ciclo rodaria 4x por frame -- a MESMA decisão repetida." });
+  p({ node: "agent", src: "Agent::controller", hl: [7, 7], stage: 0, call: "state->updateState(actor)",
+    title: "Agent::controller(dt) -- state->updateState(actor)",
+    body: "Ciclo GENÉRICO do framework, o mesmo usado por QUALQUER agente UBF -- SimAgent ou AgentTC, deste modelo ou de outro qualquer." });
+  p({ node: "state", src: "FlightState::updateState", hl: [47, 60], stage: 0, call: "updateState(actor)",
+    title: "FlightState::updateState() -- desta vez com um contato",
+    body: "xtrack::nearestHostileTrack() achou uma pista hostil: hasContact=true, com alcance/marcação relativa e a posição absoluta do contato já calculada (soma da própria posição com o relativo da pista)." });
+  p({ node: "agent", src: "Agent::controller", hl: [10, 10], stage: 1, call: "behavior->genAction(state, dt)",
+    title: "Agent::controller(dt) -- behavior->genAction(state, dt)",
+    body: "Com o estado atualizado (agora com contato), a vez é da árvore de comportamento." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [15, 26], stage: 1, call: "tree.tickRoot()",
+    title: "BtBehavior::genAction() -- tree.tickRoot()",
+    body: "Mesmo tick de sempre -- é o CONTEÚDO do snapshot que muda o resultado, não o código." });
+  p({ node: "fuelLow", src: null, stage: 1, call: "FuelLow::tick()",
+    title: "FuelLow (margin=0.05) -- FAILURE",
+    body: "Combustível acima da reserva. Primeiro ramo falha, tickRoot() tenta o próximo." });
+  p({ node: "contact", src: "ContactDetectedCondition::tick", hl: [11, 17], stage: 1, call: "tick()",
+    title: "ContactDetected -- SUCCESS (threatPolicy().engaged())",
+    body: "Não é 'estou vendo o intruso agora' -- é 'a manobra de evasão está valendo', que continua true por evadeHold segundos DEPOIS de a pista sumir. É essa histerese que evita a alternância com o ramo de apoio (a própria quebra tira o intruso do setor do radar)." });
+  p({ node: "contact", src: "ReportAndEvadeAction::tick", hl: [9, 19], stage: 1, call: "decision.take(cmd, label)",
+    title: "ReportAndEvade -- decision.take(cmd, 'EVADE'/'BREAK')",
+    body: "O nó NÃO calcula a manobra -- só entrega o comando que domain::ThreatPolicy já fixou na entrada da evasão. O rótulo (EVADE/BREAK) vem de policy.contactLive().",
+    warn: "AlertReceived e Patrol (ramos 3 e 4) NUNCA são avaliados neste ciclo -- o Fallback é curto-circuito: o primeiro ramo que suceder vence, os demais nem chegam a tickar." });
+  p({ node: "contact", src: "ReportAndEvadeAction::tick", hl: [28, 35], stage: 1, call: "decision.broadcastAlert = true",
+    title: "ReportAndEvade -- decision.broadcastAlert = true",
+    body: "Se o contato ainda está VIVO (não só no arrasto da histerese), marca o pedido de alerta tático -- separado de take(), que nunca limpa essa flag. É o que FlightAction::execute() vai ler mais adiante." });
+  p({ node: "behavior", src: "BtBehavior::genAction", hl: [30, 37], stage: 1, call: "action->setAlertBroadcast(...)",
+    title: "BtBehavior::genAction() -- new FlightAction() + setAlertBroadcast(...)",
+    body: "Além de comando e rótulo, desta vez a ação também carrega o pedido de alerta -- setAlertBroadcast() com a posição do contato." });
+  p({ node: "agent", src: "Agent::controller", hl: [12, 13], stage: 2, call: "action->execute(actor)",
+    title: "Agent::controller(dt) -- action->execute(actor)",
+    body: "A FlightAction (agora com o pedido de alerta junto) é executada AQUI." });
+  p({ node: "action", src: "FlightAction::execute", hl: [2, 9], stage: 2, call: "player->getPilotByType(typeid(Autopilot))",
+    title: "FlightAction::execute() -- resolve o Autopilot",
+    body: "Mesmo caminho de sempre: getPilotByType(typeid(Autopilot)) acha o piloto automático do ator recebido por parâmetro." });
+  p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
+    body: "O MESMO código do caminho de patrulha -- o Autopilot não sabe (nem precisa saber) que o comando agora vem da manobra de evasão. Quem calculou o rumo de fuga foi domain::ThreatPolicy, mais atrás." });
+  p({ node: "action", src: "FlightAction::execute", hl: [81, 98], stage: 2, call: "datalink->broadcastAlert(...)",
+    title: "FlightAction::execute() -- broadcastAlert() enfileira a transmissão",
+    body: "Isto só ENFILEIRA: a transmissão de verdade sai na fase 1 do PRÓXIMO frame, via AlertDatalink, chegando aos outros caças como evento nativo do MIXR.",
+    warn: "O LOG(WARNING) aqui só dispara na BORDA (mudança de contato) -- não a cada tick enquanto a evasão continua." });
+  p({ node: "agent", src: "Agent::controller", hl: [13, 13], stage: 2, call: "action->unref()",
+    title: "action->unref() -- a ação é liberada",
+    body: "Efêmera: nasceu em genAction(), atuou em execute(actor), e é liberada AQUI, no mesmo ciclo." });
+  return st;
+}
+
+const FLIGHT_TRACES = {
+  patrol: { label: "Patrulha (fallback)", build: traceFlightPatrol },
+  evade: { label: "Contato → Evasão (alerta)", build: traceFlightEvade },
+};
+
+/* ---------------------------- decisao de voo ------------------------- */
+
+function FlightDecision({ onOpenCatalog }) {
+  const [traceKey, setTraceKey] = useState("patrol");
+  const [i, setI] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1100);
+  const [pinned, setPinned] = useState(null);
+  const graphRef = useRef(null);
+  const [view, setView] = useState({ k: 1, x: 0, y: 0 });
+  const [detailTab, setDetailTab] = useState("step");
+  const [autoFollow, setAutoFollow] = useState(false);
+  const [showDetail, setShowDetail] = useState(true);
+  // Explicação Agent vs. AgentTC -- discreta de propósito (fechada por        *
+  // padrão, atrás de um toggle na legenda): é contexto sobre o PADRÃO, não   *
+  // sobre o passo atual, e não deve competir por espaço com o grafo/detalhe. *
+  const [showAgentFigure, setShowAgentFigure] = useState(false);
+  const drag = useRef(null);
+  const sliderActive = useRef(false);
+
+  const trace = useMemo(() => FLIGHT_TRACES[traceKey].build(), [traceKey]);
+  // "autopilot" é empurrado pra FORA da coluna dos ramos da BT.CPP (que          *
+  // também é a coluna natural de qualquer neto de "agent") -- sem isso, a       *
+  // faixa "escopo: framework UBF" (que precisa envolver os ramos) também        *
+  // envolveria o Autopilot, que é nativo e está FORA do ciclo UBF em si. Ver    *
+  // ubfBand/FLIGHT_UBF_SCOPE mais abaixo.
+  const nodes = useMemo(() => {
+    const ns = flightLayout(FLIGHT_TREE);
+    const auto = ns.find((n) => n.id === "autopilot");
+    if (auto) auto.x = 3 * FCOL;
+    return ns;
+  }, []);
+  const pos = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
+
+  useEffect(() => { setI(0); setPinned(null); setView({ k: 1, x: 0, y: 0 }); }, [traceKey]);
+
+  const idx = Math.min(i, trace.length - 1);
+  const step = trace[idx] || {};
+
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => setI((p) => (p + 1 >= trace.length ? (setPlaying(false), p) : p + 1)), speed);
+    return () => clearTimeout(t);
+  }, [playing, i, speed, trace.length]);
+
+  const move = useCallback((d) => { setPlaying(false); setI((p) => Math.max(0, Math.min(trace.length - 1, p + d))); }, [trace.length]);
+  useEffect(() => {
+    const h = (e) => {
+      if (e.target.tagName === "INPUT" && e.target.type === "text") return;
+      if (e.key === "ArrowRight") move(1);
+      else if (e.key === "ArrowLeft") move(-1);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [move]);
+
+  const visitedNodes = useMemo(() => new Set(trace.map((s) => s.node)), [trace]);
+  const detail = pinned ? flightById[pinned] : flightById[step.node] || flightById.agent;
+
+  const activeChainIds = useMemo(() => {
+    const ids = new Set([step.node]);
+    flightAncestors(step.node || "agent").forEach(([a, b]) => { ids.add(a); ids.add(b); });
+    return ids;
+  }, [step.node]);
+  const pathEdges = useMemo(() => new Set(flightAncestors(step.node || "agent").map(([a, b]) => a + ">" + b)), [step.node]);
+
+  const snip = flightSnip(step.src);
+  const edlRange = flightEdlRangeFor(detail.id);
+  // Prévia mais curta (12 linhas) embutida na própria aba "Passo" -- pedido  *
+  // explícito de mostrar o código de cada passo sem precisar trocar de aba; *
+  // a aba "Código" continua com a janela cheia (22 linhas) para quem quiser *
+  // mais contexto ao redor do trecho destacado.
+  const previewWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 12) : null), [snip, step.hl]);
+  const codeWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 22) : null), [snip, step.hl]);
+  const edlWin = useMemo(() => windowLines(FLIGHT_EDL_TEXT, edlRange, 22), [edlRange]);
+  useEffect(() => { if (detailTab === "code" && !snip) setDetailTab("step"); }, [detailTab, snip]);
+
+  const W = Math.max(...nodes.map((n) => n.x)) + FNW + 30;
+  const H = Math.max(...nodes.map((n) => n.y)) + FNH + 30;
+  // Topo com folga bem maior que o resto: é onde os DOIS rótulos de board     *
+  // moram, um dentro do outro (UBF por fora, BehaviorTree.CPP por dentro).
+  const topMargin = 85, leftMargin = 14;
+
+  // As duas faixas ("boards") pedidas -- calculadas a partir das posições      *
+  // REAIS do layout, nunca de coordenadas fixas. UBF por fora (todo o ciclo    *
+  // percepção/decisão/ação, papel genérico), BehaviorTree.CPP aninhada         *
+  // dentro dela (só a política de decisão escolhida, que É uma árvore desta    *
+  // lib de terceiro -- outra BtBehavior poderia não usar árvore nenhuma).
+  const bandFor = (ids, padTop) => {
+    const ns = ids.map((id) => pos[id]).filter(Boolean);
+    if (!ns.length) return null;
+    return {
+      x0: Math.min(...ns.map((n) => n.x)) - 14,
+      x1: Math.max(...ns.map((n) => n.x)) + FNW + 20,
+      y0: Math.min(...ns.map((n) => n.y - FNH / 2)) - padTop,
+      y1: Math.max(...ns.map((n) => n.y + FNH / 2)) + 14,
+    };
+  };
+  const ubfBand = useMemo(() => bandFor(FLIGHT_UBF_SCOPE, 46), [pos]);
+  const btcppBand = useMemo(() => bandFor(FLIGHT_BTCPP_SCOPE, 30), [pos]);
+
+  const followViewFor = (nodeId, k) => {
+    const n = pos[nodeId];
+    if (!n) return null;
+    const Ox = -leftMargin + W / 2;
+    const Oy = (H - topMargin) / 2;
+    return { k, x: k * (Ox - n.x), y: k * (Oy - n.y) };
+  };
+  useEffect(() => {
+    if (!autoFollow || !step.node) return;
+    const v = followViewFor(step.node, view.k);
+    if (v) setView(v);
+  }, [autoFollow, idx, step.node, view.k]);
+
+  const onWheel = (e) => { e.preventDefault(); const f = e.deltaY < 0 ? 1.12 : 1 / 1.12; setView((v) => ({ ...v, k: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, v.k * f)) })); };
+  const DRAG_CLICK_PX = 4;
+  const onDown = (e) => { drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, captured: false, pointerId: e.pointerId, el: e.currentTarget }; };
+  const onMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const cx = e.clientX, cy = e.clientY;
+    if (!d.captured) {
+      if (Math.hypot(cx - d.x, cy - d.y) < DRAG_CLICK_PX) return;
+      d.captured = true;
+      d.el.setPointerCapture(d.pointerId);
+    }
+    setView((v) => ({ ...v, x: d.vx + (cx - d.x), y: d.vy + (cy - d.y) }));
+  };
+  const onUp = (e) => {
+    if (e && e.currentTarget.hasPointerCapture && e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    drag.current = null;
+  };
+
+  // Bloco de código compartilhado pela prévia (aba Passo) e pela aba Código  *
+  // cheia -- só muda a janela (previewWin/codeWin) e o rótulo do arquivo.
+  const renderCodeBlock = (win) => (
+    <div className="mx-code">
+      {win.cutBefore && <div className="mx-codecut">⋯ {win.offset} linha{win.offset === 1 ? "" : "s"} acima ⋯</div>}
+      {win.lines.map((ln, k) => {
+        const abs = k + win.offset;
+        const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
+        return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{ln || " "}</span></div>;
+      })}
+      {win.cutAfter && <div className="mx-codecut">⋯ {snip.lines.length - win.offset - win.lines.length} linhas abaixo ⋯</div>}
+    </div>
+  );
+
+  const btLeaf = FLIGHT_BT_LEAVES[detail.id];
+  const modelEntry = flightEntry(detail.cls);
+
+  return (
+    <>
+      <div className="mx-body" style={{ paddingBottom: 110 }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+          <div className="mx-tabs">
+            {Object.entries(FLIGHT_TRACES).map(([k, t]) => (
+              <button key={k} className="mx-tab" data-on={traceKey === k ? 1 : 0} onClick={() => setTraceKey(k)}>{t.label}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {FLIGHT_STAGES.map((s) => {
+              const on = step.stage === s.n;
+              return (
+                <div key={s.n} className={on ? "mx-phase-now" : ""} style={{ padding: "3px 9px", borderRadius: 2, fontSize: 11.5, background: on ? "var(--ink)" : "var(--panel)", color: on ? "var(--paper)" : "var(--muted)" }}>
+                  {s.label}
+                </div>
+              );
+            })}
+          </div>
+          <span className="mx-mono" style={{ fontSize: 11.5, color: "var(--muted)" }}>passo {idx + 1}/{trace.length}</span>
+        </div>
+        {/* Linha de CHAMADA -- pedido explícito de mostrar, na própria         *
+           * animação, o nome do método/função em execução neste passo, sem   *
+           * precisar abrir a aba Código. Repetida também sob o nó ativo no   *
+           * grafo (ver o .map de nodes mais abaixo). */}
+        <div className="mx-mono" style={{ fontSize: 12, color: "var(--hot)", marginBottom: 10 }}>
+          › {step.src ? `${step.src}()` : detail.cls} <span style={{ color: "var(--muted)" }}>→</span> {step.call}
+        </div>
+
+        <div className="mx-graph" ref={graphRef}>
+          <div className="mx-zoom">
+            <div className="mx-zoomslider" title="Zoom -- também funciona com a roda do mouse">
+              <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={0.01} value={view.k} aria-label="Zoom"
+                onPointerDown={() => { sliderActive.current = true; }}
+                onPointerUp={() => { sliderActive.current = false; }}
+                onChange={(e) => setView((v) => ({ ...v, k: Number(e.target.value) }))} />
+              <span className="mx-mono">{view.k.toFixed(2)}×</span>
+            </div>
+            <button className="mx-zbtn" data-w="1" onClick={() => setShowDetail((s) => !s)} title="Oculta o painel de detalhe abaixo, dando mais área ao grafo">
+              {showDetail ? "▾ detalhe" : "▸ detalhe"}
+            </button>
+            <button className="mx-zbtn" data-w="1" onClick={() => setView({ k: 1, x: 0, y: 0 })}>ajustar</button>
+          </div>
+          <div className="mx-svgwrap" data-expanded={showDetail ? 0 : 1}>
+            <svg viewBox={`${-leftMargin} ${-topMargin} ${W} ${H + topMargin}`} preserveAspectRatio="xMidYMid meet"
+                 onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
+              <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}
+                 style={{ transformOrigin: "center", transition: autoFollow && !drag.current && !sliderActive.current ? "transform 420ms cubic-bezier(.22,.61,.36,1)" : "none" }}>
+                {ubfBand && (
+                  <g>
+                    <rect x={ubfBand.x0} y={ubfBand.y0} width={ubfBand.x1 - ubfBand.x0} height={ubfBand.y1 - ubfBand.y0}
+                      rx="7" fill="var(--band-bg)" stroke="var(--rule)" strokeWidth="1.2" strokeDasharray="6 4" />
+                    <text x={ubfBand.x0 + 8} y={ubfBand.y0 + 16} className="mx-mono" style={{ fontSize: 10.5, fontWeight: 600, fill: "var(--muted)" }}>
+                      escopo: framework UBF (mixr::base::ubf) -- genérico, vale para qualquer player
+                      <title>Agent/AgentTC + AbstractState/AbstractBehavior/AbstractAction -- as tres interfaces que qualquer state/behavior/action concreto implementa. Autopilot fica de fora: e o alvo nativo que a acao alcanca, nao parte do ciclo UBF.</title>
+                    </text>
+                  </g>
+                )}
+                {btcppBand && (
+                  <g>
+                    <rect x={btcppBand.x0} y={btcppBand.y0} width={btcppBand.x1 - btcppBand.x0} height={btcppBand.y1 - btcppBand.y0}
+                      rx="6" fill="var(--edl-bg)" stroke="var(--rule)" strokeWidth="1.2" strokeDasharray="5 4" />
+                    <text x={btcppBand.x0 + 8} y={btcppBand.y0 + 16} className="mx-mono" style={{ fontSize: 10.5, fontWeight: 600, fill: "var(--muted)" }}>
+                      escopo: BehaviorTree.CPP
+                      <title>BT::ConditionNode / BT::SyncActionNode, codigo de terceiro (nao deste modelo, nao do MIXR) -- ver flight_tree.xml</title>
+                    </text>
+                  </g>
+                )}
+                {flightEdges.map(([a, b]) => {
+                  const p = pos[a], q = pos[b];
+                  const onPath = pathEdges.has(a + ">" + b);
+                  const isCurrent = onPath && b === step.node;
+                  const mid = p.x + FNW + 16;
+                  const dPath = `M ${p.x + FNW} ${p.y} H ${mid} V ${q.y} H ${q.x}`;
+                  return (
+                    <g key={a + b}>
+                      <path d={dPath} fill="none" stroke={onPath ? "var(--hot)" : "var(--rule)"} strokeWidth={onPath ? 2.2 : 1}
+                        className={isCurrent ? "mx-edge-current" : onPath ? "mx-edge-onpath" : ""} />
+                      {isCurrent && <circle cx={q.x} cy={q.y} r="5" className="mx-halo" stroke="var(--hot)" strokeWidth="2" />}
+                    </g>
+                  );
+                })}
+                {nodes.map((n) => {
+                  const active = step.node === n.id;
+                  const visited = visitedNodes.has(n.id);
+                  const inChain = activeChainIds.has(n.id);
+                  return (
+                    <g key={n.id}>
+                      <g className="mx-node"
+                         transform={`translate(${n.x},${n.y - FNH / 2})`}
+                         onClick={() => setPinned((p) => (p === n.id ? null : n.id))}>
+                        {active && <circle cx={FNW / 2} cy={FNH / 2} r={FNH / 2} className="mx-halo" stroke="var(--hot)" strokeWidth="2.5" />}
+                        <rect x="0" y="0" width={FNW} height={FNH} rx="3"
+                          fill={active ? "var(--hot)" : "var(--paper)"}
+                          stroke={pinned === n.id ? "var(--ink)" : active ? "var(--hot)" : inChain ? "var(--muted)" : "var(--rule)"}
+                          strokeWidth={active || pinned === n.id ? 1.6 : 1}
+                          opacity={visited ? 1 : 0.4} strokeDasharray={visited ? "0" : "4 3"} />
+                        <foreignObject x="10" y="4" width={FNW - 20} height="16" className="mx-fo">
+                          <div className="mx-fo-row" title={n.cls}><span className="mx-fo-cls" style={{ fontSize: 11.5, color: active ? "var(--paper)" : "var(--ink)" }}>{n.cls}</span></div>
+                        </foreignObject>
+                        {/* Subtítulo com QUEBRA DE LINHA (não trunca/abrevia) -- *
+                           * diferente do resto da página: aqui o texto é maior  *
+                           * e o cartão (FNW/FNH) foi dimensionado pra caber 2   *
+                           * linhas inteiras sem "...". */}
+                        <foreignObject x="10" y="20" width={FNW - 20} height="34" className="mx-fo" style={{ pointerEvents: "none" }}>
+                          <div title={n.sub} style={{ fontFamily: "var(--mono)", fontSize: 9.5, lineHeight: "12px", whiteSpace: "normal", wordBreak: "normal", color: active ? "var(--running-fg)" : "var(--sub-muted)" }}>
+                            {n.sub}
+                          </div>
+                        </foreignObject>
+                      </g>
+                      {/* Rótulo de CHAMADA embaixo do nó ativo -- "na animação",  *
+                         * pedido explícito: qual método/função roda AGORA. */}
+                      {active && (
+                        <foreignObject x={n.x - 40} y={n.y - FNH / 2 + FNH + 4} width={FNW + 80} height="16" className="mx-fo">
+                          {/* Largura maior que o próprio cartão, e SEM herdar o    *
+                             * "ellipsis" de .mx-fo-sub: chamadas como os três      *
+                             * setCommanded* juntos passam de 45 caracteres --      *
+                             * cortar isso era voltar a abreviar, o oposto do       *
+                             * pedido. */}
+                          <div title={step.call} style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--hot)", fontWeight: 600, whiteSpace: "nowrap", textAlign: "center" }}>
+                            {step.call}
+                          </div>
+                        </foreignObject>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+          </div>
+          <div className="mx-leg">
+            <button className="mx-leg-toggle" onClick={() => setShowAgentFigure((s) => !s)}>
+              {showAgentFigure ? "▾" : "▸"} Agent vs. AgentTC
+            </button>
+            <span><b style={{ color: "var(--hot)" }}>■</b> executando agora (rótulo abaixo = chamada em curso)</span>
+            <span>borda tracejada e apagada = não visitado nesta trilha (curto-circuito do Fallback)</span>
+            <span>faixa tracejada = escopo de terceiro (framework UBF e BehaviorTree.CPP, lado a lado)</span>
+            <span>roda = zoom · arrastar = mover</span>
+          </div>
+          {/* "Figura" Agent vs. AgentTC -- pedido explícito, mas discreta de     *
+             * propósito: fechada por padrão, atrás do toggle acima, no mesmo    *
+             * espírito de "como ler um cartão" na aba Execução/Simulação. Não   *
+             * é parte do grafo animado (nenhum dos dois é passo de trace) -- é  *
+             * contexto estático sobre o PADRÃO que FlightAgentTC concretiza; a  *
+             * própria aba Classe do nó "FlightAgentTC" mostra a cadeia de       *
+             * herança completa (extends AgentTC extends Agent) com os slots     *
+             * reais (state/behavior) de Agent. */}
+          {showAgentFigure && (
+            <div className="mx-cardleg">
+              <div className="mx-mono" style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Agent vs. AgentTC -- mesma base, dois pontos de entrada</div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 240px", border: "1px dashed var(--rule)", borderRadius: 4, padding: "6px 9px" }}>
+                  <div className="mx-mono" style={{ fontWeight: 600, fontSize: 11.5 }}>Agent</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>thread de FUNDO -- updateData(dt) chama controller(dt)</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: SimAgent nativo (poc single-thread)</div>
+                </div>
+                <div style={{ flex: "1 1 240px", border: "1px dashed var(--hot)", borderRadius: 4, padding: "6px 9px" }}>
+                  <div className="mx-mono" style={{ fontWeight: 600, fontSize: 11.5 }}>AgentTC <span style={{ color: "var(--hot)" }}>← usado neste exemplo</span></div>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>thread de TEMPO CRÍTICO -- updateTC(dt) chama controller(dt)</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: FlightAgentTC (este exemplo, poc multi-thread)</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--muted)", margin: "7px 0 0" }}>
+                controller(dt) -- percepção, decisão e ação -- é EXATAMENTE o mesmo método, herdado de Agent. A única diferença entre
+                as duas classes é QUANDO ele é chamado. Isto é um EXEMPLO de instanciação do padrão: qualquer player pode seguir a
+                mesma receita (extends Agent OU AgentTC + AbstractState + AbstractBehavior + AbstractAction) com suas próprias classes
+                concretas, sem mudar Agent/AgentTC em si.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {showDetail && (
+        <div className="mx-pane">
+          {pinned && flightById[pinned] && (
+            <div className="mx-card" style={{ marginBottom: 10, borderLeft: "3px solid var(--hot)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span className="mx-mono" style={{ fontWeight: 600, fontSize: 12.5 }}>📌 fixado — {flightById[pinned].cls}</span>
+                <button className="mx-btn" style={{ fontSize: 11, padding: "2px 8px" }} onClick={() => setPinned(null)}>soltar</button>
+              </div>
+            </div>
+          )}
+          <div className="mx-dtabs" role="tablist" aria-label="Detalhe do passo">
+            <button className="mx-dtab" data-on={detailTab === "step" ? 1 : 0} onClick={() => setDetailTab("step")}>Passo</button>
+            <button className="mx-dtab" data-on={detailTab === "code" ? 1 : 0} disabled={!snip} onClick={() => snip && setDetailTab("code")}>Código completo</button>
+            <button className="mx-dtab" data-on={detailTab === "edl" ? 1 : 0} onClick={() => setDetailTab("edl")}>EDL do cenário</button>
+            <button className="mx-dtab" data-on={detailTab === "class" ? 1 : 0} onClick={() => setDetailTab("class")}>Classe</button>
+          </div>
+          <div className="mx-detailbody" key={detailTab}>
+            {detailTab === "step" && (
+              <div className="mx-card">
+                <div className="mx-mono" style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>{step.title}</div>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{step.body}</p>
+                {step.warn && <p className="mx-warn">{step.warn}</p>}
+                {snip ? (
+                  <>
+                    <div className="mx-lbl" style={{ marginTop: 12 }}>
+                      <span className="mx-mono">{snip.file}:{snip.line + (step.hl ? step.hl[0] : 0)}</span>
+                      <span>chamada: <b className="mx-mono" style={{ color: "var(--hot)" }}>{step.call}</b></span>
+                    </div>
+                    {renderCodeBlock(previewWin)}
+                    <p style={{ fontSize: 11, color: "var(--muted)", margin: "4px 0 0" }}>
+                      trecho reduzido (12 linhas) -- "Código completo" mostra a função inteira, com a mesma linha em destaque.
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>
+                    chamada: <b className="mx-mono">{step.call}</b> -- código-fonte não incluído nesta curadoria (a condição em si é curta; ver as folhas irmãs para o padrão real).
+                  </p>
+                )}
+              </div>
+            )}
+
+            {detailTab === "code" && snip && (
+              <>
+                <div className="mx-lbl">
+                  <span className="mx-mono">{snip.file}:{snip.line + (step.hl ? step.hl[0] : 0)}</span>
+                  <span>C++ real, conferido à mão (fora do escopo do extrator, que só cobre contexts/src/mixr)</span>
+                </div>
+                {renderCodeBlock(codeWin)}
+              </>
+            )}
+            {detailTab === "edl" && (
+              <>
+                <div className="mx-lbl"><span className="mx-mono">cenário real (condensado)</span><span>{detail.cls} · {detail.edl}</span></div>
+                <div className="mx-edl">
+                  {edlWin.cutBefore && <div className="mx-codecut">⋯ {edlWin.offset} linha{edlWin.offset === 1 ? "" : "s"} acima ⋯</div>}
+                  {edlWin.lines.map((ln, k) => {
+                    const abs = k + edlWin.offset;
+                    const on = abs >= edlRange[0] && abs <= edlRange[1];
+                    return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{abs + 1}</span><span className="mx-src">{ln || " "}</span></div>;
+                  })}
+                  {edlWin.cutAfter && <div className="mx-codecut">⋯ {FLIGHT_EDL_TEXT.length - edlWin.offset - edlWin.lines.length} linhas abaixo ⋯</div>}
+                </div>
+                {detail.id !== "agent" && detail.id !== "state" && detail.id !== "behavior" && detail.id !== "autopilot" && (
+                  <p className="mx-warn">Este nó não tem slot próprio no EDL -- a árvore de comportamento é referenciada por treeFile: (destacado acima), não por um bloco EDL separado.</p>
+                )}
+              </>
+            )}
+            {detailTab === "class" && (
+              <>
+                <div className="mx-lbl">
+                  <span className="mx-mono" style={{ color: "var(--ink)", fontWeight: 600 }}>{detail.cls}</span>
+                  <span>{pinned ? "fixado" : "segue a execução"}</span>
+                </div>
+                {btLeaf ? (
+                  <>
+                    <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 8px" }}>
+                      Folha(s) da árvore de comportamento -- código de TERCEIRO (biblioteca BehaviorTree.CPP, vendorizada em{" "}
+                      <span className="mx-mono">contexts/src/BehaviorTree.CPP/</span>), não deste modelo nem do MIXR. "Slot" (EDL)
+                      não se aplica aqui -- o mecanismo próprio da lib é "port" (par chave/valor lido do atributo XML do nó, via
+                      providedPorts()).
+                    </p>
+                    {["cond", "act"].map((k) => {
+                      const leaf = btLeaf[k];
+                      if (!leaf) return null;
+                      return (
+                        <div key={k} style={{ padding: "6px 8px", marginBottom: 6, borderLeft: "2px solid var(--rule)" }}>
+                          <div>
+                            <span className="mx-mono" style={{ fontWeight: 600, fontSize: 11.5 }}>{leaf.cls}</span>
+                            <span style={{ fontSize: 11, color: "var(--muted)" }}> {"<"} {leaf.base}</span>
+                          </div>
+                          <div style={{ fontSize: 10.5, color: "var(--muted)" }}>{leaf.hd}</div>
+                          <div style={{ fontSize: 11, marginTop: 3 }}>
+                            {leaf.ports.length
+                              ? <>ports: {leaf.ports.map(([pn, pt]) => <span key={pn} className="mx-mono" style={{ marginRight: 10 }}>{pn} {"<"}{pt}{">"}</span>)}</>
+                              : <span style={{ color: "var(--muted)" }}>sem ports (providedPorts() vazio)</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 7 }}>
+                      módulo <b className="mx-mono">{flightModuleOf(detail.cls)}</b> · EDL <b className="mx-mono">( {flightFactoryOf(detail.cls)} )</b>
+                      {modelEntry && modelEntry.f && modelEntry.f !== detail.cls ? <span style={{ color: "var(--rf)" }}> · nome divergente</span> : null}
+                      <br />{(modelEntry || {}).src || (modelEntry || {}).hd}
+                    </div>
+                    {flightChainOf(detail.cls).map((c, k) => {
+                      const e = flightEntry(c);
+                      const n = e ? e.sl.length : 0;
+                      return (
+                        <div key={c} style={{ padding: "3px 8px", marginLeft: k * 6, borderLeft: `2px solid ${n ? "var(--hot)" : "var(--rule)"}`, background: n ? "var(--panel)" : "transparent" }}>
+                          <span className="mx-mono" style={{ fontSize: 11.5, fontWeight: n ? 600 : 400 }}>{c}</span>
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}>{n ? ` -- ${n} slot${n > 1 ? "s" : ""} próprio${n > 1 ? "s" : ""}` : ""}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="mx-lbl" style={{ marginTop: 12 }}>
+                      <span>Slots ({flightAllSlotsOf(detail.cls).length} na cadeia)</span>
+                      <span>{modelEntry ? modelEntry.sl.length : 0} próprios</span>
+                    </div>
+                    <div className="mx-slotgrid">
+                      {flightAllSlotsOf(detail.cls).map(([s, from], k) => (
+                        <div className="mx-slot" key={s + k}>
+                          <span>{s}{flightSlotType(from, s) ? <span style={{ color: "var(--muted)" }}> {"<"}{flightSlotType(from, s)}{">"}</span> : ""}</span>
+                          <span>{from}</span>
+                        </div>
+                      ))}
+                      {!flightAllSlotsOf(detail.cls).length && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Nenhum slot em toda a cadeia.</div>}
+                    </div>
+                    {MODEL[detail.cls] && onOpenCatalog && (
+                      <button className="mx-btn" style={{ marginTop: 10, fontSize: 11 }} onClick={() => onOpenCatalog(detail.cls)}>Ver classe completa no Catálogo →</button>
+                    )}
+                  </>
+                )}
+                {detail.note && <p className="mx-warn">{detail.note}</p>}
+              </>
+            )}
+          </div>
+        </div>
+        )}
+      </div>
+
+      <div className="mx-transport">
+        <button className="mx-btn" data-primary="1" onClick={() => setPlaying((p) => !p)}>{playing ? "Pausar" : "Reproduzir"}</button>
+        <button className="mx-btn" onClick={() => move(-1)}>←</button>
+        <button className="mx-btn" onClick={() => move(1)}>→</button>
+        <button className="mx-btn" onClick={() => { setPlaying(false); setI(0); }}>Início</button>
+        <div className="mx-tl" role="slider" aria-label="Linha do tempo" aria-valuenow={idx} aria-valuemin={0} aria-valuemax={trace.length - 1} tabIndex={0}
+             onKeyDown={(e) => { if (e.key === "ArrowRight") move(1); if (e.key === "ArrowLeft") move(-1); }}>
+          {trace.map((s, k) => (
+            <div key={k} className="mx-seg" onClick={() => { setPlaying(false); setI(k); }} title={`${s.title} — ${s.call}`}
+              style={{ background: k === idx ? "var(--hot)" : s.stage != null ? ["var(--seg-phase-0)", "var(--seg-phase-1)", "var(--seg-phase-2)"][s.stage] : "var(--rule)", height: k === idx ? "100%" : "45%", opacity: k <= idx ? 1 : 0.4 }} />
+          ))}
+        </div>
+        <span className="mx-mono" style={{ fontSize: 11.5, color: "var(--muted)", minWidth: 52 }}>{idx + 1}/{trace.length}</span>
+        <label style={{ fontSize: 12.3, display: "flex", gap: 5, alignItems: "center" }} title="Zoom/pan acompanham sozinhos o nó ativo a cada passo">
+          <input type="checkbox" checked={autoFollow} onChange={(e) => setAutoFollow(e.target.checked)} /> Seguir ramo
+        </label>
+        <select className="mx-input" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Velocidade">
+          <option value={1800}>Lento</option><option value={1100}>Normal</option><option value={550}>Rápido</option>
         </select>
       </div>
     </>

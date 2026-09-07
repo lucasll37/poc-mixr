@@ -9,7 +9,7 @@ declarativo do MIXR) diz qual arquivo `.so` carregar e quais classes esperar del
 viu o código-fonte desse `.so`.
 
 Esse mecanismo de carga (o formato do descritor binário, a macro de registro, as flags de link)
-está definido em [`shared/xplugin/PluginAbi.hpp`](../../../../../shared/xplugin/PluginAbi.hpp) — mas
+está definido em [`libs/xplugin/PluginAbi.hpp`](../../../../../libs/xplugin/PluginAbi.hpp) — mas
 esse arquivo só cobre o **empacotamento**: como o `.so` se anuncia. Ele não diz o que a aplicação,
 já rodando, de fato espera do modelo para funcionar de ponta a ponta. Esta página é essa lista —
 tudo o que falta saber além do empacotamento, incluindo a única obrigação cuja falta **não gera
@@ -151,9 +151,9 @@ problema depois.
 
 - [`../src/stub.cpp`](../src/stub.cpp) — a implementação de referência, item por item desta lista
 - [`../README.md`](../README.md) — como compilar e testar este diretório sozinho
-- [`shared/xplugin/PluginAbi.hpp`](../../../../../shared/xplugin/PluginAbi.hpp) — o contrato de
+- [`libs/xplugin/PluginAbi.hpp`](../../../../../libs/xplugin/PluginAbi.hpp) — o contrato de
   empacotamento binário completo
-- [`shared/xboard/Board.hpp`](../../../../../shared/xboard/Board.hpp) — todos os campos e funções do
+- [`libs/xboard/Board.hpp`](../../../../../libs/xboard/Board.hpp) — todos os campos e funções do
   quadro de leitura da seção 3
 - [`../../README.md`](../../../../README.md) — visão geral de como os modelos deste repositório se
   encaixam no host, e como registrar um modelo novo num cenário

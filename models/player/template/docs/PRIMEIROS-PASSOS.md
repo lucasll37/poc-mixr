@@ -139,8 +139,8 @@ nenhuma para adicionar. Confirme com `make models` na raiz: o log deve citar o n
 sem você ter tocado no Makefile.
 
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
-num cenário rodável pelo `./app` (`-scenario <chave>`) e, opcionalmente, ganhe cobertura de teste
-automática (`tests/meson.build`), isso é um passo separado, documentado em
+num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
+cobertura de teste automática (`tests/meson.build`), isso é um passo separado, documentado em
 [`../../../README.md`](../../../README.md), seções 4.1 e 4.2 — não tem relação com este Passo 7.
 
 ## Checklist rápido, para revisar antes do primeiro commit

@@ -19,14 +19,12 @@ qualquer coisa em main() (antes ate de app::ensureTerrainData()), entao o
 processo sai quase instantaneamente nos dois sentidos.
 
 O quarto caso ('sem-nenhuma-opcao') cobre uma mudanca de comportamento
-diferente: rodar o binario SEM '-scenario'/'-f'/'-folder' nenhum costumava
-abrir a tela de selecao do catalogo (FTXUI, ScreenInteractive::Fullscreen())
--- hoje e erro fatal, recusado ANTES de qualquer Station (main.cpp exige uma
-das tres opcoes explicitamente; '-internal-picker', o unico jeito de chegar
-na tela de novo, e reservado para o reexec interno de "carregar outro
-cenario"/"parar" -- ver app/Options.hpp). 'stdin=DEVNULL' aqui teria, antes
-desta mudanca, arriscado travar contra uma tela interativa sem TTY nenhum
-pra ler -- hoje nem chega perto disso, mas o teste mantém a mesma cautela.
+diferente: rodar o binario SEM '-f'/'-folder' nenhum e erro fatal, recusado
+ANTES de qualquer Station (main.cpp exige uma das duas opcoes
+explicitamente -- nao ha mais catalogo estatico nem tela de selecao
+alcancavel sem '-folder'; ver app/Options.hpp). 'stdin=DEVNULL' aqui
+protege contra travar caso alguma mudanca futura reabra um caminho
+interativo por omissao.
 """
 
 import argparse

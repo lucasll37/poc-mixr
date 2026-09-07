@@ -17,7 +17,7 @@
   vendo o intruso agora": ele consulta domain::ThreatPolicy::engaged(), que
   continua verdadeiro por 'evadeHold' segundos DEPOIS de a pista sumir. Essa
   histerese envelhece com o 'dt' do frame, e um script Python nao recebe
-  'dt': a fronteira de shared/xpyembed e "28 floats entram, 3 saem". Sem ela,
+  'dt': a fronteira de libs/xpyembed e "28 floats entram, 3 saem". Sem ela,
   a propria quebra tira o intruso do setor do radar (30 graus para cada lado,
   contra uma quebra de 110), a pista pisca, e os ramos 2 e 3, que comandam
   sentidos OPOSTOS sobre o mesmo objeto, alternam para sempre (a aeronave

@@ -81,7 +81,7 @@ void advanceComponentFlowStep(ComponentFlowState& flow);
 void setComponentFlowPlaying(ComponentFlowState& flow, bool playing);
 
 // 1x -> 2x -> 4x -> 1x -- mesma escada pequena do resto do app (ver
-// shared/xclock/TimeControls, embora esta seja independente daquela: o
+// libs/xclock/TimeControls, embora esta seja independente daquela: o
 // relogio da simulacao e o desta animacao NAO tem nenhuma relacao).
 void cycleComponentFlowSpeed(ComponentFlowState& flow);
 

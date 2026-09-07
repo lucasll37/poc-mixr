@@ -5,14 +5,14 @@
 // "namespace domain { ... }" solto, e as duas .so's (libflight*.so,
 // libmissile.so) carregam JUNTAS no mesmo processo (ver
 // src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in,
-// app/configs/scenario_intercept_missile.edl.in) -- dois namespaces
+// sandbox/intercept_missile/configs/scenario_intercept_missile.edl.in) -- dois namespaces
 // "domain" IDENTICOS, cada um privado ao seu .so (visibility hidden), nao
 // colidem HOJE (nomes de tipo diferentes dos dois lados: GuidanceCommand
 // aqui, WorldView/ThreatPolicy/etc. no flight), mas e uma mina para o
 // futuro: dois tipos com o MESMO nome qualificado ("domain::X") em dois
 // .so's carregados juntos teriam o mesmo nome mangled, e a comparacao de
 // type_info deste toolchain degrada para strcmp entre objetos RTLD_LOCAL
-// (ver o comentario correspondente em shared/xplugin/PluginRegistry.cpp).
+// (ver o comentario correspondente em libs/xplugin/PluginRegistry.cpp).
 // Aninhar aqui elimina a colisao sem tocar no flight (que ja tem
 // "domain::" espalhado e documentado em dezenas de lugares) -- so este
 // lado, o menor e mais novo dos dois, muda.
@@ -35,7 +35,7 @@ namespace domain {
 // Entra tudo em NED, metros e graus (mesma convencao do resto do repositorio
 // -- ver domain/WorldView.hpp do flight). Sai comando NORMALIZADO
 // (-1..1), pronto para Player::setControlStickRollInput()/PitchInput(), que
-// e a mesma faixa que o joystick fisico ja usa (shared/xjoystick).
+// e a mesma faixa que o joystick fisico ja usa (libs/xjoystick).
 //------------------------------------------------------------------------------
 struct GuidanceCommand
 {

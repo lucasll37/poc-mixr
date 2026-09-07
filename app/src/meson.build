@@ -12,7 +12,7 @@ host_sources = files(
     'app/Options.cpp', 'app/TerrainData.cpp', 'app/ScenarioTemplate.cpp',
     'app/StationBuilder.cpp', 'app/Fleet.cpp', 'app/DeterministicDump.cpp',
     'app/DeterministicRun.cpp', 'app/MetaObjectReport.cpp',
-    'app/ScenarioCatalog.cpp', 'app/Respawn.cpp', 'app/DashboardState.cpp',
+    'app/AdHocScenario.cpp', 'app/Respawn.cpp', 'app/DashboardState.cpp',
     'app/ScenarioPickerScreen.cpp', 'app/DashboardLoop.cpp',
     'app/MetaObjectSnapshot.cpp', 'app/FleetPanel.cpp', 'app/MapPanel.cpp',
     'app/MapGeometry.cpp', 'app/BreakpointController.cpp', 'app/SpeedLadder.cpp',
@@ -56,6 +56,24 @@ edlcheck = executable('edlcheck',
     include_directories : local_inc_dir,
     dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
                            xplugin_dep, xmsg_dep],
+    install             : true,
+    install_dir         : get_option('bindir'),
+    install_rpath       : mixr_libdir + ':' + own_libs_rpath,
+    build_rpath         : mixr_libdir,
+)
+
+# Introspeccao de RUNTIME de um plugin .so avulso -- ver o cabecalho de
+# plugininfo_main.cpp para o que da' e o que NAO da' pra descobrir assim
+# (nomes/cadeia/slots sim, tipo/unidade de slot nao). Ao contrario de
+# edlcheck, NAO recompila mixr_factory.cpp -- este programa carrega UM
+# plugin isolado via xplugin::loadModule() direto, sem cadeia de factories
+# nativas nem Station nenhuma por perto.
+plugininfo = executable('plugininfo',
+    files('plugininfo_main.cpp'),
+    cpp_args            : asan_cpp_args,
+    link_args           : asan_link_args + rpath_link_args,
+    include_directories : local_inc_dir,
+    dependencies        : [thread_dep, mixr_dep, xplugin_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir + ':' + own_libs_rpath,

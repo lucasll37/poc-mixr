@@ -3,8 +3,9 @@
 #
 # Cada pasta sob src/poc/ e hoje so DADO: 'configs/' (o cenario EDL), 'data/'
 # (o que a execucao escreve) e o README. Quem as executa e o ./app, o runner
-# unico -- 'app -scenario <chave>' (ver app/ScenarioCatalog.hpp) ou
-# 'app -f <arquivo>' para um cenario fora do catalogo.
+# unico -- 'app -folder src/poc -scenario <nome>' (ver app/ScenarioFolder.hpp;
+# nao ha catalogo estatico, qualquer poc com um unico .edl(.in) em configs/ ja
+# e alcancavel) ou 'app -f <arquivo>' apontando direto pro caminho.
 #
 # POR QUE: cada poc carregava uma copia byte a byte da camada de aplicacao
 # (~1.500 linhas: include/app/ + src/app/ + mixr_factory), sustentada pela

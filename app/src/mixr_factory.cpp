@@ -31,7 +31,7 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    // mixr::xplugin::loadedFactory(). Este arquivo ficou igual ao do
    // bandit, que nunca teve modelo.
 
-   // 2) exportacao para o Tacview (shared/xtacview)
+   // 2) exportacao para o Tacview (libs/xtacview)
    if (obj == nullptr) obj = mixr::xtacview::factory(name);
 
    // 3) relogio: ClockStation (Station + acelerar/frear/pausar)

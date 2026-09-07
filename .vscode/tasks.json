@@ -9,7 +9,7 @@
         "--",
         "bash",
         "-c",
-        "cd \"${workspaceFolder}\" && ./build/app/src/app -folder ./sandbox; exec bash"
+        "cd \"${workspaceFolder}\" && ./build/app/src/app -folder ./sandbox"
       ],
       "presentation": {
         "reveal": "never",

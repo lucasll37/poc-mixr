@@ -37,7 +37,7 @@ um simples ajuste de 'minAltitude'.
 
 --patrol-seed, opcional e composto com QUALQUER --mode: substitui o valor de
 TODAS as ocorrencias de 'patrolMasterSeed:' no cenario (mesmo literal
-repetido nos 4 falcons, ver CLAUDE.md secao shared/xrandom) por um numero
+repetido nos 4 falcons, ver CLAUDE.md secao libs/xrandom) por um numero
 escolhido na hora -- para comparar duas fixtures com sementes diferentes sem
 duplicar o .edl.in inteiro.
 """

@@ -1,7 +1,5 @@
 #include "app/ScenarioPickerScreen.hpp"
 
-#include "app/ScenarioCatalog.hpp"
-
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/event.hpp>
@@ -19,10 +17,10 @@ using namespace ftxui;
 
 // Tela FIXA -- largura/altura EQUAL, nao GREATER_THAN (ver o comentario
 // grande no Renderer, mais abaixo). 'kPickerDescLines' cobre a descricao
-// mais comprida do catalogo (~80 caracteres) em 2 linhas com folga na
-// largura de 'kPickerWidth'; se um cenario futuro ganhar uma descricao bem
-// mais longa, e so alongar 'kPickerDescLines' -- nao existe caminho pra isso
-// acontecer sozinho e voltar a "pular" tela.
+// mais comprida hoje (~80 caracteres) em 2 linhas com folga na largura de
+// 'kPickerWidth'; se um item futuro ganhar uma descricao bem mais longa, e
+// so alongar 'kPickerDescLines' -- nao existe caminho pra isso acontecer
+// sozinho e voltar a "pular" tela.
 const int kPickerWidth{76};
 const int kPickerDescLines{2};
 const int kPickerHeight{12};
@@ -56,13 +54,13 @@ std::string runPickerScreen(const std::vector<PickerItem>& items, const std::str
    const Component menu{Menu(menuOption)};
 
    // Largura e altura FIXAS ('EQUAL', nao 'GREATER_THAN') -- a descricao de
-   // cada cenario tem um comprimento diferente (ver ScenarioCatalog.cpp), e
-   // com 'GREATER_THAN' o box crescia/encolhia (e recentralizava, por causa
-   // do 'center') conforme o numero de linhas que 'paragraphAlignLeft'
-   // precisava pra encaixar cada descricao -- a tela "pulava" so de navegar
-   // entre as opcoes. Reservar 2 linhas fixas pra descricao (cabe as tres
-   // deste catalogo, mesmo a mais comprida, no 'kPickerWidth' escolhido)
-   // resolve pra qualquer selecao, sem depender do conteudo.
+   // cada item pode ter um comprimento diferente, e com 'GREATER_THAN' o box
+   // crescia/encolhia (e recentralizava, por causa do 'center') conforme o
+   // numero de linhas que 'paragraphAlignLeft' precisava pra encaixar cada
+   // descricao -- a tela "pulava" so de navegar entre as opcoes. Reservar 2
+   // linhas fixas pra descricao (cabe a mais comprida vista ate hoje, no
+   // 'kPickerWidth' escolhido) resolve pra qualquer selecao, sem depender do
+   // conteudo.
    const auto root = Renderer(menu, [&] {
       Elements elems;
       elems.push_back(text(title) | bold | color(Color::CyanLight));
@@ -125,17 +123,6 @@ std::string runPickerScreen(const std::vector<PickerItem>& items, const std::str
    if (cancelled || !confirmed) return {};
    if (selected < 0 || selected >= static_cast<int>(items.size())) return {};
    return items[static_cast<std::size_t>(selected)].key;
-}
-
-std::string runScenarioPicker()
-{
-   const auto& catalog{scenarioCatalog()};
-
-   std::vector<PickerItem> items;
-   items.reserve(catalog.size());
-   for (const auto& entry : catalog) items.push_back(PickerItem{entry.key, entry.label, entry.description});
-
-   return runPickerScreen(items, "selecione um cenario");
 }
 
 } // namespace app

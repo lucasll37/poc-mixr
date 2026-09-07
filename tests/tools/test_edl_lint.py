@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Regressao de tools/edl_lint.py: os 10 cenarios .edl/.edl.in REAIS deste
-repositorio nao podem acusar ERRO nenhum -- eles ja rodam de verdade (make
-test os exercita via meson), entao um erro aqui e sempre um FALSO POSITIVO
-do lint, nunca um problema real do cenario. Nao afirma nada sobre AVISOS
-(referencia-por-nome pendurada é best-effort e pode legitimamente disparar).
+"""Regressao de src/ui/scripts/edl_lint.py: os cenarios .edl/.edl.in REAIS
+deste repositorio nao podem acusar ERRO nenhum -- eles ja rodam de verdade
+(make test os exercita via meson), entao um erro aqui e sempre um FALSO
+POSITIVO do lint, nunca um problema real do cenario. Nao afirma nada sobre
+AVISOS (referencia-por-nome pendurada é best-effort e pode legitimamente
+disparar).
 
 Puro Python, sem framework, mesmo estilo de tests/tools/test_edl_catalog.py.
 """
@@ -13,10 +14,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools"))
+sys.path.insert(0, str(REPO_ROOT / "src" / "ui" / "scripts"))
 
 import edl_lint  # noqa: E402
-import extract_execution_chain as ext  # noqa: E402
 
 REAL_SCENARIOS = [
     "src/poc/dis/single-thread/configs/scenario.edl.in",
@@ -25,7 +25,6 @@ REAL_SCENARIOS = [
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
-    "app/configs/scenario_intercept_missile.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",
     "src/poc/rl-training/configs/scenario_rl.edl",
     "src/rl/configs/scenario_rl.edl",

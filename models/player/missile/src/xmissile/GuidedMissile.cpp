@@ -60,7 +60,7 @@ bool GuidedMissile::crashNotification()
 // pede o comando a domain::pursuit() e o aplica DIRETO no FCS do JSBSim, por
 // fora do Autopilot nativo -- este player nao tem ( Autopilot ), o
 // dynamicsModel recebe o comando de manche/manete igual a um joystick
-// fisico (mesma faixa -1..1, ver shared/xjoystick).
+// fisico (mesma faixa -1..1, ver libs/xjoystick).
 //
 // domain::slewTowards() e o amortecimento que falta na lei P pura (ver o
 // "porque" em domain/Guidance.hpp e no comentario de aim1.xml sobre a

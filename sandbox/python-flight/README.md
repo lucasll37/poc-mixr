@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `./build/app/src/app -scenario python-flight`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -folder ./sandbox -scenario python-flight`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -17,7 +17,7 @@ thread, mesmo tick, sem processo nem soquete no meio.
 
 ```bash
 make build
-./build/app/src/app -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
+./build/app/src/app -folder ./sandbox -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
@@ -27,9 +27,9 @@ make build
 **O ciclo de trabalho que esta poc existe para ter:**
 
 ```bash
-./build/app/src/app -scenario python-flight                       # veja o voo no Tacview
+./build/app/src/app -folder ./sandbox -scenario python-flight                       # veja o voo no Tacview
 $EDITOR src/poc/python-flight/configs/policy/patrol.py
-./build/app/src/app -scenario python-flight                       # veja o voo mudado
+./build/app/src/app -folder ./sandbox -scenario python-flight                       # veja o voo mudado
 ```
 
 Não há compilação entre as duas execuções. Nem do host, nem do plugin — o `.py` é lido do disco
@@ -59,9 +59,9 @@ na primeira decisão de cada aeronave.
 
 | peça | onde |
 |---|---|
-| o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`shared/xpyembed`](../../../shared/xpyembed/) |
+| o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`libs/xpyembed`](../../../libs/xpyembed/) |
 | o nó de árvore `( PyDecide )` | `models/player/A4/src/bt/nodes/PyDecideAction.cpp` |
-| a ordem canônica dos 28 campos | [`shared/xrlbridge/ObservationFields.hpp`](../../../shared/xrlbridge/ObservationFields.hpp) |
+| a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à das gêmeas |
 | o plugin | o **mesmo** `libflight_tc.so` das gêmeas, byte a byte |
 
@@ -141,7 +141,7 @@ def decide(obs) -> (heading_deg, altitude_m, speed_kts)
 ```
 
 `obs` são 28 floats na ordem canônica de
-[`shared/xrlbridge/ObservationFields.hpp`](../../../shared/xrlbridge/ObservationFields.hpp) — 23
+[`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) — 23
 floats e depois 5 booleanos, todos vindos do mesmo `domain::WorldView` que o UBF já usa para
 decidir. Os três campos de texto (`contactName`, `alertSender`, `alertContactName`) ficam de fora:
 não são números.
@@ -155,7 +155,7 @@ como contrato, mantido numa X-macro única, e não como detalhe.
 
 ## 5. Estado por aeronave, e por que ele é seguro
 
-`shared/xpyembed` dá a **cada aeronave** o seu próprio dicionário de globais para cada script.
+`libs/xpyembed` dá a **cada aeronave** o seu próprio dicionário de globais para cada script.
 Duas consequências, e as duas são usadas aqui:
 
 **(a) Uma variável global de módulo é estado _por aeronave_, e sobrevive entre ticks.** É assim
@@ -182,13 +182,13 @@ Sem relógio, sem contador de tempo, e determinístico.
 
 **O que continua compartilhado** é o `sys.modules`: um `import` traz o mesmo objeto de módulo para
 todas as aeronaves. Um módulo importado com estado mutável ainda é um buraco — é o limite
-conhecido de `shared/xpyembed`, e é por isso que os helpers estão repetidos (§3).
+conhecido de `libs/xpyembed`, e é por isso que os helpers estão repetidos (§3).
 
 ---
 
 ## 6. O que NÃO atravessa a fronteira: `dt`
 
-A fronteira de `shared/xpyembed` é deliberadamente estreita: **28 floats entram, 3 saem**. Não há
+A fronteira de `libs/xpyembed` é deliberadamente estreita: **28 floats entram, 3 saem**. Não há
 `dt`, não há acesso ao `Player`, não há como chamar de volta o modelo.
 
 Isso não é uma limitação a contornar — é o que torna cada script **puro em relação ao estado da
@@ -206,7 +206,7 @@ integrar tempo, e é por isso que:
 
 `./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight` roda 2000 frames de passo fixo com **1, 2 e 4** threads de tempo
 crítico, mais uma repetição com 4, e exige que os quatro dumps `frame=` saiam **byte-idênticos** —
-e as mensagens do `shared/xmsg` também. Com quatro aeronaves chamando `decide()` **em paralelo**,
+e as mensagens do `libs/xmsg` também. Com quatro aeronaves chamando `decide()` **em paralelo**,
 na fase 3, sobre **um** interpretador cujo GIL é adquirido em ordem arbitrária.
 
 O que sustenta isso são as três propriedades acima, nesta ordem:
@@ -215,7 +215,7 @@ O que sustenta isso são as três propriedades acima, nesta ordem:
 2. a ausência de `dt` (§6) — sem ela, um script poderia integrar tempo de parede;
 3. os scripts não lerem relógio, não sortearem sem semente e não escreverem arquivo.
 
-O `-deterministic` também **desliga o `shared/xlog`**, então as linhas de transição de
+O `-deterministic` também **desliga o `libs/xlog`**, então as linhas de transição de
 comportamento (que carregam o número da thread) ficam fora do modo comparável.
 
 ---
@@ -234,7 +234,7 @@ frame=100 player=falcon1 ... bt=PATROL ...        # o nó C++, não o script
 ```
 
 A aeronave continua voando, na patrulha cronometrada de sempre. É a mesma política de degradação
-do joystick ausente em [`shared/xjoystick`](../../../shared/xjoystick/): a peça opcional some, o
+do joystick ausente em [`libs/xjoystick`](../../../libs/xjoystick/): a peça opcional some, o
 resto não.
 
 ---
@@ -317,5 +317,5 @@ semântica das gêmeas (quem evadiu avisa, quem apoiou recebeu, ninguém voou pa
 terreno), normalizando o prefixo `PY-` na entrada: as propriedades afirmadas são as do **modelo**,
 e valem igual quando o comando sai de um script.
 
-Para ver o voo: `./build/app/src/app -scenario python-flight` e conecte o Tacview em `File > Real-Time Telemetry`,
+Para ver o voo: `./build/app/src/app -folder ./sandbox -scenario python-flight` e conecte o Tacview em `File > Real-Time Telemetry`,
 porta **1237**.

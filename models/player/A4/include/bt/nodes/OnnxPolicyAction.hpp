@@ -48,7 +48,7 @@ private:
    NodeContext context_;
 
    // Uma tentativa de carga, e so -- mesmo molde do 'treeBuilt' de
-   // ubf/BtBehavior. O cache por caminho mora em shared/xinfer.
+   // ubf/BtBehavior. O cache por caminho mora em libs/xinfer.
    int modelId_{};
    bool tentouAbrir_{};
 };

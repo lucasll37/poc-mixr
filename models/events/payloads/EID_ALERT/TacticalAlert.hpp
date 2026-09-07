@@ -30,11 +30,11 @@ namespace events {
 // local mudaram -- para nao mexer em 'provides:' de nenhum cenario.
 //
 // Mora em events/payloads/, dentro de ./events/ na RAIZ do repositorio --
-// nao em shared/xevents/, ao contrario das outras seis shared_library() de
+// nao em libs/xevents/, ao contrario das outras seis shared_library() de
 // fronteira de plugin (xboard/xlog/xtrack/xrlbridge/xinfer/xpyembed).
 // Excecao deliberada: evento e o eixo central da modelagem deste projeto
 // (ver events/README.md), entao ganhou pasta propria em destaque em vez de
-// ficar mais um `shared/x<nome>` entre outros. Continua publicado pelo
+// ficar mais um `libs/x<nome>` entre outros. Continua publicado pelo
 // MESMO SDK, do MESMO jeito -- so o endereco do FONTE mudou, nao o
 // mecanismo (subdir()+shared_library() no meson.build raiz, instalado em
 // dist/lib+dist/include via pkgconfig).

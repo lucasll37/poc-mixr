@@ -226,7 +226,7 @@ END_SLOT_MAP()
 //------------------------------------------------------------------------------
 // RLBridgeBehavior -- so precisa existir e se recusar a decidir (nullptr):
 // nenhum cenario de teste que carrega o stub liga a ponte de RL de verdade
-// (isso exigiria shared/xrlbridge, que o stub nao linka), so o cenario de
+// (isso exigiria libs/xrlbridge, que o stub nao linka), so o cenario de
 // PRODUCAO declara RLBridgeBehavior no seu 'provides:' (ver
 // models/player/A4/include/ubf/RLBridgeBehavior.hpp) -- e o stub, rodando esse
 // MESMO cenario trocando so o 'file:', precisa responder pelo nome pra nao

@@ -59,6 +59,18 @@ void FlightState::updateState(const base::Component* const actor)
    Snapshot s;
    s.valid = true;
 
+   // 'actor' chega aqui resolvido pelo Agent nativo (SimAgent por nome via
+   // 'actorPlayerName:', FlightAgentTC por estar aninhado no proprio
+   // player) -- e' o UNICO jeito confiavel de saber "quem decide" que
+   // funciona igual nos dois agentes. 'findContainerByType(Player)' de
+   // dentro do comportamento NAO funciona no SimAgent: la, BtBehavior mora
+   // dentro do agente, que e' componente da Station, nunca do player (a
+   // ligacao e por NOME, nao por container()) -- medido rodando: retorna
+   // vazio em single-thread, o nome certo em multi-thread.
+   const char* const rawOwnerName =
+      (air->getName() != nullptr) ? air->getName()->getString() : nullptr;
+   s.ownerName = (rawOwnerName != nullptr) ? rawOwnerName : "";
+
    const base::Vec3d& pos{air->getPosition()};
    s.northM = pos[models::Player::INORTH];
    s.eastM = pos[models::Player::IEAST];

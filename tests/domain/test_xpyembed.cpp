@@ -1,5 +1,5 @@
 //
-// shared/xpyembed -- o interpretador Python embarcado, sem Station e sem
+// libs/xpyembed -- o interpretador Python embarcado, sem Station e sem
 // plugin: so a lib e um script em disco.
 //
 // O QUE IMPORTA AQUI e o isolamento por chave. O GIL serializa as chamadas,

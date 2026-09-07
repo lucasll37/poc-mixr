@@ -36,7 +36,7 @@ py::dict toDict(const mixr::xrlbridge::Observation& obs)
 
 //------------------------------------------------------------------------------
 // Wrapper fino em cima de rl::NativeSimulation: traduz dict <-> xrlbridge nas
-// duas pontas, para NativeSimulation em si (e shared/xrlbridge) nao
+// duas pontas, para NativeSimulation em si (e libs/xrlbridge) nao
 // precisarem saber nada de Python/pybind11.
 //------------------------------------------------------------------------------
 class PyNativeSimulation
@@ -87,7 +87,7 @@ PYBIND11_MODULE(_native, m)
 
    // O CONTRATO DE DADOS, exposto ao Python. env.py e
    // src/rl/tools/export_onnx.py consomem estas duas em vez de repetir a
-   // lista de campos -- ver shared/xrlbridge/ObservationFields.hpp.
+   // lista de campos -- ver libs/xrlbridge/ObservationFields.hpp.
    m.def("observation_field_names", &mixr::xrlbridge::observationFieldNames,
          "Os nomes dos campos numericos da observacao, na ORDEM CANONICA "
          "(a mesma que o .onnx espera na entrada).");

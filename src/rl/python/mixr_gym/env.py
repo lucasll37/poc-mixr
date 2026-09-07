@@ -5,7 +5,7 @@ O 'state' e o mesmo domain::WorldView que o UBF ja usa para decidir
 domain::FlightCommand que xnative::FlightAction ja aplica no Autopilot
 (heading/altitude/speed -- os tres unicos campos que execute() de fato
 atua). Nada disso e reimplementado aqui: o C++ (src/rl/bindings/) so publica os
-dois em shared/xrlbridge e este arquivo os traduz para os tipos do
+dois em libs/xrlbridge e este arquivo os traduz para os tipos do
 Gymnasium.
 """
 
@@ -32,7 +32,7 @@ DEFAULT_PLAYER = "falcon1"
 # aqui recorta o dado, so declara a forma do espaco.
 #
 # A ORDEM nao esta aqui. Ela vem do C++ (_native.observation_field_names(),
-# que expande a X-macro de shared/xrlbridge/ObservationFields.hpp -- a MESMA
+# que expande a X-macro de libs/xrlbridge/ObservationFields.hpp -- a MESMA
 # que o modelo expande contra domain::WorldView na hora de inferir). Este dict
 # so associa um limite a cada nome, e _build_field_lists() confere que os dois
 # conjuntos batem EXATAMENTE: um campo novo no C++ sem limite aqui, ou um
@@ -78,7 +78,7 @@ def _build_field_lists() -> tuple[list[tuple[str, float, float]], list[str]]:
             "contrato de observacao fora de sincronia entre C++ e Python:\n"
             f"  sem limite em env.py: {faltando}\n"
             f"  limite sem campo no C++: {sobrando}\n"
-            "  a ordem canonica vive em shared/xrlbridge/ObservationFields.hpp"
+            "  a ordem canonica vive em libs/xrlbridge/ObservationFields.hpp"
         )
 
     return ([(n, _BOUNDS[n][0], _BOUNDS[n][1]) for n in floats],

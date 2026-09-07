@@ -16,14 +16,15 @@
 # iguais divergem -- o que este teste leria como falha de determinismo sem que
 # houvesse nenhuma. Passar <poc> vazio usa o cenario de producao.
 #
-#   uso: check_determinism.sh <binario> <rotulo> [frames] [poc] [chave-de-cenario]
+#   uso: check_determinism.sh <binario> <rotulo> [frames] [poc] [arquivo-de-cenario]
 #
 # O <binario> hoje e sempre o ./app -- as pocs nao tem executavel proprio (ver
-# src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por
-# '-f' e ja diz tudo; quando nao ha (cenario que ja e hermetico de fabrica,
-# como o do built-in_mixr_1), e preciso dizer ao runner QUAL cenario carregar,
-# e e isso que a <chave-de-cenario> faz -- sem ela o ./app abriria a tela de
-# selecao e ficaria esperando alguem apertar uma tecla.
+# src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por '-f'
+# e ja diz tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o
+# de built-in_mixr_1/full-systems-nav), e preciso dizer ao runner QUAL
+# arquivo carregar, e e isso que <arquivo-de-cenario> faz (tambem por '-f' --
+# nao ha mais catalogo estatico de cenarios, so caminho de arquivo) -- sem
+# ele o ./app recusaria de cara (uma das duas opcoes e obrigatoria).
 #
 set -u
 
@@ -31,7 +32,7 @@ BIN="${1:?uso: check_determinism.sh <binario> <rotulo> [frames] [poc]}"
 ROTULO="${2:?falta o rotulo}"
 FRAMES="${3:-2000}"
 POC="${4:-}"
-CHAVE="${5:-}"
+ARQUIVO="${5:-}"
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CENARIO=""
@@ -40,6 +41,8 @@ if [ -n "$POC" ]; then
    mkdir -p "$RAIZ/build/tests-recordings"
    python3 "$RAIZ/tests/scenario/make_fixture.py" --poc "$POC" --mode intruder \
       --out "$CENARIO" || exit 1
+elif [ -n "$ARQUIVO" ]; then
+   CENARIO="$ARQUIVO"
 fi
 
 # ONDE OS DUMPS DESTA EXECUCAO FICAM.
@@ -59,7 +62,6 @@ OUT="$RAIZ/build/tests-determinism/${ROTULO}"
 mkdir -p "$OUT" || exit 1
 
 args=()
-[ -n "$CHAVE" ]   && args+=(-scenario "$CHAVE")
 [ -n "$CENARIO" ] && args+=(-f "$CENARIO")
 
 MSGDIR="$RAIZ/build/tests-messages"
@@ -82,7 +84,7 @@ roda() {   # roda <n-threads> <arquivo-de-saida>
       echo "  FALHA $BIN saiu com codigo $rc (threads=$1)"
       return 1
    fi
-   # O shared/xmsg grava por fora do stdout, e cada corrida trunca o mesmo
+   # O libs/xmsg grava por fora do stdout, e cada corrida trunca o mesmo
    # arquivo -- guardar uma copia por configuracao de thread e o que permite
    # comparar a saida de mensagens do mesmo jeito que se compara o dump.
    if [ -n "$POC" ] && [ -f "$MSGDIR/$POC-intruder.jsonl" ]; then
@@ -174,7 +176,7 @@ done
 # ------------------------------------------------------------------------------
 # 3) as MENSAGENS tambem tem de ser identicas
 #
-# O shared/xmsg NAO e desligado em -deterministic, ao contrario do xlog: tudo
+# O libs/xmsg NAO e desligado em -deterministic, ao contrario do xlog: tudo
 # que ele emite carrega tempo simulado, nunca relogio de parede nem id de
 # thread. Logo a saida tem de ser byte-identica nas tres configuracoes -- e
 # isso e assercao, nao precaucao.

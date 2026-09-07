@@ -15,7 +15,7 @@ explicar.
 
 - **Entra** em NED, metros e graus (mesma convenção de `domain::WorldView` do `flight`).
 - **Sai** comando normalizado (`-1..1`), pronto para `Player::setControlStickRollInput()`/
-  `PitchInput()` — a mesma faixa que o joystick físico já usa (`shared/xjoystick`).
+  `PitchInput()` — a mesma faixa que o joystick físico já usa (`libs/xjoystick`).
 - **Proporcional-derivativo, não só proporcional.** O termo de taxa (`rollRateGainDps`/
   `pitchRateGainDps`) é o amortecimento que falta a um controlador só-proporcional — sem ele, a
   `tests/domain/test_Guidance.cpp` (`TaxaPropriaAmortece`) trava exatamente essa propriedade:

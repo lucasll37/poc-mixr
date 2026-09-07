@@ -8,11 +8,11 @@
 #include <vector>
 
 //------------------------------------------------------------------------------
-// A aba "Log": as ultimas linhas emitidas por shared/xlog (LOG(NIVEL) <<
+// A aba "Log": as ultimas linhas emitidas por libs/xlog (LOG(NIVEL) <<
 // ...), uma por linha, com carimbo de hora, nivel colorido e a mensagem.
 //
 // A FONTE e o buffer em memoria de mixr::xlog (ver o bloco "BUFFER EM
-// MEMORIA" em shared/xlog/Log.hpp), nao um tail do arquivo. Como 'xlog' e
+// MEMORIA" em libs/xlog/Log.hpp), nao um tail do arquivo. Como 'xlog' e
 // uma shared_library() -- ha UMA copia no processo --, o que o MODELO
 // registra de dentro do .so aberto por dlopen cai no mesmo buffer que o do
 // host e aparece aqui sem nenhuma ponte extra.

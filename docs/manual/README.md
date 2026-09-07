@@ -1,189 +1,40 @@
 # `docs/manual/` — explorador de execução, EDL e classes built-in do MIXR
 
-`index.html` é uma página estática, sem dependências de rede (React, ReactDOM e todo o app
-ficam embutidos no próprio arquivo), com duas visões sobre o framework:
+Página estática (React embutido, zero rede para abrir) com duas visões sobre o framework,
+**curadas, não instrumentadas** — sem processo MIXR rodando por trás, herança, nome de fábrica,
+registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm de
+`tools/extract_execution_chain.py` escaneando o fonte de verdade (`contexts/src/mixr/`) — nada
+digitado à mão.
 
-1. **Execução** — o mesmo ciclo de fases já visto na aba "Componentes" (F6) do `./app`
-   (dynamics/transmit/receive/process + as duas threads de decisão/fundo), aqui desenhado
-   sobre a árvore de classes do MIXR com um grafo navegável (pan/zoom, arrastar) e timeline
-   com transporte (tocar/pausar/velocidade/passo/reiniciar) e trilha "ociosos"/"ligações por
-   nome". Cenário único, propositalmente exaustivo: um `( Aircraft )` carregando os DEZ
-   sistemas primários que `Player::updateSystemPointers()` resolve por tipo (mesmo desenho de
-   `src/poc/built-in_mixr_1` — ver o CLAUDE.md), ~72 nós, cobrindo praticamente tudo que dá
-   para montar só com componentes nativos do `mixr::models` (a única troca deliberada: o
-   `Datalink` aqui é nativo, não o `AlertDatalink` do plugin de voo). O botão "▾/▸ detalhe"
-   no canto do grafo oculta o painel de baixo (Passo/Código/EDL/Classe) para dar mais área ao
-   grafo; "▸ como ler um cartão", na legenda, abre um cartão de exemplo anotado explicando
-   nome/subtítulo/pips de fase/contador de visitas/cor de thread. O botão "☾/☀" no canto
-   superior direito alterna **claro/escuro** (persiste em `localStorage`, nunca segue
-   `prefers-color-scheme` do SO — só o toggle decide); toda cor do CSS é uma variável
-   (`--paper`/`--ink`/`--hot`/...), então o tema troca sem nenhum hex cru sobrando.
-
-   O checkbox **"Árvore vertical"** experimenta uma segunda orientação do grafo (raiz em
-   cima, irmãos lado a lado, em vez de raiz à esquerda) — `layout()` é uma função só, que
-   troca qual eixo é "profundidade" e qual é "espalhamento dos irmãos"; o resto (W/H,
-   margens, aresta em cotovelo, rótulo "via:"/"dt") tem uma versão própria por orientação.
-   Para ESTE cenário (bem mais largo em folhas que fundo em profundidade) o resultado sai
-   extremamente largo e raso — funciona (zero sobreposição, verificado nó a nó e rótulo a
-   rótulo, inclusive nos fan-outs mais largos como os 6 filhos do Gimbal), mas horizontal
-   continua sendo a orientação prática pra este cenário especificamente. "Ligações por nome"
-   fica indisponível nessa orientação (as setas pontilhadas não têm posição calibrada nela
-   ainda). Trocar de orientação reseta o pan/zoom (as posições dos nós mudam inteiras).
-
-   O zoom é uma **barra deslizante** (0.4×–10×, ao lado de "▾ detalhe"/"ajustar" — a roda do
-   mouse continua funcionando também) que reflete o zoom atual não importa a origem (arrasto,
-   roda, "ajustar" ou o próprio "Seguir ramo"). O checkbox **"Seguir ramo"**, na barra de
-   transporte, faz o pan acompanhar sozinho — com transição suave, inclusive passo a passo —
-   o elemento (o "componente de atuação") ativo em cada passo, no MESMO zoom que já estava
-   selecionado: o zoom é escolha do usuário e **persiste** entre passos (não é recalculado a
-   cada evolução — uma versão anterior ajustava a caixa do caminho inteiro e o zoom "pulava" a
-   cada passo); reajustar a barra enquanto "Seguir ramo" está ligado recentraliza o MESMO nó
-   no zoom novo. Clicar num cartão do grafo **pausa a reprodução** e fixa o nó (📌, com um
-   botão "soltar") num cartão próprio, acima das abas de detalhe — dado que não muda ao
-   avançar/voltar o passo (quantos passos desta trilha visitam aquele nó), ao contrário do
-   "×n" no próprio cartão, que só conta até o passo atual.
-
-   O MESMO clique também abre um **popup flutuante** ancorado perto de onde o mouse caiu, com
-   dado que a página nunca expôs fora do Catálogo: o **nome de fábrica** (`factoryOf()`, já
-   extraído em `MODEL`), marcado se diverge do nome da classe C++ (ex.: `SimpleStoresMgr`
-   registra como `"StoresMgr"` — a mesma armadilha do CLAUDE.md), se a classe está de fato
-   **registrada em fábrica** e quantos **slots próprios** ela declara. Um botão "Ver classe
-   completa no Catálogo →" salta pra lá com o cartão já aberto (`catalogFocus`, espelhando
-   `focus` — o mesmo mecanismo que já levava Catálogo→Execução, agora nos dois sentidos). O
-   popup fecha ao soltar o pino, trocar de nó/trilha/orientação, ou pelo próprio "×"; por ser
-   `position:absolute` dentro de `.mx-graph` (que já corta overflow), a posição é clampada em
-   JS pra nunca vazar da borda do grafo.
-
-   **Bug real encontrado escrevendo isto, não só neste popup — o clique em QUALQUER nó do
-   grafo, com um mouse de verdade.** `onDown` (pan/arrastar) chamava `setPointerCapture()` no
-   `<svg>` assim que o dedo/botão descia, incondicionalmente. Um clique de verdade
-   (mousedown+mouseup no MESMO lugar, sem arrastar nada) ainda assim capturava o pointer — e o
-   browser retargeta o `click` resultante pro elemento que capturou (`<svg>`), nunca chegando
-   no `<g class="mx-node">` por baixo. Confirmado com um listener de depuração: `pointerdown`
-   mostrava `target=rect`, mas `pointerup`/`click` mostravam `target=svg`; soltar a captura no
-   `pointerup` (tentativa óbvia) NÃO resolvia — a decisão de retargetar o `click` já estava
-   tomada no momento da captura, não no da liberação. É por isso que testes anteriores desta
-   página "confirmavam" o clique-pra-fixar funcionando: usavam `dispatchEvent` sintético, que
-   não passa por pointer capture nenhum — nunca exercitando o caminho real de mouse. Corrigido
-   adiando a captura pro primeiro `pointermove` que de fato deslocar além de 4px
-   (`DRAG_CLICK_PX`): um clique sem deslocamento nunca chega a capturar o pointer, então o
-   `click` segue o alvo normal; um arrasto de verdade continua capturando (e panando) exatamente
-   como antes, só um evento mais tarde.
-
-   Clicar num dos **quatro quadradinhos de fase** dentro do cartão (não o cartão inteiro) pula
-   a reprodução **direto pro passo em que aquele nó roda naquela fase** — sem procurar
-   manualmente na timeline. `e.stopPropagation()` no clique do pip evita que o mesmo clique
-   TAMBÉM fixe/abra o popup do cartão (os dois clicáveis convivem sem disputa: pip pula o
-   passo, o resto do cartão fixa). Só quadradinhos **preenchidos** (o nó de fato participa
-   daquela fase — `has`, o mesmo dado que já colore o pip) são clicáveis; um quadradinho vazio
-   deixa o clique atravessar pro cartão de baixo, como sempre foi. A busca (`performPhaseJump`)
-   começa no passo SEGUINTE ao atual e dá a volta — clicar de novo no MESMO pip avança pro
-   próximo quadro em vez de ficar preso no primeiro achado, útil pra comparar frames diferentes.
-   Como fase só existe de verdade na trilha "Thread de Tempo Crítico", clicar um pip com
-   "Thread de fundo"/"Reset" selecionada troca pra ela primeiro e resolve o salto assim que o
-   trace novo estiver pronto (`phaseJumpRequest` + um efeito que dispara só depois do `trace`
-   já refletir a trilha nova — sem isso o salto rodaria contra o trace ANTIGO, ainda em memória
-   por um render). Testado nos dois temas e nas duas orientações, e com "Seguir ramo" ligado
-   (o pan de acompanhamento já reage a qualquer mudança de `idx`, então o salto por fase herda
-   esse comportamento de graça).
-
-   A trilha "Quadro" chama-se **"Thread de Tempo Crítico"**: o ciclo de decisão do
-   `mixr::base::ubf` (`AgentTC`/`Arbiter`/`AbstractState`/`AbstractBehavior`/`AbstractAction`
-   — percepção → cada behavior vota → `Arbiter::genComplexAction()` escolhe o de maior voto →
-   a ação, efêmera, atua no ator) roda no MESMO pool de tempo crítico que as 4 fases — é
-   `AgentTC`, não `Agent`, a mesma escolha da produção deste repositório (`FlightAgentTC`) por
-   determinismo — então ele aparece **dentro** desta trilha (na fase 0 de cada quadro, dentro
-   de `walk()`), não numa trilha à parte. Sem filtro de fase, `controller()` roda de novo nas
-   fases 1-3 (mesma decisão, repetida) — resumido por padrão, visível com "Ociosos". O nó
-   `AgentTC` mora DENTRO do `( Aircraft )` (resolve o ator por containment, já que `AgentTC`
-   não sobrescreve `initActor()`), não como irmão de `simulation:` ligado por nome. Escopo
-   deliberado: **só o framework**, nada deste repositório — os nós/slots/código
-   (`AgentTC::updateTC`, `Agent::controller`, `Arbiter::genComplexAction`, ...) são reais e
-   extraídos como o resto da página, mas os "behaviors" e os votos (10/6/3) são didáticos, e o
-   EDL mostrado nessa subárvore é ilustrativo (rotulado como tal na própria aba EDL —
-   inclusive o aviso de que `UbfAgentTC` não está de fato encadeada em `base/factory.cpp`),
-   não o `agent1:` de produção — que declara `BtBehavior`/`FlightState`/
-   `AltitudeSafetyBehavior`, classes do plugin de voo (`models/player/A4/`), fora do que esta
-   página descreve. Ver a nota no subtree de `SCENARIO` (dentro do `( Aircraft )`) e o
-   comentário no bloco `if (node.id === "agent")` de `walk()`, em `doc.jsx`.
-
-   **Bug real encontrado — a faixa de destaque escondia o cabeçalho de coluna.** A banda
-   `fill="var(--band-bg)"` que ilumina toda a subárvore de `components:` de cada `( Aircraft )`
-   era desenhada DEPOIS dos rótulos de coluna (`DEPTH_LABELS` — "subsistemas"/"detalhe"/
-   "ações"), e em SVG quem desenha por último fica POR CIMA: as três etiquetas ficavam
-   100% cobertas pela própria banda (sobreposição vertical completa, medida via `getBBox()`,
-   não só "perto" — o texto simplesmente não aparecia, em nenhum tema). Corrigido invertendo a
-   ordem de dois blocos JSX (banda antes, rótulos depois) — nenhuma mudança de geometria, só de
-   ordem de pintura. Confirmado nos dois temas e nas duas orientações.
-
-2. **Catálogo** — as 342 classes que `DECLARE_SUBCLASS` no fork, cruzadas com quem de fato
-   se registra em fábrica (`IMPLEMENT_*SUBCLASS`, 224 delas — 48 com nome de fábrica
-   divergente do nome da classe), quem tem slot (`BEGIN_SLOTTABLE`/`END_SLOTTABLE`, 644
-   slots em 135 classes) e quem participa do despacho por fase. Busca por classe, nome de
-   fábrica ou slot; filtros por "nome divergente", "trabalha em fase", "não registradas",
-   "no cenário" (as classes que os cenários deste repositório de fato instanciam) e "Decisão
-   (UBF)" (cadeia de herança toca `Agent`/`AbstractBehavior`/`AbstractState`/`AbstractAction`
-   — pega também `mixr::models::Action`, que de fato deriva de `AbstractAction`, cobrindo os
-   quatro `Action*` de steerpoint do cenário). Clicar numa classe abre o cartão e, se algum
-   método que ELA MESMA sobrescreve (não herdado) estiver em `SNIPPETS`, mostra o corpo real
-   logo abaixo dos slots — a busca é pelas chaves de `SNIPPETS` por prefixo `Classe::`, não
-   pela lista de overrides que `MODEL` guardou (essa fica defasada quando `TARGET_METHODS` do
-   script ganha um método novo sem o `MODEL` embutido ser regenerado — foi exatamente o caso
-   de `Agent::controller`, capturado em `SNIPPETS` mas ausente do `ov` gravado). Sem nenhum
-   método curado para aquela classe (a maioria das 342 — `SNIPPETS` é uma curadoria pequena,
-   não o fonte inteiro), o cartão diz isso explicitamente em vez de fingir que não há nada.
-
-**Curada, não instrumentada.** Sem processo MIXR rodando por trás, herança, nome de fábrica,
-registro, slots, fases e os trechos de código (com arquivo e linha reais) foram extraídos direto
-da árvore de fontes (`contexts/src/mixr/`, fork v170600) pelo script
-`tools/extract_execution_chain.py` (fora deste diretório) e embutidos em `docs/manual/doc.jsx` como os
-objetos `MODEL`/`FACTORIES`/`SNIPPETS`/`STATS` — nada ali é digitado à mão. Isso está avisado na
-própria página e não deve ser removido em incrementos futuros. A árvore do cenário
-(`SCENARIO`/`ALL`/`EDL_TEXT`) é composição manual sobre esses mesmos dados — cada classe usada já
-vinha do `MODEL` gerado, só a escolha de QUAIS classes e em que arranjo é curada.
-
-## Como abrir
-
-Direto no navegador, sem servidor nenhum (zero requisições de rede, inclusive React):
-
-```
-xdg-open docs/manual/index.html     # ou file://.../docs/manual/index.html
-```
-
-Ou servido (para simular hospedagem futura, ex. GitHub Pages):
-
-```
-python3 -m http.server --directory . 8000
-# abrir http://localhost:8000/docs/manual/
-```
-
-## `doc.jsx` → `index.html`
-
-`doc.jsx` é a fonte (um componente React único, `App`, com CSS embutido em uma string e os
-dados gerados embutidos como constantes — nenhum `fetch`/`import` além de `react`).
-`index.html` é gerado a partir dele: JSX transpilado para `React.createElement` (Babel,
-preset `react`, via `docs/manual/compile.js`) e React 18 + ReactDOM 18 (UMD, produção) inlinados no
-mesmo arquivo, para que abrir `index.html` não dispare nenhuma requisição de rede. Regenerar
-depois de editar `doc.jsx`:
+## Como se usar
 
 ```bash
-make docs        # ou: node docs/manual/compile.js
+xdg-open docs/manual/index.html   # ou make open-docs -- zero rede, nenhum servidor
 ```
 
-A primeira execução baixa React/ReactDOM 18.3.1 UMD e instala `@babel/standalone` em
-`docs/manual/.cache/` (gitignored) — as próximas rodam sem rede nenhuma, direto do cache. `make
-open-docs` continua existindo à parte: só ABRE o `index.html` já gerado, nunca regenera.
+**Execução** — o ciclo de fases do MIXR (dynamics/transmit/receive/process + as duas threads de
+decisão/fundo) desenhado sobre a árvore de um `( Aircraft )` com os dez sistemas primários que
+`Player::updateSystemPointers()` resolve por tipo (~72 nós, o mesmo cenário exaustivo de
+`src/poc/built-in_mixr_1`). Grafo navegável (pan/zoom/arrastar, timeline com transporte,
+tema claro/escuro); clicar num nó fixa um popup com nome de fábrica/registro/contagem de slots;
+clicar num quadradinho de fase pula direto pro passo em que aquele nó roda naquela fase.
 
-## O editor gráfico de cenário .edl mora em `src/ui/`, não aqui
+**Catálogo** — as 342 classes que o fork declara, cruzadas com quem de fato se registra em
+fábrica, quem tem slot e quem participa do despacho por fase. Busca por classe/fábrica/slot,
+filtros (nome divergente, trabalha em fase, não registrada, no cenário, decisão/UBF); clicar
+numa classe mostra o corpo real de qualquer método que ela sobrescreve, quando conhecido.
 
-`src/ui/edl_builder.jsx` (+ `edl-builder.html` gerado) é uma página irmã no MESMO padrão sem-
-bundler deste diretório (React + Babel via um `compile.js` próprio, `src/ui/compile.js`) — mas
-vive fora de `docs/` de propósito: é uma ferramenta de verdade (criar um cenário `.edl` do zero
-arrastando classes de uma paleta), não documentação/visualização do framework. Ver
-`src/ui/README.md`.
+## Regenerar depois de editar `doc.jsx`
 
-**`scripts/generate_catalog_js.py` foi removido**: gerava `CATALOG_SRC`/`TAXONOMY`/
-`CATALOG_TOUR` a partir de `--catalog`, mas nenhuma das três constantes chegou a ser consumida
-por `doc.jsx` — confirmado, `grep` não achava nenhuma na página. O papel que ele cumpriria
-(catálogo completo de classes) está coberto, e mais amplamente, pelo modo `--edl-catalog` de
-`tools/extract_execution_chain.py` que alimenta o editor gráfico acima.
+```bash
+make docs   # ou: node docs/manual/compile.js
+```
+
+A primeira execução baixa React/ReactDOM UMD + Babel para `docs/manual/.cache/` (gitignored); as
+próximas rodam sem rede. `index.html` é committed — abrir a página não exige gerar nada antes.
+
+## Leia mais
+
+[CLAUDE.md](../../CLAUDE.md), seção `docs/` — toda decisão de design e armadilha confirmada
+rodando. O editor gráfico de cenário `.edl` (ferramenta de autoria, não visualização) mora em
+[`src/ui/`](../../src/ui/README.md), não aqui.

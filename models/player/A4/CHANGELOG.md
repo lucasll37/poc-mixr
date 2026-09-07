@@ -9,7 +9,7 @@ Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../../shared/xplugin/PluginAbi.hpp)). Subir a linha `version:`
+[`libs/xplugin/PluginAbi.hpp`](../../../libs/xplugin/PluginAbi.hpp)). Subir a linha `version:`
 do `meson.build` é o que "lançar" quer dizer aqui.
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
@@ -37,14 +37,14 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   errada ou falha de inferência devolvem `FAILURE` sem comandar, e o `Fallback` da árvore cai no
   ramo escrito à mão — uma política que não carrega não tira a aeronave do ar. (2026-09-03)
 - **`RLBridgeBehavior`** (`ubf/RLBridgeBehavior`) — o comportamento UBF que troca comando e
-  observação com o host de RL por `shared/xrlbridge`. Mora aqui, e não num plugin à parte como o
+  observação com o host de RL por `libs/xrlbridge`. Mora aqui, e não num plugin à parte como o
   `missile`, porque `genAction()` precisa de `dynamic_cast<const xnative::FlightState*>` e de
   construir um `xnative::FlightAction` — tipos CONCRETOS deste modelo, e RTTI com visibilidade
   oculta não é confiável atravessando dois `.so`. **Preço, e é mecânico:** virou o 7º nome de
   `libflight.so` (8º de `libflight_tc.so`), e como `provides:` é igualdade EXATA de conjunto,
   todo cenário que carrega este plugin precisou de uma linha a mais — inclusive
   `models/player/fixtures/stub`, que roda o cenário de produção trocando só o `file:`. (2026-09-03)
-- **Instrumentação de log** (`shared/xlog`) em `FlightAction::execute()` — o único ponto de
+- **Instrumentação de log** (`libs/xlog`) em `FlightAction::execute()` — o único ponto de
   atuação comum aos dois agentes: `INFO` na transição de comportamento, `WARNING` no alerta
   tático transmitido e nas duas formas de o lançamento não acontecer (alvo inexistente, cabide
   vazio), `ERROR` quando o ator não tem `Autopilot` (a decisão não podia ser atuada e isso era

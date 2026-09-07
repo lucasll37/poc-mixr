@@ -159,7 +159,7 @@ install_data('configs/policy_example.onnx',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 
 # A arvore de PROTOTIPAGEM e o script que ela aponta -- ver
-# shared/xpyembed/PyEmbed.hpp.
+# libs/xpyembed/PyEmbed.hpp.
 install_data('configs/flight_tree_py.xml',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 install_data('configs/policy_example.py',

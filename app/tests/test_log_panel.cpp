@@ -10,7 +10,7 @@
 #include <string>
 #include <unistd.h>
 
-// O buffer em memoria de shared/xlog (a fonte da aba "Log" do ./app) e as
+// O buffer em memoria de libs/xlog (a fonte da aba "Log" do ./app) e as
 // duas regras puras do painel: filtro por nivel minimo e o ciclo do
 // filtro.
 //

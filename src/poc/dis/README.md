@@ -18,11 +18,14 @@ não ouvir o próprio eco.
 
 ```bash
 # em três terminais, a partir da raiz do repositório
-./build/app/src/app -scenario bandit
-./build/app/src/app -scenario single-thread     # ou -scenario multi-thread
+./build/app/src/app -folder src/poc/dis -scenario bandit
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in
 ```
 
 **Não há executável por poc.** Cada pasta aqui é só `configs/` + `data/` +
-`README.md`; quem executa é o `./app`, o runner único
-(`app -scenario <chave>`). Ver [src/poc/meson.build](../meson.build) para o
-porquê.
+`README.md`; quem executa é o `./app` — `bandit` via `-folder src/poc/dis -scenario bandit`
+(a frota dele, `{bandit1}`, tem de ser descoberta em runtime); `single-thread`/`multi-thread` via
+`-f <arquivo>` direto (frota `falcon1..4`, o fallback padrão — `single-thread/configs/` tem um
+segundo `.edl.in`, o da demo de míssil, então `-folder` ali seria ambíguo). Ver
+[src/poc/meson.build](../meson.build) para o porquê de não haver executável por poc.

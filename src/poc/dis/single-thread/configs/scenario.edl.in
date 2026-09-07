@@ -52,7 +52,7 @@
       //
       // domain/, bt/, ubf/ e xnative/ NAO estao dentro do executavel: sao um
       // shared_module compilado a parte, contra o contrato de
-      // shared/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
+      // libs/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
       // cenario, a Station, a exportacao e o dump.
       //
       // Depois desta linha, os nomes de fabrica que a .so responde
@@ -100,7 +100,7 @@
             patrolAltitude: ( Meters 1750 )
             patrolSpeed:    350.0
             // Jitter de rumo na patrulha (opcional, ver CLAUDE.md secao
-            // shared/xrandom): mesma patrolMasterSeed nos 4 falcons --
+            // libs/xrandom): mesma patrolMasterSeed nos 4 falcons --
             // cada um deriva a propria sequencia do proprio NOME, nunca
             // de ordem de descoberta/thread.
             patrolJitterHeading: ( Degrees 6 )
@@ -182,7 +182,7 @@
 
 
       // ------------------------------------------------------------------
-      // Mensagens configuraveis (shared/xmsg). Escolher O QUE sai da
+      // Mensagens configuraveis (libs/xmsg). Escolher O QUE sai da
       // simulacao e QUANDO sai passa a ser configuracao, nao recompilacao.
       //
       // Roda em updateData(), na thread do laco -- nao ha uma linha deste
@@ -324,7 +324,7 @@
    // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
    // publico -- e o que deixa app/StationBuilder.cpp achar o TacviewOutput
    // daqui de fora, pra alimentar a varredura de radar (ver
-   // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
+   // libs/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
    dataRecorder: ( ExposedDataRecorder
       eventName: "single-thread"
 
@@ -346,7 +346,7 @@
 
                // Name= e o MODELO que o Tacview procura na sua base de dados
                // para escolher o icone/modelo 3D (o nome do player vai em
-               // CallSign/Pilot -- ver shared/xtacview).
+               // CallSign/Pilot -- ver libs/xtacview).
                //
                // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
                // comentario no topo e models/player/A4/data/jsbsim/

@@ -29,7 +29,7 @@ struct SpeedDisplay
    SpeedTone tone{SpeedTone::Green};
 };
 
-// Mesma escada de shared/xclock/TimeControls.cpp, de proposito -- ver o
+// Mesma escada de libs/xclock/TimeControls.cpp, de proposito -- ver o
 // "porque" de app/DashboardLoop.cpp nao reusar xclock::TimeControls
 // (termios vs. FTXUI) no cabecalho daquele arquivo.
 std::vector<double> defaultSpeedLadder();

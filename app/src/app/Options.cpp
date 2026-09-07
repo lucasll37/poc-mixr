@@ -83,8 +83,6 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
       } else if (arg == "-folder") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioFolder = argv[++i];
-      } else if (arg == "-internal-picker") {
-         opts.internalPicker = true;
       } else if (arg == "-deterministic") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.deterministicFrames = parseLongOrDie(arg, argv[++i]);

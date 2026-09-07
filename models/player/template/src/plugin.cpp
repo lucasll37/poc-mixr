@@ -16,7 +16,7 @@
 
 // Necessario para o canario sizeof(models::Player) que a macro grava no
 // descritor -- e o que pega "mexeram no Player e esqueceram de recompilar o
-// modelo". Ver a secao Limites de shared/xplugin/README.md para o que ele
+// modelo". Ver a secao Limites de libs/xplugin/README.md para o que ele
 // NAO pega.
 #include "mixr/models/player/Player.hpp"
 
@@ -42,7 +42,7 @@ mixr::base::Object* fabrica(const char* const name)
 // "meu_modelo"). E o primeiro argumento de MIXR_PLUGIN_DEFINE, ele vai para
 // o descritor binario do plugin e aparece em mensagens de erro do host
 // quando algo da errado no carregamento -- ver PluginDescV1 em
-// shared/xplugin/PluginAbi.hpp. Combine com o nome do project() em
+// libs/xplugin/PluginAbi.hpp. Combine com o nome do project() em
 // meson.build e do shared_module() (ver docs/PRIMEIROS-PASSOS.md, passo 1).
 // ==========================================================================
 MIXR_PLUGIN_DEFINE("template",

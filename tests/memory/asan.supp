@@ -20,7 +20,7 @@ leak:mixr::models::JSBSimModel::setSlotModel
 
 # 2) recorder::PrintHandler::setFullFilename, alcancado por xlog::init na
 #    abertura do arquivo de log. 52 bytes, uma vez por processo. O sink e
-#    nativo (ver a secao shared/xlog do CLAUDE.md); o vazamento e dele.
+#    nativo (ver a secao libs/xlog do CLAUDE.md); o vazamento e dele.
 leak:mixr::recorder::PrintHandler::setFullFilename
 
 # 3) recorder::DataRecorder::setSlotEventName guarda uma copia crua do nome

@@ -11,7 +11,8 @@ subdir('./poc')
 subdir('./rl')
 
 # ./ui/ (o editor grafico de cenario .edl) NAO tem subdir() aqui, de proposito:
-# e so JSX/JS/JSON + um script Node proprio (src/ui/compile.js), a mesma
+# e so JSX/JS/JSON + scripts Node/Python proprios (src/ui/scripts/), a mesma
 # categoria de "mora sob src/ mas nao e Meson" que src/poc/rl-training/ ja e --
-# ver o comentario daquele em src/poc/meson.build. `make edl-builder`
-# (Makefile raiz) e quem builda, sem passar pelo grafo do host.
+# ver o comentario daquele em src/poc/meson.build. `make open-edl-builder`
+# (Makefile raiz, unico alvo make deste editor) e quem builda, sem passar
+# pelo grafo do host.

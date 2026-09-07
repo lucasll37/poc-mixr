@@ -26,7 +26,7 @@ plugins/*.so
 plugins/data/
 
 # gravacoes Tacview e logs: artefatos de CADA execucao, um por poc (ver
-# shared/xtacview, shared/xlog) -- so o .gitkeep de cada data/recordings/
+# libs/xtacview, libs/xlog) -- so o .gitkeep de cada data/recordings/
 # e data/logs/ e versionado, nunca o conteudo gerado. 'app/' (o dashboard)
 # mora fora de 'src/', por isso o padrao repete pros dois prefixos. As tres
 # pocs de execucao real moram em 'src/poc/<nome>/' (um nivel a mais que
@@ -51,7 +51,7 @@ sandbox/**/data/logs/*.log*
 # '.generated.edl' do cenario (ver app/EdlEditorState.hpp).
 app/data/edl_editor/*.edl
 
-# saida do shared/xmsg (mensagens configuraveis)
+# saida do libs/xmsg (mensagens configuraveis)
 src/poc/**/data/messages/*.jsonl
 app/data/messages/*.jsonl
 sandbox/**/data/messages/*.jsonl

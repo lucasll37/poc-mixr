@@ -18,7 +18,7 @@
 
 // Necessario para o canario sizeof(models::Player) que a macro grava no
 // descritor -- e o que pega "mexeram no Player e esqueceram de recompilar o
-// modelo". Ver a secao Limites de shared/xplugin/README.md para o que ele NAO
+// modelo". Ver a secao Limites de libs/xplugin/README.md para o que ele NAO
 // pega.
 #include "mixr/models/player/Player.hpp"
 

@@ -56,7 +56,7 @@ BT::NodeStatus OnnxScoreCondition::tick()
 
    // A observacao, na ORDEM CANONICA -- a mesma macro que o treino usa. Note
    // que ela e expandida aqui contra domain::WorldView, e em
-   // shared/xrlbridge/RLBridge.cpp contra xrlbridge::Observation: um nome que
+   // libs/xrlbridge/RLBridge.cpp contra xrlbridge::Observation: um nome que
    // divergir entre as duas structs nao compila.
    const domain::WorldView& snap{context_.behavior->snapshot()};
    std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};

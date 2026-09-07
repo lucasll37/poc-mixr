@@ -1,10 +1,10 @@
 # events/ — o eixo de eventos deste projeto
 
 > Esta pasta é onde a convenção abaixo é documentada **e** onde o código de verdade (payload +
-> token) mora. É uma `shared_library()` de fronteira de plugin como `shared/xboard`/`xlog`/
+> token) mora. É uma `shared_library()` de fronteira de plugin como `libs/xboard`/`xlog`/
 > `xtrack`/`xrlbridge`/`xinfer`/`xpyembed`, só que dentro de `models/`, em vez de dentro de
-> `shared/x<nome>/` — exceção deliberada: evento é o eixo central da modelagem deste projeto,
-> então ganhou pasta própria em destaque em vez de ficar mais um `shared/x<nome>` perdido entre
+> `libs/x<nome>/` — exceção deliberada: evento é o eixo central da modelagem deste projeto,
+> então ganhou pasta própria em destaque em vez de ficar mais um `libs/x<nome>` perdido entre
 > outros. O **mecanismo** de publicação é idêntico ao das outras seis: `subdir('./models/events')`
 > no `meson.build` raiz, publicada em `dist/lib/`+`dist/include/events/` pelo mesmo
 > `poc-mixr-sdk.pc` — só o endereço do fonte mudou, nada do jeito como um modelo a consome.
@@ -92,7 +92,7 @@ em vez de virar um plugin próprio. A saída aqui é a oposta: em vez de manter 
 plugin, ele mora numa `shared_library()` de verdade (esta pasta), publicada pelo SDK
 (`dist/lib/`), que **qualquer** modelo pode linkar via `sdk_dep` sem precisar de uma dependência
 `meson.build` extra — o mesmo mecanismo já usado por `xboard`/`xlog`/etc. A prominência de pasta
-(destaque dentro de `models/`, não perdido em `shared/`) não muda essa obrigação técnica — só
+(destaque dentro de `models/`, não perdido em `libs/`) não muda essa obrigação técnica — só
 reflete que evento é conceito de primeira classe aqui, não um detalhe de infraestrutura.
 
 Um evento que nunca precisa atravessar fronteira de plugin (só entre classes do mesmo `.so`) não

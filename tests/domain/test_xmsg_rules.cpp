@@ -1,4 +1,4 @@
-// As primitivas de deteccao do shared/xmsg -- as quatro coisas que o MIXR nao
+// As primitivas de deteccao do libs/xmsg -- as quatro coisas que o MIXR nao
 // tem e que um canal de eventos configuravel precisa ter.
 //
 // Este arquivo nao inclui nada do MIXR nem do BehaviorTree.CPP, de proposito:

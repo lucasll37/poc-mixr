@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PostToolUse (Edit|Write): depois de editar algo sob app/, src/, shared/ ou
+# PostToolUse (Edit|Write): depois de editar algo sob app/, src/, libs/ ou
 # qualquer meson.build, reconfirma que o build do HOST continua sem
 # referenciar fonte de MODELO (domain/bt/ubf/xnative moram so em
 # models/player/<nome>/). Delega para tests/guard/check_host_opaco.sh, que
@@ -23,7 +23,7 @@ print(d.get("tool_input", {}).get("file_path", ""))
 [ -z "$FILE_PATH" ] && exit 0
 
 case "$FILE_PATH" in
-    */app/*|*/src/*|*/shared/*|*meson.build) : ;;
+    */app/*|*/src/*|*/shared/*|*/libs/*|*meson.build) : ;;
     *) exit 0 ;;
 esac
 
@@ -36,7 +36,7 @@ STATUS=$?
 
 if [ "$STATUS" -ne 0 ]; then
     {
-        echo "check_host_opaco.sh FALHOU apos esta edicao -- o build do host (app/src/shared) nao pode"
+        echo "check_host_opaco.sh FALHOU apos esta edicao -- o build do host (app/src/libs) nao pode"
         echo "referenciar fonte de MODELO (domain/bt/ubf/xnative moram so em models/player/<nome>/)."
         echo "Corrija antes de continuar:"
         echo "$OUTPUT"

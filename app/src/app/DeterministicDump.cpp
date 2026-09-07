@@ -27,7 +27,7 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
       // Tudo o que vem do MODELO chega por aqui, e so por aqui. O modelo mora
       // num .so carregado com dlopen, entao este arquivo nao pode incluir
       // nenhum header dele -- nem para um dynamic_cast, porque o typeinfo do
-      // plugin nao e visivel. Ver shared/xboard/Board.hpp.
+      // plugin nao e visivel. Ver libs/xboard/Board.hpp.
       //
       // E por isso que este arquivo e byte-identico nas duas pocs: o 'dec=' e
       // o 'bt=' deixaram de vir de lugares diferentes em cada uma.

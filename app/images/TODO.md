@@ -1,1 +1,0 @@
-incluir imagens para por no README.md

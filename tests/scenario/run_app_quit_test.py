@@ -42,6 +42,16 @@ ESPERA_CLIENTE = 20.0
 # maquina carregada, nao uma expectativa.
 PRAZO_SAIDA = 30.0
 
+# Nao ha mais catalogo estatico (-scenario sozinho) -- as pocs de src/poc/**
+# sao alcancadas por '-folder <pasta> -scenario <subpasta>', que pula a tela
+# de navegacao. Mapeia so os dois cenarios que este teste conhece; a raiz
+# muda conforme a poc mora direto em 'src/poc/<nome>' ou dentro do grupo
+# 'src/poc/dis/<nome>'.
+PASTA_POR_CENARIO = {
+    "onnx-policy": "src/poc",
+    "multi-thread": "src/poc/dis",
+}
+
 
 def sobe_app(binario, cenario):
     """Sobe o app num pty de verdade -- o FTXUI exige TTY para o modo bruto."""
@@ -49,8 +59,9 @@ def sobe_app(binario, cenario):
     # Terminal largo o suficiente para o layout nao reclamar.
     fcntl.ioctl(escravo, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 200, 0, 0))
 
+    pasta = PASTA_POR_CENARIO[cenario]
     proc = subprocess.Popen(
-        [binario, "-scenario", cenario],
+        [binario, "-folder", pasta, "-scenario", cenario],
         cwd=os.getcwd(), stdin=escravo, stdout=escravo, stderr=escravo,
         close_fds=True, start_new_session=True)
     os.close(escravo)
@@ -162,7 +173,7 @@ def porta_do_cenario(cenario):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--binario", required=True)
-    ap.add_argument("--scenario", default="intercept_missile")
+    ap.add_argument("--scenario", default="onnx-policy")
     args = ap.parse_args()
 
     binario = os.path.abspath(args.binario)

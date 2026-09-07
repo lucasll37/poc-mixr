@@ -26,7 +26,7 @@
 // mesmos nos de condicao do modelo de producao ( FuelLow, ContactDetected,
 // AlertReceived ). Nao e preguica: ContactDetected consulta a histerese de
 // domain::ThreatPolicy, que envelhece com o 'dt' do frame -- e um script
-// Python nao recebe 'dt' (a fronteira de shared/xpyembed e "28 floats
+// Python nao recebe 'dt' (a fronteira de libs/xpyembed e "28 floats
 // entram, 3 saem"). Deixar a histerese onde ela ja esta mantem o script
 // PURO em relacao ao estado da propria aeronave, que e a condicao para os
 // dumps de 1, 2 e 4 threads sairem identicos.
@@ -81,7 +81,7 @@
       //
       // domain/, bt/, ubf/ e xnative/ NAO estao dentro do executavel: sao um
       // shared_module compilado a parte, contra o contrato de
-      // shared/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
+      // libs/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
       // cenario, a Station, a exportacao e o dump.
       //
       // Depois desta linha, os nomes de fabrica que a .so responde
@@ -119,7 +119,7 @@
       )
 
       // ------------------------------------------------------------------
-      // Mensagens configuraveis (shared/xmsg). Escolher O QUE sai da
+      // Mensagens configuraveis (libs/xmsg). Escolher O QUE sai da
       // simulacao e QUANDO sai passa a ser configuracao, nao recompilacao.
       //
       // Roda em updateData(), na thread do laco -- nao ha uma linha deste
@@ -262,7 +262,7 @@
    // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
    // publico -- e o que deixa app/StationBuilder.cpp achar o TacviewOutput
    // daqui de fora, pra alimentar a varredura de radar (ver
-   // shared/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
+   // libs/xtacview/ExposedDataRecorder.hpp). Roda identico ao DataRecorder.
    dataRecorder: ( ExposedDataRecorder
       eventName: "multi-thread"
 
@@ -284,7 +284,7 @@
 
                // Name= e o MODELO que o Tacview procura na sua base de dados
                // para escolher o icone/modelo 3D (o nome do player vai em
-               // CallSign/Pilot -- ver shared/xtacview).
+               // CallSign/Pilot -- ver libs/xtacview).
                //
                // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
                // comentario no topo e models/player/A4/data/jsbsim/

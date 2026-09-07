@@ -14,7 +14,7 @@ Prova de conceito para desenvolver **novos modelos de simulação** sobre o fram
 desenvolvimento — é dependência binária.
 
 > **Se você chegou aqui para escrever um MODELO novo** (a política de decisão de uma aeronave,
-> helicóptero, satélite etc. — não para mexer no host `app/`/`src/`/`shared/`), este arquivo é
+> helicóptero, satélite etc. — não para mexer no host `app/`/`src/`/`libs/`), este arquivo é
 > referência de arquitetura, não o ponto de partida. Comece por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
 > (`make new-model NAME=... KIND=stub|template`), os dois pontos de partida
@@ -55,7 +55,7 @@ mais abaixo.
 E um **quarto**, `src/poc/python-flight/`, que muda um eixo diferente: não *onde* a decisão roda —
 ele é a `multi-thread` inteira, com o mesmo `( FlightAgentTC )` na fase 3 — e sim **em que
 linguagem ela é escrita**. As folhas de ação da árvore de comportamento são quatro arquivos `.py`
-lidos em tempo de execução (`configs/policy/`), avaliados dentro do frame por `shared/xpyembed`;
+lidos em tempo de execução (`configs/policy/`), avaliados dentro do frame por `libs/xpyembed`;
 editar a política deixa de ser recompilar. As **condições** da árvore continuam em C++, e a razão
 está na seção própria: elas dependem do `dt` do frame, que a fronteira "28 floats entram, 3 saem"
 não atravessa.
@@ -80,7 +80,7 @@ uma pasta com nome descritivo.
 
 O fork empacotado é **headless**: não publica `mixr_graphics`/`glut`/`instruments`/`ighost`.
 Por isso não existe `GlutDisplay` aqui e toda visualização é feita por **Tacview Real-Time
-Telemetry** (`shared/xtacview`).
+Telemetry** (`libs/xtacview`).
 
 ## Build & Run
 
@@ -128,21 +128,25 @@ sozinho ao mexer só no modelo, sem tocar o host.
    do Meson é **vírgula**, não dois-pontos.
 
 **Há um executável só: `build/app/src/app`** (instalado em `dist/bin/app`). As pocs não têm binário
-próprio — são cenário, e o `./app` é o runner: `app -scenario <chave>` ou `app -f <arquivo>`. Cada
-poc tem um alvo `run-<chave>` no Makefile, que é atalho para a primeira forma.
+próprio — são cenário, e o `./app` é o runner: `app -folder src/poc -scenario <nome>` (ou
+`-folder src/poc/dis` para o grupo DIS) ou `app -f <arquivo>` apontando direto pro caminho. Não há
+mais alvo `run-<chave>` por poc no Makefile (removido — ver "Estado atual" mais abaixo).
 
 **Todos os binários leem `configs/`/`data/` por caminho relativo (`./src/poc/<nome>/...`) e devem
 ser executados a partir da raiz do repositório:**
 
 ```bash
-./build/app/src/app -scenario single-thread
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in
 ```
 
-Opções de linha de comando do `./app`: `-scenario <chave>` (uma das chaves do catálogo), `-f
-<arquivo>` (cenário fora do catálogo) ou `-folder <pasta>` (navega uma pasta de sandbox) — **é
-obrigatório passar um dos três**, rodar sem nenhum é erro fatal, não mais um convite a uma tela
-de seleção implícita; mais `-threads <N>` (quantas threads de tempo crítico) e `-deterministic
-<N>` (N frames de passo fixo, sem TUI).
+Opções de linha de comando do `./app`: `-f <arquivo>` (cenário apontado direto pelo caminho —
+assume a frota `falcon1..4`) ou `-folder <pasta>` (navega uma pasta de sandbox
+`<pasta>/<cenário>/configs/*.edl`, frota descoberta em runtime; combinado com `-scenario <nome>`,
+pula a tela e carrega direto a subpasta) — **é obrigatório passar um dos dois**, rodar sem
+nenhum é erro fatal, não mais um convite a uma tela de seleção implícita; mais `-threads <N>`
+(quantas threads de tempo crítico) e `-deterministic <N>` (N frames de passo fixo, sem TUI). Não
+há mais catálogo estático de cenários embutido no binário — toda poc sob `src/poc/**` é alcançada
+por `-folder`.
 
 **A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
 a verificação de **determinismo** é feita por `tests/determinism/check_determinism.sh <binário>
@@ -165,6 +169,21 @@ como alternativa a consumi-las prontas do remoto Conan privado da ASA (o caminho
 chamado por nenhum alvo do Makefile raiz**, é um escape hatch manual, standalone; o `conanfile.py`
 da raiz só declara `self.requires("mixr/1.0.5", ...)` etc. e não sabe (nem precisa saber) se o
 pacote no cache Conan veio do remoto ou de `deps.sh`.
+
+**`deps/groot/`** é uma quinta receita, de natureza diferente das quatro acima e de instalação
+**obrigatória** (não é escape hatch opcional): empacota o **Groot** (`github.com/BehaviorTree/Groot`),
+a ferramenta usada para editar e monitorar as árvores de comportamento deste projeto. A diferença
+para as outras quatro não é "menos importante", é estrutural — `mixr`/`behaviortree.cpp.asa`/
+`jsbsim`/`openrti` têm pacote pronto no remote Conan privado da ASA por padrão (`deps/` é só
+alternativa de build a partir do fonte); o Groot **não tem pacote em remoto nenhum** — a única
+forma de tê-lo é `scripts/deps.sh` buildando `deps/groot/conanfile.py`, e é por isso que ele
+entra ali incondicionalmente (sem flag pra pular). Tecnicamente ele não é dependência de **build**
+do host/modelo (nenhum `requires()` do `conanfile.py` da raiz o cita, e o host nunca linka contra
+ele — é um app Qt standalone) — por isso builda só uma vez em Release, fora do laço de
+Debug/Release das outras quatro, não porque seja dispensável. Qt5/ZeroMQ/libdw são pré-requisito
+de **sistema** (`apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev`, ver `INSTALL.md`
+§7), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
+aqui.
 
 **Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make docs`/`open-docs` (a
 visualização em `docs/`, ver a seção própria) e a família `edl-*`/`new-model` (o editor visual de
@@ -229,10 +248,10 @@ src/poc/<nome>/
 └── README.md                # o que ESTA poc isola, e o que foi medido nela
 ```
 
-Quem executa é o `./app`: `app -scenario <chave>` (as chaves estão em
-`app/ScenarioCatalog.cpp`) ou `app -f <arquivo>` para um cenário fora do catálogo — que é como
-as fixtures de teste entram. Não há mais atalho `make run-<poc>` por poc (removido) — o binário
-é chamado direto.
+Quem executa é o `./app`: `app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis` para
+as três do grupo DIS) pula a tela de navegação e carrega a poc direto; `app -f <arquivo>` aponta
+pro caminho sem passar por pasta nenhuma — que é como as fixtures de teste entram. Não há mais
+atalho `make run-<poc>` por poc (removido) — o binário é chamado direto.
 
 **O que havia antes, e por que saiu:** cada poc carregava uma cópia **byte a byte** da camada
 de aplicação — `include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas —, sustentada pela
@@ -250,8 +269,8 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 
 | módulo | questão |
 |---|---|
-| `app/Options.*` | `argv` → struct (`-scenario`, `-f`, `-threads`, `-deterministic`) |
-| `app/ScenarioCatalog.*` | as chaves de cenário conhecidas, e a **frota** de cada uma |
+| `app/Options.*` | `argv` → struct (`-f`, `-folder`, `-scenario`, `-threads`, `-deterministic`) |
+| `app/AdHocScenario.*` | `ScenarioEntry`, e a entrada de `-f <arquivo>` (frota `falcon1..4`) |
 | `app/TerrainData.*` | garante o `.hgt` em disco, com o tamanho que o `SrtmHgtFile` aceita |
 | `app/ScenarioTemplate.*` | `.edl.in` → `.edl` (`@NUM_TC_THREADS@`, `@include:...@`, tokens) |
 | `app/StationBuilder.*` | `.edl` → `Station` de pé (`edl_parser`, `RESET_EVENT`, `WorldModel`) |
@@ -273,7 +292,7 @@ só o agente e a porta DIS — `make compare-single-multi` mostra).
 Vale o mesmo dentro de `xnative/` e `ubf/`: a tabela de slots do `BtBehavior` (a fronteira com o
 EDL) fica em `ubf/BtBehaviorSlots.cpp` e os valores que ela ajusta em `ubf/BtTuning.hpp`,
 separados do arquivo que trata da decisão; utilitários de runtime são um por questão
-(`xnative/ThreadTag` no modelo; o log virou `shared/xlog` e o quadro de status, `shared/xboard`).
+(`xnative/ThreadTag` no modelo; o log virou `libs/xlog` e o quadro de status, `libs/xboard`).
 
 ### O modelo MIXR em uma tela
 
@@ -295,9 +314,9 @@ separados do arquivo que trata da decisão; utilitários de runtime são um por 
 - `station->updateData(dt)` no laço principal é o que **drena a fila do gravador** para a
   cadeia de `OutputHandler` — sem isso o Tacview não recebe nada.
 
-### `shared/xtacview` — exportação para o Tacview
+### `libs/xtacview` — exportação para o Tacview
 
-Biblioteca compartilhada no padrão `shared/x<nome>` do MIXR (factory própria + classes em
+Biblioteca compartilhada no padrão `libs/x<nome>` do MIXR (factory própria + classes em
 `mixr::xtacview`, exposta como `xtacview_dep`). **É a única exportação Tacview do repo; nenhum
 `main.cpp` monta stream ACMI.** `TacviewOutput` é um `recorder::OutputHandler` de verdade,
 declarado na cadeia nativa do slot `dataRecorder` da `Station`:
@@ -313,7 +332,7 @@ dataRecorder: ( DataRecorder
 ```
 
 **Armadilhas já confirmadas rodando — não redescobrir** (detalhes nos comentários de
-`shared/xtacview/TacviewOutput.cpp`):
+`libs/xtacview/TacviewOutput.cpp`):
 
 1. `dataLogTime` é slot do **`Player`** e nasce **zero**; sem `dataLogTime: ( Seconds 0.1 )` o
    player **nunca** emite `REID_PLAYER_DATA` e some do Tacview. Parece bug do handler, não é.
@@ -358,9 +377,9 @@ o servidor já escuta em qualquer interface, o que falta é só o caminho de red
   portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=1234` seguido do `add` acima sempre
   que o WSL2 reiniciar.
 
-### `shared/xclock` — controle de velocidade do tempo (acelerar / frear / pausar)
+### `libs/xclock` — controle de velocidade do tempo (acelerar / frear / pausar)
 
-Mesmo padrão `shared/x<nome>` do `xtacview` (factory própria, classes em `mixr::xclock`, exposta
+Mesmo padrão `libs/x<nome>` do `xtacview` (factory própria, classes em `mixr::xclock`, exposta
 como `xclock_dep`). O cenário declara **`( ClockStation )` no lugar de `( Station )`** — é uma
 `simulation::Station` com um único override. Usada pelas duas pocs; trocar de volta para
 `( Station )` continua rodando, só sem as teclas (o `main.cpp` avisa e segue).
@@ -407,9 +426,9 @@ poc/multi-thread decide na fase 3, dentro do frame, então para junto.
 Sem TTY (pipe, redirecionamento, CI) o `tcgetattr()` de `ConsoleKeyboard` falha, `isActive()`
 fica `false` e a simulação roda normalmente, só sem teclado.
 
-### `shared/xjoystick` — controle do `bandit1` (ownship) por joystick físico
+### `libs/xjoystick` — controle do `bandit1` (ownship) por joystick físico
 
-Mesmo padrão `shared/x<nome>` do `xtacview`/`xclock` (factory própria + classes em
+Mesmo padrão `libs/x<nome>` do `xtacview`/`xclock` (factory própria + classes em
 `mixr::xjoystick`, exposta como `xjoystick_dep`). Usa só mecanismo **nativo** do MIXR — o
 `mixr::linkage` (`IoHandler`/`IoData`/`IoDevice`/adapters), já parte da `mixr_dep` via
 `Requires: mixr-linkage` do `mixr.pc` — e o `UsbJoystick` nativo (Linux), que lê
@@ -443,7 +462,7 @@ Os 4 `channel:` acima são os do **Logitech Extreme 3D** (6 eixos/12 botões,
 build — mesmo protocolo cru do `UsbJoystick_linux.cpp`, então o canal que ele mostra é o mesmo
 que vai no `channel:` do EDL). Trocar de joystick é só remapear estes 4 números.
 
-`JoystickIoHandler` (`shared/xjoystick/JoystickIoHandler.hpp`) é a subclasse concreta de
+`JoystickIoHandler` (`libs/xjoystick/JoystickIoHandler.hpp`) é a subclasse concreta de
 `linkage::IoHandler` que a aplicação tem de fornecer (o framework não traz uma pronta —
 `inputDevicesImpl(dt)`/`outputDevicesImpl(dt)` são os dois únicos métodos a sobrescrever). Ela
 lê os canais do `IoData` e aplica em `AirVehicle::setControlStick()`/`setRudderPedalInput()`/
@@ -466,7 +485,7 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    armadilha 7.
 2. **Numeração dos canais é assimétrica**: `ai:`/`di:` (canal lógico do `IoData`) é **1-based**
    (`IoData.hpp:19-21`); `channel:` (canal físico do dispositivo) é **0-based**. Os números do
-   `ai:` têm de bater com `shared/xjoystick/ChannelMap.hpp` — repetidos no `.edl.in` com
+   `ai:` têm de bater com `libs/xjoystick/ChannelMap.hpp` — repetidos no `.edl.in` com
    comentário, não por `#include`: este fork do parser EDL não roda o pré-processador C (mesmo
    motivo já registrado no comentário do padrão de ganho do radar, mais acima neste arquivo).
 3. **Sem hardware, o `UsbJoystick` degrada sozinho** — `UsbJoystick::reset()` (Linux) só loga
@@ -506,9 +525,9 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    (um `stat()`, custo desprezível): plugar o joystick no meio de uma execução já em andamento
    troca para controle manual sem reiniciar nada — testado rodando.
 
-### `shared/xlog` — sistema de log `LOG(NIVEL) << ...;` persistido em arquivo
+### `libs/xlog` — sistema de log `LOG(NIVEL) << ...;` persistido em arquivo
 
-Mesmo padrão `shared/x<nome>` das outras libs, com uma diferença: **sem `factory.cpp`**. Não há
+Mesmo padrão `libs/x<nome>` das outras libs, com uma diferença: **sem `factory.cpp`**. Não há
 nada aqui para o parser EDL construir — `mixr::recorder::PrintHandler` (o sink por trás do log)
 é instanciado direto em C++, nunca aparece num `.edl`.
 
@@ -600,7 +619,7 @@ colorir por nível e alinhar o carimbo em coluna própria.
 - Testado em `tests/app/test_log_panel.cpp` (alvo `app-log`): ordem, `seq` monotônico, descarte do
   mais antigo passada a capacidade, e o desligamento não registrando nada.
 
-### `shared/xrandom` — semente reprodutível para variação de patrulha
+### `libs/xrandom` — semente reprodutível para variação de patrulha
 
 O MIXR **não tem nenhum gerador de números aleatórios nativo** — avaliado antes de escrever
 qualquer código: nada em `base::`, nada registrado em factory nenhuma. O único achado parecido
@@ -608,21 +627,21 @@ qualquer código: nada em `base::`, nada registrado em factory nenhuma. O único
 §4.1/4.3) é só um exemplo pedagógico dos tutoriais oficiais (`examples/tutorial02-04`), nem
 compilado no pacote Conan `mixr/1.0.5` — não existe neste clone.
 
-**Header-only, ao contrário das seis `shared_library()` de `shared/`** (`xboard`/`xlog`/
+**Header-only, ao contrário das seis `shared_library()` de `libs/`** (`xboard`/`xlog`/
 `xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) **e de `events/`** (a sétima, dentro de `models/` — ver
-`models/events/README.md` para o porquê de não estar em `shared/`). Essas sete existem porque host e
+`models/events/README.md` para o porquê de não estar em `libs/`). Essas sete existem porque host e
 plugin precisam compartilhar UMA cópia de estado mutável em tempo de execução através do `dlopen`
 (ex.: `xlog::setLoggingEnabled()` tem que alcançar o `.so` do modelo). Derivação de semente não tem esse
 requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
-`install_headers()` no `meson.build` raiz, no mesmo molde de `shared/xplugin/PluginAbi.hpp`.
+`install_headers()` no `meson.build` raiz, no mesmo molde de `libs/xplugin/PluginAbi.hpp`.
 
 **`domain::PatrolPlan` não inclui este header, de propósito.** `models/player/A4/tests/meson.build`
 compila `domain_sources` (que inclui `PatrolPlan.cpp`) em `test_domain`/`test_tree` **sem
 `sdk_dep`, sem MIXR** — a mesma pureza que motivou a separação `bt_sources`/`bt_sdk_sources` já
-documentada acima. Como `shared/xrandom/DeterministicRng.hpp` só fica visível via `dist/include`
+documentada acima. Como `libs/xrandom/DeterministicRng.hpp` só fica visível via `dist/include`
 (publicado pelo SDK), `PatrolPlan` mantém seu próprio `std::mt19937_64` **privado**, seedado
 direto por um `std::uint64_t` que já chega pronto — a classe não sabe de master seed, nome de
-player nem salt de propósito. `shared/xrandom` fica só com as duas funções puras de derivação
+player nem salt de propósito. `libs/xrandom` fica só com as duas funções puras de derivação
 (`fnv1a64`/`deriveSeed`), consumidas exclusivamente em `BtBehavior::configurePlans()` (que já
 depende do SDK — já inclui `xlog/Log.hpp`).
 
@@ -684,7 +703,7 @@ plugin rodam contra ele.
 
 Terceiro subprojeto, de natureza diferente dos dois primeiros: não é uma pilha nova nem um
 agente novo, é **onde o `bandit1` mora agora** — antes um player local em `single-thread`/
-`multi-thread`, hoje um processo à parte, pilotado por joystick físico (`shared/xjoystick`, com
+`multi-thread`, hoje um processo à parte, pilotado por joystick físico (`libs/xjoystick`, com
 fallback pro `Autopilot` scripted — armadilha 7 da seção `xjoystick` acima) e **emitido via DIS
 nativo do MIXR** (`mixr::dis` — namespace real da lib, apesar do caminho do header ser
 `mixr/interop/dis/`) para quem quiser recebê-lo. `single-thread`/`multi-thread` não têm mais um
@@ -745,7 +764,7 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    `linkage::IoHandler` do `xjoystick` (abstrato, exigiu a subclasse `JoystickIoHandler`),
    `dis::NetIO`/`dis::Ntm` já sobrescrevem todos os métodos virtuais puros da base (factory
    names `"DisNetIO"`/`"DisNtm"`, `dis/factory.cpp:20-22`). Nenhum `.cpp` de classe MIXR nova
-   foi escrito para esta PoC — só EDL e reaproveitamento do `shared/xtacview`.
+   foi escrito para esta PoC — só EDL e reaproveitamento do `libs/xtacview`.
 2. **`initNetwork()` inicializa `netInput`/`netOutput` incondicionalmente** — os dois `netInput:`/
    `netOutput:` têm que ser `NetHandler`s válidos mesmo que um `DisNetIO` só use um dos sentidos
    (confirmado rodando: sem os dois presentes, a inicialização falha). Aqui os três processos
@@ -783,7 +802,7 @@ diferença: as folhas de **ação** da árvore de comportamento não são nós C
 arquivos `.py` em `configs/policy/`, lidos em tempo de execução. Editar a política deixa de ser
 recompilar. Portas próprias (Tacview **1237**, DIS **3004**), então roda ao lado das outras três.
 
-**Nenhuma linha de C++ foi escrita para isto**, e esse é o resultado a observar: `shared/xpyembed`
+**Nenhuma linha de C++ foi escrita para isto**, e esse é o resultado a observar: `libs/xpyembed`
 (o interpretador embarcado) e `bt/nodes/PyDecideAction` (o nó `( PyDecide )`) já existiam; o que
 faltava era uma poc **completa** em cima deles. O que havia antes era um `flight_tree_py.xml` de
 exemplo no `models/player/A4`, com um nó e um script de dez linhas, exercitado só pelo teste
@@ -811,7 +830,7 @@ com `bt=PY` constante e o rótulo deixaria de significar alguma coisa. Assim sai
 1. **`ContactDetected` NÃO pode migrar para Python.** Ele não pergunta "estou vendo o intruso
    agora": consulta `domain::ThreatPolicy::engaged()`, que continua true por `evadeHold` segundos
    **depois** de a pista sumir, e essa histerese envelhece com o `dt` do frame. A fronteira de
-   `shared/xpyembed` é **28 floats entram, 3 saem** — não há `dt`. Sem a histerese, a própria
+   `libs/xpyembed` é **28 floats entram, 3 saem** — não há `dt`. Sem a histerese, a própria
    quebra tira o intruso do setor do radar (±30° contra uma quebra de 110°), a pista pisca, e os
    ramos 2 e 3 (que comandam sentidos **opostos** sobre o mesmo objeto) alternam para sempre — a
    oscilação já registrada no cabeçalho do `flight_tree.xml`. Isso não é limitação a contornar: é
@@ -839,7 +858,7 @@ com `bt=PY` constante e o rótulo deixaria de significar alguma coisa. Assim sai
      chamado". É o que permite **fixar o alvo na entrada da manobra**, sem o qual a curva nunca
      termina (a mesma armadilha que `domain::ThreatPolicy` resolve com `if (!engaged_)`).
 5. **Uma variável global de módulo é estado POR AERONAVE** — cada `(script, aeronave)` recebe o
-   seu próprio dicionário de globais em `shared/xpyembed`. É assim que `patrol.py`/`rtb.py`
+   seu próprio dicionário de globais em `libs/xpyembed`. É assim que `patrol.py`/`rtb.py`
    guardam a altitude de cruzeiro: cada falcon nasce numa altitude própria (1750/1850/2050/2100 m,
    calculadas no `.edl` contra o pico do circuito de cada um) e o script simplesmente guarda a
    altitude da **primeira** decisão — medido, sai exatamente igual ao `.edl`, sem o script saber
@@ -883,8 +902,8 @@ carrega `configs/policy_barrier.onnx` (MLP 28→64→64→3, 6.211 parâmetros, 
 frame, **sem Python no processo**. Portas próprias (Tacview **1238**, DIS **3005**), então roda ao
 lado das outras quatro.
 
-**Nenhuma linha de C++ foi escrita para isto** — `shared/xinfer`, o nó `( OnnxPolicy )` e o
-`unscaleCommand()` de `shared/xrlbridge` já existiam; o que faltava era uma poc **completa** em
+**Nenhuma linha de C++ foi escrita para isto** — `libs/xinfer`, o nó `( OnnxPolicy )` e o
+`unscaleCommand()` de `libs/xrlbridge` já existiam; o que faltava era uma poc **completa** em
 cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/player/A4`, apontando para
 um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
 provar que a cadeia funciona, não para voar com ela. O host é cópia do da `multi-thread` com
@@ -954,8 +973,8 @@ linha, entra na faixa de 100 m em **160 s** de simulação e depois fica com `|n
 100 s (converge sem oscilar — é o `tanh`); erro da rede contra a regra clonada de 0,27° em rumo
 (2,50° máx.), 6,6 m em altitude e 0,08 kt em velocidade; dumps **byte-idênticos** com 1, 2 e 4
 threads T/C, com as quatro aeronaves inferindo em paralelo sobre **uma** sessão do ONNX Runtime
-(cache por caminho de `shared/xinfer`); 50,1 µs por inferência (0,25% de um frame de 20 ms, número
-medido em `shared/xinfer` para este mesmo MLP).
+(cache por caminho de `libs/xinfer`); 50,1 µs por inferência (0,25% de um frame de 20 ms, número
+medido em `libs/xinfer` para este mesmo MLP).
 
 **Duas guardas foram generalizadas** ao acrescentar esta poc, pelo mesmo motivo já registrado em
 `check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` — desde então
@@ -1217,7 +1236,7 @@ dump deterministico saiu identico ao de antes, byte a byte):
    `build/tests-fixtures`/`tests-recordings`/`tests-messages` -- um lugar so, ja gitignorado, que
    nao depende de onde o binario mora.
 
-### `shared/xmsg` — mensagens configuráveis por EDL
+### `libs/xmsg` — mensagens configuráveis por EDL
 
 Escolher **o que** sai da simulação e **quando** sai vira configuração, não recompilação. Um
 `( MsgFeed )` no `components:` da `Station` amostra os players, avalia condições e entrega as
@@ -1246,7 +1265,7 @@ são descartados em silêncio (`AbstractDataRecorder::recordDataImp()` devolve `
 incondicionalmente, então `processUnhandledId()` nunca dispara para token desconhecido). E não há
 primitiva nenhuma de mudança/limiar/histerese (grep por `hysteresis|Schmitt|Threshold|Debounce`
 em `include/mixr/`: zero). Remendar o `.proto` está vetado — mesma decisão registrada na seção
-`shared/xlog`. O que se reaproveita é a **forma** (EDL declarativo, cadeia de destinos com filtro
+`libs/xlog`. O que se reaproveita é a **forma** (EDL declarativo, cadeia de destinos com filtro
 por assinante, trabalho fora do frame T/C); o `Player` é lido direto, como
 `ubf/FlightState::updateState()` e `TacviewOutput::updateRadarScan()` já fazem.
 
@@ -1378,8 +1397,10 @@ namespace C++ — não escreve lógica de domínio nenhuma. **Não** precisa reg
 da raiz: `models:` do Makefile descobre projetos sob `models/player/` por `find`
 (`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — o diretório novo já
 entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
-— é registrar um CENÁRIO pra esse modelo (`app/src/app/ScenarioCatalog.cpp`, opcionalmente
-`tests/meson.build`; ver `models/README.md` §4.1/§4.2) e a linha em `models/REGISTRO.md`.
+— é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
+alcançável por `-folder`/`-f` sem registrar em lugar nenhum — não há mais catálogo estático;
+opcionalmente cobertura em `tests/meson.build`; ver `models/README.md` §4.1/§4.2) e a linha em
+`models/REGISTRO.md`.
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
 guarda `tests/guard/check_modelo_estrutura.sh` (suite `guard`, alvo `modelo-estrutura`) cobra as
@@ -1457,7 +1478,7 @@ modelo) e `libxrlbridge` (o comando/observação entre o host de RL — `src/rl/
 `ubf::RLBridgeBehavior`, ver a seção `src/rl` mais abaixo).
 Mais um `poc-mixr-sdk.pc`, que é como o projeto do modelo o consome.
 
-Essas quatro são as **únicas** `shared_library()` de `shared/`. As outras cinco seguem estáticas:
+Essas quatro são as **únicas** `shared_library()` de `libs/`. As outras cinco seguem estáticas:
 `xtacview`, `xclock`, `xjoystick` e `xmsg` — que um plugin **não pode** linkar, ou ganharia cópia
 privada dos estáticos delas — e `xplugin`, que é o registro e só entra no executável (o plugin usa
 o `xplugin_abi_dep`, header-only).
@@ -1533,16 +1554,16 @@ subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
    **único** `mixr_factory.cpp` do host (`app/src/mixr_factory.cpp`); nenhuma poc precisa da
    própria factory. Mesmo vale para Tacview: `dataRecorder:`/`dataLogTime:` são config do `.edl`,
    não C++ — `mixr::xtacview::factory`/`mixr::recorder::factory` já estão na mesma cadeia.
-3. Registrar uma `ScenarioEntry` em `app/src/app/ScenarioCatalog.cpp` (comentário-marcador no fim
-   da lista mostra onde) — sem isso, o cenário existe em disco mas não aparece em
-   `./app -scenario <chave>`. Ver `models/README.md` §4.1 para os campos.
+3. Nada a registrar — não há mais catálogo estático de cenários no `./app` (ver `models/README.md`
+   §4.1). Assim que `configs/` tiver um único `.edl.in`, a poc já roda via
+   `./build/app/src/app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis` se entrar no
+   grupo DIS), sem tocar em C++.
 4. Opcionalmente, cobertura de teste automática em `tests/meson.build` — três formas possíveis
    (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `models/README.md`
    §4.2, com marcadores no próprio arquivo.
 
 Não há mais um passo de Makefile aqui — os alvos `run-<chave>`/`check-<chave>` por poc foram
-removidos (ver "Estado atual" mais abaixo); rodar a poc nova é só `./build/app/src/app -scenario
-<chave>` direto, já coberto pelo passo 3.
+removidos (ver "Estado atual" mais abaixo); rodar a poc nova é só o comando do passo 3.
 
 **Guardas que já pagaram por profundidade de caminho — não redescobrir:**
 `check_duplication.sh` (hoje aposentada) descobria as gêmeas com `-mindepth 4 -maxdepth 4`, e
@@ -1612,7 +1633,7 @@ exemplificar três coisas, nesta ordem:
    `bt/nodes/LaunchMissileAction` (árvore de demo `flight_tree_missile_demo.xml`, cópia da de
    produção com um ramo a mais — a de produção fica intocada) decidem **quando**; detonação
    (`collisionNotification()`/`crashNotification()`/`updateTOF()`, todos nativos de
-   `AbstractWeapon`) já levam o `mode` a `DETONATED` sozinhos. `shared/xmsg` já mapeia
+   `AbstractWeapon`) já levam o `mode` a `DETONATED` sozinhos. `libs/xmsg` já mapeia
    `AbstractPlayer::Mode` para string (`"launched"`, `"detonated"`) — é a fonte de verdade mais
    barata para ver os três eventos (o `( MsgReport name: ciclo-de-vida ... fields: { modeNum } )`
    do cenário de demo), sem depender de `REID_WEAPON_RELEASED`/`REID_WEAPON_DETONATION` nativos
@@ -1685,9 +1706,10 @@ dados (`./app/data/`) próprios — dá para rodar ao lado de `single-thread`/`m
 
 **O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
 `src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —
-`app -scenario <chave>` (as chaves estão em `app/ScenarioCatalog.cpp`) ou `app -f <arquivo>` para
-um cenário fora do catálogo, que é como as fixtures de teste entram. Ver "Estrutura de um
-subprojeto" acima para o porquê e para a prova de neutralidade.
+`app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis -scenario <nome>` para o grupo
+DIS), que pula a tela de navegação, ou `app -f <arquivo>` apontando direto pro caminho, que é como
+as fixtures de teste entram. Não há catálogo estático de cenários embutido no binário. Ver
+"Estrutura de um subprojeto" acima para o porquê e para a prova de neutralidade.
 
 O que o `./app` precisou ganhar para isso, e nada mais:
 
@@ -1728,7 +1750,7 @@ percorria. Travado por `scenario-app-quit-dis`.
   nunca uma segunda `Station` no mesmo processo. `app::buildStation()` (`StationBuilder.cpp`) só
   roda `xplugin::setBuiltinFactory()` + `edl_parser()` + `xplugin::seal()` **uma vez por
   processo**, em lugar nenhum do repositório esse caminho é chamado uma segunda vez, e
-  `shared/xplugin/README.md` documenta que plugins não têm hot-reload em processo vivo —
+  `libs/xplugin/README.md` documenta que plugins não têm hot-reload em processo vivo —
   reconstruir por cima disso seria pisar em terreno nunca exercitado. `execv()` resolve o próprio
   caminho via `/proc/self/exe` (não `argv[0]`, que pode vir relativo) e é o caminho 100% testado:
   é o que já acontece toda vez que alguém roda o binário de novo, só que sub-segundo.
@@ -1744,7 +1766,7 @@ percorria. Travado por `scenario-app-quit-dis`.
    `multi-thread`) passaram a abrir a MESMA porta — um deles morreu com `SIGSEGV` no caso do
    cliente pendurado, uma vez em duas execuções da suíte, e passava sempre quando rodado sozinho.
    Corrigido no fragmento.
-1. **`shared/xclock::TimeControls`/`ConsoleKeyboard` NÃO entram aqui.** Os dois mexem em
+1. **`libs/xclock::TimeControls`/`ConsoleKeyboard` NÃO entram aqui.** Os dois mexem em
    `termios` (modo bruto do terminal) por fora do FTXUI — que já é dono do terminal assim que
    `ScreenInteractive::Fullscreen()` começa (alternate screen buffer, o próprio modo bruto dele).
    As teclas de controle de tempo (`app/DashboardLoop.cpp`) chamam `ClockStation::
@@ -1802,7 +1824,7 @@ nomeada usada tanto pela tecla quanto por um `ftxui::Button` com a dica de atalh
 (`"[+] Acelerar"`) — sem duplicar lógica.
 
 - **Painel "Memória" é o `app/MetaObjectReport.cpp` de sempre, só que AO VIVO.**
-  `mixr::xplugin::pluginMetaObjects()` (`shared/xplugin/PluginRegistry.hpp`) já devolve os
+  `mixr::xplugin::pluginMetaObjects()` (`libs/xplugin/PluginRegistry.hpp`) já devolve os
   `MetaObject*` que o(s) plugin(s) carregado(s) declararam no próprio descritor — automaticamente
   cobre `flight`/`missile`/`stub`/qualquer modelo futuro, sem um nome de classe escrito no
   dashboard. `app/MetaObjectSnapshot.hpp` amostra isso a 10 Hz numa janela deslizante de ~3 s
@@ -2135,7 +2157,7 @@ simulação de VERDADE, não só o laço do dashboard.**
   já destaca a folha ativa (`bgcolor(Blue)`). Pedido explícito, por ser duplicado.
 - **`dec=`/`thr=` (quando presente) virou uma linha SEMPRE visível `decisoes N   thread T`**, em
   vez de aparecer condicionalmente e com nome abreviado. Resposta à pergunta "o que significa
-  `dec=`?": é a contagem de decisões ATUADAS por aquele player (via `shared/xboard::Readout`,
+  `dec=`?": é a contagem de decisões ATUADAS por aquele player (via `libs/xboard::Readout`,
   incrementado em `FlightAction::execute()`) — não confundir com `frame=`, que é o passo de
   simulação; ver a nota já existente na suíte de testes ("`dec=` avanca na MESMA TAXA que `frame`
   entre dumps consecutivos", não necessariamente igual em valor absoluto).
@@ -2197,7 +2219,7 @@ o termo "dashboard" saiu de toda a interface de terminal, e a tela de selecão d
 tamanho fixo — não pula mais de layout ao navegar entre as opções.**
 
 - **`thread` sempre "-" não era so falta de destaque — era falta de DADO.** Investigado antes de
-  mexer: `shared/xboard::Board.hpp::threadTag` só é escrito em UM lugar do modelo,
+  mexer: `libs/xboard::Board.hpp::threadTag` só é escrito em UM lugar do modelo,
   `models/player/A4/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
   pela `multi-thread`) — o caminho que este `app` usa (o mesmo `SimAgent` nativo da
   `single-thread`, decidindo no laço de background) nunca escrevia nada ali, então o campo ficava
@@ -2497,7 +2519,7 @@ flutuando longe do limite inferior da janela).**
   `libmissile.so`/`libstub.so` são instalados. Dali em diante, um cenário carrega esse `.so`
   pelo MESMO mecanismo `( PluginModule file: "..." provides: {...} )` — nenhuma mudança no host
   pra reconhecer um plugin de terceiro, porque `PluginModule`/`dlopen` já eram agnósticos a quem
-  compilou o `.so`, só o CONTRATO (`shared/xplugin/PluginAbi.hpp`) importa.
+  compilou o `.so`, só o CONTRATO (`libs/xplugin/PluginAbi.hpp`) importa.
   - `README.md` da pasta aponta pro mesmo `models/player/fixtures/stub/docs/CONTRATO.md` que já
     documenta o que um modelo tem de fazer — nenhuma lista nova pra manter sincronizada.
   - **Alvo `models` do Makefile raiz ganhou um passo novo**, depois do bloco do missile: `mkdir -p`
@@ -2660,7 +2682,7 @@ não era vazamento nenhum.**
   (`onde-a-decisao-roda`), nenhuma regressão.
 - **O que este fix NÃO faz, de propósito**: não toca o contador `mixr::base::MetaObject`
   em si (`MIXR` é dependência binária, não objeto de desenvolvimento — mesma régua já aplicada em
-  `shared/xlog`/`shared/xmsg`) nem tenta serializar construção/destruição dessas classes (a
+  `libs/xlog`/`libs/xmsg`) nem tenta serializar construção/destruição dessas classes (a
   corrida acontece entre a CONSTRUÇÃO de uma instância numa thread do pool e a DESTRUIÇÃO de OUTRA
   instância em outra thread simultânea — um mutex só em torno do `new`/`unref()` do nosso próprio
   código não fecharia a janela, porque o destrutor de verdade é gerado por
@@ -2718,14 +2740,14 @@ destinado a ele".**
   no primeiro, cortado no segundo). `make test` 35/35 (34 de antes + o novo), sem regressão —
   inclusive `onde-a-decisao-roda`, que passou aqui.
 
-**Décima sétima passada: quinta aba, "Log" (F5) — as linhas de `shared/xlog` (`LOG(NIVEL) << ...`)
+**Décima sétima passada: quinta aba, "Log" (F5) — as linhas de `libs/xlog` (`LOG(NIVEL) << ...`)
 exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/player/A4`), de dentro do `.so`
 aberto por `dlopen`.**
 
 - **O que faltava era a FONTE, não a aba.** `xlog` escrevia em `std::cout` e no arquivo, e nada
   mais — não havia como ler de volta o que foi logado. A lib ganhou um buffer circular em memória
   (`snapshot()`/`lastSeq()`, 500 linhas) e `setConsoleEnabled(bool)`; ver a subseção "Buffer em
-  memória" na seção `shared/xlog` acima, que também explica por que não é um `tail` do arquivo.
+  memória" na seção `libs/xlog` acima, que também explica por que não é um `tail` do arquivo.
 - **Consequência de graça, e é a parte interessante:** `xlog` é `shared_library()`, então há uma
   cópia só no processo — o `LOG(...)` do MODELO (`models/player/A4`, dentro do `.so` aberto por
   `dlopen`) cai no mesmo buffer. Confirmado rodando: removendo `flight_tree.xml` do lugar, as 4
@@ -2796,7 +2818,7 @@ aberto por `dlopen`.**
 
 **Décima oitava passada: sair com `[q]` travava o processo — o terminal nunca voltava, e a
 memória subia sem parar até a máquina engasgar. Causa medida (não inferida): o `::send()` do
-`shared/xtacview` não tinha teto, e ele roda dentro do laço de background do `app`.**
+`libs/xtacview` não tinha teto, e ele roda dentro do laço de background do `app`.**
 
 - **A cadeia exata, reproduzida sob pty e medida em `/proc/<pid>/task/*/syscall`:** um cliente
   de Tacview que **conecta e para de ler** (minimizado, máquina do cliente engasgada, link caído
@@ -2834,7 +2856,7 @@ memória subia sem parar até a máquina engasgar. Causa medida (não inferida):
      nenhum do framework (grep confirmado).
   2. **Crescimento de memória durante o próprio encerramento**: com `running = false` a drenagem
      para, e a thread T/C segue produzindo.
-- **`shared/xclock/ClockStation` ganhou o handshake de parada** — `requestTcStop()` +
+- **`libs/xclock/ClockStation` ganhou o handshake de parada** — `requestTcStop()` +
   `waitForTcQuiesced(timeout)`. É lá porque `ClockStation` **já sobrescrevia**
   `processTimeCriticalTasks()`, que é exatamente o ponto por onde a thread T/C passa a cada
   período. O gate novo é o **primeiro** statement do método, **antes** do `isPaused()` — a prova
@@ -3059,7 +3081,7 @@ virou um passo de UM frame real, e a cadeia de chamadas do frame — nome de fun
      quatro fases.
   2. **`execTime += dt` acontece ANTES do teste de freeze** (`Simulation.cpp:462` contra a 498) —
      é a razão de pausar ter de deixar de chamar `tcFrame()`, e não só marcar o flag; a mesma
-     armadilha já registrada em `shared/xclock`.
+     armadilha já registrada em `libs/xclock`.
   3. **As duas recursões não são simétricas**: `Component::updateTC()` desce chamando
      `obj->tcFrame(dt)` (`Component.cpp:243`), mas `Component::updateData()` chama
      `obj->updateData(dt)` **direto** (`Component.cpp:269`) — não existe `bgFrame()`.
@@ -3161,7 +3183,7 @@ componente novo, `xnative::ThreadTagProbe`, sem tocar em nenhum agente.**
 - **Custou uma 9ª classe na factory — e por isso um `provides:` a mais em TODO cenário que
   carrega `libflight.so`/`libflight_tc.so`**, pelo mesmo motivo já registrado na seção do
   RLBridgeBehavior: `provides:` é igualdade EXATA de conjunto contra o que a `.so` exporta
-  (`shared/xplugin/PluginRegistry.cpp`, comparação de vetores ordenados). Registrada
+  (`libs/xplugin/PluginRegistry.cpp`, comparação de vetores ordenados). Registrada
   INCONDICIONALMENTE em `xnative/factory.cpp` (sem `#ifdef FLIGHT_TC_AGENT` — ao contrário
   de `FlightAgentTC`, faz sentido tanto pra `libflight.so` quanto `libflight_tc.so`, já que
   qualquer player sem agente em QUALQUER dos dois pode precisar dela), então os DOIS
@@ -3208,7 +3230,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   trivialmente `AlertDatalink`/`TacticalAlert`/etc. pelo mesmo motivo: cada modelo é
   autocontido).
 - **Erro real, achado rodando, não hipotético**: registrar a classe com o MESMO nome
-  `"ThreadTagProbe"` nos dois plugins faz `shared/xplugin/PluginRegistry.cpp` recusar a
+  `"ThreadTagProbe"` nos dois plugins faz `libs/xplugin/PluginRegistry.cpp` recusar a
   carga assim que os dois `.so` abrem no MESMO processo (`scenario_intercept_missile.edl.in`
   carrega os dois): *"o nome 'ThreadTagProbe' já foi registrado por flight... quem
   ganharia dependeria da ordem de carga -- renomeie a classe de um dos dois"*. O registro
@@ -3228,7 +3250,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   frame, na MESMA thread física, uma coincidência praticamente garantida de acontecer (não
   um caso de borda raro) e diretamente enganosa para o propósito da coluna ("quem decide
   em paralelo com quem"). Resolvido promovendo `threadTag()`/`currentCpu()` de
-  `models/player/A4/include/xnative/ThreadTag.hpp` para `shared/xboard/Board.hpp`
+  `models/player/A4/include/xnative/ThreadTag.hpp` para `libs/xboard/Board.hpp`
   — a MESMA `libxboard.so`, já compartilhada por dlopen entre os dois plugins, pelo MESMO
   motivo estrutural de sempre (`bt=`/`dec=` já dependiam disso). O antigo
   `xnative::ThreadTag.{hpp,cpp}` foi REMOVIDO (não deprecado, não mantido como wrapper) —
@@ -3394,6 +3416,214 @@ que passasse pelo `./app`, e os três cenários próprios do app foram reduzidos
   divergir da esperada (59 anterior − 2 `scenario-app-*` + 0, já que os dois viraram um só; os
   outros ajustes são conteúdo de teste já existente, não teste novo).
 
+**Vigésima sétima passada: o modo standalone `-scenario <chave>` (o catálogo estático embutido no
+binário) foi REMOVIDO** — pedido explícito do usuário, depois de constatar que `-folder <pasta>
+-scenario <nome>` já cobria o mesmo caso de uso de forma genérica (qualquer poc com um único
+`.edl(.in)` em `configs/` já é alcançável, sem precisar de uma entrada cadastrada em código) e que
+manter os dois era redundância, não flexibilidade.
+
+- **`app::ScenarioCatalog.{hpp,cpp}` virou `app::AdHocScenario.{hpp,cpp}`** (arquivo renomeado, não
+  só esvaziado) — o nome "catálogo" deixou de fazer sentido no que sobrou: `ScenarioEntry` (a
+  struct), `falconFleet()` e `adHocScenario()` (a entrada de `-f <arquivo>`, que sempre assumiu
+  `falcon1..4` e nunca dependeu do catálogo para isso). `scenarioCatalog()`/`findScenario()` — a
+  tabela fixa e a busca por chave — foram apagados, junto com o casamento de `-f` contra um
+  `templatePath` já cadastrado (a razão de existir de `full-systems-nav` no catálogo: sua frota
+  `{"a4"}` divergia do fallback `falcon1..4`). Um cenário com frota diferente de `falcon1..4`
+  carregado por `-f` bare hoje simplesmente ASSUME `falcon1..4` (e provavelmente aborta) — a forma
+  certa de carregá-lo é `-folder`, que descobre a frota em runtime (`app::discoverFleet()`) em vez
+  de assumir qualquer lista.
+- **`app::runScenarioPicker()` (a tela de seleção do catálogo) saiu de `ScenarioPickerScreen`** —
+  ficou só o genérico `runPickerScreen(items, title)`, que `-folder` sem `-scenario` já usava.
+- **`-internal-picker` e `DashboardExit::ChangeScenario` saíram inteiros** — a única razão de
+  existir dos dois era reabrir a tela do catálogo num reexec (as ações "carregar outro cenário"
+  (`l`) e "parar" (`s`) do TUI); sem catálogo, não há mais pra onde essas duas ações reexecutariam.
+  Removidas do `PendingAction`/`DashboardExit`, dos botões (`btnLoad`/`btnStop`), dos atalhos
+  (`l`/`s`) e do diálogo de confirmação — sobraram só `r`/`q` (reiniciar/sair), as DUAS ações
+  disruptivas que restam. `Options::internalPicker` saiu da struct.
+- **`main.cpp` ficou com DOIS modos, não três**: `-folder` (prioridade) e `-f`; sem nenhum dos
+  dois, erro fatal (`"e obrigatorio passar -f <arquivo> ou -folder <pasta>"`). O reexec de
+  `DashboardExit::Restart` (`r`) trocou o branch de catálogo por `-f cenario.templatePath` — o
+  mesmo caminho que `-f` já guardava, então nenhuma informação nova precisou ser propagada.
+- **Achado ao migrar os testes, não hipotético**: `tests/scenario/run_app_quit_test.py` tinha DOIS
+  cenários (`onnx-policy`, `multi-thread`), e os dois usam `configs/scenario.edl.in` como nome de
+  arquivo — trocar `-scenario <nome>` bare por `-f <caminho>` faria os dois caírem na MESMA chave
+  derivada por `adHocScenario()` (`"scenario"`, do stem do arquivo), colidindo em
+  `build/generated-scenarios/scenario.generated.edl` se os dois testes rodassem em paralelo (o
+  `.generated.edl` de um corrompendo a leitura do outro, e os dois disputando o mesmo arquivo de
+  log). Resolvido usando `-folder <raiz> -scenario <nome>` em vez de `-f` — a chave nesse modo é o
+  nome da SUBPASTA (`"onnx-policy"`/`"multi-thread"`), que continua distinta.
+- **Um bug de doc pré-existente, achado ao tocar no mesmo texto**: `src/poc/dis/single-thread/README.md`
+  tinha um comando de exemplo com `-scenario single-thread -deterministic 12000 -f
+  /tmp/sem-piso.edl.in` na MESMA linha — funcionava por acidente porque `-f` já vencia `-scenario`
+  na ordem de prioridade antiga. Ao prefixar `-scenario` com `-folder` (que agora tem prioridade
+  MÁXIMA, acima de `-f`), essa linha passaria a ignorar silenciosamente o `-f` e rodar o cenário
+  ERRADO (sem o piso removido) — a comparação "DEVEM diferir" do próprio exemplo teria parado de
+  provar o que promete. Corrigido removendo o `-scenario single-thread` vestigial da linha.
+- **`tests/scenario/run_adhoc_fleet_test.py` foi APAGADO** — sua premissa inteira (casar `-f`
+  contra o catálogo antes de assumir `falcon1..4`) deixou de existir. A propriedade que ele
+  defendia (`full-systems-nav` com a frota `{"a4"}` certa) continua coberta por `scenario-folder`,
+  que já carrega o MESMO `.edl.in` via `-folder` com descoberta genérica.
+- **`tests/determinism/check_determinism.sh` perdeu o 5º parâmetro `<chave-de-cenario>`** (que
+  virava `-scenario $CHAVE`) — virou `<arquivo-de-cenario>` (um caminho, via `-f`). Os únicos dois
+  chamadores reais dessa forma (`built-in_mixr_1`, `full-systems-nav` — nenhum wireado em
+  `tests/meson.build`, só documentados nos respectivos `README.md` para rodar à mão) tiveram o
+  comando atualizado para passar o caminho de verdade do `.edl.in`.
+- **Varredura de documentação**: todo `README.md` sob `src/poc/**`/`sandbox/**` que invocava
+  `-scenario <chave>` bare (as sete pocs: `single-thread`/`multi-thread`/`bandit` via
+  `-folder src/poc/dis`; `python-flight`/`onnx-policy`/`built-in_mixr_1`/`full-systems-nav` via
+  `-folder src/poc`, ou `-folder ./sandbox` nas cópias de `sandbox/`), mais `app/README.md` (reescrita
+  das seções 3 e 5), `README.md`/`CONTRIBUTING.md`/`models/README.md` (§4.1 deixou de ser "registrar
+  no catálogo" e virou "nada a registrar"), `models/player/template/docs/PRIMEIROS-PASSOS.md`,
+  `.claude/rules/{host-app-src,models-plugin}.md`, `scripts/models.sh` e comentários do `Makefile`/
+  `src/poc/meson.build`. **Não tocado, de propósito**: `docs/presentation/index.html` — slide deck
+  órfão (nenhum alvo `make` o gera nem o abre), e as passadas anteriores desta seção, que são
+  diário e descrevem o que era verdade NA ÉPOCA, não o estado atual.
+- **Verificado rodando** (não só compilando): `app-scenario-folder`, `scenario-folder`,
+  `scenario-bad-args`, `scenario-app-quit` e `scenario-app-quit-dis` — as cinco verdes depois da
+  migração para `-folder`. A suíte completa foi disparada em paralelo à escrita desta passada;
+  como no precedente da passada anterior, a contagem final não foi conferida aqui — mesma
+  ressalva, mesmo motivo.
+
+## Groot — editor e monitor ao vivo
+
+Abrir:
+
+```bash
+conan create ./deps/groot --build=missing --settings=build_type=Release   # uma vez (ver INSTALL.md §7)
+make open-groot                                                            # sempre que quiser abrir
+```
+
+É uma janela Qt de verdade — só aparece numa máquina com display acessível.
+
+### Editor
+
+**Armadilha nº1, a que realmente bloqueia — comentário XML com `--` (hífen duplo).** As árvores
+deste projeto (`models/player/A4/configs/flight_tree*.xml`) tinham comentários de cabeçalho em
+prosa livre, com `--` usado como travessão ("...nativo -- ou seja..."). Isso é **inválido** pela
+especificação XML (comentários não podem conter `--` no corpo). `tinyxml2` — o parser que o
+BT.CPP/host usa — é tolerante e ignora a violação; `QDomDocument` — o parser que o **Groot** usa —
+é estrito e recusa o **arquivo inteiro**, sem dizer por quê além de um genérico "erro de sintaxe".
+**É essa a causa mais provável de "o Groot não reconhece a sintaxe."** Confirmado rodando os 5
+`flight_tree*.xml` contra um parser XML estrito: 4 de 5 tinham o problema (só `flight_tree_nav.xml`
+já era limpo) — corrigido nos 4 (`--` → `-`, só dentro do comentário, sem tocar a árvore em si).
+Se você criar uma árvore nova e escrever comentários com travessão duplo, essa é a armadilha que
+vai pegar de novo.
+
+**Armadilha nº2 — nós customizados sem `<TreeNodesModel>`.** Mesmo com o XML válido, o Groot ainda
+não *conhece* `FuelLow`/`ContactDetected`/etc. — são classes registradas só no `.so` do modelo, e o
+Groot é um app à parte que nunca viu esse código. Sem um `<TreeNodesModel>` no arquivo, `Groot`
+recusa o arquivo com `"This model has not been registered: <ID>"` assim que encontra o primeiro nó
+desconhecido (não é um aviso — é a mesma exceção de `loadFromXML()`, mostrada num diálogo). A tag
+tem que ser exatamente `<TreeNodesModel>` (com "s") — a documentação oficial do BT.CPP escreve
+`<TreeNodeModel>` (sem "s") em alguns exemplos, e o nome errado nesse nível é silenciosamente
+ignorado, nem erro nem modelo.
+
+**Os 5 `flight_tree*.xml` de produção já têm esse bloco colado** (dentro de `<root>`, irmão de
+`<BehaviorTree>`) — abrem direto no Groot, sem cópia nem edição nenhuma:
+
+```xml
+<TreeNodesModel>
+    <Condition ID="FuelLow">
+        <input_port name="margin" type="double" default="0.0">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+    </Condition>
+    <Action ID="ReturnToBase"/>
+    <Condition ID="ContactDetected"/>
+    <Action ID="ReportAndEvade"/>
+    <Condition ID="LaunchEnvelope"/>
+    <Action ID="LaunchMissile"/>
+    <Condition ID="AlertReceived"/>
+    <Action ID="SupportAlert"/>
+    <Action ID="Patrol"/>
+    <Action ID="Navigate"/>
+    <Condition ID="OnnxScore">
+        <input_port name="model" type="std::string" default="">caminho do .onnx (entrada float32[1,28])</input_port>
+        <input_port name="threshold" type="double" default="0.5">limiar de comparacao</input_port>
+        <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+        <input_port name="above" type="bool" default="true">true: SUCCESS se saida > limiar</input_port>
+    </Condition>
+    <Action ID="OnnxPolicy">
+        <input_port name="model" type="std::string" default="">caminho do .onnx da politica</input_port>
+        <input_port name="normalized" type="bool" default="true">saida em [-1,1]</input_port>
+        <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+    </Action>
+    <Action ID="PyDecide">
+        <input_port name="script" type="std::string" default="">caminho do .py que define decide(obs)</input_port>
+        <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+    </Action>
+</TreeNodesModel>
+```
+
+**Passo a passo, árvore de produção**: `make open-groot` → `File > Load...` → qualquer
+`models/player/A4/configs/flight_tree*.xml` direto. Edite arrastando/soltando, salve — o arquivo
+salvo continua carregável por `createTreeFromFile()` sem mudança nenhuma (o `<TreeNodesModel>` é
+ignorado pelo executor).
+
+**Passo a passo, árvore nova (seu próprio modelo, ou uma variante fora de `configs/`)**: o arquivo
+não tem o bloco ainda — copie (nunca edite um `.xml` que algum cenário já usa), cole o bloco acima
+(ou a versão com os IDs do SEU `bt_factory.cpp`) dentro do `<root>` da cópia, e abra a cópia.
+
+**Bloco pode ficar desatualizado — é manual, não gerado.** Os 13 nós vêm de
+`bt_factory.cpp`/`bt_factory_sdk.cpp`; se um nó novo for registrado ali, os 5 arquivos de produção
+**não** se atualizam sozinhos (não há gerador automático hoje — `BT::writeTreeNodesModelXML()`
+faria isso a partir de uma `BehaviorTreeFactory` já povoada, mas nenhum programa deste repositório
+chama essa função). Ao registrar um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`, atualize o
+bloco nos 5 `flight_tree*.xml` — sem isso, o Groot mostra `FuelLow`/etc. certos e o nó novo com
+"This model has not been registered" na hora de carregar.
+
+**Verificado sem precisar abrir a janela**: compilei um teste isolado (`ReadTreeNodesModel()` +
+`BuildTreeFromXML()`, as duas funções reais do Groot que decidem se um arquivo carrega) contra
+cada um dos 5 `flight_tree*.xml` de produção já com o bloco — nenhum nó fica "sem modelo
+registrado". Rodei também os 5 cenários que carregam essas árvores (`multi-thread`, `python-flight`,
+`onnx-policy`, `full-systems-nav`, o demo de míssil) em `-deterministic`: o bloco extra no XML não
+muda nenhum dump `frame=`.
+
+### Monitor ao vivo — `MIXR_GROOT_MONITOR`
+
+```bash
+MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -f src/poc/dis/multi-thread/configs/scenario.edl.in
+```
+
+Em outro terminal/máquina com display: `make open-groot` → aba Monitor → conectar em `localhost`
+(portas **1666** status / **1667** topologia — livres aqui; Tacview usa 1234-1239, DIS usa
+3000-3005). Sem a variável de ambiente, nada disso liga — zero custo, zero porta aberta.
+
+Implementação: `BtBehavior::buildTree()` (`models/player/A4/src/ubf/BtBehavior.cpp`) liga um
+`BT::PublisherZMQ` nativo do BT.CPP para o player cujo nome bate com a variável.
+
+**Achado ao implementar, não redescobrir**: `findContainerByType(typeid(models::Player))` — o
+mesmo mecanismo que `configurePlans()` já usa para achar o player e derivar a semente de jitter da
+patrulha (seção `shared/xrandom` acima) — **não funciona a partir de dentro de um `BtBehavior` na
+poc `single-thread`**. Medido rodando (print em `stderr`, fora do `xlog`): `player=(nil)` nas 4
+falcons de `single-thread`, contra ponteiro/nome certo nas 4 de `multi-thread`. A causa é
+estrutural: em `multi-thread`, `BtBehavior` mora dentro do `UbfArbiter`, que mora dentro do próprio
+`falconN` (`FlightAgentTC` é componente do player) — `container()` sobe até o `Player` de verdade.
+Em `single-thread`, o mesmo `UbfArbiter`/`BtBehavior` mora dentro do
+`( SimAgent actorPlayerName: falconN )`, componente da **Station** — a ligação com o player é por
+**nome**, nunca por `container()`.
+
+Consequência não investigada mais a fundo, registrada por precaução: `configurePlans()` usa esse
+mesmo `findContainerByType` para derivar a semente de jitter da patrulha, então provavelmente
+recebe `""` para os 4 falcons de `single-thread` — os 4 acabariam com a mesma sequência de jitter
+entre si (o master seed continua correto). Isso não quebra `check-patrol-seed-*` porque esses
+scripts só verificam reprodutibilidade entre threads e divergência entre sementes de CENÁRIO —
+nenhum verifica se os 4 players do MESMO cenário têm sequências distintas entre si. Não corrigido
+aqui, fora do escopo desta feature.
+
+O monitor usa `domain::WorldView::ownerName` em vez disso — campo novo, preenchido em
+`FlightState::updateState(actor)`, onde `actor` vem do Agent nativo e **é** confiável nos dois
+casos (é a mesma pilha que já lê posição/combustível corretamente para ambos os agentes).
+
+Ciclo de vida: `PublisherZMQ` guarda `const BT::Tree&`, então precisa ser derrubado
+(`treePublisher_.reset()`) **antes** de qualquer `tree = BT::Tree()` — três lugares
+(`reset()`, `shutdownNotification()`, rebuild pós-`copyData()`). Só uma instância por **processo**
+— o próprio BT.CPP lança se tentar uma segunda.
+
+Medido rodando (pty, log real habilitado): a porta abre e o `LOG(INFO)` confirma nas duas pocs com
+`MIXR_GROOT_MONITOR=falcon1`; sem a variável, nenhuma porta abre. `nm`/`ldd` no `.so` do plugin
+confirmam `zeromq` linkado **estático** (mesmo tratamento `-Wl,--exclude-libs,ALL` do resto do
+BT.CPP) — nenhuma mudança de `meson.build` precisou ser feita (o `.pc` do `behaviortree.cpp.asa`
+já encadeia `cppzmq`/`zeromq` via `Requires:`).
+
 ## `src/rl` — wrapper Gymnasium (treino de RL contra a mesma simulação)
 
 Quinto subprojeto sob `src/`, peer de `./poc/` e `./server/` (não é mais uma poc, e nem sequer
@@ -3412,18 +3642,18 @@ o `behavior:` de `falcon1` — de `( BtBehavior ... )` pra `( RLBridgeBehavior v
 do MESMO `UbfArbiter` que já tinha `( AltitudeSafetyBehavior vote: 90 )`: uma política ruim do
 agente RL não derruba o avião no terreno, o árbitro nativo sobrepõe sem precisar de código novo.
 
-**`shared/xrlbridge` — quarta `shared_library()` de `shared/`, mesmo motivo estrutural de
-`shared/xboard::Board`.** `RLBridgeBehavior` (`models/player/A4/include/ubf/RLBridgeBehavior.hpp`)
+**`libs/xrlbridge` — quarta `shared_library()` de `libs/`, mesmo motivo estrutural de
+`libs/xboard::Board`.** `RLBridgeBehavior` (`models/player/A4/include/ubf/RLBridgeBehavior.hpp`)
 mora dentro do `.so` do modelo, aberto por `dlopen`; a ponte pybind11 mora no host, que **não pode**
 incluir headers do modelo nem linkar contra o `.so` dele em tempo de compilação —
-`tests/guard/check_host_opaco.sh` trava esse invariante. `shared/xrlbridge/RLBridge.hpp` define seu
+`tests/guard/check_host_opaco.sh` trava esse invariante. `libs/xrlbridge/RLBridge.hpp` define seu
 próprio `Command`/`Observation` (campo a campo iguais a `domain::FlightCommand`/`WorldView`, mas
 deliberadamente **não** reusando o tipo) e é a ÚNICA coisa que os dois lados linkam de verdade: o
 host escreve `Command`/lê `Observation`, o modelo faz o inverso. **Sem chave por `playerId`** — v1
 é um único agente RL por processo (`genAction()` não tem como descobrir o ID do player que o
 hospeda sem subir a árvore de componentes por `container()`, caminho já documentado como frágil
 neste framework pra objetos aninhados em slot — ver a armadilha de `TacviewOutput::resolveInfo()`
-na seção `shared/xtacview`).
+na seção `libs/xtacview`).
 
 **Por que `RLBridgeBehavior` mora DENTRO de `models/player/A4` e não num plugin separado** (ao
 contrário do precedente do `models/player/missile`, que existe justamente pra não obrigar as pocs de
@@ -3448,7 +3678,7 @@ contrato-compatível com o `provides:` (agora maior) do cenário de produção q
 1. **`import mixr_gym` TEM DE vir antes de `numpy`/`gymnasium` no processo Python**, se o script
    chamador importar esses pacotes por conta própria antes de `mixr_gym`. Sem isso, a PRIMEIRA
    chamada a `reset()` segfauta dentro de `libstdc++` (dentro de um `std::cout` de
-   `shared/xplugin/PluginRegistry.cpp::loadModule()`, ao carregar `libflight_tc.so`) — reproduzido
+   `libs/xplugin/PluginRegistry.cpp::loadModule()`, ao carregar `libflight_tc.so`) — reproduzido
    e isolado em dois experimentos independentes: (a) `sys.setdlopenflags(RTLD_GLOBAL)` sozinho, com
    numpy importado ANTES, não bastou; (b) importar `._native` ANTES de numpy, mesmo sem mexer nos
    dlopenflags, resolveu. Tudo indica estouro do excedente de TLS estático do glibc quando muitas
@@ -3457,7 +3687,7 @@ contrato-compatível com o `provides:` (agora maior) do cenário de produção q
    não crasha nunca). Por isso `mixr_gym/__init__.py` importa `._native` (sob `RTLD_GLOBAL`) ANTES
    de deixar `env.py` importar `numpy`/`gymnasium`, e `src/rl/tests/test_smoke.py` importa
    `mixr_gym` antes de `numpy`, fora de ordem alfabética, de propósito.
-2. **Só pode existir UMA `Station` por PROCESSO.** `shared/xplugin` sela o registro de plugins
+2. **Só pode existir UMA `Station` por PROCESSO.** `libs/xplugin` sela o registro de plugins
    depois do primeiro `edl_parser()`; um SEGUNDO `MixrFlightEnv()` (logo, um segundo
    `NativeSimulation`) no mesmo processo, ao chamar `reset()` pela primeira vez, cai em
    `buildStation()` → `edl_parser()` de novo e o registro recusa com "loadModule(...) depois do
@@ -3472,7 +3702,7 @@ contrato-compatível com o `provides:` (agora maior) do cenário de produção q
    medição era um caso DIFERENTE (hot-reload de PLUGIN em processo vivo, nunca testado, não o que
    acontece aqui).
 4. **`step(action)` reflete o comando do passo ANTERIOR, não o atual** — publica o `Command` em
-   `shared/xrlbridge` ANTES de `station->tcFrame(dt)`, mas a fase 3 desse MESMO frame já leu o
+   `libs/xrlbridge` ANTES de `station->tcFrame(dt)`, mas a fase 3 desse MESMO frame já leu o
    `WorldView` (via `state->updateState(actor)`, chamado por `Agent::controller()` antes de
    `genAction()`) formado pela dinâmica que rodou na fase 0 — ou seja, pelo comando aplicado no
    frame ANTERIOR. Latência de atuação de um frame, comportamento padrão de qualquer malha de
@@ -3507,7 +3737,7 @@ pastas ali — não produz executável C++ nenhum, é só Python — e tem venv 
 biblioteca). Nenhum dos dois entra no
 grafo do Meson: são só Python, wireados só pelo `Makefile`.
 
-## `shared/xinfer` e `shared/xpyembed` — decisão por ONNX e por Python, dentro do frame
+## `libs/xinfer` e `libs/xpyembed` — decisão por ONNX e por Python, dentro do frame
 
 Duas `shared_library()` novas no SDK (agora são seis: `xboard`, `xlog`, `xtrack`, `xrlbridge`,
 `xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/player/A4`, que juntos fecham o ciclo
@@ -3529,7 +3759,7 @@ na factory MIXR — zero mudança em `provides:`, em `.edl`, em `stub.cpp` ou em
 Um nome de fábrica novo custaria 10 pontos de edição (foi o preço pago pelo `RLBridgeBehavior`). A
 árvore de **produção** fica intocada; trocar de política é apontar `treeFile:` para outro arquivo.
 
-**Por que as libs, e não código dentro do plugin.** Mesmo argumento de `shared/xboard/Board.hpp`,
+**Por que as libs, e não código dentro do plugin.** Mesmo argumento de `libs/xboard/Board.hpp`,
 com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/player/A4` gera
 **quatro** artefatos do mesmo `model_sources` (~2,3 GB recopiados por `sync-plugins`); o
 `-Wl,--no-undefined` **proíbe** o plugin de chamar a API C do CPython sem linkar `libpython`; e as
@@ -3537,7 +3767,7 @@ extensões C do Python só importam com `libpython` no escopo global. Contido na
 continua com 12 MB e **1 símbolo forte**.
 
 **Contrato de dados com fonte única.** A ordem dos 28 campos numéricos da observação era mantida à
-mão em cinco lugares. Virou uma X-macro — `shared/xrlbridge/ObservationFields.hpp` — expandida
+mão em cinco lugares. Virou uma X-macro — `libs/xrlbridge/ObservationFields.hpp` — expandida
 contra `domain::WorldView` no modelo e contra `xrlbridge::Observation` na ponte: **um nome que
 divergir entre as duas structs não compila**. O `env.py` deriva as listas de
 `_native.observation_field_names()` e levanta na importação se os conjuntos não baterem.
@@ -3624,7 +3854,7 @@ Complementa o `./app`, não o substitui: o `./app` é o painel de **runtime**, p
 simulação rodando; `src/ui/edl-builder.html` é uma ferramenta de **autoria offline** — monta um
 `.edl` do zero arrastando classes de uma paleta (as mesmas fábricas encadeadas em
 `app/src/mixr_factory.cpp`: `base`/`models`/`terrain`/`interop::dis`/`linkage`/`recorder`/
-`simulation`, mais os `shared/x*` e os plugins deste repositório) e exporta um arquivo que o
+`simulation`, mais os `libs/x*` e os plugins deste repositório) e exporta um arquivo que o
 `./app`/qualquer poc carrega depois com `-f`. Vive sob `src/` (ferramenta de verdade, como
 `poc/`/`rl`), não sob `docs/` (visualização só de leitura) — decisão explícita registrada em
 `src/ui/README.md`.
@@ -3644,25 +3874,351 @@ navegador) e `compile.js` (Babel via CDN, sem bundler) — compilados num `edl-b
 **autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/manual/index.html`. **Não há
 servidor.**
 
-**Build**: `make edl-catalog` (`tools/extract_execution_chain.py --edl-catalog` → todas as
-classes/slots que as fábricas encadeadas publicam, em `edl_catalog.generated.json`) e
-`make edl-default-scenario` (`edl_to_ui_project.js`, deste mesmo diretório, converte o próprio
+**Build: um único alvo `make open-edl-builder`.** Por baixo, `node src/ui/scripts/build.js` — o
+orquestrador que substituiu os antigos alvos separados `edl-catalog`/`edl-default-scenario`/
+`edl-builder`/`edl-builder-test` (removidos do Makefile; `open-edl-builder` é o ÚNICO alvo `make`
+que este editor ainda tem). Sempre do zero, sempre na ordem certa, abortando no primeiro erro:
+`src/ui/scripts/generate_edl_catalog.py` (Python stdlib, sem MIXR compilado — todas as
+classes/slots que as fábricas encadeadas publicam, mais os ~10 "papéis primários" de `Player`, ver
+abaixo) → `src/ui/scripts/edl_to_ui_project.js` (converte
 `src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in` — o cenário do "player máximo" — no
-projeto default que a ferramenta já abre carregado, `edl_default_scenario.generated.json`) são os
-dois insumos gerados; `make edl-builder` encadeia os dois e roda `compile.js`; `make
-open-edl-builder` abre o resultado; `make edl-builder-test` roda `edl_builder.test.js` (testes
-unitários puros, sem navegador).
+projeto default que a ferramenta já abre carregado) → os testes puros de `edl_builder_core.js`
+(gate de regressão) → um self-check de lint sobre o `.edl` que o cenário padrão exportaria →
+`src/ui/scripts/compile.js` (React+Babel via CDN, sem bundler, gera `edl-builder.html`). As
+rotinas de geração saíram de `tools/` (que fica só com o que `docs/manual/` de fato usa) para
+`src/ui/scripts/` — nenhuma delas é mais invocável por `make`, só direto (`python3
+src/ui/scripts/generate_edl_catalog.py`, etc.); as primitivas de varredura de C++ que
+`generate_edl_catalog.py` ainda compartilha com `tools/extract_execution_chain.py` (mask_source,
+build_inheritance, ...) moram em `tools/mixr_source_scan.py`, importado pelos dois.
+
+**A árvore virou cartões de verdade, com placeholder para o que falta.** Cada nó é um cartão
+retrátil com fundo em cor suave por origem (a mesma taxonomia da paleta) — editar estrutura
+(arrastar/remover/renomear) acontece direto nos cartões, não mais num painel de propriedades
+separado da árvore de navegação (que existiam como duas coisas distintas antes desta passada). O
+ganho central: para qualquer classe derivada de `Player`, uma seção "Sistemas principais" mostra
+um placeholder tracejado para cada um dos ~10 papéis que `Player::updateSystemPointers()` resolve
+por TIPO (`dynamicsModel`/`pilot`/`navigation`/`datalink`/`radio`/`gimbal`/`rfSensor`/`irSystem`/
+`onboardComputer`/`storesMgr`) — papéis que **não são slots** (a chave em `.edl` é cosmética,
+documentada como tal na própria `Player.hpp`; quem resolve é `findByType()` sobre `components:`) e
+por isso nunca tinham representação na árvore antiga. `generate_edl_catalog.py` extrai os 10
+papéis **mecanicamente**, com uma regex sobre o corpo real de `updateSystemPointers()` — nenhuma
+tabela de curadoria — e anexa isso ao catálogo (`primaryComponents`); `roleFillStatus()`
+(`edl_builder_core.js`) aplica a MESMA regra de `findByType()` (primeiro item de `components:`
+cuja cadeia de herança bate com o papel) pra decidir "preenchido" vs. "placeholder". Qualquer
+outro slot-filho vazio (ex.: `Station.dataRecorder`) ganha o mesmo tratamento de placeholder,
+generalizado. Detalhe completo, com exemplos de tela, em `src/ui/README.md`.
+
+**Passada seguinte — a árvore ganhou conectores de verdade, e o shell da página virou flexbox.**
+Referência pedida explicitamente: o diagrama SVG da aba "Execução" de `docs/manual/doc.jsx`
+(nó-e-aresta, layout recursivo por fatia, conector em cotovelo). Não foi portado 1:1 — aquele
+diagrama é read-only, com rótulo de tamanho fixo (208×34px); os cartões daqui são editáveis, com
+formulário embutido de altura variável, e ganhar isso dentro de `<foreignObject>` custaria muito
+mais do que vale. Em vez disso, `.eb-branch-list`/`.eb-branch-item` (CSS puro, `::before`/`::after`
+como trilho vertical + galho horizontal, cortando no próprio galho no último item da lista) dá o
+MESMO vocabulário visual (tronco+galho, como `tree`/um explorador de arquivos) sobre os cartões que
+já existiam — aditivo, sem tocar `edl_builder_core.js`. Foi preciso também trocar o shell da
+página inteira de "grid + `position:sticky`" para flexbox de verdade (`.eb` vira uma coluna
+`height:100vh` com `overflow:hidden`; `.eb-body` uma LINHA flex de três colunas, cada uma
+`height:100%` com sua PRÓPRIA rolagem) — o desenho antigo deixava a barra lateral vazar por baixo
+do fim da tela (a pré-visualização `.edl`, que também saiu de `grid-column:1/-1` pra dentro da
+coluna do meio, `.eb-main`, chegou a ficar parcialmente encoberta por ela). Como bônus: a paleta
+ganhou mais largura (260→300px) e os chips passaram a truncar com reticências (`text-overflow:
+ellipsis`) em vez de forçar rolagem horizontal.
+
+**A pré-visualização `.edl` ganhou destaque de sintaxe** — a MESMA gramática de
+`.vscode/extensions/edl/syntaxes/edl.tmLanguage.json` (a extensão que colore `.edl`/`.edl.in` no
+editor de texto), portada em JS puro (`tokenizeEdlText()`, `edl_builder_core.js`) sem nenhuma lib
+de destaque nem o TextMate em si — é regex por precedência (comentário/string primeiro, depois
+"identificador logo após `(`" = nome de classe, depois "identificador logo antes de `:`" = nome de
+slot, depois booleano/número/pontuação, por último qualquer outro identificador = valor solto),
+igual à ordem de `patterns` do arquivo `.tmLanguage.json` original. O invariante mais importante,
+testado explicitamente, é o ROUND-TRIP: concatenar todo `token.text` reproduz o `.edl` de entrada
+byte a byte — o destaque só pode colorir por cima, nunca alterar o que será exportado (que
+continua vindo de `projectToEdl()`, sem tocar nos tokens).
+
+**Também ficou possível ver as CLASSES de um plugin de terceiro (`plugins/*.so` sem fonte C++
+neste repositório)** — algo que o scan estático nunca poderia enxergar, por definição (não há
+texto pra regex nenhuma escanear). Novo binário `app/src/plugininfo_main.cpp` (meson: alvo
+`plugininfo`, mesma família de `edlcheck`, mas SEM `mixr_factory.cpp` — carrega só o `.so` dado,
+sem cadeia de factories nativas nem Station por perto): reaproveita `xplugin::loadModule()` —
+os MESMOS guardas de ABI que protegem uma carga de cenário de verdade (versão do contrato,
+`sizeof(models::Player)`, layout de `std::string`, ...) — e nunca lê `PluginDescV1`/`MetaObject`/
+`SlotTable` de um `.so` que falhou esses guardas, porque ler struct binária de ABI incompatível é
+desalinhamento de memória, não "nome errado". O que dá pra saber, e o PORQUÊ do limite: nome de
+classe/fábrica e a CADEIA de herança (via `MetaObject::baseMetaObject`, andando até a raiz) sempre
+que o plugin popular `metas` no `MIXR_PLUGIN_DEFINE(...)`; nomes de SLOT também, via
+`MetaObject::slottable` (`SlotTable::n()`/`name(i)`, que já vem achatado por herança). NUNCA
+tipo/unidade de slot — essa informação só existe como CÓDIGO (o `dynamic_cast<ObjType*>` dentro de
+`setSlotByIndex()`, gerado pela macro `ON_SLOT`), nunca como dado; não há API de runtime que
+devolva isso, só o `.cpp` (que um terceiro, por definição, não entrega). Achado rodando, não
+hipotético: `MetaObject::getClassName()` devolve o nome MANGLED de `type_info` (`c++filt`-style,
+`abi::__cxa_demangle()` resolve) — sem isso o catálogo mostraria `N4mixr...E` no lugar de
+`AlertDatalink`; e `xplugin::loadModule()` escreve seu banner de sucesso em `std::cout`, não
+`std::cerr` — sem redirecionar `std::cout` pra um buffer descartável durante a chamada, o banner
+contaminava a saída JSON.
+
+`generate_edl_catalog.py::introspect_thirdparty_plugins()` roda esse binário (se compilado —
+best-effort, `dist/bin/plugininfo` ou `build/app/src/plugininfo`; sem ele, ou sem `plugins/`, o
+catálogo sai idêntico ao de sempre) sobre cada `.so` de `plugins/`, e só ACRESCENTA entradas para
+nome de fábrica que o scan estático AINDA não conhece — um `.so` deste próprio repositório
+(flight/flight_tc/missile/stub, também depositados ali por `make models`) contribui zero entradas
+novas, por colisão de nome, de propósito. Para cada slot descoberto, primeiro tenta achar o MESMO
+nome em algum ANCESTRAL já conhecido pelo scan estático (ex.: `components`, herdado de
+`base::Component`) e copia o tipo de verdade de lá; só quando o slot é PRÓPRIO da classe de
+terceiro (sem fonte) é que cai num fallback texto-ou-número marcado `typeUnknown: true` — vira um
+badge "?" no editor (ao lado do "#" que já existia pra referência-por-nome), com uma nota no
+painel de propriedades explicando o porquê. Origem do catálogo vira `plugin:<nome-do-arquivo-sem-
+lib-nem-.so>` (mesma convenção de `plugin:<nome>` que `models/player/<nome>/` já usa) — reaproveita
+a MESMA cor "plugin" da paleta/árvore sem nenhuma mudança de CSS.
+
+Fica fora do grafo do Meson (sem `subdir()` em `src/meson.build`) — mas não é mais "nenhum C++
+novo": `app/src/plugininfo_main.cpp` é a exceção deliberada, um binário pequeno e independente do
+resto do `./app`, na mesma pasta e no mesmo padrão de `edlcheck_main.cpp`.
 
 **Validação NÃO mora em `src/ui/`, em duas camadas — nenhuma das duas é a gramática real do
-EDL sozinha:**
-1. `make edl-lint FILE=...` (`tools/edl_lint.py`) — lint estrutural rápido contra o catálogo
-   (fábrica/slot desconhecido, ASCII, ordem de `plugins:`, referência solta a nome).
-2. `make edl-check FILE=...` (binário `edlcheck`, `app/src/edlcheck_main.cpp`) — o parser de
-   verdade do MIXR, sem precisar de terreno/frota/`WorldModel` — é a validação que importa de
-   fato antes de rodar o arquivo produzido.
+EDL sozinha, e nenhuma tem alvo de Makefile (chamadas direto):**
+1. `python3 src/ui/scripts/edl_lint.py <arquivo>` — lint estrutural rápido contra o catálogo
+   (fábrica/slot desconhecido, ASCII, ordem de `plugins:`, referência solta a nome). Também roda
+   automaticamente como self-check dentro do `build.js` acima.
+2. o binário `edlcheck` (`app/src/edlcheck_main.cpp`, ex.: `dist/bin/edlcheck <arquivo>`) — o
+   parser de verdade do MIXR, sem precisar de terreno/frota/`WorldModel` — é a validação que
+   importa de fato antes de rodar o arquivo produzido.
 
-Fica fora do grafo do Meson (sem `subdir()` em `src/meson.build`), mesma categoria de
-`src/poc/rl-training/`: só Python/JS/Makefile, nenhum C++ novo.
+**Passada seguinte — quatro correções e uma aba nova.** (1) Limpar um campo de volta pra vazio
+("" num texto, `[  ]` num vetor) deixava o slot no `.edl` exportado com valor faltante em vez de
+remover o slot — bug real, corrigido em `isEmptyLeafValue()`/`serializeLeafValue()`
+(`edl_builder_core.js`): texto/vetor em branco agora serializam pra `null` (fora do `.edl`), igual
+a "nunca tocado". **Não vale pra number/boolean/unit** — `0`/`false`/"sem unidade" são valores
+legítimos, sem noção de "vazio". (2) A "Pré-visualização .edl" ganhou destaque visual próprio
+(borda superior grossa, fundo trocado, título maiúsculo) — antes lia como mais um cartão da
+árvore, por ficar na mesma coluna logo abaixo dela. (3) **A árvore nasce VAZIA, não mais
+carregada com o cenário de maior número de componentes** — esse cenário (`built-in_mixr_1`) virou
+`src/ui/preset.json` (era `edl_default_scenario.generated.json`), oferecido SOB DEMANDA pelo
+botão "Carregar preset" da barra, com a mesma confirmação de descarte que "Novo" usa. (4) **Aba
+"Mapa" nova**, ao lado de "Árvore" (a prévia `.edl` continua visível embaixo, nas duas):
+`extractPlacements()` (`edl_builder_core.js`, pura) varre a árvore por qualquer nó cuja cadeia
+inclua `Player`, lê `initXPos`/`initYPos`/`initAlt` (convertidos pra metros a partir da unidade
+escolhida) e desenha um SVG simples (norte pra cima, leste pra direita, auto-enquadrado, grade em
+passo redondo de milhas náuticas, marcador na MESMA cor de origem da árvore) — não é
+latitude/longitude real (nenhum cenário de produção deste repositório usa `initLatitude`/
+`initLongitude`), é a mesma posição LOCAL relativa à `Station` que o mapa do dashboard C++ já usa
+(`app/MapPanel.cpp`), suficiente pra "dar uma noção do cenário criado". O rótulo de cada marcador
+é a CHAVE que o pai deu ao item (`falcon1: (Aircraft ...)`) — `Player` não tem slot `name`, só
+`id` numérico — e clicar num marcador seleciona o mesmo nó que a árvore/painel de propriedades já
+usam (`selectedId` compartilhado). Detalhe completo, com screenshot descrito, em `src/ui/README.md`.
+
+**Terceira passada — exportar direto pra `sandbox/`, utilitários de expandir/recolher, conformidade
+estrita de slot, zero borda ao redor da página, e uma aba "Pendências".**
+
+- **Exportar grava DIRETO em `sandbox/<nome>/configs/scenario.edl`, quando o navegador permite.**
+  A File System Access API (`showDirectoryPicker`/`getDirectoryHandle`/`createWritable`) funciona
+  mesmo com este `.html` aberto por `file://` — medido: `window.isSecureContext` é `true` tanto em
+  `file://` quanto em `http://localhost` neste Chrome, e os dois expõem a API (Firefox não tem —
+  daí o feature-detect `"showDirectoryPicker" in window`). O botão novo "Escolher pasta sandbox/…"
+  pede permissão UMA vez por sessão (o handle não sobrevive a um F5 — persistir isso pediria
+  IndexedDB e uma re-confirmação de permissão de qualquer jeito, então não valeu a complexidade);
+  com o handle em mãos, "Exportar .edl" vira "Salvar em sandbox/" e escreve o arquivo de verdade
+  (criando `<nome>/configs/` se não existirem), sem download nenhum. Sem a API ou sem pasta
+  escolhida, cai no download de sempre — o comportamento de antes, inalterado.
+- **"Expandir tudo"/"Recolher tudo"** — dois botões na barra de abas (só na aba Árvore, só com
+  `root` presente), reaproveitando `defaultExpandedIds(root, Infinity)` (o mesmo helper do
+  expand-parcial inicial, só com profundidade infinita) e `new Set()`. A raiz continua sempre
+  expandida independente disso (`isRoot || expandedIds.has(...)` em `TreeNode`) — "recolher tudo"
+  esconde os FILHOS, não o cenário inteiro.
+- **Conformidade estrita de slot — a mudança mais profunda desta passada.** `isCompatible()`
+  (`edl_builder_core.js`) tinha um fallback: um slot-lista (`acceptsChildList`) com `objectTypes`
+  vazio aceitava QUALQUER classe — documentado como necessário porque ~35 slots deste fork têm o
+  `ON_SLOT` declarado só como `base::PairStream` genérico, sem tipo de item visível na própria
+  assinatura (o `dynamic_cast`/`isClassType()` de cada item mora dentro do CORPO do setter). O
+  pedido foi "só permita e sugira classes em conformidade com a slottable" — o fallback permissivo
+  é exatamente o oposto disso. Em vez de simplesmente removê-lo (o que tornaria esses ~35 slots um
+  beco sem saída — nenhuma classe "serviria" mais), cada um foi **lido no fonte, um a um**, sem
+  adivinhar:
+  - **22 casos têm um tipo real por trás do `dynamic_cast`/`isClassType()`** — ex.:
+    `Station::setSlotNetworks()` faz `dynamic_cast<AbstractNetIO*>`
+    (`contexts/src/mixr/src/simulation/Station.cpp:1007`); `Stores::setSlotStores()` aceita a
+    UNIÃO `AbstractWeapon`/`ExternalStore`; os cinco slots de exceção por-entidade de `DisNetIO`
+    (`maxTimeDR`/`maxAge`/`maxPositionError`/`maxEntityRange`/`maxOrientationError`) aceitam,
+    respectivamente, `Time`/`Time`/`Distance`/`Distance`/`Angle` — a MESMA família de unidade que
+    o slot já aceita na forma escalar (`( Seconds 10.0 )` também serve como item de lista, keyed
+    por `"K5"`/`"K1D11"`, exatamente como a seção "Demo: míssil guiado" já não — ver
+    `include/mixr/interop/dis/NetIO.hpp:93-100`). Uma armadilha à parte, encontrada no caminho:
+    `interop::common::NetIO` (abstrata, factory `"NetIO"`) e `interop::dis::NetIO` (factory
+    `"DisNetIO"`) são DUAS classes C++ diferentes com o MESMO nome de classe — o scanner deste
+    catálogo já tinha um remendo de "self-loop" pra isso (documentado antes desta passada); os
+    slots de exceção usam a redeclaração DIS-específica (`base::PairStream`), não a common
+    (`base::Time` isolado), e é essa que precisa do override.
+  - **13 casos nunca aceitam classe nenhuma** — são tabelas nome→texto (`TacviewOutput.typeMap`/
+    `colorMap`/`modelMap`, `PluginModule.provides`, `PluginLoader.searchPaths`), máscaras de bit
+    por nome de categoria (`Gimbal.playerOfInterestTypes`: `"air"`/`"ground"`/`"weapon"`/...,
+    idêntico em `CollisionDetect.playerTypes`), ou listas de VETOR bruto `[ x y ]`
+    (`Navigation.feba`, `ScanGimbal.pseudoRandomPattern`) — o item nunca foi um objeto MIXR,
+    sempre foi `base::String`/`base::List` interpretado à mão dentro do setter.
+  - As duas tabelas (`LIST_SLOT_TYPE_OVERRIDES`, `TEXT_ONLY_LIST_SLOTS`) moram em
+    `generate_edl_catalog.py`, chaveadas por `"ClasseDona.nomeDoSlot"` (não por nome solto, ao
+    contrário do `referenceSlots` já existente — dois slots do mesmo nome em classes diferentes,
+    ex. `MsgFeed.messages` (lista de `MsgReport`) vs. `MsgSink.messages` (filtro de nomes, texto),
+    exigem essa granularidade). Cada slot ganhou um campo novo, `textOnly`, que `isCompatible()`
+    não precisa olhar (`objectTypes` vazio já rejeita tudo, textOnly ou não) mas a UI usa pra
+    diferenciar as duas mensagens de "nenhuma classe serve aqui" (por falta de conformidade real
+    vs. por design). **Zero slots-lista sobraram com `objectTypes` vazio e `textOnly` falso** —
+    conferido programaticamente (`tests/tools/test_edl_catalog.py`, novo bloco) e é o que o
+    self-check do `build.js` roda a cada geração.
+  - **Bug real, achado ao implementar isto (não hipotético): o botão "+ texto" nunca existia.**
+    `edl_builder.jsx` já tinha `handleAddText`/`actions.onAddText` prontos desde a passada que deu
+    à árvore a forma de cartões, mas NENHUM componente chamava — `makeTextLeaf` (o mecanismo que
+    `TacviewOutput.typeMap` etc. sempre precisaram) ficava inacessível pela UI. Antes desta
+    passada isso ficava mascarado pelo fallback permissivo (dava pra arrastar QUALQUER classe ali,
+    mesmo sem sentido nenhum); com o fallback removido, os 13 slots `textOnly` ficariam
+    IMPOSSÍVEIS de preencher sem esse botão. Corrigido: `PlaceholderCard` ganhou um botão "+ texto"
+    (só quando `slotDef.textOnly`), chamando `onAddText`; `AddViaSelect` mostra "(só aceita texto
+    -- use "+ texto")" em vez do genérico "nenhuma classe serve aqui" quando `textOnly`.
+- **Zero borda entre o limite da janela e a página** — `body { margin: 8px }` é o default do
+  user-agent, nunca resetado (o `<style>{CSS}</style>` que o `App` injeta só existe DEPOIS que o
+  React monta — tarde demais pra evitar o flash). Corrigido com um `<style>html, body { margin:0;
+  padding:0; height:100%; }</style>` direto no `<head>` estático do template (`compile.js`).
+  **Armadilha própria, achada rodando (não hipotética):** a primeira tentativa desse reset tinha,
+  no comentário CSS acima da regra, a string literal `<style>{CSS}</style>` (descrevendo A OUTRA
+  tag de estilo, a que o `App` injeta) — e como o conteúdo de `<style>` é RAW TEXT pro parser
+  HTML, ele fecha a tag no primeiro sinal da sequência "fecha-tag-de-estilo", MESMO dentro de um
+  comentário. Resultado: a regra `html, body { margin:0; ... }` ficava fora da tag, como texto
+  solto invisível, e a `<style>` sozinha não tinha regra nenhuma (`cssRules.length === 0`,
+  confirmado inspecionando `document.styleSheets` antes de entender a causa). Mesma classe de
+  armadilha já documentada pra `<script>`/`</script>`, aqui pegando `<style>`/`</style>`.
+- **Aba "Pendências" — "sempre visível" significa não precisar abrir cartão nenhum.** O badge "N
+  pendentes" por cartão já existia, mas exigia expandir CADA nó pra saber O QUE faltava. A regra em
+  si (papel primário vazio + slot-filho vazio, sem contar `components` duas vezes quando há papéis)
+  saiu de dentro de `missingCount()` (só contava) para `nodePendencies()` (`edl_builder_core.js`,
+  devolve a lista tipada) — os dois agora leem da MESMA função, pra nunca divergir sobre o que
+  conta como pendência. `collectPendencies()` varre a árvore inteira somando isso por nó, com o
+  MESMO critério de rótulo de `extractPlacements()` (a chave que o pai deu ao item, não um valor de
+  slot). A aba nova mostra a contagem direto no PRÓPRIO RÓTULO (`Pendências (321)` ou `Pendências
+  ✓` com zero) — visível sem clicar em nada — e cada linha, ao clicar, chama
+  `findAncestorPath()` (novo, `edl_builder_core.js`) pra expandir todo ancestral do nó-alvo e
+  `setSelectedId` pra abrir o card certo direto no painel de propriedades.
+- **Medido rodando, ponta a ponta (Chrome headless + Puppeteer), no preset `built-in_mixr_1`:**
+  zero borda (`#root` cobre exatamente o viewport); expandir tudo abre 153 cartões, recolher tudo
+  fecha pra 1 (só a raiz); o papel `dynamicsModel` de um `Aircraft` sugere exatamente as 6 classes
+  `DynamicsModel`-derivadas do catálogo (`AerodynamicsModel`/`DynamicsModel`/`JSBSimModel`/
+  `LaeroModel`/`RacModel`/`SpaceDynamicsModel`), nunca as 341 inteiras; `TacviewOutput.typeMap`
+  não mostra `<select>` nenhum, só "+ texto", e clicar nele cria a linha de item de texto; a aba
+  Pendências mostra 321 pendências no preset (o "player máximo" declara dezenas de slots opcionais
+  vazios de propósito — `dataRecorder`/`ioHandler`/etc.), e clicar na primeira (`networks` vazio)
+  troca pra Árvore com `ClockStation` selecionado; zero erro de console em toda a sequência.
+
+**Passada seguinte — "Carregar .edl": o editor deixa de ser só-de-criação, abre um `.edl`/`.edl.in`
+REAL qualquer e mapeia tudo pra árvore, sem perder nada mesmo quando o catálogo não conhece a
+classe/slot.**
+
+- **O ponto de partida já existia, escondido em build-time.** `src/ui/scripts/edl_to_ui_project.js`
+  já convertia um `.edl` real pra árvore do editor — só que rodando uma vez, em Node, só contra o
+  cenário de referência (`scenario_max_player.edl.in`), pra gerar o `preset.json` embutido. A lógica
+  de tokenizer/parser/montagem de árvore dele já era JS puro (só `expandTemplates`/`main()` tocavam
+  `fs`/`process`) — nunca tinha sido exposta ao NAVEGADOR. Ela foi realocada, endurecida, pra um
+  arquivo novo, **`src/ui/edl_parser_core.js`** (mesmo padrão UMD-lite de `edl_builder_core.js`,
+  concatenado por `compile.js` na MESMA `<script>`, logo depois dele): agora existe **uma fonte só**
+  pro parser, consumida tanto pelo CLI de build-time (`edl_to_ui_project.js`, que encolheu pra um
+  wrapper fino sobre ela) quanto pelo botão "Carregar .edl" do navegador — o mesmo princípio de
+  "uma implementação, dois consumidores" que `edl_builder_core.js` já demonstra entre a UI e
+  `edl_builder.test.js`.
+- **A lacuna que importava consertar antes de expor isso: `serializeNode` (o exportador,
+  `edl_builder_core.js`) só percorria `entry.slots` do catálogo.** Fábrica sem entrada no catálogo,
+  ou um slot a mais numa classe conhecida, tinha o conteúdo **descartado em silêncio** na
+  reexportação — carregar um `.edl` real, não tocar em nada, exportar de volta, e perder pedaços do
+  arquivo sem aviso nenhum. Errado por definição pro que se pediu ("mapear TUDO pra edição"), e pior
+  ainda: um `"42"` nu (bare, base::Identifier/Integer) num slot desconhecido virava `kind:"text"` e
+  saía **entre aspas** na reexportação (`serializeTextLiteral`/`LOOKS_LIKE_NUMBER_RE` forçam aspas
+  de volta em texto puramente numérico) — trocando silenciosamente o TIPO real do valor no lado
+  MIXR (`Identifier`/`Integer` → `String`).
+  - **Resolvido com duas adições, as DUAS aditivas** (não quebram `preset.json`/projetos salvos já
+    existentes, que nunca têm esses campos): um novo `kind: "raw"` de valor de folha
+    (`{kind:"raw", raw:"<texto exato da fonte>"}`, nunca reinterpretado — elimina a ambiguidade
+    bare-vs-quoted-vs-número em vez de adivinhar de volta) e um novo campo opcional por nó,
+    `node.unknownSlotForms: {[slotName]: "single"|"list"}`, que lembra se a fonte usou a forma NUA
+    (`slot: (Classe)`) ou de LISTA (`slot: {chave: (Classe)}") pra um slot sem `slotDef` — as duas
+    formas NÃO são equivalentes no lado C++ (`PairStream` vs. objeto direto); pra um slot conhecido
+    isso sai de `slotDef.acceptsChildList`, pra um desconhecido não há essa informação no catálogo,
+    então é lembrada de onde veio, nunca adivinhada pela contagem de itens. `serializeNode` ganhou
+    um segundo laço, depois do de sempre, que emite qualquer slot presente na árvore mas ausente de
+    `entry.slots` (ou tudo, quando a fábrica inteira é desconhecida), respeitando
+    `unknownSlotForms`. Medido: as duas fixtures `slot: (X)` e `slot: {a:(X)}` pro MESMO nome de
+    slot desconhecido reexportam CADA UMA na sua própria forma — sem essa memória, uma naive
+    "decide pela contagem de itens" as confundiria (as duas têm exatamente um item).
+- **`edl_parser_core.js` também endureceu o tokenizer contra gaps confirmados na gramática real
+  (`edl_scanner.l`) que o conversor antigo não cobria**: números hexadecimais (`0x1F` — o regex
+  antigo só reconhecia decimal), as três formas de float da gramática (`.5`/`5.`/`5e-3` — a mesma
+  regra que o destaque de sintaxe, `tokenizeEdlText`, já usava, aqui replicada), a forma alternativa
+  de string `<...>` (existia no destaque de sintaxe havia mais tempo, faltava inteiramente no
+  parser — mantido restrito a UMA linha por segurança, igual ao destaque: o scanner real, por
+  acidente de implementação, tem uma classe de caractere que não exclui `>` do corpo, então um `<`
+  sem fechamento consumiria até o ÚLTIMO `>` do arquivo inteiro — nenhum `.edl` deste repositório usa
+  essa forma hoje), e vírgula como espaço em branco puro (`[ ,\t\v\f]` na gramática real — faltava
+  no conversor antigo). Cada token também ganhou número de linha, pra um erro de sintaxe apontar
+  ONDE (`"linha N: ..."`), no lugar de uma `Error` crua sem posição.
+- **`@include:frag@` não é suportado pelo carregador interativo — e a razão é estrutural, não só
+  "não implementado ainda".** O identificador nu do scanner real INCLUI `@` e para no `:` —
+  `@include:` sozinho já tokeniza como um `SLOT_ID` válido, então deixar sem expandir não FALHA,
+  **corrompe a estrutura em silêncio** (vira um slot literal `"@include:"` = valor `"frag@"`, não
+  um erro visível). Por isso virou sempre um erro DURO, nomeando o fragmento que falta (e cobrindo
+  de quebra a forma malformada — sem o `@` de fechamento na MESMA linha, a armadilha já documentada
+  nesta seção do arquivo). `@include:` está confirmado não usado por nenhum `.edl`/`.edl.in`
+  rastreado hoje (grep vazio) — se algum dia precisar, o workaround é substituir a diretiva pelo
+  conteúdo do fragmento direto no arquivo antes de carregar (`edl_to_ui_project.js`, o caminho
+  Node de build-time, continua resolvendo `@include:` de verdade contra
+  `app/configs/fragments/` pra quem precisar dele fora da UI).
+- **`@TOKEN@` (fora de `@include:`) carrega LITERAL no carregador interativo — decisão deliberada,
+  mais simples do que parecia à primeira vista.** Diferente de `@include:`, um token como
+  `@NUM_TC_THREADS@` não tem `:` — é um identificador nu GRAMATICALMENTE VÁLIDO (o charset do
+  scanner inclui `@`), então **não precisou de nenhum código especial**: ele já tokeniza e carrega
+  como um valor de texto comum, e só um scan pós-parse (regex sobre os valores de folha da árvore
+  final) gera o aviso `token-placeholder` apontando cada ocorrência (com o `nodeId` de onde ela
+  está, pro "pular até o nó" da UI). Preferido a adivinhar um valor plausível (o que
+  `edl_to_ui_project.js` continua fazendo, substituindo por `"2"` — aceitável só pra gerar o preset
+  DESCARTÁVEL, não pra editar um cenário de produção de verdade): o usuário vê o placeholder exato
+  no campo e digita o valor real antes de exportar, como qualquer outro campo.
+- **Medido rodando (Node direto, sem browser) contra um cenário de produção real**
+  (`src/poc/dis/multi-thread/configs/scenario.edl.in`, 90 nós, raiz `ClockStation`): carrega com
+  ZERO erros e um único aviso (`token-placeholder` em `numTcThreads`, apontando o nó `WorldModel`
+  certo); editar um campo (`ownship`) e reexportar produz um diff de UMA linha contra o
+  round-trip sem edição nenhuma; `python3 src/ui/scripts/edl_lint.py` no resultado não acusa nada.
+  **E contra o parser REAL do MIXR** (`dist/bin/edlcheck`): o arquivo com o placeholder ainda
+  literal falha exatamente NAQUELE slot (`"error while setting slot name: numTcThreads"`) — a rede
+  de segurança funcionando como projetado, não um bug; corrigindo o campo apontado pelo aviso
+  (usando o `nodeId` dele, o mesmo que "pular até o nó" usaria) o `edlcheck` aceita o arquivo com
+  **zero erros**. A varredura de regressão nova (`edl_parser_core.test.js`, descoberta por
+  caminho sob `sandbox/`/`src/poc/`/`src/rl/`, não lista fixa — mesmo espírito de
+  `tests/guard/check_falcons_estrutura.sh`) confirma isso pros 21 arquivos `.edl`/`.edl.in`
+  rastreados de uma vez: zero avisos de fábrica/slot desconhecido contra o catálogo atual — vira
+  rede de regressão permanente, sem manutenção.
+- **A UI ganhou visibilidade de verdade pro conteúdo não catalogado, não só preservação
+  invisível nos dados** (que sozinha ainda deixaria o usuário sem saber o que foi carregado):
+  `TreeNode` passou a listar, além dos slots-filho do catálogo, qualquer slot-filho presente na
+  árvore mas ausente de `entry.slots` (ou TODOS os filhos, quando a fábrica inteira é desconhecida)
+  — reaproveitando `ChildSlotSection`/`PlaceholderCard`/`AddViaSelect` por inteiro, com um
+  `slotDef` SINTÉTICO (`objectTypes:[]`) que já desliga o drag-drop tipado com honestidade, o
+  MESMO tratamento que um slot `textOnly` de verdade já recebe. `PropertiesPanel` trocou o
+  antigo beco-sem-saída ("classe desconhecida: X", sem edição nenhuma) por
+  `UncatalogedSlotsSection` — cada slot não catalogado vira um campo de texto bruto editável
+  (`LeafWidget` ganhou o branch `"raw"`), mais um mini-formulário "+ slot" pra declarar um slot
+  NOVO a mão (útil editando uma classe ainda em desenvolvimento, cujo catálogo não foi regenerado
+  ainda). Uma faixa dispensável (`LoadWarningsBanner`, mesmo visual de `.eb-pending-item` da aba
+  Pendências) lista os avisos do carregamento com o MESMO mecanismo de "pular até o nó"
+  (`findAncestorPath`/`handleJumpToPendency`, reaproveitados sem mudança); um contador persistente
+  "N não catalogados" na barra de abas continua visível depois de dispensar a faixa
+  (`countUncataloged`, nova em `edl_builder_core.js` — conta NÓS, não slots, um por nó).
+
+**Passada seguinte — erradicado "Salvar projeto"/"Abrir projeto" (o formato de projeto JSON
+próprio).** Com "Carregar .edl" funcionando de ponta a ponta, o formato JSON próprio (a mesma
+árvore `{id,factory,slotValues,children}` serializada crua, `handleSaveProject`/
+`handleOpenProject`) virou um segundo caminho de "salvar trabalho em andamento" redundante com o
+`.edl` de verdade — e um formato que só esta ferramenta lê, contra um formato (`.edl`) que todo o
+resto do repositório já lê. Removidos os dois botões, os dois handlers e o `<input>` oculto de
+`application/json`; nada mais na ferramenta dependia deles (o modelo de dados em si,
+`{id,factory,...}`, continua o mesmo — é usado pelo preset embutido e por "Carregar .edl" também,
+só não tem mais um botão de salvar/abrir ESSE formato específico como arquivo). O
+`@include:`/erro-duro (passada anterior) tinha um workaround que dependia de "Abrir projeto" —
+reescrito para apontar a expansão manual da diretiva direto no arquivo, já que não perde nada de
+capacidade real (`@include:` continua confirmado não usado por nenhum `.edl` deste repositório).
 
 ## Estado atual / pendências conhecidas
 

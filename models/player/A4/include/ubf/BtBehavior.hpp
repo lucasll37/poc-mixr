@@ -11,7 +11,9 @@
 #include "ubf/FlightState.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
+#include "behaviortree_cpp_v3/loggers/bt_zmq_publisher.h"
 
+#include <memory>
 #include <string>
 
 namespace mixr {
@@ -118,6 +120,16 @@ private:
    // Percepcao -> domain::ThreatPolicy, uma vez por ciclo. E aqui que a
    // histerese da evasao envelhece (ver domain/ThreatPolicy.hpp).
    void feedThreatPolicy(double dt);
+
+   // Monitor ao vivo pelo Groot (opt-in via variavel de ambiente
+   // MIXR_GROOT_MONITOR=<nome-do-player> -- ver o corpo em BtBehavior.cpp).
+   // So' pode existir UMA instancia de PublisherZMQ por PROCESSO (o proprio
+   // BT.CPP lanca se tentar uma segunda), e ela guarda uma referencia a
+   // 'tree' -- por isso e' preciso derrubar (treePublisher_.reset()) ANTES
+   // de qualquer 'tree = BT::Tree()', em todo lugar que isso acontece
+   // (reset(), shutdownNotification(), o rebuild apos copyData()).
+   void startGrootMonitorIfRequested();
+   std::unique_ptr<BT::PublisherZMQ> treePublisher_;
 
    FlightState::Snapshot snap;
    bt_nodes::FlightDecision currentDecision;

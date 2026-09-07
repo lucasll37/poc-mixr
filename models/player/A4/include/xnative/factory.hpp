@@ -12,7 +12,7 @@ namespace xnative {
 //
 // Ela nao e mais encadeada no mixrFactory() do executavel: o modelo virou um
 // plugin, carregado com dlopen durante o parse do cenario. Quem a alcanca e
-// src/<poc>/src/plugin.cpp, atraves do contrato de shared/xplugin/PluginAbi.hpp.
+// src/<poc>/src/plugin.cpp, atraves do contrato de libs/xplugin/PluginAbi.hpp.
 base::Object* factory(const std::string& name);
 
 // Os nomes de fabrica que este modelo responde, terminado em nullptr.

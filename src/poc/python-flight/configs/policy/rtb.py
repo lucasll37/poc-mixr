@@ -29,7 +29,7 @@ falcon do outro lado do circuito pode estar dentro dela.
 
 import math
 
-# Indices na ordem canonica de shared/xrlbridge/ObservationFields.hpp.
+# Indices na ordem canonica de libs/xrlbridge/ObservationFields.hpp.
 NORTH_M = 0
 EAST_M = 1
 ALTITUDE_M = 2

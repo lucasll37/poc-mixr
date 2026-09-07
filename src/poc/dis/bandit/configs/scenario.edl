@@ -6,7 +6,7 @@
 // mais duas coisas:
 //
 //    ioHandler: ( JoystickIoHandler ... )   -- pilotagem manual por
-//       joystick fisico (shared/xjoystick), com fallback automatico para o
+//       joystick fisico (libs/xjoystick), com fallback automatico para o
 //       Autopilot scripted quando nao ha hardware conectado (ver o
 //       comentario de JoystickIoHandler.hpp sobre hasRealJoystick()).
 //
@@ -30,7 +30,7 @@
 
    // ----------------------------------------------------------------------
    // Joystick fisico -- mecanismo NATIVO do MIXR (mixr::linkage), mesmo
-   // desenho do shared/xjoystick documentado no CLAUDE.md. 'channel:'
+   // desenho do libs/xjoystick documentado no CLAUDE.md. 'channel:'
    // confirmado com tools/joystick_mapper.py contra um Logitech Extreme 3D
    // (6 eixos/12 botoes, deviceIndex 0): 0=aileron 1=profundor 2=leme
    // (twist) 3=manete (slider). SEM joystick conectado, o UsbJoystick so

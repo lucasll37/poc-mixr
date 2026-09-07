@@ -14,9 +14,9 @@
   A ORDEM IMPORTA, e o segundo ramo nao e decorativo:
 
     1) OnnxPolicy: carrega o .onnx uma vez (a sessao do ONNX Runtime e
-       cacheada por CAMINHO em shared/xinfer, entao as 4 aeronaves
+       cacheada por CAMINHO em libs/xinfer, entao as 4 aeronaves
        compartilham UMA), empacota os 28 campos do WorldView na ordem
-       canonica de shared/xrlbridge/ObservationFields.hpp, infere e comanda.
+       canonica de libs/xrlbridge/ObservationFields.hpp, infere e comanda.
        Enquanto a rede responde, o Fallback para aqui.
 
     2) Patrol: so roda se a rede FALHAR (arquivo ausente, forma diferente de

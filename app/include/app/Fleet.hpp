@@ -43,8 +43,8 @@ std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm)
 // que applyCruiseThrottle()/o dump deterministico esperam (Fleet). USO
 // EXCLUSIVO das entradas sinteticas de '-folder <pasta>' (app/ScenarioFolder.hpp)
 // quando ScenarioEntry::fleet vem vazio -- NUNCA do fallback de
-// ScenarioCatalog::adHocScenario()/'-f', que continua devolvendo
-// falconFleet() explicitamente. Essa funcao ja foi tentada como fallback
+// app::adHocScenario()/'-f', que continua devolvendo falconFleet()
+// explicitamente. Essa funcao ja foi tentada como fallback
 // GENERICO de '-f' e revertida: quebrava as fixtures de teste 'intruder'
 // (tests/scenario/make_fixture.py), que tem um bandit1 LOCAL deliberadamente
 // FORA da frota rastreada -- uma descoberta generica pegava esse bandit1

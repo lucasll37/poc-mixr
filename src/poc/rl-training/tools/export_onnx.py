@@ -12,7 +12,7 @@ O CONTRATO, e por que ele nao esta escrito aqui:
 
 A ordem dos 28 campos NAO e uma lista neste arquivo -- ela vem de
 `mixr_gym._native.observation_field_names()`, que por sua vez expande a
-X-macro de `shared/xrlbridge/ObservationFields.hpp`. E a mesma macro que o
+X-macro de `libs/xrlbridge/ObservationFields.hpp`. E a mesma macro que o
 C++ expande contra `domain::WorldView` na hora de inferir. Uma lista escrita
 aqui poderia divergir em silencio, e o sintoma seria uma politica que voa
 errado -- nao um erro.

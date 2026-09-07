@@ -2,7 +2,7 @@
 // O CONTRATO de carga dinamica do MODELO, travado em vermelho/verde.
 //
 // Este binario NAO linka codigo de poc nenhuma -- so mixr_dep e o contrato de
-// shared/xplugin. Isso e parte do que se afirma: o modelo nao depende da
+// libs/xplugin. Isso e parte do que se afirma: o modelo nao depende da
 // aplicacao, so das classes base do MIXR.
 //
 // O que aqui e afirmacao e nao fe:

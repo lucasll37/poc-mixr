@@ -5,6 +5,9 @@ da instalação (`make check-docs-ubuntu24`) para medir se a seção **Pré-requ
 [`README.md`](README.md) basta sozinha. Se algum passo aqui parecer incompleto, esse alvo é onde
 a lacuna aparece primeiro.
 
+Esse alvo é opt-in e exige Docker instalado à parte — não é pré-requisito do build em si, só
+desta checagem. Instruções de instalação: [docker.com](https://www.docker.com/).
+
 ## 1. Pacotes de sistema (`apt`)
 
 ```bash
@@ -169,3 +172,50 @@ Se o VS Code já estava aberto, "Developer: Reload Window" (`Ctrl+Shift+P`) — 
 Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace), mas funcional.
 Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
 `vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.
+
+## 7. Dependências construídas do fonte (`scripts/deps.sh`) — obrigatório para o Groot
+
+`deps/{mixr,behaviortree,jsbsim,openrti,groot}/conanfile.py` são cinco receitas Conan que compilam
+essas dependências a partir do fonte; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
+Release. Para **quatro** delas (`mixr`, `behaviortree.cpp.asa`, `jsbsim`, `openrti`) isto é
+**opcional** — por padrão elas vêm prontas do remote Conan privado (seção 4), e `scripts/deps.sh`
+só entra em jogo se esse remote não estiver disponível para você. Para o **Groot** é a **única**
+forma de tê-lo — não existe pacote pronto em remoto nenhum, público ou privado.
+
+Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (as outras quatro
+receitas não usam nada disto):
+
+```bash
+sudo apt install -y qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
+```
+
+Por que cada um:
+
+- **`qtbase5-dev`**, **`libqt5svg5-dev`** — Groot é uma aplicação Qt5 (interface gráfica + o
+  módulo SVG que ele usa para os ícones da árvore); sem eles, o `cmake` da receita falha ao achar
+  `Qt5Widgets`/`Qt5Svg`.
+- **`libzmq3-dev`** — a camada de transporte do modo Monitor (troca mensagens com uma árvore
+  rodando via `PublisherZMQ`, portas 1666/1667 — ver `CLAUDE.md`).
+- **`libdw-dev`** — símbolos de debug que o build do Groot usa.
+
+Com os pacotes instalados, rode o script (compila as cinco dependências; demora — jsbsim/openrti/
+mixr/behaviortree.cpp.asa também são recompiladas do zero):
+
+```bash
+./scripts/deps.sh
+```
+
+Se você só precisa do Groot (as outras quatro já vêm do remote privado, seção 4), pule o script e
+rode só a receita dele:
+
+```bash
+conan create ./deps/groot --build=missing --settings=build_type=Release
+```
+
+Depois de qualquer um dos dois caminhos, `make open-groot` (na raiz do repositório) resolve o
+pacote no cache Conan sozinho e abre o binário — não precisa achar o caminho à mão. Rodar a
+interface em si (é uma janela Qt) exige um display de verdade — numa máquina sem X server/Wayland
+acessível (container, WSL2 sem WSLg, sessão SSH pura), o build completa normalmente, mas a janela
+não abre.
+
+Como usar o Groot para editar/monitorar árvores de comportamento → [`CONTRIBUTING.md`](CONTRIBUTING.md).

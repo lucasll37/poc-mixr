@@ -172,7 +172,7 @@ CHECAGENS = {
 
 
 # ------------------------------------------------------------------------------
-# O canal de mensagens (shared/xmsg) -- grava por fora do stdout
+# O canal de mensagens (libs/xmsg) -- grava por fora do stdout
 # ------------------------------------------------------------------------------
 
 def checa_mensagens(poc, mode, falhas):

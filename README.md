@@ -26,10 +26,23 @@ via **Tacview Real-Time Telemetry**.
 | pkg-config | qualquer | resolve as libs via `dependency(method: 'pkg-config')` |
 | Python 3 + `python3-dev` | 3.x | `src/rl/bindings` (parte do host) linka `pybind11`/`Python.h` |
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução |
+| Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento |
 | Tacview (opcional) | Standard/Advanced | recebe a telemetria ao vivo |
+| Docker (opcional) | qualquer | só para `make check-docs-ubuntu24` — sobe um `ubuntu:24.04` limpo e confere se esta seção basta sozinha. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
 
 Passo a passo (pacotes de sistema, Conan, perfil, remote privado), o "porquê" de cada um, e uma
 instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTALL.md).
+
+`mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti` vêm prontos de um remote Conan privado por
+padrão; o Groot **não tem pacote pronto em remoto nenhum** — a única forma de tê-lo é compilando
+do fonte, via `./scripts/deps.sh` (que builda as cinco receitas de `deps/`, não só a do Groot):
+
+```bash
+./scripts/deps.sh
+```
+
+Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e a alternativa de buildar só ele →
+[`INSTALL.md`](INSTALL.md) §7.
 
 ## Build
 
@@ -76,10 +89,10 @@ Um executável só, `app` — cada prova de conceito é um **cenário**, não um
 Rodar sempre a partir da raiz do repositório (caminhos de `configs:`/`data:` são relativos):
 
 ```bash
-./build/app/src/app -scenario <chave>   # uma chave do catalogo -- ver app/src/app/ScenarioCatalog.cpp
-./build/app/src/app -f <arquivo.edl>    # cenario fora do catalogo
-./build/app/src/app -folder <pasta>     # navega uma pasta de cenarios soltos
-make run-app                            # atalho para '-folder ./sandbox'
+./build/app/src/app -folder <pasta> -scenario <nome>   # uma poc dentro de <pasta>, sem passar pela tela
+./build/app/src/app -f <arquivo.edl>                   # cenario apontado direto (assume falcon1..4)
+./build/app/src/app -folder <pasta>                     # navega uma pasta de cenarios, tela de selecao
+make run-app                                            # atalho para '-folder ./sandbox'
 ```
 
 Quais cenários existem hoje, o que cada um demonstra e em qual porta o Tacview conecta →
@@ -97,8 +110,9 @@ poc-mixr/
 │   └── node/     placeholder vazio -- integracao futura, ver src/node/TODO.md
 ├── models/       o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (dlopen)
 ├── plugins/      deposito flat dos .so compilados (proprios OU de terceiro) -> dist/ via 'make install'
-├── shared/       bibliotecas x<nome> reaproveitadas entre host e modelos
-├── sandbox/      cenarios soltos de experimentacao, fora do catalogo (ver 'make run-app')
+├── libs/         bibliotecas x<nome> reaproveitadas entre host e modelos -- cada uma com README.md
+├── shared/       dados vendorizados do CENARIO -- terreno SRTM, aeronaves JSBSim (shared/data/)
+├── sandbox/      cenarios soltos de experimentacao (ver 'make run-app')
 ├── tests/        suite do host (a de cada modelo vive dentro do proprio models/player/<nome>/)
 ├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP -- destilado + fonte vendorizado
 ├── docs/         documentacao visual gerada -- manual interativo, slides, livros de referencia
@@ -126,6 +140,7 @@ Três regras valem para todo subprojeto e todo modelo:
 | [`CLAUDE.md`](CLAUDE.md) | referência completa de arquitetura — todo subprojeto, biblioteca compartilhada e armadilha já confirmada rodando |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | escrever um MODELO novo (não mexer no host) |
 | [`models/README.md`](models/README.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
+| [`libs/README.md`](libs/README.md) | as 12 bibliotecas compartilhadas host↔modelo, uma por pasta |
 | [`tests/README.md`](tests/README.md) | as suítes de teste, o que cada uma prova |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
 | [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs`) |

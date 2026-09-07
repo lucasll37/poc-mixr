@@ -31,6 +31,13 @@ void registerWithContext(BT::BehaviorTreeFactory& factory, const std::string& id
 
 }
 
+// Registrar um no aqui e' so metade do trabalho: o Groot (deps/groot/,
+// CLAUDE.md "Groot -- editor e monitor ao vivo") NAO enxerga estas classes --
+// ele e' um app a parte, nunca viu este .so. Os 5 configs/flight_tree*.xml
+// de producao carregam um <TreeNodesModel> colado a mao, com o MESMO ID
+// desta chamada, so' pra ele reconhecer os nos. Registrou um no novo aqui ou
+// em bt_factory_sdk.cpp? Atualize o bloco nos 5 arquivos tambem, ou o Groot
+// recusa a arvore com "This model has not been registered: <ID>".
 void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
 {
    registerWithContext<FuelLowCondition>(factory, "FuelLow", context);

@@ -743,7 +743,7 @@
                // --- 9) OnboardComputer ----------------------------------
                // O conteiner de TrackManager. A ordem importa so para quem
                // pede o "primario" por tipo; o resto do sistema pede por
-               // NOME (o modelo em shared/xtrack procura "twsTrkMgr").
+               // NOME (o modelo em libs/xtrack procura "twsTrkMgr").
                obc: ( OnboardComputer
                   components: {
                      twsTrkMgr: ( AirTrkMgr

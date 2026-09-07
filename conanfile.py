@@ -37,8 +37,8 @@ class MixrHelloConan(ConanFile):
         # pelo Conan).
         self.requires("pybind11/2.13.6")
 
-        # So shared/xinfer linka isto -- o motor de inferencia que roda a
-        # politica .onnx de dentro do frame (ver shared/xinfer/README.md).
+        # So libs/xinfer linka isto -- o motor de inferencia que roda a
+        # politica .onnx de dentro do frame (ver libs/xinfer/README.md).
         # Estatico (a receita ja tem shared=False por default), e contido
         # inteiro dentro de libxinfer.so por '-Wl,--exclude-libs,ALL': nenhum
         # outro alvo, e nenhum modelo, ve header ou biblioteca do ORT.

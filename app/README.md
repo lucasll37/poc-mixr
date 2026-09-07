@@ -1,478 +1,204 @@
-# `app` — painel de controle e monitoramento (TUI)
+# `app` — painel de controle (TUI)
 
-Aplicação de terminal estilizada (cores, navegação por teclado e por mouse, redesenho
-responsivo — biblioteca [FTXUI](https://github.com/ArthurSonzogni/FTXUI)) para **carregar,
-acompanhar e controlar** uma simulação, em vez de ler uma linha de status em texto puro.
+Aplicação de terminal ([FTXUI](https://github.com/ArthurSonzogni/FTXUI): cores, teclado e mouse,
+redesenho responsivo) para **carregar, acompanhar e controlar** uma simulação — em vez de ler uma
+linha de status em texto puro. É o **runner único** de todas as provas de conceito deste
+repositório: não presume pilha nenhuma fixa, lê qualquer player pela base `mixr::models::Player` e
+descobre entidades em runtime, então funciona com **qualquer** modelo carregado, não só o de
+produção (ver [§7](#7-arquitetura-em-uma-frase)). Mora fora de `src/` — não é "mais uma poc", é a
+ferramenta de controle das demais — por isso tem pasta própria na raiz e o binário se chama `app`,
+não `dashboard`.
 
-Roda a **mesma pilha nativa** de [`src/poc/dis/multi-thread/`](../src/poc/dis/multi-thread/) — mesmo plugin de
-modelo (`libflight_tc.so`), mesmo `Aircraft`/`JSBSimModel`/`Autopilot`/radar/`FlightAgentTC`
-(os 4 falcons decidem em PARALELO, um por thread do pool de tempo crítico, na fase 3 do frame),
-nenhuma mudança em [`models/`](../models/) — só troca a impressão de status por este painel. Mora fora de
-`src/` porque não é "mais uma poc" (nunca troca DIS com as outras, não é uma variação de "onde a
-decisão roda"): é a ferramenta de controle/monitoramento das demais, por isso tem pasta própria na
-raiz e o alvo/binário se chamam `app`, não `dashboard`.
+> Documentação em português do Brasil; identificadores e rótulos que vêm do modelo (`PATROL`,
+> `EVADE`, nomes de nó...) ficam como estão.
 
-> Convenção do repositório: esta documentação é em português do Brasil; identificadores, nomes de
-> slot e rótulos que vêm do modelo (`PATROL`, `EVADE`, nomes de nó da árvore…) ficam como estão.
-
----
-
-## Índice
-
-1. [Início rápido](#1-início-rápido)
-2. [Cenários](#2-cenários)
-3. [Linha de comando](#3-linha-de-comando)
-4. [A interface — quatro abas](#4-a-interface--quatro-abas)
-5. [Aba Players](#5-aba-players)
-6. [Aba Mapa](#6-aba-mapa)
-7. [Aba Memória](#7-aba-memória)
-8. [Aba Tempo Não-Crítico](#8-aba-tempo-não-crítico)
-9. [Árvore de comportamento e breakpoints](#9-árvore-de-comportamento-e-breakpoints)
-10. [Todos os atalhos de teclado](#10-todos-os-atalhos-de-teclado)
-11. [Todos os elementos clicáveis](#11-todos-os-elementos-clicáveis)
-12. [Ações disruptivas e confirmação](#12-ações-disruptivas-e-confirmação)
-13. [Portas, arquivos e dados](#13-portas-arquivos-e-dados)
-14. [Arquitetura interna, em resumo](#14-arquitetura-interna-em-resumo)
-15. [Limitações conhecidas](#15-limitações-conhecidas)
-16. [Onde ler mais](#16-onde-ler-mais)
-
----
-
-## 1. Início rápido
+## 1. Como se usar
 
 ```bash
-make configure && make build   # a partir da raiz do repositório — ver README.md raiz
-make run-app                   # abre a tela de seleção da pasta ./sandbox
+make configure && make build   # a partir da raiz do repositorio -- ver README.md raiz
+make run-app                   # abre a tela de selecao da pasta ./sandbox
 ```
 
-Ou direto pelo binário (sempre a partir da **raiz** do repositório — `configs/`/`data/` são lidos
-por caminho relativo). É obrigatório passar `-scenario`/`-f`/`-folder` — rodar sem nenhum dos três
-é erro fatal, não mais um convite a uma tela de seleção implícita (ver a Seção 2). Não há mais
-tela de seleção do catálogo alcançável de fora (só via "carregar outro cenário" de *dentro* do
-TUI, que reexecuta com `-internal-picker` — uso interno, ver `app/Options.hpp`):
+Ou o binário direto, sempre a partir da **raiz** do repositório (`configs:`/`data:` são caminhos
+relativos). É obrigatório passar exatamente um de `-f`/`-folder` — rodar sem nenhum é erro fatal,
+não abre tela nenhuma:
 
 ```bash
-./build/app/src/app -scenario intercept_missile   # o unico cenario proprio deste app
-./build/app/src/app -folder ./sandbox             # essa sim abre uma tela -- a das subpastas de ./sandbox
+./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in   # uma poc de src/poc/**, direto -- ver §3
+./build/app/src/app -folder src/poc/dis -scenario bandit                 # idem, quando a frota nao e falcon1..4
+./build/app/src/app -folder ./sandbox                                    # navega uma pasta de cenarios soltos
 ```
 
-Não precisa de nenhum outro processo rodando — o cenário próprio é **hermético** (sem
-`networks:`) e usa porta de Tacview e diretório de dados **próprios**, então dá para rodar junto
-com `single-thread`/`multi-thread`/`bandit` sem colidir (ver [§13](#13-portas-arquivos-e-dados)).
+Cada cenário já vem com porta de Tacview e diretório de dados próprios (ver
+[§6](#6-portas-e-arquivos)) — dá pra rodar mais de um ao mesmo tempo sem colidir.
 
----
+O cabeçalho e a barra de ações ficam **sempre visíveis** — trocar de aba não perde o controle de
+tempo. **Toda tecla tem um botão equivalente** (clicável, com a dica do atalho no próprio rótulo).
 
-## 2. Cenários
+**Globais, em qualquer aba:**
 
-`-scenario <chave>` carrega um cenário do catálogo direto. **É obrigatório passar `-scenario`,
-`-f` ou `-folder`** — rodar o binário sem nenhum dos três é erro fatal (recusado antes de tocar
-em `Station`/tela nenhuma), não mais um convite a uma tela de seleção implícita.
+| tecla | ação |
+|---|---|
+| `+`/`-` | acelera / freia o tempo simulado |
+| espaço / `p` | pausa / retoma |
+| `1` | volta ao tempo real (1×) |
+| `F1`–`F7` | troca de aba |
+| `g` / `G` / `x` | roda até o breakpoint armado (na velocidade atual / na máxima) / cancela — ver [§4](#4-árvore-de-comportamento-e-breakpoints) |
+| `r` / `q` | reiniciar / sair — as duas **pedem confirmação** (`Enter` confirma, `Esc` cancela) |
+| `Ctrl+C` | sai na hora, sem confirmação |
 
-> **Este binário é o runner de TODAS as pocs.** Além do cenário próprio
-> (`intercept_missile` — havia três, `patrol`/`intercept`/`intercept_missile`, reduzidos a este
-> por ser superset dos outros dois), o catálogo traz `single-thread`, `multi-thread`,
-> `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` e `full-systems-nav` — as pocs não
-> têm mais executável próprio, são só cenário. `-f <arquivo>` carrega um `.edl`/`.edl.in` fora do
-> catálogo (é como as fixtures de teste entram); `-folder <pasta>` navega uma pasta de sandbox
-> (`<pasta>/<cenario>/configs/*.edl`, ver `app/ScenarioFolder.hpp`) sem precisar cadastrar nada
-> aqui. Ver `src/poc/meson.build`.
+**As sete abas:**
 
-| chave | rótulo | conteúdo |
+| aba | mostra | controles próprios |
 |---|---|---|
-| `intercept_missile` | Intercepto + Míssil | 4 falcons patrulhando + `bandit1` local (evasão/apoio, `EVADE`/`SUPPORT`) + `falcon1` com um míssil guiado — lançamento/detonação, ótimo para pausar bem no meio (ver "Demo: míssil guiado" no [CLAUDE.md](../CLAUDE.md)) |
+| **Players** | lista de entidades (qualquer tipo, não só aviões) + card de detalhe | `↑`/`↓` navega; `m` abre a mesma entidade no Mapa |
+| **Mapa** | canvas navegável, duas perspectivas | arrastar/setas move; `[`/`]`/roda zoom; `v` perspectiva; `t` rastro; `e` terreno; `,`/`.` gira; `c` centraliza |
+| **Memória** | contadores de instância do MIXR, ao vivo | `↑`/`↓` navega |
+| **Tempo Não-Crítico** | o que roda na thread de background (10 Hz) | só leitura |
+| **Log** | buffer de [`libs/xlog`](../libs/xlog/README.md) — host e modelo | `f` cicla o filtro por nível; `a` liga/desliga "acompanhar" |
+| **Componentes** | árvore real de componentes da `Station` | setas navega; `Enter` abre/fecha; `o`/`f` abre/fecha tudo; `n` passo manual; `v` velocidade da animação |
+| **EDL** | editor em memória do cenário carregado | `F8` valida; `F9` roda a versão editada; `F10` reverte |
 
-Cada cenário tem seu próprio arquivo em [`configs/`](configs/) (`scenario_<chave>.edl.in`),
-expandido em tempo de execução para `build/generated-scenarios/<chave>.generated.edl` — artefato
-de runtime, fora de qualquer `configs/` rastreado no git (gitignored via `build*`).
+## 2. As abas, uma a uma
 
----
+**Players.** O card de detalhe traz posição/atitude/velocidade/Mach/G/empuxo (quando fazem
+sentido pro tipo), combustível, pista de radar mais próxima, alerta tático e — se a entidade tem
+árvore de comportamento — a árvore inteira ([§4](#4-árvore-de-comportamento-e-breakpoints)).
 
-## 3. Linha de comando
+![Aba Players](images/f1.png)
+
+**Mapa.** **Cima** (padrão): Norte/Leste em milhas náuticas, com barra de escala. **Lado**:
+largura × altitude em pés, com piso em -1000 ft. Os eixos são sempre relativos ao ponto
+centralizado (o "pan"), não ao mundo absoluto. **Terreno** (`e`, desligado por padrão): curvas de
+nível (Cima) ou linha de contorno vermelha (Lado) — cobre **todos** os tiles `.hgt` encontrados em
+`shared/data/terrain/srtm/`, não só o do cenário; fora de toda cobertura, simplesmente não desenha
+nada ali (nunca inventa elevação). Clicar numa entidade seleciona — sincroniza com a aba Players.
+
+![Aba Mapa](images/f2.png)
+
+**Memória.** `count=`/`pico=`/`criados=` por classe carregada (do host e do(s) plugin(s)). O
+selo `CRESCENDO` aparece quando `count` nunca caiu numa janela de ~3 s e termina maior que
+começou — sinal de possível vazamento, sem esperar o processo terminar.
+
+![Aba Memória](images/f3.png)
+
+**Tempo Não-Crítico.** Este `app` nunca cria a thread de fundo nativa do MIXR — quem faz esse
+papel é o próprio laço que atualiza a interface (`station->updateData(dt)`, 10 Hz). A aba mostra a
+taxa alvo vs. medida, os contadores do executivo de tempo crítico, o estado da exportação Tacview
+(socket, linhas ACMI, varreduras de radar), se o terreno carregou, quantos handlers de rede
+existem (os cenários deste app são herméticos: aparece "nenhum") e a memória residente do
+processo.
+
+![Aba Tempo Não-Crítico](images/f4.png)
+
+**Log.** Como `xlog` é `shared_library()` — uma cópia só no processo — o que o **modelo** loga de
+dentro do `.so` aberto por `dlopen` cai no mesmo buffer que o do host; quem produz o conteúdo é
+sempre o modelo, o `app` só exibe. `f` cicla o filtro por nível mínimo (DEBUG→INFO→WARNING→ERROR);
+`a` gruda a seleção na linha mais recente — qualquer `↑` desliga sozinho, voltar ao fim religa.
+
+![Aba Log](images/f5.png)
+
+**Componentes.** A árvore **real** de componentes MIXR da `Station` (não a árvore de
+comportamento — essa é a de Players/Mapa). Nasce expandida só até profundidade 3; o card de
+detalhe mostra o estado **vivo** do componente selecionado, lido por getter público do próprio
+objeto. A animação de fluxo (pulso percorrendo as fases do frame de tempo crítico) é um **modelo
+conceitual**, não uma medição — o MIXR é dependência binária, sem instrumentação real possível.
+`Espaço` aqui pausa a simulação de verdade (a mesma pausa global); `n` avança um `tcFrame()` real.
+
+![Aba Componentes](images/f6.png)
+
+**EDL.** Edita o `.edl` **em memória** — nunca escreve no `.edl.in` de origem nem no
+`.generated.edl` carregado, só num arquivo de trabalho à parte (`app/data/edl_editor/`,
+gitignored). `F8` valida contra o mesmo oráculo `edlcheck` do editor gráfico web
+([`src/ui/`](../src/ui/)); `F9` valida e, se OK, **reexecuta** o processo com `-f` apontando pro
+texto editado (nunca duas `Station`s no mesmo processo); `F10` descarta a edição.
+
+![Aba EDL](images/f7.png)
+
+## 3. Cenários
+
+Não há mais catálogo estático embutido no binário — toda poc sob `src/poc/` (nenhuma com
+executável próprio) é alcançável por `-f`/`-folder`:
+
+```bash
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in   # ou multi-thread (mesmo formato)
+./build/app/src/app -folder src/poc/dis -scenario bandit                   # frota {bandit1} -- precisa de -folder
+./build/app/src/app -folder src/poc     -scenario python-flight           # ou onnx-policy, built-in_mixr_1, full-systems-nav
+```
+
+`-f <arquivo.edl>` carrega um cenário apontado direto pelo caminho — assume sempre a frota
+`falcon1..4` (o caso de `single-thread`/`multi-thread`/`python-flight`/`onnx-policy`/
+`built-in_mixr_1`, e das fixtures de teste). Um cenário com frota diferente (ex.: `bandit`,
+`{bandit1}`; `full-systems-nav`, `{a4}`) tem de ser carregado por `-folder` em vez de `-f`, que
+descobre a frota em runtime.
+
+`-folder <pasta>` navega `<pasta>/<cenário>/configs/*.edl(.in)` — sozinho (sem `-scenario`) abre a
+tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. Só funciona quando
+`configs/` tem exatamente **um** `.edl`/`.edl.in` — é por isso que `single-thread` não aparece no
+segundo exemplo acima: sua pasta também tem o `.edl.in` da demo de míssil, então `-folder` ali
+seria ambíguo (`-f` direto no arquivo resolve isso).
+
+**Outras opções de linha de comando:**
 
 | opção | efeito |
 |---|---|
-| `-scenario <chave>` | carrega o cenário do catálogo direto — o próprio (`intercept_missile`) ou o de qualquer poc (`single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1`, `full-systems-nav`) |
-| `-f <arquivo>` | um `.edl`/`.edl.in` fora do catálogo — o caminho das fixtures de teste |
-| `-folder <pasta>` | navega uma pasta de sandbox (`<pasta>/<cenario>/configs/*.edl`) — combinado com `-scenario <nome-da-subpasta>`, pula a tela e carrega direto; sem `-scenario`, abre a tela de navegação da pasta |
-| `-threads <N>` | força `numTcThreads` do pool nativo de tempo crítico (sem isso: detecta `hardware_concurrency()`, limitado a 8) |
-| `-deterministic <N>` | roda **N frames de passo fixo** e sai — sem TUI, sem TTY; imprime linhas `frame=` e o relatório de instâncias no final (ver [tests/scenario/run_app_test.py](../tests/scenario/run_app_test.py)) |
-| `-parallel-decision` | só faz sentido junto com `-deterministic`: decide os 4 players em paralelo em vez de sequência (ver [`app/DeterministicRun.hpp`](include/app/DeterministicRun.hpp)) |
+| `-threads <N>` | força o tamanho do pool de tempo crítico (padrão: `hardware_concurrency()`, até 8) |
+| `-deterministic <N>` | roda N frames de passo fixo e sai — sem TUI/TTY, imprime `frame=` + relatório de instâncias; é o caminho usado por `make test` |
+| `-parallel-decision` | com `-deterministic`: decide os 4 players em paralelo em vez de sequência |
 
-Nenhum dos três primeiros é opcional — sem `-scenario`/`-f`/`-folder`, o binário recusa com um
-erro (`"e obrigatorio passar -scenario <chave>, -f <arquivo> ou -folder <pasta>"`) e sai, sem abrir
-tela nenhuma. (Existe uma quarta flag, `-internal-picker`, mas ela **não é uso normal** — é
-reservada ao reexec interno de "carregar outro cenário"/"parar" de dentro do TUI, a única forma
-de esses dois voltarem à tela de seleção do catálogo depois desta mudança.)
+## 4. Árvore de comportamento e breakpoints
 
-`-deterministic` é o caminho usado pela suíte automatizada (`make test`, suíte `scenario-app-*`) —
-não abre terminal interativo, então funciona em CI.
+No card de detalhe (Players e Mapa), a árvore de comportamento aparece inteira, com a folha
+vencedora destacada. Clique numa folha para selecioná-la como alvo; `g`/`G` roda a simulação — na
+velocidade atual ou na máxima — até a entidade selecionada **no momento de armar** chegar naquela
+folha, e então **pausa de verdade**. **Não há desarme automático por tempo**: só sai por atingir
+ou por `x`.
 
----
+> O destaque da folha ativa é por comparação de texto entre o nome do nó e o rótulo publicado —
+> um nó cujo C++ decide em runtime entre rótulos sem relação com o próprio nome não acende,
+> mesmo sendo a folha certa (ver [§8](#8-limitações-conhecidas)).
 
-## 4. A interface — quatro abas
+## 5. Ações disruptivas
 
-```
-╭──────────────────────────────────────────────────────────────────────╮
-│ app  <cenário>  entidades=N          t=Xs  sim=Ys  <vel>  n_thread=N │
-╰──────────────────────────────────────────────────────────────────────╯
-[F1] Players  [F2] Mapa  [F3] Memória  [F4] Tempo Não-Crítico
-──────────────────────────────────────────────────────────────────────
-                        (conteúdo da aba ativa)
-──────────────────────────────────────────────────────────────────────
- [+] Acelerar  [-] Frear  [espaço] Pausar  [1] Tempo real  [m] Ver no mapa      [l] Carregar  [r] Reiniciar  [s] Parar  [q] Sair
-```
+`r`/`q` sempre pedem confirmação. `r` derruba a `Station` atual e **reexecuta o próprio processo**
+(`execv`) com o mesmo cenário (`-f`/`-folder`, conforme a origem) — nunca uma segunda simulação no
+mesmo processo; `q` só encerra. `F9` da aba EDL usa o mesmo mecanismo de reexec, com `-f` apontando
+pro texto editado.
 
-O cabeçalho mostra o cenário carregado, quantas entidades existem agora, tempo de parede (`t=`) e
-tempo simulado (`sim=`) lado a lado, a velocidade atual (ou `PAUSADO`) e quantas threads de tempo
-crítico o pool tem. As quatro abas e a barra de ações (`Acelerar`/`Frear`/…) ficam **sempre
-visíveis**, qualquer que seja a aba ativa — trocar de aba não perde o controle de tempo nem as
-ações disruptivas.
+## 6. Portas e arquivos
 
-Clique em `[F1]`/`[F2]`/`[F3]`/`[F4]` ou use as teclas de função para trocar de aba.
+Cada cenário declara a própria porta de Tacview e o próprio diretório de gravação no `.edl.in`
+(`./src/poc/<nome>/data/recordings/`) — ver o README de cada poc sob `src/poc/` para os valores.
+`networks:` (DIS) só existe em `single-thread`/`multi-thread`/`bandit`; os demais são herméticos.
 
----
+O terreno é compartilhado entre cenários (`./shared/data/terrain/srtm/`). O cenário expandido de
+qualquer `-f`/`-folder` vai para `./build/generated-scenarios/` — gitignored, fora de qualquer
+`configs/` rastreado no git.
 
-## 5. Aba Players
+## 7. Arquitetura, em uma frase
 
-Lista rolável (rola sozinha quando não cabe tudo na tela) com uma linha por entidade do cenário —
-**qualquer** tipo de player, não só aviões (ver [§14](#14-arquitetura-interna-em-resumo)) — mais o
-card de detalhe da entidade selecionada, ao lado. O cabeçalho da lista nomeia cada coluna.
+`main.cpp` só orquestra (tela → expande `.edl.in` → monta `Station` → `DashboardLoop` ou
+`DeterministicRun` → desliga → reexecuta se for o caso); `DashboardLoop.cpp` roda duas threads
+(simulação a 10 Hz publicando estado sob mutex; a principal só desenha/lê entrada), e cada aba é
+um par `.hpp`/`.cpp` **sem FTXUI nem MIXR direto**, testável isolado. O histórico completo de cada
+decisão de design — e as armadilhas encontradas rodando — está na seção `./app` do
+[CLAUDE.md](../CLAUDE.md); este README não repete o que já está lá.
 
-**Colunas da lista:**
+## 8. Limitações conhecidas
 
-| coluna | conteúdo |
+- Destaque de folha ativa e casamento de breakpoint são por texto, não por mapeamento formal.
+- A árvore mostrada (Players/Mapa) vem do primeiro `treeFile:` do cenário — se players diferentes
+  usassem árvores diferentes, todos veriam a mesma (não acontece em nenhum cenário hoje).
+- `bandit1` sempre mostra `-` na coluna "thread" — não tem `FlightAgentTC` local, nunca decide.
+- A animação de fluxo da aba Componentes é conceitual, não uma medição real do frame.
+- `-deterministic` não abre o painel — é o caminho de teste automatizado, sem TUI nem TTY.
+
+## 9. Leia mais
+
+| documento | quando ler |
 |---|---|
-| (glifo) | tipo de player — `A` avião, `G` veículo terrestre, `S` navio, `W` arma, `X` nave espacial, `B` construção, `L` forma de vida |
-| nome | o nome do player no cenário (`falcon1`, `bandit1`, `W10001`…) |
-| tipo | a string `type:` do EDL, ou o nome da classe C++ quando o modelo não declara uma |
-| comportamento | o rótulo da folha da árvore de comportamento vencedora agora (`PATROL`, `EVADE`…), ou `--` se a entidade não publica decisão |
-| thread | qual thread do pool de tempo crítico decidiu (`T0`, `T1`…), ou `-` quando não se aplica — cada falcon decide numa thread diferente do pool (a decisão roda na fase 3 do frame de tempo crítico, não no laço de background); `bandit1` fica sempre em `-` porque não tem agente de decisão local |
-| altitude, velocidade, combustível | os de sempre — combustível só aparece pra quem tem (aeronaves) |
-
-**Card de detalhe** (clique numa linha da lista, ou use as setas ↑/↓): posição, atitude,
-velocidade/Mach, G e empuxo (quando fazem sentido para o tipo), medidor de combustível, pista de
-radar mais próxima, alerta tático recebido, contagem de decisões — e, se a entidade tem árvore de
-comportamento, a própria árvore (ver [§9](#9-árvore-de-comportamento-e-breakpoints)). A thread
-que decidiu fica só na lista, não se repete aqui.
-
----
-
-## 6. Aba Mapa
-
-Vista navegável da simulação, num canvas de alta resolução (caracteres braille).
-
-### Duas perspectivas (`[v]` ou botão "Vista")
-
-| perspectiva | plano | unidade dos eixos |
-|---|---|---|
-| **Cima** (padrão) | Norte/Leste, olhando de cima | **milhas náuticas** (x/y), com barra de escala explícita |
-| **Lado** | largura × altitude | pés no eixo Y — com **piso em -1000 ft**: a grade não desce além disso, e uma linha vermelha marca o limite |
-
-Nas duas, o eixo "livre" (em torno do qual dá para girar) é o vertical — `[,]`/`[.]` giram a
-visualização (rosa dos ventos na vista de Cima; de que rumo você está olhando a formação, na
-vista de Lado). Os eixos são sempre relativos ao ponto que está centralizado agora (o "pan"), não
-ao referencial absoluto do mundo — por isso continuam fazendo sentido depois de arrastar/girar.
-
-### Navegação
-
-- **Arrastar** (botão esquerdo do mouse, dentro do canvas): move o mapa.
-- **Setas do teclado**: também movem (mesmo efeito do arrasto).
-- **`[`/`]`** ou **roda do mouse**: zoom.
-- **`[c]`**: centraliza na entidade selecionada.
-- **`[t]`**: liga/desliga o rastro (trilha das últimas posições) de cada entidade.
-- **`[e]`**: liga/desliga a vista de terreno (elevação) — ver abaixo.
-
-### Vista de terreno (`[e]` ou botão "Terreno")
-
-Desligada por padrão.
-
-| perspectiva | o que aparece |
-|---|---|
-| **Cima** | **curvas de nível**, sem cor (cinza), finas — uma linha a cada intervalo de elevação "redondo" (5/10/20/50/100 m…, escolhido sozinho conforme o alcance visível e espaçado o suficiente pra não poluir a tela), como um mapa topográfico |
-| **Lado** | uma **linha de contorno** do chão, sempre em **vermelho** — o perfil de elevação ao longo da linha de visada que passa pelo ponto centralizado, como silhueta ABERTA (não preenchida). É essa linha que marca "onde é o chão" nesta vista — não existe mais um piso fixo de -1000 ft |
-
-**Cobertura**: a vista de terreno não está mais presa ao único tile que o cenário declara em
-EDL — carrega **todos** os tiles `.hgt` encontrados em `shared/data/terrain/srtm/` e escolhe o
-certo por coordenada a cada consulta. Hoje isso cobre uma área de 2°×2° ao redor do cenário
-(Serra do Mar, RJ): o tile real (`S23W043`) mais três vizinhos **sintéticos** (elevação gerada
-por uma função matemática simples, não dado real — ver
-[`shared/data/terrain/srtm/README.md`](../shared/data/terrain/srtm/README.md) para o porquê e
-como acrescentar tiles reais depois, sem mudar nenhum código). Fora de toda cobertura carregada,
-`[e]` simplesmente não desenha nada ali — degrada em silêncio, sem inventar elevação. Uma célula
-"void" (buraco na cobertura de radar original, sem dado — não deve acontecer nos tiles deste
-repositório, mas pode acontecer num tile de terceiro) também é tratada como "sem dado", nunca
-desenhada como se fosse uma elevação real.
-
-**Enquadramento automático (só na perspectiva Lado)**: ao ligar `[e]`, trocar pra vista `[v]`
-Lado, ou centralizar `[c]` numa entidade, a referência vertical é reancorada pra que o nível do
-terreno **no ponto centralizado** apareça perto do limite inferior da janela — em vez de
-flutuar em qualquer altura (ou sumir da tela, dependendo do zoom). É um ajuste PONTUAL, feito só
-nesses três momentos — depois disso as setas continuam movendo o pan livremente, sem nenhum
-recentramento automático atrapalhando.
-
-### O que aparece desenhado
-
-Cada entidade é uma **bolinha** colorida pelo lado (`BLUE`/`RED`/`YELLOW`/`CYAN`/`GRAY`/`WHITE`),
-com uma **linha** saindo dela na direção do rumo atual (só quem tem dinâmica de movimento — tudo
-exceto construções) e o **nome**, sem moldura ao redor, ligado ao ponto por uma linha guia.
-**Clicar** numa entidade a seleciona — o mesmo efeito de selecionar na aba Players, então o card
-de detalhe ao lado (e a árvore de comportamento nele) atualiza para ela.
-
----
-
-## 7. Aba Memória
-
-Uma linha por classe do MIXR amostrada ao vivo (10 Hz) — cobre automaticamente **qualquer**
-modelo carregado (as classes vêm do próprio plugin, via `xplugin::pluginMetaObjects()`), mais duas
-classes do host como termômetro geral do parser (`Pair`, `String`).
-
-| coluna | significado |
-|---|---|
-| origem | `H` (host) ou `P` (plugin — o modelo carregado) |
-| classe | o nome de fábrica |
-| `count=` | instâncias **vivas agora** |
-| `pico=` | o maior `count` já visto nesta execução |
-| `criados=` | quantas instâncias já foram construídas, do início até agora |
-| barra | `count`/`pico` — como `pico` só cresce (nunca encolhe), a escala da barra se ajusta sozinha com o tempo |
-| `CRESCENDO` | aparece quando `count` **nunca caiu** numa janela de ~3 s e termina maior que começou — sinal de possível vazamento |
-
-Use para investigar vazamento de memória ao vivo, sem esperar o processo terminar — é a mesma
-pergunta que `app/MetaObjectReport` já respondia no final de uma execução `-deterministic`, só que
-contínua.
-
----
-
-## 8. Aba Tempo Não-Crítico
-
-Painel estático (sem lista) com o que roda na **thread de tempo NÃO crítico** — este `app` nunca
-cria a `StationBgPeriodicThread` nativa do MIXR; quem faz esse papel é o próprio laço que atualiza
-a interface (o mesmo que publica o `DashboardState` a cada amostra), chamando
-`station->updateData(dt)` fora do frame de tempo crítico.
-
-| seção | conteúdo |
-|---|---|
-| Laço de atualização | taxa alvo (10 Hz) vs. taxa **medida** de verdade, duração da última iteração, contador de iterações |
-| Tacview / gravador | se a exportação está ligada, quantas varreduras de radar já foram publicadas |
-| Terreno | se o banco de elevação (SRTM) está carregado |
-| Rede (DIS) | quantos handlers de rede existem e a que taxa — os três cenários deste `app` são herméticos (sem `networks:`), então aparece "nenhum" |
-
-É nesta mesma thread que o gravador é drenado para o Tacview, a elevação de terreno de cada
-player é atualizada (`Player::updateElevation()`), a rede DIS seria processada se o cenário
-declarasse `networks:`, e onde as outras três abas (Players/Mapa/Memória) são amostradas — a
-taxa medida aqui é a mesma que rege quão "fresca" a UI inteira fica.
-
----
-
-## 9. Árvore de comportamento e breakpoints
-
-Quando a entidade selecionada tem árvore de comportamento (BehaviorTree.CPP), o card de detalhe
-(nas duas abas, Players e Mapa) mostra a árvore inteira — lida do mesmo `treeFile:` que o cenário
-já resolve, desenhada em estilo `tree` (linhas Unicode), com a folha que está **ganhando agora**
-destacada em azul.
-
-**A árvore é clicável** — clique numa folha (não num nó de controle como `Fallback`/`Sequence`)
-para selecioná-la como alvo. Logo abaixo dela aparecem, conforme o estado:
-
-| situação | o que aparece |
-|---|---|
-| nada selecionado ainda | dica pra clicar numa folha |
-| selecionado um nó de controle | aviso pra escolher uma folha, não um nó de controle |
-| uma folha selecionada | "Folha selecionada: …" + botões **[g] Rodar até aqui** / **[G] Rodar (máx. veloc.)** |
-| breakpoint armado | "Aguardando: `<entidade>` → `<folha>` …" + botão **[x] Cancelar breakpoint** |
-| atingido | "Breakpoint atingido: … — simulação PAUSADA" |
-| não atingido a tempo | aviso de cancelamento automático (ver abaixo) |
-
-**O que acontece ao armar** (`[g]` ou `[G]`, tecla ou botão): a simulação roda — na velocidade que
-você já tinha escolhido (`[g]`) ou na **máxima possível**, sem limite de tempo real (`[G]`) — até
-a entidade selecionada **no momento de armar** chegar naquela folha. Quando chega, a simulação
-**pausa de verdade** (não é só a UI que "acha" que pausou).
-
-**Se o nó nunca é atingido:** cancele a qualquer momento com `[x]`, ou deixe — depois de 300 s de
-tempo **simulado** (não de parede: vale igual em 1× ou na velocidade máxima) sem atingir, o
-breakpoint se desarma sozinho e avisa.
-
-> O destaque da folha ativa (e o casamento nome-da-folha ↔ breakpoint) é por comparação de texto
-> entre o nome do nó e o rótulo publicado pelo modelo — cobre a maioria dos casos, mas um nó cujo
-> C++ decide em runtime entre rótulos sem relação textual com o próprio nome (ex.: a ação de
-> evasão do modelo de produção decide entre `EVADE`/`BREAK` sem que nenhum dos dois apareça no
-> nome do nó) não acende o destaque, mesmo sendo a folha certa. Ver [§15](#15-limitações-conhecidas).
-
----
-
-## 10. Todos os atalhos de teclado
-
-**Globais (qualquer aba):**
-
-| tecla | ação |
-|---|---|
-| `+` / `=` | acelera o tempo |
-| `-` / `_` | freia o tempo |
-| espaço / `p` | pausa / retoma |
-| `1` | volta ao tempo real (1×) |
-| `F1` | aba Players |
-| `F2` | aba Mapa |
-| `F3` | aba Memória |
-| `F4` | aba Tempo Não-Crítico |
-| `g` | roda até o breakpoint armado, na velocidade atual |
-| `G` | roda até o breakpoint armado, na velocidade máxima |
-| `x` | cancela o breakpoint armado |
-| `l` | carregar outro cenário — **pede confirmação** |
-| `r` | reiniciar o cenário atual — **pede confirmação** |
-| `s` | parar (volta à seleção de cenário) — **pede confirmação** |
-| `q` | sair — **pede confirmação** |
-| `Ctrl+C` | sai imediatamente, sem confirmação (o FTXUI trata) |
-
-**Só na aba Players:**
-
-| tecla | ação |
-|---|---|
-| `↑` / `↓` | navega a lista de entidades |
-| `m` | vai para a aba Mapa com a mesma entidade já selecionada |
-
-**Só na aba Mapa:**
-
-| tecla | ação |
-|---|---|
-| `↑`/`↓`/`←`/`→` | move o mapa (mesmo efeito de arrastar) |
-| `[` / `]` | zoom |
-| `,` / `.` | gira a visualização |
-| `t` | liga/desliga o rastro |
-| `e` | liga/desliga a vista de terreno |
-| `v` | alterna a perspectiva (Cima/Lado) |
-| `c` | centraliza na entidade selecionada |
-
-**Só na aba Memória:**
-
-| tecla | ação |
-|---|---|
-| `↑` / `↓` | navega a lista de classes |
-
-**No diálogo de confirmação** (depois de `l`/`r`/`s`/`q`):
-
-| tecla | ação |
-|---|---|
-| `Enter` | confirma a ação |
-| `Escape` | cancela e volta pra UI normal |
-
----
-
-## 11. Todos os elementos clicáveis
-
-Além das teclas acima, **tudo tem um botão equivalente** — a dica do atalho já vem no rótulo do
-próprio botão:
-
-- As quatro abas: `[F1] Players`, `[F2] Mapa`, `[F3] Memória`, `[F4] Tempo Não-Crítico`.
-- Barra principal: `[+] Acelerar`, `[-] Frear`, `[espaço] Pausar`, `[1] Tempo real`,
-  `[m] Ver no mapa` (só aparece com alguma entidade selecionada), `[l] Carregar`,
-  `[r] Reiniciar`, `[s] Parar`, `[q] Sair`.
-- Linha de comportamento na aba Players: clique seleciona a entidade.
-- Canvas da aba Mapa: clique numa entidade a seleciona; arrastar move o mapa; roda do mouse dá
-  zoom.
-- Barra da aba Mapa: `[[] Zoom-`, `[]] Zoom+`, `[,] Girar<`, `[.] Girar>`, `[c] Centralizar`,
-  `[t] Rastro: ON/OFF`, `[e] Terreno: ON/OFF`, `[v] Vista: Cima/Lado`.
-- Linha de classe na aba Memória: clique seleciona.
-- Linha da árvore de comportamento (nas duas abas): clique numa folha a seleciona para
-  breakpoint; aparecem `[g] Rodar até aqui` / `[G] Rodar (máx. veloc.)` ou `[x] Cancelar
-  breakpoint`, conforme o estado.
-- Diálogo de confirmação: `[Enter] Confirmar`, `[Esc] Cancelar`.
-
----
-
-## 12. Ações disruptivas e confirmação
-
-`l` (carregar outro cenário), `r` (reiniciar), `s` (parar) e `q` (sair) **sempre pedem
-confirmação** antes de executar — por tecla ou por clique, tanto faz. Enquanto o diálogo está
-aberto, o resto da interface fica bloqueado (não dá pra clicar em nada por trás) até confirmar ou
-cancelar.
-
-As três primeiras (`l`/`r`/`s`) são, por baixo, a **mesma operação**: derrubar a `Station` atual
-(`SHUTDOWN_EVENT` + `unref()`) e **reexecutar o próprio processo** (`execv`, via
-[`app/Respawn.hpp`](include/app/Respawn.hpp)) — nunca uma segunda simulação dentro do mesmo
-processo. `r` reexecuta com o mesmo `-scenario`; `l`/`s` reexecutam sem argumento, voltando à
-tela de seleção. `q` só encerra.
-
----
-
-## 13. Portas, arquivos e dados
-
-**Desde que o `./app` virou o runner único de TODAS as pocs** (ver "Estrutura de um subprojeto"
-no CLAUDE.md), a tabela abaixo já não é "os valores fixos do `./app`" — varia por
-`-scenario <chave>`, porque Tacview/gravação/cenário expandido vêm do PRÓPRIO `.edl.in` de cada
-entrada do catálogo (`app/ScenarioCatalog.cpp`), não de um valor único deste binário:
-
-| item | cenário PRÓPRIO do app (`intercept_missile`) | cenários das pocs (`single-thread`/`multi-thread`/`bandit`/`python-flight`/`onnx-policy`/`built-in_mixr_1`) |
-|---|---|---|
-| Tacview (*Real-Time Telemetry*) | porta **1236** | a porta de CADA poc (1234/1235/1237/1238/1239 — ver o README de cada uma) |
-| gravação Tacview | `./app/data/recordings/mission-<cenário>.acmi` | `./src/poc/.../data/recordings/mission.acmi` (o diretório da própria poc) |
-| bloco `networks:` (DIS) | nenhum — hermético | `single-thread`/`multi-thread`/`bandit` TÊM `networks:` (ver a migração pra `FlightAgentTC` na "nona passada"); os outros três são herméticos |
-
-**Cenário expandido — não varia mais por origem.** Todo `.generated.edl` (o próprio do app ou o
-de qualquer poc/fixture carregado por `-scenario`/`-f`/`-folder`) vai para
-`./build/generated-scenarios/<chave>.generated.edl` — artefato de runtime, gitignored via `build*`
-e decoplado de QUALQUER `configs/` rastreado no git (antes ficava dentro de `./app/configs/`,
-poluindo a pasta de configuração deste app com o gerado de pocs alheias).
-
-**Duas coisas que NÃO variam por cenário, sempre as mesmas do processo inteiro:**
-
-| item | valor |
-|---|---|
-| log | `./app/data/logs/app.log` — **sempre este caminho, mesmo rodando `-scenario single-thread`**; não existe um `data/logs/<poc>.log` por cenário quando a poc roda via `./app` (só o `data/logs/.gitkeep` de cada poc, vestigial de antes da unificação do runner — ver a nota abaixo) |
-| terreno (SRTM) | `./shared/data/terrain/srtm/` — compartilhado com as outras pocs |
-
-**Nota**: isto é uma inconsistência real, não um design deliberado documentado em lugar nenhum —
-`xlog::init("./app/data/logs/app.log")` é chamado uma vez, no topo de `main()`
-(`app/src/main.cpp`), **antes** até de `-scenario` ser lido, enquanto o caminho de gravação
-Tacview e o de mensagens (`xmsg`) já são resolvidos por-cenário via o próprio `.edl.in`. Rodar
-`single-thread` e depois `multi-thread` (duas invocações separadas) sobrescreve o MESMO
-`app/data/logs/app.log` a cada vez (`xlog::init()` apaga o arquivo antes de abrir, de propósito
-— ver `shared/xlog/Log.cpp` — então não acumula lixo entre execuções, mas também não sobra
-histórico por cenário). Corrigir exigiria adiar `xlog::init()` para depois da resolução do
-cenário e derivar o caminho por entrada do catálogo — não fiz essa mudança (é comportamento, não
-só documentação); registrado aqui para quem for decidir se vale a pena.
-
----
-
-## 14. Arquitetura interna, em resumo
-
-`main.cpp` só orquestra, na ordem: tela de seleção (se precisar) → expande o `.edl.in` →
-`StationBuilder` monta a `Station` → aplica o ajuste de manete de cruzeiro → roda
-`DashboardLoop` (interativo) ou `DeterministicRun` (`-deterministic`) → desliga a `Station` →
-`Respawn` se for o caso.
-
-`app/DashboardLoop.cpp` é o laço de tempo real: **duas threads** — uma de simulação (10 Hz,
-`station->updateData(dt)`, publica um `DashboardState` sob mutex a cada amostra) e a principal,
-que só roda o laço do FTXUI (desenho + teclado + mouse). A captura de estado
-(`app/DashboardState.cpp`) é **agnóstica ao tipo de player**: lê tudo pela base
-`mixr::models::Player` — funciona para qualquer modelo carregado, não só o de produção, e
-descobre entidades dinamicamente (`app::discoverPlayers`), então um míssil lançado em runtime
-aparece sozinho, sem estar em nenhuma lista fixa.
-
-Para o desenho completo — por que cada decisão foi tomada, as armadilhas encontradas rodando, os
-detalhes de cada módulo — ver a seção `./app` do [CLAUDE.md](../CLAUDE.md) da raiz: é o registro
-vivo de tudo que foi medido rodando, rodada por rodada.
-
----
-
-## 15. Limitações conhecidas
-
-- **Destaque de folha ativa e casamento de breakpoint são por texto**, não por um mapeamento
-  formal — ver o aviso em [§9](#9-árvore-de-comportamento-e-breakpoints).
-- **A árvore mostrada vem do PRIMEIRO `treeFile:` encontrado no cenário** — se um cenário
-  hipotético desse árvores diferentes a players diferentes, todos veriam a mesma (não acontece em
-  nenhum cenário deste repositório hoje).
-- **`bandit1` sempre mostra `-` na coluna "thread"** — ele não tem `FlightAgentTC` local (é um
-  intruso scriptado, só com `Autopilot`), então nunca decide; os quatro falcons, que decidem no
-  pool de tempo crítico, mostram sua thread de verdade (`T0`, `T1`…).
-- **`-deterministic` não roda o painel** — é o caminho de teste automatizado, sem TUI nem TTY;
-  imprime texto puro (linhas `frame=` + relatório de instâncias).
-
----
-
-## 16. Onde ler mais
-
-| documento | responde |
-|---|---|
-| [CLAUDE.md](../CLAUDE.md), seção `./app` | o histórico completo de decisões e armadilhas, rodada por rodada |
-| [README.md](../README.md) (raiz) | visão geral do repositório inteiro — os quatro subprojetos, os modelos como plugin, as bibliotecas compartilhadas |
-| [models/README.md](../models/README.md) | como um modelo novo vira plugin, e o contrato que ele tem que cumprir |
-| [tests/README.md](../tests/README.md) | a suíte automatizada — inclusive `scenario-app-*`, que roda os três cenários desta poc em `-deterministic` |
+| [CLAUDE.md](../CLAUDE.md), seção `./app` | toda decisão de design e armadilha, rodada por rodada |
+| [README.md](../README.md) (raiz) | pré-requisitos, build, como o repositório se organiza |
+| [libs/README.md](../libs/README.md) | as bibliotecas que este app consome (`xboard`, `xtrack`, `xlog`...) |
+| [models/README.md](../models/README.md) | como um modelo vira plugin |
+| [tests/README.md](../tests/README.md) | a suíte automatizada, inclusive `scenario-app-*` |

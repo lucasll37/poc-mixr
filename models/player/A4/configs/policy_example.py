@@ -8,7 +8,7 @@ CONTRATO
     def decide(obs) -> (heading_deg, altitude_m, speed_kts)
 
 `obs` e uma lista de 28 floats na ORDEM CANONICA de
-shared/xrlbridge/ObservationFields.hpp -- a MESMA ordem que a entrada de um
+libs/xrlbridge/ObservationFields.hpp -- a MESMA ordem que a entrada de um
 .onnx. Os indices abaixo saem dessa ordem; se ela mudar, este arquivo muda
 junto (e por isso a ordem e tratada como contrato, nao como detalhe).
 

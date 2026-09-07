@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `./build/app/src/app -scenario single-thread`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -44,11 +44,11 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 >
 > Isso não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o binário.
 > Ver [models/README.md](../../../../models/README.md) para escrever um modelo novo, e
-> [shared/xplugin/README.md](../../../../shared/xplugin/README.md) para o contrato.
+> [libs/xplugin/README.md](../../../../libs/xplugin/README.md) para o contrato.
 
 ```bash
 make build
-./build/app/src/app -scenario single-thread        # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in        # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread      # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
@@ -236,7 +236,7 @@ substituído por [`app/ScenarioTemplate.cpp`](../../../../app/src/app/ScenarioTe
 o teto depende da máquina):
 
 ```
-( ClockStation                                       ← shared/xclock: Station + controle de tempo
+( ClockStation                                       ← libs/xclock: Station + controle de tempo
    components:      { agent1..agent4 : ( SimAgent actorPlayerName: falconN ... ) }
    networks:        { ( DisNetIO enableOutput: false inputEntityTypes: { ( DisNtm ... ) } ) }
                                                       ← recebe o bandit1 SÓ pela rede (ver abaixo)
@@ -345,14 +345,14 @@ número de threads T/C é um marcador `@NUM_TC_THREADS@` resolvido **antes do pa
 ([`app/ScenarioTemplate`](../../../../app/src/app/ScenarioTemplate.cpp)), porque `setSlotNumTcThreads()` é privado
 e não existe setter público — a única forma honesta de manter tudo instanciado via EDL.
 
-### 5.4 O gancho de sensor é `transmit()`, e a biblioteca `shared/x<nome>`
+### 5.4 O gancho de sensor é `transmit()`, e a biblioteca `libs/x<nome>`
 
 O único exemplo de sensor novo em toda a árvore oficial (`mainGndMapRdr/RealBeamRadar`) engata em
 `transmit(dt)`, chamando `BaseClass::transmit(dt)` primeiro, e busca recursos do mundo
 preguiçosamente (`if (terrain == nullptr) ... getWorldModel()->getTerrain()`). Esta poc não
 escreve sensor próprio, mas usa o **outro** padrão do mesmo exemplo: o de empacotar o que é
-transversal como `shared/x<nome>` com factory própria — é o que são
-[`shared/xtacview`](../../../../shared/xtacview/) e [`shared/xclock`](../../../../shared/xclock/).
+transversal como `libs/x<nome>` com factory própria — é o que são
+[`libs/xtacview`](../../../../libs/xtacview/) e [`libs/xclock`](../../../../libs/xclock/).
 
 ### 5.5 `dataRecorder` com cadeia de `OutputHandler`
 
@@ -429,7 +429,7 @@ volta e limiar de detecção — e a correlação de pistas com *gates* de posi�
 velocidade. Ver o percurso completo em [9.3](#93-canal-1--rf-emissão-eco-pista).
 
 **Duas regras que o sensor nativo não implementa** e por isso moram em
-[`xtrack/TrackQuery`](../../../../shared/xtrack/TrackQuery.cpp): o radar **não filtra por lado**
+[`xtrack/TrackQuery`](../../../../libs/xtrack/TrackQuery.cpp): o radar **não filtra por lado**
 (`playerOfInterestTypes` filtra por *tipo* de player, não por *side* — a esquadrilha inteira
 aparece como pista), e a escolha do "contato mais próximo" precisa de desempate determinístico.
 
@@ -472,7 +472,7 @@ de evasão** — nada intervém durante `PATROL`/`RTB`/`SUPPORT`. Ver a
 ### 6.7 As peças que continuam nossas
 
 As seis da [seção 1](#1-o-que-vem-do-framework-e-o-que-é-nosso), mais três utilitários de runtime
-(`ThreadTag`, e o `shared/xlog`/`shared/xboard` que saíram daqui) e a camada `domain/` inteira — que não é MIXR nem BT, e é
+(`ThreadTag`, e o `libs/xlog`/`libs/xboard` que saíram daqui) e a camada `domain/` inteira — que não é MIXR nem BT, e é
 justamente por isso que ela é a parte testável sem simulação.
 
 ---
@@ -599,11 +599,11 @@ na [seção 8](#8-a-cadeia-de-decisão-ubf--behaviortree) e na [seção 10](#10-
 ### 7.2 Camada 2 — `xnative/`, os utilitários de runtime
 
 Dois arquivos, um por questão, ambos independentes entre si e do MIXR. O log (antes
-`xnative/Log.*`) virou `shared/xlog` — ver a seção `shared/xlog` do CLAUDE.md — porque é idêntico
+`xnative/Log.*`) virou `libs/xlog` — ver a seção `libs/xlog` do CLAUDE.md — porque é idêntico
 nas duas pocs irmãs, como `xtacview`/`xclock`/`xjoystick`.
 
 **`threadTag()`/`currentCpu()`** (antes `xnative/ThreadTag.*`, próprio deste modelo — hoje
-promovido para [`shared/xboard/Board.hpp`](../../../../shared/xboard/Board.hpp), ao lado de
+promovido para [`libs/xboard/Board.hpp`](../../../../libs/xboard/Board.hpp), ao lado de
 `BehaviorBoard`, porque mais de um plugin no mesmo processo — o modelo `flight` e o `missile` —
 precisa da MESMA numeração para a mesma thread física do pool, não uma por `.so`) —
 `threadTag()` devolve um índice
@@ -622,7 +622,7 @@ if (cachedTag >= 0) return cachedTag;    // o mutex global é tocado UMA vez por
 Sem o cache haveria um lock global no caminho quente (todo player, todo frame) — exatamente o
 tipo de serialização que anularia o pool de threads do framework.
 
-**[`xnative/BehaviorBoard.*`](../../../../shared/xboard/Board.hpp)** — um `std::map<int,
+**[`xnative/BehaviorBoard.*`](../../../../libs/xboard/Board.hpp)** — um `std::map<int,
 std::string>` global sob mutex, com `setBehaviorLabel(id, label)` e `getBehaviorLabel(id)`.
 
 > **Este arquivo é um bom exemplo do preço de herdar tudo.** O player é o `models::Aircraft`
@@ -665,7 +665,7 @@ setLocalSendEnabled(true);
 Por que a disciplina encena/promove existe, e por que a fusão é comutativa, está em
 [9.7](#97-o-caminho-desta-poc-fim-a-fim). É ela que sustenta o `./tests/determinism/check_determinism.sh ./build/app/src/app single-thread 2000 single-thread`.
 
-**[`xtrack/TrackQuery.*`](../../../../shared/xtrack/TrackQuery.hpp)** — uma função livre,
+**[`xtrack/TrackQuery.*`](../../../../libs/xtrack/TrackQuery.hpp)** — uma função livre,
 `nearestHostileTrack(air)`, que percorre
 `AirVehicle → OnboardComputer → TrackManager("twsTrkMgr") → Track` e devolve um `TrackInfo`. Está
 num arquivo só porque é consultada em **dois lugares muito diferentes** — a percepção do UBF e o
@@ -988,7 +988,7 @@ Fino de propósito: **não pilota, não tica árvore e não monta ACMI.** A sequ
 
 ```cpp
 parseCommandLine                                     // app/Options
-xlog::init(logPath); if (deterministic) setLoggingEnabled(false)   // shared/xlog
+xlog::init(logPath); if (deterministic) setLoggingEnabled(false)   // libs/xlog
 ensureTerrainData(terrainDir, terrainTile)           // app/TerrainData
 generateScenario(templatePath, generatedPath, ...)   // app/ScenarioTemplate
 buildStation(generatedPath)                          // app/StationBuilder
@@ -1524,7 +1524,7 @@ E uma que já está ligada sem ninguém pedir: o **radar-altímetro**.
 
 ## 11. Tacview
 
-A exportação é a de [shared/xtacview](../../../../shared/xtacview/), ligada na cadeia nativa do
+A exportação é a de [libs/xtacview](../../../../libs/xtacview/), ligada na cadeia nativa do
 `dataRecorder` (nenhum código de stream no `main.cpp`). Cada player precisa de
 `dataLogTime: ( Seconds 0.1 )` — o slot nasce zero e, sem ele, o player nunca aparece.
 
@@ -1597,7 +1597,7 @@ Do nosso lado, três decisões conscientes fecham as brechas que sobrariam:
   O relógio de parede decide apenas *quando* o frame roda, nunca *quanto* ele avança.
 - **Fusão comutativa dos alertas** ([9.7](#97-o-caminho-desta-poc-fim-a-fim)).
 - **Escolha da pista sem depender da lista** — menor distância e, em empate exato, menor id de
-  pista ([`TrackQuery`](../../../../shared/xtrack/TrackQuery.cpp)).
+  pista ([`TrackQuery`](../../../../libs/xtrack/TrackQuery.cpp)).
 
 E, com o terreno: **a consulta de elevação é uma leitura de um banco imutável depois de
 carregado**, feita sempre no mesmo ponto do passo. Não introduz dependência de ordem — o que o
@@ -1777,7 +1777,7 @@ Os quatro aviões chegam ao primeiro `genAction()` ao mesmo tempo, em threads T/
 ## 14. Controle de tempo — acelerar, frear, pausar
 
 O cenário declara **`( ClockStation )` no lugar de `( Station )`** — uma `simulation::Station` com
-um único *override*, vinda de [shared/xclock](../../../../shared/xclock/). Trocar de volta para
+um único *override*, vinda de [libs/xclock](../../../../libs/xclock/). Trocar de volta para
 `( Station )` continua rodando, só sem as teclas (o `main.cpp` avisa e segue).
 
 Teclas: `+`/`=` acelera, `-`/`_` freia, `espaço`/`p` pausa, `1` volta a tempo real, `h` ajuda.
@@ -1824,7 +1824,7 @@ simulação roda normalmente, só sem teclado.
 ```bash
 # build + execução. 'make build' ENCADEIA as três etapas:
 #   sdk (dist/include+lib) -> models (o plugin) -> host (o executável)
-make configure && make build && ./build/app/src/app -scenario single-thread
+make configure && make build && ./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in
 
 # as DUAS suítes (a do modelo e a do host) -- 'make test' roda as duas
 meson configure build -Dtests=true && make build && make test
@@ -1836,13 +1836,13 @@ meson configure build -Dtests=true && make build && make test
 make test-asan
 
 # o terreno chegou? elev= e agl= têm de ser plausíveis e NÃO-ZERO
-./build/app/src/app -scenario single-thread -deterministic 300 | grep "^frame=300 "
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in -deterministic 300 | grep "^frame=300 "
 
 # o piso de terreno está vivo? (controle negativo, sem recompilar)
 sed 's/terrainClearance: ( Meters 800 )/terrainClearance: ( Meters 0 )/' \
     src/poc/dis/single-thread/configs/scenario.edl.in > /tmp/sem-piso.edl.in
-./build/app/src/app -scenario single-thread -deterministic 12000 | grep '^frame=' > /tmp/com.txt
-./build/app/src/app -scenario single-thread -deterministic 12000 -f /tmp/sem-piso.edl.in \
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in -deterministic 12000 | grep '^frame=' > /tmp/com.txt
+./build/app/src/app -f /tmp/sem-piso.edl.in -deterministic 12000 \
     | grep '^frame=' > /tmp/sem.txt
 diff -q /tmp/com.txt /tmp/sem.txt      # DEVEM diferir
 
@@ -1854,7 +1854,7 @@ grep -o "Name=[^,]*,Type=[^,]*,Color=[^,]*,CallSign=[^,]*" \
 meson configure build -Dasan=true && meson compile -C build single-thread
 
 # vazamento sem ferramenta externa: os contadores de instância do próprio MIXR
-./build/app/src/app -scenario single-thread -threads 1 -deterministic 1000 | grep "^meta="
+./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in -threads 1 -deterministic 1000 | grep "^meta="
 ```
 
 > **Atenção ao rodar os comandos acima com `-deterministic` e cenário de produção:** o bloco

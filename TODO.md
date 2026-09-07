@@ -1,12 +1,9 @@
-> documentar de forma excelente
-> tirar prints para readme
-> testes exaustivos
-> interface gráfica para montar edl
-> enxugar shared
-> fazer animação da tomada de decisão
->  groot
+> documentar de forma excelente [indo]
+> interface gráfica para montar edl [indo]
+>  groot [indo]
 > ci gitlab
-
+> testes exaustivos
+> revisar documentação
 
 
 ----------------------------------------------------
@@ -43,3 +40,13 @@ Ao fim do "tour" me responda:
 - quais comandos quebraram?
 - Sugestão de melhorias a respeito do que já existe
 - O que seria muito bom se tivesse?
+
+
+Check-list:
+- subi o ambiente
+- visualizar com tacview
+- manual
+- app
+- edl-editor
+- editar com o groot
+

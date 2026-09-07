@@ -37,7 +37,7 @@ struct BtTuning
 
    // jitter de rumo da patrulha (opcional, desligado por padrao -- ver o
    // cabecalho de domain/PatrolPlan.hpp para o "porque" do desenho e
-   // shared/xrandom/DeterministicRng.hpp para a hierarquia de derivacao)
+   // libs/xrandom/DeterministicRng.hpp para a hierarquia de derivacao)
    double patrolJitterHeadingDeg{0.0};      // amplitude; 0 = recurso desligado
    std::uint64_t patrolMasterSeed{0};       // mesmo valor em todo player do cenario
    bool patrolSeedOverrideSet{false};       // true so se o slot abaixo foi de fato declarado

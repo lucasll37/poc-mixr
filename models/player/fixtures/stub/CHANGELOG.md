@@ -11,7 +11,7 @@ Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 **A versão é a do `project()` em [meson.build](meson.build)** — hoje `1.0.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`shared/xplugin/PluginAbi.hpp`](../../../../shared/xplugin/PluginAbi.hpp)).
+[`libs/xplugin/PluginAbi.hpp`](../../../../libs/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. As entradas anteriores à criação deste arquivo foram reconstruídas do código e dos
@@ -30,7 +30,7 @@ uma por commit.
   igualdade EXATA de conjunto contra o que a `.so` exporta — sem esta classe, o stub deixava de
   ser contrato-compatível com o cenário que ele existe para rodar, e
   `plugin-modelo-estranho`/`plugin-deposito-terceiro` quebravam. Nenhum cenário de teste liga a
-  ponte de RL de verdade (isso exigiria `shared/xrlbridge`, que o stub não linka): o nome só
+  ponte de RL de verdade (isso exigiria `libs/xrlbridge`, que o stub não linka): o nome só
   precisa existir e se recusar a decidir. `docs/CONTRATO.md` ganhou a linha correspondente na
   tabela de nomes. (2026-09-03)
 - Este `CHANGELOG.md`. (2026-09-03)

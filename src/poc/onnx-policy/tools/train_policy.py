@@ -54,7 +54,7 @@ a formulacao que o mecanismo consegue representar, e escrever por que.
 
 (Se a saida fosse seno e cosseno do rumo, em vez do rumo, o corte
 desapareceria -- mas isso muda o CONTRATO de 3 saidas, que e compartilhado
-com o treino de src/rl e com o unscale de shared/xrlbridge. Fica registrado
+com o treino de src/rl e com o unscale de libs/xrlbridge. Fica registrado
 como o caminho, caso um dia se queira uma politica que orbite.)
 
 --------------------------------------------------------------------------
@@ -63,7 +63,7 @@ O QUE ESTE SCRIPT NAO INVENTA
 
 A ordem dos 28 campos vem do C++ (src/poc/rl-training/tools/export_onnx.py, que a le de
 mixr_gym._native, que expande a X-macro de
-shared/xrlbridge/ObservationFields.hpp). Nao ha lista de campos escrita
+libs/xrlbridge/ObservationFields.hpp). Nao ha lista de campos escrita
 aqui: uma copia divergiria em silencio e a rede voaria errado sem erro
 nenhum. Os limites do unscale (0..360, 0..8000, 0..400) idem -- estao em
 ObservationFields.hpp e sao repetidos abaixo com a fonte anotada.
@@ -79,7 +79,7 @@ import sys
 RAIZ = pathlib.Path(__file__).resolve().parents[4]
 SAIDA_PADRAO = RAIZ / "src/poc/onnx-policy/configs/policy_barrier.onnx"
 
-# XRLBRIDGE_ACTION_FIELDS, de shared/xrlbridge/ObservationFields.hpp. A
+# XRLBRIDGE_ACTION_FIELDS, de libs/xrlbridge/ObservationFields.hpp. A
 # desnormalizacao de verdade e a de xrlbridge::unscaleCommand(), chamada pelo
 # no OnnxPolicy; estes numeros so precisam BATER com ela.
 ACAO_LIMITES = [("headingDeg", 0.0, 360.0),

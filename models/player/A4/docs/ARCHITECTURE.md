@@ -53,7 +53,7 @@ repetida durante o desenvolvimento da árvore.
 
 ## O log do modelo (`LOG(...)` em `ubf/FlightAction.cpp`)
 
-`shared/xlog` é uma `shared_library()`, então há **uma cópia no processo** e o `LOG(...)` emitido
+`libs/xlog` é uma `shared_library()`, então há **uma cópia no processo** e o `LOG(...)` emitido
 de dentro deste `.so` (aberto por `dlopen`) cai no mesmo buffer/arquivo do host — é o que faz a aba
 "Log" (F5) do `./app` mostrar o que o modelo registra, sem nenhuma ponte. Nas outras pocs
 (`single-thread`/`multi-thread`), que não têm aba, as mesmas linhas saem no console e no

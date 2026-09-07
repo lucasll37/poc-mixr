@@ -29,7 +29,7 @@ namespace domain {
 // aqui via setHeadingJitter() ja e o resultado FINAL de uma hierarquia de
 // derivacao (semente mestra do cenario -> hash do nome do player -> salt de
 // proposito) calculada por quem chama -- ver BtBehavior::configurePlans() e
-// shared/xrandom/DeterministicRng.hpp. Esta classe so semeia e sorteia; nao
+// libs/xrandom/DeterministicRng.hpp. Esta classe so semeia e sorteia; nao
 // sabe de master seed, nome de player nem salt -- e por isso continua sem
 // incluir nenhum header do SDK (ver o cabecalho de DeterministicRng.hpp para
 // o motivo: test_domain/test_tree compilam esta classe SEM MIXR/SDK).

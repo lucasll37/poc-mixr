@@ -3,7 +3,7 @@
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
-> `./build/app/src/app -scenario onnx-policy`. O que sobra nesta pasta é o **cenário**
+> `./build/app/src/app -folder ./sandbox -scenario onnx-policy`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
@@ -17,7 +17,7 @@ crítico**, sem Python no processo e sem um frame de latência.
 
 ```bash
 make build
-./build/app/src/app -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
+./build/app/src/app -folder ./sandbox -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
@@ -28,7 +28,7 @@ make build
 
 ```bash
 src/poc/rl-training/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx
-./build/app/src/app -scenario onnx-policy                                                              # veja o voo mudado
+./build/app/src/app -folder ./sandbox -scenario onnx-policy                                                              # veja o voo mudado
 ```
 
 Nada é recompilado entre as duas execuções — nem o host, nem o plugin. O `.onnx` é lido do disco na
@@ -59,10 +59,10 @@ primeira decisão.
 
 | peça | onde |
 |---|---|
-| o motor de inferência (`open`/`shape`/`run`, sessão cacheada por caminho) | [`shared/xinfer`](../../../shared/xinfer/) |
+| o motor de inferência (`open`/`shape`/`run`, sessão cacheada por caminho) | [`libs/xinfer`](../../../libs/xinfer/) |
 | o nó de árvore `( OnnxPolicy )` | `models/player/A4/src/bt/nodes/OnnxPolicyAction.cpp` |
-| a desnormalização da ação (`unscaleCommand`) | [`shared/xrlbridge`](../../../shared/xrlbridge/) |
-| a ordem canônica dos 28 campos | [`shared/xrlbridge/ObservationFields.hpp`](../../../shared/xrlbridge/ObservationFields.hpp) |
+| a desnormalização da ação (`unscaleCommand`) | [`libs/xrlbridge`](../../../libs/xrlbridge/) |
+| a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à das gêmeas |
 | o plugin | o **mesmo** `libflight_tc.so` das gêmeas, byte a byte |
 
@@ -202,7 +202,7 @@ registrado como o caminho, caso um dia se queira uma política que orbite.
 ## 6. Determinismo
 
 Quatro aeronaves inferindo **em paralelo**, na fase 3, compartilhando **uma** sessão do ONNX
-Runtime (o cache de `shared/xinfer` é por caminho, e as quatro apontam para o mesmo arquivo):
+Runtime (o cache de `libs/xinfer` é por caminho, e as quatro apontam para o mesmo arquivo):
 
 ```bash
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy
@@ -215,7 +215,7 @@ OK   threads-1 == threads-4
 OK   uma decisao por frame, por aviao, nas 3 configuracoes
 ```
 
-Dumps **byte-idênticos**. Duas escolhas de `shared/xinfer` sustentam isso, e as duas já estavam lá:
+Dumps **byte-idênticos**. Duas escolhas de `libs/xinfer` sustentam isso, e as duas já estavam lá:
 a sessão é criada com `intra_op`/`inter_op` em 1 thread e execução sequencial, e `run()` solta o
 mutex antes de inferir (`Ort::Session::Run` é seguro para chamada concorrente). Fixar as threads é,
 de quebra, **mais rápido** neste tamanho de modelo: 50,1 µs contra 76,0 µs.
@@ -295,7 +295,7 @@ make venv-rl-training
 # treinar (ver models/player/A4/docs/POLITICAS.md, seção 2)
 PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \
     --sb3 runs/ppo_falcon.zip -o src/poc/onnx-policy/configs/policy_barrier.onnx
-./build/app/src/app -scenario onnx-policy
+./build/app/src/app -folder ./sandbox -scenario onnx-policy
 ```
 
 Ou aponte o atributo `model` da árvore para outro arquivo e mantenha os dois. Em nenhum dos casos
@@ -347,7 +347,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 | determinismo | dumps byte-idênticos com 1, 2 e 4 threads T/C, mais repetição com 4 |
 | piso anti-CFIT | **não existe mais neste cenário** — sem `( UbfArbiter )`/`( AltitudeSafetyBehavior )`, `bt=SAFETY` é inalcançável; ver a [seção 7](#7-a-rede-tem-a-última-palavra--não-há-mais-árbitro-neste-cenário) |
 | degradação | `.onnx` recusado → `bt=PATROL` + `LOG(ERROR)`, sem abortar |
-| custo da inferência | 50,1 µs médios (medido em `shared/xinfer`, para este mesmo MLP) — 0,25% de um frame de 20 ms |
+| custo da inferência | 50,1 µs médios (medido em `libs/xinfer`, para este mesmo MLP) — 0,25% de um frame de 20 ms |
 
 ---
 
@@ -388,7 +388,7 @@ continua byte a byte igual à da `single-thread`) e `tests/guard/check_falcons_e
 | a rede | `configs/policy_barrier.onnx` (25 KB, versionado) |
 | o treinador | [`tools/train_policy.py`](tools/train_policy.py) |
 | o cenário | [`configs/scenario.edl.in`](configs/scenario.edl.in) |
-| o motor de inferência | [`shared/xinfer/README.md`](../../../shared/xinfer/README.md) |
+| o motor de inferência | [`libs/xinfer/README.md`](../../../libs/xinfer/README.md) |
 | o nó `( OnnxPolicy )` | `models/player/A4/src/bt/nodes/OnnxPolicyAction.cpp` |
 | o guia de políticas | [`models/player/A4/docs/POLITICAS.md`](../../../models/player/A4/docs/POLITICAS.md) |
 | o wrapper de treino | [`src/rl/README.md`](../../rl/README.md) |

@@ -108,7 +108,7 @@ EntityState captureEntity(mixr::models::Player* const player)
       s.trackRangeNm = track.rangeM * M2NM;
    }
 
-   // shared/xboard -- ja agnostico (ver o cabecalho de Board.hpp): so
+   // libs/xboard -- ja agnostico (ver o cabecalho de Board.hpp): so
    // preenche se o MODELO escreveu algo para este id, o que degrada em
    // silencio (rotulo "--") para um modelo que nunca chama setBehaviorLabel.
    const mixr::xboard::Readout board{mixr::xboard::get(s.id)};

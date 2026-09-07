@@ -9,11 +9,11 @@ publica. A única peça não nativa dele é o `( AlertDatalink )`, que herda de
 `models::Datalink` só para decidir o que fazer com a mensagem recebida.
 
 ```bash
-./build/app/src/app -scenario built-in_mixr_1            # tempo real, Tacview na porta 1239
-./tests/determinism/check_determinism.sh ./build/app/src/app built-in_mixr_1 2000 '' built-in_mixr_1          # determinismo com 1, 2 e 4 threads T/C
+./build/app/src/app -folder src/poc -scenario built-in_mixr_1            # tempo real, Tacview na porta 1239
+./tests/determinism/check_determinism.sh ./build/app/src/app built-in_mixr_1 2000 '' src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in          # determinismo com 1, 2 e 4 threads T/C
 
 # quem executa e o ./app, o runner unico -- esta poc nao tem binario proprio
-./build/app/src/app -scenario built-in_mixr_1 -deterministic 30000
+./build/app/src/app -folder src/poc -scenario built-in_mixr_1 -deterministic 30000
 ```
 
 **Esta poc não tem código nenhum** — só o cenário, os dados de execução e este
@@ -106,7 +106,7 @@ mesmo recurso que a `bandit` já usa (o cenário dela é um `scenario.edl`).
 Pelo mesmo motivo esta poc **não entra na lista `pocs`** de
 [tests/meson.build](../../../tests/meson.build): as suítes `scenario`/`memory`
 derivam fixtures de `configs/scenario.edl.in` via `make_fixture.py`. O
-determinismo tem alvo próprio (`./tests/determinism/check_determinism.sh ./build/app/src/app built-in_mixr_1 2000 '' built-in_mixr_1`), que roda contra o
+determinismo tem alvo próprio (`./tests/determinism/check_determinism.sh ./build/app/src/app built-in_mixr_1 2000 '' src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in`), que roda contra o
 cenário desta pasta — já hermético, sem `networks:`.
 
 ## Das 96 classes, o que sobra e por quê

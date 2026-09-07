@@ -1,10 +1,10 @@
 //
 // full-systems-nav -- o player maximo, navegando de verdade
 //
-// E o cenario DEFAULT desta poc (a chave no catalogo do ./app e
-// "full-systems-nav"):
+// E o cenario DEFAULT desta poc, alcancado via '-folder <pasta>' do ./app
+// (nome da subpasta: "full-systems-nav"):
 //
-//    ./build/app/src/app -scenario full-systems-nav
+//    ./build/app/src/app -folder ./sandbox -scenario full-systems-nav
 //
 // POR QUE O ARQUIVO NAO SE CHAMA scenario.edl.in:
 // tests/guard/check_falcons_estrutura.sh varre esse nome por glob e exige

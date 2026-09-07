@@ -59,7 +59,7 @@ bt_sources = files(
 # bt_sources e compartilhado por test_tree e test_native, e test_tree tem uma
 # propriedade que vale a pena preservar: ele NAO linka o MIXR (ver o comentario
 # do alvo, logo abaixo) -- e o que o refactor de bt/DecisionContext.hpp
-# comprou. Um no que chama shared/xinfer arrasta sdk_dep, cujo .pc declara
+# comprou. Um no que chama libs/xinfer arrasta sdk_dep, cujo .pc declara
 # 'Requires: mixr', e a propriedade se perderia em silencio.
 #
 # Estes nos sao exercitados pelo test_native, que ja linka o SDK. A arvore de

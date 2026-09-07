@@ -12,7 +12,7 @@ namespace bt_nodes {
 //
 // E o no GENERICO de inferencia: ele nao sabe o que o modelo calcula. Monta o
 // vetor de entrada a partir do WorldView (a MESMA ordem canonica que o treino
-// em src/rl usa -- ver shared/xrlbridge/ObservationFields.hpp), roda, e compara
+// em src/rl usa -- ver libs/xrlbridge/ObservationFields.hpp), roda, e compara
 // UMA das saidas com o limiar. Serve para um classificador de ameaca, um
 // estimador de risco, um "vale a pena engajar?" -- qualquer pergunta de
 // SIM/NAO que se queira treinar em vez de escrever a mao.
@@ -42,7 +42,7 @@ private:
 
    // Carga preguicosa e UNICA por no: a sessao custa ~9 ms (51 ms a frio), o
    // que nao cabe num frame de 20 ms se quatro avioes carregarem juntos. O
-   // cache de verdade e por CAMINHO e mora em shared/xinfer -- aqui so se
+   // cache de verdade e por CAMINHO e mora em libs/xinfer -- aqui so se
    // guarda o id ja resolvido, e a flag que impede uma segunda tentativa.
    int modelId_{};
    bool tentouAbrir_{};

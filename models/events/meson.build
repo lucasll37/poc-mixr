@@ -3,13 +3,13 @@
 # igual ao token) + token (EventTokens.hpp, ledger UNICO -- ver o "porque"
 # no cabecalho dele).
 #
-# Mora aqui, na RAIZ, e nao em shared/x<nome>/ como as outras seis
+# Mora aqui, na RAIZ, e nao em libs/x<nome>/ como as outras seis
 # shared_library() de fronteira de plugin (xboard/xlog/xtrack/xrlbridge/
 # xinfer/xpyembed) -- excecao deliberada: evento e o eixo central da
 # modelagem deste projeto (ver events/README.md), entao ganhou pasta propria
 # em destaque na raiz do repositorio. O MECANISMO nao muda em nada: e
 # shared_library() de verdade, e nao static, pelo MESMO motivo de
-# shared/xboard -- um dynamic_cast de um payload recebido em OUTRO .so
+# libs/xboard -- um dynamic_cast de um payload recebido em OUTRO .so
 # (dlopen) so e seguro se a classe do payload vier de uma lib linkada por
 # ambos os lados, do contrario cada plugin enxergaria seu proprio type_info
 # para o "mesmo" tipo. Ver o cabecalho de payloads/EID_ALERT/TacticalAlert.hpp.

@@ -81,7 +81,7 @@ BT::NodeStatus OnnxPolicyAction::tick()
 
    domain::FlightCommand cmd;
    if (normalizada) {
-      // Uma unica implementacao da desnormalizacao, em shared/xrlbridge, com
+      // Uma unica implementacao da desnormalizacao, em libs/xrlbridge, com
       // os mesmos limites que o lado Python usa para montar o action_space.
       const mixr::xrlbridge::Command c{mixr::xrlbridge::unscaleCommand(saida.data())};
       cmd.headingDeg = c.headingDeg;

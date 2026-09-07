@@ -22,9 +22,11 @@ paths:
   três também, a menos que seja um cenário deliberadamente assimétrico (ex:
   `src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in`, que por isso não se chama
   `scenario.edl.in`, fora do glob que a guarda varre).
-- Antes de considerar uma edição de `.edl`/`.edl.in` terminada: `make edl-lint FILE=<arquivo>`
-  (lint leve; o hook `check-edl-lint.sh` já roda isso automaticamente) e, quando possível,
-  `make edl-check FILE=<arquivo>` (o parser C++ de verdade — a autoridade final).
+- Antes de considerar uma edição de `.edl`/`.edl.in` terminada: `python3 src/ui/scripts/edl_lint.py
+  <arquivo>` (lint leve; o hook `check-edl-lint.sh` já roda isso automaticamente) e, quando
+  possível, o binário `edlcheck <arquivo>` (`dist/bin/edlcheck` ou `build/app/src/edlcheck` — o
+  parser C++ de verdade, a autoridade final; não há mais alvo `make edl-lint`/`make edl-check`
+  soltos, os dois são scripts/binário chamados direto).
 
 Ver CLAUDE.md, seção "Ao adicionar um subprojeto novo" e a armadilha 5 de `src/poc/dis/bandit`,
 para o detalhe completo do parser.

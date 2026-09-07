@@ -4,7 +4,7 @@
   Mesma forma da arvore de deploy do .onnx (flight_tree_onnx.xml), e pelo mesmo
   motivo: o Fallback tem a politica primeiro e a rede de seguranca depois. Se o
   Python nao estiver disponivel, o script nao existir, nao definir decide(), ou
-  levantar excecao, o no devolve FAILURE e a Patrol assume -- a aeronave
+  levantar excecao, o no devolve FAILURE e a Patrol assume - a aeronave
   continua voando.
 
   A arvore de PRODUCAO (flight_tree.xml) fica intocada. Trocar de politica e
@@ -21,4 +21,34 @@
 
     </Fallback>
   </BehaviorTree>
+
+  <TreeNodesModel>
+    <Condition ID="FuelLow">
+      <input_port name="margin" type="double" default="0.0">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+    </Condition>
+    <Action ID="ReturnToBase"/>
+    <Condition ID="ContactDetected"/>
+    <Action ID="ReportAndEvade"/>
+    <Condition ID="LaunchEnvelope"/>
+    <Action ID="LaunchMissile"/>
+    <Condition ID="AlertReceived"/>
+    <Action ID="SupportAlert"/>
+    <Action ID="Patrol"/>
+    <Action ID="Navigate"/>
+    <Condition ID="OnnxScore">
+      <input_port name="model" type="std::string" default="">caminho do .onnx (entrada float32[1,28])</input_port>
+      <input_port name="threshold" type="double" default="0.5">limiar de comparacao</input_port>
+      <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+      <input_port name="above" type="bool" default="true">true: SUCCESS se saida > limiar</input_port>
+    </Condition>
+    <Action ID="OnnxPolicy">
+      <input_port name="model" type="std::string" default="">caminho do .onnx da politica</input_port>
+      <input_port name="normalized" type="bool" default="true">saida em [-1,1]</input_port>
+      <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+    </Action>
+    <Action ID="PyDecide">
+      <input_port name="script" type="std::string" default="">caminho do .py que define decide(obs)</input_port>
+      <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+    </Action>
+  </TreeNodesModel>
 </root>

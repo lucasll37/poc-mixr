@@ -1,4 +1,4 @@
-// A derivacao de sementes de shared/xrandom -- so as duas funcoes puras
+// A derivacao de sementes de libs/xrandom -- so as duas funcoes puras
 // (fnv1a64/deriveSeed). O gerador de verdade (std::mt19937_64) mora dentro de
 // cada consumidor (ex.: domain::PatrolPlan, testado em models/player/A4/tests/
 // domain/test_PatrolPlan.cpp) -- ver o "porque" no cabecalho de
