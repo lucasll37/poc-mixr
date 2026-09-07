@@ -1,26 +1,160 @@
-# PLACEHOLDER -- CI do GitLab ainda NAO esta configurado.
+# CI (GitLab) -- pipeline real, seguindo a MESMA sequencia documentada em
+# README.md ("Build"/"Testes") e INSTALL.md ("Pre-requisitos"): pacotes de
+# sistema -> Conan -> configure -> sdk -> models -> build -> install -> test.
 #
-# Este arquivo existe so para reservar o lugar e documentar a intencao; nenhum job roda de
-# verdade hoje (o unico stage e um "echo" inofensivo). Quando for configurar de verdade, o
-# fluxo que faz sentido para este repositorio (ver CLAUDE.md, secao "Build & Run") e:
+# As dependencias privadas (mixr/1.0.5, behaviortree.cpp.asa/3.5.6 -- ver
+# conanfile.py) vem por padrao de um remote Conan privado da organizacao
+# (README.md, INSTALL.md SS4) -- mas este pipeline NUNCA usa esse remote, de
+# proposito: nenhum 'conan remote add'/'conan remote login' aparece em lugar
+# nenhum deste arquivo, e nao ha variavel de CI/CD nenhuma para religar isso.
+# O job 'build' sempre cai no caminho documentado em INSTALL.md SS7 e builda
+# mixr/behaviortree.cpp.asa/jsbsim/openrti/groot do FONTE (a mesma receita de
+# './scripts/deps.sh') -- ate HORAS de relogio na primeira execucao (o
+# 'cache:' abaixo evita repetir o custo em pipelines seguintes, enquanto as
+# receitas nao mudarem). O Groot em particular NUNCA teve pacote pronto em
+# remoto nenhum (INSTALL.md SS7) -- so o BUILD dele e testado aqui (`conan
+# create`), nunca abrir a janela: isso exige display de verdade, e o proprio
+# INSTALL.md registra que sem um "o build completa normalmente, mas a janela
+# nao abre".
 #
-#   make configure   # conan install (Debug) + meson setup do HOST -> build/
-#   make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
-#   make models      # flight/missile/stub, cada um autocontido -> plugins/
-#   make build       # so o HOST (depende so de sdk) -> build/
-#   make install     # sync-plugins (plugins/ -> dist/) + meson install do host -> dist/
-#   make test        # as DUAS suites: a do modelo (test-models) e a do host
+# Fora de escopo de proposito: INSTALL.md SS6 (extensoes de VS Code) -- e
+# configuracao de EDITOR, sem efeito nenhum sobre configure/build/install/
+# test; nao faltou, foi deixado de fora.
 #
-# Como testar isto localmente, a partir deste proprio arquivo (npx gitlab-ci-local) -> README.md,
-# secao "CI (GitLab)".
+# Testar este arquivo localmente antes de empurrar -> 'make test-ci' (roda
+# este pipeline INTEIRO, do zero, num container Docker via gitlab-ci-local --
+# ver o alvo no Makefile e README.md, secao "CI (GitLab)"). E o sucessor de
+# 'make check-docs-ubuntu24' (removido, junto com tests/docker/): aquele
+# media se o clone limpo + os docs bastavam ate 'make build'/'make install',
+# rodando uma copia PARALELA dos comandos do README; este roda o pipeline de
+# VERDADE, do mesmo jeito que o runner do GitLab roda, e ainda cobre
+# 'make test' -- estritamente mais, nunca menos.
+
+image: ubuntu:24.04
+
+variables:
+  DEBIAN_FRONTEND: noninteractive
+  # Fora do HOME do container efemero, para caber no 'cache:' abaixo (o
+  # runner descarta o resto do filesystem entre jobs -- so CI_PROJECT_DIR e
+  # o que 'cache'/'artifacts' sabem preservar).
+  CONAN_HOME: "${CI_PROJECT_DIR}/.conan2-cache"
 
 stages:
-  - placeholder
+  - build
+  - test
 
-placeholder:
-  stage: placeholder
-  image: ubuntu:24.04
-  rules:
-    - when: never # desativado ate o pipeline de verdade ser escrito
+cache:
+  # Cache 1: pacotes Conan -- o caro de reconstruir (INSTALL.md SS1: o
+  # remote publico so tem binario pronto para gcc11, e o gcc13 deste image
+  # forca '--build=missing' recompilar boost/protobuf/onnxruntime/mixr do
+  # zero). Chave pelo CONTEUDO das receitas: só muda quando uma versao de
+  # dependencia muda, nao a cada commit.
+  # 'cache:key:files' aceita no maximo DOIS caminhos (limite do proprio
+  # GitLab) -- 'conanfile.py' cobre as versoes fixadas (mixr/1.0.5,
+  # behaviortree.cpp.asa/3.5.6 inclusive); 'deps/mixr/conanfile.py' cobre o
+  # caso de a receita do fork mudar (commit fixado) sem bump de versao ali.
+  # 'when: always' (nao o 'on_success' default) -- medido: uma falha de REDE
+  # transitoria (DNS do conancenter indisponivel por um instante, alcancavel
+  # 6x antes na MESMA execucao) no meio de './scripts/deps.sh' jogava fora
+  # HORAS de trabalho ja feito (jsbsim/openrti/mixr/behaviortree ja
+  # compilados, cache nunca salvo por o job nao ter "tido sucesso"). Com
+  # 'always', a proxima tentativa reaproveita o que ja tinha sido buildado
+  # antes da falha -- 'conan create --build=missing' so reconstroi o que
+  # ainda nao esta no cache, entao um cache parcial nunca deixa nada
+  # inconsistente pra tras, so poupa trabalho.
+  - key:
+      files:
+        - conanfile.py
+        - deps/mixr/conanfile.py
+    paths:
+      - .conan2-cache/
+    when: always
+  # Cache 2: as arvores de build ja geradas (host + TODOS os modelos --
+  # descobertos por 'models/', sem nome de modelo hardcoded aqui, mesma
+  # postura do proprio 'make models'/'find'). Chave por branch: builds
+  # incrementais entre pushes da mesma branch: ninja/meson so refazem o que
+  # de fato mudou. Mesmo motivo do Cache 1 para 'when: always'.
+  - key: "build-$CI_COMMIT_REF_SLUG"
+    paths:
+      - build/
+      - dist/
+      - plugins/
+      - models/
+    when: always
+
+.ambiente:
+  before_script:
+    - set -euo pipefail
+    # Pacotes de sistema -- EXATAMENTE a lista testada em INSTALL.md SS1
+    # (Ubuntu 24.04 do zero).
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential ninja-build meson pkg-config git curl perl patch zlib1g-dev python3 python3-venv python3-dev pipx gzip sudo ca-certificates
+    - rm -rf /var/lib/apt/lists/*
+    # Conan via pipx, nao pip -- Ubuntu 24.04 recusa 'pip install' fora de
+    # venv (PEP 668) e nao ha pacote 'conan' no apt (INSTALL.md SS2).
+    - pipx install conan
+    - export PATH="/root/.local/bin:${PATH}"
+    - conan --version
+    # Perfil default -- o Conan 2 nao cria sozinho (INSTALL.md SS3): sem
+    # isto o primeiro 'make configure' morre com "The default build profile
+    # doesn't exist".
+    - conan profile detect --force
+    # SEM remote privado nenhum -- ver o comentario do topo deste arquivo.
+    - conan remote list
+    # Checagem final -- EXATAMENTE INSTALL.md SS5 ("com os cinco respondendo,
+    # a maquina esta pronta"), a mesma que fecha o roteiro de instalacao.
+    - gcc --version && meson --version && ninja --version && pkg-config --version && conan --version
+
+build:
+  stage: build
+  extends: .ambiente
+  timeout: 6h
   script:
-    - echo "CI ainda nao configurado -- ver CLAUDE.md / este arquivo para o fluxo pretendido"
+    - set -euo pipefail
+    # Pacotes de sistema do Groot (INSTALL.md SS7) -- so este job precisa
+    # deles (o 'test' nunca toca deps/groot), entao ficam aqui e nao em
+    # '.ambiente'.
+    - apt-get update && apt-get install -y --no-install-recommends cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev && rm -rf /var/lib/apt/lists/*
+    # SEMPRE do FONTE, nunca do remote privado (ver o comentario do topo
+    # deste arquivo) -- exatamente './scripts/deps.sh' (INSTALL.md SS7): as
+    # 4 dependencias privadas em Debug+Release (o script builda os dois;
+    # este Makefile so consome Debug, mas rodar igual ao documentado e o
+    # ponto desta verificacao) mais o Groot em Release.
+    - ./scripts/deps.sh
+    - make configure
+    - make sdk
+    - make models
+    - make build
+    - make install
+  artifacts:
+    when: always
+    expire_in: 3 days
+    paths:
+      - build/meson-logs/
+      - models/player/*/build/meson-logs/
+      - dist/bin/
+      - plugins/
+
+test:
+  stage: test
+  extends: .ambiente
+  timeout: 2h
+  needs:
+    - build
+  script:
+    - set -euo pipefail
+    # A suite fica atras desta opcao (README.md, secao "Testes"); 'make
+    # test' encadeia 'test-models' + 'install' sozinho (Makefile), entao
+    # basta chamar os dois.
+    - meson configure build -Dtests=true
+    - make test
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - build/meson-logs/testlog.junit.xml
+        - models/player/A4/build/meson-logs/testlog.junit.xml
+    paths:
+      - build/meson-logs/
+      - models/player/A4/build/meson-logs/

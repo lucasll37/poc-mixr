@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan check-docs-ubuntu24 docs open-docs open-edl-builder open-groot new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-edl-builder open-groot new-model
 
 .DEFAULT_GOAL := help
 
@@ -287,18 +287,33 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 		else echo "asan: FALHOU (rc=$$rc)"; fi; \
 		if [ $$rc -ne 0 ] || [ $$revert_falhou -ne 0 ]; then exit 1; fi
 
-check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os comandos do README, para medir se a documentacao basta. Opt-in (precisa de Docker) -- FORA de 'make test'.
-	@# Fora da suite de proposito, mesmo criterio de 'test-asan'/'test-rl': depende
-	@# de Docker e de rede, e o modo completo leva HORAS (ver o achado
-	@# 'sem-binarios-para-gcc13' em tests/docker/gaps_conhecidos.json). 'make test'
-	@# tem de continuar hermetico e rapido.
-	@# MODO=completo e PERFIL=completo passam direto para o runner. O remote
-	@# privado e as credenciais vem do AMBIENTE (CONAN_REMOTE_NOME/URL/USUARIO/
-	@# SENHA) -- nenhum endereco de registry esta escrito neste repositorio, e
-	@# sem eles o portao correspondente e pulado. Ver tests/docker/README.md.
-	@python3 ./tests/docker/run_docs_build_test.py \
-		--modo $(or $(MODO),rapido) \
-		--perfil $(or $(PERFIL),readme)
+test-ci: ## Roda '.gitlab-ci.yml' INTEIRO (build + test), do ZERO, num container Docker (via 'npx gitlab-ci-local') -- sucessor de 'check-docs-ubuntu24' (removido): em vez de uma copia paralela dos comandos do README, roda o pipeline de VERDADE, do mesmo jeito que o runner do GitLab roda. Opt-in (precisa de Docker + Node) -- FORA de 'make test'.
+	@# Fora da suite de proposito, mesmo criterio de 'test-asan'/'test-rl':
+	@# '.gitlab-ci.yml' NUNCA usa o remote Conan privado (de proposito -- ver o
+	@# comentario do topo daquele arquivo), entao o job 'build' sempre builda
+	@# mixr/behaviortree.cpp.asa/jsbsim/openrti/groot do FONTE (INSTALL.md
+	@# secao 7) -- HORAS de relogio na primeira vez. 'make test' tem de
+	@# continuar hermetico e rapido.
+	@# gitlab-ci-local isola o contexto sozinho (rsync de arquivos rastreados
+	@# + nao ignorados pelo git -- 'build/'/'dist/'/'contexts/src/' ficam de
+	@# fora por estarem no .gitignore), entao NAO reaproveita build/dist/cache
+	@# Conan desta arvore de trabalho -- e essa a pergunta que este alvo
+	@# responde: clone limpo + '.gitlab-ci.yml' bastam sozinhos?
+	@npx --yes gitlab-ci-local
+
+clean-ci: ## Remove '.gitlab-ci-local/' (estado + cache de 'make test-ci').
+	@# Sem isto, o cache (pacotes Conan, build/dist/plugins/models -- ver
+	@# 'cache:' de .gitlab-ci.yml) sobrevive entre chamadas de 'make test-ci'
+	@# de proposito (e o que evita refazer tudo do zero toda vez); este alvo
+	@# e para quando se quer forcar um zero absoluto de novo (revalidar "os
+	@# docs bastam sozinhos").
+	@# NAO cobre container Docker orfao de uma execucao INTERROMPIDA no meio
+	@# (gitlab-ci-local nao nomeia/rotula os containers que cria -- so rastreia
+	@# os IDs em memoria do proprio processo -- entao nao ha filtro confiavel
+	@# pra 'docker rm' aqui sem risco de pegar container de outra coisa); nesse
+	@# caso, `docker ps` e `docker rm -f <id>` a mao.
+	rm -rf .gitlab-ci-local/
+	@echo "$(GREEN)clean-ci: OK$(NC) -> .gitlab-ci-local/ removido"
 
 # ============================================
 # Documentation Targets

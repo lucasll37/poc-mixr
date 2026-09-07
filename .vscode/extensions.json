@@ -8,6 +8,7 @@
     "yzhang.markdown-all-in-one",
     "ms-vscode.cpptools",
     "spencerwmiles.vscode-task-buttons",
+    "ms-azuretools.vscode-containers",
     "local.edl"
   ]
 }

@@ -1,12 +1,13 @@
 # Instalação — passo a passo a partir de uma máquina limpa
 
-Este roteiro é o que [`tests/docker/`](tests/docker/) executa contra um `ubuntu:24.04` recém-saído
-da instalação (`make check-docs-ubuntu24`) para medir se a seção **Pré-requisitos** do
-[`README.md`](README.md) basta sozinha. Se algum passo aqui parecer incompleto, esse alvo é onde
-a lacuna aparece primeiro.
+Este roteiro é o que [`.gitlab-ci.yml`](.gitlab-ci.yml) segue, passo a passo, contra um
+`ubuntu:24.04` recém-saído da instalação — o job `build` roda exatamente esta sequência antes de
+`make configure`. `make test-ci` (ver [`README.md`](README.md), seção "CI (GitLab)") roda esse
+pipeline localmente, num container Docker, do zero; se algum passo aqui parecer incompleto, é ali
+que a lacuna aparece primeiro.
 
-Esse alvo é opt-in e exige Docker instalado à parte — não é pré-requisito do build em si, só
-desta checagem. Instruções de instalação: [docker.com](https://www.docker.com/).
+`make test-ci` é opt-in e exige Docker (+ Node) instalados à parte — não são pré-requisito do
+build em si, só desta checagem. Instruções de instalação: [docker.com](https://www.docker.com/).
 
 ## 1. Pacotes de sistema (`apt`)
 
@@ -186,16 +187,27 @@ Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (
 receitas não usam nada disto):
 
 ```bash
-sudo apt install -y qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
+sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
 ```
 
 Por que cada um:
 
+- **`cmake`** (≥ 3.2) — a receita builda com `conan.tools.cmake` (`deps/groot/conanfile.py`), que
+  invoca o binário `cmake` do **sistema** (não é `tool_requires()` do Conan, não vem por nenhuma
+  outra dependência deste pacote): sem ele, `conan create ./deps/groot` falha logo na etapa de
+  `configure()` com *"cmake: command not found"*. Confirmado faltando num `ubuntu:24.04` limpo —
+  nenhum dos outros quatro pacotes desta lista o traz como dependência transitiva.
 - **`qtbase5-dev`**, **`libqt5svg5-dev`** — Groot é uma aplicação Qt5 (interface gráfica + o
   módulo SVG que ele usa para os ícones da árvore); sem eles, o `cmake` da receita falha ao achar
   `Qt5Widgets`/`Qt5Svg`.
 - **`libzmq3-dev`** — a camada de transporte do modo Monitor (troca mensagens com uma árvore
-  rodando via `PublisherZMQ`, portas 1666/1667 — ver `CLAUDE.md`).
+  rodando via `PublisherZMQ`, portas 1666/1667 — ver `CLAUDE.md`) — mas só traz a API **C**
+  (`zmq.h`).
+- **`cppzmq-dev`** — o Groot inclui `zmq.hpp` (`bt_editor/sidepanel_monitor.h`), os *bindings*
+  **C++** de libzmq, que são um pacote `apt` **separado** de `libzmq3-dev` — sem ele, o build
+  falha na compilação (não no `cmake configure`) com *"zmq.hpp: No such file or directory"*.
+  Confirmado faltando num `ubuntu:24.04` limpo — mesma classe de achado do `cmake` acima, só que
+  aparece mais tarde (a build chega a compilar boa parte da árvore antes de esbarrar nisto).
 - **`libdw-dev`** — símbolos de debug que o build do Groot usa.
 
 Com os pacotes instalados, rode o script (compila as cinco dependências; demora — jsbsim/openrti/

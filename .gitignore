@@ -2,6 +2,16 @@ build*
 dist
 .claude/settings.local.json
 
+# estado do 'gitlab-ci-local' ('make test-ci'/README.md, secao "CI
+# (GitLab)"): copia rsync da arvore de trabalho que ele builda dentro do
+# container, MAIS o cache local de 'cache:' do .gitlab-ci.yml (pacotes Conan,
+# build/dist/plugins/models -- persistido entre chamadas pra nao recompilar
+# tudo do zero toda vez, ver a explicacao dada ao usuario). Artefato de
+# ferramenta, nunca fonte -- a propria pasta ja tem um '.gitignore' interno
+# (`*`) que a auto-ignora; esta entrada e so pra ficar explicito aqui tambem,
+# no mesmo padrao de 'build*'/'dist' acima.
+.gitlab-ci-local/
+
 # cache do docs/manual/compile.js: React/ReactDOM UMD baixados uma vez +
 # node_modules do @babel/standalone -- so ferramenta de build de
 # docs/manual/doc.jsx -> index.html, nunca dependencia do que index.html

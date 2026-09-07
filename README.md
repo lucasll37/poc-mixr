@@ -28,7 +28,7 @@ via **Tacview Real-Time Telemetry**.
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução |
 | Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento |
 | Tacview (opcional) | Standard/Advanced | recebe a telemetria ao vivo |
-| Docker (opcional) | qualquer | só para `make check-docs-ubuntu24` — sobe um `ubuntu:24.04` limpo e confere se esta seção basta sozinha. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
+| Docker (opcional) | qualquer | só para `make test-ci` — roda o pipeline de `.gitlab-ci.yml` (que segue esta seção) num `ubuntu:24.04` limpo. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
 
 Passo a passo (pacotes de sistema, Conan, perfil, remote privado), o "porquê" de cada um, e uma
 instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTALL.md).
@@ -85,33 +85,37 @@ O que cada suíte prova e quanto custa → [`tests/README.md`](tests/README.md).
 
 ## CI (GitLab)
 
-[`.gitlab-ci.yml`](.gitlab-ci.yml) hoje **não tem nenhum job de verdade** — é só um texto de
-intenção: o único job (`placeholder`) está desligado (`rules: - when: never`) e existe só para
-documentar em comentário o que a esteira vai fazer quando alguém escrever de verdade (a mesma
-sequência da seção Build acima).
+[`.gitlab-ci.yml`](.gitlab-ci.yml) tem dois jobs de verdade, `build` e `test`, seguindo a MESMA
+sequência desta seção README + [`INSTALL.md`](INSTALL.md), do zero, **num container Docker sem
+nada pré-instalado** — pacotes de sistema → Conan (via `pipx`) → `configure` → `sdk` → `models` →
+`build` → `install` (`build`, que também builda o Groot — ver abaixo) e `meson configure
+-Dtests=true` + `make test` (`test`). As dependências privadas (`mixr/1.0.5`,
+`behaviortree.cpp.asa/3.5.6`) vêm por padrão de um remote Conan privado, mas **este pipeline nunca
+usa esse remote** — de propósito, sem exceção nem variável de CI/CD para religar isso: o job
+`build` sempre compila `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`/**Groot** do fonte
+(`./scripts/deps.sh`, documentado em [`INSTALL.md`](INSTALL.md) §7 — o Groot em particular nunca
+teve pacote pronto em remoto nenhum). Mais lento na primeira execução (horas — o `cache:` do
+arquivo evita repetir o custo enquanto as receitas de `deps/` não mudarem), mas sem depender de
+credencial nenhuma.
 
-Para testar a esteira **a partir do próprio arquivo** — sem reescrever a lógica em comandos
-manuais — use [`gitlab-ci-local`](https://github.com/firecow/gitlab-ci-local): lê
-`stages:`/`rules:`/`needs:`/`image:` direto do `.gitlab-ci.yml` e executa cada job ativo em
-Docker. Não precisa instalar nada permanente:
+**`make test-ci`** roda esse pipeline inteiro, do zero, num container Docker — sucessor de um
+antigo `make check-docs-ubuntu24` (removido): em vez de uma cópia paralela dos comandos do README
+só até `make build`/`make install`, roda o `.gitlab-ci.yml` de verdade, do mesmo jeito que o
+runner do GitLab roda, cobrindo também `make test`:
 
 ```bash
-npx gitlab-ci-local              # roda os jobs ativos (hoje, nenhum -- o unico esta desligado)
-npx gitlab-ci-local --list-all   # mostra TODOS os jobs definidos, mesmo os fora de rules/when
-npx gitlab-ci-local <job>        # roda so um job
+make test-ci
 ```
 
-Exige Docker + Node (mesmo pré-requisito opcional de `make check-docs-ubuntu24`, e o Node já usado
-em `docs/manual/`/`src/ui/`).
-
-Alternativa sem essa dependência, útil pra depurar uma suspeita de diferença de **ambiente**
-("funciona na minha máquina, quebraria no runner do GitLab"): rodar a sequência à mão dentro do
-mesmo container que o `image:` declara, do zero:
+Por baixo é [`gitlab-ci-local`](https://github.com/firecow/gitlab-ci-local): lê
+`stages:`/`needs:`/`image:` direto do `.gitlab-ci.yml` e executa cada job em Docker, isolado da
+árvore de trabalho (copia só o que o `git` rastreia e não ignora — `build/`/`dist/`/
+`contexts/src/` ficam de fora, então não há como o teste "trapacear" reaproveitando cache local).
+Exige Docker + Node — chamar `npx gitlab-ci-local` direto (sem o `make test-ci`) dá mais controle:
 
 ```bash
-docker run --rm -it -v "$PWD":/repo -w /repo ubuntu:24.04 bash
-# dentro do container, do zero (nada que sua maquina ja tem instalado):
-make configure && make sdk && make models && make build && make install && make test
+npx gitlab-ci-local build       # so o job 'build'
+npx gitlab-ci-local --list-all  # mostra TODOS os jobs definidos, mesmo os fora de rules/when
 ```
 
 ## Rodar
