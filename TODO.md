@@ -1,11 +1,11 @@
-> documentar de forma excelente [indo]
-> interface gráfica para montar edl [indo]
->  groot [indo]
-> ci gitlab
-> testes exaustivos
-> revisar documentação
-> highlight de .edl
-> gerar arvore "editável" [indo]
+- documentar de forma excelente [indo]
+- interface gráfica para montar edl [indo]
+-  groot [indo]
+- ci gitlab
+- testes exaustivos
+- revisar documentação
+- highlight de .edl
+- gerar arvore "editável" [indo]
 
 
 ----------------------------------------------------

@@ -74,21 +74,38 @@ roda() {   # roda <n-threads> <arquivo-de-saida>
    # com um binario fake que imprime uma linha e sai com rc=137: a funcao
    # devolvia 0. Por isso o binario roda para um arquivo bruto e o rc dele e
    # checado A PARTE, antes de filtrar.
-   local raw rc
+   local raw errf rc
    raw="$(mktemp)"
-   "$BIN" "${args[@]}" -threads "$1" -deterministic "$FRAMES" > "$raw" 2>/dev/null
+   errf="$(mktemp)"
+   "$BIN" "${args[@]}" -threads "$1" -deterministic "$FRAMES" > "$raw" 2>"$errf"
    rc=$?
    grep '^frame=' "$raw" > "$2"
    rm -f "$raw"
    if [ "$rc" -ne 0 ]; then
       echo "  FALHA $BIN saiu com codigo $rc (threads=$1)"
+      # ARMADILHA CONFIRMADA (nao redescobrir): stderr era jogado fora
+      # (2>/dev/null) e a unica pista que sobrava do motivo real da falha era
+      # o codigo de saida -- justamente no caso em que mais se precisa dela
+      # (depuracao de CI). Guardado ao lado do dump para nao se perder e
+      # ecoado aqui, ja que e a informacao que mais importa nesse instante.
+      if [ -s "$errf" ]; then
+         echo "  ultimas linhas do stderr:"
+         tail -5 "$errf" | sed 's/^/        /'
+      fi
+      cp "$errf" "$OUT/$(basename "$2" .txt)-stderr.txt" 2>/dev/null
+      rm -f "$errf"
       return 1
    fi
+   rm -f "$errf"
    # O libs/xmsg grava por fora do stdout, e cada corrida trunca o mesmo
-   # arquivo -- guardar uma copia por configuracao de thread e o que permite
-   # comparar a saida de mensagens do mesmo jeito que se compara o dump.
+   # arquivo -- guardar uma copia por CORRIDA (nao por numero de threads: a
+   # repeticao de 4 threads tambem passa "4" aqui, e as duas corridas
+   # colidiriam na mesma chave) e o que permite comparar a saida de mensagens
+   # do mesmo jeito que se compara o dump, inclusive a repeticao contra si
+   # mesma. A chave sai do rotulo do proprio dump ($2), nunca do numero de
+   # threads.
    if [ -n "$POC" ] && [ -f "$MSGDIR/$POC-intruder.jsonl" ]; then
-      cp "$MSGDIR/$POC-intruder.jsonl" "$OUT/messages-$1.jsonl"
+      cp "$MSGDIR/$POC-intruder.jsonl" "$OUT/messages-$(basename "$2" .txt | sed 's/^threads-//').jsonl"
    fi
 }
 
@@ -182,7 +199,7 @@ done
 # isso e assercao, nao precaucao.
 # ------------------------------------------------------------------------------
 if [ -f "$OUT/messages-1.jsonl" ]; then
-   for pair in "1 2" "1 4"; do
+   for pair in "1 2" "1 4" "4 4b"; do
       set -- $pair
       if diff -q "$OUT/messages-$1.jsonl" "$OUT/messages-$2.jsonl" > /dev/null; then
          echo "  OK   mensagens: threads-$1 == threads-$2"

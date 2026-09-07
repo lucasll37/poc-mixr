@@ -107,6 +107,10 @@ fi
 substituir() {
     local caminho="$1" de="$2" para="$3" obrigatorio="${4:-1}"
     local texto
+    if [ ! -f "$caminho" ]; then
+        echo "erro fatal: '$caminho' nao existe (a copia do scaffold falhou antes deste ponto?)" >&2
+        exit 1
+    fi
     texto="$(cat "$caminho"; echo x)"
     texto="${texto%x}"
     if [ "$obrigatorio" = "1" ] && [[ "$texto" != *"$de"* ]]; then
@@ -178,11 +182,19 @@ if ! command -v rsync >/dev/null 2>&1; then
     echo "rsync nao encontrado -- necessario para copiar o scaffold" >&2
     exit 1
 fi
-mkdir -p "$DEST_ABS"
-rsync -a \
+if ! mkdir -p "$DEST_ABS"; then
+    echo "erro fatal: nao consegui criar '$DEST_ABS' (permissao? disco cheio?)" >&2
+    exit 1
+fi
+if ! rsync -a \
     --exclude='/build' --exclude='/dist' --exclude='__pycache__' \
     --exclude='.configure-args' --exclude='*.o' --exclude='*.so' \
-    "$ORIGEM/" "$DEST_ABS/"
+    "$ORIGEM/" "$DEST_ABS/"; then
+    echo "erro fatal: rsync de '$ORIGEM' para '$DEST_ABS' falhou (disco cheio? permissao?)." >&2
+    echo "'$DEST_ABS' pode ter ficado com uma copia PARCIAL -- confira 'df -h' antes de tentar" >&2
+    echo "de novo (nao apague sem olhar, pode ter algo aproveitavel)." >&2
+    exit 1
+fi
 
 # 1. meson.build -- mesma receita ja documentada em models/README.md secao 2
 #    (substituicao sobre a string entre aspas simples, que cobre project() E
@@ -194,7 +206,11 @@ if [ "$KIND" = "stub" ]; then
     # 2a. renomeia o arquivo fonte e a referencia files(...) em meson.build
     OLD_CPP="$DEST_ABS/src/$ORIGEM_NOME.cpp"
     NEW_CPP="$DEST_ABS/src/$NAME.cpp"
-    mv "$OLD_CPP" "$NEW_CPP"
+    if ! mv "$OLD_CPP" "$NEW_CPP"; then
+        echo "erro fatal: nao consegui renomear '$OLD_CPP' -> '$NEW_CPP' (a copia do scaffold" >&2
+        echo "falhou antes deste ponto?)" >&2
+        exit 1
+    fi
     substituir "$MESON" "files('src/$ORIGEM_NOME.cpp')" "files('src/$NAME.cpp')"
     PLUGIN_CPP="$NEW_CPP"
     ARQUIVOS_NS="$NEW_CPP"

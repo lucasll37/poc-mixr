@@ -271,11 +271,21 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.edl.in \
 		-threads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
-		$(MAKE) --no-print-directory sync-plugins ASAN=false >/dev/null 2>&1; \
-		meson configure $(BUILD_DIR) -Dasan=false >/dev/null; \
-		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1; \
+		echo "  revertendo build/ para nao-ASan ..."; \
+		revert_falhou=0; \
+		$(MAKE) --no-print-directory sync-plugins ASAN=false >/dev/null 2>&1 || revert_falhou=1; \
+		meson configure $(BUILD_DIR) -Dasan=false >/dev/null 2>&1 || revert_falhou=1; \
+		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1 || revert_falhou=1; \
+		if [ $$revert_falhou -ne 0 ]; then \
+			echo "asan: ATENCAO -- a reversao de build/ para nao-ASan FALHOU (algum dos" >&2; \
+			echo "  passos 'sync-plugins ASAN=false'/'meson configure -Dasan=false'/'meson" >&2; \
+			echo "  compile' retornou erro). build/ pode ter ficado instrumentado com ASan --" >&2; \
+			echo "  rode 'make configure && make build' manualmente antes de confiar no" >&2; \
+			echo "  proximo 'make test'/'make run-*'." >&2; \
+		fi; \
 		if [ $$rc -eq 0 ]; then echo "asan: OK (sem vazamento reportado)"; \
-		else echo "asan: FALHOU (rc=$$rc)"; exit 1; fi
+		else echo "asan: FALHOU (rc=$$rc)"; fi; \
+		if [ $$rc -ne 0 ] || [ $$revert_falhou -ne 0 ]; then exit 1; fi
 
 check-docs-ubuntu24: ## Levanta um Ubuntu 24.04 LIMPO no Docker e roda nele os comandos do README, para medir se a documentacao basta. Opt-in (precisa de Docker) -- FORA de 'make test'.
 	@# Fora da suite de proposito, mesmo criterio de 'test-asan'/'test-rl': depende
