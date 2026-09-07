@@ -57,7 +57,7 @@ Fleet discoverFleet(mixr::models::WorldModel* wm);
 // POTENCIA DE CRUZEIRO -- historicamente a correcao para o c310 (cujo
 // autopilot fechava malha de RUMO e ALTITUDE, mas nao de VELOCIDADE, sem
 // manete fixo a aeronave perdia velocidade e estolava). Desde a troca para
-// o A-4, `models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml` tem um canal
+// o A-4, `models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml` tem um canal
 // de autothrottle proprio (fecha a malha de velocidade de verdade, via
 // `ap/airspeed_hold`/`ap/airspeed_setpoint`), entao esta chamada e so um
 // empurrao inicial -- o autothrottle recalcula `fcs/throttle-cmd-norm` a

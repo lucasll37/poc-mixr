@@ -37,7 +37,7 @@ são todos nativos. O que continua sendo nosso é o que o framework, por defini�
 > o dump. Mais nada.
 >
 > A **política** descrita acima — `domain/`, `bt/`, `ubf/`, `xnative/` — não está aqui e nem é
-> compilada junto: mora em **[models/player/A4/](../../../../models/player/A4/)**, um projeto
+> compilada junto: mora em **[models/players/A-4/](../../../../models/players/A-4/)**, um projeto
 > Meson independente, construído numa etapa **anterior** e carregado com `dlopen` durante o parse
 > do cenário. O que este README descreve das seções 7 a 10 continua valendo, só que os arquivos
 > ficam lá.
@@ -407,7 +407,7 @@ Traz de graça `headingHoldMode`, `altitudeHoldMode`, `velocityHoldMode`, `navMo
 rumo→banco→aileron e a malha altitude→arfagem→profundor.
 
 > **Unidade:** `setCommandedAltitudeFt()` é em **pés**; o resto da poc trabalha em metros. A
-> conversão acontece na fronteira, em [`ubf/FlightAction.cpp`](../../../../models/player/A4/src/ubf/FlightAction.cpp).
+> conversão acontece na fronteira, em [`ubf/FlightAction.cpp`](../../../../models/players/A-4/src/ubf/FlightAction.cpp).
 
 > **Limite que importa aqui:** `maxClimbRateMps: 8.0`. Combinado com `evadeHold: 30 s`, é o que
 > define quanto o avião consegue descer numa manobra de evasão — ~330 m, medido. Esse número
@@ -437,7 +437,7 @@ aparece como pista), e a escolha do "contato mais próximo" precisa de desempate
 
 Herda o transporte inteiro e acrescenta **só** o que o framework não tem como saber: o que fazer
 com a mensagem recebida. Detalhes em [9.4](#94-canal-2--datalink) e no
-[header da classe](../../../../models/player/A4/include/xnative/AlertDatalink.hpp), que documenta o que vem de graça e os dois
+[header da classe](../../../../models/players/A-4/include/xnative/AlertDatalink.hpp), que documenta o que vem de graça e os dois
 enganos fáceis.
 
 ### 6.6 `( SimAgent )` — o agente
@@ -513,7 +513,7 @@ invariante sobre uma grade de elevação × altitude × marcação). Todas as un
 unidade no **nome do campo** (`altitudeM`, `speedKts`, `headingDeg`) — a armadilha clássica deste
 repositório é misturar pés, metros e nós.
 
-**1. [`domain/FlightCommand.hpp`](../../../../models/player/A4/include/domain/FlightCommand.hpp)** — a base de tudo. Um DTO de
+**1. [`domain/FlightCommand.hpp`](../../../../models/players/A-4/include/domain/FlightCommand.hpp)** — a base de tudo. Um DTO de
 três campos:
 
 ```cpp
@@ -527,7 +527,7 @@ struct FlightCommand {
 Todo plano de voo e toda política produzem **isto**. É o contrato entre a decisão e a atuação, e
 é o motivo de a árvore de comportamento nunca tocar num objeto MIXR.
 
-**2. [`domain/geometry.*`](../../../../models/player/A4/include/domain/geometry.hpp)** — matemática de plano tangente. Opera no
+**2. [`domain/geometry.*`](../../../../models/players/A-4/include/domain/geometry.hpp)** — matemática de plano tangente. Opera no
 NED da *gaming area* do `WorldModel` (x = Norte, y = Leste, metros a partir do ponto de
 referência do cenário):
 
@@ -542,7 +542,7 @@ referência do cenário):
 A ordem dos argumentos do `atan2` é a pegadinha: em navegação o ângulo é medido do Norte, então é
 `atan2(E, N)`, e não o `atan2(y, x)` matemático.
 
-**3. [`domain/PatrolPlan.*`](../../../../models/player/A4/include/domain/PatrolPlan.hpp)** — circuito cíclico. `configure()`
+**3. [`domain/PatrolPlan.*`](../../../../models/players/A-4/include/domain/PatrolPlan.hpp)** — circuito cíclico. `configure()`
 recebe rumo inicial, duração da perna, curva por perna, altitude e velocidade; `advance(dt)`
 integra o relógio da perna e devolve `true` quando trocou; `command()` devolve
 `startHeading + turnPerLeg × leg`. Com `turnPerLegDeg=90` o circuito é um quadrado; com 120, um
@@ -552,12 +552,12 @@ triângulo; com 60, um hexágono.
 > o avião está em RTB ou evadindo, o relógio da perna **não corre** — a patrulha é retomada
 > exatamente de onde parou, em vez de "pular" o tempo em que esteve ocupado.
 
-**4. [`domain/RtbPlan.*`](../../../../models/player/A4/include/domain/RtbPlan.hpp)** — retorno à base (a origem da área de
+**4. [`domain/RtbPlan.*`](../../../../models/players/A-4/include/domain/RtbPlan.hpp)** — retorno à base (a origem da área de
 jogo). `command(ownN, ownE, ownHeading)` aponta para a base; ao chegar dentro de
 `arrivalRadiusM`, mantém o rumo e reduz a velocidade a 60 %. Não modela reabastecimento — isso é
 estado do sistema de combustível, não do plano.
 
-**5. [`domain/TerrainFloor.*`](../../../../models/player/A4/include/domain/TerrainFloor.hpp)** — a regra de terreno, em duas
+**5. [`domain/TerrainFloor.*`](../../../../models/players/A-4/include/domain/TerrainFloor.hpp)** — a regra de terreno, em duas
 funções e um struct:
 
 ```cpp
@@ -575,7 +575,7 @@ honesta de perguntar "estou coberto?" ([seção 10](#10-elevação-de-terreno)).
 desliga a camada de terreno sem desligar a rede, que é o que torna possível o controle negativo
 do cenário sem recompilar.
 
-**6. [`domain/ThreatPolicy.*`](../../../../models/player/A4/include/domain/ThreatPolicy.hpp)** — a manobra de evasão, e o único
+**6. [`domain/ThreatPolicy.*`](../../../../models/players/A-4/include/domain/ThreatPolicy.hpp)** — a manobra de evasão, e o único
 arquivo de `domain/` com estado interno de máquina. Depende de `FlightCommand`, `geometry` e
 `TerrainFloor`.
 
@@ -646,7 +646,7 @@ comportamento do receptor.
 > Não use `models::Message` para isso: ela existe no framework e **ninguém a usa**;
 > `sendMessage()` recebe um `base::Object*` opaco.
 
-**[`xnative/AlertDatalink.*`](../../../../models/player/A4/include/xnative/AlertDatalink.hpp)** — depende de `TacticalAlert`.
+**[`xnative/AlertDatalink.*`](../../../../models/players/A-4/include/xnative/AlertDatalink.hpp)** — depende de `TacticalAlert`.
 Herda `models::Datalink` e acrescenta um único slot (`holdTime`) e três métodos:
 
 | método | thread | o que faz |
@@ -688,7 +688,7 @@ O ciclo não fecha porque **`bt/NodeContext.hpp` só faz *forward declaration***
 comportamento, mas não a definição — quem inclui a definição são os `.cpp` dos nós. É o padrão
 clássico de quebra de ciclo, e é a razão de `NodeContext` ser um struct de **um ponteiro só**.
 
-**1. [`ubf/FlightState.*`](../../../../models/player/A4/include/ubf/FlightState.hpp)** — a **percepção**. Herda
+**1. [`ubf/FlightState.*`](../../../../models/players/A-4/include/ubf/FlightState.hpp)** — a **percepção**. Herda
 `base::ubf::AbstractState`. Um único método útil, `updateState(const base::Component* actor)`, que
 lê o ator e monta um `Snapshot` de números crus.
 
@@ -708,12 +708,12 @@ Repare na assinatura: **o ator chega como `const Component*`** — percepção l
 > recebe o ciclo normal de componentes — tudo o que ele precisa fazer tem de estar dentro de
 > `updateState()`.
 
-**2. [`ubf/BtTuning.hpp`](../../../../models/player/A4/include/ubf/BtTuning.hpp)** — um struct sem lógica e sem tipo MIXR, com
+**2. [`ubf/BtTuning.hpp`](../../../../models/players/A-4/include/ubf/BtTuning.hpp)** — um struct sem lógica e sem tipo MIXR, com
 os 16 números que o EDL ajusta e os *defaults* visíveis lado a lado. Existe por dois motivos
 práticos: `BtBehavior::copyData()` copia **um** membro em vez de dezesseis, e acrescentar um
 parâmetro passa a ser uma linha aqui e uma no slot — sem risco de esquecer a cópia.
 
-**3. [`ubf/BtBehavior.*`](../../../../models/player/A4/include/ubf/BtBehavior.hpp) + [`ubf/BtBehaviorSlots.cpp`](../../../../models/player/A4/src/ubf/BtBehaviorSlots.cpp)**
+**3. [`ubf/BtBehavior.*`](../../../../models/players/A-4/include/ubf/BtBehavior.hpp) + [`ubf/BtBehaviorSlots.cpp`](../../../../models/players/A-4/src/ubf/BtBehaviorSlots.cpp)**
 — a **decisão**. Herda `base::ubf::AbstractBehavior`. São dois arquivos `.cpp` para a **mesma
 classe**, separados por questão:
 
@@ -751,7 +751,7 @@ Duas decisões de implementação que existem por causa de armadilhas do framewo
 Cada `BtBehavior` — isto é, **cada aeronave** — tem a sua própria `BT::BehaviorTreeFactory` e a
 sua própria `BT::Tree`. Não há árvore compartilhada.
 
-**4. [`ubf/FlightAction.*`](../../../../models/player/A4/include/ubf/FlightAction.hpp)** — a **atuação**. Herda
+**4. [`ubf/FlightAction.*`](../../../../models/players/A-4/include/ubf/FlightAction.hpp)** — a **atuação**. Herda
 `base::ubf::AbstractAction`. É o **único** ponto da poc que escreve nos subsistemas a partir da
 decisão.
 
@@ -766,7 +766,7 @@ liga os três *hold modes*, comanda rumo/altitude/velocidade — **convertendo m
 na fronteira** — grava o rótulo no `BehaviorBoard` e, se pedido, chama
 `AlertDatalink::broadcastAlert()`.
 
-**5. [`ubf/AltitudeSafetyBehavior.*`](../../../../models/player/A4/include/ubf/AltitudeSafetyBehavior.hpp)** — o segundo
+**5. [`ubf/AltitudeSafetyBehavior.*`](../../../../models/players/A-4/include/ubf/AltitudeSafetyBehavior.hpp)** — o segundo
 comportamento que o modelo exporta, pensado para votar **90** (maior que o 50 da árvore) dentro de
 um `( UbfArbiter )`. Depende de `FlightState`, `FlightAction` e `domain/TerrainFloor`.
 
@@ -792,7 +792,7 @@ comportamento é exatamente o de antes do terreno.
 
 ### 7.5 Camada 5 — `bt/`: a árvore de comportamento
 
-**1. [`bt/NodeContext.hpp`](../../../../models/player/A4/include/bt/NodeContext.hpp)** — dois tipos, e nenhum inclui MIXR.
+**1. [`bt/NodeContext.hpp`](../../../../models/players/A-4/include/bt/NodeContext.hpp)** — dois tipos, e nenhum inclui MIXR.
 
 `FlightDecision` é o que a árvore **produz** num tick: um `FlightCommand`, um rótulo, e o pedido
 de transmissão do alerta. Os nós não tocam em objeto MIXR nenhum — eles só preenchem esta
@@ -802,7 +802,7 @@ a outra aeronave, outro atuador, ou a um teste unitário sem simulação.
 `NodeContext` é a dependência fixa dos nós: **um ponteiro** para o comportamento que os hospeda —
 mas para a **interface**, não para a classe concreta.
 
-> **[`bt/DecisionContext.hpp`](../../../../models/player/A4/include/bt/DecisionContext.hpp) existe por causa de um acoplamento
+> **[`bt/DecisionContext.hpp`](../../../../models/players/A-4/include/bt/DecisionContext.hpp) existe por causa de um acoplamento
 > que só aparecia ao tentar testar.** Os headers dos nós sempre foram limpos, mas todo `.cpp`
 > incluía `ubf/BtBehavior.hpp` para chamar oito getters — e com ele vinha o MIXR inteiro. Na
 > prática, a árvore, que é a peça mais própria desta poc, só podia ser exercitada subindo uma
@@ -811,10 +811,10 @@ mas para a **interface**, não para a classe concreta.
 > `DecisionContext` é exatamente aquele conjunto de oito getters, e `BtBehavior` a implementa sem
 > escrever um método novo (as assinaturas já eram estas; só ganharam `override`). Junto com a
 > mudança irmã — `FlightState::Snapshot` virou
-> [`domain::WorldView`](../../../../models/player/A4/include/domain/WorldView.hpp), com um `using` mantendo os call sites —,
+> [`domain::WorldView`](../../../../models/players/A-4/include/domain/WorldView.hpp), com um `using` mantendo os call sites —,
 > `bt/nodes/*.cpp` passaram a compilar contra BehaviorTree.CPP + `domain/` apenas.
 >
-> O resultado é [`tests/tree/`](../../../../models/player/A4/tests/tree/): carrega o `flight_tree.xml` **de produção**,
+> O resultado é [`tests/tree/`](../../../../models/players/A-4/tests/tree/): carrega o `flight_tree.xml` **de produção**,
 > monta um `FakeDecisionContext` e verifica qual ramo venceu — `ldd` no binário mostra **zero**
 > bibliotecas do MIXR. As duas mudanças foram provadas neutras: o dump determinístico saiu byte a
 > byte idêntico ao de antes.
@@ -824,7 +824,7 @@ mas para a **interface**, não para a classe concreta.
 > registrada: `Blackboard::create(parent)` **não** compartilha entradas automaticamente via
 > `get`/`set`. Aqui a árvore é criada com um blackboard vazio, que ninguém usa para estado.
 
-**2. Os sete nós** ([`src/bt/nodes/`](../../../../models/player/A4/src/bt/nodes/)) — cada um guarda o `NodeContext` **por
+**2. Os sete nós** ([`src/bt/nodes/`](../../../../models/players/A-4/src/bt/nodes/)) — cada um guarda o `NodeContext` **por
 valor** e não faz nada além de ler o comportamento e preencher a decisão:
 
 | nó | tipo BT | lê | escreve |
@@ -841,7 +841,7 @@ Repare no `ContactDetected`: ele **não** pergunta "estou vendo o intruso agora?
 a manobra de evasão está valendo — que continua verdadeiro por `evadeHold` segundos depois de a
 pista sumir. **A histerese é do modelo, não da árvore**: trocar o XML não a desliga.
 
-**3. [`bt/bt_factory.*`](../../../../models/player/A4/include/bt/bt_factory.hpp)** — registra os sete nós. O ponto de extensão
+**3. [`bt/bt_factory.*`](../../../../models/players/A-4/include/bt/bt_factory.hpp)** — registra os sete nós. O ponto de extensão
 do BehaviorTree.CPP **v3** para construtores com argumentos extras é `registerBuilder<T>(ID,
 builder)`, com um lambda capturando o contexto:
 
@@ -857,7 +857,7 @@ factory.registerBuilder<NodeType>(id, builder);
 
 ### 7.6 Camada 6 — as duas factories
 
-**1. [`xnative/factory.cpp`](../../../../models/player/A4/src/xnative/factory.cpp)** — uma cadeia de `else if` sobre
+**1. [`xnative/factory.cpp`](../../../../models/players/A-4/src/xnative/factory.cpp)** — uma cadeia de `else if` sobre
 `getFactoryName()`, registrando exatamente as **seis** classes próprias deste subprojeto.
 
 **2. [`mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp)** — a factory que o `edl_parser` recebe. Oito
@@ -1011,7 +1011,7 @@ station->event(SHUTDOWN_EVENT);  station->unref();
 [seção 4](#4-a-árvore-de-objetos-do-cenário). É `.in` e não `.edl` por causa do
 `@NUM_TC_THREADS@`. O `.edl` gerado é *gitignored*.
 
-**[`configs/flight_tree.xml`](../../../../models/player/A4/configs/flight_tree.xml)** — a árvore, um `Fallback` de quatro
+**[`configs/flight_tree.xml`](../../../../models/players/A-4/configs/flight_tree.xml)** — a árvore, um `Fallback` de quatro
 ramos em ordem de prioridade:
 
 ```xml
@@ -1026,7 +1026,7 @@ ramos em ordem de prioridade:
 Os itens 2 e 3 são os dois lados da interação entre players: quem viu transmite, quem recebeu
 reage. **Nenhum nó fala diretamente com outro avião.**
 
-**[`models/player/A4/data/jsbsim/`](../../../../models/player/A4/data/jsbsim/)** — a aeronave,
+**[`models/players/A-4/data/jsbsim/`](../../../../models/players/A-4/data/jsbsim/)** — a aeronave,
 vendorizada do pacote JSBSim com **duas** alterações nossas, as duas em *dados* e não em C++.
 Fora do subprojeto, de propósito: é dado do **modelo**, não do cenário — as três pocs pilotam o
 mesmo c310, e o próprio `domain::ThreatPolicy`/`Autopilot` deste modelo é calibrado para ele
@@ -1229,7 +1229,7 @@ ida na fase 1, volta na fase 2:
 | 7 | 2 | `Radar::receive()` filtra o próprio eco (`em->getTransmitter() == this`), aplica `rcs × rangeLoss` de **volta** e testa o limiar S/I | `Radar.cpp:224`, `:233`, `:277` |
 | 8 | 3 | `Radar::process()` correlaciona e — **só no fim da varredura** (`endOfScanFlg`) — chama `tm->newReport(...)` | `Radar.cpp:344-351` |
 | 9 | 3 | `AirTrkMgr::processTrackList()` drena, correlaciona, roda alfa-beta, cria o `RfTrack` | `AirTrkMgr.cpp:334-338` |
-| 10 | — | você lê: `trkMgr->getTrackList(...)` | [`FlightState`](../../../../models/player/A4/src/ubf/FlightState.cpp) |
+| 10 | — | você lê: `trkMgr->getTrackList(...)` | [`FlightState`](../../../../models/players/A-4/src/ubf/FlightState.cpp) |
 
 Duas consequências práticas para quem escreve o `.edl`:
 
@@ -1356,7 +1356,7 @@ Escolha primeiro **de qual canal** você precisa:
 | você quer… | use | custo em C++ |
 |---|---|---|
 | detecção física realista (RCS, potência, ruído, pistas filtradas) | RF nativo: `Antenna` + `Radar`/`Tws` + `AirTrkMgr` no `.edl` | **zero** |
-| trocar uma **carga própria** entre players, sem modelar propagação | subclasse de `models::Datalink` | ~100 linhas — molde: [`AlertDatalink`](../../../../models/player/A4/src/xnative/AlertDatalink.cpp) |
+| trocar uma **carga própria** entre players, sem modelar propagação | subclasse de `models::Datalink` | ~100 linhas — molde: [`AlertDatalink`](../../../../models/players/A-4/src/xnative/AlertDatalink.cpp) |
 | um canal com regra própria (alcance, lado, quem ouve quem) | componente próprio + evento `>= 2000` | tudo seu |
 
 O caminho do meio, que é o mais barato, em cinco passos:
@@ -1401,7 +1401,7 @@ lado do framework e nenhuma linha de meson mudou.**
 |---|---|---|
 | 1 | **a factory** — `models::factory` não encadeia a de terreno | [`mixr_factory.cpp`](../../../../app/src/mixr_factory.cpp) |
 | 2 | **o dado** — tile SRTM1 `S23W043` da Serra do Mar, descomprimido e conferido | [`app/TerrainData`](../../../../app/src/app/TerrainData.cpp) + `shared/data/terrain/srtm/` |
-| 3 | **a ponte até a decisão** — três campos no `Snapshot`, uma regra pura, dois consumidores | [`FlightState`](../../../../models/player/A4/src/ubf/FlightState.cpp), [`domain/TerrainFloor`](../../../../models/player/A4/src/domain/TerrainFloor.cpp) |
+| 3 | **a ponte até a decisão** — três campos no `Snapshot`, uma regra pura, dois consumidores | [`FlightState`](../../../../models/players/A-4/src/ubf/FlightState.cpp), [`domain/TerrainFloor`](../../../../models/players/A-4/src/domain/TerrainFloor.cpp) |
 
 O caminho completo do dado:
 
@@ -1705,7 +1705,7 @@ altitude hold empinando o nariz até a perda de sustentação
 ```
 
 Como a classe é `final`, a correção teve que ir para a **data da aeronave**:
-`models/player/A4/data/jsbsim/systems/engine-autostart.xml`.
+`models/players/A-4/data/jsbsim/systems/engine-autostart.xml`.
 
 > Cuidado documentado no próprio arquivo: escrever `propulsion/set-running` (o global) por um
 > canal do FCS **reinicializa o motor a cada frame** — empuxo oscilando entre valores negativos e

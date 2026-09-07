@@ -131,7 +131,7 @@ build:
     expire_in: 3 days
     paths:
       - build/meson-logs/
-      - models/player/*/build/meson-logs/
+      - models/players/*/build/meson-logs/
       - dist/bin/
       - plugins/
 
@@ -143,10 +143,12 @@ test:
     - build
   script:
     - set -euo pipefail
-    # A suite fica atras desta opcao (README.md, secao "Testes"); 'make
-    # test' encadeia 'test-models' + 'install' sozinho (Makefile), entao
-    # basta chamar os dois.
+    # A suite do host fica atras desta opcao (README.md, secao "Testes").
+    # 'make test' roda SO o host (encadeia 'install' sozinho, Makefile);
+    # a suite do MODELO e' um alvo a parte -- os dois, para cobrir o
+    # mesmo par de relatorios JUnit de sempre (build/ e models/players/A-4/build/).
     - meson configure build -Dtests=true
+    - make test-models
     - make test
   artifacts:
     when: always
@@ -154,7 +156,7 @@ test:
     reports:
       junit:
         - build/meson-logs/testlog.junit.xml
-        - models/player/A4/build/meson-logs/testlog.junit.xml
+        - models/players/A-4/build/meson-logs/testlog.junit.xml
     paths:
       - build/meson-logs/
-      - models/player/A4/build/meson-logs/
+      - models/players/A-4/build/meson-logs/

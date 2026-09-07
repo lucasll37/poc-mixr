@@ -17,7 +17,7 @@ namespace rl {
 //
 // V1 -- UM UNICO agente RL por processo, sem chave por player id (ver o
 // mesmo limite em libs/xrlbridge/RLBridge.hpp e
-// models/player/A4/include/ubf/RLBridgeBehavior.hpp).
+// models/players/A-4/include/ubf/RLBridgeBehavior.hpp).
 //
 // 'playerName' TEM DE SER O MESMO PLAYER configurado com
 // ( RLBridgeBehavior ) no .edl (default: falcon1) -- BUG CONFIRMADO E

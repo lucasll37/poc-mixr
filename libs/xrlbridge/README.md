@@ -2,7 +2,7 @@
 
 Uma troca síncrona de dois structs, `Command`/`Observation`, entre um host de RL em Python
 (`src/rl/bindings/`, pybind11) e o comportamento UBF que decide por fora do processo MIXR
-(`RLBridgeBehavior`, em `models/player/A4`). Mais o contrato de dados que dá ordem aos 28 floats
+(`RLBridgeBehavior`, em `models/players/A-4`). Mais o contrato de dados que dá ordem aos 28 floats
 que viram entrada de rede — `ObservationFields.hpp` — reusado por três consumidores diferentes.
 
 ## Como se usar
@@ -19,14 +19,14 @@ agent: ( FlightAgentTC
       behaviors: {
          ( AltitudeSafetyBehavior vote: 90 ... )   // o piso nativo continua acima
          // Decisao vem de fora (Python), via libs/xrlbridge --
-         // ver models/player/A4/include/ubf/RLBridgeBehavior.hpp.
+         // ver models/players/A-4/include/ubf/RLBridgeBehavior.hpp.
          ( RLBridgeBehavior vote: 50 )
       }
    )
 )
 ```
 
-Do lado do **modelo** (`models/player/A4/src/ubf/RLBridgeBehavior.cpp`), `genAction()` não decide
+Do lado do **modelo** (`models/players/A-4/src/ubf/RLBridgeBehavior.cpp`), `genAction()` não decide
 nada — só publica o `WorldView` deste frame e devolve o `Command` que o host deixou pendente:
 
 ```cpp
@@ -106,9 +106,9 @@ aninhados em slot (a mesma armadilha de `TacviewOutput::resolveInfo()`). General
 agentes trocaria `setPendingCommand`/`getObservation` por um mapa por `playerId` — não feito
 porque nenhum cenário precisa disso ainda.
 
-## Por que `RLBridgeBehavior` mora DENTRO de `models/player/A4`, e não num plugin próprio
+## Por que `RLBridgeBehavior` mora DENTRO de `models/players/A-4`, e não num plugin próprio
 
-Ao contrário do `models/player/missile` (que existe justamente para não obrigar as pocs de
+Ao contrário do `models/players/missile` (que existe justamente para não obrigar as pocs de
 produção a atualizar `provides:`), `RLBridgeBehavior::genAction()` precisa de
 `dynamic_cast<const xnative::FlightState*>` e construir um `xnative::FlightAction*` — tipos
 **concretos** do modelo, não só o nome de fábrica. Como cada plugin compila com
@@ -116,7 +116,7 @@ produção a atualizar `provides:`), `RLBridgeBehavior::genAction()` precisa de
 visibilidade oculta é frágil. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico:
 `RLBridgeBehavior` é mais um nome que `libflight`/`libflight_tc.so` exportam, e como `provides:` é
 igualdade exata de conjunto contra o que a `.so` exporta, todo cenário que carrega esse plugin
-precisou de uma linha a mais (inclusive `models/player/fixtures/stub`, que precisa continuar
+precisou de uma linha a mais (inclusive `models/players/fixtures/stub`, que precisa continuar
 contrato-compatível com o cenário de produção mesmo sem instanciar a classe).
 
 ## Latência de um frame

@@ -11,7 +11,7 @@
 # Conferir mtime nao e conhecer o fonte: e conhecer um CAMINHO, exatamente
 # como o 'searchPaths:' do cenario ja faz.
 #
-# Descobre os modelos por find sob models/player/ (mesma filosofia de
+# Descobre os modelos por find sob models/players/ (mesma filosofia de
 # check_modelo_estrutura.sh/check_colisao_fabrica.py: um modelo novo ja entra
 # na checagem, sem editar este arquivo) -- EXCETO fixtures/ e template/, que
 # nunca sao instalados em dist/lib/mixr-plugins/ do host (nao sao producao,
@@ -19,7 +19,7 @@
 #
 # Os basenames de .so a checar de CADA modelo vem do PROPRIO './dist' local
 # dele (populado por 'make build'/'make install-host' daquele projeto) -- nao
-# de uma lista escrita a mao, que envelheceria em silencio (ex.: A4 produz
+# de uma lista escrita a mao, que envelheceria em silencio (ex.: A-4 produz
 # DOIS .so, libflight.so + libflight_tc.so, e um modelo futuro pode produzir
 # mais de um tambem).
 set -u
@@ -29,7 +29,7 @@ cd "$RAIZ" || exit 1
 fail=0
 checados=0
 
-for modelo in models/player/*/; do
+for modelo in models/players/*/; do
    modelo="${modelo%/}"
    nome="$(basename "$modelo")"
    case "$nome" in

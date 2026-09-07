@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# Gera um modelo novo em models/player/<nome>/ a partir de um ponto de
+# Gera um modelo novo em models/players/<nome>/ a partir de um ponto de
 # partida copiavel (fixtures/stub, achatado, ou template/, em camadas).
 #
 # Automatiza a receita MECANICA ja documentada em models/README.md secao 2 e
-# em models/player/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
+# em models/players/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
 # novo, so elimina os erros manuais mais citados no repositorio: a linha ROOT
 # do Makefile (calculada aqui pela PROFUNDIDADE REAL do destino, nunca
 # copiada -- ver models/README.md secao 5, armadilha 7) e o namespace C++
-# aninhado (models/player/fixtures/stub/docs/CONTRATO.md secao 6) esquecido pela
+# aninhado (models/players/fixtures/stub/docs/CONTRATO.md secao 6) esquecido pela
 # metade.
 #
 # O QUE ESTE SCRIPT NAO FAZ, de proposito:
@@ -66,9 +66,9 @@ if ! [[ "$NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
 fi
 
 if [ "$KIND" = "stub" ]; then
-    ORIGEM="$REPO_ROOT/models/player/fixtures/stub"
+    ORIGEM="$REPO_ROOT/models/players/fixtures/stub"
 else
-    ORIGEM="$REPO_ROOT/models/player/template"
+    ORIGEM="$REPO_ROOT/models/players/template"
 fi
 ORIGEM_NOME="$(basename "$ORIGEM")"
 
@@ -78,7 +78,7 @@ if [ -n "$DEST" ]; then
         *) DEST_ABS="$REPO_ROOT/$DEST" ;;
     esac
 else
-    DEST_ABS="$REPO_ROOT/models/player/$NAME"
+    DEST_ABS="$REPO_ROOT/models/players/$NAME"
 fi
 
 case "$DEST_ABS" in
@@ -158,13 +158,13 @@ Falta, MANUALMENTE (nada disto e automatizavel):
   [ ] a regra de negocio de verdade (docs/PRIMEIROS-PASSOS.md, passo 5, se veio do
       template -- domain -> ubf -> xnative)
   [ ] preservar as chamadas ao xboard em ubf/*Action::execute() (a UNICA obrigacao que
-      falha em silencio -- ver models/player/fixtures/stub/docs/CONTRATO.md secao 3)
+      falha em silencio -- ver models/players/fixtures/stub/docs/CONTRATO.md secao 3)
   [ ] atualizar xnative/factory.cpp (NOMES[]/METAS[]) se classes forem renomeadas/removidas
   [ ] revisar a prosa de README.md/docs/*.md -- so o titulo foi trocado, o resto ainda
       descreve a origem (${nome} copiou de fixtures/stub ou template/)
   [ ] o bloco \`provides:\` do .edl do SEU cenario (tem que bater EXATAMENTE com o que o
       .so exporta)
-  [ ] git add models/player/${nome}/ (este script nao commita nada)
+  [ ] git add models/players/${nome}/ (este script nao commita nada)
   [ ] este modelo ja entra sozinho em 'make models'/'make test' da raiz (descoberta por
       'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
       '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
@@ -288,7 +288,7 @@ mensagem de commit em uso.
 
 ## [$VERSAO] — $DATA_HOJE
 
-Gerado a partir de \`models/player/$ORIGIN_REL\` por \`scripts/models.sh\` (kind=$KIND).
+Gerado a partir de \`models/players/$ORIGIN_REL\` por \`scripts/models.sh\` (kind=$KIND).
 Substitua esta entrada pela primeira decisão real deste modelo antes do primeiro commit.
 EOF
 
@@ -307,7 +307,7 @@ if [ -n "$SOBRAS" ] || [ -n "$SOBRAS_MESON" ]; then
 fi
 
 if [ "$NO_BUILD" = "1" ]; then
-    echo "scaffold de models/player/$NAME/ pronto (build de verificacao PULADO, --no-build)."
+    echo "scaffold de models/players/$NAME/ pronto (build de verificacao PULADO, --no-build)."
     imprimir_checklist "$NAME"
     exit 0
 fi
@@ -321,8 +321,8 @@ fi
 echo "compilando, testando e instalando o scaffold (make test install) ..."
 if ! make -C "$DEST_ABS" test install; then
     echo "
-FALHOU o build/teste de verificacao -- o scaffold ficou em models/player/$NAME/,
-incompleto. NAO apague a pasta: compare com models/player/$([ "$KIND" = "stub" ] && echo fixtures/stub || echo template)/
+FALHOU o build/teste de verificacao -- o scaffold ficou em models/players/$NAME/,
+incompleto. NAO apague a pasta: compare com models/players/$([ "$KIND" = "stub" ] && echo fixtures/stub || echo template)/
 para achar o que sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
 fi
@@ -342,5 +342,5 @@ else
 fi
 
 echo ""
-echo "scaffold de models/player/$NAME/ pronto e compilando/testando verde."
+echo "scaffold de models/players/$NAME/ pronto e compilando/testando verde."
 imprimir_checklist "$NAME"

@@ -177,26 +177,26 @@ def main():
     antenna_primary = (by_factory.get("Antenna") or {}).get("primaryComponents", [])
     check(antenna_primary == [], "Antenna.primaryComponents deveria ser vazio -- Antenna nao e um Player")
 
-    # -- origem de QUALQUER coisa sob ./models/, nao so models/player/<x>/ ---
-    a4_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:A4"]
-    check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A4' -- models/player/A4 sumiu do catalogo")
+    # -- origem de QUALQUER coisa sob ./models/, nao so models/players/<x>/ ---
+    a4_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:A-4"]
+    check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A-4' -- models/players/A-4 sumiu do catalogo")
     missile_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:missile"]
-    check(len(missile_entries) > 0, "nenhuma classe com origin=='plugin:missile' -- models/player/missile sumiu do catalogo")
+    check(len(missile_entries) > 0, "nenhuma classe com origin=='plugin:missile' -- models/players/missile sumiu do catalogo")
     tactical_alert = by_factory.get("TacticalAlert")
     check(tactical_alert is not None, "TacticalAlert nao esta no catalogo")
     if tactical_alert:
         check(tactical_alert["origin"] == "plugin:events",
               f"TacticalAlert.origin == {tactical_alert['origin']!r}, esperado 'plugin:events' -- "
-              f"regressao: uma classe sob models/ que NAO e models/player/<nome>/ "
+              f"regressao: uma classe sob models/ que NAO e models/players/<nome>/ "
               f"(aqui, models/events/payloads/EID_ALERT/) caindo de volta pra 'builtin' por engano")
 
-    # -- primeiro-achado-vence entre models/player/A4 e fixtures/stub -------
+    # -- primeiro-achado-vence entre models/players/A-4 e fixtures/stub -------
     bt_behavior = by_factory.get("BtBehavior")
     check(bt_behavior is not None, "BtBehavior nao esta no catalogo")
     if bt_behavior:
         check(slot(bt_behavior, "patrolHeading") is not None,
               "BtBehavior.patrolHeading nao encontrado -- regressao: o stub "
-              "(fixtures/stub, varrido depois de A4) pode ter sobrescrito os slots reais")
+              "(fixtures/stub, varrido depois de A-4) pode ter sobrescrito os slots reais")
 
     # -- multiplos slots numa linha so (estilo compacto) ---------------------
     msg_feed = by_factory.get("MsgFeed")

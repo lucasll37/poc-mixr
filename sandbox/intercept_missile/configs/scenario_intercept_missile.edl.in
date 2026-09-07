@@ -179,7 +179,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./models/player/A4/configs/flight_tree_missile_demo.xml"
+                     treeFile: "./models/players/A-4/configs/flight_tree_missile_demo.xml"
                      patrolHeading:  ( Degrees 90 )
                      legTime:        ( Seconds 60 )
                      legTurn:        ( Degrees 90 )

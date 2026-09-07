@@ -160,16 +160,16 @@ def extract_slots(cpp_roots):
     PRIMEIRO achado vence (nunca sobrescreve) quando o mesmo nome de classe
     aparece em mais de um arquivo -- relevante para o catalogo do editor
     grafico, que varre 'models/' (deste repositorio) inteiro:
-    'models/player/A4' (a implementacao de producao) e
-    'models/player/fixtures/stub' (um modelo minimo, so pra testar o
+    'models/players/A-4' (a implementacao de producao) e
+    'models/players/fixtures/stub' (um modelo minimo, so pra testar o
     CONTRATO de carga de plugin) declaram as MESMAS classes (BtBehavior,
-    AlertDatalink, ...) com o MESMO nome barra, e 'A4' < 'fixtures'
+    AlertDatalink, ...) com o MESMO nome barra, e 'A-4' < 'fixtures'
     alfabeticamente -- sem 'first wins', o stub (varrido depois,
     deliberadamente mais simples) sobrescrevia os slots REAIS de producao,
     confirmado rodando: BtBehavior saia com 5 slots em vez dos ~19 de
     verdade. O modo tabela/--catalog (restrito a
     contexts/src/mixr/src/models/) nunca tinha essa colisao para comecar --
-    esse universo nem inclui models/player/."""
+    esse universo nem inclui models/players/."""
     slots: dict[str, list[dict]] = {}
     for f in iter_files(cpp_roots, {".cpp"}):
         text = f.read_text(encoding="utf-8", errors="replace")

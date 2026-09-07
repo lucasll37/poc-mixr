@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""Guarda: nenhum PAR de modelos "de verdade" sob models/player/ pode
+"""Guarda: nenhum PAR de modelos "de verdade" sob models/players/ pode
 publicar o MESMO nome de fabrica.
 
 Por que isso e fatal, nao so feio: libs/xplugin/PluginRegistry.cpp,
 loadModule(), passo "colisao" -- se dois .so carregados no MESMO processo
 tentam registrar o mesmo nome, o segundo chama die() (std::exit) na hora.
-Ja aconteceu de verdade uma vez (ThreadTagProbe, A4 vs missile -- ver
+Ja aconteceu de verdade uma vez (ThreadTagProbe, A-4 vs missile -- ver
 CLAUDE.md, "vigesima terceira passada") e foi corrigido renomeando o lado
 que nao e producao. Esta guarda existe para essa classe de erro nao
 precisar ser descoberta rodando de novo da proxima vez.
 
-Descobre os modelos por find sob models/player/ (mesma filosofia de
+Descobre os modelos por find sob models/players/ (mesma filosofia de
 check_modelo_estrutura.sh/check_falcons_estrutura.sh: um modelo novo ja
-entra na checagem, sem editar este arquivo) -- EXCETO models/player/
+entra na checagem, sem editar este arquivo) -- EXCETO models/players/
 fixtures/<nome>/, que existem justamente para IMITAR o contrato de outro
 modelo (docs/CONTRATO.md) e nunca sao carregados JUNTO com o modelo que
 imitam; colisao ali e o proposito, nao um bug (ver CLAUDE.md sobre o
-stub reaproveitando os mesmos nomes de A4 de proposito) -- e EXCETO
-models/player/template/, pelo mesmo motivo conceitual: nunca e producao,
+stub reaproveitando os mesmos nomes de A-4 de proposito) -- e EXCETO
+models/players/template/, pelo mesmo motivo conceitual: nunca e producao,
 nenhum cenario aponta pra ele, nunca e carregado ao lado de outro modelo
 (models/README.md, secao 2.4). Comparar os nomes de exemplo dele
-(ExampleState/ExampleBehavior/...) contra A4/missile seria ruido, nao
+(ExampleState/ExampleBehavior/...) contra A-4/missile seria ruido, nao
 sinal.
 
 Limitacao conhecida, documentada em vez de escondida: so olha o que cada
-models/player/<nome>/src/ implementa DIRETAMENTE. Uma classe compartilhada
-de fora (ex.: models/events/, hoje so consumida por A4 -- ver
+models/players/<nome>/src/ implementa DIRETAMENTE. Uma classe compartilhada
+de fora (ex.: models/events/, hoje so consumida por A-4 -- ver
 xnative/factory.cpp, que acrescenta TacticalAlert ao proprio NOMES[]) nao
 entra nesta varredura; se um segundo modelo um dia tambem passar a
 publicar uma classe de models/events/, confira a mao contra o que aquele
@@ -44,14 +44,14 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import extract_execution_chain as ext  # noqa: E402
 
-MODELS_PLAYER = REPO_ROOT / "models" / "player"
+MODELS_PLAYER = REPO_ROOT / "models" / "players"
 
 
 NAO_PRODUCAO = {"fixtures", "template"}
 
 
 def discover_models():
-    """{nome: {nomes-de-fabrica}} para cada models/player/<nome>/ que NAO
+    """{nome: {nomes-de-fabrica}} para cada models/players/<nome>/ que NAO
     seja fixture/template -- ver o "porque" da exclusao no docstring do
     modulo."""
     models = {}
@@ -69,7 +69,7 @@ def discover_models():
 def main():
     models = discover_models()
     if len(models) < 2:
-        print(f"OK -- so {len(models)} modelo(s) sob models/player/ (fora {'/'.join(sorted(NAO_PRODUCAO))}/); nada para comparar.")
+        print(f"OK -- so {len(models)} modelo(s) sob models/players/ (fora {'/'.join(sorted(NAO_PRODUCAO))}/); nada para comparar.")
         return 0
 
     failures = []

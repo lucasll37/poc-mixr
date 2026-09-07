@@ -83,7 +83,7 @@
             // DEMO (tenta lancar antes de evadir) e os 3 slots do
             // envelope de lancamento. O resto e identico ao falcon1
             // de scenario.edl.in.
-            treeFile: "./models/player/A4/configs/flight_tree_missile_demo.xml"
+            treeFile: "./models/players/A-4/configs/flight_tree_missile_demo.xml"
             patrolHeading:  ( Degrees 90 )
             legTime:        ( Seconds 60 )
             legTurn:        ( Degrees 90 )

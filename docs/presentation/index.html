@@ -356,9 +356,9 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
           <tr><td class="n">01</td><td class="what">Carga dinâmica de modelos — o mesmo binário roda modelos diferentes sem recompilar</td><td class="where">models/</td></tr>
           <tr><td class="n">02</td><td class="what">Elevação de terreno real (dados SRTM)</td><td class="where">shared/data/terrain/srtm/</td></tr>
           <tr><td class="n">03</td><td class="what">Exportação para o Tacview, reaproveitando o gravador nativo do MIXR</td><td class="where">libs/xtacview/</td></tr>
-          <tr><td class="n">04</td><td class="what">Física de voo completa (6 graus de liberdade) via JSBSim</td><td class="where">models/player/A4/</td></tr>
+          <tr><td class="n">04</td><td class="what">Física de voo completa (6 graus de liberdade) via JSBSim</td><td class="where">models/players/A-4/</td></tr>
           <tr><td class="n">05</td><td class="what">Decisão em paralelo sem perder previsibilidade — 1, 2 ou 4 threads, mesmo resultado</td><td class="where">src/poc/dis/multi-thread/</td></tr>
-          <tr><td class="n">06</td><td class="what">Lógica de decisão como árvore de comportamento (XML) — trocar a política não recompila</td><td class="where">models/player/A4/src/bt/</td></tr>
+          <tr><td class="n">06</td><td class="what">Lógica de decisão como árvore de comportamento (XML) — trocar a política não recompila</td><td class="where">models/players/A-4/src/bt/</td></tr>
         </tbody>
       </table>
     </div>
@@ -646,7 +646,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <h2 class="headline">O mapa do repositório</h2>
   <div class="card-grid">
     <div class="card"><span class="path">src/poc/</span><span class="role">dado — configs/+data/+README, nunca código</span></div>
-    <div class="card"><span class="path">models/player/</span><span class="role">o modelo, plugin Meson independente</span></div>
+    <div class="card"><span class="path">models/players/</span><span class="role">o modelo, plugin Meson independente</span></div>
     <div class="card"><span class="path">libs/x*/</span><span class="role">libs que atravessam host↔plugin ou ficam no host</span></div>
     <div class="card"><span class="path">app/</span><span class="role">o dashboard/runner único, na raiz</span></div>
     <div class="card"><span class="path">tests/</span><span class="role">as 8 camadas de teste</span></div>

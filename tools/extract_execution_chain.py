@@ -9,9 +9,9 @@ afirmacao de "isto e ocioso" usada na arvore da UI tem de bater com a saida daqu
 
 O que ele faz, dois passos:
 
-  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/player/A4/include
+  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/players/A-4/include
      por DECLARE_SUBCLASS(Tipo, Base) -- monta a cadeia de heranca (Tipo -> Base).
-     varre os .cpp de contexts/src/mixr/src e models/player/A4/src por
+     varre os .cpp de contexts/src/mixr/src e models/players/A-4/src por
      IMPLEMENT_SUBCLASS/IMPLEMENT_PARTIAL_SUBCLASS/IMPLEMENT_ABSTRACT_SUBCLASS
      (Tipo, "NomeDeFabrica") -- monta fabrica -> classe C++.
 
@@ -62,10 +62,10 @@ MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
 # mixr::models::factory publica" -- o que o usuario pediu por "built-in no mixr".
 MIXR_MODELS_INCLUDE = MIXR_INCLUDE / "models"
 MIXR_MODELS_SRC = MIXR_SRC / "models"
-# 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/player/A4/include' como um
+# 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/players/A-4/include' como um
 # primeiro corte deste script supunha. models/ esteve em reorganizacao (confirmado
 # rodando: AlertDatalink.hpp saiu de models/A4/include/xnative/ para
-# models/player/A4/include/xnative/ ENQUANTO este script era escrito, por uma
+# models/players/A-4/include/xnative/ ENQUANTO este script era escrito, por uma
 # sessao concorrente) -- qualquer subcaminho fixo aqui ficaria errado no proximo commit.
 # rglob() sobre a pasta toda e imune a esse tipo de mudanca de endereco.
 MODELS_DIR = REPO_ROOT / scan.MODELS_REL
@@ -113,12 +113,12 @@ def find_overrides(cpp_roots, methods=None, capture_body=False):
 
     PRIMEIRO achado vence por (classe, metodo) -- nao sobrescreve -- pelo
     MESMO motivo de extract_slots() (em mixr_source_scan.py): varrer
-    models/ inteiro (incluindo models/player/fixtures/stub, que
+    models/ inteiro (incluindo models/players/fixtures/stub, que
     deliberadamente reimplementa FlightAction::execute/etc. com o MESMO
     nome, so para testar contrato de carga de plugin) faz duas definicoes
     REAIS do mesmo (Classe, metodo) aparecerem em arquivos diferentes.
     Confirmado rodando: sem a guarda, 'FlightAction::execute' saia
-    apontando pra stub.cpp (varrido depois de A4 na ordem alfabetica),
+    apontando pra stub.cpp (varrido depois de A-4 na ordem alfabetica),
     nao para a implementacao de producao. A guarda e por (classe, metodo),
     NAO por classe inteira -- uma classe real legitimamente tem metodos
     DIFERENTES definidos em arquivos DIFERENTES (isso nao e colisao

@@ -10,7 +10,7 @@ paths:
 
 - **Invariante mais citado do projeto**: o build do HOST (`app/`, `src/`, `libs/`, `meson.build`
   raiz) nunca referencia, inclui ou compila fonte de MODELO (`domain/`, `bt/`, `ubf/`, `xnative/`
-  — essas árvores moram só em `models/player/<nome>/`). O host só consome o `.so` publicado em
+  — essas árvores moram só em `models/players/<nome>/`). O host só consome o `.so` publicado em
   `dist/lib/mixr-plugins/`, carregado por `dlopen` em runtime. Guarda:
   `tests/guard/check_host_opaco.sh` (o hook `check-host-opaco.sh` já roda isso automaticamente
   depois de editar algo sob estas pastas).

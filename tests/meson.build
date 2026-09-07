@@ -2,7 +2,7 @@
 # Suite do HOST -- so entra no build com -Dtests=true (ver meson_options.txt)
 #
 # As camadas 'domain' e 'tree' NAO estao mais aqui: elas compilam domain/ e bt/
-# direto, e esses fontes sairam para models/player/A4/. Moraram junto com o que
+# direto, e esses fontes sairam para models/players/A-4/. Moraram junto com o que
 # testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
 #   domain-rules  as primitivas de deteccao do libs/xmsg (host, ficaram)
@@ -26,12 +26,12 @@ bash = find_program('bash')
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-# 'models/player/A4' e um projeto Meson AUTOCONTIDO (ver models/README.md
+# 'models/players/A-4' e um projeto Meson AUTOCONTIDO (ver models/README.md
 # Sec1.1) -- constroi em './build' DENTRO da propria pasta, nao mais em
 # 'build-flight' na raiz (esse era o caminho do design anterior, quando
 # 'make models' fazia o setup do flight direto por aqui). As variantes A/B
 # de teste ('libmodel_variant_a.so'/'_b.so', para plugin-hotswap) saem la.
-model_build  = raiz / 'models' / 'player' / 'A4' / 'build'
+model_build  = raiz / 'models' / 'players' / 'A-4' / 'build'
 
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do libs/xmsg
@@ -348,7 +348,7 @@ test('app-background-panel', test_app_background_panel, suite: 'domain', timeout
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
 # de libs/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
-# libs/xtrack/TrackQuery.hpp. Alimenta models/player/A4/src/ubf/
+# libs/xtrack/TrackQuery.hpp. Alimenta models/players/A-4/src/ubf/
 # FlightState.cpp (a percepcao do modelo).
 test_track_selection = executable('test-track-selection',
     files('domain/test_track_selection.cpp'),
@@ -378,10 +378,10 @@ test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
 # consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
 # verdade + determinismo com 1/2/4 threads) precisa de um .onnx e vem depois.
-# O .onnx DE VERDADE que models/player/A4 instala -- por caminho, nao uma copia.
-# Mesmo padrao de FLIGHT_TREE_XML em models/player/A4/tests/meson.build: um teste
+# O .onnx DE VERDADE que models/players/A-4 instala -- por caminho, nao uma copia.
+# Mesmo padrao de FLIGHT_TREE_XML em models/players/A-4/tests/meson.build: um teste
 # contra uma copia provaria que a copia esta certa, o que nao interessa.
-policy_onnx = raiz / 'models' / 'player' / 'A4' / 'configs' / 'policy_example.onnx'
+policy_onnx = raiz / 'models' / 'players' / 'A-4' / 'configs' / 'policy_example.onnx'
 
 test_xinfer = executable('test-xinfer',
     files('domain/test_xinfer.cpp'),
@@ -451,7 +451,7 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 #
 # >>> ESTA LISTA NAO E O PONTO DE ENTRADA PADRAO PRA UM MODELO/POC NOVO. <<<
 # So entra aqui quem segue o formato dual 'intruder'/'lowfuel' com rotulos
-# EVADE/SUPPORT/RTB (semantica de interceptacao aerea, tipo A4/flight). Um
+# EVADE/SUPPORT/RTB (semantica de interceptacao aerea, tipo A-4/flight). Um
 # modelo novo que nao decide nesse formato (a maioria dos que vem por ai --
 # ver TODO.md) NAO deve ser forcado aqui; ele ganha cobertura por um bloco
 # test() manual (precedente: 'onnx-policy', mais abaixo neste arquivo) ou
@@ -635,10 +635,10 @@ test('memory-onnx-policy', py,
 # mesma opcao 'variants'), so que com um UNICO ref() extra em
 # BtBehavior::genAction(), nunca balanceado por um unref() (ver o cabecalho
 # do script e o #ifdef POC_LEAK_ONE_REF_PER_DECISION em
-# models/player/A4/src/ubf/BtBehavior.cpp). Reproduz de forma PERMANENTE o
+# models/players/A-4/src/ubf/BtBehavior.cpp). Reproduz de forma PERMANENTE o
 # que so tinha sido provado manualmente uma vez (tests/README.md, "ref() a
 # mais na FlightAction"). 'model_leak.so' nunca e instalado (so existe em
-# models/player/A4/build/, como as duas variantes de hotswap) -- por isso o
+# models/players/A-4/build/, como as duas variantes de hotswap) -- por isso o
 # caminho vem de 'model_build', igual a 'plugin-hotswap' logo abaixo.
 test('memory-controle-negativo', py,
      args: files('memory/check_leak_detector_controle_negativo.py') + [
@@ -744,7 +744,7 @@ test('plugin-deposito-terceiro', py,
 # comparar, e uma guarda que nao acha nada para comparar ou falha (o caso
 # deste script, que sai 1 quando o find volta vazio) ou passa vacuamente, que
 # e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
-# MODELO quando ele saiu para models/player/A4.
+# MODELO quando ele saiu para models/players/A-4.
 
 # O catalogo de --edl-catalog (tools/extract_execution_chain.py), fonte
 # unica de verdade do editor grafico de .edl (src/ui/edl_builder.jsx): tipo/
@@ -798,9 +798,9 @@ test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
 test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
-# Nenhum PAR de modelos "de verdade" sob models/player/ (fora fixtures/,
+# Nenhum PAR de modelos "de verdade" sob models/players/ (fora fixtures/,
 # que existem pra IMITAR outro de proposito) pode publicar o MESMO nome
-# de fabrica -- ja aconteceu uma vez (ThreadTagProbe, A4 vs missile) e
+# de fabrica -- ja aconteceu uma vez (ThreadTagProbe, A-4 vs missile) e
 # derruba o processo em runtime se algum .edl carregar os dois .so juntos.
 # Descobre os modelos por find (mesma filosofia das guardas acima) -- um
 # modelo novo ja entra na checagem, sem editar este arquivo.

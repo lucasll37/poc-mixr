@@ -70,9 +70,51 @@ make help    # lista TODOS os alvos do Makefile, com descricao
 
 ```bash
 meson configure build -Dtests=true   # roda uma vez, depois do 'make configure' -- a suite fica atras desta opcao
-make test                            # as duas suites: host + modelo(s)
-make test-asan                       # LeakSanitizer (build separado, lento)
+make test-models                     # so a suite do(s) MODELO(s): domain + tree + native
+make test                            # so a suite do HOST: scenario/determinism/plugin/memory/guard/...
+make test-asan                       # AddressSanitizer/LeakSanitizer (build separado, lento)
 ```
+
+`make test` builda e sincroniza o(s) modelo(s) antes de rodar (via `install` — o binário do host
+precisa do `.so` em `dist/` para os testes que `dlopen()`, ex. `scenario`/`plugin`), mas roda só a
+suíte do host; a suíte do próprio modelo (`domain`/`tree`/`native`, sem `Station`) é `make
+test-models`, que delega para o `Makefile` autocontido de cada projeto de modelo. As duas juntas
+são o que o CI roda (`.gitlab-ci.yml`, job `test`).
+
+### `make test-asan`
+
+Fora de `make test` de propósito — reconfigura e recompila host **e** modelo duas vezes (uma vez
+com o sanitizador, outra revertendo), então é lento. Passo a passo:
+
+1. **Recompila os DOIS lados com `-fsanitize=address`**: o modelo (`make models ASAN=true`, que
+   hoje instrumenta só `models/players/A-4` — é o único projeto de modelo com uma opção `asan` no
+   próprio `meson_options.txt`; `missile`/`stub`/`template` não têm essa opção e a ignoram) e o
+   host (`meson configure build -Dasan=true` + `meson compile`, que instrumenta `./app` e
+   `src/rl/bindings`). Os dois são necessários — instrumentar só o host deixaria o `.so` do plugin
+   sem *redzone* de pilha e sem símbolos no relatório do LeakSanitizer.
+2. Gera uma fixture hermética da poc `single-thread` (`tests/scenario/make_fixture.py --poc
+   single-thread --mode intruder` — carrega `libflight.so`, o plugin do A-4) e roda 500 frames
+   determinísticos com `-threads 1`, sob `LSAN_OPTIONS=suppressions=./tests/memory/asan.supp`.
+   `-threads 1` é a mesma cautela já usada pela suíte `memory` (ver
+   [`tests/README.md`](tests/README.md)): os contadores de instância do MIXR não são atômicos, e
+   mais de uma thread do pool de tempo crítico introduziria ruído não relacionado a vazamento de
+   verdade.
+3. **Reverte `build/`/`plugins/`/`dist/` para não-ASan automaticamente no final**, tenha o passo 2
+   acusado vazamento ou não — para não deixar o repositório instrumentado depois de uma corrida.
+   Se a reversão em si falhar (raro), o alvo avisa em `stderr` e pede para rodar `make configure &&
+   make build` manualmente antes de confiar no próximo `make test`/`make run-*`.
+
+As supressões de [`tests/memory/asan.supp`](tests/memory/asan.supp) existem porque, sem elas, o
+alvo nasce **permanentemente vermelho**: acusa ~896 bytes em 22 alocações que são do próprio
+framework MIXR (`JSBSimModel::setSlotRootDir`/`setSlotModel`, `PrintHandler::setFullFilename`,
+`DataRecorder::setSlotEventName`), de tamanho fixo e confirmadas — por outro caminho, os
+contadores de instância do MIXR — como não crescendo com os frames; não é código deste
+repositório. Um vazamento novo, fora dessa lista, ainda derruba o alvo.
+
+**Complementa, não substitui**, os contadores de instância do próprio MIXR (suíte `memory`, já
+dentro de `make test`): eles pegam vazamento de *ref-counting* (objeto vivo que ninguém mais
+alcança); o LeakSanitizer pega `new`/`malloc` cru sem `delete`/`free` correspondente, que os
+contadores não enxergam.
 
 Determinismo (mesmo resultado com 1, 2 e 4 threads de tempo crítico) tem script próprio, fora do
 `make test`:
@@ -148,7 +190,7 @@ poc-mixr/
 ├── libs/         bibliotecas x<nome> reaproveitadas entre host e modelos -- cada uma com README.md
 ├── shared/       dados vendorizados do CENARIO -- terreno SRTM, aeronaves JSBSim (shared/data/)
 ├── sandbox/      cenarios soltos de experimentacao (ver 'make run-app')
-├── tests/        suite do host (a de cada modelo vive dentro do proprio models/player/<nome>/)
+├── tests/        suite do host (a de cada modelo vive dentro do proprio models/players/<nome>/)
 ├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP -- destilado + fonte vendorizado
 ├── docs/         documentacao visual gerada -- manual interativo, slides, livros de referencia
 ├── deps/         receitas Conan p/ compilar mixr/behaviortree/jsbsim/openrti a partir do fonte

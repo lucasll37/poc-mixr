@@ -163,7 +163,7 @@ decidindo, só que sobre um mundo estático: nada se move, a decisão apenas nã
 ## Por que é `static_library()`, não `shared_library()`
 
 `xclock` só fala com a `Station`/`Simulation` nativas — nunca cruza a fronteira `dlopen` de plugin
-(nenhum modelo em `models/player/` inclui este header). Por isso fica estática, como
+(nenhum modelo em `models/players/` inclui este header). Por isso fica estática, como
 `xtacview`/`xjoystick`/`xmsg`/`xplugin`: as seis libs que viram `shared_library()`
 (`xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) só existem porque host e plugin
 precisam compartilhar uma cópia só de estado mutável através do `dlopen`. `xclock` não tem esse

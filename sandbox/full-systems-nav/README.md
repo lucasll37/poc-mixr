@@ -20,13 +20,13 @@ Responde a **duas** perguntas ao mesmo tempo:
 
 **Esta poc não tem código de C++ próprio no sentido de "aplicação"** — só o
 cenário, os dados de execução e este README; quem a executa é o `./app`. Mas
-ela **acrescentou uma peça nova ao modelo** (`models/player/A4`): o nó de árvore
+ela **acrescentou uma peça nova ao modelo** (`models/players/A-4`): o nó de árvore
 `( Navigate )` e um punhado de campos novos em `domain::WorldView` — ver a
 seção "O que foi acrescentado ao modelo" abaixo.
 
 ## A árvore: um nó só, sem Fallback
 
-`models/player/A4/configs/flight_tree_nav.xml`:
+`models/players/A-4/configs/flight_tree_nav.xml`:
 
 ```xml
 <root main_tree_to_execute="MainTree">
@@ -71,7 +71,7 @@ cenários do `./app` já usam. `state:`/`behavior:` são os mesmos três papéis
 UBF de sempre (percepção/decisão/atuação) — só a árvore dentro do `behavior:`
 muda. Plugin: `libflight_tc.so` (não `libflight.so`).
 
-## O que foi acrescentado ao modelo (`models/player/A4`)
+## O que foi acrescentado ao modelo (`models/players/A-4`)
 
 Nada disto muda `provides:` de nenhum cenário existente (nó de árvore não
 tem nome de fábrica — registra na `BT::BehaviorTreeFactory`, não na factory

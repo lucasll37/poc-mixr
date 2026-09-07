@@ -4,20 +4,25 @@
 make configure                       # inclui gtest (test_requires no conanfile.py)
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make build
-make test                            # 45 testes nas DUAS suítes
+make test-models                     # so a suite do MODELO
+make test                            # so a suite do HOST (45 testes)
 ```
 
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
 `subdir('./tests')` do [meson.build](../meson.build) raiz nem é avaliado.
 
-**São DUAS suítes, em dois diretórios de build**, porque o modelo saiu para um projeto próprio
-(`models/player/A4/`):
+**São DUAS suítes, em dois diretórios de build, e DOIS alvos separados** — porque o modelo saiu
+para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
 
 ```bash
-make test          # as duas
 make test-models   # só a do modelo:  domain (42) + tree (15) + native (9)
+make test           # só a do host — builda/sincroniza o(s) modelo(s) antes (dlopen precisa do
+                     # .so), mas não roda a suíte deles
 meson test -C build --suite plugin   # só uma camada do host
 ```
+
+`make test` **não** dispara `test-models`, nem o contrário — CI (`.gitlab-ci.yml`, job `test`)
+roda os dois, nessa ordem, para cobrir os dois relatórios JUnit.
 
 > **Cuidado, e isto foi medido:** `meson test` devolve **rc=0 para suíte vazia** ("No tests
 > defined."), e o default de `-Dtests` é `false`. `meson test -C build --suite domain` continua
@@ -47,7 +52,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 
 | suite | pergunta | como | custo |
 |---|---|---|---|
-| `domain` (modelo) | as regras estão certas? | GTest sobre `models/player/A4/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
+| `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
 | `domain` (host) | as primitivas do `libs/xmsg` estão certas? | GTest sobre `libs/xmsg/rules/` | 24 testes, ~10 ms |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
@@ -72,7 +77,7 @@ somado 50 vezes fica **acima**, então um `hold: ( Seconds 1 )` armava em passos
 10 Hz e a 50 Hz. Dois testes vermelhos acharam isso antes de qualquer linha de MIXR ser escrita.
 
 O que se trava aqui é, sobretudo, a história registrada no cabeçalho de
-[`domain/ThreatPolicy.hpp`](../models/player/A4/include/domain/ThreatPolicy.hpp): três correções
+[`domain/ThreatPolicy.hpp`](../models/players/A-4/include/domain/ThreatPolicy.hpp): três correções
 que vieram de ver as aeronaves "batendo asa" no Tacview. Cada uma virou um teste, porque cada uma
 é uma regressão que voltaria em silêncio:
 
@@ -84,10 +89,10 @@ Mais o piso anti-CFIT, com **varredura de invariante**: para uma grade de eleva�
 marcação × sentido do contato, a altitude comandada nunca fica abaixo de `terreno + folga`. É
 laço aninhado comum, sem dependência de *property testing*.
 
-## Camada 2 — a árvore ([tree/](../models/player/A4/tests/tree/))
+## Camada 2 — a árvore ([tree/](../models/players/A-4/tests/tree/))
 
 Carrega o
-[`flight_tree.xml` de produção](../models/player/A4/configs/flight_tree.xml) — por caminho, não
+[`flight_tree.xml` de produção](../models/players/A-4/configs/flight_tree.xml) — por caminho, não
 uma cópia. Um teste contra uma cópia provaria que a cópia está certa, o que não interessa a
 ninguém.
 
@@ -102,12 +107,12 @@ hoje isso não quebra o build, quebra o voo.
 > **Esta camada só é possível por causa de duas mudanças no código de produção**, ambas mecânicas
 > e provadas neutras (o dump determinístico saiu byte a byte idêntico ao de antes):
 >
-> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/player/A4/include/domain/WorldView.hpp),
+> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/players/A-4/include/domain/WorldView.hpp),
 >    com `using Snapshot = domain::WorldView;` mantendo todos os call sites. A estrutura nunca teve
 >    tipo do MIXR — o que a prendia ao framework era só morar dentro de uma classe que herda de
 >    `AbstractState`.
 > 2. `NodeContext` deixou de carregar um `BtBehavior*` concreto e passou a apontar para
->    [`bt_nodes::DecisionContext`](../models/player/A4/include/bt/DecisionContext.hpp), a interface
+>    [`bt_nodes::DecisionContext`](../models/players/A-4/include/bt/DecisionContext.hpp), a interface
 >    com os 8 getters que os nós já usavam. `BtBehavior` a implementa sem um método novo.
 >
 > Resultado: `ldd` no binário desta camada mostra **zero** bibliotecas do MIXR. O comentário de
@@ -317,7 +322,7 @@ sem falso positivo nas outras:
 `memory-controle-negativo` (`tests/memory/check_leak_detector_controle_negativo.py`) roda o
 cenário `single-thread` contra `model_leak.so` — uma terceira variante de teste do MESMO fonte de
 produção (mesma família de `model_variant_a`/`model_variant_b`, atrás da opção `variants` de
-`models/player/A4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
+`models/players/A-4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
 `new FlightAction()` (`#ifdef POC_LEAK_ONE_REF_PER_DECISION`, nunca definida no build de produção)
 — exatamente a quebra da linha acima, agora sem depender de alguém lembrar de repeti-la à mão.
 Prova, a cada `make test`, que `memory-<poc>` pegaria um vazamento de verdade, não só que a

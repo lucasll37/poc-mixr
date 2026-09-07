@@ -1,0 +1,98 @@
+#pragma once
+
+// namespace domain ANINHADO em mixr::xmissile (nao um "domain" solto no
+// escopo global) -- o flight (models/players/A-4) TAMBEM tem seu proprio
+// "namespace domain { ... }" solto, e as duas .so's (libflight*.so,
+// libmissile.so) carregam JUNTAS no mesmo processo (ver
+// src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in,
+// sandbox/intercept_missile/configs/scenario_intercept_missile.edl.in) -- dois namespaces
+// "domain" IDENTICOS, cada um privado ao seu .so (visibility hidden), nao
+// colidem HOJE (nomes de tipo diferentes dos dois lados: GuidanceCommand
+// aqui, WorldView/ThreatPolicy/etc. no flight), mas e uma mina para o
+// futuro: dois tipos com o MESMO nome qualificado ("domain::X") em dois
+// .so's carregados juntos teriam o mesmo nome mangled, e a comparacao de
+// type_info deste toolchain degrada para strcmp entre objetos RTLD_LOCAL
+// (ver o comentario correspondente em libs/xplugin/PluginRegistry.cpp).
+// Aninhar aqui elimina a colisao sem tocar no flight (que ja tem
+// "domain::" espalhado e documentado em dezenas de lugares) -- so este
+// lado, o menor e mais novo dos dois, muda.
+namespace mixr {
+namespace models {
+namespace xmissile {
+namespace domain {
+
+//------------------------------------------------------------------------------
+// Guidance -- a lei de guiagem do misseil, PURA (sem MIXR, sem JSBSim).
+//
+// E "perseguicao pura" (pure pursuit): aponta o nariz para o alvo, banco
+// proporcional ao erro de rumo, profundor proporcional ao erro de elevacao.
+// NAO e navegacao proporcional de verdade -- essa exigiria estimar a taxa de
+// variacao da linha de visada (LOS rate) de forma filtrada, contra ruido de
+// medicao; para um alvo unico, nao manobrando, dentro do alcance curto desta
+// demo, perseguicao pura converge e e trivial de explicar. Documentado aqui
+// como simplificacao deliberada, nao descoberta later.
+//
+// Entra tudo em NED, metros e graus (mesma convencao do resto do repositorio
+// -- ver domain/WorldView.hpp do flight). Sai comando NORMALIZADO
+// (-1..1), pronto para Player::setControlStickRollInput()/PitchInput(), que
+// e a mesma faixa que o joystick fisico ja usa (libs/xjoystick).
+//------------------------------------------------------------------------------
+struct GuidanceCommand
+{
+   double rollNorm{};    // -1 (banca esquerda) .. 1 (banca direita)
+   double pitchNorm{};   // -1 (pica) .. 1 (cabra), ver sinal em Player::setControlStickPitchInput
+};
+
+struct GuidanceGains
+{
+   double headingGainDeg{45.0};      // erro de rumo que satura o comando de banco
+   double pitchGainDeg{30.0};        // erro de elevacao que satura o comando de profundor
+
+   // Termo DERIVATIVO (taxa), no mesmo comando -- ver o "porque" abaixo.
+   // Graus/segundo de taxa propria que cancela um comando de erro unitario.
+   double rollRateGainDps{60.0};
+   double pitchRateGainDps{60.0};
+};
+
+//------------------------------------------------------------------------------
+// relNorthM/relEastM/relDownM: vetor do missil ATE o alvo, NED, metros.
+// ownHeadingDeg/ownPitchDeg: atitude atual do missil, graus.
+// ownRollRateDps/ownPitchRateDps: taxa PROPRIA de rolagem/arfagem, graus/s
+// (corpo) -- ver Player::getAngularVelocities().
+//
+// ARMADILHA CONFIRMADA RODANDO: um controlador so-proporcional (erro de
+// angulo -> comando), mesmo com o comando limitado em TAXA DE VARIACAO (ver
+// GuidedMissile::guide()), diverge nesta aeronave -- medido indo de
+// oscilacoes de poucos graus a mais de 100 graus de arfagem/banco em menos
+// de 0.3 s, com a velocidade escalando para milhares de nos (o integrador
+// de passo fixo do JSBSim, 0.02 s, nao acompanha um modo de arfagem tao
+// pouco amortecido quanto o que sobra depois de reduzir a inercia do
+// aim1.xml). O termo de TAXA aqui (proporcional-derivativo, nao so
+// proporcional) e o amortecimento que falta: ele cancela a rotacao antes
+// que ela ultrapasse o alvo, em vez de deixar so a saturacao do comando
+// (que limita AMPLITUDE, nao FREQUENCIA) conter a oscilacao.
+//------------------------------------------------------------------------------
+GuidanceCommand pursuit(double relNorthM, double relEastM, double relDownM,
+                        double ownHeadingDeg, double ownPitchDeg,
+                        double ownRollRateDps, double ownPitchRateDps,
+                        const GuidanceGains& gains = GuidanceGains{});
+
+//------------------------------------------------------------------------------
+// slewTowards() -- o amortecimento que falta na lei P pura acima: limita a
+// TAXA DE VARIACAO do comando normalizado (nao so sua AMPLITUDE, que
+// GuidanceCommand::rollNorm/pitchNorm ja saturam em [-1,1]).
+//
+// ARMADILHA CONFIRMADA RODANDO (ver GuidedMissile::guide()): sem isto, o
+// comando P puro pula de 0 a +-1 num frame so, e a inercia reduzida do
+// aim1.xml (ver o "porque" em aim1.xml e em GuidedMissile.hpp) diverge --
+// medido indo de oscilacoes de poucos graus a mais de 100 graus de
+// arfagem/banco em menos de 0.3 s, velocidade escalando para milhares de
+// nos. 'maxDelta' e o limite de variacao POR CHAMADA (tipicamente
+// kMaxSlewPerSec * dt, ver GuidedMissile::guide()).
+//------------------------------------------------------------------------------
+double slewTowards(double current, double target, double maxDelta);
+
+} // namespace domain
+} // namespace xmissile
+} // namespace models
+} // namespace mixr

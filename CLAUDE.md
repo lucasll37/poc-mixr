@@ -18,7 +18,7 @@ desenvolvimento — é dependência binária.
 > referência de arquitetura, não o ponto de partida. Comece por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
 > (`make new-model NAME=... KIND=stub|template`), os dois pontos de partida
-> copiáveis (`models/player/fixtures/stub/`, achatado; `models/player/template/`, em camadas) e o
+> copiáveis (`models/players/fixtures/stub/`, achatado; `models/players/template/`, em camadas) e o
 > registro de coordenação entre devs, [`models/REGISTRO.md`](models/REGISTRO.md).
 
 As pocs vivem em `src/poc/`, e **três delas moram juntas em `src/poc/dis/`** — `bandit`,
@@ -99,7 +99,8 @@ make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
 make models      # flight/missile/stub, cada um autocontido -> plugins/ (NUNCA dist/)
 make build       # so o HOST (depende so de sdk) -> build/ -- NAO precisa dos modelos pra compilar
 make install     # 'sync-plugins' (plugins/ -> dist/lib+share/mixr-plugins/) + meson install do host -> dist/
-make test        # as DUAS suítes: a do modelo (test-models) e a do host (depende de 'install')
+make test-models # SO a suite do modelo (domain + tree + native) -- delega pro Makefile de cada modelo
+make test        # SO a suite do host (depende de 'install' -- builda/sincroniza o modelo, nao testa ele)
 make clean       # remove os três build/dist locais + dist/ do host + o deposito que 'models' gerou
 make help        # lista os alvos (comentários ## do Makefile)
 ```
@@ -112,8 +113,9 @@ sincroniza `plugins/` → `dist/`. Todo alvo que **roda** algo (`run-*`, `check-
 `test`) depende de `install`; `build`/`models` sozinhos não deixam nada executável.
 
 O fluxo do dia a dia é `make configure && make build && make install` (ou direto
-`make configure && make test`, que já encadeia `install`). `make models` é o alvo que se roda
-sozinho ao mexer só no modelo, sem tocar o host.
+`make configure && make test`, que já encadeia `install`, mas roda só a suíte do HOST — a do
+modelo é `make test-models`, separada; ver "Testes automatizados" mais abaixo). `make models` é o
+alvo que se roda sozinho ao mexer só no modelo, sem tocar o host.
 
 **Três armadilhas do Meson que a etapa do SDK esconde, todas medidas:**
 
@@ -148,7 +150,8 @@ nenhum é erro fatal, não mais um convite a uma tela de seleção implícita; m
 há mais catálogo estático de cenários embutido no binário — toda poc sob `src/poc/**` é alcançada
 por `-folder`.
 
-**A suíte de testes vive em `tests/`** (`make test`; ver a seção própria mais abaixo). Além dela,
+**A suíte de testes do HOST vive em `tests/`** (`make test`; a do modelo é `make test-models`,
+separada — ver a seção própria mais abaixo). Além dela,
 a verificação de **determinismo** é feita por `tests/determinism/check_determinism.sh <binário>
 <rótulo> [frames] [poc]` (não há mais alvo `make check-<chave>` por poc — removido junto com os
 `run-<chave>`, ver o Makefile): roda N frames de passo fixo com 1, 2 e 4 threads T/C e compara os
@@ -243,7 +246,7 @@ src/poc/<nome>/
 │                            # duas exceções, nenhuma vendorizada aqui: o tile SRTM
 │                            # mora em shared/data/terrain/ (é do cenário, o mesmo
 │                            # em todas) e a aeronave JSBSim mora em
-│                            # models/player/A4/data/jsbsim/ (é do MODELO — ver
+│                            # models/players/A-4/data/jsbsim/ (é do MODELO — ver
 │                            # a seção "O MODELO é um plugin" mais abaixo)
 └── README.md                # o que ESTA poc isola, e o que foi medido nela
 ```
@@ -258,7 +261,7 @@ de aplicação — `include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas �
 guarda `tests/guard/check_duplication.sh`. Era duplicação real e já tinha cobrado o preço: a
 correção da ordem de encerramento (calar a thread T/C antes do `SHUTDOWN_EVENT`) teve de ser
 copiada, uma a uma, para as cinco. Hoje a duplicação está dissolvida **por construção** — o
-mesmo movimento que já tinha acontecido com o MODELO quando ele saiu para `models/player/A4` — e a
+mesmo movimento que já tinha acontecido com o MODELO quando ele saiu para `models/players/A-4` — e a
 guarda que a sustentava foi aposentada junto.
 
 **Prova de neutralidade, medida na troca:** o dump `frame=` de `single-thread`, `multi-thread`,
@@ -280,7 +283,7 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 | `app/DashboardLoop.*` | o laço de tempo real: TUI, teclado, joystick, `Ctrl+C` |
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
-> `models/player/A4/`, um projeto Meson independente construído numa etapa **anterior**
+> `models/players/A-4/`, um projeto Meson independente construído numa etapa **anterior**
 > (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver `models/README.md`.
 > A guarda `tests/guard/check_host_opaco.sh` trava esse invariante.
 
@@ -635,7 +638,7 @@ plugin precisam compartilhar UMA cópia de estado mutável em tempo de execuçã
 requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
 `install_headers()` no `meson.build` raiz, no mesmo molde de `libs/xplugin/PluginAbi.hpp`.
 
-**`domain::PatrolPlan` não inclui este header, de propósito.** `models/player/A4/tests/meson.build`
+**`domain::PatrolPlan` não inclui este header, de propósito.** `models/players/A-4/tests/meson.build`
 compila `domain_sources` (que inclui `PatrolPlan.cpp`) em `test_domain`/`test_tree` **sem
 `sdk_dep`, sem MIXR** — a mesma pureza que motivou a separação `bt_sources`/`bt_sdk_sources` já
 documentada acima. Como `libs/xrandom/DeterministicRng.hpp` só fica visível via `dist/include`
@@ -690,7 +693,7 @@ divergem, também em qualquer configuração de thread — prova que o jitter qu
 da semente, não uma corrida entre threads. Medido: `hdg=89.811744657` (semente A) contra
 `hdg=89.800627203` (semente B), mesmo `frame=100 player=falcon1`, ambos ainda em `bt=PATROL`.
 
-**`models/player/fixtures/stub` precisou de dois slots novos** (`patrolJitterHeading`/
+**`models/players/fixtures/stub` precisou de dois slots novos** (`patrolJitterHeading`/
 `patrolMasterSeed`, reaproveitando os `setSlotIgnora*` já existentes) — sem eles, o cenário de
 produção (que agora declara esses dois slots nos 4 falcons) falha ao parsear contra o "modelo
 estranho" com `slot not found`, derrubando `plugin-modelo-estranho`/`plugin-deposito-terceiro`.
@@ -805,7 +808,7 @@ recompilar. Portas próprias (Tacview **1237**, DIS **3004**), então roda ao la
 **Nenhuma linha de C++ foi escrita para isto**, e esse é o resultado a observar: `libs/xpyembed`
 (o interpretador embarcado) e `bt/nodes/PyDecideAction` (o nó `( PyDecide )`) já existiam; o que
 faltava era uma poc **completa** em cima deles. O que havia antes era um `flight_tree_py.xml` de
-exemplo no `models/player/A4`, com um nó e um script de dez linhas, exercitado só pelo teste
+exemplo no `models/players/A-4`, com um nó e um script de dez linhas, exercitado só pelo teste
 `scenario-policy-python` — não havia como *rodar* e olhar no Tacview. O host desta pasta é cópia
 do da `multi-thread` com caminhos e banner trocados.
 
@@ -904,7 +907,7 @@ lado das outras quatro.
 
 **Nenhuma linha de C++ foi escrita para isto** — `libs/xinfer`, o nó `( OnnxPolicy )` e o
 `unscaleCommand()` de `libs/xrlbridge` já existiam; o que faltava era uma poc **completa** em
-cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/player/A4`, apontando para
+cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/players/A-4`, apontando para
 um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
 provar que a cadeia funciona, não para voar com ela. O host é cópia do da `multi-thread` com
 caminhos e banner trocados (na época, com a guarda `check_duplication.sh` cobrando a igualdade byte
@@ -941,7 +944,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    assume. `tools/train_policy.py` fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx`
    já versionado). **Vale para qualquer `.onnx` gerado hoje** — inclusive
    `src/poc/rl-training/tools/export_onnx.py --random`, que não fixa a versão; o arquivo versionado em
-   `models/player/A4/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
+   `models/players/A-4/configs/` foi gerado com um `onnx` antigo e por isso continua carregando.
 2. **Uma rede contínua NÃO consegue representar a órbita geométrica da `python-flight`** (marcação
    para a base − 90°). O comando de rumo sai de um `tanh` mapeado linearmente em `[0, 360]`; uma
    órbita percorre todos os rumos, então há um ponto do espaço de observação onde o alvo salta de
@@ -952,7 +955,7 @@ escrita em Python**, porque divergir ali não daria erro nenhum: daria uma rede 
    `xrlbridge` — fica registrado como o caminho, não feito.
 3. **A política é dado do CENÁRIO, não do modelo** — por isso `.onnx` e árvore moram em `configs/`
    desta poc (lidos por caminho relativo à raiz, como o próprio `.edl`), e não em
-   `dist/share/mixr-plugins/flight/`, que é onde `models/player/A4` instala os **dele**. As duas
+   `dist/share/mixr-plugins/flight/`, que é onde `models/players/A-4` instala os **dele**. As duas
    coisas convivem: `scenario-policy-onnx` continua rodando a árvore do modelo, com pesos
    aleatórios, sobre a `multi-thread`.
 4. **ATUALIZAÇÃO — o árbitro nativo SAIU de cima da rede.** Isto media uma propriedade que não
@@ -1140,9 +1143,15 @@ aeronave nunca alcançaria: o dump sai idêntico ao do controle negativo.
 
 ## Testes automatizados (`tests/`)
 
-`make test` roda tudo (`meson test`); exige `configure` com `-Dtests=true`. O framework e o
-**GTest**, declarado como `test_requires` no `conanfile.py` — nenhum binario da aplicacao linka
-gtest. Cinco camadas, da mais isolada para a mais integrada:
+`make test` roda a suíte do HOST (`meson test -C build`); exige `configure` com `-Dtests=true`.
+Builda e sincroniza o(s) modelo(s) antes (via `install` — os testes que rodam binário precisam do
+`.so` em `dist/`), mas não roda a suíte deles — essa é `make test-models`, um alvo separado que
+delega para o Makefile autocontido de cada modelo (`domain`/`tree`/`native`, ver "Testes
+automatizados" em `models/README.md`). CI (`.gitlab-ci.yml`, job `test`) roda os dois. O framework
+é o **GTest**, declarado como `test_requires` no `conanfile.py` — nenhum binario da aplicacao
+linka gtest. Oito camadas, da mais isolada para a mais integrada — as três primeiras (`domain`/
+`tree`/`native`) são do MODELO, rodadas por `make test-models`; as cinco seguintes são do HOST,
+rodadas por `make test`:
 
 | suite | o que prova | custo |
 |---|---|---|
@@ -1335,7 +1344,7 @@ discretos "no instante exato" — o que se alcança é o que se deriva por amost
 ### O MODELO é um plugin, construído numa etapa PRÉVIA
 
 **`src/poc/<poc>/` é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
-em `models/player/A4/`, que é um **projeto Meson independente**, construído antes do host
+em `models/players/A-4/`, que é um **projeto Meson independente**, construído antes do host
 (`make models`). O host só consome o `.so` instalado em `dist/lib/mixr-plugins/` — mas
 `make models`, sozinho, **não escreve ali**: deposita em `plugins/` (decoplado de
 propósito de `dist/`), e é `make install` quem sincroniza os dois. Ver "Desacoplando `models` de
@@ -1351,11 +1360,13 @@ models/
 ├── events/               # o contrato de eventos que atravessam fronteira de plugin --
 │                         # payload + token (EventTokens.hpp). Mora dentro de models/
 │                         # (nao e um modelo em si -- e' consumido POR eles e por app/).
-└── player/               # os projetos de modelo -- cada um um .so de producao
-    ├── A4/                  # projeto meson proprio -> build-A4/ -- O MODELO de producao (o
+└── players/              # os projetos de modelo -- cada um um .so de producao
+    ├── A-4/                 # projeto meson proprio -> build/ -- O MODELO de producao (o
     │                        # nome de fabrica/biblioteca internos continuam "flight" --
     │                        # libflight.so/libflight_tc.so, provides: { ... } -- so o titulo
-    │                        # da PASTA e o A4, a aeronave que este modelo pilota)
+    │                        # da PASTA e o A-4, a aeronave que este modelo pilota; o
+    │                        # identificador JSBSim da aeronave em si, data/jsbsim/aircraft/A4/,
+    │                        # continua sem hifen -- namespace a parte, ver CHANGELOG.md do A-4)
     │   ├── include/{domain,bt,ubf,xnative}/   src/...
     │   ├── configs/flight_tree.xml            # a arvore de comportamento
     │   ├── data/jsbsim/                       # a aeronave (ver abaixo)
@@ -1394,7 +1405,7 @@ models/
 **`make new-model NAME=<nome> KIND=stub|template`** (`scripts/models.sh`) automatiza a cópia de
 qualquer um dos dois: recalcula a profundidade de `ROOT :=` do `Makefile` copiado e corrige o
 namespace C++ — não escreve lógica de domínio nenhuma. **Não** precisa registrar o modelo no build
-da raiz: `models:` do Makefile descobre projetos sob `models/player/` por `find`
+da raiz: `models:` do Makefile descobre projetos sob `models/players/` por `find`
 (`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — o diretório novo já
 entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
@@ -1447,7 +1458,7 @@ models` no Makefile) e ambos sao alvos `.PHONY` -- toda chamada de `sync-plugins
 `models` (nao ha timestamp para pular). Isso e intencional (garante que o deposito esta fresco
 antes de sincronizar), mas significa que passar `ASAN=true`/`ASAN=false` por linha de comando
 (`make sync-plugins ASAN=true`) tem de propagar corretamente ate o `install-host` de
-`models/player/A4` -- confirmado funcionando (`test-asan` depende exatamente disso).
+`models/players/A-4` -- confirmado funcionando (`test-asan` depende exatamente disso).
 
 **A duplicação entre as gêmeas foi dissolvida por construção.** Antes eram ~3.100 linhas copiadas
 sustentadas por um teste de guarda; agora é uma árvore só, e a única diferença (o `FlightAgentTC`)
@@ -1461,7 +1472,7 @@ byte-idêntica de `data/jsbsim/` (o c310), vendorizada três vezes. Não é coin
 anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
 trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
 `data/jsbsim/` em `plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
-`install-host` de `models/player/A4/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
+`install-host` de `models/players/A-4/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos três
 cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
 aeronave — aponta para lá. `make install` já encadeia `build` → `sync-plugins` → `models`, então
@@ -1495,8 +1506,8 @@ pelo `Autopilot` nativo — e o dump sai com `bt=--` e `dec=0` **com todos os ou
 
 Duas peças fecham isso:
 
-- **`models/player/fixtures/stub/docs/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
-- **`models/player/fixtures/stub/`** — um modelo de ~270 linhas escrito **só contra o SDK**, sem árvore de
+- **`models/players/fixtures/stub/docs/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
+- **`models/players/fixtures/stub/`** — um modelo de ~270 linhas escrito **só contra o SDK**, sem árvore de
   comportamento e sem uma linha de `domain/`, que registra os mesmos 6 nomes com os mesmos slots.
   O teste `plugin-modelo-estranho` roda o cenário de **produção** contra ele trocando **apenas** o
   `file:` do `( PluginModule )`. É o único teste que pode falhar por *"o contrato não basta"* —
@@ -1532,7 +1543,7 @@ Duas peças fecham isso:
 **Prova de neutralidade:** com o modelo fora do executável e carregado de `dist/`, o dump `frame=`
 das duas pocs saiu **byte-idêntico** ao de antes de existir plugin nenhum.
 
-`make check-plugin-hotswap` troca o sentido da curva em `models/player/A4/src/domain/PatrolPlan.cpp`,
+`make check-plugin-hotswap` troca o sentido da curva em `models/players/A-4/src/domain/PatrolPlan.cpp`,
 rebuilda **só** o `.so` (2 edges), confere que o executável não foi tocado e mostra o rumo do
 falcon1 indo de 141° para 34°.
 
@@ -1609,8 +1620,8 @@ já existente — nenhum host mudou), carrega **um** míssil guiado e o lança c
 LOCAL (sem `networks:`, mesmo motivo do `tests/scenario/make_fixture.py`: hermético). Existe para
 exemplificar três coisas, nesta ordem:
 
-1. **Criar um modelo novo, num plugin próprio.** `models/player/missile/` — cópia da receita de
-   `models/player/fixtures/stub` (`models/README.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
+1. **Criar um modelo novo, num plugin próprio.** `models/players/missile/` — cópia da receita de
+   `models/players/fixtures/stub` (`models/README.md` §2): projeto Meson à parte, só `mixr_dep` + `sdk_dep`
    (sem `behavior_tree_dep` — o míssil não decide com árvore, só guia e voa), publicando **só**
    `GuidedMissile`. **Por que um plugin separado e não dentro do `flight`:** `provides:` no
    `.edl` é igualdade exata de conjunto contra o que a `.so` exporta — acrescentar `GuidedMissile`
@@ -1625,7 +1636,7 @@ exemplificar três coisas, nesta ordem:
    `Simulation::addNewPlayer()` — materializado no próximo `updatePlayerList()` do laço de
    background, exatamente como `interop::NetIO::createIPlayer()` materializa o fantasma DIS do
    `bandit1` nas duas pocs gêmeas. `xnative::FlightAction::execute()`
-   (`models/player/A4/src/ubf/FlightAction.cpp`) é o único ponto do `flight` que toca esse
+   (`models/players/A-4/src/ubf/FlightAction.cpp`) é o único ponto do `flight` que toca esse
    objeto MIXR de arma: resolve o alvo por nome
    (`player->getWorldModel()->findPlayerByName(...)`), libera o míssil e chama
    `setTargetPlayer(alvo, true)`.
@@ -1953,7 +1964,7 @@ escala por perspectiva, árvore de BT gráfica no card, e alinhamento tabular na
   bate com o rótulo ativo (`matchesLabel()`: nome da tag contém o rótulo OU vice-versa,
   normalizado). **Limite conhecido e aceito**: `ReportAndEvadeAction`/`ReturnToBaseAction`
   decidem em RUNTIME entre dois rótulos cada (`"EVADE"`/`"BREAK"`, `"RTB"`/`"HOME"` —
-  `models/player/A4/src/bt/nodes/ReportAndEvadeAction.cpp`/`ReturnToBaseAction.cpp`), e nenhum dos
+  `models/players/A-4/src/bt/nodes/ReportAndEvadeAction.cpp`/`ReturnToBaseAction.cpp`), e nenhum dos
   dois é substring do nome da tag (`ReportAndEvade`, `ReturnToBase`) — a árvore ainda aparece, só
   sem destaque nesses dois casos. A alternativa seria uma tabela de mapeamento escrita à mão aqui,
   específica do modelo `flight` — o oposto do resto deste dashboard, por isso não foi feita.
@@ -2220,12 +2231,12 @@ tamanho fixo — não pula mais de layout ao navegar entre as opções.**
 
 - **`thread` sempre "-" não era so falta de destaque — era falta de DADO.** Investigado antes de
   mexer: `libs/xboard::Board.hpp::threadTag` só é escrito em UM lugar do modelo,
-  `models/player/A4/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
+  `models/players/A-4/src/xnative/FlightAgentTC.cpp::controller()` (o agente do pool T/C, usado só
   pela `multi-thread`) — o caminho que este `app` usa (o mesmo `SimAgent` nativo da
   `single-thread`, decidindo no laço de background) nunca escrevia nada ali, então o campo ficava
   preso em `-1` ("-") pra sempre; não por já ser a "resposta certa" e sim por ninguém contar.
   Corrigido no ÚNICO ponto de atuação comum aos dois agentes,
-  `models/player/A4/src/ubf/FlightAction.cpp::execute()` (onde `xboard::setBehaviorLabel()`/
+  `models/players/A-4/src/ubf/FlightAction.cpp::execute()` (onde `xboard::setBehaviorLabel()`/
   `bumpDecisionCount()` já rodavam para os dois caminhos): mais uma linha,
   `xboard::setThreadTag(player->getID(), threadTag())` (`xnative::ThreadTag.hpp`, cache
   `thread_local` por thread do SO, já existia, só nunca tinha sido chamada fora do
@@ -2520,7 +2531,7 @@ flutuando longe do limite inferior da janela).**
   pelo MESMO mecanismo `( PluginModule file: "..." provides: {...} )` — nenhuma mudança no host
   pra reconhecer um plugin de terceiro, porque `PluginModule`/`dlopen` já eram agnósticos a quem
   compilou o `.so`, só o CONTRATO (`libs/xplugin/PluginAbi.hpp`) importa.
-  - `README.md` da pasta aponta pro mesmo `models/player/fixtures/stub/docs/CONTRATO.md` que já
+  - `README.md` da pasta aponta pro mesmo `models/players/fixtures/stub/docs/CONTRATO.md` que já
     documenta o que um modelo tem de fazer — nenhuma lista nova pra manter sincronizada.
   - **Alvo `models` do Makefile raiz ganhou um passo novo**, depois do bloco do missile: `mkdir -p`
     + `cp -v models/plugins/*.so dist/lib/mixr-plugins/` só SE houver algum `.so` (pasta vazia é
@@ -2602,7 +2613,7 @@ plugin de terceiro, ver a passada de `models/plugins/`) de fato roda numa simula
 chega em disco.**
 
 - **`tests/plugin/run_thirdparty_deposit.py` (novo) + `plugin-deposito-terceiro` (registrado em
-  `tests/meson.build`, suíte `plugin`)** — reusa o STUB (`models/player/fixtures/stub`) fazendo o papel
+  `tests/meson.build`, suíte `plugin`)** — reusa o STUB (`models/players/fixtures/stub`) fazendo o papel
   do "terceiro": já é um modelo pronto, compilado, e já provado suficiente pra rodar o cenário
   de produção (é o mesmo `.so` que `plugin-modelo-estranho` já usa) — sem ser nenhum dos plugins
   que o host normalmente consome direto de `dist/lib/mixr-plugins/`. Isso isola exatamente a
@@ -2741,7 +2752,7 @@ destinado a ele".**
   inclusive `onde-a-decisao-roda`, que passou aqui.
 
 **Décima sétima passada: quinta aba, "Log" (F5) — as linhas de `libs/xlog` (`LOG(NIVEL) << ...`)
-exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/player/A4`), de dentro do `.so`
+exibidas ao vivo. O `app` só EXIBE; quem escreve é o MODELO (`models/players/A-4`), de dentro do `.so`
 aberto por `dlopen`.**
 
 - **O que faltava era a FONTE, não a aba.** `xlog` escrevia em `std::cout` e no arquivo, e nada
@@ -2749,7 +2760,7 @@ aberto por `dlopen`.**
   (`snapshot()`/`lastSeq()`, 500 linhas) e `setConsoleEnabled(bool)`; ver a subseção "Buffer em
   memória" na seção `libs/xlog` acima, que também explica por que não é um `tail` do arquivo.
 - **Consequência de graça, e é a parte interessante:** `xlog` é `shared_library()`, então há uma
-  cópia só no processo — o `LOG(...)` do MODELO (`models/player/A4`, dentro do `.so` aberto por
+  cópia só no processo — o `LOG(...)` do MODELO (`models/players/A-4`, dentro do `.so` aberto por
   `dlopen`) cai no mesmo buffer. Confirmado rodando: removendo `flight_tree.xml` do lugar, as 4
   linhas de `LOG(ERROR)` do `BtBehavior` (uma por falcon) aparecem na aba, sem ponte nenhuma.
 - **`setConsoleEnabled(false)` no início de `runDashboard()`, `true` no fim** — o FTXUI é dono do
@@ -2777,7 +2788,7 @@ aberto por `dlopen`.**
   desta aba — que tinha dois blocos `TRECHO DE TESTE` dentro do `DashboardLoop.cpp`, hoje
   removidos junto com os logs de evento do próprio app: o `app` não chama `LOG(...)` em lugar
   nenhum, só **exibe**; o único ponto em que ele mexe no `xlog` é o `setConsoleEnabled(false)`
-  acima). A instrumentação foi para `models/player/A4/src/ubf/FlightAction.cpp` —
+  acima). A instrumentação foi para `models/players/A-4/src/ubf/FlightAction.cpp` —
   `FlightAction::execute()`, que já é a **única atuação comum aos dois agentes** (`SimAgent` de
   background e `FlightAgentTC` do pool T/C) e já é onde o rótulo vencedor chega:
   - `INFO` na **transição** de comportamento (`falcon1: PATROL -> EVADE (hdg=... alt=... vel=...)`)
@@ -3165,7 +3176,7 @@ componente novo, `xnative::ThreadTagProbe`, sem tocar em nenhum agente.**
   pelo pool T/C nativo como qualquer outro player — suas 4 fases rodam, a cada frame, na
   MESMA thread que a `Simulation` atribuiu a ele (round-robin por posição na lista). O que
   faltava não era uma decisão fictícia, era só tornar essa thread OBSERVÁVEL.
-- **`xnative::ThreadTagProbe`** (`models/player/A4/{include,src}/xnative/
+- **`xnative::ThreadTagProbe`** (`models/players/A-4/{include,src}/xnative/
   ThreadTagProbe.{hpp,cpp}`) — um `base::Component` genérico, sem slot nenhum, que só
   publica `xboard::setThreadTag()` no `updateTC()`, filtrado à fase 3 (MESMO filtro de
   `FlightAgentTC::controller()`, pelo MESMO motivo: `Player::updateTC()` chama
@@ -3195,7 +3206,7 @@ componente novo, `xnative::ThreadTagProbe`, sem tocar em nenhum agente.**
   `app/configs/*.generated.edl` NÃO entraram nessa lista — são artefato de runtime
   (`app::generateScenario()`), gitignorados, e regeneram sozinhos do `.edl.in` na próxima
   execução.
-- **`models/player/fixtures/stub/src/stub.cpp` ganhou a MESMA classe, trivial** (só
+- **`models/players/fixtures/stub/src/stub.cpp` ganhou a MESMA classe, trivial** (só
   `base::Component` vazio, sem escrever no xboard) — mesmo raciocínio já registrado ali
   para `RLBridgeBehavior`: o stub roda o cenário de PRODUÇÃO trocando só o `file:`, e o
   `provides:` desse cenário agora inclui `ThreadTagProbe`; sem o stub também exportar o
@@ -3223,10 +3234,10 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
 
 - **`GuidedMissile` também não tem agente** (só `dynamicsModel` + guiagem própria em
   `domain::Guidance`, nenhum UBF) — mesma causa raiz do `bandit1`, resposta óbvia: dar a
-  ele o mesmo `ThreadTagProbe`. Mas `GuidedMissile` mora em `models/player/missile`, um
+  ele o mesmo `ThreadTagProbe`. Mas `GuidedMissile` mora em `models/players/missile`, um
   **plugin Meson separado** (`libmissile.so`) — não linka nem conhece
-  `models/player/A4` — então a classe teve de ser reescrita lá (não reaproveitada por
-  `#include`), no mesmo molde do resto do repositório (`models/player/fixtures/stub` já duplica
+  `models/players/A-4` — então a classe teve de ser reescrita lá (não reaproveitada por
+  `#include`), no mesmo molde do resto do repositório (`models/players/fixtures/stub` já duplica
   trivialmente `AlertDatalink`/`TacticalAlert`/etc. pelo mesmo motivo: cada modelo é
   autocontido).
 - **Erro real, achado rodando, não hipotético**: registrar a classe com o MESMO nome
@@ -3240,7 +3251,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   fábrica) — o do flight ficou como estava (já testado, já em produção via `bandit1`).
 - **A MESMA investigação expôs um segundo problema, mais sutil, ainda não medido em
   produção mas real: `xnative::threadTag()` (o contador que dá o número T0/T1/...) era
-  PRIVADO de `models/player/A4`** — cada `.so` que o tivesse duplicado teria seu
+  PRIVADO de `models/players/A-4`** — cada `.so` que o tivesse duplicado teria seu
   PRÓPRIO contador (`thread_local` + `std::map<thread::id,int>` + `int g_nextTag` todos
   `static` dentro daquele `.so`). Como o pool de threads T/C é o MESMO para todo o
   processo (falcons, `bandit1` e o missil competem pelas MESMAS `numTcThreads` threads
@@ -3250,7 +3261,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   frame, na MESMA thread física, uma coincidência praticamente garantida de acontecer (não
   um caso de borda raro) e diretamente enganosa para o propósito da coluna ("quem decide
   em paralelo com quem"). Resolvido promovendo `threadTag()`/`currentCpu()` de
-  `models/player/A4/include/xnative/ThreadTag.hpp` para `libs/xboard/Board.hpp`
+  `models/players/A-4/include/xnative/ThreadTag.hpp` para `libs/xboard/Board.hpp`
   — a MESMA `libxboard.so`, já compartilhada por dlopen entre os dois plugins, pelo MESMO
   motivo estrutural de sempre (`bt=`/`dec=` já dependiam disso). O antigo
   `xnative::ThreadTag.{hpp,cpp}` foi REMOVIDO (não deprecado, não mantido como wrapper) —
@@ -3473,7 +3484,7 @@ manter os dois era redundância, não flexibilidade.
   `-folder src/poc/dis`; `python-flight`/`onnx-policy`/`built-in_mixr_1`/`full-systems-nav` via
   `-folder src/poc`, ou `-folder ./sandbox` nas cópias de `sandbox/`), mais `app/README.md` (reescrita
   das seções 3 e 5), `README.md`/`CONTRIBUTING.md`/`models/README.md` (§4.1 deixou de ser "registrar
-  no catálogo" e virou "nada a registrar"), `models/player/template/docs/PRIMEIROS-PASSOS.md`,
+  no catálogo" e virou "nada a registrar"), `models/players/template/docs/PRIMEIROS-PASSOS.md`,
   `.claude/rules/{host-app-src,models-plugin}.md`, `scripts/models.sh` e comentários do `Makefile`/
   `src/poc/meson.build`. **Não tocado, de propósito**: `docs/presentation/index.html` — slide deck
   órfão (nenhum alvo `make` o gera nem o abre), e as passadas anteriores desta seção, que são
@@ -3498,7 +3509,7 @@ make open-groot                                                            # sem
 ### Editor
 
 **Armadilha nº1, a que realmente bloqueia — comentário XML com `--` (hífen duplo).** As árvores
-deste projeto (`models/player/A4/configs/flight_tree*.xml`) tinham comentários de cabeçalho em
+deste projeto (`models/players/A-4/configs/flight_tree*.xml`) tinham comentários de cabeçalho em
 prosa livre, com `--` usado como travessão ("...nativo -- ou seja..."). Isso é **inválido** pela
 especificação XML (comentários não podem conter `--` no corpo). `tinyxml2` — o parser que o
 BT.CPP/host usa — é tolerante e ignora a violação; `QDomDocument` — o parser que o **Groot** usa —
@@ -3554,7 +3565,7 @@ ignorado, nem erro nem modelo.
 ```
 
 **Passo a passo, árvore de produção**: `make open-groot` → `File > Load...` → qualquer
-`models/player/A4/configs/flight_tree*.xml` direto. Edite arrastando/soltando, salve — o arquivo
+`models/players/A-4/configs/flight_tree*.xml` direto. Edite arrastando/soltando, salve — o arquivo
 salvo continua carregável por `createTreeFromFile()` sem mudança nenhuma (o `<TreeNodesModel>` é
 ignorado pelo executor).
 
@@ -3562,8 +3573,8 @@ ignorado pelo executor).
 não tem o bloco ainda — copie (nunca edite um `.xml` que algum cenário já usa), cole o bloco acima
 (ou a versão com os IDs do SEU `bt_factory.cpp`) dentro do `<root>` da cópia, e abra a cópia.
 
-**O bloco é gerado, não mantido a mão — `models/player/A4/tools/dump_tree_model.cpp`.** Um
-executável pequeno (`models/player/A4/tests/meson.build`, alvo `dump-tree-model`, junto dos
+**O bloco é gerado, não mantido a mão — `models/players/A-4/tools/dump_tree_model.cpp`.** Um
+executável pequeno (`models/players/A-4/tests/meson.build`, alvo `dump-tree-model`, junto dos
 outros que reusam `bt_sources`/`bt_sdk_sources`/`domain_sources`) monta a MESMA
 `BT::BehaviorTreeFactory` que o modelo de verdade monta (`registerNodes()` + `registerSdkNodes()`,
 com um `NodeContext{}` vazio — seguro, porque `registerBuilder<T>()` só guarda um construtor,
@@ -3573,8 +3584,8 @@ nunca instancia nó nenhum) e chama a função nativa do BT.CPP para isto,
 `<TreeNodesModel>...</TreeNodesModel>`, pronto pra colar dentro do `<root>` de qualquer árvore:
 
 ```bash
-meson compile -C models/player/A4/build dump-tree-model   # se ainda nao compilou
-./models/player/A4/build/tests/dump-tree-model
+meson compile -C models/players/A-4/build dump-tree-model   # se ainda nao compilou
+./models/players/A-4/build/tests/dump-tree-model
 ```
 
 **Segundo modo, `--skeleton [ID]`** — imprime não só o fragmento, mas um `.xml` **completo e
@@ -3586,7 +3597,7 @@ tinha que ser digitado à mão como exemplo em prosa, o que já causou confusão
 que motivou este parágrafo). `dump-tree-model --skeleton MinhaArvore > /tmp/nova.xml` já sai
 validado (`xmllint --noout` limpo) e carrega direto no Groot com a paleta populada.
 
-**`models/player/A4/tools/sync_tree_models.py`** automatiza o primeiro modo: roda o binário,
+**`models/players/A-4/tools/sync_tree_models.py`** automatiza o primeiro modo: roda o binário,
 extrai o fragmento e substitui o `<TreeNodesModel>` nos 5 `flight_tree*.xml` de produção de uma
 vez (testado detectando E corrigindo uma divergência introduzida de propósito, não só confirmando
 "sem mudança"). Ao registrar um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`, rodar esse
@@ -3597,7 +3608,7 @@ bloco escrito à mão antes, salvo `default="1"`/`default="true"` para booleanos
 `writeTreeNodesModelXML()` usa a representação nativa do C++, não uma string amigável).
 
 **A checagem virou teste do próprio Meson — `tree-model-sync` (suite `tree`,
-`models/player/A4/tests/meson.build`).** `sync_tree_models.py` ganhou um modo `--check` (só
+`models/players/A-4/tests/meson.build`).** `sync_tree_models.py` ganhou um modo `--check` (só
 verifica, não escreve, `exit 1` se algum arquivo estiver desatualizado) e um `--binary` que aceita
 o caminho de verdade do executável — o `test()` passa o objeto `dump_tree_model` direto, e o
 Meson resolve pro caminho de saída real e já encadeia a dependência de build (não presume que o
@@ -3607,7 +3618,7 @@ quem tentasse abrir a árvore no Groot. Agora `make test` pega isso sozinho. **T
 sentidos, não só que passa**: com uma divergência introduzida de propósito
 (`FuelLow` → `FuelLowDIVERGENTE` num dos 5 arquivos), `meson test tree-model-sync` falha com
 `"Desatualizados: flight_tree.xml"` — restaurado o arquivo, volta a passar. A guarda de contagem
-mínima de testes do modelo (`models/player/A4/Makefile`, alvo `test`) já era `-ge 3`, não uma
+mínima de testes do modelo (`models/players/A-4/Makefile`, alvo `test`) já era `-ge 3`, não uma
 igualdade — o quarto teste não quebrou essa checagem.
 
 **Verificado sem precisar abrir a janela**: compilei um teste isolado (`ReadTreeNodesModel()` +
@@ -3627,7 +3638,7 @@ Em outro terminal/máquina com display: `make open-groot` → aba Monitor → co
 (portas **1666** status / **1667** topologia — livres aqui; Tacview usa 1234-1239, DIS usa
 3000-3005). Sem a variável de ambiente, nada disso liga — zero custo, zero porta aberta.
 
-Implementação: `BtBehavior::buildTree()` (`models/player/A4/src/ubf/BtBehavior.cpp`) liga um
+Implementação: `BtBehavior::buildTree()` (`models/players/A-4/src/ubf/BtBehavior.cpp`) liga um
 `BT::PublisherZMQ` nativo do BT.CPP para o player cujo nome bate com a variável.
 
 **Achado ao implementar, não redescobrir**: `findContainerByType(typeid(models::Player))` — o
@@ -3683,7 +3694,7 @@ do MESMO `UbfArbiter` que já tinha `( AltitudeSafetyBehavior vote: 90 )`: uma p
 agente RL não derruba o avião no terreno, o árbitro nativo sobrepõe sem precisar de código novo.
 
 **`libs/xrlbridge` — quarta `shared_library()` de `libs/`, mesmo motivo estrutural de
-`libs/xboard::Board`.** `RLBridgeBehavior` (`models/player/A4/include/ubf/RLBridgeBehavior.hpp`)
+`libs/xboard::Board`.** `RLBridgeBehavior` (`models/players/A-4/include/ubf/RLBridgeBehavior.hpp`)
 mora dentro do `.so` do modelo, aberto por `dlopen`; a ponte pybind11 mora no host, que **não pode**
 incluir headers do modelo nem linkar contra o `.so` dele em tempo de compilação —
 `tests/guard/check_host_opaco.sh` trava esse invariante. `libs/xrlbridge/RLBridge.hpp` define seu
@@ -3695,8 +3706,8 @@ hospeda sem subir a árvore de componentes por `container()`, caminho já docume
 neste framework pra objetos aninhados em slot — ver a armadilha de `TacviewOutput::resolveInfo()`
 na seção `libs/xtacview`).
 
-**Por que `RLBridgeBehavior` mora DENTRO de `models/player/A4` e não num plugin separado** (ao
-contrário do precedente do `models/player/missile`, que existe justamente pra não obrigar as pocs de
+**Por que `RLBridgeBehavior` mora DENTRO de `models/players/A-4` e não num plugin separado** (ao
+contrário do precedente do `models/players/missile`, que existe justamente pra não obrigar as pocs de
 produção a atualizar `provides:`): `RLBridgeBehavior::genAction()` precisa de
 `dynamic_cast<const xnative::FlightState*>` e construir um `xnative::FlightAction*` — tipos
 CONCRETOS do modelo, não só o nome de fábrica. Como cada plugin compila com
@@ -3708,7 +3719,7 @@ conjunto contra o que a `.so` exporta, TODO cenário que carrega esse plugin pre
 mais em `provides:` — `src/poc/dis/single-thread/configs/scenario.edl.in`,
 `src/poc/dis/multi-thread/configs/scenario.edl.in` e os três `app/configs/scenario_*.edl.in` —
 nenhuma mudança de comportamento, só manter o
-contrato satisfeito. Pelo mesmo motivo, `models/player/fixtures/stub/src/stub.cpp` (o "modelo estranho" de
+contrato satisfeito. Pelo mesmo motivo, `models/players/fixtures/stub/src/stub.cpp` (o "modelo estranho" de
 teste) também ganhou uma `RLBridgeBehavior` trivial (`genAction()` sempre devolve `nullptr`) — sem
 isso, `plugin-modelo-estranho`/`plugin-deposito-terceiro` quebravam: o stub deixava de ser
 contrato-compatível com o `provides:` (agora maior) do cenário de produção que ele roda contra.
@@ -3766,7 +3777,7 @@ a `Station` de verdade — fora de `make test` de propósito, por depender de pa
 toolchain Conan/Meson.
 
 **`src/rl` é só o AMBIENTE — quem treina de fato é `src/poc/rl-training/`.** A distinção é
-a mesma já usada em `models/player/A4` (o modelo) vs. `src/poc/*` (quem consome): `src/rl` expõe
+a mesma já usada em `models/players/A-4` (o modelo) vs. `src/poc/*` (quem consome): `src/rl` expõe
 `mixr_gym.MixrFlightEnv` e nada mais — nenhuma dependência de algoritmo de RL (`stable-baselines3`,
 `torch`...) entra em `src/rl/requirements.txt`, que fica deliberadamente mínimo
 (`gymnasium`+`numpy`, o suficiente pra rodar `test_smoke.py`, que testa o CONTRATO do ambiente, não
@@ -3780,7 +3791,7 @@ grafo do Meson: são só Python, wireados só pelo `Makefile`.
 ## `libs/xinfer` e `libs/xpyembed` — decisão por ONNX e por Python, dentro do frame
 
 Duas `shared_library()` novas no SDK (agora são seis: `xboard`, `xlog`, `xtrack`, `xrlbridge`,
-`xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/player/A4`, que juntos fecham o ciclo
+`xinfer`, `xpyembed`) e **três nós de BehaviorTree** no `models/players/A-4`, que juntos fecham o ciclo
 que o `src/rl` tinha aberto pela metade.
 
 **O que mudou de direção.** O `RLBridgeBehavior` (a referência deste trabalho) é uma *caixa de
@@ -3800,7 +3811,7 @@ Um nome de fábrica novo custaria 10 pontos de edição (foi o preço pago pelo 
 árvore de **produção** fica intocada; trocar de política é apontar `treeFile:` para outro arquivo.
 
 **Por que as libs, e não código dentro do plugin.** Mesmo argumento de `libs/xboard/Board.hpp`,
-com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/player/A4` gera
+com três razões medidas: o ORT em Debug pesa **576 MB** depois de linkado e `models/players/A-4` gera
 **quatro** artefatos do mesmo `model_sources` (~2,3 GB recopiados por `sync-plugins`); o
 `-Wl,--no-undefined` **proíbe** o plugin de chamar a API C do CPython sem linkar `libpython`; e as
 extensões C do Python só importam com `libpython` no escopo global. Contido nas libs, o plugin
@@ -3841,8 +3852,8 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
    `xpyembed` checa `dlsym(RTLD_DEFAULT, "Py_IsInitialized")` antes de carregar qualquer coisa.
 7. **`Py_InitializeEx` segura o GIL.** Sem `PyEval_SaveThread()` logo depois, a primeira
    `PyGILState_Ensure()` de outra thread trava para sempre.
-8. **O `.cpp` de um nó de BT novo entra em DOIS `meson.build`** — `models/player/A4/meson.build`
-   (`model_sources`) e `models/player/A4/tests/meson.build`. Nos que dependem do SDK vão em
+8. **O `.cpp` de um nó de BT novo entra em DOIS `meson.build`** — `models/players/A-4/meson.build`
+   (`model_sources`) e `models/players/A-4/tests/meson.build`. Nos que dependem do SDK vão em
    `bt_sdk_sources`, **não** em `bt_sources`: este último é compartilhado com o `test-tree`, que tem
    a propriedade de não linkar MIXR (o `poc-mixr-sdk.pc` declara `Requires: mixr`). O registro
    deles fica em `bt/bt_factory_sdk.cpp`, separado de `bt/bt_factory.cpp` pelo mesmo motivo.
@@ -3863,7 +3874,7 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
 `docs/` é conteúdo **lido**, nunca escrito por uma execução: páginas HTML estáticas (sem
 servidor, sem dependência de rede depois do primeiro carregamento). A peça viva é gerada por
 `tools/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
-`models/player/A4/` — não é desenho à mão do ciclo de fases, é extraído do código.
+`models/players/A-4/` — não é desenho à mão do ciclo de fases, é extraído do código.
 
 - **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
@@ -4008,7 +4019,7 @@ nome em algum ANCESTRAL já conhecido pelo scan estático (ex.: `components`, he
 terceiro (sem fonte) é que cai num fallback texto-ou-número marcado `typeUnknown: true` — vira um
 badge "?" no editor (ao lado do "#" que já existia pra referência-por-nome), com uma nota no
 painel de propriedades explicando o porquê. Origem do catálogo vira `plugin:<nome-do-arquivo-sem-
-lib-nem-.so>` (mesma convenção de `plugin:<nome>` que `models/player/<nome>/` já usa) — reaproveita
+lib-nem-.so>` (mesma convenção de `plugin:<nome>` que `models/players/<nome>/` já usa) — reaproveita
 a MESMA cor "plugin" da paleta/árvore sem nenhuma mudança de CSS.
 
 Fica fora do grafo do Meson (sem `subdir()` em `src/meson.build`) — mas não é mais "nenhum C++

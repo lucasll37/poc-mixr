@@ -29,14 +29,14 @@
 // abaixo), so nenhum destes dois cenarios a instancia.
 //
 // AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
-// models/player/A4/data/jsbsim/aircraft/A4/, originados de
+// models/players/A-4/data/jsbsim/aircraft/A4/, originados de
 // shared/data/jsbsim/aircraft/A4/). O motivo do proprio c310 (agora
 // substituido) era concreto e continua valendo aqui: o JSBSimModel nativo
 // comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
 // 'ap/airspeed_hold' (confirmado com `strings libmixr_models.so`),
 // propriedades que so existem se o MODELO JSBSim tiver um autopilot
 // proprio. O A-4 de fabrica (Aeromatic) nao vem com nenhum -- por isso
-// models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
+// models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
 // esta PoC-mixr, no mesmo papel que c310ap.xml cumpria: com ele, a cadeia
 // Autopilot -> JSBSimModel -> superficies funciona sem uma linha de lei de
 // controle propria.
@@ -280,7 +280,7 @@
                // CallSign/Pilot -- ver libs/xtacview).
                //
                // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
-               // comentario no topo e models/player/A4/data/jsbsim/
+               // comentario no topo e models/players/A-4/data/jsbsim/
                // aircraft/A4/) -- "A-4E" no modelMap ja e a celula que
                // esta voando, nao mais uma escolha de apresentacao por
                // cima de outra dinamica.

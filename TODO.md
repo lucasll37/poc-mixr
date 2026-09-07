@@ -1,9 +1,8 @@
+- gerar arvore "editável" [indo]
+-  groot [indo]
 - documentar de forma excelente [indo]
 - interface gráfica para montar edl [indo]
--  groot [indo]
-- testes exaustivos
 - revisar documentação
-- gerar arvore "editável" [indo]
 
 
 ----------------------------------------------------
@@ -27,7 +26,7 @@ Estudei MIXR e BT
     -> poc_satelite
     -> poc_foguete
 
-Fazer bijeções entre o que hj existe
+Fazer bijeções entre o que hj existe para não mudar organização cultural
 
 Filosofia: Pouca coisa em ternos de funcionalidade realmente é novo, a grande novidade é a organização, documentação, esteira de desenvolvimento mais produtiva, padronizada e testável e escalável com dificuldades de dominio mapeadas com correta gestão do conhecimento
 ----------------------------------------------------

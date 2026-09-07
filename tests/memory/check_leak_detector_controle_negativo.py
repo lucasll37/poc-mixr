@@ -12,7 +12,7 @@ frames), e a mudanca foi revertida. Ficou so a linha na tabela do README --
 nada impedia uma regressao futura no PROPRIO detector de passar batido.
 
 Este script torna esse "falhar de proposito" PERMANENTE, sem tocar o binario
-de producao: 'model_leak' (models/player/A4/meson.build, atras da opcao
+de producao: 'model_leak' (models/players/A-4/meson.build, atras da opcao
 'variants') e compilada do MESMO fonte de 'libflight.so', com uma UNICA
 diferenca -- POC_LEAK_ONE_REF_PER_DECISION acrescenta um action->ref() logo
 apos "new FlightAction()" em BtBehavior.cpp, nunca balanceado por um
@@ -75,7 +75,7 @@ def main():
     binario, so_leak = sys.argv[1], sys.argv[2]
 
     if not Path(so_leak).is_file():
-        print(f"FALHA: {so_leak} nao existe -- compile models/player/A4 com "
+        print(f"FALHA: {so_leak} nao existe -- compile models/players/A-4 com "
               "'meson setup -Dvariants=true' (ou 'make models', que ja passa "
               "VARIANTS=true por padrao)")
         return 1

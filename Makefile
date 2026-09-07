@@ -42,14 +42,14 @@ clean: ## Clean all generated build files in the project (host + TODOS os modelo
 	@# Descoberto por find (mesma lista de MODELOS_PRODUCAO, ver alvo 'models'
 	@# abaixo), + template (nunca entra em 'models:', mas alguem pode ter
 	@# rodado 'make'/'make install-host' nele a mao enquanto experimentava --
-	@# ver models/player/template/README.md). 'uninstall-host' roda ANTES do
+	@# ver models/players/template/README.md). 'uninstall-host' roda ANTES do
 	@# 'clean' de cada um: ele precisa do ./dist LOCAL ainda intacto para
 	@# saber quais basenames remover de plugins/ -- 'clean' apaga esse ./dist
 	@# logo em seguida. '|| true' nos dois porque um clean antes do primeiro
 	@# 'make models' nao tem nada para limpar/desinstalar ali. So os nomes
 	@# que CADA modelo de fato publicou sao removidos -- um .so de TERCEIRO
 	@# com outro nome (ver plugins/README.md) nunca e tocado.
-	@for d in $(MODELOS_PRODUCAO) models/player/template; do \
+	@for d in $(MODELOS_PRODUCAO) models/players/template; do \
 	   $(MAKE) -C $$d uninstall-host 2>/dev/null || true; \
 	   $(MAKE) -C $$d clean 2>/dev/null || true; \
 	 done
@@ -87,7 +87,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# libxtrack pra dist/lib/ com mtime NOVO mesmo sem mudanca de conteudo --
 	@# e um destino mais novo que um input ja linkado faz o ninja dos modelos
 	@# (flight/missile/stub, que dependem do SDK) achar que precisa RELINKAR
-	@# na proxima chamada. Confirmado com 'ninja -C models/player/A4/build -d
+	@# na proxima chamada. Confirmado com 'ninja -C models/players/A-4/build -d
 	@# explain libflight.so'. Sem isto, TODO 'make install'/'run-*'/'test'
 	@# relinkava os quatro plugins de producao, mesmo com tudo ja compilado.
 	meson install -C $(BUILD_DIR) --no-rebuild --tags sdk,devel --only-changed
@@ -101,18 +101,18 @@ ASAN ?= false
 # ==============================================================================
 # 'models' e 'sync-plugins' -- DECOPLADOS de proposito.
 #
-# 'models' compila e instala TODO modelo de producao sob models/player/,
+# 'models' compila e instala TODO modelo de producao sob models/players/,
 # cada um projeto Meson AUTOCONTIDO (ver models/README.md §1.1) --
 # DESCOBERTO POR FIND (nao por lista fixa: um modelo novo so precisa
 # existir, nunca precisa de uma linha nova aqui -- mesma filosofia ja usada
 # por tests/guard/check_modelo_estrutura.sh/check_colisao_fabrica.py),
-# delegando pro Makefile de CADA um (`$(MAKE) -C models/player/<nome>
+# delegando pro Makefile de CADA um (`$(MAKE) -C models/players/<nome>
 # install-host TESTS=true VARIANTS=true ASAN=...`), nao reimplementando o
-# setup aqui. Exclui so models/player/template/ (nunca e producao -- ver
-# models/README.md secao 2.4); models/player/fixtures/<nome>/ ENTRAM (o
+# setup aqui. Exclui so models/players/template/ (nunca e producao -- ver
+# models/README.md secao 2.4); models/players/fixtures/<nome>/ ENTRAM (o
 # stub, por exemplo, e um FIXTURE de teste, mas o .so dele precisa estar em
 # plugins/ para os testes de plugin que o carregam). O resultado -- so os
-# .so, flat, mais os dados de cada um que publicar (hoje, so o flight/A4)
+# .so, flat, mais os dados de cada um que publicar (hoje, so o flight/A-4)
 # -- pousa em plugins/ (e plugins/data/<nome>/), o MESMO deposito que um
 # terceiro usaria (ver plugins/README.md). Este alvo NUNCA escreve em
 # dist/ -- e por isso "desacoplado do restante": compilar/instalar um
@@ -134,18 +134,18 @@ ASAN ?= false
 # ==============================================================================
 
 # Mesma logica de descoberta de tests/guard/check_modelo_estrutura.sh (todo
-# diretorio sob models/player/ com um meson.build de PROJETO -- aqui,
+# diretorio sob models/players/ com um meson.build de PROJETO -- aqui,
 # "nao dentro de tests/", que e o mesmo criterio na pratica: so o
 # meson.build da RAIZ de cada projeto de modelo declara project(), os de
-# tests/ so tem subdir()), restrita a models/player/ (nao models/events/,
+# tests/ so tem subdir()), restrita a models/players/ (nao models/events/,
 # que e SDK, nao modelo) e excluindo template/ (nunca e producao).
 # 'fixtures/stub' PERMANECE -- ver o comentario acima.
-MODELOS_PRODUCAO := $(shell find models/player -mindepth 2 -name meson.build \
+MODELOS_PRODUCAO := $(shell find models/players -mindepth 2 -name meson.build \
                        -not -path '*/build/*' -not -path '*/dist/*' -not -path '*/subprojects/*' \
                        -not -path '*/template/*' -not -path '*/tests/*' \
                      | xargs -r -n1 dirname | sort -u)
 
-models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob models/player/, exceto template/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob models/players/, exceto template/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
 	@for d in $(MODELOS_PRODUCAO); do \
 	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
 	 done
@@ -178,7 +178,7 @@ sync-plugins: models ## Sincroniza plugins/ (proprios + terceiros) para dist/ --
 # Scaffold de modelo novo
 # ============================================
 
-new-model: ## Gera um modelo novo em models/player/NAME/ a partir de fixtures/stub ou template/ (NAME= obrigatorio, KIND=stub|template, default stub). Ver CONTRIBUTING.md.
+new-model: ## Gera um modelo novo em models/players/NAME/ a partir de fixtures/stub ou template/ (NAME= obrigatorio, KIND=stub|template, default stub). Ver CONTRIBUTING.md.
 	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo KIND=stub|template$(NC)"; exit 1; }
 	scripts/models.sh --name "$(NAME)" --kind "$(or $(KIND),stub)"
 
@@ -235,12 +235,12 @@ venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/player/A4.
-	@# 'test' do Makefile de models/player/A4 ja confere a contagem (>=3) e ja
+test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/players/A-4.
+	@# 'test' do Makefile de models/players/A-4 ja confere a contagem (>=3) e ja
 	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
-	$(MAKE) -C models/player/A4 test
+	$(MAKE) -C models/players/A-4 test
 
-test: test-models install ## Roda a suite INTEIRA: a do modelo e a do host. Requer configure com -Dtests=true. 'install' garante dist/ populado p/ os testes que rodam binario.
+test: install ## Roda SO a suite do HOST (scenario/determinism/plugin/memory/guard/tools/...). Requer configure com -Dtests=true. 'install' builda e sincroniza os modelos (dlopen precisa do .so em dist/) mas NAO roda a suite deles -- para isso, 'make test-models'.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs

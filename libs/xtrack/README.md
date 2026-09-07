@@ -7,7 +7,7 @@ a percepção do UBF e o `track=`/`trackRange=` do dump da aplicação nunca dig
 
 Duas funções, sem estado, chamadas dos dois lados da fronteira de plugin.
 
-**Do lado do modelo** (`models/player/A4/src/ubf/FlightState.cpp`, a percepção que alimenta a
+**Do lado do modelo** (`models/players/A-4/src/ubf/FlightState.cpp`, a percepção que alimenta a
 árvore de comportamento inteira):
 
 ```cpp
@@ -76,7 +76,7 @@ alimenta — testável sem `Station`/`Player`/`Track` ao vivo, só os três camp
 lado — `side` só é consultado quando `hasResolvedTarget == true` — e compete normalmente por
 alcance contra qualquer hostil.
 
-**Não confundir com `RadarScan`** (`models/player/A4/include/xnative/RadarScan.hpp`, do modelo, não
+**Não confundir com `RadarScan`** (`models/players/A-4/include/xnative/RadarScan.hpp`, do modelo, não
 desta lib): `RadarScan` lê para onde a antena está *apontando agora* (`Gimbal::getAzimuthD()`
 etc.), para alimentar a varredura no Tacview — é o *apontamento*. `TrackQuery` lê o *contato já
 detectado* — é a pista.
@@ -87,7 +87,7 @@ Mesmo argumento de [`xboard`](../xboard/Board.hpp): é a única peça disputada 
 fronteira de `dlopen`. O host precisa dela para o `track=`/`trackRange=` do dump (e do painel do
 `./app`); o modelo precisa dela para a percepção (`ubf::FlightState`). A alternativa seria
 compilar o mesmo `.cpp` dos dois lados — funciona (as funções não têm estado), mas depois que o
-fonte do modelo saiu para `models/player/A4/`, isso viraria **duas cópias do arquivo em duas
+fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do arquivo em duas
 árvores**, que divergem em silêncio. Uma `.so` a mais no SDK é mais barata que essa divergência.
 
 ## Armadilhas confirmadas

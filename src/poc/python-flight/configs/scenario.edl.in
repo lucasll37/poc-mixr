@@ -40,7 +40,7 @@
 //
 // AERONAVE: A-4 (Douglas A-4 Skyhawk), a mesma das gemeas -- ver o
 // cabecalho de src/poc/dis/multi-thread/configs/scenario.edl.in para o
-// porque (models/player/A4/data/jsbsim/aircraft/A4/a4ap.xml e o
+// porque (models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml e o
 // autopilot 'ap/*' proprio escrito para esta PoC-mixr, sem o qual o
 // ( Autopilot ) nativo nao comanda nada).
 //
@@ -287,7 +287,7 @@
                // CallSign/Pilot -- ver libs/xtacview).
                //
                // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
-               // comentario no topo e models/player/A4/data/jsbsim/
+               // comentario no topo e models/players/A-4/data/jsbsim/
                // aircraft/A4/) -- "A-4E" no modelMap ja e a celula que
                // esta voando, nao mais uma escolha de apresentacao por
                // cima de outra dinamica.

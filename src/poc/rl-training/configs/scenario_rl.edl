@@ -148,7 +148,7 @@
                            recoverClearance: ( Meters 800 )
                         )
                         // Decisao vem de fora (Python), via libs/xrlbridge --
-                        // ver models/player/A4/include/ubf/RLBridgeBehavior.hpp.
+                        // ver models/players/A-4/include/ubf/RLBridgeBehavior.hpp.
                         ( RLBridgeBehavior vote: 50 )
                      }
                   )

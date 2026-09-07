@@ -187,8 +187,8 @@ def extract_slot_types(cpp_roots):
     Confirmado rodando sem o mascaramento antes de escrever esta versao.
 
     PRIMEIRO achado vence, por classe inteira (mesmo motivo/mesma ordem de
-    varredura de extract_slots() em mixr_source_scan.py -- 'models/player/A4'
-    antes de 'models/player/fixtures/stub'): sem isso, os INDICES de ON_SLOT
+    varredura de extract_slots() em mixr_source_scan.py -- 'models/players/A-4'
+    antes de 'models/players/fixtures/stub'): sem isso, os INDICES de ON_SLOT
     de dois arquivos diferentes para a mesma classe se MISTURARIAM num so
     dicionario, o que faz ainda menos sentido que so perder um dos dois --
     os indices de um arquivo nao tem relacao nenhuma com os do outro."""
@@ -228,8 +228,8 @@ def origin_of(impl_file):
     factory nativa do fork (agrupada pelo primeiro nivel sob
     contexts/src/mixr/src/, com interop/dis e interop/rprfom mantidos
     distintos), uma lib propria deste repo (libs/x*), ou algo do USUARIO
-    sob ./models/ -- QUALQUER coisa la (nao so models/player/<nome>/): um
-    plugin de player, um fixture de teste (models/player/fixtures/<nome>/),
+    sob ./models/ -- QUALQUER coisa la (nao so models/players/<nome>/): um
+    plugin de player, um fixture de teste (models/players/fixtures/<nome>/),
     ou um payload de evento (models/events/<nome>/...). Generico de
     proposito -- um modelo novo em models/<qualquer-coisa>/ ja aparece
     rotulado na hora, sem precisar editar este arquivo.
@@ -237,18 +237,18 @@ def origin_of(impl_file):
     Confirmado rodando: antes desta generalizacao, TacticalAlert (o
     payload real do evento de alerta tatico, implementado em
     models/events/payloads/EID_ALERT/TacticalAlert.cpp -- nao um
-    'models/player/<nome>/') caia no 'return "builtin"' por engano, como
+    'models/players/<nome>/') caia no 'return "builtin"' por engano, como
     se fosse uma classe nativa do MIXR."""
     if impl_file is None:
         return "unknown"
-    if impl_file.startswith("models/player/fixtures/"):
-        # pula os segmentos 'player'/'fixtures' -- o nome que importa e o
-        # do modelo (models/player/fixtures/stub/... -> "stub", nao
+    if impl_file.startswith("models/players/fixtures/"):
+        # pula os segmentos 'players'/'fixtures' -- o nome que importa e o
+        # do modelo (models/players/fixtures/stub/... -> "stub", nao
         # "fixtures").
-        rest = impl_file[len("models/player/fixtures/"):].split("/")
+        rest = impl_file[len("models/players/fixtures/"):].split("/")
         return f"plugin:{rest[0]}"
-    if impl_file.startswith("models/player/"):
-        rest = impl_file[len("models/player/"):].split("/")
+    if impl_file.startswith("models/players/"):
+        rest = impl_file[len("models/players/"):].split("/")
         return f"plugin:{rest[0]}"
     if impl_file.startswith("models/"):
         # qualquer outra coisa sob models/ que nao seja um player -- ex.:
@@ -588,7 +588,7 @@ def find_plugininfo_binary():
 
 def thirdparty_plugin_label(so_path):
     """'libAcme.so' -> 'Acme' -- mesma convencao de 'plugin:<nome>' que o
-    resto do catalogo ja usa para models/player/<nome>/ (origin_of() acima),
+    resto do catalogo ja usa para models/players/<nome>/ (origin_of() acima),
     so que aqui o <nome> vem do ARQUIVO, nao de um caminho fonte (nao ha
     fonte pra um .so de terceiro)."""
     name = so_path.stem

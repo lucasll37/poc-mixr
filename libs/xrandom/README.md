@@ -8,7 +8,7 @@ consome (ver o "porquê" no cabeçalho de [`DeterministicRng.hpp`](Deterministic
 ## Como se usar
 
 Único consumidor real hoje: `BtBehavior::configurePlans()`
-(`models/player/A4/src/ubf/BtBehavior.cpp`), que já depende do SDK. O `.edl` de produção declara
+(`models/players/A-4/src/ubf/BtBehavior.cpp`), que já depende do SDK. O `.edl` de produção declara
 a **mesma** `patrolMasterSeed` nos quatro falcons — a variação vem do nome de cada um, não do
 literal:
 
@@ -67,7 +67,7 @@ tem que alcançar o `.so` do modelo). Derivação de semente não tem esse requi
 número sai, sem estado global nenhum — então vira só mais um `install_headers()` no `meson.build`
 raiz, no mesmo molde de `libs/xplugin/PluginAbi.hpp`.
 
-É também por isso que `domain::PatrolPlan` **não** inclui este header: `models/player/A4/tests/`
+É também por isso que `domain::PatrolPlan` **não** inclui este header: `models/players/A-4/tests/`
 compila `domain_sources` sem o SDK (sem MIXR), e este header só fica visível via `dist/include`
 (publicado pelo SDK). `PatrolPlan` mantém seu próprio `std::mt19937_64` privado, seedado por um
 `std::uint64_t` que já chega pronto — a classe não sabe de master seed, nome de player nem salt de

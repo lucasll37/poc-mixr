@@ -15,7 +15,7 @@ carregado por `dlopen` — só inclui o header e usa a macro:
 LOG(WARNING) << "algo aconteceu: " << valor;   // DEBUG / INFO / WARNING / ERROR
 ```
 
-É exatamente assim que `models/player/A4/src/ubf/FlightAction.cpp` reporta a transição de
+É exatamente assim que `models/players/A-4/src/ubf/FlightAction.cpp` reporta a transição de
 comportamento de um avião:
 
 ```cpp
@@ -62,7 +62,7 @@ transitiva de `mixr_dep` (`mixr-recorder` no `Requires:` do `mixr.pc`, a mesma l
 ## Por que é `shared_library()`, não estática
 
 Ao contrário da maioria de `libs/x*`, `xlog` cruza a fronteira de plugin: o modelo
-(`models/player/A4`, `.so` aberto por `dlopen`) chama `LOG(...)` ao carregar a árvore de
+(`models/players/A-4`, `.so` aberto por `dlopen`) chama `LOG(...)` ao carregar a árvore de
 comportamento (`ubf/BtBehavior.cpp`) e a cada decisão atuada (`ubf/FlightAction.cpp`). Com duas
 cópias da lib, o `setLoggingEnabled(false)` que `main.cpp` chama sob `-deterministic` não
 alcançaria o lado do plugin, e o modo comparável passaria a emitir linhas com timestamp de parede

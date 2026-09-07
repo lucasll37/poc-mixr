@@ -12,7 +12,7 @@ integração") com os desafios de integração resolvidos.
 ## Como se usar
 
 Ninguém declara `libs/xpyembed` num `.edl` — quem chama a API é um nó de BehaviorTree.CPP dentro
-do plugin do modelo (`bt/nodes/PyDecideAction.cpp`, em `models/player/A4/`). A "configuração" mora
+do plugin do modelo (`bt/nodes/PyDecideAction.cpp`, em `models/players/A-4/`). A "configuração" mora
 na árvore XML, no atributo `script:` do nó.
 
 **1. A árvore aponta `( PyDecide )` para um `.py`** —

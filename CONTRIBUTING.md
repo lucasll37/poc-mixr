@@ -34,8 +34,8 @@ exatamente isto.
 
 | se o seu modelo... | comece por | por quê |
 |---|---|---|
-| decide com uma regra/condição só | [`models/player/fixtures/stub`](models/player/fixtures/stub/) | ~300 linhas, um arquivo, prova que o contrato basta |
-| vai coordenar mais de uma decisão desde o início | [`models/player/template`](models/player/template/) | já nasce em camadas (`domain/`→`ubf/`→`xnative/`) |
+| decide com uma regra/condição só | [`models/players/fixtures/stub`](models/players/fixtures/stub/) | ~300 linhas, um arquivo, prova que o contrato basta |
+| vai coordenar mais de uma decisão desde o início | [`models/players/template`](models/players/template/) | já nasce em camadas (`domain/`→`ubf/`→`xnative/`) |
 
 **O caminho recomendado é o gerador automático**, que já existe neste repositório:
 
@@ -46,12 +46,12 @@ make new-model NAME=meu_modelo KIND=stub   # ou KIND=template
 Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespace, `ROOT` do Makefile
 pela profundidade real) e termina com um checklist do que sobra manual. Se preferir fazer à mão, o
 roteiro completo está em [`stub`, receita em `models/README.md` §2](models/README.md#2-como-criar-um-modelo-novo)
-ou [`template`, `docs/PRIMEIROS-PASSOS.md`](models/player/template/docs/PRIMEIROS-PASSOS.md) passo
+ou [`template`, `docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) passo
 a passo, dos dois — mas o gerador cobre exatamente essa receita.
 
 ## 3. O contrato: o que TODO modelo tem que fazer
 
-→ [`models/player/fixtures/stub/docs/CONTRATO.md`](models/player/fixtures/stub/docs/CONTRATO.md)
+→ [`models/players/fixtures/stub/docs/CONTRATO.md`](models/players/fixtures/stub/docs/CONTRATO.md)
 — leia inteiro, mesmo vindo do `template`. Três obrigações merecem destaque:
 
 - **`provides:` bate EXATAMENTE com o que o `.so` exporta** (seção 2) — se não bater, o processo
@@ -79,7 +79,7 @@ do remote privado). Depois de instalado, `make open-groot` sempre abre a janela.
 
 #### Editar uma árvore
 
-**Para experimentar agora, sem esperar seu próprio modelo compilar**: os `models/player/A4/
+**Para experimentar agora, sem esperar seu próprio modelo compilar**: os `models/players/A-4/
 configs/flight_tree*.xml` de produção já têm tudo isso resolvido (comentário sem `--`, bloco
 `<TreeNodesModel>` colado) — abrem direto no Groot, `File > Load...`, sem nenhum passo abaixo.
 São o exemplo de referência para o que sua própria árvore precisa ter.
@@ -88,7 +88,7 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
 
 1. Nunca abra o `.xml` de produção direto — copie:
    ```bash
-   cp models/player/<seu-modelo>/configs/<sua-arvore>.xml /tmp/arvore_groot.xml
+   cp models/players/<seu-modelo>/configs/<sua-arvore>.xml /tmp/arvore_groot.xml
    ```
 2. **Verifique se o comentário de cabeçalho tem `--` (hífen duplo)** — o parser XML do Groot
    (`QDomDocument`, estrito) recusa o arquivo **inteiro** se tiver; o parser que o host usa
@@ -103,7 +103,7 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
    Se o seu modelo já tem o gerador nativo (próxima seção), use-o em vez de escrever o bloco à
    mão. Sem ele, cole algo assim dentro de `<root>` (a lista de `ID`s e portas é a mesma que você
    passou para `factory.registerBuilder<T>(ID, ...)`/`providedPorts()` no seu `bt_factory.cpp`; o
-   exemplo abaixo é o do modelo de produção `A4`, só para mostrar a forma):
+   exemplo abaixo é o do modelo de produção `A-4`, só para mostrar a forma):
    ```xml
    <TreeNodesModel>
        <Condition ID="FuelLow">
@@ -124,11 +124,11 @@ Nada aqui monta a árvore por você — o Groot não tem "começar em branco com
 que produz o **arquivo inteiro, pronto pra abrir**: uma árvore vazia (um `<Fallback>` só, de
 partida) mais o `<TreeNodesModel>` com os nós do SEU `bt_factory.cpp`, os dois no mesmo `<root>`.
 
-No modelo `A4` (produção), já está pronto:
+No modelo `A-4` (produção), já está pronto:
 
 ```bash
-meson compile -C models/player/A4/build dump-tree-model      # se ainda nao compilou
-models/player/A4/build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova_arvore.xml
+meson compile -C models/players/A-4/build dump-tree-model      # se ainda nao compilou
+models/players/A-4/build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova_arvore.xml
 ```
 
 `make open-groot` → `File > Load...` → `/tmp/nova_arvore.xml`. A paleta já mostra todos os nós
@@ -136,16 +136,16 @@ do modelo (em azul, distintos dos nativos do BT.CPP); arraste da paleta pro canv
 arrastando de uma saída pra uma entrada, e `File > Save` — esse arquivo salvo é a árvore de
 verdade, aponte o `treeFile:` do seu `.edl` pra ele.
 
-**Se o SEU modelo não é o `A4`**, este gerador não existe automaticamente pra ele — é código
-(`models/player/A4/tools/dump_tree_model.cpp` + o alvo `dump-tree-model` em
-`models/player/A4/tests/meson.build`, ~15 linhas de CMake/Meson no total). Copie o padrão de lá:
+**Se o SEU modelo não é o `A-4`**, este gerador não existe automaticamente pra ele — é código
+(`models/players/A-4/tools/dump_tree_model.cpp` + o alvo `dump-tree-model` em
+`models/players/A-4/tests/meson.build`, ~15 linhas de CMake/Meson no total). Copie o padrão de lá:
 o `.cpp` só monta uma `BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()`
 (ou equivalente) do SEU `bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a
 função nativa do BT.CPP que faz o trabalho de verdade.
 
 #### Depurar/monitorar ao vivo
 
-O modelo de produção (`A4`) já tem esse hook pronto, opt-in por variável de ambiente:
+O modelo de produção (`A-4`) já tem esse hook pronto, opt-in por variável de ambiente:
 
 ```bash
 MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder src/poc/dis -scenario multi-thread
@@ -155,7 +155,7 @@ Em outro terminal com display: `make open-groot` → aba **Monitor** → conecta
 (portas 1666/1667, fixas). A árvore daquele player aparece se colorindo em tempo real conforme
 tica. **Se o SEU modelo também usa uma árvore do BT.CPP e você quer essa mesma capacidade**, ela
 não vem de graça do framework — é código do modelo. Replique o padrão de
-`models/player/A4/src/ubf/BtBehavior.cpp` (função `startGrootMonitorIfRequested()`): depois de
+`models/players/A-4/src/ubf/BtBehavior.cpp` (função `startGrootMonitorIfRequested()`): depois de
 `btFactory.createTreeFromFile(...)` ter sucesso, construa um `BT::PublisherZMQ(tree)` se uma
 variável de ambiente bater com o nome do player, e derrube esse objeto (`.reset()`) **antes** de
 qualquer recriação da árvore (`reset()`, `shutdownNotification()`, cópia) — ele guarda uma
@@ -180,8 +180,32 @@ cenário ganha teste em `tests/meson.build`).
 [`tests/README.md`](tests/README.md) para as camadas e o que cada uma prova.
 
 Específico de modelo: `make test-models` roda só a suíte do(s) modelo(s) (pula a do host); de
-dentro do seu próprio `models/player/<nome>/`, `make test` roda sozinho, sem tocar no resto do
+dentro do seu próprio `models/players/<nome>/`, `make test` roda sozinho, sem tocar no resto do
 repositório.
+
+### `make test-asan` não cobre o seu modelo automaticamente
+
+`make test-asan` (raiz, ver [`README.md`](README.md#make-test-asan) para o passo a passo) é hoje
+**hardcoded para o A-4**: reconstrói `models/players/A-4` com `-Dasan=true` e roda uma fixture da poc
+`single-thread` (que carrega `libflight.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
+aceita `NAME=`, e a razão é mecânica — `make models ASAN=true` (que ele chama por baixo) passa
+`ASAN=true` para **todo** projeto de modelo encontrado por `find` sob `models/players/`, mas só
+`models/players/A-4/meson_options.txt` declara `option('asan', ...)`; `fixtures/stub`, `missile` e
+`template` não têm essa opção, então um modelo copiado deles hoje **ignora** a flag em silêncio
+(o GNU Make não reclama de variável de linha de comando não consumida) — nada quebra, mas
+`make test-asan` também não instrumenta nem exercita o `.so` do seu modelo.
+
+Se o seu modelo precisa da mesma cobertura, replique três peças de
+`models/players/A-4/meson.build`/`meson_options.txt`: (1) `option('asan', type: 'boolean', value:
+false, ...)` no seu `meson_options.txt`; (2) `asan_cpp_args`/`asan_link_args` derivados de
+`get_option('asan')`, passados como `cpp_args:`/`link_args:` no(s) seu(s) alvo(s)
+`shared_library()`; (3) uma fixture/cenário próprio para exercitar o `.so` — o alvo da raiz não
+sabe do seu modelo, então rodar sob ASan continua sendo manual: `meson configure
+models/players/<seu-modelo>/build -Dasan=true && meson compile -C models/players/<seu-modelo>/build`
+e então o binário do host apontando pro seu cenário, com `LSAN_OPTIONS=suppressions=<seu
+arquivo de supressões>` (comece copiando [`tests/memory/asan.supp`](tests/memory/asan.supp) — as
+supressões de lá são do framework MIXR em si, não deste repositório, então valem para qualquer
+modelo).
 
 ## 7. Onde consultar durante o trabalho
 
