@@ -1,3 +1,3 @@
 option('tests', type: 'boolean', value: false, description: 'Compila a suite do modelo (domain + tree); requer gtest')
-option('variants', type: 'boolean', value: false, description: 'Compila as duas variantes de hot-swap usadas por tests/plugin do host')
+option('variants', type: 'boolean', value: false, description: 'Compila as variantes de teste do host: as duas de hot-swap (tests/plugin) e a que vaza de proposito (tests/memory)')
 option('asan', type: 'boolean', value: false, description: 'AddressSanitizer')

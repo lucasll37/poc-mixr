@@ -73,6 +73,65 @@ buffer de 500 entradas já tinha girado três vezes e engolido justamente as tra
 todo log daqui passa por uma regra de **borda** (`changedFor()`, um mapa estático por player, com
 mutex porque os agentes decidem em paralelo) ou de **contagem** (o batimento), nunca por decisão.
 
+## Editando a árvore com o Groot — o gerador `dump-tree-model`
+
+O Groot (editor visual das árvores do BehaviorTree.CPP — instalação em
+[`../INSTALL.md`](../INSTALL.md) §4) só reconhece um nó customizado (`FuelLow`, `ContactDetected`,
+`OnnxPolicy`, `PyDecide`, ...) se o `.xml` tiver um bloco `<TreeNodesModel>` descrevendo ID e
+portas de cada um — sem ele, carregar qualquer `flight_tree*.xml` recusa com *"This model has not
+been registered"*. Esse bloco não é mantido à mão: `tools/dump_tree_model.cpp` (alvo Meson
+`dump-tree-model`, registrado em [`../tests/meson.build`](../tests/meson.build)) monta a MESMA
+`BT::BehaviorTreeFactory` que o modelo de produção monta — `bt_nodes::registerNodes()` +
+`bt_nodes::registerSdkNodes()`, os mesmos dois que `xnative/factory.cpp` chama — e devolve
+`BT::writeTreeNodesModelXML(factory)`, a função **nativa** do BT.CPP que lê o manifesto (ID +
+portas) de cada nó registrado. `behavior=nullptr` num `NodeContext{}` vazio é seguro aqui:
+`registerBuilder<T>()` só guarda um construtor (lambda) na factory — nenhum nó chega a ser
+instanciado, só o manifesto é lido.
+
+### Três formas de usar
+
+```bash
+# compilar (ou recompilar, depois de registrar um no novo em bt_factory.cpp/bt_factory_sdk.cpp)
+meson compile -C build dump-tree-model
+
+# 1. so o fragmento <TreeNodesModel>...</TreeNodesModel> -- para colar dentro do <root> de uma
+#    arvore ja existente. E' o modo que sync_tree_models.py usa por baixo.
+./build/tests/dump-tree-model
+
+# 2. um .xml COMPLETO, pronto pra abrir no Groot: uma arvore vazia (<Fallback name="root"/>,
+#    builtin do BT.CPP -- nao precisa de modelo nenhum) + o mesmo <TreeNodesModel>, os dois no
+#    mesmo <root>. Resposta a "como eu crio uma arvore nova com os nos que ja implementei".
+./build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova.xml
+
+# 3. resincronizar os 5 flight_tree*.xml DE PRODUCAO de uma vez, depois de um no novo -- roda o
+#    binario, extrai o fragmento, substitui o <TreeNodesModel> nos 5 arquivos.
+python3 tools/sync_tree_models.py            # escreve
+python3 tools/sync_tree_models.py --check    # so verifica -- exit 1 se algum estiver desatualizado
+```
+
+`--check` é o que o teste `tree-model-sync` (suíte `tree`, ver
+[`../tests/meson.build`](../tests/meson.build)) roda a cada `make test`. Sem essa guarda, esquecer
+de resincronizar depois de registrar um nó novo seria um "verde silencioso" — os 76 testes do
+modelo continuam todos verdes, e o problema só aparece quando alguém tenta abrir a árvore no Groot
+e recebe *"This model has not been registered"*. O teste passa o caminho de **verdade** do binário
+(o objeto `dump_tree_model` do próprio Meson, não o default de `sync_tree_models.py`, que supõe um
+diretório chamado `build`) — Meson já resolve isso e adiciona a dependência de build sozinho.
+
+### Armadilhas confirmadas — não redescobrir
+
+1. **Um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp` não aparece nos XMLs sozinho.** Registrar
+   a classe na factory C++ não toca em nenhum `.xml` — é preciso rodar `sync_tree_models.py` (ou
+   deixar `make test` acusar via `tree-model-sync`) depois. Sem isso, o sintoma é indistinguível de
+   "esqueci de registrar o nó" olhando só os XMLs.
+2. **Nós que dependem do SDK (`OnnxPolicy`/`OnnxScore`/`PyDecide`, em `bt_sdk_sources`) exigem o
+   SDK publicado** (`cd ../../.. && make configure && make sdk`) para o próprio
+   `dump-tree-model` compilar — ele linka `sdk_dep` justamente para incluir esses três no
+   manifesto; sem o SDK, o `meson setup` deste projeto falha antes de chegar a compilar nada.
+3. **A saída de `writeTreeNodesModelXML()` já vem envolta num `<root>` próprio** (pensado para virar
+   um `.xml` sozinho) — por isso `dump_tree_model.cpp` extrai só o miolo
+   (`extractTreeNodesModel()`) antes de imprimir; colar a saída CRUA dentro de um `<root>` já
+   existente duplicaria a tag e o Groot recusaria o arquivo.
+
 ## Armadilhas confirmadas — não redescobrir
 
 1. **O motor NÃO precisa de `engine-autostart.xml`.** Isso valia para o c310 (pistão — `JSBSimModel`

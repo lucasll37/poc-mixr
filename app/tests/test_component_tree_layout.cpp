@@ -307,3 +307,77 @@ TEST(ComponentTreeFit, ArvoreLargaEncolheParaCaber)
    EXPECT_LT(view.zoom, 1.0);
    EXPECT_GE(view.zoom, app::kTreeMinZoom);
 }
+
+//------------------------------------------------------------------------------
+// EstimatedPhase -- phaseLabel()/phaseBit()/isHeuristicPhase() e o unico
+// caminho de discoverComponentTree() que nao precisa de uma Station de
+// verdade (station == nullptr). A heuristica em si (estimatePhase(), que
+// olha nome de slot + classe) fica no namespace anonimo do .cpp e so e
+// exercitada de verdade pela suite 'scenario' (o cenario de producao
+// rodando com a aba F6 aberta) -- aqui so o CONTRATO exportado do header.
+//------------------------------------------------------------------------------
+TEST(EstimatedPhaseLabel, TextoNaoVazioEEspecificoPorFase)
+{
+   using app::EstimatedPhase;
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::Structural), "estrutural");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::DynamicsPhase0), "fase 0 (dynamics)");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::TransmitPhase1), "fase 1 (transmit)");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::ReceivePhase2), "fase 2 (receive)");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::SensorBothPhases),
+            "fases 1/2 (transmit e receive -- indistinto)");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::DecisionPhase3), "fase 3 (decisao, no frame T/C)");
+   EXPECT_EQ(app::phaseLabel(EstimatedPhase::Unknown),
+            "desconhecida (ou fora do frame T/C -- ver aba F4)");
+}
+
+TEST(EstimatedPhaseBit, UmBitDistintoPorFaseNaOrdemDoEnum)
+{
+   using app::EstimatedPhase;
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::Unknown), 1u << 0);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::Structural), 1u << 1);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::DynamicsPhase0), 1u << 2);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::TransmitPhase1), 1u << 3);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::ReceivePhase2), 1u << 4);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::SensorBothPhases), 1u << 5);
+   EXPECT_EQ(app::phaseBit(EstimatedPhase::DecisionPhase3), 1u << 6);
+
+   // Nenhum bit se sobrepoe -- e o que permite um subtreePhaseMask
+   // acumular varias fases por OR sem perder informacao.
+   const EstimatedPhase todas[]{EstimatedPhase::Unknown, EstimatedPhase::Structural,
+      EstimatedPhase::DynamicsPhase0, EstimatedPhase::TransmitPhase1,
+      EstimatedPhase::ReceivePhase2, EstimatedPhase::SensorBothPhases,
+      EstimatedPhase::DecisionPhase3};
+   unsigned int acumulado{};
+   for (const auto fase : todas) {
+      EXPECT_EQ(acumulado & app::phaseBit(fase), 0u) << "bit repetido";
+      acumulado |= app::phaseBit(fase);
+   }
+}
+
+TEST(IsHeuristicPhase, FalsoSoParaEstruturalVerdadeiroInclusiveParaUnknown)
+{
+   using app::EstimatedPhase;
+   EXPECT_FALSE(app::isHeuristicPhase(EstimatedPhase::Structural));
+
+   // 'Unknown' TAMBEM conta como heuristico (o aviso "(estimado)" aparece
+   // mesmo quando a heuristica nao fez palpite nenhum) -- documentado no
+   // header como deliberado, nao um descuido.
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::Unknown));
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::DynamicsPhase0));
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::TransmitPhase1));
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::ReceivePhase2));
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::SensorBothPhases));
+   EXPECT_TRUE(app::isHeuristicPhase(EstimatedPhase::DecisionPhase3));
+}
+
+TEST(DiscoverComponentTree, StationNuloDevolveNoPlaceholderSemCrashar)
+{
+   const app::ComponentTreeNode root{app::discoverComponentTree(nullptr)};
+
+   EXPECT_EQ(root.className, "?");
+   EXPECT_EQ(root.nodeKey, "/");
+   EXPECT_TRUE(root.children.empty());
+   EXPECT_TRUE(root.state.empty());
+   EXPECT_EQ(root.ownPhaseMask, 0u);
+   EXPECT_EQ(root.subtreePhaseMask, 0u);
+}

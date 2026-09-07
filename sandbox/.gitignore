@@ -1,0 +1,20 @@
+# sandbox/ e o espaco de EXPERIMENTACAO do usuario (`./app -folder ./sandbox`,
+# ver a secao "-folder <pasta>" em CLAUDE.md) -- toda pasta criada aqui fica
+# de fora do git automaticamente, sem precisar tocar em .gitignore nenhum.
+#
+# Excecoes HARDCODED, por nome: os cenarios de EXEMPLO que o proprio
+# repositorio ja traz
+#
+# Pra COMPARTILHAR uma pasta sua (parar de ser so local, virar exemplo
+# versionado pros outros): acrescente uma linha "!/<nome-da-pasta>/" na
+# lista abaixo (a barra final e a barra inicial importam -- sem elas o
+# padrao casa em qualquer profundidade, nao so o topo de sandbox/) e rode
+# "git add sandbox/<nome-da-pasta>/" -- os .gitkeep de data/recordings|logs|
+# messages/ ja existem nas pastas geradas pelo './app', entao o conteudo
+# GERADO (gravacoes/logs/mensagens) continua de fora sozinho, via as regras
+# de sandbox/**/data/... do .gitignore da raiz.
+/*/
+!/full-systems-nav/
+!/intercept_missile/
+!/onnx-policy/
+!/python-flight/

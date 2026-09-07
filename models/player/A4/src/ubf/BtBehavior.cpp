@@ -249,6 +249,16 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
    // Acao PRE-REF'd (o Agent chama unref() depois de executar) -- contrato
    // do UBF: "returns a pre-ref'd Action".
    const auto action = new FlightAction();
+#ifdef POC_LEAK_ONE_REF_PER_DECISION
+   // CONTROLE NEGATIVO do detector de vazamento (tests/memory/
+   // check_leak_detector_controle_negativo.py) -- NUNCA entra no build de
+   // producao (so em 'model_leak', atras da opcao 'variants' em
+   // models/player/A4/meson.build). Um ref() a mais aqui, nunca balanceado
+   // por um unref(), e o MESMO defeito ja provado manualmente uma vez (ver
+   // tests/README.md, "ref() a mais na FlightAction") -- agora permanente,
+   // pra provar que a suite 'memory' pegaria um vazamento de verdade.
+   action->ref();
+#endif
    action->setCommand(currentDecision.command);
    action->setLabel(currentDecision.label);
    if (currentDecision.broadcastAlert) {

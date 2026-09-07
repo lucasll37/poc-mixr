@@ -75,6 +75,26 @@ coerência da fábrica, as tabelas de slot com **tipo e unidade**, e a fronteira
 uma `Simulation`. Esses ficam cobertos pelas camadas `scenario`/`determinism` do host e, no caso da
 varredura, pela checagem do `.acmi` no teste do stub.
 
+## Editando a árvore de comportamento (Groot)
+
+O Groot (instalação → [`INSTALL.md`](INSTALL.md) §4) só reconhece os nós customizados deste modelo
+(`FuelLow`, `ContactDetected`, `OnnxPolicy`, `PyDecide`...) se o `.xml` tiver um bloco
+`<TreeNodesModel>` — os 5 `configs/flight_tree*.xml` de produção já têm o deles, e ele não é
+escrito à mão:
+
+```bash
+meson compile -C build dump-tree-model                             # se ainda nao compilou
+./build/tests/dump-tree-model                                      # so o fragmento <TreeNodesModel>
+./build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/x.xml  # arvore nova, pronta pro Groot
+python3 tools/sync_tree_models.py                                   # resincroniza os 5 .xml de producao
+```
+
+Depois de registrar um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`, rodar
+`sync_tree_models.py` é o que mantém os 5 arquivos em dia — `make test` cobra isso sozinho (teste
+`tree-model-sync`, suíte `tree`). Detalhe técnico e armadilhas →
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); fluxo completo de edição (registrar nó, publicar,
+monitorar ao vivo) → [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## A dissecação profunda
 
 O [README da single-thread](../../../src/poc/dis/single-thread/README.md) descreve este modelo peça por peça —
@@ -82,8 +102,12 @@ seções 7 a 10. Os arquivos moraram para cá; o texto continua valendo.
 
 ## Ler também
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — calibração do c310, armadilhas confirmadas
-  específicas deste modelo
+- [INSTALL.md](INSTALL.md) — pré-requisitos para rodar este subprojeto sozinho: pacotes de
+  sistema, o SDK do host (o único pré-requisito que não some), Groot
+- [CONTRIBUTING.md](CONTRIBUTING.md) — fluxo de contribuição local: editar, testar, editar a
+  árvore com o Groot, publicar
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — calibração do c310, o gerador de
+  `<TreeNodesModel>` em detalhe, armadilhas confirmadas específicas deste modelo
 - [CHANGELOG.md](CHANGELOG.md) — o que mudou neste modelo, e por quê
 - [../README.md](../../README.md) — visão geral de `models/`, o contrato de plugin, e o build
   orquestrado pelo Makefile da raiz

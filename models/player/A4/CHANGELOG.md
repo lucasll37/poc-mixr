@@ -23,6 +23,17 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Adicionado
 
+- **Gerador do `<TreeNodesModel>` para o Groot** (`tools/dump_tree_model.cpp`, alvo Meson
+  `dump-tree-model`, + `tools/sync_tree_models.py`) — monta a MESMA `BT::BehaviorTreeFactory` que
+  `xnative/factory.cpp` registra (`bt_nodes::registerNodes()` + `registerSdkNodes()`) e usa
+  `BT::writeTreeNodesModelXML()`, nativa do BT.CPP, para gerar o bloco que o Groot precisa para
+  reconhecer nós customizados — substitui mantê-lo à mão nos 5 `flight_tree*.xml`. Dois modos: sem
+  argumento imprime só o fragmento (o que `sync_tree_models.py` usa para resincronizar os 5 XMLs
+  de produção de uma vez); `--skeleton [ID]` imprime um `.xml` completo, pronto para abrir no
+  Groot, com uma árvore vazia + a paleta populada. Teste novo, `tree-model-sync` (suíte `tree`),
+  acusa quando os XMLs de produção divergem do que a factory de fato registra — sem ele, um nó
+  novo sem resincronizar era um "verde silencioso" até alguém tentar abrir a árvore no Groot. Ver
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). (2026-09-07)
 - **Inferência ONNX dentro da árvore de comportamento** — os nós `OnnxScore`
   (`bt/nodes/OnnxScoreCondition`) e `OnnxPolicy` (`bt/nodes/OnnxPolicyAction`), registrados por
   `bt/bt_factory_sdk.cpp`, mais a árvore de deploy `configs/flight_tree_onnx.xml` e o

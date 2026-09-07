@@ -192,6 +192,27 @@ if get_option('variants')
             install               : false,
         )
     endforeach
+
+    # UMA TERCEIRA variante, mesma familia (mesmo fonte, so pra teste do
+    # HOST, nunca instalada): 'model_leak' acrescenta um UNICO ref() extra
+    # em BtBehavior::genAction(), logo apos 'new FlightAction()' -- nunca
+    # balanceado por um unref() (ver o #ifdef
+    # POC_LEAK_ONE_REF_PER_DECISION em src/ubf/BtBehavior.cpp). Reproduz de
+    # proposito, e de forma PERMANENTE, o defeito que so tinha sido provado
+    # manualmente uma vez (tests/README.md, "ref() a mais na FlightAction").
+    # Consumida por 'memory-controle-negativo' (tests/meson.build): prova
+    # que a suite 'memory' pegaria um vazamento de verdade, nao so que a
+    # producao de hoje esta limpa.
+    shared_module('model_leak',
+        model_sources,
+        cpp_args              : plugin_version_args + ['-DPOC_LEAK_ONE_REF_PER_DECISION'],
+        link_args             : rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL'],
+        include_directories   : model_inc,
+        dependencies          : model_deps,
+        gnu_symbol_visibility : 'hidden',
+        build_rpath           : mixr_libdir + ':' + sdk_libdir,
+        install               : false,
+    )
 endif
 
 if get_option('tests')

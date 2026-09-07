@@ -313,6 +313,16 @@ sem falso positivo nas outras:
 | `ContactDetected` volta a ser "estou vendo agora", sem histerese | `tree` — 2 testes |
 | `ref()` a mais na `FlightAction` | `memory` — `count` 2000 → 4000, proporcional aos frames |
 
+**Essa última virou teste permanente, não só exercício manual revertido depois.**
+`memory-controle-negativo` (`tests/memory/check_leak_detector_controle_negativo.py`) roda o
+cenário `single-thread` contra `model_leak.so` — uma terceira variante de teste do MESMO fonte de
+produção (mesma família de `model_variant_a`/`model_variant_b`, atrás da opção `variants` de
+`models/player/A4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
+`new FlightAction()` (`#ifdef POC_LEAK_ONE_REF_PER_DECISION`, nunca definida no build de produção)
+— exatamente a quebra da linha acima, agora sem depender de alguém lembrar de repeti-la à mão.
+Prova, a cada `make test`, que `memory-<poc>` pegaria um vazamento de verdade, não só que a
+produção de hoje está limpa.
+
 ---
 
 ## O controle negativo: de onde vem o determinismo

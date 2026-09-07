@@ -27,6 +27,12 @@ Estudei MIXR e BT
     -> poc_satelite
     -> poc_foguete
 
+Fazer bijeções entre o que hj existe
+
+Filosofia: Pouca coisa em ternos de funcionalidade realmente é novo, a grande novidade é a organização, documentação, esteira de desenvolvimento mais produtiva, padronizada e testável e escalável com dificuldades de dominio mapeadas com correta gestão do conhecimento
+----------------------------------------------------
+
+
 
 Bind teste
 
@@ -49,4 +55,7 @@ Check-list:
 - app
 - edl-editor
 - editar com o groot
-
+- rl
+- rl-training
+- rodar python
+- criar modelo como plugin

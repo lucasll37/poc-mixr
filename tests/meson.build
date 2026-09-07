@@ -244,6 +244,107 @@ test_app_edl_editor = executable('test-app-edl-editor-state',
 )
 test('app-edl-editor-state', test_app_edl_editor, suite: 'domain', timeout: 60)
 
+# app::parseCommandLine() -- traducao de argv para Options, incluindo os
+# die() de token invalido/flag sem valor/'-deterministic' <= 0 (via death
+# test -- e o unico jeito de exercitar um std::exit() sem matar a suite).
+test_app_options = executable('test-app-options',
+    files('../app/tests/test_options.cpp') + files(
+        '../app/src/app/Options.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-options', test_app_options, suite: 'domain', timeout: 60)
+
+# app::falconFleet()/app::adHocScenario() -- a entrada de '-f <arquivo>'.
+test_app_adhoc_scenario = executable('test-app-adhoc-scenario',
+    files('../app/tests/test_adhoc_scenario.cpp') + files(
+        '../app/src/app/AdHocScenario.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-adhoc-scenario', test_app_adhoc_scenario, suite: 'domain', timeout: 60)
+
+# app::generateScenario() -- '.edl.in' -> '.edl' (substituicao do
+# '@NUM_TC_THREADS@'/'extraTokens', o aviso de token sem par, e os die() de
+# leitura de arquivo -- template ausente, '@include:' malformado ou
+# apontando pra um fragmento inexistente).
+test_app_scenario_template = executable('test-app-scenario-template',
+    files('../app/tests/test_scenario_template.cpp') + files(
+        '../app/src/app/ScenarioTemplate.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-scenario-template', test_app_scenario_template, suite: 'domain', timeout: 60)
+
+# O parser minimo de XML do BT.CPP (app/BehaviorTreeView.cpp) e as duas
+# regras puras que o consomem (matchesLabel()/flattenBehaviorTree()) -- ate
+# agora so linkado por outros testes (map-canvas-fit/component-tree-layout)
+# para satisfazer o link de MapPanel.cpp/ComponentTreePanel.cpp, nunca
+# exercitado diretamente.
+test_app_bt_view = executable('test-app-behavior-tree-view',
+    files('../app/tests/test_behavior_tree_view.cpp') + files(
+        '../app/src/app/BehaviorTreeView.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-behavior-tree-view', test_app_bt_view, suite: 'domain', timeout: 60)
+
+# app/FleetPanel.cpp -- cor/rotulo de lado, glifo de especie, rotulo/cor de
+# modo, cor de comportamento, e a formatacao das linhas/detalhe da aba
+# Players. Precisa de mixr_dep so pelas CONSTANTES de enum (BLUE/AIR_VEHICLE/
+# ACTIVE/...), nunca de uma Station de verdade -- mesma razao pela qual
+# FleetPanel.cpp ja aparecia (sem teste proprio) em app-map-canvas-fit/
+# app-component-tree-layout.
+test_app_fleet_panel = executable('test-app-fleet-panel',
+    files('../app/tests/test_fleet_panel.cpp') + files(
+        '../app/src/app/FleetPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-fleet-panel', test_app_fleet_panel, suite: 'domain', timeout: 60)
+
+# app/MemoryPanel.cpp -- classRowText()/renderClassRow(), a linha da aba
+# Memoria. ClassStat (app/MetaObjectSnapshot.hpp) e struct pura; a unica
+# dependencia real desta unidade e FTXUI.
+test_app_memory_panel = executable('test-app-memory-panel',
+    files('../app/tests/test_memory_panel.cpp') + files(
+        '../app/src/app/MemoryPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-memory-panel', test_app_memory_panel, suite: 'domain', timeout: 60)
+
+# app/BackgroundPanel.cpp -- a aba "Tempo Nao-Critico" (F4). BackgroundInfo
+# (app/DashboardState.hpp) e struct pura; a unica dependencia real desta
+# unidade e FTXUI.
+test_app_background_panel = executable('test-app-background-panel',
+    files('../app/tests/test_background_panel.cpp') + files(
+        '../app/src/app/BackgroundPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-background-panel', test_app_background_panel, suite: 'domain', timeout: 60)
+
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
 # de libs/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
@@ -524,6 +625,24 @@ test('scenario-onnx-policy', py,
 
 test('memory-onnx-policy', py,
      args: leak_runner + [app.full_path(), 'onnx-policy'],
+     depends: app, workdir: raiz, suite: 'memory',
+     timeout: 1800, is_parallel: false)
+
+# O CONTROLE NEGATIVO da suite 'memory' -- prova que 'memory-<poc>' (acima)
+# PEGARIA um vazamento de verdade, nao so que a producao de hoje esta limpa.
+# Roda o MESMO cenario 'single-thread' contra 'model_leak' -- a mesma familia
+# de variante de teste do 'plugin-hotswap' (mesmo fonte de producao, atras da
+# mesma opcao 'variants'), so que com um UNICO ref() extra em
+# BtBehavior::genAction(), nunca balanceado por um unref() (ver o cabecalho
+# do script e o #ifdef POC_LEAK_ONE_REF_PER_DECISION em
+# models/player/A4/src/ubf/BtBehavior.cpp). Reproduz de forma PERMANENTE o
+# que so tinha sido provado manualmente uma vez (tests/README.md, "ref() a
+# mais na FlightAction"). 'model_leak.so' nunca e instalado (so existe em
+# models/player/A4/build/, como as duas variantes de hotswap) -- por isso o
+# caminho vem de 'model_build', igual a 'plugin-hotswap' logo abaixo.
+test('memory-controle-negativo', py,
+     args: files('memory/check_leak_detector_controle_negativo.py') + [
+         app.full_path(), model_build / 'libmodel_leak.so'],
      depends: app, workdir: raiz, suite: 'memory',
      timeout: 1800, is_parallel: false)
 
