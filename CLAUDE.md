@@ -3433,6 +3433,21 @@ manter os dois era redundância, não flexibilidade.
   como no precedente da passada anterior, a contagem final não foi conferida aqui — mesma
   ressalva, mesmo motivo.
 
+**Vigésima oitava passada (auditoria autônoma): bug de UTF-8 no editor EDL (F7) — caractere
+acentuado sob o cursor sumia da tela.** `renderEdlLine()` cortava o glifo sob o cursor com
+`tok.text.substr(local, 1)` — sempre 1 BYTE. Um acento (2 bytes em UTF-8, comum em comentário
+pt-BR, a convenção deste repositório) virava um lead byte isolado e um continuation byte isolado,
+os dois UTF-8 inválido — o FTXUI descarta os dois em silêncio no redesenho. Corrigido com
+`utf8GlyphBytes()` (mesma lógica de `ftxui::EatCodePoint()`, replicada porque o header dela —
+`screen/string_internal.hpp` — não é público). Aproveitado para extrair `edlTokenColor`/
+`edlTokenSpan`/`renderEdlLine`/`renderHighlightedEdlText` do namespace anônimo de
+`DashboardLoop.cpp` para `app/EdlHighlightRender.hpp`/`.cpp` — mesmo padrão de
+`app/EdlSyntaxHighlight.hpp` (tokenizador puro) — porque ficavam INALCANÇÁVEIS por teste nenhum
+sem levantar a TUI inteira; era esse ponto cego que escondeu o bug. Testado com
+`ftxui::Screen::ToString()` de verdade (`app-edl-highlight-render`, 13 casos), inclusive
+verificado que os 2 casos multibyte FALHAM se o `substr(local,1)` original for reintroduzido —
+prova de que o teste pega a regressão, não só compila.
+
 ## `src/node` — runner headless e independente de um cenário
 
 Quarto binário do host (depois de `app`, `edlcheck`, `plugininfo`), mas de natureza diferente dos

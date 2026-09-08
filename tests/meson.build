@@ -273,6 +273,24 @@ test_app_edl_syntax = executable('test-app-edl-syntax-highlight',
 )
 test('app-edl-syntax-highlight', test_app_edl_syntax, suite: 'domain', timeout: 60)
 
+# A parte COM FTXUI do mesmo destaque -- cor + o corte do glifo sob o cursor
+# (app/EdlHighlightRender.cpp, extraida de dentro de DashboardLoop.cpp por
+# auditoria: ficava intestavel sem levantar a TUI inteira, e escondia um bug
+# de UTF-8 -- ver o cabecalho do .cpp). Sem MIXR -- so' FTXUI, renderizado de
+# verdade via Screen::ToString() (mesmo padrao de test_memory_panel.cpp).
+test_app_edl_highlight_render = executable('test-app-edl-highlight-render',
+    files('../app/tests/test_edl_highlight_render.cpp') + files(
+        '../app/src/app/EdlHighlightRender.cpp',
+        '../app/src/app/EdlSyntaxHighlight.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-edl-highlight-render', test_app_edl_highlight_render, suite: 'domain', timeout: 60)
+
 # app::parseCommandLine() -- traducao de argv para Options, incluindo os
 # die() de token invalido/flag sem valor/'-deterministic' <= 0 (via death
 # test -- e o unico jeito de exercitar um std::exit() sem matar a suite).

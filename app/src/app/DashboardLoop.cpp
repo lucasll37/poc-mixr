@@ -8,7 +8,7 @@
 #include "app/ComponentTreePanel.hpp"
 #include "app/DashboardState.hpp"
 #include "app/EdlEditorState.hpp"
-#include "app/EdlSyntaxHighlight.hpp"
+#include "app/EdlHighlightRender.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
 #include "app/LogPanel.hpp"
@@ -175,130 +175,11 @@ Element renderBtLine(const BtTreeLine& line, const bool isActiveLeaf, const bool
    return e;
 }
 
-// Destaque de sintaxe .edl da aba "EDL" (F7, ver mais abaixo) -- MESMA
-// gramatica e MESMA paleta (tema escuro) do editor grafico web
-// (src/ui/edl_builder.jsx, tokens '.tok-*'/variaveis '--syn-*'). O
-// tokenizador em si (sem FTXUI) mora em app/EdlSyntaxHighlight.hpp; aqui so'
-// a cor.
-Color edlTokenColor(const EdlTokenKind kind)
-{
-   switch (kind) {
-      case EdlTokenKind::Comment:   return Color::RGB(0x7E, 0x89, 0x83);
-      case EdlTokenKind::String:    return Color::RGB(0x8F, 0xCB, 0x9E);
-      case EdlTokenKind::ClassName: return Color::RGB(0x9D, 0xBB, 0xE3);
-      case EdlTokenKind::SlotName:  return Color::RGB(0xE8, 0xC2, 0x84);
-      case EdlTokenKind::Bool:      return Color::RGB(0xD9, 0x8A, 0x4A);
-      case EdlTokenKind::Num:       return Color::RGB(0xC3, 0xAD, 0xEA);
-      case EdlTokenKind::Punct:     return Color::RGB(0x8B, 0x96, 0x8E);
-      case EdlTokenKind::Value:
-      case EdlTokenKind::Plain:
-      default:                    return Color::RGB(0xE7, 0xEA, 0xE4);
-   }
-}
-
-Element edlTokenSpan(const std::string& piece, const EdlTokenKind kind)
-{
-   Element e{text(piece) | color(edlTokenColor(kind))};
-   if (kind == EdlTokenKind::Comment) e = e | dim;
-   if (kind == EdlTokenKind::ClassName) e = e | bold;
-   return e;
-}
-
-// Uma linha da previa colorida -- tokeniza SO' esta linha (comentario/
-// pontuacao nunca atravessam '\n', e string multi-linha e' caso extremo
-// nunca visto num '.edl' de producao deste repositorio; aceitavel nao
-// colorir esse caso raro em troca de nao ter que rastrear deslocamento
-// absoluto entre linhas). Quando 'isCursorLine', localiza o TOKEN que
-// contem 'cursorCol' (ou o fim da linha) e corta so' ELE em ate 3 pedacos,
-// preservando a cor nos tres -- mesma forma de
-// 'ftxui::InputBase::OnRender()' (input.cpp), so' por token em vez de uma
-// unica 'Text(linha)'. O pedaco do meio carrega 'cursorDecorator' -- o
-// MESMO 'focus'/'focusCursorBarBlinking' que o Input nativo aplicaria --
-// pra 'frame()' (por fora, no editorBox de edlTab) continuar sabendo pra
-// onde rolar.
-Element renderEdlLine(const std::string& line, const bool isCursorLine,
-                      const std::string::size_type cursorCol, const Decorator& cursorDecorator)
-{
-   Elements spans;
-   const std::vector<EdlToken> tokens{tokenizeEdlText(line)};
-
-   if (!isCursorLine) {
-      for (const EdlToken& tok : tokens) spans.push_back(edlTokenSpan(tok.text, tok.kind));
-      return spans.empty() ? Element{text("")} : hbox(std::move(spans));
-   }
-
-   std::string::size_type offset{0};
-   bool placed{false};
-   for (const EdlToken& tok : tokens) {
-      const std::string::size_type len{tok.text.size()};
-      if (!placed && cursorCol >= offset && cursorCol < offset + len) {
-         const std::string::size_type local{cursorCol - offset};
-         const std::string before{tok.text.substr(0, local)};
-         const std::string atCursor{tok.text.substr(local, 1)};
-         const std::string after{tok.text.substr(local + 1)};
-         if (!before.empty()) spans.push_back(edlTokenSpan(before, tok.kind));
-         spans.push_back(edlTokenSpan(atCursor, tok.kind) | cursorDecorator);
-         if (!after.empty()) spans.push_back(edlTokenSpan(after, tok.kind));
-         placed = true;
-      } else {
-         spans.push_back(edlTokenSpan(tok.text, tok.kind));
-      }
-      offset += len;
-   }
-   if (!placed) spans.push_back(text(" ") | cursorDecorator); // cursor no fim da linha (ou linha vazia)
-   return hbox(std::move(spans)) | xflex;
-}
-
-// Reconstroi a MESMA forma que 'ftxui::Input' monta por dentro (uma linha
-// por '\n', o glifo do cursor marcado com o decorador de foco certo, 'vbox'
-// + 'frame' por fora pra rolar -- ver input.cpp, InputBase::OnRender()), so'
-// que colorindo por TOKEN em vez de uma unica 'text(linha)' por linha.
-// Precisa da posicao do cursor (nao so' do texto) porque, sem marcar o
-// glifo certo com 'focus'/'focusCursorBarBlinking', o 'frame()' de fora
-// (editorBox, em edlTab) nao teria pra ONDE rolar num arquivo maior que a
-// tela -- exatamente a mesma marcacao que o Input nativo ja fazia, so' que
-// aqui refeita a mao porque estamos descartando o 'InputState::element'
-// dele (ver o comentario grande em 'edlInputOpt.transform', mais abaixo,
-// para o "porque" de precisar descartar).
-Element renderHighlightedEdlText(const std::string& source, const int cursorPosition,
-                                 const bool focused, const bool hovered)
-{
-   const auto cursorPos{static_cast<std::string::size_type>(
-      std::clamp(cursorPosition, 0, static_cast<int>(source.size())))};
-
-   std::vector<std::string> lines;
-   {
-      std::string::size_type start{0};
-      while (true) {
-         const std::string::size_type nl{source.find('\n', start)};
-         lines.push_back(source.substr(start, nl == std::string::npos ? std::string::npos : nl - start));
-         if (nl == std::string::npos) break;
-         start = nl + 1;
-      }
-   }
-
-   int cursorLine{0};
-   std::string::size_type cursorCharIndex{cursorPos};
-   for (const auto& line : lines) {
-      if (cursorCharIndex <= line.size()) break;
-      cursorCharIndex -= line.size() + 1;
-      ++cursorLine;
-   }
-
-   // Mesma escolha de decorador que InputBase::OnRender() faz (ver
-   // input.cpp) -- 'insert()' e' sempre 'true' aqui (nunca alternado por
-   // nenhuma tecla desta aba), entao o ramo 'focusCursorBlockBlinking' (so'
-   // usado no modo overtype) nunca se aplica.
-   const Decorator cursorDecorator{(!focused && !hovered) ? focus : focusCursorBarBlinking};
-
-   Elements rendered;
-   rendered.reserve(lines.size());
-   for (std::size_t i{0}; i < lines.size(); ++i) {
-      rendered.push_back(
-         renderEdlLine(lines[i], static_cast<int>(i) == cursorLine, cursorCharIndex, cursorDecorator));
-   }
-   return vbox(std::move(rendered)) | frame;
-}
+// Destaque de sintaxe .edl da aba "EDL" (F7, ver mais abaixo) -- extraido
+// para app/EdlHighlightRender.hpp/.cpp (tokenizador puro em
+// app/EdlSyntaxHighlight.hpp) pra ficar testavel sem levantar a TUI
+// inteira; ver o comentario la' sobre o bug de UTF-8 que essa extracao
+// consertou.
 
 }
 
