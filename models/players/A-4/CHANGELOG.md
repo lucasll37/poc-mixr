@@ -24,6 +24,18 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Adicionado
 
+- **Cobertura de teste direta para `OnnxScoreCondition`/`OnnxPolicyAction`**
+  (`tests/native/test_onnx_nodes.cpp`, 9 casos) — achado por auditoria: o comentário de
+  `tests/meson.build` já afirmava "estes nós são exercitados pelo test_native", mas nenhum teste,
+  em lugar nenhum do repositório, de fato construía/tickava essas duas classes. A cobertura real
+  vinha só de `scenario-policy-onnx` (o binário completo, caminho feliz com um `.onnx` de pesos
+  aleatórios) — prova a cadeia inteira, mas não isola porta `model` ausente, caminho inexistente,
+  ou `index` fora da faixa de saídas do modelo. Reusa o mesmo `configs/policy_example.onnx` de
+  pesos aleatórios que `scenario-policy-onnx` já usa (forma certa, 28→3; pesos irrelevantes pros
+  casos testados). Teste do bounds-check desenhado para não depender de UB (lê dentro do próprio
+  buffer `std::array<float,16>` do nó, num índice nunca escrito pela inferência real, com
+  `above=false` — sem o bounds-check o resultado vira SUCCESS, não FAILURE por coincidência;
+  confirmado revertendo o bounds-check e rodando o teste). (2026-09-08)
 - **Gerador do `<TreeNodesModel>` para o Groot** (`tools/dump_tree_model.cpp`, alvo Meson
   `dump-tree-model`, + `tools/sync_tree_models.py`) — monta a MESMA `BT::BehaviorTreeFactory` que
   `xnative/factory.cpp` registra (`bt_nodes::registerNodes()` + `registerSdkNodes()`) e usa

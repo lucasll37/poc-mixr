@@ -43,13 +43,23 @@ test('domain', test_domain, suite: 'domain', timeout: 60)
 # propriedade se perderia em silencio -- por isso os nos que dependem do SDK
 # ficam em bt_sdk_sources (tambem herdado), FORA de bt_sources.
 #
-# Estes nos sao exercitados pelo test_native, que ja linka o SDK. A arvore de
-# PRODUCAO (flight_tree.xml) nao os usa, entao test_tree continua cobrindo
+# Estes nos sao exercitados pelo test_native, que ja linka o SDK --
+# native/test_onnx_nodes.cpp cobre OnnxScoreCondition/OnnxPolicyAction
+# diretamente (porta 'model' ausente, caminho inexistente, indice fora da
+# faixa; achado por auditoria: ate essa suite existir, a cobertura real era
+# so' scenario-policy-onnx, o binario completo, que prova o caminho feliz
+# mas nao os casos de borda). A arvore de PRODUCAO (flight_tree.xml) nao os
+# usa, entao test_tree continua cobrindo
 # tudo o que ela contem.
 
 # O XML de PRODUCAO, por caminho -- nao uma copia.
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
 flight_tree_nav_xml = meson.current_source_dir() / '../configs/flight_tree_nav.xml'
+
+# O MESMO .onnx de pesos aleatorios que scenario-policy-onnx ja usa (forma
+# certa -- 28 entradas -> 3 saidas -- pesos irrelevantes pros testes de
+# test_onnx_nodes.cpp, que so afirmam sobre forma/portas/rotulo).
+policy_example_onnx = meson.current_source_dir() / '../configs/policy_example.onnx'
 
 # 'dump_tree_model' vem de tools/meson.build (subdir() chamado ANTES deste,
 # incondicional, no meson.build do projeto) -- o executavel em si nao e
@@ -106,7 +116,10 @@ native_sources = files(
 )
 
 test_native = executable('test-native',
-    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp', 'native/test_flight_state_action.cpp') + native_sources + bt_sources + bt_sdk_sources + domain_sources,
+    files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp',
+          'native/test_flight_state_action.cpp', 'native/test_onnx_nodes.cpp')
+        + native_sources + bt_sources + bt_sdk_sources + domain_sources,
+    cpp_args            : ['-DPOLICY_EXAMPLE_ONNX="' + policy_example_onnx + '"'],
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : model_inc,
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, behavior_tree_dep, sdk_dep],
