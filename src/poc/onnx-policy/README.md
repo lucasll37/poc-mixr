@@ -16,7 +16,7 @@ de regras — é uma **rede neural**. Um MLP de 6.211 parâmetros, carregado de
 crítico**, sem Python no processo e sem um frame de latência.
 
 ```bash
-make build
+make install   # build sozinho NAO basta -- o plugin (libflight.so) so chega em dist/ por aqui
 ./build/app/src/app -folder src/poc -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
@@ -27,7 +27,7 @@ make build
 **O ciclo de trabalho que esta poc existe para ter:**
 
 ```bash
-src/poc/rl-training/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx
+src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx -- so numpy+onnx, ver secao 9
 ./build/app/src/app -folder src/poc -scenario onnx-policy                                                              # veja o voo mudado
 ```
 
@@ -288,8 +288,8 @@ consumidor — venv próprio, separado do de `src/rl`, porque carrega dependênc
 ambiente em si não precisa conhecer):
 
 ```bash
-# acrescente as deps do seu algoritmo em src/poc/rl-training/requirements.txt
-# (ex.: descomente stable-baselines3) antes de criar o venv
+# src/poc/rl-training/requirements.txt ja vem com gymnasium+numpy+stable-baselines3+torch
+# ativos por padrao -- so acrescente ali se o SEU algoritmo precisar de outra coisa
 make venv-rl-training
 # treinar (ver models/players/A-4/docs/POLITICAS.md, seção 2)
 PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \

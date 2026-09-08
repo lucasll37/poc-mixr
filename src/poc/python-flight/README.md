@@ -16,7 +16,7 @@ lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo cr
 thread, mesmo tick, sem processo nem soquete no meio.
 
 ```bash
-make build
+make install   # build sozinho NAO basta -- o plugin (libflight.so) so chega em dist/ por aqui
 ./build/app/src/app -folder src/poc -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
@@ -47,7 +47,7 @@ na primeira decisão de cada aeronave.
 6. [O que NÃO atravessa a fronteira: `dt`](#6-o-que-não-atravessa-a-fronteira-dt)
 7. [Determinismo](#7-determinismo)
 8. [Degradação: sem Python, a aeronave continua voando](#8-degradação-sem-python-a-aeronave-continua-voando)
-9. [O que muda no `.edl`](#9-o-que-muda-no-epp)
+9. [O que muda no `.edl`](#9-o-que-muda-no-edl)
 10. [O que foi medido rodando](#10-o-que-foi-medido-rodando)
 11. [Como verificar tudo](#11-como-verificar-tudo)
 

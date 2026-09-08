@@ -1776,9 +1776,11 @@ intacta até a política.
 ## 16. Como verificar tudo
 
 ```bash
-# build + execução. 'make build' ENCADEIA as três etapas:
-#   sdk (dist/include+lib) -> models (o plugin) -> host (o executável)
-make configure && make build && ./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in
+# build + execucao. 'build'/'models' sao DECOPLADOS de proposito (ver CLAUDE.md) --
+# 'make build' sozinho NAO builda nem deposita o plugin; e' 'install' quem encadeia
+# build -> sync-plugins -> (implicitamente) models, e so' depois disso o PluginLoader
+# acha libflight.so em dist/lib/mixr-plugins/.
+make configure && make install && ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
 
 # as DUAS suítes (a do modelo e a do host)
 meson configure build -Dtests=true && make build && make test-models && make test
