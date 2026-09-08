@@ -11,6 +11,12 @@ válido — sem ler C++ nem decorar a gramática do `edl_parser`.
 make open-edl-builder   # gera tudo do zero e abre no navegador -- unico alvo make deste editor
 ```
 
+**Pré-requisito não listado no README.md raiz:** `src/ui/scripts/compile.js` baixa React/ReactDOM
+via `curl` de `cdnjs.cloudflare.com` e instala `@babel/standalone` via `npm` (cache local em
+`src/ui/.cache/`, só na primeira execução) — este alvo precisa de **Node.js + npm** instalados e
+de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`. Sem isso, falha na hora, sem
+aviso prévio em nenhum outro `.md`.
+
 A árvore nasce vazia, só com a raiz (`Station`/`ClockStation`). Clique num nó para selecioná-lo
 (o painel à direita edita os campos dele); arraste uma classe da paleta esquerda para um slot para
 adicionar um filho — só classes EM CONFORMIDADE com o que aquele slot de fato aceita aparecem como

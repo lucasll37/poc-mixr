@@ -22,7 +22,7 @@ via **Tacview Real-Time Telemetry**.
 | Conan | ≥ 2.0 | resolve MIXR, BehaviorTree.CPP, ftxui, pybind11, onnxruntime, gtest |
 | Meson | ≥ 1.0 | sistema de build |
 | Ninja | qualquer | *backend* do Meson |
-| GCC ≥ 7 ou Clang ≥ 5 | — | o projeto compila em C++17 |
+| GCC ≥ 7 | — | o projeto compila em C++17 — único compilador de fato exercitado (INSTALL.md, CI e as receitas de `deps/` só instalam/testam GCC; Clang deve funcionar em teoria por ser C++17 padrão, mas nunca foi verificado por nenhum processo automatizado deste repositório) |
 | pkg-config | qualquer | resolve as libs via `dependency(method: 'pkg-config')` |
 | Python 3 + `python3-dev` | 3.x | `src/rl/bindings` (parte do host) linka `pybind11`/`Python.h` |
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução |
@@ -34,15 +34,19 @@ Passo a passo (pacotes de sistema, Conan, perfil, remote privado), o "porquê" d
 instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTALL.md).
 
 `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti` vêm prontos de um remote Conan privado por
-padrão; o Groot **não tem pacote pronto em remoto nenhum** — a única forma de tê-lo é compilando
-do fonte, via `./scripts/deps.sh` (que builda as cinco receitas de `deps/`, não só a do Groot):
+padrão — **sem acesso a ele, `make configure` falha com "package not found"**; a saída, para
+qualquer uma das quatro (não só o Groot), é compilar do fonte via `./scripts/deps.sh` (o mesmo
+caminho que o próprio CI usa, de propósito, para nunca depender desse remote — ver
+`.gitlab-ci.yml`). O Groot **não tem pacote pronto em remoto nenhum** — pra ele, `deps.sh` não é
+alternativa, é a única forma de tê-lo:
 
 ```bash
 ./scripts/deps.sh
 ```
 
 Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e a alternativa de buildar só ele →
-[`INSTALL.md`](INSTALL.md) §7.
+[`INSTALL.md`](INSTALL.md) §7. Sem acesso ao remote privado, comece por aqui em vez de por
+`make configure` — economiza descobrir a falha do jeito difícil.
 
 ## Build
 
@@ -179,12 +183,13 @@ Quais cenários existem hoje, o que cada um demonstra e em qual porta o Tacview 
 
 ```
 poc-mixr/
-├── app/          painel de controle (TUI) -- o UNICO executavel do repositorio
+├── app/          painel de controle (TUI) -- o runner interativo principal do repositorio
 ├── src/
 │   ├── poc/      as provas de conceito -- cada pasta isola UMA variavel de integracao
 │   ├── rl/       wrapper Gymnasium para treinar RL contra a mesma simulacao
 │   ├── ui/       editor grafico de cenario .edl (ferramenta de autoria, offline)
-│   └── node/     placeholder vazio -- integracao futura, ver src/node/TODO.md
+│   └── node/     runner HEADLESS de um cenario (sem TUI, so log) -- peer enxuto de ./app,
+│                 ver CLAUDE.md secao 'src/node' e src/node/README.md
 ├── models/       o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (dlopen)
 ├── plugins/      deposito flat dos .so compilados (proprios OU de terceiro) -> dist/ via 'make install'
 ├── libs/         bibliotecas x<nome> reaproveitadas entre host e modelos -- cada uma com README.md
