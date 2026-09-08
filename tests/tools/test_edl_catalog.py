@@ -30,7 +30,7 @@ extrator para o raciocinio completo:
     para tirar interop/hla e interop/rprfom, fonte de colisao de nome barra
     com Aircraft/GroundVehicle/NetIO/Nib/Ntm) -- e nenhum outro nome de
     fabrica pode aparecer duas vezes no catalogo inteiro.
-  * Toda classe citada nos cenarios REAIS do repositorio (os 7
+  * Toda classe citada nos cenarios REAIS do repositorio (os 8
     .edl/.edl.in de producao, ver REAL_SCENARIOS) tem que aparecer no catalogo -- senao a
     ferramenta grafica nao consegue montar nem o que ja existe hoje.
   * Os 10 'papeis primarios' que Player::updateSystemPointers() resolve por
@@ -68,6 +68,7 @@ import generate_edl_catalog as ext  # noqa: E402
 REAL_SCENARIOS = [
     "src/poc/dis/flight/configs/scenario.edl.in",
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
+    "src/poc/full-systems-nav/configs/scenario_full_nav.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",
@@ -274,7 +275,7 @@ def main():
         check(type_map is not None and type_map.get("textOnly") is True and type_map["objectTypes"] == [],
               f"TacviewOutput.typeMap deveria ser textOnly com objectTypes vazio, veio {type_map}")
 
-    # -- toda classe usada nos 9 cenarios reais aparece no catalogo ---------
+    # -- toda classe usada nos cenarios reais aparece no catalogo -----------
     used_tokens = set()
     for rel in REAL_SCENARIOS:
         path = REPO_ROOT / rel

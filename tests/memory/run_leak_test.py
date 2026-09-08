@@ -74,10 +74,17 @@ LINHA = re.compile(
 def roda(binario, cenario, frames):
     proc = subprocess.run(
         [binario, "-f", cenario, "-threads", "1", "-deterministic", str(frames)],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=1800,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800,
     )
     if proc.returncode != 0:
-        raise SystemExit(f"FALHA: {binario} saiu com codigo {proc.returncode}")
+        # CORRIGIDO (nao redescobrir): stderr era jogado fora (DEVNULL) e a
+        # unica pista que sobrava era o codigo de saida -- exatamente no caso
+        # em que mais se precisa dela (ex.: erro de parse do EDL, abort do
+        # mixrFactory()). Mesmo tratamento ja usado em
+        # determinism/check_determinism.sh.
+        cauda = "\n".join(proc.stderr.strip().splitlines()[-10:])
+        detalhe = f"\n  ultimas linhas do stderr:\n    " + cauda.replace("\n", "\n    ") if cauda else ""
+        raise SystemExit(f"FALHA: {binario} saiu com codigo {proc.returncode}{detalhe}")
 
     contadores = {}
     for linha in proc.stdout.splitlines():

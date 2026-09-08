@@ -2,13 +2,22 @@
 // libs/xinfer -- o motor de inferencia, na camada mais isolada possivel:
 // sem Station, sem player, sem plugin. So a lib e um arquivo em disco.
 //
-// O que ESTE arquivo cobre e a DEGRADACAO. Nenhuma das entradas aqui e um
-// .onnx valido, e essa e a questao: um modelo ausente ou quebrado nao pode
-// derrubar a simulacao no meio do frame -- tem de devolver 0 e deixar o
-// consumidor decidir, exatamente como o joystick ausente cai pro Autopilot
-// (libs/xjoystick) e a arvore que nao carrega vira nullptr
-// (ubf/BtBehavior). O caminho FELIZ (inferencia de verdade, determinismo com
-// 1/2/4 threads) exige um .onnx e mora em 'xinfer-determinismo'.
+// A PRIMEIRA METADE deste arquivo cobre a DEGRADACAO. Nenhuma das entradas
+// nesses casos e um .onnx valido, e essa e a questao: um modelo ausente ou
+// quebrado nao pode derrubar a simulacao no meio do frame -- tem de devolver
+// 0 e deixar o consumidor decidir, exatamente como o joystick ausente cai
+// pro Autopilot (libs/xjoystick) e a arvore que nao carrega vira nullptr
+// (ubf/BtBehavior).
+//
+// A SEGUNDA METADE (a partir de PoliticaInstaladaTemAFormaDoContrato, mais
+// abaixo neste mesmo arquivo) e o caminho FELIZ -- inferencia de verdade
+// contra POLICY_ONNX (um .onnx real, ver a definicao de compilacao em
+// tests/meson.build) e determinismo com 1/2/4 threads sobre a MESMA sessao.
+// CORRIGIDO (nao redescobrir): este comentario dizia que o caminho feliz
+// morava num alvo separado, 'xinfer-determinismo' -- esse alvo nunca
+// existiu (ou foi fundido aqui antes de ganhar nome proprio); os dois lados
+// sempre compilaram e rodaram juntos, sob o unico alvo 'xinfer-degradacao'
+// registrado em tests/meson.build.
 //
 #include "xinfer/Infer.hpp"
 #include "xrlbridge/ObservationFields.hpp"

@@ -142,13 +142,28 @@ def main():
     # digito, para nunca disputar a porta com uma poc rodando de verdade.
     # So a faixa 123x e tocada: o DIS usa 3000/300x e ja saiu com o
     # bloco 'networks:'.
-    texto = re.sub(r'port:\s*(123\d)\b', lambda m: f'port: {m.group(1)}1', texto)
-    texto = re.sub(r'fileName:\s*"[^"]*\.acmi"',
-                   f'fileName: "./build/tests-recordings/{args.poc}-{args.mode}.acmi"',
-                   texto)
-    texto = re.sub(r'fileName:\s*"[^"]*\.jsonl"',
-                   f'fileName: "./build/tests-messages/{args.poc}-{args.mode}.jsonl"',
-                   texto)
+    # CORRIGIDO (nao redescobrir a MESMA classe de bug ja documentada acima
+    # para o fileName: global): as tres substituicoes abaixo eram re.sub()
+    # sem checar quantas vezes casaram. Um re.sub que casa ZERO vezes e um
+    # no-op SILENCIOSO -- a fixture sairia com a porta/arquivo de PRODUCAO
+    # (1234/mission.acmi), disputando com uma execucao de verdade, e nenhum
+    # teste denunciaria isso na hora, so um sintoma confuso rio abaixo. As
+    # tres tem de casar EXATAMENTE uma vez em qualquer cenario real (uma
+    # porta de Tacview, um TacviewOutput, um MsgFileSink) -- mesmo padrao
+    # de re.subn+assert ja usado abaixo para fuelReserve/patrolMasterSeed.
+    texto, n_port = re.subn(r'port:\s*(123\d)\b', lambda m: f'port: {m.group(1)}1', texto)
+    if n_port != 1:
+        raise SystemExit(f"esperava exatamente 1 'port: 123x' no cenario, achei {n_port}")
+    texto, n_acmi = re.subn(r'fileName:\s*"[^"]*\.acmi"',
+                            f'fileName: "./build/tests-recordings/{args.poc}-{args.mode}.acmi"',
+                            texto)
+    if n_acmi != 1:
+        raise SystemExit(f"esperava exatamente 1 fileName: *.acmi no cenario, achei {n_acmi}")
+    texto, n_jsonl = re.subn(r'fileName:\s*"[^"]*\.jsonl"',
+                             f'fileName: "./build/tests-messages/{args.poc}-{args.mode}.jsonl"',
+                             texto)
+    if n_jsonl != 1:
+        raise SystemExit(f"esperava exatamente 1 fileName: *.jsonl no cenario, achei {n_jsonl}")
 
     # 3) o delta do modo
     if args.mode == "intruder":

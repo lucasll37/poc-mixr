@@ -13,9 +13,24 @@
 #
 # Descobre os modelos por find sob models/players/ (mesma filosofia de
 # check_modelo_estrutura.sh/check_colisao_fabrica.py: um modelo novo ja entra
-# na checagem, sem editar este arquivo) -- EXCETO fixtures/ e template/, que
-# nunca sao instalados em dist/lib/mixr-plugins/ do host (nao sao producao,
-# ver models/README.md secao 2.4 e o docstring de check_colisao_fabrica.py).
+# na checagem, sem editar este arquivo).
+#
+# CORRIGIDO (nao redescobrir o contrario): este comentario chegou a excluir
+# 'template/' daqui, com a justificativa de que ele "nunca e instalado em
+# dist/lib/mixr-plugins/ do host". Medido no disco e no Makefile raiz: e
+# falso -- 'make models' builda o template EXPLICITAMENTE (alvo 'models',
+# linha separada da dos modelos de producao) e deposita libtemplate.so/
+# libtemplate_mirror.so em plugins/ igual a qualquer modelo real; 'make
+# install' (sync-plugins) copia os dois para a RAIZ dist/lib/mixr-plugins/
+# junto com libflight.so -- confirmado com 'ls dist/lib/mixr-plugins/'. E
+# libtemplate_mirror.so nao e decorativo: e o que os testes
+# 'plugin-modelo-estranho'/'plugin-deposito-terceiro' carregam para provar
+# que o CONTRATO (nao o fonte do modelo de producao) basta. Excluir
+# 'template/' daqui era exatamente o buraco que esta guarda existe para
+# fechar -- editar mirror.cpp sem rebuildar deixava aqueles dois testes
+# passando contra um .so requentado, em silencio. 'fixtures/' tambem saiu
+# da exclusao: a pasta nao existe mais neste repositorio (removida, ver
+# CLAUDE.md) -- exclui-la aqui so escondia que o find nunca a acharia mesmo.
 #
 # Os basenames de .so a checar de CADA modelo vem do PROPRIO './dist' local
 # dele (populado por 'make build'/'make install-host' daquele projeto) -- nao
@@ -31,10 +46,6 @@ checados=0
 
 for modelo in models/players/*/; do
    modelo="${modelo%/}"
-   nome="$(basename "$modelo")"
-   case "$nome" in
-      fixtures|template) continue ;;
-   esac
 
    locais="$modelo/dist/lib/mixr-plugins"
    if [ ! -d "$locais" ] || [ -z "$(ls -A "$locais"/*.so 2>/dev/null)" ]; then

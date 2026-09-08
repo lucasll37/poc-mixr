@@ -19,11 +19,19 @@
 #
 # O <binario> hoje e sempre o ./app -- as pocs nao tem executavel proprio (ver
 # src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por '-f'
-# e ja diz tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o
-# de built-in_mixr_1/full-systems-nav), e preciso dizer ao runner QUAL
-# arquivo carregar, e e isso que <arquivo-de-cenario> faz (tambem por '-f' --
-# nao ha mais catalogo estatico de cenarios, so caminho de arquivo) -- sem
-# ele o ./app recusaria de cara (uma das duas opcoes e obrigatoria).
+# (a fixture, gerada por make_fixture.py, sempre tem a frota falcon1..4) e ja
+# diz tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o de
+# built-in_mixr_1/full-systems-nav, ou qualquer cenario de sandbox/), e
+# preciso dizer ao runner QUAL arquivo carregar, e e isso que
+# <arquivo-de-cenario> faz -- por '-folder <pasta> -scenario <nome>' (nao
+# '-f'): a frota desses cenarios pode nao ser falcon1..4 (a familia
+# sandbox/A4-*DOF, p.ex., tem so 'a4'), e '-f' SEMPRE assume falcon1..4
+# (app::adHocScenario()) enquanto '-folder' descobre a frota em runtime
+# (app::discoverFleet()) -- ver a armadilha documentada junto da montagem de
+# 'args', mais abaixo. <arquivo-de-cenario> tem de morar em
+# <pasta>/<nome>/configs/<arquivo>, o mesmo layout que '-folder' ja exige.
+# Sem nenhuma das duas opcoes o ./app recusaria de cara (uma delas e
+# obrigatoria).
 #
 set -u
 
@@ -34,14 +42,34 @@ POC="${4:-}"
 ARQUIVO="${5:-}"
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CENARIO=""
+args=()
 if [ -n "$POC" ]; then
    CENARIO="$RAIZ/build/tests-fixtures/$POC-intruder.edl.in"
    mkdir -p "$RAIZ/build/tests-recordings"
    python3 "$RAIZ/tests/scenario/make_fixture.py" --poc "$POC" --mode intruder \
       --out "$CENARIO" || exit 1
+   args=(-f "$CENARIO")
 elif [ -n "$ARQUIVO" ]; then
-   CENARIO="$ARQUIVO"
+   # ARMADILHA CONFIRMADA (nao redescobrir): isto passava por '-f "$ARQUIVO"',
+   # e '-f' SEMPRE assume a frota falcon1..4 (app::adHocScenario()) -- para
+   # qualquer cenario hermetico com uma frota diferente (ex.: a familia
+   # sandbox/A4-*DOF, frota so 'a4'), o binario morria com "player 'falcon1'
+   # nao encontrado!" antes de rodar um frame sequer, e este script reportava
+   # isso como "FALHA execucao com N threads" -- lido a primeira vista como
+   # no-determinismo, quando na verdade era so a invocacao errada.
+   #
+   # Todo cenario hermetico alcancavel por este parametro segue o MESMO
+   # layout que '-folder <pasta> -scenario <nome>' ja exige --
+   # <pasta>/<nome>/configs/<arquivo> (src/poc/<nome>/configs/,
+   # sandbox/<nome>/configs/) -- e '-folder' descobre a frota em runtime
+   # (app::discoverFleet()), sem assumir nome nenhum. Derivar pasta/nome do
+   # proprio caminho do arquivo (dois 'dirname' acima de 'configs/') e o que
+   # da a este script cobertura pra QUALQUER frota, nao so falcon1..4.
+   configs_dir="$(dirname "$ARQUIVO")"
+   cenario_dir="$(dirname "$configs_dir")"
+   pasta="$(dirname "$cenario_dir")"
+   nome_cenario="$(basename "$cenario_dir")"
+   args=(-folder "$pasta" -scenario "$nome_cenario")
 fi
 
 # ONDE OS DUMPS DESTA EXECUCAO FICAM.
@@ -59,9 +87,6 @@ fi
 # um lugar so, ja gitignorado, e que nao depende de onde o binario mora.
 OUT="$RAIZ/build/tests-determinism/${ROTULO}"
 mkdir -p "$OUT" || exit 1
-
-args=()
-[ -n "$CENARIO" ] && args+=(-f "$CENARIO")
 
 MSGDIR="$RAIZ/build/tests-messages"
 
@@ -174,7 +199,19 @@ for n in 1 2 4; do
          if (player in pframe) {
             df = frame - pframe[player];
             dd = dec   - pdec[player];
-            if (df != dd) {
+            # Jogador SEM agente (dec parado em 0 nos dois extremos do
+            # intervalo) nao tem vinculo decisao/frame nenhum pra afirmar --
+            # nao e um desvio, e o esperado. Achado testando este script
+            # contra src/poc/built-in_mixr_1 (arquivo-de-cenario, ver a
+            # secao de montagem de "args" mais acima): falcon1..4 decidem
+            # via ( FlightAgentTC ), mas o bandit1 daquele cenario e so
+            # pilotado por Autopilot, sem agente nenhum -- dec fica em 0 do
+            # primeiro ao ultimo frame, de proposito. A assercao 1 (dump
+            # byte a byte) ja cobre esse jogador igual; esta e so a que
+            # exige "uma decisao por frame", que so se aplica a quem decide.
+            if (dec == 0 && pdec[player] == 0) {
+               # sem vinculo a afirmar -- ver comentario acima
+            } else if (df != dd) {
                printf "  FALHA %s: %d decisoes em %d frames (entre os frames %d e %d, %s threads)\n",
                       player, dd, df, pframe[player], frame, cfg;
                bad = 1;

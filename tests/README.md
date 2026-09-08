@@ -5,7 +5,7 @@ make configure                       # inclui gtest (test_requires no conanfile.
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make build
 make test-models                     # so a suite do MODELO
-make test                            # so a suite do HOST (45 testes)
+make test                            # so a suite do HOST (58 testes)
 ```
 
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
@@ -15,7 +15,10 @@ make test                            # so a suite do HOST (45 testes)
 para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
 
 ```bash
-make test-models   # só a do modelo:  domain (42) + tree (15) + native (9)
+make test-models   # só a do modelo:  domain (50) + tree (19) + native (24) casos GTest,
+                     # em 4 alvos meson (o 4º, tree-model-sync, é o guard de
+                     # models/players/A-4/tools/dump-tree-model — ver a seção Groot do
+                     # CLAUDE.md raiz)
 make test           # só a do host — builda/sincroniza o(s) modelo(s) antes (dlopen precisa do
                      # .so), mas não roda a suíte deles
 meson test -C build --suite plugin   # só uma camada do host
@@ -25,10 +28,18 @@ meson test -C build --suite plugin   # só uma camada do host
 roda os dois, nessa ordem, para cobrir os dois relatórios JUnit.
 
 > **Cuidado, e isto foi medido:** `meson test` devolve **rc=0 para suíte vazia** ("No tests
-> defined."), e o default de `-Dtests` é `false`. `meson test -C build --suite domain` continua
-> existindo, mas hoje ele roda só as primitivas do `libs/xmsg` — as regras do modelo estão em
-> `build-flight`. Perder uma das duas suítes seria um verde silencioso, então `make test` e
-> `make test-models` conferem a contagem com `meson introspect --tests` **antes** de rodar.
+> defined."), e o default de `-Dtests` é `false`. Perder uma das duas suítes seria um verde
+> silencioso, então `make test` e `make test-models` conferem a contagem com
+> `meson introspect --tests` **antes** de rodar.
+>
+> **`--suite domain` do HOST cresceu bem além do que o nome sugere.** As regras do MODELO
+> continuam só em `models/players/A-4/build` (`make test-models`) — isso não mudou. Mas
+> `meson test -C build --suite domain` (27 alvos hoje) deixou de ser só as primitivas do
+> `libs/xmsg`: a maior parte agora é lógica pura de `./app` extraída pra fora do FTXUI/MIXR
+> (mapa, memória, log, EDL, breakpoint, árvore de componentes, ...) mais uma unidade por
+> `libs/x*` que ainda não tinha teste direto (`xboard`, `xinfer`, `xjoystick`, `xpyembed`,
+> `xrandom`, `xrlbridge`, `xtrack`). Todos entram em `domain` pelo mesmo critério original —
+> puro, rápido, sem `Station` — não porque testem um diretório chamado `domain/`.
 
 > **A terceira poc na bateria de cenário/memória/determinismo.** `src/poc/python-flight` troca as
 > folhas de **ação** da árvore por scripts Python (`( PyDecide )`), rotulados `PY-<modo>`. Ela roda
@@ -52,15 +63,22 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 
 | suite | pergunta | como | custo |
 |---|---|---|---|
-| `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 42 testes, ~10 ms |
-| `domain` (host) | as primitivas do `libs/xmsg` estão certas? | GTest sobre `libs/xmsg/rules/` | 24 testes, ~10 ms |
-| `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 15 testes, ~10 ms |
-| `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
-| `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 9 execuções |
-| `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 6 execuções |
-| `determinism` | é reprodutível **e com a política escrita em Python**? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 10 execuções |
-| `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **mirror de contrato do template** | 5 testes, ~3 s |
-| `guard` | falcon1..4 continuam com o mesmo esqueleto de slots, o host continua **opaco** ao modelo, o `.so` está **fresco** e todo modelo tem as cinco peças? | as guardas estruturais | instantâneo |
+| `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 50 casos, ~10 ms |
+| `domain` (host) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 27 alvos, ~10 s no total |
+| `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 19 casos, ~10 ms |
+| `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 24 casos, ~10 ms |
+| `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 11 execuções |
+| `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` + o **controle negativo** (`model_leak.so`) | 4 execuções |
+| `determinism` | é reprodutível **e com a política escrita em Python**? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 2 execuções |
+| `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido ou de terceiro**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap*, o **mirror de contrato do template** e o **depósito de terceiro** (`plugins/`) | 6 testes, ~3 s |
+| `tools` | o catálogo/lint/`edlcheck` batem com os cenários REAIS do repositório? | `src/ui/scripts/generate_edl_catalog.py`/`edl_lint.py` e o binário `edlcheck` contra os 8 `.edl`/`.edl.in` de produção | 3 testes |
+| `guard` | falcon1..4 continuam com o mesmo esqueleto de slots, o host continua **opaco** ao modelo, o `.so` está **fresco**, dois modelos não colidem em nome de fábrica e todo modelo tem as cinco peças? | as guardas estruturais | 5 guardas, instantâneo |
+
+> Os números de `custo` são contagem de alvos/execuções `meson test`, não de casos internos —
+> um único alvo GTest pode conter vários `TEST`/`TEST_F`. Confira a contagem viva a qualquer
+> momento com `meson introspect build --tests | python3 -c "import json,sys;
+> print(len(json.load(sys.stdin)))"` (host) ou o equivalente em `models/players/A-4/build`
+> (modelo) — mais confiável que qualquer número fixado em prosa.
 
 ---
 
@@ -226,10 +244,12 @@ as falhas são legíveis, e que o comportamento vem mesmo do `.so`.
 
 | teste | o que prova |
 |---|---|
-| `plugin-contrato` | o descritor bate com o host; as 6 classes que o cenário nomeia são construíveis; `dynamic_cast` para `AbstractBehavior`/`AbstractState`/`Datalink` atravessa a fronteira do `.so`; slot próprio (`treeFile`) **e herdado** (`vote`) resolvem |
+| `plugin-contrato` | o descritor bate com o host; as 9 classes que o cenário nomeia são construíveis; `dynamic_cast` para `AbstractBehavior`/`AbstractState`/`Datalink` atravessa a fronteira do `.so`; slot próprio (`treeFile`) **e herdado** (`vote`) resolvem |
 | `plugin-simbolo` | `nm -D` mostra `mixr_plugin_v1` como `T` — **e nada mais**, apesar dos 35 MB de BehaviorTree.CPP **estática** linkados dentro (é o que valida o `-Wl,--exclude-libs,ALL`) |
 | `plugin-negativos` | 7 modos de falha, **cada um afirmando `rc != 139`** |
 | `plugin-hotswap` | mesmo binário + `.so` diferente = **voo** diferente: duas variantes do modelo com o sentido da curva de patrulha invertido, e o rumo do falcon1 divergindo ~107° |
+| `plugin-modelo-estranho` | o cenário de **produção** roda contra `libtemplate_mirror.so` (só o contrato, nenhuma linha de `domain/`/`bt/`/`ubf/` de A-4) trocando **apenas** o `file:` do `( PluginModule )` — o único teste que pode falhar por "o contrato não basta" |
+| `plugin-deposito-terceiro` | o mesmo mirror, copiado para `plugins/` (o depósito de `.so` externo) e sincronizado para `dist/` pelo MESMO caminho que um `.so` de terceiro usaria — prova que o depósito não é só uma pasta com README |
 
 **`plugin-contrato` é um gate, não só um teste.** Ele afirma que RTTI atravessa o `.so` com o
 plugin compilado em `-fvisibility=hidden` e aberto com `RTLD_LOCAL`. Se ficar vermelho, a

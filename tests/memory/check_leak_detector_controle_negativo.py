@@ -52,10 +52,15 @@ LINHA = re.compile(
 def roda(binario, cenario, frames):
     proc = subprocess.run(
         [binario, "-f", cenario, "-threads", "1", "-deterministic", str(frames)],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=1800,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800,
     )
     if proc.returncode != 0:
-        raise SystemExit(f"FALHA: {binario} saiu com codigo {proc.returncode}")
+        # Mesmo tratamento de run_leak_test.py: sem isto, um erro de parse do
+        # 'so_leak' (ou qualquer outra falha de partida) so deixava o codigo
+        # de saida como pista, com o stderr de verdade descartado.
+        cauda = "\n".join(proc.stderr.strip().splitlines()[-10:])
+        detalhe = f"\n  ultimas linhas do stderr:\n    " + cauda.replace("\n", "\n    ") if cauda else ""
+        raise SystemExit(f"FALHA: {binario} saiu com codigo {proc.returncode}{detalhe}")
 
     contadores = {}
     for linha in proc.stdout.splitlines():

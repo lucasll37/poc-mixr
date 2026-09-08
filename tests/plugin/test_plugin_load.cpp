@@ -8,7 +8,7 @@
 // O que aqui e afirmacao e nao fe:
 //
 //   * o ponto de entrada existe e o descritor e coerente;
-//   * as 6 classes que o cenario nomeia sao construiveis pela .so;
+//   * as 9 classes que o cenario nomeia sao construiveis pela .so;
 //   * RTTI e dynamic_cast ATRAVESSAM a fronteira do .so, mesmo com o modelo
 //     compilado com -fvisibility=hidden e aberto com RTLD_LOCAL. Esta e a
 //     assercao mais importante do arquivo: e o "gate" da decisao de esconder
@@ -41,10 +41,17 @@ namespace {
 
 using mixr::xplugin::PluginDescV1;
 
-// As classes que o cenario de producao nomeia.
+// As classes que o cenario de producao nomeia (provides: de
+// src/poc/dis/flight/configs/scenario.edl.in) -- CORRIGIDO (nao redescobrir):
+// esta lista tinha ficado para tras em 7 nomes, sem ThreadTagProbe (vigesima
+// segunda passada do CLAUDE.md) nem RLBridgeBehavior (secao src/rl); as duas
+// classes continuavam sendo exercitadas de qualquer forma por
+// ConstroiTudoQueDeclaraENadaAlem (que itera TODO desc->factory_names, nao so
+// ESPERADAS), so sem a asserção nomeada desta suite.
 const char* const ESPERADAS[] = {
-   "AlertDatalink", "TacticalAlert", "FlightState", "FlightAgentTC",
-   "BtBehavior", "AltitudeSafetyBehavior", "FlightAction",
+   "AlertDatalink", "TacticalAlert", "ThreadTagProbe", "FlightState",
+   "FlightAgentTC", "BtBehavior", "AltitudeSafetyBehavior",
+   "RLBridgeBehavior", "FlightAction",
 };
 
 class Modelo : public ::testing::Test

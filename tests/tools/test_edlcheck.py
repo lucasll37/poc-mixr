@@ -30,6 +30,7 @@ import edl_lint  # noqa: E402
 REAL_SCENARIOS = [
     "src/poc/dis/flight/configs/scenario.edl.in",
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
+    "src/poc/full-systems-nav/configs/scenario_full_nav.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
     "src/poc/dis/bandit/configs/scenario.edl",

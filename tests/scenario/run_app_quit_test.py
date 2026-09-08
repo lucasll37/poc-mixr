@@ -143,6 +143,10 @@ def roda(binario, cenario, porta_tacview, rotulo):
             cliente.close()
         if proc.poll() is None:
             mata(proc)
+        try:
+            os.close(mestre)
+        except OSError:
+            pass
 
 
 def porta_do_cenario(cenario):
