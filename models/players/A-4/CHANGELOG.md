@@ -181,6 +181,17 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   comportamento já documentado da política ONNX ("tem a última palavra sobre altitude") sem
   pedido pra isso. 3 testes novos em `test_flight_tree.cpp` provam que o clamp de fato ENTRA em
   ação (terreno alto o suficiente pra violar a altitude configurada). (2026-09-08)
+- **`BtBehavior::buildTree()` nunca resetava `btFactory` entre chamadas.** `reset()` zera
+  `treeBuilt` (permitindo um segundo `buildTree()` na mesma instância) mas nunca zerava
+  `btFactory`; `BT::BehaviorTreeFactory::registerBuilder()` lança `BehaviorTreeException` pra
+  qualquer ID já registrado — um segundo `registerNodes()`/`registerSdkNodes()` lançaria no
+  primeiro nó, fora do `try/catch` (que só cobre `createTreeFromFile()`), propagando sem
+  tratamento. `btFactory` agora é reatribuída a cada `buildTree()` — mesmo padrão já usado pra
+  `tree` em `reset()`. Mecanismo confirmado por teste direto (`BtFactoryRegistration`,
+  `test_xnative.cpp`); **não** reproduzido hoje via `reset()`+`step()` repetidos em `src/rl`
+  (investigado rodando: `BtBehavior::reset()` parece nunca ser chamado uma segunda vez pelo
+  cascade do `UbfArbiter` nativo) — cautela defensiva, não correção de um crash observado.
+  (2026-09-08)
 - **`FlightAction::execute()` sem null-check no nome do player** — `base::Identifier::getString()`
   devolve ponteiro cru, `nullptr` para um nome nunca atribuído; `FlightState::updateState()` já
   tratava isso, `FlightAction.cpp` não replicava nos 4 pontos de `LOG(...)`. Nenhum player de

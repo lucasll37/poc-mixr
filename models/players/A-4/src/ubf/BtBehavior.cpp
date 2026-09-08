@@ -146,6 +146,28 @@ void BtBehavior::buildTree()
    context.behavior = this;
 
    std::lock_guard<std::mutex> lock(g_treeBuildMutex);
+   // ACHADO POR AUDITORIA (nao redescobrir): 'reset()' zera 'treeBuilt'
+   // (permitindo um SEGUNDO 'buildTree()' na mesma instancia), mas nunca
+   // zerava 'btFactory'. 'BT::BehaviorTreeFactory::registerBuilder()' lanca
+   // 'BehaviorTreeException("ID [...] already registered")' pra qualquer ID
+   // ja presente (bt_factory.cpp:92) -- um segundo 'registerNodes()'/
+   // 'registerSdkNodes()' sobre a MESMA factory lancaria no PRIMEIRO no
+   // registrado, fora do try/catch abaixo (que so cobre
+   // 'createTreeFromFile()'), propagando sem tratamento. Reatribuir uma
+   // factory NOVA a cada chamada torna 'buildTree()' idempotente -- mesmo
+   // padrao ja usado em 'reset()' pra 'tree' ('tree = BT::Tree();').
+   // Mecanismo confirmado por teste direto (tests/native/test_xnative.cpp,
+   // 'BtFactoryRegistration'): registrar duas vezes na MESMA factory lanca;
+   // reatribuir antes evita. NAO reproduzido hoje via reset()+step()
+   // repetidos em 'src/rl' (verificado rodando): 'BtBehavior::reset()'
+   // parece nunca ser chamado uma segunda vez pelo cascade de reset() do
+   // 'UbfArbiter' nativo -- 'treeBuilt' nunca volta a 'false' na pratica
+   // observada. E' o mesmo tipo de incerteza sobre o cascade de reset() do
+   // Arbiter ja registrado no comentario de 'genAction()' (o motivo do
+   // 'plansReady' preguicoso ali) -- o fix aqui e' a MESMA cautela
+   // defensiva aplicada a 'btFactory', nao a correcao de um crash
+   // observado em producao.
+   btFactory = BT::BehaviorTreeFactory();
    bt_nodes::registerNodes(btFactory, context);
    bt_nodes::registerSdkNodes(btFactory, context);
 

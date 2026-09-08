@@ -15,6 +15,9 @@
 #include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 #include "xnative/factory.hpp"
 
+#include "bt/bt_factory.hpp"
+#include "bt/bt_factory_sdk.hpp"
+
 #include "mixr/base/MetaObject.hpp"
 #include "mixr/base/Object.hpp"
 #include "mixr/base/String.hpp"
@@ -283,6 +286,73 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    EXPECT_EQ(dl->getAlert().senderName, "falcon3") << "o mais proximo tem de vencer";
 
    longe->unref(); perto->unref(); dl->unref();
+}
+
+//------------------------------------------------------------------------------
+// bt_nodes::registerNodes()/registerSdkNodes() -- o que BtBehavior::
+// buildTree() (privado, so' alcancavel por genAction() com um FlightState
+// de verdade -- fora do escopo desta camada, ver o cabecalho de
+// test_rl_bridge_behavior.cpp para o mesmo limite) chama a cada
+// reconstrucao da arvore. Testado direto nesta camada, sem BtBehavior nem
+// Station: os dois testes exercitam a MESMA BT::BehaviorTreeFactory que
+// buildTree() usa, sem precisar do resto da maquina.
+//
+// DEBITO DE TESTE RECONHECIDO (mesmo espirito do de test_rl_bridge_
+// behavior.cpp, nao redescobrir): os dois testes abaixo provam o
+// MECANISMO (registrar duas vezes sem resetar lanca; reatribuir a factory
+// evita) contra uma 'BT::BehaviorTreeFactory' LOCAL, nao contra o membro
+// 'btFactory' de um 'BtBehavior' de verdade -- reverter o fix em
+// 'BtBehavior::buildTree()' NAO faz estes dois testes falharem (foi
+// verificado rodando: reverter e rodar so' pega os dois testes locais
+// intactos). Fechar essa lacuna de verdade exigiria o mesmo Bench pesado
+// (WorldModel+AirVehicle+reset()) que test_flight_state_action.cpp usa,
+// aplicado a um SEGUNDO ciclo reset()+genAction().
+//
+// INVESTIGADO E NAO REPRODUZIDO hoje (verificado rodando, nao so' lido):
+// 'src/rl/tests/test_smoke.py' chama env.reset() varias vezes no MESMO
+// processo, e um repro isolado (reset -> step x3 -> reset -> step) TAMBEM
+// nao lanca -- 'BtBehavior::reset()' parece nunca ser chamado uma segunda
+// vez pelo cascade de reset() do 'UbfArbiter' nativo (a mesma incerteza ja
+// registrada no comentario de 'genAction()', motivo do 'plansReady'
+// preguicoso). O fix e' cautela defensiva -- mesma classe de garantia que
+// 'tree = BT::Tree();' ja da' pra 'tree' em reset() -- nao a correcao de
+// um crash observado em producao.
+//------------------------------------------------------------------------------
+
+// ACHADO POR AUDITORIA (nao redescobrir): BT::BehaviorTreeFactory::
+// registerBuilder() lanca BehaviorTreeException("ID [...] already
+// registered") pra qualquer ID ja presente (bt_factory.cpp:92, BT.CPP). Um
+// SEGUNDO 'buildTree()' na MESMA instancia de BtBehavior (se algum dia
+// 'treeBuilt' voltar a 'false' antes de outra decisao) chamaria
+// registerNodes()/registerSdkNodes() de novo sobre a MESMA factory, nunca
+// resetada. Este teste prova o MECANISMO:
+// registrar duas vezes sem reatribuir a factory lanca.
+TEST(BtFactoryRegistration, RegistrarDuasVezesNaMesmaFactorySemResetarLanca)
+{
+   BT::BehaviorTreeFactory factory;
+   const bt_nodes::NodeContext context;
+   bt_nodes::registerNodes(factory, context);
+   bt_nodes::registerSdkNodes(factory, context);
+
+   EXPECT_THROW(bt_nodes::registerNodes(factory, context), BT::BehaviorTreeException);
+}
+
+// O fix em BtBehavior::buildTree(): reatribuir 'btFactory = BT::
+// BehaviorTreeFactory();' antes de registrar de novo torna a operacao
+// idempotente -- MESMO padrao ja usado em reset() para 'tree'
+// ('tree = BT::Tree();').
+TEST(BtFactoryRegistration, ReatribuirUmaFactoryNovaAntesDeRegistrarDeNovoNaoLanca)
+{
+   BT::BehaviorTreeFactory factory;
+   const bt_nodes::NodeContext context;
+   bt_nodes::registerNodes(factory, context);
+   bt_nodes::registerSdkNodes(factory, context);
+
+   factory = BT::BehaviorTreeFactory();
+   EXPECT_NO_THROW({
+      bt_nodes::registerNodes(factory, context);
+      bt_nodes::registerSdkNodes(factory, context);
+   });
 }
 
 } // namespace
