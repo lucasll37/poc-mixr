@@ -637,7 +637,15 @@ Element renderComponentDetail(const ComponentTreeLayoutNode& node, const Compone
       }
       for (std::size_t i = first; i < path.size(); i++) {
          const auto& l{path[i]};
-         Elements row{text(std::string(static_cast<std::size_t>(l.depth - path[first].depth), ' '))};
+         // 'std::max(0, ...)' e' insurance barata contra um 'depth' que nao
+         // venha estritamente nao-decrescente de frameDescentPath() (a
+         // funcao documenta profundidade decrescente pros ANCESTRAIS
+         // filtrados, nao uma garantia formal sobre a ordem do vetor
+         // devolvido) -- sem o clamp, um valor negativo vira um
+         // 'std::size_t' gigante no cast, e 'std::string(N, ' ')' com esse N
+         // e' um crash (bad_alloc), nao uma indentacao errada.
+         const int indent{std::max(0, l.depth - path[first].depth)};
+         Elements row{text(std::string(static_cast<std::size_t>(indent), ' '))};
          row.push_back(text(l.text) | color(l.active ? Color::YellowLight : Color::CyanLight));
          if (!l.args.empty()) {
             row.push_back(text((l.args.front() == '(' ? "" : " ") + l.args) | color(Color::Yellow));
