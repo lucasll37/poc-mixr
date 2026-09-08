@@ -17,6 +17,13 @@ void RecordWriter::put(const char* const s)
    buf_[len_] = '\0';
 }
 
+void RecordWriter::putChar(const char c)
+{
+   if (len_ + 1 >= CAPACITY) { overflow_ = true; return; }
+   buf_[len_++] = c;
+   buf_[len_] = '\0';
+}
+
 void RecordWriter::putKey(const char* const key)
 {
    if (!first_) put(",");
@@ -48,7 +55,33 @@ void RecordWriter::addLabel(const char* const key, const char* const value)
    if (value == nullptr || value[0] == '\0') return;
    putKey(key);
    put("\"");
-   put(value);      // os rotulos vem de nomes de player/lado/modo: sem aspas nem barras
+   // ACHADO POR AUDITORIA (nao redescobrir): 'value' pode vir do NOME de um
+   // player recebido por DIS -- EntityMarking::marking, 11 bytes CRUS
+   // controlados por quem envia o PDU na rede (ver
+   // contexts/src/mixr/src/interop/dis/NetIO_entity_state.cpp), copiado sem
+   // filtragem ate aqui (SnapshotSource::copyName() so trunca por tamanho).
+   // Sem escapar, um nome malicioso tipo 'x","q":1' injeta um campo JSON
+   // inteiro na linha gravada -- confirmado reproduzindo com json.loads().
+   // Escapa char a char, sem alocar (mesma filosofia de buffer fixo desta
+   // classe -- ver o cabecalho do .hpp).
+   for (const char* p{value}; *p != '\0'; ++p) {
+      const unsigned char c{static_cast<unsigned char>(*p)};
+      switch (c) {
+         case '"':  put("\\\""); break;
+         case '\\': put("\\\\"); break;
+         case '\n': put("\\n"); break;
+         case '\r': put("\\r"); break;
+         case '\t': put("\\t"); break;
+         default:
+            if (c < 0x20) {
+               char esc[8]{};
+               std::snprintf(esc, sizeof(esc), "\\u%04x", c);
+               put(esc);
+            } else {
+               putChar(static_cast<char>(c));
+            }
+      }
+   }
    put("\"");
 }
 

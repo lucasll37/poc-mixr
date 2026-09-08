@@ -44,6 +44,7 @@ public:
 
 private:
    void put(const char* s);
+   void putChar(char c);
    void putKey(const char* key);
 
    char buf_[CAPACITY]{};

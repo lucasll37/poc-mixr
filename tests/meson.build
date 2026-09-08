@@ -54,6 +54,19 @@ test_domain_rules = executable('test-domain-rules',
 )
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
 
+# RecordWriter (libs/xmsg) -- monta NDJSON num buffer fixo, sem alocar.
+# Achado por auditoria: addLabel() nao escapava o valor, permitindo injecao
+# de JSON via nome de player recebido por DIS (ver o cabecalho do teste).
+test_record_writer = executable('test-record-writer',
+    files('domain/test_record_writer.cpp') + files(
+        xmsg_rules_dir / 'RecordWriter.cpp',
+    ),
+    include_directories : include_directories('../libs'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('record-writer', test_record_writer, suite: 'domain', timeout: 60)
+
 # A derivacao de sementes de libs/xrandom -- fnv1a64/deriveSeed, puras, sem
 # MIXR. Header-only, entao nao ha .cpp companheiro (ao contrario de
 # test_domain_rules acima) -- so o include_directories ate libs/.
