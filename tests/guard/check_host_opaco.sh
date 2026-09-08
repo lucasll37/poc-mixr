@@ -19,6 +19,13 @@
 # 'src/$p' que nunca existiram (sempre foi 'src/poc/$p') -- vacuamente
 # verdadeiro. Os tres achados por 'find', nao por glob fixo, para sobreviver
 # a proximo subprojeto novo sem precisar editar este arquivo.
+#
+# ARMADILHA 2 CONFIRMADA (nao redescobrir): o check 2 ainda buscava por NOME
+# de diretorio pai ('src'/'include'/'bindings'), a mesma classe de erro do
+# paragrafo acima -- src/node/ (o runner headless) tem .cpp/.hpp DIRETO na
+# propria pasta, sem subpasta nenhuma com esses nomes, e ficava invisivel
+# (reproduzido plantando um '#include "domain/..."' ali, nao detectado).
+# Trocado pra buscar por EXTENSAO de arquivo, o mesmo criterio do check 3.
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ" || exit 1
@@ -30,10 +37,10 @@ meson.build"
 achados_mb=""
 while IFS= read -r mb; do
    [ -z "$mb" ] && continue
-   if grep -nE "'(domain|bt|ubf)/" "$mb" > /dev/null 2>&1; then
+   if grep -nE "'(domain|bt|ubf|xnative)/" "$mb" > /dev/null 2>&1; then
       achados_mb="$achados_mb
   FALHA $mb voltou a listar fonte do modelo:
-$(grep -nE "'(domain|bt|ubf)/" "$mb" | sed 's/^/        /')"
+$(grep -nE "'(domain|bt|ubf|xnative)/" "$mb" | sed 's/^/        /')"
       fail=1
    fi
 done <<< "$mbs"
@@ -47,13 +54,17 @@ fi
 #    (xtrack/, xboard/, xlog/ e xrlbridge/ sao do SDK, nao do modelo -- por
 #    isso o regex abaixo, restrito aos 4 prefixos do modelo, nao os pega)
 #
-# ARMADILHA MEDIDA: 'find src app -type d -name src' TAMBEM casa a propria
-# raiz 'src' (find testa o proprio ponto de partida) -- sem '-mindepth 1' o
-# achado duplicava (uma vez pela raiz recursiva, outra pelo diretorio
-# especifico) e a busca descia em node_modules/.venv (lento, e sem
-# relevancia nenhuma pro invariante).
-host_src_dirs="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type d \( -name src -o -name include -o -name bindings \) -print 2>/dev/null)"
-achados="$(echo "$host_src_dirs" | xargs -r grep -rnE '#include "(domain|bt|ubf|xnative)/' 2>/dev/null || true)"
+# CORRIGIDO (nao redescobrir): esta checagem buscava por NOME de diretorio
+# pai ('src'/'include'/'bindings'), nao por arquivo -- src/node/ (o runner
+# headless, "peer enxuto de ./app") tem seus .cpp/.hpp DIRETO em src/node/,
+# sem nenhuma subpasta com esses nomes, entao ficava INVISIVEL pra esta
+# checagem (reproduzido: um '#include "domain/Foo.hpp"' plantado em
+# src/node/main.cpp nao era detectado). Trocado pra buscar por EXTENSAO de
+# arquivo (.cpp/.hpp) direto sob src/ e app/, o mesmo criterio ja usado na
+# checagem 3 abaixo -- cobre qualquer subprojeto host futuro, com qualquer
+# nome de pasta.
+achados="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type f \( -name '*.cpp' -o -name '*.hpp' \) -print 2>/dev/null \
+   | xargs -r grep -nE '#include "(domain|bt|ubf|xnative)/' 2>/dev/null || true)"
 if [ -n "$achados" ]; then
    echo "  FALHA codigo do host incluindo header do modelo:"
    echo "$achados" | sed 's/^/        /'
