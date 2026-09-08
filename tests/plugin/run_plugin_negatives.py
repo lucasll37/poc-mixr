@@ -118,11 +118,17 @@ def main():
     print(f"--- controles negativos ({args.poc}) ---")
 
     # Sem o bloco, a PRIMEIRA classe do modelo que o parser encontra e a
-    # ( FlightState ) do slot 'state:' do agente -- as formas irmas reduzem na
-    # ordem do texto, e 'state:' vem antes de 'behavior:'.
+    # ( AlertDatalink ) do slot 'datalink:' de falcon1 -- as formas irmas
+    # reduzem na ordem do texto, e 'datalink:' vem antes de 'agent:' (o
+    # agente e o ULTIMO componente do player, para ver as pistas frescas da
+    # fase 3 -- ver o cenario). Confirmado rodando: com o agente amarrado
+    # por nome numa Station ( SimAgent ), como nas pocs de single-thread ja
+    # removidas, o primeiro nome seria FlightState -- a fixture de hoje
+    # (poc 'flight', agente aninhado no player) muda qual classe aparece
+    # primeiro no texto, nao SE o parser recusa.
     caso("cenario usa o modelo mas o bloco de plugin sumiu",
          variante("sem-loader", sem_bloco), args.binario,
-         [r"nome de fabrica desconhecido", r"FlightState", r"PluginLoader"])
+         [r"nome de fabrica desconhecido", r"AlertDatalink", r"PluginLoader"])
 
     caso("nome desconhecido em posicao de SLOT NOMEADO (o que segfaultava)",
          variante("slot-nomeado",

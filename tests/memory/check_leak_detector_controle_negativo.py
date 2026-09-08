@@ -84,10 +84,10 @@ def main():
     # nao pode depender de outro ter rodado antes.
     out = RAIZ / "build" / "tests-fixtures"
     out.mkdir(parents=True, exist_ok=True)
-    base = out / "single-thread-leak-base.edl.in"
+    base = out / "flight-leak-base.edl.in"
     gerar = subprocess.run(
         [sys.executable, str(RAIZ / "tests/scenario/make_fixture.py"),
-         "--poc", "single-thread", "--mode", "intruder", "--out", str(base)],
+         "--poc", "flight", "--mode", "intruder", "--out", str(base)],
         cwd=RAIZ,
     )
     if gerar.returncode != 0:
@@ -101,7 +101,7 @@ def main():
     if n != 1:
         print("FALHA: nao achei o 'file:' do ( PluginModule ) na fixture")
         return 1
-    fixture = out / "single-thread-leak.edl.in"
+    fixture = out / "flight-leak.edl.in"
     fixture.write_text(novo)
     cenario = str(fixture)
 

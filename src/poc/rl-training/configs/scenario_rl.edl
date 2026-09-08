@@ -1,9 +1,9 @@
 //
 // rl -- cenario para o wrapper Gymnasium (src/rl/python/mixr_gym).
 //
-// Derivado de src/poc/dis/multi-thread/configs/scenario.edl.in (mesma pilha
+// Derivado de src/poc/dis/flight/configs/scenario.edl.in (mesma pilha
 // 100% nativa: Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/
-// FlightAgentTC, o mesmo plugin libflight_tc.so), com o delta:
+// FlightAgentTC, o mesmo plugin libflight.so), com o delta:
 //
 //   1) falcon1 troca ( BtBehavior ... ) por ( RLBridgeBehavior vote: 50 )
 //      dentro do MESMO UbfArbiter -- o piso de seguranca nativo
@@ -20,7 +20,7 @@
 //      tests/scenario/make_fixture.py (nao competir por porta/trafego com
 //      outra sessao).
 //   5) Porta de Tacview PROPRIA (1237) e dataRecorder/data/ apontando pra
-//      ./src/rl/, pra poder rodar ao lado de single-thread/multi-thread/app
+//      ./src/rl/, pra poder rodar ao lado de flight/app
 //      (portas 1234/1236) sem colidir -- opcional, so para acompanhar
 //      visualmente um episodio; NativeSimulation nunca le o TacviewOutput
 //      de volta.
@@ -40,7 +40,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_tc.so"
+               file:     "libflight.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }

@@ -153,7 +153,7 @@ std::string defaultColorForSide(const unsigned int side)
 
 // Busca no mapa do EDL por 'type:' e depois por NOME do player, caindo no
 // default. As duas chaves existem porque os cenarios deste repositorio usam
-// as DUAS convencoes: single-thread/multi-thread mapeiam por nome
+// as DUAS convencoes: a maioria mapeia por nome
 // (falcon1: "Air+FixedWing"), e a chave documentada no slot e o 'type:'.
 // Chave vazia nunca casa (uma base::String vazia devolve ponteiro nulo --
 // ver a nota em resolveInfo()).

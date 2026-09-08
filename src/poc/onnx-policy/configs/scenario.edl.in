@@ -1,10 +1,10 @@
 //
 // onnx-policy
 //
-// O multi-thread INTEIRO, com UMA unica diferenca: o 'treeFile:' de cada
+// A poc 'flight' INTEIRA, com UMA unica diferenca: o 'treeFile:' de cada
 // falcon aponta para uma arvore cuja folha e uma REDE NEURAL.
 //
-//   multi-thread:  treeFile: ".../flight_tree.xml"
+//   flight:        treeFile: ".../flight_tree.xml"
 //                     -> Fallback de nos escritos a mao (Patrol, Evade,
 //                        Support, RTB), regras em C++ de models/players/A-4
 //
@@ -16,9 +16,9 @@
 //
 // Nao ha uma linha de C++ nova nesta poc: o no, o motor e o plugin ja
 // existiam -- trocar as regras pela rede foi trocar um caminho de arquivo.
-// Todo o resto e identico ao multi-thread:
+// Todo o resto e identico a 'flight':
 //
-//   peca            multi-thread                onnx-policy
+//   peca            flight                      onnx-policy
 //   --------------  --------------------------  --------------------------
 //   player          ( Aircraft )                igual
 //   dinamica 6-DOF  ( JSBSimModel )             igual
@@ -27,7 +27,7 @@
 //                     AirTrkMgr )
 //   interacao       ( AlertDatalink )           igual
 //   agente UBF      ( FlightAgentTC ), fase 3   igual
-//   plugin          libflight_tc.so             igual
+//   plugin          libflight.so                igual
 //   QUEM DECIDE     arvore de regras (C++)      rede neural (.onnx)
 //
 // SEM ARBITRO: 'behavior:' do agente aponta direto para o ( BtBehavior ),
@@ -43,9 +43,8 @@
 // exigir revalidar seguranca de voo por conta propria.
 //
 // PORTAS PROPRIAS, para esta poc rodar ao lado das outras: Tacview 1238
-// (1234 single/multi, 1235 bandit, 1236 app, 1237 python-flight) e DIS
-// localPort 3005 (3001 bandit, 3002 single-thread, 3003 multi-thread,
-// 3004 python-flight).
+// (1234 flight, 1235 bandit, 1236 app, 1237 python-flight) e DIS
+// localPort 3005 (3001 bandit, 3002 flight, 3004 python-flight).
 //
 // AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
 // models/players/A-4/data/jsbsim/aircraft/A4/, originados de
@@ -70,14 +69,10 @@
    ownship: falcon1
 
    // --------------------------------------------------------------------
-   // Como na multi-thread, esta Station NAO tem AGENTE nenhum em
+   // Como em 'flight', esta Station NAO tem AGENTE nenhum em
    // 'components:'.
    //
-   // No single-thread os quatro ( SimAgent ) moram neste ponto e amarram o
-   // ator por nome (slot 'actorPlayerName'), porque e assim que o SimAgent
-   // nativo funciona -- e, por ser um ubf::Agent, decidem em updateData().
-   //
-   // Aqui cada agente e um ( FlightAgentTC ) DENTRO da aeronave, no fim da
+   // Cada agente e um ( FlightAgentTC ) DENTRO da aeronave, no fim da
    // lista de componentes do player. Duas consequencias diretas:
    //   * o ator e o proprio container, entao nao ha nome a amarrar;
    //   * a decisao roda na fase 3 do frame de tempo critico, na thread do
@@ -123,7 +118,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_tc.so"
+               file:     "libflight.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -240,7 +235,7 @@
    //
    // Esquema de portas (ver o comentario irmao em
    // src/poc/dis/bandit/configs/scenario.edl): todo mundo escuta em 3000;
-   // bandit emite da 3001, single-thread da 3002, multi-thread da 3003,
+   // bandit emite da 3001, flight da 3002,
    // python-flight da 3004, e esta Station da 3005.
    //
    // disEntityType TEM que ser identico dos dois lados -- e como o Ntm casa
@@ -478,7 +473,7 @@
                )
 
                // ------------------------------------------------------
-               // O AGENTE -- identico ao da multi-thread.
+               // O AGENTE -- identico ao da flight.
                //
                // A diferenca DESTA poc nao esta aqui: esta no 'treeFile:'
                // do ( BtBehavior ) mais abaixo, que aponta para a arvore

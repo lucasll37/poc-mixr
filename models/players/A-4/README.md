@@ -36,15 +36,15 @@ calibrado para o A-4 — não do cenário que o carrega.
 dia a dia, em ordem:
 
 ```bash
-make build           # -> ./build/ (compila libflight.so + libflight_tc.so)
+make build           # -> ./build/ (compila libflight.so)
 make test            # domain + tree + native (~1 s, nenhuma levanta Station)
 make install         # -> ./dist/lib/mixr-plugins/*.so + ./dist/share/mixr-plugins/flight/ (arvore + aeronave)
 make install-host    # -> ../../../plugins/ -- ainda não é dist/ do HOST, ver CONTRIBUTING.md
 ```
 
-`libflight.so` e `libflight_tc.so` saem da MESMA árvore de fontes — a única diferença
-(`FlightAgentTC`, o agente que decide na fase 3 do frame de tempo crítico em vez de no laço de
-background) fica atrás de `-DFLIGHT_TC_AGENT`.
+Um artefato só, `libflight.so` — `FlightAgentTC` (o agente que decide na fase 3 do frame de tempo
+crítico, componente do player) é registrado incondicionalmente; não há mais um segundo `.so` sem
+ele.
 
 `make help` (ou `make` sozinho) lista todos os alvos, com descrição. Fluxo completo (editar,
 testar, editar a árvore com o Groot, publicar o plugin) → [`CONTRIBUTING.md`](CONTRIBUTING.md).

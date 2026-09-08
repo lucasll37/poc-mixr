@@ -1,8 +1,8 @@
 # src/rl -- wrapper Gymnasium sobre a simulacao MIXR/flight
 
 Um agente de RL/Python controla **uma** aeronave (`falcon1`, por padrao) do
-mesmo cenario que `single-thread`/`multi-thread`/`app` ja rodam -- mesmo
-plugin `libflight_tc.so`, mesma pilha nativa. O `state` do `gymnasium.Env` e
+mesmo cenario que `flight`/`app` ja rodam -- mesmo plugin `libflight.so`,
+mesma pilha nativa. O `state` do `gymnasium.Env` e
 a mesma percepcao que o UBF ja usa para decidir (`domain::WorldView`); a
 `action` e o mesmo comando que `xnative::FlightAction` ja aplica no
 `Autopilot` (heading/altitude/speed). As outras aeronaves do cenario
@@ -51,7 +51,7 @@ sobrepoe.
 ```bash
 make configure   # inclui pybind11 (conanfile.py) alem das dependencias de sempre
 make sdk         # publica libxboard/libxlog/libxtrack/libxrlbridge + headers em dist/
-make models      # compila libflight_tc.so (com RLBridgeBehavior) -> plugins/
+make models      # compila libflight.so (com RLBridgeBehavior) -> plugins/
 make build       # compila o host, incluindo o modulo _native (src/rl/bindings/)
 make install     # dist/python/mixr_gym/{__init__.py, env.py, _native*.so}
 ```
@@ -161,7 +161,7 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   PRIMEIRO a tocar essas bibliotecas no processo). Sem isso, a primeira
   chamada a `reset()` SEGFAULTA dentro de libstdc++ (dentro de um
   `std::cout` de `libs/xplugin/PluginRegistry.cpp`, ao carregar
-  `libflight_tc.so`) -- confirmado rodando, tudo indica estouro do
+  `libflight.so`) -- confirmado rodando, tudo indica estouro do
   excedente de TLS estatico do glibc quando muitas extensoes C ja foram
   carregadas (numpy sozinho traz ~15) antes da nossa. `mixr_gym/__init__.py`
   documenta os dois experimentos que isolaram a causa. `src/rl/tests/

@@ -115,8 +115,8 @@ std::vector<CallChainLine> timeCriticalChain(const EstimatedPhase phase, const F
    out.push_back(line(13, CallLineKind::Call, "case 2: receive", "(dt4 = " + secs(dt0) + ")",
                       "antena/radar RECEBEM; o TrackManager forma as pistas", "System.cpp:116", ph2));
    out.push_back(line(13, CallLineKind::Call, "case 3: process", "(dt4 = " + secs(dt0) + ")",
-                      "a DECISAO: Autopilot, UbfArbiter, FlightAgentTC -- e o ( FlightAgentTC ) das pocs "
-                      "multi-thread decide exatamente aqui",
+                      "a DECISAO: Autopilot, UbfArbiter, FlightAgentTC -- e o ( FlightAgentTC ) de "
+                      "cada player decide exatamente aqui",
                       "System.cpp:120", ph3));
    return out;
 }

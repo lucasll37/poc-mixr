@@ -49,7 +49,7 @@ PRAZO_SAIDA = 30.0
 # 'src/poc/dis/<nome>'.
 PASTA_POR_CENARIO = {
     "onnx-policy": "src/poc",
-    "multi-thread": "src/poc/dis",
+    "flight": "src/poc/dis",
 }
 
 

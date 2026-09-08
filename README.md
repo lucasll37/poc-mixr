@@ -88,12 +88,12 @@ com o sanitizador, outra revertendo), então é lento. Passo a passo:
 
 1. **Recompila os DOIS lados com `-fsanitize=address`**: o modelo (`make models ASAN=true`, que
    hoje instrumenta só `models/players/A-4` — é o único projeto de modelo com uma opção `asan` no
-   próprio `meson_options.txt`; `missile`/`stub`/`template` não têm essa opção e a ignoram) e o
+   próprio `meson_options.txt`; `template` não tem essa opção e a ignora) e o
    host (`meson configure build -Dasan=true` + `meson compile`, que instrumenta `./app` e
    `src/rl/bindings`). Os dois são necessários — instrumentar só o host deixaria o `.so` do plugin
    sem *redzone* de pilha e sem símbolos no relatório do LeakSanitizer.
-2. Gera uma fixture hermética da poc `single-thread` (`tests/scenario/make_fixture.py --poc
-   single-thread --mode intruder` — carrega `libflight.so`, o plugin do A-4) e roda 500 frames
+2. Gera uma fixture hermética da poc `flight` (`tests/scenario/make_fixture.py --poc
+   flight --mode intruder` — carrega `libflight.so`, o plugin do A-4) e roda 500 frames
    determinísticos com `-threads 1`, sob `LSAN_OPTIONS=suppressions=./tests/memory/asan.supp`.
    `-threads 1` é a mesma cautela já usada pela suíte `memory` (ver
    [`tests/README.md`](tests/README.md)): os contadores de instância do MIXR não são atômicos, e

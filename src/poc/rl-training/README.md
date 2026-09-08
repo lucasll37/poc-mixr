@@ -1,8 +1,8 @@
 # src/poc/rl-training -- o consumidor que treina RL de fato contra `src/rl`
 
 Sob `src/poc/` por escolha, mas de natureza diferente das outras pastas dali
-([single-thread](../single-thread/)/[multi-thread](../multi-thread/)/etc. --
-executaveis C++ com `main.cpp`, ver a tabela em `CLAUDE.md`): esta pasta nao
+(as pocs sob `src/poc/dis/` e as demais -- cenarios EDL, sem `main.cpp` proprio
+desde que `./app` virou o runner unico; ver a tabela em `CLAUDE.md`): esta pasta nao
 produz nenhum binario, e so Python. Separada de [`src/rl`](../../rl/) pelo
 mesmo motivo que separa `models/players/A-4` (o modelo) de `src/poc/*` (quem
 consome): `src/rl` e so o AMBIENTE (`mixr_gym.MixrFlightEnv`, contrato
@@ -15,7 +15,7 @@ sempre: `make configure && make sdk && make build && make install`, pra
 
 ## Makefile AUTOCONTIDO
 
-Mesmo padrao dos `Makefile` de `models/*` (ver `models/players/fixtures/stub/Makefile`
+Mesmo padrao dos `Makefile` de `models/*` (ver `models/players/template/Makefile`
 para o "porque" completo): entre nesta pasta e rode `make` direto, sem
 precisar do Makefile raiz depois do pre-requisito unico (`dist/python/mixr_gym`
 publicado). O alvo `venv-rl-training` do Makefile raiz so DELEGA pra `venv`

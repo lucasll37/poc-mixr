@@ -43,7 +43,7 @@ const FRAGMENTS_DIR = path.join(REPO_ROOT, "app", "configs", "fragments");
 // '@include:...@' puxa o fragmento de app/configs/fragments/, e qualquer
 // '@TOKEN@' restante (ex.: '@NUM_TC_THREADS@') vira um numero neutro --
 // aqui "2", o mesmo valor que as pocs de producao usam por convencao
-// (bandit/single-thread/multi-thread), nao "1" (o de edl_lint.py, que so'
+// (bandit/flight), nao "1" (o de edl_lint.py, que so'
 // precisa nao quebrar sintaxe): o cenario default desta ferramenta pode ser
 // reexportado e inspecionado por um humano, entao vale a pena o numero
 // parecer plausivel.

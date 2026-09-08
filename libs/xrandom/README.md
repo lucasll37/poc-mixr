@@ -45,14 +45,13 @@ patrol.setHeadingJitter(tune.patrolJitterHeadingDeg,
 
 ## Por que a sub-semente vem do NOME, nunca de ordem
 
-A ordem de descoberta/processamento entre players **não é garantida** neste framework — a poc
-`multi-thread` decide em paralelo, um player por thread do pool de tempo crítico. Um esquema que
+A ordem de descoberta/processamento entre players **não é garantida** neste framework — todo
+agente decide em paralelo, um player por thread do pool de tempo crítico. Um esquema que
 distribuísse sementes por posição numa lista (`0, 1, 2, 3`) divergiria entre 1/2/4 threads T/C,
 porque essa ordem muda. Um hash da identidade do próprio player (`fnv1a64(getName())`) elimina
 qualquer coordenação: cada `BtBehavior` calcula a própria semente sozinho, sem saber nada sobre
 os outros nem em que thread está. É a propriedade que
-`make check-patrol-seed-single-thread`/`check-patrol-seed-multi-thread`
-(`tests/determinism/check_patrol_seed.sh`) travam ponta a ponta; `deriveSeed` sozinho, sem
+`tests/determinism/check_patrol_seed.sh` trava ponta a ponta; `deriveSeed` sozinho, sem
 `Station`, é o que `tests/domain/test_xrandom.cpp` testa na unidade.
 
 `deriveSeed` usa splitmix64, não soma/xor — duas derivações do MESMO `instanceSeed` com salts

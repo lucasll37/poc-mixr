@@ -58,9 +58,9 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 9 testes, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 9 execuções |
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` | 6 execuções |
-| `determinism` | é reprodutível, nos dois laços de decisão **e com a política escrita em Python**? **E de onde vem essa reprodutibilidade?** | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg`; mais o controle negativo `onde-a-decisao-roda` | 12 execuções + ~10 |
-| `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **stub** | 5 testes, ~3 s |
-| `guard` | as pocs continuam gêmeas, o host continua **opaco** ao modelo, o `.so` está **fresco** e todo modelo tem as cinco peças? | `diff -r` da camada de aplicação + as guardas estruturais | instantâneo |
+| `determinism` | é reprodutível **e com a política escrita em Python**? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 10 execuções |
+| `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap* e o **mirror de contrato do template** | 5 testes, ~3 s |
+| `guard` | falcon1..4 continuam com o mesmo esqueleto de slots, o host continua **opaco** ao modelo, o `.so` está **fresco** e todo modelo tem as cinco peças? | as guardas estruturais | instantâneo |
 
 ---
 
@@ -194,25 +194,16 @@ vazar. Se o fork for corrigido um dia, apaga-se a linha e o teste passa a cobrir
 
 É a lógica que vivia inline no `Makefile`, extraída para
 [`determinism/check_determinism.sh`](determinism/check_determinism.sh) — mesmas 4 execuções, mesmas
-3 comparações — e registrada como **dois casos nomeados por onde a decisão roda**:
+3 comparações — e registrada como `determinism-flight`: a decisão roda em `( FlightAgentTC )`,
+componente do `Player`, na fase 3 do frame de tempo crítico — o único agente que este repositório
+usa hoje (não há mais um caminho alternativo via `( SimAgent )` nativo na `Station`).
 
-| caso | laço | agente |
-|---|---|---|
-| `determinism-nao-critico` | background, `updateData()` | `( SimAgent )` nativo, componente da `Station` |
-| `determinism-critico` | fase 3 do frame de tempo crítico | `( FlightAgentTC )` próprio, componente do `Player` |
-
-Duas coisas mudaram além da extração:
-
-**1. A contagem de decisões virou asserção.** O `Makefile` imprimia o `dec=` da `falcon1` e não
+**A contagem de decisões virou asserção.** O `Makefile` imprimia o `dec=` da `falcon1` e não
 verificava nada. Agora se afirma que `dec` avança na **mesma taxa** que `frame` entre dumps
-consecutivos. A asserção *não* é `dec == frames`: a `multi-thread` decide uma vez a mais na
-inicialização (601 em 600 frames, idêntico nas três configurações de thread) — isso é *offset* de
-partida, não perda de vínculo com o frame. Comparar deltas mede a propriedade certa e ignora o
-*offset*.
-
-**2. A `single-thread` ganhou o campo `dec=`,** que antes só existia na `multi-thread`. Como ali a
-decisão roda no laço de background, quem conta é o
-[`BehaviorBoard`](../libs/xboard/Board.hpp), no ponto da atuação.
+consecutivos. A asserção *não* é `dec == frames`: a poc decide uma vez a mais na inicialização (601
+em 600 frames, idêntico nas três configurações de thread) — isso é *offset* de partida, não perda
+de vínculo com o frame. Comparar deltas mede a propriedade certa e ignora o *offset*. Quem conta é
+o [`BehaviorBoard`](../libs/xboard/Board.hpp), no ponto da atuação.
 
 **A saída de mensagens entra na mesma comparação.** O `libs/xmsg` **não** é desligado em
 `-deterministic` (ao contrário do `xlog`): tudo que ele emite carrega tempo simulado, nunca
@@ -256,12 +247,13 @@ estourar em silêncio.
 **derivadas** dele, as camadas 3, 4 e 5 passaram a exercitar o plugin sem uma linha nova nos
 scripts.
 
-## Guarda — a duplicação ([guard/](guard/))
+## Guarda ([guard/](guard/))
 
-`domain/` e `bt/` são byte-idênticos entre as duas pocs. Isso era convenção implícita:
-`compare-single-multi` mostra as diferenças, mas não falha, e ninguém lê a saída toda. Aqui vira
-invariante verificado — e é ele que justifica as camadas 1 e 2 compilarem contra **uma cópia só**.
-Se as duas divergissem, metade do modelo ficaria sem teste em silêncio.
+Invariantes estruturais que não são cobertos por nenhuma camada acima: o host continua **opaco**
+ao fonte do modelo (`check_host_opaco.sh`), o `.so` instalado está mais novo que o fonte
+(`check_modelo_fresco.sh`), `falcon1..4` compartilham o mesmo esqueleto de slots
+(`check_falcons_estrutura.sh`/`skeleton_diff.py`), dois modelos carregados juntos não colidem em
+nome de fábrica (`check_colisao_fabrica.py`), e todo projeto de modelo tem as cinco peças abaixo.
 
 ### `modelo-estrutura` — as cinco peças de todo projeto de modelo
 
@@ -284,10 +276,10 @@ Diretório presente mas vazio (ou só com `.gitkeep`) conta como ausente.
 
 **1. O `-deterministic` não é hermético com o cenário de produção.** O bloco `networks:` abre a
 porta DIS 3000 e ingere PDUs de quem estiver na LAN. Com um `bandit` de outra sessão no ar,
-duas execuções idênticas divergem e o `check-single-thread` acusa **falso não-determinismo** —
+duas execuções idênticas divergem e `check_determinism.sh` acusa **falso não-determinismo** —
 medido: `frame=600 falcon1` deu `PATROL` com 1 thread e `SUPPORT` com 2, porque o intruso da rede
 apareceu em uma e não na outra. Todas as fixtures removem `networks:`, e os alvos `check-*`
-passaram a rodar hermético. Assim, as duas pocs passam com 1, 2 e 4 threads em 2000 frames.
+passaram a rodar hermético. Assim, a poc passa com 1, 2 e 4 threads em 2000 frames.
 
 **2. Os contadores de instância não são atômicos.** `++metaObject.count` é `int` cru
 (`macros.hpp:247-255`); com os agentes decidindo em paralelo no pool T/C os incrementos correm
@@ -321,40 +313,10 @@ sem falso positivo nas outras:
 
 **Essa última virou teste permanente, não só exercício manual revertido depois.**
 `memory-controle-negativo` (`tests/memory/check_leak_detector_controle_negativo.py`) roda o
-cenário `single-thread` contra `model_leak.so` — uma terceira variante de teste do MESMO fonte de
+cenário `flight` contra `model_leak.so` — uma terceira variante de teste do MESMO fonte de
 produção (mesma família de `model_variant_a`/`model_variant_b`, atrás da opção `variants` de
 `models/players/A-4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
 `new FlightAction()` (`#ifdef POC_LEAK_ONE_REF_PER_DECISION`, nunca definida no build de produção)
 — exatamente a quebra da linha acima, agora sem depender de alguém lembrar de repeti-la à mão.
 Prova, a cada `make test`, que `memory-<poc>` pegaria um vazamento de verdade, não só que a
 produção de hoje está limpa.
-
----
-
-## O controle negativo: de onde vem o determinismo
-
-`make check-single-thread` prova que a poc é reprodutível. Ele **não** prova por quê — e a
-resposta natural ("porque roda em passo fixo") está errada.
-
-`tests/determinism/check_onde_a_decisao_roda.py` separa as duas coisas. Ele roda as duas pocs com
-`-parallel-decision`, que solta o laço de background numa thread própria, sem sincronizar com o
-frame — exatamente o que o tempo real faz, só que sem o relógio de parede — e afirma:
-
-| poc | onde a decisão roda | exigência |
-|---|---|---|
-| `single-thread` | `( SimAgent )`, laço de background | **tem de DIVERGIR** |
-| `multi-thread` | `( FlightAgentTC )`, **fase 3** do frame, dentro da barreira | **NÃO pode divergir** |
-
-Medido: a `single-thread` produziu **5 resultados distintos em 5 execuções**; a `multi-thread`, um
-só. No cenário de patrulha a divergência é na **trajetória** (`n=9224.47` / `9226.59` / `9226.32`),
-não só num contador.
-
-**Concorrência sozinha não basta — e isso foi medido montando o teste.** Uma primeira versão deixou
-`updateData()` concorrente com o `tcFrame()` mas manteve **uma decisão por frame**: as duas pocs
-continuaram byte-idênticas em 5 execuções. As decisões deste modelo são todas por **limiar**, e os
-comandos vêm do plano de voo, não do estado instantâneo — ler a posição alguns centímetros adiante
-não muda nada. O que quebra é a **contagem** de decisões variar, porque aí o `PatrolPlan::advance()`
-integra tempo diferente a cada execução.
-
-Sem o lado da `multi-thread`, o teste só mostraria que concorrência quebra coisas. Sem o lado da
-`single-thread`, o `check-*` poderia estar passando por inércia. É o par que prova a afirmação.

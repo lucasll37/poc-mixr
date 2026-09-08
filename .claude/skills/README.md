@@ -12,9 +12,9 @@ genuinamente humano ("criar um modelo novo") já está coberto por `CONTRIBUTING
 Crie `.claude/skills/<nome>/SKILL.md` quando aparecer algo que:
 
 - **não** se resume a um único `make <alvo>` — ex.: uma sequência de decisões condicionais que
-  hoje exigiria reexplicar toda vez ("qual dos dois pontos de partida copiar, `stub` ou
-  `template`, dependendo de X"; ou um roteiro de diagnóstico de várias etapas para uma classe de
-  bug recorrente); OU
+  hoje exigiria reexplicar toda vez ("como decidir se um slot novo precisa entrar no mirror de
+  contrato de `template/src/mirror.cpp`, dependendo de X"; ou um roteiro de diagnóstico de várias
+  etapas para uma classe de bug recorrente); OU
 - é material de referência longo demais para caber em `CLAUDE.md`/`.claude/rules/*.md` sem poluir
   o contexto de toda sessão, e só precisa ser consultado ocasionalmente — candidato natural: uma
   eventual divisão do `CLAUDE.md` (hoje ~292KB) em referências por subsistema, decisão que ficou

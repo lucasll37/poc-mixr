@@ -18,7 +18,7 @@ set -u
 
 BIN="${1:?uso: check_patrol_seed.sh <binario> <rotulo> <poc> [frames]}"
 ROTULO="${2:?falta o rotulo}"
-POC="${3:?falta o nome da poc (single-thread ou multi-thread)}"
+POC="${3:?falta o nome da poc (ex.: flight)}"
 FRAMES="${4:-600}"
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

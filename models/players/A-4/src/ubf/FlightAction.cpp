@@ -5,12 +5,8 @@
 #include "xboard/Board.hpp"
 #include "xlog/Log.hpp"
 
-#include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
-#include "mixr/models/player/weapon/AbstractWeapon.hpp"
-#include "mixr/models/player/weapon/Missile.hpp"
 #include "mixr/models/system/Autopilot.hpp"
-#include "mixr/models/system/StoresMgr.hpp"
 
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/units/distance_utils.hpp"
@@ -33,8 +29,8 @@ namespace {
 // no processo e o LOG(...) emitido de dentro deste .so (aberto por dlopen)
 // cai no mesmo buffer em memoria que o host le -- ver o cabecalho de
 // app/LogPanel.hpp e a secao libs/xlog do CLAUDE.md. O log tambem vai pro
-// console e pro arquivo das outras pocs (single-thread/multi-thread), que
-// nao tem aba nenhuma; sob '-deterministic' o main.cpp desliga tudo
+// console e pro arquivo das outras pocs (flight, bandit, ...), que nao tem
+// aba nenhuma; sob '-deterministic' o main.cpp desliga tudo
 // (setLoggingEnabled(false)), entao os dumps comparaveis nao mudam.
 //
 // execute() roda a cada decisao ATUADA -- ate 50 Hz por aeronave. Nada aqui
@@ -51,7 +47,7 @@ namespace {
 //    de alerta.
 //
 //    O mapa e estatico e compartilhado entre as threads do pool T/C (os
-//    agentes decidem em paralelo na multi-thread/app), dai o mutex.
+//    agentes decidem em paralelo, um por thread), dai o mutex.
 bool changedFor(std::map<int, std::string>& last, const int playerId, const std::string& key)
 {
    static std::mutex mutex;
@@ -91,14 +87,6 @@ void FlightAction::copyData(const FlightAction& org, const bool)
    alertEastM = org.alertEastM;
    alertAltitudeM = org.alertAltitudeM;
    alertRangeM = org.alertRangeM;
-   launch = org.launch;
-   launchTargetName = org.launchTargetName;
-}
-
-void FlightAction::setLaunchRequest(const std::string& targetName)
-{
-   launch = true;
-   launchTargetName = targetName;
 }
 
 void FlightAction::setAlertBroadcast(const std::string& contactName,
@@ -191,16 +179,13 @@ bool FlightAction::execute(base::Component* actor)
                  << "' (thread " << xboard::threadTag() << ")";
    }
 
-   // Qual thread decidiu -- unico ponto de atuacao comum aos DOIS agentes
-   // (o SimAgent nativo, background, e o FlightAgentTC, pool T/C), entao e
-   // aqui que o quadro fica correto pros dois: FlightAgentTC::controller()
-   // ja escreve o mesmo valor antes de chegar aqui (redundante, inofensivo,
-   // mesma tag); o SimAgent nunca escrevia nada -- o campo ficava preso em
-   // -1 ("-") pra sempre, nao porque a decisao nao tivesse thread, mas
-   // porque ninguem contava qual. threadTag() e por-thread (cache
-   // thread_local), entao aqui sai sempre a MESMA tag pras 4 aeronaves --
-   // resposta honesta: elas decidem, de fato, todas na mesma thread de
-   // background.
+   // Qual thread decidiu. FlightAgentTC::controller() ja escreve o mesmo
+   // valor antes de chegar aqui (redundante, inofensivo, mesma tag) -- esta
+   // linha existe porque este e o unico ponto de atuacao comum a QUALQUER
+   // agente que chame FlightAction::execute() (inclusive um player sem
+   // agente proprio, via xnative::ThreadTagProbe -- ver CLAUDE.md).
+   // threadTag() e por-thread (cache thread_local), entao o valor reflete a
+   // thread do pool T/C que de fato processou este player no frame.
    xboard::setThreadTag(player->getID(), xboard::threadTag());
 
    // O pedido de broadcast fica LIGADO enquanto a aeronave evade -- e
@@ -224,46 +209,6 @@ bool FlightAction::execute(base::Component* actor)
       }
    } else {
       changedFor(lastAlertContact, player->getID(), std::string{});
-   }
-
-   // --- lancamento de missil -------------------------------------------
-   //
-   // O UNICO ponto deste modelo que toca um objeto MIXR de arma. StoresMgr e
-   // opcional (getStoresManagement() devolve nullptr sem 'stores:' no EDL) --
-   // inerte em qualquer aviao de producao.
-   //
-   // releaseOneMissile() ja faz tudo que o framework nativo oferece: clona o
-   // 'missile' do EDL num flyout e o enfileira em Simulation::addNewPlayer()
-   // (materializado no proximo updatePlayerList(), no laco de background) --
-   // e assim, sem nenhum codigo nosso, que um player novo entra na simulacao
-   // EM EXECUCAO. Devolve pre-ref()'d (ver StoresMgr.hpp) -- por isso o
-   // unref() no fim.
-   if (launch) {
-      models::StoresMgr* const storesMgr{player->getStoresManagement()};
-      models::WorldModel* const world{player->getWorldModel()};
-      if (storesMgr != nullptr && world != nullptr) {
-         const auto target = dynamic_cast<models::Player*>(
-            world->findPlayerByName(launchTargetName.c_str()));
-         if (target != nullptr) {
-            models::AbstractWeapon* const flyout{storesMgr->releaseOneMissile()};
-            if (flyout != nullptr) {
-               flyout->setTargetPlayer(target, true);
-               LOG(INFO) << "[FlightAction] " << player->getName()->getString()
-                         << ": missil lancado contra '" << launchTargetName
-                         << "' (flyout '" << flyout->getName()->getString() << "')";
-               flyout->unref();
-            } else {
-               // Pediu-se lancamento e o cabide esta vazio -- a arvore
-               // continuaria pedindo a cada frame sem nada acontecer.
-               LOG(WARNING) << "[FlightAction] " << player->getName()->getString()
-                            << ": lancamento pedido, mas releaseOneMissile() nao devolveu arma";
-            }
-         } else {
-            LOG(WARNING) << "[FlightAction] " << player->getName()->getString()
-                         << ": lancamento pedido contra '" << launchTargetName
-                         << "', que nao existe na simulacao";
-         }
-      }
    }
 
    return true;

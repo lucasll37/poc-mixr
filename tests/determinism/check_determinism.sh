@@ -2,14 +2,13 @@
 #
 # Determinismo: o MESMO estado com 1, 2 e 4 threads de tempo critico.
 #
-# E a logica que vivia inline em check-single-thread/check-multi-thread no
-# Makefile, extraida para poder virar test() do Meson e, principalmente, para
-# AFIRMAR o que antes so era impresso (a contagem de decisoes).
+# E a logica que vivia inline nos extintos check-single-thread/check-multi-thread
+# no Makefile, extraida para poder virar test() do Meson e, principalmente,
+# para AFIRMAR o que antes so era impresso (a contagem de decisoes).
 #
-# Vale para as DUAS pocs, que e o ponto: elas diferem so em ONDE a decisao
-# roda -- laco de background (SimAgent) contra fase 3 do frame
-# (FlightAgentTC) -- e as duas tem de dar o mesmo estado nas tres
-# configuracoes de threads.
+# Generico para qualquer poc baseada em ( FlightAgentTC ) -- todo agente
+# deste repositorio decide na fase 3 do frame de tempo critico, e tem de dar
+# o mesmo estado nas tres configuracoes de threads.
 #
 # A fixture e HERMETICA (sem 'networks:') e gerada aqui mesmo: com o bloco de
 # rede o processo ingere PDUs DIS de quem estiver na LAN, e duas execucoes
@@ -153,7 +152,7 @@ done
 #
 # A assercao NAO e 'dec == frames', e sim que 'dec' avanca exatamente na
 # mesma taxa que 'frame' entre dois dumps consecutivos. A diferenca importa:
-# a multi-thread decide uma vez a mais na inicializacao da Station (medido:
+# o agente decide uma vez a mais na inicializacao da Station (medido:
 # 601 decisoes em 600 frames, identico nas tres configuracoes de thread), o
 # que e offset de partida e nao perda de vinculo com o frame. Comparar
 # DELTAS mede a propriedade que interessa e ignora o offset.

@@ -9,7 +9,6 @@
 // ("domain::Foo") em dois .so's distintos tem o MESMO simbolo mangled -- a
 // comparacao de type_info deste toolchain degrada para strcmp entre objetos
 // RTLD_LOCAL (ver o comentario equivalente, mais detalhado, em
-// models/players/missile/src/domain/Guidance.hpp e em
 // libs/xplugin/PluginRegistry.cpp). Aninhar sob o namespace proprio deste
 // modelo elimina a colisao de graca -- troque "xtemplate" pelo nome do SEU
 // modelo ao copiar este diretorio (ver docs/PRIMEIROS-PASSOS.md).

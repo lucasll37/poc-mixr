@@ -41,12 +41,9 @@ BEGIN_SLOTTABLE(BtBehavior)
    "supportSpeed",     // 14
    "evadeHold",        // 15
    "terrainClearance", // 16
-   "launchMinRange",   // 17
-   "launchMaxRange",   // 18
-   "launchCone",       // 19
-   "patrolJitterHeading", // 20
-   "patrolMasterSeed",    // 21
-   "patrolSeedOverride",  // 22 -- opcional; a PRESENCA do slot e o que importa,
+   "patrolJitterHeading", // 17
+   "patrolMasterSeed",    // 18
+   "patrolSeedOverride",  // 19 -- opcional; a PRESENCA do slot e o que importa,
                           //       nao o valor (0 e semente valida) -- ver
                           //       setSlotPatrolSeedOverride() abaixo
 END_SLOTTABLE(BtBehavior)
@@ -68,12 +65,9 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(14, setSlotSupportSpeed,   base::Number)
    ON_SLOT(15, setSlotEvadeHold,      base::Time)
    ON_SLOT(16, setSlotTerrainClearance, base::Distance)
-   ON_SLOT(17, setSlotLaunchMinRange, base::Distance)
-   ON_SLOT(18, setSlotLaunchMaxRange, base::Distance)
-   ON_SLOT(19, setSlotLaunchCone,     base::Angle)
-   ON_SLOT(20, setSlotPatrolJitterHeading, base::Angle)
-   ON_SLOT(21, setSlotPatrolMasterSeed,    base::Number)
-   ON_SLOT(22, setSlotPatrolSeedOverride,  base::Number)
+   ON_SLOT(17, setSlotPatrolJitterHeading, base::Angle)
+   ON_SLOT(18, setSlotPatrolMasterSeed,    base::Number)
+   ON_SLOT(19, setSlotPatrolSeedOverride,  base::Number)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -190,27 +184,6 @@ bool BtBehavior::setSlotTerrainClearance(const base::Distance* const msg)
    if (msg == nullptr) return false;
    tune.terrainClearanceM = base::Meters::convertStatic(*msg);
    return (tune.terrainClearanceM >= 0.0);
-}
-
-bool BtBehavior::setSlotLaunchMinRange(const base::Distance* const msg)
-{
-   if (msg == nullptr) return false;
-   tune.launchEnv.minRangeM = base::Meters::convertStatic(*msg);
-   return (tune.launchEnv.minRangeM >= 0.0);
-}
-
-bool BtBehavior::setSlotLaunchMaxRange(const base::Distance* const msg)
-{
-   if (msg == nullptr) return false;
-   tune.launchEnv.maxRangeM = base::Meters::convertStatic(*msg);
-   return (tune.launchEnv.maxRangeM > 0.0);
-}
-
-bool BtBehavior::setSlotLaunchCone(const base::Angle* const msg)
-{
-   if (msg == nullptr) return false;
-   tune.launchEnv.coneDeg = base::Degrees::convertStatic(*msg);
-   return (tune.launchEnv.coneDeg >= 0.0);
 }
 
 // Zero e o default e significa "recurso desligado" -- mesmo raciocinio do

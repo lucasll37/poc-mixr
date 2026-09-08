@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bt/NodeContext.hpp"
-#include "domain/LaunchPolicy.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -19,8 +18,7 @@ namespace bt_nodes {
 // pratico era que a arvore, a peca mais propria desta poc, so podia ser
 // exercitada subindo uma Station.
 //
-// Esta interface e aquele conjunto de getters (hoje nove -- launchEnvelope()
-// veio depois, para a demo de missil guiado). BtBehavior a
+// Esta interface e aquele conjunto de getters (hoje oito). BtBehavior a
 // implementa sem escrever um metodo novo: as assinaturas ja eram estas.
 //
 // O que isso compra: bt/nodes/*.cpp e bt/bt_factory.cpp passam a compilar
@@ -51,11 +49,6 @@ public:
    virtual double getFrameDt() const = 0;
    virtual double getFuelReserve() const = 0;
    virtual double getSupportSpeedKts() const = 0;
-
-   // envelope de lancamento do missil (ver domain/LaunchPolicy.hpp) --
-   // so usado por LaunchEnvelopeCondition; nos demais avioes (sem 'stores:')
-   // WorldView::weaponReady ja falha antes de este valor importar.
-   virtual const domain::LaunchEnvelope& launchEnvelope() const = 0;
 };
 
 } // namespace bt_nodes

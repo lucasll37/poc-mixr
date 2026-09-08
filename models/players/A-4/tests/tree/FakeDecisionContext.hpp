@@ -28,7 +28,6 @@ public:
    double frameDt{0.02};
    double fuelReserve{0.35};
    double supportSpeedKts{180.0};
-   domain::LaunchEnvelope launchEnv{};
 
    const domain::WorldView& snapshot() const override        { return snap; }
    bt_nodes::FlightDecision& decision() override             { return dec; }
@@ -38,7 +37,6 @@ public:
    double getFrameDt() const override                        { return frameDt; }
    double getFuelReserve() const override                    { return fuelReserve; }
    double getSupportSpeedKts() const override                { return supportSpeedKts; }
-   const domain::LaunchEnvelope& launchEnvelope() const override { return launchEnv; }
 
    // Copia fiel de BtBehavior::feedThreatPolicy(): Snapshot -> domain.
    void alimentarPolitica(const double dt)

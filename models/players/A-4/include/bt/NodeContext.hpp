@@ -29,12 +29,6 @@ struct FlightDecision
    double alertAltitudeM{};
    double alertRangeM{};
 
-   // pedido de lancamento de missil (ver bt/nodes/LaunchMissileAction.cpp) --
-   // quem executa de fato e xnative::FlightAction::execute(), unico lugar
-   // deste modelo que toca objeto MIXR de arma.
-   bool launchRequested{};
-   std::string launchTargetName;
-
    void reset() { *this = FlightDecision{}; }
 
    void take(const domain::FlightCommand& cmd, const std::string& text)

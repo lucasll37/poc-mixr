@@ -41,10 +41,9 @@ namespace {
 
 using mixr::xplugin::PluginDescV1;
 
-// As classes que o cenario de producao nomeia. FlightAgentTC nao entra: so a
-// multi-thread o tem, e esta camada roda contra o modelo da single-thread.
+// As classes que o cenario de producao nomeia.
 const char* const ESPERADAS[] = {
-   "AlertDatalink", "TacticalAlert", "FlightState",
+   "AlertDatalink", "TacticalAlert", "FlightState", "FlightAgentTC",
    "BtBehavior", "AltitudeSafetyBehavior", "FlightAction",
 };
 

@@ -2,7 +2,7 @@
 // src/poc/dis/bandit
 //
 // O bandit1 (o intruso), num processo proprio: mesma dinamica JSBSim A-4 +
-// Autopilot, mesmos valores iniciais dos players single-thread/multi-thread,
+// Autopilot, mesmos valores iniciais dos players da poc 'flight',
 // mais duas coisas:
 //
 //    ioHandler: ( JoystickIoHandler ... )   -- pilotagem manual por
@@ -11,10 +11,9 @@
 //       comentario de JoystickIoHandler.hpp sobre hasRealJoystick()).
 //
 //    networks: ( DisNetIO ... )             -- emite o estado do bandit1
-//       via DIS nativo do MIXR. single-thread/multi-thread nao declaram
-//       nenhum bandit1 LOCAL: recebem este aqui so pela rede (ver o bloco
-//       'networks:' nos scenario.edl.in delas, com o MESMO disEntityType
-//       usado abaixo).
+//       via DIS nativo do MIXR. A poc 'flight' nao declara nenhum bandit1
+//       LOCAL: recebe este aqui so pela rede (ver o bloco 'networks:' no
+//       scenario.edl.in dela, com o MESMO disEntityType usado abaixo).
 //
 // Sem @NUM_TC_THREADS@/.edl.in: nao ha CLI aqui (nada de -threads), entao o
 // numero de threads T/C fica fixo no proprio arquivo.
@@ -63,15 +62,14 @@
    // JoystickIoHandler).
    //
    // Esquema de portas (mesma receita do exemplo do proprio MIXR --
-   // MIXR-PATTERN-CONTEXT.md secao 6.7 -- estendida para 3 processos no
+   // MIXR-PATTERN-CONTEXT.md secao 6.7 -- estendida para 2 processos no
    // mesmo host): todo mundo ESCUTA em 3000; cada processo EMITE de uma
    // porta local diferente e ignora essa mesma porta como origem (assim
-   // ninguem ouve o proprio eco). bandit: 3001. single-thread: 3002.
-   // multi-thread: 3003.
+   // ninguem ouve o proprio eco). bandit: 3001. flight: 3002.
    //
    // disEntityType e inventado (nao e enumeracao SISO-REF-010 real) -- so
-   // precisa ser o MESMO valor usado no 'inputEntityTypes:' das duas pocs
-   // que recebem o bandit1.
+   // precisa ser o MESMO valor usado no 'inputEntityTypes:' da poc que
+   // recebe o bandit1.
    // ----------------------------------------------------------------------
    networks: {
       ( DisNetIO
@@ -86,14 +84,14 @@
                disEntityType: [ 1 2 225 1 99 0 0 ]
             )
          }
-         // Recebe as falcon1..4 (emitidas por single-thread/multi-thread, ver o
-         // 'outputEntityTypes:' delas). Mesmo disEntityType do bandit1: nao ha
+         // Recebe as falcon1..4 (emitidas pela poc 'flight', ver o
+         // 'outputEntityTypes:' dela). Mesmo disEntityType do bandit1: nao ha
          // colisao porque cada lado so ouve de quem emite UMA coisa (aqui, so
          // chega trafego de falcon; o proprio bandit1 e filtrado pelo
          // ignoreSourcePort acima). Template minimo -- so o suficiente pra
          // aparecer no Tacview; sem dynamicsModel/pilot: a posicao do fantasma
          // e so dead reckoning, nunca simulacao local (mesmo raciocinio do
-         // 'inputEntityTypes:' das duas pocs gemeas).
+         // 'inputEntityTypes:' da poc 'flight').
          inputEntityTypes: {
             ( DisNtm
                template: ( Aircraft type: "A4"

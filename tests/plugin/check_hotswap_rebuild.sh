@@ -13,7 +13,7 @@
 # nao e nem tocado.
 #
 # O binario e o ./app: as pocs nao tem mais executavel proprio (ver
-# src/poc/meson.build). A fixture continua saindo do cenario da single-thread,
+# src/poc/meson.build). A fixture continua saindo do cenario da poc 'flight',
 # e entra por '-f', como em todo teste deste repositorio.
 #
 set -euo pipefail
@@ -28,7 +28,7 @@ SO=dist/lib/mixr-plugins/libflight.so
 # do proprio projeto), e como todas as chamadas de meson aqui terminam em
 # '|| true' ou com a saida descartada, o alvo falhava sem dizer por que.
 MODEL_BUILD=models/players/A-4/build
-FIX=build/tests-fixtures/single-thread-hotswap-vivo.edl.in
+FIX=build/tests-fixtures/flight-hotswap-vivo.edl.in
 
 # 'meson install' do MODELO deposita em models/players/A-4/dist/ -- o dist LOCAL
 # daquele projeto, nao o do host. Quem o host carrega e dist/lib/mixr-plugins/,
@@ -50,7 +50,7 @@ publica_so() {
 #     janela do teste; e uma perna curta demais faz o rumo comandado saltar
 #     mais rapido do que a aeronave (maxRateOfTurnDps=3) consegue seguir.
 mkdir -p build/tests-fixtures
-python3 tests/scenario/make_fixture.py --poc single-thread --mode intruder --out "$FIX" > /dev/null
+python3 tests/scenario/make_fixture.py --poc flight --mode intruder --out "$FIX" > /dev/null
 python3 - "$FIX" <<'PYEOF'
 import re, sys
 p = sys.argv[1]

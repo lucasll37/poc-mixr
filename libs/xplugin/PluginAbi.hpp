@@ -158,7 +158,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 // registrado", com o autor jurando que escreveu a funcao. Aqui o autor nao
 // escreve a assinatura, entao nao ha onde enfiar um 'static'.
 //
-// Uso -- o exemplo minimo completo e models/players/fixtures/stub/src/stub.cpp, e o de
+// Uso -- o exemplo minimo completo e models/players/template/src/mirror.cpp, e o de
 // producao e models/players/A-4/src/plugin.cpp:
 //
 //    namespace {
@@ -170,7 +170,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 //
 // O que um modelo TEM de fazer alem disto (as bases obrigatorias, os slots que
 // o cenario nomeia e o dever de escrever no xboard) esta em
-// models/players/fixtures/stub/docs/CONTRATO.md -- o descritor abaixo e so o EMPACOTAMENTO.
+// models/players/template/docs/CONTRATO.md -- o descritor abaixo e so o EMPACOTAMENTO.
 //------------------------------------------------------------------------------
 #define MIXR_PLUGIN_DEFINE_IMPL(NAME, FACTORY_FN, NAMES, METAS, PLAYER_SZ)      \
    extern "C" MIXR_PLUGIN_EXPORT                                                \

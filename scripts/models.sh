@@ -1,30 +1,33 @@
 #!/usr/bin/env bash
 #
-# Gera um modelo novo em models/players/<nome>/ a partir de um ponto de
-# partida copiavel (fixtures/stub, achatado, ou template/, em camadas).
+# Gera um modelo novo em models/players/<nome>/ a partir do unico ponto de
+# partida copiavel: models/players/template/.
 #
-# Automatiza a receita MECANICA ja documentada em models/README.md secao 2 e
-# em models/players/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
+# Automatiza a receita MECANICA ja documentada em
+# models/players/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
 # novo, so elimina os erros manuais mais citados no repositorio: a linha ROOT
 # do Makefile (calculada aqui pela PROFUNDIDADE REAL do destino, nunca
-# copiada -- ver models/README.md secao 5, armadilha 7) e o namespace C++
-# aninhado (models/players/fixtures/stub/docs/CONTRATO.md secao 6) esquecido pela
-# metade.
+# copiada) e o namespace C++ aninhado (models/players/template/docs/
+# CONTRATO.md secao 6) esquecido pela metade -- e apaga o mirror de contrato
+# (src/mirror.cpp + os blocos MIRROR-BLOCK-START/END em meson.build/tests/
+# meson.build), que NAO faz parte do scaffold e colidiria em nome de fabrica
+# com models/players/A-4 se um modelo novo continuasse exportando os mesmos
+# 9 nomes por acidente.
 #
 # O QUE ESTE SCRIPT NAO FAZ, de proposito:
 #   - nao escreve a logica de dominio (a razao do modelo existir);
-#   - nao escreve o cenario que carrega o modelo (models/README.md secao 4 --
-#     o .so entra sozinho em 'make models'/'make test' por descoberta via
-#     find, mas so aparece num cenario rodavel depois de um '.edl.in' novo
-#     apontar pra ele; nao ha catalogo pra registrar, so o arquivo);
+#   - nao escreve o cenario que carrega o modelo (models/players/template/
+#     docs/PRIMEIROS-PASSOS.md, passo 6 -- o .so entra sozinho em
+#     'make models'/'make test' por descoberta via find, mas so aparece num
+#     cenario rodavel depois de um '.edl.in' novo apontar pra ele; nao ha
+#     catalogo pra registrar, so o arquivo);
 #   - nao adiciona a linha em models/REGISTRO.md;
 #   - nao faz commit nenhum.
 # Tudo isso fica no checklist impresso ao final.
 #
 # Uso:
-#   scripts/models.sh --name meu_modelo --kind stub
-#   scripts/models.sh --name meu_modelo --kind template
-#   scripts/models.sh --name meu_modelo --kind stub --dest algum/lugar --no-build
+#   scripts/models.sh --name meu_modelo
+#   scripts/models.sh --name meu_modelo --dest algum/lugar --no-build
 #
 # Pre-requisito (uma vez por maquina, igual a qualquer modelo deste
 # repositorio): 'make configure && make sdk' na raiz.
@@ -34,14 +37,12 @@ set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 NAME=""
-KIND="stub"
 DEST=""
 NO_BUILD=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --name) NAME="$2"; shift 2 ;;
-        --kind) KIND="$2"; shift 2 ;;
         --dest) DEST="$2"; shift 2 ;;
         --no-build) NO_BUILD=1; shift ;;
         *) echo "argumento desconhecido: $1" >&2; exit 1 ;;
@@ -49,14 +50,9 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$NAME" ]; then
-    echo "uso: scripts/models.sh --name meu_modelo --kind stub|template [--dest pasta] [--no-build]" >&2
+    echo "uso: scripts/models.sh --name meu_modelo [--dest pasta] [--no-build]" >&2
     exit 1
 fi
-
-case "$KIND" in
-    stub|template) : ;;
-    *) echo "kind invalido: '$KIND' -- use 'stub' ou 'template'" >&2; exit 1 ;;
-esac
 
 # minusculas/digitos/underscore, comecando por letra -- mesma regra do gerador
 # anterior (NOME_RE).
@@ -65,11 +61,7 @@ if ! [[ "$NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
     exit 1
 fi
 
-if [ "$KIND" = "stub" ]; then
-    ORIGEM="$REPO_ROOT/models/players/fixtures/stub"
-else
-    ORIGEM="$REPO_ROOT/models/players/template"
-fi
+ORIGEM="$REPO_ROOT/models/players/template"
 ORIGEM_NOME="$(basename "$ORIGEM")"
 
 if [ -n "$DEST" ]; then
@@ -100,9 +92,9 @@ fi
 #
 # Substituicao LITERAL (nao regex): bash trata 'de'/'para' como padrao de
 # glob em '${var//de/para}', mas nenhuma string usada por este script contem
-# '*'/'?'/'[' -- kind e' sempre 'stub'/'template' e --name ja foi validado
-# contra ^[a-z][a-z0-9_]*$. O 'cat arquivo; echo x' + '%x' preserva a quebra
-# de linha final que 'command substitution' descartaria sozinha.
+# '*'/'?'/'[' -- --name ja foi validado contra ^[a-z][a-z0-9_]*$. O
+# 'cat arquivo; echo x' + '%x' preserva a quebra de linha final que
+# 'command substitution' descartaria sozinha.
 # ---------------------------------------------------------------------------
 substituir() {
     local caminho="$1" de="$2" para="$3" obrigatorio="${4:-1}"
@@ -132,11 +124,26 @@ arquivos_contendo() {
     done
 }
 
+# apagar_bloco_mirror ARQUIVO -- remove, inclusive, tudo entre
+# '# >>> MIRROR-BLOCK-START' e '# <<< MIRROR-BLOCK-END' (ver
+# models/players/template/meson.build e tests/meson.build). Nao-fatal se o
+# marcador nao existir (o arquivo pode nao ter bloco de mirror nenhum).
+apagar_bloco_mirror() {
+    local caminho="$1"
+    [ -f "$caminho" ] || return 0
+    grep -q 'MIRROR-BLOCK-START' "$caminho" || return 0
+    awk '
+        /# >>> MIRROR-BLOCK-START/ { pulando = 1; next }
+        /# <<< MIRROR-BLOCK-END/   { pulando = 0; next }
+        !pulando { print }
+    ' "$caminho" > "$caminho.tmp" && mv "$caminho.tmp" "$caminho"
+}
+
 # linha_root DEST -- 'ROOT := $(abspath ..N vezes..)' calculado da
 # PROFUNDIDADE REAL do destino em relacao a raiz do repo -- elimina a
-# armadilha mais citada de models/README.md (copiar o Makefile do stub, 4
-# niveis por morar em fixtures/, para um destino de 3 niveis, e esquecer de
-# tirar um '../').
+# armadilha mais citada de models/players/template/docs/PRIMEIROS-PASSOS.md
+# (copiar o Makefile do template, 3 niveis, para um destino de outra
+# profundidade, e esquecer de ajustar os '../').
 linha_root() {
     local rel dots i partes
     rel="${1#"$REPO_ROOT"/}"
@@ -155,13 +162,13 @@ imprimir_checklist() {
 
 Falta, MANUALMENTE (nada disto e automatizavel):
 
-  [ ] a regra de negocio de verdade (docs/PRIMEIROS-PASSOS.md, passo 5, se veio do
-      template -- domain -> ubf -> xnative)
+  [ ] a regra de negocio de verdade (docs/PRIMEIROS-PASSOS.md, passo 5 --
+      domain -> ubf/State -> ubf/Behavior -> ubf/Action -> xnative/factory)
   [ ] preservar as chamadas ao xboard em ubf/*Action::execute() (a UNICA obrigacao que
-      falha em silencio -- ver models/players/fixtures/stub/docs/CONTRATO.md secao 3)
+      falha em silencio -- ver models/players/template/docs/CONTRATO.md secao 3)
   [ ] atualizar xnative/factory.cpp (NOMES[]/METAS[]) se classes forem renomeadas/removidas
   [ ] revisar a prosa de README.md/docs/*.md -- so o titulo foi trocado, o resto ainda
-      descreve a origem (${nome} copiou de fixtures/stub ou template/)
+      descreve a origem (${nome} copiou de template/)
   [ ] o bloco \`provides:\` do .edl do SEU cenario (tem que bater EXATAMENTE com o que o
       .so exporta)
   [ ] git add models/players/${nome}/ (este script nao commita nada)
@@ -169,15 +176,15 @@ Falta, MANUALMENTE (nada disto e automatizavel):
       'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
       '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
       registrar em lugar nenhum) e, se fizer sentido, cobertura em tests/meson.build --
-      ver models/README.md, secoes 4.1 e 4.2
+      ver CONTRIBUTING.md, secoes 5.2 e 5.3
   [ ] acrescentar sua linha em models/REGISTRO.md (nome, pasta, status, responsavel)
 EOF
 }
 
 echo "copiando ${ORIGEM#"$REPO_ROOT"/} -> ${DEST_ABS#"$REPO_ROOT"/} ..."
 # rsync (nao 'cp -r' + apagar depois) para nao copiar build//dist/ a toa --
-# os dois projetos copiaveis (fixtures/stub e template/) sao autocontidos e
-# costumam ter build/dist LOCAIS de terem sido compilados sozinhos.
+# o template e autocontido e costuma ter build/dist LOCAIS de ter sido
+# compilado sozinho.
 if ! command -v rsync >/dev/null 2>&1; then
     echo "rsync nao encontrado -- necessario para copiar o scaffold" >&2
     exit 1
@@ -196,32 +203,28 @@ if ! rsync -a \
     exit 1
 fi
 
-# 1. meson.build -- mesma receita ja documentada em models/README.md secao 2
+# 1. O mirror de contrato (src/mirror.cpp + os blocos template_mirror_lib/
+#    contrato-...-mirror) NAO faz parte do scaffold -- ver o aviso no topo
+#    do proprio arquivo. Apaga ANTES de qualquer substituicao de nome, para
+#    as etapas seguintes (namespace, MIXR_PLUGIN_DEFINE, verificacoes de
+#    sobra) nunca verem esse arquivo.
+rm -f "$DEST_ABS/src/mirror.cpp"
+apagar_bloco_mirror "$DEST_ABS/meson.build"
+apagar_bloco_mirror "$DEST_ABS/tests/meson.build"
+
+# 2. meson.build -- mesma receita ja documentada em docs/PRIMEIROS-PASSOS.md
 #    (substituicao sobre a string entre aspas simples, que cobre project() E
 #    shared_module() num passo so).
 MESON="$DEST_ABS/meson.build"
 substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 
-if [ "$KIND" = "stub" ]; then
-    # 2a. renomeia o arquivo fonte e a referencia files(...) em meson.build
-    OLD_CPP="$DEST_ABS/src/$ORIGEM_NOME.cpp"
-    NEW_CPP="$DEST_ABS/src/$NAME.cpp"
-    if ! mv "$OLD_CPP" "$NEW_CPP"; then
-        echo "erro fatal: nao consegui renomear '$OLD_CPP' -> '$NEW_CPP' (a copia do scaffold" >&2
-        echo "falhou antes deste ponto?)" >&2
-        exit 1
-    fi
-    substituir "$MESON" "files('src/$ORIGEM_NOME.cpp')" "files('src/$NAME.cpp')"
-    PLUGIN_CPP="$NEW_CPP"
-    ARQUIVOS_NS="$NEW_CPP"
-else
-    # 2b. template: namespace C++ em TODOS os arquivos de uma vez (a mesma
-    #     receita de docs/PRIMEIROS-PASSOS.md passo 2, "grep -rl | xargs sed").
-    PLUGIN_CPP="$DEST_ABS/src/plugin.cpp"
-    ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests)"
-fi
+# 3. namespace C++ em TODOS os arquivos de uma vez (a mesma receita de
+#    docs/PRIMEIROS-PASSOS.md passo 2, "grep -rl | xargs sed"). Roda DEPOIS
+#    do passo 1 (mirror.cpp ja apagado), entao 'xtemplate_mirror' nunca
+#    entra nesta lista.
+ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests)"
 
-# 3. namespace aninhado -- CONTRATO.md secao 6: 'xstub'/'xtemplate' -> 'x<nome>'
+# 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'
 NS_VELHO="x$ORIGEM_NOME"
 NS_NOVO="x$(printf '%s' "$NAME" | tr -cd 'a-z0-9')"
 if [ -n "$ARQUIVOS_NS" ]; then
@@ -230,11 +233,12 @@ if [ -n "$ARQUIVOS_NS" ]; then
     done <<< "$ARQUIVOS_NS"
 fi
 
-# 4. MIXR_PLUGIN_DEFINE -- o primeiro argumento e a string que o host usa
+# 5. MIXR_PLUGIN_DEFINE -- o primeiro argumento e a string que o host usa
 #    para identificar o plugin no descritor; tem que bater com o novo nome.
+PLUGIN_CPP="$DEST_ABS/src/plugin.cpp"
 substituir "$PLUGIN_CPP" "MIXR_PLUGIN_DEFINE(\"$ORIGEM_NOME\"" "MIXR_PLUGIN_DEFINE(\"$NAME\""
 
-# 5. ROOT do Makefile -- calculado, nunca copiado (ver linha_root()).
+# 6. ROOT do Makefile -- calculado, nunca copiado (ver linha_root()).
 MAKEFILE="$DEST_ABS/Makefile"
 NOVA_ROOT="$(linha_root "$DEST_ABS")"
 if grep -q '^ROOT[[:space:]]*:=' "$MAKEFILE"; then
@@ -246,24 +250,22 @@ else
     echo "  aviso: linha 'ROOT :=' nao encontrada em ${MAKEFILE#"$REPO_ROOT"/}" >&2
 fi
 
-# 6a. lib<origem>.so -- literal em Makefile/README/docs (comentarios do alvo
+# 7a. lib<origem>.so -- literal em Makefile/README/docs (comentarios do alvo
 #     'install', echo de sucesso, ldd de verificacao). Esta ultima e'
 #     FUNCIONAL, nao so prosa: o Makefile copiado confere
 #     'ldd .../lib{origem}.so' dentro do proprio alvo 'install' -- sem este
-#     passo, 'make install' checaria o arquivo ERRADO.
+#     passo, 'make install' checaria o arquivo ERRADO. Tambem cobre a
+#     mencao residual a 'libtemplate_mirror.so' que sobrar em README/docs
+#     apos o passo 1 apagar o artefato em si.
 while IFS= read -r -d '' f; do
+    substituir "$f" "lib${ORIGEM_NOME}_mirror.so" "" 0
     substituir "$f" "lib$ORIGEM_NOME.so" "lib$NAME.so" 0
 done < <(find "$DEST_ABS" -type f \( -name 'Makefile' -o -name '*.md' \) -print0)
 
-# 6b. CHANGELOG.md -- esvaziado e recomecado (docs/PRIMEIROS-PASSOS.md
+# 7b. CHANGELOG.md -- esvaziado e recomecado (docs/PRIMEIROS-PASSOS.md
 #     passo 3), com a versao lida do PROPRIO meson.build copiado.
 VERSAO="$(grep -oP "version:\s*'\K[^']+" "$MESON" | head -1)"
 [ -z "$VERSAO" ] && VERSAO="0.1.0"
-if [ "$KIND" = "template" ]; then
-    ORIGIN_REL="$ORIGEM_NOME"
-else
-    ORIGIN_REL="fixtures/$ORIGEM_NOME"
-fi
 DATA_HOJE="$(date +%Y-%m-%d)"
 cat > "$DEST_ABS/CHANGELOG.md" <<EOF
 # Changelog — \`$NAME\`
@@ -288,15 +290,15 @@ mensagem de commit em uso.
 
 ## [$VERSAO] — $DATA_HOJE
 
-Gerado a partir de \`models/players/$ORIGIN_REL\` por \`scripts/models.sh\` (kind=$KIND).
+Gerado a partir de \`models/players/$ORIGEM_NOME\` por \`scripts/models.sh\`.
 Substitua esta entrada pela primeira decisão real deste modelo antes do primeiro commit.
 EOF
 
-# 7. README.md -- so o titulo (H1), a prosa fica para o passo manual
-#    (models/README.md secao 2 / docs/PRIMEIROS-PASSOS.md passo 5).
+# 8. README.md -- so o titulo (H1), a prosa fica para o passo manual
+#    (docs/PRIMEIROS-PASSOS.md passo 5).
 substituir "$DEST_ABS/README.md" "\`$ORIGEM_NOME\`" "\`$NAME\`" 0
 
-# 8. confere que nada do nome/namespace antigo sobrou (mesmo grep que o
+# 9. confere que nada do nome/namespace antigo sobrou (mesmo grep que o
 #    passo 2 do PRIMEIROS-PASSOS.md sugere rodar a mao)
 SOBRAS="$(arquivos_contendo "$DEST_ABS" "$NS_VELHO" include src tests)"
 SOBRAS_MESON="$(arquivos_contendo "$DEST_ABS" "'$ORIGEM_NOME'" . | grep -F 'meson.build' || true)"
@@ -312,18 +314,18 @@ if [ "$NO_BUILD" = "1" ]; then
     exit 0
 fi
 
-# 9. build de fumaca REAL -- prova que o scaffold compila, testa E instala
-#    (== popula ./dist/lib/mixr-plugins/) antes de devolver ao usuario.
-#    'test: build' NAO chama 'meson install' (ver os dois Makefiles) -- por
-#    isso os dois alvos, nao so 'test'. Requer 'make configure && make sdk'
-#    ja rodado na raiz (mesmo pre-requisito de qualquer modelo deste
-#    repositorio).
+# 10. build de fumaca REAL -- prova que o scaffold compila, testa E instala
+#     (== popula ./dist/lib/mixr-plugins/) antes de devolver ao usuario.
+#     'test: build' NAO chama 'meson install' (ver o Makefile) -- por isso
+#     os dois alvos, nao so 'test'. Requer 'make configure && make sdk' ja
+#     rodado na raiz (mesmo pre-requisito de qualquer modelo deste
+#     repositorio).
 echo "compilando, testando e instalando o scaffold (make test install) ..."
 if ! make -C "$DEST_ABS" test install; then
     echo "
 FALHOU o build/teste de verificacao -- o scaffold ficou em models/players/$NAME/,
-incompleto. NAO apague a pasta: compare com models/players/$([ "$KIND" = "stub" ] && echo fixtures/stub || echo template)/
-para achar o que sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
+incompleto. NAO apague a pasta: compare com models/players/template/ para achar o que
+sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
 fi
 

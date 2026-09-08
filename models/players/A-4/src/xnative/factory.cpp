@@ -7,9 +7,7 @@
 #include "ubf/RLBridgeBehavior.hpp"
 #include "xnative/AlertDatalink.hpp"
 #include "xnative/ThreadTagProbe.hpp"
-#ifdef FLIGHT_TC_AGENT
-   #include "xnative/FlightAgentTC.hpp"
-#endif
+#include "xnative/FlightAgentTC.hpp"
 #include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 #include "mixr/base/MetaObject.hpp"
@@ -20,23 +18,18 @@ namespace models {
 namespace xnative {
 
 //------------------------------------------------------------------------------
-// UMA arvore de fonte, DOIS artefatos.
-//
-// A unica diferenca entre o modelo da single-thread e o da multi-thread e o
-// FlightAgentTC -- o agente de tempo critico. Em vez de duas copias da arvore
-// inteira (era assim ate aqui: ~3.100 linhas duplicadas, sustentadas por um
-// teste de guarda), ele fica atras de FLIGHT_TC_AGENT e o meson produz
-// libflight.so e libflight_tc.so do mesmo fonte.
-//
 // Registra as classes proprias -- nenhuma delas e player, dinamica,
 // controle ou sensor: tudo isso vem do framework
-// (Aircraft/JSBSimModel/Autopilot/Antenna+Tws+AirTrkMgr/SimAgent/UbfArbiter).
+// (Aircraft/JSBSimModel/Antenna+Tws+AirTrkMgr/UbfArbiter). FlightAgentTC e o
+// UNICO agente deste modelo -- decide sempre na fase 3 do frame de tempo
+// critico, como componente do proprio Player (nunca como ( SimAgent ) nativo
+// componente da Station; essa era a diferenca entre os dois artefatos que
+// este arquivo produzia antes, ate colapsarem num so).
 //
 // O que NAO da para herdar, e por que:
 //   * FlightState/BtBehavior/AltitudeSafetyBehavior/FlightAction -- o UBF
 //     define as INTERFACES de percepcao/decisao/atuacao, mas nao traz
-//     implementacoes prontas (models/ so acrescenta SimAgent e
-//     MultiActorAgent);
+//     implementacoes prontas;
 //   * AlertDatalink -- herda models::Datalink e so decide o que fazer com
 //     a mensagem recebida;
 //   * TacticalAlert -- a carga util do datalink e, por definicao, da
@@ -50,9 +43,7 @@ base::Object* factory(const std::string& name)
    if ( name == AlertDatalink::getFactoryName() )                obj = new AlertDatalink();
    else if ( name == events::TacticalAlert::getFactoryName() )  obj = new events::TacticalAlert();
    else if ( name == ThreadTagProbe::getFactoryName() )         obj = new ThreadTagProbe();
-#ifdef FLIGHT_TC_AGENT
    else if ( name == FlightAgentTC::getFactoryName() )          obj = new FlightAgentTC();
-#endif
 
    else if ( name == FlightState::getFactoryName() )            obj = new FlightState();
    else if ( name == BtBehavior::getFactoryName() )             obj = new BtBehavior();
@@ -76,9 +67,7 @@ const char* const NOMES[] = {
    "AlertDatalink",
    "TacticalAlert",
    "ThreadTagProbe",
-#ifdef FLIGHT_TC_AGENT
    "FlightAgentTC",
-#endif
    "FlightState",
    "BtBehavior",
    "AltitudeSafetyBehavior",
@@ -91,9 +80,7 @@ const base::MetaObject* const METAS[] = {
    AlertDatalink::getMetaObject(),
    events::TacticalAlert::getMetaObject(),
    ThreadTagProbe::getMetaObject(),
-#ifdef FLIGHT_TC_AGENT
    FlightAgentTC::getMetaObject(),
-#endif
    FlightState::getMetaObject(),
    BtBehavior::getMetaObject(),
    AltitudeSafetyBehavior::getMetaObject(),

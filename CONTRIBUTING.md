@@ -31,31 +31,28 @@ exatamente isto.
 
 ## 2. Escolha o ponto de partida
 
-Dois pontos de partida copiáveis — o "porquê" de cada camada está no `README.md`/`docs/` do
-respectivo diretório:
-
-| se o seu modelo... | comece por | por quê |
-|---|---|---|
-| decide com uma regra/condição só | [`models/players/fixtures/stub`](models/players/fixtures/stub/) | ~300 linhas, um arquivo, prova que o contrato basta |
-| vai coordenar mais de uma decisão desde o início | [`models/players/template`](models/players/template/) | já nasce em camadas (`domain/`→`ubf/`→`xnative/`) |
+Um único ponto de partida copiável — [`models/players/template`](models/players/template/): já
+nasce em camadas (`domain/`→`ubf/`→`xnative/`), com uma única decisão de exemplo em cada camada.
+Se o seu modelo decide com uma regra/condição só, apague o que não precisar — o "porquê" de cada
+camada está no `README.md`/`docs/` do diretório.
 
 **O caminho recomendado é o gerador automático**, que já existe neste repositório:
 
 ```bash
-make new-model NAME=meu_modelo KIND=stub   # ou KIND=template
+make new-model NAME=meu_modelo
 ```
 
 Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespace, `ROOT` do Makefile
-pela profundidade real) e termina com um checklist do que sobra manual. Se preferir fazer à mão, o
-roteiro completo está em [`stub`, `README.md`](models/players/fixtures/stub/README.md), seção
-"Usando este diretório como ponto de partida para um modelo novo", ou [`template`,
-`docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) passo a passo, dos
-dois — mas o gerador cobre exatamente essa receita.
+pela profundidade real) e termina com um checklist do que sobra manual — inclusive apagar
+`src/mirror.cpp` e o artefato `template_mirror`, que NÃO fazem parte do scaffold (ver o aviso no
+topo do próprio arquivo). Se preferir fazer à mão, o roteiro completo está em [`template`,
+`docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) — mas o gerador
+cobre exatamente essa receita.
 
 ## 3. O contrato: o que TODO modelo tem que fazer
 
-→ [`models/players/fixtures/stub/docs/CONTRATO.md`](models/players/fixtures/stub/docs/CONTRATO.md)
-— leia inteiro, mesmo vindo do `template`. Três obrigações merecem destaque:
+→ [`models/players/template/docs/CONTRATO.md`](models/players/template/docs/CONTRATO.md) — leia
+inteiro. Três obrigações merecem destaque:
 
 - **`provides:` bate EXATAMENTE com o que o `.so` exporta** (seção 2) — se não bater, o processo
   aborta na inicialização dizendo o que entregou; não é silencioso, mas é a causa mais comum de
@@ -127,31 +124,37 @@ Nada aqui monta a árvore por você — o Groot não tem "começar em branco com
 que produz o **arquivo inteiro, pronto pra abrir**: uma árvore vazia (um `<Fallback>` só, de
 partida) mais o `<TreeNodesModel>` com os nós do SEU `bt_factory.cpp`, os dois no mesmo `<root>`.
 
-No modelo `A-4` (produção), já está pronto:
+No modelo `A-4` (produção), já está pronto — um único alvo de Makefile:
 
 ```bash
-meson compile -C models/players/A-4/build dump-tree-model      # se ainda nao compilou
-models/players/A-4/build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova_arvore.xml
+cd models/players/A-4 && make create-bt
 ```
 
-`make open-groot` → `File > Load...` → `/tmp/nova_arvore.xml`. A paleta já mostra todos os nós
-do modelo (em azul, distintos dos nativos do BT.CPP); arraste da paleta pro canvas, conecte
-arrastando de uma saída pra uma entrada, e `File > Save` — esse arquivo salvo é a árvore de
-verdade, aponte o `treeFile:` do seu `.edl` pra ele.
+Cria `models/players/A-4/configs/bt.xml` (recusa se o arquivo já existir — renomeie/mova a árvore
+anterior antes de rodar de novo). `make open-groot` → `File > Load...` →
+`models/players/A-4/configs/bt.xml`. A paleta já mostra todos os nós do modelo (em azul, distintos
+dos nativos do BT.CPP); arraste da paleta pro canvas, conecte arrastando de uma saída pra uma
+entrada, e `File > Save` — depois de validada, renomeie para o nome definitivo e aponte o
+`treeFile:` do seu `.edl` pra ele. Registrou um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`
+depois disso? `make update-bt` atualiza o `<TreeNodesModel>` de **toda** árvore de `configs/`
+(descobertas por conteúdo, não por nome) de uma vez, inclusive árvores já existentes que ainda não
+tinham o bloco.
 
-**Se o SEU modelo não é o `A-4`**, este gerador não existe automaticamente pra ele — é código
-(`models/players/A-4/tools/dump_tree_model.cpp` + o alvo `dump-tree-model` em
-`models/players/A-4/tests/meson.build`, ~15 linhas de CMake/Meson no total). Copie o padrão de lá:
-o `.cpp` só monta uma `BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()`
-(ou equivalente) do SEU `bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a
-função nativa do BT.CPP que faz o trabalho de verdade.
+**Se o SEU modelo não é o `A-4`**, estes dois alvos não existem automaticamente pra ele — é código
+(`models/players/A-4/tools/dump_tree_model.cpp` + `tools/update_bt_models.py`, mais os alvos
+`create-bt`/`update-bt` do `Makefile` daquele projeto). Copie o padrão de lá — os três arquivos
+não têm nada amarrado ao nome/pastas do `A-4` especificamente, então dá pra copiar `tools/` inteiro
+para `models/players/<seu-modelo>/tools/` sem editar uma linha: o `.cpp` só monta uma
+`BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()` (ou equivalente) do SEU
+`bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a função nativa do BT.CPP que
+faz o trabalho de verdade; o `.py` descobre as árvores do SEU projeto em `configs/` sozinho.
 
 #### Depurar/monitorar ao vivo
 
 O modelo de produção (`A-4`) já tem esse hook pronto, opt-in por variável de ambiente:
 
 ```bash
-MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder src/poc/dis -scenario multi-thread
+MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder src/poc/dis -scenario flight
 ```
 
 Em outro terminal com display: `make open-groot` → aba **Monitor** → conectar em `localhost`
@@ -195,7 +198,7 @@ A poc já roda sem nenhuma linha em `tests/meson.build`. Decida se vale a pena p
 
 | a poc... | cobertura | precedente |
 |---|---|---|
-| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `single-thread`, `multi-thread`, `python-flight` |
+| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `flight`, `python-flight` |
 | não segue esse formato, mas tem uma propriedade que vale a pena provar | bloco(s) `test()` manuais, reaproveitando `scenario_runner`/`leak_runner`/`determinism_sh` fora do `foreach` | `onnx-policy` |
 | nenhuma das duas — é só composição de players já testados em outro lugar | nenhuma entrada; documente o porquê no `README.md` da própria poc | `built-in_mixr_1`, `full-systems-nav` |
 
@@ -212,11 +215,11 @@ repositório.
 
 `make test-asan` (raiz, ver [`README.md`](README.md#make-test-asan) para o passo a passo) é hoje
 **hardcoded para o A-4**: reconstrói `models/players/A-4` com `-Dasan=true` e roda uma fixture da poc
-`single-thread` (que carrega `libflight.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
+`flight` (que carrega `libflight.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
 aceita `NAME=`, e a razão é mecânica — `make models ASAN=true` (que ele chama por baixo) passa
 `ASAN=true` para **todo** projeto de modelo encontrado por `find` sob `models/players/`, mas só
-`models/players/A-4/meson_options.txt` declara `option('asan', ...)`; `fixtures/stub`, `missile` e
-`template` não têm essa opção, então um modelo copiado deles hoje **ignora** a flag em silêncio
+`models/players/A-4/meson_options.txt` declara `option('asan', ...)`; `template` não tem essa
+opção, então um modelo copiado dele hoje **ignora** a flag em silêncio
 (o GNU Make não reclama de variável de linha de comando não consumida) — nada quebra, mas
 `make test-asan` também não instrumenta nem exercita o `.so` do seu modelo.
 

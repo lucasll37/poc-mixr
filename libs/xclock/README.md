@@ -11,7 +11,7 @@ câmera lenta e pausar de verdade — nenhuma dessas três coisas o MIXR nativo 
 simulation::Station)`), sem slot próprio (`EMPTY_SLOTTABLE`) — troca-se o nome da classe na raiz
 do cenário e nada mais muda: `RESET_EVENT`, `WorldModel`, `players`, `dataRecorder`, `ioHandler`
 continuam exatamente como num `( Station )` comum. Do início real de
-`src/poc/dis/single-thread/configs/scenario.edl.in`:
+`src/poc/dis/flight/configs/scenario.edl.in`:
 
 ```
 ( ClockStation
@@ -154,11 +154,11 @@ devolve `true` na hora. Ver o padrão real de uso em `app/src/app/Shutdown.cpp::
 
 ## Limite conhecido, documentado no próprio header
 
-`ubf::Agent::updateData()` (`models::SimAgent`, usado por `src/poc/dis/single-thread`) chama
-`controller(dt)` sem consultar `isFrozen()` — com a simulação pausada esses agentes continuam
-decidindo, só que sobre um mundo estático: nada se move, a decisão apenas não para. O
-`FlightAgentTC` de `src/poc/dis/multi-thread`, decidindo na fase 3 do frame, para junto — porque
-`tcFrame()` simplesmente não roda enquanto pausado.
+`ubf::Agent::updateData()` (`models::SimAgent`, a classe nativa do MIXR — nenhuma poc deste
+repositório a usa mais, todo agente aqui é `FlightAgentTC`) chama `controller(dt)` sem consultar
+`isFrozen()` — com a simulação pausada um agente assim continuaria decidindo, só que sobre um
+mundo estático: nada se move, a decisão apenas não para. `FlightAgentTC`, decidindo na fase 3 do
+frame, para junto — porque `tcFrame()` simplesmente não roda enquanto pausado.
 
 ## Por que é `static_library()`, não `shared_library()`
 

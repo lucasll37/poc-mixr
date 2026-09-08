@@ -21,12 +21,11 @@
 // "a4" carrega OS MESMOS 53 componentes nativos de falcon1 em
 // built-in_mixr_1/configs/scenario_max_player.edl.in (copiados daqui, byte
 // a byte, exceto onde a diferenca de proposito exige mudar algo -- ver
-// abaixo). A diferenca inteira desta poc esta em DUAS linhas: o treeFile
-// aponta para flight_tree_nav.xml (um no so, ( Navigate ), sem
-// Patrol/RTB/Evade por baixo -- ver o cabecalho daquele XML) em vez de
-// flight_tree.xml, e o agente e um ( FlightAgentTC ) dentro do proprio
-// player (fase 3 do frame de tempo critico) em vez do ( SimAgent ) nativo
-// na Station.
+// abaixo). O agente e o MESMO ( FlightAgentTC ) dentro do proprio player
+// (fase 3 do frame de tempo critico) que built-in_mixr_1 ja usa -- a
+// diferenca inteira desta poc esta em UMA linha: o treeFile aponta para
+// flight_tree_nav.xml (um no so, ( Navigate ), sem Patrol/RTB/Evade por
+// baixo -- ver o cabecalho daquele XML) em vez de flight_tree.xml.
 //
 // O QUE "NAVEGAR DE VERDADE" SIGNIFICA AQUI: em built-in_mixr_1 a arvore de
 // PRODUCAO pilota o aviao (patrulha geometrica, evasao, retorno), e a
@@ -108,7 +107,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_tc.so"
+               file:     "libflight.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -693,9 +692,10 @@
                )
 
                // --- o AGENTE: UBF completo, arvore de UM no so ----------
-               // Componente do PLAYER (nao da Station -- diferente do
-               // ( SimAgent ) que built-in_mixr_1 usa), decidindo na FASE 3
-               // do frame de tempo critico. state/behavior sao os mesmos
+               // Componente do PLAYER (nao da Station), decidindo na FASE 3
+               // do frame de tempo critico -- o mesmo padrao usado por
+               // built-in_mixr_1 e por todo cenario deste repositorio.
+               // state/behavior sao os mesmos
                // tres papeis do UBF de producao (percepcao/decisao/
                // atuacao): so a arvore dentro do behavior muda.
                agent: ( FlightAgentTC

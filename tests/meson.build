@@ -395,9 +395,9 @@ test_xinfer = executable('test-xinfer',
 test('xinfer-degradacao', test_xinfer, suite: 'domain', timeout: 120)
 
 # libs/xpyembed -- degradacao E isolamento por chave. O segundo e o que
-# mantem o check-multi-thread verde: a ordem de aquisicao do GIL nao e
-# deterministica, entao dois avioes rodando o mesmo script NAO podem
-# compartilhar globais.
+# mantem o determinismo da poc python-flight verde: a ordem de aquisicao do
+# GIL nao e deterministica, entao dois avioes rodando o mesmo script NAO
+# podem compartilhar globais.
 test_xpyembed = executable('test-xpyembed',
     files('domain/test_xpyembed.cpp'),
     link_args           : rpath_link_args,
@@ -461,8 +461,7 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # completa esta em CONTRIBUTING.md secao 5.3 -- leia antes de editar esta
 # lista OU de escrever um bloco test() novo.
 pocs = [
-    ['single-thread', app, 'nao-critico', ''],
-    ['multi-thread',  app, 'critico',     ''],
+    ['flight',        app, 'flight',      ''],
     ['python-flight', app, 'python',      'PY-'],
 ]
 
@@ -544,7 +543,7 @@ test('scenario-app-quit', py,
 # regressao.
 test('scenario-app-quit-dis', py,
      args: files('scenario/run_app_quit_test.py') + [
-         '--binario', app.full_path(), '--scenario', 'multi-thread'],
+         '--binario', app.full_path(), '--scenario', 'flight'],
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
@@ -567,9 +566,6 @@ test('scenario-bad-args', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 60, is_parallel: false)
 
-# O CONTROLE NEGATIVO do determinismo: prova que ele vem de ONDE a decisao roda
-# (a fase 3 do frame), e nao do passo fixo. Solta o laco de background numa
-# thread propria em AMBAS as pocs e exige que a single-thread DIVIRJA e a
 # ------------------------------------------------------------------------------
 # A politica .onnx rodando DENTRO do frame -- ver o cabecalho do script.
 #
@@ -631,7 +627,7 @@ test('memory-onnx-policy', py,
 
 # O CONTROLE NEGATIVO da suite 'memory' -- prova que 'memory-<poc>' (acima)
 # PEGARIA um vazamento de verdade, nao so que a producao de hoje esta limpa.
-# Roda o MESMO cenario 'single-thread' contra 'model_leak' -- a mesma familia
+# Roda o MESMO cenario 'flight' contra 'model_leak' -- a mesma familia
 # de variante de teste do 'plugin-hotswap' (mesmo fonte de producao, atras da
 # mesma opcao 'variants'), so que com um UNICO ref() extra em
 # BtBehavior::genAction(), nunca balanceado por um unref() (ver o cabecalho
@@ -645,15 +641,6 @@ test('memory-controle-negativo', py,
      args: files('memory/check_leak_detector_controle_negativo.py') + [
          app.full_path(), model_build / 'libmodel_leak.so'],
      depends: app, workdir: raiz, suite: 'memory',
-     timeout: 1800, is_parallel: false)
-
-# multi-thread NAO. Ver o cabecalho do script.
-test('onde-a-decisao-roda', py,
-     args: files('determinism/check_onde_a_decisao_roda.py') + [
-         '--single', app.full_path(),
-         '--multi', app.full_path()],
-     depends: app,
-     workdir: raiz, suite: 'determinism',
      timeout: 1800, is_parallel: false)
 
 # ------------------------------------------------------------------------------
@@ -693,7 +680,7 @@ test('plugin-simbolo', bash,
 
 test('plugin-negativos', py,
      args: files('plugin/run_plugin_negatives.py') + [
-         '--binario', app.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'flight',
          '--bad-nosym', bad_plugins['nosym'].full_path(),
          '--bad-abi', bad_plugins['abi'].full_path(),
          '--bad-collide', bad_plugins['collide'].full_path()],
@@ -702,7 +689,7 @@ test('plugin-negativos', py,
 
 test('plugin-hotswap', py,
      args: files('plugin/run_plugin_hotswap.py') + [
-         '--binario', app.full_path(), '--poc', 'single-thread',
+         '--binario', app.full_path(), '--poc', 'flight',
          '--so-a', model_build / 'libmodel_variant_a.so',
          '--so-b', model_build / 'libmodel_variant_b.so'],
      depends: app, workdir: raiz, suite: 'plugin',
@@ -714,9 +701,9 @@ test('plugin-hotswap', py,
 # modelo escrito SO contra o SDK publicado, sem olhar domain/, bt/ ou ubf/.
 # E o unico teste que pode falhar por "o contrato nao basta".
 test('plugin-modelo-estranho', py,
-     args: files('plugin/run_stub_model.py') + [
-         '--binario', app.full_path(), '--poc', 'single-thread',
-         '--stub', dist_plugins / 'libstub.so'],
+     args: files('plugin/run_unknown_model.py') + [
+         '--binario', app.full_path(), '--poc', 'flight',
+         '--modelo', dist_plugins / 'libtemplate_mirror.so'],
      depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 
@@ -725,12 +712,13 @@ test('plugin-modelo-estranho', py,
 # so uma pasta com um README: um .so colocado ali e de fato copiado pra
 # dist/lib/mixr-plugins/ (o mesmo passo que o alvo 'models' do Makefile
 # raiz faz) e o resultado E USAVEL numa simulacao de verdade -- reusa o
-# stub como o "terceiro" e a MESMA bateria de plugin-modelo-estranho.
+# mirror de contrato do template como o "terceiro" e a MESMA bateria de
+# plugin-modelo-estranho.
 test('plugin-deposito-terceiro', py,
      args: files('plugin/run_thirdparty_deposit.py') + [
-         '--binario', app.full_path(), '--poc', 'single-thread',
-         '--source-so', dist_plugins / 'libstub.so',
-         '--run-stub-model', raiz / 'tests' / 'plugin' / 'run_stub_model.py'],
+         '--binario', app.full_path(), '--poc', 'flight',
+         '--source-so', dist_plugins / 'libtemplate_mirror.so',
+         '--run-unknown-model', raiz / 'tests' / 'plugin' / 'run_unknown_model.py'],
      depends: app, workdir: raiz, suite: 'plugin',
      timeout: 900, is_parallel: false)
 

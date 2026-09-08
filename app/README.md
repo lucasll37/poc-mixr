@@ -24,7 +24,7 @@ relativos). É obrigatório passar exatamente um de `-f`/`-folder` — rodar sem
 não abre tela nenhuma:
 
 ```bash
-./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in   # uma poc de src/poc/**, direto -- ver §3
+./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in        # uma poc de src/poc/**, direto -- ver §3
 ./build/app/src/app -folder src/poc/dis -scenario bandit                 # idem, quando a frota nao e falcon1..4
 ./build/app/src/app -folder ./sandbox                                    # navega uma pasta de cenarios soltos
 ```
@@ -121,22 +121,19 @@ Não há mais catálogo estático embutido no binário — toda poc sob `src/poc
 executável próprio) é alcançável por `-f`/`-folder`:
 
 ```bash
-./build/app/src/app -f src/poc/dis/single-thread/configs/scenario.edl.in   # ou multi-thread (mesmo formato)
+./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in          # frota falcon1..4
 ./build/app/src/app -folder src/poc/dis -scenario bandit                   # frota {bandit1} -- precisa de -folder
 ./build/app/src/app -folder src/poc     -scenario python-flight           # ou onnx-policy, built-in_mixr_1, full-systems-nav
 ```
 
 `-f <arquivo.edl>` carrega um cenário apontado direto pelo caminho — assume sempre a frota
-`falcon1..4` (o caso de `single-thread`/`multi-thread`/`python-flight`/`onnx-policy`/
-`built-in_mixr_1`, e das fixtures de teste). Um cenário com frota diferente (ex.: `bandit`,
-`{bandit1}`; `full-systems-nav`, `{a4}`) tem de ser carregado por `-folder` em vez de `-f`, que
-descobre a frota em runtime.
+`falcon1..4` (o caso de `flight`/`python-flight`/`onnx-policy`/`built-in_mixr_1`, e das fixtures
+de teste). Um cenário com frota diferente (ex.: `bandit`, `{bandit1}`; `full-systems-nav`, `{a4}`)
+tem de ser carregado por `-folder` em vez de `-f`, que descobre a frota em runtime.
 
 `-folder <pasta>` navega `<pasta>/<cenário>/configs/*.edl(.in)` — sozinho (sem `-scenario`) abre a
 tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. Só funciona quando
-`configs/` tem exatamente **um** `.edl`/`.edl.in` — é por isso que `single-thread` não aparece no
-segundo exemplo acima: sua pasta também tem o `.edl.in` da demo de míssil, então `-folder` ali
-seria ambíguo (`-f` direto no arquivo resolve isso).
+`configs/` tem exatamente **um** `.edl`/`.edl.in`.
 
 **Outras opções de linha de comando:**
 
@@ -144,7 +141,6 @@ seria ambíguo (`-f` direto no arquivo resolve isso).
 |---|---|
 | `-threads <N>` | força o tamanho do pool de tempo crítico (padrão: `hardware_concurrency()`, até 8) |
 | `-deterministic <N>` | roda N frames de passo fixo e sai — sem TUI/TTY, imprime `frame=` + relatório de instâncias; é o caminho usado por `make test` |
-| `-parallel-decision` | com `-deterministic`: decide os 4 players em paralelo em vez de sequência |
 
 ## 4. Árvore de comportamento e breakpoints
 
@@ -169,7 +165,7 @@ pro texto editado.
 
 Cada cenário declara a própria porta de Tacview e o próprio diretório de gravação no `.edl.in`
 (`./src/poc/<nome>/data/recordings/`) — ver o README de cada poc sob `src/poc/` para os valores.
-`networks:` (DIS) só existe em `single-thread`/`multi-thread`/`bandit`; os demais são herméticos.
+`networks:` (DIS) só existe em `flight`/`bandit`; os demais são herméticos.
 
 O terreno é compartilhado entre cenários (`./shared/data/terrain/srtm/`). O cenário expandido de
 qualquer `-f`/`-folder` vai para `./build/generated-scenarios/` — gitignored, fora de qualquer

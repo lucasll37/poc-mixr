@@ -48,13 +48,12 @@ NavigateAction::NavigateAction(const std::string& name, const BT::NodeConfigurat
 // da perseguicao pura degradando).
 //
 // O limitador de taxa abaixo NAO e uma regra de negocio nova: e a MESMA
-// tecnica que GuidedMissile::guide() ja usa (domain::pursuit() la, este
-// bloco aqui) para o mesmo problema -- rumo comandado nunca pula mais que
-// kMaxHeadingRateDegPerSec por segundo, convertendo o comando bruto de
-// marcacao instantanea num comando que se aproxima suavemente, com
-// avanco implicito. Route/Steerpoint continuam sendo a UNICA fonte do
-// alvo (marcacao, altitude, velocidade); nada aqui reimplementa
-// navegacao -- so amortece o COMANDO.
+// tecnica que qualquer guiador por perseguicao pura precisa -- rumo
+// comandado nunca pula mais que kMaxHeadingRateDegPerSec por segundo,
+// convertendo o comando bruto de marcacao instantanea num comando que se
+// aproxima suavemente, com avanco implicito. Route/Steerpoint continuam
+// sendo a UNICA fonte do alvo (marcacao, altitude, velocidade); nada aqui
+// reimplementa navegacao -- so amortece o COMANDO.
 //
 // Sem fallback de proposito, igual antes: se a rota nao tiver guiagem
 // valida, o no falha e nao ha decisao naquele tick.

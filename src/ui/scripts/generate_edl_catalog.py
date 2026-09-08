@@ -188,7 +188,7 @@ def extract_slot_types(cpp_roots):
 
     PRIMEIRO achado vence, por classe inteira (mesmo motivo/mesma ordem de
     varredura de extract_slots() em mixr_source_scan.py -- 'models/players/A-4'
-    antes de 'models/players/fixtures/stub'): sem isso, os INDICES de ON_SLOT
+    antes de 'models/players/template'): sem isso, os INDICES de ON_SLOT
     de dois arquivos diferentes para a mesma classe se MISTURARIAM num so
     dicionario, o que faz ainda menos sentido que so perder um dos dois --
     os indices de um arquivo nao tem relacao nenhuma com os do outro."""
@@ -229,10 +229,11 @@ def origin_of(impl_file):
     contexts/src/mixr/src/, com interop/dis e interop/rprfom mantidos
     distintos), uma lib propria deste repo (libs/x*), ou algo do USUARIO
     sob ./models/ -- QUALQUER coisa la (nao so models/players/<nome>/): um
-    plugin de player, um fixture de teste (models/players/fixtures/<nome>/),
-    ou um payload de evento (models/events/<nome>/...). Generico de
-    proposito -- um modelo novo em models/<qualquer-coisa>/ ja aparece
-    rotulado na hora, sem precisar editar este arquivo.
+    plugin de player (inclusive o mirror de contrato em
+    models/players/template/src/mirror.cpp), ou um payload de evento
+    (models/events/<nome>/...). Generico de proposito -- um modelo novo em
+    models/<qualquer-coisa>/ ja aparece rotulado na hora, sem precisar
+    editar este arquivo.
 
     Confirmado rodando: antes desta generalizacao, TacticalAlert (o
     payload real do evento de alerta tatico, implementado em
@@ -241,12 +242,6 @@ def origin_of(impl_file):
     se fosse uma classe nativa do MIXR."""
     if impl_file is None:
         return "unknown"
-    if impl_file.startswith("models/players/fixtures/"):
-        # pula os segmentos 'players'/'fixtures' -- o nome que importa e o
-        # do modelo (models/players/fixtures/stub/... -> "stub", nao
-        # "fixtures").
-        rest = impl_file[len("models/players/fixtures/"):].split("/")
-        return f"plugin:{rest[0]}"
     if impl_file.startswith("models/players/"):
         rest = impl_file[len("models/players/"):].split("/")
         return f"plugin:{rest[0]}"
@@ -648,7 +643,7 @@ def introspect_thirdparty_plugins(known_factory_names, inheritance, slot_names, 
     flat, proprio OU de terceiro -- ver a secao 'plugins/' do CLAUDE.md) e
     devolve entradas de catalogo SO' para nomes de fabrica que o scan
     estatico ainda nao conhece. Um .so DESTE proprio repositorio (flight/
-    flight_tc/missile/stub, tambem depositados ali por 'make models')
+    template/template_mirror, tambem depositados ali por 'make models')
     contribui ZERO entradas novas -- todo nome dele ja veio do fonte, mais
     completo (com tipo/unidade de verdade), entao e' descartado aqui por
     colisao de nome, de proposito.

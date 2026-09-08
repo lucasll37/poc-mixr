@@ -58,7 +58,7 @@ namespace xpyembed {
 // nao e o problema. O problema seria ESTADO COMPARTILHADO: a ordem em que as
 // threads adquirem o GIL nao e deterministica, entao um script que guarde
 // estado em nivel de modulo produziria resultado dependente de ordem, e o
-// check-multi-thread quebraria.
+// determinismo quebraria.
 //
 // Por isso cada (script, playerId) recebe o SEU PROPRIO dicionario de globais.
 // Dois avioes rodando o mesmo arquivo nao se enxergam. O que continua

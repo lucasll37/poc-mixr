@@ -7,7 +7,7 @@ e entrega o resultado a uma lista de destinos, em NDJSON.
 ## Como se usar
 
 Um `( MsgFeed )` no `components:` da `Station`, no mesmo slot genérico onde os agentes já moram
-(exemplo real, de `src/poc/dis/single-thread/configs/scenario.edl.in`):
+(exemplo real, de `src/poc/dis/flight/configs/scenario.edl.in`):
 
 ```
 msgFeed: ( MsgFeed
@@ -18,7 +18,7 @@ msgFeed: ( MsgFeed
 
    sinks: {
       ( MsgFileSink
-         fileName: "./src/poc/dis/single-thread/data/messages/mission.jsonl"
+         fileName: "./src/poc/dis/flight/data/messages/mission.jsonl"
          flushEvery: ( Seconds 2 ) )
    }
 

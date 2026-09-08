@@ -10,7 +10,7 @@
 > [src/poc/meson.build](../meson.build) para o porquê e para a prova de neutralidade (os dumps
 > saíram byte-idênticos).
 
-A [multi-thread](../multi-thread/) **inteira**, com **uma** diferença: quem decide não é uma árvore
+A [flight](../dis/flight/) **inteira**, com **uma** diferença: quem decide não é uma árvore
 de regras — é uma **rede neural**. Um MLP de 6.211 parâmetros, carregado de
 [`configs/policy_barrier.onnx`](configs/) e inferido **dentro da fase 3 do frame de tempo
 crítico**, sem Python no processo e sem um frame de latência.
@@ -63,8 +63,8 @@ primeira decisão.
 | o nó de árvore `( OnnxPolicy )` | `models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
 | a desnormalização da ação (`unscaleCommand`) | [`libs/xrlbridge`](../../../libs/xrlbridge/) |
 | a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
-| a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à das gêmeas |
-| o plugin | o **mesmo** `libflight_tc.so` das gêmeas, byte a byte |
+| a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
+| o plugin | o **mesmo** `libflight.so` da poc `flight`, byte a byte |
 
 **É novo** — o que esta pasta acrescenta:
 
@@ -79,9 +79,8 @@ primeira decisão.
   binário no repositório ser reprodutível e para o que ele aprendeu estar escrito em código, e não
   só nos pesos.
 
-**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da `multi-thread` com caminhos
-e banner trocados — `tests/guard/check_duplication.sh` exige que continue byte a byte igual — e o
-modelo não mudou. Trocar as regras pela rede foi trocar um caminho de arquivo no `.edl`.
+**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da poc `flight` com caminhos
+e banner trocados — e o modelo não mudou. Trocar as regras pela rede foi trocar um caminho de arquivo no `.edl`.
 
 ---
 
@@ -233,7 +232,7 @@ isso**: `behavior:` do `( FlightAgentTC )` aponta direto para o `( BtBehavior )`
 )`/`( AltitudeSafetyBehavior )` no meio (ver o bloco de comentário "SEM ARBITRO" no topo do
 arquivo).
 
-`AltitudeSafetyBehavior`/`UbfArbiter` continuam existindo como classes — o `libflight_tc.so` ainda
+`AltitudeSafetyBehavior`/`UbfArbiter` continuam existindo como classes — o `libflight.so` ainda
 as exporta e `provides:` deste cenário ainda as lista — só que **este** cenário não instancia mais
 nenhuma das duas. `src/rl`/`src/poc/rl-training` continuam usando o árbitro de propósito (não
 mudaram); a mudança é só aqui.
@@ -325,9 +324,9 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 2. **A política é dado do CENÁRIO, não do modelo.** Por isso `.onnx` e árvore moram em `configs/`
    desta poc, lidos por caminho relativo, e não em `dist/share/mixr-plugins/flight/` (que é onde
    `models/players/A-4` instala os **dele**). As duas coisas convivem: o teste `scenario-policy-onnx`
-   continua rodando a árvore do modelo com pesos aleatórios sobre a `multi-thread`.
+   continua rodando a árvore do modelo com pesos aleatórios sobre a poc `flight`.
 3. **Portas próprias, senão as pocs brigam.** Tacview **1238** e DIS `localPort` **3005** (1234
-   single/multi, 1235 bandit, 1236 app, 1237 python-flight; DIS 3001/3002/3003/3004). Todo
+   flight, 1235 bandit, 1236 app, 1237 python-flight; DIS 3001/3002/3004). Todo
    mundo escuta DIS em 3000 e ignora a própria porta de origem.
 4. **Comentário de XML não aceita `--`.** A mesma classe de armadilha do parser EDL com acento: o
    traço duplo dentro de um comentário faz o parser recusar o arquivo. `xmllint --noout` no `.xml`
@@ -374,8 +373,7 @@ produção desta poc não instancia mais `( UbfArbiter )`/`( AltitudeSafetyBehav
 [seção 7](#7-a-rede-tem-a-última-palavra--não-há-mais-árbitro-neste-cenário) para a consequência de
 segurança que isso representa.
 
-Mais os que valem para todas as gêmeas: `tests/guard/check_duplication.sh` (a camada de aplicação
-continua byte a byte igual à da `single-thread`) e `tests/guard/check_falcons_estrutura.sh`
+Mais o que já vale para a poc `flight`: `tests/guard/check_falcons_estrutura.sh`
 (`falcon1..4` com o mesmo esqueleto de slots).
 
 ---

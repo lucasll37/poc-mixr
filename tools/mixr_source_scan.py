@@ -161,13 +161,13 @@ def extract_slots(cpp_roots):
     aparece em mais de um arquivo -- relevante para o catalogo do editor
     grafico, que varre 'models/' (deste repositorio) inteiro:
     'models/players/A-4' (a implementacao de producao) e
-    'models/players/fixtures/stub' (um modelo minimo, so pra testar o
-    CONTRATO de carga de plugin) declaram as MESMAS classes (BtBehavior,
-    AlertDatalink, ...) com o MESMO nome barra, e 'A-4' < 'fixtures'
-    alfabeticamente -- sem 'first wins', o stub (varrido depois,
-    deliberadamente mais simples) sobrescrevia os slots REAIS de producao,
-    confirmado rodando: BtBehavior saia com 5 slots em vez dos ~19 de
-    verdade. O modo tabela/--catalog (restrito a
+    'models/players/template' (o mirror de contrato em src/mirror.cpp, um
+    modelo minimo so pra testar o CONTRATO de carga de plugin) declaram as
+    MESMAS classes (BtBehavior, AlertDatalink, ...) com o MESMO nome barra,
+    e 'A-4' < 'template' alfabeticamente -- sem 'first wins', o mirror
+    (varrido depois, deliberadamente mais simples) sobrescrevia os slots
+    REAIS de producao, confirmado rodando: BtBehavior saia com 5 slots em
+    vez dos ~19 de verdade. O modo tabela/--catalog (restrito a
     contexts/src/mixr/src/models/) nunca tinha essa colisao para comecar --
     esse universo nem inclui models/players/."""
     slots: dict[str, list[dict]] = {}

@@ -7,11 +7,11 @@ protocolo ACMI/Real-Time Telemetry do Tacview — socket **e** arquivo `.acmi`, 
 
 Declarado dentro da cadeia nativa do slot `dataRecorder:` da `Station`, como mais um
 `OutputHandler` de `RecorderOutputHandler::components:`. Exemplo real, de
-`src/poc/dis/single-thread/configs/scenario.edl.in`:
+`src/poc/dis/flight/configs/scenario.edl.in`:
 
 ```
    dataRecorder: ( ExposedDataRecorder
-      eventName: "single-thread"
+      eventName: "flight"
 
       // 43 = REID_PLAYER_DATA   42 = REID_PLAYER_REMOVED
       enabledList: [ 43 42 ]
@@ -19,8 +19,8 @@ Declarado dentro da cadeia nativa do slot `dataRecorder:` da `Station`, como mai
          components: {
             ( TacviewOutput
                port: 1234
-               callsign: "poc-mixr/single-thread"
-               fileName: "./src/poc/dis/single-thread/data/recordings/mission.acmi"
+               callsign: "poc-mixr/flight"
+               fileName: "./src/poc/dis/flight/data/recordings/mission.acmi"
 
                modelMap: { falcon1: "A-4E"  falcon2: "A-4E"  falcon3: "A-4E"
                            falcon4: "A-4E"  bandit1: "A-4E" }

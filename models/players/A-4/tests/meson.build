@@ -12,20 +12,14 @@
 gtest_dep = dependency('gtest', method: 'pkg-config')
 gtest_main_dep = dependency('gtest_main', method: 'pkg-config')
 
-domain_sources = files(
-    '../src/domain/geometry.cpp',
-    '../src/domain/LaunchPolicy.cpp',
-    '../src/domain/PatrolPlan.cpp',
-    '../src/domain/RtbPlan.cpp',
-    '../src/domain/TerrainFloor.cpp',
-    '../src/domain/ThreatPolicy.cpp',
-)
+# domain_sources/bt_sources/bt_sdk_sources vem do meson.build do projeto (um
+# nivel acima) -- compartilhados com tools/dump-tree-model, que reusa os
+# MESMOS fontes.
 
 # Camada 1 -- regras puras: sem MIXR, sem BehaviorTree.CPP, sem rpath nenhum.
 test_domain = executable('test-domain',
     files(
         'domain/test_geometry.cpp',
-        'domain/test_LaunchPolicy.cpp',
         'domain/test_TerrainFloor.cpp',
         'domain/test_ThreatPolicy.cpp',
         'domain/test_PatrolPlan.cpp',
@@ -40,77 +34,48 @@ test('domain', test_domain, suite: 'domain', timeout: 60)
 # Camada 2 -- a arvore de producao contra um contexto falso.
 # Linka BehaviorTree.CPP; NAO linka MIXR -- e o que o refactor de
 # bt/DecisionContext.hpp comprou, e continua valendo aqui.
-bt_sources = files(
-    '../src/bt/bt_factory.cpp',
-    '../src/bt/nodes/AlertReceivedCondition.cpp',
-    '../src/bt/nodes/ContactDetectedCondition.cpp',
-    '../src/bt/nodes/FuelLowCondition.cpp',
-    '../src/bt/nodes/LaunchEnvelopeCondition.cpp',
-    '../src/bt/nodes/LaunchMissileAction.cpp',
-    '../src/bt/nodes/NavigateAction.cpp',
-    '../src/bt/nodes/PatrolAction.cpp',
-    '../src/bt/nodes/ReportAndEvadeAction.cpp',
-    '../src/bt/nodes/ReturnToBaseAction.cpp',
-    '../src/bt/nodes/SupportAlertAction.cpp',
-)
-
-# Os nos que dependem do SDK ficam FORA de bt_sources, de proposito.
 #
-# bt_sources e compartilhado por test_tree e test_native, e test_tree tem uma
-# propriedade que vale a pena preservar: ele NAO linka o MIXR (ver o comentario
-# do alvo, logo abaixo) -- e o que o refactor de bt/DecisionContext.hpp
-# comprou. Um no que chama libs/xinfer arrasta sdk_dep, cujo .pc declara
-# 'Requires: mixr', e a propriedade se perderia em silencio.
+# bt_sources (herdado do meson.build do projeto) e compartilhado por
+# test_tree e test_native, e test_tree tem uma propriedade que vale a pena
+# preservar: ele NAO linka o MIXR (ver o comentario do alvo, logo abaixo) --
+# e o que o refactor de bt/DecisionContext.hpp comprou. Um no que chama
+# libs/xinfer arrasta sdk_dep, cujo .pc declara 'Requires: mixr', e a
+# propriedade se perderia em silencio -- por isso os nos que dependem do SDK
+# ficam em bt_sdk_sources (tambem herdado), FORA de bt_sources.
 #
 # Estes nos sao exercitados pelo test_native, que ja linka o SDK. A arvore de
 # PRODUCAO (flight_tree.xml) nao os usa, entao test_tree continua cobrindo
 # tudo o que ela contem.
-bt_sdk_sources = files(
-    '../src/bt/bt_factory_sdk.cpp',
-    '../src/bt/nodes/OnnxScoreCondition.cpp',
-    '../src/bt/nodes/OnnxPolicyAction.cpp',
-    '../src/bt/nodes/PyDecideAction.cpp',
-)
 
 # O XML de PRODUCAO, por caminho -- nao uma copia.
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
-flight_tree_missile_demo_xml = meson.current_source_dir() / '../configs/flight_tree_missile_demo.xml'
 flight_tree_nav_xml = meson.current_source_dir() / '../configs/flight_tree_nav.xml'
 
-# Gerador do <TreeNodesModel> para o Groot (CLAUDE.md, "Groot -- editor e
-# monitor ao vivo") -- reusa bt_sources/bt_sdk_sources/domain_sources, os
-# MESMOS fontes que test-tree/test-native ja compilam, entao herda a mesma
-# propriedade de test-tree (linka BehaviorTree.CPP + SDK, nao levanta MIXR
-# sozinho -- so' bt_sdk_sources arrasta mixr via poc-mixr-sdk.pc).
-dump_tree_model = executable('dump-tree-model',
-    files('../tools/dump_tree_model.cpp') + bt_sources + bt_sdk_sources + domain_sources,
-    link_args           : ['-Wl,--disable-new-dtags'],
-    include_directories : model_inc,
-    dependencies        : [behavior_tree_dep, sdk_dep],
-    install             : false,
-    build_rpath         : mixr_libdir + ':' + sdk_libdir,
-)
+# 'dump_tree_model' vem de tools/meson.build (subdir() chamado ANTES deste,
+# incondicional, no meson.build do projeto) -- o executavel em si nao e
+# teste, so o 'tree-model-sync' abaixo e.
 
-# Guarda: os 5 flight_tree*.xml de producao tem que bater com o que
-# bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE -- sem isto, um
-# no novo registrado e' um "verde silencioso" ate alguem tentar abrir a
-# arvore no Groot e levar "This model has not been registered". Passa o
-# caminho de VERDADE do binario (nao o default de sync_tree_models.py, que
-# supoe um diretorio chamado 'build') -- Meson resolve o objeto
-# dump_tree_model pro caminho de saida e ja adiciona a dependencia de build.
+# Guarda: TODA arvore .xml de configs/ (descoberta por conteudo -- ver
+# tools/update_bt_models.py, o mesmo script de 'make update-bt') tem que ter
+# a tag <TreeNodesModel> batendo com o que bt_factory.cpp/bt_factory_sdk.cpp
+# registram DE VERDADE -- sem isto, um no novo registrado e' um "verde
+# silencioso" ate alguem tentar abrir a arvore no Groot e levar "This model
+# has not been registered". Passa o caminho de VERDADE do binario (nao o
+# default de update_bt_models.py, que supoe um diretorio chamado 'build') --
+# Meson resolve o objeto dump_tree_model pro caminho de saida e ja adiciona
+# a dependencia de build.
 py3 = find_program('python3')
 test('tree-model-sync',
     py3,
-    args      : [files('../tools/sync_tree_models.py'), '--check', '--binary', dump_tree_model],
+    args      : [files('../tools/update_bt_models.py'), '--check', '--binary', dump_tree_model],
     suite     : 'tree',
     timeout   : 60,
 )
 
 test_tree = executable('test-tree',
-    files('tree/test_flight_tree.cpp', 'tree/test_flight_tree_missile_demo.cpp',
+    files('tree/test_flight_tree.cpp',
           'tree/test_flight_tree_nav.cpp') + bt_sources + domain_sources,
     cpp_args            : ['-DFLIGHT_TREE_XML="' + flight_tree_xml + '"',
-                           '-DFLIGHT_TREE_MISSILE_DEMO_XML="' + flight_tree_missile_demo_xml + '"',
                            '-DFLIGHT_TREE_NAV_XML="' + flight_tree_nav_xml + '"'],
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : [model_inc, include_directories('.')],

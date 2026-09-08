@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Smoke test do wrapper Gymnasium -- roda a Station de VERDADE (mesmo
-plugin libflight_tc.so que single-thread/multi-thread/app usam), nao um
+plugin libflight.so que flight/app usam), nao um
 mock. Ver src/rl/README.md para como rodar.
 
 Cobre:

@@ -28,8 +28,7 @@ struct WorldView
    // proprio
    std::string ownerName;   // nome EDL do ator -- ver o comentario em
                             // FlightState::updateState() sobre por que este
-                            // e' o jeito confiavel de saber "quem decide",
-                            // independente de single-thread/multi-thread
+                            // e' o jeito confiavel de saber "quem decide"
    double northM{};
    double eastM{};
    double altitudeM{};
@@ -67,10 +66,9 @@ struct WorldView
    double alertAltitudeM{};
    double alertRangeM{};
 
-   // arma: ha um StoresMgr com pelo menos um missil disponivel? (ver
-   // domain/LaunchPolicy.hpp -- "temos arma" e "o alvo esta no envelope" sao
-   // perguntas separadas de proposito). false em qualquer aviao sem
-   // 'stores:' declarado no EDL -- ou seja, inerte em producao.
+   // arma: ha um StoresMgr com pelo menos um missil disponivel? false em
+   // qualquer aviao sem 'stores:' declarado no EDL -- ou seja, inerte em
+   // producao. Observavel por xrlbridge (ver ubf/RLBridgeBehavior.cpp).
    bool weaponReady{};
 
    // navegacao NATIVA (Navigation/Route/Steerpoint) -- so leitura. Quem

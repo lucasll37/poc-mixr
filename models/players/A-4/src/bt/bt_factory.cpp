@@ -3,8 +3,6 @@
 #include "bt/nodes/AlertReceivedCondition.hpp"
 #include "bt/nodes/ContactDetectedCondition.hpp"
 #include "bt/nodes/FuelLowCondition.hpp"
-#include "bt/nodes/LaunchEnvelopeCondition.hpp"
-#include "bt/nodes/LaunchMissileAction.hpp"
 #include "bt/nodes/NavigateAction.hpp"
 #include "bt/nodes/PatrolAction.hpp"
 #include "bt/nodes/ReportAndEvadeAction.hpp"
@@ -44,8 +42,6 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
    registerWithContext<ReturnToBaseAction>(factory, "ReturnToBase", context);
    registerWithContext<ContactDetectedCondition>(factory, "ContactDetected", context);
    registerWithContext<ReportAndEvadeAction>(factory, "ReportAndEvade", context);
-   registerWithContext<LaunchEnvelopeCondition>(factory, "LaunchEnvelope", context);
-   registerWithContext<LaunchMissileAction>(factory, "LaunchMissile", context);
    registerWithContext<AlertReceivedCondition>(factory, "AlertReceived", context);
    registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
    registerWithContext<PatrolAction>(factory, "Patrol", context);

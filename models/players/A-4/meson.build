@@ -13,9 +13,12 @@
 #
 # ORDEM (ver o Makefile):  deps -> sdk -> models -> build
 #
-# UMA arvore, DOIS artefatos: libflight.so e libflight_tc.so, o segundo com
-# -DFLIGHT_TC_AGENT (o agente de tempo critico). Era a unica diferenca entre
-# as duas copias que existiam antes.
+# UM artefato so, libflight.so, com o agente de tempo critico (FlightAgentTC)
+# sempre compilado e sempre registrado -- nao ha mais variante sem ele. Ate
+# esta troca havia dois artefatos do mesmo fonte (libflight.so sem agente,
+# libflight_tc.so com, via -DFLIGHT_TC_AGENT); o segundo virou o unico porque
+# todo cenario deste repositorio decide via FlightAgentTC agora, nunca mais
+# via ( SimAgent ) nativo na Station.
 # ==============================================================================
 project('flight', 'cpp',
     version: '1.0.0',
@@ -67,7 +70,6 @@ model_sources = files(
 
     # regras de negocio puras (sem MIXR, sem BehaviorTree.CPP)
     'src/domain/geometry.cpp',
-    'src/domain/LaunchPolicy.cpp',
     'src/domain/PatrolPlan.cpp',
     'src/domain/RtbPlan.cpp',
     'src/domain/TerrainFloor.cpp',
@@ -94,8 +96,6 @@ model_sources = files(
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
-    'src/bt/nodes/LaunchEnvelopeCondition.cpp',
-    'src/bt/nodes/LaunchMissileAction.cpp',
     'src/bt/nodes/NavigateAction.cpp',
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/OnnxScoreCondition.cpp',
@@ -117,20 +117,18 @@ model_deps = [mixr_dep, behavior_tree_dep, sdk_dep]
 # SDK ficam em dist/lib/.
 model_rpath = mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..'
 
-foreach v : [['flight', []], ['flight_tc', ['-DFLIGHT_TC_AGENT']]]
-    shared_module(v[0],
-        model_sources,
-        cpp_args              : asan_cpp_args + plugin_version_args + v[1],
-        link_args             : model_link_args,
-        include_directories   : model_inc,
-        dependencies          : model_deps,
-        gnu_symbol_visibility : 'hidden',
-        install               : true,
-        install_dir           : get_option('libdir') / 'mixr-plugins',
-        install_rpath         : model_rpath,
-        build_rpath           : mixr_libdir + ':' + sdk_libdir,
-    )
-endforeach
+shared_module('flight',
+    model_sources,
+    cpp_args              : asan_cpp_args + plugin_version_args,
+    link_args             : model_link_args,
+    include_directories   : model_inc,
+    dependencies          : model_deps,
+    gnu_symbol_visibility : 'hidden',
+    install               : true,
+    install_dir           : get_option('libdir') / 'mixr-plugins',
+    install_rpath         : model_rpath,
+    build_rpath           : mixr_libdir + ':' + sdk_libdir,
+)
 
 # A arvore de comportamento vai JUNTO. Um .so sozinho nao e entrega completa:
 # o slot 'treeFile:' do ( BtBehavior ) nomeia este XML, e ele e do modelo, nao
@@ -214,6 +212,47 @@ if get_option('variants')
         install               : false,
     )
 endif
+
+# As tres listas abaixo moram aqui, e nao em tools/ ou tests/, porque as DUAS
+# subpastas as compartilham: 'dump-tree-model' (tools/) e 'test-tree'/
+# 'test-native' (tests/) linkam os MESMOS fontes de domain/bt, sem MIXR
+# (so bt_sdk_sources arrasta mixr via poc-mixr-sdk.pc). Definir uma vez aqui
+# e deixar as duas subdir() reusarem evita a duplicacao que existiria se cada
+# uma declarasse a propria copia.
+domain_sources = files(
+    'src/domain/geometry.cpp',
+    'src/domain/PatrolPlan.cpp',
+    'src/domain/RtbPlan.cpp',
+    'src/domain/TerrainFloor.cpp',
+    'src/domain/ThreatPolicy.cpp',
+)
+
+bt_sources = files(
+    'src/bt/bt_factory.cpp',
+    'src/bt/nodes/AlertReceivedCondition.cpp',
+    'src/bt/nodes/ContactDetectedCondition.cpp',
+    'src/bt/nodes/FuelLowCondition.cpp',
+    'src/bt/nodes/NavigateAction.cpp',
+    'src/bt/nodes/PatrolAction.cpp',
+    'src/bt/nodes/ReportAndEvadeAction.cpp',
+    'src/bt/nodes/ReturnToBaseAction.cpp',
+    'src/bt/nodes/SupportAlertAction.cpp',
+)
+
+# Os nos que dependem do SDK ficam FORA de bt_sources, de proposito -- ver o
+# comentario de bt_sdk_sources em tests/meson.build (test-tree nao pode linkar
+# MIXR, e essa propriedade se perderia em silencio se eles entrassem ali).
+bt_sdk_sources = files(
+    'src/bt/bt_factory_sdk.cpp',
+    'src/bt/nodes/OnnxScoreCondition.cpp',
+    'src/bt/nodes/OnnxPolicyAction.cpp',
+    'src/bt/nodes/PyDecideAction.cpp',
+)
+
+# Incondicional (fora do 'if tests') de proposito: dump-tree-model e
+# ferramenta de desenvolvimento (Groot/sync_tree_models.py, via Makefile), nao
+# teste -- nao faz sentido gate-la atras de '-Dtests'.
+subdir('tools')
 
 if get_option('tests')
     subdir('tests')

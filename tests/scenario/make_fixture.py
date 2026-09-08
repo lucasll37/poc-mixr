@@ -105,7 +105,7 @@ def remove_block(texto, marcador):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (single-thread, multi-thread, python-flight)")
+    ap.add_argument("--poc", required=True, help="nome da pasta em src/poc/ (flight, python-flight, onnx-policy, ...)")
     ap.add_argument("--mode", required=True, choices=("intruder", "lowfuel", "plain"))
     ap.add_argument("--out", required=True, help="caminho do .edl.in a gerar")
     ap.add_argument("--patrol-seed", type=int, default=None,

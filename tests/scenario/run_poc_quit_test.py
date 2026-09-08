@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prova que single-thread/multi-thread/bandit ENCERRAM de verdade.
+"""Prova que flight/bandit ENCERRAM de verdade.
 
 POR QUE ISTO EXISTE (ver a "decima oitava passada" do ./app no CLAUDE.md
 raiz): sair do ./app com [q] costumava travar o processo para sempre. A causa
@@ -8,7 +8,7 @@ tinha DUAS metades:
   1. um ::send() SEM TETO em libs/xtacview/RealtimeTelemetryServer.cpp --
      um cliente Tacview que conecta e para de ler enchia o buffer do socket e
      o send() bloqueava para sempre, dentro de station->updateData(). Ja
-     corrigido com SO_SNDTIMEO, e a correcao vale para as TRES pocs porque a
+     corrigido com SO_SNDTIMEO, e a correcao vale para as pocs porque a
      lib e a MESMA (libs/xtacview e uma unica copia, sem variante por poc).
 
   2. a ORDEM de encerramento nao parar a thread de tempo critico nativa ANTES
@@ -17,12 +17,12 @@ tinha DUAS metades:
      xclock/ClockStation.hpp) e/ou segue enfileirando registros numa fila sem
      teto depois que ninguem mais a drena. Essa metade so tinha sido aplicada
      ao ./app (app/Shutdown.hpp) -- este teste prova que agora tambem vale
-     para single-thread/multi-thread/bandit (mesmo padrao, replicado em
+     para flight/bandit (mesmo padrao, replicado em
      cada app/Shutdown.hpp/.cpp local), que rodam a MESMA forma de laco
      (createTimeCriticalProcess() + updateData() em laco continuo).
 
 DIFERENCA para tests/scenario/run_app_quit_test.py: nao ha TUI/pty aqui --
-estas tres pocs tratam Ctrl+C (SIGINT) direto e nao dependem de terminal
+estas pocs tratam Ctrl+C (SIGINT) direto e nao dependem de terminal
 (xclock::ConsoleKeyboard degrada sozinho sem TTY, ver o cabecalho dela). Mais
 simples: sobe o binario com stdin/stdout/stderr redirecionados, espera
 estabilizar, opcionalmente conecta um cliente Tacview que para de ler

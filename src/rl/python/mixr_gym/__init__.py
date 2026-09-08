@@ -2,11 +2,11 @@ import os
 import sys
 
 # ARMADILHA CONFIRMADA (nao redescobrir): sem isto, a PRIMEIRA chamada a
-# NativeSimulation.reset() -- que carrega libflight_tc.so via dlopen() por
+# NativeSimulation.reset() -- que carrega libflight.so via dlopen() por
 # dentro de libs/xplugin/PluginRegistry.cpp -- SEGFAULTA dentro de
 # std::cout (libstdc++, num codecvt de PluginRegistry::loadModule()), so
 # quando roda embutido em Python E depois de 'numpy' ja ter sido importado.
-# Fora do Python (executando dist/bin/single-thread etc.) ou importando
+# Fora do Python (executando ./build/app/src/app etc.) ou importando
 # ._native ANTES de numpy, o MESMO cenario/plugin carrega perfeitamente --
 # confirmado nos dois sentidos.
 #
@@ -16,7 +16,7 @@ import sys
 #      onde o dynamic linker sempre poe as dependencias DIRETAS do binario
 #      (libmixr_base.so incluida) em escopo GLOBAL. Sem RTLD_GLOBAL,
 #      libmixr_base.so fica fora do escopo global do processo, e o dlopen()
-#      INTERNO que o PluginRegistry faz depois (pra libflight_tc.so, tambem
+#      INTERNO que o PluginRegistry faz depois (pra libflight.so, tambem
 #      RTLD_LOCAL -- ver o cabecalho de PluginRegistry.cpp) nao resolve
 #      direito o estado global de iostream/locale de libmixr_base.so.
 #   2. SEPARADAMENTE, a ORDEM importa: se 'numpy' (ou qualquer outra

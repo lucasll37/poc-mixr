@@ -6,26 +6,27 @@ pelo mecanismo que 'make models' usa (Makefile: cp plugins/*.so
 dist/lib/mixr-plugins/), e o resultado dessa copia e REALMENTE carregavel e
 USAVEL numa simulacao -- nao so um arquivo presente em disco.
 
-Reaproveita o STUB (models/players/fixtures/stub) fazendo o papel do "terceiro": e
-um modelo ja pronto, compilado, e ja provado suficiente para rodar o
-cenario de producao (ver plugin-modelo-estranho) -- sem ser nenhum dos
-plugins que o host normalmente consome direto de dist_plugins/. Isso isola
-exatamente a variavel que importa aqui: o CAMINHO pelo qual o .so chegou
-(deposito -> copia), nao se o modelo em si e valido (isso quem ja prova e
+Reaproveita o MIRROR DE CONTRATO do template (models/players/template,
+libtemplate_mirror.so) fazendo o papel do "terceiro": e um modelo ja
+pronto, compilado, e ja provado suficiente para rodar o cenario de
+producao (ver plugin-modelo-estranho) -- sem ser nenhum dos plugins que o
+host normalmente consome direto de dist_plugins/. Isso isola exatamente a
+variavel que importa aqui: o CAMINHO pelo qual o .so chegou (deposito ->
+copia), nao se o modelo em si e valido (isso quem ja prova e
 plugin-modelo-estranho).
 
 NAO reimplementa nenhuma assercao sobre "a simulacao funcionou de
-verdade" -- chama run_stub_model.py (a MESMA bateria inteira: carga,
+verdade" -- chama run_unknown_model.py (a MESMA bateria inteira: carga,
 provides:, escrita no xboard, movimento entre frames, varredura de radar
 no Tacview) apontando pro .so que acabou de ser depositado e copiado, em
-vez do dist_plugins/libstub.so que 'make models' ja instala direto. Duas
-baterias idénticas, duas origens de arquivo diferentes.
+vez do dist_plugins/libtemplate_mirror.so que 'make models' ja instala
+direto. Duas baterias idénticas, duas origens de arquivo diferentes.
 
 Por que a copia e replicada aqui em vez de chamar 'make models' de
-verdade: 'make models' tambem recompila flight/missile/stub -- pesado
-demais pra suite rapida (meson test, chamada a cada 'make test'). A linha
-do Makefile que importa e um 'cp' puro; testar essa copia isolada nao
-perde cobertura nenhuma sobre o que pode dar errado nela.
+verdade: 'make models' tambem recompila flight/template -- pesado demais
+pra suite rapida (meson test, chamada a cada 'make test'). A linha do
+Makefile que importa e um 'cp' puro; testar essa copia isolada nao perde
+cobertura nenhuma sobre o que pode dar errado nela.
 """
 
 import argparse
@@ -42,9 +43,9 @@ def main():
     ap.add_argument("--binario", required=True)
     ap.add_argument("--poc", required=True)
     ap.add_argument("--source-so", required=True,
-                     help="um .so ja compilado (o stub) que faz o papel do 'terceiro'")
-    ap.add_argument("--run-stub-model", required=True,
-                     help="caminho de run_stub_model.py, pra reusar as mesmas assercoes")
+                     help="um .so ja compilado (o mirror do template) que faz o papel do 'terceiro'")
+    ap.add_argument("--run-unknown-model", required=True,
+                     help="caminho de run_unknown_model.py, pra reusar as mesmas assercoes")
     args = ap.parse_args()
 
     source = Path(args.source_so)
@@ -53,9 +54,9 @@ def main():
         return 1
 
     # Nome DISTINTO de qualquer plugin real -- nao pode colidir com
-    # libflight.so/libflight_tc.so/libmissile.so/libstub.so (os quatro que
-    # 'make models' ja instala direto), senao o teste nao provaria nada:
-    # estaria so verificando um arquivo que ja estava la por outro motivo.
+    # libflight.so/libtemplate.so/libtemplate_mirror.so (os que 'make
+    # models' ja instala direto), senao o teste nao provaria nada: estaria
+    # so verificando um arquivo que ja estava la por outro motivo.
     nome = "libthirdparty_deposit_test.so"
     deposito = RAIZ / "plugins" / nome
     instalado = RAIZ / "dist" / "lib" / "mixr-plugins" / nome
@@ -71,7 +72,7 @@ def main():
             return 1
 
         # 2) O MECANISMO sob teste -- a MESMA copia que o alvo 'models' do
-        #    Makefile raiz faz depois de compilar flight/missile/stub.
+        #    Makefile raiz faz depois de compilar flight/template.
         instalado.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(deposito, instalado)
         if not instalado.is_file():
@@ -84,15 +85,16 @@ def main():
         # 3) A PROVA: reusa a MESMA bateria de plugin-modelo-estranho
         #    (carga, provides:, xboard, movimento, varredura de radar),
         #    agora apontando pro .so que chegou pelo deposito -- nao pro
-        #    dist_plugins/libstub.so que 'make models' ja instala direto.
+        #    dist_plugins/libtemplate_mirror.so que 'make models' ja
+        #    instala direto.
         r = subprocess.run(
-            [sys.executable, args.run_stub_model,
+            [sys.executable, args.run_unknown_model,
              "--binario", args.binario, "--poc", args.poc,
-             "--stub", str(instalado)],
+             "--modelo", str(instalado)],
             cwd=RAIZ,
         )
         if r.returncode != 0:
-            print("plugin de deposito de terceiro: FALHOU (ver saida de run_stub_model.py acima)")
+            print("plugin de deposito de terceiro: FALHOU (ver saida de run_unknown_model.py acima)")
             return r.returncode
 
         print("  OK   o .so depositado em plugins/ rodou a simulacao de producao")

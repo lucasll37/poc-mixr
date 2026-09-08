@@ -16,7 +16,6 @@
       "Bash(make test)",
       "Bash(make test-models)",
       "Bash(make run-app)",
-      "Bash(make compare-single-multi)",
       "Bash(make open-edl-builder)",
       "Bash(node src/ui/scripts/build.js)",
       "Bash(python3 src/ui/scripts/edl_lint.py *)",

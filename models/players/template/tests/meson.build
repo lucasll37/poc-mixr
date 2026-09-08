@@ -1,7 +1,6 @@
 # ==============================================================================
-# Suite deste template -- duas camadas, no mesmo espirito de
-# models/players/missile/tests/meson.build (um modelo pequeno nao precisa da
-# suite de 3 camadas de models/players/A-4/tests/meson.build).
+# Suite deste template -- duas camadas: um modelo pequeno nao precisa da
+# suite de 3 camadas de models/players/A-4/tests/meson.build.
 #
 # 'model_inc' e 'template_lib' vem do escopo do meson.build PAI (Meson
 # compartilha o namespace entre um project() e os subdir() dele) -- nao sao
@@ -29,14 +28,24 @@ test_domain = executable('test-domain',
 )
 test('domain', test_domain, suite: 'domain', timeout: 60)
 
-# Camada 2 -- a FORMA do artefato (nao o comportamento): exatamente um
+# Camada 2 -- a FORMA de cada artefato (nao o comportamento): exatamente um
 # simbolo T exportado (o ponto de entrada de MIXR_PLUGIN_DEFINE) e nenhuma
-# dependencia dinamica nao resolvida. Mesmo script de
-# models/players/fixtures/stub/tests/check_contract.sh -- os dois criterios que
-# CONTRIBUTING.md secao 5.1 (raiz) ja documentava a mao.
+# dependencia dinamica nao resolvida -- os dois criterios que CONTRIBUTING.md
+# secao 5.1 (raiz) ja documentava a mao. Um teste por artefato: o scaffold
+# copiavel (template_lib) e o mirror de contrato (template_mirror_lib, ver o
+# cabecalho de meson.build).
 check_contract = find_program('check_contract.sh')
 test('contrato-simbolo-unico-e-deps-resolvidas', check_contract,
     args    : [template_lib],
     suite   : 'contract',
     timeout : 30,
 )
+# >>> MIRROR-BLOCK-START -- scripts/models.sh apaga tudo ate MIRROR-BLOCK-END
+# quando copia este diretorio como scaffold (template_mirror_lib nao existe
+# mais depois de src/mirror.cpp ser removido).
+test('contrato-simbolo-unico-e-deps-resolvidas-mirror', check_contract,
+    args    : [template_mirror_lib],
+    suite   : 'contract',
+    timeout : 30,
+)
+# <<< MIRROR-BLOCK-END

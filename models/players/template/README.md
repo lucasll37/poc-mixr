@@ -9,20 +9,24 @@ biblioteca é o que este repositório chama de **modelo** (ver [`../../../CLAUDE
 seção "O MODELO é um plugin, construído numa etapa PRÉVIA", para a visão geral de como isso se
 encaixa no resto do repositório).
 
-Este diretório **não é um modelo de produção** — é um esqueleto compilável e testável, do tamanho
-mínimo necessário para mostrar a separação em camadas (`domain/` → `ubf/` → `xnative/`) que os
-modelos reais deste repositório usam, com uma única decisão de exemplo (um Schmitt trigger sobre
-a altitude do player: "engajado" acima de um limiar, "não engajado" abaixo de outro) percorrendo
-as três camadas de ponta a ponta. Ele existe para ser **copiado e transformado** no seu modelo —
-ver [`docs/PRIMEIROS-PASSOS.md`](docs/PRIMEIROS-PASSOS.md) para o roteiro mecânico.
+Este diretório é o **único** ponto de partida copiável deste repositório, e hospeda DOIS artefatos
+com papéis diferentes:
 
-**Se você só precisa da prova mínima de que "o contrato de plugin basta"** (sem camadas, um
-arquivo só, ~270 linhas), o ponto de partida certo é
-[`../fixtures/stub`](../fixtures/stub/README.md) — este diretório aqui serve ao caso oposto: você
-sabe que vai precisar de mais de uma decisão coordenada, e quer começar já na forma que vai
-crescer melhor. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) tem a comparação completa entre os
-quatro pontos de referência que `models/players/` tem hoje (`stub`, este `template`, `missile`,
-`A-4`).
+- **`template`** (`libtemplate.so`) — o esqueleto compilável e testável, do tamanho mínimo
+  necessário para mostrar a separação em camadas (`domain/` → `ubf/` → `xnative/`) que os modelos
+  reais deste repositório usam, com uma única decisão de exemplo (um Schmitt trigger sobre a
+  altitude do player: "engajado" acima de um limiar, "não engajado" abaixo de outro) percorrendo
+  as três camadas de ponta a ponta. Ele existe para ser **copiado e transformado** no seu modelo —
+  ver [`docs/PRIMEIROS-PASSOS.md`](docs/PRIMEIROS-PASSOS.md) para o roteiro mecânico.
+- **`template_mirror`** (`libtemplate_mirror.so`, fonte em `src/mirror.cpp`) — o mirror de
+  contrato que este repositório usa nos próprios testes de plugin (`plugin-modelo-estranho`/
+  `plugin-deposito-terceiro`), herdado do extinto `models/players/fixtures/stub`. **NÃO faz parte
+  do scaffold copiável** — apague `src/mirror.cpp` e o bloco `template_mirror` de
+  `meson.build`/`tests/meson.build` antes de personalizar uma cópia (ver o aviso no topo do
+  próprio arquivo e o passo dedicado em `docs/PRIMEIROS-PASSOS.md`).
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) tem a comparação completa entre os pontos de
+referência que `models/players/` tem hoje (este `template` e `A-4`).
 
 ## O que tem em cada arquivo
 
@@ -34,17 +38,20 @@ template/
 │   │   ├── ExampleState.hpp          # percepcao: le o Player, guarda um numero cru
 │   │   ├── ExampleBehavior.hpp       # decisao: aplica a regra, tem os slots
 │   │   └── ExampleAction.hpp         # atuacao: escreve no xboard (a obrigacao muda)
-│   └── xnative/factory.hpp           # registro das 3 classes acima
-├── src/                              # a implementacao de cada header, no mesmo layout
+│   └── xnative/factory.hpp           # registro das 3 classes acima -- SO do artefato 'template'
+├── src/
+│   ├── domain/ ubf/ xnative/         # a implementacao de cada header acima, no mesmo layout
+│   └── mirror.cpp                    # o SEGUNDO artefato -- NAO e scaffold, ver o aviso no topo
 ├── tests/
 │   ├── domain/test_ExampleThreshold.cpp   # 4 casos, sem MIXR, sem Station
-│   └── check_contract.sh                  # forma do .so: 1 simbolo T, deps resolvidas
+│   └── check_contract.sh                  # forma de CADA .so: 1 simbolo T, deps resolvidas
 ├── docs/
 │   ├── ARCHITECTURE.md               # as camadas, o "porque" de cada uma, quando crescer
+│   ├── CONTRATO.md                   # a lista completa do que QUALQUER modelo tem que fazer
 │   └── PRIMEIROS-PASSOS.md           # o roteiro de copiar isto e virar um modelo com nome proprio
 ├── CHANGELOG.md
 ├── Makefile                          # build autocontido -- ver abaixo
-└── meson.build
+└── meson.build                       # os DOIS shared_module(): template_lib, template_mirror_lib
 ```
 
 ## Compilar e testar, sozinho
@@ -62,18 +69,21 @@ cd ../../.. && make configure && make sdk
 
 # daqui em diante, só aqui dentro:
 cd models/players/template
-make build            # compila -> ./dist/lib/mixr-plugins/libtemplate.so (bare `make` so mostra `make help`)
-make test             # 4 casos de domain/ (o Schmitt trigger) + a forma do .so
-make install-host     # copia o .so para ../../../plugins/ -- ver a proxima secao
+make build            # compila -> ./dist/lib/mixr-plugins/{libtemplate.so,libtemplate_mirror.so} (bare `make` so mostra `make help`)
+make test             # 4 casos de domain/ (o Schmitt trigger) + a forma dos DOIS .so
+make install-host     # copia os dois .so para ../../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos. `./build` e `./dist` nascem e ficam dentro **deste**
 diretório — nada aqui escreve fora dele, exceto `make install-host`.
 
-**Este template nunca é construído pelo `make models` da raiz**, e nenhum cenário existente
-aponta para ele — ele não é produção, é ponto de partida. Depois de copiado e renomeado (ver
-`docs/PRIMEIROS-PASSOS.md`), o modelo resultante pode (e provavelmente deveria) entrar no fluxo
-orquestrado, do mesmo jeito que `A-4`/`missile`/`fixtures/stub` já entram.
+**Este template nunca é construído pelo `make models` da raiz** (que descobre projetos de
+produção por `find`, e exclui `template/` de propósito) — mas o alvo `models:` do Makefile raiz
+instala o artefato `template_mirror` à parte, incondicionalmente, porque os testes de plugin do
+host dependem dele (ver a seção anterior). O artefato `template` (o scaffold em si) não é
+instalado por nenhum alvo automático — nenhum cenário existente aponta para ele. Depois de copiado
+e renomeado (ver `docs/PRIMEIROS-PASSOS.md`), o modelo resultante pode (e provavelmente deveria)
+entrar no fluxo orquestrado, do mesmo jeito que `A-4` já entra.
 
 ## Por que existe um passo separado para "publicar no host"
 
@@ -95,8 +105,8 @@ exemplo pela sua decisão de verdade.
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — as camadas, o porquê de cada uma, e quando
   crescer para uma árvore de comportamento
-- [`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) — a lista completa e
-  autoritativa do que QUALQUER modelo precisa fazer para o host carregá-lo e rodar com ele
+- [`docs/CONTRATO.md`](docs/CONTRATO.md) — a lista completa e autoritativa do que QUALQUER modelo
+  precisa fazer para o host carregá-lo e rodar com ele
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
   Makefile da raiz

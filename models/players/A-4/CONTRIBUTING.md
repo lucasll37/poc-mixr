@@ -18,14 +18,13 @@ disponíveis (mesmo padrão do Makefile raiz do `poc-mixr`). O ciclo do dia a di
 explícito:
 
 ```bash
-make build      # configura (./build, uma vez, via 'configure') + compila -> libflight.so, libflight_tc.so
+make build      # configura (./build, uma vez, via 'configure') + compila -> libflight.so
 make test       # domain + tree + native, ~1 s -- nenhuma levanta Station (builda antes, se preciso)
 ```
 
-Os dois artefatos vêm da MESMA árvore de fontes: `libflight_tc.so` é `-DFLIGHT_TC_AGENT`, que liga
-o `xnative::FlightAgentTC` (agente decidindo na fase 3 do frame de tempo crítico, um por thread do
-pool) no lugar do laço de background que o `.so` sem sufixo usa. Editar `domain/`/`bt/`/`ubf/`
-afeta os dois artefatos ao mesmo tempo; só `xnative/` tem código atrás do `#ifdef`.
+Um artefato só: `xnative::FlightAgentTC` (o único agente deste modelo — decide na fase 3 do frame
+de tempo crítico, um por thread do pool) é sempre compilado e sempre registrado, sem `#ifdef`
+nenhum. Editar `domain/`/`bt/`/`ubf/`/`xnative/` sempre afeta o mesmo (e único) artefato.
 
 `.clangd`/`compile_commands.json` já apontam para `./build` (o `meson setup` que `make build`
 dispara, via o alvo `configure`, gera esse arquivo) — IntelliSense funciona desde a primeira
@@ -37,7 +36,7 @@ compilação, sem passo extra.
 |---|---|
 | `make check-root` | só confere o pré-requisito (SDK do host publicado) — feedback verde de OK ou vermelho com o comando exato que falta |
 | `make configure` | `meson setup` isolado neste projeto (depende de `check-root`) |
-| `make build` | compila `libflight.so` + `libflight_tc.so` (depende de `configure`) |
+| `make build` | compila `libflight.so` (depende de `configure`) |
 | `make test` | roda a suíte do modelo (depende de `build`) |
 | `make install` | instala em `./dist` — a raiz DESTE projeto (depende de `build`) |
 | `make install-host` | deposita em `../../../plugins/` (depende de `install`) — seção 4 |
@@ -48,8 +47,9 @@ compilação, sem passo extra.
 por exemplo, já dispara `build` (e `configure`/`check-root`) se precisar.
 
 **Se a mudança acrescenta uma classe ou um slot que algum cenário de produção passa a usar**, o
-[`fixtures/stub`](../fixtures/stub/) — o "modelo estranho" que os testes de plugin do host carregam
-para provar que o contrato basta — também precisa aceitar/ignorar o mesmo slot. Ver seção 5.
+mirror de contrato de [`template`](../template/) (`src/mirror.cpp`) — o "modelo estranho" que os
+testes de plugin do host carregam para provar que o contrato basta — também precisa
+aceitar/ignorar o mesmo slot. Ver seção 5.
 
 ## 2. Testes
 
@@ -103,14 +103,18 @@ resultado, em vez de um histórico de tentativas.
 1. Implemente o nó em `src/bt/nodes/` e registre em `src/bt/bt_factory.cpp` (nó nativo, sem
    dependência do SDK) ou `src/bt/bt_factory_sdk.cpp` (nó que usa `xlog`/`xrandom`/`xinfer`/
    `xpyembed` — qualquer coisa que arraste `sdk_dep`). Acrescente o `.cpp` novo a
-   `bt_sources`/`bt_sdk_sources` em [`tests/meson.build`](tests/meson.build) — é de lá que
-   `dump-tree-model`, `test-tree` e `test-native` compilam; esquecer esse passo faz o nó compilar
+   `bt_sources`/`bt_sdk_sources` em [`meson.build`](meson.build) (raiz deste projeto) — é de lá
+   que `dump-tree-model` (`tools/meson.build`), `test-tree` e `test-native`
+   ([`tests/meson.build`](tests/meson.build)) compilam; esquecer esse passo faz o nó compilar
    para o `.so` de produção mas não aparecer no manifesto do Groot nem nos testes.
-2. Recompile o gerador e resincronize os 5 XMLs de produção:
+2. Recompile o gerador e atualize toda árvore de `configs/`:
    ```bash
-   meson compile -C build dump-tree-model
-   python3 tools/sync_tree_models.py
+   make update-bt
    ```
+   (recompila `dump-tree-model` sozinho, via a dependência `build` do alvo). Descobre as árvores
+   por CONTEÚDO (todo `.xml` de `configs/` com `<BehaviorTree>` dentro, não uma lista de nomes) e
+   substitui o `<TreeNodesModel>` de cada uma pelo registro atual — insere o bloco do zero numa
+   árvore que ainda não tem um.
 3. `make test` cobra isso sozinho a partir daqui — o teste `tree-model-sync` (suíte `tree`) falha
    se o passo 2 for esquecido, listando exatamente quais arquivos ficaram desatualizados.
 
@@ -123,20 +127,21 @@ armadilhas confirmadas do gerador → [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE
 ### 3.3 Criar uma árvore nova, do zero
 
 O Groot não tem "começar em branco com os meus nós" — a paleta só é populada a partir do
-`<TreeNodesModel>` de um arquivo já carregado. O gerador tem um segundo modo para isto:
+`<TreeNodesModel>` de um arquivo já carregado. O alvo `create-bt` cria esse ponto de partida direto
+em `configs/bt.xml` (recusa se o arquivo já existir — renomeie/mova a árvore anterior primeiro):
 
 ```bash
-meson compile -C build dump-tree-model                              # se ainda não compilou
-./build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova.xml
+make create-bt
 cd ../../.. && make open-groot
-# File > Load... > /tmp/nova.xml
+# File > Load... > models/players/A-4/configs/bt.xml
 ```
 
 Sai com uma raiz `<Fallback>` vazia (builtin do BT.CPP, não precisa de nó nenhum do modelo) e a
 paleta já mostrando todos os nós que este modelo registra (em azul, distintos dos nativos do
 BT.CPP) — arraste da paleta pro canvas, conecte arrastando de uma saída pra uma entrada, `File >
-Save`. Só promova a árvore para `configs/` (e para um cenário de produção) depois de validada; até
-lá, aponte o `treeFile:` de um `.edl` de teste para o caminho em `/tmp`.
+Save`. Itere em `configs/bt.xml` à vontade; só renomeie para o nome definitivo (e aponte um cenário
+de produção pra ele) depois de validada — `make update-bt` mantém o `<TreeNodesModel>` de qualquer
+nome que ela tiver em sincronia dali em diante.
 
 ### 3.4 Monitorar uma árvore ao vivo
 
@@ -189,14 +194,14 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
   exercitam este `.so` de fora.
 - **`provides:` é igualdade EXATA de conjunto** entre cada `.edl` que carrega este plugin e o que
   o `.so` exporta. Um nome de fábrica novo obriga atualizar `provides:` em **todo** cenário
-  existente que carrega `libflight.so`/`libflight_tc.so` — não só o que motivou a mudança.
+  existente que carrega `libflight.so` — não só o que motivou a mudança.
   `python3 tests/guard/check_colisao_fabrica.py` (na raiz; o hook `check-colisao-fabrica.sh` já
   roda isso sozinho depois de editar `.cpp`/`.hpp` sob `models/`) cobra colisão de nome entre
   plugins carregados juntos no mesmo processo — já aconteceu de verdade (`CLAUDE.md`, "vigésima
-  terceira passada").
+  terceira passada", entre A-4 e o extinto modelo `missile`).
 - **Se a mudança acrescenta uma classe ou um slot que algum `.edl` de produção passa a usar,
-  atualize o [`fixtures/stub`](../fixtures/stub/) junto**
-  ([`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md)). Ele roda o mesmo
+  atualize o mirror de contrato do [`template`](../template/) junto**
+  ([`../template/docs/CONTRATO.md`](../template/docs/CONTRATO.md)). Ele roda o mesmo
   cenário de produção trocando só o `file:` do `( PluginModule )`, e existe justamente para
   quebrar quando o contrato muda — um slot/nome que só o `A-4` conhece derruba
   `plugin-modelo-estranho`/`plugin-deposito-terceiro` no host.
@@ -211,7 +216,7 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
   `<TreeNodesModel>` em detalhe, armadilhas confirmadas
 - [`docs/POLITICAS.md`](docs/POLITICAS.md) — decidir com Python ou com uma política ONNX em vez da
   árvore nativa
-- [`../fixtures/stub/docs/CONTRATO.md`](../fixtures/stub/docs/CONTRATO.md) — o que TODO modelo
+- [`../template/docs/CONTRATO.md`](../template/docs/CONTRATO.md) — o que TODO modelo
   (este incluído) tem que fazer
 - [`../../../CLAUDE.md`](../../../CLAUDE.md) — arquitetura do repositório inteiro; seção "Groot —
   editor e monitor ao vivo" tem a lista completa de armadilhas do editor/monitor

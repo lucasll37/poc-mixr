@@ -59,14 +59,14 @@ void FlightState::updateState(const base::Component* const actor)
    Snapshot s;
    s.valid = true;
 
-   // 'actor' chega aqui resolvido pelo Agent nativo (SimAgent por nome via
-   // 'actorPlayerName:', FlightAgentTC por estar aninhado no proprio
-   // player) -- e' o UNICO jeito confiavel de saber "quem decide" que
-   // funciona igual nos dois agentes. 'findContainerByType(Player)' de
-   // dentro do comportamento NAO funciona no SimAgent: la, BtBehavior mora
-   // dentro do agente, que e' componente da Station, nunca do player (a
-   // ligacao e por NOME, nao por container()) -- medido rodando: retorna
-   // vazio em single-thread, o nome certo em multi-thread.
+   // 'actor' chega aqui resolvido pelo Agent nativo (FlightAgentTC por
+   // estar aninhado no proprio player -- ou SimAgent por nome via
+   // 'actorPlayerName:', se um cenario algum dia voltar a usa-lo) -- e' o
+   // UNICO jeito confiavel de saber "quem decide" que funcionaria igual nos
+   // dois agentes. 'findContainerByType(Player)' de dentro do comportamento
+   // NAO funcionaria com um SimAgent: la, BtBehavior moraria dentro do
+   // agente, que e' componente da Station, nunca do player (a ligacao seria
+   // por NOME, nao por container()).
    const char* const rawOwnerName =
       (air->getName() != nullptr) ? air->getName()->getString() : nullptr;
    s.ownerName = (rawOwnerName != nullptr) ? rawOwnerName : "";
@@ -83,9 +83,9 @@ void FlightState::updateState(const base::Component* const actor)
    // Referencia de solo, tambem pela pilha nativa: quem consulta o banco de
    // elevacao do WorldModel e o proprio Player::updateElevation(), na fase de
    // BACKGROUND (Player.cpp:630, dentro de updateData()) -- nao numa das
-   // quatro fases do frame de tempo critico. Consequencia pratica: onde a
-   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz (ver a poc
-   // multi-thread), este valor pode estar ate 100 ms velho (~8 m percorridos), o que
+   // quatro fases do frame de tempo critico. Consequencia pratica: como a
+   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz, este
+   // valor pode estar ate 100 ms velho (~8 m percorridos), o que
    // e irrelevante para um piso com centenas de metros de folga. E continua
    // deterministico: em -deterministic o laco faz tcFrame() e updateData()
    // em sequencia no mesmo passo, com qualquer numero de threads T/C.

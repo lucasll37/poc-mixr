@@ -30,8 +30,8 @@ extrator para o raciocinio completo:
     para tirar interop/hla e interop/rprfom, fonte de colisao de nome barra
     com Aircraft/GroundVehicle/NetIO/Nib/Ntm) -- e nenhum outro nome de
     fabrica pode aparecer duas vezes no catalogo inteiro.
-  * Toda classe citada nos cenarios REAIS do repositorio (os 10
-    .edl/.edl.in de producao) tem que aparecer no catalogo -- senao a
+  * Toda classe citada nos cenarios REAIS do repositorio (os 7
+    .edl/.edl.in de producao, ver REAL_SCENARIOS) tem que aparecer no catalogo -- senao a
     ferramenta grafica nao consegue montar nem o que ja existe hoje.
   * Os 10 'papeis primarios' que Player::updateSystemPointers() resolve por
     TIPO (dynamicsModel/pilot/navigation/datalink/radio/gimbal/rfSensor/
@@ -66,9 +66,7 @@ sys.path.insert(0, str(REPO_ROOT / "src" / "ui" / "scripts"))
 import generate_edl_catalog as ext  # noqa: E402
 
 REAL_SCENARIOS = [
-    "src/poc/dis/single-thread/configs/scenario.edl.in",
-    "src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in",
-    "src/poc/dis/multi-thread/configs/scenario.edl.in",
+    "src/poc/dis/flight/configs/scenario.edl.in",
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",
@@ -180,8 +178,6 @@ def main():
     # -- origem de QUALQUER coisa sob ./models/, nao so models/players/<x>/ ---
     a4_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:A-4"]
     check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A-4' -- models/players/A-4 sumiu do catalogo")
-    missile_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:missile"]
-    check(len(missile_entries) > 0, "nenhuma classe com origin=='plugin:missile' -- models/players/missile sumiu do catalogo")
     tactical_alert = by_factory.get("TacticalAlert")
     check(tactical_alert is not None, "TacticalAlert nao esta no catalogo")
     if tactical_alert:
@@ -190,13 +186,14 @@ def main():
               f"regressao: uma classe sob models/ que NAO e models/players/<nome>/ "
               f"(aqui, models/events/payloads/EID_ALERT/) caindo de volta pra 'builtin' por engano")
 
-    # -- primeiro-achado-vence entre models/players/A-4 e fixtures/stub -------
+    # -- primeiro-achado-vence entre models/players/A-4 e template/mirror ----
     bt_behavior = by_factory.get("BtBehavior")
     check(bt_behavior is not None, "BtBehavior nao esta no catalogo")
     if bt_behavior:
         check(slot(bt_behavior, "patrolHeading") is not None,
-              "BtBehavior.patrolHeading nao encontrado -- regressao: o stub "
-              "(fixtures/stub, varrido depois de A-4) pode ter sobrescrito os slots reais")
+              "BtBehavior.patrolHeading nao encontrado -- regressao: o mirror de contrato "
+              "(models/players/template/src/mirror.cpp, varrido depois de A-4) pode ter "
+              "sobrescrito os slots reais")
 
     # -- multiplos slots numa linha so (estilo compacto) ---------------------
     msg_feed = by_factory.get("MsgFeed")

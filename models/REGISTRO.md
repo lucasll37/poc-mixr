@@ -9,17 +9,9 @@ própria linha no **fim** da tabela; ao mudar algo, edite só a sua linha, nunca
 
 | Modelo | Pasta | Responsável | Última atualização | Observação |
 |---|---|---|---|---|
-| A-4 (flight) | `models/players/A-4/` | — | — | produção — `single-thread`, `multi-thread`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` |
-| missile | `models/players/missile/` | — | — | produção, demo acadêmica — `scenario_missile_demo.edl.in` (via `single-thread`) |
-| fixtures/stub | `models/players/fixtures/stub/` | — | — | fixture de teste, não é modelo de produção — não reivindicar |
-| template | `models/players/template/` | — | — | ponto de partida, não é modelo de produção — não reivindicar |
-| helicóptero | `models/players/<a definir>/` | a definir | — | planejado |
-| disco-voador | `models/players/<a definir>/` | a definir | — | planejado |
-| satélite | `models/players/<a definir>/` | a definir | — | planejado |
-| foguete | `models/players/<a definir>/` | a definir | — | planejado |
+| A-4 (flight) | `models/players/A-4/` | — | — | produção — `flight`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` |
+| template | `models/players/template/` | — | — | ponto de partida, não é modelo de produção — não reivindicar; também hospeda o mirror de contrato (`src/mirror.cpp`) usado pelos testes de plugin do host |
 
-Quem começar um dos quatro planejados: troque `models/players/<a definir>/` pela pasta real e
-`a definir` pelo seu nome, na própria linha — sinal para os outros de que já tem dono.
 
 ## Ler também
 

@@ -16,8 +16,8 @@
 # aconteceu quando o MODELO saiu para models/players/A-4 -- e a guarda que a
 # sustentava foi aposentada junto.
 #
-# PROVA DE NEUTRALIDADE (medida na troca): o dump 'frame=' de single-thread,
-# multi-thread, python-flight, onnx-policy e built-in_mixr_1 rodados pelo
+# PROVA DE NEUTRALIDADE (medida na troca): o dump 'frame=' de flight,
+# python-flight, onnx-policy e built-in_mixr_1 rodados pelo
 # ./app saiu BYTE-IDENTICO ao dos binarios proprios que existiam antes.
 #
 # Este arquivo continua existindo porque src/meson.build o chama por

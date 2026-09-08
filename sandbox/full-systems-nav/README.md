@@ -63,13 +63,12 @@ cada frame.
 
 ## O agente: `( FlightAgentTC )`, componente do PLAYER
 
-Ao contrário de `built-in_mixr_1` (que usa `( SimAgent )` nativo, componente
-da `Station`, decidindo em `updateData()`), esta poc usa `( FlightAgentTC )` —
-componente do **player**, decidindo na **fase 3** do frame de tempo crítico,
-o mesmo agente que `multi-thread`/`python-flight`/`onnx-policy` e os três
-cenários do `./app` já usam. `state:`/`behavior:` são os mesmos três papéis do
-UBF de sempre (percepção/decisão/atuação) — só a árvore dentro do `behavior:`
-muda. Plugin: `libflight_tc.so` (não `libflight.so`).
+Esta poc usa `( FlightAgentTC )` — componente do **player**, decidindo na
+**fase 3** do frame de tempo crítico, o mesmo (e único) agente que
+`flight`/`python-flight`/`onnx-policy`/`built-in_mixr_1` e os cenários do
+`./app` já usam. `state:`/`behavior:` são os mesmos três papéis do UBF de
+sempre (percepção/decisão/atuação) — só a árvore dentro do `behavior:`
+muda. Plugin: `libflight.so`.
 
 ## O que foi acrescentado ao modelo (`models/players/A-4`)
 

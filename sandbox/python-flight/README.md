@@ -10,7 +10,7 @@
 > [src/poc/meson.build](../meson.build) para o porquê e para a prova de neutralidade (os dumps
 > saíram byte-idênticos).
 
-A [multi-thread](../multi-thread/) **inteira**, com **uma** diferença: as **leis de voo** não estão
+A [flight](../dis/flight/) **inteira**, com **uma** diferença: as **leis de voo** não estão
 compiladas em lugar nenhum. São quatro arquivos `.py` em [`configs/policy/`](configs/policy/),
 lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo crítico** — mesma
 thread, mesmo tick, sem processo nem soquete no meio.
@@ -62,8 +62,8 @@ na primeira decisão de cada aeronave.
 | o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`libs/xpyembed`](../../../libs/xpyembed/) |
 | o nó de árvore `( PyDecide )` | `models/players/A-4/src/bt/nodes/PyDecideAction.cpp` |
 | a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
-| a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à das gêmeas |
-| o plugin | o **mesmo** `libflight_tc.so` das gêmeas, byte a byte |
+| a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
+| o plugin | o **mesmo** `libflight.so` da poc `flight`, byte a byte |
 
 **É novo** — o que esta pasta acrescenta:
 
@@ -78,7 +78,7 @@ na primeira decisão de cada aeronave.
 * políticas que **fazem o trabalho inteiro** — patrulha, evasão, apoio e retorno à base — e não um
   exemplo de "vira para longe e acelera".
 
-**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da `multi-thread` com
+**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da poc `flight` com
 caminhos e banner trocados; o modelo não mudou. Isso é o resultado a observar, não uma economia:
 a extensibilidade que o `( PluginModule )` + `( PyDecide )` prometiam se paga aqui.
 
@@ -241,11 +241,11 @@ resto não.
 
 ## 9. O que muda no `.edl`
 
-[`configs/scenario.edl.in`](configs/scenario.edl.in) é o da `multi-thread` com quatro deltas:
+[`configs/scenario.edl.in`](configs/scenario.edl.in) é o da poc `flight` com quatro deltas:
 
 1. `treeFile:` aponta para a árvore desta pasta, e não para a de produção instalada em `dist/`;
 2. Tacview na porta **1237** e gravação em `data/recordings/` próprio;
-3. DIS emitindo da porta **3004** (bandit 3001, single-thread 3002, multi-thread 3003) — as
+3. DIS emitindo da porta **3004** (bandit 3001, flight 3002) — as
    quatro pocs podem rodar ao mesmo tempo;
 4. o `MsgFileSink` grava no `data/messages/` próprio.
 
@@ -292,7 +292,7 @@ passo fixo, 4 threads T/C, três repetições cada:
 
 | | tempo de parede |
 |---|---|
-| `multi-thread` (decisão em C++) | 2,36 / 2,62 / 2,60 s |
+| `flight` (decisão em C++) | 2,36 / 2,62 / 2,60 s |
 | `python-flight` (decisão em Python) | 3,01 / 3,34 / 3,25 s |
 
 A diferença é ~0,67 s em **16 000 decisões** (4000 frames × 4 aeronaves) — **~42 µs por decisão**,
@@ -313,7 +313,7 @@ meson test -C build --suite determinism     # inclui determinism-python
 
 As duas fixtures de cenário são **derivadas** do `scenario.edl.in` desta pasta por
 `tests/scenario/make_fixture.py` — nunca cópias versionadas. Elas rodam a **mesma** bateria
-semântica das gêmeas (quem evadiu avisa, quem apoiou recebeu, ninguém voou para dentro do
+semântica da poc `flight` (quem evadiu avisa, quem apoiou recebeu, ninguém voou para dentro do
 terreno), normalizando o prefixo `PY-` na entrada: as propriedades afirmadas são as do **modelo**,
 e valem igual quando o comando sai de um script.
 

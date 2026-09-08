@@ -46,11 +46,6 @@ public:
                           const double northM, const double eastM,
                           const double altitudeM, const double rangeM);
 
-   // Pedido de lancamento de missil -- 'targetName' e o nome do player-alvo
-   // (ver domain::WorldView::contactName), resolvido de verdade so na
-   // atuacao (execute()), que e onde este modelo toca objeto MIXR de arma.
-   void setLaunchRequest(const std::string& targetName);
-
 private:
    domain::FlightCommand command{};
    std::string label{"?"};
@@ -61,9 +56,6 @@ private:
    double alertEastM{};
    double alertAltitudeM{};
    double alertRangeM{};
-
-   bool launch{};
-   std::string launchTargetName;
 };
 
 } // namespace xnative

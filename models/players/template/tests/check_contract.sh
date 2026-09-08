@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# Os dois criterios que models/README.md secao 2.3 ja documentava a mao,
+# Os dois criterios que CONTRIBUTING.md secao 5.1 ja documentava a mao,
 # automatizados: um .so de plugin tem de exportar EXATAMENTE um simbolo
 # global (o ponto de entrada da macro MIXR_PLUGIN_DEFINE -- ver
-# models/players/fixtures/stub/docs/CONTRATO.md) e nao pode ter dependencia
+# models/players/template/docs/CONTRATO.md) e nao pode ter dependencia
 # dinamica nao resolvida.
 #
-# Nao afirma nada sobre COMPORTAMENTO -- so a forma do artefato. Mesma logica
-# de models/players/fixtures/stub/tests/check_contract.sh (o script ja era
-# generico, nao cita "stub" em lugar nenhum) -- este comentario foi adaptado
-# aqui, nao e copia byte a byte do de la.
+# Nao afirma nada sobre COMPORTAMENTO -- so a forma do artefato. Roda contra
+# os DOIS artefatos deste projeto (template_lib e template_mirror_lib, ver
+# tests/meson.build) -- o script em si e generico, nao cita nome de artefato
+# nenhum.
 #
 set -euo pipefail
 

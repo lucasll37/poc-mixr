@@ -62,7 +62,7 @@ def rodar(binario: str, fixture: pathlib.Path, threads: int, frames: int) -> lis
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--binario", required=True)
-    ap.add_argument("--poc", default="multi-thread",
+    ap.add_argument("--poc", default="flight",
                     help="pasta em src/poc/ de onde a fixture e derivada")
     ap.add_argument("--tree", help="nome do .xml da arvore a por no lugar do de "
                                    "producao; omitido, usa o do proprio cenario")

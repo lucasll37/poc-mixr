@@ -27,10 +27,16 @@ make test       # 4 casos de domain/ + a forma do .so (1 símbolo T, deps resolv
 cp -r models/players/template models/players/meu-modelo
 cd models/players/meu-modelo
 rm -rf build dist   # se a cópia trouxe artefatos de build do template
+rm -f src/mirror.cpp   # NAO faz parte do scaffold -- ver o aviso no topo do proprio arquivo
 ```
 
 `meu-modelo` aqui é só um exemplo — use um nome descritivo do que o SEU modelo pilota ou decide
-(o mesmo espírito de `A-4`/`missile`, não `modelo1`/`modelo2`).
+(o mesmo espírito de `A-4`, não `modelo1`/`modelo2`).
+
+**Depois de apagar `src/mirror.cpp`, remova também o bloco `template_mirror_lib` de
+`meson.build`** (o segundo `shared_module(...)`, com o comentário "SEGUNDO artefato deste
+projeto") **e o teste `contrato-simbolo-unico-e-deps-resolvidas-mirror` de `tests/meson.build`** —
+sem isso, `make build` falha procurando um arquivo que você acabou de apagar.
 
 ## Passo 2 — renomeie o projeto, o módulo e o namespace
 
@@ -55,8 +61,7 @@ grep -n 'MIXR_PLUGIN_DEFINE' src/plugin.cpp
 #    a profundidade é a MESMA do template (três níveis) -- nada a fazer.
 #    Se você mover para outro lugar (ex.: direto em models/meu-modelo/, dois
 #    níveis), troque 'ROOT := $(abspath ../../..)' por
-#    'ROOT := $(abspath ../..)' -- ver o aviso equivalente em
-#    ../fixtures/stub/README.md, que é a mesma armadilha.
+#    'ROOT := $(abspath ../..)'.
 ```
 
 Confirme que nada ficou para trás:
@@ -99,11 +104,11 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
 4. **`ubf/ExampleAction::execute()`** → troque o corpo por comandos de verdade sobre o `Player`
    (`Autopilot`, `StoresMgr`, o que for). **Não apague as duas chamadas ao `xboard`** — são a
    única obrigação de um modelo que falha em silêncio (ver `docs/ARCHITECTURE.md` e
-   `../fixtures/stub/docs/CONTRATO.md` seção 3).
+   `docs/CONTRATO.md` seção 3).
 5. **`xnative/factory.cpp`** → atualize as três listas (o `if/else`, `NOMES[]`, `METAS[]`) para
    bater com as classes que sobraram/entraram. Se o seu modelo ficar com só 1-2 classes, considere
-   eliminar `xnative/` e fazer como `models/players/missile/src/plugin.cpp`: a factory inline, sem
-   indireção.
+   eliminar `xnative/` e fazer como `src/mirror.cpp` (o mirror de contrato deste mesmo diretório,
+   apagado no Passo 1): a factory inline, sem indireção.
 6. **`src/plugin.cpp`** → confira que o primeiro argumento de `MIXR_PLUGIN_DEFINE` é o nome final
    do seu modelo (o passo 2 já deve ter cuidado disso).
 
@@ -124,8 +129,8 @@ bater **exatamente** com o que a sua `.so` exporta):
 ```
 
 (troque os três nomes pelos que sobraram depois do Passo 5). Veja
-`src/poc/dis/single-thread/configs/scenario.edl.in` para um cenário de produção completo usando
-este mesmo mecanismo, e `models/players/fixtures/stub/docs/CONTRATO.md` seção 2 para a tabela
+`src/poc/dis/flight/configs/scenario.edl.in` para um cenário de produção completo usando
+este mesmo mecanismo, e `docs/CONTRATO.md` seção 2 para a tabela
 completa de "nome de fábrica → classe-base exigida → onde entra".
 
 ## Passo 7 — nada a fazer aqui: o build orquestrado já descobre o seu modelo sozinho

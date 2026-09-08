@@ -39,9 +39,10 @@ const Color kPalette[]{
 };
 const int kPaletteSize{static_cast<int>(sizeof(kPalette) / sizeof(kPalette[0]))};
 
-// -1 = "nao se aplica" (xboard::Readout::threadTag, ver Board.hpp) -- so
-// faz sentido pra quem decide no pool de tempo critico (a multi-thread; na
-// single-thread a decisao roda no laco de background, fora do pool).
+// -1 = "nao se aplica" (xboard::Readout::threadTag, ver Board.hpp) -- so faz
+// sentido pra quem decide no pool de tempo critico (todo FlightAgentTC); um
+// player sem agente proprio (ex.: o bandit1 local, sem decisao nenhuma)
+// nunca escreve o campo e fica em "-".
 std::string threadTagText(const int threadTag)
 {
    return (threadTag >= 0) ? ("T" + std::to_string(threadTag)) : "-";

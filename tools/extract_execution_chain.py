@@ -113,12 +113,12 @@ def find_overrides(cpp_roots, methods=None, capture_body=False):
 
     PRIMEIRO achado vence por (classe, metodo) -- nao sobrescreve -- pelo
     MESMO motivo de extract_slots() (em mixr_source_scan.py): varrer
-    models/ inteiro (incluindo models/players/fixtures/stub, que
+    models/ inteiro (incluindo models/players/template/src/mirror.cpp, que
     deliberadamente reimplementa FlightAction::execute/etc. com o MESMO
     nome, so para testar contrato de carga de plugin) faz duas definicoes
     REAIS do mesmo (Classe, metodo) aparecerem em arquivos diferentes.
     Confirmado rodando: sem a guarda, 'FlightAction::execute' saia
-    apontando pra stub.cpp (varrido depois de A-4 na ordem alfabetica),
+    apontando pra mirror.cpp (varrido depois de A-4 na ordem alfabetica),
     nao para a implementacao de producao. A guarda e por (classe, metodo),
     NAO por classe inteira -- uma classe real legitimamente tem metodos
     DIFERENTES definidos em arquivos DIFERENTES (isso nao e colisao

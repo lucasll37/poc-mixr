@@ -154,9 +154,9 @@ TEST(XInfer, InferenciaEhDeterministicaEmMilRepeticoes)
                          referencia.data(), static_cast<int>(referencia.size())),
              XRLBRIDGE_ACTION_SIZE);
 
-   // Comparacao BIT A BIT, nao por tolerancia: o dump deterministico do
-   // check-multi-thread compara com setprecision(9), entao qualquer diferenca
-   // de ultimo bit acabaria aparecendo la.
+   // Comparacao BIT A BIT, nao por tolerancia: o dump deterministico da poc
+   // flight compara com setprecision(9), entao qualquer diferenca de ultimo
+   // bit acabaria aparecendo la.
    for (int repeticao = 0; repeticao < 1000; ++repeticao) {
       std::array<float, XRLBRIDGE_ACTION_SIZE> saida{};
       ASSERT_EQ(xinfer::run(id, entrada.data(), static_cast<int>(entrada.size()),
@@ -171,9 +171,9 @@ TEST(XInfer, InferenciaEhDeterministicaEmMilRepeticoes)
 
 TEST(XInfer, QuatroThreadsNaMesmaSessaoDaoOMesmoResultado)
 {
-   // O caso REAL da poc multi-thread: os quatro falcons decidem na fase 3, um
+   // O caso REAL da poc flight: os quatro falcons decidem na fase 3, um
    // por thread do pool, compartilhando a MESMA sessao. Se isto divergisse, o
-   // check-multi-thread quebraria -- e a causa seria dificil de achar la.
+   // determinismo da poc quebraria -- e a causa seria dificil de achar la.
    const xinfer::ModelId id{xinfer::open(POLICY_ONNX)};
    ASSERT_NE(id, 0);
 

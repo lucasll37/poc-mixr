@@ -15,7 +15,7 @@ components: {
    plugins: ( PluginLoader
       searchPaths: { "./dist/lib/mixr-plugins/" }
       modules: {
-         ( PluginModule  file: "libflight_tc.so"
+         ( PluginModule  file: "libflight.so"
             provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                         FlightState BtBehavior AltitudeSafetyBehavior
                         RLBridgeBehavior FlightAction } )
@@ -24,9 +24,8 @@ components: {
    ...
 ```
 
-**Lado que escreve — dentro do plugin**, no único ponto de atuação comum aos dois agentes
-(`SimAgent` de background e `FlightAgentTC` do pool T/C), depois de o `UbfArbiter`/`Fallback` já
-ter escolhido o vencedor (`models/players/A-4/src/ubf/FlightAction.cpp`):
+**Lado que escreve — dentro do plugin**, no ponto de atuação do `FlightAgentTC`, depois de o
+`UbfArbiter`/`Fallback` já ter escolhido o vencedor (`models/players/A-4/src/ubf/FlightAction.cpp`):
 
 ```cpp
 #include "xboard/Board.hpp"

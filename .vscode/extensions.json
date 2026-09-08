@@ -9,6 +9,7 @@
     "ms-vscode.cpptools",
     "spencerwmiles.vscode-task-buttons",
     "ms-azuretools.vscode-containers",
+    "mesonbuild.mesonb",
     "local.edl"
   ]
 }

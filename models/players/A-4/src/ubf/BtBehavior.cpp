@@ -101,7 +101,7 @@ bool BtBehavior::shutdownNotification()
 // xrandom" do CLAUDE.md para o "porque" completo). Resumo: a sub-semente de
 // cada player vem de um HASH DO PROPRIO NOME, nunca de ordem de descoberta
 // ou de processamento entre players -- essa ordem nao e garantida neste
-// framework (a poc multi-thread decide em paralelo, um player por thread do
+// framework (os quatro players decidem em paralelo, um por thread do
 // pool de tempo critico), e qualquer esquema baseado em ordem quebraria o
 // determinismo entre 1/2/4 threads. patrolSeedOverride, quando declarado,
 // pula so a derivacao por NOME -- a derivacao de PROPOSITO (kPatrolJitterSalt)
@@ -169,10 +169,10 @@ void BtBehavior::buildTree()
 // O nome vem de 'snap.ownerName' (preenchido em FlightState::updateState(),
 // que recebe o ator direto do Agent nativo) -- NAO de
 // 'findContainerByType(Player)' a partir daqui. Medido rodando: essa busca
-// funciona em multi-thread (BtBehavior aninhado no proprio player, via
-// FlightAgentTC) mas devolve vazio em single-thread (BtBehavior mora dentro
-// do SimAgent, componente da Station -- a ligacao com o player e' por NOME
-// via 'actorPlayerName:', nunca por container()).
+// funciona aqui (BtBehavior aninhado no proprio player, via FlightAgentTC)
+// mas devolveria vazio se BtBehavior morasse dentro de um ( SimAgent )
+// nativo, componente da Station -- a ligacao com o player seria por NOME
+// via 'actorPlayerName:', nunca por container().
 //
 // So' um player por PROCESSO: o proprio PublisherZMQ lanca LogicError numa
 // segunda instancia (so' faz sentido de qualquer forma -- cada player tem a
@@ -265,9 +265,6 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
       action->setAlertBroadcast(currentDecision.alertContactName,
                                 currentDecision.alertNorthM, currentDecision.alertEastM,
                                 currentDecision.alertAltitudeM, currentDecision.alertRangeM);
-   }
-   if (currentDecision.launchRequested) {
-      action->setLaunchRequest(currentDecision.launchTargetName);
    }
 
    // O voto do comportamento vai junto: e por ele que o UbfArbiter escolhe

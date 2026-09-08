@@ -4,8 +4,9 @@
 //
 // O QUE IMPORTA AQUI e o isolamento por chave. O GIL serializa as chamadas,
 // mas a ORDEM em que as threads o adquirem nao e deterministica -- entao a
-// unica coisa que mantem o check-multi-thread verde e cada aeronave ter o SEU
-// dicionario de globais. Estes testes travam exatamente isso.
+// unica coisa que mantem o determinismo da poc python-flight verde e cada
+// aeronave ter o SEU dicionario de globais. Estes testes travam exatamente
+// isso.
 //
 #include "xpyembed/PyEmbed.hpp"
 

@@ -2052,8 +2052,8 @@ const FLIGHT_SNIPPETS = {
       "   // elevacao do WorldModel e o proprio Player::updateElevation(), na fase de",
       "   // BACKGROUND (Player.cpp:630, dentro de updateData()) -- nao numa das",
       "   // quatro fases do frame de tempo critico. Consequencia pratica: onde a",
-      "   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz (ver a poc",
-      "   // multi-thread), este valor pode estar ate 100 ms velho (~8 m percorridos), o que",
+      "   // decisao roda na fase 3 a 50 Hz contra um background de 10 Hz, este",
+      "   // valor pode estar ate 100 ms velho (~8 m percorridos), o que",
       "   // e irrelevante para um piso com centenas de metros de folga. E continua",
       "   // deterministico: em -deterministic o laco faz tcFrame() e updateData()",
       "   // em sequencia no mesmo passo, com qualquer numero de threads T/C.",
@@ -2662,7 +2662,7 @@ function flightLayout(root) {
 
 // Miolo comum às 3 árvores desta aba (produção + as 2 variantes Python/ONNX    *
 // mais abaixo) -- SÓ as folhas de "behavior" mudam entre elas; agente,        *
-// estado, ação e autopilot são o MESMO nas 3 pocs (multi-thread,              *
+// estado, ação e autopilot são o MESMO nas 3 pocs (flight,                    *
 // python-flight, onnx-policy só trocam o treeFile: do BtBehavior).
 function flightSkeleton(behaviorChildren) {
   return N("agent", "FlightAgentTC", {
@@ -2864,7 +2864,7 @@ const FLIGHT_BT_LEAVES = {
   },
 };
 
-/* EDL real (condensado) de src/poc/dis/multi-thread/configs/scenario.edl.in --      *
+/* EDL real (condensado) de src/poc/dis/flight/configs/scenario.edl.in --      *
  * dois trechos do MESMO falcon1 (pilot:/agent: não são vizinhos no arquivo real,   *
  * há dezenas de linhas de outros sistemas entre os dois -- omitidas e marcadas     *
  * abaixo, mesma prática já usada por EDL_TEXT/SCENARIO). */
@@ -3595,12 +3595,12 @@ function FlightDecision({ onOpenCatalog }) {
                 <div style={{ flex: "1 1 240px", border: "1px dashed var(--rule)", borderRadius: 4, padding: "6px 9px" }}>
                   <div className="mx-mono" style={{ fontWeight: 600, fontSize: 11.5 }}>Agent</div>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>thread de FUNDO -- updateData(dt) chama controller(dt)</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: SimAgent nativo (poc single-thread)</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: SimAgent nativo (classe do framework, nao usada por nenhuma poc deste repositorio)</div>
                 </div>
                 <div style={{ flex: "1 1 240px", border: "1px dashed var(--hot)", borderRadius: 4, padding: "6px 9px" }}>
                   <div className="mx-mono" style={{ fontWeight: 600, fontSize: 11.5 }}>AgentTC <span style={{ color: "var(--hot)" }}>← usado neste exemplo</span></div>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>thread de TEMPO CRÍTICO -- updateTC(dt) chama controller(dt)</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: FlightAgentTC (este exemplo, poc multi-thread)</div>
+                  <div style={{ fontSize: 10.5, color: "var(--sub-muted)", marginTop: 3 }}>ex.: FlightAgentTC (este exemplo, poc flight)</div>
                 </div>
               </div>
               <p style={{ fontSize: 11, color: "var(--muted)", margin: "7px 0 0" }}>

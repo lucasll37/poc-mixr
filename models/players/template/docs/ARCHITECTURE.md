@@ -10,19 +10,18 @@ em cada camada — pequena o bastante para ler inteira em poucos minutos, real o
 compilar, testar e carregar num cenário de verdade.
 
 Se você só precisa da prova de que "o contrato de plugin basta" (sem nenhuma camada, sem
-`domain/`), o ponto de partida certo é
-[`../../fixtures/stub`](../../fixtures/stub/README.md) — leia
-[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) primeiro. Este
-diretório aqui existe para o caso oposto: você **vai** escrever um modelo com mais de uma
-decisão, e quer começar já na forma que vai precisar mais cedo ou mais tarde. A tabela abaixo
-resume as diferenças entre os quatro pontos de referência que este repositório tem hoje:
+`domain/`), leia [`CONTRATO.md`](CONTRATO.md) e o exemplo mínimo em `../src/mirror.cpp` (o
+mirror de contrato deste mesmo diretório — **não** faz parte do scaffold copiável, apague-o ao
+personalizar uma cópia, ver `PRIMEIROS-PASSOS.md`). Este diretório aqui existe para o caso
+oposto: você **vai** escrever um modelo com mais de uma decisão, e quer começar já na forma que
+vai precisar mais cedo ou mais tarde. A tabela abaixo resume as diferenças entre os pontos de
+referência que este repositório tem hoje:
 
 | projeto | por que existe | o que copiar dele |
 |---|---|---|
-| [`fixtures/stub`](../../fixtures/stub/) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
 | **`template`** (este) | ponto de partida **em camadas**, para decisão nova, sem BehaviorTree.CPP ainda | a separação `domain/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
-| [`missile`](../../missile/) | segundo modelo real: um `Player` **novo** (não um agente de decisão) | como anexar um `JSBSimModel`, como evitar a indireção de `xnative/factory.*` quando há só 1-2 classes |
-| [`A-4`](../../A-4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as três referências acima já cobrem |
+| `template/src/mirror.cpp` (mesmo diretório) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
+| [`A-4`](../../A-4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as duas referências acima já cobrem |
 
 ## As quatro camadas, e por que a separação existe
 
@@ -42,8 +41,9 @@ ubf/       -- as três interfaces do UBF do MIXR (percepção, decisão, ação)
 
 xnative/   -- a cola de registro: a factory que o boundary do plugin chama
               (ver src/plugin.cpp). Só paga por si a partir de ~3 classes;
-              um modelo de 1-2 classes (veja `missile/`) pode inline-ar a
-              factory direto em plugin.cpp e pular este diretório.
+              um modelo de 1-2 classes (veja `../src/mirror.cpp`, o mirror de
+              contrato deste mesmo diretório) pode inline-ar a factory
+              direto em plugin.cpp e pular este diretório.
 
 (bt/)      -- NÃO existe neste template. É onde uma árvore de comportamento
               (BehaviorTree.CPP) entraria, se e quando UMA regra deixar de
@@ -61,15 +61,15 @@ produção é exatamente esta, escalada).
 
 Repare que `include/domain/ExampleThreshold.hpp` **não** declara um `namespace domain { ... }`
 solto no escopo global — ele aninha em `mixr::models::xtemplate::domain`. Isto é deliberado, e o
-comentário completo está no próprio header: um cenário pode carregar **mais de um** plugin no
-mesmo processo (por exemplo, o seu modelo ao lado de `flight`/`missile` num cenário de demo), e
-dois tipos com o **mesmo nome qualificado** (`domain::Foo`) em dois `.so`s distintos têm o mesmo
-símbolo *mangled* — a comparação de `type_info` deste toolchain degrada para `strcmp` entre
-objetos `RTLD_LOCAL`, então dois tipos DIFERENTES com o mesmo nome qualificado podem colidir. O
-`flight` (`models/players/A-4`) chegou primeiro e usa `domain::` solto — já documentado e usado em
-dezenas de lugares, caro demais para mudar agora. O `missile` (mais novo) já nasceu com
-`domain::` aninhado sob `xmissile::`. Este template segue a convenção mais nova: ao copiá-lo,
-troque `xtemplate` pelo nome do seu modelo em TODA a árvore (ver
+comentário completo está no próprio header: um cenário PODERIA, em tese, carregar **mais de um**
+plugin no mesmo processo, e dois tipos com o **mesmo nome qualificado** (`domain::Foo`) em dois
+`.so`s distintos teriam o mesmo símbolo *mangled* — a comparação de `type_info` deste toolchain
+degrada para `strcmp` entre objetos `RTLD_LOCAL`, então dois tipos DIFERENTES com o mesmo nome
+qualificado colidiriam. O `flight` (`models/players/A-4`) chegou primeiro e usa `domain::` solto —
+já documentado e usado em dezenas de lugares, caro demais para mudar agora (é a exceção histórica,
+**não** o exemplo a copiar). Os dois artefatos deste diretório (o scaffold `xtemplate` e o mirror
+de contrato `xtemplate_mirror`, em `../src/mirror.cpp`) já nascem certos, cada um no seu próprio
+namespace. Ao copiar o scaffold, troque `xtemplate` pelo nome do seu modelo em TODA a árvore (ver
 [`PRIMEIROS-PASSOS.md`](PRIMEIROS-PASSOS.md)), e o seu `domain::` sai automaticamente livre de
 colisão com qualquer outro plugin.
 
@@ -87,7 +87,7 @@ chame essas funções compila, carrega, satisfaz `provides:`, e o host sobe e ro
 diferença observável é que a tela de status e o dump `-deterministic` mostram `bt=--` e `dec=0`
 **para sempre**, sem nenhum erro em lugar nenhum. É a obrigação mais fácil de esquecer porque é a
 única sem sintoma de falha — leia
-[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) seção 3 para a lista
+[`CONTRATO.md`](CONTRATO.md) seção 3 para a lista
 completa de funções do `xboard` (alerta tático, contadores de datalink, varredura de radar,
 thread de decisão) e quando cada uma se aplica ao SEU modelo.
 
@@ -95,7 +95,7 @@ thread de decisão) e quando cada uma se aplica ao SEU modelo.
 
 - **Slots com todas as unidades do MIXR** — `ExampleBehavior` só usa `base::Distance`. Se o seu
   modelo precisa de ângulos, tempos, velocidades, etc., `models/players/A-4/include/ubf/BtBehavior.hpp`
-  e `models/players/fixtures/stub/src/stub.cpp` têm exemplos de cada um.
+  e `../src/mirror.cpp` têm exemplos de cada um.
 - **Comandar um subsistema de verdade** — `ExampleAction::execute()` só escreve no `xboard`, para
   compilar contra qualquer `Player`, não só aeronaves. Substitua o corpo por chamadas a
   `models::Autopilot`/`models::StoresMgr`/o que for relevante para o SEU player — veja
@@ -121,7 +121,7 @@ Isso significa:
    required: true)` ao `meson.build` e colocá-la em `model_deps`/`model_link_args` (a
    `-Wl,--exclude-libs,ALL` já está lá, mas ela só importa a partir do momento em que você linka
    uma biblioteca **estática** — o que a BehaviorTree.CPP é, ver
-[`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md), seção 1).
+[`CONTRATO.md`](CONTRATO.md), seção 1).
 2. Criar um diretório `bt/nodes/` com um nó por decisão (condição ou ação), registrados numa
    `BT::BehaviorTreeFactory` própria — `models/players/A-4/src/bt/bt_factory.cpp` é a referência.
 3. Trocar o corpo de `ExampleBehavior::genAction()` por um `tree.tickRoot()` sobre um
@@ -139,6 +139,6 @@ separação em camadas existe para proteger.
 - [`../README.md`](../README.md) — como compilar, testar e instalar este diretório sozinho
 - [`../../../README.md`](../../../README.md) — visão geral de `models/`, o contrato de plugin, e o
   build orquestrado pelo Makefile da raiz
-- [`../../fixtures/stub/docs/CONTRATO.md`](../../fixtures/stub/docs/CONTRATO.md) — a lista completa e
+- [`CONTRATO.md`](CONTRATO.md) — a lista completa e
   autoritativa do que um modelo precisa fazer (este documento resume só as partes relevantes à
   arquitetura em camadas)

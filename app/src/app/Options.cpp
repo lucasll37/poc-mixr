@@ -99,8 +99,6 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
                       << opts.deterministicFrames << "'" << std::endl;
             std::exit(EXIT_FAILURE);
          }
-      } else if (arg == "-parallel-decision") {
-         opts.parallelDecision = true;
       } else if (arg == "-threads") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.threadsOverride = parseIntOrDie(arg, argv[++i]);

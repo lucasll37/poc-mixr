@@ -9,7 +9,7 @@
 // (fixtures de teste, ou qualquer cenario apontado direto -- assume a frota
 // falcon1..4), '-folder <pasta>' navegando cenarios de sandbox em disco
 // (frota descoberta em runtime -- e o caminho para carregar as pocs de
-// src/poc/**, ex.: '-f src/poc/dis/single-thread/configs/scenario.edl.in'). Mora
+// src/poc/**, ex.: '-f src/poc/dis/flight/configs/scenario.edl.in'). Mora
 // fora de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o
 // alvo se chama 'app', nao 'dashboard' (nome interno das classes, que nao
 // mudou).
@@ -20,7 +20,7 @@
 //
 // Opcoes de linha de comando (lista completa em app/Options.hpp):
 //   -f <arquivo> | -folder <pasta>   (um dos dois)
-//   -threads <N> | -deterministic <N> | -parallel-decision
+//   -threads <N> | -deterministic <N>
 //
 // ESTE ARQUIVO SO ORQUESTRA -- mesma divisao de app/ das outras pocs:
 //
@@ -28,7 +28,7 @@
 //    app/AdHocScenario.hpp       ScenarioEntry, e a entrada de '-f <arquivo>'
 //    app/ScenarioFolder.hpp      descoberta de '-folder <pasta>' em disco
 //    app/ScenarioPickerScreen    tela de selecao (FTXUI), sem Station nenhuma
-//    app/TerrainData.hpp         .hgt em disco (copia verbatim de single-thread)
+//    app/TerrainData.hpp         .hgt em disco (copia verbatim das pocs)
 //    app/ScenarioTemplate.hpp    .edl.in -> .edl (copia verbatim)
 //    app/StationBuilder.hpp      .edl -> Station de pe (copia verbatim)
 //    app/Fleet.hpp               os players observados (copia verbatim)
@@ -262,8 +262,7 @@ int main(int argc, char* argv[])
    app::DashboardExit action{app::DashboardExit::Quit};
 
    if (opts.isDeterministic()) {
-      rc = app::runDeterministic(station, fleet, opts.deterministicFrames, tacviewOutput,
-                                 opts.parallelDecision);
+      rc = app::runDeterministic(station, fleet, opts.deterministicFrames, tacviewOutput);
       app::printMetaObjectReport();
    } else {
       // Best-effort: le o MESMO '.edl' ja expandido pra achar 'treeFile:'

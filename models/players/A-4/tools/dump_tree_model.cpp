@@ -5,10 +5,13 @@
 // BT::writeTreeNodesModelXML(), a partir de uma factory populada pelos
 // MESMOS registerNodes()/registerSdkNodes() que o modelo de verdade chama.
 //
-// Isto substitui manter o bloco a mao nos 5 flight_tree*.xml: sempre que um
-// no novo entrar em bt_factory.cpp/bt_factory_sdk.cpp, rodar este binario de
-// novo reflete o registro real, sem depender de alguem lembrar de atualizar
-// XML a mao.
+// Isto substitui manter o bloco a mao nas arvores .xml deste projeto: sempre
+// que um no novo entrar em bt_factory.cpp/bt_factory_sdk.cpp, rodar este
+// binario de novo reflete o registro real, sem depender de alguem lembrar de
+// atualizar XML a mao. Nao ha nada aqui amarrado ao modelo especifico onde
+// este arquivo mora -- bt_factory.hpp/bt_factory_sdk.hpp sao os deste
+// PROJETO (copie tools/ inteiro para outro models/players/<nome>/ e ele
+// reflete o registro DAQUELE projeto).
 //
 // DOIS modos:
 //
@@ -17,11 +20,14 @@
 //                                       BT::writeTreeNodesModelXML() devolve
 //                                       isso ja envolto num <root> proprio
 //                                       (pensado pra virar um .xml sozinho),
-//                                       mas os 5 flight_tree*.xml de producao
-//                                       ja tem o <root> deles; por isso
-//                                       extrai so o miolo, pronto pra colar
-//                                       dentro de um <root> ja existente.
-//                                       E' o modo que sync_tree_models.py usa.
+//                                       mas as arvores de producao deste
+//                                       projeto ja tem o <root> delas; por
+//                                       isso extrai so o miolo, pronto pra
+//                                       colar dentro de um <root> ja
+//                                       existente. E' o modo que
+//                                       tools/update_bt_models.py usa (alvo
+//                                       'make update-bt') para atualizar
+//                                       TODA arvore de configs/.
 //
 //   dump-tree-model --skeleton [ID] -- imprime um .xml COMPLETO e pronto pra
 //                                       SALVAR E ABRIR NO GROOT: uma arvore
@@ -36,7 +42,9 @@
 //                                       esqueleto antes disto -- so o
 //                                       <TreeNodesModel> era gerado, e o
 //                                       "<BehaviorTree><Fallback/></...>"
-//                                       era so um exemplo digitado a mao.
+//                                       era so um exemplo digitado a mao. E'
+//                                       o modo que 'make create-bt' usa para
+//                                       escrever configs/bt.xml.
 //
 #include "bt/bt_factory.hpp"
 #include "bt/bt_factory_sdk.hpp"

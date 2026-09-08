@@ -20,7 +20,7 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
 
    // O MODELO (domain/, bt/, ubf/, xnative/ -- incluindo RLBridgeBehavior)
    // nao entra aqui: chega pelo ULTIMO elo de mixrFactory(), via
-   // mixr::xplugin::loadedFactory(), depois do dlopen do 'libflight_tc.so'
+   // mixr::xplugin::loadedFactory(), depois do dlopen do 'libflight.so'
    // declarado no .edl.
 
    // 2) exportacao para o Tacview (opcional, so para acompanhar visualmente)

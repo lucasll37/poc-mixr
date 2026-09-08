@@ -60,10 +60,10 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
           // esta mesmo amarrada ao frame, este numero tem que avancar na
           // MESMA taxa que 'frame' entre dois dumps, com 1, 2 ou 4 threads.
           //
-          // Conta no ponto da ATUACAO (ubf::FlightAction::execute), nas duas
-          // pocs -- antes a multi-thread contava no proprio agente, o que dava
-          // uma decisao a mais na inicializacao. O que se afirma sempre foi o
-          // avanco, nao o valor absoluto (ver tests/determinism).
+          // Conta no ponto da ATUACAO (ubf::FlightAction::execute) -- antes o
+          // agente contava em si mesmo, o que dava uma decisao a mais na
+          // inicializacao. O que se afirma sempre foi o avanco, nao o valor
+          // absoluto (ver tests/determinism).
           << " dec=" << board.decisions
           << std::endl;
    }

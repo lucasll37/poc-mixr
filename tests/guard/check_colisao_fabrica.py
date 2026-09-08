@@ -5,23 +5,21 @@ publicar o MESMO nome de fabrica.
 Por que isso e fatal, nao so feio: libs/xplugin/PluginRegistry.cpp,
 loadModule(), passo "colisao" -- se dois .so carregados no MESMO processo
 tentam registrar o mesmo nome, o segundo chama die() (std::exit) na hora.
-Ja aconteceu de verdade uma vez (ThreadTagProbe, A-4 vs missile -- ver
-CLAUDE.md, "vigesima terceira passada") e foi corrigido renomeando o lado
-que nao e producao. Esta guarda existe para essa classe de erro nao
-precisar ser descoberta rodando de novo da proxima vez.
+Ja aconteceu de verdade uma vez (ThreadTagProbe, A-4 vs missile -- o
+extinto modelo de demo -- ver CLAUDE.md, "vigesima terceira passada") e
+foi corrigido renomeando o lado que nao e producao. Esta guarda existe
+para essa classe de erro nao precisar ser descoberta rodando de novo da
+proxima vez.
 
 Descobre os modelos por find sob models/players/ (mesma filosofia de
 check_modelo_estrutura.sh/check_falcons_estrutura.sh: um modelo novo ja
 entra na checagem, sem editar este arquivo) -- EXCETO models/players/
-fixtures/<nome>/, que existem justamente para IMITAR o contrato de outro
-modelo (docs/CONTRATO.md) e nunca sao carregados JUNTO com o modelo que
-imitam; colisao ali e o proposito, nao um bug (ver CLAUDE.md sobre o
-stub reaproveitando os mesmos nomes de A-4 de proposito) -- e EXCETO
-models/players/template/, pelo mesmo motivo conceitual: nunca e producao,
-nenhum cenario aponta pra ele, nunca e carregado ao lado de outro modelo
-(models/README.md, secao 2.4). Comparar os nomes de exemplo dele
-(ExampleState/ExampleBehavior/...) contra A-4/missile seria ruido, nao
-sinal.
+template/, que existe justamente para IMITAR o contrato de outro modelo
+(docs/CONTRATO.md, via o mirror `src/mirror.cpp`) e nunca e carregado
+JUNTO com o modelo que imita; colisao ali e o proposito, nao um bug.
+Comparar os nomes do mirror (que reusa de proposito os mesmos 9 nomes de
+A-4) OU os nomes de exemplo do scaffold (ExampleState/ExampleBehavior/...)
+contra A-4 seria ruido, nao sinal.
 
 Limitacao conhecida, documentada em vez de escondida: so olha o que cada
 models/players/<nome>/src/ implementa DIRETAMENTE. Uma classe compartilhada
@@ -47,12 +45,12 @@ import extract_execution_chain as ext  # noqa: E402
 MODELS_PLAYER = REPO_ROOT / "models" / "players"
 
 
-NAO_PRODUCAO = {"fixtures", "template"}
+NAO_PRODUCAO = {"template"}
 
 
 def discover_models():
     """{nome: {nomes-de-fabrica}} para cada models/players/<nome>/ que NAO
-    seja fixture/template -- ver o "porque" da exclusao no docstring do
+    seja template -- ver o "porque" da exclusao no docstring do
     modulo."""
     models = {}
     for d in sorted(MODELS_PLAYER.iterdir()):

@@ -1,9 +1,8 @@
-- gerar arvore "editável" [indo]
--  groot [indo]
+- documentação do template (1h)
+- chamada de LLM (1h)
+- cenário com A4 com dinamica de 4 DOF (1h)
 - documentar de forma excelente [indo]
 - interface gráfica para montar edl [indo]
-- revisar documentação
-
 
 ----------------------------------------------------
 > slides de como é o asa 2.0.0
@@ -20,15 +19,16 @@ Estudei MIXR e BT
 -> higthlight para .edl
 -> Criei apresentação para transmitir o que foi criado
 -> Tutorial:
-    -> poc_A4
     -> poc_helicoptero
     -> disco_voador
     -> poc_satelite
     -> poc_foguete
 
-Fazer bijeções entre o que hj existe para não mudar organização cultural
+Para conceitualmente melhor praticar o desenvolvimento dos modelos e primeiramente pensar nas partes e depois no todo e tbm validar o conceito de modelso como plugins, ao lidar com desenvolvimento de modelo, use como current diretory a pasta do modelo a ser desenvolvido
 
-Filosofia: Pouca coisa em ternos de funcionalidade realmente é novo, a grande novidade é a organização, documentação, esteira de desenvolvimento mais produtiva, padronizada e testável e escalável com dificuldades de dominio mapeadas com correta gestão do conhecimento
+Fazer bijeções entre o que hj existe para não mudar o mapa mental do projeto
+
+Filosofia: Pouca coisa em ternos de funcionalidade realmente é novo, a grande novidade é a organização, documentação, esteira de desenvolvimento mais produtiva, padronizada e testável e escalável com dificuldades de dominio mapeadas com correta gestão do conhecimento e uso apropriado do UBF para padronizar a metodologia de escrita dos comportamentos
 ----------------------------------------------------
 
 

@@ -126,8 +126,10 @@ install-host: install ## Deposita em ../../../plugins/ (flat) -- NAO toca dist/.
 	@mkdir -p $(ROOT)/plugins
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
 	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/"
-	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install' -- e nenhum cenario"
-	@echo "   de producao aponta para 'template', entao nada vai carrega-lo sozinho)"
+	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install' -- nenhum cenario"
+	@echo "   declara 'libtemplate.so'/'libtemplate_mirror.so' em 'file:' diretamente;"
+	@echo "   o segundo e carregado so pelos testes de plugin do host, trocando o"
+	@echo "   'file:' do cenario de producao em tempo de execucao)"
 
 uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou, SE alguem rodou 'install-host' a mao aqui (template nunca faz isso sozinho). Nao mexe em .so de terceiro.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \

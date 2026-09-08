@@ -49,7 +49,7 @@ para agrupar, não antes.
 
 O MIXR **não tem** broker, fila global, pub/sub nem roteamento declarativo no `.edl` — e essa
 ausência é deliberada, documentada em
-[`src/poc/dis/single-thread/README.md` §9](../src/poc/dis/single-thread/README.md#9-interação-entre-players).
+[`src/poc/dis/flight/README.md` §9](../src/poc/dis/flight/README.md#9-interação-entre-players).
 A única primitiva de interação entre objetos no MIXR inteiro é:
 
 ```cpp
@@ -79,7 +79,7 @@ primitiva de um jeito reaproveitável, com dois passos deliberadamente desacopla
 | forma | quando usar | exemplo |
 |---|---|---|
 | **(a) Subsistema nativo** — reaproveitar um hook já exposto por uma classe do framework (`onDatalinkMessageEvent`, `shutdownNotification`, ...) | quando o alcance/lado/canal que o subsistema já filtra importa (rádio com `radioName`/`maxRange`, por exemplo) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (`models/players/A-4`) — reage a `DATALINK_MESSAGE`, só alcança quem tem `Datalink` |
-| **(b) Broadcast direto** — token próprio (`USER_EVENTS + N`) entregue com `player->event(TOKEN, obj)` varrendo `getWorldModel()->getPlayers()` | quando o efeito é geral/físico e não deve depender de o receptor ter um subsistema específico (explosão, colisão, qualquer "efeito de área") | `events::EID_ALERT`, entregue por `AlertDatalink::broadcastAlert()`, tratado por `GuidedMissile::onAlertEvent()` (`models/players/missile`) — um player **sem Datalink** reagindo ao mesmo evento |
+| **(b) Broadcast direto** — token próprio (`USER_EVENTS + N`) entregue com `player->event(TOKEN, obj)` varrendo `getWorldModel()->getPlayers()` | quando o efeito é geral/físico e não deve depender de o receptor ter um subsistema específico (explosão, colisão, qualquer "efeito de área") | `events::EID_ALERT`, entregue por `AlertDatalink::broadcastAlert()` — o caminho que alcançaria um player **sem Datalink** reagindo ao mesmo evento (nenhum consumidor desse tipo existe hoje neste repositório, mas o mecanismo já foi provado rodando com o extinto modelo `missile`) |
 
 ## Por que o payload mora aqui, numa `shared_library()`, e não no plugin que o define primeiro
 
@@ -106,7 +106,7 @@ um índice de leitura rápida, para não colidir números ao adicionar um evento
 
 | token | valor | payload (arquivo) | emitido por | tratado por |
 |---|---|---|---|---|
-| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/players/A-4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) **e** `xmissile::GuidedMissile::onAlertEvent()` (via `EID_ALERT` direto, caminho b) |
+| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/players/A-4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) |
 
 Próximo token livre: `USER_EVENTS + 2`.
 
@@ -116,10 +116,10 @@ Próximo token livre: `USER_EVENTS + 2`.
 `models/players/A-4` (`AlertDatalink` emite e trata, via o subsistema `Datalink` nativo). Ele foi
 promovido para cá — mesma classe, mesmo nome de fábrica `"TacticalAlert"`, nenhuma mudança em
 `provides:` de nenhum cenário — e ganhou uma segunda via de entrega (`EID_ALERT`/broadcast
-direto) além da original (`DATALINK_MESSAGE`/`Datalink`). Isso prova as duas metades da
-convenção ao mesmo tempo: (1) um payload definido uma vez pode ser tratado por mais de um
-caminho de despacho, e (2) um handler pode ser escrito num plugin (`models/players/missile`) sem nenhuma
-relação de compilação com quem define ou emite o evento (`models/players/A-4`).
+direto) além da original (`DATALINK_MESSAGE`/`Datalink`). Isso já provou as duas metades da
+convenção ao mesmo tempo, rodando com o extinto modelo `missile`: (1) um payload definido uma vez
+pode ser tratado por mais de um caminho de despacho, e (2) um handler pode ser escrito num plugin
+sem nenhuma relação de compilação com quem define ou emite o evento (`models/players/A-4`).
 
 ## Um caso futuro conhecido, ainda não implementado
 

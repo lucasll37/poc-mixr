@@ -1,4 +1,4 @@
-.PHONY: clean check-root configure build test install install-host uninstall-host help dump-tree-model tree-skeleton sync-tree-models check-tree-models
+.PHONY: clean check-root configure build test install install-host uninstall-host help create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -47,6 +47,7 @@ NINJA_JOBS := $(shell nproc)
 
 RED := \033[0;31m
 GREEN := \033[0;32m
+YELLOW := \033[1;33m
 NC := \033[0m
 
 clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../../dist do host).
@@ -161,17 +162,22 @@ uninstall-host: ## Remove de ../../../plugins/ (+ data/flight/) o que ESTE model
 	 fi
 	@rm -rf $(ROOT)/plugins/data/flight
 
-dump-tree-model: build ## Imprime o <TreeNodesModel> atual (BT::writeTreeNodesModelXML sobre bt_factory.cpp/bt_factory_sdk.cpp) -- cole dentro do <root> de uma arvore .xml existente.
-	@$(BUILD_DIR)/tests/dump-tree-model
+create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel> com os nos de bt_factory.cpp/bt_factory_sdk.cpp), pronto pra abrir no Groot. Recusa se configs/bt.xml ja existir.
+	@test ! -e configs/bt.xml || { \
+		echo "$(RED)configs/bt.xml ja existe -- remova ou renomeie antes de rodar create-bt$(NC)"; exit 1; }
+	@$(BUILD_DIR)/tools/dump-tree-model --skeleton MainTree > configs/bt.xml
+	@echo "$(GREEN)create-bt: OK$(NC) -> configs/bt.xml"
 
-tree-skeleton: build ## Gera um .xml NOVO e completo (arvore vazia + TreeNodesModel), pronto pra abrir no Groot. Uso: make tree-skeleton ID=MinhaArvore > /tmp/nova.xml
-	@$(BUILD_DIR)/tests/dump-tree-model --skeleton $(ID)
+update-bt: build ## Atualiza o <TreeNodesModel> em TODA arvore .xml de configs/ (descoberta por conteudo, nao por nome) com os nos que bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE -- insere o bloco se faltar, substitui se ja existir (adiciona/remove no).
+	python3 tools/update_bt_models.py --binary $(BUILD_DIR)/tools/dump-tree-model
 
-sync-tree-models: build ## Resincroniza o <TreeNodesModel> nos 5 flight_tree*.xml de producao (configs/) com o que bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE.
-	python3 tools/sync_tree_models.py --binary $(BUILD_DIR)/tests/dump-tree-model
-
-check-tree-models: build ## So verifica (sem escrever) se os 5 flight_tree*.xml batem com o registro real -- o mesmo que 'meson test tree-model-sync' ja roda dentro de 'make test'.
-	python3 tools/sync_tree_models.py --check --binary $(BUILD_DIR)/tests/dump-tree-model
+open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (ROOT/deps/groot/conanfile.py) e abre o Groot -- editor/monitor visual de arvores do BT.CPP v3. Mesma diretiva do Makefile raiz (ROOT/scripts/find_groot.sh); precisa de 'conan create deps/groot --build=missing --settings=build_type=Release' rodado na raiz antes (ver INSTALL.md secao 7).
+	@GROOT_BIN="$$($(ROOT)/scripts/find_groot.sh 2>/dev/null)"; \
+	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
+		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
+	else \
+		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan."; \
+	fi
 
 help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

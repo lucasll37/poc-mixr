@@ -19,9 +19,9 @@
 #
 # Os basenames de .so a checar de CADA modelo vem do PROPRIO './dist' local
 # dele (populado por 'make build'/'make install-host' daquele projeto) -- nao
-# de uma lista escrita a mao, que envelheceria em silencio (ex.: A-4 produz
-# DOIS .so, libflight.so + libflight_tc.so, e um modelo futuro pode produzir
-# mais de um tambem).
+# de uma lista escrita a mao, que envelheceria em silencio (um modelo futuro
+# pode produzir mais de um artefato, como o template faz hoje com
+# libtemplate.so + libtemplate_mirror.so).
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ" || exit 1

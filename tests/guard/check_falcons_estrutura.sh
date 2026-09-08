@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Os cenarios das pocs gemeas (single-thread, multi-thread, python-flight,
-# onnx-policy) declaram falcon1..falcon4, cada um um bloco '( Aircraft ... )'. falcon1 carrega
+# Os cenarios das pocs de producao (flight, python-flight, onnx-policy)
+# declaram falcon1..falcon4, cada um um bloco '( Aircraft ... )'. falcon1 carrega
 # comentario explicando cada slot; falcon2/3/4 sao a mesma estrutura,
 # terse, sem comentario -- uma forma de duplicacao que nunca bate byte a
 # byte (as 4 pistas tem posicao/altitude/velocidade calibradas por aviao),

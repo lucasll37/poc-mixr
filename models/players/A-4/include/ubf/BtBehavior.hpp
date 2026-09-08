@@ -49,9 +49,6 @@ namespace xnative {
 //    terrainClearance <Distance> ! Folga sobre o terreno no desconflito da
 //                                ! evasao -- piso anti-CFIT (default: 500 m;
 //                                ! 0 desliga e volta ao piso absoluto)
-//    launchMinRange  <Distance>  ! Alcance minimo de lancamento (default: 1500 m)
-//    launchMaxRange  <Distance>  ! Alcance maximo de lancamento (default: 9000 m)
-//    launchCone      <Angle>     ! Meio-angulo do cone de lancamento (default: 45 deg)
 //    patrolJitterHeading <Angle> ! Amplitude do jitter de rumo na patrulha, sorteado a
 //                                ! cada troca de perna (default: 0 deg = desligado)
 //    patrolMasterSeed <Number>   ! Semente do cenario; cada player deriva a sua propria
@@ -108,7 +105,6 @@ public:
    double getFrameDt() const override                    { return frameDt; }
    double getFuelReserve() const override                { return tune.fuelReserve; }
    double getSupportSpeedKts() const override            { return tune.supportSpeedKts; }
-   const domain::LaunchEnvelope& launchEnvelope() const override { return tune.launchEnv; }
 
 protected:
    bool shutdownNotification() override;
@@ -165,9 +161,6 @@ private:
    bool setSlotEvadeHold(const base::Time* const);
    bool setSlotSupportSpeed(const base::Number* const);
    bool setSlotTerrainClearance(const base::Distance* const);
-   bool setSlotLaunchMinRange(const base::Distance* const);
-   bool setSlotLaunchMaxRange(const base::Distance* const);
-   bool setSlotLaunchCone(const base::Angle* const);
    bool setSlotPatrolJitterHeading(const base::Angle* const);
    bool setSlotPatrolMasterSeed(const base::Number* const);
    bool setSlotPatrolSeedOverride(const base::Number* const);

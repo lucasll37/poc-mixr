@@ -39,7 +39,7 @@ Todas em `dist/share/mixr-plugins/flight/`.
 **Não há árbitro aqui — leia isto antes de testar algo arriscado.** Versões anteriores deste
 diagrama tinham um `( UbfArbiter )` entre o agente e o `( BtBehavior )`, com um
 `( AltitudeSafetyBehavior vote: 90 )` nativo por cima votando qualquer comando de altitude
-perigoso para fora. Os cenários de produção (inclusive `multi-thread`, o exemplo usado neste
+perigoso para fora. Os cenários de produção (inclusive `flight`, o exemplo usado neste
 guia) não usam mais esse arranjo — `behavior:` aponta direto para `( BtBehavior )`, sem piso
 independente algum acima da árvore (ver o comentário "SEM ARBITRO" no topo do
 `scenario.edl.in` de cada poc). **Sua política é a última palavra sobre altitude**: se ela
@@ -88,7 +88,7 @@ direto** — nenhum passo de build:
 
 ```bash
 $EDITOR dist/share/mixr-plugins/flight/policy_example.py
-./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in          # ou o comando de -deterministic abaixo
+./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in                # ou o comando de -deterministic abaixo
 ```
 
 Quando a regra se provar, copie de volta para `models/players/A-4/configs/policy_example.py` — é essa a
@@ -224,10 +224,10 @@ extras em silêncio), e `index` escolhe qual comparar. Falha de qualquer tipo �
 
 ```bash
 # tempo real, com Tacview na porta 1234
-./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in
+./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in
 
 # passo fixo, comparável, imprimindo o dump a cada 100 frames
-./build/app/src/app -f src/poc/dis/multi-thread/configs/scenario.edl.in -threads 4 -deterministic 600
+./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in -threads 4 -deterministic 600
 ```
 
 No dump, a coluna `bt=` diz **qual nó decidiu**: `PATROL`/`EVADE`/… (C++), `PY` (Python), `ONNX`
@@ -246,7 +246,7 @@ O `./app` (TUI) mostra o mesmo ao vivo, com a árvore desenhada e a folha ativa 
 
 ```bash
 make test                    # 40 testes; inclui as duas políticas ponta a ponta
-./tests/determinism/check_determinism.sh ./build/app/src/app multi-thread 2000 multi-thread      # dumps byte-idênticos com 1, 2 e 4 threads
+./tests/determinism/check_determinism.sh ./build/app/src/app flight 2000 flight      # dumps byte-idênticos com 1, 2 e 4 threads
 ```
 
 O segundo é o que importa se você mexeu em política: ele prova que a decisão continua

@@ -26,7 +26,7 @@ src/ui/.cache/
 # artefato gerado na primeira execucao -- ver app/TerrainData.
 shared/data/terrain/srtm/*.hgt
 
-# deposito COMPARTILHADO de plugins (locais -- flight/missile/stub, via o
+# deposito COMPARTILHADO de plugins (locais -- flight/template, via o
 # 'install-host' de cada um -- E de terceiros, externos a este repositorio)
 # -- ver plugins/README.md. 'make install' (alvo 'sync-plugins')
 # copia daqui pra dist/lib(share)/mixr-plugins/; 'make models' so ESCREVE
@@ -47,6 +47,12 @@ src/poc/**/data/recordings/*.acmi
 src/poc/**/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
+
+# src/node/: so usa a propria data/logs/ no caminho de FALLBACK (cenario
+# apontado por um caminho raso demais pra derivar a pasta do proprio poc) --
+# o caso normal grava no data/logs/ do poc que esta sendo rodado, ja coberto
+# pelo padrao 'src/poc/**/...' acima. Ver src/node/README.md.
+src/node/data/logs/*.log*
 
 # mesmo padrao para sandbox/ -- cada subpasta e uma copia de cenario que o
 # usuario roda via './app -folder ./sandbox' pra testar mensagens/gravacoes/

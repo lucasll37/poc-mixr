@@ -32,8 +32,6 @@ namespace app {
 //
 //   -threads <N>         numTcThreads do pool nativo de tempo critico
 //   -deterministic <N>   roda N frames de passo fixo e sai (sem TUI)
-//   -parallel-decision   ver app/DeterministicRun.hpp -- so faz sentido com
-//                        -deterministic
 //------------------------------------------------------------------------------
 struct Options
 {
@@ -42,7 +40,6 @@ struct Options
    std::string scenarioFolder;   // '-folder <pasta>' -- vazio quando nao usado
    long deterministicFrames{};
    int threadsOverride{};
-   bool parallelDecision{};
 
    bool isDeterministic() const   { return deterministicFrames > 0; }
 };

@@ -72,7 +72,7 @@ Efeito colateral, e é o motivo estrutural do buffer em memória (abaixo): como 
 no processo, o `LOG(...)` emitido de dentro do `.so` do modelo cai no **mesmo** buffer que o do
 host. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
 `flight_tree.xml` do lugar: as 4 linhas `LOG(ERROR)` de `BtBehavior` (uma por falcon, de dentro de
-`libflight_tc.so`) aparecem na aba sem código nenhum do lado do host.
+`libflight.so`) aparecem na aba sem código nenhum do lado do host.
 
 ## O buffer em memória
 

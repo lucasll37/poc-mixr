@@ -7,12 +7,11 @@
 #include <vector>
 
 // app::parseCommandLine() -- so traducao de argv para Options, sem tocar
-// disco nem Station. As tres flags que aceitam valor (-threads,
-// -deterministic, e as string puras -scenario/-f/-folder) e a booleana
-// (-parallel-decision) sao cobertas pelo caminho feliz; os die() (token nao
-// numerico, flag sem valor, -deterministic <= 0) sao death tests -- e a
-// unica forma de testar um std::exit() sem derrubar o binario de teste
-// inteiro.
+// disco nem Station. As flags que aceitam valor (-threads, -deterministic, e
+// as string puras -scenario/-f/-folder) sao cobertas pelo caminho feliz; os
+// die() (token nao numerico, flag sem valor, -deterministic <= 0) sao death
+// tests -- e a unica forma de testar um std::exit() sem derrubar o binario
+// de teste inteiro.
 
 namespace {
 
@@ -42,7 +41,6 @@ TEST(ParseCommandLine, SemArgumentosMantemOsDefaults)
    EXPECT_EQ(opts.scenarioKey, "patrol");
    EXPECT_EQ(opts.threadsOverride, 3);
    EXPECT_FALSE(opts.isDeterministic());
-   EXPECT_FALSE(opts.parallelDecision);
 }
 
 TEST(ParseCommandLine, FlagDesconhecidaEIgnoradaSemConsumirOProximoToken)
@@ -76,18 +74,6 @@ TEST(ParseCommandLine, DeterministicConverteLongEHabilitaIsDeterministic)
    const app::Options opts{parse({"-deterministic", "600"})};
    EXPECT_EQ(opts.deterministicFrames, 600);
    EXPECT_TRUE(opts.isDeterministic());
-}
-
-TEST(ParseCommandLine, ParallelDecisionLigaBooleanaSemConsumirValor)
-{
-   const app::Options opts{parse({"-parallel-decision", "-threads", "2"})};
-   EXPECT_TRUE(opts.parallelDecision);
-   EXPECT_EQ(opts.threadsOverride, 2);
-}
-
-TEST(ParseCommandLine, SemParallelDecisionFicaDesligada)
-{
-   EXPECT_FALSE(parse({"-threads", "1"}).parallelDecision);
 }
 
 //------------------------------------------------------------------------------

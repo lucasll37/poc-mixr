@@ -8,8 +8,8 @@
 # que continua certo (tests/), o "porque" das decisoes (docs/), a porta de
 # entrada (README.md) e o que mudou desde a ultima vez (CHANGELOG.md).
 #
-# Vale em dobro para models/players/fixtures/stub: ele e o ponto de partida copiavel
-# (models/README.md secao 2), entao o que falta la falta em todo modelo que
+# Vale em dobro para models/players/template: ele e o ponto de partida copiavel
+# (CONTRIBUTING.md secao 2), entao o que falta la falta em todo modelo que
 # nascer dele.
 #
 # Os projetos sao descobertos por 'find' (todo diretorio sob models/ com um
@@ -70,7 +70,7 @@ done <<< "$projetos"
 
 if [ "$fail" -ne 0 ]; then
    echo
-   echo "Ver models/README.md (a regra e o porque) e models/players/fixtures/stub/"
+   echo "Ver CONTRIBUTING.md (a regra e o porque) e models/players/template/"
    echo "(o ponto de partida copiavel, que ja traz as cinco pecas prontas)."
    exit 1
 fi

@@ -19,7 +19,7 @@ namespace app {
 // A "fotografia" de UMA entidade, pronta para desenhar -- generica por
 // construcao: os campos obrigatorios vem todos de mixr::models::Player (a
 // BASE, nao de AirVehicle), porque e o que um modelo QUALQUER (o flight de
-// hoje, o missile, ou um modelo desconhecido futuro) garante ter. O bloco
+// hoje, ou um modelo desconhecido futuro) garante ter. O bloco
 // "hasFuel/hasGload/hasThrust" e o UNICO trecho especifico de aeronave --
 // preenchido so quando um dynamic_cast<AirVehicle> funciona, e a UI (ver
 // app/FleetPanel.cpp) esconde essas linhas quando o campo nao se aplica.

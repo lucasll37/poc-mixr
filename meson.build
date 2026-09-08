@@ -64,8 +64,8 @@ rpath_link_args = ['-Wl,--disable-new-dtags']
 # CLAUDE.md.
 own_libs_rpath = '$ORIGIN/../lib'
 
-# -Dasan=true liga o AddressSanitizer só nos alvos que consomem estas flags
-# (single-thread e multi-thread), sem recompilar o resto do projeto.
+# -Dasan=true liga o AddressSanitizer só no alvo que consome estas flags
+# (a poc flight), sem recompilar o resto do projeto.
 asan_cpp_args = get_option('asan') ? ['-fsanitize=address', '-fno-omit-frame-pointer', '-g'] : []
 asan_link_args = get_option('asan') ? ['-fsanitize=address'] : []
 
@@ -188,7 +188,7 @@ pkg.generate(
 subdir('./src')
 
 # O dashboard (TUI) -- unico ocupante de ./app/, fora de src/ de proposito
-# (nao e "mais uma poc" no molde single-thread/multi-thread/bandit; e a
+# (nao e "mais uma poc" no molde flight/bandit; e a
 # ferramenta de controle/monitoramento das outras). Alvo se chama 'app'.
 subdir('./app')
 

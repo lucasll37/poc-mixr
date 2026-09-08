@@ -12,10 +12,11 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 ## Os dois jeitos de algo chegar aqui
 
 1. **Compilado por este repositório** — `make models` (na raiz) chama `install-host` de cada
-   projeto de modelo (`models/players/A-4/`, `models/players/missile/`,
-   `models/players/fixtures/stub/`), e cada um copia o próprio `.so` (e dados, se houver) para cá.
-   Nenhum deles escreve em `dist/` diretamente — ver a seção "Desacoplando `models` de `dist/`" no
-   `CLAUDE.md` da raiz para o "porquê".
+   projeto de modelo (`models/players/A-4/`, `models/players/template/`, este último instalado
+   incondicionalmente à parte por causa do mirror de contrato — ver o Makefile raiz), e cada um
+   copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
+   diretamente — ver a seção "Desacoplando `models` de `dist/`" no `CLAUDE.md` da raiz para o
+   "porquê".
 2. **Um `.so` de terceiro** — já compilado fora deste repositório (por outra equipe, outro
    fornecedor), entra aqui do mesmo jeito: solto nesta pasta, com o nome que ele já tem.
 
@@ -36,7 +37,7 @@ simulada.
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o
   que sobrevive num clone limpo.
 - **`make clean` só remove os nomes que ESTE repositório gera** (`libflight.so`,
-  `libflight_tc.so`, `libmissile.so`, `libstub.so`, e `data/`) — um `.so` de terceiro com outro
+  `libtemplate.so`, `libtemplate_mirror.so`, e `data/`) — um `.so` de terceiro com outro
   nome não é apagado por engano.
 
 ## Pasta vazia não é erro

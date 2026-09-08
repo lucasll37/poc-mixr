@@ -26,12 +26,13 @@ namespace xtemplate {
 // aeronaves. Um modelo real substituiria o corpo de execute() por comandos
 // de verdade (ex.: models::Autopilot::setCommandedHeadingD(), como
 // models/players/A-4/src/ubf/FlightAction.cpp ou
-// models/players/fixtures/stub/src/stub.cpp fazem -- leia os dois quando for a
-// hora de sair do "engajado/nao engajado" para algo que pilota de verdade).
+// ../mirror.cpp (o mirror de contrato deste mesmo diretorio) fazem -- leia
+// os dois quando for a hora de sair do "engajado/nao engajado" para algo
+// que pilota de verdade).
 //
 // O que execute() NAO PODE deixar de fazer, em QUALQUER modelo, e escrever
 // no xboard -- ver o comentario dentro do .cpp e
-// models/players/fixtures/stub/docs/CONTRATO.md secao 3. E a UNICA obrigacao de
+// models/players/template/docs/CONTRATO.md secao 3. E a UNICA obrigacao de
 // um modelo que falha em SILENCIO: sem ela, o host sobe, o cenario parseia,
 // tudo passa, e a tela de status/o dump '-deterministic' mostram
 // 'bt=--'/'dec=0' para sempre, sem erro nenhum em lugar nenhum.

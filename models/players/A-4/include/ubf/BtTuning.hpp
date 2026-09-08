@@ -1,8 +1,6 @@
 #ifndef __xnative_ubf_BtTuning_H__
 #define __xnative_ubf_BtTuning_H__
 
-#include "domain/LaunchPolicy.hpp"
-
 #include <cstdint>
 #include <string>
 
@@ -58,10 +56,6 @@ struct BtTuning
 
    // apoio a um alerta recebido
    double supportSpeedKts{420.0};
-
-   // envelope de lancamento do missil (so faz efeito em aviao com 'stores:'
-   // declarado -- ver domain/LaunchPolicy.hpp)
-   domain::LaunchEnvelope launchEnv{};
 };
 
 } // namespace xnative

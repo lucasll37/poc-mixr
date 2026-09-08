@@ -14,11 +14,12 @@ namespace xnative {
 //------------------------------------------------------------------------------
 // Class: FlightAgentTC
 //
-// Description: A UNICA classe que este subprojeto acrescenta em relacao ao
-//              single-thread. Roda o ciclo do UBF (percepcao/decisao/
-//              atuacao) na FASE 3 do frame de TEMPO CRITICO, para a
-//              aeronave que a contem -- no lugar do models::SimAgent
-//              nativo, que roda em updateData() (thread de background).
+// Description: O UNICO agente que este modelo usa. Roda o ciclo do UBF
+//              (percepcao/decisao/atuacao) na FASE 3 do frame de TEMPO
+//              CRITICO, para a aeronave que a contem -- no lugar do
+//              models::SimAgent nativo, que rodaria em updateData()
+//              (thread de background), e que nenhum cenario deste
+//              repositorio usa.
 //
 // Factory name: FlightAgentTC
 //
@@ -87,7 +88,7 @@ private:
 //------------------------------------------------------------------------------
 // O agente de uma aeronave.
 //
-// Diferente do ( SimAgent ) do single-thread -- componente da STATION,
+// Diferente do ( SimAgent ) nativo -- componente da STATION,
 // amarrado ao ator por NOME -- este e componente do PLAYER. Entao a busca e
 // a mesma que o framework usa para os subsistemas: por TIPO, na lista de
 // componentes.

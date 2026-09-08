@@ -1,7 +1,7 @@
 # `flight` — notas de arquitetura
 
-Complementa [../README.md](../README.md) (visão geral, as quatro camadas, o `#ifdef` que separa
-`libflight.so`/`libflight_tc.so`). Este documento junta as decisões de calibração e as armadilhas
+Complementa [../README.md](../README.md) (visão geral, as quatro camadas, o artefato único
+`libflight.so`). Este documento junta as decisões de calibração e as armadilhas
 específicas deste modelo que, de outra forma, só existiam espalhadas em
 [../../../CLAUDE.md](../../../../CLAUDE.md) — útil para quem abriu só `models/players/A-4/` (ver o
 `Makefile` ao lado para o build autocontido) e não tem o resto do repositório em mente.
@@ -39,8 +39,8 @@ destrimada. O c310 tolerava as duas coisas por ser dócil e bem amortecido; o A-
 leve, superfícies mais potentes) não. `a4ap.xml` ganhou um SAS sempre-ativo (nivelador de asas +
 amortecedores de taxa em rolagem/arfagem, independentes de `ap/heading_hold`/`ap/altitude_hold`) e
 um trim estático de profundor — sem eles a aeronave diverge em rolagem/arfagem em poucos segundos,
-mesmo com o piloto automático desligado. Com o SAS, o determinismo (`check-single-thread`/
-`check-multi-thread`, 2000 frames, 1/2/4 threads) passa byte-a-byte, mas o VOO ainda deriva
+mesmo com o piloto automático desligado. Com o SAS, o determinismo
+(`tests/determinism/check_determinism.sh`, 2000 frames, 1/2/4 threads) passa byte-a-byte, mas o VOO ainda deriva
 lentamente (dezenas de segundos) para fora do nível antes de o nivelador reafirmar o controle — não
 é uma regressão de determinismo, é uma característica aerodinâmica real do dado Aeromatic,
 documentada aqui em vez de escondida. Recalibrar o SAS (ou re-exportar a aeronave com um ajuste de
@@ -59,8 +59,9 @@ repetida durante o desenvolvimento da árvore.
 `libs/xlog` é uma `shared_library()`, então há **uma cópia no processo** e o `LOG(...)` emitido
 de dentro deste `.so` (aberto por `dlopen`) cai no mesmo buffer/arquivo do host — é o que faz a aba
 "Log" (F5) do `./app` mostrar o que o modelo registra, sem nenhuma ponte. Nas outras pocs
-(`single-thread`/`multi-thread`), que não têm aba, as mesmas linhas saem no console e no
-`data/logs/*.log`. Sob `-deterministic` o `main.cpp` chama `setLoggingEnabled(false)` e nada é
+(`flight`, `bandit`, `python-flight`, `onnx-policy`...), que não têm aba, as mesmas linhas saem no
+console e no `data/logs/*.log`. Sob `-deterministic` o `main.cpp` chama `setLoggingEnabled(false)`
+e nada é
 emitido — os dumps comparáveis não mudam.
 
 `FlightAction::execute()` é o ponto certo para isso: é a única atuação comum aos dois agentes
@@ -81,9 +82,9 @@ mutex porque os agentes decidem em paralelo) ou de **contagem** (o batimento), n
 O Groot (editor visual das árvores do BehaviorTree.CPP — instalação em
 [`../INSTALL.md`](../INSTALL.md) §4) só reconhece um nó customizado (`FuelLow`, `ContactDetected`,
 `OnnxPolicy`, `PyDecide`, ...) se o `.xml` tiver um bloco `<TreeNodesModel>` descrevendo ID e
-portas de cada um — sem ele, carregar qualquer `flight_tree*.xml` recusa com *"This model has not
+portas de cada um — sem ele, carregar qualquer árvore deste projeto recusa com *"This model has not
 been registered"*. Esse bloco não é mantido à mão: `tools/dump_tree_model.cpp` (alvo Meson
-`dump-tree-model`, registrado em [`../tests/meson.build`](../tests/meson.build)) monta a MESMA
+`dump-tree-model`, registrado em [`../tools/meson.build`](../tools/meson.build)) monta a MESMA
 `BT::BehaviorTreeFactory` que o modelo de produção monta — `bt_nodes::registerNodes()` +
 `bt_nodes::registerSdkNodes()`, os mesmos dois que `xnative/factory.cpp` chama — e devolve
 `BT::writeTreeNodesModelXML(factory)`, a função **nativa** do BT.CPP que lê o manifesto (ID +
@@ -93,38 +94,41 @@ instanciado, só o manifesto é lido.
 
 ### Três formas de usar
 
+O binário em si (`dump-tree-model`) so' imprime em stdout, em dois modos (bare e `--skeleton
+[ID]`); quem toca os arquivos de `configs/` sao dois alvos de Makefile em cima dele, mais
+[`tools/update_bt_models.py`](../tools/update_bt_models.py) (que os dois primeiros reusam) para o
+terceiro:
+
 ```bash
-# compilar (ou recompilar, depois de registrar um no novo em bt_factory.cpp/bt_factory_sdk.cpp)
-meson compile -C build dump-tree-model
+# 1. criar uma arvore NOVA, do zero: escreve configs/bt.xml (arvore vazia <Fallback name="root"/>,
+#    builtin do BT.CPP -- nao precisa de modelo nenhum -- mais o <TreeNodesModel> com os nos deste
+#    projeto, os dois no mesmo <root>). Recusa se configs/bt.xml ja existir.
+make create-bt
 
-# 1. so o fragmento <TreeNodesModel>...</TreeNodesModel> -- para colar dentro do <root> de uma
-#    arvore ja existente. E' o modo que sync_tree_models.py usa por baixo.
-./build/tests/dump-tree-model
+# 2. atualizar o <TreeNodesModel> de TODA arvore de configs/ (descoberta por conteudo -- todo
+#    .xml com <BehaviorTree> dentro, nunca uma lista de nomes) com o registro ATUAL de
+#    bt_factory.cpp/bt_factory_sdk.cpp -- depois de registrar um no novo (ou remover um velho).
+#    Substitui o bloco se ja existir (cobre no removido E no novo); insere do zero se a arvore
+#    ainda nao tiver bloco nenhum.
+make update-bt
 
-# 2. um .xml COMPLETO, pronto pra abrir no Groot: uma arvore vazia (<Fallback name="root"/>,
-#    builtin do BT.CPP -- nao precisa de modelo nenhum) + o mesmo <TreeNodesModel>, os dois no
-#    mesmo <root>. Resposta a "como eu crio uma arvore nova com os nos que ja implementei".
-./build/tests/dump-tree-model --skeleton MinhaArvore > /tmp/nova.xml
-
-# 3. resincronizar os 5 flight_tree*.xml DE PRODUCAO de uma vez, depois de um no novo -- roda o
-#    binario, extrai o fragmento, substitui o <TreeNodesModel> nos 5 arquivos.
-python3 tools/sync_tree_models.py            # escreve
-python3 tools/sync_tree_models.py --check    # so verifica -- exit 1 se algum estiver desatualizado
+# 3. so' verificar, sem escrever -- exit 1 se alguma arvore estiver desatualizada. E' o que o
+#    teste 'tree-model-sync' (abaixo) roda a cada 'make test'; para rodar a mao:
+python3 tools/update_bt_models.py --check --binary build/tools/dump-tree-model
 ```
 
-`--check` é o que o teste `tree-model-sync` (suíte `tree`, ver
-[`../tests/meson.build`](../tests/meson.build)) roda a cada `make test`. Sem essa guarda, esquecer
-de resincronizar depois de registrar um nó novo seria um "verde silencioso" — os 76 testes do
-modelo continuam todos verdes, e o problema só aparece quando alguém tenta abrir a árvore no Groot
-e recebe *"This model has not been registered"*. O teste passa o caminho de **verdade** do binário
-(o objeto `dump_tree_model` do próprio Meson, não o default de `sync_tree_models.py`, que supõe um
-diretório chamado `build`) — Meson já resolve isso e adiciona a dependência de build sozinho.
+Sem essa guarda, esquecer de rodar `make update-bt` depois de registrar um nó novo seria um "verde
+silencioso" — os testes do modelo continuam todos verdes, e o problema só aparece quando alguém
+tenta abrir a árvore no Groot e recebe *"This model has not been registered"*. O teste
+`tree-model-sync` passa o caminho de **verdade** do binário (o objeto `dump_tree_model` do próprio
+Meson, não o default de `update_bt_models.py`, que supõe um diretório chamado `build`) — Meson já
+resolve isso e adiciona a dependência de build sozinho.
 
 ### Armadilhas confirmadas — não redescobrir
 
 1. **Um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp` não aparece nos XMLs sozinho.** Registrar
-   a classe na factory C++ não toca em nenhum `.xml` — é preciso rodar `sync_tree_models.py` (ou
-   deixar `make test` acusar via `tree-model-sync`) depois. Sem isso, o sintoma é indistinguível de
+   a classe na factory C++ não toca em nenhum `.xml` — é preciso rodar `make update-bt` (ou deixar
+   `make test` acusar via `tree-model-sync`) depois. Sem isso, o sintoma é indistinguível de
    "esqueci de registrar o nó" olhando só os XMLs.
 2. **Nós que dependem do SDK (`OnnxPolicy`/`OnnxScore`/`PyDecide`, em `bt_sdk_sources`) exigem o
    SDK publicado** (`cd ../../.. && make configure && make sdk`) para o próprio

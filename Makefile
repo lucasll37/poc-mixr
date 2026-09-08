@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models compare-single-multi check-plugin-hotswap run-app venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-edl-builder open-groot new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models check-plugin-hotswap run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-edl-builder open-groot new-model
 
 .DEFAULT_GOAL := help
 
@@ -7,7 +7,7 @@ PWD := $(shell pwd)
 BUILD_DIR := ./build
 DEST_DIR := $(PWD)/dist
 
-# Deposito COMPARTILHADO dos modelos (flight/missile/stub, construidos por
+# Deposito COMPARTILHADO dos modelos (flight/template, construidos por
 # este repositorio, MAIS qualquer .so de terceiro -- ver
 # plugins/README.md). 'make models' so escreve ATE aqui; dist/ e
 # populado so por 'make install' (alvo 'sync-plugins'), do HOST.
@@ -86,7 +86,7 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@# '--only-changed': sem isto, cada 'make sdk' RECOPIA libxboard/libxlog/
 	@# libxtrack pra dist/lib/ com mtime NOVO mesmo sem mudanca de conteudo --
 	@# e um destino mais novo que um input ja linkado faz o ninja dos modelos
-	@# (flight/missile/stub, que dependem do SDK) achar que precisa RELINKAR
+	@# (flight/template, que dependem do SDK) achar que precisa RELINKAR
 	@# na proxima chamada. Confirmado com 'ninja -C models/players/A-4/build -d
 	@# explain libflight.so'. Sem isto, TODO 'make install'/'run-*'/'test'
 	@# relinkava os quatro plugins de producao, mesmo com tudo ja compilado.
@@ -108,21 +108,22 @@ ASAN ?= false
 # por tests/guard/check_modelo_estrutura.sh/check_colisao_fabrica.py),
 # delegando pro Makefile de CADA um (`$(MAKE) -C models/players/<nome>
 # install-host TESTS=true VARIANTS=true ASAN=...`), nao reimplementando o
-# setup aqui. Exclui so models/players/template/ (nunca e producao -- ver
-# models/README.md secao 2.4); models/players/fixtures/<nome>/ ENTRAM (o
-# stub, por exemplo, e um FIXTURE de teste, mas o .so dele precisa estar em
-# plugins/ para os testes de plugin que o carregam). O resultado -- so os
-# .so, flat, mais os dados de cada um que publicar (hoje, so o flight/A-4)
-# -- pousa em plugins/ (e plugins/data/<nome>/), o MESMO deposito que um
-# terceiro usaria (ver plugins/README.md). Este alvo NUNCA escreve em
-# dist/ -- e por isso "desacoplado do restante": compilar/instalar um
-# modelo nao presume nada sobre onde o HOST guarda os artefatos dele.
+# setup aqui. Exclui models/players/template/ de MODELOS_PRODUCAO (nunca e
+# producao) mas instala o SEGUNDO artefato dele (libtemplate_mirror.so) a
+# parte, logo abaixo -- ele precisa estar em plugins/ para os testes de
+# plugin do host que o carregam (herdou esse papel de
+# models/players/fixtures/stub, removido). O resultado -- so os .so, flat,
+# mais os dados de cada um que publicar (hoje, so o flight/A-4) -- pousa em
+# plugins/ (e plugins/data/<nome>/), o MESMO deposito que um terceiro
+# usaria (ver plugins/README.md). Este alvo NUNCA escreve em dist/ -- e por
+# isso "desacoplado do restante": compilar/instalar um modelo nao presume
+# nada sobre onde o HOST guarda os artefatos dele.
 #
 # Sem mecanismo de CI neste repositorio (nao ha pipeline nenhum rodando em
 # lugar nenhum) -- so este Makefile e quem "orquestra". Por isso as flags
 # de build completo (TESTS/VARIANTS/ASAN) vao direto na chamada abaixo, nao
 # atras de um alvo `install-host-ci` a parte: um modelo que nao usa alguma
-# delas (stub/missile nao tem `variants`) so a ignora, o GNU Make nao
+# delas (template nao tem `variants`) so a ignora, o GNU Make nao
 # reclama de variavel de linha de comando nao consumida.
 #
 # 'sync-plugins' e a UNICA ponte para dist/ -- copia plugins/*.so
@@ -138,18 +139,26 @@ ASAN ?= false
 # "nao dentro de tests/", que e o mesmo criterio na pratica: so o
 # meson.build da RAIZ de cada projeto de modelo declara project(), os de
 # tests/ so tem subdir()), restrita a models/players/ (nao models/events/,
-# que e SDK, nao modelo) e excluindo template/ (nunca e producao).
-# 'fixtures/stub' PERMANECE -- ver o comentario acima.
+# que e SDK, nao modelo) e excluindo template/ (nunca e producao). 'tools/'
+# tambem e so subdir() do meson.build da raiz de cada projeto (ex.:
+# models/players/A-4/tools/, o gerador dump-tree-model) -- nao tem Makefile
+# proprio, entao 'tools/' entra na mesma exclusao de 'tests/'.
 MODELOS_PRODUCAO := $(shell find models/players -mindepth 2 -name meson.build \
                        -not -path '*/build/*' -not -path '*/dist/*' -not -path '*/subprojects/*' \
-                       -not -path '*/template/*' -not -path '*/tests/*' \
+                       -not -path '*/template/*' -not -path '*/tests/*' -not -path '*/tools/*' \
                      | xargs -r -n1 dirname | sort -u)
 
 models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob models/players/, exceto template/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
 	@for d in $(MODELOS_PRODUCAO); do \
 	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
 	 done
-	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s): $(notdir $(MODELOS_PRODUCAO)); rode 'make install' para sincronizar com dist/)"
+	@# template/ nunca e producao (ver models/players/template/README.md) mas
+	@# o SEGUNDO artefato dele (libtemplate_mirror.so) precisa estar em
+	@# plugins/ para os testes de plugin do host (tests/meson.build,
+	@# plugin-modelo-estranho/plugin-deposito-terceiro) -- mesmo papel que
+	@# fixtures/stub tinha antes de ser removido.
+	@$(MAKE) -C models/players/template install-host TESTS=true ASAN=$(ASAN) || exit 1
+	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s) de producao: $(notdir $(MODELOS_PRODUCAO)); + template/; rode 'make install' para sincronizar com dist/)"
 
 sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
 	@# plugins/ ja mistura o que os tres modelos locais depositaram
@@ -178,9 +187,9 @@ sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqu
 # Scaffold de modelo novo
 # ============================================
 
-new-model: ## Gera um modelo novo em models/players/NAME/ a partir de fixtures/stub ou template/ (NAME= obrigatorio, KIND=stub|template, default stub). Ver CONTRIBUTING.md.
-	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo KIND=stub|template$(NC)"; exit 1; }
-	scripts/models.sh --name "$(NAME)" --kind "$(or $(KIND),stub)"
+new-model: ## Gera um modelo novo em models/players/NAME/ a partir de template/ (NAME= obrigatorio). Ver CONTRIBUTING.md.
+	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo$(NC)"; exit 1; }
+	scripts/models.sh --name "$(NAME)"
 
 build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -207,15 +216,24 @@ package: ## Create the Conan package for this project.
 # [fixture-poc] [arquivo-de-cenario]' para determinismo. 'make install'
 # continua sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
 
-compare-single-multi: ## Lista o que difere entre single-thread e multi-thread (hoje só o cenário: o agente do UBF e a porta DIS).
-	@diff -rq --exclude=data \
-		src/poc/dis/single-thread src/poc/dis/multi-thread || true
-
 check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
 run-app: ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dentro dela, mostra a tela de seleção de subpastas).
 	$(BUILD_DIR)/app/src/app -folder ./sandbox
+
+run-app-monitor: ## Roda dist/bin/app com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-app-monitor PLAYER=falcon1 [ARGS='-folder src/poc/dis -scenario flight'] (default ARGS: '-folder ./sandbox', a tela de selecao). Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
+	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/app -folder ./sandbox
+
+run-node: ## Run node (runner headless, sem TUI -- so log no console -- para UM cenario). Uso: make run-node SCENARIO=<arquivo.edl|.edl.in>.
+	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	$(BUILD_DIR)/src/node/node $(SCENARIO)
+
+run-node-monitor: ## Roda dist/bin/node com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-node-monitor PLAYER=falcon1 SCENARIO=<arquivo.edl|.edl.in>. Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/node $(SCENARIO)
 
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
 	python3 -m venv src/rl/.venv
@@ -245,7 +263,7 @@ test: install ## Roda SO a suite do HOST (scenario/determinism/plugin/memory/gua
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build separado, lento; supressões em tests/memory/asan.supp).
+test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, lento; supressões em tests/memory/asan.supp).
 	@# Os DOIS lados: com o modelo num projeto a parte, instrumentar so o host
 	@# deixaria o .so sem redzone de pilha e sem simbolos no relatorio do LSan.
 	@# (Host com ASan + plugin sem funciona -- os interceptadores vivem na
@@ -262,13 +280,13 @@ test-asan: ## Roda a single-thread sob AddressSanitizer/LeakSanitizer (build sep
 	@meson configure $(BUILD_DIR) -Dasan=true
 	@meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 	@mkdir -p $(BUILD_DIR)/tests-fixtures $(BUILD_DIR)/tests-recordings
-	@python3 ./tests/scenario/make_fixture.py --poc single-thread --mode intruder \
-		--out $(BUILD_DIR)/tests-fixtures/single-thread-intruder.edl.in
+	@python3 ./tests/scenario/make_fixture.py --poc flight --mode intruder \
+		--out $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in
 	@echo "  rodando 500 frames sob ASan ..."
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
 		$(BUILD_DIR)/app/src/app \
-		-f $(BUILD_DIR)/tests-fixtures/single-thread-intruder.edl.in \
+		-f $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in \
 		-threads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
 		echo "  revertendo build/ para nao-ASan ..."; \

@@ -1,9 +1,9 @@
 <!--
   A arvore desta poc: quem decide e uma REDE NEURAL.
 
-  E a unica coisa que separa a onnx-policy da multi-thread. Lado a lado:
+  E a unica coisa que separa a onnx-policy da flight. Lado a lado:
 
-      multi-thread (flight_tree.xml)       onnx-policy (este arquivo)
+      flight (flight_tree.xml)             onnx-policy (este arquivo)
       ...............................      ...............................
       Fallback                             Fallback
         +- FuelLow?    -> ReturnToBase       +- OnnxPolicy  (a rede)

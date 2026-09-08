@@ -19,9 +19,7 @@ sys.path.insert(0, str(REPO_ROOT / "src" / "ui" / "scripts"))
 import edl_lint  # noqa: E402
 
 REAL_SCENARIOS = [
-    "src/poc/dis/single-thread/configs/scenario.edl.in",
-    "src/poc/dis/single-thread/configs/scenario_missile_demo.edl.in",
-    "src/poc/dis/multi-thread/configs/scenario.edl.in",
+    "src/poc/dis/flight/configs/scenario.edl.in",
     "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     "src/poc/onnx-policy/configs/scenario.edl.in",
     "src/poc/python-flight/configs/scenario.edl.in",

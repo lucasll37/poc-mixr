@@ -33,7 +33,7 @@
 //
 // A sub-semente de cada player vem do NOME dele, nunca de uma posicao numa
 // lista ou de ordem de descoberta -- a ordem de processamento entre players
-// NAO e garantida neste framework (a poc multi-thread decide em paralelo,
+// NAO e garantida neste framework (todo agente decide em paralelo,
 // um por thread do pool de tempo critico), e qualquer esquema baseado em
 // ordem quebraria o determinismo entre 1/2/4 threads. Um hash da identidade
 // do proprio player elimina qualquer coordenacao: cada BtBehavior calcula a

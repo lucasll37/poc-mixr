@@ -15,6 +15,5 @@
 # de sandbox/**/data/... do .gitignore da raiz.
 /*/
 !/full-systems-nav/
-!/intercept_missile/
 !/onnx-policy/
 !/python-flight/

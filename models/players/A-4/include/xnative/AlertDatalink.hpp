@@ -39,8 +39,8 @@ namespace xnative {
 // cabecalho de events/EventTokens.hpp: broadcastAlert() TAMBEM chama
 // player->event(events::EID_ALERT, msg) direto em cada player local ativo,
 // sem passar pelo Datalink. E o caminho que alcanca um player SEM Datalink
-// -- ex.: um GuidedMissile de models/players/missile, que nao tem (nem precisa ter)
-// um subsistema de radio para reagir a um alerta tatico.
+// -- ex.: um flyout de arma, que nao tem (nem precisa ter) um subsistema
+// de radio para reagir a um alerta tatico.
 //
 // O QUE NAO VEM -- dois enganos faceis, ambos conferidos no fonte:
 //
