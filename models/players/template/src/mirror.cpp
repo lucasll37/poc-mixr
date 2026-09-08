@@ -172,6 +172,7 @@ BEGIN_SLOTTABLE(BtBehavior)
    "patrolSpeed", "rtbAltitude", "rtbSpeed", "arrivalRadius", "fuelReserve",
    "breakTurn", "evadeClimb", "evadeSpeed", "supportSpeed", "evadeHold",
    "terrainClearance", "patrolJitterHeading", "patrolMasterSeed",
+   "patrolSeedOverride",
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -193,6 +194,17 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(16, setSlotIgnoraDistancia, base::Distance)
    ON_SLOT(17, setSlotIgnoraAngulo,    base::Angle)
    ON_SLOT(18, setSlotIgnoraNumero,    base::Number)
+   // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'patrolSeedOverride'
+   // (slot 19 de producao, models/players/A-4/src/ubf/BtBehaviorSlots.cpp)
+   // faltava aqui -- o mirror parava em 18 slots. Confirmado via
+   // 'plugininfo' que essa era a UNICA diferenca entre libflight.so e
+   // libtemplate_mirror.so. Inofensivo enquanto nenhum .edl de producao usa
+   // esse slot (check_falcons_estrutura.sh exige o MESMO esqueleto nos 4
+   // falcons, entao um slot so num deles ja quebraria essa guarda antes de
+   // chegar aqui) -- mas o dia em que ele entrar em uso, sem este ON_SLOT
+   // 'plugin-modelo-estranho'/'plugin-deposito-terceiro' quebrariam com
+   // "slot not found" contra o mirror.
+   ON_SLOT(19, setSlotIgnoraNumero,    base::Number)
 END_SLOT_MAP()
 
 class AltitudeSafetyBehavior final : public base::ubf::AbstractBehavior

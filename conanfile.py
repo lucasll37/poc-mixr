@@ -13,10 +13,18 @@ class MixrHelloConan(ConanFile):
     # A BehaviorTree.CPP tem de ser ESTATICA: o plugin do modelo a linka com
     # -Wl,--exclude-libs,ALL para esconder os simbolos dela do .dynsym (ver
     # models/players/A-4/meson.build); o host nunca a linka, pra nao
-    # duplicar o contador estatico BT::getUID() entre host e plugin. A
-    # receita da behaviortree.cpp.asa tem default_options={"shared": True},
-    # entao sem este override o Conan resolve/constroi a variante .so e o
-    # link do modelo quebra com "dependencia nao resolvida" em runtime.
+    # duplicar o contador estatico BT::getUID() entre host e plugin.
+    #
+    # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este comentario
+    # afirmava que a receita da behaviortree.cpp.asa tem
+    # default_options={"shared": True} -- a receita LOCAL (deps/behaviortree/
+    # conanfile.py, usada por scripts/deps.sh) ja declara default_options=
+    # {"shared": False}, o oposto. Nao verificavel daqui se o pacote do
+    # remote privado da ASA (o caminho que 'make configure' de fato usa,
+    # ver README.md SS2.4) foi construido com opcoes diferentes da receita
+    # local -- mas o override abaixo e' seguro/idempotente nos dois casos
+    # (redundante se o default ja for False, essencial se nao for), entao
+    # fica mantido como defesa em profundidade independente da resposta.
     default_options = {
         "behaviortree.cpp.asa/*:shared": False,
         "behaviortree.cpp.asa/*:fPIC": True,

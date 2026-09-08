@@ -249,6 +249,17 @@ void MsgFeed::emitHealth(const double t)
    writer_.addInt("overflow", overflows_);
    writer_.end();
 
+   // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): dispatch() (acima)
+   // checa writer_.overflow() ANTES de escrever em qualquer sink -- e' essa
+   // checagem que garante que um RecordWriter cujo buffer estourou no meio
+   // da montagem nunca produz uma linha JSON estruturalmente inconsistente.
+   // emitHealth() usava a MESMA writer_ com a mesma disciplina de campos,
+   // mas despachava sem essa checagem -- assimetria defensiva real (risco
+   // baixo na pratica, msgHealth tem so 6 campos inteiros fixos, bem abaixo
+   // do buffer de 8KB, mas nada garante que um sink futuro nao acrescente
+   // mais campos).
+   if (writer_.overflow()) { ++overflows_; return; }
+
    // A saude vai para TODOS os sinks, sem passar pelo filtro por assinante:
    // um destino que nao soubesse que houve supressao mentiria por omissao.
    for (auto* s : sinks_) s->write(writer_.data(), writer_.size());

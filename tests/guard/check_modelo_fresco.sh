@@ -92,6 +92,36 @@ while IFS= read -r modelo; do
          fail=1
       fi
    done
+
+   # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): os .so de VARIANTE de
+   # teste do host (ex.: libmodel_leak.so/libmodel_variant_{a,b}.so de A-4,
+   # atras da opcao 'variants' -- ver models/players/A-4/meson.build,
+   # consumidos por 'memory-controle-negativo'/'plugin-hotswap' em
+   # tests/meson.build) NUNCA sao instalados -- so existem direto em
+   # "$modelo/build/". O loop acima (que so varre "$modelo/dist/...") nunca
+   # os alcancava: editar a fonte que eles exercitam (ex.:
+   # domain/PatrolPlan.cpp) sem reconfigurar/recompilar o modelo com
+   # '-Dvariants=true' rodava esses dois testes contra um .so desatualizado
+   # (ou ausente, que ao menos falha alto) sem NENHUM aviso de frescor.
+   # Cobre qualquer '.so' que fique direto em build/ (nao hardcoda nome —
+   # um modelo futuro pode ter variantes proprias com outros nomes); pega de
+   # quebra libflight.so/libtemplate*.so tambem, redundante e inofensivo com
+   # a checagem acima (a mesma propriedade, via outro caminho).
+   build_dir="$modelo/build"
+   if [ -d "$build_dir" ]; then
+      for so_build in "$build_dir"/*.so; do
+         [ -e "$so_build" ] || continue
+         checados=$((checados + 1))
+
+         novo="$(find "$modelo/src" "$modelo/include" "$modelo/configs" -type f -newer "$so_build" 2>/dev/null | head -5)"
+         if [ -n "$novo" ]; then
+            echo "  FALHA fonte de $modelo mais novo que $so_build (variante de teste, nunca instalada):"
+            echo "$novo" | sed 's/^/        /'
+            echo "        rode 'make -C $modelo build VARIANTS=true' antes de testar o host"
+            fail=1
+         fi
+      done
+   fi
 done <<< "$modelos"
 
 if [ "$fail" -ne 0 ]; then

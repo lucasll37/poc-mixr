@@ -260,8 +260,20 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests)"
 
 # 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'
+#
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o 'tr -cd' abaixo
+# removia o underscore junto com o resto da pontuacao -- '--name auto_pilot'
+# e '--name autopilot' (os dois validos pela regex '^[a-z][a-z0-9_]*$' mais
+# acima neste script) geravam o MESMO namespace 'xautopilot' (reproduzido).
+# O resto do script usa $NAME LITERAL, com underscore preservado (lib$NAME.so,
+# MIXR_PLUGIN_DEFINE("$NAME"...) -- so o namespace C++ perdia essa
+# informacao. CONTRATO.md secao 6 documenta o namespace aninhado por modelo
+# como a defesa contra type_info colidindo via strcmp quando dois .so
+# RTLD_LOCAL compartilham nome/namespace mangled no mesmo processo -- a
+# stripping de underscore criava exatamente esse risco entre dois modelos
+# de nome "vizinho". Namespace C++ aceita '_' sem problema.
 NS_VELHO="x$ORIGEM_NOME"
-NS_NOVO="x$(printf '%s' "$NAME" | tr -cd 'a-z0-9')"
+NS_NOVO="x$(printf '%s' "$NAME" | tr -cd 'a-z0-9_')"
 if [ -n "$ARQUIVOS_NS" ]; then
     while IFS= read -r f; do
         [ -n "$f" ] && substituir "$f" "$NS_VELHO" "$NS_NOVO"

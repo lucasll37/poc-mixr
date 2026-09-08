@@ -288,6 +288,65 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    longe->unref(); perto->unref(); dl->unref();
 }
 
+// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o teste acima
+// ("MaisProximoVenceOEmpate") nunca exercitava um EMPATE de verdade --
+// 'longe'/'perto' tem rangeM sempre DIFERENTE (30000 vs 9000). O terceiro
+// termo do OR em AlertDatalink.cpp (desempate por senderId em EMPATE EXATO
+// de rangeM) nunca era testado por nenhum teste do repositorio -- trocar
+// '<' por '<='/'>' ali, ou remover o termo (reintroduzindo dependencia de
+// ordem de chegada entre threads, exatamente o defeito que este codigo
+// existe para evitar, ver AlertDatalink.hpp:59-66), nao quebrava
+// 'make test'. Mesmo padrao ja usado em tests/domain/test_track_selection.cpp
+// (EmpateDeAlcanceVenceOMenorIdDePista/DesempateEIndependenteDaOrdemDaLista)
+// para a regra identica, so' nao tinha sido replicado pra AlertDatalink.
+TEST(AlertDatalink, EmpateExatoDeAlcanceVenceOMenorSenderId)
+{
+   auto* const dl = new SondaDatalink();
+   ASSERT_NE(dl, nullptr);
+
+   auto* const idMaior = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   idMaior->setSender(103, "falcon3"); idMaior->setContactName("bandit1"); idMaior->setRangeM(9000.0);
+   auto* const idMenor = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   idMenor->setSender(101, "falcon1"); idMenor->setContactName("bandit1"); idMenor->setRangeM(9000.0);
+
+   // MESMO rangeM (9000.0, empate exato) -- o desempate tem de ser por
+   // menor senderId, e nao pela ordem de chegada.
+   dl->onDatalinkMessageEvent(idMaior);
+   dl->onDatalinkMessageEvent(idMenor);
+   dl->receive(0.02);
+
+   ASSERT_TRUE(dl->hasAlert());
+   EXPECT_EQ(dl->getAlert().senderId, 101) << "em empate exato de alcance, o menor senderId tem de vencer";
+   EXPECT_EQ(dl->getAlert().senderName, "falcon1");
+
+   idMaior->unref(); idMenor->unref(); dl->unref();
+}
+
+// Mesma propriedade, ORDEM DE CHEGADA invertida -- prova que o resultado
+// nao depende de qual TacticalAlert foi entregue primeiro (a mesma garantia
+// de independencia de ordem que test_track_selection.cpp ja prova para a
+// selecao de pista de radar).
+TEST(AlertDatalink, EmpateExatoDeAlcanceEIndependenteDaOrdemDeChegada)
+{
+   auto* const dl = new SondaDatalink();
+   ASSERT_NE(dl, nullptr);
+
+   auto* const idMaior = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   idMaior->setSender(103, "falcon3"); idMaior->setContactName("bandit1"); idMaior->setRangeM(9000.0);
+   auto* const idMenor = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   idMenor->setSender(101, "falcon1"); idMenor->setContactName("bandit1"); idMenor->setRangeM(9000.0);
+
+   // Ordem invertida em relacao ao teste acima.
+   dl->onDatalinkMessageEvent(idMenor);
+   dl->onDatalinkMessageEvent(idMaior);
+   dl->receive(0.02);
+
+   ASSERT_TRUE(dl->hasAlert());
+   EXPECT_EQ(dl->getAlert().senderId, 101) << "o menor senderId vence, mesmo chegando primeiro";
+
+   idMaior->unref(); idMenor->unref(); dl->unref();
+}
+
 //------------------------------------------------------------------------------
 // bt_nodes::registerNodes()/registerSdkNodes() -- o que BtBehavior::
 // buildTree() (privado, so' alcancavel por genAction() com um FlightState

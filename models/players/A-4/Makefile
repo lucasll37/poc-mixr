@@ -71,9 +71,20 @@ install: build ## Instala em ./dist (a raiz DESTE projeto): lib/mixr-plugins/*.s
 	@# run-*'/'make test' relinkavam os quatro plugins TODA vez, mesmo com
 	@# tudo ja compilado.
 	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
-	@for so in libflight.so libflight_tc.so; do \
-		ldd $(DEST_DIR)/lib/mixr-plugins/$$so | grep -q 'not found' && \
-			{ echo "$(RED)install: $$so com dependencia nao resolvida$(NC)"; exit 1; } || true; \
+	@# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): a lista fixa
+	@# 'libflight.so libflight_tc.so' sobrevivia da epoca de DOIS artefatos
+	@# separados -- desde a unificacao num artefato so (libflight.so, ver o
+	@# comentario do meson.build deste projeto), 'libflight_tc.so' nunca
+	@# existe mais em $(DEST_DIR). 'ldd' contra um caminho inexistente sai
+	@# com "No such file or directory" (nao contem a string "not found"), o
+	@# '|| true' absorvia isso e a linha virava um no-op mudo -- a checagem
+	@# nunca cobria libflight_tc.so de verdade, so' fingia. Mesmo padrao ja
+	@# corrigido em models/players/template/Makefile: varre TODO .so que de
+	@# fato existe em $(DEST_DIR), sem lista hardcoded.
+	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+		[ -e "$$so" ] || continue; \
+		ldd "$$so" | grep -q 'not found' && \
+			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/flight/"
 

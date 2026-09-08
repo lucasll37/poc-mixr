@@ -562,6 +562,22 @@ foreach poc : pocs
          timeout: 1800, is_parallel: false)
 endforeach
 
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este script (prova que a
+# sub-semente de jitter da patrulha deriva do NOME do player e nao da ordem
+# de descoberta entre threads T/C -- ver libs/xrandom no CLAUDE.md) sempre
+# existiu, rodava e passava (confirmado manualmente), mas nunca era
+# exercitado por 'make test'/CI -- ficava ORFAO. Uma regressao nessa
+# propriedade (ex.: a derivacao de semente voltar a depender de ordem)
+# passaria despercebida indefinidamente. Registrado so' para 'flight' -- a
+# propriedade testada (domain::PatrolPlan) mora inteira no MODELO
+# compartilhado (nao e' especifica de host/arvore), entao testar uma vez
+# basta, sem dobrar o tempo desta suite ja lenta.
+patrol_seed_sh = files('determinism/check_patrol_seed.sh')
+test('patrol-seed-determinism', bash,
+     args: patrol_seed_sh + [app.full_path(), 'flight', 'flight', '300'],
+     depends: app, workdir: raiz, suite: 'determinism',
+     timeout: 1800, is_parallel: false)
+
 # NAO HA MAIS um teste 'scenario-adhoc-fleet' aqui: ele provava que
 # adHocScenario() ('-f <arquivo>') casava o caminho contra um catalogo
 # estatico de cenarios antes de assumir falcon1..4 -- esse catalogo foi

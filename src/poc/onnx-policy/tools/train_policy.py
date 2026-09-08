@@ -238,7 +238,16 @@ class Mlp:
         import numpy as np
         ativ = self.frente(x)
         n = x.shape[0]
-        perda = float(np.mean((ativ[-1] - y) ** 2))
+        # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'perda' usava
+        # np.mean() (media sobre batch x 3 saidas), mas o gradiente abaixo
+        # ('d') so divide por n=batch -- os dois numeros divergiam por um
+        # fator constante de 3 (o numero de saidas). Nao afetava o TREINO em
+        # si (Adam normaliza pelo segundo momento, e' aproximadamente
+        # invariante a um reescalonamento constante do gradiente) -- so o
+        # numero de log ficava enganoso sobre a escala real do erro.
+        # np.sum()/n (em vez de np.mean()) reproduz exatamente a mesma escala
+        # que 'd' ja usa, sem tocar em nada do que e' de fato otimizado.
+        perda = float(np.sum((ativ[-1] - y) ** 2) / n)
 
         # retropropagacao (todas as camadas tem tanh, inclusive a ultima)
         d = (2.0 / n) * (ativ[-1] - y) * (1.0 - ativ[-1] ** 2)

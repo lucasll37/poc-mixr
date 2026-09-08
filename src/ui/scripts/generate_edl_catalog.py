@@ -243,7 +243,9 @@ def load_edl_catalog_overrides():
 # o dynamic_cast/isClassType() de verdade mora DENTRO do corpo do setter, que
 # nenhuma regex sobre a ASSINATURA alcanca (ver o comentario de isCompatible()
 # em edl_builder_core.js). Investigado lendo o .cpp de cada um (nao adivinhado)
-# antes de escrever esta tabela -- 35 casos no total nesta versao do fork,
+# antes de escrever esta tabela -- 36 casos no total nesta versao do fork
+# (23 em LIST_SLOT_TYPE_OVERRIDES + 13 em TEXT_ONLY_LIST_SLOTS -- achado por
+# auditoria, corrigido: o comentario dizia 35, nao redescobrir),
 # nenhum sobrando (conferido: 'python3 -c' sobre o catalogo gerado, filtrando
 # acceptsChildList=true e objectTypes vazio, some da lista depois deste
 # override ser aplicado). Duas categorias:

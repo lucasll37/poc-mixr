@@ -135,6 +135,36 @@ namespace events {
 //------------------------------------------------------------------------------
 constexpr int EID_ALERT{base::Component::USER_EVENTS + 1};
 
+// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o "ledger unico" acima
+// dependia inteiramente de disciplina MANUAL para evitar colisao -- nada
+// impedia um evento novo (ex.: o EID_EXPLOSION que o comentario do topo ja
+// antecipa como "caso futuro conhecido") de repetir USER_EVENTS+1 por
+// copy-paste do primeiro bloco. Sem efeito hoje (so ha 1 token, entao nada
+// para colidir) -- mas a infraestrutura fica pronta: todo token novo entra
+// em 'kAllTokens' junto com EID_ALERT, e o static_assert falha a
+// COMPILACAO (nao em runtime, nem so' em teste) se dois coincidirem.
+namespace detail {
+
+constexpr int kAllTokens[]{ EID_ALERT };
+
+constexpr bool allTokensDistinct(const int* const tokens, const int n)
+{
+   for (int i = 0; i < n; ++i) {
+      for (int j = i + 1; j < n; ++j) {
+         if (tokens[i] == tokens[j]) return false;
+      }
+   }
+   return true;
+}
+
+} // namespace detail
+
+static_assert(detail::allTokensDistinct(
+                 detail::kAllTokens,
+                 static_cast<int>(sizeof(detail::kAllTokens) / sizeof(detail::kAllTokens[0]))),
+              "dois tokens de evento em EventTokens.hpp colidem no mesmo numero -- "
+              "confira kAllTokens");
+
 } // namespace events
 } // namespace mixr
 
