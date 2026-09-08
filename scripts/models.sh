@@ -329,18 +329,35 @@ sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
 fi
 
+#   CORRIGIDO (nao redescobrir): as tres checagens abaixo so' imprimiam
+# "aviso: ..." e seguiam em frente -- nenhuma setava codigo de saida
+# diferente de zero. Um scaffold com o .so VAZANDO simbolos (quebrando o
+# isolamento RTLD_LOCAL entre plugins, ver a "armadilha 3" do SDK de plugin
+# no CLAUDE.md raiz) ou com dependencia de linkedicao quebrada saia
+# reportado como "pronto e verde", igual a um scaffold perfeito.
+QUEBRADO=0
 SO="$DEST_ABS/dist/lib/mixr-plugins/lib$NAME.so"
 if [ ! -f "$SO" ]; then
-    echo "  aviso: ${SO#"$REPO_ROOT"/} nao foi gerado -- confira o nome do shared_module() em meson.build" >&2
+    echo "  FALHA: ${SO#"$REPO_ROOT"/} nao foi gerado -- confira o nome do shared_module() em meson.build" >&2
+    QUEBRADO=1
 else
     FORTES="$(nm -D --defined-only "$SO" 2>/dev/null | grep -c ' T ')"
     if [ "$FORTES" != "1" ]; then
-        echo "  aviso: esperava exatamente 1 simbolo T exportado, achei $FORTES" >&2
+        echo "  FALHA: esperava exatamente 1 simbolo T exportado, achei $FORTES" >&2
+        QUEBRADO=1
     fi
     LDD_OUT="$(ldd "$SO" 2>&1)"
     if printf '%s' "$LDD_OUT" | grep -q 'not found'; then
-        echo "  aviso: ldd reporta dependencia nao resolvida:"$'\n'"$LDD_OUT" >&2
+        echo "  FALHA: ldd reporta dependencia nao resolvida:"$'\n'"$LDD_OUT" >&2
+        QUEBRADO=1
     fi
+fi
+
+if [ "$QUEBRADO" -ne 0 ]; then
+    echo "
+scaffold de models/players/$NAME/ compilou e passou nos testes, mas FALHOU nas
+checagens de contrato do plugin acima -- corrija antes de considerar pronto." >&2
+    exit 1
 fi
 
 echo ""
