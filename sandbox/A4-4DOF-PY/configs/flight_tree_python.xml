@@ -1,5 +1,7 @@
 <!--
-  python-flight: a arvore em que TODA acao e um script Python.
+  A4-4DOF-PY: a arvore em que TODA acao (menos a degradacao final) e um script
+  Python - copia adaptada de src/poc/python-flight/configs/flight_tree_python.xml,
+  so com os caminhos de 'script=' repontados para esta pasta do sandbox.
 
   Mesma forma do flight_tree.xml de producao, um Fallback com as quatro
   prioridades na mesma ordem. A diferenca esta nas FOLHAS DE ACAO: onde a
@@ -13,33 +15,36 @@
     3) alerta recebido    AlertReceived               policy/support.py
     4) nada acontecendo   (nenhuma)                   policy/patrol.py
 
+  IMPORTANTE PARA ESTE CENARIO ESPECIFICO (A4-4DOF-PY, dentro do sandbox
+  A4-*DOF): ao contrario de A4-6DOF/A4-4DOF/A4-3DOF (que usam o no nativo
+  ( Navigate ) e voam a rota real de 4 steerpoints), esta arvore NUNCA
+  consulta Route/Steerpoint - o contrato fixo de 28 floats que PyDecide
+  recebe (libs/xrlbridge/ObservationFields.hpp) nao carrega rumo/altitude/
+  velocidade do proximo steerpoint (so cinematica do proprio aviao + contato
+  de radar + alerta + combustivel). Sem intruso/datalink neste cenario
+  hermetico, o resultado pratico e que o aviao fica indefinidamente em
+  PY-PATROL (orbita geometrica, ver policy/patrol.py) e as quatro Action dos
+  steerpoints (decoy/SAR/camuflagem/arma) NUNCA disparam - estruturalmente
+  presentes (mesma nav:/Route do player), mas mudas. Isso e ESPERADO, nao um
+  defeito - ver o README desta pasta.
+
   POR QUE AS CONDICOES CONTINUAM EM C++. ContactDetected nao pergunta "estou
   vendo o intruso agora": ele consulta domain::ThreatPolicy::engaged(), que
   continua verdadeiro por 'evadeHold' segundos DEPOIS de a pista sumir. Essa
   histerese envelhece com o 'dt' do frame, e um script Python nao recebe
-  'dt': a fronteira de libs/xpyembed e "28 floats entram, 3 saem". Sem ela,
-  a propria quebra tira o intruso do setor do radar (30 graus para cada lado,
-  contra uma quebra de 110), a pista pisca, e os ramos 2 e 3, que comandam
-  sentidos OPOSTOS sobre o mesmo objeto, alternam para sempre (a aeronave
-  "batendo asa", observada no Tacview e registrada no cabecalho do
-  flight_tree.xml).
+  'dt': a fronteira de libs/xpyembed e "28 floats entram, 3 saem".
 
   POR QUE ( ReportAndEvade ) SOBREVIVEU DENTRO DO RAMO 2. Ele faz duas
   coisas: fixa o comando de quebra E marca o pedido de alerta tatico. O
   ( PyDecide ) logo depois sobrescreve o comando, ja que
   FlightDecision::take() troca rumo, altitude e rotulo, mas NAO limpa o
-  pedido de alerta. Entao o aviso aos outros continua saindo do C++, na fase
-  1 do frame seguinte, e a MANOBRA passa a ser a do Python. E tambem por isso
-  que o ramo 3 existe de verdade neste subprojeto: sem esse alerta, nenhum
-  falcon receberia apoio.
+  pedido de alerta.
 
   DEGRADACAO. Sem interpretador Python no sistema, script ausente, sem
   decide(), ou excecao: cada ( PyDecide ) devolve FAILURE. Os ramos 1 a 3
   falham com ele (Sequence), o ramo 4 tambem, e o ( Patrol ) nativo do fim
-  assume. A aeronave continua voando, com a patrulha em C++ configurada
-  pelos slots patrol*/legTime do cenario. E o mesmo desenho do
-  flight_tree_py.xml do models/players/A-4, so que com quatro folhas em vez de
-  uma.
+  assume - a aeronave continua voando, com a patrulha em C++ configurada
+  pelos slots patrol*/legTime do cenario (ver agent:/behavior: no .edl.in).
 
   Os caminhos sao relativos a RAIZ DO REPOSITORIO, que e de onde todos os
   binarios desta poc-mixr sao executados.
@@ -50,24 +55,24 @@
 
       <Sequence name="rtb_sequence">
         <FuelLow margin="0.05"/>
-        <PyDecide script="./sandbox/python-flight/configs/policy/rtb.py"
+        <PyDecide script="./sandbox/A4-4DOF-PY/configs/policy/rtb.py"
                   label="PY-RTB"/>
       </Sequence>
 
       <Sequence name="engage_sequence">
         <ContactDetected/>
         <ReportAndEvade/>
-        <PyDecide script="./sandbox/python-flight/configs/policy/evade.py"
+        <PyDecide script="./sandbox/A4-4DOF-PY/configs/policy/evade.py"
                   label="PY-EVADE"/>
       </Sequence>
 
       <Sequence name="support_sequence">
         <AlertReceived/>
-        <PyDecide script="./sandbox/python-flight/configs/policy/support.py"
+        <PyDecide script="./sandbox/A4-4DOF-PY/configs/policy/support.py"
                   label="PY-SUPPORT"/>
       </Sequence>
 
-      <PyDecide script="./sandbox/python-flight/configs/policy/patrol.py"
+      <PyDecide script="./sandbox/A4-4DOF-PY/configs/policy/patrol.py"
                 label="PY-PATROL"/>
 
       <Patrol/>

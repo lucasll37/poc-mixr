@@ -1,8 +1,5 @@
-- documentação do template (1h)
-- chamada de LLM (1h)
-- cenário com A4 com dinamica de 4 DOF (1h)
-- documentar de forma excelente [indo]
-- interface gráfica para montar edl [indo]
+- interface gráfica para montar edl
+- documentar de forma excelente
 
 ----------------------------------------------------
 > slides de como é o asa 2.0.0

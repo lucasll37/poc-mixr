@@ -14,6 +14,8 @@
 # GERADO (gravacoes/logs/mensagens) continua de fora sozinho, via as regras
 # de sandbox/**/data/... do .gitignore da raiz.
 /*/
-!/full-systems-nav/
-!/onnx-policy/
-!/python-flight/
+!/A4-6DOF/
+!/A4-4DOF/
+!/A4-3DOF/
+!/A4-4DOF-PY/
+!/A4-4DOF-ONNX/

@@ -1,10 +1,18 @@
 //
-// full-systems-nav -- o player maximo, navegando de verdade
+// A4-6DOF -- o player maximo, dinamica JSBSim (6-DOF), navegando de verdade
 //
-// E o cenario DEFAULT desta poc, alcancado via '-folder <pasta>' do ./app
-// (nome da subpasta: "full-systems-nav"):
+// Um dos CINCO cenarios da familia A4-*DOF deste sandbox (A4-6DOF, A4-4DOF,
+// A4-3DOF, A4-4DOF-PY, A4-4DOF-ONNX): mesmo player "a4" (os 53 componentes
+// nativos do "player maximo"), mesma rota de 4 steerpoints, MESMA porta
+// Tacview (1234, os 5 nunca rodam ao mesmo tempo) -- so o dynamicsModel/quem
+// decide o rumo varia entre eles. Esta variante e a base sem nenhuma
+// mudanca funcional: e o cenario "full-systems-nav" original (ver
+// src/poc/full-systems-nav), so recolocado nesta familia com nome/porta
+// consistentes com os outros 4.
 //
-//    ./build/app/src/app -folder ./sandbox -scenario full-systems-nav
+// Alcancado via '-folder <pasta>' do ./app (nome da subpasta: "A4-6DOF"):
+//
+//    ./build/app/src/app -folder ./sandbox -scenario A4-6DOF
 //
 // POR QUE O ARQUIVO NAO SE CHAMA scenario.edl.in:
 // tests/guard/check_falcons_estrutura.sh varre esse nome por glob e exige
@@ -70,9 +78,11 @@
 // o ponto desta poc e a NAVEGACAO, nao o combate.
 //
 // O QUE FICA HERMETICO: sem 'networks:' (mesmo motivo do
-// tests/scenario/make_fixture.py), porta Tacview propria (1240) e arquivos
-// de dados proprios -- roda ao lado das outras seis pocs sem disputar porta
-// nem sobrescrever gravacao.
+// tests/scenario/make_fixture.py) e arquivos de dados proprios (data/ desta
+// pasta). Porta Tacview 1234 -- IGUAL aos outros 4 da familia A4-*DOF, de
+// proposito: nenhum dos 5 roda ao mesmo tempo que outro (sao variantes de
+// comparacao, uma execucao por vez), entao reusar a porta padrao evita
+// decorar 5 numeros diferentes.
 //
 // ARMADILHAS JA CONFIRMADAS EM built-in_mixr_1, e que valem AQUI TAMBEM
 // (nao redescobrir -- ver o README daquela poc para o texto completo):
@@ -121,7 +131,7 @@
          healthEvery:  ( Seconds 10 )
          sinks: {
             ( MsgFileSink
-               fileName: "./sandbox/full-systems-nav/data/messages/mission_@RUN_ID@.jsonl"
+               fileName: "./sandbox/A4-6DOF/data/messages/mission_@RUN_ID@.jsonl"
                flushEvery: ( Seconds 2 ) )
          }
          messages: {
@@ -135,14 +145,14 @@
    } // components
 
    dataRecorder: ( ExposedDataRecorder
-      eventName: "full-systems-nav"
+      eventName: "A4-6DOF"
       enabledList: [ 43 42 ]
       outputHandler: ( RecorderOutputHandler
          components: {
             ( TacviewOutput
-               port: 1240
-               callsign: "poc-mixr/full-systems-nav"
-               fileName: "./sandbox/full-systems-nav/data/recordings/mission_@RUN_ID@.acmi"
+               port: 1234
+               callsign: "poc-mixr/A4-6DOF"
+               fileName: "./sandbox/A4-6DOF/data/recordings/mission_@RUN_ID@.acmi"
                modelMap: { a4: "A-4E" }
                typeMap:  { a4: "Air+FixedWing" }
                colorMap: { a4: "Blue" }

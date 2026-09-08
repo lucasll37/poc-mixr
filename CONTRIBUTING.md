@@ -217,7 +217,8 @@ repositório.
 **hardcoded para o A-4**: reconstrói `models/players/A-4` com `-Dasan=true` e roda uma fixture da poc
 `flight` (que carrega `libflight.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
 aceita `NAME=`, e a razão é mecânica — `make models ASAN=true` (que ele chama por baixo) passa
-`ASAN=true` para **todo** projeto de modelo encontrado por `find` sob `models/players/`, mas só
+`ASAN=true` para **todo** projeto de modelo encontrado por `find` sob `models/` (qualquer subpasta
+com `project()` no próprio `meson.build`, não só `models/players/`), mas só
 `models/players/A-4/meson_options.txt` declara `option('asan', ...)`; `template` não tem essa
 opção, então um modelo copiado dele hoje **ignora** a flag em silêncio
 (o GNU Make não reclama de variável de linha de comando não consumida) — nada quebra, mas

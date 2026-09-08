@@ -101,11 +101,16 @@ ASAN ?= false
 # ==============================================================================
 # 'models' e 'sync-plugins' -- DECOPLADOS de proposito.
 #
-# 'models' compila e instala TODO modelo de producao sob models/players/,
-# cada um projeto Meson AUTOCONTIDO (ver models/README.md §1.1) --
-# DESCOBERTO POR FIND (nao por lista fixa: um modelo novo so precisa
-# existir, nunca precisa de uma linha nova aqui -- mesma filosofia ja usada
-# por tests/guard/check_modelo_estrutura.sh/check_colisao_fabrica.py),
+# 'models' compila e instala TODO modelo de producao sob models/ --
+# QUALQUER subpasta dela (players/, e qualquer outra que vier a existir,
+# ex.: others/, events/, systems/ -- hoje so 'events/' tem conteudo, e e
+# a excecao conhecida: ver abaixo), cada um projeto Meson AUTOCONTIDO (ver
+# models/README.md §1.1) -- DESCOBERTO POR FIND (nao por lista fixa: um
+# modelo novo so precisa existir, em QUALQUER subpasta de models/, nunca
+# precisa de uma linha nova aqui -- mesma filosofia ja usada por
+# tests/guard/check_modelo_estrutura.sh; check_colisao_fabrica.py e
+# deliberadamente mais estreito, so models/players/ -- ver o cabecalho
+# dele),
 # delegando pro Makefile de CADA um (`$(MAKE) -C models/players/<nome>
 # install-host TESTS=true VARIANTS=true ASAN=...`), nao reimplementando o
 # setup aqui. Exclui models/players/template/ de MODELOS_PRODUCAO (nunca e
@@ -134,21 +139,40 @@ ASAN ?= false
 # tocam dist/lib/mixr-plugins/ sozinhos.
 # ==============================================================================
 
-# Mesma logica de descoberta de tests/guard/check_modelo_estrutura.sh (todo
-# diretorio sob models/players/ com um meson.build de PROJETO -- aqui,
-# "nao dentro de tests/", que e o mesmo criterio na pratica: so o
-# meson.build da RAIZ de cada projeto de modelo declara project(), os de
-# tests/ so tem subdir()), restrita a models/players/ (nao models/events/,
-# que e SDK, nao modelo) e excluindo template/ (nunca e producao). 'tools/'
-# tambem e so subdir() do meson.build da raiz de cada projeto (ex.:
-# models/players/A-4/tools/, o gerador dump-tree-model) -- nao tem Makefile
-# proprio, entao 'tools/' entra na mesma exclusao de 'tests/'.
-MODELOS_PRODUCAO := $(shell find models/players -mindepth 2 -name meson.build \
+# MESMA logica de descoberta de tests/guard/check_modelo_estrutura.sh (todo
+# diretorio sob models/ -- QUALQUER subpasta, nao so players/ -- com um
+# meson.build de PROJETO), e pelo MESMO motivo: um projeto de verdade
+# declara project() na raiz; um meson.build de subdiretorio auxiliar
+# (tests/, tools/) so tem subdir(), e um meson.build de CONTRATO/SDK
+# consumido por subdir() do host (models/events/, hoje a UNICA excecao
+# real -- ver models/events/README.md: "nao e um modelo em si") tambem
+# nunca declara project(). E por isso que o grep por '^project' abaixo
+# já FILTRA sozinho qualquer subpasta de models/ que nao seja um modelo de
+# verdade -- 'others/'/'systems/' (hoje vazias, so com .gitkeep) entram
+# nessa varredura sem exigir nenhuma linha nova aqui assim que ganharem um
+# projeto de verdade dentro. A UNICA exclusao por PATH, alem das de
+# build/dist/subprojects (artefatos de build, nunca fonte) e tests/tools/
+# (subdir() auxiliar, sem Makefile proprio -- ver models/players/A-4/tools/,
+# o gerador dump-tree-model), e template/: ele TEM project() (e um
+# projeto de verdade, compila e testa sozinho) mas nunca e producao (ver
+# models/players/template/README.md) -- por isso segue excluido por path,
+# nao pelo filtro de project().
+# O grep abaixo casa so 'project' (sem o '(' de 'project(' que
+# check_modelo_estrutura.sh usa) de proposito -- um '(' sozinho, colado
+# direto numa string dentro de um '$(shell ...)', desbalanceia a contagem de
+# parenteses que o PROPRIO parser do GNU Make faz para achar o fim da
+# chamada (ele conta caracteres literalmente, sem entender aspas de shell):
+# o sintoma medido foi "unterminated call to function 'shell': missing )".
+# Sem o '(', o casamento continua inequivoco -- nenhum meson.build deste
+# repositorio comeca uma linha com 'project' fora da propria declaracao
+# project(...).
+MODELOS_PRODUCAO := $(shell find models -mindepth 2 -name meson.build \
                        -not -path '*/build/*' -not -path '*/dist/*' -not -path '*/subprojects/*' \
                        -not -path '*/template/*' -not -path '*/tests/*' -not -path '*/tools/*' \
+                       -exec grep -q '^project' {} \; -print \
                      | xargs -r -n1 dirname | sort -u)
 
-models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob models/players/, exceto template/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob QUALQUER subpasta de models/, exceto template/ e o contrato models/events/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
 	@for d in $(MODELOS_PRODUCAO); do \
 	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
 	 done

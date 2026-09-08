@@ -1,0 +1,56 @@
+<!--
+  A4-4DOF-ONNX: quem decide e uma REDE NEURAL - copia adaptada de
+  src/poc/onnx-policy/configs/flight_tree_onnx.xml, so com o caminho de
+  'model=' repontado para esta pasta do sandbox.
+
+      A4-6DOF/A4-4DOF/A4-3DOF (flight_tree_nav.xml)   A4-4DOF-ONNX (este arquivo)
+      ...............................................  ...............................
+      Fallback                                         Fallback
+        +- Navigate  (le Route/Steerpoint nativo)         +- OnnxPolicy  (a rede)
+                                                           +- Patrol      (rede de seguranca)
+
+    1) OnnxPolicy: carrega o .onnx uma vez (a sessao do ONNX Runtime e
+       cacheada por CAMINHO em libs/xinfer), empacota os 28 campos do
+       WorldView na ordem canonica de libs/xrlbridge/ObservationFields.hpp,
+       infere e comanda. Enquanto a rede responde, o Fallback para aqui.
+
+    2) Patrol: so roda se a rede FALHAR (arquivo ausente, forma diferente de
+       28 para 3, erro de inferencia). Os numeros que ele usa (patrolHeading,
+       legTime, patrolAltitude, patrolSpeed) vem dos slots do ( BtBehavior )
+       no .edl.in.
+
+  IMPORTANTE PARA ESTE CENARIO ESPECIFICO (A4-4DOF-ONNX, dentro do sandbox
+  A4-*DOF): ao contrario de A4-6DOF/A4-4DOF/A4-3DOF (que usam ( Navigate ) e
+  voam a rota real de 4 steerpoints), esta arvore NUNCA consulta
+  Route/Steerpoint - o contrato fixo de 28 floats que OnnxPolicy recebe
+  (mesmo libs/xrlbridge/ObservationFields.hpp do PyDecide) nao carrega
+  rumo/altitude/velocidade do proximo steerpoint. Sem intruso neste cenario
+  hermetico, a rede so nunca sai do regime de patrulha da barreira que ela
+  foi treinada pra reproduzir - e as quatro Action dos steerpoints
+  (decoy/SAR/camuflagem/arma) NUNCA disparam. Isso e ESPERADO, nao um
+  defeito - ver o README desta pasta.
+
+  O QUE NAO ESTA AQUI, de proposito (herdado de onnx-policy): o piso
+  anti-CFIT independente. Este cenario (como os outros 4 da familia
+  A4-*DOF) nao usa ( UbfArbiter )/( AltitudeSafetyBehavior ) - so
+  ( BtBehavior ) direto. Enquanto o .onnx carrega e infere com sucesso, a
+  rede tem a ultima palavra sobre altitude.
+
+  CAMINHOS RELATIVOS A RAIZ DO REPOSITORIO, como todo caminho de configs/ e
+  data/ das pocs (o binario e executado de la). O .onnx mora ao lado deste
+  arquivo (nao em dist/share/mixr-plugins/flight/), porque a politica e do
+  CENARIO, nao do modelo.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <OnnxPolicy model="./sandbox/A4-4DOF-ONNX/configs/policy_barrier.onnx"
+                  normalized="true"
+                  label="ONNX"/>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

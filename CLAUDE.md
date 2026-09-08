@@ -1397,8 +1397,15 @@ models/
 recalcula a profundidade de `ROOT :=` do `Makefile` copiado, corrige o namespace C++ e remove
 `src/mirror.cpp`/o artefato `template_mirror` (que não fazem parte do scaffold) — não escreve
 lógica de domínio nenhuma. **Não** precisa registrar o modelo no build
-da raiz: `models:` do Makefile descobre projetos sob `models/players/` por `find`
-(`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — o diretório novo já
+da raiz: `models:` do Makefile descobre projetos sob **qualquer subpasta de `models/`** por `find`
+(`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — não só `models/players/`,
+que é onde `scripts/models.sh` sempre escreve o scaffold hoje, mas qualquer outra subpasta de
+`models/` (`others/`, `systems/`, hoje vazias, só com `.gitkeep`) que um dia ganhe um projeto Meson
+de verdade dentro. O filtro é o mesmo da guarda `check_modelo_estrutura.sh`: só conta quem declara
+`project()` na raiz do próprio `meson.build` — o que já exclui `models/events/` (contrato/SDK,
+consumido por `subdir()`, nunca um projeto Meson independente) sem precisar de exceção nomeada. A
+única exceção por nome que sobra é `models/players/template/`: tem `project()` (compila e testa
+sozinho) mas nunca é produção — segue excluído por path. O diretório novo já
 entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
 alcançável por `-folder`/`-f` sem registrar em lugar nenhum — não há mais catálogo estático;
