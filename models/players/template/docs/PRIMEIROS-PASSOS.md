@@ -146,7 +146,15 @@ sem você ter tocado no Makefile.
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
 cobertura de teste automática (`tests/meson.build`), isso é um passo separado, documentado em
-[`../../../README.md`](../../../README.md), seções 4.1 e 4.2 — não tem relação com este Passo 7.
+[`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md), seções 5.2 e 5.3 — não tem relação
+com este Passo 7.
+
+Antes do primeiro commit, vale ler também [`../../CLAUDE.md`](../../CLAUDE.md) (este projeto,
+não o da raiz): registra armadilhas do próprio scaffold que nenhum outro `.md` cobre — em
+particular, `.vscode/launch.json`/`meson_options.txt` **não** são reescritos por
+`scripts/models.sh` (ficam com caminho/descrição do template original) e a suíte de testes
+copiada cobre só `domain/`, com **zero** cobertura automática da camada `ubf/`
+(percepção→regra→rótulo) até você escrever a sua.
 
 ## Checklist rápido, para revisar antes do primeiro commit
 

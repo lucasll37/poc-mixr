@@ -17,8 +17,10 @@ Crie `.claude/skills/<nome>/SKILL.md` quando aparecer algo que:
   etapas para uma classe de bug recorrente); OU
 - é material de referência longo demais para caber em `CLAUDE.md`/`.claude/rules/*.md` sem poluir
   o contexto de toda sessão, e só precisa ser consultado ocasionalmente — candidato natural: uma
-  eventual divisão do `CLAUDE.md` (hoje ~292KB) em referências por subsistema, decisão que ficou
-  em aberto na sessão de 2026-09-06 (o arquivo foi mantido intocado de propósito).
+  eventual divisão do `CLAUDE.md` (já na casa das 4000+ linhas, e crescendo a cada "passada") em
+  referências por subsistema, decisão que ficou em aberto na sessão de 2026-09-06 (o arquivo foi
+  mantido intocado de propósito; ver a "NOTA DE DESATUALIZAÇÃO" na seção `./app` do próprio
+  CLAUDE.md para o primeiro sintoma concreto de que essa divisão vem ficando mais urgente).
 
 Frontmatter obrigatório: `name` + `description`. A `description` precisa dizer o que a skill faz
 **e** quando usá-la, com frases-gatilho concretas — é o único texto dela que fica em contexto
