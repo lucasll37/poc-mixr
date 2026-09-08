@@ -275,6 +275,15 @@ test("serializeTextLiteral forca aspas em texto puramente numerico -- IDENT nu v
   assert.strictEqual(core.serializeTextLiteral("3.5"), JSON.stringify("3.5"));
 });
 
+test("serializeTextLiteral deixa passar cru um VETOR com notacao cientifica/'.5'/'5.' -- caso Table2/Table3.data", () => {
+  // ACHADO POR AUDITORIA (nao redescobrir): RAW_VECTOR_RE so' reconhecia
+  // '\d+(\.\d+)?' -- notacao cientifica/'.5'/'5.' caiam no fallback de
+  // JSON.stringify() e viravam base::String, quebrando Table2::loadData()
+  // (espera um base::List numerico de verdade).
+  assert.strictEqual(core.serializeTextLiteral("[ 1 2.5e-3 3 ]"), "[ 1 2.5e-3 3 ]");
+  assert.strictEqual(core.serializeTextLiteral("[ .5 5. -1.2E+10 ]"), "[ .5 5. -1.2E+10 ]");
+});
+
 /* ------------------------------ valor de slot ------------------------------ */
 
 test("serializeLeafValue: numero simples", () => {
@@ -302,6 +311,18 @@ test("serializeLeafValue: texto-ou-numero (Component.select) emite numero cru qu
   const slotDef = { acceptsNumber: true, acceptsText: true };
   assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: "2" }), "2");
   assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: "falcon2" }), "falcon2");
+});
+
+test("serializeLeafValue: texto-ou-numero reconhece notacao cientifica/'.5'/'5.' -- sem isso viraria base::String", () => {
+  // ACHADO POR AUDITORIA (nao redescobrir): LOOKS_LIKE_NUMBER_RE so'
+  // reconhecia '\d+(\.\d+)?'; um valor como "1.5e-3" num slot que ACEITA
+  // numero caia no fallback de serializeTextLiteral() e saia ENTRE ASPAS --
+  // trocando o tipo real do lado MIXR (Number esperado, String entregue).
+  const slotDef = { acceptsNumber: true, acceptsText: true };
+  assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: "1.5e-3" }), "1.5e-3");
+  assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: ".5" }), ".5");
+  assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: "5." }), "5.");
+  assert.strictEqual(core.serializeLeafValue(slotDef, { kind: "text", value: "-1.2E+10" }), "-1.2E+10");
 });
 
 test("serializeLeafValue: sem valor (undefined) devolve null -- slot fica de fora do .edl", () => {

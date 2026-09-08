@@ -77963,10 +77963,23 @@ function isAscii(s) {
 // Charset de identificador nu do scanner real (edl_scanner.l:48):
 // [a-zA-Z0-9~!@#$%^&*\-_+=<>?/]+ -- sem espaco, sem dois-pontos, sem aspas.
 const BARE_IDENT_RE = /^[a-zA-Z0-9~!@#$%^&*\-_+=<>?/]+$/;
+
+// Mesma forma de numero (decimal simples/'.5'/'5.'/notacao cientifica) que
+// NUM_RE reconhece em edl_parser_core.js -- sem a alternativa hexadecimal,
+// que nao faz sentido nem pra um valor de texto solto nem pro vetor
+// Table2/Table3.data abaixo. Duplicada (nao referenciada) porque este
+// arquivo carrega ANTES de edl_parser_core.js no bundle concatenado (ver
+// compile.js) e roda sozinho em teste. ACHADO POR AUDITORIA (nao
+// redescobrir): a forma antiga, so' '\d+(\.\d+)?', nao reconhecia notacao
+// cientifica nem '.5'/'5.' -- um valor assim caia no fallback de
+// JSON.stringify() e virava base::String na reexportacao, silenciosamente
+// trocando o tipo do lado MIXR (Number esperado, String entregue).
+const RAW_NUMBER_SRC = "[+-]?(?:\\d*\\.\\d+(?:[eE][+-]?\\d+)?|\\d+\\.\\d*(?:[eE][+-]?\\d+)?|\\d+(?:[eE][+-]?\\d+)?)";
+
 // Um valor puramente numerico tokeniza como NUMERO no scanner, não como
 // IDENT -- emiti-lo "nu" produziria base::Integer/Float, não
 // base::Identifier/String. Força aspas nesse caso.
-const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
+const LOOKS_LIKE_NUMBER_RE = new RegExp(`^${RAW_NUMBER_SRC}$`);
 
 // Um item de lista pode ser um VETOR NUMERICO cru em vez de um
 // texto/identificador -- caso do Table2/Table3.data, cujo 'data:' e' uma
@@ -77976,7 +77989,7 @@ const LOOKS_LIKE_NUMBER_RE = /^[+-]?\d+(\.\d+)?$/;
 // base::List de verdade, nao uma base::String); reconhecer a FORMA
 // '[ numeros ]' e deixar passar cru resolve sem precisar de um tipo de nó
 // novo no modelo de dados.
-const RAW_VECTOR_RE = /^\[\s*[+-]?\d+(\.\d+)?(\s+[+-]?\d+(\.\d+)?)*\s*\]$/;
+const RAW_VECTOR_RE = new RegExp(`^\\[\\s*${RAW_NUMBER_SRC}(\\s+${RAW_NUMBER_SRC})*\\s*\\]$`);
 
 // Bare IDENT vira base::Identifier; "quoted" vira base::String. Identifier
 // É-UM String (DECLARE_SUBCLASS(Identifier, String)), então um IDENT nu
