@@ -192,6 +192,15 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   (investigado rodando: `BtBehavior::reset()` parece nunca ser chamado uma segunda vez pelo
   cascade do `UbfArbiter` nativo) — cautela defensiva, não correção de um crash observado.
   (2026-09-08)
+- **`NavigateAction` não reiniciava a suavização de rumo depois de um gap de guiagem inválida.**
+  `hasCommandedHeading_`/`commandedHeadingDeg_` ficavam congelados no último valor quando
+  `hasNavSteering` virava falso (ex.: a árvore troca pra EVADE e depois volta pra NAV —
+  `full-systems-nav` é o único consumidor hoje); o próximo tick com guiagem válida caía no ramo
+  de suavização em vez do de "primeiro tick", corrigindo pela taxa limitada a partir de um rumo
+  antigo sem relação com a nova marcação. Corrigido zerando `hasCommandedHeading_` no próprio
+  ramo de falha. Teste novo (`GapDeGuiagemInvalidaReiniciaASuavizacaoNaProximaBearing`,
+  `test_flight_tree_nav.cpp`) confirma a regressão (falha com o código antigo — comando fica
+  perto de 42° em vez de saltar pra 200°) e passa com o fix. (2026-09-08)
 - **`FlightAction::execute()` sem null-check no nome do player** — `base::Identifier::getString()`
   devolve ponteiro cru, `nullptr` para um nome nunca atribuído; `FlightState::updateState()` já
   tratava isso, `FlightAction.cpp` não replicava nos 4 pontos de `LOG(...)`. Nenhum player de

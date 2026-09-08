@@ -63,7 +63,20 @@ BT::NodeStatus NavigateAction::tick()
    if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;
 
    const auto& view = context_.behavior->snapshot();
-   if (!view.hasNavSteering) return BT::NodeStatus::FAILURE;
+   if (!view.hasNavSteering) {
+      // ACHADO POR AUDITORIA (nao redescobrir): sem isto, um GAP de
+      // guiagem invalida (ex.: a arvore troca pra EVADE e depois volta pra
+      // NAV, full-systems-nav e' o unico consumidor hoje) deixava
+      // 'commandedHeadingDeg_' CONGELADO no ultimo valor de antes do gap.
+      // O proximo tick com guiagem valida caia no ramo de SUAVIZACAO (nao
+      // no de "primeiro tick"), tentando corrigir de um rumo antigo pra um
+      // possivelmente muito diferente pela taxa limitada -- o oposto do
+      // que "recomecar do zero" deveria fazer, e o mesmo tipo de
+      // instabilidade que o limitador existe pra evitar em primeiro lugar,
+      // so que na RECONEXAO em vez da perseguicao continua.
+      hasCommandedHeading_ = false;
+      return BT::NodeStatus::FAILURE;
+   }
 
    if (!hasCommandedHeading_) {
       // Primeiro tick com guiagem valida: nao ha rumo anterior para

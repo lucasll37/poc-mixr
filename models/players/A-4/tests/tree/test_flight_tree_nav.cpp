@@ -114,4 +114,40 @@ TEST(FlightTreeNav, SemGuiagemValidaNaoDecideNada)
    EXPECT_FALSE(ctx.dec.taken) << "esta arvore nao tem Patrol/RTB/Evade por baixo";
 }
 
+//------------------------------------------------------------------------------
+// ACHADO POR AUDITORIA (nao redescobrir): um GAP de guiagem invalida no meio
+// da vida da MESMA arvore (ex.: NAV -> EVADE -> NAV, o caso real de
+// full-systems-nav) tem que "recomecar do zero" no rumo comandado, nao
+// retomar suavizando a partir do valor congelado de ANTES do gap -- senao o
+// primeiro tick apos reconectar fica sujeito ao limitador de taxa como se
+// fosse uma correcao continua, quando na verdade e uma bearing nova sem
+// relacao com a anterior.
+//------------------------------------------------------------------------------
+
+TEST(FlightTreeNav, GapDeGuiagemInvalidaReiniciaASuavizacaoNaProximaBearing)
+{
+   FakeDecisionContext ctx{contextoComRotaValida()};
+   ArvoreDeNavegacao arvore{ctx};
+
+   // Primeiro tick: estabelece commandedHeadingDeg_ = 42.0 (sem suavizacao,
+   // e' o primeiro).
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   ASSERT_NEAR(ctx.dec.command.headingDeg, 42.0, TOL);
+
+   // Gap: guiagem invalida por um tick (a arvore desviou pra outro ramo).
+   ctx.snap.hasNavSteering = false;
+   ctx.dec.reset();
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::FAILURE);
+
+   // Reconecta com uma bearing MUITO diferente da anterior (42 -> 200).
+   // Sem o fix, isto cairia no ramo de suavizacao e o comando sairia
+   // clampado perto de 42 + kMaxHeadingRateDegPerSec*dt -- bem longe de
+   // 200. Com o fix, e' tratado como primeiro tick de novo: exato.
+   ctx.snap.hasNavSteering = true;
+   ctx.snap.navTrueBrgDeg = 200.0;
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   EXPECT_NEAR(ctx.dec.command.headingDeg, 200.0, TOL)
+      << "deveria ir direto pra 200 (reinicio), nao suavizar a partir do rumo congelado";
+}
+
 } // namespace
