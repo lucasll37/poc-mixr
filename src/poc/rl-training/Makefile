@@ -66,5 +66,5 @@ clean: ## Remove o venv local e os checkpoints de ./runs (NAO mexe no dist/ do h
 	rm -rf $(VENV) $(RUNS_DIR)
 	find . -name __pycache__ -type d -exec rm -rf {} +
 
-help:
+help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

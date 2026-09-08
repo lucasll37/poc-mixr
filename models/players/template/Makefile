@@ -142,5 +142,5 @@ uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou, SE al
 clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../../dist do host).
 	rm -rf $(BUILD_DIR) $(DEST_DIR)
 
-help:
+help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

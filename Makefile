@@ -13,22 +13,18 @@ DEST_DIR := $(PWD)/dist
 # populado so por 'make install' (alvo 'sync-plugins'), do HOST.
 PLUGINS_DIR := $(PWD)/plugins
 
-# O meson DESCARTA o PKG_CONFIG_PATH do ambiente quando o native-file do Conan
-# fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
-# separador de lista do meson e VIRGULA, nao dois-pontos.
-PKG_PATH := $(DEST_DIR)/lib/pkgconfig,$(PWD)/build
-
 # Number of parallel jobs for Ninja (all available cores)
 NINJA_JOBS := $(shell nproc)
 
 # Build configuration
 BUILD_TYPE := Debug
+# ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
+ASAN ?= false
 
 # Colors for output
 RED := \033[0;31m
 GREEN := \033[0;32m
 YELLOW := \033[1;33m
-BLUE := \033[0;34m
 NC := \033[0m # No Color
 
 # ============================================
@@ -63,6 +59,10 @@ configure: ## Configure the project for building.
 		-c tools.system.package_manager:mode=install \
 		-c tools.system.package_manager:sudo=True
 
+	# O meson DESCARTA o PKG_CONFIG_PATH do ambiente quando o native-file do Conan
+	# fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
+	# separador de lista do meson e VIRGULA, nao dois-pontos (relevante quando um
+	# modelo/plugin soma o proprio dist/lib/pkgconfig a este caminho).
 	meson setup --reconfigure \
 		--backend ninja \
 		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
@@ -94,9 +94,6 @@ sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack
 	@test -f $(DEST_DIR)/lib/pkgconfig/poc-mixr-sdk.pc || { echo "$(RED)sdk: .pc ausente$(NC)"; exit 1; }
 	@test -f $(DEST_DIR)/include/xplugin/PluginAbi.hpp || { echo "$(RED)sdk: headers ausentes -- use --tags sdk,devel$(NC)"; exit 1; }
 	@echo "$(GREEN)sdk: OK$(NC) -> dist/include, dist/lib, dist/lib/pkgconfig"
-
-# ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
-ASAN ?= false
 
 # ==============================================================================
 # 'models' e 'sync-plugins' -- DECOPLADOS de proposito.
@@ -215,6 +212,10 @@ new-model: ## Gera um modelo novo em models/players/NAME/ a partir de template/ 
 	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo$(NC)"; exit 1; }
 	scripts/models.sh --name "$(NAME)"
 
+# ============================================
+# Build / Install / Package do HOST
+# ============================================
+
 build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
@@ -243,18 +244,18 @@ package: ## Create the Conan package for this project.
 check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
 	@bash tests/plugin/check_hotswap_rebuild.sh
 
-run-app: ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dentro dela, mostra a tela de seleção de subpastas).
-	$(BUILD_DIR)/app/src/app -folder ./sandbox
+run-app: install ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dentro dela, mostra a tela de seleção de subpastas).
+	$(DEST_DIR)/bin/app -folder ./sandbox
 
-run-app-monitor: ## Roda dist/bin/app com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-app-monitor PLAYER=falcon1 [ARGS='-folder src/poc/dis -scenario flight'] (default ARGS: '-folder ./sandbox', a tela de selecao). Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+run-app-monitor: install ## Roda dist/bin/app com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-app-monitor PLAYER=falcon1 [ARGS='-folder src/poc/dis -scenario flight'] (default ARGS: '-folder ./sandbox', a tela de selecao). Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
 	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
-	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/app -folder ./sandbox
+	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/app $(if $(ARGS),$(ARGS),-folder ./sandbox)
 
-run-node: ## Run node (runner headless, sem TUI -- so log no console -- para UM cenario). Uso: make run-node SCENARIO=<arquivo.edl|.edl.in>.
+run-node: install ## Run node (runner headless, sem TUI -- so log no console -- para UM cenario). Uso: make run-node SCENARIO=<arquivo.edl|.edl.in>.
 	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
-	$(BUILD_DIR)/src/node/node $(SCENARIO)
+	$(DEST_DIR)/bin/node $(SCENARIO)
 
-run-node-monitor: ## Roda dist/bin/node com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-node-monitor PLAYER=falcon1 SCENARIO=<arquivo.edl|.edl.in>. Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+run-node-monitor: install ## Roda dist/bin/node com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-node-monitor PLAYER=falcon1 SCENARIO=<arquivo.edl|.edl.in>. Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
 	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/node $(SCENARIO)
@@ -384,5 +385,5 @@ open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (deps/groot/conanfile
 # ============================================
 # Misc Targets
 # ============================================
-help:
+help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
