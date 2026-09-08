@@ -3,9 +3,13 @@
 Nenhuma skill foi criada na reestruturação da camada de extensão (sessão de 2026-09-06): todo
 procedimento repetível deste repositório já é um alvo de `Makefile` de uma linha
 (`build`/`test`/`docs`/`open-edl-builder`/...) — a premissa declarada do projeto é que "o
-Makefile é a única fonte de automação" (não há CI configurado). O único fluxo multi-passo
-genuinamente humano ("criar um modelo novo") já está coberto por `CONTRIBUTING.md` →
-`models/REGISTRO.md`; duplicar isso numa skill não agregaria.
+Makefile é a única fonte de automação". Há CI real (`.gitlab-ci.yml`, jobs `build`+`test`; testável
+localmente com `make test-ci`), mas ele reforça a premissa em vez de contradizê-la: o pipeline
+inteiro é a MESMA sequência `make configure && make sdk && make models && make build && make
+install && make test`, sem passo nenhum que só existe dentro do CI — nada aqui precisaria virar
+skill mesmo com CI no jogo. O único fluxo multi-passo genuinamente humano ("criar um modelo novo")
+já está coberto por `CONTRIBUTING.md` → `models/REGISTRO.md`; duplicar isso numa skill não
+agregaria.
 
 ## Quando criar uma skill aqui
 
