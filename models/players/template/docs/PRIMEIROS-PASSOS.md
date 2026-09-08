@@ -149,7 +149,7 @@ cobertura de teste automática (`tests/meson.build`), isso é um passo separado,
 [`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md), seções 5.2 e 5.3 — não tem relação
 com este Passo 7.
 
-Antes do primeiro commit, vale ler também [`../../CLAUDE.md`](../../CLAUDE.md) (este projeto,
+Antes do primeiro commit, vale ler também [`../CLAUDE.md`](../CLAUDE.md) (este projeto,
 não o da raiz): registra armadilhas do próprio scaffold que nenhum outro `.md` cobre — em
 particular, `.vscode/launch.json`/`meson_options.txt` **não** são reescritos por
 `scripts/models.sh` (ficam com caminho/descrição do template original) e a suíte de testes

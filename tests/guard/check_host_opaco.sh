@@ -32,6 +32,17 @@ cd "$RAIZ" || exit 1
 fail=0
 
 # 1) nenhum arquivo de build do host cita fonte do modelo
+#
+# NAO estender pra 'tests/' aqui (achado E REVERTIDO na mesma autorevisao
+# que motivou a checagem 2 abaixo): tests/meson.build referencia os
+# proprios arquivos da suite do host por convencao 'domain/test_*.cpp'
+# (a pasta tests/domain/, nao o domain/ do modelo) -- o MESMO regex que
+# funciona por CONTEUDO de #include na checagem 2 vira falso positivo
+# aqui, porque aqui o alvo e um CAMINHO DE ARQUIVO em files(), e
+# 'domain/test_xmsg_rules.cpp' bate no regex sem ter nada a ver com o
+# modelo. Confirmado quebrando: estender pra tests/ fazia esta checagem
+# falhar contra o proprio tests/meson.build de producao, sem violacao
+# nenhuma de verdade.
 mbs="$(find src app -name meson.build 2>/dev/null)
 meson.build"
 achados_mb=""
@@ -60,10 +71,16 @@ fi
 # sem nenhuma subpasta com esses nomes, entao ficava INVISIVEL pra esta
 # checagem (reproduzido: um '#include "domain/Foo.hpp"' plantado em
 # src/node/main.cpp nao era detectado). Trocado pra buscar por EXTENSAO de
-# arquivo (.cpp/.hpp) direto sob src/ e app/, o mesmo criterio ja usado na
-# checagem 3 abaixo -- cobre qualquer subprojeto host futuro, com qualquer
-# nome de pasta.
-achados="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type f \( -name '*.cpp' -o -name '*.hpp' \) -print 2>/dev/null \
+# arquivo (.cpp/.hpp) direto sob src/, app/ E tests/ (achado por
+# autorevisao: tests/ e' parte legitima do build do HOST e ficava de fora
+# -- reproduzido plantando o mesmo tipo de #include sob tests/domain/,
+# nao detectado, corrigido, replantado, agora detectado), o mesmo criterio
+# ja usado na checagem 3 abaixo -- cobre qualquer subprojeto host futuro,
+# com qualquer nome de pasta. Checagem 3 (por NOME de pasta, nao conteudo)
+# continua so' sob src/app -- estende-la pra tests/ criaria falso positivo
+# contra a propria pasta tests/domain/ (nome de suite do host, coincidencia
+# textual com o nome do modelo).
+achados="$(find src app tests -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type f \( -name '*.cpp' -o -name '*.hpp' \) -print 2>/dev/null \
    | xargs -r grep -nE '#include "(domain|bt|ubf|xnative)/' 2>/dev/null || true)"
 if [ -n "$achados" ]; then
    echo "  FALHA codigo do host incluindo header do modelo:"
