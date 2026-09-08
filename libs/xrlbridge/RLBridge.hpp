@@ -53,6 +53,20 @@ namespace xrlbridge {
 
 struct Command
 {
+   // ACHADO POR AUDITORIA (nao redescobrir): sem este flag,
+   // RLBridgeBehavior::genAction() nao tinha como distinguir "o host ainda
+   // nao publicou nenhuma acao" de "o host publicou heading=0/altitude=0/
+   // speed=0 de proposito" -- os dois pareciam identicos (Command
+   // default-construido). Na primeira decisao de cada episodio (o frame de
+   // priming que NativeSimulation::reset() dispara via primeStation(),
+   // ANTES do primeiro step()/setPendingCommand() do lado Python) isso
+   // mandava a aeronave pro nivel do mar, parada -- medido rodando
+   // 'make test-rl': 'falcon1: -- -> RL (hdg=0deg alt=0m vel=0kt)'. Em
+   // resets SEGUINTES (mesmo processo, sem reconstruir a Station), o
+   // comando aplicado no priming era o ULTIMO comando do episodio ANTERIOR,
+   // vazando entre episodios.
+   bool valid{};
+
    double headingDeg{};
    double altitudeM{};
    double speedKts{};

@@ -41,15 +41,29 @@ TEST(RLBridgeBehavior, GenActionComEstadoNuloDevolveNulo)
 TEST(RLBridge, ComandoPendenteEDevolvidoPorGetPendingCommand)
 {
    xrlbridge::Command cmd;
+   cmd.valid = true;
    cmd.headingDeg = 90.0;
    cmd.altitudeM = 1750.0;
    cmd.speedKts = 160.0;
    xrlbridge::setPendingCommand(cmd);
 
    const xrlbridge::Command got{xrlbridge::getPendingCommand()};
+   EXPECT_TRUE(got.valid);
    EXPECT_DOUBLE_EQ(got.headingDeg, 90.0);
    EXPECT_DOUBLE_EQ(got.altitudeM, 1750.0);
    EXPECT_DOUBLE_EQ(got.speedKts, 160.0);
+}
+
+// ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
+// xrlbridge::Command): um Command default-construido (o que
+// getPendingCommand() devolve antes do primeiro setPendingCommand() do
+// episodio) tem de vir com valid=false -- e' o sinal que
+// RLBridgeBehavior::genAction() usa pra devolver nullptr em vez de atuar
+// heading=0/altitude=0/speed=0 como se fosse uma decisao de verdade.
+TEST(RLBridge, ComandoDefaultConstruidoNaoEValido)
+{
+   const xrlbridge::Command cmd;
+   EXPECT_FALSE(cmd.valid);
 }
 
 TEST(RLBridge, ObservacaoPublicadaEDevolvidaPorGetObservation)

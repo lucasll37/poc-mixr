@@ -29,6 +29,16 @@ NativeSimulation::~NativeSimulation()
 
 mixr::xrlbridge::Observation NativeSimulation::reset()
 {
+   // ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
+   // xrlbridge::Command): invalida o comando pendente ANTES do frame de
+   // priming que primeStation() dispara (RESET_EVENT + tcFrame() de
+   // aquecimento, que ja chama RLBridgeBehavior::genAction() antes de
+   // qualquer step()/setPendingCommand() deste episodio) -- sem isto, o
+   // ULTIMO comando do episodio ANTERIOR vazava pro priming do proximo (ou,
+   // no primeiro reset() do processo, um Command{} default aplicava
+   // heading=0/altitude=0/speed=0 como se fosse uma decisao de verdade).
+   mixr::xrlbridge::setPendingCommand(mixr::xrlbridge::Command{});
+
    if (!built_) {
       station_ = buildStation(scenarioPath_);
       primeStation(station_);

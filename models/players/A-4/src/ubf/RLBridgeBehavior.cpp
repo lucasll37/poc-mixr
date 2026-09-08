@@ -94,7 +94,18 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
    xrlbridge::setObservation(toObservation(snap));
    if (!snap.valid) return nullptr;
 
-   const domain::FlightCommand cmd{toFlightCommand(xrlbridge::getPendingCommand())};
+   // ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
+   // xrlbridge::Command): sem o host ter publicado uma acao valida ainda
+   // (frame de priming do reset(), ou o Command generico ficou obsoleto de
+   // um episodio anterior), nao ha recomendacao nenhuma -- devolver nullptr
+   // e deixar o UbfArbiter (AltitudeSafetyBehavior continua no candidato
+   // vote:90 do MESMO arbitro, ver scenario_rl.edl) decidir sem este voto,
+   // em vez de atuar heading=0/altitude=0/speed=0 como se fosse uma
+   // decisao de verdade.
+   const xrlbridge::Command pending{xrlbridge::getPendingCommand()};
+   if (!pending.valid) return nullptr;
+
+   const domain::FlightCommand cmd{toFlightCommand(pending)};
 
    // Acao PRE-REF'd (o Agent chama unref() depois de executar) -- contrato do
    // UBF: "returns a pre-ref'd Action".

@@ -52,6 +52,7 @@ public:
    py::tuple step(const double headingDeg, const double altitudeM, const double speedKts)
    {
       mixr::xrlbridge::Command cmd;
+      cmd.valid = true;   // so' este ponto publica uma acao de VERDADE -- ver xrlbridge::Command
       cmd.headingDeg = headingDeg;
       cmd.altitudeM = altitudeM;
       cmd.speedKts = speedKts;
