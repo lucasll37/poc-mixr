@@ -39,6 +39,7 @@ public:
 
 private:
    termios original{};
+   int originalFlags{-1};   // fcntl(F_GETFL), restaurado no destrutor -- ver o .cpp
    bool active{};
 };
 
