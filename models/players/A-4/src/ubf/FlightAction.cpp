@@ -119,6 +119,15 @@ bool FlightAction::execute(base::Component* actor)
    const auto player = dynamic_cast<models::Player*>(actor);
    if (player == nullptr) return false;
 
+   // ACHADO POR AUDITORIA (nao redescobrir): base::Identifier::getString()
+   // devolve ponteiro CRU, nullptr para um nome nunca atribuido -- mesmo
+   // risco que FlightState::updateState() ja trata (ver o comentario la).
+   // Nenhum player de producao deste repositorio e anonimo hoje (todos
+   // nomeados via EDL), entao isto nunca disparou em voo -- e' defesa
+   // consistente com o padrao ja escrito, nao resposta a um crash real.
+   const char* const rawName{player->getName()->getString()};
+   const std::string playerName{(rawName != nullptr) ? rawName : "?"};
+
    base::Pair* const pilotPair{player->getPilotByType(typeid(models::Autopilot))};
    const auto autopilot = (pilotPair != nullptr)
                            ? dynamic_cast<models::Autopilot*>(pilotPair->object())
@@ -130,7 +139,7 @@ bool FlightAction::execute(base::Component* actor)
       // firstTimeFor()).
       static std::map<int, std::string> reported;
       if (changedFor(reported, player->getID(), "sem-autopilot")) {
-         LOG(ERROR) << "[FlightAction] " << player->getName()->getString()
+         LOG(ERROR) << "[FlightAction] " << playerName
                     << ": sem Autopilot -- decisao '" << label << "' nao pode ser atuada";
       }
       return false;
@@ -163,7 +172,7 @@ bool FlightAction::execute(base::Component* actor)
    // ("falcon1: PATROL -> EVADE"). A primeira decisao de cada aeronave
    // aparece como "-- -> PATROL", que e o valor inicial do quadro.
    if (before.label != label) {
-      LOG(INFO) << "[FlightAction] " << player->getName()->getString()
+      LOG(INFO) << "[FlightAction] " << playerName
                 << ": " << before.label << " -> " << label
                 << "  (hdg=" << command.headingDeg
                 << "deg alt=" << command.altitudeM
@@ -174,7 +183,7 @@ bool FlightAction::execute(base::Component* actor)
    // de comportamento, e da a cadencia real de decisao. Cadenciado pela
    // contagem do proprio quadro (ver kHeartbeatEveryDecisions).
    if (before.decisions > 0 && (before.decisions % kHeartbeatEveryDecisions) == 0) {
-      LOG(DEBUG) << "[FlightAction] " << player->getName()->getString()
+      LOG(DEBUG) << "[FlightAction] " << playerName
                  << ": " << before.decisions << " decisoes atuadas, em '" << label
                  << "' (thread " << xboard::threadTag() << ")";
    }
@@ -202,7 +211,7 @@ bool FlightAction::execute(base::Component* actor)
          // literalmente um alerta tatico saindo pro resto da esquadrilha, e
          // e o que se quer enxergar destacado no meio das transicoes.
          if (changedFor(lastAlertContact, player->getID(), alertContactName)) {
-            LOG(WARNING) << "[FlightAction] " << player->getName()->getString()
+            LOG(WARNING) << "[FlightAction] " << playerName
                          << ": alerta tatico -- contato '" << alertContactName
                          << "' a " << (alertRangeM * base::distance::M2NM) << " NM";
          }
