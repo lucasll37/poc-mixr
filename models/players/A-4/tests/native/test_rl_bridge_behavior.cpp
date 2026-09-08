@@ -11,9 +11,22 @@
 // verdade (snap.valid == true) e consumindo um Command de xrlbridge dentro
 // do MESMO ciclo, porque isso exige um models::AirVehicle real por tras de
 // FlightState::updateState() -- a mesma linha que separa esta camada da
-// camada 'scenario' (ver o cabecalho de test_xnative.cpp). Esse caminho e
-// exercitado pelo smoke test Python de src/rl/tests/ contra uma Station de
-// verdade.
+// camada 'scenario' (ver o cabecalho de test_xnative.cpp). FlightState::snap
+// e' privado, sem setter -- nao ha seam de injecao sem um AirVehicle de
+// verdade nem sem tocar a classe so' pra testabilidade.
+//
+// DEBITO DE TESTE RECONHECIDO (autorevisao desta sessao, nao redescobrir):
+// isso inclui especificamente o comportamento de
+// pending.valid==false -> genAction() devolve nullptr (ver o comentario
+// grande em bt/DecisionContext.hpp/xrlbridge::Command) -- so' foi
+// confirmado MANUALMENTE nesta sessao (make test-rl, lendo a linha de log
+// da primeira decisao antes/depois do fix), nunca por uma asserção
+// automatizada. src/rl/tests/test_smoke.py "exercita" o caminho (roda de
+// verdade contra a Station), mas nao AFIRMA nada sobre os valores da
+// primeira decisao -- uma regressao futura aqui (ex.: inverter a
+// condicao, ou esquecer o setPendingCommand(Command{}) em reset())
+// passaria por make test/make test-rl sem ser detectada. Registrado como
+// divida conhecida, nao "coberto".
 //
 #include "ubf/RLBridgeBehavior.hpp"
 
