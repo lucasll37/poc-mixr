@@ -166,6 +166,38 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Corrigido
 
+- **RTB/SUPPORT/PATROL passam a respeitar o piso anti-CFIT** — antes, só
+  `domain::ThreatPolicy::breakCommand()` aplicava `domain::clampToTerrain()`. `RtbPlan` é
+  geometria pura sem noção de terreno (`rtbAltitude` é um valor FIXO do EDL, calibrado contra o
+  pico do PRÓPRIO circuito de cada falcon, não contra o caminho de volta até a base, que cruza
+  relevo diferente); `SupportAlertAction` comandava a altitude ABSOLUTA de um contato reportado
+  por OUTRO player, sem validação nenhuma. Como o cenário de produção está "SEM ÁRBITRO" (sem
+  `AltitudeSafetyBehavior` por cima), `ThreatPolicy` tinha virado a ÚNICA proteção ativa — os
+  outros ramos só estavam seguros por coincidência de calibração manual, não por garantia em
+  runtime. `bt_nodes::DecisionContext` ganhou um 9º getter, `clampAltitudeToTerrain(altitudeM)`;
+  `ReturnToBaseAction`/`SupportAlertAction`/`PatrolAction` chamam o clamp antes de
+  `decision().take()`. Decisão de escopo: **não** clampado dentro de `decision().take()` (o
+  despacho universal de todo nó, inclusive `OnnxPolicyAction`/`PyDecideAction`) — mudaria o
+  comportamento já documentado da política ONNX ("tem a última palavra sobre altitude") sem
+  pedido pra isso. 3 testes novos em `test_flight_tree.cpp` provam que o clamp de fato ENTRA em
+  ação (terreno alto o suficiente pra violar a altitude configurada). (2026-09-08)
+- **`FlightAction::execute()` sem null-check no nome do player** — `base::Identifier::getString()`
+  devolve ponteiro cru, `nullptr` para um nome nunca atribuído; `FlightState::updateState()` já
+  tratava isso, `FlightAction.cpp` não replicava nos 4 pontos de `LOG(...)`. Nenhum player de
+  produção deste repositório é anônimo hoje — consistência com o padrão já escrito, não resposta
+  a um crash observado. (2026-09-08)
+- **`RLBridgeBehavior` aplicava um comando zerado/obsoleto no frame de priming de cada
+  episódio.** `NativeSimulation::reset()` dispara `primeStation()` (RESET_EVENT + `tcFrame()` de
+  aquecimento), que já chama `genAction()` — antes de qualquer `step()`/`setPendingCommand()` do
+  lado Python. `xrlbridge::getPendingCommand()` nesse momento devolvia um `Command{}` default (a
+  primeira vez) ou o ÚLTIMO comando do episódio ANTERIOR (resets seguintes, mesmo processo) — os
+  dois indistinguíveis de "o host publicou isto de propósito". Medido: `falcon1: -- -> RL
+  (hdg=0deg alt=0m vel=0kt)` como primeira decisão de todo episódio. `xrlbridge::Command` ganhou
+  um flag `valid` (só `PyBindings.cpp::step()` o liga); `reset()` invalida o comando pendente
+  ANTES de qualquer `primeStation()`; `genAction()` devolve `nullptr` quando o comando pendente
+  não é válido, deixando o `AltitudeSafetyBehavior` do mesmo `UbfArbiter` decidir sozinho.
+  Confirmado depois do fix: primeira decisão sai com valores de voo plausíveis
+  (`hdg=278.6deg alt=3511m vel=343kt`). (2026-09-08)
 - **`domain::PatrolPlan::advance()` só trocava UMA perna por chamada.** Um `dt` que cobrisse duas
   ou mais fronteiras de perna na mesma chamada (passo de controle grande, ou `legSeconds`
   configurado pequeno) deixava `legTimeRemaining()` negativo, e a folga só era recuperada aos
