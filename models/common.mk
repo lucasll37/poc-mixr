@@ -102,9 +102,28 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	@# reconfigure completo. ('--clearcache' e argumento de 'meson configure',
 	@# nao de 'meson setup' -- passa-lo ao setup faz o meson recusar a linha
 	@# inteira, e a falha se parece com "nao mudou nada".)
+	@#
+	@# ACHADO POR AUDITORIA (nao redescobrir): o STALE abaixo so olhava o
+	@# 'meson.build' de NIVEL TOPO -- editar um meson.build de SUBDIRETORIO
+	@# (ex.: tests/meson.build) nao contava como STALE aqui, mas AINDA
+	@# assim disparava o regen AUTOMATICO do proprio ninja (que 'meson
+	@# compile' aciona sozinho quando ve QUALQUER meson.build mais novo que
+	@# build.ninja, independente deste guard) -- e esse regen automatico e'
+	@# exatamente o caminho que NAO repassa '-Dpkg_config_path' e cai no
+	@# cache stale de pkg-config, do MESMO jeito que os dois paragrafos
+	@# acima ja descrevem pro meson.build de topo. Reproduzido rodando:
+	@# editar so' tests/meson.build e correr 'make models' (sem passar por
+	@# este 'configure:' antes) falhava com "Dependency poc-mixr-sdk not
+	@# found", igual ao caso ja documentado -- so' que este guard nao tinha
+	@# pego. Por isso o STALE agora busca QUALQUER 'meson.build'/
+	@# 'meson_options.txt' do projeto (recursivo, exceto dentro de
+	@# ./build/), nao so' os de nivel topo.
 	@WANT="$(BUILD_TYPE)|$(TESTS)|$(EXTRA_STALE_KEY)"; \
 	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
-	 STALE=$$(find meson.build meson_options.txt $(ROOT)/build/conan_meson_native.ini $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
+	 STALE=$$(find . \( -name 'meson.build' -o -name 'meson_options.txt' \) \
+	             -not -path './$(BUILD_DIR)/*' -newer $(BUILD_DIR)/build.ninja 2>/dev/null; \
+	           find $(ROOT)/build/conan_meson_native.ini $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc \
+	             -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
 	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
 	    :; \
 	 else \
