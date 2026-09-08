@@ -3,7 +3,8 @@
 Um agente de RL/Python controla **uma** aeronave (`falcon1`, por padrao) do
 mesmo cenario que `flight`/`app` ja rodam -- mesmo plugin `libflight.so`,
 mesma pilha nativa. O `state` do `gymnasium.Env` e
-a mesma percepcao que o UBF ja usa para decidir (`domain::WorldView`); a
+a mesma percepcao que o UBF (*Unified Behavior Framework* -- o mecanismo nativo do MIXR pra
+plugar decisao externa num `Player`) ja usa para decidir (`domain::WorldView`); a
 `action` e o mesmo comando que `xnative::FlightAction` ja aplica no
 `Autopilot` (heading/altitude/speed). As outras aeronaves do cenario
 (`falcon2..4`) continuam decidindo pela arvore de comportamento nativa --

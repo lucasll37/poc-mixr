@@ -260,6 +260,46 @@ def main():
           f"slot-lista sem objectTypes e sem textOnly (beco sem saida na UI): {orphans} -- "
           f"acrescente em LIST_SLOT_TYPE_OVERRIDES ou TEXT_ONLY_LIST_SLOTS")
 
+    # -- concrete: despacho real (factory.cpp) vs. so' DECLARE_SUBCLASS -----
+    # dispatch_factory_cpp_paths()/find_dispatch_reachable_classes() (ver
+    # tools/mixr_source_scan.py) -- toda entrada do catalogo tem a chave, e
+    # nenhuma foi REMOVIDA por ser abstrata/orfa (o achatamento de slot
+    # herdado, acima, ja depende de Component continuar presente).
+    for e in catalog:
+        check("concrete" in e, f"entrada {e['factory']!r} sem a chave 'concrete'")
+
+    ORPHAN_FACTORIES = {
+        "AirAngleOnlyTrkMgrPT", "ExternalStore", "RfTrack", "IrTrack", "Action",
+        "IrSystem", "DynamicsModel", "Component", "BaseStoresMgr",
+    }
+    for fname in ORPHAN_FACTORIES:
+        e = by_factory.get(fname)
+        check(e is not None, f"{fname} nao esta no catalogo (orfao conhecido, deveria continuar presente)")
+        if e:
+            check(e["concrete"] is False,
+                  f"{fname}.concrete == {e['concrete']!r}, esperado False -- "
+                  f"orfao conhecido (sem branch de despacho em nenhum factory.cpp)")
+
+    CONCRETE_FACTORIES = {"Aircraft", "JSBSimModel", "StoresMgr", "ClockStation", "MsgFeed", "PluginLoader"}
+    for fname in CONCRETE_FACTORIES:
+        e = by_factory.get(fname)
+        check(e is not None, f"{fname} nao esta no catalogo")
+        if e:
+            check(e["concrete"] is True,
+                  f"{fname}.concrete == {e['concrete']!r}, esperado True -- classe concreta conhecida")
+    stores_mgr = by_factory.get("StoresMgr")
+    check(stores_mgr is not None and stores_mgr["class"] == "SimpleStoresMgr",
+          f"fabrica 'StoresMgr' deveria resolver pra classe SimpleStoresMgr (a base abstrata "
+          f"e' 'BaseStoresMgr'), veio {stores_mgr and stores_mgr['class']!r}")
+
+    tactical_alert_concrete = by_factory.get("TacticalAlert")
+    check(tactical_alert_concrete is not None and tactical_alert_concrete["origin"].startswith("plugin:"),
+          "TacticalAlert deveria vir de um plugin (origin comecando com 'plugin:')")
+    if tactical_alert_concrete:
+        check(tactical_alert_concrete["concrete"] is True,
+              f"TacticalAlert.concrete == {tactical_alert_concrete['concrete']!r}, esperado True -- "
+              f"classe de plugin (A-4) com despacho real em models/players/A-4/src/xnative/factory.cpp")
+
     # -- spot-check de dois casos reais de cada categoria --------------------
     station = by_factory.get("Station")
     check(station is not None, "Station nao esta no catalogo")
@@ -340,6 +380,17 @@ def main():
         check(acme["origin"] == "plugin:AcmeThirdParty",
               f"origin deveria vir do nome do arquivo (libAcmeThirdParty.so -> plugin:AcmeThirdParty), veio {acme['origin']!r}")
         check(acme.get("runtimeOnly") is True, "classe de terceiro deveria vir marcada runtimeOnly")
+        check(acme.get("concrete") is True,
+              f"classe de terceiro (runtimeOnly) deveria vir com concrete==True incondicional, "
+              f"veio {acme.get('concrete')!r} -- ja garantida pela validacao de carga do PluginRegistry")
+
+    # -- toda entrada runtimeOnly do catalogo INTEIRO (nao so' o fake acima) -
+    # tem concrete==True -- confirma o mesmo invariante no caminho real de
+    # build_edl_catalog(), nao so' na chamada isolada de introspect_thirdparty_plugins() acima.
+    for e in catalog:
+        if e.get("runtimeOnly"):
+            check(e.get("concrete") is True,
+                  f"{e['factory']!r} e' runtimeOnly mas concrete == {e.get('concrete')!r}, esperado True")
         slots_by_name = {s["name"]: s for s in acme["slots"]}
         comp = slots_by_name.get("components")
         check(comp is not None and comp["acceptsChildList"] and not comp.get("typeUnknown"),

@@ -66,6 +66,14 @@ build_factory_map = scan.build_factory_map
 resolve_chain = scan.resolve_chain
 extract_slots = scan.extract_slots
 find_matching_brace = scan.find_matching_brace
+# Promovidas para tools/mixr_source_scan.py quando tools/extract_class_diagram.py
+# virou o terceiro consumidor a precisar da mesma classificacao de tipo/papel
+# primario -- ver o comentario delas la para o raciocinio completo.
+build_descendants = scan.build_descendants
+collect_descendants = scan.collect_descendants
+classify_slot_type = scan.classify_slot_type
+PRIMARY_COMPONENT_RE = scan.PRIMARY_COMPONENT_RE
+role_name_from_base_class = scan.role_name_from_base_class
 
 # Restringe o universo aos MESMOS modulos que app/src/mixr_factory.cpp de
 # fato encadeia em mixrFactoryBuiltin() -- nao "tudo sob
@@ -117,64 +125,6 @@ SLOT_MAP_RE = re.compile(
 # proximo, nao por backreference.
 ON_SLOT_RE = re.compile(r"\bON_SLOT\s*\(\s*(\d+)\s*,\s*(\w+)\s*,\s*([\w:]+)\s*\)")
 
-NUMBER_TYPES = {"Number", "Integer"}
-BOOLEAN_TYPES = {"Boolean"}
-TEXT_TYPES = {"String", "Identifier"}
-VECTOR_TYPES = {"List"}   # [ n n n ] -- numlist, edl_parser.y:189-191
-LIST_TYPES = {"PairStream"}  # { ... } -- sempre um PairStream, edl_parser.y
-
-
-def build_descendants(inheritance):
-    """Inverte Tipo->Base (ja extraido por build_inheritance) em Base->[Tipos].
-    E o que da, para qualquer 'familia de unidade' (Distance, Angle, ...), a
-    lista de unidades CONCRETAS que a UI pode oferecer num dropdown -- sem
-    tabela fixa nenhuma, so grafo de heranca ja extraido do fonte real."""
-    out: dict[str, list[str]] = {}
-    for child, parent in inheritance.items():
-        out.setdefault(parent, []).append(child)
-    return out
-
-
-def collect_descendants(root, descendants):
-    """Todos os descendentes TRANSITIVOS de root (BFS sobre 'descendants')."""
-    out, seen, stack = [], set(), list(descendants.get(root, []))
-    while stack:
-        c = stack.pop()
-        if c in seen:
-            continue
-        seen.add(c)
-        out.append(c)
-        stack.extend(descendants.get(c, []))
-    return sorted(out)
-
-
-def classify_slot_type(name, inheritance, descendants):
-    """Um tipo aceito por ON_SLOT vira um destes 'kinds': number/boolean/text/
-    vector/list/unit/object.
-
-    'unit' exige que o tipo (a) derive de Number E (b) tenha pelo menos um
-    descendente concreto -- e o que separa 'Distance' (familia de unidade de
-    verdade, Meters/Feet/NauticalMiles/... por baixo) de 'LatLon' (tambem
-    deriva de Number -- DECLARE_SUBCLASS(LatLon, Number), confirmado no fonte
-    -- mas e um composto sem filho nenhum: direction/degrees/minutes/seconds
-    sao slots PROPRIOS dela, nao uma unidade). Sem a condicao (b), LatLon
-    virava 'unit' por engano e ganhava um dropdown de unidade vazio."""
-    if name in NUMBER_TYPES:
-        return "number", None
-    if name in BOOLEAN_TYPES:
-        return "boolean", None
-    if name in TEXT_TYPES:
-        return "text", None
-    if name in VECTOR_TYPES:
-        return "vector", None
-    if name in LIST_TYPES:
-        return "list", None
-    chain = resolve_chain(name, inheritance)
-    if len(chain) > 1 and "Number" in chain[1:] and descendants.get(name):
-        return "unit", name
-    return "object", name
-
-
 def extract_slot_types(cpp_roots):
     """Classe -> {indice: [tipos C++ aceitos]}, a partir de ON_SLOT dentro de
     BEGIN_SLOT_MAP(Classe)/END_SLOT_MAP() (macros.hpp:302-324). Mais de um
@@ -209,6 +159,26 @@ def extract_slot_types(cpp_roots):
                 if bare not in lst:
                     lst.append(bare)
     return out
+
+
+def dispatch_factory_cpp_paths():
+    """Todos os factory.cpp cujo despacho real conta para 'concrete' no
+    catalogo -- reunidos por GLOB, nunca lista fixa (o repositorio pode
+    ganhar mais plugins/libs com o tempo, e o usuario pediu que isso seja
+    automatico, sem tratamento especial por nome): os 7 factory.cpp nativos
+    (os MESMOS EDL_CATALOG_MIXR_MODULES que ja restringem o resto deste
+    gerador -- ver o comentario deles), mais
+    'models/players/*/src/xnative/factory.cpp' (A-4, template, e qualquer
+    modelo futuro -- inclusive template, sem exclusao) e 'libs/*/factory.cpp'
+    (resolve sozinho quais libs tem fabrica EDL -- hoje xtacview/xclock/
+    xjoystick/xmsg/xplugin; uma lib sem fabrica, como xboard/xlog, so' nao
+    tem o arquivo, sem tabela de exclusao curada). Caminhos inexistentes sao
+    tolerados por find_dispatch_reachable_classes() (mesma tolerancia de
+    iter_files)."""
+    paths = [MIXR_SRC / m / "factory.cpp" for m in EDL_CATALOG_MIXR_MODULES]
+    paths += sorted(MODELS_DIR.glob("players/*/src/xnative/factory.cpp"))
+    paths += sorted(LIBS_DIR.glob("*/factory.cpp"))
+    return paths
 
 
 def build_class_files(cpp_roots):
@@ -360,22 +330,11 @@ def apply_list_slot_override(declared_in, slot_name, object_types):
 # componentes -- e o que possibilita o placeholder "nenhum DynamicsModel
 # encontrado" na arvore.
 #
-# Mecanico, sem tabela de curadoria: o PAPEL exibido vem do ARGUMENTO de
-# typeid() (a classe-base esperada), nao do nome do setter C++ -- 'setSensor'
-# (o setter real de RfSensor) viraria o papel 'sensor', que nao bate com a
-# convencao de EDL de producao ('sensors:'/'rfSensor', ver o comentario de
-# Player.hpp e os cenarios reais). 'RfSensor' -> 'rfSensor' (so a primeira
-# letra minuscula) ja bate com as 10 chaves convencionais usadas em producao,
-# sem tabela nenhuma escrita a mao.
-PRIMARY_COMPONENT_RE = re.compile(
-    r"set\w+\(\s*findByType\(\s*typeid\(\s*(\w+)\s*\)\s*\)\s*\)"
-)
-
-
-def role_name_from_base_class(base_class):
-    return base_class[:1].lower() + base_class[1:]
-
-
+# A extracao mecanica em si (PRIMARY_COMPONENT_RE/role_name_from_base_class)
+# mora em tools/mixr_source_scan.py (aliasada acima) -- este wrapper so'
+# fixa a raiz (MIXR_SRC, resolvida do jeito proprio deste script) para
+# manter o call site de baixo (e o de tests/tools/test_edl_catalog.py, que
+# chama 'ext.extract_primary_components()' sem argumento) inalterado.
 def extract_primary_components():
     """[{role, baseClass}], extraido do corpo de Player::updateSystemPointers()
     (contexts/src/mixr/src/models/player/Player.cpp) -- ver o comentario
@@ -384,28 +343,7 @@ def extract_primary_components():
     vazia (silencioso) -- e' o teste de integracao em
     tests/tools/test_edl_catalog.py, nao este script, quem trava contra essa
     regressao."""
-    player_cpp = MIXR_SRC / "models/player/Player.cpp"
-    if not player_cpp.exists():
-        return []
-    text = player_cpp.read_text(encoding="utf-8", errors="replace")
-    masked = mask_source(text)
-    sig = re.search(r"void\s+Player::updateSystemPointers\s*\([^)]*\)\s*\{", masked)
-    if not sig:
-        return []
-    brace_start = masked.index("{", sig.start())
-    brace_end = find_matching_brace(masked, brace_start)
-    if brace_end == -1:
-        return []
-    body = masked[brace_start:brace_end]
-    roles = []
-    seen = set()
-    for m in PRIMARY_COMPONENT_RE.finditer(body):
-        base_class = m.group(1)
-        if base_class in seen:
-            continue
-        seen.add(base_class)
-        roles.append({"role": role_name_from_base_class(base_class), "baseClass": base_class})
-    return roles
+    return scan.extract_primary_components(MIXR_SRC)
 
 
 def build_edl_catalog():
@@ -433,6 +371,12 @@ def build_edl_catalog():
     slot_types = extract_slot_types(EDL_CATALOG_SRC_ROOTS)   # classe -> {indice: [tipos]}
     class_files = build_class_files(EDL_CATALOG_SRC_ROOTS)   # classe -> arquivo .cpp
     primary_components = extract_primary_components()        # [{role, baseClass}], so' de Player
+    # Nomes de classe com despacho REAL num factory.cpp (nao so' declarada
+    # via IMPLEMENT_*SUBCLASS em algum .cpp) -- ver find_dispatch_reachable_classes()
+    # em tools/mixr_source_scan.py. Uma unica varredura para o catalogo
+    # inteiro; cada entrada abaixo so' testa participacao no set (cls in
+    # dispatch_reachable), sem repetir o parse de factory.cpp por classe.
+    dispatch_reachable = scan.find_dispatch_reachable_classes(dispatch_factory_cpp_paths())
 
     # `dis::NetIO`/`dis::Ntm`/`dis::Nib` tem o MESMO nome barra que a propria
     # classe BASE delas (`DECLARE_SUBCLASS(NetIO, interop::NetIO)` -- o
@@ -562,6 +506,7 @@ def build_edl_catalog():
             "baseClass": clean(inheritance.get(cls)),
             "chain": [clean(lvl) for lvl in chain],
             "origin": origin_of(class_files.get(cls)),
+            "concrete": cls in dispatch_reachable,
             "slots": flat_slots,
             "primaryComponents": primary,
         })
@@ -720,6 +665,13 @@ def introspect_thirdparty_plugins(known_factory_names, inheritance, slot_names, 
                 "baseClass": chain[1] if len(chain) > 1 else None,
                 "chain": chain,
                 "origin": f"plugin:{plugin_label}",
+                # Sempre True, incondicional: um .so que chegou ate aqui ja'
+                # passou pela validacao de carga do PluginRegistry (guardas
+                # de ABI -- ver o cabecalho de plugininfo_main.cpp) e o
+                # binario 'plugininfo' so' lista classes que o proprio
+                # MIXR_PLUGIN_DEFINE(...) publicou -- nao ha' deteccao nova
+                # de despacho a fazer aqui (nao ha' factory.cpp pra ler).
+                "concrete": True,
                 "slots": slot_list,
                 "primaryComponents": list(primary_components) if primary_components and "Player" in chain else [],
                 "runtimeOnly": True,

@@ -840,6 +840,29 @@ test('plugin-deposito-terceiro', py,
 test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
+# O diagrama de classe UML da aba "Estrutura" de docs/manual/doc.jsx
+# (tools/extract_class_diagram.py): atributos/componentes/metodos das 19
+# classes fundacionais do MIXR (Referenced, Object, Component, Player,
+# Station, ...), extraidos por corpo de classe real -- nao pelas mesmas 3
+# macros (DECLARE_SUBCLASS/IMPLEMENT_SUBCLASS/BEGIN_SLOTTABLE) que as outras
+# guardas desta suite cobrem. Trava fatos ja conferidos a mao contra o fonte
+# real (contagem exata de Referenced, Component->PairStream, os 10 papeis de
+# Player via typeid(), NetIO.base sem self-loop) para nao regredir em
+# silencio quando um header mudar. Mesma suite 'tools', mesmo motivo de ser
+# das guardas acima -- puro Python, sem MIXR, sem 'install'.
+test('class-diagram', py, args: files('tools/test_extract_class_diagram.py'),
+     workdir: raiz, suite: 'tools', timeout: 120)
+
+# O catalogo da aba "Catalogo" de docs/manual/doc.jsx
+# (tools/generate_manual_catalog.py): a soma das 7 factories nativas bate com
+# os 225 que models/BUILT-IN.md documenta, 'plugin:A-4' tem exatamente as 9
+# classes que o factory.cpp do modelo despacha, nenhum modulo fora de escopo
+# aparece, nenhuma classe orfa vaza, e STATS concorda com o proprio MODEL.
+# Mesma suite 'tools' e razao de ser da guarda acima -- puro Python, sem
+# MIXR, sem 'install'.
+test('manual-catalog', py, args: files('tools/test_manual_catalog.py'),
+     workdir: raiz, suite: 'tools', timeout: 120)
+
 # src/ui/scripts/edl_lint.py (lint leve de .edl/.edl.in contra o catalogo
 # acima) nao pode acusar erro nos cenarios REAIS do repositorio -- ver o
 # cabecalho de tools/test_edl_lint.py.

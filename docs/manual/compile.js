@@ -9,24 +9,33 @@
 // "Como abrir").
 //
 // O que faz, em ordem:
-//   1) troca a linha `import React, {...} from "react";` por
+//   1) injeta docs/manual/catalog.generated.js (MODEL/FACTORIES/SNIPPETS/
+//      STATS, escrito por tools/generate_manual_catalog.py -- 'make docs'
+//      roda o gerador ANTES deste script) num <script> proprio, ANTES do
+//      app -- mesma mecanica de src/ui/scripts/compile.js para
+//      EDL_CATALOG, so que aqui os 4 consts ja vem prontos como texto JS
+//      (o gerador escreve 'const NOME = {...};' direto), nao um unico JSON
+//      que precisa virar 'const X = <json>;' aqui.
+//   2) troca a linha `import React, {...} from "react";` por
 //      `const {...} = React;` -- e o unico jeito de o Babel aceitar o
 //      arquivo sem virar um modulo ES de verdade (que exigiria um bundler).
-//   2) troca `export default function App()` por `function App()` -- mesmo
+//   3) troca `export default function App()` por `function App()` -- mesmo
 //      motivo: sem bundler, `export` nao tem pra onde ir.
-//   3) transpila JSX -> React.createElement via @babel/standalone (preset
+//   4) transpila JSX -> React.createElement via @babel/standalone (preset
 //      "react"), SEM minificar -- o arquivo gerado continua legivel/
 //      diffavel, do mesmo jeito que sempre foi.
-//   4) concatena tres <script>: React, ReactDOM, o app transpilado -- e
-//      fecha com o mount (ReactDOM.createRoot(...).render(...)).
+//   5) concatena quatro <script>: React, ReactDOM, o catalogo gerado, o app
+//      transpilado -- e fecha com o mount (ReactDOM.createRoot(...).render(...)).
 //
-// Uso: node docs/manual/compile.js   (ou `make docs`, que so chama isto)
+// Uso: node docs/manual/compile.js   (ou `make docs`, que roda o gerador
+// Python e depois isto)
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const SRC = path.join(__dirname, "doc.jsx");
+const CATALOG = path.join(__dirname, "catalog.generated.js");
 const OUT = path.join(__dirname, "index.html");
 const CACHE = path.join(__dirname, ".cache");
 
@@ -72,6 +81,16 @@ function main() {
   }
   src = src.replace(exportLine, "function App()");
 
+  if (!fs.existsSync(CATALOG)) {
+    throw new Error(`${path.relative(ROOT, CATALOG)} nao existe -- rode 'python3 tools/generate_manual_catalog.py > ${path.relative(ROOT, CATALOG)}' antes (ou 'make docs', que ja encadeia isso).`);
+  }
+  // catalog.generated.js ja e' texto JS pronto ('const MODEL = {...};' etc,
+  // escrito por tools/generate_manual_catalog.py) -- diferente do
+  // EDL_CATALOG de src/ui/scripts/compile.js (um JSON puro que precisa virar
+  // 'const X = <json>;' aqui), este arquivo so precisa ser concatenado como
+  // esta.
+  const catalogScript = `<script>\n${fs.readFileSync(CATALOG, "utf8")}\n</script>\n`;
+
   const { code } = Babel.transform(src, { presets: ["react"], filename: "doc.jsx", comments: true });
 
   const reactSrc = fs.readFileSync(reactPath, "utf8");
@@ -95,7 +114,7 @@ ${reactSrc}
 ${reactDomSrc}
 
 </script>
-<script>
+${catalogScript}<script>
 ${code}
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
 </script>

@@ -196,6 +196,11 @@ function Palette({ onDragStartFactory }) {
     const t = q.trim().toLowerCase();
     const byOrigin = {};
     EDL_CATALOG.forEach((e) => {
+      // Classe sem despacho real (Component, DynamicsModel abstrato, a base
+      // BaseStoresMgr, ...) nunca e' construivel via .edl -- nao oferecer na
+      // paleta nem com busca de texto (ver isOfferable() em
+      // edl_builder_core.js).
+      if (!e.concrete) return;
       if (t && !(e.factory.toLowerCase().includes(t) || e.class.toLowerCase().includes(t))) return;
       (byOrigin[e.origin] = byOrigin[e.origin] || []).push(e);
     });
@@ -247,16 +252,16 @@ function Palette({ onDragStartFactory }) {
 // nesses slots (são tabelas nome→string, não listas de componente), então
 // texto é o ÚNICO jeito de preenchê-los.
 function PlaceholderCard({ label, slotDef, dragFactory, onDrop, onAddText, compact }) {
-  const compatibleNow = dragFactory != null ? isCompatible(dragFactory, slotDef, CATALOG_BY_FACTORY) : null;
+  const compatibleNow = dragFactory != null ? isOfferable(dragFactory, slotDef, CATALOG_BY_FACTORY) : null;
   return (
     <div
       className={"eb-placeholder" + (compact ? " eb-placeholder-compact" : "") +
         (compatibleNow === true ? " eb-drop-ok" : compatibleNow === false ? " eb-drop-bad" : "")}
-      onDragOver={(e) => { if (dragFactory && isCompatible(dragFactory, slotDef, CATALOG_BY_FACTORY)) e.preventDefault(); }}
+      onDragOver={(e) => { if (dragFactory && isOfferable(dragFactory, slotDef, CATALOG_BY_FACTORY)) e.preventDefault(); }}
       onDrop={(e) => {
         e.preventDefault();
         const factory = e.dataTransfer.getData("text/plain");
-        if (factory && isCompatible(factory, slotDef, CATALOG_BY_FACTORY)) onDrop(factory);
+        if (factory && isOfferable(factory, slotDef, CATALOG_BY_FACTORY)) onDrop(factory);
       }}>
       <span className="eb-placeholder-label">{label}</span>
       <AddViaSelect slotDef={slotDef} onPick={onDrop} />
@@ -1463,11 +1468,11 @@ export default function App() {
             <div className="eb-pane eb-tree">
               {!root ? (
                 <div className="eb-root-drop" data-active={dragFactory ? "1" : "0"}
-                  onDragOver={(e) => { if (dragFactory && isCompatible(dragFactory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) e.preventDefault(); }}
+                  onDragOver={(e) => { if (dragFactory && isOfferable(dragFactory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) e.preventDefault(); }}
                   onDrop={(e) => {
                     e.preventDefault();
                     const factory = e.dataTransfer.getData("text/plain");
-                    if (factory && isCompatible(factory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) {
+                    if (factory && isOfferable(factory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) {
                       const node = makeNode(factory);
                       setRoot(node);
                       setExpandedIds(new Set([node.id]));

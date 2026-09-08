@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 #
-# Gera um modelo novo em models/players/<nome>/ a partir do unico ponto de
-# partida copiavel: models/players/template/.
+# Gera um modelo novo em models/<categoria>/<nome>/ a partir do unico ponto
+# de partida copiavel: models/players/template/.
+#
+# A CATEGORIA e obrigatoria (--category player|system|others) e decide a
+# subpasta de destino sob models/ -- mesma taxonomia que 'MODELOS_PRODUCAO'
+# do Makefile raiz ja descobre por 'find' (ver CLAUDE.md, secao "O MODELO e
+# um plugin"): 'player' -> models/players/, 'system' -> models/systems/,
+# 'others' -> models/others/. NAO existe categoria 'event': models/events/
+# nao e uma pasta de projetos-modelo, um por evento -- e UM projeto Meson so
+# (a lib 'events'), e um evento novo vira uma pasta payloads/<TOKEN>/ DENTRO
+# dele, nao um scaffold de template/ novo (ver models/events/README.md);
+# forcar esse fluxo por aqui produziria uma estrutura que nao bate com nada
+# documentado. Continua fora do escopo deste gerador.
 #
 # Automatiza a receita MECANICA ja documentada em
 # models/players/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
@@ -26,8 +37,8 @@
 # Tudo isso fica no checklist impresso ao final.
 #
 # Uso:
-#   scripts/models.sh --name meu_modelo
-#   scripts/models.sh --name meu_modelo --dest algum/lugar --no-build
+#   scripts/models.sh --name meu_modelo --category player
+#   scripts/models.sh --name meu_modelo --category system --dest algum/lugar --no-build
 #
 # Pre-requisito (uma vez por maquina, igual a qualquer modelo deste
 # repositorio): 'make configure && make sdk' na raiz.
@@ -37,20 +48,30 @@ set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 NAME=""
+CATEGORIA=""
 DEST=""
 NO_BUILD=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --name) NAME="$2"; shift 2 ;;
+        --category) CATEGORIA="$2"; shift 2 ;;
         --dest) DEST="$2"; shift 2 ;;
         --no-build) NO_BUILD=1; shift ;;
         *) echo "argumento desconhecido: $1" >&2; exit 1 ;;
     esac
 done
 
+USO="uso: scripts/models.sh --name meu_modelo --category player|system|others [--dest pasta] [--no-build]"
+
 if [ -z "$NAME" ]; then
-    echo "uso: scripts/models.sh --name meu_modelo [--dest pasta] [--no-build]" >&2
+    echo "$USO" >&2
+    exit 1
+fi
+
+if [ -z "$CATEGORIA" ]; then
+    echo "$USO" >&2
+    echo "  --category e obrigatorio -- decide em qual subpasta de models/ o scaffold entra" >&2
     exit 1
 fi
 
@@ -61,6 +82,18 @@ if ! [[ "$NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
     exit 1
 fi
 
+# categoria -> subpasta de models/ (ver o comentario de cabecalho: 'event'
+# nao entra aqui de proposito).
+case "$CATEGORIA" in
+    player) CATEGORIA_DIR="players" ;;
+    system) CATEGORIA_DIR="systems" ;;
+    others) CATEGORIA_DIR="others" ;;
+    *)
+        echo "categoria invalida: '$CATEGORIA' -- use player, system ou others" >&2
+        exit 1
+        ;;
+esac
+
 ORIGEM="$REPO_ROOT/models/players/template"
 ORIGEM_NOME="$(basename "$ORIGEM")"
 
@@ -70,7 +103,7 @@ if [ -n "$DEST" ]; then
         *) DEST_ABS="$REPO_ROOT/$DEST" ;;
     esac
 else
-    DEST_ABS="$REPO_ROOT/models/players/$NAME"
+    DEST_ABS="$REPO_ROOT/models/$CATEGORIA_DIR/$NAME"
 fi
 
 case "$DEST_ABS" in
@@ -81,6 +114,8 @@ case "$DEST_ABS" in
         exit 1
         ;;
 esac
+
+DEST_REL="${DEST_ABS#"$REPO_ROOT"/}"
 
 if [ -e "$DEST_ABS" ]; then
     echo "'$DEST_ABS' ja existe -- escolha outro --name/--dest" >&2
@@ -157,7 +192,7 @@ linha_root() {
 }
 
 imprimir_checklist() {
-    local nome="$1"
+    local nome="$1" dest_rel="$2"
     cat <<EOF
 
 Falta, MANUALMENTE (nada disto e automatizavel):
@@ -171,7 +206,7 @@ Falta, MANUALMENTE (nada disto e automatizavel):
       descreve a origem (${nome} copiou de template/)
   [ ] o bloco \`provides:\` do .edl do SEU cenario (tem que bater EXATAMENTE com o que o
       .so exporta)
-  [ ] git add models/players/${nome}/ (este script nao commita nada)
+  [ ] git add ${dest_rel}/ (este script nao commita nada)
   [ ] este modelo ja entra sozinho em 'make models'/'make test' da raiz (descoberta por
       'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
       '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
@@ -309,8 +344,8 @@ if [ -n "$SOBRAS" ] || [ -n "$SOBRAS_MESON" ]; then
 fi
 
 if [ "$NO_BUILD" = "1" ]; then
-    echo "scaffold de models/players/$NAME/ pronto (build de verificacao PULADO, --no-build)."
-    imprimir_checklist "$NAME"
+    echo "scaffold de $DEST_REL/ pronto (build de verificacao PULADO, --no-build)."
+    imprimir_checklist "$NAME" "$DEST_REL"
     exit 0
 fi
 
@@ -323,7 +358,7 @@ fi
 echo "compilando, testando e instalando o scaffold (make test install) ..."
 if ! make -C "$DEST_ABS" test install; then
     echo "
-FALHOU o build/teste de verificacao -- o scaffold ficou em models/players/$NAME/,
+FALHOU o build/teste de verificacao -- o scaffold ficou em $DEST_REL/,
 incompleto. NAO apague a pasta: compare com models/players/template/ para achar o que
 sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
@@ -355,11 +390,11 @@ fi
 
 if [ "$QUEBRADO" -ne 0 ]; then
     echo "
-scaffold de models/players/$NAME/ compilou e passou nos testes, mas FALHOU nas
+scaffold de $DEST_REL/ compilou e passou nos testes, mas FALHOU nas
 checagens de contrato do plugin acima -- corrija antes de considerar pronto." >&2
     exit 1
 fi
 
 echo ""
-echo "scaffold de models/players/$NAME/ pronto e compilando/testando verde."
-imprimir_checklist "$NAME"
+echo "scaffold de $DEST_REL/ pronto e compilando/testando verde."
+imprimir_checklist "$NAME" "$DEST_REL"

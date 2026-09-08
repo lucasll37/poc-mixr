@@ -21,8 +21,8 @@ BUILD_TYPE := Debug
 # ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
 ASAN ?= false
 
-# NAME=/PLAYER=/SCENARIO=/ARGS= (new-model, run-app-monitor, run-node,
-# run-node-monitor) sao valores passados pelo USUARIO na linha de comando.
+# NAME=/PLAYER=/SCENARIO=/ARGS=/CATEGORY= (new-model, run-app-monitor,
+# run-node, run-node-monitor) sao valores passados pelo USUARIO na linha de comando.
 # CORRIGIDO (nao redescobrir): as receitas desses alvos costumavam
 # interpolar "$(NAME)" etc. -- substituicao de TEXTO do proprio Make, ANTES
 # do shell ver a linha -- direto no meio de uma linha de shell. Uma aspa
@@ -67,7 +67,8 @@ NAME ?=
 PLAYER ?=
 SCENARIO ?=
 ARGS ?=
-export NAME PLAYER SCENARIO ARGS
+CATEGORY ?=
+export NAME PLAYER SCENARIO ARGS CATEGORY
 
 # Colors for output
 RED := \033[0;31m
@@ -259,9 +260,10 @@ sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqu
 # Scaffold de modelo novo
 # ============================================
 
-new-model: ## Gera um modelo novo em models/players/NAME/ a partir de template/ (NAME= obrigatorio). Ver CONTRIBUTING.md.
-	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo$(NC)"; exit 1; }
-	scripts/models.sh --name "$$NAME"
+new-model: ## Gera um modelo novo em models/<CATEGORY>/NAME/ a partir de template/ (NAME= e CATEGORY=player|system|others obrigatorios). Ver CONTRIBUTING.md.
+	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
+	@test -n "$$CATEGORY" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
+	scripts/models.sh --name "$$NAME" --category "$$CATEGORY"
 
 # ============================================
 # Build / Install / Package do HOST
@@ -413,7 +415,8 @@ clean-ci: ## Remove '.gitlab-ci-local/' (estado + cache de 'make test-ci').
 # Documentation Targets
 # ============================================
 
-docs: ## Regenera docs/manual/index.html a partir de docs/manual/doc.jsx (Babel via docs/manual/compile.js). So precisa de rede na 1a vez (cacheia em docs/manual/.cache/).
+docs: ## Regenera docs/manual/catalog.generated.js (tools/generate_manual_catalog.py) e docs/manual/index.html a partir de docs/manual/doc.jsx (Babel via docs/manual/compile.js). So precisa de rede na 1a vez (cacheia em docs/manual/.cache/).
+	python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js
 	node docs/manual/compile.js
 
 open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.

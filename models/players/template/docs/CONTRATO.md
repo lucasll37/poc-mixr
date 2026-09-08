@@ -81,6 +81,10 @@ O host precisa mostrar, na tela e nos arquivos que exporta, o que cada player es
 A ponte é uma estrutura compartilhada e protegida por mutex, `mixr::xboard::Readout`, indexada por
 id de player: o modelo escreve nela no momento em que decide/atua, o host só lê.
 
+`playerId` vem de `player->getID()` — o `mixr::models::Player` que hospeda o agente, o mesmo
+ponteiro que já chega pronto no contexto de decisão (`genAction()`/`execute()`); ver
+[`../src/mirror.cpp`](../src/mirror.cpp) para o uso real.
+
 ```cpp
 #include "xboard/Board.hpp"
 

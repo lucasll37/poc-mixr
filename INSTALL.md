@@ -72,12 +72,22 @@ morre com *"The default build profile doesn't exist"*:
 conan profile detect --force
 ```
 
-## 4. Remote privado com as dependências que não estão no ConanCenter
+## 4. Remote privado com as dependências que não estão no ConanCenter (opcional)
 
 `mixr/1.0.5` e `behaviortree.cpp.asa/3.5.6` (ver `conanfile.py`) são forks empacotados **fora** do
-ConanCenter — vêm de um remote Conan privado da organização. Sem declará-lo, `make configure` falha
-com *"package not found"* (parece erro de versão, não é). Peça o endereço e as credenciais a quem
-administra o projeto e rode, uma vez por máquina:
+ConanCenter — vêm, **por padrão**, de um remote Conan privado da organização, e sem declará-lo
+`make configure` falha com *"package not found"* (parece erro de versão, não é).
+
+**Não ter credencial para este remote não impede buildar/rodar o projeto** — é só um caminho mais
+rápido. Sem acesso a ele (o caso comum para quem não é da organização), pule esta seção inteira e
+vá direto para o §7 (`./scripts/deps.sh`), que compila as mesmas quatro dependências do fonte para
+o cache local do Conan, sem pedir credencial nenhuma — é inclusive o caminho que o próprio CI usa,
+sempre, de propósito.
+
+Com acesso ao remote, peça o endereço e as credenciais a quem administra o projeto — se você não
+sabe a quem recorrer (ex.: clonou o repositório sem contato prévio com o time), não trave nisto:
+o §7 abaixo (`./scripts/deps.sh`) resolve as mesmas quatro dependências sem credencial nenhuma, e é
+o caminho que o próprio CI usa sempre. Com a credencial em mãos, rode, uma vez por máquina:
 
 ```bash
 conan remote add <nome-do-remote> <url-do-remote>
@@ -94,8 +104,12 @@ EOF when reading a line"*, fácil de confundir com problema de rede.
 gcc --version && meson --version && ninja --version && pkg-config --version && conan --version
 ```
 
-Com os cinco respondendo, a máquina está pronta para a seção **Build** do [`README.md`](README.md).
-O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13 em §1 —, mas
+Com os cinco respondendo, a máquina tem as **ferramentas** que a seção **Build** do
+[`README.md`](README.md) precisa — isso vale independente de você ter credencial do remote
+privado ou não. **Se você não tem credencial** (§4), essa checagem por si só não é o sinal de
+"pronto": falta ainda rodar o §7 (`./scripts/deps.sh`) antes do primeiro `make configure`, senão
+ele falha com "package not found" por não achar `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`
+em lugar nenhum. O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13 em §1 —, mas
 as próximas execuções reaproveitam o cache do Conan (`~/.conan2/`) e são rápidas.
 
 ## 6. Editor: VS Code (opcional)
@@ -174,14 +188,15 @@ Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace)
 Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
 `vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.
 
-## 7. Dependências construídas do fonte (`scripts/deps.sh`) — obrigatório para o Groot
+## 7. Dependências construídas do fonte (`scripts/deps.sh`) — sem credencial nenhuma; obrigatório para o Groot
 
 `deps/{mixr,behaviortree,jsbsim,openrti,groot}/conanfile.py` são cinco receitas Conan que compilam
 essas dependências a partir do fonte; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
-Release. Para **quatro** delas (`mixr`, `behaviortree.cpp.asa`, `jsbsim`, `openrti`) isto é
-**opcional** — por padrão elas vêm prontas do remote Conan privado (seção 4), e `scripts/deps.sh`
-só entra em jogo se esse remote não estiver disponível para você. Para o **Groot** é a **única**
-forma de tê-lo — não existe pacote pronto em remoto nenhum, público ou privado.
+Release. Para **quatro** delas (`mixr`, `behaviortree.cpp.asa`, `jsbsim`, `openrti`) isto é a
+**alternativa completa** a ter conta no remote privado da organização (seção 4, opcional) — sem
+nenhuma credencial, resolve tudo pelo cache local do Conan, e é o mesmo caminho que o CI usa
+sempre. Para o **Groot** é a **única** forma de tê-lo — não existe pacote pronto em remoto nenhum,
+público ou privado.
 
 Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (as outras quatro
 receitas não usam nada disto):
@@ -223,6 +238,23 @@ rode só a receita dele:
 ```bash
 conan create ./deps/groot --build=missing --settings=build_type=Release
 ```
+
+**Caminho inverso — só as quatro, sem o Groot** (`./scripts/deps.sh` builda as cinco sempre, sem
+flag para pular; se você não quer o Groot agora e prefere não instalar os pacotes de sistema dele,
+rode as quatro receitas direto, sem o script):
+
+```bash
+for BUILD_TYPE in Debug Release; do
+  conan create ./deps/jsbsim  --build=missing --settings=build_type="${BUILD_TYPE}"
+  conan create ./deps/openrti --build=missing --settings=build_type="${BUILD_TYPE}"
+  conan create ./deps/mixr    --build=missing --settings=build_type="${BUILD_TYPE}" \
+      --settings=compiler.cppstd=gnu11
+  conan create ./deps/behaviortree --build=missing --settings=build_type="${BUILD_TYPE}" \
+      --options='behaviortree.cpp.asa/*:shared=False'
+done
+```
+(mesmos comandos que `./scripts/deps.sh` roda por baixo, na mesma ordem — jsbsim/openrti antes de
+mixr, que depende dos dois.)
 
 Depois de qualquer um dos dois caminhos, `make open-groot` (na raiz do repositório) resolve o
 pacote no cache Conan sozinho e abre o binário — não precisa achar o caminho à mão. Rodar a

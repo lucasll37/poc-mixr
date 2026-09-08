@@ -11,6 +11,19 @@ make test                            # so a suite do HOST (61 testes)
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
 `subdir('./tests')` do [meson.build](../meson.build) raiz nem é avaliado.
 
+> **Glossário desta página** (siglas/abreviações usadas abaixo, fora do vocabulário já explicado
+> na seção "Camada 5"): **T/C** = tempo crítico, o *frame* de simulação a 50 Hz (ver Camada 5);
+> **GIL** = *Global Interpreter Lock*, o mecanismo do Python que serializa o acesso ao
+> interpretador — citado porque `python-flight` roda 4 decisões em paralelo sobre um GIL só;
+> **RTB** = *Return To Base*, o ramo da árvore de comportamento que manda a aeronave voltar por
+> combustível baixo; **CFIT** = *Controlled Flight Into Terrain*, o acidente (aeronave em
+> perfeito controle colidindo com o terreno) que o piso anti-CFIT existe para evitar; **PDU** =
+> *Protocol Data Unit*, o pacote de rede do protocolo DIS; **`bt=`**/**`xmsg`**/**`BehaviorBoard`**
+> — `bt=` é o rótulo do comportamento vencedor (`PATROL`/`EVADE`/`SUPPORT`/...) que aparece nos
+> dumps; quem mantém esse valor é o [`BehaviorBoard`](../libs/xboard/Board.hpp) (`libs/xboard`,
+> escrito pelo modelo, lido pelo host); `libs/xmsg` é a biblioteca de mensagens configuráveis por
+> EDL (ver `libs/xmsg/README.md`), sem relação com `bt=`.
+
 **São DUAS suítes, em dois diretórios de build, e DOIS alvos separados** — porque o modelo saiu
 para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
 
@@ -215,6 +228,13 @@ vazar. Se o fork for corrigido um dia, apaga-se a linha e o teste passa a cobrir
 3 comparações — e registrada como `determinism-flight`: a decisão roda em `( FlightAgentTC )`,
 componente do `Player`, na fase 3 do frame de tempo crítico — o único agente que este repositório
 usa hoje (não há mais um caminho alternativo via `( SimAgent )` nativo na `Station`).
+
+> **Vocabulário desta seção:** o "frame de tempo crítico" é o laço de simulação a 50 Hz, dividido
+> em 4 fases (`0` *dynamics*, `1` *transmit*, `2` *receive*, `3` *process*) — a decisão do UBF
+> (*Unified Behavior Framework*, o mecanismo nativo do MIXR para plugar decisão externa num
+> `Player`) roda na fase `3`. `( FlightAgentTC )`/`( SimAgent )` são as duas classes nativas que
+> hospedam esse agente — `TC` decide dentro do frame, em paralelo, uma por thread do pool;
+> `SimAgent` decidia em sequência no laço de fundo (10 Hz) e não é mais usado neste repositório.
 
 **A contagem de decisões virou asserção.** O `Makefile` imprimia o `dec=` da `falcon1` e não
 verificava nada. Agora se afirma que `dec` avança na **mesma taxa** que `frame` entre dumps

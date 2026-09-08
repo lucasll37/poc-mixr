@@ -50,10 +50,24 @@ const CATALOG = [
       // (ver o comentario de roleFillStatus() em edl_builder_core.js).
       { name: "components", declaredIn: "Component", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: false, acceptsVector: false, acceptsChildList: true, unitFamilies: [], objectTypes: ["Component"], isReference: false },
     ] },
-  { class: "JSBSimModel", factory: "JSBSimModel", baseClass: "DynamicsModel", chain: ["JSBSimModel", "DynamicsModel", "Component", "Object"], origin: "models",
+  // concrete:true -- usado pelos testes novos de isOfferable() (candidata
+  // tipo-compativel E concreta, ver mais abaixo). As demais entradas deste
+  // catalogo sintetico NAO ganham o campo (fica 'undefined' -- isOfferable
+  // trata isso como nao-concreto, mesmo comportamento de um catalogo real
+  // onde toda entrada TEM a chave): so' se acrescenta 'concrete' onde um
+  // teste novo de fato precisa dele, os testes de isCompatible() acima
+  // continuam intocados/alheios a essa chave.
+  { class: "JSBSimModel", factory: "JSBSimModel", baseClass: "DynamicsModel", chain: ["JSBSimModel", "DynamicsModel", "Component", "Object"], origin: "models", concrete: true,
     slots: [
       { name: "model", declaredIn: "JSBSimModel", comment: "", acceptsNumber: false, acceptsBoolean: false, acceptsText: true, acceptsVector: false, acceptsChildList: false, unitFamilies: [], objectTypes: [], isReference: false },
     ] },
+  // Espelha o caso real (models::DynamicsModel, orfao conhecido): registrada
+  // no catalogo (IMPLEMENT_ABSTRACT_SUBCLASS tambem entra em
+  // build_factory_map()), tipo-compativel com qualquer slot que aceite
+  // "DynamicsModel" (esta' na PROPRIA cadeia), mas sem despacho real --
+  // concrete:false. So' existe pra exercitar isOfferable()/compatibleFactories().
+  { class: "DynamicsModel", factory: "DynamicsModel", baseClass: "Component", chain: ["DynamicsModel", "Component", "Object"], origin: "models", concrete: false,
+    slots: [] },
   { class: "Autopilot", factory: "Autopilot", baseClass: "Pilot", chain: ["Autopilot", "Pilot", "Component", "Object"], origin: "models",
     slots: [
       // acceptsChildList sem NENHUM objectType declarado -- o caso que
@@ -169,6 +183,47 @@ test("isCompatible: raiz restrita a Station serve para ClockStation (subclasse) 
   assert.ok(core.isCompatible("Station", slotRaiz, BY_FACTORY));
   assert.ok(core.isCompatible("ClockStation", slotRaiz, BY_FACTORY), "ClockStation deriva de Station, deveria servir");
   assert.ok(!core.isCompatible("Aircraft", slotRaiz, BY_FACTORY), "Aircraft nao deriva de Station, nao deveria servir");
+});
+
+/* -------------------------------- isOfferable ------------------------------ */
+// isOfferable() = isCompatible() E concrete:true -- so' usado nos lugares que
+// OFERECEM uma classe ao usuario (paleta, dropdown AddViaSelect, drag-and-
+// drop), nunca em isCompatible() em si (ver o comentario dela em
+// edl_builder_core.js). "DynamicsModel" (no CATALOG sintetico acima) espelha
+// o caso real de uma classe abstrata/orfa: tipo-compativel com o slot
+// 'dynamicsModel' de Aircraft (esta' na propria cadeia de heranca), mas sem
+// despacho real (concrete:false).
+
+test("isOfferable: candidata tipo-compativel mas NAO concreta -- isCompatible aceita, isOfferable recusa", () => {
+  const slot = BY_FACTORY.Aircraft.slots.find((s) => s.name === "dynamicsModel");
+  assert.ok(core.isCompatible("DynamicsModel", slot, BY_FACTORY),
+    "DynamicsModel esta na propria cadeia de heranca do slot -- isCompatible deveria aceitar");
+  assert.strictEqual(core.isOfferable("DynamicsModel", slot, BY_FACTORY), false,
+    "DynamicsModel nao e' concreta (concrete:false) -- isOfferable deveria recusar");
+});
+
+test("isOfferable: candidata tipo-compativel E concreta -- os dois aceitam", () => {
+  const slot = BY_FACTORY.Aircraft.slots.find((s) => s.name === "dynamicsModel");
+  assert.ok(core.isCompatible("JSBSimModel", slot, BY_FACTORY));
+  assert.strictEqual(core.isOfferable("JSBSimModel", slot, BY_FACTORY), true,
+    "JSBSimModel e' concreta (concrete:true) e tipo-compativel -- isOfferable deveria aceitar");
+});
+
+test("isOfferable: fabrica desconhecida ou sem campo 'concrete' nenhum nao explode, so' devolve false", () => {
+  const slot = BY_FACTORY.Aircraft.slots.find((s) => s.name === "dynamicsModel");
+  assert.strictEqual(core.isOfferable("NadaAVerComIsso", slot, BY_FACTORY), false);
+  // Autopilot nao declara 'concrete' nenhum no fixture (undefined) -- trata
+  // como nao-concreto, nunca lanca excecao.
+  const slotWildcard = { acceptsChildList: false, objectTypes: ["Autopilot"] };
+  assert.strictEqual(core.isOfferable("Autopilot", slotWildcard, BY_FACTORY), false);
+});
+
+test("compatibleFactories: nunca lista uma fabrica com concrete:false, mesmo quando isCompatible sozinha aceitaria", () => {
+  const slot = BY_FACTORY.Aircraft.slots.find((s) => s.name === "dynamicsModel");
+  const options = core.compatibleFactories(slot, CATALOG, BY_FACTORY);
+  assert.ok(options.includes("JSBSimModel"), `esperava JSBSimModel em ${JSON.stringify(options)}`);
+  assert.ok(!options.includes("DynamicsModel"),
+    `DynamicsModel (concrete:false) nao deveria aparecer em compatibleFactories, veio ${JSON.stringify(options)}`);
 });
 
 /* --------------------- papéis primários / placeholders --------------------- */

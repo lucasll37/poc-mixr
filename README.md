@@ -7,10 +7,29 @@ MIXR: o que o framework já resolve pronto, o que sobra para escrever, e qual o 
 escolha de integração (onde a decisão roda, como um player chega à simulação, em que linguagem a
 lógica de decisão é escrita...).
 
+> **Novo nos dois?** **MIXR** (*Mixed Reality Simulation*) é um framework C++ para modelagem e
+> simulação (M&S) de sistemas — plataformas, sensores, armamento, redes de interoperabilidade
+> (**DIS**, *Distributed Interactive Simulation*, protocolo de rede padronizado como IEEE 1278,
+> ver "Rodar"); não é um simulador pronto, é um conjunto de bibliotecas para montar um (aqui,
+> usado para simular aeronaves — a dinâmica de voo em si vem do **JSBSim**, motor de física de
+> voo open-source — mas o framework em si não é exclusivo de aviação). Um **player** é qualquer
+> entidade simulada dentro de um cenário (uma aeronave, por exemplo). **BehaviorTree.CPP** é
+> uma biblioteca de árvores de comportamento — a forma padrão, em robótica/jogos, de compor
+> decisão em nós reutilizáveis (sequências, *fallbacks*, condições, ações); é uma das formas que
+> o **UBF** (*Unified Behavior Framework*, o mecanismo nativo do MIXR para plugar decisão externa
+> num player) aceita — este projeto usa quase sempre BehaviorTree.CPP por trás do UBF. A
+> estrutura de cada cenário (que *players*/sensores existem, com que parâmetros) é declarada num
+> arquivo **`.edl`** — **EDL** (*English Description Language*), a linguagem de configuração
+> nativa do MIXR: texto simples, abre em qualquer editor (exemplo real:
+> [`src/poc/dis/flight/configs/scenario.edl.in`](src/poc/dis/flight/configs/scenario.edl.in)).
+
 O MIXR **nunca é modificado** — entra como dependência binária, resolvida pelo Conan. Os
 **modelos** (a lógica de decisão de cada aeronave) são carregados pelo executável em tempo de
-execução como plugins (`dlopen`); o fork empacotado é **headless**, e toda visualização é feita
-via **Tacview Real-Time Telemetry**.
+execução como plugins (`dlopen`: o `.so` do modelo é aberto em *runtime* pelo host, nunca linkado
+em tempo de compilação — o host nunca vê o código-fonte do modelo); o fork empacotado é
+**headless**, e toda visualização é feita via **Tacview Real-Time Telemetry**
+([Tacview](https://www.tacview.net/) — visualizador 3D de voo de terceiros; a simulação roda
+normalmente sem ele, ele só recebe telemetria ao vivo por *socket*, ver "Pré-requisitos").
 
 > Documentação, comentários de código e mensagens de console são em português do Brasil.
 > Identificadores, nomes de slot e nomes de fábrica ficam em inglês — são os originais do MIXR.
@@ -19,56 +38,75 @@ via **Tacview Real-Time Telemetry**.
 
 | ferramenta | versão | por quê |
 |---|---|---|
-| Conan | ≥ 2.0 | resolve MIXR, BehaviorTree.CPP, ftxui, pybind11, onnxruntime, gtest |
+| Conan | ≥ 2.0 | resolve MIXR (ver acima), BehaviorTree.CPP, e três libs de papel específico — `ftxui` (biblioteca de interface de texto/TUI, usada só no `./app`), `pybind11` (gera os *bindings* Python↔C++, usado só em `src/rl/bindings`), `onnxruntime` (motor de inferência de redes neurais, usado só em `libs/xinfer` para políticas `.onnx`) — mais `gtest` (framework de testes unitários, usado na suíte de testes) |
 | Meson | ≥ 1.0 | sistema de build |
 | Ninja | qualquer | *backend* do Meson |
 | GCC ≥ 7 | — | o projeto compila em C++17 — único compilador de fato exercitado (INSTALL.md, CI e as receitas de `deps/` só instalam/testam GCC; Clang deve funcionar em teoria por ser C++17 padrão, mas nunca foi verificado por nenhum processo automatizado deste repositório) |
 | pkg-config | qualquer | resolve as libs via `dependency(method: 'pkg-config')` |
 | Python 3 + `python3-dev` | 3.x | `src/rl/bindings` (parte do host) linka `pybind11`/`Python.h` |
-| gzip | qualquer | descomprime os tiles SRTM na 1ª execução |
-| Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento |
-| Tacview (opcional) | Standard/Advanced | recebe a telemetria ao vivo |
+| gzip | qualquer | descomprime os tiles SRTM na 1ª execução (SRTM = dados públicos de elevação de terreno, NASA) |
+| Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento; só necessário se for usar o Groot (ver "Leia mais") |
+| Tacview (opcional) | Standard/Advanced | visualizador 3D de terceiros, [tacview.net](https://www.tacview.net/) — Standard é gratuito, Advanced é pago; sem ele a simulação roda normalmente, só sem visualização 3D ao vivo |
+| Node.js + npm (opcional) | ≥ 18 | `make test-ci` (`gitlab-ci-local`) e `make open-edl-builder` (baixa React/ReactDOM via `curl` na primeira execução — precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`) |
 | Docker (opcional) | qualquer | só para `make test-ci` — roda o pipeline de `.gitlab-ci.yml` (que segue esta seção) num `ubuntu:24.04` limpo. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
 
 Passo a passo (pacotes de sistema, Conan, perfil, remote privado), o "porquê" de cada um, e uma
 instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTALL.md).
 
-`mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti` vêm prontos de um remote Conan privado por
-padrão — **sem acesso a ele, `make configure` falha com "package not found"**; a saída, para
-qualquer uma das quatro (não só o Groot), é compilar do fonte via `./scripts/deps.sh` (o mesmo
-caminho que o próprio CI usa, de propósito, para nunca depender desse remote — ver
-`.gitlab-ci.yml`). O Groot **não tem pacote pronto em remoto nenhum** — pra ele, `deps.sh` não é
-alternativa, é a única forma de tê-lo:
+**Não é preciso ter credencial de nenhum remote privado para buildar/rodar este projeto.** Há dois
+caminhos equivalentes para as quatro dependências que não estão no ConanCenter
+(`mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`):
 
-```bash
-./scripts/deps.sh
-```
+- **Com acesso ao remote privado da organização** (`INSTALL.md` §4) — `make configure` resolve
+  binário pronto, é o caminho mais rápido.
+- **Sem acesso nenhum** — `./scripts/deps.sh` compila as quatro do fonte para o cache local do
+  Conan; é o **mesmo** caminho que o próprio CI usa, de propósito, para nunca depender desse
+  remote (ver `.gitlab-ci.yml`). Mais lento na primeira vez (a receita builda dependências
+  transitivas inteiras), mas sem pedir conta/credencial de ninguém:
 
-Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e a alternativa de buildar só ele →
-[`INSTALL.md`](INSTALL.md) §7. Sem acesso ao remote privado, comece por aqui em vez de por
-`make configure` — economiza descobrir a falha do jeito difícil.
+  ```bash
+  ./scripts/deps.sh
+  ```
+
+  Depois disso, `make configure` resolve tudo do cache local — o remote privado nunca é
+  consultado.
+
+O **Groot** é a exceção: não tem pacote pronto em remoto nenhum, público ou privado —
+`./scripts/deps.sh` (ou só a receita dele) é a **única** forma de tê-lo, com acesso ao remote da
+organização ou sem. Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e como buildar só ele →
+[`INSTALL.md`](INSTALL.md) §7.
 
 ## Build
 
-O host e o(s) modelo(s) são projetos Meson **separados**, orquestrados pelo `Makefile` — o host
-nunca vê o código-fonte de um modelo, só o `.so` já compilado. Etapas, em ordem:
+Um **modelo** é a lógica de decisão de um *player* (a entidade simulada dentro do MIXR — uma
+aeronave, por exemplo) (`domain/`/`bt/`/`ubf/`/`xnative/` de `models/<categoria>/<nome>/`),
+compilada à parte e carregada em *runtime* via `dlopen` — nunca
+linkada no host. O **host** é o executável `./app` (mais `edlcheck`/`plugininfo`/`node`),
+compilado em `app/`+`src/`+`libs/`. Os dois são projetos Meson **separados**, orquestrados pelo
+`Makefile` — o host nunca vê o código-fonte de um modelo, só o `.so` já compilado. Etapas, em
+ordem:
 
 ```bash
-make configure   # 1. conan install + meson setup do host           -> build/
-make sdk         # 2. publica o contrato de plugin + libs de fronteira -> dist/
-make models      # 3. compila o(s) modelo(s) (nao mexe em dist/)    -> plugins/
-make build       # 4. compila o host (nao depende dos modelos)      -> build/
-make install     # 5. sincroniza plugins/ -> dist/ e instala o host -> dist/
+make configure   # 1. conan install + meson setup do host                    -> build/
+make sdk         # 2. publica o ABI de plugin (a interface binaria que um .so de
+                 #    modelo tem que respeitar, libs/xplugin/PluginAbi.hpp) + as
+                 #    .so compartilhadas host<->modelo (libs/x<nome>, ex.: xtacview,
+                 #    xlog -- ver "Como o projeto se organiza" abaixo)            -> dist/
+make models      # 3. compila o(s) modelo(s) (nao mexe em dist/)             -> plugins/
+make build       # 4. compila o host (nao depende dos modelos)               -> build/
+make install     # 5. sincroniza plugins/ -> dist/ e instala o host          -> dist/
 ```
 
 `build`/`install` puxam `sdk` sozinhos, mas **não** puxam `models` — as duas são DECOPLADAS de
 propósito (compilar o host nunca precisou saber onde os modelos guardam os artefatos deles, ver
-CLAUDE.md seção "Desacoplando `models` de `dist/`"). Isso significa que `make install` sem um
-`make models` anterior sincroniza um `plugins/` vazio, em silêncio (com um aviso) — nenhum
-cenário carrega nada. No dia a dia, rode as duas: `make configure && make models && make install`
-(ou `make configure && make build && make models && make install`, se quiser separar
-explicitamente o passo 4); as etapas do bloco acima existem para rodar isoladamente (ex.: mexeu
-só no modelo, `make models` sozinho não toca no host).
+CLAUDE.md seção "Desacoplando `models` de `dist/`"). No dia a dia, rode as duas: `make configure
+&& make models && make install` (ou `make configure && make build && make models && make
+install`, se quiser separar explicitamente o passo 4); as etapas do bloco acima existem para
+rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho não toca no host).
+
+> **Armadilha:** `make install` sem um `make models` anterior sincroniza um `plugins/` vazio, em
+> silêncio (com um aviso) — nenhum cenário carrega nada. **Recuperação:** rodar `make models &&
+> make install` de novo resolve; não precisa de `make clean`.
 
 ```bash
 make clean   # remove build/ e dist/ (host e modelos) e o deposito que 'models' gerou
@@ -101,7 +139,7 @@ com o sanitizador, outra revertendo), então é lento. Passo a passo:
    host (`meson configure build -Dasan=true` + `meson compile`, que instrumenta `./app` e
    `src/rl/bindings`). Os dois são necessários — instrumentar só o host deixaria o `.so` do plugin
    sem *redzone* de pilha e sem símbolos no relatório do LeakSanitizer.
-2. Gera uma fixture hermética da poc `flight` (`tests/scenario/make_fixture.py --poc
+2. Gera uma fixture hermética da poc (prova de conceito) `flight` (`tests/scenario/make_fixture.py --poc
    flight --mode intruder` — carrega `libflight.so`, o plugin do A-4) e roda 500 frames
    determinísticos com `-threads 1`, sob `LSAN_OPTIONS=suppressions=./tests/memory/asan.supp`.
    `-threads 1` é a mesma cautela já usada pela suíte `memory` (ver
@@ -125,14 +163,19 @@ dentro de `make test`): eles pegam vazamento de *ref-counting* (objeto vivo que 
 alcança); o LeakSanitizer pega `new`/`malloc` cru sem `delete`/`free` correspondente, que os
 contadores não enxergam.
 
-Determinismo (mesmo resultado com 1, 2 e 4 threads de tempo crítico) tem script próprio, fora do
-`make test`:
+Determinismo (mesmo resultado com 1, 2 e 4 threads de tempo crítico — o laço de simulação a 50 Hz
+dividido em 4 fases; a decisão do UBF roda na fase 3) tem script próprio, fora do `make test`:
 
 ```bash
-./tests/determinism/check_determinism.sh ./build/app/src/app <cenario> 2000 <rotulo>
+./tests/determinism/check_determinism.sh ./build/app/src/app flight 2000 flight
+#                                          binario           rotulo frames poc
 ```
 
-O que cada suíte prova e quanto custa → [`tests/README.md`](tests/README.md).
+`<rotulo>` é só um nome livre para a pasta de saída (`build/tests-determinism/<rotulo>`);
+`frames` é quantos passos de simulação rodar (2000 é um valor razoável para conferir); `<poc>`
+(opcional, default vazio = cenário de produção como está) é a poc de `src/poc/dis/` usada para
+gerar uma fixture hermética com intruso. O que cada suíte prova e quanto custa →
+[`tests/README.md`](tests/README.md).
 
 ## CI (GitLab)
 
@@ -176,15 +219,37 @@ Rodar sempre a partir da raiz do repositório (caminhos de `configs:`/`data:` s�
 
 ```bash
 ./build/app/src/app -folder <pasta> -scenario <nome>   # uma poc dentro de <pasta>, sem passar pela tela
-./build/app/src/app -f <arquivo.edl>                   # cenario apontado direto (assume falcon1..4)
-./build/app/src/app -folder <pasta>                     # navega uma pasta de cenarios, tela de selecao
+./build/app/src/app -f <arquivo.edl>                   # cenario apontado direto (assume a frota falcon1..4)
+./build/app/src/app -folder <pasta>                     # navega uma pasta de cenarios, tela de selecao (TUI
+                                                         # no proprio terminal -- funciona por SSH, sem X11/navegador)
 make run-app                                            # atalho para '-folder ./sandbox'
 ```
 
-Quais cenários existem hoje, o que cada um demonstra e em qual porta o Tacview conecta →
-[`CLAUDE.md`](CLAUDE.md) ou o `README.md` de cada subprojeto sob `src/poc/`.
+`-f` sempre assume a frota `falcon1..4`; um `.edl` sem esses nomes falha ao carregar (erro claro,
+não silencioso). Para frota arbitrária, use `-folder`, que descobre os *players* em runtime.
+
+| poc | comando | porta Tacview | porta DIS (local) |
+|---|---|---|---|
+| `flight` | `-folder src/poc/dis -scenario flight` | 1234 | 3002 |
+| `bandit` | `-folder src/poc/dis -scenario bandit` | 1235 | 3001 |
+| `python-flight` | `-folder src/poc -scenario python-flight` | 1237 | 3004 |
+| `onnx-policy` | `-folder src/poc -scenario onnx-policy` | 1238 | 3005 |
+| `built-in_mixr_1` | `-folder src/poc -scenario built-in_mixr_1` | 1239 | — (hermético) |
+
+Todas escutam **DIS** (*Distributed Interactive Simulation*, protocolo de rede para troca de
+estado de entidades simuladas entre processos, padronizado como IEEE 1278) em `3000`; a porta
+acima é só a de emissão local — `flight`/`bandit` trocam DIS entre si, rode as duas juntas para
+ver a cadeia completa. Esta é a lista completa das pocs sob `src/poc/`; para as de `sandbox/` e
+para o detalhe de cada uma (o que demonstra, armadilhas já confirmadas), abra o `README.md` do
+subprojeto. [`TOUR.md`](TOUR.md) não repete essa tabela — é a ordem sugerida de exploração, não
+um catálogo.
 
 ## Como o projeto se organiza
+
+(termos como `.edl`/`dlopen`/MIXR/player citados na árvore abaixo estão definidos no parágrafo
+de abertura deste README, no topo do arquivo; `CLAUDE.md`, citado abaixo, está explicado na
+tabela "Leia mais" — apesar do nome, não é config de ferramenta de IA, é referência de
+arquitetura para humanos também)
 
 ```
 poc-mixr/
@@ -195,10 +260,16 @@ poc-mixr/
 │   ├── ui/       editor grafico de cenario .edl (ferramenta de autoria, offline)
 │   └── node/     runner HEADLESS de um cenario (sem TUI, so log) -- peer enxuto de ./app,
 │                 ver CLAUDE.md secao 'src/node' e src/node/README.md
-├── models/       o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (dlopen)
+├── models/       o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (dlopen);
+│                 cada um em camadas models/players/<nome>/{domain,bt,ubf,xnative}/ -- "o que
+│                 fazer" mora em domain/, "como conectar ao MIXR" mora em bt/ubf/xnative/
+│                 (<categoria> em models/<categoria>/<nome>/ e' sempre "players" hoje --
+│                 "systems"/"others" existem como convencao para o futuro, ainda vazias)
 ├── plugins/      deposito flat dos .so compilados (proprios OU de terceiro) -> dist/ via 'make install'
-├── libs/         bibliotecas x<nome> reaproveitadas entre host e modelos -- cada uma com README.md
-├── shared/       dados vendorizados do CENARIO -- terreno SRTM, aeronaves JSBSim (shared/data/)
+├── libs/         bibliotecas x<nome> (ex.: xtacview, xlog, xclock) reaproveitadas entre host e
+│                 modelos via dlopen -- cada uma com README.md, ver libs/README.md
+├── shared/       dados vendorizados do CENARIO -- terreno SRTM (elevacao publica, NASA) e
+│                 aeronaves JSBSim (motor de dinamica de voo open-source), em shared/data/
 ├── sandbox/      cenarios soltos de experimentacao (ver 'make run-app')
 ├── tests/        suite do host (a de cada modelo vive dentro do proprio models/players/<nome>/)
 ├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP -- destilado + fonte vendorizado
@@ -215,8 +286,9 @@ poc-mixr/
 
 Três regras valem para todo subprojeto e todo modelo:
 
-1. **"O que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores.** `domain/`
-   não inclui um header do MIXR — dá para testar a política sem levantar uma simulação.
+1. **"O que fazer" mora em `domain/`** (`models/<categoria>/<nome>/domain/`) **; "como conectar"
+   mora nas factories/adaptadores** (`bt/`/`ubf/`/`xnative/`, ver a árvore acima). `domain/` não
+   inclui um header do MIXR — dá para testar a política sem levantar uma simulação.
 2. **Um arquivo, uma questão.** Nenhum `main.cpp` de centenas de linhas.
 3. **Estrutura vem do EDL, comportamento vem do C++.** Reconfigurar o cenário não recompila nada.
 
@@ -224,13 +296,15 @@ Três regras valem para todo subprojeto e todo modelo:
 
 | documento | quando ler |
 |---|---|
-| [`CLAUDE.md`](CLAUDE.md) | referência completa de arquitetura — todo subprojeto, biblioteca compartilhada e armadilha já confirmada rodando |
+| [`TOUR.md`](TOUR.md) | chegou agora? comece por aqui — passeio guiado, em ordem, por todo o repositório |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | escrever um MODELO novo (não mexer no host) |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
 | [`libs/README.md`](libs/README.md) | as 12 bibliotecas compartilhadas host↔modelo, uma por pasta |
 | [`tests/README.md`](tests/README.md) | as suítes de teste, o que cada uma prova |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
-| [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs`) |
-| [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl-builder`) |
+| [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs` — requer navegador na mesma máquina) |
+| [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl-builder` — requer navegador na mesma máquina) |
+| Groot (`deps/groot/`, ver `INSTALL.md` §7) | editor/monitor ao vivo de árvores de comportamento (`make open-groot` — requer display X11/Wayland na mesma máquina); diferente do `src/ui`, que edita o `.edl` inteiro, não só a árvore |
 | [`src/rl/`](src/rl/) | treinar uma política de RL contra a mesma simulação |
 | [`app/README.md`](app/README.md) | o painel de controle (TUI) por dentro |
+| [`CLAUDE.md`](CLAUDE.md) | **não é documentação de onboarding** — é o diário de arquitetura mantido para dar contexto a sessões de programação agêntica (Claude Code): histórico de decisões e armadilhas, em ordem cronológica de escrita, não pedagógica. Consulte por seção quando precisar confirmar um detalhe específico que os documentos acima não cobrem; não é para leitura sequencial |

@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Isto não é documentação de onboarding — é um diário de arquitetura.** Escrito para dar
+> contexto a sessões de programação agêntica (Claude Code), não para leitura humana sequencial:
+> registra decisão, armadilha confirmada rodando e estado atual de cada subprojeto na ordem
+> **cronológica** em que foi escrito ("passada" após "passada"), não em ordem pedagógica — e parte
+> dele já está desatualizada por construção (ver a "NOTA DE DESATUALIZAÇÃO" na seção `./app`
+> abaixo). Se você é uma pessoa chegando neste repositório agora, comece por
+> [`README.md`](README.md) → [`TOUR.md`](TOUR.md) → [`CONTRIBUTING.md`](CONTRIBUTING.md); volte
+> para cá só para confirmar, por seção, um detalhe específico que esses três não cobrem.
+
 > Documentação, comentários de código e mensagens de console deste repositório são em
 > **português do Brasil**; identificadores, nomes de slot e nomes de fábrica ficam em inglês
 > (originais do MIXR). Siga essa convenção ao escrever código novo.
@@ -17,7 +26,7 @@ desenvolvimento — é dependência binária.
 > helicóptero, satélite etc. — não para mexer no host `app/`/`src/`/`libs/`), este arquivo é
 > referência de arquitetura, não o ponto de partida. Comece por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
-> (`make new-model NAME=...`), o único ponto de partida copiável
+> (`make new-model NAME=... CATEGORY=player|system|others`), o único ponto de partida copiável
 > (`models/players/template/`, em camadas) e o
 > registro de coordenação entre devs, [`models/REGISTRO.md`](models/REGISTRO.md).
 
@@ -1401,20 +1410,28 @@ models/
         ├── Makefile  README.md  CHANGELOG.md
 ```
 
-**`make new-model NAME=<nome>`** (`scripts/models.sh`) automatiza a cópia do `template/`:
-recalcula a profundidade de `ROOT :=` do `Makefile` copiado, corrige o namespace C++ e remove
-`src/mirror.cpp`/o artefato `template_mirror` (que não fazem parte do scaffold) — não escreve
-lógica de domínio nenhuma. **Não** precisa registrar o modelo no build
-da raiz: `models:` do Makefile descobre projetos sob **qualquer subpasta de `models/`** por `find`
-(`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais abaixo) — não só `models/players/`,
-que é onde `scripts/models.sh` sempre escreve o scaffold hoje, mas qualquer outra subpasta de
-`models/` (`others/`, `systems/`, hoje vazias, só com `.gitkeep`) que um dia ganhe um projeto Meson
-de verdade dentro. O filtro é o mesmo da guarda `check_modelo_estrutura.sh`: só conta quem declara
-`project()` na raiz do próprio `meson.build` — o que já exclui `models/events/` (contrato/SDK,
-consumido por `subdir()`, nunca um projeto Meson independente) sem precisar de exceção nomeada. A
-única exceção por nome que sobra é `models/players/template/`: tem `project()` (compila e testa
-sozinho) mas nunca é produção — segue excluído por path. O diretório novo já
-entra sozinho em `make models`/`make test`. O que o gerador de fato não faz — e que continua manual
+**`make new-model NAME=<nome> CATEGORY=player|system|others`** (`scripts/models.sh`) automatiza a
+cópia do `template/`: recalcula a profundidade de `ROOT :=` do `Makefile` copiado, corrige o
+namespace C++ e remove `src/mirror.cpp`/o artefato `template_mirror` (que não fazem parte do
+scaffold) — não escreve lógica de domínio nenhuma. **`CATEGORY` é obrigatório** — decide em qual
+subpasta de `models/` o scaffold entra (`player`→`models/players/`, `system`→`models/systems/`,
+`others`→`models/others/`; sem `--dest` explícito, o destino é sempre `models/<categoria>/<nome>/`,
+nunca mais fixo em `models/players/`). **Não existe `CATEGORY=event`** — `models/events/` não é uma
+pasta de projetos-modelo, um por evento: é **um** projeto Meson só (a lib `events`), e um evento
+novo ganha uma pasta `payloads/<TOKEN>/` *dentro* dele, não um scaffold de `template/` novo (ver
+`models/events/README.md`); forçar esse fluxo pelo gerador produziria uma estrutura sem
+correspondência com o resto documentado, por isso ficou fora do escopo dele. **Não** precisa
+registrar o modelo no build da raiz: `models:` do Makefile descobre projetos sob **qualquer
+subpasta de `models/`** por `find` (`MODELOS_PRODUCAO`, ver "Desacoplando `models` de `dist/`" mais
+abaixo) — não só `models/players/`, mas qualquer outra subpasta de `models/` (`others/`, `systems/`,
+antes vazias, só com `.gitkeep`, e hoje o destino de verdade das categorias `others`/`system` do
+gerador) que ganhe um projeto Meson de verdade dentro. O filtro é o mesmo da guarda
+`check_modelo_estrutura.sh`: só conta quem declara `project()` na raiz do próprio `meson.build` —
+o que já exclui `models/events/` (contrato/SDK, consumido por `subdir()`, nunca um projeto Meson
+independente) sem precisar de exceção nomeada. A única exceção por nome que sobra é
+`models/players/template/`: tem `project()` (compila e testa sozinho) mas nunca é produção — segue
+excluído por path. O diretório novo já entra sozinho em `make models`/`make test`. O que o gerador
+de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
 alcançável por `-folder`/`-f` sem registrar em lugar nenhum — não há mais catálogo estático;
 opcionalmente cobertura em `tests/meson.build`; ver `CONTRIBUTING.md` §5.2/§5.3) e a linha em
@@ -3973,14 +3990,18 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
 
 `docs/` é conteúdo **lido**, nunca escrito por uma execução: páginas HTML estáticas (sem
 servidor, sem dependência de rede depois do primeiro carregamento). A peça viva é gerada por
-`tools/extract_execution_chain.py` a partir do fonte real de `contexts/src/mixr/` e de
-`models/players/A-4/` — não é desenho à mão do ciclo de fases, é extraído do código.
+`tools/generate_manual_catalog.py` (que escreve `docs/manual/catalog.generated.js` — commitado,
+injetado em `docs/manual/index.html` por `docs/manual/compile.js`, `make docs` roda os dois em
+sequência) a partir do fonte real de `contexts/src/mixr/` e de `models/players/A-4/`, reaproveitando
+`tools/mixr_source_scan.py`/`tools/extract_execution_chain.py` como módulos — não é desenho à mão
+do ciclo de fases, é extraído do código.
 
 - **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
   `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
-  `docs/`) tem **três abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
-  **"Catálogo"** (`docs/manual/doc.jsx`); os nomes abaixo descrevem o conteúdo de cada uma:
+  `docs/`) tem **quatro abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
+  **"Catálogo"**/**"Estrutura"** (`docs/manual/doc.jsx`); os nomes abaixo descrevem o conteúdo de
+  cada uma:
   1. **Simulação** ("Execução" no conteúdo) — o ciclo de fases do frame MIXR
      (dynamics/transmit/receive/process/background) animado sobre a árvore de componentes de um
      `( Aircraft )` só com peças **built-in** (~72 nós), com pan/zoom, tema claro/escuro, "seguir
@@ -3990,8 +4011,28 @@ servidor, sem dependência de rede depois do primeiro carregamento). A peça viv
      percorrendo a cadeia de decisão real de produção — `FlightAgentTC → Agent::controller →
      UbfArbiter → {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction` —
      através dos cenários que a usam.
-  3. **Catálogo** — as 342 classes `DECLARE_SUBCLASS` do fork, cruzadas com registro de fábrica
-     (224 classes), slots (644 slots em 135 classes) e participação por fase — buscável/filtrável.
+  3. **Catálogo** — as 225 classes nativas do MIXR com despacho **real** num `factory.cpp`
+     (`base`/`models`/`simulation`/`terrain`/`interop::dis`/`linkage`/`recorder` — o mesmo escopo
+     de `models/BUILT-IN.md`) mais as 9 do plugin de produção `models/players/A-4`, com slots e
+     participação por fase — buscável/filtrável. Não é "toda classe `DECLARE_SUBCLASS` do fork"
+     (esse universo mais amplo, ~118 classes a mais nunca despachadas por fábrica nenhuma, saiu do
+     catálogo por completo — filtro de concretude, mesma decisão de `models/BUILT-IN.md`).
+  4. **Estrutura** ("Diagrama de Classe Estrutural" no conteúdo) — diagrama de classe UML sobre um
+     recorte curado de 19 classes fundacionais do MIXR (`Referenced`/`Object`/`Component`/`Player`/
+     `Station`/`Simulation`/`Agent`/`NetIO`/...): caixa completa com atributos/componentes/métodos,
+     extraídos de verdade do header C++ por `tools/extract_class_diagram.py` (mesmo precedente,
+     ainda sem passo de `make docs` que regenere sozinho — o JSON é colado à mão como
+     `const CLASS_DIAGRAM` em `doc.jsx`) — não as 342 classes do Catálogo. Mais 28 alvos de
+     composição em caixa mínima (Tier 2 — só nome + base real). A TOPOLOGIA (quem aparece filho de
+     quem) e as notas de "filosofia de emprego" no card de detalhe são organizadas **à mão**
+     (`STRUCT_TOPOLOGY`/`STRUCT_NOTES`, mesmo espírito do "ensaio" da aba Comportamento — uma
+     classe MIXR raramente tem um único "pai", a árvore escolhe UMA aresta primária por nó, e
+     referências que fechariam ciclo (ex.: `Player`→`WorldModel`, `System`→`Player`) aparecem
+     tracejadas, sem diamante de composição). Nasce totalmente expandido; clicar numa caixa cujo
+     nome também existe no Catálogo oferece "ver no Catálogo →" (ausente para `Referenced`/
+     `Object`/`Component`, sem entrada lá). `usePanZoom()` (pan/zoom por arrastar/roda do mouse) foi
+     extraído nesta passada pra um hook único, compartilhado pelas abas Simulação/Comportamento/
+     Estrutura — as três eram cópias byte a byte da mesma lógica.
 - **`docs/presentation/index.html`** — um slide deck HTML/CSS autocontido (~20 slides: "o que é"/
   "o que não é", as funcionalidades exploradas, EDL+C++, 6-DOF, single vs multi-thread,
   bandit/DIS, python-flight, onnx-policy, built-in_mixr_1...). **Órfão**: nenhum alvo do Makefile
@@ -4330,7 +4371,9 @@ classe/slot.**
   DESCARTÁVEL, não pra editar um cenário de produção de verdade): o usuário vê o placeholder exato
   no campo e digita o valor real antes de exportar, como qualquer outro campo.
 - **Medido rodando (Node direto, sem browser) contra um cenário de produção real**
-  (`src/poc/dis/multi-thread/configs/scenario.edl.in`, 90 nós, raiz `ClockStation`): carrega com
+  (`src/poc/dis/flight/configs/scenario.edl.in` — chamado `multi-thread` na época desta passada,
+  renomeado desde então; ver "Não existe mais par de subprojetos gêmeos..." no topo deste arquivo
+  —, 90 nós, raiz `ClockStation`): carrega com
   ZERO erros e um único aviso (`token-placeholder` em `numTcThreads`, apontando o nó `WorldModel`
   certo); editar um campo (`ownship`) e reexportar produz um diff de UMA linha contra o
   round-trip sem edição nenhuma; `python3 src/ui/scripts/edl_lint.py` no resultado não acusa nada.

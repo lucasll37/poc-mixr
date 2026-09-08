@@ -30,11 +30,15 @@ corpo faz algo INTERESSANTE, so se faz ALGUMA coisa) -- suficiente para a "regra
 ouro" do TODO: nao inventar, e dar uma resposta que bate com o fonte.
 
 O catalogo completo para o EDITOR GRAFICO de .edl (antigo modo --edl-catalog deste
-arquivo) mora agora em src/ui/scripts/generate_edl_catalog.py -- so' interessa a
-docs/manual/, que usa exclusivamente o modo --catalog abaixo (universo restrito a
-mixr::models). As primitivas de varredura de C++ que os dois modos compartilham
-(mask_source, build_inheritance, build_factory_map, extract_slots, ...) moram em
-tools/mixr_source_scan.py, importado por AMBOS -- nao duplicadas.
+arquivo) mora em src/ui/scripts/generate_edl_catalog.py. O catalogo da aba
+"Catalogo" de docs/manual/ (antigo modo --catalog deste arquivo, removido --
+universo restrito a mixr::models, sem o plugin de producao nem os demais
+modulos nativos) mora agora em tools/generate_manual_catalog.py, que importa
+find_overrides()/TARGET_METHODS/find_impl_file() daqui como MODULO, sem
+reimplementar nada. As primitivas de varredura de C++ que os tres geradores
+compartilham (mask_source, build_inheritance, build_factory_map, extract_slots,
+find_dispatch_reachable_classes, ...) moram em tools/mixr_source_scan.py,
+importado por TODOS -- nao duplicadas.
 
 Uso:
     python3 tools/extract_execution_chain.py                 # tabela, texto
@@ -55,13 +59,6 @@ import mixr_source_scan as scan  # noqa: E402
 
 MIXR_INCLUDE = REPO_ROOT / scan.MIXR_INCLUDE_REL
 MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
-# Só a arvore de mixr::models (nao contexts/src/mixr/src inteiro, que tambem tem
-# base/, simulation/, interop/, recorder/, terrain/, linkage/, linearsystem/ --
-# essas NAO sao "modelos", sao infraestrutura do framework). --catalog usa isto,
-# de proposito, para o universo virar exatamente "as classes que
-# mixr::models::factory publica" -- o que o usuario pediu por "built-in no mixr".
-MIXR_MODELS_INCLUDE = MIXR_INCLUDE / "models"
-MIXR_MODELS_SRC = MIXR_SRC / "models"
 # 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/players/A-4/include' como um
 # primeiro corte deste script supunha. models/ esteve em reorganizacao (confirmado
 # rodando: AlertDatalink.hpp saiu de models/A4/include/xnative/ para
@@ -105,11 +102,11 @@ def find_overrides(cpp_roots, methods=None, capture_body=False):
 
     Com capture_body=True, tambem recorta o texto REAL (assinatura + corpo, da
     linha da assinatura ate o '}' que fecha, capado em MAX_BODY_LINES linhas
-    com 'truncated=True' quando cortar) -- e o que torna o modo --catalog capaz
-    de gerar entradas de SRC prontas para ~90 classes sem transcricao manual.
-    O corte NUNCA reescreve nada: e sempre um PREFIXO contiguo real, marcado
-    como truncado quando e so um prefixo -- a mesma regra de ouro de sempre,
-    so automatizada.
+    com 'truncated=True' quando cortar) -- e o que torna tools/generate_manual_catalog.py
+    capaz de gerar entradas de SNIPPETS prontas para todo o universo dele sem
+    transcricao manual. O corte NUNCA reescreve nada: e sempre um PREFIXO
+    contiguo real, marcado como truncado quando e so um prefixo -- a mesma
+    regra de ouro de sempre, so automatizada.
 
     PRIMEIRO achado vence por (classe, metodo) -- nao sobrescreve -- pelo
     MESMO motivo de extract_slots() (em mixr_source_scan.py): varrer
@@ -233,26 +230,6 @@ def print_table(rows):
             print(f"      {lvl['class']:22s}{tag}: {', '.join(hits)}")
 
 
-def category_of(file_path):
-    """Deriva a categoria de uma classe pelo CAMINHO do .cpp -- os diretorios de
-    contexts/src/mixr/src/models/ ja espelham exatamente o agrupamento que
-    contexts/src/mixr/src/models/factory.cpp usa nos comentarios (dynamics/,
-    environment/, navigation/, player/{air,effect,ground,space,weapon}/,
-    sensor/, system/{trackmanager/}), entao usar o caminho e mais robusto que
-    reimplementar um parser dos comentarios do factory.cpp."""
-    parts = Path(file_path).parts
-    try:
-        i = parts.index("models")
-    except ValueError:
-        return "outro"
-    rest = parts[i + 1 :]
-    if len(rest) >= 2 and rest[0] in ("player", "system") and not rest[1].endswith(".cpp"):
-        return f"{rest[0]}/{rest[1]}"
-    if len(rest) >= 1:
-        return rest[0] if not rest[0].endswith(".cpp") else "misc"
-    return "outro"
-
-
 def find_impl_file(cls, cpp_roots):
     """Arquivo .cpp onde IMPLEMENT_*SUBCLASS(cls, ...) aparece -- usado so para
     as classes sem NENHUM dos 7 metodos-alvo sobrescrito (ex.: classes de dado
@@ -264,68 +241,6 @@ def find_impl_file(cls, cpp_roots):
     return None
 
 
-def build_catalog():
-    """Monta o catalogo de TODAS as classes nativas registradas em
-    mixr::models::factory (so contexts/src/mixr/src/models/ -- de proposito
-    NAO inclui models/ deste repositorio, que sao os plugins PROPRIOS, nao
-    'built-in no mixr'). Cada entrada ja carrega corpo de metodo REAL
-    (capturado, nao transcrito a mao) e a lista de slots."""
-    # inheritance/overrides: SEM restringir a models/ -- a cadeia de qualquer
-    # classe de modelo sobe ate Component/Object, que moram em base/ (fora de
-    # models/); restringir aqui quebraria resolve_chain() e escondaria o nivel
-    # onde o despacho generico mora.
-    inheritance = build_inheritance([MIXR_INCLUDE])
-    overrides = find_overrides([MIXR_SRC], capture_body=True)
-    # factory_map/slots: RESTRITO a models/ -- e o que define o UNIVERSO do
-    # catalogo ("classes que mixr::models::factory publica", nao qualquer
-    # classe do framework inteiro registrada via IMPLEMENT_SUBCLASS).
-    factory_map = build_factory_map([MIXR_MODELS_SRC])
-    slots = extract_slots([MIXR_MODELS_SRC])
-
-    # Toda classe que aparece como VALOR de factory_map (i.e., foi registrada
-    # via IMPLEMENT_*SUBCLASS) e uma classe 'publicada' pela fabrica -- o
-    # universo que o usuario pediu ('todos os modelos built-in no mixr').
-    classes_by_factory: dict[str, str] = {}
-    for factory_name, cls in factory_map.items():
-        classes_by_factory.setdefault(cls, factory_name)
-
-    entries = []
-    for cls, factory_name in sorted(classes_by_factory.items()):
-        chain = resolve_chain(cls, inheritance)
-        # arquivo onde a classe foi de fato IMPLEMENTADA (onde os overrides moram)
-        cls_overrides = overrides.get(cls, {})
-        any_file = next(iter(cls_overrides.values()))["file"] if cls_overrides else find_impl_file(cls, [MIXR_MODELS_SRC])
-        category = category_of(any_file) if any_file else "outro"
-
-        levels = []
-        any_work = False
-        for level in chain:
-            lv_overrides = overrides.get(level, {})
-            levels.append({
-                "class": level,
-                "generic_dispatch": level in GENERIC_DISPATCH_CLASSES,
-                "methods": {
-                    m: {"nonempty": v["nonempty"], "file": v["file"], "line": v["line"]}
-                    for m, v in lv_overrides.items()
-                },
-            })
-            if level not in GENERIC_DISPATCH_CLASSES and any(v["nonempty"] for v in lv_overrides.values()):
-                any_work = True
-
-        entries.append({
-            "class": cls,
-            "factory": factory_name,
-            "file": any_file,
-            "category": category,
-            "chain": chain,
-            "idle": not any_work,
-            "levels": levels,
-            "overrides": {m: v for m, v in cls_overrides.items() if v["nonempty"]},
-            "slots": slots.get(cls, []),
-        })
-    return entries
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument(
@@ -335,17 +250,7 @@ def main():
         "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
     )
     ap.add_argument("--json", action="store_true", help="saida em JSON em vez de tabela")
-    ap.add_argument(
-        "--catalog", action="store_true",
-        help="cataloga TODAS as classes nativas de mixr::models::factory (contexts/src/mixr/src/models/ "
-        "apenas -- nao inclui os plugins deste repositorio), com corpo de metodo e slots capturados; "
-        "ignora os argumentos posicionais; sempre imprime JSON",
-    )
     args = ap.parse_args()
-
-    if args.catalog:
-        print(json.dumps(build_catalog(), indent=2, ensure_ascii=False))
-        return
 
     inheritance = build_inheritance(INCLUDE_ROOTS)
     factory_map = build_factory_map(SRC_ROOTS)

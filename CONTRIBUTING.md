@@ -9,9 +9,27 @@ novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivale
 ## 0. O que você vai construir
 
 Um **modelo** é uma biblioteca (`.so`) compilada à parte, aberta em tempo de execução via
-`dlopen` — o host nunca vê seu código-fonte. Se este parágrafo é novidade, leia primeiro
-[`CLAUDE.md`](CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de
-continuar.
+`dlopen` (o `.so` é aberto em *runtime* pelo host, nunca linkado em tempo de compilação) — o host
+nunca vê seu código-fonte. Se este parágrafo é novidade, leia primeiro [`CLAUDE.md`](CLAUDE.md),
+seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de continuar.
+
+> **Resumo de uma tela**, para quem só quer os fatos mínimos antes de abrir os documentos abaixo:
+>
+> - Um **modelo** decide via um agente **UBF** (*Unified Behavior Framework*, o mecanismo nativo
+>   do MIXR para plugar decisão externa num `Player`) — hoje, quase sempre uma árvore do
+>   BehaviorTree.CPP por trás dele.
+> - `playerId` (usado em toda chamada ao `xboard`) é `player->getID()` — o `mixr::models::Player`
+>   que hospeda o agente; ele já chega pronto no contexto de decisão (`genAction()`/`execute()`).
+> - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta — um nome
+>   a mais ou a menos aborta a inicialização, com mensagem dizendo o que faltou/sobrou.
+> - Escrever no `xboard` (seção 3 do [`CONTRATO.md`](models/players/template/docs/CONTRATO.md)) é
+>   obrigatório e **falha em silêncio** se esquecido — sem erro, só `bt=--`/`dec=0` para sempre.
+> - O ponto de partida copiável é `models/players/template/`; `make new-model NAME=... CATEGORY=player`
+>   copia e renomeia por você (`CATEGORY` é obrigatório: `player`/`system`/`others`, decide a
+>   subpasta de `models/` — não existe `CATEGORY=event`, ver seção 2).
+>
+> Isto não substitui os documentos abaixo — é só o suficiente para não se perder na primeira
+> passada por eles.
 
 Antes de começar, confira [`models/REGISTRO.md`](models/REGISTRO.md) — a tabela de quem já está
 mexendo em qual modelo. Se o modelo que você quer escrever já tem alguém trabalhando nele, evite
@@ -39,8 +57,16 @@ camada está no `README.md`/`docs/` do diretório.
 **O caminho recomendado é o gerador automático**, que já existe neste repositório:
 
 ```bash
-make new-model NAME=meu_modelo
+make new-model NAME=meu_modelo CATEGORY=player
 ```
+
+`CATEGORY` é **obrigatório** e decide em qual subpasta de `models/` o scaffold entra —
+`player`→`models/players/`, `system`→`models/systems/`, `others`→`models/others/` (a mesma
+taxonomia que `MODELOS_PRODUCAO`, no `Makefile` raiz, já descobre por `find` sob qualquer
+subpasta de `models/`). Não existe `CATEGORY=event`: `models/events/` não é uma pasta de
+projetos-modelo, um por evento — é **um** projeto Meson só (a lib `events`), e um evento novo
+ganha uma pasta `payloads/<TOKEN>/` *dentro* dele, não um scaffold de `template/` novo (ver
+[`models/events/README.md`](models/events/README.md)).
 
 Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespace, `ROOT` do Makefile
 pela profundidade real) e termina com um checklist do que sobra manual — inclusive apagar

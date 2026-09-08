@@ -5,10 +5,11 @@ paths:
 
 # Modelo é plugin — regras de `models/`
 
-- Cada `models/players/<nome>/` é um projeto Meson **autocontido**: tem `Makefile`, `meson.build`,
-  `tests/`, `docs/`, `README.md`, `CHANGELOG.md` próprios (guarda:
-  `tests/guard/check_modelo_estrutura.sh`). `cd models/players/<nome> && make` configura/builda/
-  instala sozinho — só precisa do SDK publicado uma vez pela raiz (`make configure && make sdk`).
+- Cada `models/<players|systems|others>/<nome>/` é um projeto Meson **autocontido**: tem
+  `Makefile`, `meson.build`, `tests/`, `docs/`, `README.md`, `CHANGELOG.md` próprios (guarda:
+  `tests/guard/check_modelo_estrutura.sh`, que descobre por `find` sob QUALQUER subpasta de
+  `models/`, não só `players/`). `cd models/<categoria>/<nome> && make` configura/builda/instala
+  sozinho — só precisa do SDK publicado uma vez pela raiz (`make configure && make sdk`).
 - **Nunca escreva direto em `dist/` a partir de um modelo.** `make install-host` de cada modelo
   deposita em `./plugins/` (raiz do repo, flat, não versionado); é `make install` (alvo
   `sync-plugins`) na raiz quem sincroniza `plugins/` → `dist/`. `dist/` e `build/` são gerados —
@@ -22,10 +23,12 @@ paths:
 - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta. Acrescentar
   um nome novo de fábrica obriga atualizar `provides:` em **todo** cenário que carrega essa `.so`
   (produção e testes) — não só o cenário que motivou a mudança.
-- Modelo novo: `make new-model NAME=<nome>` (não escreve lógica nenhuma, só copia o esqueleto de
-  `models/players/template/`). Depois, siga `CONTRIBUTING.md` §5 para o cenário (não há catálogo
-  para registrar — basta um `.edl.in` em `configs/`) e anote em `models/REGISTRO.md` (coordenação
-  humana, sem enforcement automático).
+- Modelo novo: `make new-model NAME=<nome> CATEGORY=player|system|others` (`CATEGORY` é
+  obrigatório e decide a subpasta — `player`→`models/players/`, `system`→`models/systems/`,
+  `others`→`models/others/`; não existe `CATEGORY=event`, ver `scripts/models.sh` para o porquê).
+  Não escreve lógica nenhuma, só copia o esqueleto de `models/players/template/`. Depois, siga
+  `CONTRIBUTING.md` §5 para o cenário (não há catálogo para registrar — basta um `.edl.in` em
+  `configs/`) e anote em `models/REGISTRO.md` (coordenação humana, sem enforcement automático).
 - `models/players/template/` **não é produção** — não entra na checagem de colisão de fábrica.
   Hospeda DOIS artefatos: o scaffold copiável (`libtemplate.so`, exemplo em camadas) e um mirror
   de contrato (`libtemplate_mirror.so`, `src/mirror.cpp` — **não** faz parte do scaffold, apagar ao

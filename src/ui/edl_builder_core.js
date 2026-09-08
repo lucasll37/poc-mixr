@@ -59,9 +59,21 @@ function isCompatible(candidateFactory, slot, byFactory) {
   return slot.objectTypes.some((t) => cand.chain.includes(t));
 }
 
+// isCompatible() fica pura (so' tipo/heranca) -- isOfferable() e' o unico
+// ponto que soma concretude (entry.concrete === true, ver
+// generate_edl_catalog.py::dispatch_factory_cpp_paths()), usado so' nos
+// lugares que OFERECEM uma classe ao usuario (paleta, dropdown de slot,
+// validacao de drag-and-drop). Motivo: os testes existentes de
+// isCompatible() usam uma fixture sem campo `concrete`; embutir a checagem
+// em isCompatible() quebraria esses testes em silencio.
+function isOfferable(candidateFactory, slot, byFactory) {
+  const cand = byFactory[candidateFactory];
+  return !!cand && cand.concrete === true && isCompatible(candidateFactory, slot, byFactory);
+}
+
 function compatibleFactories(slot, catalog, byFactory) {
   return catalog
-    .filter((e) => isCompatible(e.factory, slot, byFactory))
+    .filter((e) => isOfferable(e.factory, slot, byFactory))
     .map((e) => e.factory)
     .sort();
 }
@@ -691,7 +703,7 @@ function extractPlacements(root, byFactory) {
 // porque `module` não existe nesse contexto.
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    buildCatalogIndex, originLabel, originRank, isCompatible, compatibleFactories,
+    buildCatalogIndex, originLabel, originRank, isCompatible, isOfferable, compatibleFactories,
     isLeafSlot, isChildSlot, defaultKindFor,
     primaryRolesFor, roleFillStatus, emptyChildSlots, nodePendencies, collectPendencies, findAncestorPath,
     countUncataloged,
