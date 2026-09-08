@@ -242,6 +242,9 @@ sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqu
 	      base=$$(basename "$$so"); \
 	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)sync-plugins: $$base com dependencia nao resolvida$(NC)"; exit 1; } || true; \
 	   done; \
+	 else \
+	   echo "$(YELLOW)sync-plugins: aviso: $(PLUGINS_DIR) nao tem nenhum .so -- se voce esperava um modelo carregar,$(NC)"; \
+	   echo "$(YELLOW)  rode 'make models' antes de 'make install' (as duas sao DECOPLADAS de proposito, ver CLAUDE.md).$(NC)"; \
 	 fi
 	@# Dados (hoje, so o flight: jsbsim/ + flight_tree.xml) -- unica excecao
 	@# ao deposito flat de plugins/, documentada em

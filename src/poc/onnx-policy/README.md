@@ -16,7 +16,9 @@ de regras — é uma **rede neural**. Um MLP de 6.211 parâmetros, carregado de
 crítico**, sem Python no processo e sem um frame de latência.
 
 ```bash
-make install   # build sozinho NAO basta -- o plugin (libflight.so) so chega em dist/ por aqui
+make models && make install   # build/models sao DECOPLADOS de proposito -- sem 'make models'
+                               # antes, 'install' sincroniza um plugins/ vazio (aviso, sem erro)
+                               # e o PluginLoader nao acha libflight.so
 ./build/app/src/app -folder src/poc -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
@@ -27,7 +29,8 @@ make install   # build sozinho NAO basta -- o plugin (libflight.so) so chega em 
 **O ciclo de trabalho que esta poc existe para ter:**
 
 ```bash
-src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx -- so numpy+onnx, ver secao 9
+make venv-rl && src/rl/.venv/bin/pip install onnx   # so' na 1a vez -- o venv de venv-rl traz so gymnasium+numpy
+src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e exporta o .onnx -- ver secao 9
 ./build/app/src/app -folder src/poc -scenario onnx-policy                                                              # veja o voo mudado
 ```
 

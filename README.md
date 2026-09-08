@@ -61,9 +61,14 @@ make build       # 4. compila o host (nao depende dos modelos)      -> build/
 make install     # 5. sincroniza plugins/ -> dist/ e instala o host -> dist/
 ```
 
-`build`/`install`/`test` já dependem das etapas anteriores (`install` puxa `build` + `sdk` +
-`models` sozinho) — no dia a dia basta `make configure && make build && make install`; as etapas
-acima existem para rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho).
+`build`/`install` puxam `sdk` sozinhos, mas **não** puxam `models` — as duas são DECOPLADAS de
+propósito (compilar o host nunca precisou saber onde os modelos guardam os artefatos deles, ver
+CLAUDE.md seção "Desacoplando `models` de `dist/`"). Isso significa que `make install` sem um
+`make models` anterior sincroniza um `plugins/` vazio, em silêncio (com um aviso) — nenhum
+cenário carrega nada. No dia a dia, rode as duas: `make configure && make models && make install`
+(ou `make configure && make build && make models && make install`, se quiser separar
+explicitamente o passo 4); as etapas do bloco acima existem para rodar isoladamente (ex.: mexeu
+só no modelo, `make models` sozinho não toca no host).
 
 ```bash
 make clean   # remove build/ e dist/ (host e modelos) e o deposito que 'models' gerou

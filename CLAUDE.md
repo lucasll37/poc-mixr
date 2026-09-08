@@ -108,10 +108,14 @@ deposita só em `plugins/` (o MESMO lugar onde um `.so` de terceiro entra, ver a
 sincroniza `plugins/` → `dist/`. Todo alvo que **roda** algo (`run-*`, `check-*`,
 `test`) depende de `install`; `build`/`models` sozinhos não deixam nada executável.
 
-O fluxo do dia a dia é `make configure && make build && make install` (ou direto
-`make configure && make test`, que já encadeia `install`, mas roda só a suíte do HOST — a do
-modelo é `make test-models`, separada; ver "Testes automatizados" mais abaixo). `make models` é o
-alvo que se roda sozinho ao mexer só no modelo, sem tocar o host.
+O fluxo do dia a dia é `make configure && make models && make install` (ou
+`make configure && make build && make models && make install`, se quiser separar o passo 4
+explicitamente) — **`build`/`install` não puxam `models`** (as duas são decopladas de propósito,
+ver "Desacoplando `models` de `dist/`" abaixo); sem `make models` antes, `install` sincroniza um
+`plugins/` vazio (com aviso, sem erro) e nenhum cenário carrega nada. `make configure && make
+test` também precisa de `make models` no meio — `test` encadeia `install`, mas não `models` —,
+roda só a suíte do HOST; a do modelo é `make test-models`, separada; ver "Testes automatizados"
+mais abaixo. `make models` sozinho é o alvo pra mexer só no modelo, sem tocar o host.
 
 **Três armadilhas do Meson que a etapa do SDK esconde, todas medidas:**
 

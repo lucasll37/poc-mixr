@@ -1777,10 +1777,11 @@ intacta até a política.
 
 ```bash
 # build + execucao. 'build'/'models' sao DECOPLADOS de proposito (ver CLAUDE.md) --
-# 'make build' sozinho NAO builda nem deposita o plugin; e' 'install' quem encadeia
-# build -> sync-plugins -> (implicitamente) models, e so' depois disso o PluginLoader
-# acha libflight.so em dist/lib/mixr-plugins/.
-make configure && make install && ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
+# 'make install' NAO puxa 'make models' (sync-plugins so' copia o que 'models' ja
+# depositou em plugins/; sem 'make models' antes, sincroniza uma pasta vazia, com
+# aviso, sem erro) -- e so' depois dos dois o PluginLoader acha libflight.so em
+# dist/lib/mixr-plugins/.
+make configure && make models && make install && ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
 
 # as DUAS suítes (a do modelo e a do host)
 meson configure build -Dtests=true && make build && make test-models && make test

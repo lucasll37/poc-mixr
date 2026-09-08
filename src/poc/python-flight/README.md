@@ -16,7 +16,9 @@ lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo cr
 thread, mesmo tick, sem processo nem soquete no meio.
 
 ```bash
-make install   # build sozinho NAO basta -- o plugin (libflight.so) so chega em dist/ por aqui
+make models && make install   # build/models sao DECOPLADOS de proposito -- sem 'make models'
+                               # antes, 'install' sincroniza um plugins/ vazio (aviso, sem erro)
+                               # e o PluginLoader nao acha libflight.so
 ./build/app/src/app -folder src/poc -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
