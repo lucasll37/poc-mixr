@@ -195,8 +195,19 @@ void BtBehavior::startGrootMonitorIfRequested()
    }
 }
 
+namespace {
+// Mesmo piso absoluto de domain::ThreatPolicy.cpp (MIN_SAFE_ALT_M) -- os
+// dois soh valem quando NAO ha dado de elevacao (ver domain/TerrainFloor.hpp);
+// duplicado aqui, nao promovido a constante compartilhada, porque
+// domain::terrainFloorM()/clampToTerrain() ja recebem o piso como
+// PARAMETRO de proposito (funcao pura, sem estado escondido) -- cada
+// chamador continua dono do proprio numero, mesmo que hoje coincidam.
+const double MIN_SAFE_ALT_M{200.0};
+}
+
 //------------------------------------------------------------------------------
-// feedThreatPolicy() -- a unica traducao Snapshot -> domain nesta classe.
+// feedThreatPolicy() -- uma das duas traducoes Snapshot -> domain nesta
+// classe (a outra e' clampAltitudeToTerrain(), logo abaixo).
 //
 // Roda ANTES do tick: quando os nos da arvore perguntarem "estou evadindo?",
 // a politica ja terá visto o frame e envelhecido a histerese.
@@ -213,6 +224,23 @@ void BtBehavior::feedThreatPolicy(const double dt)
    ground.elevationM = snap.terrainElevM;
 
    threat.update(dt, snap.hasContact, contact, snap.headingDeg, snap.altitudeM, ground);
+}
+
+//------------------------------------------------------------------------------
+// clampAltitudeToTerrain() -- ACHADO POR AUDITORIA (nao redescobrir, ver o
+// comentario grande em bt/DecisionContext.hpp): so' domain::ThreatPolicy
+// aplicava domain/TerrainFloor.hpp; RTB/SUPPORT/PATROL comandavam altitude
+// sem nenhum piso. Mesma traducao Snapshot->GroundReference de
+// feedThreatPolicy(), reaproveitada aqui para os nos que NAO passam pela
+// ThreatPolicy.
+//------------------------------------------------------------------------------
+double BtBehavior::clampAltitudeToTerrain(const double altitudeM) const
+{
+   domain::GroundReference ground;
+   ground.valid = snap.terrainValid;
+   ground.elevationM = snap.terrainElevM;
+
+   return domain::clampToTerrain(altitudeM, ground, tune.terrainClearanceM, MIN_SAFE_ALT_M);
 }
 
 //------------------------------------------------------------------------------

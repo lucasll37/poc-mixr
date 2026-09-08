@@ -18,8 +18,10 @@ namespace bt_nodes {
 // pratico era que a arvore, a peca mais propria desta poc, so podia ser
 // exercitada subindo uma Station.
 //
-// Esta interface e aquele conjunto de getters (hoje oito). BtBehavior a
-// implementa sem escrever um metodo novo: as assinaturas ja eram estas.
+// Esta interface e aquele conjunto de getters (hoje nove). BtBehavior a
+// implementa sem escrever um metodo novo: as assinaturas ja eram estas
+// (exceto clampAltitudeToTerrain(), acrescentado para fechar um buraco
+// achado por auditoria -- ver o comentario dela mais abaixo).
 //
 // O que isso compra: bt/nodes/*.cpp e bt/bt_factory.cpp passam a compilar
 // contra BehaviorTree.CPP + domain/ apenas. Um teste monta um
@@ -49,6 +51,20 @@ public:
    virtual double getFrameDt() const = 0;
    virtual double getFuelReserve() const = 0;
    virtual double getSupportSpeedKts() const = 0;
+
+   // O piso anti-CFIT (domain/TerrainFloor.hpp) -- ACHADO POR AUDITORIA
+   // (nao redescobrir): so domain::ThreatPolicy::breakCommand() aplicava
+   // este piso; RTB e SUPPORT comandavam altitude (rtbAltitude fixo do
+   // EDL, ou a altitude ABSOLUTA de um contato reportado por outro player)
+   // sem NENHUMA validacao contra o terreno em runtime. Com o cenario de
+   // producao "SEM ARBITRO" (nenhum AltitudeSafetyBehavior por cima),
+   // ThreatPolicy tinha virado a UNICA camada de protecao ativa -- os
+   // outros ramos so estavam seguros porque o rtbAltitude de cada falcon
+   // foi calibrado a mao contra o pico do PROPRIO circuito, nao contra o
+   // caminho de volta de verdade. Cada no que comanda altitude fora do
+   // ramo de evasao deve passar por aqui antes de decision().take() --
+   // ver ReturnToBaseAction/SupportAlertAction/PatrolAction.
+   virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
 };
 
 } // namespace bt_nodes

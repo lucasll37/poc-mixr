@@ -105,6 +105,7 @@ public:
    double getFrameDt() const override                    { return frameDt; }
    double getFuelReserve() const override                { return tune.fuelReserve; }
    double getSupportSpeedKts() const override            { return tune.supportSpeedKts; }
+   double clampAltitudeToTerrain(double altitudeM) const override;
 
 protected:
    bool shutdownNotification() override;

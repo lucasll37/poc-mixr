@@ -28,6 +28,9 @@ public:
    double frameDt{0.02};
    double fuelReserve{0.35};
    double supportSpeedKts{180.0};
+   // Mesmo default de ubf::BtTuning::terrainClearanceM -- ver o comentario
+   // de clampAltitudeToTerrain() abaixo.
+   double terrainClearanceM{500.0};
 
    const domain::WorldView& snapshot() const override        { return snap; }
    bt_nodes::FlightDecision& decision() override             { return dec; }
@@ -37,6 +40,19 @@ public:
    double getFrameDt() const override                        { return frameDt; }
    double getFuelReserve() const override                    { return fuelReserve; }
    double getSupportSpeedKts() const override                { return supportSpeedKts; }
+
+   // Copia fiel de BtBehavior::clampAltitudeToTerrain() (ver o comentario
+   // dela e o de bt/DecisionContext.hpp) -- MESMO piso absoluto de
+   // domain::ThreatPolicy.cpp/BtBehavior.cpp (200.0), duplicado pelo MESMO
+   // motivo: domain::clampToTerrain() recebe o piso por parametro, de
+   // proposito, entao cada dono continua com o proprio numero.
+   double clampAltitudeToTerrain(const double altitudeM) const override
+   {
+      domain::GroundReference ground;
+      ground.valid = snap.terrainValid;
+      ground.elevationM = snap.terrainElevM;
+      return domain::clampToTerrain(altitudeM, ground, terrainClearanceM, 200.0);
+   }
 
    // Copia fiel de BtBehavior::feedThreatPolicy(): Snapshot -> domain.
    void alimentarPolitica(const double dt)
@@ -67,6 +83,11 @@ public:
       lim.terrainClearanceM = 800.0;
       threat.setLimits(lim);
       threat.reset();
+
+      // Mesmo terrainClearance do bloco acima -- BtTuning::terrainClearanceM
+      // e domain::EvasionLimits::terrainClearanceM sao o MESMO slot do EDL
+      // (BtBehavior::configurePlans() alimenta os dois com tune.terrainClearanceM).
+      terrainClearanceM = lim.terrainClearanceM;
    }
 };
 

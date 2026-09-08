@@ -116,6 +116,22 @@ TEST(FlightTree, SemNadaAcontecendoPatrulha)
    EXPECT_NEAR(ctx.dec.command.speedKts, 160.0, TOL);
 }
 
+// Mesma rede de seguranca das duas acima, no ramo de degradacao (nenhum
+// contato/alerta/combustivel baixo) -- ver o comentario grande logo apos
+// CombustivelBaixoLevaAoRetorno.
+TEST(FlightTree, PatrulhaRespeitaOPisoDeTerrenoSeAAltitudeConfiguradaFicarBaixaDemais)
+{
+   FakeDecisionContext ctx{contextoEmPatrulha()};
+   ArvoreDeVoo arvore{ctx};
+   ctx.snap.terrainElevM = 1200.0;   // acima da altitude de patrulha configurada (1750 m)
+   ctx.alimentarPolitica(ctx.frameDt);
+   arvore.tick();
+
+   EXPECT_EQ(ctx.dec.label, "PATROL");
+   // piso = 1200+800 = 2000 m, acima dos 1750 m configurados.
+   EXPECT_NEAR(ctx.dec.command.altitudeM, 2000.0, TOL);
+}
+
 TEST(FlightTree, ContatoLevaAEvasaoEPedeOAlerta)
 {
    FakeDecisionContext ctx{contextoEmPatrulha()};
@@ -154,6 +170,49 @@ TEST(FlightTree, CombustivelBaixoLevaAoRetorno)
 
    EXPECT_EQ(ctx.dec.label, "RTB");
    EXPECT_NEAR(ctx.dec.command.altitudeM, 2050.0, TOL);
+}
+
+//------------------------------------------------------------------------------
+// Piso anti-CFIT em RTB/SUPPORT -- ACHADO POR AUDITORIA (ver o comentario
+// grande em bt/DecisionContext.hpp): antes desta rodada, so' o ramo EVADE
+// respeitava domain/TerrainFloor.hpp. Os dois testes acima
+// (CombustivelBaixoLevaAoRetorno/AlertaSozinhoLevaAoApoio) NUNCA exercitavam
+// o clamp -- o terreno configurado la (800 m) mais a folga (800 m) da um
+// piso de 1600 m, abaixo dos 2050/2000 m que os dois ja comandam sem
+// precisar de ajuda. Aqui o terreno e' deliberadamente mais alto que a
+// altitude configurada, para provar que o piso de fato ENTRA em acao, nao
+// so' que ele nao atrapalha o caso feliz.
+//------------------------------------------------------------------------------
+
+TEST(FlightTree, RetornoABaseRespeitaOPisoDeTerrenoQuandoOCaminhoCruzaRelevoAlto)
+{
+   FakeDecisionContext ctx{contextoEmPatrulha()};
+   ArvoreDeVoo arvore{ctx};
+   ctx.snap.fuelFraction = 0.30;                 // dispara RTB
+   ctx.snap.terrainElevM = 1500.0;               // relevo no caminho de volta, acima do circuito
+   ctx.alimentarPolitica(ctx.frameDt);
+   arvore.tick();
+
+   ASSERT_EQ(ctx.dec.label, "RTB");
+   // rtbAltitude configurado (2050 m) fica ABAIXO do piso (1500+800=2300 m)
+   // -- sem o clamp, a aeronave voaria reto pro relevo.
+   EXPECT_NEAR(ctx.dec.command.altitudeM, 2300.0, TOL);
+}
+
+TEST(FlightTree, ApoioRespeitaOPisoDeTerrenoQuandoOContatoReportadoEstaBaixo)
+{
+   FakeDecisionContext ctx{contextoEmPatrulha()};
+   ArvoreDeVoo arvore{ctx};
+   receberAlerta(ctx);
+   ctx.snap.alertAltitudeM = 300.0;               // contato reportado voando baixo/terrain-following
+   ctx.alimentarPolitica(ctx.frameDt);
+   arvore.tick();
+
+   ASSERT_EQ(ctx.dec.label, "SUPPORT");
+   // 300 m fica bem abaixo do piso (terrainElevM=800 + terrainClearanceM=800
+   // = 1600 m) -- sem o clamp, o apoio desceria ate' a MESMA altitude baixa
+   // do contato, so' porque foi isso que o alerta de outro player reportou.
+   EXPECT_NEAR(ctx.dec.command.altitudeM, 1600.0, TOL);
 }
 
 TEST(FlightTree, SobreABaseORotuloEhHome)
