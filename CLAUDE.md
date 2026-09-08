@@ -458,7 +458,7 @@ ioHandler: ( JoystickIoHandler
             ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI
             ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI
             ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI
-            ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI
+            ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -1.0 ) // THROTTLE_AI
          }
       )
    }
@@ -504,12 +504,16 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    7 para o porquê disso importar.
 4. **Sinal do manete do Extreme 3D é invertido em relação ao `setThrottles()` nativo** —
    confirmado rodando: o eixo 3 (slider) sai em `-1.0` no batente de **potência plena** e `+1.0`
-   no de **cutoff**, enquanto `Player::setThrottles()` espera `0.0` (idle) a `1.0` (plena
-   potência) — faixa **unidirecional**, ao contrário de roll/pitch/pedal (`-1..1`, sem
-   transformação nenhuma: o sinal do device já bate com o do MIXR). É por isso que só o `ai: 4`
-   (`THROTTLE_AI`) leva `offset: 1.0 gain: -0.5` — o `AnalogInput` calcula
-   `t = (raw - offset) * gain`, e essa combinação inverte E reescala de `[-1,1]` para `[0,1]` no
-   mesmo passo (raw=-1 → t=1.0; raw=+1 → t=0.0). Ver `AnalogInput.hpp:16-35` para a fórmula.
+   no de **cutoff**, enquanto `Player::setThrottles()` espera `0.0` (idle) a `2.0`
+   (pós-combustão/A-B, com `1.0` = MIL) — faixa **unidirecional**, ao contrário de roll/pitch/pedal
+   (`-1..1`, sem transformação nenhuma: o sinal do device já bate com o do MIXR). É por isso que
+   só o `ai: 4` (`THROTTLE_AI`) leva `offset: 1.0 gain: -1.0` — o `AnalogInput` calcula
+   `t = (raw - offset) * gain`, e essa combinação inverte E reescala de `[-1,1]` para `[0,2]` no
+   mesmo passo (raw=-1 → t=2.0; raw=+1 → t=0.0). Ver `AnalogInput.hpp:16-35` para a fórmula.
+   **CORRIGIDO (não redescobrir):** o `gain` já foi `-0.5` — matematicamente consistente, mas o
+   mapeamento resultante (raw=-1 → t=1.0) nunca saía de MIL, sem alcançar pós-combustão nenhuma
+   (achado por auditoria, `gain: -1.0` desde então; não verificado com joystick físico depois da
+   troca — conferir a sensação do manete antes de confiar cegamente).
 5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
    operacional: em WSL2 é preciso `usbipd-win` no host Windows
    (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da

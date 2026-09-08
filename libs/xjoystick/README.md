@@ -21,7 +21,7 @@ parte da `mixr_dep`) mais um `( JoystickIoHandler )` desta lib, no slot `ioHandl
                ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI     <- aileron
                ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI    <- profundor
                ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI   <- leme
-               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI <- manete
+               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -1.0 ) // THROTTLE_AI <- manete
             }
          )
       }
@@ -76,9 +76,12 @@ chamadas pelo laço de background do runner (`app`/pocs) na mesma cadência do r
    cutoff. `DynamicsModel::setThrottles()` é unidirecional — `0.0` idle, `1.0` MIL, `2.0`
    pós-combustão (ver o comentário de `DynamicsModel.hpp`; é a mesma faixa `[0.0, 2.0]` que o
    `.cpp` clampa antes de chamar `setThrottles()`) — ao contrário de roll/pitch/leme (`-1..1`,
-   sem transformação nenhuma). É por isso que só o `ai: 4` leva `offset: 1.0 gain: -0.5`: o
+   sem transformação nenhuma). É por isso que só o `ai: 4` leva `offset: 1.0 gain: -1.0`: o
    `AnalogInput` calcula `t = (raw - offset) * gain`, e essa combinação inverte e reescala de
-   `[-1,1]` para `[0,1]` no mesmo passo (`raw=-1 → t=1.0`; `raw=+1 → t=0.0`).
+   `[-1,1]` para `[0,2]` no mesmo passo (`raw=-1 → t=2.0`; `raw=+1 → t=0.0`).
+   **CORRIGIDO (não redescobrir):** o `gain` já foi `-0.5` — a conta batia sozinha, mas só
+   alcançava `[0,1]` (nunca saía de MIL); achado por auditoria, sem verificação com joystick
+   físico depois da troca.
 5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
    operacional — em WSL2 é preciso `usbipd-win` no host Windows
    (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da
