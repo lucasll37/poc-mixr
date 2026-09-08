@@ -8,6 +8,7 @@
 #include "app/ComponentTreePanel.hpp"
 #include "app/DashboardState.hpp"
 #include "app/EdlEditorState.hpp"
+#include "app/EdlSyntaxHighlight.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
 #include "app/LogPanel.hpp"
@@ -172,6 +173,131 @@ Element renderBtLine(const BtTreeLine& line, const bool isActiveLeaf, const bool
    if (isBreakpoint) e = hbox({e, text(" [BP]") | color(Color::Red) | bold});
    if (isSelected) e = e | inverted;
    return e;
+}
+
+// Destaque de sintaxe .edl da aba "EDL" (F7, ver mais abaixo) -- MESMA
+// gramatica e MESMA paleta (tema escuro) do editor grafico web
+// (src/ui/edl_builder.jsx, tokens '.tok-*'/variaveis '--syn-*'). O
+// tokenizador em si (sem FTXUI) mora em app/EdlSyntaxHighlight.hpp; aqui so'
+// a cor.
+Color edlTokenColor(const EdlTokenKind kind)
+{
+   switch (kind) {
+      case EdlTokenKind::Comment:   return Color::RGB(0x7E, 0x89, 0x83);
+      case EdlTokenKind::String:    return Color::RGB(0x8F, 0xCB, 0x9E);
+      case EdlTokenKind::ClassName: return Color::RGB(0x9D, 0xBB, 0xE3);
+      case EdlTokenKind::SlotName:  return Color::RGB(0xE8, 0xC2, 0x84);
+      case EdlTokenKind::Bool:      return Color::RGB(0xD9, 0x8A, 0x4A);
+      case EdlTokenKind::Num:       return Color::RGB(0xC3, 0xAD, 0xEA);
+      case EdlTokenKind::Punct:     return Color::RGB(0x8B, 0x96, 0x8E);
+      case EdlTokenKind::Value:
+      case EdlTokenKind::Plain:
+      default:                    return Color::RGB(0xE7, 0xEA, 0xE4);
+   }
+}
+
+Element edlTokenSpan(const std::string& piece, const EdlTokenKind kind)
+{
+   Element e{text(piece) | color(edlTokenColor(kind))};
+   if (kind == EdlTokenKind::Comment) e = e | dim;
+   if (kind == EdlTokenKind::ClassName) e = e | bold;
+   return e;
+}
+
+// Uma linha da previa colorida -- tokeniza SO' esta linha (comentario/
+// pontuacao nunca atravessam '\n', e string multi-linha e' caso extremo
+// nunca visto num '.edl' de producao deste repositorio; aceitavel nao
+// colorir esse caso raro em troca de nao ter que rastrear deslocamento
+// absoluto entre linhas). Quando 'isCursorLine', localiza o TOKEN que
+// contem 'cursorCol' (ou o fim da linha) e corta so' ELE em ate 3 pedacos,
+// preservando a cor nos tres -- mesma forma de
+// 'ftxui::InputBase::OnRender()' (input.cpp), so' por token em vez de uma
+// unica 'Text(linha)'. O pedaco do meio carrega 'cursorDecorator' -- o
+// MESMO 'focus'/'focusCursorBarBlinking' que o Input nativo aplicaria --
+// pra 'frame()' (por fora, no editorBox de edlTab) continuar sabendo pra
+// onde rolar.
+Element renderEdlLine(const std::string& line, const bool isCursorLine,
+                      const std::string::size_type cursorCol, const Decorator& cursorDecorator)
+{
+   Elements spans;
+   const std::vector<EdlToken> tokens{tokenizeEdlText(line)};
+
+   if (!isCursorLine) {
+      for (const EdlToken& tok : tokens) spans.push_back(edlTokenSpan(tok.text, tok.kind));
+      return spans.empty() ? Element{text("")} : hbox(std::move(spans));
+   }
+
+   std::string::size_type offset{0};
+   bool placed{false};
+   for (const EdlToken& tok : tokens) {
+      const std::string::size_type len{tok.text.size()};
+      if (!placed && cursorCol >= offset && cursorCol < offset + len) {
+         const std::string::size_type local{cursorCol - offset};
+         const std::string before{tok.text.substr(0, local)};
+         const std::string atCursor{tok.text.substr(local, 1)};
+         const std::string after{tok.text.substr(local + 1)};
+         if (!before.empty()) spans.push_back(edlTokenSpan(before, tok.kind));
+         spans.push_back(edlTokenSpan(atCursor, tok.kind) | cursorDecorator);
+         if (!after.empty()) spans.push_back(edlTokenSpan(after, tok.kind));
+         placed = true;
+      } else {
+         spans.push_back(edlTokenSpan(tok.text, tok.kind));
+      }
+      offset += len;
+   }
+   if (!placed) spans.push_back(text(" ") | cursorDecorator); // cursor no fim da linha (ou linha vazia)
+   return hbox(std::move(spans)) | xflex;
+}
+
+// Reconstroi a MESMA forma que 'ftxui::Input' monta por dentro (uma linha
+// por '\n', o glifo do cursor marcado com o decorador de foco certo, 'vbox'
+// + 'frame' por fora pra rolar -- ver input.cpp, InputBase::OnRender()), so'
+// que colorindo por TOKEN em vez de uma unica 'text(linha)' por linha.
+// Precisa da posicao do cursor (nao so' do texto) porque, sem marcar o
+// glifo certo com 'focus'/'focusCursorBarBlinking', o 'frame()' de fora
+// (editorBox, em edlTab) nao teria pra ONDE rolar num arquivo maior que a
+// tela -- exatamente a mesma marcacao que o Input nativo ja fazia, so' que
+// aqui refeita a mao porque estamos descartando o 'InputState::element'
+// dele (ver o comentario grande em 'edlInputOpt.transform', mais abaixo,
+// para o "porque" de precisar descartar).
+Element renderHighlightedEdlText(const std::string& source, const int cursorPosition,
+                                 const bool focused, const bool hovered)
+{
+   const auto cursorPos{static_cast<std::string::size_type>(
+      std::clamp(cursorPosition, 0, static_cast<int>(source.size())))};
+
+   std::vector<std::string> lines;
+   {
+      std::string::size_type start{0};
+      while (true) {
+         const std::string::size_type nl{source.find('\n', start)};
+         lines.push_back(source.substr(start, nl == std::string::npos ? std::string::npos : nl - start));
+         if (nl == std::string::npos) break;
+         start = nl + 1;
+      }
+   }
+
+   int cursorLine{0};
+   std::string::size_type cursorCharIndex{cursorPos};
+   for (const auto& line : lines) {
+      if (cursorCharIndex <= line.size()) break;
+      cursorCharIndex -= line.size() + 1;
+      ++cursorLine;
+   }
+
+   // Mesma escolha de decorador que InputBase::OnRender() faz (ver
+   // input.cpp) -- 'insert()' e' sempre 'true' aqui (nunca alternado por
+   // nenhuma tecla desta aba), entao o ramo 'focusCursorBlockBlinking' (so'
+   // usado no modo overtype) nunca se aplica.
+   const Decorator cursorDecorator{(!focused && !hovered) ? focus : focusCursorBarBlinking};
+
+   Elements rendered;
+   rendered.reserve(lines.size());
+   for (std::size_t i{0}; i < lines.size(); ++i) {
+      rendered.push_back(
+         renderEdlLine(lines[i], static_cast<int>(i) == cursorLine, cursorCharIndex, cursorDecorator));
+   }
+   return vbox(std::move(rendered)) | frame;
 }
 
 }
@@ -538,6 +664,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    bool edlHasStatus{};
    bool edlStatusOk{};
    std::string edlStatusMessage;
+   // Armazenamento PROPRIO da posicao do cursor do 'edlInput' -- ligado por
+   // ponteiro em 'edlInputOpt.cursor_position' (mais abaixo), pelo mesmo
+   // motivo de 'editedEdlText' acima: a previa colorida (ver
+   // renderHighlightedEdlText()) precisa ler a posicao de FORA da classe
+   // Input pra saber onde marcar o glifo do cursor.
+   int edlCursorPos{};
 
    // ---- acoes nomeadas: cada una e usada por TECLA e por BOTAO ----
    //
@@ -1273,6 +1405,40 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    InputOption edlInputOpt;
    edlInputOpt.multiline = true;
    edlInputOpt.placeholder = "(cenario vazio -- " + generatedEdlPath + " nao pode ser lido)";
+   // 'cursor_position' precisa de armazenamento PROPRIO (em vez do default,
+   // interno ao Input) porque o 'transform' abaixo -- fora da classe --
+   // precisa ler a posicao atual pra saber ONDE marcar o glifo do cursor na
+   // previa colorida (ver renderHighlightedEdlText(), acima).
+   edlInputOpt.cursor_position = &edlCursorPos;
+   // Destaque de sintaxe (renderHighlightedEdlText(), acima) SEMPRE que ha'
+   // texto -- nao so' "fora de edicao": 'edlInput->TakeFocus()' (mais
+   // abaixo, no comentario grande sobre 'appRoot') roda a CADA redesenho
+   // enquanto esta aba esta em cena, entao 'state.focused' aqui e'
+   // efetivamente PERMANENTE (confirmado rodando: a UNICA vez que aparece
+   // sem foco e' um instante antes do primeiro redesenho) -- gatear a cor
+   // por 'state.focused' deixaria a previa colorida como codigo morto.
+   //
+   // 'InputState::element' que o ftxui::Input entrega aqui ja' vem MONTADO
+   // (uma unica 'text(linha)' por linha, sem token nenhum) -- nao ha' API
+   // publica pra reler o texto cru dali e recolorir por token sem tambem
+   // jogar fora a caixa PRIVADA que o proprio Input usa pra posicionar o
+   // cursor no CLIQUE do mouse (cursor_box_, so' atualizada quando a
+   // arvore que ELE construiu chega a ser desenhada -- ver input.cpp,
+   // InputBase::HandleMouse()/OnRender()). Reconstruir essa arvore do
+   // zero, aqui, e' o unico jeito de colorir por token -- o preco e'
+   // precisao de CLIQUE do mouse em algum ponto do meio do texto (o clique
+   // continua funcionando para focar/rolar, so' pode nao acertar o
+   // caractere exato). Movimento de cursor por TECLADO (setas/Home/End/
+   // backspace/...) e' preservado 100% -- 'cursor_position()' e' calculado
+   // e mutado por 'InputBase' ANTES deste 'transform' rodar, nunca depende
+   // do que ele devolve -- e 'renderHighlightedEdlText()' remarca o glifo
+   // do cursor com 'focus'/'focusCursorBarBlinking' pra 'frame()' (por
+   // fora, no editorBox de edlTab) continuar rolando ate' ele, exatamente
+   // como o Input nativo ja fazia.
+   edlInputOpt.transform = [&](InputState state) -> Element {
+      if (state.is_placeholder) return InputOption::Default().transform(state);
+      return renderHighlightedEdlText(editedEdlText, edlCursorPos, state.focused, state.hovered);
+   };
    const Component edlInput{Input(&editedEdlText, edlInputOpt)};
 
    const Component btnEdlValidate{makeButton("[F8] Validar", doEdlValidate)};
@@ -1320,7 +1486,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
               "[F8]/[Validar] roda o oraculo 'edlcheck'; [F9]/[Rodar versao editada] "
               "reexecuta o app com o texto atual (via -f, o mesmo caminho de uma fixture de "
               "teste), sem tocar em nenhum '.edl'/'.edl.in' de origem; "
-              "[F10]/[Reverter] descarta a edicao. Roda do mouse rola o texto.") | dim,
+              "[F10]/[Reverter] descarta a edicao. Roda do mouse rola o texto. "
+              "O texto aparece colorido por sintaxe (mesma paleta do editor grafico web, "
+              "src/ui/edl-builder.html); clique no meio do texto foca/rola normalmente, "
+              "so' pode nao acertar o caractere exato -- use as setas para posicionar o "
+              "cursor com precisao.") | dim,
          edlButtons->Render(),
       });
    })};

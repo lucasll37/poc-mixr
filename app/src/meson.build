@@ -20,7 +20,7 @@ host_sources = files(
     'app/TerrainQuery.cpp', 'app/LogPanel.cpp', 'app/Shutdown.cpp',
     'app/ComponentTreeQuery.cpp', 'app/ComponentTreePanel.cpp',
     'app/ComponentFlowState.cpp', 'app/FrameCallChain.cpp',
-    'app/EdlEditorState.cpp', 'app/ScenarioFolder.cpp',
+    'app/EdlEditorState.cpp', 'app/EdlSyntaxHighlight.cpp', 'app/ScenarioFolder.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc

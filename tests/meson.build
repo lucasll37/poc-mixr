@@ -245,6 +245,21 @@ test_app_edl_editor = executable('test-app-edl-editor-state',
 )
 test('app-edl-editor-state', test_app_edl_editor, suite: 'domain', timeout: 60)
 
+# O destaque de sintaxe .edl da aba "EDL" (F7) -- MESMA gramatica/precedencia
+# de src/ui/edl_builder_core.js::tokenizeEdlText(), a que ja' colore a
+# "Pre-visualizacao .edl" do editor grafico web. Sem MIXR, sem FTXUI -- so'
+# string in, tokens out (a parte que COLORE, com Color/Element de verdade,
+# fica em app/src/app/DashboardLoop.cpp, junto do resto do desenho da aba).
+test_app_edl_syntax = executable('test-app-edl-syntax-highlight',
+    files('../app/tests/test_edl_syntax_highlight.cpp') + files(
+        '../app/src/app/EdlSyntaxHighlight.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-edl-syntax-highlight', test_app_edl_syntax, suite: 'domain', timeout: 60)
+
 # app::parseCommandLine() -- traducao de argv para Options, incluindo os
 # die() de token invalido/flag sem valor/'-deterministic' <= 0 (via death
 # test -- e o unico jeito de exercitar um std::exit() sem matar a suite).
