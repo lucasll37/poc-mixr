@@ -604,11 +604,27 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const auto cancelPendingAction = [&] { pendingAction = PendingAction::None; uiDepth = 0; };
 
+   // ACHADO POR AUDITORIA (nao redescobrir): 'mapView.dragging'/
+   // 'componentsView.dragging' so' eram desarmados dentro do bloco
+   // 'if (activeTab == 1/5)' mais abaixo, quando um 'Mouse::Released' chega
+   // com aquela aba ainda ATIVA. Trocar de aba por tecla F1..F7/botao (ou
+   // armar o dialogo de confirmacao com 'r'/'q') NUNCA passa por ali -- os
+   // dois sao tratados incondicionalmente, ANTES de qualquer checagem de
+   // 'activeTab', e o dialogo ainda ROTEIA os proximos eventos pra
+   // 'confirmDialog' (uiDepth==1), nunca mais pra este CatchEvent. Um
+   // arrasto em andamento (botao ainda pressionado fisicamente) largado
+   // assim ficava 'dragging=true' PRA SEMPRE -- ao voltar pra aba
+   // Mapa/Componentes, todo evento de mouse novo (inclusive um CLIQUE
+   // simples) caia direto no ramo "arrasto em andamento" e a aba parava de
+   // responder a mouse. Chamado nos DOIS pontos de saida de um arrasto:
+   // trocar de aba e armar o dialogo disruptivo.
+   const auto cancelAnyDrag = [&] { mapView.dragging = false; componentsView.dragging = false; };
+
    // As duas que TECLA/BOTAO chamam de verdade -- so ARMAM o dialogo,
    // pedido explicito de confirmacao pras duas acoes disruptivas.
-   const auto doRestart = [&] { pendingAction = PendingAction::Restart; uiDepth = 1; };
-   const auto doQuit = [&] { pendingAction = PendingAction::Quit; uiDepth = 1; };
-   const auto gotoTab = [&](const int index) { activeTab = index; };
+   const auto doRestart = [&] { cancelAnyDrag(); pendingAction = PendingAction::Restart; uiDepth = 1; };
+   const auto doQuit = [&] { cancelAnyDrag(); pendingAction = PendingAction::Quit; uiDepth = 1; };
+   const auto gotoTab = [&](const int index) { cancelAnyDrag(); activeTab = index; };
 
    // ---- acoes da aba "EDL" (F7) -- ver app/EdlEditorState.hpp. As tres
    // escrevem SEMPRE em editedScenarioPath(), nunca em 'generatedEdlPath'

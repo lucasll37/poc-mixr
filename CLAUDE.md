@@ -3448,6 +3448,36 @@ sem levantar a TUI inteira; era esse ponto cego que escondeu o bug. Testado com
 verificado que os 2 casos multibyte FALHAM se o `substr(local,1)` original for reintroduzido —
 prova de que o teste pega a regressão, não só compila.
 
+**Vigésima nona passada (auditoria autônoma): três correções no editor gráfico web
+(`src/ui/`) e uma no `./app` (arrasto do mouse preso ao trocar de aba).**
+
+- `RAW_VECTOR_RE`/`LOOKS_LIKE_NUMBER_RE` (`edl_builder_core.js`) só reconheciam
+  `\d+(\.\d+)?` — notação científica/`.5`/`5.` num valor numérico (ex.: `Table2.data`) caía
+  no fallback de `JSON.stringify()` na reexportação e virava `base::String`, trocando o tipo
+  real do lado MIXR. Corrigido com `RAW_NUMBER_SRC`, a mesma forma de número que `NUM_RE`
+  (`edl_parser_core.js`) já usa.
+- O tokenizer de string (`edl_parser_core.js`) descartava o backslash de `\X` ao carregar um
+  `.edl` — `edl_scanner.l` não interpreta escape nenhum (o `\\.` no padrão só existe pra não
+  terminar a string cedo demais num `\"` embutido; a ação copia byte a byte). `\X` na fonte
+  tem que sobreviver como DOIS caracteres no valor carregado.
+- `TRUE`/`FALSE` maiúsculo não virava booleano — só `true`/`false` minúsculo eram
+  reconhecidos, apesar de `edl_scanner.l` ter as quatro regras (`True`/`False`, caixa mista,
+  continua fora — a gramática real também não reconhece essa forma).
+- **`./app`**: `mapView.dragging`/`componentsView.dragging` (abas Mapa/Componentes) ficavam
+  presos em `true` para sempre quando uma tecla F1–F7 trocava de aba, ou `r`/`q` armava o
+  diálogo de confirmação, no meio de um arrasto — os dois são tratados incondicionalmente,
+  antes de qualquer checagem de `activeTab`, e nunca passavam pelo `Mouse::Released` que
+  desarma o campo. Ao voltar pra Mapa/Componentes, todo mouse novo (inclusive um clique
+  simples) caía no ramo "arrasto em andamento" e a aba parava de responder. Corrigido com
+  `cancelAnyDrag()`, chamado dentro de `gotoTab()`/`doRestart()`/`doQuit()` — os únicos três
+  pontos que mudam `activeTab`/armam o diálogo.
+
+Cada um dos três fixes de `src/ui/` tem teste de regressão verificado (falha com o código
+antigo, passa com o fix) e `node src/ui/scripts/build.js` (pipeline completo) rodado até o
+fim; o de `./app` teve o fluxo de estado conferido por inspeção (única via de mutação de
+`activeTab`/`uiDepth`, confirmado por `grep`) e um teste de fumaça sob pty (drag → troca de
+aba no meio → volta → clique) sem travar/crashar.
+
 ## `src/node` — runner headless e independente de um cenário
 
 Quarto binário do host (depois de `app`, `edlcheck`, `plugininfo`), mas de natureza diferente dos
