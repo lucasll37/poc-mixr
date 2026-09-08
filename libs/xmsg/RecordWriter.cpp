@@ -17,6 +17,44 @@ void RecordWriter::put(const char* const s)
    buf_[len_] = '\0';
 }
 
+namespace {
+
+// ACHADO POR AUDITORIA (nao redescobrir): o escape original de addLabel()
+// so cobria aspas/barra/controles ASCII (<0x20) -- qualquer byte >= 0x80
+// passava cru. 'value' pode ser EntityMarking::marking (11 bytes CRUS de
+// um PDU DIS, sem garantia NENHUMA de charset -- ver o comentario de
+// addLabel() abaixo), entao um byte alto isolado ou uma sequencia
+// malformada produzia uma linha .jsonl que nao e UTF-8 valido -- QUALQUER
+// leitor padrao (inclusive tests/scenario/run_scenario_test.py, JA
+// existente neste repositorio, que abre o .jsonl com
+// encoding="utf-8") quebra com UnicodeDecodeError antes mesmo de tentar
+// json.loads(). Validacao MINIMA (forma da sequencia: lead byte + N bytes
+// de continuacao 10xxxxxx -- nao valida overlong encoding nem faixa de
+// codepoint, so' o suficiente pra decidir se e' seguro deixar os bytes
+// crus) -- roda uma vez por chamada, nao por char, pra nao mudar o
+// comportamento de texto pt-BR legitimo (acento e' UTF-8 multi-byte
+// valido e continua saindo cru).
+bool isValidUtf8(const char* const s)
+{
+   auto* p{reinterpret_cast<const unsigned char*>(s)};
+   while (*p != '\0') {
+      int extra{};
+      if ((*p & 0x80) == 0x00)      extra = 0;   // ASCII
+      else if ((*p & 0xE0) == 0xC0) extra = 1;
+      else if ((*p & 0xF0) == 0xE0) extra = 2;
+      else if ((*p & 0xF8) == 0xF0) extra = 3;
+      else return false;                          // lead byte invalido
+
+      ++p;
+      for (int i{}; i < extra; ++i, ++p) {
+         if ((*p & 0xC0) != 0x80) return false;    // byte de continuacao ausente/invalido
+      }
+   }
+   return true;
+}
+
+} // namespace
+
 void RecordWriter::putChar(const char c)
 {
    if (len_ + 1 >= CAPACITY) { overflow_ = true; return; }
@@ -63,7 +101,9 @@ void RecordWriter::addLabel(const char* const key, const char* const value)
    // Sem escapar, um nome malicioso tipo 'x","q":1' injeta um campo JSON
    // inteiro na linha gravada -- confirmado reproduzindo com json.loads().
    // Escapa char a char, sem alocar (mesma filosofia de buffer fixo desta
-   // classe -- ver o cabecalho do .hpp).
+   // classe -- ver o cabecalho do .hpp). 'asciiSafe' decide o tratamento
+   // de byte >= 0x80 -- ver isValidUtf8() acima.
+   const bool utf8Ok{isValidUtf8(value)};
    for (const char* p{value}; *p != '\0'; ++p) {
       const unsigned char c{static_cast<unsigned char>(*p)};
       switch (c) {
@@ -73,7 +113,7 @@ void RecordWriter::addLabel(const char* const key, const char* const value)
          case '\r': put("\\r"); break;
          case '\t': put("\\t"); break;
          default:
-            if (c < 0x20) {
+            if (c < 0x20 || (!utf8Ok && c >= 0x80)) {
                char esc[8]{};
                std::snprintf(esc, sizeof(esc), "\\u%04x", c);
                put(esc);

@@ -78,4 +78,41 @@ TEST(RecordWriter, CaractereDeControleViraEscapeUnicode)
    EXPECT_NE(json.find(R"(a\u0001b)"), std::string::npos) << json;
 }
 
+// ACHADO POR AUDITORIA (autorevisao desta sessao, nao redescobrir): o
+// primeiro fix so escapava < 0x20 -- byte >= 0x80 passava cru, e um valor
+// vindo de EntityMarking::marking (PDU DIS, sem garantia de charset) podia
+// produzir UTF-8 invalido. Os dois testes abaixo cobrem os dois lados:
+// UTF-8 LEGITIMO (acento, convencao pt-BR do projeto) continua saindo cru,
+// e uma sequencia MALFORMADA (o caso adversarial) sai toda escapada.
+
+TEST(RecordWriter, AcentoUtf8ValidoPassaCru)
+{
+   // 'ca\xc3\xa7ador' = "caçador" em UTF-8 -- 0xc3 0xa7 e' uma sequencia de
+   // 2 bytes bem formada (lead 110xxxxx + continuation 10xxxxxx).
+   const std::string valor{"ca\xc3\xa7" "ador"};
+   const std::string json{linhaComUmLabel("player", valor.c_str())};
+   EXPECT_NE(json.find(valor), std::string::npos)
+      << "UTF-8 valido nao deveria ser escapado byte a byte: " << json;
+}
+
+TEST(RecordWriter, SequenciaUtf8InvalidaSaiEscapadaEProduzJsonUtf8Valido)
+{
+   // 0x80 sozinho (byte de continuacao sem lead byte) -- invalido em
+   // qualquer posicao. O payload que a auditoria reproduziu com
+   // UnicodeDecodeError antes deste fix.
+   const std::string valor{"x\x80y"};
+   const std::string json{linhaComUmLabel("player", valor.c_str())};
+
+   EXPECT_NE(json.find("\\u0080"), std::string::npos)
+      << "byte 0x80 invalido deveria sair como \\u0080: " << json;
+
+   // A prova que importa: o documento inteiro, char a char, so tem bytes
+   // ASCII (< 0x80) -- UTF-8 valido por definicao, decodavel por QUALQUER
+   // leitor de texto padrao (o mesmo leitor que antes deste fix quebrava
+   // com UnicodeDecodeError, ex. tests/scenario/run_scenario_test.py).
+   for (const unsigned char c : json) {
+      ASSERT_LT(c, 0x80) << "byte alto nao-ASCII vazou sem escape: " << json;
+   }
+}
+
 } // namespace
