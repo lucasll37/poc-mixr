@@ -1,4 +1,4 @@
-.PHONY: clean check-root configure build test install install-host uninstall-host help create-bt update-bt open-groot
+.PHONY: build test install install-host uninstall-host create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -31,95 +31,26 @@
 # 'make install' na raiz, compilar e util para iterar (ver 'make test') mas
 # nao roda em cenario nenhum -- ver models/players/fixtures/stub/README.md para o
 # mesmo "porque" aplicado la.
+#
+# check-root/configure/clean/help sao COMPARTILHADOS com models/players/
+# template/Makefile -- moram em ../../common.mk (o texto era ~65-70 linhas
+# identicas entre os dois, e ja tinha comecado a divergir em REDACAO). Este
+# arquivo so acrescenta o que e genuinamente proprio de flight: os dois
+# artefatos, os dados, e create-bt/update-bt/open-groot.
 # ==============================================================================
 
 ROOT      := $(abspath ../../..)
-PWD       := $(shell pwd)
-BUILD_DIR := ./build
-DEST_DIR  := $(PWD)/dist
 BUILD_TYPE ?= Debug
 TESTS     ?= true
 VARIANTS  ?= false
 ASAN      ?= false
 
-PKG_PATH  := $(ROOT)/dist/lib/pkgconfig,$(ROOT)/build
-NINJA_JOBS := $(shell nproc)
+EXTRA_MESON_OPTS := -Dvariants=$(VARIANTS) -Dasan=$(ASAN)
+EXTRA_STALE_KEY  := $(VARIANTS)|$(ASAN)
 
-RED := \033[0;31m
-GREEN := \033[0;32m
 YELLOW := \033[1;33m
-NC := \033[0m
 
-clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no ../../../dist do host).
-	rm -rf $(BUILD_DIR) $(DEST_DIR)
-
-check-root: ## Confere que o projeto HOST ja publicou o SDK (pre-requisito, uma vez).
-	@test -f $(ROOT)/build/conan_meson_native.ini || { \
-		echo "$(RED)faltando $(ROOT)/build/conan_meson_native.ini$(NC)"; \
-		echo "  rode 'cd $(ROOT) && make configure' primeiro (uma vez)."; exit 1; }
-	@test -f $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc || { \
-		echo "$(RED)faltando o SDK de plugin em $(ROOT)/dist$(NC)"; \
-		echo "  rode 'cd $(ROOT) && make sdk' primeiro (uma vez)."; exit 1; }
-	@echo "$(GREEN)check-root: OK$(NC) -> SDK do host publicado em $(ROOT)/dist"
-
-configure: check-root ## meson setup, isolado neste projeto (./build), consumindo o SDK/Conan do host por pkg-config.
-	@mkdir -p $(BUILD_DIR)
-	@# So reconfigura (caro: reavalia TODAS as dependencias, ~1-2s) se o
-	@# build.ninja nao existe AINDA, se TESTS/VARIANTS/ASAN/BUILD_TYPE
-	@# mudaram desde a ultima vez, OU se meson.build/meson_options.txt
-	@# foram editados (STALE) -- 'meson compile'/'install', chamados
-	@# depois, ja fazem seu proprio no-op rapido quando nada mudou; era o
-	@# --reconfigure INCONDICIONAL (repetido a cada 'make run-*'/'test')
-	@# que respondia pela maior parte do tempo de um "so rodar de novo".
-	@# A checagem STALE existe porque o NINJA tem seu PROPRIO regen
-	@# automatico (dispara sozinho quando meson.build muda, independente
-	@# deste guard) e ele NAO repassa '-Dpkg_config_path' -- confirmado
-	@# quebrando: editar meson.build e rodar 'make models' de novo, sem
-	@# passar por aqui, falhava com "Dependency poc-mixr-sdk not found".
-	@# O native-file do Conan entra no STALE junto com os meson.build: um
-	@# 'make configure' na RAIZ reescreve conan_meson_native.ini, e o regen
-	@# AUTOMATICO do ninja dispara por causa dele -- sem repassar
-	@# '-Dpkg_config_path', exatamente como descrito acima. Confirmado
-	@# quebrando: 'make configure' na raiz seguido de 'make test' falhava com
-	@# "Dependency poc-mixr-sdk not found", com o .pc presente em dist/.
-	@#
-	@# O proprio poc-mixr-sdk.pc entra pelo MESMO motivo, e a falha e ainda
-	@# mais silenciosa: o meson resolve o 'Libs:' do .pc em tempo de CONFIGURE
-	@# e grava os caminhos das .so direto no build.ninja. Uma lib NOVA no SDK
-	@# (o -lxinfer, por exemplo) nao aparece em lugar nenhum -- nem o guard nem
-	@# o regen do ninja percebem -- e o link do plugin falha com "undefined
-	@# reference" a uma funcao que existe e esta exportada. Confirmado
-	@# quebrando, exatamente assim.
-	@#
-	@# E por isso que o ramo de reconfiguracao comeca com 'meson configure
-	@# --clearcache': o meson CACHEIA o resultado do pkg-config entre
-	@# execucoes, e '--reconfigure' sozinho reusa o cache -- medido, a
-	@# dependencia continuava com as 4 .so antigas do SDK depois de um
-	@# reconfigure completo. ('--clearcache' e argumento de 'meson configure',
-	@# nao de 'meson setup' -- passa-lo ao setup faz o meson recusar a linha
-	@# inteira, e a falha se parece com "nao mudou nada".)
-	@WANT="$(BUILD_TYPE)|$(TESTS)|$(VARIANTS)|$(ASAN)"; \
-	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
-	 STALE=$$(find meson.build meson_options.txt $(ROOT)/build/conan_meson_native.ini $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc -newer $(BUILD_DIR)/build.ninja 2>/dev/null); \
-	 if [ -f $(BUILD_DIR)/build.ninja ] && [ "$$WANT" = "$$GOT" ] && [ -z "$$STALE" ]; then \
-	    :; \
-	 else \
-	    if [ -f $(BUILD_DIR)/build.ninja ]; then \
-	       meson configure $(BUILD_DIR) --clearcache >/dev/null 2>&1 || true; \
-	    fi; \
-	    meson setup --reconfigure \
-	       --backend ninja \
-	       --buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
-	       --native-file $(ROOT)/build/conan_meson_native.ini \
-	       --prefix=$(DEST_DIR) \
-	       --libdir=$(DEST_DIR)/lib \
-	       -Dpkg_config_path=$(PKG_PATH) \
-	       -Dtests=$(TESTS) \
-	       -Dvariants=$(VARIANTS) \
-	       -Dasan=$(ASAN) \
-	       $(BUILD_DIR)/ .; \
-	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
-	 fi
+include $(ROOT)/models/common.mk
 
 build: configure ## Compila libflight.so + libflight_tc.so.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -178,6 +109,3 @@ open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (ROOT/deps/groot/cona
 	else \
 		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan."; \
 	fi
-
-help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

@@ -1441,6 +1441,24 @@ iterar num modelo so, sem o resto do repositorio aberto. Detalhes e as armadilha
 de caminho: o `README.md` de cada projeto de modelo (ex.: `models/players/template/README.md`, seção
 "Usando este diretório como ponto de partida para um modelo novo").
 
+**`models/common.mk`** (achado por auditoria, extraído depois de medir — não por suspeita)
+carrega o que é **genuinamente idêntico** entre `models/players/A-4/Makefile` e
+`models/players/template/Makefile`: o bloco de variáveis e os alvos `check-root`/`configure`/
+`clean`/`help` — ~90 linhas que já tinham começado a divergir em REDAÇÃO (não em lógica) entre
+os dois antes da extração, o sintoma exato que uma fonte única evita. `build`/`test`/`install`/
+`install-host`/`uninstall-host` (a lista de `.so` publicada e o diretório de dados são
+por-modelo de propósito) e os alvos exclusivos de um projeto (`create-bt`/`update-bt`/
+`open-groot`, hoje só em A-4) continuam no Makefile de cada um, declarados **depois** do
+`include $(ROOT)/models/common.mk`. `ROOT := $(abspath ../../..)` continua sendo uma linha
+literal em **cada** Makefile-filho, nunca movida para `common.mk` — é ela que
+`scripts/models.sh::linha_root()` acha e ajusta pela profundidade real do destino a cada
+`make new-model`; `include $(ROOT)/...` já usa esse valor corrigido, então `scripts/models.sh`
+não precisou de nenhuma mudança. **Achado rodando, não só lendo** (a mesma disciplina desta
+seção inteira): `help:`'s `grep` sobre `$(MAKEFILE_LIST)` precisou virar `grep -h` — com dois
+arquivos na lista em vez de um, o comportamento multi-arquivo padrão do grep passou a prefixar
+cada linha com o nome do arquivo, empurrando o nome do ALVO pra fora da primeira coluna do
+`make help`.
+
 ### Desacoplando `models` de `dist/` -- `plugins/` e o unico deposito
 
 **`make models` nao escreve em `dist/lib/mixr-plugins/` -- nunca.** flight (producao) e template
