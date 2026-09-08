@@ -81,6 +81,22 @@ test("tokenize: string alternativa '<...>' vira STR -- faltava inteiramente no c
   assert.strictEqual(strTok.raw, "<ff00ff>", "raw deveria preservar os delimitadores originais");
 });
 
+test("tokenize: string entre aspas NAO interpreta escape -- '\\X' vira DOIS caracteres, gramatica real nao processa nenhum", () => {
+  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l:223-232 so' copia
+  // o conteudo entre aspas byte a byte (utStrcpy sobre yytext+1); o '\\.' no
+  // PADRAO existe so' pra o lexer nao terminar a string cedo demais num '\"'
+  // embutido -- a ACAO nao descarta o backslash. Um valor como '"a\\"b"' na
+  // fonte tem de carregar como os 4 caracteres 'a', '\\', '"', 'b', nao 'a"b'
+  // (3 caracteres, escape estilo C que este scanner nao tem).
+  const toks = parser.tokenize('caminho: "C:\\\\data"');
+  const strTok = toks.find((t) => t.t === "STR");
+  assert.strictEqual(strTok.v, "C:\\\\data", "os DOIS backslashes da fonte tem que sobreviver, nao virar um so'");
+
+  const toks2 = parser.tokenize('nome: "a\\"b"');
+  const strTok2 = toks2.find((t) => t.t === "STR");
+  assert.strictEqual(strTok2.v, 'a\\"b', "backslash + aspas embutida sobrevivem os DOIS, o valor real tem 4 caracteres");
+});
+
 test("tokenize: virgula e' espaco em branco puro (gramatica real: '[ ,\\t\\v\\f]'), nao separador", () => {
   const shape = (toks) => toks.map((t) => t.t + (t.v !== undefined ? ":" + t.v : ""));
   const a = parser.tokenize("( Aircraft type: C310 debugLevel: 1 )");

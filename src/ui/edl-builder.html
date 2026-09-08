@@ -78461,9 +78461,18 @@ function tokenize(text) {
     if (c === "/" && text[i + 1] === "/") { while (i < n && text[i] !== "\n") i++; continue; }
     if ("(){}[]:".includes(c)) { tokens.push({ t: c, line }); i++; continue; }
     if (c === '"') {
+      // ACHADO POR AUDITORIA (nao redescobrir): a gramatica real
+      // (edl_scanner.l:223-232) NAO interpreta escape nenhum -- o padrao
+      // '\"(\\.|[^\\"])*\"' so' existe pra o lexer nao terminar a string
+      // cedo demais num '\"' embutido; a acao copia o conteudo entre aspas
+      // BYTE A BYTE ('utStrcpy(yylval.cvalp, slen, yytext+1)', sem tocar
+      // backslash nenhum). '\X' na fonte vira DOIS caracteres no valor
+      // final ('\' seguido de X), nunca um so'. A forma antiga aqui
+      // ('buf += text[j+1]') descartava o backslash -- 'a\"b' virava 'a"b'
+      // em vez de 'a\"b', trocando o CONTEUDO real do valor carregado.
       let j = i + 1, buf = "";
       while (j < n && text[j] !== '"') {
-        if (text[j] === "\\" && j + 1 < n) { buf += text[j + 1]; j += 2; continue; }
+        if (text[j] === "\\" && j + 1 < n) { buf += text[j] + text[j + 1]; j += 2; continue; }
         if (text[j] === "\n") line++;
         buf += text[j]; j++;
       }
