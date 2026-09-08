@@ -21,6 +21,31 @@ BUILD_TYPE := Debug
 # ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
 ASAN ?= false
 
+# NAME=/PLAYER=/SCENARIO=/ARGS= (new-model, run-app-monitor, run-node,
+# run-node-monitor) sao valores passados pelo USUARIO na linha de comando.
+# CORRIGIDO (nao redescobrir): as receitas desses alvos costumavam
+# interpolar "$(NAME)" etc. -- substituicao de TEXTO do proprio Make, ANTES
+# do shell ver a linha -- direto no meio de uma linha de shell. Uma aspa
+# dupla no valor fecha a citacao mais cedo e o resto vira comando de shell
+# adicional; confirmado explorando de verdade (make new-model
+# NAME='x"; touch /tmp/PWNED; echo "y' criava o arquivo). Um 'case'/'test'
+# de validacao ADICIONADO na mesma receita NAO protege -- a MESMA
+# substituicao de texto acontece nessa linha tambem, entao o comando
+# injetado roda antes mesmo do guard ser avaliado (medido).
+# A correcao de verdade e nunca deixar o Make substituir o valor bruto
+# dentro de uma linha de shell: 'export' bota o valor no AMBIENTE do
+# processo filho, e a receita le com '$$NOME' (variavel de shell, expandida
+# em runtime) em vez de '$(NOME)' (texto do Make) -- os metacaracteres
+# ficam so' dentro do VALOR da variavel, nunca voltam a ser sintaxe de
+# shell. Testado nos dois sentidos: o mesmo payload malicioso vira
+# argumento literal inerte, e ARGS continua dividindo em varias palavras
+# normalmente (word-splitting do shell sozinho, sem reabrir metacaracteres).
+NAME ?=
+PLAYER ?=
+SCENARIO ?=
+ARGS ?=
+export NAME PLAYER SCENARIO ARGS
+
 # Colors for output
 RED := \033[0;31m
 GREEN := \033[0;32m
@@ -209,8 +234,8 @@ sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqu
 # ============================================
 
 new-model: ## Gera um modelo novo em models/players/NAME/ a partir de template/ (NAME= obrigatorio). Ver CONTRIBUTING.md.
-	@test -n "$(NAME)" || { echo "$(RED)uso: make new-model NAME=meu_modelo$(NC)"; exit 1; }
-	scripts/models.sh --name "$(NAME)"
+	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo$(NC)"; exit 1; }
+	scripts/models.sh --name "$$NAME"
 
 # ============================================
 # Build / Install / Package do HOST
@@ -248,17 +273,17 @@ run-app: install ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dent
 	$(DEST_DIR)/bin/app -folder ./sandbox
 
 run-app-monitor: install ## Roda dist/bin/app com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-app-monitor PLAYER=falcon1 [ARGS='-folder src/poc/dis -scenario flight'] (default ARGS: '-folder ./sandbox', a tela de selecao). Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
-	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
-	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/app $(if $(ARGS),$(ARGS),-folder ./sandbox)
+	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
+	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app $${ARGS:--folder ./sandbox}
 
 run-node: install ## Run node (runner headless, sem TUI -- so log no console -- para UM cenario). Uso: make run-node SCENARIO=<arquivo.edl|.edl.in>.
-	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
-	$(DEST_DIR)/bin/node $(SCENARIO)
+	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	$(DEST_DIR)/bin/node "$$SCENARIO"
 
 run-node-monitor: install ## Roda dist/bin/node com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-node-monitor PLAYER=falcon1 SCENARIO=<arquivo.edl|.edl.in>. Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
-	@test -n "$(PLAYER)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
-	@test -n "$(SCENARIO)" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
-	MIXR_GROOT_MONITOR=$(PLAYER) $(DEST_DIR)/bin/node $(SCENARIO)
+	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/node "$$SCENARIO"
 
 venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
 	python3 -m venv src/rl/.venv
