@@ -537,6 +537,19 @@ test('scenario-folder', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
+# DOIS processos './app' competindo pela MESMA porta Tacview ao mesmo tempo --
+# achado por auditoria como buraco de cobertura: o codigo ja degrada
+# graciosamente (RealtimeTelemetryServer::start() so loga e devolve false se
+# o bind() falhar), mas nenhum teste subia dois processos DE VERDADE
+# competindo por ela (toda a suite roda 'is_parallel: false', nunca dois
+# testes de poc ao mesmo tempo). Este teste sobe os dois DENTRO de si mesmo,
+# de proposito. Ver o cabecalho do script.
+test('dual-tacview-port', py,
+     args: files('scenario/run_dual_tacview_port_test.py') + [
+         '--binario', app.full_path(), '--frames', '100'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 300, is_parallel: false)
+
 # A SAIDA do app, no caminho INTERATIVO -- o unico que os testes acima nao
 # alcancam: eles rodam '-deterministic', que nao tem TUI nem thread de tempo
 # critico nativa. Este sobe o binario num pty de verdade, aperta [q] e afirma
