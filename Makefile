@@ -40,6 +40,29 @@ ASAN ?= false
 # shell. Testado nos dois sentidos: o mesmo payload malicioso vira
 # argumento literal inerte, e ARGS continua dividindo em varias palavras
 # normalmente (word-splitting do shell sozinho, sem reabrir metacaracteres).
+#
+# LIMITE CONHECIDO, NAO FECHAVEL DAQUI (achado por autorevisao desta sessao,
+# nao redescobrir tentando "consertar" de novo): o fix acima fecha
+# metacaracteres de SHELL (';'/'&&'/backtick), mas nao fecha a sintaxe de
+# FUNCAO do proprio Make, '$(shell ...)'. 'make new-model
+# NAME=$(shell touch /tmp/x)' ainda executa o touch -- confirmado rodando,
+# inclusive num Makefile de teste minimo SEM nenhuma mencao a NOME nenhum e
+# SEM 'export'. O motivo e estrutural, nao um bug deste arquivo: o GNU Make
+# expande ($(shell ...), $(wildcard ...), etc.) o valor de uma atribuicao
+# de VARIAVEL DA LINHA DE COMANDO ao fazer o PARSE do argv, antes de ler
+# qualquer regra deste Makefile -- nao ha gancho de Makefile que rode ANTES
+# disso pra validar/rejeitar. Por isso 'make help NOME=$(shell touch /tmp/x)'
+# (um alvo sem relacao NENHUMA com NOME) tambem executa -- o raio de
+# alcance e QUALQUER invocacao de make neste repositorio, nao so os quatro
+# alvos que usam NAME/PLAYER/SCENARIO/ARGS. Mitigar isso exigiria nao expor
+# NENHUMA variavel de linha de comando (perderia a ergonomia de
+# 'make alvo VAR=valor', o padrao do Makefile inteiro) ou envolver 'make'
+# num wrapper que sanitize argv ANTES de invoca-lo -- nenhum dos dois feito
+# aqui. Escopo de exploracao real: quem controla o ARGV de uma chamada de
+# make (typado a mao, ou colado de uma fonte nao confiavel sem olhar) --
+# ninguem programatico deste repositorio (CI, scripts) passa entrada
+# externa direto pra cá (conferido na mesma auditoria). Risco aceito e
+# documentado, nao "corrigido".
 NAME ?=
 PLAYER ?=
 SCENARIO ?=
