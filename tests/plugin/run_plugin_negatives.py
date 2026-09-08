@@ -66,6 +66,7 @@ def main():
     ap.add_argument("--bad-nosym", required=True)
     ap.add_argument("--bad-abi", required=True)
     ap.add_argument("--bad-collide", required=True)
+    ap.add_argument("--bad-collide-own-name", required=True)
     args = ap.parse_args()
 
     out = RAIZ / "build" / "tests-fixtures"
@@ -115,6 +116,32 @@ def main():
     def troca_provides(nomes):
         return lambda t: re.sub(r"provides:\s*\{[^}]*\}", f"provides: {{ {nomes} }}", t, count=1)
 
+    # Insere um SEGUNDO ( PluginModule ) dentro do MESMO 'modules: { ... }',
+    # depois do primeiro -- ao contrario de troca_file() (substitui), este
+    # ACRESCENTA, pra exercitar a ramificacao de colisao ENTRE DOIS PLUGINS
+    # (PluginRegistry.cpp:416-430, "ja foi registrado por"), distinta da
+    # ramificacao builtin que "plugin sombreia um nome do framework" ja cobre
+    # (linhas 431-443, "JA e construido pelo framework"). A ORDEM importa:
+    # libflight.so (o PRIMEIRO ( PluginModule ) do texto) tem que continuar
+    # vindo ANTES do segundo, pra 'FlightAction' ja estar em registry() quando
+    # o segundo .so tenta se registrar -- mesma tecnica de parenteses
+    # balanceados de sem_bloco(), so que sem apagar nada.
+    def injeta_segundo_modulo(so_path):
+        def transforma(t):
+            i = t.index("( PluginModule")
+            nivel, k = 0, i
+            while k < len(t):
+                if t[k] == "(":
+                    nivel += 1
+                elif t[k] == ")":
+                    nivel -= 1
+                    if nivel == 0:
+                        break
+                k += 1
+            insercao = f'\n            ( PluginModule file: "{so_path}" )'
+            return t[:k + 1] + insercao + t[k + 1:]
+        return transforma
+
     print(f"--- controles negativos ({args.poc}) ---")
 
     # Sem o bloco, a PRIMEIRA classe do modelo que o parser encontra e a
@@ -157,6 +184,16 @@ def main():
                   lambda t: troca_provides("Aircraft")(troca_file(args.bad_collide)(t))),
          args.binario,
          [r"JA e construido pelo framework", r"Aircraft"])
+
+    # DUAS ( PluginModule ) no MESMO cenario -- libflight.so (producao) carrega
+    # primeiro e registra "FlightAction"; o segundo .so tenta registrar o
+    # MESMO nome. Ramificacao DIFERENTE da anterior (colide com outro PLUGIN,
+    # nao com o framework) -- check_colisao_fabrica.py (guarda estatica) nao
+    # alcanca isso, so compara nomes entre modelos sob models/players/.
+    caso("plugin colide com nome de OUTRO plugin ja carregado",
+         variante("collide-own-name", injeta_segundo_modulo(args.bad_collide_own_name)),
+         args.binario,
+         [r"ja foi registrado por", r"FlightAction", r"libflight"])
 
     caso("'provides:' do cenario nao bate com o que a .so entrega",
          variante("provides", troca_provides("OutraCoisa")),

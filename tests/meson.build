@@ -725,7 +725,7 @@ test('memory-controle-negativo', py,
 # DEFEITUOSOS continuam sendo alvos daqui: sao artefatos de teste, nao modelo.
 # ------------------------------------------------------------------------------
 bad_plugins = {}
-foreach b : ['nosym', 'abi', 'collide']
+foreach b : ['nosym', 'abi', 'collide', 'collide_own_name']
     bad_plugins += {b: shared_module('bad_' + b,
         files('plugin/bad_' + b + '.cpp'),
         link_args           : rpath_link_args + ['-Wl,--no-undefined'],
@@ -758,8 +758,10 @@ test('plugin-negativos', py,
          '--binario', app.full_path(), '--poc', 'flight',
          '--bad-nosym', bad_plugins['nosym'].full_path(),
          '--bad-abi', bad_plugins['abi'].full_path(),
-         '--bad-collide', bad_plugins['collide'].full_path()],
-     depends: [app, bad_plugins['nosym'], bad_plugins['abi'], bad_plugins['collide']],
+         '--bad-collide', bad_plugins['collide'].full_path(),
+         '--bad-collide-own-name', bad_plugins['collide_own_name'].full_path()],
+     depends: [app, bad_plugins['nosym'], bad_plugins['abi'], bad_plugins['collide'],
+               bad_plugins['collide_own_name']],
      workdir: raiz, suite: 'plugin', timeout: 900, is_parallel: false)
 
 test('plugin-hotswap', py,
