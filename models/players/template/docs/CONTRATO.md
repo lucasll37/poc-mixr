@@ -56,11 +56,9 @@ Cada nome também precisa derivar da classe-base do MIXR que o ponto de uso espe
 usado no slot `state:` de um agente de decisão precisa herdar de `AbstractState`), e os slots que
 o cenário passa para ele por EDL precisam existir, com o tipo certo.
 
-**Exemplo real**, tirado do cenário de produção deste repositório (não é uma lista universal — é
-só a lista que ESTE cenário específico pede hoje; um cenário diferente pediria outra):
-
 | nome de fábrica | classe-base exigida | onde entra |
 |---|---|---|
+| **⚠ Exemplo real, NÃO lista universal** — tirado do cenário de produção deste repositório; um cenário diferente pediria outro conjunto ||
 | `FlightState` | `base::ubf::AbstractState` | slot `state:` do agente de decisão |
 | `BtBehavior` | `base::ubf::AbstractBehavior` | decisão do agente |
 | `AltitudeSafetyBehavior` | `base::ubf::AbstractBehavior` | idem — exportado, hoje sem cenário que o instancie |
@@ -73,6 +71,28 @@ só a lista que ESTE cenário específico pede hoje; um cenário diferente pedir
 
 Se o seu modelo for carregado por um cenário diferente, a lista de nomes/slots que importa é a
 `provides:` **daquele** cenário — releia-o antes de decidir o que implementar.
+
+**A interface de verdade — o que cada classe-base EXIGE que você sobrescreva** (lido direto dos
+headers do MIXR, `mixr/base/ubf/{AbstractState,AbstractBehavior,AbstractAction,Agent}.hpp` — a
+tabela acima só dá o NOME da classe-base, nunca os métodos):
+
+| classe-base | método(s) a sobrescrever | assinatura |
+|---|---|---|
+| `AbstractState` | `updateState` (virtual, não pura — mas é o único ponto de entrada real) | `virtual void updateState(const base::Component* const actor)` |
+| `AbstractBehavior` | `genAction` (**pura** — obrigatória) | `virtual AbstractAction* genAction(const AbstractState* const state, const double dt) = 0` — devolve um ponteiro **pré-`ref()`'d** (ou `nullptr` se não decidir nada) |
+| `AbstractAction` | `execute` (**pura** — obrigatória) | `virtual bool execute(base::Component* actor) = 0` |
+| `AgentTC` (via `Agent`) | `updateTC` (herdado de `AgentTC`) chama `controller` (protegido, de `Agent`) | `void updateTC(const double dt = 0.0) override` / `virtual void controller(const double dt = 0.0)` |
+
+`models/players/template/src/mirror.cpp` e `models/players/A-4/src/{ubf,xnative}/*.cpp` são as
+implementações de referência de cada um destes métodos — leia-as depois desta tabela, não em vez
+dela.
+
+**`updateState()` tem o MESMO risco de falha silenciosa que a omissão do `xboard` (seção 3
+abaixo) — nada no compilador nem no carregador de plugin obriga a implementação correta.** Por
+ser virtual **não-pura**, um `AbstractState` que nunca atualiza os campos que a decisão lê compila,
+carrega, satisfaz `provides:`, e o modelo decide sobre um mundo desatualizado/vazio, sem erro
+nenhum — o mesmo padrão "compila e roda, mas decide errado" que motivou destacar a obrigação do
+`xboard` como caixa própria mais abaixo.
 
 ## 3. Publicar o que o modelo decidiu — a obrigação que falha em silêncio
 
@@ -94,6 +114,8 @@ xboard::setAlert(playerId, valido, remetente, contato);    // se o modelo tiver 
 xboard::setDatalinkCounters(playerId, enviados, recebidos);
 xboard::setThreadTag(playerId, tag);                        // se decidir num pool de threads
 xboard::setRadarScan(playerId, achou, az, el, alcance, feixeH, feixeV);  // percepcao por sensor
+// unidades == o sufixo dos nomes reais dos parametros em libs/xboard/Board.hpp:
+// az/elDeg -> graus, alcance == rangeM -> metros, feixeH/vBeamDeg -> graus
 ```
 
 **Nada no empacotamento obriga isso.** Um modelo que nunca chame essas funções compila, carrega,
@@ -137,7 +159,11 @@ isto — `xtemplate` para o scaffold copiável, `xtemplate_mirror` para o mirror
 compartilhando namespace) precisa aninhar TODO o próprio namespace — incluindo um eventual
 `domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto. `models/players/A-4`
 (`domain::` solto no global) é a exceção histórica, cara demais para corrigir agora — **não** é o
-exemplo a copiar. O raciocínio completo (por que o RTTI degrada, por que aninhar resolve) está em
+exemplo a copiar. Em resumo: dois `.so` carregados com `RTLD_LOCAL` no mesmo processo fazem o
+toolchain comparar `type_info` por `strcmp` do nome *mangled* — dois tipos `domain::Foo`
+DIFERENTES, um em cada `.so`, colidiriam por terem o mesmo nome qualificado; aninhar sob
+`mixr::models::x<seu-modelo>` torna esse nome único e imune à colisão. O raciocínio completo (por
+que o RTTI degrada, por que aninhar resolve) está em
 [`ARCHITECTURE.md`](ARCHITECTURE.md), seção "Por que `domain::` mora DENTRO de...".
 
 A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o namespace C++) é

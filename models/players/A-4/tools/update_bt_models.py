@@ -42,7 +42,18 @@ MODEL_ROOT = HERE.parent
 CONFIGS = MODEL_ROOT / "configs"
 DEFAULT_BINARY = MODEL_ROOT / "build" / "tools" / "dump-tree-model"
 
-BLOCK_RE = re.compile(r"  <TreeNodesModel>.*?</TreeNodesModel>\n", re.DOTALL)
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): a regex exigia
+# EXATAMENTE dois espacos literais antes de '<TreeNodesModel>' -- uma
+# reindentacao (ex.: o Groot resalvando o arquivo com QDomDocument/
+# QXmlStreamWriter, que tem estilo de indentacao proprio, ou alguem
+# reformatando o XML a mao com TAB) fazia o bloco existente NAO ser
+# detectado. apply_tree_nodes_model() cai entao no caminho de "inserir antes
+# de </root>" -- SEM erro, reportado como "inserido" -- produzindo um
+# arquivo com DOIS blocos <TreeNodesModel>. So' na chamada SEGUINTE (make
+# update-bt/tree-model-sync) e' que os 2 blocos sao detectados e o script
+# aborta com ValueError, sem se autorreparar. '[ \t]*' tolera qualquer
+# indentacao (inclusive nenhuma) antes da tag de abertura.
+BLOCK_RE = re.compile(r"[ \t]*<TreeNodesModel>.*?</TreeNodesModel>\n", re.DOTALL)
 
 
 def discover_tree_files() -> list[Path]:

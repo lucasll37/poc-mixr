@@ -337,6 +337,20 @@ test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro M
 	$(MAKE) -C models/players/A-4 test
 
 test: install ## Roda SO a suite do HOST (scenario/determinism/plugin/memory/guard/tools/...). Requer configure com -Dtests=true. 'install' builda e sincroniza os modelos (dlopen precisa do .so em dist/) mas NAO roda a suite deles -- para isso, 'make test-models'.
+	@# Duas suites do host (memory-controle-negativo, plugin-hotswap) linkam
+	@# DIRETO em models/players/A-4/build/ -- libmodel_leak.so/
+	@# libmodel_variant_{a,b}.so, nunca instalados, so existem quando o
+	@# modelo foi configurado com '-Dvariants=true'. 'install' (acima) NAO
+	@# garante isso -- 'sync-plugins' so copia plugins/*.so pra dist/, sem
+	@# tocar o build do modelo (decoplado de proposito, ver 'models:'/
+	@# 'sync-plugins:'). E se 'make test-models' rodou ANTES desta chamada,
+	@# o build do modelo pode ter sido reconfigurado de volta pro default
+	@# 'variants=false' (o Makefile de models/players/A-4 nao recebe
+	@# VARIANTS=true por padrao) -- derrubando os dois testes acima em
+	@# silencio. Reasserta 'variants=true' aqui, incondicional e barato (o
+	@# guard STALE de models/common.mk so reconfigura/recompila de verdade
+	@# quando algo de fato mudou desde a ultima chamada).
+	@$(MAKE) --no-print-directory -C models/players/A-4 build VARIANTS=true ASAN=$(ASAN)
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
@@ -351,9 +365,14 @@ test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, 
 	@# 'meson configure' dispara um regenerate que REAVALIA as dependencias, e
 	@# ali o dependency('poc-mixr-sdk') ja falhou. A linha completa de
 	@# 'meson setup --reconfigure' passa todas as opcoes de novo e e estavel.
-	@# 'sync-plugins' ja depende de 'models' (PHONY -- sempre reavalia), entao
-	@# uma chamada so basta; ASAN=true propaga por linha de comando ate o
-	@# 'install-host ASAN=$(ASAN)' dentro de 'models'.
+	@# 'sync-plugins' NAO depende mais de 'models' (decoplado de proposito,
+	@# ver 'models:'/'sync-plugins:' acima) -- as duas chamadas sao
+	@# necessarias: 'models ASAN=true' builda o modelo instrumentado e o
+	@# deposita em plugins/, 'sync-plugins' copia plugins/ pra dist/. Chamar
+	@# só 'sync-plugins' (como este alvo fazia antes) copiava o .so JA
+	@# existente em plugins/ sem recompilar -- 'asan: OK' testando um plugin
+	@# sem nenhuma instrumentacao, silenciosamente.
+	@$(MAKE) --no-print-directory models ASAN=true
 	@$(MAKE) --no-print-directory sync-plugins ASAN=true
 	@meson configure $(BUILD_DIR) -Dasan=true
 	@meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
@@ -369,12 +388,14 @@ test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, 
 		rc=$$?; \
 		echo "  revertendo build/ para nao-ASan ..."; \
 		revert_falhou=0; \
+		$(MAKE) --no-print-directory models ASAN=false >/dev/null 2>&1 || revert_falhou=1; \
 		$(MAKE) --no-print-directory sync-plugins ASAN=false >/dev/null 2>&1 || revert_falhou=1; \
 		meson configure $(BUILD_DIR) -Dasan=false >/dev/null 2>&1 || revert_falhou=1; \
 		meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS) >/dev/null 2>&1 || revert_falhou=1; \
 		if [ $$revert_falhou -ne 0 ]; then \
 			echo "asan: ATENCAO -- a reversao de build/ para nao-ASan FALHOU (algum dos" >&2; \
-			echo "  passos 'sync-plugins ASAN=false'/'meson configure -Dasan=false'/'meson" >&2; \
+			echo "  passos 'models ASAN=false'/'sync-plugins ASAN=false'/'meson configure" >&2; \
+			echo "  -Dasan=false'/'meson" >&2; \
 			echo "  compile' retornou erro). build/ pode ter ficado instrumentado com ASan --" >&2; \
 			echo "  rode 'make configure && make build' manualmente antes de confiar no" >&2; \
 			echo "  proximo 'make test'/'make run-*'." >&2; \

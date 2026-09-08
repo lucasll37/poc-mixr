@@ -9,7 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > dele já está desatualizada por construção (ver a "NOTA DE DESATUALIZAÇÃO" na seção `./app`
 > abaixo). Se você é uma pessoa chegando neste repositório agora, comece por
 > [`README.md`](README.md) → [`TOUR.md`](TOUR.md) → [`CONTRIBUTING.md`](CONTRIBUTING.md); volte
-> para cá só para confirmar, por seção, um detalhe específico que esses três não cobrem.
+> para cá só para confirmar, por seção, um detalhe específico que esses três não cobrem. (Ex.:
+> "quais cenários/pocs existem hoje, o que cada um demonstra, em que porta o Tacview conecta" —
+> essa resposta é a tabela na seção "Rodar" do `README.md`, não algo para procurar aqui.)
 
 > Documentação, comentários de código e mensagens de console deste repositório são em
 > **português do Brasil**; identificadores, nomes de slot e nomes de fábrica ficam em inglês
@@ -35,7 +37,9 @@ As pocs vivem em `src/poc/`, e **duas delas moram juntas em `src/poc/dis/`** —
 processos separados trocando **DIS nativo do MIXR**. O intruso mora no `bandit` e chega em
 `flight` apenas pela rede (`networks:`), enquanto `falcon1..4` fazem o caminho de volta; rodar
 qualquer uma sozinha é meia demonstração. As demais pocs (`python-flight`, `onnx-policy`,
-`built-in_mixr_1`) continuam soltas em `src/poc/`, uma pasta cada.
+`built-in_mixr_1`, `full-systems-nav` — o mesmo player máximo de `built-in_mixr_1`, mas navegando
+de verdade por `Route`/`Steerpoint`; ver `src/poc/full-systems-nav/README.md`) continuam soltas em
+`src/poc/`, uma pasta cada.
 
 `src/poc/dis/flight/` é o subprojeto de decisão do grupo: mesmo cenário, mesma pilha nativa —
 o agente do UBF é `( FlightAgentTC )`, componente do **`Player`**, decidindo na **fase 3** do
@@ -1685,7 +1689,11 @@ carrega qualquer poc por `-f`/`-folder` (§3 do `app/README.md`).
 > com o binário, não com este arquivo. Reestruturar este diário num formato mais enxuto (fatos
 > correntes + changelog separado) é dívida técnica conhecida, deliberadamente não feita aqui: uma
 > mudança dessa escala merece revisão humana antes de substituir a única fonte de histórico que
-> este projeto tem.
+> este projeto tem. **As passadas abaixo também citam pocs pelos nomes que tinham NA ÉPOCA de
+> cada uma — `single-thread` (a variante que decidia via `( SimAgent )`, removida; ver "Não existe
+> mais par de subprojetos gêmeos..." no início deste arquivo) e `multi-thread` (a variante
+> `( FlightAgentTC )`, renomeada para `flight` e hoje em `src/poc/dis/`) — os nomes atuais das
+> pocs estão definidos no início deste arquivo, não neste diário.**
 
 **O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
 `src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —

@@ -107,11 +107,12 @@ conceitual**, não uma medição — o MIXR é dependência binária, sem instru
 
 ![Aba Componentes](images/f6.png)
 
-**EDL.** Edita o `.edl` **em memória** — nunca escreve no `.edl.in` de origem nem no
-`.generated.edl` carregado, só num arquivo de trabalho à parte (`app/data/edl_editor/`,
-gitignored). `F8` valida contra o mesmo oráculo `edlcheck` do editor gráfico web
-([`src/ui/`](../src/ui/)); `F9` valida e, se OK, **reexecuta** o processo com `-f` apontando pro
-texto editado (nunca duas `Station`s no mesmo processo); `F10` descarta a edição.
+**EDL.** Edita o `.edl` do cenário **JÁ CARREGADO**, em memória — não monta um cenário do zero
+(para isso, use o editor gráfico web, [`src/ui/`](../src/ui/)). Nunca escreve no `.edl.in` de
+origem nem no `.generated.edl` carregado, só num arquivo de trabalho à parte
+(`app/data/edl_editor/`, gitignored). `F8` valida contra o mesmo oráculo `edlcheck` de `src/ui/`;
+`F9` valida e, se OK, **reexecuta** o processo com `-f` apontando pro texto editado (nunca duas
+`Station`s no mesmo processo); `F10` descarta a edição.
 
 ![Aba EDL](images/f7.png)
 
@@ -188,6 +189,12 @@ decisão de design — e as armadilhas encontradas rodando — está na seção 
 - `bandit1` sempre mostra `-` na coluna "thread" — não tem `FlightAgentTC` local, nunca decide.
 - A animação de fluxo da aba Componentes é conceitual, não uma medição real do frame.
 - `-deterministic` não abre o painel — é o caminho de teste automatizado, sem TUI nem TTY.
+- **Sem `-deterministic`, este binário exige um TTY interativo de verdade.** Rodar qualquer modo
+  com TUI sob pipe/redirecionamento/CI (sem terminal real) **trava o processo indefinidamente**
+  dentro de `ScreenInteractive::Fullscreen()` — não é um bug desta rodada, é característica do
+  FTXUI (medido e detalhado em [CLAUDE.md](../CLAUDE.md), seção `./app`, "vigésima quinta
+  passada"). Para automação/CI use `-deterministic` ou [`src/node/`](../src/node/README.md), que
+  não abrem TUI nenhuma.
 
 ## 9. Leia mais
 

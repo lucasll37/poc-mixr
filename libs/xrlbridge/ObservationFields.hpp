@@ -78,11 +78,18 @@
 // A ACAO -- os tres campos de domain::FlightCommand, com a faixa fisica de
 // cada um.
 //
-// A faixa importa porque uma politica treinada com Box(low, high) e exportada
-// para .onnx costuma emitir acao NORMALIZADA (o Tanh final do SB3 da [-1,1]),
-// enquanto o Autopilot quer graus, metros e nos. A desnormalizacao tem de usar
-// EXATAMENTE os mesmos limites dos dois lados -- sao estes, e sao os defaults
-// que MixrFlightEnv.__init__ ja usava.
+// A faixa importa porque um .onnx exportado precisa emitir acao NORMALIZADA
+// em [-1,1] (o que `unscaleCommand()` abaixo espera) -- mas isso NAO e
+// automatico: o SB3 padrao (PPO/MlpPolicy, sem squash_output+use_sde) NAO
+// aplica Tanh nenhum no forward da policy (achado por auditoria -- o
+// comentario aqui antes afirmava o contrario). Quem faz a normalizacao e o
+// EXPORTADOR (`src/poc/rl-training/tools/export_onnx.py::exportar_sb3()`),
+// escalando a saida fisica crua da policy para [-1,1] com estes MESMOS
+// limites antes de gravar o .onnx. A desnormalizacao (abaixo) e a
+// exportacao tem de usar EXATAMENTE os mesmos limites dos dois lados -- sao
+// estes, e sao os defaults que MixrFlightEnv.__init__ ja usava (o script de
+// exportacao le os limites REAIS de `modelo.action_space`, nao um valor
+// fixo -- o construtor aceita faixas customizadas).
 //------------------------------------------------------------------------------
 #define XRLBRIDGE_ACTION_FIELDS                    \
    XRLBRIDGE_A(headingDeg,   0.0,   360.0)         \

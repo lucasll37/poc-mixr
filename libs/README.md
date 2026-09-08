@@ -1,4 +1,9 @@
-# `libs/` — bibliotecas compartilhadas entre host e modelo
+# `libs/` — bibliotecas de suporte entre host e modelo
+
+Nem todas cruzam a fronteira `dlopen` como `shared_library()`: hoje só seis (`xboard`/`xlog`/
+`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) precisam de uma cópia única em runtime, compartilhada
+entre host e plugin — as demais ficam estáticas/header-only (ver `CLAUDE.md`, seção "O SDK de
+plugin", para o porquê de cada caso).
 
 Uma biblioteca por pasta, no padrão `libs/x<nome>` das bibliotecas de extensão dos exemplos
 oficiais do MIXR (`contexts/MIXR-PATTERN-CONTEXT.md`). Cada uma tem o próprio `README.md`: o que

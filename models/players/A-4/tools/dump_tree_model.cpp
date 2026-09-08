@@ -124,6 +124,28 @@ int main(int argc, char** argv)
       return 0;
    }
 
+   // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): --skeleton nao
+   // checava se o ID pedido para a arvore NOVA colide com o de um NO ja
+   // registrado (ex.: "Patrol", "FuelLow", "Navigate" -- nomes curtos e
+   // prováveis de reusar sem pensar). Isso importa porque o BT.CPP resolve
+   // uma tag XML nua (ex.: <FuelLow margin="0.05"/>, o idioma que este
+   // PROPRIO projeto ja usa em producao -- flight_tree.xml) pra NO primeiro
+   // e SUBARVORE so como fallback (confirmado no fonte vendorizado do
+   // BT.CPP, xml_parsing.cpp: factory.builders().count(ID) e' checado ANTES
+   // de tree_roots.count(ID) em createNodeFromXML()). Uma subarvore nova
+   // com ID colidindo, referenciada pelo mesmo idioma de tag nua em OUTRA
+   // arvore, resolveria SILENCIOSAMENTE pro no nativo, nunca pra subarvore
+   // -- sem erro, sem aviso. Recusa aqui, na hora de GERAR o esqueleto, e'
+   // mais barato que descobrir isso depois de editar a arvore no Groot.
+   if (factory.builders().count(treeId) > 0) {
+      std::cerr << "dump-tree-model: '" << treeId << "' ja e' o ID de um NO registrado "
+                << "(Condition/Action) neste modelo -- uma subarvore com este MESMO ID "
+                << "resolveria para o no, nunca para a subarvore, sempre que referenciada "
+                << "pela tag nua (o idioma que este projeto ja usa em producao, ex. "
+                << "<FuelLow.../> em flight_tree.xml). Escolha outro ID.\n";
+      return 1;
+   }
+
    std::cout << "<root main_tree_to_execute=\"" << treeId << "\">\n"
              << "  <BehaviorTree ID=\"" << treeId << "\">\n"
              << "    <Fallback name=\"root\"/>\n"

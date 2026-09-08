@@ -116,3 +116,53 @@ TEST(BreakpointController, RearmarLimpaHitAnterior)
    bp.arm(2, "falcon2", "Evade", false, 1.0);
    EXPECT_EQ(bp.status(true, true, "Evade").branch, BreakpointStatusBranch::Armed);
 }
+
+// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): re-armar SEM cancelar
+// o breakpoint anterior sobrescrevia restoreTimeScale_ com a escala JA
+// elevada do primeiro arm() (ex.: 64x), em vez de preservar a escala
+// ORIGINAL (a que valia antes do primeiro arm()). Sintoma medido antes da
+// correcao: apertar 'G' (breakpoint em modo rapido) duas vezes seguidas,
+// sem cancelar entre as duas, travava a simulacao em 64x para sempre --
+// mesmo apos o hit, porque o 'hit' subsequente restaurava para o valor
+// (ja errado) capturado no segundo arm().
+TEST(BreakpointController, RearmarSemCancelarPreservaEscalaOriginal)
+{
+   BreakpointController bp;
+
+   // Primeiro arm: escala nominal 1.0, entra em modo rapido -- currentTimeScale
+   // passado e' JA a escala elevada (64.0), exatamente como DashboardLoop.cpp
+   // faz (crava setTimeScale(64) e SO DEPOIS chama arm() com o valor NOMINAL
+   // de antes -- aqui simulado direto com o valor nominal correto, 1.0).
+   bp.arm(1, "falcon1", "Evade", true, 1.0);
+   EXPECT_DOUBLE_EQ(bp.restoreTimeScale(), 1.0);
+
+   // Segundo arm, SEM cancelar antes -- o caso do bug: currentTimeScale
+   // aqui e' 64.0 (a escala JA elevada pelo primeiro arm), reproduzindo
+   // fielmente o que aconteceria se doArmBreakpoint() fosse chamado de novo
+   // com clockStation->getTimeScale() (que ja estaria em 64x).
+   bp.arm(1, "falcon1", "Support", true, 64.0);
+
+   // O ponto de restauracao tem que continuar 1.0 -- NAO 64.0.
+   EXPECT_DOUBLE_EQ(bp.restoreTimeScale(), 1.0);
+
+   // E o hit subsequente tem que pedir a restauracao do valor CERTO.
+   const auto hit{bp.tick({{1, "SUPPORT"}}, fakeMatches, 5.0)};
+   EXPECT_EQ(hit.outcome, BreakpointOutcome::Hit);
+   EXPECT_TRUE(hit.shouldRestoreScale);
+   EXPECT_DOUBLE_EQ(bp.restoreTimeScale(), 1.0);
+}
+
+// Contraste: CANCELAR entre os dois arms (o caminho ja correto) continua
+// recapturando a escala corretamente -- o fix nao deve quebrar esse caso.
+TEST(BreakpointController, RearmarAposCancelarRecapturaEscalaNova)
+{
+   BreakpointController bp;
+   bp.arm(1, "falcon1", "Evade", true, 1.0);
+   bp.cancel();
+
+   // Agora desarmado -- um novo arm() com uma escala nominal DIFERENTE
+   // (2.0, ex.: usuario acelerou manualmente antes de armar de novo) tem
+   // que capturar esse valor novo, nao o antigo (1.0).
+   bp.arm(1, "falcon1", "Support", true, 2.0);
+   EXPECT_DOUBLE_EQ(bp.restoreTimeScale(), 2.0);
+}

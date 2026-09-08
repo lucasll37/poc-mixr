@@ -38,8 +38,18 @@ std::string runIdNow()
    return std::string(buf) + "-" + std::to_string(::getpid());
 }
 
-// "src/poc/dis/flight/configs/scenario.edl.in" -> "scenario" ->
-// "flight" (a pasta duas acima de configs/x.edl.in).
+// "src/poc/dis/flight/configs/scenario.edl.in" -> "scenario" + "flight" (a
+// pasta duas acima de configs/x.edl.in) -> "flight-scenario". A pasta entra
+// na chave porque o nome do ARQUIVO sozinho nao e unico entre pocs --
+// flight/bandit/python-flight/onnx-policy usam todos "scenario.edl[.in]" --
+// e a chave vira o caminho de build/generated-scenarios/<chave>.generated.edl
+// e do arquivo de log, os dois GLOBAIS ao processo (nao aninhados por poc).
+// Sem a pasta, dois processos `node` apontando pra pocs DIFERENTES mas com o
+// MESMO nome de arquivo (o caso canonico do grupo DIS, `flight`+`bandit`
+// rodando juntos) colidem no mesmo cenario gerado -- confirmado rodando os
+// dois ao mesmo tempo antes desta correcao: o processo do `bandit` carregava
+// e executava o cenario inteiro do `flight`, em silencio (so a porta Tacview
+// duplicada acusava algo errado, e por um sintoma indireto).
 std::string deriveScenarioKey(const std::string& path)
 {
    const fs::path p{path};
@@ -47,7 +57,14 @@ std::string deriveScenarioKey(const std::string& path)
    if (stem.size() > 4 && stem.compare(stem.size() - 4, 4, ".edl") == 0) {
       stem.resize(stem.size() - 4); // "x.edl" -> "x"
    }
-   return stem.empty() ? "ad-hoc" : stem;
+   if (stem.empty()) stem = "ad-hoc";
+
+   // Mesma pasta que 'scenarioDir' calcula em main() (parent_path() duas
+   // vezes) -- duplicado aqui de proposito para 'deriveScenarioKey()'
+   // continuar uma funcao pura, testavel isolada de 'main()'.
+   const fs::path pocDir{p.parent_path().parent_path()};
+   const std::string pocName{pocDir.empty() ? std::string{} : pocDir.filename().string()};
+   return pocName.empty() ? stem : (pocName + "-" + stem);
 }
 
 // Mesmo tile fixo que o resto do repositorio ja vendoriza

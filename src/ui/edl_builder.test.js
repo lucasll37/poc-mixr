@@ -398,6 +398,32 @@ test("isEmptyLeafValue: numero 0 e booleano false NAO sao 'vazios' -- sao valore
   assert.strictEqual(core.isEmptyLeafValue({ kind: "boolean", value: false }), false);
 });
 
+test("serializeTextLiteral: barra invertida NAO dobra ao serializar -- o tokenizer real nunca desfaz o escape do JSON.stringify puro", () => {
+  // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): serializeTextLiteral()
+  // usava JSON.stringify(v) sozinho, que ESCAPA barra invertida (\ -> \\).
+  // Como o tokenizer (edl_scanner.l real, e tokenizeEdlText() aqui) nunca
+  // interpreta \X como escape -- copia literal, byte a byte -- um ciclo
+  // carregar+exportar DOBRAVA a contagem de barras de um valor com \ literal
+  // (ex.: caminho estilo Windows). Nao-idempotente: 1 -> 3 -> 7 -> 15 barras
+  // em ciclos repetidos.
+  const original = "C:\\data\\mission.acmi"; // uma barra entre cada segmento
+  const serializado = core.serializeTextLiteral(original);
+  assert.strictEqual(serializado, '"C:\\data\\mission.acmi"');
+});
+
+test("serializeTextLiteral: idempotente em ciclos repetidos de serializar+desserializar", () => {
+  let valor = "C:\\data\\mission.acmi";
+  for (let i = 0; i < 5; i++) {
+    const serial = core.serializeTextLiteral(valor);
+    valor = serial.slice(1, -1); // o tokenizer real copia o conteudo entre aspas literal, sem reinterpretar
+    assert.strictEqual(valor, "C:\\data\\mission.acmi", `divergiu no ciclo ${i + 1}`);
+  }
+});
+
+test("serializeTextLiteral: aspa embutida continua escapada (nao mexeu no que ja funcionava)", () => {
+  assert.strictEqual(core.serializeTextLiteral('diz "oi"'), '"diz \\"oi\\""');
+});
+
 test("projectToEdl: editar um campo e depois limpar de volta pra vazio nao deixa o slot no .edl exportado", () => {
   const n = core.makeNode("JSBSimModel");
   n.slotValues.model = { kind: "text", value: "A4" };

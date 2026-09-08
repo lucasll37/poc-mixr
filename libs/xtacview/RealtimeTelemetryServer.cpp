@@ -86,17 +86,32 @@ bool RealtimeTelemetryServer::start(const std::string& host, const int port, con
    addr.sin_port = htons(static_cast<std::uint16_t>(port));
    if (::inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1) {
       LOG(ERROR) << "[tacview] invalid host: " << host;
+      // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): os tres
+      // 'return false' abaixo (aqui, bind(), listen()) nunca fechavam/
+      // resetavam 'listenFd_' -- isListening() (== listenFd_ >= 0) ficava
+      // "true" PARA SEMPRE a partir dai, mesmo o socket nunca tendo entrado
+      // em modo de escuta. Isso alimenta diretamente a aba "Fundo" do
+      // ./app (tacviewListening), que existe justamente para reportar o
+      // estado REAL do transporte -- mentia exatamente no cenario (colisao
+      // de porta entre 2 processos) que ela deveria diagnosticar. Fechar
+      // aqui reproduz o mesmo padrao que stop() ja usa.
+      ::close(listenFd_);
+      listenFd_ = -1;
       return false;
    }
 
    if (::bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
       LOG(ERROR) << "[tacview] bind() failed on " << host << ":" << port
                  << ": " << std::strerror(errno);
+      ::close(listenFd_);
+      listenFd_ = -1;
       return false;
    }
 
    if (::listen(listenFd_, 1) < 0) {
       LOG(ERROR) << "[tacview] listen() failed: " << std::strerror(errno);
+      ::close(listenFd_);
+      listenFd_ = -1;
       return false;
    }
 

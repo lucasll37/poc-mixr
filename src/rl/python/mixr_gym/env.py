@@ -144,10 +144,19 @@ class MixrFlightEnv(gym.Env):
     ) -> None:
         super().__init__()
 
-        if not os.path.exists(scenario_path):
+        # 'isfile', nao 'exists': um DIRETORIO passado por engano tambem
+        # satisfaz 'exists', e o unico ponto de checagem do lado Python era
+        # esse -- sem ele, o caminho segue ate o parser flex vendorizado do
+        # MIXR (contexts/src/mixr/src/base/edl_parser/EdlScanner.cpp), que
+        # chama exit(2) DIRETO em 'yyFlexLexer::LexerError()' ao falhar de
+        # ler um diretorio como arquivo -- matando o interprete Python sem
+        # excecao nenhuma, fora do alcance de qualquer try/except daqui.
+        # Confirmado reproduzindo antes desta correcao.
+        if not os.path.isfile(scenario_path):
             raise FileNotFoundError(
-                f"cenario '{scenario_path}' nao encontrado -- rode com cwd na raiz "
-                "do repositorio (mesma convencao dos binarios deste projeto)"
+                f"cenario '{scenario_path}' nao encontrado (ou nao e um arquivo) -- "
+                "rode com cwd na raiz do repositorio (mesma convencao dos binarios "
+                "deste projeto)"
             )
 
         self._sim = _native.NativeSimulation(scenario_path, player_name)

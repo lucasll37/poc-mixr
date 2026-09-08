@@ -1,2 +1,2 @@
 - interface gráfica para montar edl
-- 
+- ler docimentação

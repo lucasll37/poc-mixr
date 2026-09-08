@@ -11,9 +11,18 @@
 # Conferir mtime nao e conhecer o fonte: e conhecer um CAMINHO, exatamente
 # como o 'searchPaths:' do cenario ja faz.
 #
-# Descobre os modelos por find sob models/players/ (mesma filosofia de
-# check_modelo_estrutura.sh/check_colisao_fabrica.py: um modelo novo ja entra
-# na checagem, sem editar este arquivo).
+# Descobre os modelos por find sob QUALQUER subpasta de models/ (mesma
+# filosofia de check_modelo_estrutura.sh/o 'MODELOS_PRODUCAO' do Makefile
+# raiz: um modelo novo em models/systems/ ou models/others/ ja entra na
+# checagem, sem editar este arquivo).
+#
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este script tinha
+# `for modelo in models/players/*/` -- so um nivel sob players/, apesar do
+# comentario acima ja prometer "mesma filosofia" de check_modelo_estrutura.sh
+# (que descobre em QUALQUER subpasta de models/). Falso-negativo latente: um
+# modelo real nascido em models/systems/<nome>/ ou models/others/<nome>/
+# (o destino real de 'make new-model CATEGORY=system|others') passaria por
+# esta guarda sem checagem de frescor nenhuma.
 #
 # CORRIGIDO (nao redescobrir o contrario): este comentario chegou a excluir
 # 'template/' daqui, com a justificativa de que ele "nunca e instalado em
@@ -44,8 +53,18 @@ cd "$RAIZ" || exit 1
 fail=0
 checados=0
 
-for modelo in models/players/*/; do
-   modelo="${modelo%/}"
+# Mesmo padrao de find de check_modelo_estrutura.sh: qualquer subpasta de
+# models/ com um meson.build de projeto de verdade (project() na raiz) --
+# nao filtra 'template/' por path (ele CONTINUA fazendo parte desta
+# checagem, ver o comentario grande acima).
+modelos="$(find models -mindepth 2 -name meson.build \
+              -not -path '*/build/*' -not -path '*/dist/*' \
+              -not -path '*/subprojects/*' 2>/dev/null \
+           | xargs -r -n1 dirname | sort -u)"
+
+while IFS= read -r modelo; do
+   [ -z "$modelo" ] && continue
+   grep -q '^project(' "$modelo/meson.build" || continue
 
    locais="$modelo/dist/lib/mixr-plugins"
    if [ ! -d "$locais" ] || [ -z "$(ls -A "$locais"/*.so 2>/dev/null)" ]; then
@@ -73,7 +92,7 @@ for modelo in models/players/*/; do
          fail=1
       fi
    done
-done
+done <<< "$modelos"
 
 if [ "$fail" -ne 0 ]; then
    echo "modelo fresco: FALHOU"

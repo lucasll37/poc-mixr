@@ -191,7 +191,12 @@ Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vs
 ## 7. Dependências construídas do fonte (`scripts/deps.sh`) — sem credencial nenhuma; obrigatório para o Groot
 
 `deps/{mixr,behaviortree,jsbsim,openrti,groot}/conanfile.py` são cinco receitas Conan que compilam
-essas dependências a partir do fonte; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
+essas dependências a partir do fonte — `mixr` e `behaviortree.cpp.asa` são os dois frameworks C++
+que este projeto usa (ver glossário no [`README.md`](README.md)), `jsbsim` é o motor de física de
+voo (ver o mesmo glossário), `openrti` é uma implementação de RTI (*Runtime Infrastructure*) para
+HLA (*High Level Architecture*, padrão IEEE 1516) que o MIXR declara mas
+este fork não compila (a interoperabilidade usada aqui é DIS), e `groot` é o editor/monitor visual
+das árvores de comportamento; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
 Release. Para **quatro** delas (`mixr`, `behaviortree.cpp.asa`, `jsbsim`, `openrti`) isto é a
 **alternativa completa** a ter conta no remote privado da organização (seção 4, opcional) — sem
 nenhuma credencial, resolve tudo pelo cache local do Conan, e é o mesmo caminho que o CI usa

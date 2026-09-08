@@ -3,10 +3,21 @@
 
   Arvore de comportamento de UM caca. Ela e a politica interna do
   xnative::BtBehavior, que por sua vez e um AbstractBehavior do UBF nativo -
-  ou seja, esta arvore concorre POR VOTO com outros comportamentos dentro
-  do UbfArbiter declarado no scenario.edl (hoje, com o
-  AltitudeSafetyBehavior, que tem voto maior e so age se a aeronave furar
-  o piso de altitude).
+  ou seja, esta arvore PODE concorrer por voto com outros comportamentos
+  dentro de um UbfArbiter, se o .edl declarar um.
+
+  ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este comentario
+  afirmava que o scenario.edl de producao SEMPRE declara um UbfArbiter com
+  ( AltitudeSafetyBehavior vote: 90 ) por cima - nao e mais verdade. Os
+  consumidores atuais desta arvore (src/poc/dis/flight,
+  src/poc/built-in_mixr_1) NAO usam mais UbfArbiter/AltitudeSafetyBehavior,
+  so ( BtBehavior ) direto (ver CLAUDE.md raiz, secao "SEM ARBITRO").
+  Enquanto o BtBehavior decide com sucesso, ELE tem a ultima palavra sobre
+  altitude - nao ha piso independente por cima. A UNICA excecao hoje e
+  src/rl/configs/scenario_rl.edl (falcon2..4), que ainda declara o arbitro
+  de verdade. Quem edita esta arvore no Groot/le so este arquivo: nao
+  presuma a rede de seguranca sem antes conferir o `.edl` que de fato a
+  carrega.
 
   Prioridade (Fallback, de cima para baixo):
     1) combustivel abaixo da reserva      -> volta para a base

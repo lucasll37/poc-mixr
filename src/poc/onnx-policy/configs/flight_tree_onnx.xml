@@ -25,12 +25,17 @@
        (patrolHeading, legTime, patrolAltitude, patrolSpeed) vem dos slots do
        ( BtBehavior ) no cenario; ver o comentario de la.
 
-  O QUE NAO ESTA AQUI, de proposito: o piso anti-CFIT. Ele nao e da arvore, e
-  o ( AltitudeSafetyBehavior vote: 90 ), que concorre por VOTO com o
-  ( BtBehavior vote: 50 ) no mesmo UbfArbiter. A rede pode comandar uma
-  altitude que fura o terreno; o arbitro nativo sobrepoe sem que esta arvore
-  precise saber disso. E por isso que trocar de politica aqui nao exige
-  revalidar seguranca de voo.
+  O QUE NAO ESTA AQUI, de proposito (achado por auditoria, corrigido - nao
+  redescobrir): este comentario dizia que um ( AltitudeSafetyBehavior vote:
+  90 ) concorria por VOTO com o ( BtBehavior vote: 50 ) no mesmo UbfArbiter,
+  sobrepondo qualquer altitude perigosa que a rede comandasse - nao e mais
+  verdade. O cenario desta poc (scenario.edl.in) NAO declara mais
+  UbfArbiter/AltitudeSafetyBehavior, so ( BtBehavior ) direto - mesma
+  atualizacao ja registrada no CLAUDE.md raiz, secao "SEM ARBITRO". Enquanto
+  o .onnx carrega e infere com sucesso, A REDE tem a ultima palavra sobre
+  altitude; nao ha piso independente por cima dela. Trocar de politica aqui
+  volta a exigir revalidar seguranca de voo por conta propria - deixou de
+  ser barato.
 
   CAMINHOS RELATIVOS A RAIZ DO REPOSITORIO, como todo caminho de configs/ e
   data/ das pocs (o binario e executado de la). O .onnx mora ao lado deste

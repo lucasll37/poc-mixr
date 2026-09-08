@@ -99,8 +99,12 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
 2. **`ubf/ExampleState.*`** → troque `getValue()`/o que `updateState()` lê do ator pelo que a SUA
    decisão precisa enxergar do mundo.
 3. **`ubf/ExampleBehavior.*`** → troque os slots e a chamada a `domain::` pela sua regra. Se
-   precisar de mais de uma decisão coordenada, é aqui que entra uma árvore do BehaviorTree.CPP —
-   ver "Quando isto não bastar mais" em `docs/ARCHITECTURE.md`.
+   precisar de mais de uma decisão coordenada ("se combustível baixo, RTB; senão, se há contato,
+   evade; senão, patrulha"), é aqui que entra uma árvore do BehaviorTree.CPP: em resumo, você
+   troca `genAction()` por um `tree.tickRoot()` sobre nós próprios em `bt/nodes/`, registrados
+   numa `BT::BehaviorTreeFactory` — `models/players/A-4/src/ubf/BtBehavior.cpp`/`bt/bt_factory.cpp`
+   são a referência completa; ver "Quando isto não bastar mais" em `docs/ARCHITECTURE.md` para o
+   passo a passo.
 4. **`ubf/ExampleAction::execute()`** → troque o corpo por comandos de verdade sobre o `Player`
    (`Autopilot`, `StoresMgr`, o que for). **Não apague as duas chamadas ao `xboard`** — são a
    única obrigação de um modelo que falha em silêncio (ver `docs/ARCHITECTURE.md` e

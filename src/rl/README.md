@@ -86,7 +86,8 @@ for _ in range(1000):
 env.close()
 ```
 
-Tacview (porta 1237, opcional, so para acompanhar visualmente um episodio):
+Tacview ([tacview.net](https://www.tacview.net/) — visualizador 3D de terceiros; porta 1237,
+opcional, so para acompanhar visualmente um episodio; ver "Pre-requisitos" no README.md raiz):
 aponte o Tacview Real-Time Telemetry para `<host>:1237` enquanto o processo
 Python estiver rodando.
 

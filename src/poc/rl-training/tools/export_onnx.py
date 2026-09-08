@@ -145,9 +145,30 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
     """Exporta uma politica do Stable-Baselines3.
 
     Segue a receita oficial (docs do SB3, 'Exporting models'): um wrapper que
-    chama a policy com deterministic=True e devolve SO a acao. A acao sai
-    NORMALIZADA -- o SB3 nao aplica o unscale do action_space no forward --
-    que e exatamente o que OnnxPolicyAction espera com normalized="true".
+    chama a policy com deterministic=True. ACHADO POR AUDITORIA, CORRIGIDO
+    (nao redescobrir): ao contrario do que o comentario desta funcao dizia
+    antes, o SB3 padrao (PPO/MlpPolicy, sem squash_output+use_sde -- o que
+    train.py usa) NAO aplica Tanh nenhum no forward -- `ActorCriticPolicy.
+    forward()` devolve a media crua de uma `DiagGaussianDistribution` sobre
+    `action_net` (uma Linear comum), e squash_output so e permitido com
+    use_sde=True (common/policies.py, SB3 2.9.0). A acao sai em UNIDADES
+    FISICAS -- a MESMA escala de `action_space` (Box(0..360, 0..8000,
+    0..400), os defaults de MixrFlightEnv) -- nunca em [-1,1]. Confirmado
+    lendo o fonte do SB3 e inspecionando o grafo ONNX exportado da forma
+    antiga (saida = Gemm cru, sem Tanh final).
+
+    Sem correcao, uma politica DE FATO treinada (que converge pra valores
+    fisicos tipo heading~90) satura no extremo do intervalo fisico ao passar
+    por `xrlbridge::unscaleCommand()` (que faz clamp([-1,1]) antes de
+    reescalar) -- silencioso, sem erro, so a aeronave voando errado. A
+    correcao fecha o contrato desta funcao (ver o docstring do modulo:
+    "saida ... normalizados em [-1,1]") de verdade: o grafo exportado agora
+    aplica a MESMA equacao de `unscaleCommand()`, na direcao OPOSTA (fisico
+    -> [-1,1] aqui; unscaleCommand faz [-1,1] -> fisico no C++), usando os
+    limites REAIS de `modelo.action_space` (nao um valor fixo -- MixrFlightEnv
+    aceita heading_range/altitude_range_m/speed_range_kts customizados no
+    construtor, e o .onnx exportado tem de refletir o que ESTE modelo
+    realmente aprendeu, nao os defaults).
     """
     try:
         import torch
@@ -160,25 +181,53 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
 
     modelo = PPO.load(caminho_zip, device="cpu")
 
+    baixo = modelo.action_space.low.tolist()
+    alto = modelo.action_space.high.tolist()
+
     class SoAcao(torch.nn.Module):
-        def __init__(self, policy):
+        def __init__(self, policy, baixo, alto):
             super().__init__()
             self.policy = policy
+            # buffers (constantes de escala, nao parametros treinaveis) --
+            # precisam viajar com o modulo pra aparecer no grafo ONNX
+            # exportado, no dtype/forma certos.
+            self.register_buffer("baixo", torch.tensor(baixo, dtype=torch.float32))
+            self.register_buffer("alto", torch.tensor(alto, dtype=torch.float32))
 
         def forward(self, obs):
-            return self.policy(obs, deterministic=True)[0]
+            acao_fisica = self.policy(obs, deterministic=True)[0]
+            # policy() cru NAO recorta pro action_space (isso so acontece no
+            # laco de rollout do SB3, fora do grafo) -- recorta aqui pra
+            # exportar exatamente o que o SB3 de fato comandaria em inferencia
+            # real, antes de normalizar.
+            acao_fisica = torch.clamp(acao_fisica, self.baixo, self.alto)
+            return 2.0 * (acao_fisica - self.baixo) / (self.alto - self.baixo) - 1.0
 
     n_in = len(nomes)
     esperado = modelo.observation_space
     print(f"observation_space do modelo: {esperado}")
+    print(f"action_space do modelo: baixo={baixo} alto={alto}")
     print(f"contrato do C++: {n_in} campos -- {','.join(nomes)}")
 
     dummy = torch.zeros(1, n_in, dtype=torch.float32)
     torch.onnx.export(
-        SoAcao(modelo.policy), dummy, saida,
+        SoAcao(modelo.policy, baixo, alto), dummy, saida,
         input_names=["obs"], output_names=["action"],
         opset_version=17, dynamo=False,
     )
+
+    # Mesma armadilha (e mesma correcao) de exportar_aleatorio()/
+    # train_policy.py: o exportador legado (dynamo=False) grava ir_version=8
+    # por padrao HOJE, mas isso e um efeito colateral da tabela interna do
+    # torch, nunca verificado por asercao nenhuma -- fixado aqui explicitamente
+    # pra nao depender desse acidente de implementacao se uma versao futura do
+    # torch mudar de exportador padrao (o proprio torch ja avisa disso).
+    import onnx
+    modelo_onnx = onnx.load(saida)
+    modelo_onnx.ir_version = 8
+    onnx.checker.check_model(modelo_onnx)
+    onnx.save(modelo_onnx, saida)
+
     print(f"escrito {saida}")
 
 

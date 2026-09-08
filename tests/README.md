@@ -19,11 +19,14 @@ make test                            # so a suite do HOST (64 testes hoje -- num
 > **RTB** = *Return To Base*, o ramo da árvore de comportamento que manda a aeronave voltar por
 > combustível baixo; **CFIT** = *Controlled Flight Into Terrain*, o acidente (aeronave em
 > perfeito controle colidindo com o terreno) que o piso anti-CFIT existe para evitar; **PDU** =
-> *Protocol Data Unit*, o pacote de rede do protocolo DIS; **`bt=`**/**`xmsg`**/**`BehaviorBoard`**
+> *Protocol Data Unit*, o pacote de rede do protocolo **DIS** (*Distributed Interactive
+> Simulation*, IEEE 1278 — ver glossário no [`README.md`](../README.md) raiz); **`bt=`**/**`xmsg`**/**`BehaviorBoard`**
 > — `bt=` é o rótulo do comportamento vencedor (`PATROL`/`EVADE`/`SUPPORT`/...) que aparece nos
 > dumps; quem mantém esse valor é o [`BehaviorBoard`](../libs/xboard/Board.hpp) (`libs/xboard`,
 > escrito pelo modelo, lido pelo host); `libs/xmsg` é a biblioteca de mensagens configuráveis por
-> EDL (ver `libs/xmsg/README.md`), sem relação com `bt=`.
+> EDL (ver `libs/xmsg/README.md`), sem relação com `bt=`. **Tacview**/**JSBSim**/
+> **BehaviorTree.CPP** (a árvore de decisão que a suíte `tree` testa) também são citados abaixo
+> sem redefinição — os três estão no glossário de abertura do [`README.md`](../README.md) raiz.
 
 **São DUAS suítes, em dois diretórios de build, e DOIS alvos separados** — porque o modelo saiu
 para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
