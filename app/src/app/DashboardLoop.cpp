@@ -1523,22 +1523,38 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // 'station' (mesmo raciocinio de 'makeTerrainSampler(worldModel)' na
       // aba Mapa: barato, e um cache manual so arriscaria mostrar uma
       // arvore velha depois de um missil ser liberado ou um fantasma DIS
-      // chegar pela rede). Feito aqui (Renderer mais externo, sempre roda)
-      // e nao dentro de 'componentsCanvasArea' porque o CatchEvent
+      // chegar pela rede) -- MAS so enquanto a aba 5 esta de fato ativa.
+      //
+      // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): isto rodava
+      // INCONDICIONALMENTE, com a justificativa de que "o CatchEvent
       // (hit-test/pan) precisa de 'componentsLayout' fresco independente de
-      // qual aba esta ativa no momento do clique.
-      componentsRoot = discoverComponentTree(station);
+      // qual aba esta ativa no momento do clique" -- falso: TODO consumo de
+      // 'componentsLayout'/'componentsRoot' no CatchEvent mais externo (as
+      // duas ocorrencias de 'if (activeTab == 5) { ... }' logo abaixo neste
+      // arquivo) ja esta gateado por 'activeTab == 5', e o Render() em si
+      // (Container::Tab) so desenha o filho ATIVO por construcao do proprio
+      // FTXUI -- nada consome esta arvore com outra aba em cena. Recalcular
+      // a cada redesenho (~10Hz) custava abi::__cxa_demangle() (aloca
+      // memoria) + multiplos dynamic_cast por no, ~150 nos no cenario de
+      // producao, a toa em 6/7 das configuracoes de uso comum (usuario
+      // olhando Players/Mapa/Memoria/Log/EDL/Fundo). Gateado, converge no
+      // mesmo estado fresco assim que a aba fica ativa (o proprio redesenho
+      // do switch de aba ja roda com 'activeTab' atualizado).
+      if (activeTab == 5) {
+         componentsRoot = discoverComponentTree(station);
 
-      // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth: na vertical
-      // cada FOLHA custa a largura do proprio rotulo (no layout horizontal
-      // antigo custava so uma LINHA), entao uma arvore de producao inteira
-      // aberta seria dezenas de vezes mais larga que o terminal. Uma vez so
-      // -- depois disso quem manda e o usuario, e reabrir tudo e [o].
-      if (!componentsAutoFitted && !componentsRoot.children.empty()) {
-         collapseDeeperThan(componentsRoot, kTreeInitialExpandDepth, componentsCollapsed);
+         // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth: na
+         // vertical cada FOLHA custa a largura do proprio rotulo (no
+         // layout horizontal antigo custava so uma LINHA), entao uma
+         // arvore de producao inteira aberta seria dezenas de vezes mais
+         // larga que o terminal. Uma vez so -- depois disso quem manda e o
+         // usuario, e reabrir tudo e [o].
+         if (!componentsAutoFitted && !componentsRoot.children.empty()) {
+            collapseDeeperThan(componentsRoot, kTreeInitialExpandDepth, componentsCollapsed);
+         }
+
+         componentsLayout = layoutComponentTree(componentsRoot, componentsCollapsed);
       }
-
-      componentsLayout = layoutComponentTree(componentsRoot, componentsCollapsed);
 
       // Relogio da animacao de fluxo (SEGUNDA METADE) -- avanca aqui, no
       // MESMO Renderer mais externo que ja roda a cada redesenho

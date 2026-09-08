@@ -35,10 +35,22 @@ class Recipe(ConanFile):
 
     generators = "CMakeDeps"
 
+    # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): esta receita fixava
+    # a TAG 'v3.5.6', ao contrario de deps/mixr e deps/openrti (que fixam
+    # commit, com um comentario explicando por que tag e' arriscada pra um
+    # fork MANTIDO PELA PROPRIA EQUIPE -- ver deps/mixr/conanfile.py). Uma
+    # tag de fork interno e' mais suscetivel a ser movida por engano do que
+    # a de um projeto de terceiro estabelecido -- se isso acontecer,
+    # scripts/deps.sh construiria silenciosamente uma arvore DIFERENTE da
+    # que gerou o pacote behaviortree.cpp.asa/3.5.6 hoje em cache, sem erro
+    # nenhum ate algo sutil quebrar em runtime. Commit confirmado (git
+    # ls-remote --tags) como exatamente o que 'v3.5.6' aponta hoje.
+    _commit = "abd9d75aa2f7f2fa21cab60dbd20cfc7503e4c43"
+
     def source(self):
         git = Git(self)
         git.clone(url="https://github.com/ASA-Simulation/BehaviorTree.CPP", target=".")
-        git.checkout("v3.5.6")
+        git.checkout(self._commit)
 
     def config_options(self):
         if self.settings.os == "Windows":

@@ -104,13 +104,30 @@ while IFS= read -r modelo; do
    # '-Dvariants=true' rodava esses dois testes contra um .so desatualizado
    # (ou ausente, que ao menos falha alto) sem NENHUM aviso de frescor.
    # Cobre qualquer '.so' que fique direto em build/ (nao hardcoda nome —
-   # um modelo futuro pode ter variantes proprias com outros nomes); pega de
-   # quebra libflight.so/libtemplate*.so tambem, redundante e inofensivo com
-   # a checagem acima (a mesma propriedade, via outro caminho).
+   # um modelo futuro pode ter variantes proprias com outros nomes).
+   #
+   # SO' o que NAO tem par instalado em "$locais" -- ACHADO RODANDO, NA
+   # PROPRIA VALIDACAO DESTE FIX (nao redescobrir): checar TAMBEM os .so ja
+   # cobertos pelo loop acima (ex.: libtemplate.so) parecia "redundante e
+   # inofensivo", mas nao e -- os dois loops comparam contra a MESMA arvore
+   # inteira de fonte (src/include/configs), coarse, nao por-alvo. Um
+   # projeto com DOIS artefatos que compartilham a mesma pasta de fonte mas
+   # tem sources DISJUNTOS (template: libtemplate.so vem de
+   # domain/ubf/xnative/plugin.cpp; libtemplate_mirror.so vem SO de
+   # mirror.cpp) faz esse loop acusar libtemplate.so de "desatualizado"
+   # so' porque mirror.cpp mudou -- falso positivo, reproduzido editando
+   # mirror.cpp e rodando esta guarda sem tocar em mais nada. Restringir
+   # este loop a .so's SEM par instalado (o caso que de fato motivou esta
+   # secao -- variantes de teste como libmodel_leak.so, que NUNCA chegam a
+   # "$locais") evita o falso positivo sem tentar resolver dependencia
+   # por-alvo em bash (isso e' o que 'meson introspect --targets' faria de
+   # verdade, fora de escopo aqui).
    build_dir="$modelo/build"
    if [ -d "$build_dir" ]; then
       for so_build in "$build_dir"/*.so; do
          [ -e "$so_build" ] || continue
+         base="$(basename "$so_build")"
+         [ -e "$locais/$base" ] && continue
          checados=$((checados + 1))
 
          novo="$(find "$modelo/src" "$modelo/include" "$modelo/configs" -type f -newer "$so_build" 2>/dev/null | head -5)"

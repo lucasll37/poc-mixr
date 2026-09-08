@@ -73,10 +73,16 @@ class Recipe(ConanFile):
         # repositorio -- e ela bate com a API que o Groot 1.0.0 quer (mesma
         # assinatura de VerifyXML, testado). Bonus: o Groot construido fica
         # falando o mesmo dialeto de XML que o host deste projeto de fato usa.
+        # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): fixava a TAG
+        # 'v3.5.6' -- mesma razao do mesmo fix em
+        # deps/behaviortree/conanfile.py: fork mantido pela PROPRIA equipe
+        # (ASA-Simulation), tag mais suscetivel a mover por engano do que a
+        # de projeto de terceiro estabelecido. MESMO commit usado la
+        # (confirmado apontar pro mesmo lugar que 'v3.5.6' hoje).
         shutil.rmtree(os.path.join("depend", "BehaviorTree.CPP"), ignore_errors=True)
         bt_git = Git(self, folder=os.path.join("depend", "BehaviorTree.CPP"))
         bt_git.clone(url="https://github.com/ASA-Simulation/BehaviorTree.CPP", target=".")
-        bt_git.checkout("v3.5.6")
+        bt_git.checkout("abd9d75aa2f7f2fa21cab60dbd20cfc7503e4c43")
 
         # v3.5.6 tambem usa 'behaviortree_cpp_v3/' como nome de diretorio
         # (nao mudou disso pra ca) -- o mesmo symlink de compatibilidade da
