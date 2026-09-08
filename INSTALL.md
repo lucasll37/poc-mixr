@@ -121,7 +121,7 @@ code --install-extension spencerwmiles.vscode-task-buttons
 |---|---|
 | `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §6.2 |
 | `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
-| `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) |
+| `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) — **essa task assume `gnome-terminal` instalado** (abre o app num terminal externo); em KDE/XFCE/WSL2 sem esse pacote a task falha com "command not found" — rode o binário direto num terminal seu nesse caso |
 | `anthropic.claude-code` | a extensão do Claude Code em si |
 | `ms-toolsai.jupyter` | notebooks `.ipynb`, se usados em `src/poc/rl-training/` |
 | `yzhang.markdown-all-in-one` | edição confortável dos muitos `.md` deste repositório |
