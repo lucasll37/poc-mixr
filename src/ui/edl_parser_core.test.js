@@ -97,6 +97,22 @@ test("tokenize: string entre aspas NAO interpreta escape -- '\\X' vira DOIS cara
   assert.strictEqual(strTok2.v, 'a\\"b', "backslash + aspas embutida sobrevivem os DOIS, o valor real tem 4 caracteres");
 });
 
+test("scalarToSlotValue (via parseEdlDocument): 'TRUE'/'FALSE' maiusculo tambem vira booleano -- gramatica real tem as duas regras", () => {
+  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l:119-140 declara
+  // 'true'/'TRUE'/'false'/'FALSE' como quatro regras distintas -- so'
+  // 'true'/'false' eram reconhecidas aqui. Sem a forma maiuscula, o valor
+  // caia no ramo "text" (campo de texto na UI, nao o toggle) e reexportava
+  // sempre em minusculo, divergindo do '.edl' carregado.
+  const { tree: t1 } = parser.parseEdlDocument("( Aircraft navMode: TRUE )", BY_FACTORY);
+  assert.deepStrictEqual(t1.slotValues.navMode, { kind: "boolean", value: true });
+  const { tree: t2 } = parser.parseEdlDocument("( Aircraft navMode: FALSE )", BY_FACTORY);
+  assert.deepStrictEqual(t2.slotValues.navMode, { kind: "boolean", value: false });
+  // 'True'/'False' (caixa mista) NAO existe na gramatica real -- continua
+  // caindo em "text", como ja documentado para o destaque de sintaxe.
+  const { tree: t3 } = parser.parseEdlDocument("( Aircraft navMode: True )", BY_FACTORY);
+  assert.strictEqual(t3.slotValues.navMode.kind, "text");
+});
+
 test("tokenize: virgula e' espaco em branco puro (gramatica real: '[ ,\\t\\v\\f]'), nao separador", () => {
   const shape = (toks) => toks.map((t) => t.t + (t.v !== undefined ? ":" + t.v : ""));
   const a = parser.tokenize("( Aircraft type: C310 debugLevel: 1 )");

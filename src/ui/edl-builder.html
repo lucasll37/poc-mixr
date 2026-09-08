@@ -78603,8 +78603,18 @@ function scalarToSlotValue(value, slotDef) {
   if (!slotDef) {
     return { kind: "raw", raw: value.quoted ? value.raw : value.text };
   }
-  if (!value.quoted && (value.text === "true" || value.text === "false") && slotDef.acceptsBoolean) {
-    return { kind: "boolean", value: value.text === "true" };
+  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l tem regras
+  // SEPARADAS para 'true'/'TRUE'/'false'/'FALSE' (tudo minusculo OU tudo
+  // maiusculo -- 'True'/'False' em caixa mista NAO e' booleano na gramatica
+  // real, vira IDENT solto; ja' coberto por EDL_TOKEN_RE do destaque de
+  // sintaxe, so' faltava aqui). Sem as duas formas maiusculas, carregar um
+  // '.edl' que usa 'TRUE'/'FALSE' fazia o valor cair no ramo "text" (vira
+  // 'kind: "text"', nao 'kind: "boolean"') -- a UI mostraria um campo de
+  // texto em vez do toggle, e a reexportacao trocaria de volta pra
+  // minusculo, sem quebrar o cenario mas divergindo do byte original.
+  if (!value.quoted && (value.text === "true" || value.text === "TRUE"
+      || value.text === "false" || value.text === "FALSE") && slotDef.acceptsBoolean) {
+    return { kind: "boolean", value: value.text === "true" || value.text === "TRUE" };
   }
   if (value.isNumber && (slotDef.acceptsNumber || slotDef.unitFamilies.length)) {
     return { kind: slotDef.unitFamilies.length ? "unit" : "number", value: value.text, unit: "" };
