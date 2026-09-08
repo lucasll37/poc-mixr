@@ -597,6 +597,19 @@ test('dual-tacview-port', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
+# PDU DIS malformado/truncado, enviado cru por UDP contra o cenario de
+# PRODUCAO (o UNICO venue que abre a porta DIS de verdade -- toda fixture de
+# make_fixture.py remove 'networks:' de proposito). mixr::dis::NetIO e
+# dependencia BINARIA -- este teste so pode documentar/travar o
+# comportamento observado (nao crasha, hoje), nunca "consertar" o parser.
+# Ver o cabecalho do script para o que foi lido no fonte vendorizado antes de
+# escrever isto (offsetof() real contra os headers do Conan, nao adivinhado).
+test('dis-pdu-malformado', py,
+     args: files('scenario/run_dis_malformed_pdu_test.py') + [
+         '--binario', app.full_path()],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 120, is_parallel: false)
+
 # A SAIDA do app, no caminho INTERATIVO -- o unico que os testes acima nao
 # alcancam: eles rodam '-deterministic', que nao tem TUI nem thread de tempo
 # critico nativa. Este sobe o binario num pty de verdade, aperta [q] e afirma
