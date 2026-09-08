@@ -7,7 +7,9 @@ MIXR: o que o framework já resolve pronto, o que sobra para escrever, e qual o 
 escolha de integração (onde a decisão roda, como um player chega à simulação, em que linguagem a
 lógica de decisão é escrita...).
 
-> **Novo nos dois?** **MIXR** (*Mixed Reality Simulation*) é um framework C++ para modelagem e
+> **Novo nos dois?** (E o que é uma "**poc**"? *Prova de conceito* — cada pasta sob `src/poc/`
+> isola UMA variável de integração, ver "Como o projeto se organiza". É também o sufixo do nome
+> deste repositório.) **MIXR** (*Mixed Reality Simulation*) é um framework C++ para modelagem e
 > simulação (M&S) de sistemas — plataformas, sensores, armamento, redes de interoperabilidade
 > (**DIS**, *Distributed Interactive Simulation*, protocolo de rede padronizado como IEEE 1278,
 > ver "Rodar"); não é um simulador pronto, é um conjunto de bibliotecas para montar um (aqui,
@@ -25,8 +27,9 @@ lógica de decisão é escrita...).
 
 O MIXR **nunca é modificado** — entra como dependência binária, resolvida pelo Conan. Os
 **modelos** (a lógica de decisão de cada aeronave) são carregados pelo executável em tempo de
-execução como plugins (`dlopen`: o `.so` do modelo é aberto em *runtime* pelo host, nunca linkado
-em tempo de compilação — o host nunca vê o código-fonte do modelo); o fork empacotado é
+execução como plugins (`dlopen`: o `.so` do modelo é aberto em *runtime* pelo **host** — o
+executável `./app` deste repositório, detalhado na seção "Build" abaixo — nunca linkado em tempo
+de compilação; o host nunca vê o código-fonte do modelo); o fork empacotado é
 **headless**, e toda visualização é feita via **Tacview Real-Time Telemetry**
 ([Tacview](https://www.tacview.net/) — visualizador 3D de voo de terceiros; a simulação roda
 normalmente sem ele, ele só recebe telemetria ao vivo por *socket*, ver "Pré-requisitos").
@@ -79,8 +82,8 @@ organização ou sem. Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e como bu
 ## Build
 
 Um **modelo** é a lógica de decisão de um *player* (a entidade simulada dentro do MIXR — uma
-aeronave, por exemplo) (`domain/`/`bt/`/`ubf/`/`xnative/` de `models/<categoria>/<nome>/`),
-compilada à parte e carregada em *runtime* via `dlopen` — nunca
+aeronave, por exemplo) (`domain`/`bt`/`ubf`/`xnative` de `models/<categoria>/<nome>/` — caminhos
+exatos na árvore abaixo), compilada à parte e carregada em *runtime* via `dlopen` — nunca
 linkada no host. O **host** é o executável `./app` (mais `edlcheck`/`plugininfo`/`node`),
 compilado em `app/`+`src/`+`libs/`. Os dois são projetos Meson **separados**, orquestrados pelo
 `Makefile` — o host nunca vê o código-fonte de um modelo, só o `.so` já compilado. Etapas, em
@@ -90,7 +93,7 @@ ordem:
 make configure   # 1. conan install + meson setup do host                    -> build/
 make sdk         # 2. publica o ABI de plugin (a interface binaria que um .so de
                  #    modelo tem que respeitar, libs/xplugin/PluginAbi.hpp) + as
-                 #    .so compartilhadas host<->modelo (libs/x<nome>, ex.: xtacview,
+                 #    .so compartilhadas host<->modelo (libs/x<nome>, ex.: xboard,
                  #    xlog -- ver "Como o projeto se organiza" abaixo)            -> dist/
 make models      # 3. compila o(s) modelo(s) (nao mexe em dist/)             -> plugins/
 make build       # 4. compila o host (nao depende dos modelos)               -> build/
@@ -99,7 +102,9 @@ make install     # 5. sincroniza plugins/ -> dist/ e instala o host          -> 
 
 `build`/`install` puxam `sdk` sozinhos, mas **não** puxam `models` — as duas são DECOPLADAS de
 propósito (compilar o host nunca precisou saber onde os modelos guardam os artefatos deles, ver
-CLAUDE.md seção "Desacoplando `models` de `dist/`"). No dia a dia, rode as duas: `make configure
+[`CLAUDE.md`](CLAUDE.md) — apesar do nome, é referência de arquitetura para humanos também, não
+só config de IA; ver a tabela "Leia mais" no fim — seção "Desacoplando `models` de `dist/`"). No
+dia a dia, rode as duas: `make configure
 && make models && make install` (ou `make configure && make build && make models && make
 install`, se quiser separar explicitamente o passo 4); as etapas do bloco acima existem para
 rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho não toca no host).
@@ -228,21 +233,21 @@ make run-app                                            # atalho para '-folder .
 `-f` sempre assume a frota `falcon1..4`; um `.edl` sem esses nomes falha ao carregar (erro claro,
 não silencioso). Para frota arbitrária, use `-folder`, que descobre os *players* em runtime.
 
-| poc | comando | porta Tacview | porta DIS (local) |
-|---|---|---|---|
-| `flight` | `-folder src/poc/dis -scenario flight` | 1234 | 3002 |
-| `bandit` | `-folder src/poc/dis -scenario bandit` | 1235 | 3001 |
-| `python-flight` | `-folder src/poc -scenario python-flight` | 1237 | 3004 |
-| `onnx-policy` | `-folder src/poc -scenario onnx-policy` | 1238 | 3005 |
-| `built-in_mixr_1` | `-folder src/poc -scenario built-in_mixr_1` | 1239 | — (hermético) |
+| poc | o que demonstra | comando | porta Tacview | porta DIS (local) |
+|---|---|---|---|---|
+| `flight` | cadeia completa de decisão (evade → alerta → apoio), trocando DIS de verdade com `bandit` | `-folder src/poc/dis -scenario flight` | 1234 | 3002 |
+| `bandit` | o intruso: pilotado por joystick ou por piloto automático de fallback, emitindo estado via DIS | `-folder src/poc/dis -scenario bandit` | 1235 | 3001 |
+| `python-flight` | as folhas de ação da árvore de decisão escritas em Python, editáveis sem recompilar | `-folder src/poc -scenario python-flight` | 1237 | 3004 |
+| `onnx-policy` | a decisão inteira (não só folhas) feita por uma rede neural treinada, sem árvore de comportamento | `-folder src/poc -scenario onnx-policy` | 1238 | 3005 |
+| `built-in_mixr_1` | o player mais completo montável só com componentes nativos do MIXR (53 classes num único avião) | `-folder src/poc -scenario built-in_mixr_1` | 1239 | — (**hermético**: não abre rede nenhuma, sem DIS) |
 
-Todas escutam **DIS** (*Distributed Interactive Simulation*, protocolo de rede para troca de
-estado de entidades simuladas entre processos, padronizado como IEEE 1278) em `3000`; a porta
-acima é só a de emissão local — `flight`/`bandit` trocam DIS entre si, rode as duas juntas para
-ver a cadeia completa. Esta é a lista completa das pocs sob `src/poc/`; para as de `sandbox/` e
-para o detalhe de cada uma (o que demonstra, armadilhas já confirmadas), abra o `README.md` do
-subprojeto. [`TOUR.md`](TOUR.md) não repete essa tabela — é a ordem sugerida de exploração, não
-um catálogo.
+`porta Tacview` é a mesma ferramenta de visualização 3D explicada em "Pré-requisitos" acima —
+conecte o Tacview nesse número de porta para ver aquele cenário específico ao vivo. Todas escutam
+**DIS** (*Distributed Interactive Simulation*, protocolo de rede para troca de estado de
+entidades simuladas entre processos, padronizado como IEEE 1278) em `3000`; a porta acima é só a
+de emissão local — `flight`/`bandit` trocam DIS entre si, rode as duas juntas para ver a cadeia
+completa. Esta é a lista completa das pocs sob `src/poc/`; para as de `sandbox/` e para
+armadilhas já confirmadas de cada uma, abra o `README.md` do subprojeto.
 
 ## Como o projeto se organiza
 
@@ -256,18 +261,22 @@ poc-mixr/
 ├── app/          painel de controle (TUI) -- o runner interativo principal do repositorio
 ├── src/
 │   ├── poc/      as provas de conceito -- cada pasta isola UMA variavel de integracao
-│   ├── rl/       wrapper Gymnasium para treinar RL contra a mesma simulacao
+│   ├── rl/       wrapper Gymnasium (biblioteca padrao de ambientes de RL -- Reinforcement
+│                 Learning, aprendizado por reforco) pra treinar uma politica de RL contra
+│                 a mesma simulacao
 │   ├── ui/       editor grafico de cenario .edl (ferramenta de autoria, offline)
 │   └── node/     runner HEADLESS de um cenario (sem TUI, so log) -- peer enxuto de ./app,
 │                 ver CLAUDE.md secao 'src/node' e src/node/README.md
 ├── models/       o(s) MODELO(s) -- projetos Meson a parte, carregados como plugin (dlopen);
-│                 cada um em camadas models/players/<nome>/{domain,bt,ubf,xnative}/ -- "o que
-│                 fazer" mora em domain/, "como conectar ao MIXR" mora em bt/ubf/xnative/
+│                 cada um em camadas models/players/<nome>/{src,include}/{domain,bt,ubf,xnative}/
+│                 (.cpp em src/, .hpp em include/ -- convencao C++ comum) -- "o que fazer"
+│                 mora em domain/, "como conectar ao MIXR" mora em bt/ubf/xnative/
 │                 (<categoria> em models/<categoria>/<nome>/ e' sempre "players" hoje --
 │                 "systems"/"others" existem como convencao para o futuro, ainda vazias)
 ├── plugins/      deposito flat dos .so compilados (proprios OU de terceiro) -> dist/ via 'make install'
-├── libs/         bibliotecas x<nome> (ex.: xtacview, xlog, xclock) reaproveitadas entre host e
-│                 modelos via dlopen -- cada uma com README.md, ver libs/README.md
+├── libs/         bibliotecas x<nome> (ex.: xboard, xlog -- as que cruzam a fronteira dlopen
+│                 host<->modelo; outras, como xtacview, ficam estaticas) -- cada uma com
+│                 README.md, ver libs/README.md
 ├── shared/       dados vendorizados do CENARIO -- terreno SRTM (elevacao publica, NASA) e
 │                 aeronaves JSBSim (motor de dinamica de voo open-source), em shared/data/
 ├── sandbox/      cenarios soltos de experimentacao (ver 'make run-app')
@@ -286,8 +295,9 @@ poc-mixr/
 
 Três regras valem para todo subprojeto e todo modelo:
 
-1. **"O que fazer" mora em `domain/`** (`models/<categoria>/<nome>/domain/`) **; "como conectar"
-   mora nas factories/adaptadores** (`bt/`/`ubf/`/`xnative/`, ver a árvore acima). `domain/` não
+1. **"O que fazer" mora em `domain/`** (`models/<categoria>/<nome>/{src,include}/domain/` —
+   `.cpp` em `src/`, `.hpp` em `include/`) **; "como conectar" mora nas factories/adaptadores**
+   (`bt/`/`ubf/`/`xnative/`, mesma divisão `src/`+`include/`, ver a árvore acima). `domain/` não
    inclui um header do MIXR — dá para testar a política sem levantar uma simulação.
 2. **Um arquivo, uma questão.** Nenhum `main.cpp` de centenas de linhas.
 3. **Estrutura vem do EDL, comportamento vem do C++.** Reconfigurar o cenário não recompila nada.

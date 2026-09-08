@@ -896,9 +896,9 @@ const THREAD_COLOR = { tc: "var(--ink)", fundo: "var(--bgc)", rede: "var(--ok)",
  * mesma lógica -- zoom por roda com fator 1.12 clampado em [ZOOM_MIN,    *
  * ZOOM_MAX], arrasto com deadzone de clique antes de capturar o pointer  *
  * -- só divergia em COMENTÁRIO, não em comportamento). Terceiro          *
- * consumidor: StructDiagram (aba Estrutura). Devolve exatamente os       *
+ * consumidor: StructDiagram (aba Diagrama de Classes). Devolve exatamente os       *
  * mesmos nomes que os três call-sites já usam como variáveis locais.    */
-function usePanZoom(initial = { k: 1, x: 0, y: 0 }) {
+function usePanZoom(initial = { k: 1, x: 0, y: 0 }, maxZoom = ZOOM_MAX) {
   const [view, setView] = useState(initial);
   const drag = useRef(null);
   const svgRef = useRef(null);
@@ -921,7 +921,7 @@ function usePanZoom(initial = { k: 1, x: 0, y: 0 }) {
     const handleWheel = (e) => {
       e.preventDefault();
       const f = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      setView((v) => ({ ...v, k: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, v.k * f)) }));
+      setView((v) => ({ ...v, k: Math.max(ZOOM_MIN, Math.min(maxZoom, v.k * f)) }));
     };
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
@@ -985,7 +985,7 @@ function usePanZoom(initial = { k: 1, x: 0, y: 0 }) {
     }
     drag.current = null;
   };
-  return { view, setView, svgRef, onDown, onMove, onUp, drag };
+  return { view, setView, svgRef, onDown, onMove, onUp, drag, maxZoom };
 }
 
 /* =============================== CSS ================================ */
@@ -1054,7 +1054,17 @@ html, body { margin:0; padding:0; }
 /* Com o painel de detalhe oculto (botao "detalhe"), o grafo cresce pra usar   *
  * a altura que o painel deixou de ocupar -- e o proposito do toggle. */
 .mx-svgwrap[data-expanded="1"] { height:clamp(500px, 82vh, 1500px); }
-.mx-svgwrap svg { width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+/* Arrastar pra pan (onPointerDown/Move) não impede a seleção nativa de   *
+ * texto do navegador -- sem isto, arrastar dentro de QUALQUER caixa/nó    *
+ * (Simulação, Comportamento, Diagrama de Classes) seleciona o texto dos  *
+ * <foreignObject> embaixo do cursor, junto com o pan. user-select:none   *
+ * aqui (herdado por tudo dentro do <svg>, inclusive o HTML dos           *
+ * foreignObject) tira a seleção sem precisar de e.preventDefault() no    *
+ * pointerdown -- que quebraria o clique normal em botão/nó (mesma        *
+ * armadilha já documentada em usePanZoom() sobre capturar o pointer cedo *
+ * demais). */
+.mx-svgwrap svg { width:100%; height:100%; display:block; touch-action:none; cursor:grab;
+  user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; }
 .mx-svgwrap svg:active { cursor:grabbing; }
 .mx-zoom { position:absolute; top:8px; right:8px; display:flex; gap:3px; z-index:2; }
 .mx-zbtn { font:inherit; font-size:12px; width:26px; height:26px; padding:0; cursor:pointer;
@@ -1196,7 +1206,7 @@ export default function App() {
   // mesmo padrão do useEffect de `focus` dentro de Exec.
   const [catalogFocus, setCatalogFocus] = useState(null);
   // Espelha `catalogFocus`, mesma razão -- permite deep-link futuro de
-  // outra aba para a aba Estrutura (nenhum ponto do app ainda dispara
+  // outra aba para a aba Diagrama de Classes (nenhum ponto do app ainda dispara
   // isto, mas StructDiagram já consome via o mesmo useEffect padrão).
   const [structFocus, setStructFocus] = useState(null);
   // Lido uma vez, no mount -- nunca via @media prefers-color-scheme (o CSS
@@ -1219,7 +1229,7 @@ export default function App() {
           <div className="mx-tabs">
             <button className="mx-tab" data-on={mode === "exec" ? 1 : 0} onClick={() => setMode("exec")}>Simulação</button>
             <button className="mx-tab" data-on={mode === "dec" ? 1 : 0} onClick={() => setMode("dec")}>Comportamento</button>
-            <button className="mx-tab" data-on={mode === "struct" ? 1 : 0} onClick={() => setMode("struct")}>Estrutura</button>
+            <button className="mx-tab" data-on={mode === "struct" ? 1 : 0} onClick={() => setMode("struct")}>Diagrama de Classes</button>
             <button className="mx-tab" data-on={mode === "cat" ? 1 : 0} onClick={() => setMode("cat")}>Catálogo</button>
           </div>
           <button className="mx-zbtn" data-w="1" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Alternar modo claro/escuro">
@@ -4220,20 +4230,72 @@ const STRUCT_EDGES = [];
 })(STRUCT_TOPOLOGY);
 
 /* --------------------------- layout UML -------------------------------- *
- * Diferente de layout()/flightLayout() (nó de tamanho FIXO): aqui a altura
- * varia MUITO por nó (um stub Tier 2 tem ~1 linha; Player, expandida, tem
- * mais de 400). Largura de caixa fica fixa (UML_BOX_W); só a altura varia
- * -- evita um bin-packer 2D completo, desnecessário pra uma árvore.
+ * Diferente de layout()/flightLayout() (nó de tamanho FIXO): aqui altura E
+ * largura variam por nó -- um stub Tier 2 tem ~1 linha e nome curto;
+ * Player, expandida, tem 400+ linhas e um método herdado de 169
+ * caracteres (Component::processComponents() por inteiro). Largura fixa
+ * cortaria esse texto -- pedido explícito é "sem abreviação nenhuma".
  *
  * Duas passadas: pós-ordem MEDINDO a extensão vertical real de cada
  * subárvore (_subH = max(altura própria, soma das alturas dos filhos +
- * espaçamento)); pré-ordem POSICIONANDO (x = profundidade * coluna fixa;
- * y empilha os filhos pela extensão real, centralizados no espaço que a
- * própria subárvore ocupa -- pai centrado entre o PRIMEIRO e o ÚLTIMO
- * filho, mesma regra de layout(), só alimentada com extensões reais em vez
- * de um contador de folha uniforme). */
-const UML_BOX_W = 260, UML_COLW = 340, UML_GAP = 20;
+ * espaçamento)); pré-ordem POSICIONANDO (x = início da COLUNA da
+ * profundidade, ver abaixo; y empilha os filhos pela extensão real,
+ * centralizados no espaço que a própria subárvore ocupa -- pai centrado
+ * entre o PRIMEIRO e o ÚLTIMO filho, mesma regra de layout(), só
+ * alimentada com extensões reais em vez de um contador de folha uniforme). */
+const UML_MIN_W = 170, UML_GAP_X = 70, UML_GAP = 20;
 const UML_HEAD_BLOCK = 35, UML_HEADER_H = 22, UML_COMPT_PAD = 3, UML_ROW_H = 14, UML_DIVIDER_H = 1;
+
+// Medição REAL de largura de texto via <canvas>, não uma razão
+// caractere/pixel chutada -- só assim dá pra garantir "cabe sem
+// abreviação" com a MESMA fonte que o navegador de fato resolve pra
+// var(--mono) (ui-monospace/JetBrains Mono/SF Mono/Menlo, que não têm
+// exatamente a mesma largura de glifo entre si). Sem <canvas> disponível
+// (não deveria faltar num navegador real -- só previsto pra não quebrar
+// num ambiente de teste sem DOM completo) cai num fallback por contagem de
+// caractere, generoso de propósito: melhor caixa larga demais que texto
+// cortado.
+const UML_MONO = "ui-monospace,'JetBrains Mono','SF Mono',Menlo,monospace";
+function makeTextMeasurer() {
+  let ctx = null;
+  try { ctx = document.createElement("canvas").getContext("2d"); } catch { ctx = null; }
+  return (text, font, fallbackPxPerChar) => {
+    if (ctx) { ctx.font = font; return ctx.measureText(text).width; }
+    return text.length * fallbackPxPerChar;
+  };
+}
+const measureUmlText = makeTextMeasurer();
+
+// Larguras de padding/prefixo iguais às usadas no render da caixa (ver o
+// <foreignObject> de cada compartimento, mais abaixo) -- se um dia
+// divergirem, o texto volta a arriscar cortar.
+function umlNodeWidth(node, collapsedSet) {
+  const rowW = (text) => measureUmlText(text, `9.5px ${UML_MONO}`, 6.2) + 16 /* padding 8+8 */ + 10 /* prefixo -/#/+ */ + 6 /* folga */;
+  const headerW = (text) => measureUmlText(text, `600 11px ${UML_MONO}`, 7.2) + 16 + 13 /* caret+gap */ + 6;
+  const baseW = (text) => measureUmlText(text, `italic 9px ${UML_MONO}`, 5.9) + 16 + 6;
+
+  const e = CLASS_DIAGRAM.classes[node.cls];
+  if (!e) {
+    const t2 = CLASS_DIAGRAM.tier2[node.cls] || {};
+    const line = t2.base ? `«tier 2» : ${t2.base}` : "«tier 2»";
+    return Math.max(UML_MIN_W, Math.ceil(headerW(node.cls)), Math.ceil(baseW(line)));
+  }
+  let w = Math.max(UML_MIN_W, headerW(node.cls));
+  if (e.base) w = Math.max(w, baseW(`: ${e.base}`));
+  // Recolhida, a caixa só mostra cabeçalho+base -- não precisa da largura
+  // do maior atributo/método (que nem está visível), senão toda caixa
+  // Tier 1 nasceria enorme mesmo recolhida (o estado padrão desta aba).
+  // Reavaliado a cada expandir/recolher, igual já acontece com a altura.
+  if (collapsedSet && collapsedSet.has(node.id)) return Math.ceil(w);
+  e.attributes.forEach((a) => { w = Math.max(w, rowW(`${a.name} : ${a.type}`)); });
+  e.components.forEach((c) => { w = Math.max(w, rowW(`${c.name} : ${c.target}${c.multiplicity === "many" ? "[*]" : ""}`)); });
+  e.methods.forEach((m) => {
+    let sig = m.signature;
+    if (m.pureVirtual) sig = sig.replace(/\s*=\s*0\s*$/, "") + " {abstract}";
+    w = Math.max(w, rowW(sig));
+  });
+  return Math.ceil(w);
+}
 
 function umlBoxContentHeight(clsName) {
   const e = CLASS_DIAGRAM.classes[clsName];
@@ -4248,7 +4310,21 @@ function umlNodeHeight(node, collapsedSet) {
   return full == null ? UML_HEAD_BLOCK : full;
 }
 
-function umlLayout(root, heightOf) {
+function umlLayout(root, heightOf, widthOf) {
+  // Largura por COLUNA (profundidade), não por nó individual -- todo nó de
+  // uma mesma coluna começa no mesmo X, largo o bastante pro MAIOR nome/
+  // atributo/método daquela coluna específica, nunca do grafo inteiro (uma
+  // caixa Tier 2 minúscula não fica gigante só porque Player, em outra
+  // coluna, tem um método de 169 caracteres).
+  const colWidths = [];
+  (function scanWidths(n, depth) {
+    n._w = widthOf(n);
+    colWidths[depth] = Math.max(colWidths[depth] || 0, n._w);
+    (n.children || []).forEach((c) => scanWidths(c, depth + 1));
+  })(root, 0);
+  const colX = [0];
+  for (let d = 1; d < colWidths.length; d++) colX[d] = colX[d - 1] + colWidths[d - 1] + UML_GAP_X;
+
   function measure(n) {
     n._h = heightOf(n);
     const kids = n.children || [];
@@ -4262,9 +4338,9 @@ function umlLayout(root, heightOf) {
   const nodes = [];
   function place(n, depth, top) {
     const kids = n.children || [];
-    const x = depth * UML_COLW;
+    const x = colX[depth];
     if (!kids.length) {
-      nodes.push({ ...n, x, y: top + n._subH / 2, depth, h: n._h });
+      nodes.push({ ...n, x, y: top + n._subH / 2, depth, h: n._h, w: n._w });
       return;
     }
     const kidsTotal = kids.reduce((a, k) => a + k._subH, 0) + UML_GAP * (kids.length - 1);
@@ -4272,7 +4348,7 @@ function umlLayout(root, heightOf) {
     kids.forEach((k) => { place(k, depth + 1, cursor); cursor += k._subH + UML_GAP; });
     const f = nodes.find((m) => m.id === kids[0].id);
     const l = nodes.find((m) => m.id === kids[kids.length - 1].id);
-    nodes.push({ ...n, x, y: (f.y + l.y) / 2, depth, h: n._h });
+    nodes.push({ ...n, x, y: (f.y + l.y) / 2, depth, h: n._h, w: n._w });
   }
   place(root, 0, 0);
   return nodes;
@@ -4286,7 +4362,11 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
   // por interação do usuário (clique no cabeçalho, ou "expandir tudo").
   const [collapsed, setCollapsed] = useState(() => new Set(STRUCT_ALL.map((n) => n.id)));
   const [pinned, setPinned] = useState(null);
-  const { view, setView, svgRef, onDown, onMove, onUp } = usePanZoom();
+  // Teto de zoom mais alto que o das outras abas (20x, não 10x) -- caixas
+  // aqui podem chegar a mais de 1000px de largura (método herdado de 169
+  // caracteres exibido sem abreviação), então 10x não bastava pra ler
+  // texto de perto numa árvore desse tamanho.
+  const { view, setView, svgRef, onDown, onMove, onUp, maxZoom } = usePanZoom({ k: 1, x: 0, y: 0 }, 20);
 
   // Chegada vinda de outra aba (deep-link futuro) -- mesmo padrão do
   // useEffect de `focus` em Exec/Catalog.
@@ -4298,14 +4378,15 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
   }, [focus, setFocus]);
 
   const heightOf = useCallback((n) => umlNodeHeight(n, collapsed), [collapsed]);
-  // Colapsar um nó muda seu {h} -- força o recálculo do layout INTEIRO
+  const widthOf = useCallback((n) => umlNodeWidth(n, collapsed), [collapsed]);
+  // Colapsar um nó muda seu {h} (e agora também {w}) -- força o recálculo do layout INTEIRO
   // (nunca scroll interno num foreignObject: sem precedente no arquivo, e
   // relayoutar ~44 nós é desprezível -- o Catálogo já refiltra 342 a cada
   // tecla).
-  const nodes = useMemo(() => umlLayout(STRUCT_TOPOLOGY, heightOf), [heightOf]);
+  const nodes = useMemo(() => umlLayout(STRUCT_TOPOLOGY, heightOf, widthOf), [heightOf, widthOf]);
   const pos = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
 
-  const W = Math.max(...nodes.map((n) => n.x)) + UML_BOX_W + 40;
+  const W = Math.max(...nodes.map((n) => n.x + n.w)) + 40;
   const H = Math.max(...nodes.map((n) => n.y + n.h / 2)) + 30;
   const topMargin = 20, leftMargin = 16;
 
@@ -4323,7 +4404,7 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
 
   return (
     <div className="mx-body" style={{ paddingBottom: 40 }}>
-      <h2 style={{ fontSize: 15, margin: "0 0 6px", fontWeight: 600 }}>Diagrama de Classe Estrutural</h2>
+      <h2 style={{ fontSize: 15, margin: "0 0 6px", fontWeight: 600 }}>Diagrama de Classes</h2>
       {/* Aviso obrigatório -- mesmo padrão de outras abas deste arquivo    *
          * (ex.: "não é traçado ao vivo" da aba Simulação/Componentes,      *
          * FLIGHT_SLOT_TYPES na aba Comportamento): dizer explicitamente o  *
@@ -4356,7 +4437,7 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
       <div className="mx-graph">
         <div className="mx-zoom">
           <div className="mx-zoomslider" title="Zoom -- também funciona com a roda do mouse">
-            <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={0.01} value={view.k} aria-label="Zoom"
+            <input type="range" min={ZOOM_MIN} max={maxZoom} step={0.01} value={view.k} aria-label="Zoom"
               onChange={(e) => setView((v) => ({ ...v, k: Number(e.target.value) }))} />
             <span className="mx-mono">{view.k.toFixed(2)}×</span>
           </div>
@@ -4385,14 +4466,17 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
                 if (!p || !q) return null;
                 const child = STRUCT_BY_ID[b];
                 const compose = child.kind === "compose";
-                const mid = p.x + UML_BOX_W + (UML_COLW - UML_BOX_W) / 2;
-                const d = `M ${p.x + UML_BOX_W} ${p.y} H ${mid} V ${q.y} H ${q.x}`;
+                // Meio do vão REAL entre o lado direito de p e o lado
+                // esquerdo de q -- não mais um deslocamento fixo, porque a
+                // largura de p e a coluna de q agora variam por conteúdo.
+                const mid = (p.x + p.w + q.x) / 2;
+                const d = `M ${p.x + p.w} ${p.y} H ${mid} V ${q.y} H ${q.x}`;
                 return (
                   <g key={a + ">" + b}>
                     <path d={d} fill="none" stroke={compose ? "var(--ink)" : "var(--rule)"} strokeWidth={compose ? 1.5 : 1.2}
                       markerStart={compose ? "url(#uml-diamond)" : undefined} />
                     {compose && child.label && (
-                      <foreignObject x={mid - 90} y={q.y - 15} width="180" height="12" style={{ pointerEvents: "none" }}>
+                      <foreignObject x={mid - 120} y={q.y - 15} width="240" height="12" style={{ pointerEvents: "none" }}>
                         <div className="mx-mono" title={child.label}
                              style={{ textAlign: "center", fontSize: 8.5, color: "var(--sub-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {child.label}{child.mult === "many" ? " [*]" : ""}
@@ -4405,15 +4489,15 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
               {STRUCT_BACKREFS.map((bref) => {
                 const p = pos[bref.from], q = pos[bref.to];
                 if (!p || !q) return null;
-                const pRight = p.x + UML_BOX_W, qRight = q.x + UML_BOX_W;
+                const pRight = p.x + p.w, qRight = q.x + q.w;
                 const d = p.x <= q.x
                   ? `M ${pRight} ${p.y} C ${pRight + 70} ${p.y}, ${q.x - 70} ${q.y}, ${q.x} ${q.y}`
                   : `M ${p.x} ${p.y} C ${p.x - 70} ${p.y}, ${qRight + 70} ${q.y}, ${qRight} ${q.y}`;
-                const lx = (p.x + q.x) / 2 + UML_BOX_W / 2, ly = (p.y + q.y) / 2;
+                const lx = (p.x + p.w / 2 + q.x + q.w / 2) / 2, ly = (p.y + q.y) / 2;
                 return (
                   <g key={bref.from + "~" + bref.to} opacity="0.8">
                     <path d={d} fill="none" stroke="var(--ok)" strokeWidth="1.3" strokeDasharray="2 3" />
-                    <foreignObject x={lx - 90} y={ly - 6} width="180" height="12" style={{ pointerEvents: "none" }}>
+                    <foreignObject x={lx - 120} y={ly - 6} width="240" height="12" style={{ pointerEvents: "none" }}>
                       <div className="mx-mono" title={bref.label}
                            style={{ textAlign: "center", fontSize: 8.5, color: "var(--ok)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {bref.label}
@@ -4436,13 +4520,13 @@ function StructDiagram({ focus, setFocus, onOpenCatalog }) {
                 return (
                   <g key={n.id} className="mx-node" transform={`translate(${n.x},${n.y - n.h / 2})`}
                      onClick={() => setPinned(n.id)}>
-                    <rect x="0" y="0" width={UML_BOX_W} height={n.h} rx="2"
+                    <rect x="0" y="0" width={n.w} height={n.h} rx="2"
                       fill={tier2 ? "var(--panel)" : (pinned === n.id ? "var(--active-bg)" : "var(--paper)")}
                       stroke={pinned === n.id ? "var(--ink)" : "var(--rule)"}
                       strokeWidth={pinned === n.id ? 1.6 : 1}
                       strokeDasharray={tier2 ? "3 2" : "0"} />
-                    <foreignObject x="0" y="0" width={UML_BOX_W} height={n.h}>
-                      <div style={{ width: UML_BOX_W, height: n.h, overflow: "hidden" }}>
+                    <foreignObject x="0" y="0" width={n.w} height={n.h}>
+                      <div style={{ width: n.w, height: n.h, overflow: "hidden" }}>
                         <div onClick={(e) => { e.stopPropagation(); if (hasCompartments) toggleNode(n.id); setPinned(n.id); }}
                              style={{ display: "flex", alignItems: "center", gap: 4, height: UML_HEADER_H, padding: "0 8px", cursor: hasCompartments ? "pointer" : "default" }}>
                           {hasCompartments && <span style={{ color: "var(--muted)", fontSize: 10, width: 9, flexShrink: 0 }}>{isCollapsed ? "▸" : "▾"}</span>}

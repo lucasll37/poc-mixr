@@ -5,7 +5,8 @@ make configure                       # inclui gtest (test_requires no conanfile.
 meson configure build -Dtests=true   # a suíte fica atrás desta opção
 make build
 make test-models                     # so a suite do MODELO
-make test                            # so a suite do HOST (61 testes)
+make test                            # so a suite do HOST (64 testes hoje -- numero muda, ver
+                                      # o aviso de "meson introspect" logo abaixo)
 ```
 
 `-Dtests=true` existe para que um build comum não precise do gtest resolvido. Sem ele o
@@ -47,7 +48,7 @@ roda os dois, nessa ordem, para cobrir os dois relatórios JUnit.
 >
 > **`--suite domain` do HOST cresceu bem além do que o nome sugere.** As regras do MODELO
 > continuam só em `models/players/A-4/build` (`make test-models`) — isso não mudou. Mas
-> `meson test -C build --suite domain` (29 alvos hoje) deixou de ser só as primitivas do
+> `meson test -C build --suite domain` (30 alvos hoje) deixou de ser só as primitivas do
 > `libs/xmsg`: a maior parte agora é lógica pura de `./app` extraída pra fora do FTXUI/MIXR
 > (mapa, memória, log, EDL, breakpoint, árvore de componentes, ...) mais uma unidade por
 > `libs/x*` que ainda não tinha teste direto (`xboard`, `xinfer`, `xjoystick`, `xpyembed`,
@@ -77,7 +78,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | suite | pergunta | como | custo |
 |---|---|---|---|
 | `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 50 casos, ~10 ms |
-| `domain` (host) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 27 alvos, ~10 s no total |
+| `domain` (host) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 30 alvos, ~10 s no total |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 19 casos, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 24 casos, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 12 execuções |

@@ -65,9 +65,19 @@ button{font:inherit; color:inherit;}
 
 .slide{
   position:absolute; inset:0; z-index:1; display:flex; flex-direction:column;
-  gap:22px; padding:clamp(28px,5vw,72px) clamp(30px,7vw,108px);
-  padding-bottom:96px; opacity:0; visibility:hidden; transition:opacity .28s ease;
+  /* gap/padding-top reagem a vmin (o menor entre largura e altura) e padding-bottom a vh --
+     numa janela baixa (nao so estreita) isso libera espaco vertical de verdade, em vez de so
+     depender de vw como antes (que ignorava altura por completo). overflow-y:auto continua so
+     como rede de seguranca -- o alvo e' nunca precisar dele numa janela de uso razoavel. */
+  gap:clamp(12px,2.2vmin,22px); padding:clamp(16px,4vmin,72px) clamp(24px,7vw,108px);
+  padding-bottom:clamp(64px,13vh,96px); opacity:0; visibility:hidden; transition:opacity .28s ease;
   overflow-y:auto;
+  /* centraliza verticalmente por padrao -- numa tela bem maior que o conteudo (4K, por
+     exemplo) o excedente de altura fica distribuido em vez de empurrado todo pra baixo do
+     conteudo, que parecia vazio/quebrado. Slides cujo conteudo ja preenche o espaco (flex:1
+     em algum filho, como os de demonstracao em video) nao mudam de aparencia -- justify-content
+     so tem efeito quando sobra espaco livre pra distribuir. */
+  justify-content:center;
 }
 .slide.is-active{opacity:1; visibility:visible; z-index:2;}
 @media (prefers-reduced-motion:reduce){ .slide{transition:none;} }
@@ -78,10 +88,10 @@ button{font:inherit; color:inherit;}
 }
 .headline{
   font-family:var(--font-display); font-weight:800; letter-spacing:.01em;
-  font-size:clamp(1.9rem,3.6vw,2.9rem); line-height:1.04; color:var(--ink);
+  font-size:clamp(1.5rem,min(3.6vw,5.6vh),2.9rem); line-height:1.04; color:var(--ink);
   max-width:26ch;
 }
-.lede{ font-size:clamp(1rem,1.4vw,1.2rem); line-height:1.55; color:var(--ink); max-width:62ch; }
+.lede{ font-size:clamp(.85rem,min(1.4vw,2.6vh),1.2rem); line-height:1.55; color:var(--ink); max-width:62ch; }
 .lede.muted{ color:var(--muted); }
 .body-copy{ max-width:70ch; }
 .body-copy p + p{ margin-top:12px; }
@@ -113,24 +123,27 @@ button{font:inherit; color:inherit;}
 }
 .feat-badge b{ font-weight:600; }
 
-.slide--statement{ justify-content:center; align-items:flex-start; }
+.slide--statement{ justify-content:center; align-items:flex-start; gap:14px; }
 .statement{
   font-family:var(--font-display); font-weight:800;
-  font-size:clamp(1.9rem,4.4vw,3.4rem); line-height:1.08; max-width:24ch; color:var(--ink);
+  /* min() com termo em vh evita estourar a altura da viewport em telas mais baixas (ex.:
+     1366x768) -- clamp(...,4.4vw,...) sozinho so reagia a LARGURA, entao um statement + lede
+     longos podiam produzir scroll numa tela mais baixa mesmo com folga de largura sobrando. */
+  font-size:clamp(1.7rem,min(4.4vw,6.4vh),3.4rem); line-height:1.08; max-width:24ch; color:var(--ink);
 }
 .statement em{ font-style:normal; color:var(--accent); }
 
 .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:start; }
 
-ul.list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; max-width:64ch; }
-ul.list li{ position:relative; padding-left:20px; font-size:.98rem; line-height:1.5; }
+ul.list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:clamp(6px,1.6vh,12px); max-width:64ch; }
+ul.list li{ position:relative; padding-left:20px; font-size:clamp(.82rem,calc(.6rem + .6vh),.98rem); line-height:1.5; }
 ul.list li::before{ content:''; position:absolute; left:0; top:.55em; width:8px; height:2px; background:var(--teal); }
 ul.list b{ color:var(--ink); font-weight:600; }
 ul.list.tight{ max-width:72ch; }
-ul.list.tight li{ font-size:.92rem; }
+ul.list.tight li{ font-size:clamp(.76rem,calc(.55rem + .55vh),.92rem); }
 
 figure.diagram{ margin:0; display:flex; flex-direction:column; gap:10px; align-items:stretch; }
-figure.diagram svg{ width:100%; height:auto; max-height:44vh; color:var(--muted); }
+figure.diagram svg{ width:100%; height:auto; max-height:47vh; color:var(--muted); }
 figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch; }
 .svg-accent{ color:var(--accent); }
 .svg-teal{ color:var(--teal); }
@@ -158,13 +171,14 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   padding:7px 12px; border-radius:999px; font-variant-numeric:tabular-nums; background:var(--brick-soft);
 }
 
-/* placeholder de midia (imagem/gif) a providenciar depois -- deliberadamente TRACEJADO,
+/* placeholder de midia (imagem/video) a providenciar depois -- deliberadamente TRACEJADO,
    pra nunca ser confundido com um card de conteudo terminado (.callout/.card/.axis-card
    usam borda solida) */
 .media-placeholder{
   border:1.5px dashed var(--line); border-radius:8px; background:var(--surface);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px; padding:22px; text-align:center; color:var(--muted); min-height:128px;
+  gap:8px; padding:clamp(10px,2.4vh,22px); text-align:center; color:var(--muted);
+  min-height:clamp(80px,16vh,128px);
 }
 .media-placeholder svg{ opacity:.55; color:var(--muted); }
 .media-placeholder .tag{
@@ -174,14 +188,14 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
 .media-placeholder .caption{ font-size:.86rem; max-width:36ch; line-height:1.45; font-style:italic; }
 .media-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
 
-/* slide de demonstracoes em video -- player + menu de reproducao. dedica o MAXIMO de espaco
-   vertical/horizontal disponivel ao video (flex:1 na area do player), com o cabecalho
-   reduzido de proposito pra sobrar mais altura. */
-.slide--demos{ gap:12px; }
-.slide--demos .headline{ font-size:1.35rem; max-width:none; }
-.demo-player{ flex:1; min-height:0; display:flex; gap:16px; }
+/* slides de demonstracao em video -- UM video por tela (navegacao pelo proprio deck, igual a
+   qualquer outro slide), nao um player+menu dentro de um slide so. .demo-stage dedica o MAXIMO
+   de espaco disponivel ao video (flex:1 preenche tudo que sobra na coluna do slide), com o
+   cabecalho reduzido de proposito pra sobrar mais altura. */
+.slide--demo{ gap:12px; }
+.slide--demo .headline{ font-size:1.3rem; max-width:none; }
 .demo-stage{
-  flex:1; min-width:0; position:relative; background:#050708; border:1px solid var(--line);
+  flex:1; min-height:0; position:relative; background:#050708; border:1px solid var(--line);
   border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;
 }
 .demo-stage video{ width:100%; height:100%; object-fit:contain; display:block; background:#000; }
@@ -193,19 +207,6 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
 }
 .demo-empty .caption{ font-size:1.05rem; color:var(--ink); max-width:42ch; line-height:1.4; }
 .demo-empty .hint{ font-size:.8rem; font-family:var(--font-mono); color:var(--muted); }
-.demo-menu{
-  flex:none; width:300px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;
-}
-.demo-item{
-  display:flex; gap:10px; align-items:flex-start; width:100%; text-align:left; cursor:pointer;
-  background:var(--surface); border:1px solid var(--line); border-left:3px solid transparent;
-  border-radius:6px; padding:9px 11px; font-family:var(--font-body);
-}
-.demo-item:hover{ border-color:var(--teal); }
-.demo-item.is-active{ border-left-color:var(--accent); background:var(--surface-2); }
-.demo-item .n{ font-family:var(--font-mono); color:var(--muted); font-size:.76rem; flex:none; width:1.4em; padding-top:1px; }
-.demo-item .t{ font-size:.84rem; line-height:1.35; color:var(--ink); }
-.demo-item.is-active .t{ font-weight:600; }
 
 .hud{
   position:fixed; left:0; right:0; bottom:0; height:52px; z-index:10; display:flex; align-items:center;
@@ -251,12 +252,16 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
 .menu-item:hover{ background:var(--surface-2); }
 .menu-item .n{ font-family:var(--font-mono); color:var(--muted); font-size:.78rem; flex:none; width:2.2em; }
 
-@media (max-width:980px){
+/* os dois breakpoints de colapso (1 coluna) sao mais estreitos que o "980px" generico de
+   antes -- aquele colapsava por LARGURA sozinha, e numa janela larga-porem-baixa (960x540, por
+   exemplo) empilhar 2-3 colunas na vertical so PIORA o aperto de altura que a pagina ja estava
+   tentando evitar. Cada grid colapsa só quando as colunas ficariam realmente estreitas demais
+   pra valer a pena continuar lado a lado. */
+@media (max-width:760px){
   .grid-2{ grid-template-columns:1fr; }
+}
+@media (max-width:640px){
   .media-grid{ grid-template-columns:1fr; }
-  .demo-player{ flex-direction:column; }
-  .demo-menu{ width:100%; max-height:160px; flex-direction:row; flex-wrap:nowrap; overflow-x:auto; }
-  .demo-item{ flex:none; width:220px; }
 }
 </style>
 
@@ -266,7 +271,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9" r="1.6" fill="currentColor"/><path d="M4 17l5-5 3.5 3.5L16 12l4 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-gif" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><polygon points="10,8.3 16.5,12 10,15.7" fill="currentColor"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><polygon points="10,8.3 16.5,12 10,15.7" fill="currentColor"/></symbol>
   <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
     <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
   </marker>
@@ -339,10 +344,9 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
 
 <section class="slide slide--statement" data-title="A dificuldade de domínio é indissociável">
   <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <p class="statement">A proficiência em modelagem — entender a física, o comportamento, as
-  interações do domínio — é uma barreira que <em>nenhuma</em> reestruturação de processo,
-  nenhuma ferramenta, nenhum framework vai amenizar. Ela é intrínseca ao que estamos
-  simulando.</p>
+  <p class="statement">A proficiência em modelagem — física, comportamento, interações do
+  domínio — é uma barreira que <em>nenhuma</em> ferramenta, processo ou framework vai amenizar.
+  Ela é intrínseca ao que estamos simulando.</p>
   <p class="lede muted" style="margin-top:4px">O que dá para fazer: garantir que tudo o que NÃO
   é essa dificuldade intrínseca pare de atrapalhar.</p>
 </section>
@@ -381,8 +385,8 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
       do IntelliSense padrão para C++.</li>
     </ul>
     <div class="media-placeholder">
-      <svg width="30" height="30"><use href="#i-gif"></use></svg>
-      <span class="tag">GIF sugerido</span>
+      <svg width="30" height="30"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo sugerido</span>
       <p class="caption">Groot editando uma árvore de comportamento ao vivo</p>
     </div>
   </div>
@@ -437,7 +441,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <div class="callout">
     <span class="k">O que isso compra</span>
     <p>Isso é o que transforma "eu acho que funciona" em "eu tenho como provar que funciona" —
-    rastreável, sem depender de conhecimento tribal de quem já mexeu naquilo antes.</p>
+    rastreável, sem depender de conhecimento prévio de quem já mexeu naquilo antes.</p>
   </div>
 </section>
 
@@ -470,8 +474,8 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   </ul>
   <div class="media-grid">
     <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-gif"></use></svg>
-      <span class="tag">GIF sugerido</span>
+      <svg width="28" height="28"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo sugerido</span>
       <p class="caption">./app (TUI) — painel ao vivo, trocando de aba durante a simulação</p>
     </div>
     <div class="media-placeholder">
@@ -480,8 +484,8 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
       <p class="caption">Manual interativo navegando a árvore de decisão</p>
     </div>
     <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-gif"></use></svg>
-      <span class="tag">GIF sugerido</span>
+      <svg width="28" height="28"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo sugerido</span>
       <p class="caption">Editor visual montando um cenário arrastando classes</p>
     </div>
   </div>
@@ -538,20 +542,129 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   </figure>
 </section>
 
-<section class="slide slide--demos" data-title="Demonstrações em vídeo">
+<section class="slide slide--demo" data-title="1. ./app — todas as telas possíveis">
   <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">Veja funcionando — escolha uma demonstração</h2>
-  <div class="demo-player">
-    <div class="demo-stage">
-      <video id="demoVideo" controls playsinline hidden></video>
-      <div class="demo-empty" id="demoEmpty">
-        <svg width="34" height="34"><use href="#i-gif"></use></svg>
-        <span class="tag">Vídeo ainda não adicionado</span>
-        <p class="caption" id="demoEmptyCaption"></p>
-        <p class="hint" id="demoEmptyHint"></p>
-      </div>
+  <h2 class="headline">1. ./app — todas as telas possíveis</h2>
+  <div class="demo-stage" data-demo="demos/01-app">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">1. ./app — todas as telas possíveis</p>
+      <p class="hint">coloque "01-app.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
     </div>
-    <nav class="demo-menu" id="demoMenu" aria-label="Lista de demonstrações"></nav>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="2. Documentação iterativa">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">2. Documentação iterativa</h2>
+  <div class="demo-stage" data-demo="demos/02-documentacao-iterativa">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">2. Documentação iterativa</p>
+      <p class="hint">coloque "02-documentacao-iterativa.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="3. Editor minimalista de EDL">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">3. Editor minimalista de EDL</h2>
+  <div class="demo-stage" data-demo="demos/03-editor-edl">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">3. Editor minimalista de EDL</p>
+      <p class="hint">coloque "03-editor-edl.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="4. Esteira de build">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">4. Esteira de build — clean → configure → models → build → install</h2>
+  <div class="demo-stage" data-demo="demos/04-esteira-build">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">4. Esteira de build — clean → configure → models → build → install</p>
+      <p class="hint">coloque "04-esteira-build.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="5. Criação de modelo + árvore">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">5. Criação de modelo com make + geração da árvore</h2>
+  <div class="demo-stage" data-demo="demos/05-criacao-modelo">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">5. Criação de modelo com make + geração da árvore</p>
+      <p class="hint">coloque "05-criacao-modelo.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="6. Groot acompanhando a simulação">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">6. Groot acompanhando a simulação</h2>
+  <div class="demo-stage" data-demo="demos/06-groot">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">6. Groot acompanhando a simulação</p>
+      <p class="hint">coloque "06-groot.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="7. Catálogo de modelos + built-in">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">7. Catálogo de modelos e modelos built-in</h2>
+  <div class="demo-stage" data-demo="demos/07-catalogo-modelos">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">7. Catálogo de modelos e modelos built-in</p>
+      <p class="hint">coloque "07-catalogo-modelos.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="8. Mapa de documentação">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">8. Mapa de documentação</h2>
+  <div class="demo-stage" data-demo="demos/08-mapa-documentacao">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">8. Mapa de documentação</p>
+      <p class="hint">coloque "08-mapa-documentacao.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide--demo" data-title="9. PoCs de RL e script Python">
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">9. PoCs de RL e script Python</h2>
+  <div class="demo-stage" data-demo="demos/09-rl-python">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">9. PoCs de RL e script Python</p>
+      <p class="hint">coloque "09-rl-python.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
   </div>
 </section>
 
@@ -612,7 +725,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <p class="eyebrow">IV · O convite</p>
   <h2 class="headline">Comece pelo TOUR.md</h2>
   <ul class="list">
-    <li>Um roteiro guiado, pensado para <b>não exigir conhecimento tribal</b> do repositório —
+    <li>Um roteiro guiado, pensado para <b>não exigir conhecimento prévio</b> do repositório —
     exatamente o problema que ele existe para resolver.</li>
     <li>Leva você a subir o ambiente, rodar um cenário de verdade, ver a simulação no Tacview,
     explorar o painel de controle, abrir o manual interativo.</li>
@@ -620,8 +733,8 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
     decisão em Python, o ambiente de treino de RL.</li>
   </ul>
   <div class="media-placeholder" style="max-width:520px">
-    <svg width="28" height="28"><use href="#i-gif"></use></svg>
-    <span class="tag">GIF sugerido</span>
+    <svg width="28" height="28"><use href="#i-video"></use></svg>
+    <span class="tag">Vídeo sugerido</span>
     <p class="caption">Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview</p>
   </div>
 </section>
@@ -691,7 +804,7 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
   <span class="hud-section" id="hudSection">I · O problema que nenhuma ferramenta resolve</span>
   <div class="hud-bar">
     <div class="hud-track"><div class="hud-fill" id="hudFill"></div></div>
-    <span class="hud-count" id="hudCount">01 / 22</span>
+    <span class="hud-count" id="hudCount">01 / 30</span>
   </div>
   <span class="hud-hint">← → navegar · Espaço avança · M mapa</span>
   <button class="hud-btn hud-menu-btn" id="btnMenu" aria-haspopup="dialog" aria-label="Abrir mapa de slides">
@@ -817,79 +930,33 @@ figure.diagram figcaption{ font-size:.85rem; color:var(--muted); max-width:70ch;
 
 <script>
 (function(){
-  // menu de reproducao dos videos de demonstracao -- ve docs/presentation/demos/README.md
-  // pra convencao de nome de arquivo. Sem nenhum arquivo la, cada item mostra um placeholder
-  // (nunca video quebrado/em branco); assim que o arquivo certo aparecer na pasta, funciona
-  // sem precisar editar este HTML.
-  var DEMOS = [
-    { file: 'demos/01-app', title: '1. ./app — todas as telas possíveis' },
-    { file: 'demos/02-documentacao-iterativa', title: '2. Documentação iterativa' },
-    { file: 'demos/03-editor-edl', title: '3. Editor minimalista de EDL' },
-    { file: 'demos/04-esteira-build', title: '4. Esteira de build — clean → configure → models → build → install' },
-    { file: 'demos/05-criacao-modelo', title: '5. Criação de modelo com make + geração da árvore' },
-    { file: 'demos/06-groot', title: '6. Groot acompanhando a simulação' },
-    { file: 'demos/07-catalogo-modelos', title: '7. Catálogo de modelos + modelos built-in' },
-    { file: 'demos/08-mapa-documentacao', title: '8. Mapa de documentação' },
-    { file: 'demos/09-rl-python', title: '9. PoCs de RL e script Python' },
-  ];
-  var DEMO_EXTS = ['mp4', 'webm', 'mov'];
+  // um video por SLIDE (navegacao pelo proprio deck -- setas/HUD/mapa -- nao um menu dentro
+  // do slide). Cada ".demo-stage[data-demo]" tenta 'demos/<nome>.mp4', depois '.webm', depois
+  // '.mov'; sem nenhum dos tres, fica no placeholder que ja vem no HTML. Ver
+  // docs/presentation/demos/README.md pra convencao de nome de arquivo.
+  var EXTS = ['mp4', 'webm', 'mov'];
 
-  var demoVideo = document.getElementById('demoVideo');
-  var demoEmpty = document.getElementById('demoEmpty');
-  var demoEmptyCaption = document.getElementById('demoEmptyCaption');
-  var demoEmptyHint = document.getElementById('demoEmptyHint');
-  var demoMenu = document.getElementById('demoMenu');
-  if (!demoVideo || !demoMenu) return; // slide removida/renomeada -- nao quebra o resto do deck
+  Array.prototype.forEach.call(document.querySelectorAll('.demo-stage[data-demo]'), function(stage){
+    var base = stage.getAttribute('data-demo');
+    var video = stage.querySelector('video');
+    var empty = stage.querySelector('.demo-empty');
 
-  function tryLoadDemo(item, extIdx){
-    extIdx = extIdx || 0;
-    if (extIdx >= DEMO_EXTS.length){
-      demoVideo.pause();
-      demoVideo.removeAttribute('src');
-      demoVideo.load();
-      demoVideo.hidden = true;
-      demoEmpty.hidden = false;
-      demoEmptyCaption.textContent = item.title.replace(/^\d+\.\s*/, '');
-      demoEmptyHint.textContent = 'coloque "' + item.file.split('/')[1] + '.mp4" (ou .webm/.mov) em docs/presentation/demos/';
-      return;
+    function tryExt(i){
+      if (i >= EXTS.length){ video.hidden = true; empty.hidden = false; return; }
+      var src = base + '.' + EXTS[i];
+      var probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.onloadedmetadata = function(){
+        empty.hidden = true;
+        video.hidden = false;
+        video.src = src;
+        video.load();
+      };
+      probe.onerror = function(){ tryExt(i + 1); };
+      probe.src = src;
     }
-    var src = item.file + '.' + DEMO_EXTS[extIdx];
-    var probe = document.createElement('video');
-    probe.preload = 'metadata';
-    probe.onloadedmetadata = function(){
-      demoEmpty.hidden = true;
-      demoVideo.hidden = false;
-      demoVideo.src = src;
-      demoVideo.load();
-    };
-    probe.onerror = function(){ tryLoadDemo(item, extIdx + 1); };
-    probe.src = src;
-  }
 
-  function selectDemo(i){
-    demoVideo.pause();
-    tryLoadDemo(DEMOS[i]);
-    Array.prototype.forEach.call(demoMenu.querySelectorAll('.demo-item'), function(btn, j){
-      btn.classList.toggle('is-active', j === i);
-    });
-  }
-
-  DEMOS.forEach(function(item, i){
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'demo-item';
-    var n = document.createElement('span');
-    n.className = 'n';
-    n.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
-    var t = document.createElement('span');
-    t.className = 't';
-    t.textContent = item.title.replace(/^\d+\.\s*/, '');
-    btn.appendChild(n);
-    btn.appendChild(t);
-    btn.addEventListener('click', function(){ selectDemo(i); });
-    demoMenu.appendChild(btn);
+    tryExt(0);
   });
-
-  selectDemo(0);
 })();
 </script>
