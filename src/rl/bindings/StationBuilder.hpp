@@ -23,8 +23,9 @@ mixr::simulation::Station* buildStation(const std::string& filename);
 
 // RESET_EVENT + um frame de partida (resolve ponteiros entre subsistemas
 // antes do primeiro uso). Tambem o que NativeSimulation::reset() chama em
-// toda chamada DEPOIS da primeira, no MESMO processo -- ver o cabecalho de
-// NativeSimulation.hpp para o porque disso ser um risco a verificar.
+// toda chamada DEPOIS da primeira, no MESMO processo -- CONFIRMADO seguro
+// (ver o cabecalho de NativeSimulation.hpp): pequena deriva numerica de
+// integracao, nao um erro de reset.
 void primeStation(mixr::simulation::Station* station);
 
 mixr::models::WorldModel* worldModelOf(mixr::simulation::Station* station);

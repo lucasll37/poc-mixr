@@ -60,10 +60,7 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
       // (tests/guard/check_host_opaco.sh). 'player_name' tem de bater com o
       // player que o .edl configurou com RLBridgeBehavior -- ver
       // src/rl/README.md.
-      const auto worldModel = dynamic_cast<mixr::models::WorldModel*>(station_->getSimulation());
-      const auto player = (worldModel != nullptr)
-         ? worldModel->findPlayerByName(playerName_.c_str())
-         : nullptr;
+      const auto player = worldModelOf(station_)->findPlayerByName(playerName_.c_str());
       if (player == nullptr) {
          throw std::runtime_error(
             "NativeSimulation: player '" + playerName_ + "' nao existe no cenario '"
@@ -73,8 +70,9 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
 
       built_ = true;
    } else {
-      // RISCO A VERIFICAR (ver o cabecalho .hpp) -- reset de cenario via
-      // RESET_EVENT, no MESMO processo, sem reconstruir a Station.
+      // reset() repetido na MESMA Station, via RESET_EVENT -- CONFIRMADO
+      // seguro (ver o cabecalho .hpp): pequena deriva numerica de
+      // integracao, nao um erro de reset.
       primeStation(station_);
    }
 
@@ -98,12 +96,8 @@ std::pair<mixr::xrlbridge::Observation, bool> NativeSimulation::step(
    station_->tcFrame(dt);
    station_->updateData(dt);
 
-   const auto worldModel = dynamic_cast<mixr::models::WorldModel*>(station_->getSimulation());
-   bool terminated{};
-   if (worldModel != nullptr) {
-      const auto player = worldModel->findPlayerByName(playerName_.c_str());
-      terminated = (player != nullptr) && player->isCrashed();
-   }
+   const auto player = worldModelOf(station_)->findPlayerByName(playerName_.c_str());
+   const bool terminated = (player != nullptr) && player->isCrashed();
 
    return {mixr::xrlbridge::getObservation(), terminated};
 }
