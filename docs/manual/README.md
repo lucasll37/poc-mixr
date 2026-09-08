@@ -1,6 +1,6 @@
 # `docs/manual/` — explorador de execução, EDL e classes built-in do MIXR
 
-Página estática (React embutido, zero rede para abrir) com duas visões sobre o framework,
+Página estática (React embutido, zero rede para abrir) com três visões sobre o framework,
 **curadas, não instrumentadas** — sem processo MIXR rodando por trás, herança, nome de fábrica,
 registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm de
 `tools/extract_execution_chain.py` escaneando o fonte de verdade (`contexts/src/mixr/`) — nada
@@ -18,6 +18,12 @@ decisão/fundo) desenhado sobre a árvore de um `( Aircraft )` com os dez sistem
 `src/poc/built-in_mixr_1`). Grafo navegável (pan/zoom/arrastar, timeline com transporte,
 tema claro/escuro); clicar num nó fixa um popup com nome de fábrica/registro/contagem de slots;
 clicar num quadradinho de fase pula direto pro passo em que aquele nó roda naquela fase.
+
+**Comportamento** — a cadeia de decisão real de produção, `FlightAgentTC → Agent::controller →
+UbfArbiter → {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction`, através dos
+cenários que a usam. Ao contrário das outras duas abas, é um "ensaio" escrito **à mão** — não
+extraído automaticamente do fonte — então é a única das três sujeita a envelhecer em silêncio se
+a cadeia de decisão mudar sem que este texto acompanhe.
 
 **Catálogo** — as 342 classes que o fork declara, cruzadas com quem de fato se registra em
 fábrica, quem tem slot e quem participa do despacho por fase. Busca por classe/fábrica/slot,

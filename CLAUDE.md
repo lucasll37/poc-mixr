@@ -1486,14 +1486,15 @@ arquivo no lugar antes de qualquer binário RODAR — não antes de compilar, qu
 ### O SDK de plugin
 
 Publicado pelo projeto do host em `dist/`: o contrato (`xplugin/PluginAbi.hpp`, header-only) e as
-**quatro `.so` que atravessam a fronteira** — `libxboard` (o quadro de leitura), `libxlog`,
+**seis `.so` que atravessam a fronteira** — `libxboard` (o quadro de leitura), `libxlog`,
 `libxtrack` (o `TrackQuery` — o **contato detectado**, disputado pelo `track=` do dump e pela
 percepção do modelo; não confundir com o `RadarScan`, que é o **apontamento da antena** e é do
-modelo) e `libxrlbridge` (o comando/observação entre o host de RL — `src/rl/bindings/` — e
-`ubf::RLBridgeBehavior`, ver a seção `src/rl` mais abaixo).
-Mais um `poc-mixr-sdk.pc`, que é como o projeto do modelo o consome.
+modelo), `libxrlbridge` (o comando/observação entre o host de RL — `src/rl/bindings/` — e
+`ubf::RLBridgeBehavior`, ver a seção `src/rl` mais abaixo), e as duas mais recentes,
+`libxinfer`/`libxpyembed` (decisão por ONNX/Python dentro do frame — ver a seção própria mais
+abaixo). Mais um `poc-mixr-sdk.pc`, que é como o projeto do modelo o consome.
 
-Essas quatro são as **únicas** `shared_library()` de `libs/`. As outras cinco seguem estáticas:
+Essas seis são as **únicas** `shared_library()` de `libs/`. As outras cinco seguem estáticas:
 `xtacview`, `xclock`, `xjoystick` e `xmsg` — que um plugin **não pode** linkar, ou ganharia cópia
 privada dos estáticos delas — e `xplugin`, que é o registro e só entra no executável (o plugin usa
 o `xplugin_abi_dep`, header-only).
@@ -3536,7 +3537,11 @@ tem que ser exatamente `<TreeNodesModel>` (com "s") — a documentação oficial
 ignorado, nem erro nem modelo.
 
 **Os 4 `flight_tree*.xml` de produção já têm esse bloco colado** (dentro de `<root>`, irmão de
-`<BehaviorTree>`) — abrem direto no Groot, sem cópia nem edição nenhuma:
+`<BehaviorTree>`) — abrem direto no Groot, sem cópia nem edição nenhuma. **O trecho abaixo é
+ILUSTRATIVO, não uma cópia congelada do arquivo real** — o bloco é gerado (`make -C
+models/players/A-4 update-bt`, ver mais abaixo) e já divergiu do `flight_tree.xml` atual em ordem
+dos nós e formatação de atributo pelo menos uma vez; para o conteúdo AO VIVO, rode
+`dump-tree-model` ou leia o `<TreeNodesModel>` de dentro do próprio `.xml`, nunca este bloco:
 
 ```xml
 <TreeNodesModel>
@@ -3736,8 +3741,10 @@ visibilidade oculta é frágil — o RTTI de `FlightState` não está pensado pr
 plugin. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico: `RLBridgeBehavior` virou o
 **oitavo** nome que `libflight.so` exporta, e como `provides:` é igualdade EXATA de
 conjunto contra o que a `.so` exporta, TODO cenário que carrega esse plugin precisou de uma linha a
-mais em `provides:` — `src/poc/dis/flight/configs/scenario.edl.in` e os
-`app/configs/scenario_*.edl.in` —
+mais em `provides:` — `src/poc/dis/flight/configs/scenario.edl.in` e, à época, os
+`app/configs/scenario_*.edl.in` (essa pasta não existe mais — ver a nota de desatualização no
+topo da seção `./app` — mas o raciocínio vale igual para qualquer cenário atual que carregue
+`libflight.so`/`libflight_tc.so`) —
 nenhuma mudança de comportamento, só manter o
 contrato satisfeito. Pelo mesmo motivo, o mirror de contrato
 (`models/players/template/src/mirror.cpp`, `libtemplate_mirror.so` — herdou esse papel de
@@ -3901,17 +3908,19 @@ servidor, sem dependência de rede depois do primeiro carregamento). A peça viv
 - **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
   `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
-  `docs/`) tem **três abas**:
-  1. **Execução** — o ciclo de fases do frame MIXR (dynamics/transmit/receive/process/background)
-     animado sobre a árvore de componentes de um `( Aircraft )` só com peças **built-in** (~72
-     nós), com pan/zoom, tema claro/escuro, "seguir ramo" (auto-pan) e clique para pular de fase.
-  2. **Catálogo** — as 342 classes `DECLARE_SUBCLASS` do fork, cruzadas com registro de fábrica
+  `docs/`) tem **três abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
+  **"Catálogo"** (`docs/manual/doc.jsx`); os nomes abaixo descrevem o conteúdo de cada uma:
+  1. **Simulação** ("Execução" no conteúdo) — o ciclo de fases do frame MIXR
+     (dynamics/transmit/receive/process/background) animado sobre a árvore de componentes de um
+     `( Aircraft )` só com peças **built-in** (~72 nós), com pan/zoom, tema claro/escuro, "seguir
+     ramo" (auto-pan) e clique para pular de fase.
+  2. **Comportamento** — a cadeia `AgentTC→UBF→BT`, um "ensaio" escrito **à mão** (não extraído
+     automaticamente, portanto sujeito a envelhecer em silêncio — o próprio texto avisa disso)
+     percorrendo a cadeia de decisão real de produção — `FlightAgentTC → Agent::controller →
+     UbfArbiter → {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction` —
+     através dos cenários que a usam.
+  3. **Catálogo** — as 342 classes `DECLARE_SUBCLASS` do fork, cruzadas com registro de fábrica
      (224 classes), slots (644 slots em 135 classes) e participação por fase — buscável/filtrável.
-  3. **AgentTC→UBF→BT** — um "ensaio" escrito **à mão** (não extraído automaticamente, portanto
-     sujeito a envelhecer em silêncio — o próprio texto avisa disso) percorrendo a cadeia de
-     decisão real de produção — `FlightAgentTC → Agent::controller → UbfArbiter →
-     {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction` — através dos
-     cenários que a usam.
 - **`docs/presentation/index.html`** — um slide deck HTML/CSS autocontido (~20 slides: "o que é"/
   "o que não é", as funcionalidades exploradas, EDL+C++, 6-DOF, single vs multi-thread,
   bandit/DIS, python-flight, onnx-policy, built-in_mixr_1...). **Órfão**: nenhum alvo do Makefile
