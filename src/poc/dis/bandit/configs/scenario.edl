@@ -48,7 +48,16 @@
                ( AnalogInput ai: 1  channel: 0 )                          // ROLL_AI     <- aileron
                ( AnalogInput ai: 2  channel: 1 )                          // PITCH_AI    <- profundor
                ( AnalogInput ai: 3  channel: 2 )                          // RUDDER_AI   <- leme
-               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -0.5 ) // THROTTLE_AI <- manete
+               // CORRIGIDO (nao redescobrir, achado por auditoria): gain era -0.5, e a
+               // formula nativa v2=(v1-offset)*gain (AnalogInput.cpp) dava t=1.0 no
+               // batente de potencia plena (raw=-1) -- que Player::setThrottles()
+               // trata como MIL (JSBSimModel faz pos=t*0.5 antes do FCS), nao A/B. O
+               // manche NUNCA alcancava o pos-combustao (t=2.0). gain=-1.0 mapeia
+               // raw=-1 -> t=2.0 (A/B) e raw=+1 -> t=0.0 (idle), como o comentario
+               // original ja prometia. NAO verificado com joystick fisico depois da
+               // troca -- conferir a sensacao do manete antes de confiar de olhos
+               // fechados.
+               ( AnalogInput ai: 4  channel: 3  offset: 1.0  gain: -1.0 ) // THROTTLE_AI <- manete
             }
          )
       }
