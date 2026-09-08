@@ -57,6 +57,14 @@ ele cai para `1.0` (tanque cheio, nunca baixo), não para `0.0`. Mach segue o
 mesmo padrão (campo específico do FDM do JSBSim, sem equivalente em
 `LaeroModel`).
 
+## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
+
+Ver `sandbox/A4-6DOF/README.md` para o detalhe completo — os 4 `Steerpoint` desta
+rota (idêntica à de `A4-6DOF`) ganharam os mesmos três slots nativos ociosos
+(`sca`/`magvar`/`pta`), recalculados todo frame por `Steerpoint::compute()` mas
+sem consumidor neste repositório. `stptType` continua nos mesmos 4 valores
+(`DEST`/`TGT`/`FIX`/`IP`), pelo mesmo motivo.
+
 ## Verificação manual
 
 ```bash

@@ -41,6 +41,26 @@ outros 4 cenários da família, que trocam de `dynamicsModel:`, precisam
 confirmar que `Autopilot::setCommandedHeadingD/Altitude/VelocityKts` ainda
 tem efeito (ver os READMEs deles).
 
+## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
+
+Os 4 `Steerpoint` da rota ganharam três slots nativos que `mixr::models::Steerpoint`
+já aceita (`Steerpoint.hpp`) e que a rota original não usava: `sca` (Safe Clearance
+Altitude, pés), `magvar` (declinação magnética, graus) e `pta` (Planned Time of
+Arrival, segundos). Os três são recalculados **todo frame** por
+`Steerpoint::compute()` — mas **nenhum consumidor deste repositório**
+(`FlightState.cpp`/`NavigateAction.cpp`/`libs/xmsg`) lê o resultado
+(`isWarnSCA()`/`getMagBrgDeg()`/`getELT()`). A adição é por completude do
+vocabulário EDL, não por efeito medido no voo — comentário detalhado no
+`.edl.in`, junto de cada `wp*:`.
+
+`stptType` continua cobrindo 4 dos 7 valores nativos (`DEST`/`TGT`/`FIX`/`IP` —
+`Steerpoint.hpp`: `enum StptType { DEST, MARK, FIX, OAP, IP, TGT, TGT_GRP }`).
+`MARK`/`OAP`/`TGT_GRP` ficaram de fora de propósito: os 4 usados já têm sentido
+aeronáutico com a `Action` de cada ponto, e encaixar os outros 3 sem sentido
+exigiria trocar um rótulo coerente ou acrescentar um 5º/6º/7º steerpoint —
+mudança de **topologia** da rota, fora do escopo desta passada (vocabulário dos
+campos, não a forma da rota).
+
 ## Verificação manual
 
 ```bash

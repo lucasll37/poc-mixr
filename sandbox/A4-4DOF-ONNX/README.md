@@ -64,6 +64,15 @@ não recebe combustível cru — o campo `fuelFraction` do contrato de 28 floats
 (populado com a mesma guarda `fuelMax > 0.0 ? .. : 1.0` de `FlightState.cpp`)
 é o único caminho, e cai para `1.0` sem tanque JSBSim simulado.
 
+## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
+
+Os 4 `Steerpoint` de `nav:`/`Route` (herdados sem mudança, ver acima) ganharam os
+mesmos três slots nativos ociosos que a família `A4-6DOF`/`A4-4DOF`/`A4-3DOF`
+ganhou — `sca`/`magvar`/`pta` (ver `sandbox/A4-6DOF/README.md` para o detalhe
+completo). Como esta rota nunca é alcançada por `( OnnxPolicy )`, os três campos
+continuam tão inertes quanto o resto do `nav:` — mantidos aqui só por
+consistência de vocabulário com o resto da família.
+
 ## Verificação manual
 
 ```bash

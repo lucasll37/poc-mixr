@@ -83,6 +83,14 @@ Documentadas aqui para ninguém "consertar" os números acima sem saber o motivo
 tanque JSBSim simulado, mas `domain::WorldView::fuelFraction` cai para
 `1.0`, não `0.0`, então `FuelLow` nunca dispara por engano).
 
+## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
+
+Ver `sandbox/A4-6DOF/README.md` para o detalhe completo — os 4 `Steerpoint` desta
+rota (idêntica à de `A4-6DOF`) ganharam os mesmos três slots nativos ociosos
+(`sca`/`magvar`/`pta`), recalculados todo frame por `Steerpoint::compute()` mas
+sem consumidor neste repositório. `stptType` continua nos mesmos 4 valores
+(`DEST`/`TGT`/`FIX`/`IP`), pelo mesmo motivo.
+
 ## Verificação manual
 
 ```bash

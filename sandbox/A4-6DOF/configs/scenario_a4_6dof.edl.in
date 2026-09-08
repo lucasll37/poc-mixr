@@ -294,12 +294,55 @@
                         // continuamente por ~200s simulados ate colidir com o
                         // terreno, com rumo FIXO (nada a ver com guiagem/
                         // curva -- confirmado isolando a variavel).
+                        // CAMPOS NATIVOS ADICIONAIS por steerpoint -- sca/magvar/pta.
+                        // Vocabulario extra que mixr::models::Steerpoint ja aceita
+                        // (Steerpoint.hpp) alem de xPos/yPos/altitude/airspeed/description/
+                        // action, sem mudar NENHUM comportamento de voo: os tres sao
+                        // recalculados TODO frame por Steerpoint::compute()
+                        // (Steerpoint.cpp), mas nenhum consumidor deste repositorio
+                        // (FlightState.cpp/NavigateAction.cpp/libs/xmsg) le o resultado.
+                        // Ficam aqui por completude do vocabulario EDL, nao por efeito
+                        // medido -- confirmado lendo o fonte antes de escrever:
+                        //   sca (Safe Clearance Altitude, pes): piso de referencia ~1000 ft
+                        //     abaixo da altitude comandada de cada ponto. Steerpoint::
+                        //     compute() calcula 'scaWarn = altitudeAtualFt < sca' TODO
+                        //     frame, mas Steerpoint::isWarnSCA() nao e lido por getter
+                        //     nenhum neste repositorio.
+                        //   magvar (declinacao magnetica, graus): -21.5, ordem de grandeza
+                        //     real para a regiao do Rio de Janeiro/SE do Brasil nesta
+                        //     decada (nao deriva de um modelo geomagnetico exato -- so
+                        //     evita o caso DEGENERADO magvar=0, que faz
+                        //     getMagBrgDeg()==getTrueBrgDeg() sempre). NavigateAction so
+                        //     consome o bearing VERDADEIRO (navTrueBrgDeg), entao isto nao
+                        //     muda a rota voada.
+                        //   pta (Planned Time of Arrival, segundos): estimativa GROSSEIRA
+                        //     por distancia em linha reta a velocidade de cruzeiro (350 kt)
+                        //     a partir do inicio da simulacao -- nao um modelo de voo real
+                        //     (o limitador de 3 deg/s do NavigateAction atrasa cada curva).
+                        //     So a PRIMEIRA volta fica proxima do previsto; wrap:true faz
+                        //     o ETA crescer sem o PTA acompanhar, entao elt (Early/Late
+                        //     Time) fica "atrasado" nas voltas seguintes -- esperado, nao
+                        //     um defeito.
+                        //
+                        // stptType cobre 4 dos 7 valores nativos (DEST/TGT/FIX/IP --
+                        // Steerpoint.hpp: enum StptType { DEST, MARK, FIX, OAP, IP, TGT,
+                        // TGT_GRP }). Os 4 usados ja tem sentido aeronautico com a Action
+                        // de cada ponto (DEST=largar decoy, TGT=imagear, FIX=trocar
+                        // camuflagem, IP=ponto de entrada pra liberacao de arma). MARK/
+                        // OAP/TGT_GRP ficaram de fora de proposito: encaixa-los sem sentido
+                        // forcaria trocar um dos quatro rotulos ja coerentes, ou acrescentar
+                        // um 5o/6o/7o steerpoint -- mudanca de TOPOLOGIA da rota, fora do
+                        // escopo desta passada (vocabulario dos campos de CADA steerpoint,
+                        // nao a forma da rota).
                         wp1: ( Steerpoint
                            stptType: DEST
                            xPos: ( Meters 9290 )
                            yPos: ( Meters 3000 )
                            altitude: ( Meters 1750 )
                            airspeed: 350.0
+                           sca: ( Feet 4700 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 20 )
                            description: "ponto 1 -- solta decoy ao passar"
                            action: ( ActionDecoyRelease
                               numToLaunch: 1
@@ -312,6 +355,9 @@
                            yPos: ( Meters 7370 )
                            altitude: ( Meters 1900 )
                            airspeed: 370.0
+                           sca: ( Feet 5200 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 50 )
                            description: "ponto 2 -- imageamento SAR"
                            action: ( ActionImagingSar
                               sarLatitude:  ( LatLon direction: "s" degrees: 22 minutes: 12 )
@@ -327,6 +373,9 @@
                            yPos: ( Meters 4000 )
                            altitude: ( Meters 1750 )
                            airspeed: 350.0
+                           sca: ( Feet 4700 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 75 )
                            description: "ponto 3 -- troca a camuflagem (RCS)"
                            action: ( ActionCamouflageType camouflageType: 1 )
                         )
@@ -336,6 +385,9 @@
                            yPos: ( Meters 1600 )
                            altitude: ( Meters 1600 )
                            airspeed: 360.0
+                           sca: ( Feet 4200 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 95 )
                            description: "ponto 4 -- liberacao de arma na estacao 1"
                            action: ( ActionWeaponRelease
                               targetLatitude:  ( LatLon direction: "s" degrees: 22 minutes: 18 )
