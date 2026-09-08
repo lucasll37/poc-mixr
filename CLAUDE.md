@@ -1623,14 +1623,25 @@ Conferência após `make install`: `ldd dist/bin/<nome> | grep 'not found'` (sil
 
 Quarto subprojeto — mora em `./app/`, na RAIZ, fora de `src/` (é o único ocupante da pasta, por
 isso o alvo Meson e o binário se chamam `app`, não `dashboard`; mesma convenção de `dist/bin/`
-das outras pocs). A MESMA pilha nativa de `flight` (`Aircraft`/`JSBSimModel`/`Autopilot`/
-radar/`FlightAgentTC`, o mesmo plugin `libflight.so`, **nenhuma** mudança em `models/`) — só troca
-`app/RealTimeRun.cpp` (a linha de status em texto) por `app/DashboardLoop.cpp`, um painel FTXUI
-(cores, borda, medidor de combustível, navegação por teclado). Um cenário **próprio**,
-hermético, em `configs/` (`scenario_intercept_missile` — ver a passada de consolidação mais
-abaixo para o porquê de não serem mais três), com porta de Tacview (**1236**) e diretório de
-dados (`./app/data/`) próprios — dá para rodar ao lado de `flight`
-(porta 1234) sem colidir.
+das outras pocs). Não presume pilha nenhuma fixa — lê qualquer player pela base
+`mixr::models::Player` e descobre entidades em runtime, então funciona com **qualquer** modelo
+carregado, não só `flight`. **Não tem mais cenário próprio**: `app/configs/` foi removido (o
+antigo `scenario_intercept_missile`, hermético, porta 1236 — ver a passada de consolidação mais
+abaixo para a história) — hoje o `./app` é só o runner, sem nada próprio para rodar sozinho;
+carrega qualquer poc por `-f`/`-folder` (§3 do `app/README.md`).
+
+> **NOTA DE DESATUALIZAÇÃO.** O diário de passadas abaixo — dezenas de entradas, cada uma um
+> incremento real — parou de acompanhar o código antes de pelo menos três mudanças já commitadas:
+> a remoção de `app/configs/` acima, a remoção do modelo de demo `missile` (`GuidedMissile`,
+> citado em várias passadas abaixo — não existe mais; `.claude/rules/models-plugin.md` já reflete
+> isso), e uma sétima aba, **EDL** (`F7`, edição em memória do cenário carregado, com destaque de
+> sintaxe — `F8` valida, `F9` roda a versão editada, `F10` reverte). Em vez de reescrever o
+> diário (alto risco de introduzir um erro num histórico longo que ninguém revisa linha a linha),
+> a referência corrente do comportamento do `./app` é **`app/README.md`** — mantido em sincronia
+> com o binário, não com este arquivo. Reestruturar este diário num formato mais enxuto (fatos
+> correntes + changelog separado) é dívida técnica conhecida, deliberadamente não feita aqui: uma
+> mudança dessa escala merece revisão humana antes de substituir a única fonte de histórico que
+> este projeto tem.
 
 **O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
 `src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —
