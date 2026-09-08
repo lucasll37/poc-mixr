@@ -273,6 +273,22 @@ test_app_options = executable('test-app-options',
 )
 test('app-options', test_app_options, suite: 'domain', timeout: 60)
 
+# app::ensureTerrainData()/ensureAllTerrainTiles() -- '.hgt.gz' corrompido/
+# truncado/ausente. Achado por auditoria como buraco de cobertura: a
+# validacao de tamanho ja era robusta no codigo (isValidSrtmSize(), die()
+# com mensagem clara, ensureAllTerrainTiles() tolerante), so faltava o
+# teste. Roda gzip/gunzip de verdade num diretorio temporario -- ver o
+# cabecalho do arquivo.
+test_app_terrain_data = executable('test-app-terrain-data',
+    files('../app/tests/test_terrain_data.cpp') + files(
+        '../app/src/app/TerrainData.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-terrain-data', test_app_terrain_data, suite: 'domain', timeout: 60)
+
 # app::falconFleet()/app::adHocScenario() -- a entrada de '-f <arquivo>'.
 test_app_adhoc_scenario = executable('test-app-adhoc-scenario',
     files('../app/tests/test_adhoc_scenario.cpp') + files(
