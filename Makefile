@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model rm-model
 
 .DEFAULT_GOAL := help
 
@@ -63,12 +63,28 @@ ASAN ?= false
 # ninguem programatico deste repositorio (CI, scripts) passa entrada
 # externa direto pra cá (conferido na mesma auditoria). Risco aceito e
 # documentado, nao "corrigido".
-NAME ?=
-PLAYER ?=
-SCENARIO ?=
-ARGS ?=
-CATEGORY ?=
-export NAME PLAYER SCENARIO ARGS CATEGORY
+# ACHADO RODANDO, CORRIGIDO (nao redescobrir): estas atribuicoes eram '?=',
+# e '?=' quer dizer "so' se ainda NAO estiver definida" -- e uma variavel de
+# AMBIENTE conta como definida. O VS Code exporta 'NAME=Code' no ambiente do
+# terminal integrado, entao 'make new-model CATEGORY=others' (sem NAME=)
+# passava no 'test -n "$$NAME"' e criava models/others/Code -- reproduzido,
+# a pasta foi criada de verdade. Vale para toda variavel de nome generico
+# aqui (NAME/ARGS/SCENARIO/...), em qualquer ambiente que ja as exporte.
+#
+# ':=' e' a correcao certa e nao custa ergonomia nenhuma: pela precedencia do
+# GNU Make, uma atribuicao no Makefile VENCE o ambiente, e a linha de comando
+# vence a atribuicao no Makefile -- que e' exatamente a semantica desejada
+# ('make alvo VAR=valor' continua funcionando; o ambiente para de vazar).
+NAME :=
+PLAYER :=
+SCENARIO :=
+ARGS :=
+CATEGORY :=
+SO :=
+DATA :=
+FORCE :=
+DRY_RUN :=
+export NAME PLAYER SCENARIO ARGS CATEGORY SO DATA FORCE DRY_RUN
 
 # Colors for output
 RED := \033[0;31m
@@ -98,7 +114,19 @@ clean: ## Remove build/, dist/ e plugins/ (host + todos os modelos).
 	   $(MAKE) -C $$d uninstall-host 2>/dev/null || true; \
 	   $(MAKE) -C $$d clean 2>/dev/null || true; \
 	 done
-	@rm -rf $(PLUGINS_DIR)/data
+	@# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): aqui havia um
+	@# '@rm -rf $(PLUGINS_DIR)/data' INCONDICIONAL -- o namespace de dados
+	@# INTEIRO, sem filtro de nome. Isso contradizia, no codigo, a garantia
+	@# que plugins/README.md promete por escrito ("make clean so remove os
+	@# nomes que ESTE repositorio gera -- um .so de terceiro com outro nome
+	@# nao e apagado por engano"): a metade '.so' da promessa era verdadeira,
+	@# a metade 'data/' era um rm -rf de pasta compartilhada. O laco acima ja
+	@# removeu, por NOME, o que cada modelo publicou (o 'uninstall-host' de
+	@# cada um deriva os nomes do proprio ./dist local, sem literal cravado).
+	@# O que sobra aqui e' so' recolher o diretorio se ele tiver ficado
+	@# VAZIO -- 'rmdir' falha sozinho, e sem estrago, se houver qualquer
+	@# coisa dentro (o caso do dado de um terceiro).
+	@rmdir $(PLUGINS_DIR)/data 2>/dev/null || true
 
 configure: ## Configura o projeto para build (conan install + meson setup).
 	mkdir -p $(BUILD_DIR)/
@@ -243,17 +271,48 @@ models: sdk ## Compila os modelos e deposita em plugins/ -- nao toca dist/ (ver 
 	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s) de producao: $(notdir $(MODELOS_PRODUCAO)); + template/; rode 'make install' para sincronizar com dist/)"
 
 sync-plugins: ## Copia plugins/ -> dist/ -- so aqui um cenario enxerga o modelo.
-	@# plugins/ ja mistura o que os tres modelos locais depositaram
-	@# (via 'models', acima) com qualquer .so de terceiro (ver
+	@# plugins/ ja mistura o que os modelos locais depositaram (via
+	@# 'models', acima) com qualquer .so de terceiro (ver
 	@# plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,
 	@# e essa e a ideia: o mesmo passo de copia cobre os dois casos. Pasta
 	@# vazia (build limpo, nada depositado) e um no-op silencioso, nao erro.
+	@#
+	@# ESPELHO, nao copia acumulativa: alem de copiar, PODA de dist/ o que
+	@# nao existe mais em plugins/. O comentario do bloco de cabecalho deste
+	@# arquivo ja afirma que 'sync-plugins' e' a UNICA ponte para dist/ --
+	@# auditado e confirmado (os unicos install_dir para
+	@# lib/share/mixr-plugins sao os dos meson.build dos modelos, e o prefix
+	@# deles e' o ./dist LOCAL de cada um). Com a copia sem poda, dist/ so'
+	@# CRESCIA: um .so de um modelo removido ficava la para sempre e era
+	@# RECOPIADO a cada 'make install' (medido). Agora dist/ e' estado
+	@# DERIVADO de plugins/, e qualquer remocao -- inclusive um 'rm -rf' da
+	@# pasta do modelo, feito por quem nunca vai usar 'make rm-model' --
+	@# se auto-cura aqui.
+	@#
+	@# A poda fica DENTRO do ramo de deposito nao-vazio, de proposito:
+	@# deposito vazio significa "modelos ainda nao construidos" (o mesmo
+	@# estado que o 'else' abaixo ja trata como aviso amarelo), e podar ali
+	@# esvaziaria dist/ num 'configure && build && install' sem
+	@# 'make models' -- 'install' NAO depende de 'models', de proposito.
+	@#
+	@# A comparacao e' sempre plugins/ contra dist/, NUNCA contra uma lista
+	@# de nomes "que este repo gera": tests/plugin/run_thirdparty_deposit.py
+	@# deposita nos dois lados e limpa num 'finally' que NAO roda sob
+	@# SIGTERM (o kill do timeout de 'meson test') -- uma allowlist brigaria
+	@# com esse leftover; a comparacao posicional convive com ele.
 	mkdir -p $(DEST_DIR)/lib/mixr-plugins/
 	@if ls $(PLUGINS_DIR)/*.so >/dev/null 2>&1; then \
 	   cp -v $(PLUGINS_DIR)/*.so $(DEST_DIR)/lib/mixr-plugins/; \
 	   for so in $(PLUGINS_DIR)/*.so; do \
 	      base=$$(basename "$$so"); \
 	      ldd $(DEST_DIR)/lib/mixr-plugins/$$base | grep -q 'not found' && { echo "$(RED)sync-plugins: $$base com dependencia nao resolvida$(NC)"; exit 1; } || true; \
+	   done; \
+	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+	      [ -e "$$so" ] || continue; \
+	      base=$$(basename "$$so"); \
+	      [ -e "$(PLUGINS_DIR)/$$base" ] || { \
+	         rm -f "$$so"; \
+	         echo "$(YELLOW)sync-plugins: podado dist/lib/mixr-plugins/$$base (nao existe mais em $(PLUGINS_DIR)/)$(NC)"; }; \
 	   done; \
 	 else \
 	   echo "$(YELLOW)sync-plugins: aviso: $(PLUGINS_DIR) nao tem nenhum .so -- se voce esperava um modelo carregar,$(NC)"; \
@@ -265,7 +324,35 @@ sync-plugins: ## Copia plugins/ -> dist/ -- so aqui um cenario enxerga o modelo.
 	@if [ -d $(PLUGINS_DIR)/data ]; then \
 	   mkdir -p $(DEST_DIR)/share/mixr-plugins/; \
 	   cp -a $(PLUGINS_DIR)/data/. $(DEST_DIR)/share/mixr-plugins/; \
+	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
+	      [ -d "$$d" ] || continue; \
+	      base=$$(basename "$$d"); \
+	      [ -d "$(PLUGINS_DIR)/data/$$base" ] || { \
+	         rm -rf "$$d"; \
+	         echo "$(YELLOW)sync-plugins: podado dist/share/mixr-plugins/$$base/ (nao existe mais em $(PLUGINS_DIR)/data/)$(NC)"; }; \
+	   done; \
 	 fi
+	@# Aviso (NUNCA erro) sobre .so em plugins/ que nenhum modelo vivo
+	@# reclama. E' o ponto de deteccao mais cedo possivel para o orfao que
+	@# sobra de um modelo apagado a mao -- todo 'make install', nao so'
+	@# 'make test'. E' AVISO e nao falha porque "nao reivindicado" inclui,
+	@# legitimamente, um .so de TERCEIRO: plugins/ mistura os dois de
+	@# proposito e eles sao indistinguiveis a partir dali
+	@# (plugins/README.md; tests/plugin/run_thirdparty_deposit.py prova).
+	@reclamados=""; \
+	 for d in $(MODELOS_PRODUCAO) models/players/template; do \
+	    for so in $$d/dist/lib/mixr-plugins/*.so; do \
+	       [ -e "$$so" ] && reclamados="$$reclamados $$(basename $$so)"; \
+	    done; \
+	 done; \
+	 for so in $(PLUGINS_DIR)/*.so; do \
+	    [ -e "$$so" ] || continue; \
+	    base=$$(basename "$$so"); \
+	    case " $$reclamados " in *" $$base "*) ;; *) \
+	       echo "$(YELLOW)sync-plugins: aviso: $$base nao e reclamado por nenhum modelo de models/$(NC)"; \
+	       echo "$(YELLOW)  (ok se for .so de terceiro; se sobrou de um modelo apagado: make rm-model SO=$$base)$(NC)";; \
+	    esac; \
+	 done
 	@echo "$(GREEN)sync-plugins: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
 
 # ============================================
@@ -276,6 +363,24 @@ new-model: ## Copia template/ num modelo novo. Uso: NAME= CATEGORY=player|system
 	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
 	@test -n "$$CATEGORY" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
 	scripts/models.sh --name "$$NAME" --category "$$CATEGORY"
+
+# NAME/CATEGORY/SO/DATA/FORCE/DRY_RUN lidos com '$$X' (variavel de SHELL, via
+# o 'export' la em cima), NUNCA '$(X)' -- ver a armadilha de injecao
+# documentada no cabecalho deste arquivo.
+#
+# Dois modos, e a diferenca importa: com NAME a pasta tem de existir (e' dela
+# que saem os nomes dos artefatos); com SO voce remove um artefato orfao cuja
+# fonte ja nao existe mais. O script recusa se algum cenario ainda referenciar
+# o modelo -- e' isso que impede a remocao de GERAR a inconsistencia.
+rm-model: ## Remove um modelo. Uso: NAME= CATEGORY= | SO=libX.so [DATA=dir] [FORCE=1] [DRY_RUN=1].
+	@test -n "$$NAME" -o -n "$$SO" || { \
+	   echo "$(RED)uso: make rm-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; \
+	   echo "$(RED)  ou: make rm-model SO=libx9.so [DATA=x9]   (orfao legado, sem fonte)$(NC)"; \
+	   exit 1; }
+	@scripts/models.sh --remove \
+	   $${NAME:+--name "$$NAME"} $${CATEGORY:+--category "$$CATEGORY"} \
+	   $${SO:+--so "$$SO"} $${DATA:+--data "$$DATA"} \
+	   $${FORCE:+--force} $${DRY_RUN:+--dry-run}
 
 # ============================================
 # Build / Install / Package do HOST

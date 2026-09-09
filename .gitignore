@@ -119,3 +119,17 @@ src/poc/rl-training/runs/
 src/poc/rl-training/notebooks/.ipynb_checkpoints/
 tools/__pycache__/
 models/players/A-4/tools/__pycache__/
+models/players/template/tools/__pycache__/
+
+# Saida de 'make create-bt' -- uma arvore VAZIA gerada pelo dump-tree-model,
+# ponto de partida para editar no Groot. Nao e fonte: versionar faria o
+# proprio 'create-bt' nascer falhando ("ja existe") em toda copia gerada por
+# 'make new-model'. A arvore de VERDADE (example_tree.xml) continua rastreada.
+#
+# Regra restrita ao template DE PROPOSITO, e nao um glob sobre
+# models/players/*/: o A-4 ja tem o bt.xml dele RASTREADO (decisao anterior),
+# e um glob deixaria aquele arquivo rastreado e ignorado ao mesmo tempo --
+# inconsistencia sem ganho. Consequencia conhecida, herdada e nao mexida
+# aqui: 'make -C models/players/A-4 create-bt' recusa, porque o arquivo ja
+# existe la.
+models/players/template/configs/bt.xml

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace app {
@@ -32,6 +33,50 @@ const int kGroundMarginBottomPx{16};
 // Espacamento (em pixel de canvas) entre linhas de grade/marcas de eixo --
 // 40px = 20 celulas de terminal na horizontal, 10 na vertical.
 const int kGridStepPx{40};
+
+// Onde o cabecalho comeca e onde a legenda de eixo do canto direito comeca
+// (os dois DrawText mais abaixo) -- em PIXEL de canvas. Ficam nomeados aqui
+// porque o orcamento de largura da nota "seguindo=<nome>" precisa dos tres
+// numeros pra nao invadir a legenda; ver o comentario la.
+const int kHeaderStartPx{2};
+const int kAxisLegendTopDownPx{20};    // "x/y (NM)"   -- usada NO proprio DrawText
+const int kAxisLegendLateralPx{24};    // "y: alt(ft)" -- idem (fonte unica)
+const int kHeaderLegendGapPx{4};       // folga minima entre o cabecalho e a legenda
+
+// Contagem e corte em GLIFO, nao em byte -- 'std::string::substr' cortaria
+// no meio de uma sequencia UTF-8 e deixaria um lead byte solto, que o
+// pipeline de glifos do FTXUI descarta em silencio (o caractere some da
+// tela, e o nome exibido vira outro nome). Nome de player e' ASCII quando
+// vem do '.edl' -- o charset de identificador do scanner nao aceita acento
+// --, mas o de um fantasma DIS e' copiado CRU dos 11 bytes de marking do
+// PDU (interop/dis/NetIO_entity_state.cpp), sem validacao: um peer de
+// terceiro com callsign acentuado basta.
+//
+// Mesma classe de bug ja corrigida no editor EDL desta aplicacao -- ver
+// app::utf8GlyphBytes() em app/EdlHighlightRender.hpp. Nao se reusa aquela
+// funcao aqui de proposito: linkar o modulo do editor de EDL dentro do
+// painel de MAPA acoplaria duas abas que nada compartilham, por seis
+// linhas de primitiva.
+std::size_t glyphCount(const std::string& s)
+{
+   std::size_t n{};
+   for (const unsigned char c : s) {
+      if ((c & 0xC0) != 0x80) n++;   // ignora bytes de continuacao
+   }
+   return n;
+}
+
+std::string truncateGlyphs(const std::string& s, const std::size_t maxGlyphs)
+{
+   std::size_t n{};
+   for (std::size_t i = 0; i < s.size(); i++) {
+      if ((static_cast<unsigned char>(s[i]) & 0xC0) != 0x80) {
+         if (n == maxGlyphs) return s.substr(0, i);
+         n++;
+      }
+   }
+   return s;
+}
 
 
 std::string formatScale(const double metersPerCell)
@@ -258,6 +303,25 @@ void fitMapCanvasToBox(MapViewState& view, const Box& box)
 
 void panMap(MapViewState& view, const double screenRightM, const double screenUpM)
 {
+   // Pan MANUAL desliga o "seguir" -- os dois disputam o MESMO pan, e sem
+   // isto o follow reescreveria panNorth/panEast no quadro seguinte: a
+   // vista pareceria travada, arrastar/setas nao fariam nada visivel e nada
+   // na tela explicaria o porque. Mesmo raciocinio (e mesmo gesto) do
+   // ArrowUp que desliga o "acompanhar" da aba Log -- ver DashboardLoop.cpp.
+   //
+   // Fica AQUI, e nao nos call sites, de proposito: panMap() e o unico
+   // ponto por onde um gesto manual de mover a vista passa (arrasto e as
+   // quatro setas), entao o invariante "pan manual e follow sao mutuamente
+   // exclusivos" vale por construcao, sem depender de nenhum chamador
+   // futuro lembrar de desarmar o flag.
+   //
+   // Efeito colateral conhecido e aceito: um clique com 1 celula de tremor
+   // entre Pressed e Released emite um Moved, chega aqui e desliga o follow
+   // -- mesmo sendo tratado como CLIQUE depois (o limiar de
+   // DashboardLoop.cpp). E so apertar [f] de novo; a alternativa (adiar o
+   // desarme ate o Released) tornaria o arrasto sem feedback ate soltar.
+   view.followSelected = false;
+
    // Inverte a MESMA rotacao de project(): desloca o referencial do pan em
    // E/N de modo que o conteudo ja na tela pareca andar (screenRightM,
    // screenUpM) -- valido nas duas perspectivas, porque a horizontal da
@@ -290,6 +354,46 @@ void centerMapOn(MapViewState& view, const EntityState& e)
    view.panNorthM = e.northM;
    view.panEastM = e.eastM;
    view.panAltM = e.altitudeM;
+}
+
+bool applyMapFollow(MapViewState& view, const std::vector<EntityState>& entities,
+                    const int selectedIndex)
+{
+   view.followLabel.clear();
+   if (!view.followSelected) return false;
+   if (entities.empty()) return false;
+   if (selectedIndex < 0 || selectedIndex >= static_cast<int>(entities.size())) return false;
+
+   const EntityState& alvo{entities[static_cast<std::size_t>(selectedIndex)]};
+
+   // Posicao nao-finita nao pode entrar no pan. project() faz
+   // 'static_cast<int>(std::lround(NaN))', que nesta plataforma rende 0 --
+   // ou seja TODA entidade passaria a projetar no centro do canvas, com
+   // 'onCanvas' verdadeiro, e o hit-test de clique devolveria sempre a
+   // primeira da lista. Pior: nao haveria volta pela interface, porque
+   // panMap() soma sobre NaN (segue NaN) e zoom/giro nao tocam o pan --
+   // so reiniciar o processo. Como o follow roda a CADA quadro e sem gesto
+   // nenhum do usuario, um unico quadro divergido (ex.: JSBSim explodindo)
+   // envenenaria a vista permanentemente. Ignorar o quadro ruim mantem o
+   // ultimo pan bom e a vista utilizavel.
+   //
+   // NOTA: '[c] Centralizar' (centerMapOn direto) tem a mesma fragilidade e
+   // NAO foi alterado aqui -- e um gesto manual, pontual, anterior a esta
+   // feature.
+   if (!std::isfinite(alvo.northM) || !std::isfinite(alvo.eastM)
+       || !std::isfinite(alvo.altitudeM)) {
+      return false;
+   }
+
+   // Uma chamada a centerMapOn() e so isso -- e ela ja centraliza NAS DUAS
+   // perspectivas: project() zera relN/relE (logo rotE/rotN, para qualquer
+   // yaw) e, no ramo Lateral, tambem 'altitudeM - panAltM'. Resultado exato,
+   // nao aproximado: px == canvasWidthPx/2 e py == canvasHeightPx/2, para
+   // qualquer 'metersPerCell' -- que e justamente por que o zoom pode ficar
+   // 100% com o usuario sem interferir no enquadramento.
+   centerMapOn(view, alvo);
+   view.followLabel = alvo.name;
+   return true;
 }
 
 void snapPanToGroundLevel(MapViewState& view, const TerrainSampler& terrainSampler)
@@ -398,7 +502,7 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
          c.DrawText(0, std::clamp(gy - 2, 0, canvasH - 4),
                     formatNm(yM), [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
-      c.DrawText(canvasW - 20, 2, "x/y (NM)", Color::GrayDark);
+      c.DrawText(canvasW - kAxisLegendTopDownPx, 2, "x/y (NM)", Color::GrayDark);
 
       // Barra de escala explicita, alem das marcas de grade -- um segmento
       // de comprimento CONHECIDO (kGridStepPx, o mesmo passo da grade) com
@@ -432,7 +536,7 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
       // direita e saia cortada ("y: alt(", sem o "ft)") -- IsIn() descarta
       // em silencio os glifos fora do canvas. Corrigido com a mesma folga
       // (~4px) que "x/y (NM)" ja usa no TopDown.
-      c.DrawText(canvasW - 24, 2, "y: alt(ft)", Color::GrayDark);
+      c.DrawText(canvasW - kAxisLegendLateralPx, 2, "y: alt(ft)", Color::GrayDark);
    }
 
    // Referencia do pan -- cruz tenue, marca exatamente o "zero" dos eixos
@@ -489,9 +593,57 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
    }
 
    const bool topDown{view.perspective == Perspective::TopDown};
-   c.DrawText(2, 2, (topDown ? formatScaleNm(view.metersPerCell) : formatScale(view.metersPerCell))
+   const std::string header{(topDown ? formatScaleNm(view.metersPerCell) : formatScale(view.metersPerCell))
       + (topDown ? "  [cima]" : "  [lado]")
-      + "  rumo=" + std::to_string(static_cast<int>(std::lround(view.viewYawDeg))) + "deg");
+      + "  rumo=" + std::to_string(static_cast<int>(std::lround(view.viewYawDeg))) + "deg"};
+
+   // Com o "seguir" ligado, o cabecalho diz QUEM esta sendo seguido -- o
+   // botao [f] mostra so ON/OFF, e a cruz do pan (desenhada acima) coincide
+   // com a entidade justamente quando o follow esta agindo, entao sem o nome
+   // nao daria pra distinguir "seguindo" de "por acaso centralizado".
+   //
+   // O nome vem de 'view.followLabel', escrito por applyMapFollow() -- NAO
+   // e redescoberto aqui por id; ver o comentario daquele campo em
+   // MapPanel.hpp para o porque (id de player nao e unico).
+   //
+   // O ORCAMENTO DE LARGURA e obrigatorio, e a razao foi MEDIDA: num
+   // terminal de 100 colunas o nome invadia a legenda de eixo desenhada a
+   // direita ("x/y (NM)"), saindo "seguindo=falcon1y (NM)" -- o cabecalho e
+   // desenhado DEPOIS da legenda, na MESMA linha, entao ele sobrescreve.
+   // Nome de player e string livre do cenario (e o de um fantasma DIS vem
+   // cru dos 11 bytes de marking do PDU), entao "cabe" nunca foi garantia.
+   // Mesma familia da armadilha ja documentada pro rotulo "y: alt(ft)",
+   // descartado em silencio por Canvas::DrawText/IsIn().
+   //
+   // Degradacao em tres degraus, pra a informacao nunca sumir de repente:
+   // nome inteiro -> nome abreviado com ".." -> marcador curto "[seg]".
+   // So abaixo disso a nota some, e ai o botao [f] Seguir e a unica fonte.
+   std::string followNote;
+   if (view.followSelected) {
+      // Canvas::DrawText anda 2 px POR GLIFO; a legenda de eixo comeca em
+      // 'canvasW - kAxisLegend*Px' (os dois DrawText mais acima).
+      const int legendPx{topDown ? kAxisLegendTopDownPx : kAxisLegendLateralPx};
+      const int livrePx{canvasW - legendPx - kHeaderStartPx
+                        - static_cast<int>(header.size()) * 2 - kHeaderLegendGapPx};
+      const int livreChars{livrePx / 2};
+
+      const std::string prefixo{"  seguindo="};
+      const std::string curto{"  [seg]"};
+      std::string alvo{view.followLabel.empty() ? std::string{"--"} : view.followLabel};
+
+      // Precisa caber o prefixo mais ao menos 2 glifos de nome; senao cai
+      // no marcador curto, e so entao desiste.
+      const int minimoCompleto{static_cast<int>(prefixo.size()) + 2};
+      if (livreChars >= minimoCompleto) {
+         const std::size_t maxNome{static_cast<std::size_t>(livreChars) - prefixo.size()};
+         if (glyphCount(alvo) > maxNome) alvo = truncateGlyphs(alvo, maxNome - 2) + "..";
+         followNote = prefixo + alvo;
+      } else if (livreChars >= static_cast<int>(curto.size())) {
+         followNote = curto;
+      }
+   }
+
+   c.DrawText(2, 2, header + followNote);
    if (topDown) {
       c.DrawText(4, canvasH - 6, formatNmMagnitude(kGridStepPx * view.metersPerCell) + "NM", Color::White);
    }

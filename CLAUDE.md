@@ -1432,9 +1432,10 @@ models/
     │                         # nao ha mais variante sem ele
     └── template/             # projeto meson proprio -> build-template/ -- NAO e producao,
                               # e o UNICO ponto de partida copiavel (ver models/players/template/README.md):
-                              # camadas domain/ -> ubf/ -> xnative/ com UMA decisao de exemplo
-                              # (gatilho Schmitt sobre altitude). Hospeda DOIS artefatos:
-        ├── src/{domain,ubf,xnative}/  src/plugin.cpp   # 'template' (template_lib) -- o
+                              # camadas domain/ -> bt/ -> ubf/ -> xnative/ com UMA decisao de
+                              # exemplo (gatilho Schmitt sobre altitude) atravessando uma
+                              # ARVORE de comportamento de dois nos. Hospeda DOIS artefatos:
+        ├── src/{domain,bt,ubf,xnative}/ src/plugin.cpp  # 'template' (template_lib) -- o
         │                              # scaffold copiavel de verdade -- ver docs/PRIMEIROS-PASSOS.md
         ├── src/mirror.cpp              # 'template_mirror' (template_mirror_lib) -- o
         │                              # mirror de contrato que ESTE repositorio usa nos
@@ -1442,6 +1443,9 @@ models/
         │                              # de fabrica que 'flight' exporta) -- NAO faz parte do
         │                              # scaffold, apagado ao copiar (herdou esse papel de
         │                              # models/players/fixtures/stub/, removido)
+        ├── configs/example_tree.xml    # a arvore -- dado do MODELO, instalada com o .so
+        ├── tools/                      # dump-tree-model + update_bt_models.py
+        │                              # (por tras de 'make create-bt'/'make update-bt')
         ├── docs/ARCHITECTURE.md  docs/PRIMEIROS-PASSOS.md  docs/CONTRATO.md
         ├── Makefile  README.md  CHANGELOG.md
 ```
@@ -1500,9 +1504,13 @@ carrega o que é **genuinamente idêntico** entre `models/players/A-4/Makefile` 
 `clean`/`help` — ~90 linhas que já tinham começado a divergir em REDAÇÃO (não em lógica) entre
 os dois antes da extração, o sintoma exato que uma fonte única evita. `build`/`test`/`install`/
 `install-host`/`uninstall-host` (a lista de `.so` publicada e o diretório de dados são
-por-modelo de propósito) e os alvos exclusivos de um projeto (`create-bt`/`update-bt`/
-`open-groot`, hoje só em A-4) continuam no Makefile de cada um, declarados **depois** do
-`include $(ROOT)/models/common.mk`. `ROOT := $(abspath ../../..)` continua sendo uma linha
+por-modelo de propósito) e `create-bt`/`update-bt`/`open-groot` continuam no Makefile de cada um,
+declarados **depois** do `include $(ROOT)/models/common.mk`. Esses três **já foram exclusivos do
+A-4**; hoje o `template` também os declara, com o mesmo texto — então todo modelo gerado por
+`make new-model` nasce com os **mesmos 8 alvos** que o modelo de produção. Continuam fora do
+`common.mk` mesmo assim, e a razão é real: dependem de `tools/dump-tree-model`, que só existe num
+projeto que de fato tenha uma árvore de comportamento — um modelo futuro que decida por outro
+mecanismo herdaria três alvos quebrados. `ROOT := $(abspath ../../..)` continua sendo uma linha
 literal em **cada** Makefile-filho, nunca movida para `common.mk` — é ela que
 `scripts/models.sh::linha_root()` acha e ajusta pela profundidade real do destino a cada
 `make new-model`; `include $(ROOT)/...` já usa esse valor corrigido, então `scripts/models.sh`

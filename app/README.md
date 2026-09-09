@@ -52,7 +52,7 @@ tempo. **Toda tecla tem um botão equivalente** (clicável, com a dica do atalho
 | aba | mostra | controles próprios |
 |---|---|---|
 | **Players** | lista de entidades (qualquer tipo, não só aviões) + card de detalhe | `↑`/`↓` navega; `m` abre a mesma entidade no Mapa |
-| **Mapa** | canvas navegável, duas perspectivas | arrastar/setas move; `[`/`]`/roda zoom; `v` perspectiva; `t` rastro; `e` terreno; `,`/`.` gira; `c` centraliza |
+| **Mapa** | canvas navegável, duas perspectivas | arrastar/setas move; `[`/`]`/roda zoom; `v` perspectiva; `f` segue a selecionada; `t` rastro; `e` terreno; `,`/`.` gira; `c` centraliza |
 | **Memória** | contadores de instância do MIXR, ao vivo | `↑`/`↓` navega |
 | **Tempo Não-Crítico** | o que roda na thread de background (10 Hz) | só leitura |
 | **Log** | buffer de [`libs/xlog`](../libs/xlog/README.md) — host e modelo | `f` cicla o filtro por nível; `a` liga/desliga "acompanhar" |
@@ -73,6 +73,23 @@ centralizado (o "pan"), não ao mundo absoluto. **Terreno** (`e`, desligado por 
 nível (Cima) ou linha de contorno vermelha (Lado) — cobre **todos** os tiles `.hgt` encontrados em
 `shared/data/terrain/srtm/`, não só o do cenário; fora de toda cobertura, simplesmente não desenha
 nada ali (nunca inventa elevação). Clicar numa entidade seleciona — sincroniza com a aba Players.
+
+**Seguir** (`f`, ou o botão `[f] Seguir`, desligado por padrão): prende a vista à entidade
+selecionada — ela fica no **centro exato** do canvas a cada quadro, nas **duas** perspectivas (de
+cima o centro é a posição N/E; de lado, também a altitude). O **zoom continua inteiramente seu**:
+`[`/`]`/roda ampliam e reduzem sem soltar a entidade, e `,`/`.` giram em torno dela. Trocar a
+seleção (na lista de Players ou clicando no mapa) muda quem é seguido, e o cabeçalho do canvas
+mostra `seguindo=<nome>` — abreviado com `..`, ou reduzido a `[seg]`, quando o terminal é estreito
+demais para o nome inteiro caber sem cobrir a legenda dos eixos. **Mover a vista à mão — setas ou
+arrastar — desliga o seguir**, senão o próximo quadro desfaria o gesto e a vista pareceria
+travada; um clique de seleção com um caractere de tremor conta como arrastar e também desliga
+(aperte `f` de novo). Desligar **congela** a vista onde ela está, sem pulo. Com o terreno ligado
+na vista de lado, seguir tem prioridade sobre a ancoragem do chão no rodapé da janela (os dois
+disputam a mesma referência vertical).
+
+A barra de botões do Mapa passou a ter nove itens e só cabe inteira a partir de **130 colunas**;
+abaixo disso o FTXUI encurta os rótulos da direita (`[e] Terreno`, `[v] Vista`) — as ações
+continuam todas acessíveis pelas teclas.
 
 ![Aba Mapa](images/f2.png)
 

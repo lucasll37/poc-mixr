@@ -28,7 +28,44 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
 
 ## [Não versionado]
 
+### Adicionado
+
+- **Uma camada `bt/` de verdade — o template passou a decidir por árvore de comportamento, não
+  mais por um `if`.** Dois nós (`( ExampleThreshold )`, condição, e `( ExampleLabel )`, ação),
+  registrados em `src/bt/bt_factory.cpp`, mais a árvore em `configs/example_tree.xml` (um
+  `Fallback` de dois ramos, a mesma forma do `flight_tree.xml` de produção). `ExampleBehavior`
+  carrega o XML pelo slot novo `treeFile:` e tica uma vez por ciclo; a regra pura
+  (`domain::ExampleThreshold`) **continua existindo e continua testada sem BT nenhum** — quem a
+  avança agora é o nó. Sem árvore carregada o modelo degrada para a regra direta, em vez de
+  parar de decidir. Os nós ficam livres do MIXR pela interface `bt/DecisionContext.hpp`, o que
+  permite a suíte nova `tree` carregar a árvore de PRODUÇÃO contra um contexto falso.
+- **Os alvos `create-bt`, `update-bt` e `open-groot`** — os três que só `A-4` tinha. Com eles
+  vieram `tools/dump_tree_model.cpp` (gera o `<TreeNodesModel>` que o Groot exige) e
+  `tools/update_bt_models.py`. O `Makefile` deste projeto passa a ter os **mesmos 8 alvos** do
+  `A-4`, e todo modelo gerado por `make new-model` nasce com eles.
+- **Duas camadas novas na suíte**: `tree` (a árvore de produção contra um `FakeContext`) e
+  `tree-model-sync` (guarda: registrar um nó e esquecer o `make update-bt` deixaria o Groot
+  recusando a árvore, sem nenhum teste vendo). A guarda de contagem do `make test` subiu de 2
+  para 4 — o valor vale tanto aqui quanto num scaffold copiado, onde o teste do mirror não
+  existe.
+
+### Corrigido
+
+- **`tools/update_bt_models.py` destruía uma árvore cujo comentário MENCIONASSE
+  `<TreeNodesModel>`** (achado rodando, com perda real do arquivo). A regex do bloco não conhece
+  comentário: casava a partir da menção e, com `re.DOTALL`, engolia o resto do comentário, o
+  `-->`, o `<root>` e a `<BehaviorTree>` inteira — reportando "substituído", sem erro. Os
+  comentários agora são mascarados antes da busca (mesma técnica de
+  `tools/mixr_source_scan.py::mask_source()` na raiz). O mesmo defeito existia, latente, na cópia
+  de `A-4` — corrigido nas duas. Ver `../A-4/CHANGELOG.md`.
+
 ### Mudado
+
+- **`install`/`install-host` deixaram de nomear o diretório de dados.** `make new-model` renomeia
+  o literal `'template'` dentro do `meson.build` (então o `install_data` passa a escrever em
+  `share/mixr-plugins/<seu-modelo>/`) mas não toca no `Makefile` — um caminho com `template`
+  cravado ali quebrava o primeiro `install-host` do scaffold copiado com *"cp: cannot stat"*
+  (reproduzido). Os dois alvos passaram a copiar o diretório inteiro, sem nome nenhum escrito.
 
 - **O diretório pai passou de `models/player/` para `models/players/`** — este projeto passou a
   morar em `models/players/template/`. `git mv`, histórico preservado. Detalhe da varredura →

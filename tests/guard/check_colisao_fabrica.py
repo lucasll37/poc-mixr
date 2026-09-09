@@ -42,32 +42,52 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import extract_execution_chain as ext  # noqa: E402
 
-MODELS_PLAYER = REPO_ROOT / "models" / "players"
+MODELS_DIR = REPO_ROOT / "models"
 
-
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): esta varredura era
+# 'MODELS_PLAYER = REPO_ROOT/"models"/"players"' + 'MODELS_PLAYER.iterdir()',
+# e por isso a guarda era ESTRUTURALMENTE CEGA a models/others/ e
+# models/systems/ -- exatamente as duas subpastas onde
+# 'make new-model CATEGORY=others|system' deposita um modelo novo. Nao era
+# precaucao teorica: um modelo real chegou a viver em models/others/
+# exportando ExampleState/ExampleBehavior/ExampleAction (os nomes que TODO
+# scaffold nasce exportando) sem esta guarda enxergar -- um falso-negativo
+# ATIVO, na classe de erro que ela existe para pegar (dois .so no mesmo
+# processo registrando o mesmo nome fazem o segundo chamar die()).
+#
+# A descoberta agora e' sob QUALQUER subpasta de models/, mesma filosofia de
+# find de check_modelo_estrutura.sh/check_modelo_fresco.sh: modelo novo ja
+# nasce coberto, em qualquer categoria, sem editar este arquivo.
 NAO_PRODUCAO = {"template"}
 
-
+# models/events/ nao e' uma pasta de projetos-modelo (e' UM projeto so', a lib
+# 'events', consumida por subdir()) -- nao tem src/ de modelo para varrer, e
+# por isso e' filtrada junto com a ausencia de src/ logo abaixo.
 def discover_models():
-    """{nome: {nomes-de-fabrica}} para cada models/players/<nome>/ que NAO
-    seja template -- ver o "porque" da exclusao no docstring do
-    modulo."""
+    """{caminho-relativo: {nomes-de-fabrica}} para cada models/<categoria>/<nome>/
+    que NAO seja template -- ver o "porque" da exclusao no docstring do
+    modulo. A chave e' o caminho relativo (nao so' o nome) porque
+    models/players/X e models/systems/X sao dois modelos DIFERENTES e as duas
+    entradas precisam coexistir no mapa."""
     models = {}
-    for d in sorted(MODELS_PLAYER.iterdir()):
-        if not d.is_dir() or d.name in NAO_PRODUCAO:
+    for categoria in sorted(MODELS_DIR.iterdir()):
+        if not categoria.is_dir():
             continue
-        src = d / "src"
-        if not src.exists():
-            continue
-        factory_map = ext.build_factory_map([src])
-        models[d.name] = set(factory_map.keys())
+        for d in sorted(categoria.iterdir()):
+            if not d.is_dir() or d.name in NAO_PRODUCAO:
+                continue
+            src = d / "src"
+            if not src.exists():
+                continue
+            factory_map = ext.build_factory_map([src])
+            models[str(d.relative_to(REPO_ROOT))] = set(factory_map.keys())
     return models
 
 
 def main():
     models = discover_models()
     if len(models) < 2:
-        print(f"OK -- so {len(models)} modelo(s) sob models/players/ (fora {'/'.join(sorted(NAO_PRODUCAO))}/); nada para comparar.")
+        print(f"OK -- so {len(models)} modelo(s) sob models/ (fora {'/'.join(sorted(NAO_PRODUCAO))}/); nada para comparar.")
         return 0
 
     failures = []

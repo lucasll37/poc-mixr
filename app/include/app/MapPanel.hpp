@@ -9,6 +9,7 @@
 #include <array>
 #include <deque>
 #include <map>
+#include <string>
 
 //------------------------------------------------------------------------------
 // A aba "Mapa": vista navegavel da simulacao -- de cima (N/E) ou de lado
@@ -73,6 +74,37 @@ struct MapViewState
    // entidades quando nao e o que se quer ver.
    bool showTerrain{};
 
+   // "Seguir" a entidade selecionada: enquanto ligado, o pan e recolocado
+   // sobre ela a cada redesenho da aba, entao ela fica SEMPRE no centro do
+   // canvas -- nas DUAS perspectivas (ver applyMapFollow()/centerMapOn():
+   // no TopDown quem centraliza e panNorthM/panEastM; no Lateral tambem
+   // panAltM, a altitude presa ao meio vertical da tela). O ZOOM continua
+   // inteiramente do usuario: follow so escreve no PAN, nunca em
+   // 'metersPerCell' -- e girar tambem continua livre, porque a rotacao de
+   // project() e em torno do proprio ponto do pan (a entidade centrada tem
+   // relN/relE zerados e nao sai do centro sob nenhum yaw).
+   //
+   // Estado PERSISTENTE, como showTrails/showTerrain/perspective: nao e
+   // desarmado por cancelAnyDrag() nem por troca de aba -- ao contrario do
+   // 'dragging' mais abaixo, que e transiente por natureza.
+   bool followSelected{};
+
+   // Nome da entidade que applyMapFollow() de fato centralizou no ultimo
+   // quadro, vazio quando nao centralizou nada -- e o que renderMap()
+   // escreve no cabecalho ("seguindo=<nome>").
+   //
+   // Escrito POR applyMapFollow, e nao redescoberto no desenho, de
+   // proposito: o follow persegue por INDICE ('selectedIndex') e a primeira
+   // versao do cabecalho procurava o nome por ID. As duas chaves so
+   // coincidem se o id for unico -- e nao e garantido:
+   // simulation::AbstractPlayer::id nasce 0, entao dois players sem 'id:'
+   // no .edl colidem, e o id de um fantasma DIS vem cru do fio. Medido com
+   // dois players de id 0: a camera travava em falcon9 e o cabecalho dizia
+   // "seguindo=bandit1" -- a nota mentindo exatamente no caso que ela
+   // existe pra esclarecer. Uma fonte so elimina a divergencia por
+   // construcao.
+   std::string followLabel;
+
    // Tamanho do canvas em PIXEL de braille (2 por celula de terminal na
    // horizontal, 4 na vertical) -- NAO e constante: acompanha a area que
    // o layout de fato deu ao mapa, atualizado por fitMapCanvasToBox() a
@@ -128,10 +160,35 @@ void fitMapCanvasToBox(MapViewState& view, const ftxui::Box& box);
 // sempre e a mesma (rotE, ver MapPanel.cpp), so a vertical muda de sentido
 // (norte girado no TopDown, altitude no Lateral). Chamado igual pelas duas
 // perspectivas -- DashboardLoop.cpp nao precisa saber qual esta ativa.
+//
+// DESLIGA 'followSelected' -- pan manual e follow sao mutuamente exclusivos
+// (ver o porque no corpo da funcao, em MapPanel.cpp).
 void panMap(MapViewState& view, double screenRightM, double screenUpM);
+
+// Zoom e rotacao NAO desligam o follow, de proposito: o zoom continua "a
+// cargo do usuario" (pedido explicito) e girar mantem a entidade centrada
+// (a rotacao de project() e em torno do ponto do pan).
 void zoomMap(MapViewState& view, bool zoomIn);
 void rotateMap(MapViewState& view, bool clockwise);
 void centerMapOn(MapViewState& view, const EntityState& e);
+
+// Aplica o "seguir a entidade selecionada": se 'view.followSelected' estiver
+// ligado e 'selectedIndex' apontar para uma entidade valida, recoloca o pan
+// sobre ela (centerMapOn) -- o que a poe EXATAMENTE no centro do canvas nas
+// duas perspectivas, para qualquer zoom e qualquer rotacao. Devolve true se
+// recentralizou.
+//
+// Pensada pra rodar a CADA redesenho da aba Mapa: e IDEMPOTENTE (atribuicao
+// pura, nao acumula nada), ao contrario de updateTrails(), que por acumular
+// um ponto por chamada precisa da guarda de "amostra nova" em
+// DashboardLoop.cpp. Rodar todo quadro e o que mantem a entidade colada no
+// centro enquanto ela se move, e tambem o que reenquadra sozinho depois de
+// um zoom, de um giro ou de uma troca de perspectiva.
+//
+// No-op (devolve false) com o follow desligado, com a lista vazia ou com o
+// indice fora de faixa -- o chamador nao precisa checar nada disso.
+bool applyMapFollow(MapViewState& view, const std::vector<EntityState>& entities,
+                    int selectedIndex);
 
 // So faz sentido na perspectiva Lateral: reancora 'view.panAltM' (a
 // altitude de REFERENCIA que fica presa ao meio vertical da tela, ver

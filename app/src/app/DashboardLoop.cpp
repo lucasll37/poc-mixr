@@ -681,7 +681,34 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // redesenho, ver mais abaixo).
    const auto doMapSnapGroundIfApplicable = [&] {
       if (!mapView.showTerrain) return;
+      // Com o "seguir" ligado o follow VENCE: os dois escrevem em 'panAltM'
+      // (o snap ancora o CHAO perto do fundo da janela; o follow ancora a
+      // ENTIDADE no meio dela) e o pedido e a entidade centralizada nas duas
+      // perspectivas. Sem esta guarda o snap escreveria panAltM aqui e o
+      // proximo redesenho o sobrescreveria de qualquer forma -- um piscar
+      // sem nenhum efeito util. Com o follow desligado, nada muda: o snap
+      // continua exatamente como era.
+      if (mapView.followSelected) return;
       snapPanToGroundLevel(mapView, makeTerrainSampler(worldModel));
+   };
+   // "Seguir" a entidade selecionada -- o pan passa a ser recolocado sobre
+   // ela a cada redesenho da aba (ver applyMapFollow(), chamada no Renderer
+   // de 'mapCanvasArea'), nas duas perspectivas. Ligar ja reenquadra no
+   // quadro seguinte; DESligar congela a vista exatamente onde ela estava.
+   // O zoom continua do usuario -- follow nunca toca 'metersPerCell'.
+   //
+   // NAO chama 'doMapSnapGroundIfApplicable()'. A primeira versao chamava,
+   // com o raciocinio de que desligar "devolvia" a ancoragem do chao ao
+   // cenario -- e isso era um BUG MEDIDO: a guarda de dentro do snap so
+   // barra o caso de LIGAR (ali o flag ja e true); ao DESLIGAR o flag ja
+   // virou false, o snap rodava e reescrevia 'panAltM' na hora. Com
+   // Lateral + terreno ligado e zoom apertado (2 m/cel), a aeronave que se
+   // estava olhando SAIA do canvas no exato gesto de "congelar a vista
+   // nela" -- medido: py=60/onCanvas=1 antes, py=-321/onCanvas=0 depois.
+   // Reancorar o chao continua acontecendo nos tres gestos que sempre o
+   // fizeram ([e] terreno, [v] perspectiva, [c] centralizar).
+   const auto doMapToggleFollow = [&] {
+      mapView.followSelected = !mapView.followSelected;
    };
    const auto doMapToggleTerrain = [&] {
       mapView.showTerrain = !mapView.showTerrain;
@@ -989,12 +1016,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // selecionada") ----
    const Component mapCanvasArea{Renderer(treeMenuMap, [&]() -> Element {
       int focusedId{-1};
+      // Indice JA limitado a faixa valida -- o mesmo para o card de detalhe,
+      // para o realce no canvas e para o "seguir", pra os tres nunca
+      // discordarem sobre quem e a entidade selecionada.
+      int focusedIndex{-1};
       Element detail{text("(clique numa entidade no mapa, ou selecione nos Players)")
                      | dim | center
                      | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
       if (!displayedEntities.empty()) {
-         const std::size_t idx{static_cast<std::size_t>(
-            std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
+         focusedIndex = std::clamp(selectedEntityIndex, 0,
+                                   static_cast<int>(displayedEntities.size()) - 1);
+         const std::size_t idx{static_cast<std::size_t>(focusedIndex)};
          focusedId = displayedEntities[idx].id;
          detail = buildDetailPanel(displayedEntities[idx], treeMenuMap);
       }
@@ -1010,6 +1042,21 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // hora em que a caixa existe, ver fitMapCanvasToBox() em
       // app/MapPanel.hpp.
       fitMapCanvasToBox(mapView, mapCanvasBox);
+
+      // "Seguir" a entidade selecionada -- ANTES de renderMap(), pra ESTE
+      // quadro ja sair centralizado (e nao um quadro atrasado). Roda a cada
+      // redesenho DESTA aba (Container::Tab so renderiza o filho ativo,
+      // entao nao ha custo nenhum com outra aba em cena) e dispensa a guarda
+      // de "amostra nova" que updateTrails() precisa: e atribuicao pura,
+      // idempotente -- e e justamente rodar todo quadro que mantem a
+      // entidade colada no centro enquanto voa, e que reenquadra sozinho
+      // depois de um zoom/giro/troca de perspectiva.
+      //
+      // NAO se reancora o terreno perto do fundo (Lateral) depois disto, de
+      // proposito: o snap disputaria o mesmo 'panAltM' que o follow acabou
+      // de escrever -- ver a guarda em 'doMapSnapGroundIfApplicable'.
+      applyMapFollow(mapView, displayedEntities, focusedIndex);
+
       return hbox({
                 renderMap(displayedEntities, mapView, focusedId, mapCanvasBox, terrainSampler) | flex,
                 separator(),
@@ -1024,9 +1071,10 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnMapRotR{makeButton("[.] Girar>", doMapRotateRight)};
    const Component btnMapCenter{makeButton("[c] Centralizar", doMapCenterOnSelected)};
 
-   // Os dois de alternancia (rastro/perspectiva) precisam de um rotulo que
-   // MUDA com o estado (ON/OFF, Cima/Lado) -- 'transform' roda a cada
-   // redesenho (nao so no clique), entao basta ler 'mapView' direto nele.
+   // Os quatro de alternancia (seguir/rastro/terreno/perspectiva) precisam
+   // de um rotulo que MUDA com o estado (ON/OFF, Cima/Lado) -- 'transform'
+   // roda a cada redesenho (nao so no clique), entao basta ler 'mapView'
+   // direto nele.
    ButtonOption trailsOpt;
    trailsOpt.label = "[t] Rastro";
    trailsOpt.on_click = doMapToggleTrails;
@@ -1045,6 +1093,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const Component btnMapTerrain{Button(terrainOpt)};
 
+   ButtonOption followOpt;
+   followOpt.label = "[f] Seguir";
+   followOpt.on_click = doMapToggleFollow;
+   followOpt.transform = [&](const EntryState&) {
+      return text(std::string(" [f] Seguir: ") + (mapView.followSelected ? "ON" : "OFF") + " ")
+         | (mapView.followSelected ? (bgcolor(Color::Blue) | bold) : dim);
+   };
+   const Component btnMapFollow{Button(followOpt)};
+
    ButtonOption perspectiveOpt;
    perspectiveOpt.label = "[v] Vista";
    perspectiveOpt.on_click = doMapTogglePerspective;
@@ -1057,14 +1114,14 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component mapButtons{Container::Horizontal({
       btnMapZoomOut, btnMapZoomIn, btnMapRotL, btnMapRotR,
-      btnMapCenter, btnMapTrails, btnMapTerrain, btnMapPerspective,
+      btnMapCenter, btnMapFollow, btnMapTrails, btnMapTerrain, btnMapPerspective,
    })};
 
    const Component mapBody{Container::Vertical({mapCanvasArea, mapButtons})};
    const Component mapTab{Renderer(mapBody, [&]() -> Element {
       return vbox({
          mapCanvasArea->Render() | flex,
-         text("[setas/arraste] mover  [clique] selecionar entidade") | dim,
+         text("[setas/arraste] mover (desliga o seguir)  [clique] selecionar entidade") | dim,
          mapButtons->Render(),
       });
    })};
@@ -1869,6 +1926,16 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          if (event == Event::Character('e') || event == Event::Character('E')) { doMapToggleTerrain(); return true; }
          if (event == Event::Character('v') || event == Event::Character('V')) { doMapTogglePerspective(); return true; }
          if (event == Event::Character('c') || event == Event::Character('C')) { doMapCenterOnSelected(); return true; }
+         // 'f' de "follow" -- mesmo padrao de 't' (trail) e 'e' (elevation):
+         // mnemonico em ingles, rotulo em portugues. Livre aqui: os dois
+         // outros handlers de 'f' sao gateados por aba (filtro de nivel na
+         // Log, recolher-tudo na Componentes) e nao ha 'f' global. Fica no
+         // MESMO bloco de 't'/'e'/'v'/'c' -- que roda DEPOIS das teclas
+         // globais e portanto carrega a exposicao ja documentada no bloco de
+         // 'activeTab == 5': uma tecla global futura com esta letra roubaria
+         // a do mapa em silencio. Separar so esta das quatro irmas trocaria
+         // um risco hipotetico por uma inconsistencia real de leitura.
+         if (event == Event::Character('f') || event == Event::Character('F')) { doMapToggleFollow(); return true; }
       }
 
       // Interacao da aba "Componentes" -- MESMO raciocinio/estrutura do

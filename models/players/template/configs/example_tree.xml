@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A arvore de comportamento DESTE template.
+
+  Forma: um Fallback (o "primeiro que der SUCCESS vence") com as prioridades
+  de cima para baixo. E a MESMA forma do flight_tree.xml de producao em
+  models/players/A-4, com dois ramos em vez de quatro:
+
+    1) gatilho engajado  -> rotulo ENGAGED
+    2) qualquer outro caso -> rotulo IDLE   (o ramo de degradacao, sempre SUCCESS)
+
+  Note que o ramo 2 nao tem condicao: um Fallback sem um ultimo ramo
+  incondicional devolveria FAILURE quando nada casasse, e a entidade ficaria
+  sem decisao nenhuma no frame.
+
+  ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um
+  comentario XML. O tinyxml2 (que o BehaviorTree.CPP usa) tolera; o
+  QDomDocument (que o Groot usa) recusa o ARQUIVO INTEIRO com um generico
+  "erro de sintaxe". Ver CLAUDE.md raiz, secao "Groot", armadilha no 1.
+
+  O bloco <TreeNodesModel> abaixo e GERADO - nao edite a mao. Ele existe
+  para o Groot reconhecer os nos deste modelo (que sao classes dentro do .so,
+  invisiveis a um app externo). Rode 'make update-bt' depois de registrar um
+  no novo em src/bt/bt_factory.cpp.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="engajado">
+        <ExampleThreshold margin="0.0"/>
+        <ExampleLabel label="ENGAGED"/>
+      </Sequence>
+      <ExampleLabel label="IDLE"/>
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="ExampleLabel">
+            <input_port name="label" type="std::string" default="ENGAGED">rotulo que vai para o xboard e para o dump</input_port>
+        </Action>
+        <Condition ID="ExampleThreshold">
+            <input_port name="margin" type="double" default="0.000000">margem somada ao limiar de engajamento (onValue)</input_port>
+        </Condition>
+    </TreeNodesModel>
+</root>

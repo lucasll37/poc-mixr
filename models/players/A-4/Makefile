@@ -89,10 +89,26 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/fli
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/flight/"
 
 install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
-	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data/flight
+	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@cp -a $(DEST_DIR)/share/mixr-plugins/flight/. $(ROOT)/plugins/data/flight/
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/flight/"
+	@# NENHUM nome de modelo escrito aqui, de proposito -- mesmo padrao (e
+	@# mesmo "porque") ja validado em models/players/template/Makefile.
+	@#
+	@# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): estas tres linhas
+	@# cravavam o literal 'flight' ('mkdir -p .../plugins/data/flight',
+	@# 'cp -a .../share/mixr-plugins/flight/.' e o 'rm -rf' correspondente
+	@# no uninstall-host). Isso e' invisivel enquanto o modelo existe, mas
+	@# torna a REMOCAO dele impossivel de automatizar: o nome do diretorio
+	@# de dados nao e' derivavel do nome da PASTA (aqui a pasta e' 'A-4' e o
+	@# diretorio e' 'flight'), entao um comando de remocao que so' tenha o
+	@# nome da pasta nao tem como descobri-lo -- e o Makefile que sabia a
+	@# resposta some junto com a pasta. Copiar o diretorio INTEIRO resolve
+	@# para qualquer nome, sem ninguem precisar saber qual e', e e'
+	@# exatamente o que o 'sync-plugins' da raiz ja faz um nivel acima.
+	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
+	 fi
+	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
 uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
@@ -102,7 +118,16 @@ uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
 	   done; \
 	 fi
-	@rm -rf $(ROOT)/plugins/data/flight
+	@# Os nomes saem do PROPRIO ./dist local, nunca escritos a mao -- so' o
+	@# que ESTE modelo publicou e' removido, nunca o dado de um terceiro que
+	@# divida o deposito. Ver o comentario do install-host acima para o
+	@# porque de nao haver 'flight' cravado aqui.
+	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
+	      [ -d "$$d" ] || continue; \
+	      rm -rf "$(ROOT)/plugins/data/$$(basename $$d)"; \
+	   done; \
+	 fi
 
 create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Groot.
 	@test ! -e configs/bt.xml || { \

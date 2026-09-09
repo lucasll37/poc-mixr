@@ -36,9 +36,27 @@ simulada.
 - **`.so` de terceiro não é versionado** (`.gitignore`: `plugins/*.so`, `plugins/data/`) — é
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o
   que sobrevive num clone limpo.
-- **`make clean` só remove os nomes que ESTE repositório gera** (`libflight.so`,
-  `libtemplate.so`, `libtemplate_mirror.so`, e `data/`) — um `.so` de terceiro com outro
-  nome não é apagado por engano.
+- **`make clean` só remove o que ESTE repositório publicou, por NOME** — nunca por glob nem por
+  lista escrita à mão. Os nomes saem do `./dist` local de cada modelo (é dele que o
+  `uninstall-host` de cada um deriva o que remover, sem literal cravado no Makefile), então um
+  `.so` de terceiro com outro nome, ou um `data/<subpasta>` de terceiro, nunca é apagado por
+  engano. O `data/` só é recolhido se tiver ficado **vazio** (`rmdir`, que falha sozinho e sem
+  estrago se houver qualquer coisa dentro).
+
+  > **Correção registrada (não redescobrir):** esta promessa já foi **falsa** na metade `data/`.
+  > O alvo `clean` tinha um `rm -rf plugins/data` **incondicional** — o namespace inteiro, sem
+  > filtro de nome —, então o dado de um terceiro ia junto. A metade `.so` sempre foi verdadeira;
+  > a de `data/` passou a ser em conjunto com o alvo `rm-model`.
+
+- **Remover um modelo tem comando próprio: `make rm-model`** (`scripts/models.sh --remove`). Ele
+  descobre os artefatos **antes** de apagar a pasta — a informação de quem publicou o quê mora
+  dentro dela e não é recuperável depois — e **recusa** se algum cenário `.edl`/`.edl.in` ainda
+  apontar para o `.so`. Para um `.so` que sobrou de um modelo já apagado à mão, o modo por
+  artefato: `make rm-model SO=libX.so [DATA=dir]`.
+
+- **`make install` avisa sobre `.so` não reivindicado.** Todo sync imprime um aviso amarelo (nunca
+  erro) para cada `.so` daqui que nenhum modelo de `models/` reclama. É esperado e correto para um
+  `.so` de terceiro — é justamente por eles serem indistinguíveis que isto é aviso e não falha.
 
 ## Pasta vazia não é erro
 

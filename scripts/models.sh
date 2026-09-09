@@ -36,10 +36,14 @@
 #   - nao faz commit nenhum.
 # Tudo isso fica no checklist impresso ao final.
 #
-# Uso:
+# Uso -- CRIAR:
 #   scripts/models.sh --name meu_modelo --category player
 #   scripts/models.sh --name F-5 --category player
 #   scripts/models.sh --name meu_modelo --category system --dest algum/lugar --no-build
+#
+# Uso -- REMOVER (ver o bloco "MODO --remove" logo abaixo do parsing):
+#   scripts/models.sh --remove --name meu_modelo --category player
+#   scripts/models.sh --remove --so libx9.so [--data x9]      # orfao legado, sem fonte
 #
 # Pre-requisito (uma vez por maquina, igual a qualquer modelo deste
 # repositorio): 'make configure && make sdk' na raiz.
@@ -52,6 +56,11 @@ NAME=""
 CATEGORIA=""
 DEST=""
 NO_BUILD=0
+REMOVER=0
+FORCE=0
+DRY_RUN=0
+SO_EXPLICITOS=()
+DATA_EXPLICITOS=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -59,21 +68,368 @@ while [ $# -gt 0 ]; do
         --category) CATEGORIA="$2"; shift 2 ;;
         --dest) DEST="$2"; shift 2 ;;
         --no-build) NO_BUILD=1; shift ;;
+        --remove) REMOVER=1; shift ;;
+        --so) SO_EXPLICITOS+=("$2"); shift 2 ;;
+        --data) DATA_EXPLICITOS+=("$2"); shift 2 ;;
+        --force) FORCE=1; shift ;;
+        --dry-run) DRY_RUN=1; shift ;;
         *) echo "argumento desconhecido: $1" >&2; exit 1 ;;
     esac
 done
 
 USO="uso: scripts/models.sh --name meu_modelo --category player|system|others [--dest pasta] [--no-build]"
+USO_REMOVE="uso: scripts/models.sh --remove --name <nome> --category player|system|others [--force] [--dry-run]
+     ou: scripts/models.sh --remove --so lib<X>.so [--so ...] [--data <dir>] [--force] [--dry-run]"
 
-if [ -z "$NAME" ]; then
+# --no-build e' exclusiva da CRIACAO (pula o build de fumaca). Aceitar junto
+# com --remove seria um no-op silencioso, e silencio e' exatamente o modo de
+# falha que este script inteiro existe para nao ter -- ver a secao "MODO
+# --remove" abaixo.
+if [ "$REMOVER" = "1" ] && [ "$NO_BUILD" = "1" ]; then
+    echo "--no-build nao faz sentido com --remove (ela so' pula o build de fumaca da criacao)" >&2
+    exit 1
+fi
+
+if [ "$REMOVER" = "0" ] && { [ ${#SO_EXPLICITOS[@]} -gt 0 ] || [ ${#DATA_EXPLICITOS[@]} -gt 0 ] \
+                             || [ "$FORCE" = "1" ] || [ "$DRY_RUN" = "1" ]; }; then
+    echo "--so/--data/--force/--dry-run so' valem com --remove" >&2
     echo "$USO" >&2
     exit 1
 fi
 
-if [ -z "$CATEGORIA" ]; then
+if [ "$REMOVER" = "0" ] && [ -z "$NAME" ]; then
+    echo "$USO" >&2
+    exit 1
+fi
+
+if [ "$REMOVER" = "0" ] && [ -z "$CATEGORIA" ]; then
     echo "$USO" >&2
     echo "  --category e obrigatorio -- decide em qual subpasta de models/ o scaffold entra" >&2
     exit 1
+fi
+
+# ===========================================================================
+# MODO --remove -- remover um modelo sem deixar inconsistencia
+#
+# O PROBLEMA que este modo resolve, e por que a ORDEM importa mais que o
+# comando: a informacao de propriedade de um modelo (quais .so e quais
+# diretorios de dados ele publicou em plugins/) mora DENTRO da pasta dele --
+# 'uninstall-host' itera o ./dist LOCAL do proprio modelo. Apagar a pasta
+# primeiro destroi a unica fonte, e ela NAO e recuperavel depois: o
+# meson.build exige a pasta; nao ha manifesto; 'plugininfo' nem devolve
+# plugin_name (a saida e' so {"classes":[...]}); e a convencao de nome falha
+# no caso vivo -- a pasta 'A-4' publica libflight.so em plugins/data/flight.
+#
+# Dai a ordem abaixo, escolhida para que TODO PREFIXO seja um estado
+# consistente (um Ctrl+C no meio e' retomavel e nunca destroi a fonte):
+#   1. descobrir   2. recusar se algum cenario referencia   3. uninstall-host
+#   4. podar dist/   5. apagar a pasta (irreversivel, por ultimo)   6. checklist
+#
+# O QUE ESTE MODO NAO FAZ, de proposito:
+#   - nao edita cenario nenhum (ele RECUSA e lista; corrigir e' decisao sua);
+#   - nao mexe em models/REGISTRO.md, tests/meson.build nem no Makefile raiz;
+#   - nao regenera os catalogos commitados do editor EDL/docs;
+#   - nao faz commit nenhum.
+# Tudo isso fica no checklist impresso ao final.
+# ===========================================================================
+if [ "$REMOVER" = "1" ]; then
+
+    # -----------------------------------------------------------------------
+    # rm_arquivo CAMINHO / rm_dir CAMINHO -- remocao com respeito a --dry-run
+    # e com uma linha por acao (este script nunca apaga em silencio).
+    # -----------------------------------------------------------------------
+    rm_arquivo() {
+        local alvo="$1"
+        [ -e "$alvo" ] || return 0
+        if [ "$DRY_RUN" = "1" ]; then
+            echo "  [dry-run] removeria ${alvo#"$REPO_ROOT"/}"
+        else
+            rm -f "$alvo" && echo "  removido ${alvo#"$REPO_ROOT"/}"
+        fi
+    }
+    rm_dir() {
+        local alvo="$1"
+        [ -d "$alvo" ] || return 0
+        if [ "$DRY_RUN" = "1" ]; then
+            echo "  [dry-run] removeria ${alvo#"$REPO_ROOT"/}/"
+        else
+            rm -rf "$alvo" && echo "  removido ${alvo#"$REPO_ROOT"/}/"
+        fi
+    }
+
+    # -----------------------------------------------------------------------
+    # artefatos_publicados DIR -- basenames dos .so que ESTE modelo publica.
+    #
+    # Fonte primaria: o ./dist local (a mesma que 'uninstall-host' usa). O
+    # FALLBACK pelo meson.build existe para o segundo caminho de orfao, que
+    # e' o mais dificil de perceber: sem ./dist local (modelo nunca
+    # construido, ou 'make -C <dir> clean' ja rodado) o laco de
+    # 'uninstall-host' itera VAZIO e nao remove nada, EM SILENCIO.
+    # -----------------------------------------------------------------------
+    artefatos_publicados() {
+        local dir="$1" achou=0 so
+        if [ -d "$dir/dist/lib/mixr-plugins" ]; then
+            for so in "$dir"/dist/lib/mixr-plugins/*.so; do
+                [ -e "$so" ] || continue
+                basename "$so"
+                achou=1
+            done
+        fi
+        [ "$achou" = "1" ] && return 0
+        [ -f "$dir/meson.build" ] || return 0
+        sed -n "s/.*shared_module([\"']\([^\"']*\)[\"'].*/\1/p" "$dir/meson.build" \
+          | while IFS= read -r alvo; do
+                [ -n "$alvo" ] && echo "lib${alvo}.so"
+            done
+    }
+
+    # -----------------------------------------------------------------------
+    # datadirs_publicados DIR -- nomes das subpastas de plugins/data/ que ESTE
+    # modelo publica. Mesmo par fonte-primaria/fallback de
+    # artefatos_publicados(); o fallback le o terceiro segmento de
+    # "get_option('datadir') / 'mixr-plugins' / '<nome>'".
+    #
+    # NAO da para derivar do nome da PASTA: models/players/A-4 publica em
+    # plugins/data/flight.
+    # -----------------------------------------------------------------------
+    datadirs_publicados() {
+        local dir="$1" achou=0 d
+        if [ -d "$dir/dist/share/mixr-plugins" ]; then
+            for d in "$dir"/dist/share/mixr-plugins/*/; do
+                [ -d "$d" ] || continue
+                basename "$d"
+                achou=1
+            done
+        fi
+        [ "$achou" = "1" ] && return 0
+        [ -f "$dir/meson.build" ] || return 0
+        sed -n "s|.*'mixr-plugins'[[:space:]]*/[[:space:]]*'\([^']*\)'.*|\1|p" "$dir/meson.build" | sort -u
+    }
+
+    # -----------------------------------------------------------------------
+    # referenciadores PADRAO_ERE -- cenarios de FONTE que casam o padrao, um
+    # por linha.
+    #
+    # DELEGA para tests/guard/check_cenario_plugin.sh --refs, de proposito:
+    # aquela guarda ja precisa saber exatamente o que conta como "cenario de
+    # fonte" (quais diretorios podar, e que *.generated.edl fica de fora), e
+    # duas copias dessa regra divergiriam -- uma recusaria a remocao por um
+    # arquivo que a outra nem olha. Uma implementacao, dois consumidores.
+    #
+    # ACHADO RODANDO, nao redescobrir: sem podar '.gitlab-ci-local' a
+    # varredura devolvia CADA cenario DUAS vezes -- uma na fonte e uma em
+    # .gitlab-ci-local/builds/.docker/..., a copia que 'make test-ci' deixa do
+    # repositorio inteiro. A poda vive na guarda, nao aqui.
+    # -----------------------------------------------------------------------
+    referenciadores() {
+        local padrao="$1"
+        local guarda="$REPO_ROOT/tests/guard/check_cenario_plugin.sh"
+        if [ ! -x "$guarda" ]; then
+            echo "erro fatal: $guarda nao existe ou nao e executavel" >&2
+            echo "  (e' ele quem sabe quais .edl sao FONTE -- sem ele a recusa" >&2
+            echo "   por cenario referenciado nao tem como ser confiavel)" >&2
+            exit 1
+        fi
+        "$guarda" --refs "$padrao"
+    }
+
+    # -----------------------------------------------------------------------
+    # escapar_ere TEXTO -- escapa '.' para o texto virar literal numa ERE
+    # (todo basename aqui tem '.so', e um '.' solto casaria qualquer letra).
+    # -----------------------------------------------------------------------
+    escapar_ere() { printf '%s' "${1//./\\.}"; }
+
+    imprimir_checklist_remocao() {
+        local alvo="$1"
+        cat <<EOF
+
+Falta, MANUALMENTE (nada disto e automatizavel com seguranca):
+
+  [ ] models/REGISTRO.md -- remover a linha de ${alvo} (tabela manual, sem enforcement)
+  [ ] tests/meson.build -- entradas que citam o nome do modelo
+  [ ] Makefile da raiz -- alvos com o nome cravado (test-models, test, test-asan)
+  [ ] .gitlab-ci.yml e .gitignore -- entradas por nome, se houver
+  [ ] regenerar os catalogos COMMITADOS que carregam o rotulo 'plugin:<nome>':
+      src/ui/edl_catalog.generated.json, src/ui/edl-builder.html e
+      docs/manual/catalog.generated.js  ('make docs' cobre o ultimo; o do editor
+      EDL e' 'make open-edl-builder', que HOJE FALHA -- chama src/ui/scripts/build.js,
+      arquivo que nao existe)
+  [ ] apagar *.generated.edl velhos (alguns ainda nomeiam .so que nao existem mais)
+  [ ] CI: o cache por branch guarda plugins/ e dist/ -- limpar pela UI do GitLab,
+      nao ha alvo make que alcance o cache remoto
+  [ ] git rm -r <pasta> (este script nao commita nada)
+EOF
+    }
+
+    # --- 1. resolver o ALVO: modo por nome ou modo por artefato -------------
+    if [ ${#SO_EXPLICITOS[@]} -gt 0 ] && [ -n "$NAME" ]; then
+        echo "--so e --name sao modos DIFERENTES e nao se combinam:" >&2
+        echo "  --name  remove um modelo que ainda tem pasta (artefatos descobertos dela)" >&2
+        echo "  --so    remove um artefato orfao, sem fonte -- nunca toca pasta nenhuma" >&2
+        exit 1
+    fi
+
+    SOS=()
+    DATAS=()
+    DEST_ABS=""
+    ROTULO=""
+
+    if [ ${#SO_EXPLICITOS[@]} -gt 0 ]; then
+        # ---- modo por ARTEFATO (orfao legado, sem fonte) -------------------
+        SOS=("${SO_EXPLICITOS[@]}")
+        [ ${#DATA_EXPLICITOS[@]} -gt 0 ] && DATAS=("${DATA_EXPLICITOS[@]}")
+        ROTULO="${SOS[*]}"
+    else
+        # ---- modo por NOME (a pasta tem de existir) ------------------------
+        if [ -z "$NAME" ] || { [ -z "$CATEGORIA" ] && [ -z "$DEST" ]; }; then
+            echo "$USO_REMOVE" >&2
+            exit 1
+        fi
+        if ! [[ "$NAME" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]]; then
+            echo "nome invalido: '$NAME'" >&2
+            exit 1
+        fi
+        if [ -n "$DEST" ]; then
+            case "$DEST" in
+                /*) DEST_ABS="$DEST" ;;
+                *)  DEST_ABS="$REPO_ROOT/$DEST" ;;
+            esac
+        else
+            case "$CATEGORIA" in
+                player) DEST_ABS="$REPO_ROOT/models/players/$NAME" ;;
+                system) DEST_ABS="$REPO_ROOT/models/systems/$NAME" ;;
+                others) DEST_ABS="$REPO_ROOT/models/others/$NAME" ;;
+                *) echo "categoria invalida: '$CATEGORIA' -- use player, system ou others" >&2; exit 1 ;;
+            esac
+        fi
+
+        case "$DEST_ABS" in
+            "$REPO_ROOT"/models/*) : ;;
+            *) echo "'$DEST_ABS' nao esta sob models/ -- recusado" >&2; exit 1 ;;
+        esac
+
+        # template/ nunca e removivel: publica libtemplate_mirror.so, que os
+        # testes de plugin do HOST carregam (plugin-modelo-estranho e
+        # plugin-deposito-terceiro trocam so' o 'file:' do cenario de
+        # producao por ele). Remover isto quebraria a suite sem nenhum aviso
+        # que aponte para ca.
+        case "$DEST_ABS" in
+            */models/players/template)
+                echo "models/players/template nao e removivel: o segundo artefato dele" >&2
+                echo "  (libtemplate_mirror.so) e' o mirror de contrato que os testes de plugin" >&2
+                echo "  do host usam -- ver tests/meson.build, plugin-modelo-estranho." >&2
+                exit 1
+                ;;
+        esac
+
+        if [ ! -d "$DEST_ABS" ]; then
+            echo "'${DEST_ABS#"$REPO_ROOT"/}' nao existe." >&2
+            echo "" >&2
+            echo "  Se voce ja apagou a pasta a mao, a informacao de propriedade foi junto:" >&2
+            echo "  o nome do artefato NAO e' derivavel do nome da pasta (models/players/A-4" >&2
+            echo "  publica libflight.so em plugins/data/flight). Remova o artefato pelo nome:" >&2
+            echo "" >&2
+            echo "    scripts/models.sh --remove --so lib<X>.so [--data <dir>]" >&2
+            echo "" >&2
+            echo "  O que sobrou em plugins/ hoje:" >&2
+            for so in "$REPO_ROOT"/plugins/*.so; do
+                [ -e "$so" ] && echo "    $(basename "$so")" >&2
+            done
+            exit 1
+        fi
+
+        ROTULO="${DEST_ABS#"$REPO_ROOT"/}"
+        while IFS= read -r x; do [ -n "$x" ] && SOS+=("$x"); done < <(artefatos_publicados "$DEST_ABS")
+        while IFS= read -r x; do [ -n "$x" ] && DATAS+=("$x"); done < <(datadirs_publicados "$DEST_ABS")
+    fi
+
+    if [ ${#SOS[@]} -eq 0 ]; then
+        echo "nao consegui descobrir nenhum .so publicado por '$ROTULO'." >&2
+        echo "  (nem ./dist local, nem shared_module() no meson.build)" >&2
+        echo "  Passe explicitamente: --so lib<X>.so [--data <dir>]" >&2
+        exit 1
+    fi
+
+    echo "removendo: $ROTULO"
+    echo "  .so:  ${SOS[*]}"
+    if [ ${#DATAS[@]} -gt 0 ]; then echo "  data: ${DATAS[*]}"; else echo "  data: (nenhum)"; fi
+    echo ""
+
+    # --- 2. RECUSAR se algum cenario ainda referencia -----------------------
+    # Esta e' a razao de existir do modo: um .so orfao e' peso morto em tempo
+    # de simulacao (PluginRegistry so' RESOLVE caminhos nomeados por um
+    # ( PluginModule ), nunca varre diretorio), mas um CENARIO apontando para
+    # um .so que nao existe mais quebra a aplicacao de verdade -- e nada
+    # neste repositorio valida isso estaticamente.
+    PADRAO=""
+    for base in "${SOS[@]}"; do
+        e="$(escapar_ere "$base")"
+        PADRAO="${PADRAO:+$PADRAO|}file:[[:space:]]*\"$e\""
+    done
+    for d in "${DATAS[@]:-}"; do
+        [ -n "$d" ] || continue
+        e="$(escapar_ere "$d")"
+        PADRAO="${PADRAO:+$PADRAO|}mixr-plugins/$e/"
+    done
+
+    REFS="$(referenciadores "$PADRAO")"
+    if [ -n "$REFS" ]; then
+        echo "RECUSADO: estes cenarios ainda referenciam o modelo --" >&2
+        while IFS= read -r f; do
+            [ -n "$f" ] && echo "    ${f#"$REPO_ROOT"/}" >&2
+        done <<< "$REFS"
+        echo "" >&2
+        echo "  Remover agora deixaria a aplicacao inconsistente: o cenario carrega" >&2
+        echo "  por 'file:' um .so que deixaria de existir, e o erro so' aparece" >&2
+        echo "  RODANDO (nem edl_lint.py nem edlcheck cobrem isso hoje)." >&2
+        echo "" >&2
+        echo "  Apague ou reaponte esses cenarios antes -- ou passe --force se voce" >&2
+        echo "  vai remover os dois na MESMA mudanca (e entao rode 'make test' antes" >&2
+        echo "  de commitar: a guarda cenario-plugin cobra exatamente isto)." >&2
+        if [ "$FORCE" != "1" ]; then
+            exit 1
+        fi
+        echo "" >&2
+        echo "  --force dado: seguindo mesmo assim." >&2
+        echo "" >&2
+    fi
+
+    # --- 3. tirar de plugins/ (pela via oficial, enquanto a pasta existe) ---
+    if [ -n "$DEST_ABS" ] && [ "$DRY_RUN" != "1" ]; then
+        echo "3. make -C ${DEST_ABS#"$REPO_ROOT"/} uninstall-host"
+        if ! make -C "$DEST_ABS" uninstall-host >/dev/null 2>&1; then
+            echo "  aviso: uninstall-host falhou -- caindo na remocao direta pelos nomes ja descobertos" >&2
+        fi
+    fi
+    echo "3. plugins/"
+    for base in "${SOS[@]}"; do rm_arquivo "$REPO_ROOT/plugins/$base"; done
+    for d in "${DATAS[@]:-}"; do [ -n "$d" ] && rm_dir "$REPO_ROOT/plugins/data/$d"; done
+
+    # --- 4. podar dist/ ----------------------------------------------------
+    # O espelho de 'sync-plugins' faria isto sozinho no proximo 'make
+    # install', mas ele e' a rede de seguranca, nao o caminho principal:
+    # deixar o estado limpo agora evita que um 'make test' entre a remocao e
+    # o proximo install rode contra um dist/ que ainda tem o artefato.
+    echo "4. dist/"
+    for base in "${SOS[@]}"; do rm_arquivo "$REPO_ROOT/dist/lib/mixr-plugins/$base"; done
+    for d in "${DATAS[@]:-}"; do [ -n "$d" ] && rm_dir "$REPO_ROOT/dist/share/mixr-plugins/$d"; done
+
+    # --- 5. apagar a pasta (irreversivel, por ultimo) ----------------------
+    if [ -n "$DEST_ABS" ]; then
+        echo "5. fonte"
+        rm_dir "$DEST_ABS"
+    fi
+
+    if [ "$DRY_RUN" = "1" ]; then
+        echo ""
+        echo "dry-run: nada foi removido de verdade."
+        exit 0
+    fi
+
+    echo ""
+    echo "remocao de $ROTULO concluida."
+    imprimir_checklist_remocao "$ROTULO"
+    exit 0
 fi
 
 # Letra inicial, depois letras (as duas caixas), digitos, underscore e hifen.

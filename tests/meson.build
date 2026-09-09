@@ -132,6 +132,31 @@ test_app_map_fit = executable('test-app-map-canvas-fit',
 )
 test('app-map-canvas-fit', test_app_map_fit, suite: 'domain', timeout: 60)
 
+# O "seguir a entidade selecionada" da aba Mapa (applyMapFollow /
+# MapViewState::followSelected): a entidade fica no centro EXATO do canvas
+# nas duas perspectivas, sob qualquer zoom/rotacao, e o pan manual desliga o
+# modo. Linka MapPanel.cpp (onde applyMapFollow/panMap/centerMapOn moram),
+# MapGeometry.cpp (project(), que e como se afirma "esta no centro") e
+# FleetPanel.cpp -- este ultimo NAO e decorativo: MapPanel.cpp chama
+# app::sideColor(), e o link roda com -Wl,--no-undefined (que NAO vem daqui:
+# e o default 'b_lundef' do Meson -- procurar a flag nesta entrada nao a
+# acha). BehaviorTreeView.cpp, que a entrada irma acima carrega, NAO e
+# preciso aqui (nada em MapPanel.cpp/FleetPanel.cpp referencia aquele
+# modulo -- conferido por 'nm -u' sobre o .o de producao).
+test_app_map_follow = executable('test-app-map-follow',
+    files('../app/tests/test_map_follow.cpp') + files(
+        '../app/src/app/MapPanel.cpp',
+        '../app/src/app/MapGeometry.cpp',
+        '../app/src/app/FleetPanel.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep, ftxui_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-map-follow', test_app_map_follow, suite: 'domain', timeout: 60)
+
 # O buffer em memoria de libs/xlog -- a fonte da aba "Log" do ./app -- e
 # as duas regras puras do painel (filtro por nivel minimo e o ciclo dele).
 # O buffer e estado GLOBAL do processo de proposito: e o que faz o LOG(...)
@@ -916,11 +941,21 @@ test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),
 test('falcons-estrutura', bash, args: files('guard/check_falcons_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
-# Nenhum PAR de modelos "de verdade" sob models/players/ (fora fixtures/,
-# que existem pra IMITAR outro de proposito) pode publicar o MESMO nome
-# de fabrica -- ja aconteceu uma vez (ThreadTagProbe, A-4 vs missile) e
-# derruba o processo em runtime se algum .edl carregar os dois .so juntos.
-# Descobre os modelos por find (mesma filosofia das guardas acima) -- um
-# modelo novo ja entra na checagem, sem editar este arquivo.
+# Nenhum PAR de modelos "de verdade" sob models/ (fora template/, que existe
+# pra IMITAR outro de proposito) pode publicar o MESMO nome de fabrica -- ja
+# aconteceu uma vez (ThreadTagProbe, A-4 vs missile) e derruba o processo em
+# runtime se algum .edl carregar os dois .so juntos. Descobre os modelos por
+# varredura de models/<categoria>/<nome>/ (mesma filosofia das guardas acima)
+# -- um modelo novo ja entra na checagem, EM QUALQUER categoria, sem editar
+# este arquivo.
 test('colisao-fabrica', py, args: files('guard/check_colisao_fabrica.py'),
+     workdir: raiz, suite: 'guard', timeout: 60)
+
+# Todo 'file:' de um ( PluginModule ), em cenario de FONTE, tem que apontar
+# para um .so que existe em plugins/. E a unica checagem estatica desta
+# familia: um .so orfao em plugins/ e inofensivo em runtime (o registro so'
+# resolve caminhos NOMEADOS), mas um cenario nomeando um .so que sumiu morre
+# ao carregar, e nem edl_lint.py nem edlcheck cobrem isso. E' a rede que pega
+# uma remocao de modelo feita a mao (ou com --force) sem corrigir os cenarios.
+test('cenario-plugin', bash, args: files('guard/check_cenario_plugin.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)

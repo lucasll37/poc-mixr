@@ -22,6 +22,19 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ## [Não versionado]
 
+### Corrigido
+
+- **`tools/update_bt_models.py` destruiria uma árvore cujo comentário MENCIONASSE
+  `<TreeNodesModel>`** — defeito latente aqui, achado (e reproduzido, com perda real do arquivo)
+  em `../template`, que ganhou uma camada `bt/` e escreveu esse comentário na árvore nova. A
+  regex do bloco não conhece comentário: casa a partir da menção e, com `re.DOTALL`, engole o
+  resto do comentário, o `-->`, o `<root>` e a `<BehaviorTree>` inteira — reportando
+  "substituído", sem erro. Nenhuma das cinco árvores deste projeto menciona a tag em comentário,
+  então nada aqui estava quebrado; a correção (mascarar os comentários antes da busca, mesma
+  técnica de `tools/mixr_source_scan.py::mask_source()` na raiz) foi aplicada às duas cópias do
+  script para não deixar a armadilha esperando a próxima árvore. Conferido: as cinco árvores
+  saem byte-idênticas depois do fix.
+
 ### Adicionado
 
 - **Cobertura de teste direta para `OnnxScoreCondition`/`OnnxPolicyAction`**
