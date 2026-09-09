@@ -4,8 +4,10 @@
 #
 # Pre-requisito de SISTEMA (nao e' requires() do Conan -- buildar Qt5 do fonte
 # levaria horas e nao ha precedente disso aqui): em Ubuntu/Debian,
-#   sudo apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
-# mais CMake >= 3.2.
+#   sudo apt install qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
+# mais CMake >= 3.2. ('cppzmq-dev' e' o header C++ 'zmq.hpp', que ate o
+# Ubuntu 22.04 vinha DENTRO do 'libzmq3-dev' e no 24.04 virou pacote a
+# parte -- sem ele o build quebra em 'sidepanel_monitor.cpp'; INSTALL.md SS5.)
 import os
 import shutil
 

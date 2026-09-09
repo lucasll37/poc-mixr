@@ -216,7 +216,10 @@ entra ali incondicionalmente (sem flag pra pular). Tecnicamente ele não é depe
 do host/modelo (nenhum `requires()` do `conanfile.py` da raiz o cita, e o host nunca linka contra
 ele — é um app Qt standalone) — por isso builda só uma vez em Release, fora do laço de
 Debug/Release das outras quatro, não porque seja dispensável. Qt5/ZeroMQ/libdw são pré-requisito
-de **sistema** (`apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev`, ver `INSTALL.md`
+de **sistema** (`apt install qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev` —
+`cppzmq-dev` é o `zmq.hpp`, que até o Ubuntu 22.04 vinha dentro do `libzmq3-dev` e no 24.04
+virou pacote à parte; sem ele o build do Groot quebra em `sidepanel_monitor.cpp`, e não no
+`cmake configure`, porque o `FindZMQ.cmake` do Groot só procura o header C — ver `INSTALL.md`
 §5), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
 aqui.
 

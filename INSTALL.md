@@ -73,14 +73,7 @@ morre com *"The default build profile doesn't exist"*:
 conan profile detect --force
 ```
 
-## 4. Checagem
-
-```bash
-gcc --version && meson --version && ninja --version && pkg-config --version && conan --version \
-  && node --version && npm --version
-```
-
-## 5. Dependências construídas do fonte (`scripts/deps.sh`)
+## 4. Dependências construídas do fonte (`scripts/deps.sh`)
 
 `deps/{mixr,behaviortree,jsbsim,openrti,groot}/conanfile.py` são cinco receitas Conan que compilam
 essas dependências a partir do fonte — `mixr` e `behaviortree.cpp.asa` são os dois frameworks C++
@@ -95,8 +88,7 @@ Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (
 receitas não usam nada disto):
 
 ```bash
-# sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
-sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
+sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
 ```
 
 Por que cada um:
@@ -126,7 +118,7 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 ./scripts/deps.sh
 ```
 
-## 6. Node.js
+## 5. Node.js
 
 **Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§5): não é dependência de
 **build** (o `meson`/`ninja` do host e dos modelos nunca o invocam, e `make configure`/`build`/
@@ -154,32 +146,8 @@ usuário da máquina. `setup_24.x` fixa a linha **24 "Krypton"**, a LTS ativa:
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 sudo npm install -g npm@latest
-node --version && npm --version    # node >= 18
+node --version && npm --version
 ```
-
-<!-- **Por que o terceiro passo existe.** O pacote `nodejs` traz o npm que a *release do Node* empacota,
-e o npm tem ciclo de release próprio — então ele nasce atrasado. Medido nesta máquina: Node
-v20.20.2 veio com npm 10.8.2, e o próprio npm imprimiu o aviso de que existe a 12.0.2. O
-`npm install -g npm@latest` alinha os dois.
-
-**E por que a LINHA do Node importa para esse passo.** `npm@latest` declara
-`engines.node: ^22.22.2 || ^24.15.0 || >=26.0.0` (medido na `registry.npmjs.org`, npm 12.0.2) — numa
-linha antiga do Node, seguir o aviso do próprio npm instala uma versão que se declara incompatível
-com o Node em execução. Este roteiro já usou `setup_20.x`; a linha 20 "Iron" teve a última release
-em **2026-03-24** contra **2026-09-07** da 24, e a última npm que ainda a aceita é a 11.19.1. Se
-você precisar ficar numa linha mais antiga por outro motivo, troque o terceiro passo por um pin
-compatível (`npm@11`, no caso da 20) em vez de `@latest`.
-
-**Armadilha do `-g` sobre um pacote do apt, não redescobrir:** `npm install -g npm@latest` escreve
-em `/usr/lib/node_modules/npm`, que **pertence ao pacote `nodejs`**. O apt não sabe disso, então um
-`apt upgrade nodejs` futuro pode devolver o npm empacotado por cima — se `npm --version` regredir
-depois de um upgrade, é isso, e basta repetir o terceiro passo.
-
-**`npm` não é opcional em cima do `node`**, e não é só para instalar pacotes à mão: os dois
-compiladores de página (`docs/manual/compile.js` e `src/ui/scripts/compile.js`) chamam
-`npm install --no-save @babel/standalone` eles mesmos, em tempo de execução; e o `make test-ci`
-chama `npx gitlab-ci-local`. O pacote `nodejs` do NodeSource já traz `npm` e `corepack` junto — o
-terceiro passo acima só o atualiza, não instala nada novo. -->
 
 **A primeira execução de cada um dos dois precisa de rede** — `cdnjs.cloudflare.com` (React e
 ReactDOM 18 UMD, baixados com `curl`) e `registry.npmjs.org` (o Babel, via `npm`). Depois disso
@@ -191,9 +159,42 @@ precisam de rede para abrir.
 > headless de um cenário, escrito em C++, sem TUI (ver [`src/node/README.md`](src/node/README.md))
 > — e não tem relação nenhuma com o Node.js desta seção. A colisão de nome é infeliz, e só isso.
 
+## 6. Checagem
+
+```bash
+gcc --version && meson --version && ninja --version && pkg-config --version && conan --version \
+  && node --version && npm --version
+```
+
 ## 7. Editor: VS Code (opcional)
 
-### 7.1. Extensões recomendadas
+### 7.1. `clangd` (C++)
+
+O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
+IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
+`compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
+`make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
+
+```bash
+sudo apt install -y clangd        # o language server em si -- a extensao so' fala com ele
+```
+
+**Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
+o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
+classe/função mas colada em `if`/`for`/`while`, `namespace` sem recuo, ponteiro colado ao tipo —
+o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoje restrito a
+`readability-*`, o mais permissivo possível).
+
+> **Armadilha confirmada rodando — não redescobrir:** os blocos `BEGIN_SLOTTABLE`/`END_SLOTTABLE`
+> e `BEGIN_SLOT_MAP`/`END_SLOT_MAP` (a tabela de slots do EDL, presente em ~16 arquivos do
+> projeto) não têm `;` entre as macros — é assim que o framework original já os escreve. Sem
+> proteção, `clang-format` interpreta a ausência de `;` como uma "expressão sem fim" e cola tudo
+> numa única linha, destruindo a tabela. Por isso cada bloco desses já vem cercado por
+> `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
+> desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
+> primeira vez que alguém rodar "Format Document" em cima dele.
+
+### 7.2. Extensões recomendadas
 
 O repositório declara recomendações em `.vscode/extensions.json` — ao abrir a pasta, o VS Code
 mostra um aviso ("This workspace has extension recommendations") e deixa instalar todas de uma vez
@@ -220,31 +221,6 @@ code --install-extension spencerwmiles.vscode-task-buttons
 | `yzhang.markdown-all-in-one` | edição confortável dos muitos `.md` deste repositório |
 | `pkief.material-icon-theme`, `natqe.reload` | cosméticas/conveniência, sem efeito no build |
 
-### 7.2. `clangd` (C++)
-
-O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
-IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
-`compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
-`make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
-
-```bash
-sudo apt install -y clangd        # o language server em si -- a extensao so' fala com ele
-```
-
-**Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
-o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
-classe/função mas colada em `if`/`for`/`while`, `namespace` sem recuo, ponteiro colado ao tipo —
-o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoje restrito a
-`readability-*`, o mais permissivo possível).
-
-> **Armadilha confirmada rodando — não redescobrir:** os blocos `BEGIN_SLOTTABLE`/`END_SLOTTABLE`
-> e `BEGIN_SLOT_MAP`/`END_SLOT_MAP` (a tabela de slots do EDL, presente em ~16 arquivos do
-> projeto) não têm `;` entre as macros — é assim que o framework original já os escreve. Sem
-> proteção, `clang-format` interpreta a ausência de `;` como uma "expressão sem fim" e cola tudo
-> numa única linha, destruindo a tabela. Por isso cada bloco desses já vem cercado por
-> `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
-> desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
-> primeira vez que alguém rodar "Format Document" em cima dele.
 
 ### 7.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
 
