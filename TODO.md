@@ -3,3 +3,4 @@
 - testes determinismo
 - documentação
 - subir os arquivos que faltam de ./src/ui
+- puxar elevação de terreno somente de locais pertinentes
