@@ -4,3 +4,5 @@
 - documentação
 - subir os arquivos que faltam de ./src/ui
 - puxar elevação de terreno somente de locais pertinentes
+- por que CI gera artefato fora da pasta?
+- CI ou CD?
