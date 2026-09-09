@@ -114,7 +114,8 @@ build:
     # Pacotes de sistema do Groot (INSTALL.md SS7) -- so este job precisa
     # deles (o 'test' nunca toca deps/groot), entao ficam aqui e nao em
     # '.ambiente'.
-    - apt-get update && apt-get install -y --no-install-recommends cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev && rm -rf /var/lib/apt/lists/*
+    - apt-get update && apt-get install -y --no-install-recommends cmake qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev && rm -rf /var/lib/apt/lists/*
+    # - apt-get update && apt-get install -y --no-install-recommends cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev && rm -rf /var/lib/apt/lists/*
     # SEMPRE do FONTE, nunca do remote privado (ver o comentario do topo
     # deste arquivo) -- exatamente './scripts/deps.sh' (INSTALL.md SS7): as
     # 4 dependencias privadas em Debug+Release (o script builda os dois;

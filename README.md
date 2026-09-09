@@ -58,38 +58,35 @@ normalmente sem ele, ele só recebe telemetria ao vivo por *socket*, ver "Pré-r
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução (SRTM = dados públicos de elevação de terreno, NASA) |
 | Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento; só necessário se for usar o Groot (ver "Leia mais") |
 | Tacview (opcional) | Standard/Advanced | visualizador 3D de terceiros, [tacview.net](https://www.tacview.net/) — Standard é gratuito, Advanced é pago; sem ele a simulação roda normalmente, só sem visualização 3D ao vivo |
-| Node.js + npm (opcional) | ≥ 18 | `make test-ci` (`gitlab-ci-local`) e `make open-edl-builder` (baixa React/ReactDOM via `curl` na primeira execução — precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`) |
+| Node.js + npm | ≥ 18 | `make docs`, `make open-edl-builder` e `make test-ci` (`gitlab-ci-local`). Os dois primeiros baixam React/ReactDOM via `curl` e o Babel via `npm` na primeira execução — precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`; depois disso cacheiam e rodam offline. **O pacote da distro pode ser velho demais** (medido: o `apt` do Ubuntu 22.04 traz `nodejs 12.22.9`) — instale a LTS pelo NodeSource e atualize o npm em seguida, ver [`INSTALL.md`](INSTALL.md) §6. Não é dependência de *build* (o C++ compila sem ele), mas é pré-requisito do projeto — o ferramental documentado depende dele |
 | Docker (opcional) | qualquer | só para `make test-ci` — roda o pipeline de `.gitlab-ci.yml` (que segue esta seção) num `ubuntu:24.04` limpo. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
 
 Passo a passo (pacotes de sistema, Conan, perfil, remote privado), o "porquê" de cada um, e uma
 instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTALL.md).
 
-**Não é preciso ter credencial de nenhum remote privado para buildar/rodar este projeto.** Há dois
-caminhos equivalentes para as quatro dependências que não estão no ConanCenter
-(`mixr`/`behaviortree.cpp.asa`/`jsbsim` — motor de física de voo, ver acima —
-/`openrti` — implementação de **RTI** (*Runtime Infrastructure*, o middleware de rede) para
-**HLA** (*High Level Architecture*, padrão IEEE 1516 de federação de simulações — uma alternativa
-ao DIS); o MIXR a declara mas este fork não a compila, já que a interoperabilidade usada aqui é
-DIS, não HLA):
+As cinco dependências que não estão no ConanCenter são construídas do fonte para o cache local
+do Conan por um único script:
 
-- **Com acesso ao remote privado da organização** (`INSTALL.md` §4) — `make configure` resolve
-  binário pronto, é o caminho mais rápido.
-- **Sem acesso nenhum** — `./scripts/deps.sh` compila as quatro do fonte para o cache local do
-  Conan; é o **mesmo** caminho que o próprio CI usa, de propósito, para nunca depender desse
-  remote (ver `.gitlab-ci.yml`). Mais lento na primeira vez (a receita builda dependências
-  transitivas inteiras), mas sem pedir conta/credencial de ninguém:
+```bash
+./scripts/deps.sh
+```
 
-  ```bash
-  ./scripts/deps.sh
-  ```
+São elas:
 
-  Depois disso, `make configure` resolve tudo do cache local — o remote privado nunca é
-  consultado.
+- **`mixr`** — o framework em si (ver acima);
+- **`behaviortree.cpp.asa`** — o fork da biblioteca de árvores de comportamento;
+- **`jsbsim`** — motor de física de voo;
+- **`openrti`** — implementação de **RTI** (*Runtime Infrastructure*, o middleware de rede) para
+  **HLA** (*High Level Architecture*, padrão IEEE 1516 de federação de simulações — uma
+  alternativa ao DIS); o MIXR a declara mas este fork não a compila, já que a
+  interoperabilidade usada aqui é DIS, não HLA;
+- **Groot 1.0** — editor/monitor visual das árvores de comportamento; exige Qt5 e ZeroMQ
+  instalados no sistema antes de rodar o script (ver a tabela de pré-requisitos e
+  [`INSTALL.md`](INSTALL.md) §5).
 
-O **Groot** é a exceção: não tem pacote pronto em remoto nenhum, público ou privado —
-`./scripts/deps.sh` (ou só a receita dele) é a **única** forma de tê-lo, com acesso ao remote da
-organização ou sem. Pré-requisitos de sistema do Groot (Qt5/ZeroMQ) e como buildar só ele →
-[`INSTALL.md`](INSTALL.md) §7.
+É o mesmo caminho que o CI usa (ver `.gitlab-ci.yml`). A primeira execução é lenta — a receita
+builda dependências transitivas inteiras. Depois disso, `make configure` resolve tudo do cache
+local.
 
 ## Build
 
@@ -109,7 +106,7 @@ make sdk         # 2. publica o SDK (Software Development Kit) de plugin em dist
                  #    ABI (a interface binaria que um .so de modelo tem que
                  #    respeitar, libs/xplugin/PluginAbi.hpp) + as .so compartilhadas
                  #    host<->modelo (libs/x<nome>, ex.: xboard,
-                 #    xlog -- ver "Como o projeto se organiza" abaixo)            -> dist/
+                 #    xlog -- ver "Como o projeto se organiza" abaixo)       -> dist/
 make models      # 3. compila o(s) modelo(s) (nao mexe em dist/)             -> plugins/
 make build       # 4. compila o host (nao depende dos modelos)               -> build/
 make install     # 5. compila o host se preciso (depende de 'build') + sincroniza
@@ -210,7 +207,7 @@ nada pré-instalado** — pacotes de sistema → Conan (via `pipx`) → `configu
 `behaviortree.cpp.asa/3.5.6`) vêm por padrão de um remote Conan privado, mas **este pipeline nunca
 usa esse remote** — de propósito, sem exceção nem variável de CI/CD para religar isso: o job
 `build` sempre compila `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`/**Groot** do fonte
-(`./scripts/deps.sh`, documentado em [`INSTALL.md`](INSTALL.md) §7 — o Groot em particular nunca
+(`./scripts/deps.sh`, documentado em [`INSTALL.md`](INSTALL.md) §5 — o Groot em particular nunca
 teve pacote pronto em remoto nenhum). Mais lento na primeira execução (horas — o `cache:` do
 arquivo evita repetir o custo enquanto as receitas de `deps/` não mudarem), mas sem depender de
 credencial nenhuma.
@@ -339,7 +336,7 @@ Três regras valem para todo subprojeto e todo modelo:
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
 | [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs` — requer navegador na mesma máquina) |
 | [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl-builder` — requer navegador na mesma máquina) |
-| Groot (`deps/groot/`, ver `INSTALL.md` §7) | editor/monitor ao vivo de árvores de comportamento (`make open-groot` — requer display X11/Wayland na mesma máquina); diferente do `src/ui`, que edita o `.edl` inteiro, não só a árvore |
+| Groot (`deps/groot/`, ver `INSTALL.md` §5) | editor/monitor ao vivo de árvores de comportamento (`make open-groot` — requer display X11/Wayland na mesma máquina); diferente do `src/ui`, que edita o `.edl` inteiro, não só a árvore |
 | [`src/rl/`](src/rl/) | treinar uma política de RL contra a mesma simulação |
 | [`app/README.md`](app/README.md) | o painel de controle (TUI) por dentro |
 | [`CLAUDE.md`](CLAUDE.md) | **não é documentação de onboarding** — é o diário de arquitetura mantido para dar contexto a sessões de programação agêntica (Claude Code): histórico de decisões e armadilhas, em ordem cronológica de escrita, não pedagógica. Consulte por seção quando precisar confirmar um detalhe específico que os documentos acima não cobrem; não é para leitura sequencial |

@@ -10,7 +10,8 @@ registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm 
 ## Como se usar
 
 ```bash
-xdg-open docs/manual/index.html   # ou make open-docs -- zero rede, nenhum servidor
+make open-docs   # zero rede, nenhum servidor -- Linux nativo (xdg-open) e WSL2
+                 # (wslview/explorer.exe) pelo mesmo alvo, ver scripts/open_browser.sh
 ```
 
 **Execução** — o ciclo de fases do MIXR (dynamics/transmit/receive/process + as duas threads de

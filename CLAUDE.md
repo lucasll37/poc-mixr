@@ -130,6 +130,22 @@ test` também precisa de `make models` no meio — `test` encadeia `install`, ma
 roda só a suíte do HOST; a do modelo é `make test-models`, separada; ver "Testes automatizados"
 mais abaixo. `make models` sozinho é o alvo pra mexer só no modelo, sem tocar o host.
 
+**Armadilha do `--reconfigure`, confirmada rodando — o primeiro `configure` depois de um
+`clean`.** Os dois alvos `configure` deste repositório (o do host, `Makefile`, e o de cada
+modelo, `models/common.mk`) chamavam `meson setup --reconfigure` **incondicionalmente** — e essa
+flag **exige** um build tree do Meson já existente: `msetup.py` testa
+`<build>/meson-private/coredata.dat` e, sem o arquivo, aborta com *"Directory does not contain a
+valid build tree"*. Na primeira configure depois de um `make clean`, `build/` só tem a saída do
+Conan (os `.pc` + `conan_meson_native.ini`), nunca um tree do Meson — então `make configure`
+morria ali, e `make models` morria no mesmo ponto um alvo depois (o ramo de reconfiguração de
+`models/common.mk` é **também** o ramo do PRIMEIRO configure, quando ainda não existe
+`build.ninja`). Hoje a flag é condicional a esse mesmo arquivo nos dois. O teste é por
+`coredata.dat`, e não pelo `build.ninja` que o STALE-check de `models/common.mk` já usava, porque
+a direção contrária também importa: com o tree presente a flag é **obrigatória** — sem ela o Meson
+só imprime *"Directory already configured"* e **sai 0**, sem reconfigurar nada, um no-op
+silencioso. Medido no Meson **0.61.2** (Ubuntu 22.04); não verificado no 1.3.2 que o `INSTALL.md`
+documenta — o guard é correto nas duas versões de qualquer forma.
+
 **Três armadilhas do Meson que a etapa do SDK esconde, todas medidas:**
 
 1. `meson compile` resolve alvo por **nome**; o `ninja` cru resolve por **caminho de saída**.
@@ -201,12 +217,25 @@ do host/modelo (nenhum `requires()` do `conanfile.py` da raiz o cita, e o host n
 ele — é um app Qt standalone) — por isso builda só uma vez em Release, fora do laço de
 Debug/Release das outras quatro, não porque seja dispensável. Qt5/ZeroMQ/libdw são pré-requisito
 de **sistema** (`apt install qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev`, ver `INSTALL.md`
-§7), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
+§5), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
 aqui.
 
 **Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make docs`/`open-docs` (a
 visualização em `docs/`, ver a seção própria) e a família `edl-*`/`new-model` (o editor visual de
 cenário em `src/ui/` e o scaffold de modelo novo, ambos com seção própria mais abaixo).
+
+Os dois alvos que **abrem uma página no navegador** (`open-docs`, `open-edl-builder`) delegam
+para `scripts/open_browser.sh`, e não mais para um `xdg-open` direto: a imagem padrão do Ubuntu
+no **WSL2** não traz nem `xdg-utils` nem `wslu`, então o encadeamento antigo
+(`command -v xdg-open && xdg-open ... || echo`) caía sempre no aviso "abra manualmente" ali. O
+script tenta, em ordem, `$BROWSER` → `xdg-open` (Linux nativo) → `wslview` (WSL2 com `wslu`) →
+`explorer.exe` + `wslpath -w` (WSL2 puro, abre o navegador do **Windows**), e só imprime a URL
+`file://` se todos falharem. **Duas armadilhas, as duas confirmadas rodando:** (1) `explorer.exe`
+devolve **código de saída 1 mesmo quando abre a página** — esse degrau nunca é julgado pelo
+`exit code`, e por isso imprime a URL junto, como rede de segurança; (2) o `&&`/`||` antigo
+imprimia "xdg-open nao encontrado" também quando o `xdg-open` **existia e falhava** (o caso de
+Linux nativo sem sessão gráfica) — o script testa presença e sucesso separadamente, caindo para
+o degrau seguinte em vez de mentir sobre a causa.
 
 ## Onde consultar o framework
 
@@ -3603,7 +3632,7 @@ completa — o preço aceito, por pedido explícito, para manter `node` independ
 Abrir:
 
 ```bash
-conan create ./deps/groot --build=missing --settings=build_type=Release   # uma vez (ver INSTALL.md §7)
+conan create ./deps/groot --build=missing --settings=build_type=Release   # uma vez (ver INSTALL.md §5)
 make open-groot                                                            # sempre que quiser abrir
 ```
 
@@ -4041,6 +4070,22 @@ do ciclo de fases, é extraído do código.
      `Object`/`Component`, sem entrada lá). `usePanZoom()` (pan/zoom por arrastar/roda do mouse) foi
      extraído nesta passada pra um hook único, compartilhado pelas abas Simulação/Comportamento/
      Estrutura — as três eram cópias byte a byte da mesma lógica.
+**ARMADILHA CONFIRMADA RODANDO — a página abre em BRANCO, sem erro visível (`docs/manual/` e
+`src/ui/`, os dois compiladores).** `compile.js` (os dois) instala `@babel/standalone` com
+`npm install --no-save`, **sem pin de versão**, e transpila com `presets: ["react"]`. No **Babel 8**
+(8.0.4 medido) o default do `@babel/preset-react` mudou de `runtime: "classic"` para `"automatic"`
+— o automatic emite `import { jsx as _jsx } from "react/jsx-runtime"` no topo do código gerado.
+Como esse código é concatenado num `<script>` **clássico** (não `type="module"`, e não há bundler
+nenhum aqui, que é a premissa dos dois geradores), o navegador aborta o bloco inteiro com
+*"Uncaught SyntaxError: Cannot use import statement outside a module"*: a página carrega, o
+`<title>` aparece na aba, e o `<div id="root">` fica **vazio** — tela branca, nada no console de
+quem só olha a tela. O sintoma NÃO tem relação com WSL/`file://`/UNC (reproduzido igual num
+caminho local do Windows). Correção: `presets: [["react", { runtime: "classic" }]]`, **explícito**
+nos dois `compile.js`, em vez de depender do default. Como reconhecer sem depurar: o `index.html`
+gerado tem que ter **centenas** de `React.createElement` (429 hoje) e **zero** linha começando com
+`import` — com o bug, sobra 1 `React.createElement` (só o mount, que é literal no `compile.js`) e
+1 `import`.
+
 - **`docs/presentation/index.html`** — um slide deck HTML/CSS autocontido (~20 slides: "o que é"/
   "o que não é", as funcionalidades exploradas, EDL+C++, 6-DOF, single vs multi-thread,
   bandit/DIS, python-flight, onnx-policy, built-in_mixr_1...). **Órfão**: nenhum alvo do Makefile

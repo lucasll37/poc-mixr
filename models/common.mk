@@ -118,6 +118,21 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	@# pego. Por isso o STALE agora busca QUALQUER 'meson.build'/
 	@# 'meson_options.txt' do projeto (recursivo, exceto dentro de
 	@# ./build/), nao so' os de nivel topo.
+	@#
+	@# ARMADILHA MEDIDA (nao redescobrir), a MESMA ja registrada no 'configure:'
+	@# do Makefile RAIZ: o ramo de reconfiguracao abaixo tambem e' o ramo do
+	@# PRIMEIRO configure (quando nao ha build.ninja nenhum), e ali
+	@# '--reconfigure' EXIGE um build tree do meson ja existente -- msetup.py
+	@# testa build/meson-private/coredata.dat e, sem ele, aborta com "Directory
+	@# does not contain a valid build tree". Ou seja: um 'make models' logo
+	@# depois de um 'make clean' (build/ do modelo inexistente) morria aqui,
+	@# antes de compilar nada -- medido no Meson 0.61.2 do Ubuntu 22.04. Por
+	@# isso a flag e' condicional, e o teste e' pelo MESMO arquivo que o meson
+	@# consulta, NAO pelo build.ninja do STALE-check acima: com coredata.dat
+	@# presente a flag e' OBRIGATORIA (senao o meson so imprime "Directory
+	@# already configured" e sai 0, sem reconfigurar nada), e um tree meio
+	@# configurado (coredata.dat sem build.ninja, setup interrompido) so
+	@# reconfigura direito por este teste.
 	@WANT="$(BUILD_TYPE)|$(TESTS)|$(EXTRA_STALE_KEY)"; \
 	 GOT=$$(cat $(BUILD_DIR)/.configure-args 2>/dev/null || echo ""); \
 	 STALE=$$(find . \( -name 'meson.build' -o -name 'meson_options.txt' \) \
@@ -130,7 +145,9 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	    if [ -f $(BUILD_DIR)/build.ninja ]; then \
 	       meson configure $(BUILD_DIR) --clearcache >/dev/null 2>&1 || true; \
 	    fi; \
-	    meson setup --reconfigure \
+	    if [ -f $(BUILD_DIR)/meson-private/coredata.dat ]; \
+	       then RECONF=--reconfigure; else RECONF=; fi; \
+	    meson setup $$RECONF \
 	       --backend ninja \
 	       --buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
 	       --native-file $(ROOT)/build/conan_meson_native.ini \

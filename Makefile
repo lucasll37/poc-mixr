@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models check-plugin-hotswap run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-edl-builder open-groot new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models check-plugin-hotswap run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model
 
 .DEFAULT_GOAL := help
 
@@ -112,7 +112,19 @@ configure: ## Configure the project for building.
 	# fixa 'pkg_config_path' (medido). Tem de ir por linha de comando -- e o
 	# separador de lista do meson e VIRGULA, nao dois-pontos (relevante quando um
 	# modelo/plugin soma o proprio dist/lib/pkgconfig a este caminho).
-	meson setup --reconfigure \
+	@# ARMADILHA MEDIDA (nao redescobrir): '--reconfigure' EXIGE um build tree
+	@# do meson ja existente -- msetup.py testa build/meson-private/coredata.dat
+	@# e, se nao achar, aborta com "Directory does not contain a valid build
+	@# tree". Na PRIMEIRA configure depois de um 'make clean' o build/ so tem a
+	@# saida do conan (os .pc + conan_meson_native.ini), nunca um tree do meson,
+	@# e o alvo morria ali (medido no Meson 0.61.2 do Ubuntu 22.04). Por isso a
+	@# flag entra so quando o tree ja existe -- e o teste e' pelo MESMO arquivo
+	@# que o meson consulta, nao por build.ninja: com coredata.dat presente a
+	@# flag e' OBRIGATORIA, senao o meson so imprime "Directory already
+	@# configured" e sai 0, sem reconfigurar nada.
+	if [ -f $(BUILD_DIR)/meson-private/coredata.dat ]; \
+		then RECONF=--reconfigure; else RECONF=; fi; \
+	meson setup $$RECONF \
 		--backend ninja \
 		--buildtype $(shell echo $(BUILD_TYPE) | tr '[:upper:]' '[:lower:]') \
 		--native-file $(BUILD_DIR)/conan_meson_native.ini \
@@ -441,13 +453,22 @@ docs: ## Regenera docs/manual/catalog.generated.js (tools/generate_manual_catalo
 	node docs/manual/compile.js
 
 open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
-	@command -v xdg-open >/dev/null 2>&1 && xdg-open docs/manual/index.html \
-		|| echo "$(YELLOW)open-docs:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/docs/manual/index.html"
+	@scripts/open_browser.sh docs/manual/index.html
+
+# TEMPORARIO -- alvo de conveniencia, fora do fluxo normal do repositorio.
+# O slide deck e' ORFAO por natureza (nenhum alvo o GERA, nenhum README aponta
+# pra ele -- ver a secao 'docs/' do CLAUDE.md), entao aqui so existe o ABRIR:
+# nao ha passo de geracao equivalente ao 'make docs' do docs/manual/, o
+# index.html e' escrito a mao e versionado como esta. Ao contrario da pagina do
+# manual, esta NAO e' autocontida -- carrega ./content.js (relativo, versionado
+# ao lado) e as fontes do Google Fonts pela rede; sem rede ela abre igual, so
+# com as fontes de fallback. Remover este alvo quando a apresentacao sair de uso.
+open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide deck da apresentacao do projeto). So ABRE -- o arquivo e' versionado, nao ha passo de geracao.
+	@scripts/open_browser.sh docs/presentation/index.html
 
 open-edl-builder: ## Regenera (catalogo+cenario padrao+testes+self-lint+compilacao, tudo automatico via src/ui/scripts/build.js) e abre src/ui/edl-builder.html no navegador. UNICO alvo make deste editor -- as demais rotinas (geracao do catalogo, do cenario padrao, lint, o binario edlcheck) sao scripts chamados direto, ver src/ui/README.md.
 	node src/ui/scripts/build.js
-	@command -v xdg-open >/dev/null 2>&1 && xdg-open src/ui/edl-builder.html \
-		|| echo "$(YELLOW)open-edl-builder:$(NC) xdg-open nao encontrado -- abra manualmente: file://$(PWD)/src/ui/edl-builder.html"
+	@scripts/open_browser.sh src/ui/edl-builder.html
 
 open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (deps/groot/conanfile.py) e abre o Groot -- editor/monitor visual de arvores do BT.CPP v3. Precisa de 'conan create ./deps/groot --build=missing --settings=build_type=Release' rodado antes (ver INSTALL.md secao 7).
 	@GROOT_BIN="$$(scripts/find_groot.sh 2>/dev/null)"; \

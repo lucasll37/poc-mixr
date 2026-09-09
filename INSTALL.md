@@ -6,8 +6,9 @@ Este roteiro é o que [`.gitlab-ci.yml`](.gitlab-ci.yml) segue, passo a passo, c
 pipeline localmente, num container Docker, do zero; se algum passo aqui parecer incompleto, é ali
 que a lacuna aparece primeiro.
 
-`make test-ci` é opt-in e exige Docker (+ Node) instalados à parte — não são pré-requisito do
-build em si, só desta checagem. Instruções de instalação: [docker.com](https://www.docker.com/).
+`make test-ci` é opt-in e exige **Docker** instalado à parte — esse sim só é pré-requisito desta
+checagem, não do build: [docker.com](https://www.docker.com/). **Node.js é pré-requisito do
+projeto** e tem seção própria (§6).
 
 ## 1. Pacotes de sistema (`apt`)
 
@@ -72,123 +73,14 @@ morre com *"The default build profile doesn't exist"*:
 conan profile detect --force
 ```
 
-## 4. Remote privado com as dependências que não estão no ConanCenter (opcional)
-
-`mixr/1.0.5` e `behaviortree.cpp.asa/3.5.6` (ver `conanfile.py`) são forks empacotados **fora** do
-ConanCenter — vêm, **por padrão**, de um remote Conan privado da organização, e sem declará-lo
-`make configure` falha com *"package not found"* (parece erro de versão, não é).
-
-**Não ter credencial para este remote não impede buildar/rodar o projeto** — é só um caminho mais
-rápido. Sem acesso a ele (o caso comum para quem não é da organização), pule esta seção inteira e
-vá direto para o §7 (`./scripts/deps.sh`), que compila as mesmas quatro dependências do fonte para
-o cache local do Conan, sem pedir credencial nenhuma — é inclusive o caminho que o próprio CI usa,
-sempre, de propósito.
-
-Com acesso ao remote, peça o endereço e as credenciais a quem administra o projeto — se você não
-sabe a quem recorrer (ex.: clonou o repositório sem contato prévio com o time), não trave nisto:
-o §7 abaixo (`./scripts/deps.sh`) resolve as mesmas quatro dependências sem credencial nenhuma, e é
-o caminho que o próprio CI usa sempre. Com a credencial em mãos, rode, uma vez por máquina:
+## 4. Checagem
 
 ```bash
-conan remote add <nome-do-remote> <url-do-remote>
-conan remote login <nome-do-remote> <seu-usuario>   # pede a senha/token interativamente
+gcc --version && meson --version && ninja --version && pkg-config --version && conan --version \
+  && node --version && npm --version
 ```
 
-Sem TTY (script não interativo, CI) a falta de credencial **não** aparece como erro de autenticação
-legível — o Conan tenta perguntar o usuário, encontra `stdin` fechado e morre com *"not resolved:
-EOF when reading a line"*, fácil de confundir com problema de rede.
-
-## 5. Checagem final
-
-```bash
-gcc --version && meson --version && ninja --version && pkg-config --version && conan --version
-```
-
-Com os cinco respondendo, a máquina tem as **ferramentas** que a seção **Build** do
-[`README.md`](README.md) precisa — isso vale independente de você ter credencial do remote
-privado ou não. **Se você não tem credencial** (§4), essa checagem por si só não é o sinal de
-"pronto": falta ainda rodar o §7 (`./scripts/deps.sh`) antes do primeiro `make configure`, senão
-ele falha com "package not found" por não achar `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`
-em lugar nenhum. O primeiro `make configure` ainda pode demorar — ver a nota sobre GCC 11 vs. GCC 13 em §1 —, mas
-as próximas execuções reaproveitam o cache do Conan (`~/.conan2/`) e são rápidas.
-
-## 6. Editor: VS Code (opcional)
-
-### 6.1. Extensões recomendadas
-
-O repositório declara recomendações em `.vscode/extensions.json` — ao abrir a pasta, o VS Code
-mostra um aviso ("This workspace has extension recommendations") e deixa instalar todas de uma vez
-pelo painel de Extensões (aba "Recommended"). Sem clicar em nada, instalar uma a uma:
-
-```bash
-code --install-extension llvm-vs-code-extensions.vscode-clangd
-code --install-extension pkief.material-icon-theme
-code --install-extension natqe.reload
-code --install-extension anthropic.claude-code
-code --install-extension ms-toolsai.jupyter
-code --install-extension yzhang.markdown-all-in-one
-code --install-extension ms-vscode.cpptools
-code --install-extension spencerwmiles.vscode-task-buttons
-```
-
-| extensão | para quê |
-|---|---|
-| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §6.2 |
-| `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
-| `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) — **essa task assume `gnome-terminal` instalado** (abre o app num terminal externo); em KDE/XFCE/WSL2 sem esse pacote a task falha com "command not found" — rode o binário direto num terminal seu nesse caso |
-| `anthropic.claude-code` | a extensão do Claude Code em si |
-| `ms-toolsai.jupyter` | notebooks `.ipynb`, se usados em `src/poc/rl-training/` |
-| `yzhang.markdown-all-in-one` | edição confortável dos muitos `.md` deste repositório |
-| `pkief.material-icon-theme`, `natqe.reload` | cosméticas/conveniência, sem efeito no build |
-
-### 6.2. `clangd` (C++)
-
-O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
-IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
-`compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
-`make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
-
-```bash
-sudo apt install -y clangd        # o language server em si -- a extensao so' fala com ele
-```
-
-**Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
-o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
-classe/função mas colada em `if`/`for`/`while`, `namespace` sem recuo, ponteiro colado ao tipo —
-o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoje restrito a
-`readability-*`, o mais permissivo possível).
-
-> **Armadilha confirmada rodando — não redescobrir:** os blocos `BEGIN_SLOTTABLE`/`END_SLOTTABLE`
-> e `BEGIN_SLOT_MAP`/`END_SLOT_MAP` (a tabela de slots do EDL, presente em ~16 arquivos do
-> projeto) não têm `;` entre as macros — é assim que o framework original já os escreve. Sem
-> proteção, `clang-format` interpreta a ausência de `;` como uma "expressão sem fim" e cola tudo
-> numa única linha, destruindo a tabela. Por isso cada bloco desses já vem cercado por
-> `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
-> desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
-> primeira vez que alguém rodar "Format Document" em cima dele.
-
-### 6.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
-
-`.vscode/extensions/edl/` é uma extensão de sintaxe para `.edl`/`.edl.in` **vendorizada no próprio
-repositório** — só highlight/indentação/colchetes (sem `main`/código nenhum), não publicada no
-Marketplace, então o VS Code não a instala sozinho nem por `extensions.json`. Precisa ser aceita
-manualmente, uma vez por máquina — `.vscode/settings.json` já associa `*.edl.in` à linguagem `edl`
-que ela declara, então o highlight aparece assim que a extensão for reconhecida:
-
-```bash
-# Linux nativo
-ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode/extensions/edl-mixr-local
-
-# VS Code Remote (WSL2/SSH) -- o host de extensoes fica do lado remoto/Linux
-ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode-server/extensions/edl-mixr-local
-```
-
-Se o VS Code já estava aberto, "Developer: Reload Window" (`Ctrl+Shift+P`) — ela aparece em
-Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace), mas funcional.
-Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
-`vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.
-
-## 7. Dependências construídas do fonte (`scripts/deps.sh`) — sem credencial nenhuma; obrigatório para o Groot
+## 5. Dependências construídas do fonte (`scripts/deps.sh`)
 
 `deps/{mixr,behaviortree,jsbsim,openrti,groot}/conanfile.py` são cinco receitas Conan que compilam
 essas dependências a partir do fonte — `mixr` e `behaviortree.cpp.asa` são os dois frameworks C++
@@ -197,17 +89,14 @@ voo (ver o mesmo glossário), `openrti` é uma implementação de RTI (*Runtime 
 HLA (*High Level Architecture*, padrão IEEE 1516) que o MIXR declara mas
 este fork não compila (a interoperabilidade usada aqui é DIS), e `groot` é o editor/monitor visual
 das árvores de comportamento; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
-Release. Para **quatro** delas (`mixr`, `behaviortree.cpp.asa`, `jsbsim`, `openrti`) isto é a
-**alternativa completa** a ter conta no remote privado da organização (seção 4, opcional) — sem
-nenhuma credencial, resolve tudo pelo cache local do Conan, e é o mesmo caminho que o CI usa
-sempre. Para o **Groot** é a **única** forma de tê-lo — não existe pacote pronto em remoto nenhum,
-público ou privado.
+Release.
 
 Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (as outras quatro
 receitas não usam nada disto):
 
 ```bash
-sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
+# sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
+sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev libdw-dev
 ```
 
 Por que cada um:
@@ -237,34 +126,143 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 ./scripts/deps.sh
 ```
 
-Se você só precisa do Groot (as outras quatro já vêm do remote privado, seção 4), pule o script e
-rode só a receita dele:
+## 6. Node.js
+
+**Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§5): não é dependência de
+**build** (o `meson`/`ninja` do host e dos modelos nunca o invocam, e `make configure`/`build`/
+`models`/`install`/`test` rodam sem ele), mas é o que faz funcionar o ferramental documentado do
+repositório. Três alvos o exigem:
+
+| alvo | por que precisa de Node |
+|---|---|
+| `make docs` | regenera `docs/manual/index.html` a partir de `doc.jsx`. **O HTML gerado é versionado**, então `make open-docs` abre a página já pronta sem Node nenhum — só *regenerar* exige |
+| `make open-edl-builder` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
+| `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina host**, não dentro do container — o `.gitlab-ci.yml` não instala Node em lugar nenhum. Também precisa de Docker (ver [`README.md`](README.md)) |
+
+**Versão mínima: 18** — e o pacote da distro pode não servir. Medido nesta base de código: o `apt`
+do Ubuntu 22.04 oferece `nodejs 12.22.9`, bem abaixo do mínimo. Confira antes de assumir que o
+pacote da sua distro serve:
 
 ```bash
-conan create ./deps/groot --build=missing --settings=build_type=Release
+apt-cache policy nodejs
 ```
 
-**Caminho inverso — só as quatro, sem o Groot** (`./scripts/deps.sh` builda as cinco sempre, sem
-flag para pular; se você não quer o Groot agora e prefere não instalar os pacotes de sistema dele,
-rode as quatro receitas direto, sem o script):
+O caminho é o repositório **NodeSource**, que instala `nodejs` pelo `apt`, system-wide, para todo
+usuário da máquina. `setup_24.x` fixa a linha **24 "Krypton"**, a LTS ativa:
 
 ```bash
-for BUILD_TYPE in Debug Release; do
-  conan create ./deps/jsbsim  --build=missing --settings=build_type="${BUILD_TYPE}"
-  conan create ./deps/openrti --build=missing --settings=build_type="${BUILD_TYPE}"
-  conan create ./deps/mixr    --build=missing --settings=build_type="${BUILD_TYPE}" \
-      --settings=compiler.cppstd=gnu11
-  conan create ./deps/behaviortree --build=missing --settings=build_type="${BUILD_TYPE}" \
-      --options='behaviortree.cpp.asa/*:shared=False'
-done
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g npm@latest
+node --version && npm --version    # node >= 18
 ```
-(mesmos comandos que `./scripts/deps.sh` roda por baixo, na mesma ordem — jsbsim/openrti antes de
-mixr, que depende dos dois.)
 
-Depois de qualquer um dos dois caminhos, `make open-groot` (na raiz do repositório) resolve o
-pacote no cache Conan sozinho e abre o binário — não precisa achar o caminho à mão. Rodar a
-interface em si (é uma janela Qt) exige um display de verdade — numa máquina sem X server/Wayland
-acessível (container, WSL2 sem WSLg, sessão SSH pura), o build completa normalmente, mas a janela
-não abre.
+<!-- **Por que o terceiro passo existe.** O pacote `nodejs` traz o npm que a *release do Node* empacota,
+e o npm tem ciclo de release próprio — então ele nasce atrasado. Medido nesta máquina: Node
+v20.20.2 veio com npm 10.8.2, e o próprio npm imprimiu o aviso de que existe a 12.0.2. O
+`npm install -g npm@latest` alinha os dois.
 
-Como usar o Groot para editar/monitorar árvores de comportamento → [`CONTRIBUTING.md`](CONTRIBUTING.md).
+**E por que a LINHA do Node importa para esse passo.** `npm@latest` declara
+`engines.node: ^22.22.2 || ^24.15.0 || >=26.0.0` (medido na `registry.npmjs.org`, npm 12.0.2) — numa
+linha antiga do Node, seguir o aviso do próprio npm instala uma versão que se declara incompatível
+com o Node em execução. Este roteiro já usou `setup_20.x`; a linha 20 "Iron" teve a última release
+em **2026-03-24** contra **2026-09-07** da 24, e a última npm que ainda a aceita é a 11.19.1. Se
+você precisar ficar numa linha mais antiga por outro motivo, troque o terceiro passo por um pin
+compatível (`npm@11`, no caso da 20) em vez de `@latest`.
+
+**Armadilha do `-g` sobre um pacote do apt, não redescobrir:** `npm install -g npm@latest` escreve
+em `/usr/lib/node_modules/npm`, que **pertence ao pacote `nodejs`**. O apt não sabe disso, então um
+`apt upgrade nodejs` futuro pode devolver o npm empacotado por cima — se `npm --version` regredir
+depois de um upgrade, é isso, e basta repetir o terceiro passo.
+
+**`npm` não é opcional em cima do `node`**, e não é só para instalar pacotes à mão: os dois
+compiladores de página (`docs/manual/compile.js` e `src/ui/scripts/compile.js`) chamam
+`npm install --no-save @babel/standalone` eles mesmos, em tempo de execução; e o `make test-ci`
+chama `npx gitlab-ci-local`. O pacote `nodejs` do NodeSource já traz `npm` e `corepack` junto — o
+terceiro passo acima só o atualiza, não instala nada novo. -->
+
+**A primeira execução de cada um dos dois precisa de rede** — `cdnjs.cloudflare.com` (React e
+ReactDOM 18 UMD, baixados com `curl`) e `registry.npmjs.org` (o Babel, via `npm`). Depois disso
+fica tudo em `docs/manual/.cache/` e `src/ui/.cache/` — um cache por ferramenta, não
+compartilhados, os dois gitignorados — e os alvos rodam offline. As **páginas geradas** nunca
+precisam de rede para abrir.
+
+> **Não confundir com `make run-node`.** `dist/bin/node` é um binário **deste projeto** — o runner
+> headless de um cenário, escrito em C++, sem TUI (ver [`src/node/README.md`](src/node/README.md))
+> — e não tem relação nenhuma com o Node.js desta seção. A colisão de nome é infeliz, e só isso.
+
+## 7. Editor: VS Code (opcional)
+
+### 7.1. Extensões recomendadas
+
+O repositório declara recomendações em `.vscode/extensions.json` — ao abrir a pasta, o VS Code
+mostra um aviso ("This workspace has extension recommendations") e deixa instalar todas de uma vez
+pelo painel de Extensões (aba "Recommended"). Sem clicar em nada, instalar uma a uma:
+
+```bash
+code --install-extension llvm-vs-code-extensions.vscode-clangd
+code --install-extension pkief.material-icon-theme
+code --install-extension natqe.reload
+code --install-extension anthropic.claude-code
+code --install-extension ms-toolsai.jupyter
+code --install-extension yzhang.markdown-all-in-one
+code --install-extension ms-vscode.cpptools
+code --install-extension spencerwmiles.vscode-task-buttons
+```
+
+| extensão | para quê |
+|---|---|
+| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §7.2 |
+| `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
+| `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) — **essa task assume `gnome-terminal` instalado** (abre o app num terminal externo); em KDE/XFCE/WSL2 sem esse pacote a task falha com "command not found" — rode o binário direto num terminal seu nesse caso |
+| `anthropic.claude-code` | a extensão do Claude Code em si |
+| `ms-toolsai.jupyter` | notebooks `.ipynb`, se usados em `src/poc/rl-training/` |
+| `yzhang.markdown-all-in-one` | edição confortável dos muitos `.md` deste repositório |
+| `pkief.material-icon-theme`, `natqe.reload` | cosméticas/conveniência, sem efeito no build |
+
+### 7.2. `clangd` (C++)
+
+O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
+IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
+`compile_commands.json` que o **Meson** já gera sozinho em `build/` a cada `make configure`/
+`make build` (nenhum passo extra); sem esse diretório existir, o clangd não tem o que indexar.
+
+```bash
+sudo apt install -y clangd        # o language server em si -- a extensao so' fala com ele
+```
+
+**Estilo de formatação (`.clang-format`)** — quem formata é o `clang-format`, não o `.clangd`;
+o arquivo na raiz espelha o estilo já em uso (recuo de 3 espaços, chave em linha própria para
+classe/função mas colada em `if`/`for`/`while`, `namespace` sem recuo, ponteiro colado ao tipo —
+o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoje restrito a
+`readability-*`, o mais permissivo possível).
+
+> **Armadilha confirmada rodando — não redescobrir:** os blocos `BEGIN_SLOTTABLE`/`END_SLOTTABLE`
+> e `BEGIN_SLOT_MAP`/`END_SLOT_MAP` (a tabela de slots do EDL, presente em ~16 arquivos do
+> projeto) não têm `;` entre as macros — é assim que o framework original já os escreve. Sem
+> proteção, `clang-format` interpreta a ausência de `;` como uma "expressão sem fim" e cola tudo
+> numa única linha, destruindo a tabela. Por isso cada bloco desses já vem cercado por
+> `// clang-format off` / `// clang-format on` no fonte — **preservar esse par ao editar um
+> desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
+> primeira vez que alguém rodar "Format Document" em cima dele.
+
+### 7.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
+
+`.vscode/extensions/edl/` é uma extensão de sintaxe para `.edl`/`.edl.in` **vendorizada no próprio
+repositório** — só highlight/indentação/colchetes (sem `main`/código nenhum), não publicada no
+Marketplace, então o VS Code não a instala sozinho nem por `extensions.json`. Precisa ser aceita
+manualmente, uma vez por máquina — `.vscode/settings.json` já associa `*.edl.in` à linguagem `edl`
+que ela declara, então o highlight aparece assim que a extensão for reconhecida:
+
+```bash
+# Linux nativo
+ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode/extensions/edl-mixr-local
+
+# VS Code Remote (WSL2/SSH) -- o host de extensoes fica do lado remoto/Linux
+ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode-server/extensions/edl-mixr-local
+```
+
+Se o VS Code já estava aberto, "Developer: Reload Window" (`Ctrl+Shift+P`) — ela aparece em
+Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace), mas funcional.
+Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
+`vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.

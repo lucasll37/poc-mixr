@@ -2168,9 +2168,9 @@ function App() {
     className: "mx-bar"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
     className: "mx-h1"
-  }, "MIXR \u2014 execu\xE7\xE3o, EDL e ", STATS.classes, " classes built-in"), /*#__PURE__*/React.createElement("p", {
+  }, "MIXR — execução, EDL e ", STATS.classes, " classes built-in"), /*#__PURE__*/React.createElement("p", {
     className: "mx-sub"
-  }, "Extra\xEDdo da \xE1rvore de fontes: ", STATS.cpp, " arquivos .cpp, ", STATS.registered, " classes registradas, ", STATS.slotsTotal, " slots")), /*#__PURE__*/React.createElement("div", {
+  }, "Extraído da árvore de fontes: ", STATS.cpp, " arquivos .cpp, ", STATS.registered, " classes registradas, ", STATS.slotsTotal, " slots")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -2182,7 +2182,7 @@ function App() {
     className: "mx-tab",
     "data-on": mode === "exec" ? 1 : 0,
     onClick: () => setMode("exec")
-  }, "Simula\xE7\xE3o"), /*#__PURE__*/React.createElement("button", {
+  }, "Simulação"), /*#__PURE__*/React.createElement("button", {
     className: "mx-tab",
     "data-on": mode === "dec" ? 1 : 0,
     onClick: () => setMode("dec")
@@ -2194,7 +2194,7 @@ function App() {
     className: "mx-tab",
     "data-on": mode === "cat" ? 1 : 0,
     onClick: () => setMode("cat")
-  }, "Cat\xE1logo")), /*#__PURE__*/React.createElement("button", {
+  }, "Catálogo")), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
     onClick: () => setTheme(t => t === "light" ? "dark" : "light"),
@@ -2587,7 +2587,7 @@ function Exec({
     className: "mx-zoom"
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-zoomslider",
-    title: "Zoom -- tamb\xE9m funciona com a roda do mouse, e continua valendo com 'Seguir ramo' ligado (o pr\xF3prio acompanhamento move esta barra a cada passo)."
+    title: "Zoom -- também funciona com a roda do mouse, e continua valendo com 'Seguir ramo' ligado (o próprio acompanhamento move esta barra a cada passo)."
   }, /*#__PURE__*/React.createElement("input", {
     type: "range",
     min: ZOOM_MIN,
@@ -2607,11 +2607,11 @@ function Exec({
     }))
   }), /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, view.k.toFixed(2), "\xD7")), /*#__PURE__*/React.createElement("button", {
+  }, view.k.toFixed(2), "×")), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
     onClick: () => setShowDetail(s => !s),
-    title: "Oculta o painel de detalhe abaixo, dando mais \xE1rea ao grafo"
+    title: "Oculta o painel de detalhe abaixo, dando mais área ao grafo"
   }, showDetail ? "▾ detalhe" : "▸ detalhe"), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
@@ -2996,7 +2996,7 @@ function Exec({
         fontSize: 9,
         fill: running ? "var(--running-fg)" : "var(--muted)"
       }
-    }, "\xD7", v));
+    }, "×", v));
   })))), popup && byId[popup.nodeId] && (() => {
     const n = byId[popup.nodeId];
     const e = MODEL[n.cls] || {};
@@ -3033,52 +3033,52 @@ function Exec({
       onClick: () => setPopup(null),
       "aria-label": "Fechar",
       title: "Fechar"
-    }, "\xD7")), /*#__PURE__*/React.createElement("div", {
+    }, "×")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11.5,
         lineHeight: 1.6,
         marginTop: 5
       }
-    }, /*#__PURE__*/React.createElement("div", null, "nome de f\xE1brica: ", /*#__PURE__*/React.createElement("b", {
+    }, /*#__PURE__*/React.createElement("div", null, "nome de fábrica: ", /*#__PURE__*/React.createElement("b", {
       className: "mx-mono"
     }, fname), diverges && /*#__PURE__*/React.createElement("span", {
       style: {
         color: "var(--hot)"
       },
-      title: "Nome de f\xE1brica diferente do nome da classe C++ -- \xE9 ESTE que o EDL espera dentro de ( ... )"
-    }, " ", "\u2260 classe C++")), /*#__PURE__*/React.createElement("div", null, "registrada em f\xE1brica: ", e.r ? "sim" : /*#__PURE__*/React.createElement("b", {
+      title: "Nome de fábrica diferente do nome da classe C++ -- é ESTE que o EDL espera dentro de ( ... )"
+    }, " ", "≠ classe C++")), /*#__PURE__*/React.createElement("div", null, "registrada em fábrica: ", e.r ? "sim" : /*#__PURE__*/React.createElement("b", {
       style: {
         color: "var(--rf)"
       },
       title: "Sem IMPLEMENT_*SUBCLASS -- um ( ... ) com este nome no EDL falha com 'unknown factory name'"
-    }, "n\xE3o")), /*#__PURE__*/React.createElement("div", null, "slots pr\xF3prios: ", e.sl ? e.sl.length : 0, e.b && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 deriva de ", /*#__PURE__*/React.createElement("span", {
+    }, "não")), /*#__PURE__*/React.createElement("div", null, "slots próprios: ", e.sl ? e.sl.length : 0, e.b && /*#__PURE__*/React.createElement(React.Fragment, null, " · deriva de ", /*#__PURE__*/React.createElement("span", {
       className: "mx-mono"
     }, e.b)))), onOpenCatalog && /*#__PURE__*/React.createElement("button", {
       className: "mx-nodepopup-link",
       onClick: () => onOpenCatalog(n.cls)
-    }, "Ver classe completa no Cat\xE1logo \u2192"));
+    }, "Ver classe completa no Catálogo →"));
   })(), /*#__PURE__*/React.createElement("div", {
     className: "mx-leg"
   }, /*#__PURE__*/React.createElement("button", {
     className: "mx-leg-toggle",
     onClick: () => setShowCardLegend(s => !s)
-  }, showCardLegend ? "▾" : "▸", " como ler um cart\xE3o"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+  }, showCardLegend ? "▾" : "▸", " como ler um cartão"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--hot)"
     }
-  }, "\u25A0"), " executando"), /*#__PURE__*/React.createElement("span", null, "pips: ", /*#__PURE__*/React.createElement("b", null, "\u25A0"), " implementa \xB7 ", /*#__PURE__*/React.createElement("b", {
+  }, "■"), " executando"), /*#__PURE__*/React.createElement("span", null, "pips: ", /*#__PURE__*/React.createElement("b", null, "■"), " implementa · ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--phase-inherited)"
     }
-  }, "\u25A0"), " herda de ancestral \xB7 \u25AB ningu\xE9m na cadeia"), /*#__PURE__*/React.createElement("span", null, "\xD7n visitas"), /*#__PURE__*/React.createElement("span", null, "thread: ", /*#__PURE__*/React.createElement("b", {
+  }, "■"), " herda de ancestral · ▫ ninguém na cadeia"), /*#__PURE__*/React.createElement("span", null, "×n visitas"), /*#__PURE__*/React.createElement("span", null, "thread: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--ink)"
     }
-  }, "TC"), " \xB7 ", /*#__PURE__*/React.createElement("b", {
+  }, "TC"), " · ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--bgc)"
     }
-  }, "fundo"), " \xB7 ", /*#__PURE__*/React.createElement("b", {
+  }, "fundo"), " · ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--ok)"
     }
@@ -3090,7 +3090,7 @@ function Exec({
     style: {
       color: "var(--ok)"
     }
-  }, "\xB7\xB7\xB7 por nome"), /*#__PURE__*/React.createElement("span", null, "roda = zoom \xB7 arrastar = mover")), showCardLegend && /*#__PURE__*/React.createElement("div", {
+  }, "··· por nome"), /*#__PURE__*/React.createElement("span", null, "roda = zoom · arrastar = mover")), showCardLegend && /*#__PURE__*/React.createElement("div", {
     className: "mx-cardleg"
   }, /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 900 220",
@@ -3130,7 +3130,7 @@ function Exec({
       fontSize: 9,
       fill: "var(--sub-muted)"
     }
-  }, "radar \xB7tc+fundo"), /*#__PURE__*/React.createElement("g", {
+  }, "radar ·tc+fundo"), /*#__PURE__*/React.createElement("g", {
     transform: `translate(${NW - 48}, 21)`
   }, [0, 1, 2, 3].map(p => /*#__PURE__*/React.createElement("rect", {
     key: p,
@@ -3151,7 +3151,7 @@ function Exec({
       fontSize: 9,
       fill: "var(--muted)"
     }
-  }, "\xD73")), [
+  }, "×3")), [
   // Ancora sempre na BORDA do cartao (nunca em cima de um glifo
   // especifico) -- version anterior colocava o ponto exatamente
   // sobre o "3" de "x3" e sobre um pip, competindo visualmente
@@ -3235,11 +3235,11 @@ function Exec({
     style: {
       color: "var(--ink)"
     }
-  }, "tracejada"), " quando o n\xF3 ainda n\xE3o existe (um m\xEDssil na esta\xE7\xE3o, antes do lan\xE7amento) e some o tracejado assim que ele nasce como player de verdade. O n\xF3 fica ", /*#__PURE__*/React.createElement("b", {
+  }, "tracejada"), " quando o nó ainda não existe (um míssil na estação, antes do lançamento) e some o tracejado assim que ele nasce como player de verdade. O nó fica ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--hot)"
     }
-  }, "laranja"), ", com um halo pulsando, exatamente no passo em que ele est\xE1 EXECUTANDO agora \u2014 os demais na pilha de chamadas (acima dele) ficam s\xF3 com a borda mais escura."))), showDetail && /*#__PURE__*/React.createElement("div", {
+  }, "laranja"), ", com um halo pulsando, exatamente no passo em que ele está EXECUTANDO agora — os demais na pilha de chamadas (acima dele) ficam só com a borda mais escura."))), showDetail && /*#__PURE__*/React.createElement("div", {
     className: "mx-pane"
   }, pinned && byId[pinned] && /*#__PURE__*/React.createElement("div", {
     className: "mx-card",
@@ -3261,7 +3261,7 @@ function Exec({
       fontWeight: 600,
       fontSize: 12.5
     }
-  }, "\uD83D\uDCCC fixado \u2014 ", byId[pinned].cls), /*#__PURE__*/React.createElement("button", {
+  }, "📌 fixado — ", byId[pinned].cls), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     style: {
       fontSize: 11,
@@ -3277,13 +3277,13 @@ function Exec({
       color: "var(--muted)",
       marginTop: 4
     }
-  }, "N\xE3o muda ao avan\xE7ar/voltar o passo \u2014 thread ", /*#__PURE__*/React.createElement("b", null, byId[pinned].thread), ".", " ", (() => {
+  }, "Não muda ao avançar/voltar o passo — thread ", /*#__PURE__*/React.createElement("b", null, byId[pinned].thread), ".", " ", (() => {
     const n = trace.filter(s => s.node === pinned).length;
     return n > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, "Aparece em ", /*#__PURE__*/React.createElement("b", {
       className: "mx-mono"
     }, n), " de ", /*#__PURE__*/React.createElement("b", {
       className: "mx-mono"
-    }, trace.length), " passos da trilha \"", TRACES[traceKey].label, "\".") : /*#__PURE__*/React.createElement(React.Fragment, null, "N\xE3o \xE9 visitado pela trilha \"", TRACES[traceKey].label, "\" \u2014 ver Classe/EDL abaixo para os dados est\xE1ticos.");
+    }, trace.length), " passos da trilha \"", TRACES[traceKey].label, "\".") : /*#__PURE__*/React.createElement(React.Fragment, null, "Não é visitado pela trilha \"", TRACES[traceKey].label, "\" — ver Classe/EDL abaixo para os dados estáticos.");
   })())), /*#__PURE__*/React.createElement("div", {
     className: "mx-dtabs",
     role: "tablist",
@@ -3301,7 +3301,7 @@ function Exec({
     "data-on": detailTab === "code" ? 1 : 0,
     disabled: !snip,
     onClick: () => snip && setDetailTab("code")
-  }, "C\xF3digo", snip && step.hl ? /*#__PURE__*/React.createElement("span", {
+  }, "Código", snip && step.hl ? /*#__PURE__*/React.createElement("span", {
     className: "mx-dtab-dot"
   }) : null), /*#__PURE__*/React.createElement("button", {
     className: "mx-dtab",
@@ -3309,7 +3309,7 @@ function Exec({
     "aria-selected": detailTab === "edl",
     "data-on": detailTab === "edl" ? 1 : 0,
     onClick: () => setDetailTab("edl")
-  }, "EDL do cen\xE1rio"), /*#__PURE__*/React.createElement("button", {
+  }, "EDL do cenário"), /*#__PURE__*/React.createElement("button", {
     className: "mx-dtab",
     role: "tab",
     "aria-selected": detailTab === "class",
@@ -3357,7 +3357,7 @@ function Exec({
     className: "mx-code"
   }, codeWin.cutBefore && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", codeWin.offset, " linha", codeWin.offset === 1 ? "" : "s", " acima \u22EF"), codeWin.lines.map((ln, k) => {
+  }, "⋯ ", codeWin.offset, " linha", codeWin.offset === 1 ? "" : "s", " acima ⋯"), codeWin.lines.map((ln, k) => {
     const abs = k + codeWin.offset;
     const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
     return /*#__PURE__*/React.createElement("div", {
@@ -3371,15 +3371,15 @@ function Exec({
     }, ln || " "));
   }), codeWin.cutAfter && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", snip.lines.length - codeWin.offset - codeWin.lines.length, " linhas abaixo \u22EF"))), detailTab === "edl" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "⋯ ", snip.lines.length - codeWin.offset - codeWin.lines.length, " linhas abaixo ⋯"))), detailTab === "edl" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, ubfEdlRange ? "ilustrativo (não é o EDL de produção)" : "cenario.edl"), /*#__PURE__*/React.createElement("span", null, detail.cls, " \xB7 ", detail.edl)), /*#__PURE__*/React.createElement("div", {
+  }, ubfEdlRange ? "ilustrativo (não é o EDL de produção)" : "cenario.edl"), /*#__PURE__*/React.createElement("span", null, detail.cls, " · ", detail.edl)), /*#__PURE__*/React.createElement("div", {
     className: "mx-edl"
   }, edlWin.cutBefore && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", edlWin.offset, " linha", edlWin.offset === 1 ? "" : "s", " acima \u22EF"), edlWin.lines.map((ln, k) => {
+  }, "⋯ ", edlWin.offset, " linha", edlWin.offset === 1 ? "" : "s", " acima ⋯"), edlWin.lines.map((ln, k) => {
     const abs = k + edlWin.offset;
     const on = abs >= edlRange[0] && abs <= edlRange[1];
     return /*#__PURE__*/React.createElement("div", {
@@ -3393,7 +3393,7 @@ function Exec({
     }, ln || " "));
   }), edlWin.cutAfter && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", edlSrc.length - edlWin.offset - edlWin.lines.length, " linhas abaixo \u22EF"))), detailTab === "class" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "⋯ ", edlSrc.length - edlWin.offset - edlWin.lines.length, " linhas abaixo ⋯"))), detailTab === "class" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mx-mono",
@@ -3407,19 +3407,19 @@ function Exec({
       color: "var(--muted)",
       marginBottom: 7
     }
-  }, "m\xF3dulo ", /*#__PURE__*/React.createElement("b", {
+  }, "módulo ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
-  }, dm.m), " \xB7 EDL ", /*#__PURE__*/React.createElement("b", {
+  }, dm.m), " · EDL ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
   }, "( ", factoryOf(detail.cls), " )"), dm.f ? /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--rf)"
     }
-  }, " \xB7 nome divergente") : null, dm.r === false ? /*#__PURE__*/React.createElement("span", {
+  }, " · nome divergente") : null, dm.r === false ? /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--rf)"
     }
-  }, " \xB7 N\xC3O registrada") : null, /*#__PURE__*/React.createElement("br", null), dm.src || dm.hd), chainOf(detail.cls).map((c, k) => {
+  }, " · NÃO registrada") : null, /*#__PURE__*/React.createElement("br", null), dm.src || dm.hd), chainOf(detail.cls).map((c, k) => {
     const ph = MODEL[c] && MODEL[c].sl ? MODEL[c].sl.length : 0;
     const own = PHASES.filter(p => (MODEL[c] ? MODEL[c].wp : []).length && phaseOwner(detail.cls, p.n) === c);
     return /*#__PURE__*/React.createElement("div", {
@@ -3447,7 +3447,7 @@ function Exec({
     style: {
       marginTop: 12
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Slots (", slots.length, " na cadeia)"), /*#__PURE__*/React.createElement("span", null, dm.own || 0, " pr\xF3prios")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Slots (", slots.length, " na cadeia)"), /*#__PURE__*/React.createElement("span", null, dm.own || 0, " próprios")), /*#__PURE__*/React.createElement("div", {
     className: "mx-slotgrid"
   }, slots.map(([s, from], k) => /*#__PURE__*/React.createElement("div", {
     className: "mx-slot",
@@ -3475,16 +3475,16 @@ function Exec({
   }), playing ? "Pausar" : "Reproduzir"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => move(-1)
-  }, "\u2190"), /*#__PURE__*/React.createElement("button", {
+  }, "←"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => move(1)
-  }, "\u2192"), /*#__PURE__*/React.createElement("button", {
+  }, "→"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => {
       setPlaying(false);
       setI(0);
     }
-  }, "In\xEDcio"), /*#__PURE__*/React.createElement("div", {
+  }, "Início"), /*#__PURE__*/React.createElement("div", {
     className: "mx-tl",
     role: "slider",
     "aria-label": "Linha do tempo",
@@ -3543,7 +3543,7 @@ function Exec({
     checked: showNames && !orientV,
     disabled: orientV,
     onChange: e => setShowNames(e.target.checked)
-  }), " Liga\xE7\xF5es por nome"), /*#__PURE__*/React.createElement("label", {
+  }), " Ligações por nome"), /*#__PURE__*/React.createElement("label", {
     style: {
       fontSize: 12.3,
       display: "flex",
@@ -3562,12 +3562,12 @@ function Exec({
       gap: 5,
       alignItems: "center"
     },
-    title: "Raiz em cima, irm\xE3os lado a lado, em vez de raiz \xE0 esquerda"
+    title: "Raiz em cima, irmãos lado a lado, em vez de raiz à esquerda"
   }, /*#__PURE__*/React.createElement("input", {
     type: "checkbox",
     checked: orientV,
     onChange: e => setOrientation(e.target.checked ? "v" : "h")
-  }), " \xC1rvore vertical"), /*#__PURE__*/React.createElement("select", {
+  }), " Árvore vertical"), /*#__PURE__*/React.createElement("select", {
     className: "mx-input",
     value: speed,
     onChange: e => setSpeed(Number(e.target.value)),
@@ -3578,7 +3578,7 @@ function Exec({
     value: 650
   }, "Normal"), /*#__PURE__*/React.createElement("option", {
     value: 240
-  }, "R\xE1pido"))));
+  }, "Rápido"))));
 }
 
 /* ==================================================================== *
@@ -5082,7 +5082,7 @@ function FlightDecision({
     className: "mx-code"
   }, win.cutBefore && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", win.offset, " linha", win.offset === 1 ? "" : "s", " acima \u22EF"), win.lines.map((ln, k) => {
+  }, "⋯ ", win.offset, " linha", win.offset === 1 ? "" : "s", " acima ⋯"), win.lines.map((ln, k) => {
     const abs = k + win.offset;
     const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
     return /*#__PURE__*/React.createElement("div", {
@@ -5096,7 +5096,7 @@ function FlightDecision({
     }, ln || " "));
   }), win.cutAfter && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", snip.lines.length - win.offset - win.lines.length, " linhas abaixo \u22EF"));
+  }, "⋯ ", snip.lines.length - win.offset - win.lines.length, " linhas abaixo ⋯"));
   const btLeaf = FLIGHT_BT_LEAVES[detail.id];
   const modelEntry = flightEntry(detail.cls);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -5150,18 +5150,18 @@ function FlightDecision({
       color: "var(--hot)",
       marginBottom: 10
     }
-  }, "\u203A ", step.src ? `${step.src}()` : detail.cls, " ", /*#__PURE__*/React.createElement("span", {
+  }, "› ", step.src ? `${step.src}()` : detail.cls, " ", /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--muted)"
     }
-  }, "\u2192"), " ", step.call), /*#__PURE__*/React.createElement("div", {
+  }, "→"), " ", step.call), /*#__PURE__*/React.createElement("div", {
     className: "mx-graph",
     ref: graphRef
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-zoom"
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-zoomslider",
-    title: "Zoom -- tamb\xE9m funciona com a roda do mouse"
+    title: "Zoom -- também funciona com a roda do mouse"
   }, /*#__PURE__*/React.createElement("input", {
     type: "range",
     min: ZOOM_MIN,
@@ -5181,11 +5181,11 @@ function FlightDecision({
     }))
   }), /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, view.k.toFixed(2), "\xD7")), /*#__PURE__*/React.createElement("button", {
+  }, view.k.toFixed(2), "×")), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
     onClick: () => setShowDetail(s => !s),
-    title: "Oculta o painel de detalhe abaixo, dando mais \xE1rea ao grafo"
+    title: "Oculta o painel de detalhe abaixo, dando mais área ao grafo"
   }, showDetail ? "▾ detalhe" : "▸ detalhe"), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
@@ -5230,7 +5230,7 @@ function FlightDecision({
       fontWeight: 600,
       fill: "var(--muted)"
     }
-  }, "escopo: framework UBF (mixr::base::ubf) -- gen\xE9rico, vale para qualquer player", /*#__PURE__*/React.createElement("title", null, "Agent/AgentTC + AbstractState/AbstractBehavior/AbstractAction -- as tres interfaces que qualquer state/behavior/action concreto implementa. Autopilot fica de fora: e o alvo nativo que a acao alcanca, nao parte do ciclo UBF."))), btcppBand && /*#__PURE__*/React.createElement("g", null, /*#__PURE__*/React.createElement("rect", {
+  }, "escopo: framework UBF (mixr::base::ubf) -- genérico, vale para qualquer player", /*#__PURE__*/React.createElement("title", null, "Agent/AgentTC + AbstractState/AbstractBehavior/AbstractAction -- as tres interfaces que qualquer state/behavior/action concreto implementa. Autopilot fica de fora: e o alvo nativo que a acao alcanca, nao parte do ciclo UBF."))), btcppBand && /*#__PURE__*/React.createElement("g", null, /*#__PURE__*/React.createElement("rect", {
     x: btcppBand.x0,
     y: btcppBand.y0,
     width: btcppBand.x1 - btcppBand.x0,
@@ -5384,17 +5384,17 @@ function FlightDecision({
     style: {
       color: "var(--hot)"
     }
-  }, "\u25A0"), " executando agora (r\xF3tulo abaixo = chamada em curso)"), /*#__PURE__*/React.createElement("span", null, "borda tracejada e apagada = n\xE3o visitado nesta trilha (curto-circuito do Fallback)"), /*#__PURE__*/React.createElement("span", null, "faixa tracejada = escopo de terceiro (framework UBF e BehaviorTree.CPP, lado a lado)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+  }, "■"), " executando agora (rótulo abaixo = chamada em curso)"), /*#__PURE__*/React.createElement("span", null, "borda tracejada e apagada = não visitado nesta trilha (curto-circuito do Fallback)"), /*#__PURE__*/React.createElement("span", null, "faixa tracejada = escopo de terceiro (framework UBF e BehaviorTree.CPP, lado a lado)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
     className: "mx-mono",
     style: {
       color: "var(--py-accent)"
     }
-  }, "PY"), " = delega a decis\xE3o para um script Python embarcado (libs/xpyembed)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+  }, "PY"), " = delega a decisão para um script Python embarcado (libs/xpyembed)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
     className: "mx-mono",
     style: {
       color: "var(--onnx-accent)"
     }
-  }, "ONNX"), " = delega a decis\xE3o para uma rede neural via ONNX Runtime (libs/xinfer)"), /*#__PURE__*/React.createElement("span", null, "roda = zoom \xB7 arrastar = mover")), showAgentFigure && /*#__PURE__*/React.createElement("div", {
+  }, "ONNX"), " = delega a decisão para uma rede neural via ONNX Runtime (libs/xinfer)"), /*#__PURE__*/React.createElement("span", null, "roda = zoom · arrastar = mover")), showAgentFigure && /*#__PURE__*/React.createElement("div", {
     className: "mx-cardleg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-mono",
@@ -5450,12 +5450,12 @@ function FlightDecision({
     style: {
       color: "var(--hot)"
     }
-  }, "\u2190 usado neste exemplo")), /*#__PURE__*/React.createElement("div", {
+  }, "← usado neste exemplo")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "var(--muted)"
     }
-  }, "thread de TEMPO CR\xCDTICO -- updateTC(dt) chama controller(dt)"), /*#__PURE__*/React.createElement("div", {
+  }, "thread de TEMPO CRÍTICO -- updateTC(dt) chama controller(dt)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10.5,
       color: "var(--sub-muted)",
@@ -5467,7 +5467,7 @@ function FlightDecision({
       color: "var(--muted)",
       margin: "7px 0 0"
     }
-  }, "controller(dt) -- percep\xE7\xE3o, decis\xE3o e a\xE7\xE3o -- \xE9 EXATAMENTE o mesmo m\xE9todo, herdado de Agent. A \xFAnica diferen\xE7a entre as duas classes \xE9 QUANDO ele \xE9 chamado. Isto \xE9 um EXEMPLO de instancia\xE7\xE3o do padr\xE3o: qualquer player pode seguir a mesma receita (extends Agent OU AgentTC + AbstractState + AbstractBehavior + AbstractAction) com suas pr\xF3prias classes concretas, sem mudar Agent/AgentTC em si."))), showDetail && /*#__PURE__*/React.createElement("div", {
+  }, "controller(dt) -- percepção, decisão e ação -- é EXATAMENTE o mesmo método, herdado de Agent. A única diferença entre as duas classes é QUANDO ele é chamado. Isto é um EXEMPLO de instanciação do padrão: qualquer player pode seguir a mesma receita (extends Agent OU AgentTC + AbstractState + AbstractBehavior + AbstractAction) com suas próprias classes concretas, sem mudar Agent/AgentTC em si."))), showDetail && /*#__PURE__*/React.createElement("div", {
     className: "mx-pane"
   }, pinned && activeIndex.byId[pinned] && /*#__PURE__*/React.createElement("div", {
     className: "mx-card",
@@ -5489,7 +5489,7 @@ function FlightDecision({
       fontWeight: 600,
       fontSize: 12.5
     }
-  }, "\uD83D\uDCCC fixado \u2014 ", activeIndex.byId[pinned].cls), /*#__PURE__*/React.createElement("button", {
+  }, "📌 fixado — ", activeIndex.byId[pinned].cls), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     style: {
       fontSize: 11,
@@ -5509,11 +5509,11 @@ function FlightDecision({
     "data-on": detailTab === "code" ? 1 : 0,
     disabled: !snip,
     onClick: () => snip && setDetailTab("code")
-  }, "C\xF3digo completo"), /*#__PURE__*/React.createElement("button", {
+  }, "Código completo"), /*#__PURE__*/React.createElement("button", {
     className: "mx-dtab",
     "data-on": detailTab === "edl" ? 1 : 0,
     onClick: () => setDetailTab("edl")
-  }, "EDL do cen\xE1rio"), /*#__PURE__*/React.createElement("button", {
+  }, "EDL do cenário"), /*#__PURE__*/React.createElement("button", {
     className: "mx-dtab",
     "data-on": detailTab === "class" ? 1 : 0,
     onClick: () => setDetailTab("class")
@@ -5555,7 +5555,7 @@ function FlightDecision({
       color: "var(--muted)",
       margin: "4px 0 0"
     }
-  }, "trecho reduzido (12 linhas) -- \"C\xF3digo completo\" mostra a fun\xE7\xE3o inteira, com a mesma linha em destaque.")) : /*#__PURE__*/React.createElement("p", {
+  }, "trecho reduzido (12 linhas) -- \"Código completo\" mostra a função inteira, com a mesma linha em destaque.")) : /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 11.5,
       color: "var(--muted)",
@@ -5563,19 +5563,19 @@ function FlightDecision({
     }
   }, "chamada: ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
-  }, step.call), " -- c\xF3digo-fonte n\xE3o inclu\xEDdo nesta curadoria (a condi\xE7\xE3o em si \xE9 curta; ver as folhas irm\xE3s para o padr\xE3o real).")), detailTab === "code" && snip && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, step.call), " -- código-fonte não incluído nesta curadoria (a condição em si é curta; ver as folhas irmãs para o padrão real).")), detailTab === "code" && snip && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, snip.file, ":", snip.line + (step.hl ? step.hl[0] : 0)), /*#__PURE__*/React.createElement("span", null, "C++ real, conferido \xE0 m\xE3o (fora do escopo do extrator, que s\xF3 cobre contexts/src/mixr)")), renderCodeBlock(codeWin)), detailTab === "edl" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, snip.file, ":", snip.line + (step.hl ? step.hl[0] : 0)), /*#__PURE__*/React.createElement("span", null, "C++ real, conferido à mão (fora do escopo do extrator, que só cobre contexts/src/mixr)")), renderCodeBlock(codeWin)), detailTab === "edl" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, "cen\xE1rio real (condensado)"), /*#__PURE__*/React.createElement("span", null, detail.cls, " \xB7 ", detail.edl)), /*#__PURE__*/React.createElement("div", {
+  }, "cenário real (condensado)"), /*#__PURE__*/React.createElement("span", null, detail.cls, " · ", detail.edl)), /*#__PURE__*/React.createElement("div", {
     className: "mx-edl"
   }, edlWin.cutBefore && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", edlWin.offset, " linha", edlWin.offset === 1 ? "" : "s", " acima \u22EF"), edlWin.lines.map((ln, k) => {
+  }, "⋯ ", edlWin.offset, " linha", edlWin.offset === 1 ? "" : "s", " acima ⋯"), edlWin.lines.map((ln, k) => {
     const abs = k + edlWin.offset;
     const on = abs >= edlRange[0] && abs <= edlRange[1];
     return /*#__PURE__*/React.createElement("div", {
@@ -5589,9 +5589,9 @@ function FlightDecision({
     }, ln || " "));
   }), edlWin.cutAfter && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF ", activeEdlText.length - edlWin.offset - edlWin.lines.length, " linhas abaixo \u22EF")), detail.id !== "agent" && detail.id !== "state" && detail.id !== "behavior" && detail.id !== "autopilot" && /*#__PURE__*/React.createElement("p", {
+  }, "⋯ ", activeEdlText.length - edlWin.offset - edlWin.lines.length, " linhas abaixo ⋯")), detail.id !== "agent" && detail.id !== "state" && detail.id !== "behavior" && detail.id !== "autopilot" && /*#__PURE__*/React.createElement("p", {
     className: "mx-warn"
-  }, "Este n\xF3 n\xE3o tem slot pr\xF3prio no EDL -- a \xE1rvore de comportamento \xE9 referenciada por treeFile: (destacado acima), n\xE3o por um bloco EDL separado.")), detailTab === "class" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Este nó não tem slot próprio no EDL -- a árvore de comportamento é referenciada por treeFile: (destacado acima), não por um bloco EDL separado.")), detailTab === "class" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "mx-mono",
@@ -5605,9 +5605,9 @@ function FlightDecision({
       color: "var(--muted)",
       margin: "0 0 8px"
     }
-  }, "Folha(s) da \xE1rvore de comportamento -- c\xF3digo de TERCEIRO (biblioteca BehaviorTree.CPP, vendorizada em", " ", /*#__PURE__*/React.createElement("span", {
+  }, "Folha(s) da árvore de comportamento -- código de TERCEIRO (biblioteca BehaviorTree.CPP, vendorizada em", " ", /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, "contexts/src/BehaviorTree.CPP/"), "), n\xE3o deste modelo nem do MIXR. \"Slot\" (EDL) n\xE3o se aplica aqui -- o mecanismo pr\xF3prio da lib \xE9 \"port\" (par chave/valor lido do atributo XML do n\xF3, via providedPorts())."), ["cond", "act"].map(k => {
+  }, "contexts/src/BehaviorTree.CPP/"), "), não deste modelo nem do MIXR. \"Slot\" (EDL) não se aplica aqui -- o mecanismo próprio da lib é \"port\" (par chave/valor lido do atributo XML do nó, via providedPorts())."), ["cond", "act"].map(k => {
     const leaf = btLeaf[k];
     if (!leaf) return null;
     return /*#__PURE__*/React.createElement("div", {
@@ -5657,22 +5657,22 @@ function FlightDecision({
       className: "mx-mono"
     }, leaf.delegate.lib), " via", " ", /*#__PURE__*/React.createElement("b", {
       className: "mx-mono"
-    }, leaf.delegate.to), " -- custo medido", " ", /*#__PURE__*/React.createElement("b", null, leaf.delegate.cost), ". Degrada\xE7\xE3o: ", leaf.delegate.fail, "."));
+    }, leaf.delegate.to), " -- custo medido", " ", /*#__PURE__*/React.createElement("b", null, leaf.delegate.cost), ". Degradação: ", leaf.delegate.fail, "."));
   })) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: "var(--muted)",
       marginBottom: 7
     }
-  }, "m\xF3dulo ", /*#__PURE__*/React.createElement("b", {
+  }, "módulo ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
-  }, flightModuleOf(detail.cls)), " \xB7 EDL ", /*#__PURE__*/React.createElement("b", {
+  }, flightModuleOf(detail.cls)), " · EDL ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
   }, "( ", flightFactoryOf(detail.cls), " )"), modelEntry && modelEntry.f && modelEntry.f !== detail.cls ? /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--rf)"
     }
-  }, " \xB7 nome divergente") : null, /*#__PURE__*/React.createElement("br", null), (modelEntry || {}).src || (modelEntry || {}).hd), flightChainOf(detail.cls).map((c, k) => {
+  }, " · nome divergente") : null, /*#__PURE__*/React.createElement("br", null), (modelEntry || {}).src || (modelEntry || {}).hd), flightChainOf(detail.cls).map((c, k) => {
     const e = flightEntry(c);
     const n = e ? e.sl.length : 0;
     return /*#__PURE__*/React.createElement("div", {
@@ -5700,7 +5700,7 @@ function FlightDecision({
     style: {
       marginTop: 12
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Slots (", flightAllSlotsOf(detail.cls).length, " na cadeia)"), /*#__PURE__*/React.createElement("span", null, modelEntry ? modelEntry.sl.length : 0, " pr\xF3prios")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Slots (", flightAllSlotsOf(detail.cls).length, " na cadeia)"), /*#__PURE__*/React.createElement("span", null, modelEntry ? modelEntry.sl.length : 0, " próprios")), /*#__PURE__*/React.createElement("div", {
     className: "mx-slotgrid"
   }, flightAllSlotsOf(detail.cls).map(([s, from], k) => /*#__PURE__*/React.createElement("div", {
     className: "mx-slot",
@@ -5721,7 +5721,7 @@ function FlightDecision({
       fontSize: 11
     },
     onClick: () => onOpenCatalog(detail.cls)
-  }, "Ver classe completa no Cat\xE1logo \u2192")), detail.note && /*#__PURE__*/React.createElement("p", {
+  }, "Ver classe completa no Catálogo →")), detail.note && /*#__PURE__*/React.createElement("p", {
     className: "mx-warn"
   }, detail.note))))), /*#__PURE__*/React.createElement("div", {
     className: "mx-transport"
@@ -5732,16 +5732,16 @@ function FlightDecision({
   }, playing ? "Pausar" : "Reproduzir"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => move(-1)
-  }, "\u2190"), /*#__PURE__*/React.createElement("button", {
+  }, "←"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => move(1)
-  }, "\u2192"), /*#__PURE__*/React.createElement("button", {
+  }, "→"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => {
       setPlaying(false);
       setI(0);
     }
-  }, "In\xEDcio"), /*#__PURE__*/React.createElement("div", {
+  }, "Início"), /*#__PURE__*/React.createElement("div", {
     className: "mx-tl",
     role: "slider",
     "aria-label": "Linha do tempo",
@@ -5780,7 +5780,7 @@ function FlightDecision({
       gap: 5,
       alignItems: "center"
     },
-    title: "Zoom/pan acompanham sozinhos o n\xF3 ativo a cada passo"
+    title: "Zoom/pan acompanham sozinhos o nó ativo a cada passo"
   }, /*#__PURE__*/React.createElement("input", {
     type: "checkbox",
     checked: autoFollow,
@@ -5796,7 +5796,7 @@ function FlightDecision({
     value: 1100
   }, "Normal"), /*#__PURE__*/React.createElement("option", {
     value: 550
-  }, "R\xE1pido"))));
+  }, "Rápido"))));
 }
 
 /* ---------------------------- catálogo ----------------------------- */
@@ -5860,7 +5860,7 @@ function Catalog({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-stats"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.classes), " classes com DECLARE_SUBCLASS"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.registered), " registradas em f\xE1brica"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.divergent), " com nome de f\xE1brica divergente"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.slotsTotal), " slots em ", /*#__PURE__*/React.createElement("b", null, STATS.withSlots), " classes"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.dispatch), " despacham por fase (derivam de System)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.phaseWork), " fazem trabalho em alguma fase \u2014 ", /*#__PURE__*/React.createElement("b", null, STATS.phaseOwn), " a implementam de fato")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.classes), " classes com DECLARE_SUBCLASS"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.registered), " registradas em fábrica"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.divergent), " com nome de fábrica divergente"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.slotsTotal), " slots em ", /*#__PURE__*/React.createElement("b", null, STATS.withSlots), " classes"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.dispatch), " despacham por fase (derivam de System)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, STATS.phaseWork), " fazem trabalho em alguma fase — ", /*#__PURE__*/React.createElement("b", null, STATS.phaseOwn), " a implementam de fato")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10,
@@ -5874,7 +5874,7 @@ function Catalog({
     type: "text",
     value: q,
     onChange: e => setQ(e.target.value),
-    placeholder: "Classe, nome de f\xE1brica ou slot  ( / )",
+    placeholder: "Classe, nome de fábrica ou slot  ( / )",
     style: {
       minWidth: 240,
       flex: "0 1 340px"
@@ -5945,7 +5945,7 @@ function ClassChip({
       fontStyle: "normal",
       fontSize: 10.5
     }
-  }, "\u2192", e.f), e.wp && e.wp.length ? /*#__PURE__*/React.createElement("span", {
+  }, "→", e.f), e.wp && e.wp.length ? /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--hot)",
       fontSize: 10
@@ -5999,7 +5999,7 @@ function ClassCard({
       color: "var(--muted)",
       fontSize: 12
     }
-  }, " \xB7 EDL ( ", e.f || c, " )", e.r ? "" : " · NÃO registrada"), /*#__PURE__*/React.createElement("div", {
+  }, " · EDL ( ", e.f || c, " )", e.r ? "" : " · NÃO registrada"), /*#__PURE__*/React.createElement("div", {
     className: "mx-mono",
     style: {
       fontSize: 11,
@@ -6013,7 +6013,7 @@ function ClassCard({
   }, IN_SCENARIO.has(c) && /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => onOpen(c)
-  }, "ver no cen\xE1rio"), /*#__PURE__*/React.createElement("button", {
+  }, "ver no cenário"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: onClose
   }, "fechar"))), /*#__PURE__*/React.createElement("div", {
@@ -6025,7 +6025,7 @@ function ClassCard({
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
-  }, /*#__PURE__*/React.createElement("span", null, "Cadeia de heran\xE7a")), e.ch.map((a, k) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Cadeia de herança")), e.ch.map((a, k) => /*#__PURE__*/React.createElement("div", {
     key: a,
     style: {
       padding: "2px 8px",
@@ -6049,7 +6049,7 @@ function ClassCard({
     }
   }, e.wp.length ? /*#__PURE__*/React.createElement(React.Fragment, null, "Trabalha nas fases ", /*#__PURE__*/React.createElement("b", {
     className: "mx-mono"
-  }, e.wp.join(", ")), " \u2014 ", e.wp.map(p => `${PHASES[p].m}() em ${e.po[String(p)]}`).join("; "), ".") : e.d ? "Deriva de System (despacha por fase), mas nenhuma classe da cadeia implementa um método de fase." : "Não deriva de System: não participa do despacho por fase."), e.ov && e.ov.length ? /*#__PURE__*/React.createElement("div", {
+  }, e.wp.join(", ")), " — ", e.wp.map(p => `${PHASES[p].m}() em ${e.po[String(p)]}`).join("; "), ".") : e.d ? "Deriva de System (despacha por fase), mas nenhuma classe da cadeia implementa um método de fase." : "Não deriva de System: não participa do despacho por fase."), e.ov && e.ov.length ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: "var(--muted)",
@@ -6067,7 +6067,7 @@ function ClassCard({
     className: "mx-mono"
   }, derived.slice(0, 12).join(", "), derived.length > 12 ? "…" : "")) : null), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
-  }, /*#__PURE__*/React.createElement("span", null, "Slots (", slots.length, ")"), /*#__PURE__*/React.createElement("span", null, e.sl.length, " pr\xF3prios")), /*#__PURE__*/React.createElement("div", null, slots.map(([s, from], k) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Slots (", slots.length, ")"), /*#__PURE__*/React.createElement("span", null, e.sl.length, " próprios")), /*#__PURE__*/React.createElement("div", null, slots.map(([s, from], k) => /*#__PURE__*/React.createElement("div", {
     className: "mx-slot",
     key: s + k
   }, /*#__PURE__*/React.createElement("span", null, s), /*#__PURE__*/React.createElement("span", null, from))), !slots.length && /*#__PURE__*/React.createElement("div", {
@@ -6081,7 +6081,7 @@ function ClassCard({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-lbl"
-  }, /*#__PURE__*/React.createElement("span", null, "C\xF3digo-fonte"), /*#__PURE__*/React.createElement("span", null, ownSnippets.length ? `${ownSnippets.length} método${ownSnippets.length > 1 ? "s" : ""} extraído${ownSnippets.length > 1 ? "s" : ""}` : "nenhum método extraído")), ownSnippets.length ? ownSnippets.map(([m, s]) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Código-fonte"), /*#__PURE__*/React.createElement("span", null, ownSnippets.length ? `${ownSnippets.length} método${ownSnippets.length > 1 ? "s" : ""} extraído${ownSnippets.length > 1 ? "s" : ""}` : "nenhum método extraído")), ownSnippets.length ? ownSnippets.map(([m, s]) => /*#__PURE__*/React.createElement("div", {
     key: m,
     style: {
       marginBottom: 10
@@ -6093,7 +6093,7 @@ function ClassCard({
       color: "var(--muted)",
       marginBottom: 3
     }
-  }, c, "::", m, " \u2014 ", s.file, ":", s.line), /*#__PURE__*/React.createElement("div", {
+  }, c, "::", m, " — ", s.file, ":", s.line), /*#__PURE__*/React.createElement("div", {
     className: "mx-code"
   }, s.lines.map((ln, k) => /*#__PURE__*/React.createElement("div", {
     key: k,
@@ -6104,12 +6104,12 @@ function ClassCard({
     className: "mx-src"
   }, ln || " "))), s.trunc && /*#__PURE__*/React.createElement("div", {
     className: "mx-codecut"
-  }, "\u22EF corpo truncado nesta visualiza\xE7\xE3o \u22EF")))) : /*#__PURE__*/React.createElement("div", {
+  }, "⋯ corpo truncado nesta visualização ⋯")))) : /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: "var(--muted)"
     }
-  }, "Esta classe n\xE3o sobrescreve nenhum dos m\xE9todos rastreados com corpo pr\xF3prio (dado puro, sem trabalho de fase) \u2014 nada para extrair aqui. arquivo:linha do topo do card continua valendo.")));
+  }, "Esta classe não sobrescreve nenhum dos métodos rastreados com corpo próprio (dado puro, sem trabalho de fase) — nada para extrair aqui. arquivo:linha do topo do card continua valendo.")));
 }
 
 /* ============= diagrama de classe estrutural (aba "Estrutura") ======== *
@@ -15775,13 +15775,13 @@ function StructDiagram({
     style: {
       color: "var(--ink)"
     }
-  }, tier1Count), " classes fundacionais do MIXR (caixa completa \u2014 atributos/componentes/m\xE9todos, extra\xEDdos de verdade do header C++ por ", /*#__PURE__*/React.createElement("span", {
+  }, tier1Count), " classes fundacionais do MIXR (caixa completa — atributos/componentes/métodos, extraídos de verdade do header C++ por ", /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
   }, "tools/extract_class_diagram.py"), ") mais ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: "var(--ink)"
     }
-  }, tier2Count), " alvos de composi\xE7\xE3o (caixa m\xEDnima, s\xF3 nome + base) \u2014 n\xE3o as ", STATS.classes, " classes do Cat\xE1logo. A TOPOLOGIA (quem aparece filho de quem) e as notas de \"filosofia de emprego\" no card de detalhe abaixo s\xE3o organizadas \xE0 m\xE3o (STRUCT_TOPOLOGY/STRUCT_NOTES em doc.jsx) \u2014 uma classe MIXR raramente tem um \xFAnico \"pai\", ent\xE3o a \xE1rvore escolhe UMA aresta prim\xE1ria por n\xF3 pra caber num desenho leg\xEDvel. Refer\xEAncias que fechariam ciclo nessa \xE1rvore (ex.: Player aponta pra WorldModel, que \xE9 filho de Simulation, que \xE9 filho de Station, que \xE9 filho de Player via System.ownship) aparecem tracejadas, sem diamante \u2014 mesma conven\xE7\xE3o das setas \"por nome\" da aba Simula\xE7\xE3o. Tr\xEAs classes (Stores/ExternalStore/RfSystem) existem s\xF3 nos dados brutos, como base de StoresMgr/RfSensor/Radio, sem caixa pr\xF3pria neste desenho."), /*#__PURE__*/React.createElement("div", {
+  }, tier2Count), " alvos de composição (caixa mínima, só nome + base) — não as ", STATS.classes, " classes do Catálogo. A TOPOLOGIA (quem aparece filho de quem) e as notas de \"filosofia de emprego\" no card de detalhe abaixo são organizadas à mão (STRUCT_TOPOLOGY/STRUCT_NOTES em doc.jsx) — uma classe MIXR raramente tem um único \"pai\", então a árvore escolhe UMA aresta primária por nó pra caber num desenho legível. Referências que fechariam ciclo nessa árvore (ex.: Player aponta pra WorldModel, que é filho de Simulation, que é filho de Station, que é filho de Player via System.ownship) aparecem tracejadas, sem diamante — mesma convenção das setas \"por nome\" da aba Simulação. Três classes (Stores/ExternalStore/RfSystem) existem só nos dados brutos, como base de StoresMgr/RfSensor/Radio, sem caixa própria neste desenho."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -15800,13 +15800,13 @@ function StructDiagram({
       color: "var(--muted)",
       alignSelf: "center"
     }
-  }, "clique no cabe\xE7alho de uma caixa Tier 1 pra recolher/expandir s\xF3 ela \xB7 clique em qualquer lugar da caixa pra ver detalhe")), /*#__PURE__*/React.createElement("div", {
+  }, "clique no cabeçalho de uma caixa Tier 1 pra recolher/expandir só ela · clique em qualquer lugar da caixa pra ver detalhe")), /*#__PURE__*/React.createElement("div", {
     className: "mx-graph"
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-zoom"
   }, /*#__PURE__*/React.createElement("div", {
     className: "mx-zoomslider",
-    title: "Zoom -- tamb\xE9m funciona com a roda do mouse"
+    title: "Zoom -- também funciona com a roda do mouse"
   }, /*#__PURE__*/React.createElement("input", {
     type: "range",
     min: ZOOM_MIN,
@@ -15820,7 +15820,7 @@ function StructDiagram({
     }))
   }), /*#__PURE__*/React.createElement("span", {
     className: "mx-mono"
-  }, view.k.toFixed(2), "\xD7")), /*#__PURE__*/React.createElement("button", {
+  }, view.k.toFixed(2), "×")), /*#__PURE__*/React.createElement("button", {
     className: "mx-zbtn",
     "data-w": "1",
     onClick: () => setView({
@@ -16091,7 +16091,7 @@ function StructDiagram({
       color: "var(--muted)",
       fontSize: 11.5
     }
-  }, " ", "\xB7 ", pnTier1 ? `Tier 1 (caixa completa) · extends ${pnTier1.base || "—"}` : `Tier 2 (caixa mínima) · extends ${(pnTier2 || {}).base || "—"}`)), /*#__PURE__*/React.createElement("div", {
+  }, " ", "· ", pnTier1 ? `Tier 1 (caixa completa) · extends ${pnTier1.base || "—"}` : `Tier 2 (caixa mínima) · extends ${(pnTier2 || {}).base || "—"}`)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 6
@@ -16099,7 +16099,7 @@ function StructDiagram({
   }, pnInCatalog && /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => onOpenCatalog(pn.cls)
-  }, "ver no Cat\xE1logo \u2192"), /*#__PURE__*/React.createElement("button", {
+  }, "ver no Catálogo →"), /*#__PURE__*/React.createElement("button", {
     className: "mx-btn",
     onClick: () => setPinned(null)
   }, "fechar"))), STRUCT_NOTES[pn.cls] ? /*#__PURE__*/React.createElement("p", {

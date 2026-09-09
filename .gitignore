@@ -1,4 +1,10 @@
-build*
+# diretorios de build do Meson: a raiz (build/) e o de cada projeto de modelo
+# (models/players/*/build/). A BARRA FINAL nao e' decorativa -- 'build*' sem
+# ela casa tambem com ARQUIVO, em qualquer nivel, e engolia
+# src/ui/scripts/build.js (o orquestrador de 'make open-edl-builder'): ele
+# nunca entrava em commit nenhum, sem aviso, e o alvo quebrava com
+# MODULE_NOT_FOUND em toda maquina que nao fosse a de quem o escreveu.
+build*/
 dist
 .claude/settings.local.json
 
@@ -15,7 +21,7 @@ deps/*/__pycache__/
 # tudo do zero toda vez, ver a explicacao dada ao usuario). Artefato de
 # ferramenta, nunca fonte -- a propria pasta ja tem um '.gitignore' interno
 # (`*`) que a auto-ignora; esta entrada e so pra ficar explicito aqui tambem,
-# no mesmo padrao de 'build*'/'dist' acima.
+# no mesmo padrao de 'build*/'/'dist' acima.
 .gitlab-ci-local/
 
 # cache do docs/manual/compile.js: React/ReactDOM UMD baixados uma vez +
