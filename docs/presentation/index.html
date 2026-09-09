@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>asa 2.0.0</title>
+<title>Refatoração do ASA</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
@@ -70,7 +70,7 @@ button{font:inherit; color:inherit;}
      depender de vw como antes (que ignorava altura por completo). overflow-y:auto continua so
      como rede de seguranca -- o alvo e' nunca precisar dele numa janela de uso razoavel. */
   gap:clamp(12px,2.2vmin,22px); padding:clamp(16px,4vmin,72px) clamp(24px,7vw,108px);
-  padding-bottom:clamp(64px,13vh,96px); opacity:0; visibility:hidden; transition:opacity .28s ease;
+  padding-bottom:clamp(64px,13vh,96px);
   overflow-y:auto;
   /* centraliza verticalmente por padrao -- numa tela bem maior que o conteudo (4K, por
      exemplo) o excedente de altura fica distribuido em vez de empurrado todo pra baixo do
@@ -78,9 +78,47 @@ button{font:inherit; color:inherit;}
      em algum filho, como os de demonstracao em video) nao mudam de aparencia -- justify-content
      so tem efeito quando sobra espaco livre pra distribuir. */
   justify-content:center;
+  /* Troca de slide: crossfade + leve deslocamento vertical, com sentido (pra cima ao avancar,
+     pra baixo ao voltar) dado por [data-dir] no .deck -- ver o script de navegacao. Nao usa
+     "visibility" pra esconder (visibility nao interpola, so troca de uma vez): pointer-events
+     cobre a parte de "nao e' clicavel enquanto invisivel", e opacity 0 + transform ja bastam
+     pra sumir visualmente sem cortar a transicao de saida no meio. */
+  opacity:0; transform:translate3d(0,3.4vh,0) scale(.985); pointer-events:none;
+  transition:opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
 }
-.slide.is-active{opacity:1; visibility:visible; z-index:2;}
-@media (prefers-reduced-motion:reduce){ .slide{transition:none;} }
+.deck[data-dir="back"] .slide{ transform:translate3d(0,-3.4vh,0) scale(.985); }
+.slide.is-active{ opacity:1; transform:translate3d(0,0,0) scale(1); pointer-events:auto; z-index:2; }
+/* slide que acabou de perder o foco: continua visivel um instante, saindo pelo lado OPOSTO de
+   onde a proxima slide esta entrando -- e' o que da a sensacao de "passar a pagina" em vez de um
+   corte seco. Some da lista de is-leaving por JS depois que a transicao termina (ver TRANSITION_MS). */
+.slide.is-leaving{ opacity:0; transform:translate3d(0,-2.2vh,0) scale(.99); z-index:1; pointer-events:none; }
+.deck[data-dir="back"] .slide.is-leaving{ transform:translate3d(0,2.2vh,0) scale(.99); }
+/* revelacao em cascata dos blocos de 1o nivel de cada slide (eyebrow, headline, listas,
+   diagrama...) -- cada um nasce um pouco abaixo e desfocado de opacidade, chegando com um
+   atraso pequeno e crescente. So dispara na slide ATIVA; nas outras os filhos ficam parados em
+   opacity:0 -- invisivel de qualquer forma, porque a propria slide ja esta em opacity:0. */
+.slide > *{ opacity:0; transform:translateY(10px); }
+/* slide que esta SAINDO (is-leaving, sem is-active) precisa dos filhos JA visiveis -- senao eles
+   voltariam pro estado de partida (opacity:0) na hora, e a propria slide sumiria de golpe antes
+   da transicao de opacity/transform dela (acima) terminar de rodar. Quem anima a saida e' a
+   slide inteira, nao os filhos individualmente. */
+.slide.is-leaving > *{ opacity:1; transform:none; animation:none; }
+.slide.is-active > *{ animation:slideChildIn .6s cubic-bezier(.16,1,.3,1) both; }
+.slide.is-active > *:nth-child(1){ animation-delay:.05s; }
+.slide.is-active > *:nth-child(2){ animation-delay:.11s; }
+.slide.is-active > *:nth-child(3){ animation-delay:.17s; }
+.slide.is-active > *:nth-child(4){ animation-delay:.23s; }
+.slide.is-active > *:nth-child(5){ animation-delay:.29s; }
+.slide.is-active > *:nth-child(6){ animation-delay:.35s; }
+.slide.is-active > *:nth-child(n+7){ animation-delay:.4s; }
+@keyframes slideChildIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+@media (prefers-reduced-motion:reduce){
+  .slide, .slide.is-leaving, .deck[data-dir="back"] .slide, .deck[data-dir="back"] .slide.is-leaving{
+    transition:opacity .28s ease; transform:none;
+  }
+  .slide > *{ opacity:1; transform:none; animation:none; }
+  .slide.is-active > *{ animation:none; }
+}
 
 .eyebrow{
   font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.14em;
@@ -239,20 +277,30 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 .hud-btn{
   flex:none; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
   background:var(--surface-2); border:1px solid var(--line); border-radius:5px; cursor:pointer;
+  transition:border-color .18s ease, color .18s ease, transform .18s ease, background-color .18s ease;
 }
-.hud-btn:hover{ border-color:var(--teal); color:var(--teal); }
+.hud-btn:hover{ border-color:var(--teal); color:var(--teal); transform:translateY(-1px); }
+.hud-btn:active{ transform:translateY(0); }
+@media (prefers-reduced-motion:reduce){ .hud-btn{ transition:none; } .hud-btn:hover{ transform:none; } }
 .hud-menu-btn{ width:auto; padding:0 12px; gap:6px; font-size:.74rem; letter-spacing:.08em; text-transform:uppercase; }
 .hud-hint{ font-size:.7rem; color:var(--muted); white-space:nowrap; }
 @media (max-width:820px){ .hud-hint{ display:none; } }
 
 .overlay{
-  position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.55); backdrop-filter:blur(2px);
+  position:fixed; inset:0; z-index:20; background:rgba(0,0,0,0); backdrop-filter:blur(0px);
   display:flex; align-items:center; justify-content:center; padding:40px;
+  opacity:0; transition:opacity .26s ease, background-color .26s ease, backdrop-filter .26s ease;
 }
 .overlay[hidden]{ display:none; }
+.overlay.is-open{ opacity:1; background:rgba(0,0,0,.55); backdrop-filter:blur(2px); }
 .menu-panel{
   background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow);
   width:min(880px,92vw); max-height:82vh; overflow-y:auto; padding:26px 30px 32px;
+  transform:translateY(14px) scale(.97); transition:transform .32s cubic-bezier(.16,1,.3,1);
+}
+.overlay.is-open .menu-panel{ transform:translateY(0) scale(1); }
+@media (prefers-reduced-motion:reduce){
+  .overlay, .menu-panel{ transition:none; }
 }
 .menu-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
 .menu-head h2{ font-family:var(--font-display); font-weight:800; font-size:1.5rem; }
@@ -265,8 +313,10 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 .menu-item{
   display:flex; gap:10px; align-items:baseline; width:100%; text-align:left; background:none; border:none;
   padding:6px 8px; border-radius:4px; cursor:pointer; font-family:var(--font-body); font-size:.9rem;
+  transition:background-color .15s ease, transform .15s ease;
 }
-.menu-item:hover{ background:var(--surface-2); }
+.menu-item:hover{ background:var(--surface-2); transform:translateX(2px); }
+@media (prefers-reduced-motion:reduce){ .menu-item{ transition:none; } .menu-item:hover{ transform:none; } }
 .menu-item .n{ font-family:var(--font-mono); color:var(--muted); font-size:.78rem; flex:none; width:2.2em; }
 
 /* os dois breakpoints de colapso (1 coluna) sao mais estreitos que o "980px" generico de
@@ -299,642 +349,28 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 <div class="tick tick--bl"></div>
 <div class="tick tick--br"></div>
 
-<div class="deck" id="deck">
+<div class="deck" id="deck"></div>
 
-<section class="slide slide--title" data-title="Abertura">
-  <p class="eyebrow">Reestruturação de plataforma · MIXR + BehaviorTree.CPP</p>
-  <h1>asa 2.0.0</h1>
-  <p class="lede">Simulação aeroespacial é difícil por natureza — isso não muda. O que muda é
-  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">tudo o que atrapalha</u>
-  ao redor disso.</p>
-  <div class="tag-row">
-    <span class="tag">A-4 (produção)</span><span class="tag">onnx-policy</span>
-    <span class="tag">python-flight</span><span class="tag">TOUR.md</span>
-  </div>
-  <p class="meta-row">
-    <span><b>MIXR</b> 1.0.5</span><span><b>BehaviorTree.CPP</b> 3.5.6</span>
-    <span><b>Toolchain</b> Conan → Meson/Ninja → Makefile</span>
-  </p>
-</section>
-
-<section class="slide" data-title="Um domínio com agentes que interagem">
-  <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <h2 class="headline">Um domínio com agentes que interagem</h2>
-  <ul class="list">
-    <li>Aeronaves, sensores, armas, sistemas de navegação — cada um com <b>dinâmica própria</b>,
-    reagindo e causando efeitos uns nos outros em tempo real.</li>
-    <li>Tudo isso ao mesmo tempo, com <b>dependências cruzadas</b> — não é dificuldade de código
-    mal escrito, é dificuldade <b>inerente ao domínio</b>.</li>
-  </ul>
-  <figure class="diagram">
-    <svg viewBox="0 0 980 190" role="img" aria-label="Um radar detecta, um piloto automatico reage, um alerta se propaga, um terreno impoe um piso de seguranca">
-      <rect x="20" y="45" width="200" height="90" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-teal"/>
-      <text x="120" y="82" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">radar</text>
-      <text x="120" y="102" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".85">detecta</text>
-
-      <rect x="260" y="45" width="220" height="90" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-accent"/>
-      <text x="370" y="82" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">piloto automático</text>
-      <text x="370" y="102" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".85">reage</text>
-
-      <rect x="520" y="45" width="220" height="90" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-amber"/>
-      <text x="630" y="82" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-amber">alerta</text>
-      <text x="630" y="102" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-amber" opacity=".85">se propaga</text>
-
-      <rect x="780" y="45" width="180" height="90" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-brick"/>
-      <text x="870" y="82" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-brick">terreno</text>
-      <text x="870" y="102" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-brick" opacity=".85">impõe piso</text>
-
-      <line x1="222" y1="90" x2="258" y2="90" stroke="currentColor" stroke-width="1.6" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-      <line x1="482" y1="90" x2="518" y2="90" stroke="currentColor" stroke-width="1.6" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-      <line x1="742" y1="90" x2="778" y2="90" stroke="currentColor" stroke-width="1.6" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-    </svg>
-    <figcaption>Uma cadeia só — e cada elo é um player, um sensor ou um sistema diferente,
-    decidindo em paralelo, no mesmo frame.</figcaption>
-  </figure>
-</section>
-
-<section class="slide" data-title="O trabalho real: revisitar tudo que já existe">
-  <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <h2 class="headline">O trabalho real: revisitar tudo que já existe</h2>
-  <figure class="diagram">
-    <svg viewBox="0 0 720 130" role="img" aria-label="Um modelo novo e os modelos que ja existem se afetam nos dois sentidos">
-      <rect x="30" y="35" width="260" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-teal"/>
-      <text x="160" y="72" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">modelo novo</text>
-      <text x="160" y="92" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".85">míssil · aeronave · sensor</text>
-
-      <rect x="430" y="35" width="260" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-accent"/>
-      <text x="560" y="72" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">modelos que já existem</text>
-      <text x="560" y="92" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-accent" opacity=".85">chaff · alerta · terreno</text>
-
-      <line x1="292" y1="75" x2="428" y2="75" stroke="currentColor" stroke-width="1.6" class="svg-ink" opacity=".7" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
-      <text x="360" y="65" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-ink" opacity=".75">o efeito vale nos dois sentidos</text>
-    </svg>
-    <figcaption>Um míssil novo reage a um chaff antigo; uma aeronave nova é vista por um alerta
-    escrito antes dela existir.</figcaption>
-  </figure>
-  <div class="callout">
-    <span class="k">Ponto central</span>
-    <p>Isso não é acidental — é o próprio significado de simular um domínio com agentes que
-    interagem.</p>
-  </div>
-</section>
-
-<section class="slide" data-title="MIXR ajuda — mas só se usado direito">
-  <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <h2 class="headline">MIXR ajuda — mas só se usado direito</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>O framework já vem com uma <b>dinâmica de eventos</b> e classes-base pensadas para
-      resolver esse acoplamento sem que cada par de modelos precise se conhecer diretamente.</li>
-      <li>Mas isso só funciona se o framework for usado <b>do jeito que foi desenhado para ser
-      usado</b>.</li>
-      <li>Exige entender as abstrações, o vocabulário, o uso idiomático — um MIXR mal utilizado
-      não entrega nada disso de graça.</li>
-    </ul>
-    <figure class="diagram">
-      <svg viewBox="0 0 500 320" role="img" aria-label="Modelo A e Modelo B nao se conhecem diretamente -- os dois passam pela dinamica de eventos do MIXR">
-        <rect x="30" y="20" width="200" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
-        <text x="130" y="62" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-teal">modelo A</text>
-
-        <rect x="270" y="230" width="200" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
-        <text x="370" y="272" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-teal">modelo B</text>
-
-        <rect x="150" y="120" width="220" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.7" class="svg-accent"/>
-        <text x="260" y="158" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">MIXR</text>
-        <text x="260" y="178" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-accent" opacity=".85">dinâmica de eventos</text>
-
-        <line x1="130" y1="90" x2="200" y2="118" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-        <line x1="320" y1="212" x2="370" y2="228" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-      </svg>
-      <figcaption>A e B nunca se conhecem diretamente — só o MIXR sabe dos dois.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section class="slide slide--statement" data-title="A dificuldade de domínio é indissociável">
-  <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <p class="statement">A proficiência em modelagem — física, comportamento, interações do
-  domínio — é uma barreira que <em>nenhuma</em> ferramenta, processo ou framework vai amenizar.
-  Ela é intrínseca ao que estamos simulando.</p>
-  <p class="lede muted" style="margin-top:4px">O que dá para fazer: garantir que tudo o que NÃO
-  é essa dificuldade intrínseca pare de atrapalhar.</p>
-</section>
-
-<section class="slide" data-title="A proposta">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Uma reestruturação para devolver produtividade e escala</h2>
-  <p class="lede muted">A expectativa não é remover a dificuldade de modelar — é recuperar
-  produtividade e capacidade de escalar, atacando todo atrito evitável.</p>
-  <ul class="list tight">
-    <li><b>Ferramentas usadas do jeito certo</b> — MIXR, BehaviorTree.CPP, Groot</li>
-    <li><b>Um repositório só</b>, não vários espalhados</li>
-    <li><b>Esteira de CI forte</b> — testes em camadas, Makefile claro</li>
-    <li><b>Contrato forte de modelo</b> — <code>docs/</code>, <code>CHANGELOG.md</code></li>
-    <li><b>Ferramentas de assistência</b> — painel ao vivo, manual, editor visual</li>
-    <li><b>Documentação com apoio de IA</b> + filosofia <b>poc-first</b></li>
-    <li><b>Ambiente padronizado</b> — VSCode, <code>clangd</code></li>
-    <li><b>Roadmap</b> — integração com o asa-engine</li>
-  </ul>
-</section>
-
-<section class="slide" data-title="Ferramentas usadas do jeito certo">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Ferramentas usadas do jeito que foram desenhadas</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>MIXR e BehaviorTree.CPP não são bibliotecas genéricas — são frameworks com
-      <b>opiniões fortes</b> sobre como o código deveria se organizar.</li>
-      <li>A aposta é usá-los como foram desenhados, em vez de reconstruir por fora o que eles já
-      resolvem por dentro — é isso que faz a dinâmica de eventos do MIXR funcionar a nosso
-      favor.</li>
-      <li><b>Groot</b> entra como a ferramenta de edição e monitoramento das árvores de
-      comportamento — visual, não só texto.</li>
-      <li>Extensão VSCode para <code>.edl</code>: realce de sintaxe <b>e</b> validação de
-      verdade — o mesmo parser do framework, antes de tentar rodar. <code>clangd</code> no lugar
-      do IntelliSense padrão para C++.</li>
-    </ul>
-    <div class="media-placeholder">
-      <svg width="30" height="30"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">Groot editando uma árvore de comportamento ao vivo</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Um repositório, não vários">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Um repositório, não vários</h2>
-  <figure class="diagram">
-    <svg viewBox="0 0 720 300" role="img" aria-label="asa-models, asa-libs, asa-models-r e MIXR convergindo para um repositorio poc-mixr unico">
-      <rect x="30" y="14" width="230" height="46" rx="5" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".8"/>
-      <text x="145" y="42" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-ink">asa-models</text>
-
-      <rect x="30" y="72" width="230" height="46" rx="5" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".8"/>
-      <text x="145" y="100" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-ink">asa-libs</text>
-
-      <rect x="30" y="130" width="230" height="46" rx="5" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".8"/>
-      <text x="145" y="158" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-ink">asa-models-r</text>
-
-      <rect x="30" y="188" width="230" height="46" rx="5" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".8"/>
-      <text x="145" y="216" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-ink">MIXR</text>
-
-      <rect x="430" y="70" width="260" height="120" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-teal"/>
-      <text x="560" y="122" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">poc-mixr</text>
-      <text x="560" y="144" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".8">um repositório integrado</text>
-
-      <line x1="262" y1="37" x2="428" y2="118" stroke="currentColor" stroke-width="1.2" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-      <line x1="262" y1="95" x2="428" y2="122" stroke="currentColor" stroke-width="1.2" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-      <line x1="262" y1="153" x2="428" y2="132" stroke="currentColor" stroke-width="1.2" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-      <line x1="262" y1="211" x2="428" y2="140" stroke="currentColor" stroke-width="1.2" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-    </svg>
-    <figcaption><code>asa-models</code>, <code>asa-libs</code>, <code>asa-models-r</code> e o
-    próprio MIXR — cada um com seu ciclo, sua forma de versionar, sua distância dos outros.
-    Hoje, tudo em um repositório integrado: a diferença entre enxergar o efeito de uma mudança
-    de ponta a ponta, ou não.</figcaption>
-  </figure>
-</section>
-
-<section class="slide" data-title="Uma esteira de CI forte">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Uma esteira de CI forte</h2>
-  <figure class="diagram">
-    <svg viewBox="0 0 900 210" role="img" aria-label="8 camadas de teste: domain, tree e native no modelo; scenario, memory, determinism, plugin e guard no host">
-      <rect x="10" y="10" width="205" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-      <text x="112" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">domain</text>
-      <rect x="225" y="10" width="205" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-      <text x="327" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">tree</text>
-      <rect x="440" y="10" width="205" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-      <text x="542" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">native</text>
-      <text x="800" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".8">— do modelo</text>
-
-      <rect x="10" y="100" width="167" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="93" y="136" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" class="svg-accent">scenario</text>
-      <rect x="187" y="100" width="167" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="270" y="136" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" class="svg-accent">memory</text>
-      <rect x="364" y="100" width="180" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="454" y="136" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" class="svg-accent">determinism</text>
-      <rect x="554" y="100" width="167" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="637" y="136" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" class="svg-accent">plugin</text>
-      <rect x="731" y="100" width="160" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="811" y="136" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" class="svg-accent">guard</text>
-      <text x="800" y="185" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".8">— do host</text>
-    </svg>
-    <figcaption>Da regra mais isolada (<code>domain</code>) ao contrato de plugin (<code>guard</code>)
-    — cada camada prova uma coisa diferente. Makefile deixa claro o que fazer em cada passo.</figcaption>
-  </figure>
-  <div class="stat-row">
-    <span class="stat-chip">8 camadas de teste</span>
-    <span class="stat-chip">1/2/4 threads: dumps byte-idênticos</span>
-  </div>
-  <div class="callout">
-    <span class="k">O que isso compra</span>
-    <p>Isso é o que transforma "eu acho que funciona" em "eu tenho como provar que funciona" —
-    rastreável, sem depender de conhecimento prévio de quem já mexeu naquilo antes.</p>
-  </div>
-</section>
-
-<section class="slide" data-title="Um contrato forte para todo modelo">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Um contrato forte para todo modelo</h2>
-  <div class="grid-2">
-    <div>
-      <ul class="list">
-        <li>Todo modelo que entra no repositório carrega a mesma espinha dorsal:
-        <b>documentação de arquitetura</b> em <code>docs/</code>.</li>
-        <li>E um <code>CHANGELOG.md</code> que registra o que mudou e quando — por
-        <b>data de commit</b>, nunca por data da mensagem.</li>
-      </ul>
-      <div class="callout" style="margin-top:18px">
-        <span class="k">Por quê</span>
-        <p>Mensagem de commit se engana. Data de commit não. Isso é gestão de conhecimento de
-        verdade: o conhecimento não fica só na cabeça de quem escreveu — fica registrado de um
-        jeito que sobrevive à saída da pessoa.</p>
-      </div>
-    </div>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="30" height="30"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: pasta de um modelo real — tests/, docs/, README.md,
-      CHANGELOG.md, Makefile</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Ferramentas que assistem o desenvolvimento">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Ferramentas que assistem o desenvolvimento e o debug</h2>
-  <ul class="list">
-    <li><code>./app</code> — painel de controle e observação em tempo real: qual comportamento
-    está ativo, em qual thread, com qual estado de memória.</li>
-    <li>Um <b>manual interativo</b> que navega pela estrutura do framework e pela árvore de
-    decisão de verdade que os modelos usam.</li>
-    <li>Um <b>editor visual</b> para montar cenários, sem precisar decorar sintaxe.</li>
-  </ul>
-  <div class="media-grid">
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">./app (TUI) — painel ao vivo, trocando de aba durante a simulação</p>
-    </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Manual interativo navegando a árvore de decisão</p>
-    </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">Editor visual montando um cenário arrastando classes</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Documentação com IA + poc-first">
-  <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Documentação com apoio de IA + a filosofia poc-first</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>Não é terceirizar a explicação para uma IA e aceitar o que sai.</li>
-      <li>É usar IA como <b>alavanca</b> para produzir e manter atualizada uma documentação que,
-      historicamente, é a primeira coisa a envelhecer mal em qualquer projeto de engenharia.</li>
-    </ul>
-    <ul class="list">
-      <li>Em vez de desenhar a arquitetura ideal no papel antes de escrever qualquer linha, a
-      aposta é começar simples, com uma prova de conceito pequena.</li>
-    </ul>
-  </div>
-  <p class="eyebrow" style="margin-top:8px">poc-first, na prática</p>
-  <div class="pipeline">
-    <span class="pipe-step">poc pequena</span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">vira <b>contrato</b></span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">vira <b>exemplo de como fazer</b></span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">próximo modelo copia e adapta</span>
-  </div>
-  <p class="lede muted">Um caminho já percorrido para copiar e adaptar — não um documento de
-  intenções.</p>
-</section>
-
-<section class="slide" data-title="Olhando para frente: o asa-engine">
-  <div class="kicker-row">
-    <p class="eyebrow">II · A proposta</p>
-    <span class="feat-badge">Roadmap — <b>ainda não construído</b></span>
-  </div>
-  <h2 class="headline">Olhando para frente: integração com o asa-engine</h2>
-  <figure class="diagram">
-    <svg viewBox="0 0 760 260" role="img" aria-label="poc-mixr hoje se conecta ao asa-engine, que se conecta a asa-py e webstation">
-      <rect x="20" y="90" width="170" height="70" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-ink"/>
-      <text x="105" y="122" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-ink">poc-mixr</text>
-      <text x="105" y="140" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".7">hoje</text>
-
-      <rect x="260" y="80" width="230" height="90" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
-      <text x="375" y="115" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-teal">asa-engine</text>
-      <text x="375" y="133" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">node · manager</text>
-      <text x="375" y="148" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">handler</text>
-
-      <rect x="560" y="20" width="170" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="645" y="55" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">asa-py</text>
-
-      <rect x="560" y="170" width="170" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="645" y="205" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">webstation</text>
-
-      <line x1="192" y1="125" x2="258" y2="125" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-      <line x1="492" y1="105" x2="558" y2="55" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-      <line x1="492" y1="145" x2="558" y2="195" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-    </svg>
-    <figcaption>Isso é roadmap, não algo pronto neste repositório hoje. Mas é a razão pela qual
-    a reestruturação foi desenhada assim — para que, quando a integração acontecer, ela encontre
-    uma base organizada, não repositórios espalhados para costurar.</figcaption>
-  </figure>
-</section>
-
-<section class="slide slide--demo" data-title="1. ./app — todas as telas possíveis">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">1. ./app — todas as telas possíveis</h2>
-  <div class="demo-stage" data-demo="demos/01-app">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">1. ./app — todas as telas possíveis</p>
-      <p class="hint">coloque "01-app.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="2. Documentação iterativa">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">2. Documentação iterativa</h2>
-  <div class="demo-stage" data-demo="demos/02-documentacao-iterativa">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">2. Documentação iterativa</p>
-      <p class="hint">coloque "02-documentacao-iterativa.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="3. Editor minimalista de EDL">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">3. Editor minimalista de EDL</h2>
-  <div class="demo-stage" data-demo="demos/03-editor-edl">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">3. Editor minimalista de EDL</p>
-      <p class="hint">coloque "03-editor-edl.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="4. Esteira de build">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">4. Esteira de build — clean → configure → models → build → install</h2>
-  <div class="demo-stage" data-demo="demos/04-esteira-build">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">4. Esteira de build — clean → configure → models → build → install</p>
-      <p class="hint">coloque "04-esteira-build.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="5. Criação de modelo + árvore">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">5. Criação de modelo com make + geração da árvore</h2>
-  <div class="demo-stage" data-demo="demos/05-criacao-modelo">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">5. Criação de modelo com make + geração da árvore</p>
-      <p class="hint">coloque "05-criacao-modelo.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="6. Groot acompanhando a simulação">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">6. Groot acompanhando a simulação</h2>
-  <div class="demo-stage" data-demo="demos/06-groot">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">6. Groot acompanhando a simulação</p>
-      <p class="hint">coloque "06-groot.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="7. Catálogo de modelos + built-in">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">7. Catálogo de modelos e modelos built-in</h2>
-  <div class="demo-stage" data-demo="demos/07-catalogo-modelos">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">7. Catálogo de modelos e modelos built-in</p>
-      <p class="hint">coloque "07-catalogo-modelos.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="8. Mapa de documentação">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">8. Mapa de documentação</h2>
-  <div class="demo-stage" data-demo="demos/08-mapa-documentacao">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">8. Mapa de documentação</p>
-      <p class="hint">coloque "08-mapa-documentacao.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide slide--demo" data-title="9. PoCs de RL e script Python">
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">9. PoCs de RL e script Python</h2>
-  <div class="demo-stage" data-demo="demos/09-rl-python">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">9. PoCs de RL e script Python</p>
-      <p class="hint">coloque "09-rl-python.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="O primeiro entregável">
-  <p class="eyebrow">III · Onde estamos</p>
-  <h2 class="headline">O primeiro entregável</h2>
-  <div class="grid-2">
-    <div>
-      <ul class="list">
-        <li>Um metaprojeto <b>open-source</b>, com todo o esqueleto do que pode vir a ser, no
-        futuro, uma refatoração completa da ASA.</li>
-        <li>Hoje, com um único modelo de produção pronto de ponta a ponta: a aeronave <b>A-4</b>.</li>
-        <li>E provas de conceito que mostram até onde essa estrutura pode ir: uma decisão tomada
-        por uma <b>rede neural treinada via ONNX</b>, e uma decisão escrita <b>inteiramente em
-        Python</b>, sem recompilar nada.</li>
-      </ul>
-      <div class="stat-row">
-        <span class="stat-chip">MLP 28→64→64→3, 6.211 parâmetros (ONNX)</span>
-        <span class="stat-chip">~42 µs/decisão (Python)</span>
-      </div>
-    </div>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="30" height="30"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: Tacview mostrando a A-4 em voo, com os falcons e o
-      intruso</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="A árvore de comportamento é um contrato inegociável">
-  <p class="eyebrow">III · Onde estamos</p>
-  <h2 class="headline">A árvore de comportamento é um contrato inegociável</h2>
-  <figure class="diagram">
-    <svg viewBox="0 0 720 260" role="img" aria-label="A arvore de comportamento e o contrato fixo; a folha pode ser um no C++, um script Python ou uma politica ONNX">
-      <rect x="245" y="14" width="230" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-accent"/>
-      <text x="360" y="40" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-accent">árvore de comportamento</text>
-      <text x="360" y="58" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-accent" opacity=".8">contrato fixo</text>
-
-      <rect x="10" y="160" width="210" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-      <text x="115" y="196" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-teal">nó C++</text>
-      <text x="115" y="214" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">tradicional</text>
-
-      <rect x="255" y="160" width="210" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-amber"/>
-      <text x="360" y="196" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-amber">script Python</text>
-      <text x="360" y="214" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-amber" opacity=".8">xpyembed, no frame</text>
-
-      <rect x="500" y="160" width="210" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-brick"/>
-      <text x="605" y="196" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-brick">política ONNX</text>
-      <text x="605" y="214" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-brick" opacity=".8">MLP treinado, 1 folha</text>
-    </svg>
-    <figcaption>A estrutura de decisão é sempre a mesma — o que varia é o que cada folha pode
-    ser: um nó em C++, um script Python interpretado no frame, ou uma política ONNX treinada,
-    como folha única.</figcaption>
-  </figure>
-</section>
-
-<section class="slide slide--statement" data-title="Reescrever é recuperar conhecimento">
-  <p class="eyebrow">III · Onde estamos</p>
-  <p class="statement">Código é, por natureza, uma forma difícil de guardar conhecimento —
-  mesmo em uma linguagem tão legível quanto Python. Reescrever um modelo antigo é a
-  oportunidade de recuperar esse conhecimento, com documentação e testes junto.</p>
-  <p class="lede muted" style="margin-top:4px">E esse é o melhor momento possível para isso —
-  com IA tornando muito mais viável ler, entender e reescrever código antigo.</p>
-</section>
-
-<section class="slide" data-title="Comece pelo TOUR.md">
-  <p class="eyebrow">IV · O convite</p>
-  <h2 class="headline">Comece pelo TOUR.md</h2>
-  <ul class="list">
-    <li>Um roteiro guiado, pensado para <b>não exigir conhecimento prévio</b> do repositório —
-    exatamente o problema que ele existe para resolver.</li>
-    <li>Leva você a subir o ambiente, rodar um cenário de verdade, ver a simulação no Tacview,
-    explorar o painel de controle, abrir o manual interativo.</li>
-    <li>Segunda trilha, para quem quiser ir mais fundo: o editor visual de cenários, o Groot, a
-    decisão em Python, o ambiente de treino de RL.</li>
-  </ul>
-  <div class="media-placeholder" style="max-width:520px">
-    <svg width="28" height="28"><use href="#i-video"></use></svg>
-    <span class="tag">Vídeo sugerido</span>
-    <p class="caption">Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview</p>
-  </div>
-</section>
-
-<section class="slide" data-title="Estresse o metaprojeto">
-  <p class="eyebrow">IV · O convite</p>
-  <h2 class="headline">Estresse o metaprojeto</h2>
-  <ul class="list">
-    <li>O convite não é só "leia a documentação" — é <b>rode, quebre, proponha melhorias,
-    reporte erros</b>.</li>
-    <li>Amigável e plug-and-play não significa livre de erros — significa que encontrar e
-    reportar esses erros já é parte esperada e valiosa do processo.</li>
-    <li>Em <code>docs/books</code>: dois livros escritos com apoio de IA, um sobre o MIXR e
-    outro sobre o BehaviorTree.CPP — material de capacitação para quem está entrando agora.</li>
-  </ul>
-  <div class="grid-2" style="align-items:center">
-    <div class="callout">
-      <span class="k">Por quê</span>
-      <p>Um sistema assim só amadurece com gente de verdade tentando usá-lo.</p>
-    </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Capas dos dois livros — manual do MIXR e do BehaviorTree.CPP</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="O que se espera">
-  <p class="eyebrow">V · O que se espera</p>
-  <h2 class="headline">O que se espera</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>Que cada pessoa que passar por esse processo deixe esse framework com a <b>cara do que
-      gostaria de trabalhar</b> no futuro.</li>
-      <li>Chegar a um núcleo o mais próximo possível do <b>imutável</b> — uma base estável o
-      suficiente para que o esforço de cada equipe vá para o que é específico do modelo dela.</li>
-    </ul>
-    <figure class="diagram">
-      <svg viewBox="0 0 520 320" role="img" aria-label="Slot, plugin e folha de arvore de comportamento convergindo para um vocabulario comum">
-        <rect x="20" y="10" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">"slot"</text>
-
-        <rect x="20" y="130" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="167" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">"plugin"</text>
-
-        <rect x="20" y="250" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="280" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-teal">"folha de árvore</text>
-        <text x="130" y="296" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-teal">de comportamento"</text>
-
-        <rect x="300" y="115" width="200" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.7" class="svg-accent"/>
-        <text x="400" y="152" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">vocabulário</text>
-        <text x="400" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">comum</text>
-
-        <line x1="242" y1="40" x2="298" y2="130" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-        <line x1="242" y1="160" x2="298" y2="160" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-        <line x1="242" y1="280" x2="298" y2="190" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-      </svg>
-      <figcaption>Quando os termos significam a mesma coisa para todo mundo, uma reunião técnica
-      para de gastar tempo alinhando terminologia.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section class="slide slide--statement" data-title="Fechamento">
-  <p class="eyebrow">V · O que se espera</p>
-  <p class="statement">Simulação aeroespacial vai continuar sendo difícil. Mas a forma como
-  escrevemos, testamos, documentamos e conversamos sobre os modelos que simulam esse domínio —
-  <em>essa parte está em nossas mãos</em>.</p>
-  <p class="lede muted" style="margin-top:4px">Um eixo de cada vez. Um modelo, hoje. E o convite
-  aberto para o próximo.</p>
-</section>
-
-<section class="slide slide--statement" data-title="Encerramento">
-  <p class="eyebrow">V · Encerramento</p>
-  <p class="statement">Obrigado.</p>
-  <p class="lede muted" style="margin-top:4px">poc-mixr · asa 2.0.0 — perguntas?</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">
-    <svg width="40" height="40"><use href="#i-image"></use></svg>
-    <span class="tag">Imagem sugerida</span>
-    <p class="caption">Logo da ASA ou imagem de encerramento do time</p>
-  </div>
-</section>
-
-</div>
+<script src="content.js"></script>
+<script>
+(function(){
+  // Monta as <section class="slide"> dentro de #deck a partir de content.js, ANTES
+  // dos dois scripts abaixo (navegacao, video), que continuam so fazendo
+  // document.querySelectorAll('.slide') como sempre fizeram -- nenhuma mudanca neles
+  // foi necessaria so por causa desta indirecao.
+  var deck = document.getElementById('deck');
+  var defs = window.PRESENTATION_SLIDES || [];
+  var frag = document.createDocumentFragment();
+  defs.forEach(function(def){
+    var section = document.createElement('section');
+    section.className = def.extraClass ? 'slide ' + def.extraClass : 'slide';
+    section.setAttribute('data-title', def.title);
+    section.innerHTML = def.html;
+    frag.appendChild(section);
+  });
+  deck.appendChild(frag);
+})();
+</script>
 
 <div class="hud">
   <button class="hud-btn" id="btnPrev" aria-label="Slide anterior"><svg width="16" height="16"><use href="#i-prev"></use></svg></button>
@@ -943,7 +379,7 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     <div class="hud-track"><div class="hud-fill" id="hudFill"></div></div>
     <span class="hud-count" id="hudCount">01 / 30</span>
   </div>
-  <span class="hud-hint">← → navegar · Espaço avança · M mapa</span>
+  <span class="hud-hint">← → navegar · Espaço avança · scroll passa slide · M mapa</span>
   <button class="hud-btn hud-menu-btn" id="btnMenu" aria-haspopup="dialog" aria-label="Abrir mapa de slides">
     <svg width="14" height="14"><use href="#i-grid"></use></svg>Mapa
   </button>
@@ -962,6 +398,7 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 
 <script>
 (function(){
+  var deck = document.getElementById('deck');
   var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
   var total = slides.length;
   var hudSection = document.getElementById('hudSection');
@@ -969,7 +406,13 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   var hudCount = document.getElementById('hudCount');
   var overlay = document.getElementById('menuOverlay');
   var menuSections = document.getElementById('menuSections');
-  var STORAGE_KEY = 'asa-2-0-0-deck-index';
+  var STORAGE_KEY = 'refatoracao-asa-deck-index';
+  // tem que bater com a duracao da transicao CSS de ".slide"/".slide.is-leaving" (ver <style>)
+  // -- e' o tempo que a slide anterior fica com a classe "is-leaving" antes de ser desligada de
+  // vez (senao ela travaria em opacity:0 fora da tela, mas ainda participando do layout/animacao
+  // de entrada na proxima vez que voltar a ficar ativa).
+  var TRANSITION_MS = 520;
+  var leavingTimeout = null;
 
   function pad(n){ return n < 10 ? '0' + n : '' + n; }
 
@@ -993,8 +436,53 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     return eb ? eb.textContent.trim() : '';
   }
 
-  function render(){
-    slides.forEach(function(s, i){ s.classList.toggle('is-active', i === index); });
+  // play automatico ao ENTRAR num slide com video (demo-stage), pausa ao sair -- so' se aplica
+  // quando o <video> ja tem "src" (atributo refletido tanto de src="..." no HTML quanto de um
+  // video.src = "..." atribuido pelo script de probing abaixo); um <video hidden> sem fonte
+  // ainda (placeholder ainda de pe) nao tem o que tocar. Reinicia do zero a cada entrada -- e'
+  // o que "automatico ao entrar" pede, nao "continua de onde parou".
+  function playSlideVideo(slide){
+    var v = slide && slide.querySelector('video');
+    if (!v || !v.getAttribute('src')) return;
+    try { v.currentTime = 0; } catch (e) {}
+    var p = v.play();
+    if (p && typeof p.catch === 'function') p.catch(function(){});
+  }
+  function pauseSlideVideo(slide){
+    var v = slide && slide.querySelector('video');
+    if (v) v.pause();
+  }
+
+  function render(prevIndex, dir){
+    if (leavingTimeout){ clearTimeout(leavingTimeout); leavingTimeout = null; }
+    // limpa qualquer "is-leaving" que uma troca anterior ainda nao tenha terminado de
+    // desligar (navegacao rapida, varias slides em sequencia antes da transicao acabar).
+    slides.forEach(function(s){ s.classList.remove('is-leaving'); });
+
+    // seta o sentido ANTES de tocar em classe de slide nenhuma, e forca o navegador a
+    // "comitar" esse estado (offsetHeight le layout, o que obriga um recalculo de estilo) antes
+    // de marcar a nova slide como ativa -- senao a transicao de entrada usaria o sentido
+    // ANTIGO como ponto de partida (o browser so compara o ultimo estilo pintado contra o
+    // estado final da mesma tarefa de script, e as duas mudancas aconteceriam juntas).
+    if (dir) deck.setAttribute('data-dir', dir);
+    if (prevIndex !== null && prevIndex !== index) void slides[index].offsetHeight;
+
+    slides.forEach(function(s, i){
+      if (i === index){ s.classList.add('is-active'); }
+      else if (i === prevIndex){ s.classList.remove('is-active'); s.classList.add('is-leaving'); }
+      else { s.classList.remove('is-active'); }
+    });
+
+    if (prevIndex !== null && prevIndex !== index) pauseSlideVideo(slides[prevIndex]);
+    playSlideVideo(slides[index]);
+
+    if (prevIndex !== null && prevIndex !== index){
+      leavingTimeout = setTimeout(function(){
+        if (slides[prevIndex]) slides[prevIndex].classList.remove('is-leaving');
+        leavingTimeout = null;
+      }, TRANSITION_MS);
+    }
+
     hudSection.textContent = sectionOf(slides[index]);
     hudFill.style.width = ((index + 1) / total * 100) + '%';
     hudCount.textContent = pad(index + 1) + ' / ' + pad(total);
@@ -1002,15 +490,32 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   }
 
   function go(i){
-    index = Math.max(0, Math.min(total - 1, i));
-    render();
+    var next = Math.max(0, Math.min(total - 1, i));
+    if (next === index) return;
+    var prev = index;
+    var dir = next > index ? 'fwd' : 'back';
+    index = next;
+    render(prev, dir);
   }
+
+  var closeMenuTimeout = null;
 
   function openMenu(){
     if (!menuSections.childElementCount) buildMenu();
+    if (closeMenuTimeout){ clearTimeout(closeMenuTimeout); closeMenuTimeout = null; }
     overlay.hidden = false;
+    // forca o navegador a comitar o estado "visivel porem sem is-open" (fundo transparente,
+    // painel deslocado) antes de pedir a transicao pra "is-open" -- mesmo raciocinio do
+    // offsetHeight em render(): sem isso as duas mudancas (tirar o hidden e ligar is-open)
+    // colapsariam num unico frame e a abertura apareceria de golpe, sem transicao nenhuma.
+    void overlay.offsetHeight;
+    overlay.classList.add('is-open');
   }
-  function closeMenu(){ overlay.hidden = true; }
+  function closeMenu(){
+    overlay.classList.remove('is-open');
+    if (closeMenuTimeout) clearTimeout(closeMenuTimeout);
+    closeMenuTimeout = setTimeout(function(){ overlay.hidden = true; closeMenuTimeout = null; }, 260);
+  }
 
   function buildMenu(){
     var groups = [];
@@ -1061,7 +566,34 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     else if (e.key === 'm' || e.key === 'M') { openMenu(); e.preventDefault(); }
   });
 
-  render();
+  // scroll do mouse/trackpad passa slide -- com um "cooldown" pra um unico gesto de roda (que
+  // dispara VARIOS eventos "wheel" pequenos, principalmente em trackpad) nao pular mais de uma
+  // slide de uma vez, e respeitando o scroll INTERNO de uma slide que nao coube na tela (o
+  // overflow-y:auto de ".slide" e' so uma rede de seguranca, mas continua existindo -- ver o
+  // comentario dela em <style>): so troca de slide quando a slide ativa ja esta encostada no
+  // topo (scroll pra cima) ou no fundo (scroll pra baixo) do proprio conteudo dela.
+  var WHEEL_COOLDOWN_MS = 650;
+  var WHEEL_THRESHOLD = 10;
+  var wheelLocked = false;
+
+  deck.addEventListener('wheel', function(e){
+    if (!overlay.hidden) return;
+    if (Math.abs(e.deltaY) < WHEEL_THRESHOLD) return;
+
+    var active = slides[index];
+    var atBottom = Math.ceil(active.scrollTop + active.clientHeight) >= active.scrollHeight;
+    var atTop = active.scrollTop <= 0;
+    if (e.deltaY > 0 && !atBottom) return;
+    if (e.deltaY < 0 && !atTop) return;
+
+    e.preventDefault();
+    if (wheelLocked) return;
+    wheelLocked = true;
+    go(index + (e.deltaY > 0 ? 1 : -1));
+    setTimeout(function(){ wheelLocked = false; }, WHEEL_COOLDOWN_MS);
+  }, { passive: false });
+
+  render(null, null);
 })();
 </script>
 
@@ -1088,6 +620,16 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
         video.hidden = false;
         video.src = src;
         video.load();
+        // caso raro mas real: a sessao volta direto neste slide (posicao restaurada do
+        // localStorage), entao ele ja esta "is-active" no instante em que o probing acima de
+        // termina de resolver -- sem isso, o video so tocaria automatico na PROXIMA vez que o
+        // slide fosse (re)ativado, nao nesta primeira entrada.
+        var slide = stage.closest('.slide');
+        if (slide && slide.classList.contains('is-active')){
+          try { video.currentTime = 0; } catch (e) {}
+          var p = video.play();
+          if (p && typeof p.catch === 'function') p.catch(function(){});
+        }
       };
       probe.onerror = function(){ tryExt(i + 1); };
       probe.src = src;
