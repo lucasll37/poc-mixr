@@ -32,10 +32,13 @@ make test                            # so a suite do HOST (64 testes hoje -- num
 para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
 
 ```bash
-make test-models   # só a do modelo:  domain (50) + tree (19) + native (24) casos GTest,
-                     # em 4 alvos meson (o 4º, tree-model-sync, é o guard de
-                     # models/players/A-4/tools/dump-tree-model — ver a seção Groot do
-                     # CLAUDE.md raiz)
+make test-models   # a suíte de CADA projeto de modelo descoberto na hora (find sobre
+                     # models/**, o mesmo MODELOS_PRODUCAO de 'make models', mais o
+                     # template/). Hoje: A-4 com domain (50) + tree (19) + native (24)
+                     # casos GTest em 4 alvos meson (o 4º, tree-model-sync, é o guard
+                     # de models/players/A-4/tools/dump-tree-model — ver a seção Groot
+                     # do CLAUDE.md raiz), mais os 5 alvos do template/. Modelo novo
+                     # entra sozinho, sem editar alvo nenhum.
 make test           # só a do host — builda/sincroniza o(s) modelo(s) antes (dlopen precisa do
                      # .so), mas não roda a suíte deles
 meson test -C build --suite plugin   # só uma camada do host

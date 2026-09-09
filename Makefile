@@ -455,10 +455,35 @@ venv-rl-training: ## Cria/atualiza o venv de treino de src/poc/rl-training (sepa
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native).
-	@# 'test' do Makefile de models/players/A-4 ja confere a contagem (>=3) e ja
-	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
-	$(MAKE) -C models/players/A-4 test
+test-models: ## Roda a suite de CADA projeto de modelo descoberto.
+	@# MESMA lista de 'models:' -- MODELOS_PRODUCAO (descoberto por find na
+	@# hora, ver o bloco de comentario acima daquele alvo) mais template/,
+	@# que nunca e producao mas tem suite propria e precisa continuar
+	@# passando: e' o UNICO ponto de partida copiavel ('make new-model'), e
+	@# quebra-lo em silencio quebra todo modelo gerado dali em diante.
+	@# Mesma forma do laco de 'clean:', pelo mesmo motivo (template/ e'
+	@# excluido de MODELOS_PRODUCAO por path, entao entra explicito).
+	@#
+	@# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): aqui havia um
+	@# '$$(MAKE) -C models/players/A-4 test' com o nome CRAVADO. Enquanto
+	@# houvesse um modelo de producao so, isso dava exatamente o mesmo
+	@# resultado que o laco abaixo -- e por isso passava despercebido. O
+	@# modo de falha aparece no SEGUNDO modelo: 'make models' ja o compila
+	@# (descoberta por find) e 'make test-models' ignoraria a suite dele em
+	@# SILENCIO, que e' a mesma classe de verde-vazio que a guarda de
+	@# contagem minima de cada modelo existe para evitar um nivel abaixo.
+	@# A suite do template tambem nunca rodava por aqui (5 testes, medidos
+	@# passando na mudanca).
+	@#
+	@# O 'test' de cada Makefile-filho ja confere a contagem minima da
+	@# PROPRIA suite (>=3 no A-4, >=4 no template -- numeros por-modelo, de
+	@# proposito, por isso 'test' fica fora de models/common.mk) e ja builda
+	@# se precisar ('test: build', la) -- nao ha o que duplicar aqui.
+	@# Falha rapido ('|| exit 1'), igual ao laco de 'models:'.
+	@for d in $(MODELOS_PRODUCAO) models/players/template; do \
+	   $(MAKE) -C $$d test || exit 1; \
+	 done
+	@echo "$(GREEN)test-models: OK$(NC) -> $(words $(MODELOS_PRODUCAO)) de producao ($(notdir $(MODELOS_PRODUCAO))) + template/"
 
 test: install ## Roda SO a suite do HOST (requer -Dtests=true; modelo: 'test-models').
 	@# Duas suites do host (memory-controle-negativo, plugin-hotswap) linkam

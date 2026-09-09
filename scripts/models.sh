@@ -247,7 +247,8 @@ Falta, MANUALMENTE (nada disto e automatizavel com seguranca):
 
   [ ] models/REGISTRO.md -- remover a linha de ${alvo} (tabela manual, sem enforcement)
   [ ] tests/meson.build -- entradas que citam o nome do modelo
-  [ ] Makefile da raiz -- alvos com o nome cravado (test-models, test, test-asan)
+  [ ] Makefile da raiz -- alvos com o nome cravado (test, test-asan; 'test-models'
+      e 'models' NAO precisam -- descobrem por find, ver MODELOS_PRODUCAO)
   [ ] .gitlab-ci.yml e .gitignore -- entradas por nome, se houver
   [ ] regenerar os catalogos COMMITADOS que carregam o rotulo 'plugin:<nome>':
       src/ui/edl_catalog.generated.json, src/ui/edl-builder.html e
