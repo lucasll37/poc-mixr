@@ -13,10 +13,12 @@ Este diretório é o **único** ponto de partida copiável deste repositório, e
 com papéis diferentes:
 
 - **`template`** (`libtemplate.so`) — o esqueleto compilável e testável, do tamanho mínimo
-  necessário para mostrar a separação em camadas (`domain/` → `ubf/` → `xnative/`) que os modelos
-  reais deste repositório usam, com uma única decisão de exemplo (um Schmitt trigger sobre a
-  altitude do player: "engajado" acima de um limiar, "não engajado" abaixo de outro) percorrendo
-  as três camadas de ponta a ponta. Ele existe para ser **copiado e transformado** no seu modelo —
+  necessário para mostrar a separação em camadas (`domain/` → `bt/` → `ubf/` → `xnative/`) que os
+  modelos reais deste repositório usam, com uma única decisão de exemplo (um Schmitt trigger sobre
+  a altitude do player: "engajado" acima de um limiar, "não engajado" abaixo de outro) percorrendo
+  as camadas de ponta a ponta — inclusive uma **árvore de comportamento** de verdade
+  (`configs/example_tree.xml`, dois nós), o que dá ao projeto os mesmos alvos de `A-4`:
+  `make create-bt`/`make update-bt`/`make open-groot`. Ele existe para ser **copiado e transformado** no seu modelo —
   ver [`docs/PRIMEIROS-PASSOS.md`](docs/PRIMEIROS-PASSOS.md) para o roteiro mecânico.
 - **`template_mirror`** (`libtemplate_mirror.so`, fonte em `src/mirror.cpp`) — o mirror de
   contrato que este repositório usa nos próprios testes de plugin (`plugin-modelo-estranho`/
@@ -33,17 +35,25 @@ referência que `models/players/` tem hoje (este `template` e `A-4`).
 ```
 template/
 ├── include/
-│   ├── domain/ExampleThreshold.hpp   # a regra pura -- sem MIXR
+│   ├── domain/ExampleThreshold.hpp   # a regra pura -- sem MIXR, sem BT.CPP
+│   ├── bt/
+│   │   ├── NodeContext.hpp           # o que a arvore PRODUZ num tick
+│   │   ├── DecisionContext.hpp       # a interface que mantem os nos livres de MIXR
+│   │   ├── bt_factory.hpp            # a lista de nos deste modelo (UMA so)
+│   │   └── nodes/                    # um no por decisao (1 condicao + 1 acao)
 │   ├── ubf/
 │   │   ├── ExampleState.hpp          # percepcao: le o Player, guarda um numero cru
-│   │   ├── ExampleBehavior.hpp       # decisao: aplica a regra, tem os slots
+│   │   ├── ExampleBehavior.hpp       # decisao: carrega a arvore e tica, tem os slots
 │   │   └── ExampleAction.hpp         # atuacao: escreve no xboard (a obrigacao muda)
 │   └── xnative/factory.hpp           # registro das 3 classes acima -- SO do artefato 'template'
 ├── src/
-│   ├── domain/ ubf/ xnative/         # a implementacao de cada header acima, no mesmo layout
+│   ├── domain/ bt/ ubf/ xnative/     # a implementacao de cada header acima, no mesmo layout
 │   └── mirror.cpp                    # o SEGUNDO artefato -- NAO e scaffold, ver o aviso no topo
+├── configs/example_tree.xml          # a arvore -- DADO do modelo, instalada junto com o .so
+├── tools/                            # dump-tree-model + update_bt_models.py (create-bt/update-bt)
 ├── tests/
 │   ├── domain/test_ExampleThreshold.cpp   # 4 casos, sem MIXR, sem Station
+│   ├── tree/test_example_tree.cpp         # a arvore de PRODUCAO contra um contexto falso
 │   └── check_contract.sh                  # forma de CADA .so: 1 simbolo T, deps resolvidas
 ├── docs/
 │   ├── ARCHITECTURE.md               # as camadas, o "porque" de cada uma, quando crescer
@@ -70,7 +80,7 @@ cd ../../.. && make configure && make sdk
 # daqui em diante, só aqui dentro:
 cd models/players/template
 make build            # compila -> ./dist/lib/mixr-plugins/{libtemplate.so,libtemplate_mirror.so} (bare `make` so mostra `make help`)
-make test             # 4 casos de domain/ (o Schmitt trigger) + a forma dos DOIS .so
+make test             # domain/ (o Schmitt trigger) + a arvore + a forma dos DOIS .so
 make install-host     # copia os dois .so para ../../../plugins/ -- ver a proxima secao
 ```
 

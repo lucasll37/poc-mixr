@@ -1470,7 +1470,7 @@ excluído por path. O diretório novo já entra sozinho em `make models`/`make t
 de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
 alcançável por `-folder`/`-f` sem registrar em lugar nenhum — não há mais catálogo estático;
-opcionalmente cobertura em `tests/meson.build`; ver `CONTRIBUTING.md` §5.2/§5.3) e a linha em
+opcionalmente cobertura em `tests/meson.build`; ver `CONTRIBUTING.md` §5.2/§5.4) e a linha em
 `models/REGISTRO.md`.
 
 **Todo projeto de modelo tem `tests/`, `docs/`, `Makefile`, `README.md` e `CHANGELOG.md` -- e a
@@ -1670,7 +1670,7 @@ subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
    grupo DIS), sem tocar em C++.
 4. Opcionalmente, cobertura de teste automática em `tests/meson.build` — três formas possíveis
    (lista `pocs`, bloco `test()` manual, ou nenhuma), decisão documentada em `CONTRIBUTING.md`
-   §5.3, com marcadores no próprio arquivo.
+   §5.4, com marcadores no próprio arquivo.
 
 Não há mais um passo de Makefile aqui — os alvos `run-<chave>`/`check-<chave>` por poc foram
 removidos (ver "Estado atual" mais abaixo); rodar a poc nova é só o comando do passo 3.

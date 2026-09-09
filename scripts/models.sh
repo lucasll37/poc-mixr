@@ -251,7 +251,7 @@ Falta, MANUALMENTE (nada disto e automatizavel):
       'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
       '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
       registrar em lugar nenhum) e, se fizer sentido, cobertura em tests/meson.build --
-      ver CONTRIBUTING.md, secoes 5.2 e 5.3
+      ver CONTRIBUTING.md, secoes 5.2 e 5.4
   [ ] acrescentar sua linha em models/REGISTRO.md (nome, pasta, status, responsavel)
 EOF
 }
@@ -297,7 +297,15 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 #    docs/PRIMEIROS-PASSOS.md passo 2, "grep -rl | xargs sed"). Roda DEPOIS
 #    do passo 1 (mirror.cpp ja apagado), entao 'xtemplate_mirror' nunca
 #    entra nesta lista.
-ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests)"
+# 'tools' entra na lista junto com include/src/tests (ACHADO RODANDO, nao
+# redescobrir): tools/dump_tree_model.cpp nomeia o namespace do modelo
+# (mixr::models::x<nome>::bt) para montar a factory, entao um scaffold com
+# 'tools/' fora desta varredura sai com 'xtemplate' cravado la e NAO COMPILA
+# -- reproduzido com 'make new-model NAME=probe-bt CATEGORY=others'. O
+# models/players/A-4 nao expunha isso porque os nos dele vivem num
+# 'bt_nodes' solto no escopo global (a excecao historica que
+# models/players/template/docs/CONTRATO.md secao 6 manda NAO copiar).
+ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests tools)"
 
 # 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'.
 #    $NS_NOVO ja foi derivado (e ja teve a colisao checada) logo apos a
@@ -386,7 +394,10 @@ substituir "$DEST_ABS/README.md" "\`$ORIGEM_NOME\`" "\`$NAME\`" 0
 
 # 9. confere que nada do nome/namespace antigo sobrou (mesmo grep que o
 #    passo 2 do PRIMEIROS-PASSOS.md sugere rodar a mao)
-SOBRAS="$(arquivos_contendo "$DEST_ABS" "$NS_VELHO" include src tests)"
+# MESMA lista da varredura de renomeacao acima -- se divergirem, esta guarda
+# passa a dar verde sobre um diretorio que ninguem renomeou (foi exatamente o
+# que aconteceu com 'tools/': o scaffold nao compilava e este check nao via).
+SOBRAS="$(arquivos_contendo "$DEST_ABS" "$NS_VELHO" include src tests tools)"
 SOBRAS_MESON="$(arquivos_contendo "$DEST_ABS" "'$ORIGEM_NOME'" . | grep -F 'meson.build' || true)"
 if [ -n "$SOBRAS" ] || [ -n "$SOBRAS_MESON" ]; then
     echo "  aviso: ainda ha ocorrencias do nome/namespace antigo em:"

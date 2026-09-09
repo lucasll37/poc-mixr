@@ -13,7 +13,10 @@
 # O QUE FICA DE FORA, de proposito -- genuinamente diferente entre modelos,
 # nao cosmetica: build/test/install/install-host/uninstall-host (a lista de
 # .so publicada e o diretorio de dados sao por-modelo) e qualquer alvo extra
-# que so um modelo tenha (create-bt/update-bt/open-groot, hoje so em A-4).
+# que so um modelo tenha. 'create-bt'/'update-bt'/'open-groot' deixaram de
+# ser esse caso -- os dois projetos os declaram hoje, com o MESMO texto, mas
+# continuam fora daqui de proposito: dependem de 'tools/dump-tree-model', que
+# so' existe num modelo que de fato tenha uma arvore de comportamento.
 # Cada Makefile-filho os declara por cima, DEPOIS do 'include' abaixo.
 #
 # CONTRATO com quem inclui este arquivo -- definir ANTES do 'include':

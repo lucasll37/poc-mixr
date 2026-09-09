@@ -520,7 +520,7 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # test() manual (precedente: 'onnx-policy', mais abaixo neste arquivo) ou
 # nenhuma cobertura em tests/meson.build (precedente: 'built-in_mixr_1',
 # que so tem um 'make check-<nome>' no Makefile raiz). A arvore de decisao
-# completa esta em CONTRIBUTING.md secao 5.3 -- leia antes de editar esta
+# completa esta em CONTRIBUTING.md secao 5.4 -- leia antes de editar esta
 # lista OU de escrever um bloco test() novo.
 pocs = [
     ['flight',        app, 'flight',      ''],
@@ -688,7 +688,7 @@ endforeach
 
 # >>> BLOCO test() MANUAL PRA MODELO/CENARIO NOVO ENTRA POR AQUI (ou logo
 # abaixo) -- este e o padrao pra quem NAO serve a lista 'pocs' acima (ver o
-# comentario junto dela e CONTRIBUTING.md secao 5.3). O bloco de
+# comentario junto dela e CONTRIBUTING.md secao 5.4). O bloco de
 # 'scenario-onnx-policy'/'memory-onnx-policy' logo a seguir e o precedente a
 # copiar: mesmo scenario_runner/leak_runner, so que fora do 'foreach', com o
 # '--poc'/'--label' do SEU cenario. <<<

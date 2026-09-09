@@ -217,7 +217,51 @@ entrada de `components:` no `.edl.in` (`provides:` é igualdade EXATA de conjunt
 `.so` exporta); e nada mais a registrar — sem catálogo estático, a poc já fica alcançável por
 `./app -folder <pasta> -scenario <nome>` assim que `configs/` tiver um único `.edl`/`.edl.in`.
 
-### 5.3 Cobertura de teste automática (opcional)
+### 5.3 Terreno: quando o cenário sai da área coberta
+
+O `terrain:` do `.edl` nomeia **um** tile SRTM, e é ele que o `Player::updateElevation()` nativo lê
+(AGL, anti-CFIT). O repositório versiona **cinco** tiles reais, todos em torno da Serra do Mar (RJ),
+que é onde os cenários de demonstração voam:
+
+```
+S23W043  (o dos cenários)   S23W042  S22W043  S23W044  S22W044
+```
+
+Se o seu cenário fica **fora** dessa caixa, o tile precisa estar em disco antes de rodar — e a
+falha, se não estiver, é **silenciosa**: `Player::updateElevation()` ignora o retorno de
+`getElevation()`, deixa a elevação em `0.0` e ainda liga `tElevValid = true`. Ou seja, a aeronave
+passa a raciocinar sobre um "terreno" ao nível do mar sem nenhum aviso.
+
+**`scripts/fetch_srtm.sh`** baixa o que faltar, do espelho aberto *Terrain Tiles* da AWS Open Data
+(SRTM1 real, `.hgt.gz`, **sem login** — no formato binário exato que `SrtmHgtFile` exige):
+
+```bash
+scripts/fetch_srtm.sh S23W042 S22W043          # tiles nomeados (canto SW, convenção SRTM)
+scripts/fetch_srtm.sh --bbox -25 -20 -46 -40   # uma caixa: lat0 lat1 lon0 lon1
+scripts/fetch_srtm.sh --brasil                 # o Brasil inteiro (1600 tiles, ~12 GB)
+scripts/fetch_srtm.sh --brasil --dry-run       # só lista o que baixaria
+```
+
+É **idempotente**: pula todo tile já em disco e íntegro (`gzip -t`), então interromper no meio e
+rodar de novo continua de onde parou. Um tile que não existe no espelho (oceano aberto) sai como
+`ausente`, não como erro — só falha de rede/escrita vira `ERRO` e código de saída 1.
+`SRTM_PARALELO=N` ajusta a concorrência (padrão 12).
+
+**O que é versionado, e o que não é.** Só os cinco tiles acima entram no git (exceções nomeadas no
+`.gitignore`); qualquer outro `.hgt.gz` fica **local**. Isso é deliberado: `--brasil` são ~12 GB,
+que no histórico do git inviabilizariam o clone — e não há nada a preservar, porque o espelho é
+público e o script reconstrói tudo. O `.hgt` descompactado nunca é versionado; é gerado sob demanda
+(`app::makeTerrainSampler()`) na primeira consulta que cai dentro daquele tile.
+
+**Não há passo de registro.** `app/TerrainQuery.cpp` varre a pasta inteira na primeira consulta e
+indexa por nome — tile novo aparece sozinho, sem editar código. A vista de Mapa do `./app` enxerga
+**todos** os tiles em disco (com teto de 12 residentes em memória, troca por LRU); a simulação em
+si continua lendo só o que o `terrain:` do cenário nomeia.
+
+Detalhe completo, incluindo por que o carregador é preguiçoso e a cobertura medida dos cenários da
+família `A4-*DOF`: [`shared/data/terrain/srtm/README.md`](shared/data/terrain/srtm/README.md).
+
+### 5.4 Cobertura de teste automática (opcional)
 
 A poc já roda sem nenhuma linha em `tests/meson.build`. Decida se vale a pena por esta tabela
 (marcadores no próprio `tests/meson.build` apontam de volta pra cá):

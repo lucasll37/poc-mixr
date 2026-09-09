@@ -3,7 +3,7 @@
 # Atualiza o <TreeNodesModel> de toda arvore .xml em configs/ com a saida de
 # verdade do binario dump-tree-model (BT::writeTreeNodesModelXML() nativo do
 # BT.CPP, sobre a MESMA factory que o modelo registra em
-# bt_factory.cpp/bt_factory_sdk.cpp -- ver CLAUDE.md, "Groot -- editor e
+# bt_factory.cpp -- ver CLAUDE.md raiz, "Groot -- editor e
 # monitor ao vivo"). E' o que o alvo 'make update-bt' roda.
 #
 # O bloco e' SEMPRE regenerado por inteiro a partir do registro atual --
@@ -163,7 +163,7 @@ def main() -> None:
                 + ", ".join(outdated)
             )
         print(f"As {len(tree_files)} arvore(s) .xml de {CONFIGS} batem com o que "
-              "bt_factory.cpp/bt_factory_sdk.cpp registram.")
+              "bt_factory.cpp registram.")
         return
 
     if changed:

@@ -43,12 +43,19 @@ cpp = meson.get_compiler('cpp')
 # '--tags sdk' sem o ',devel', que instala as .so e ESQUECE os headers).
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelo mesmo .pc que o host usa. Este template NAO linka
-# behaviortree.cpp.asa -- decide com uma regra so (ver
-# include/ubf/ExampleBehavior.hpp). Acrescente 'behavior_tree_dep =
-# dependency(...)' e ponha-a em model_deps quando o SEU modelo crescer alem
-# disso (ver docs/ARCHITECTURE.md, secao "Quando isto nao bastar mais").
+# Do Conan, pelo mesmo .pc que o host usa.
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
+
+# A arvore de comportamento (BehaviorTree.CPP v3.5.6 -- nada aqui vale para a
+# v4, ver contexts/BTCPP-CONTEXT.md). Linkada SO' no artefato do scaffold,
+# nunca no mirror de contrato: e' uma .a de 35 MB, e o mirror nao tica arvore
+# nenhuma.
+#
+# ARMADILHA JA MEDIDA (nao redescobrir): a lib e' ESTATICA e exporta 447
+# simbolos globais 'T'. Sem '-Wl,--exclude-libs,ALL' no link do .so eles
+# vazam, porque 'gnu_symbol_visibility: hidden' NAO se aplica a objetos
+# vindos de um .a. A flag ja esta em 'model_link_args' abaixo -- nao remova.
+behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 sdk_libdir  = sdk_dep.get_variable(pkgconfig: 'libdir')
@@ -67,11 +74,26 @@ plugin_version_args = [
 
 model_inc = include_directories('include')
 
-model_sources = files(
-    'src/plugin.cpp',
-
-    # regra de negocio pura (sem MIXR) -- acrescente a sua ao lado desta
+# As duas listas abaixo sao SEPARADAS do resto (e nomeadas) porque tres
+# consumidores as reusam sem duplicar caminho nenhum: o .so de producao logo
+# abaixo, 'tests/meson.build' (test-domain/test-tree) e 'tools/meson.build'
+# (dump-tree-model). A propriedade que essa separacao preserva: as duas
+# compilam SEM o MIXR -- e' o que permite testar a arvore e gerar o
+# <TreeNodesModel> sem levantar Station nenhuma.
+domain_sources = files(
+    # regra de negocio pura (sem MIXR, sem BT.CPP) -- acrescente a sua aqui
     'src/domain/ExampleThreshold.cpp',
+)
+
+bt_sources = files(
+    # os nos da arvore e o registro deles (BT.CPP + domain/, sem MIXR)
+    'src/bt/bt_factory.cpp',
+    'src/bt/nodes/ExampleThresholdCondition.cpp',
+    'src/bt/nodes/ExampleLabelAction.cpp',
+)
+
+model_sources = domain_sources + bt_sources + files(
+    'src/plugin.cpp',
 
     # UBF: percepcao, decisao, atuacao
     'src/ubf/ExampleState.cpp',
@@ -90,7 +112,11 @@ model_sources = files(
 # dlopen. Nenhum dos dois e opcional -- ver
 # models/players/fixtures/stub/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']
-model_deps = [mixr_dep, sdk_dep]
+model_deps = [mixr_dep, sdk_dep, behavior_tree_dep]
+
+# O mirror de contrato nao tica arvore nenhuma -- linkar a .a de 35 MB nele
+# so' inflaria o artefato. Ver o bloco MIRROR-BLOCK mais abaixo.
+mirror_deps = [mixr_dep, sdk_dep]
 
 template_lib = shared_module('template',
     model_sources,
@@ -104,6 +130,14 @@ template_lib = shared_module('template',
     install_rpath         : mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..',
     build_rpath           : mixr_libdir + ':' + sdk_libdir,
 )
+
+# A arvore de comportamento vai JUNTO com o .so. Um .so sozinho nao e'
+# entrega completa: o slot 'treeFile:' do ( ExampleBehavior ) nomeia este
+# XML, e ele e' do MODELO, nao do cenario -- os nos que ele referencia so
+# existem dentro desta biblioteca. Mesma decisao (e mesmo destino) de
+# models/players/A-4 com flight_tree.xml.
+install_data('configs/example_tree.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'template')
 
 # >>> MIRROR-BLOCK-START -- scripts/models.sh apaga tudo ate MIRROR-BLOCK-END
 # quando copia este diretorio como scaffold. Nao mova/reformate as duas
@@ -126,7 +160,7 @@ template_mirror_lib = shared_module('template_mirror',
     cpp_args              : plugin_version_args,
     link_args             : model_link_args,
     include_directories   : model_inc,
-    dependencies          : model_deps,
+    dependencies          : mirror_deps,
     gnu_symbol_visibility : 'hidden',
     install               : true,
     install_dir           : get_option('libdir') / 'mixr-plugins',
@@ -134,6 +168,11 @@ template_mirror_lib = shared_module('template_mirror',
     build_rpath           : mixr_libdir + ':' + sdk_libdir,
 )
 # <<< MIRROR-BLOCK-END
+
+# Ferramentas de desenvolvimento (dump-tree-model, por tras de
+# 'make create-bt'/'make update-bt'). FORA do gate '-Dtests' de proposito:
+# nao sao teste.
+subdir('tools')
 
 if get_option('tests')
     subdir('tests')

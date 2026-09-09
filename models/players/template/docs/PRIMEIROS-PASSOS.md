@@ -98,22 +98,27 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
    — é a camada mais barata de iterar.
 2. **`ubf/ExampleState.*`** → troque `getValue()`/o que `updateState()` lê do ator pelo que a SUA
    decisão precisa enxergar do mundo.
-3. **`ubf/ExampleBehavior.*`** → troque os slots e a chamada a `domain::` pela sua regra. Se
-   precisar de mais de uma decisão coordenada ("se combustível baixo, RTB; senão, se há contato,
-   evade; senão, patrulha"), é aqui que entra uma árvore do BehaviorTree.CPP: em resumo, você
-   troca `genAction()` por um `tree.tickRoot()` sobre nós próprios em `bt/nodes/`, registrados
-   numa `BT::BehaviorTreeFactory` — `models/players/A-4/src/ubf/BtBehavior.cpp`/`bt/bt_factory.cpp`
-   são a referência completa; ver "Quando isto não bastar mais" em `docs/ARCHITECTURE.md` para o
-   passo a passo.
-4. **`ubf/ExampleAction::execute()`** → troque o corpo por comandos de verdade sobre o `Player`
+3. **`bt/nodes/Example*.*` + `configs/example_tree.xml`** → é aqui que a decisão de fato mora.
+   Um nó por condição ou ação, registrado em `src/bt/bt_factory.cpp`, lendo o que precisa pela
+   interface `bt/DecisionContext.hpp` (acrescente um getter lá se faltar algo). A forma da
+   decisão — a ordem das prioridades — é o XML, não o C++: dá para editá-la no Groot
+   (`make open-groot`) sem recompilar. **Depois de registrar um nó novo, rode `make update-bt`**;
+   o teste `tree-model-sync` cobra isso sozinho, mas o erro que ele evita (o Groot recusando a
+   árvore com *"This model has not been registered"*) é chato de diagnosticar sem saber a causa.
+   `make create-bt` gera um `configs/bt.xml` vazio já com a paleta deste modelo, se você preferir
+   começar uma árvore do zero no editor.
+4. **`ubf/ExampleBehavior.*`** → troque os slots pelos parâmetros que o SEU `.edl` vai configurar.
+   O corpo de `genAction()` normalmente não muda: ele carrega a árvore, tica uma vez e devolve a
+   ação com o rótulo que a árvore produziu.
+5. **`ubf/ExampleAction::execute()`** → troque o corpo por comandos de verdade sobre o `Player`
    (`Autopilot`, `StoresMgr`, o que for). **Não apague as duas chamadas ao `xboard`** — são a
    única obrigação de um modelo que falha em silêncio (ver `docs/ARCHITECTURE.md` e
    `docs/CONTRATO.md` seção 3).
-5. **`xnative/factory.cpp`** → atualize as três listas (o `if/else`, `NOMES[]`, `METAS[]`) para
+6. **`xnative/factory.cpp`** → atualize as três listas (o `if/else`, `NOMES[]`, `METAS[]`) para
    bater com as classes que sobraram/entraram. Se o seu modelo ficar com só 1-2 classes, considere
    eliminar `xnative/` e fazer como `src/mirror.cpp` (o mirror de contrato deste mesmo diretório,
    apagado no Passo 1): a factory inline, sem indireção.
-6. **`src/plugin.cpp`** → confira que o primeiro argumento de `MIXR_PLUGIN_DEFINE` é o nome final
+7. **`src/plugin.cpp`** → confira que o primeiro argumento de `MIXR_PLUGIN_DEFINE` é o nome final
    do seu modelo (o passo 2 já deve ter cuidado disso).
 
 ## Passo 6 — publique para um cenário conseguir carregar
@@ -150,7 +155,7 @@ sem você ter tocado no Makefile.
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
 cobertura de teste automática (`tests/meson.build`), isso é um passo separado, documentado em
-[`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md), seções 5.2 e 5.3 — não tem relação
+[`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md), seções 5.2 e 5.4 — não tem relação
 com este Passo 7.
 
 Antes do primeiro commit, vale ler também [`../CLAUDE.md`](../CLAUDE.md) (este projeto,

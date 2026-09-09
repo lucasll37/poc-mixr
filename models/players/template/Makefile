@@ -1,4 +1,4 @@
-.PHONY: build test install install-host uninstall-host
+.PHONY: build test install install-host uninstall-host create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -36,17 +36,22 @@ ROOT      := $(abspath ../../..)
 BUILD_TYPE ?= Debug
 TESTS     ?= true
 
+YELLOW := \033[1;33m
+
 include $(ROOT)/models/common.mk
 
 build: configure ## Compila o .so deste projeto.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-test: build ## Roda a suite deste template (domain + forma do .so).
+test: build ## Roda a suite deste template (domain + tree + forma do .so).
+	@# 4, e nao 5: o teste do mirror de contrato desaparece quando
+	@# 'make new-model' copia este diretorio (o bloco MIRROR-BLOCK sai
+	@# junto com src/mirror.cpp), e a guarda tem de valer nos dois casos.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 2 ] || { echo "$(RED)suite incompleta ($$N de 2) -- confira TESTS=true$(NC)"; exit 1; }
+	 [ "$$N" -ge 4 ] || { echo "$(RED)suite incompleta ($$N de 4) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install: build ## Instala em ./dist deste projeto (lib/mixr-plugins/).
+install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
 	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
 	@# Makefile de models/players/A-4.
 	@# NAO hardcodear o nome do .so aqui: depois de renomear o projeto (ver
@@ -60,16 +65,29 @@ install: build ## Instala em ./dist deste projeto (lib/mixr-plugins/).
 		ldd "$$so" | grep -q 'not found' && \
 			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
 	done
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
+	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
 
 install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
-	@mkdir -p $(ROOT)/plugins
+	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/"
-	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install' -- nenhum cenario"
-	@echo "   declara 'libtemplate.so'/'libtemplate_mirror.so' em 'file:' diretamente;"
-	@echo "   o segundo e carregado so pelos testes de plugin do host, trocando o"
-	@echo "   'file:' do cenario de producao em tempo de execucao)"
+	@# A arvore vai JUNTO: o 'treeFile:' do ( ExampleBehavior ) aponta pra
+	@# ca, e os nos que ela referencia so existem dentro deste .so. Mesmo
+	@# motivo (e mesmo destino) do install_data em meson.build.
+	@#
+	@# NENHUM nome de modelo escrito aqui, de proposito (ACHADO RODANDO, nao
+	@# redescobrir): 'make new-model' renomeia o literal 'template' dentro do
+	@# meson.build -- entao o install_data passa a escrever em
+	@# share/mixr-plugins/<seu-modelo>/ -- mas NAO mexe neste Makefile. Um
+	@# caminho com 'template' cravado aqui viraria "cp: cannot stat .../
+	@# template/: No such file or directory" no primeiro install-host do
+	@# scaffold copiado (reproduzido). Copiar o diretorio INTEIRO resolve
+	@# sozinho, para qualquer nome, e e' exatamente o que o 'sync-plugins'
+	@# da raiz ja faz um nivel acima.
+	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
+	 fi
+	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
+	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
 uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
@@ -78,3 +96,29 @@ uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
 	   done; \
 	 fi
+	@# Mesmo raciocinio do install-host: os nomes saem do PROPRIO ./dist
+	@# local, nunca escritos a mao -- so' o que ESTE modelo publicou e'
+	@# removido, nunca o dado de um terceiro que divida o deposito.
+	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
+	      [ -d "$$d" ] || continue; \
+	      rm -rf "$(ROOT)/plugins/data/$$(basename $$d)"; \
+	   done; \
+	 fi
+
+create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Groot.
+	@test ! -e configs/bt.xml || { \
+		echo "$(RED)configs/bt.xml ja existe -- remova ou renomeie antes de rodar create-bt$(NC)"; exit 1; }
+	@$(BUILD_DIR)/tools/dump-tree-model --skeleton MainTree > configs/bt.xml
+	@echo "$(GREEN)create-bt: OK$(NC) -> configs/bt.xml"
+
+update-bt: build ## Sincroniza o <TreeNodesModel> de toda arvore de configs/ com a factory.
+	python3 tools/update_bt_models.py --binary $(BUILD_DIR)/tools/dump-tree-model
+
+open-groot: ## Abre o Groot (editor/monitor de arvores BT.CPP) -- ver INSTALL.md secao 4.
+	@GROOT_BIN="$$($(ROOT)/scripts/find_groot.sh 2>/dev/null)"; \
+	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
+		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
+	else \
+		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan."; \
+	fi

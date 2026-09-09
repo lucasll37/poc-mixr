@@ -19,11 +19,11 @@ referência que este repositório tem hoje:
 
 | projeto | por que existe | o que copiar dele |
 |---|---|---|
-| **`template`** (este) | ponto de partida **em camadas**, para decisão nova, sem BehaviorTree.CPP ainda | a separação `domain/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
+| **`template`** (este) | ponto de partida **em camadas**, para decisão nova | a separação `domain/`→`bt/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
 | `template/src/mirror.cpp` (mesmo diretório) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
 | [`A-4`](../../A-4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as duas referências acima já cobrem |
 
-## As quatro camadas, e por que a separação existe
+## As camadas, e por que a separação existe
 
 ```
 domain/    -- regras de negócio PURAS. Sem MIXR, sem BehaviorTree.CPP, sem
@@ -32,11 +32,20 @@ domain/    -- regras de negócio PURAS. Sem MIXR, sem BehaviorTree.CPP, sem
               mais barata de testar e a que muda com mais frequência
               durante o ajuste fino de um modelo.
 
+bt/        -- a ÁRVORE DE COMPORTAMENTO: um nó por decisão (condição ou
+              ação), registrados numa BT::BehaviorTreeFactory. Linka a
+              BehaviorTree.CPP e domain/, mas NÃO o MIXR -- o que garante
+              isso é bt/DecisionContext.hpp, a interface pela qual um nó
+              alcança o comportamento que o hospeda sem incluir um header do
+              framework. É o que permite tests/tree/ carregar a árvore de
+              PRODUÇÃO (configs/example_tree.xml) contra um contexto falso,
+              sem levantar Station nenhuma.
+
 ubf/       -- as três interfaces do UBF do MIXR (percepção, decisão, ação),
-              implementadas contra ESTE modelo. É aqui que domain/ encontra
+              implementadas contra ESTE modelo. É aqui que a árvore encontra
               o mundo do MIXR: ExampleState lê um Player e produz números
-              crus; ExampleBehavior aplica uma regra de domain/ sobre esses
-              números; ExampleAction escreve de volta no player (e no
+              crus; ExampleBehavior carrega a árvore e a tica uma vez por
+              ciclo; ExampleAction escreve de volta no player (e no
               xboard -- ver a seção própria, abaixo).
 
 xnative/   -- a cola de registro: a factory que o boundary do plugin chama
@@ -45,10 +54,17 @@ xnative/   -- a cola de registro: a factory que o boundary do plugin chama
               contrato deste mesmo diretório) pode inline-ar a factory
               direto em plugin.cpp e pular este diretório.
 
-(bt/)      -- NÃO existe neste template. É onde uma árvore de comportamento
-              (BehaviorTree.CPP) entraria, se e quando UMA regra deixar de
-              bastar -- ver "Quando isto não bastar mais", abaixo.
+configs/   -- a árvore em si (example_tree.xml), que é DADO do modelo, não
+              do cenário: os nós que ela referencia só existem dentro deste
+              .so. Por isso o meson a instala junto com a biblioteca, e o
+              slot `treeFile:` do .edl aponta para lá.
 ```
+
+> **Por que uma árvore, e não um `if`.** Enquanto a decisão é UMA regra, o `if` é mais simples e
+> mais honesto — e é por isso que a regra pura continua existindo, intacta, em
+> `domain/ExampleThreshold.hpp`, testada sem BT nenhum. O que a árvore acrescenta é o lugar para a
+> SEGUNDA e a TERCEIRA regra entrarem sem virar uma cascata de `if` aninhado, e o fato de a FORMA
+> da decisão passar a ser dado editável (no Groot, versionável, diffável) em vez de código.
 
 Cada camada é um projeto Meson à parte na sua "testabilidade": `domain/` não linka nada do MIXR
 (nem em produção, nem em teste); `ubf/`+`xnative/` linkam o MIXR e o SDK, mas nunca levantam uma
@@ -111,23 +127,26 @@ thread de decisão) e quando cada uma se aplica ao SEU modelo.
 
 ## Quando isto não bastar mais
 
-Este template decide com **uma regra só** (`ExampleThreshold`, um Schmitt trigger). O dia em que
-o seu modelo precisar de mais de uma decisão coordenada — "se combustível baixo, RTB; senão, se
-há contato, evade; senão, patrulha" — é o dia de trocar `ExampleBehavior::genAction()` por uma
-árvore do BehaviorTree.CPP, exatamente como `models/players/A-4/include/ubf/BtBehavior.hpp` faz.
-Isso significa:
+Este template já decide por árvore, mas com **dois nós e dois ramos**. Crescer a partir daqui é
+acrescentar nós, não trocar de mecanismo:
 
-1. Adicionar `behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config',
-   required: true)` ao `meson.build` e colocá-la em `model_deps`/`model_link_args` (a
-   `-Wl,--exclude-libs,ALL` já está lá, mas ela só importa a partir do momento em que você linka
-   uma biblioteca **estática** — o que a BehaviorTree.CPP é, ver
-[`CONTRATO.md`](CONTRATO.md), seção 1).
-2. Criar um diretório `bt/nodes/` com um nó por decisão (condição ou ação), registrados numa
-   `BT::BehaviorTreeFactory` própria — `models/players/A-4/src/bt/bt_factory.cpp` é a referência.
-3. Trocar o corpo de `ExampleBehavior::genAction()` por um `tree.tickRoot()` sobre um
-   `BT::Tree` carregado de um XML — `models/players/A-4/src/ubf/BtBehavior.cpp` é a referência
-   completa, incluindo o cache de árvore por caminho de arquivo (`g_treeBuildMutex`) que evita
-   reparsear o XML a cada player.
+1. Escrever a regra nova, PURA, em `domain/` — sem MIXR, sem BT.CPP — e um teste para ela em
+   `tests/domain/`. É a camada mais barata de acertar.
+2. Criar o nó em `bt/nodes/` (uma condição ou uma ação), lendo o que precisa pela interface
+   `bt/DecisionContext.hpp` — acrescente um getter lá se faltar algo; `ExampleBehavior` o
+   implementa sem escrever método novo, porque as assinaturas já são os membros dele.
+3. Registrar o nó em `src/bt/bt_factory.cpp` e usá-lo em `configs/example_tree.xml`.
+4. **Rodar `make update-bt`** — sem isso o Groot recusa a árvore com *"This model has not been
+   registered: <ID>"*. O teste `tree-model-sync` pega o esquecimento sozinho, então não é uma
+   disciplina que dependa de alguém lembrar.
+
+Os três `.cpp`/`.hpp` novos entram em `bt_sources` no `meson.build`; nada mais muda. Nenhum desses
+passos toca `domain/` (além de acrescentar), `ubf/` ou `xnative/factory.*` — é exatamente a
+fronteira que a separação em camadas existe para criar.
+
+Para o que ainda **não** está aqui — múltiplas árvores por cenário, política em ONNX ou em Python
+dentro do frame, terreno, ponte de RL — `models/players/A-4` é a referência completa; nenhuma
+dessas coisas é parte do "mínimo para um modelo funcionar".
 
 Nenhuma dessas mudanças toca `domain/` nem `xnative/factory.*` — é exatamente a fronteira que a
 separação em camadas existe para proteger.
