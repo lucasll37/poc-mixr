@@ -356,14 +356,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -493,9 +493,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 8000 )
+                           altitude: ( Feet 9000 )
                            airspeed: 230.0
-                           sca: ( Feet 7000 )
+                           sca: ( Feet 8000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -504,9 +504,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 6000 )
-                           airspeed: 240.0
-                           sca: ( Feet 5000 )
+                           altitude: ( Feet 7000 )
+                           airspeed: 235.0
+                           sca: ( Feet 6000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -515,9 +515,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 4000 )
+                           altitude: ( Feet 5000 )
                            airspeed: 245.0
-                           sca: ( Feet 3000 )
+                           sca: ( Feet 4000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -552,9 +552,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 9000 )
+                           altitude: ( Feet 8000 )
                            airspeed: 230.0
-                           sca: ( Feet 8000 )
+                           sca: ( Feet 7000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -563,9 +563,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 12000 )
-                           airspeed: 220.0
-                           sca: ( Feet 11000 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 225.0
+                           sca: ( Feet 9000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -574,9 +574,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 14000 )
-                           airspeed: 210.0
-                           sca: ( Feet 13000 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 220.0
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -592,9 +592,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 15000 )
+                           altitude: ( Feet 14000 )
                            airspeed: 210.0
-                           sca: ( Feet 14000 )
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -1242,14 +1242,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -1379,9 +1379,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 9000 )
-                           airspeed: 230.0
-                           sca: ( Feet 8000 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 225.0
+                           sca: ( Feet 9000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -1390,9 +1390,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 7000 )
-                           airspeed: 235.0
-                           sca: ( Feet 6000 )
+                           altitude: ( Feet 8000 )
+                           airspeed: 230.0
+                           sca: ( Feet 7000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -1401,9 +1401,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 5000 )
-                           airspeed: 245.0
-                           sca: ( Feet 4000 )
+                           altitude: ( Feet 6000 )
+                           airspeed: 240.0
+                           sca: ( Feet 5000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -1438,9 +1438,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 10000 )
-                           airspeed: 225.0
-                           sca: ( Feet 9000 )
+                           altitude: ( Feet 9000 )
+                           airspeed: 230.0
+                           sca: ( Feet 8000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -1449,9 +1449,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 13000 )
-                           airspeed: 215.0
-                           sca: ( Feet 12000 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 220.0
+                           sca: ( Feet 10000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -1460,9 +1460,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 15000 )
-                           airspeed: 210.0
-                           sca: ( Feet 14000 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 215.0
+                           sca: ( Feet 12000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -1478,9 +1478,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 16000 )
-                           airspeed: 205.0
-                           sca: ( Feet 15000 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 210.0
+                           sca: ( Feet 14000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -2128,14 +2128,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -2265,9 +2265,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 10000 )
-                           airspeed: 225.0
-                           sca: ( Feet 9000 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 220.0
+                           sca: ( Feet 10000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -2276,9 +2276,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 8000 )
+                           altitude: ( Feet 9000 )
                            airspeed: 230.0
-                           sca: ( Feet 7000 )
+                           sca: ( Feet 8000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -2287,9 +2287,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 6000 )
-                           airspeed: 240.0
-                           sca: ( Feet 5000 )
+                           altitude: ( Feet 7000 )
+                           airspeed: 235.0
+                           sca: ( Feet 6000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -2324,9 +2324,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 11000 )
-                           airspeed: 220.0
-                           sca: ( Feet 10000 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 225.0
+                           sca: ( Feet 9000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -2335,9 +2335,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 14000 )
-                           airspeed: 210.0
-                           sca: ( Feet 13000 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 220.0
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -2346,9 +2346,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 16000 )
-                           airspeed: 205.0
-                           sca: ( Feet 15000 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 210.0
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -2364,9 +2364,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 17000 )
-                           airspeed: 200.0
-                           sca: ( Feet 16000 )
+                           altitude: ( Feet 16000 )
+                           airspeed: 205.0
+                           sca: ( Feet 15000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -3014,14 +3014,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -3151,9 +3151,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 11000 )
+                           altitude: ( Feet 12000 )
                            airspeed: 220.0
-                           sca: ( Feet 10000 )
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -3162,9 +3162,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 9000 )
-                           airspeed: 230.0
-                           sca: ( Feet 8000 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 225.0
+                           sca: ( Feet 9000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -3173,9 +3173,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 7000 )
-                           airspeed: 235.0
-                           sca: ( Feet 6000 )
+                           altitude: ( Feet 8000 )
+                           airspeed: 230.0
+                           sca: ( Feet 7000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -3210,9 +3210,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 12000 )
+                           altitude: ( Feet 11000 )
                            airspeed: 220.0
-                           sca: ( Feet 11000 )
+                           sca: ( Feet 10000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -3221,9 +3221,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 15000 )
-                           airspeed: 210.0
-                           sca: ( Feet 14000 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 215.0
+                           sca: ( Feet 12000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -3232,9 +3232,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 17000 )
-                           airspeed: 200.0
-                           sca: ( Feet 16000 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 210.0
+                           sca: ( Feet 14000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -3250,9 +3250,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 18000 )
+                           altitude: ( Feet 17000 )
                            airspeed: 200.0
-                           sca: ( Feet 17000 )
+                           sca: ( Feet 16000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -3900,14 +3900,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -4037,9 +4037,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 12000 )
-                           airspeed: 220.0
-                           sca: ( Feet 11000 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 215.0
+                           sca: ( Feet 12000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -4048,9 +4048,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 10000 )
-                           airspeed: 225.0
-                           sca: ( Feet 9000 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 220.0
+                           sca: ( Feet 10000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -4059,9 +4059,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 8000 )
+                           altitude: ( Feet 9000 )
                            airspeed: 230.0
-                           sca: ( Feet 7000 )
+                           sca: ( Feet 8000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -4096,9 +4096,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 13000 )
-                           airspeed: 215.0
-                           sca: ( Feet 12000 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 220.0
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -4107,9 +4107,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 16000 )
-                           airspeed: 205.0
-                           sca: ( Feet 15000 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 210.0
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -4118,9 +4118,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 18000 )
-                           airspeed: 200.0
-                           sca: ( Feet 17000 )
+                           altitude: ( Feet 16000 )
+                           airspeed: 205.0
+                           sca: ( Feet 15000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -4136,9 +4136,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 19000 )
-                           airspeed: 195.0
-                           sca: ( Feet 18000 )
+                           altitude: ( Feet 18000 )
+                           airspeed: 200.0
+                           sca: ( Feet 17000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -4786,14 +4786,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -4923,9 +4923,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 13000 )
-                           airspeed: 215.0
-                           sca: ( Feet 12000 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 210.0
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -4934,9 +4934,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 11000 )
+                           altitude: ( Feet 12000 )
                            airspeed: 220.0
-                           sca: ( Feet 10000 )
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -4945,9 +4945,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 9000 )
-                           airspeed: 230.0
-                           sca: ( Feet 8000 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 225.0
+                           sca: ( Feet 9000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -4982,9 +4982,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 14000 )
-                           airspeed: 210.0
-                           sca: ( Feet 13000 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 215.0
+                           sca: ( Feet 12000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -4993,9 +4993,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 17000 )
-                           airspeed: 200.0
-                           sca: ( Feet 16000 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 210.0
+                           sca: ( Feet 14000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -5004,9 +5004,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 19000 )
-                           airspeed: 195.0
-                           sca: ( Feet 18000 )
+                           altitude: ( Feet 17000 )
+                           airspeed: 200.0
+                           sca: ( Feet 16000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -5022,9 +5022,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 20000 )
-                           airspeed: 190.0
-                           sca: ( Feet 19000 )
+                           altitude: ( Feet 19000 )
+                           airspeed: 195.0
+                           sca: ( Feet 18000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -5672,14 +5672,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -5809,9 +5809,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 14000 )
+                           altitude: ( Feet 15000 )
                            airspeed: 210.0
-                           sca: ( Feet 13000 )
+                           sca: ( Feet 14000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -5820,9 +5820,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 12000 )
-                           airspeed: 220.0
-                           sca: ( Feet 11000 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 215.0
+                           sca: ( Feet 12000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -5831,9 +5831,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 10000 )
-                           airspeed: 225.0
-                           sca: ( Feet 9000 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 220.0
+                           sca: ( Feet 10000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -5868,9 +5868,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 15000 )
+                           altitude: ( Feet 14000 )
                            airspeed: 210.0
-                           sca: ( Feet 14000 )
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -5879,9 +5879,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 18000 )
-                           airspeed: 200.0
-                           sca: ( Feet 17000 )
+                           altitude: ( Feet 16000 )
+                           airspeed: 205.0
+                           sca: ( Feet 15000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -5890,9 +5890,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 20000 )
-                           airspeed: 190.0
-                           sca: ( Feet 19000 )
+                           altitude: ( Feet 18000 )
+                           airspeed: 200.0
+                           sca: ( Feet 17000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -5908,9 +5908,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 21000 )
+                           altitude: ( Feet 20000 )
                            airspeed: 190.0
-                           sca: ( Feet 20000 )
+                           sca: ( Feet 19000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
@@ -6558,14 +6558,14 @@
                         // por cima da geografia: saiu dela.
                         //
                         // PERFIL DE ALTITUDE (a4_1, a mais baixa da pilha), em pes:
-                        //   wp1..wp10  11000  8000  6000  4000  4000  6000  9000 12000 14000 15000
+                        //   wp1..wp10  11000  9000  7000  5000  4000  6000  8000 10000 12000 14000
                         //   wp11..wp20 15000 13000 11000  9000  8000 10000 12000 14000 15000 13000
                         // Sao DUAS descidas-e-subidas completas por volta, uma por lobo:
                         // 11000 -> 4000 -> 15000 no lobo leste (11000 ft de amplitude) e
                         // 15000 -> 8000 -> 15000 no oeste (7000 ft). A a4_8 voa o mesmo
                         // perfil 7000 ft acima: 11000..22000 ft.
                         //
-                        // POR QUE O DEGRAU MAXIMO E DE 3000 ft POR PERNA, e nao mais --
+                        // POR QUE O DEGRAU MAXIMO E DE 2000 ft POR PERNA, e nao mais --
                         // MEDIDO, nao escolhido por gosto. A versao anterior deste perfil
                         // tinha dente-de-serra de +-4000 ft com periodo de UMA perna
                         // (~110 s) no lobo alto; rodando, a malha de altitude nao
@@ -6695,9 +6695,9 @@
                            stptType: FIX
                            xPos: ( Meters -15771 )
                            yPos: ( Meters 25326 )
-                           altitude: ( Feet 15000 )
-                           airspeed: 210.0
-                           sca: ( Feet 14000 )
+                           altitude: ( Feet 16000 )
+                           airspeed: 205.0
+                           sca: ( Feet 15000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 135 )
                            description: "ponto 2 -- descida sobre o litoral"
@@ -6706,9 +6706,9 @@
                            stptType: MARK
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 36652 )
-                           altitude: ( Feet 13000 )
-                           airspeed: 215.0
-                           sca: ( Feet 12000 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 210.0
+                           sca: ( Feet 13000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 235 )
                            description: "ponto 3 -- descida sobre o litoral"
@@ -6717,9 +6717,9 @@
                            stptType: OAP
                            xPos: ( Meters -37315 )
                            yPos: ( Meters 40979 )
-                           altitude: ( Feet 11000 )
+                           altitude: ( Feet 12000 )
                            airspeed: 220.0
-                           sca: ( Feet 10000 )
+                           sca: ( Feet 11000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 340 )
                            description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
@@ -6754,9 +6754,9 @@
                            stptType: OAP
                            xPos: ( Meters -58859 )
                            yPos: ( Meters 11326 )
-                           altitude: ( Feet 16000 )
-                           airspeed: 205.0
-                           sca: ( Feet 15000 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 210.0
+                           sca: ( Feet 14000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 655 )
                            description: "ponto 7 -- subida"
@@ -6765,9 +6765,9 @@
                            stptType: FIX
                            xPos: ( Meters -50630 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 19000 )
-                           airspeed: 195.0
-                           sca: ( Feet 18000 )
+                           altitude: ( Feet 17000 )
+                           airspeed: 200.0
+                           sca: ( Feet 16000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 755 )
                            description: "ponto 8 -- subida"
@@ -6776,9 +6776,9 @@
                            stptType: TGT
                            xPos: ( Meters -37315 )
                            yPos: ( Meters -4326 )
-                           altitude: ( Feet 21000 )
-                           airspeed: 190.0
-                           sca: ( Feet 20000 )
+                           altitude: ( Feet 19000 )
+                           airspeed: 195.0
+                           sca: ( Feet 18000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 860 )
                            description: "ponto 9 -- imageamento SAR"
@@ -6794,9 +6794,9 @@
                            stptType: IP
                            xPos: ( Meters -24000 )
                            yPos: ( Meters 0 )
-                           altitude: ( Feet 22000 )
-                           airspeed: 185.0
-                           sca: ( Feet 21000 )
+                           altitude: ( Feet 21000 )
+                           airspeed: 190.0
+                           sca: ( Feet 20000 )
                            magvar: ( Degrees -21.5 )
                            pta: ( Seconds 965 )
                            description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
