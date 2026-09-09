@@ -38,6 +38,7 @@
 #
 # Uso:
 #   scripts/models.sh --name meu_modelo --category player
+#   scripts/models.sh --name F-5 --category player
 #   scripts/models.sh --name meu_modelo --category system --dest algum/lugar --no-build
 #
 # Pre-requisito (uma vez por maquina, igual a qualquer modelo deste
@@ -75,10 +76,47 @@ if [ -z "$CATEGORIA" ]; then
     exit 1
 fi
 
-# minusculas/digitos/underscore, comecando por letra -- mesma regra do gerador
-# anterior (NOME_RE).
-if ! [[ "$NAME" =~ ^[a-z][a-z0-9_]*$ ]]; then
-    echo "nome invalido: '$NAME' -- use minusculas/digitos/underscore, comecando por letra" >&2
+# Letra inicial, depois letras (as duas caixas), digitos, underscore e hifen.
+#
+# A regra ANTERIOR era '^[a-z][a-z0-9_]*$' e recusava exatamente a convencao
+# de PASTA que este repositorio ja usa em producao: models/players/A-4 --
+# designacao de aeronave, com maiuscula e hifen (ver CLAUDE.md, secao "O
+# MODELO e um plugin"). Nada FORA deste script deriva identificador do nome
+# do modelo -- conferido: a descoberta de MODELOS_PRODUCAO do Makefile raiz
+# e por 'find', models/common.mk nao le o nome em lugar nenhum, e o Makefile
+# de cada modelo evita de proposito hardcodear 'lib<nome>.so'.
+#
+# O unico ponto que NAO aceita hifen e o namespace C++ (nao e caractere de
+# identificador); e' o unico que precisa de traducao -- ver NS_NOVO logo
+# abaixo. O resto usa $NAME literal: Meson aceita hifen/maiuscula em
+# project()/shared_module() (medido: '--name F-5' produz libF-5.so), e
+# 'lib<nome>.so'/MIXR_PLUGIN_DEFINE("<nome>") sao strings, nunca
+# identificadores.
+if ! [[ "$NAME" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]]; then
+    echo "nome invalido: '$NAME' -- comece por letra e use letras/digitos/underscore/hifen (ex.: F-5, A-4, meu_modelo)" >&2
+    exit 1
+fi
+
+# Namespace C++ deste modelo, derivado do nome: hifen -> underscore, caixa
+# PRESERVADA ('F-5' -> 'xF_5'). Derivado aqui, e nao no passo 4 la embaixo,
+# so para a checagem de colisao a seguir acontecer ANTES de copiar qualquer
+# arquivo.
+#
+# 'F-5' e 'F_5' sao pastas distintas mas dariam o MESMO namespace -- uma
+# colisao que a regra antiga (sem hifen) nao tinha como criar. CONTRATO.md
+# secao 6 documenta o namespace aninhado por modelo como a defesa contra
+# type_info colidindo por strcmp quando dois .so RTLD_LOCAL vivem no mesmo
+# processo; essa colisao e silenciosa e cara, entao e recusada aqui.
+NS_NOVO="x${NAME//-/_}"
+COLISAO="$(grep -rlE "^[[:space:]]*namespace[[:space:]]+${NS_NOVO}[[:space:]]*\{" \
+    "$REPO_ROOT/models" 2>/dev/null || true)"
+if [ -n "$COLISAO" ]; then
+    echo "namespace C++ '$NS_NOVO' (derivado de '$NAME', hifen -> underscore) ja e usado por:" >&2
+    while IFS= read -r f; do
+        [ -n "$f" ] && echo "    - ${f#"$REPO_ROOT"/}" >&2
+    done <<< "$COLISAO"
+    echo "  escolha outro --name -- dois modelos com o MESMO namespace colidem em type_info" >&2
+    echo "  entre .so RTLD_LOCAL (models/players/template/docs/CONTRATO.md, secao 6)" >&2
     exit 1
 fi
 
@@ -127,7 +165,9 @@ fi
 #
 # Substituicao LITERAL (nao regex): bash trata 'de'/'para' como padrao de
 # glob em '${var//de/para}', mas nenhuma string usada por este script contem
-# '*'/'?'/'[' -- --name ja foi validado contra ^[a-z][a-z0-9_]*$. O
+# '*'/'?'/'[' -- --name ja foi validado contra ^[A-Za-z][A-Za-z0-9_-]*$
+# (hifen e maiuscula nao sao metacaracteres de glob) e, de qualquer forma,
+# so aparece do lado do 'para', nunca do 'de'. O
 # 'cat arquivo; echo x' + '%x' preserva a quebra de linha final que
 # 'command substitution' descartaria sozinha.
 # ---------------------------------------------------------------------------
@@ -259,21 +299,20 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 #    entra nesta lista.
 ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests)"
 
-# 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'
+# 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'.
+#    $NS_NOVO ja foi derivado (e ja teve a colisao checada) logo apos a
+#    validacao de --name, mais acima neste script.
 #
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o 'tr -cd' abaixo
-# removia o underscore junto com o resto da pontuacao -- '--name auto_pilot'
-# e '--name autopilot' (os dois validos pela regex '^[a-z][a-z0-9_]*$' mais
-# acima neste script) geravam o MESMO namespace 'xautopilot' (reproduzido).
-# O resto do script usa $NAME LITERAL, com underscore preservado (lib$NAME.so,
-# MIXR_PLUGIN_DEFINE("$NAME"...) -- so o namespace C++ perdia essa
-# informacao. CONTRATO.md secao 6 documenta o namespace aninhado por modelo
-# como a defesa contra type_info colidindo via strcmp quando dois .so
-# RTLD_LOCAL compartilham nome/namespace mangled no mesmo processo -- a
-# stripping de underscore criava exatamente esse risco entre dois modelos
-# de nome "vizinho". Namespace C++ aceita '_' sem problema.
+# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): a derivacao era
+# 'x$(printf %s "$NAME" | tr -cd 'a-z0-9_')', e esse 'tr -cd' removia o
+# underscore junto com o resto da pontuacao -- '--name auto_pilot' e
+# '--name autopilot' geravam o MESMO namespace 'xautopilot' (reproduzido).
+# Hoje a traducao e' so hifen -> underscore, com caixa preservada, e o
+# unico modo de duas entradas coincidirem ('F-5' e 'F_5') e recusado na
+# checagem de colisao la de cima. O resto do script usa $NAME LITERAL
+# (lib$NAME.so, MIXR_PLUGIN_DEFINE("$NAME")) -- so o namespace precisa ser
+# um identificador C++ valido.
 NS_VELHO="x$ORIGEM_NOME"
-NS_NOVO="x$(printf '%s' "$NAME" | tr -cd 'a-z0-9_')"
 if [ -n "$ARQUIVOS_NS" ]; then
     while IFS= read -r f; do
         [ -n "$f" ] && substituir "$f" "$NS_VELHO" "$NS_NOVO"

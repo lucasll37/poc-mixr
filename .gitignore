@@ -34,9 +34,26 @@ docs/manual/.cache/
 # -- ver src/ui/README.md ("Por que src/ui/ e nao docs/").
 src/ui/.cache/
 
-# tile SRTM: versiona-se o .gz (12 MB); o .hgt descomprimido (25 MB) e
-# artefato gerado na primeira execucao -- ver app/TerrainData.
+# Tiles SRTM. O .hgt descomprimido (25 MB cada) e artefato gerado sob
+# demanda -- ver app/TerrainQuery.cpp::residentTerrain().
 shared/data/terrain/srtm/*.hgt
+
+# O .gz TAMBEM e ignorado por padrao, e a excecao e a lista curta abaixo.
+# Motivo: a cobertura do Brasil sao ~1600 tiles / ~12 GB de .gz, que num
+# repositorio git ficariam para sempre no historico e tornariam o clone
+# inviavel. Esses 12 GB sao REPRODUTIVEIS a qualquer momento com
+# 'scripts/fetch_srtm.sh --brasil' (o espelho e publico e sem login), entao
+# nao ha nada a preservar versionando-os.
+#
+# As cinco excecoes sao os tiles do cenario de demonstracao (a familia
+# A4-*DOF) e sua vizinhanca imediata -- o que um clone limpo precisa ter
+# para rodar os cenarios deste repositorio sem baixar nada.
+shared/data/terrain/srtm/*.hgt.gz
+!shared/data/terrain/srtm/S23W043.hgt.gz
+!shared/data/terrain/srtm/S23W042.hgt.gz
+!shared/data/terrain/srtm/S22W043.hgt.gz
+!shared/data/terrain/srtm/S23W044.hgt.gz
+!shared/data/terrain/srtm/S22W044.hgt.gz
 
 # deposito COMPARTILHADO de plugins (locais -- flight/template, via o
 # 'install-host' de cada um -- E de terceiros, externos a este repositorio)

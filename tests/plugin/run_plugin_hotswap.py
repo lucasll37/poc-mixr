@@ -8,10 +8,17 @@ recompilar tudo".
 
 Por que duas variantes PRE-BUILDADAS em vez de chamar 'ninja' aqui: invocar o
 sistema de build de dentro de um teste que o proprio build disparou e fragil (o
-diretorio esta em uso). A prova com rebuild de verdade -- incluindo a conferencia
-de que o ninja toca DUAS edges e nao cita o executavel -- fica no alvo
-'make check-plugin-hotswap'. Esta camada afirma a propriedade; aquele alvo
-demonstra o fluxo.
+diretorio esta em uso).
+
+E por que nao ha, em lugar nenhum, um teste que rebuilde o modelo de verdade
+para conferir que o executavel do host nao foi relinkado (existiu um alvo
+'make check-plugin-hotswap' fazendo isso; removido): essa parte e verdadeira
+por CONSTRUCAO, nao uma propriedade que possa regredir em silencio. Host e
+modelo sao dois projetos meson INDEPENDENTES, com arvores de build separadas
+('build/' x 'models/players/A-4/build/') -- um 'meson compile' no diretorio do
+modelo nao tem caminho fisico ate 'build/app/src/app'. O invariante estrutural
+por tras disso (o build do host nao referenciar uma linha do fonte do modelo)
+ja e cobrado por tests/guard/check_host_opaco.sh, automaticamente.
 
 As duas variantes diferem no SENTIDO da curva do circuito de patrulha
 (POC_MODEL_TURN_SIGN, ver domain/PatrolPlan.cpp) -- uma regra de negocio que o

@@ -46,7 +46,7 @@ test: build ## Roda a suite deste template (domain + forma do .so).
 	 [ "$$N" -ge 2 ] || { echo "$(RED)suite incompleta ($$N de 2) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/.
+install: build ## Instala em ./dist deste projeto (lib/mixr-plugins/).
 	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
 	@# Makefile de models/players/A-4.
 	@# NAO hardcodear o nome do .so aqui: depois de renomear o projeto (ver
@@ -62,7 +62,7 @@ install: build ## Instala em ./dist (a raiz DESTE projeto) -- lib/mixr-plugins/.
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
 
-install-host: install ## Deposita em ../../../plugins/ (flat) -- NAO toca dist/.
+install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
 	@mkdir -p $(ROOT)/plugins
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
 	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/"
@@ -71,7 +71,7 @@ install-host: install ## Deposita em ../../../plugins/ (flat) -- NAO toca dist/.
 	@echo "   o segundo e carregado so pelos testes de plugin do host, trocando o"
 	@echo "   'file:' do cenario de producao em tempo de execucao)"
 
-uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou, SE alguem rodou 'install-host' a mao aqui (template nunca faz isso sozinho). Nao mexe em .so de terceiro.
+uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
 	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 	      [ -e "$$so" ] || continue; \

@@ -15,6 +15,7 @@
 #include <ctime>
 #include <unistd.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -92,14 +93,17 @@ void ensureTerrainTile(const std::string& dir, const std::string& baseName)
    }
 }
 
-// hardware_concurrency()-1, teto 8 -- mesma formula ja usada no restante do
-// repositorio para o numero automatico de threads de tempo critico.
+// Metade dos nucleos, teto hardware_concurrency()-1 -- mesma formula ja usada
+// no restante do repositorio para o numero automatico de threads de tempo
+// critico (ver app::resolveTcThreadCount(), em app/src/app/
+// ScenarioTemplate.cpp). Aqui nao ha '-threads' para sobrepujar: 'node' roda
+// sempre no default.
 unsigned int resolveTcThreadCount()
 {
    const unsigned int hw{std::thread::hardware_concurrency()};
-   unsigned int n{(hw > 1) ? (hw - 1) : 1};
-   if (n > 8) n = 8;
-   return n;
+   const unsigned int maxByCpu{(hw > 1) ? (hw - 1) : 1};
+   const unsigned int metade{hw / 2};
+   return std::max(1u, std::min(metade, maxByCpu));
 }
 
 // .edl.in -> .edl. Confirmado por varredura de todo src/poc/**: o UNICO

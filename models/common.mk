@@ -54,10 +54,10 @@ NC    := \033[0m
 EXTRA_MESON_OPTS ?=
 EXTRA_STALE_KEY  ?=
 
-clean: ## Remove ./build e ./dist (LOCAIS -- nao mexe no $(ROOT)/dist do host).
+clean: ## Remove ./build e ./dist LOCAIS -- nao mexe no dist/ do host.
 	rm -rf $(BUILD_DIR) $(DEST_DIR)
 
-check-root: ## Confere que o projeto HOST ja publicou o SDK (pre-requisito, uma vez).
+check-root: ## Confere que o host ja publicou o SDK (pre-requisito, uma vez).
 	@test -f $(ROOT)/build/conan_meson_native.ini || { \
 		echo "$(RED)faltando $(ROOT)/build/conan_meson_native.ini$(NC)"; \
 		echo "  rode 'cd $(ROOT) && make configure' primeiro (uma vez)."; exit 1; }
@@ -66,7 +66,7 @@ check-root: ## Confere que o projeto HOST ja publicou o SDK (pre-requisito, uma 
 		echo "  rode 'cd $(ROOT) && make sdk' primeiro (uma vez)."; exit 1; }
 	@echo "$(GREEN)check-root: OK$(NC) -> SDK do host publicado em $(ROOT)/dist"
 
-configure: check-root ## meson setup, isolado neste projeto (./build), consumindo o SDK/Conan do host por pkg-config.
+configure: check-root ## meson setup isolado em ./build, consumindo o SDK do host.
 	@mkdir -p $(BUILD_DIR)
 	@# So reconfigura (caro: reavalia TODAS as dependencias, ~1-2s) se o
 	@# build.ninja nao existe AINDA, se TESTS/EXTRA_STALE_KEY/BUILD_TYPE
@@ -160,7 +160,7 @@ configure: check-root ## meson setup, isolado neste projeto (./build), consumind
 	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
 	 fi
 
-help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
+help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
 	@# '-h' (nunca prefixar com o nome do arquivo) e' o que muda ao incluir
 	@# este common.mk -- $(MAKEFILE_LIST) passa a ter MAIS de um arquivo
 	@# (o Makefile-filho + este), e o grep multi-arquivo DEFAULT do POSIX

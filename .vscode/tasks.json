@@ -2,18 +2,23 @@
   "version": "2.0.0",
   "tasks": [
     {
+      // Roda no terminal INTEGRADO do VS Code, nao num emulador externo.
+      // O 'gnome-terminal' de antes nao existe nesta maquina (WSL2 nao traz
+      // emulador de terminal Linux nenhum por padrao -- so o WSLg/DISPLAY,
+      // sem app para desenhar nele), entao a task morria com
+      // "gnome-terminal: command not found". O terminal integrado e um pty
+      // de verdade: a TUI FTXUI do ./app desenha e recebe teclado/mouse
+      // normalmente ali.
       "label": "Run app",
       "type": "shell",
-      "command": "gnome-terminal",
-      "args": [
-        "--",
-        "bash",
-        "-c",
-        "cd \"${workspaceFolder}\" && ./build/app/src/app -folder ./sandbox"
-      ],
+      "command": "./build/app/src/app -folder ./sandbox",
+      "options": { "cwd": "${workspaceFolder}" },
       "presentation": {
-        "reveal": "never",
-        "panel": "shared"
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "clear": true,
+        "echo": false
       },
       "problemMatcher": []
     }

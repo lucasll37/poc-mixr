@@ -8,7 +8,7 @@ que a lacuna aparece primeiro.
 
 `make test-ci` é opt-in e exige **Docker** instalado à parte — esse sim só é pré-requisito desta
 checagem, não do build: [docker.com](https://www.docker.com/). **Node.js é pré-requisito do
-projeto** e tem seção própria (§6).
+projeto** e tem seção própria (§5).
 
 ## 1. Pacotes de sistema (`apt`)
 
@@ -120,7 +120,7 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 
 ## 5. Node.js
 
-**Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§5): não é dependência de
+**Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§4): não é dependência de
 **build** (o `meson`/`ninja` do host e dos modelos nunca o invocam, e `make configure`/`build`/
 `models`/`install`/`test` rodam sem ele), mas é o que faz funcionar o ferramental documentado do
 repositório. Três alvos o exigem:
@@ -129,7 +129,7 @@ repositório. Três alvos o exigem:
 |---|---|
 | `make docs` | regenera `docs/manual/index.html` a partir de `doc.jsx`. **O HTML gerado é versionado**, então `make open-docs` abre a página já pronta sem Node nenhum — só *regenerar* exige |
 | `make open-edl-builder` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
-| `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina host**, não dentro do container — o `.gitlab-ci.yml` não instala Node em lugar nenhum. Também precisa de Docker (ver [`README.md`](README.md)) |
+| `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina host** (é lá que o `npx` roda) e **também dentro do container**, onde o pipeline o instala do zero seguindo exatamente esta seção — é assim que este §5 fica coberto por processo automatizado. Também precisa de Docker (ver [`README.md`](README.md)) |
 
 **Versão mínima: 18** — e o pacote da distro pode não servir. Medido nesta base de código: o `apt`
 do Ubuntu 22.04 oferece `nodejs 12.22.9`, bem abaixo do mínimo. Confira antes de assumir que o
@@ -213,7 +213,7 @@ code --install-extension spencerwmiles.vscode-task-buttons
 
 | extensão | para quê |
 |---|---|
-| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §7.2 |
+| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §7.1 |
 | `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
 | `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) — **essa task assume `gnome-terminal` instalado** (abre o app num terminal externo); em KDE/XFCE/WSL2 sem esse pacote a task falha com "command not found" — rode o binário direto num terminal seu nesse caso |
 | `anthropic.claude-code` | a extensão do Claude Code em si |

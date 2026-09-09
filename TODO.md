@@ -1,2 +1,5 @@
 - interface gráfica para montar edl
-- ler docimentação
+- apresentação
+- testes determinismo
+- documentação
+- subir os arquivos que faltam de ./src/ui

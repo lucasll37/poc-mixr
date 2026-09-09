@@ -140,7 +140,7 @@ tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. 
 
 | opção | efeito |
 |---|---|
-| `-threads <N>` | força o tamanho do pool de tempo crítico (padrão: `hardware_concurrency()`, até 8) |
+| `-threads <N>` | força o tamanho do pool de tempo crítico (padrão: metade dos núcleos; em todos os casos o teto é `hardware_concurrency() - 1`) |
 | `-deterministic <N>` | roda N frames de passo fixo e sai — sem TUI/TTY, imprime `frame=` + relatório de instâncias; é o caminho usado por `make test` |
 
 ## 4. Árvore de comportamento e breakpoints

@@ -60,7 +60,7 @@ test: build ## Roda a suite do modelo (domain + tree + native).
 	 [ "$$N" -ge 3 ] || { echo "$(RED)suite incompleta ($$N de 3) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install: build ## Instala em ./dist (a raiz DESTE projeto): lib/mixr-plugins/*.so + share/mixr-plugins/flight/ (arvore + aeronave).
+install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/flight/).
 	@# '--only-changed': sem isto, 'meson install' recopia e atualiza o mtime
 	@# do destino MESMO com conteudo identico -- e um destino mais novo que
 	@# um INPUT ja linkado (ex.: dist/lib/libxtrack.so, do SDK, do qual
@@ -88,14 +88,14 @@ install: build ## Instala em ./dist (a raiz DESTE projeto): lib/mixr-plugins/*.s
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/flight/"
 
-install-host: install ## Deposita em ../../../plugins/ (lib, flat) e .../data/flight/ (dados) -- NAO toca dist/. Equivalente, no MODELO, ao 'make install' da raiz (que sincroniza plugins/ -> dist/ do host).
+install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
 	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data/flight
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
 	@cp -a $(DEST_DIR)/share/mixr-plugins/flight/. $(ROOT)/plugins/data/flight/
 	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/flight/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
-uninstall-host: ## Remove de ../../../plugins/ (+ data/flight/) o que ESTE modelo publicou -- nomes vindos do PROPRIO ./dist local, nunca escrito a mao. Nao mexe em .so de terceiro.
+uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
 	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 	      [ -e "$$so" ] || continue; \
@@ -104,16 +104,16 @@ uninstall-host: ## Remove de ../../../plugins/ (+ data/flight/) o que ESTE model
 	 fi
 	@rm -rf $(ROOT)/plugins/data/flight
 
-create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel> com os nos de bt_factory.cpp/bt_factory_sdk.cpp), pronto pra abrir no Groot. Recusa se configs/bt.xml ja existir.
+create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Groot.
 	@test ! -e configs/bt.xml || { \
 		echo "$(RED)configs/bt.xml ja existe -- remova ou renomeie antes de rodar create-bt$(NC)"; exit 1; }
 	@$(BUILD_DIR)/tools/dump-tree-model --skeleton MainTree > configs/bt.xml
 	@echo "$(GREEN)create-bt: OK$(NC) -> configs/bt.xml"
 
-update-bt: build ## Atualiza o <TreeNodesModel> em TODA arvore .xml de configs/ (descoberta por conteudo, nao por nome) com os nos que bt_factory.cpp/bt_factory_sdk.cpp registram DE VERDADE -- insere o bloco se faltar, substitui se ja existir (adiciona/remove no).
+update-bt: build ## Sincroniza o <TreeNodesModel> de toda arvore de configs/ com a factory.
 	python3 tools/update_bt_models.py --binary $(BUILD_DIR)/tools/dump-tree-model
 
-open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (ROOT/deps/groot/conanfile.py) e abre o Groot -- editor/monitor visual de arvores do BT.CPP v3. Mesma diretiva do Makefile raiz (ROOT/scripts/find_groot.sh); precisa de 'conan create deps/groot --build=missing --settings=build_type=Release' rodado na raiz antes (ver INSTALL.md secao 7).
+open-groot: ## Abre o Groot (editor/monitor de arvores BT.CPP) -- ver INSTALL.md secao 4.
 	@GROOT_BIN="$$($(ROOT)/scripts/find_groot.sh 2>/dev/null)"; \
 	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
 		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \

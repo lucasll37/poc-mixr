@@ -175,6 +175,8 @@ Confirmado rodando, com o plugin em `-fvisibility=hidden` e `RTLD_LOCAL`:
 | `plugin-negativos` | 7 modos de falha, **cada um afirmando `rc != 139`** |
 | `plugin-hotswap` | mesmo binário + `.so` diferente = voo diferente (o sentido da curva de patrulha) |
 
-`make check-plugin-hotswap` é a demonstração ao vivo: edita `domain/PatrolPlan.cpp`, rebuilda **só** o `.so`,
-confere que o executável não foi tocado (mesmo `sha256`, mesmo `mtime`) e mostra o comportamento
-mudando.
+Não há teste rebuildando o modelo para conferir que o executável do host não foi relinkado — e não
+precisa haver: host e modelo são **projetos Meson independentes, em árvores de build separadas**
+(`build/` × `models/players/A-4/build/`), então um `meson compile` no diretório do modelo não tem
+caminho até `build/app/src/app`. O invariante estrutural por trás disso é cobrado por
+`tests/guard/check_host_opaco.sh`.

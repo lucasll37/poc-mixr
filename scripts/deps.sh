@@ -12,7 +12,7 @@
 # script e' a UNICA forma de te-lo. Ele builda so uma vez (Release), fora do
 # laco de Debug/Release abaixo, so porque nao e' dependencia de BUILD do
 # host/modelo (e' um app Qt standalone que o usuario roda a parte, ver
-# deps/groot/conanfile.py) -- ver INSTALL.md secao 7 para os pacotes de
+# deps/groot/conanfile.py) -- ver INSTALL.md secao 4 para os pacotes de
 # sistema (Qt5/ZeroMQ/libdw) que a maquina precisa ter ANTES de rodar isto.
 #
 # Debug E Release: o projeto configura em Debug por padrao (BUILD_TYPE do

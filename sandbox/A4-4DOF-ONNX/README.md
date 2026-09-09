@@ -8,6 +8,14 @@ rumo/altitude/velocidade deixa de ser o nó nativo `( Navigate )` — vira uma
 rede neural (`( OnnxPolicy )`, 6.211 parâmetros, 25 KB), copiada e adaptada
 de `src/poc/onnx-policy`.
 
+
+> **Nota:** a base `A4-4DOF` evoluiu desde que esta pasta foi derivada dela — hoje
+> ela é o `A4-6DOF` linha a linha (oito aeronaves empilhadas, figura-de-oito de 20
+> steerpoints), com o `dynamicsModel:` trocado e nada mais. Este cenário **não**
+> acompanhou: continua com um player `a4` e a rota original de 4 steerpoints. Ou
+> seja, a diferença para `A4-4DOF` não é mais só quem decide — é também a frota e
+> a rota.
+
 ```bash
 ./build/app/src/app -folder ./sandbox -scenario A4-4DOF-ONNX        # tempo real, Tacview 1234
 ./build/app/src/app -folder ./sandbox -scenario A4-4DOF-ONNX -deterministic 200

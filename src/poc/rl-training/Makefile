@@ -30,19 +30,19 @@ RED   := \033[0;31m
 GREEN := \033[0;32m
 NC    := \033[0m
 
-check-root: ## Confere que o HOST ja publicou dist/python/mixr_gym (pre-requisito, uma vez).
+check-root: ## Confere que o host ja publicou dist/python/mixr_gym.
 	@test -d $(DIST_PYTHON)/mixr_gym || { \
 		echo "$(RED)faltando $(DIST_PYTHON)/mixr_gym$(NC)"; \
 		echo "  rode 'cd $(ROOT) && make configure && make sdk && make build && make install' primeiro (uma vez)."; \
 		exit 1; }
 
-venv: ## Cria/atualiza o venv LOCAL de treino (ver requirements.txt -- gymnasium+numpy+stable-baselines3+torch).
+venv: ## Cria/atualiza o venv LOCAL de treino (ver requirements.txt).
 	python3 -m venv $(VENV)
 	$(PY) -m pip install -q --upgrade pip
 	$(PY) -m pip install -q -r requirements.txt
 	@echo "$(GREEN)venv: OK$(NC) -> $(VENV) (ative com 'source .venv/bin/activate', ou use direto: .venv/bin/python3)"
 
-train: check-root venv ## Treina PPO contra MixrFlightEnv e salva o checkpoint em ./runs/ (ver 'train.py --help'; ex.: make train ARGS="--timesteps 500000").
+train: check-root venv ## Treina PPO contra MixrFlightEnv, checkpoint em ./runs/ (ARGS=...).
 	@mkdir -p $(RUNS_DIR)
 	@# cd na RAIZ do repositorio: 'scenario_path' do MixrFlightEnv e
 	@# resolvido por caminho relativo a raiz (mesma convencao de todo
@@ -54,7 +54,7 @@ train: check-root venv ## Treina PPO contra MixrFlightEnv e salva o checkpoint e
 	@# caminho, sem depender de dois lugares concordarem por coincidencia.
 	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/train.py --out-dir $(RUNS_DIR) $(ARGS)
 
-export: check-root venv ## Exporta um checkpoint treinado para .onnx (ver 'tools/export_onnx.py --help'; ex.: make export ARGS="--sb3 runs/ppo_falcon1.zip -o politica.onnx").
+export: check-root venv ## Exporta um checkpoint treinado para .onnx (ARGS=...).
 	@# SEM 'cd $(ROOT)' aqui, ao contrario de 'train' -- export_onnx.py nao
 	@# le cenario nenhum (resolve dist/python pelo PROPRIO __file__, nao por
 	@# cwd), entao nao ha motivo pra mudar de diretorio. cwd fica nesta
@@ -62,9 +62,9 @@ export: check-root venv ## Exporta um checkpoint treinado para .onnx (ver 'tools
 	@# resolverem contra ELA -- o mesmo lugar onde 'train' acima escreve.
 	PYTHONPATH=$(DIST_PYTHON) $(PY) tools/export_onnx.py $(ARGS)
 
-clean: ## Remove o venv local e os checkpoints de ./runs (NAO mexe no dist/ do host).
+clean: ## Remove o venv local e os checkpoints de ./runs.
 	rm -rf $(VENV) $(RUNS_DIR)
 	find . -name __pycache__ -type d -exec rm -rf {} +
 
-help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
+help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'

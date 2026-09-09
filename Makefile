@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models check-plugin-hotswap run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model
 
 .DEFAULT_GOAL := help
 
@@ -80,7 +80,7 @@ NC := \033[0m # No Color
 # C++ Build Targets
 # ============================================
 
-clean: ## Clean all generated build files in the project (host + TODOS os modelos descobertos + template + o deposito que 'make models' gerou).
+clean: ## Remove build/, dist/ e plugins/ (host + todos os modelos).
 	rm -rf $(BUILD_DIR)/
 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
@@ -100,7 +100,7 @@ clean: ## Clean all generated build files in the project (host + TODOS os modelo
 	 done
 	@rm -rf $(PLUGINS_DIR)/data
 
-configure: ## Configure the project for building.
+configure: ## Configura o projeto para build (conan install + meson setup).
 	mkdir -p $(BUILD_DIR)/
 	conan install ./ \
 		--build=missing \
@@ -134,7 +134,7 @@ configure: ## Configure the project for building.
 		$(BUILD_DIR)/ .
 
 
-sdk: ## Publica o SDK de plugin em dist/ (contrato + libxboard/libxlog/libxtrack/libxrlbridge/libxinfer/libevents). Etapa PRÉVIA ao build do modelo.
+sdk: ## Publica o SDK de plugin em dist/ -- etapa PREVIA ao build do modelo.
 	@# 'meson compile' com os NOMES dos alvos. Medido: o meson compile resolve
 	@# por NOME e traduz para o caminho de saida; o ninja cru resolve so por
 	@# CAMINHO ('ninja xboard' -> "unknown target"). Usar o meson aqui evita
@@ -230,7 +230,7 @@ MODELOS_PRODUCAO := $(shell find models -mindepth 2 -name meson.build \
                        -exec grep -q '^project' {} \; -print \
                      | xargs -r -n1 dirname | sort -u)
 
-models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por find sob QUALQUER subpasta de models/, exceto template/ e o contrato models/events/) em plugins/ -- NAO toca dist/ (ver 'sync-plugins'/'install').
+models: sdk ## Compila os modelos e deposita em plugins/ -- nao toca dist/ (ver 'install').
 	@for d in $(MODELOS_PRODUCAO); do \
 	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
 	 done
@@ -242,7 +242,7 @@ models: sdk ## Compila e deposita TODOS os modelos de producao (descobertos por 
 	@$(MAKE) -C models/players/template install-host TESTS=true ASAN=$(ASAN) || exit 1
 	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s) de producao: $(notdir $(MODELOS_PRODUCAO)); + template/; rode 'make install' para sincronizar com dist/)"
 
-sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqui um cenario enxerga o modelo.
+sync-plugins: ## Copia plugins/ -> dist/ -- so aqui um cenario enxerga o modelo.
 	@# plugins/ ja mistura o que os tres modelos locais depositaram
 	@# (via 'models', acima) com qualquer .so de terceiro (ver
 	@# plugins/README.md) -- dali em diante os dois sao INDISTINGUIVEIS,
@@ -272,7 +272,7 @@ sync-plugins: ## Sincroniza plugins/ (proprios + terceiros) para dist/ -- so aqu
 # Scaffold de modelo novo
 # ============================================
 
-new-model: ## Gera um modelo novo em models/<CATEGORY>/NAME/ a partir de template/ (NAME= e CATEGORY=player|system|others obrigatorios). Ver CONTRIBUTING.md.
+new-model: ## Copia template/ num modelo novo. Uso: NAME= CATEGORY=player|system|others.
 	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
 	@test -n "$$CATEGORY" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
 	scripts/models.sh --name "$$NAME" --category "$$CATEGORY"
@@ -281,15 +281,15 @@ new-model: ## Gera um modelo novo em models/<CATEGORY>/NAME/ a partir de templat
 # Build / Install / Package do HOST
 # ============================================
 
-build: sdk ## Compila os executaveis do HOST -- NAO precisa dos modelos (dlopen e so em tempo de EXECUCAO, ver 'install'/'test'/'run-*').
+build: sdk ## Compila os executaveis do HOST -- nao precisa dos modelos.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: build sync-plugins ## Instala os binarios do host em dist/bin/ E sincroniza plugins/ -> dist/ (ver 'sync-plugins').
+install: build sync-plugins ## Instala o host em dist/bin/ e sincroniza plugins/ -> dist/.
 	@# '--only-changed' -- mesmo "porque" do alvo 'sdk' acima: evita mtime
 	@# novo em dist/bin/ sem necessidade a cada chamada.
 	meson install -C $(BUILD_DIR) --only-changed
 
-package: ## Create the Conan package for this project.
+package: ## Gera o pacote Conan deste projeto.
 	conan create ./ \
 		--build=missing \
 		--settings=build_type=$(BUILD_TYPE)
@@ -305,50 +305,57 @@ package: ## Create the Conan package for this project.
 # 'tests/determinism/check_determinism.sh <binario> <rotulo> <frames>
 # [fixture-poc] [arquivo-de-cenario]' para determinismo. 'make install'
 # continua sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
+#
+# 'check-plugin-hotswap' tambem saiu (junto com
+# tests/plugin/check_hotswap_rebuild.sh) -- NAO reintroduzir: a propriedade
+# que ele media ja e afirmada por 'plugin-hotswap' (suite 'plugin', dentro de
+# 'make test'), com a MESMA fixture e a MESMA comparacao de hdg do falcon1; e
+# o "rebuildar so o .so nao toca o executavel" e verdadeiro por CONSTRUCAO --
+# host e modelo sao projetos meson separados, em arvores de build separadas
+# ('build/' x 'models/<...>/build/'), sem aresta possivel entre eles. Em
+# troca, o alvo editava fonte VERSIONADO com 'sed -i' (restaurado so por um
+# 'trap EXIT') e sobrescrevia dist/lib/mixr-plugins/libflight.so a mao.
 
-check-plugin-hotswap: install ## Prova que trocar um modelo NÃO recompila a aplicação: muda só o plugin, rebuilda só o .so, e o mesmo binário se comporta diferente.
-	@bash tests/plugin/check_hotswap_rebuild.sh
-
-run-app: install ## Run app (TUI; abre a pasta ./sandbox -- sem '-scenario' dentro dela, mostra a tela de seleção de subpastas).
+run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
 	$(DEST_DIR)/bin/app -folder ./sandbox
 
-run-app-monitor: install ## Roda dist/bin/app com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-app-monitor PLAYER=falcon1 [ARGS='-folder src/poc/dis -scenario flight'] (default ARGS: '-folder ./sandbox', a tela de selecao). Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+run-app-monitor: install ## Roda o app com o Monitor do Groot. Uso: PLAYER=falcon1 [ARGS=...].
 	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
 	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app $${ARGS:--folder ./sandbox}
 
-run-node: install ## Run node (runner headless, sem TUI -- so log no console -- para UM cenario). Uso: make run-node SCENARIO=<arquivo.edl|.edl.in>.
+run-node: install ## Roda dist/bin/node (headless, so log). Uso: SCENARIO=<arquivo.edl>.
 	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	$(DEST_DIR)/bin/node "$$SCENARIO"
 
-run-node-monitor: install ## Roda dist/bin/node com o Monitor ao vivo do Groot ligado para UM player (MIXR_GROOT_MONITOR). Uso: make run-node-monitor PLAYER=falcon1 SCENARIO=<arquivo.edl|.edl.in>. Em outro terminal: 'make open-groot' -> aba Monitor -> localhost, portas 1666 (status) / 1667 (topologia).
+run-node-monitor: install ## Idem run-node, com o Monitor do Groot. Uso: PLAYER= SCENARIO=<arquivo>.
 	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/node "$$SCENARIO"
 
-venv-rl: ## Cria/atualiza o venv Python LOCAL do wrapper Gymnasium, em src/rl/.venv (gymnasium+numpy -- ver src/rl/requirements.txt). Fora da toolchain Conan/Meson de propósito: nenhum outro alvo depende de Python.
+venv-rl: ## Cria/atualiza o venv do wrapper Gymnasium em src/rl/.venv.
 	python3 -m venv src/rl/.venv
 	src/rl/.venv/bin/pip install -q --upgrade pip
 	src/rl/.venv/bin/pip install -q -r src/rl/requirements.txt
 	@echo "$(GREEN)venv-rl: OK$(NC) -> src/rl/.venv (ative com 'source src/rl/.venv/bin/activate', ou use direto: src/rl/.venv/bin/python3)"
 
-test-rl: install venv-rl ## Roda os testes Python do wrapper Gymnasium (src/rl/), usando o venv local criado por 'venv-rl'. Cada script e um PROCESSO -- so pode existir uma Station por processo.
+test-rl: install venv-rl ## Roda os testes Python do wrapper Gymnasium, no venv de 'venv-rl'.
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_contract.py
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_bad_player.py
 
-venv-rl-training: ## Delega para o Makefile AUTOCONTIDO de src/poc/rl-training (venv de treino -- separado do venv-rl da biblioteca; ver o "porque" la).
+venv-rl-training: ## Cria/atualiza o venv de treino de src/poc/rl-training (separado do venv-rl).
 	$(MAKE) -C src/poc/rl-training venv
 
 # ============================================
 # Test Targets
 # ============================================
 
-test-models: ## Roda a suite do MODELO (domain + tree + native), delegando pro Makefile autocontido de models/players/A-4.
+test-models: ## Roda a suite do MODELO (domain + tree + native).
 	@# 'test' do Makefile de models/players/A-4 ja confere a contagem (>=3) e ja
 	@# builda se precisar (test: build, la) -- nao precisa duplicar aqui.
 	$(MAKE) -C models/players/A-4 test
 
-test: install ## Roda SO a suite do HOST (scenario/determinism/plugin/memory/guard/tools/...). Requer configure com -Dtests=true. 'install' builda e sincroniza os modelos (dlopen precisa do .so em dist/) mas NAO roda a suite deles -- para isso, 'make test-models'.
+test: install ## Roda SO a suite do HOST (requer -Dtests=true; modelo: 'test-models').
 	@# Duas suites do host (memory-controle-negativo, plugin-hotswap) linkam
 	@# DIRETO em models/players/A-4/build/ -- libmodel_leak.so/
 	@# libmodel_variant_{a,b}.so, nunca instalados, so existem quando o
@@ -367,7 +374,7 @@ test: install ## Roda SO a suite do HOST (scenario/determinism/plugin/memory/gua
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, lento; supressões em tests/memory/asan.supp).
+test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, lento).
 	@# Os DOIS lados: com o modelo num projeto a parte, instrumentar so o host
 	@# deixaria o .so sem redzone de pilha e sem simbolos no relatorio do LSan.
 	@# (Host com ASan + plugin sem funciona -- os interceptadores vivem na
@@ -416,7 +423,7 @@ test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, 
 		else echo "asan: FALHOU (rc=$$rc)"; fi; \
 		if [ $$rc -ne 0 ] || [ $$revert_falhou -ne 0 ]; then exit 1; fi
 
-test-ci: ## Roda '.gitlab-ci.yml' INTEIRO (build + test), do ZERO, num container Docker (via 'npx gitlab-ci-local') -- sucessor de 'check-docs-ubuntu24' (removido): em vez de uma copia paralela dos comandos do README, roda o pipeline de VERDADE, do mesmo jeito que o runner do GitLab roda. Opt-in (precisa de Docker + Node) -- FORA de 'make test'.
+test-ci: ## Roda o .gitlab-ci.yml inteiro num container Docker (Docker + Node).
 	@# Fora da suite de proposito, mesmo criterio de 'test-asan'/'test-rl':
 	@# '.gitlab-ci.yml' NUNCA usa o remote Conan privado (de proposito -- ver o
 	@# comentario do topo daquele arquivo), entao o job 'build' sempre builda
@@ -430,7 +437,7 @@ test-ci: ## Roda '.gitlab-ci.yml' INTEIRO (build + test), do ZERO, num container
 	@# responde: clone limpo + '.gitlab-ci.yml' bastam sozinhos?
 	@npx --yes gitlab-ci-local
 
-clean-ci: ## Remove '.gitlab-ci-local/' (estado + cache de 'make test-ci').
+clean-ci: ## Remove .gitlab-ci-local/ (estado + cache de 'test-ci').
 	@# Sem isto, o cache (pacotes Conan, build/dist/plugins/models -- ver
 	@# 'cache:' de .gitlab-ci.yml) sobrevive entre chamadas de 'make test-ci'
 	@# de proposito (e o que evita refazer tudo do zero toda vez); este alvo
@@ -448,11 +455,11 @@ clean-ci: ## Remove '.gitlab-ci-local/' (estado + cache de 'make test-ci').
 # Documentation Targets
 # ============================================
 
-docs: ## Regenera docs/manual/catalog.generated.js (tools/generate_manual_catalog.py) e docs/manual/index.html a partir de docs/manual/doc.jsx (Babel via docs/manual/compile.js). So precisa de rede na 1a vez (cacheia em docs/manual/.cache/).
+docs: ## Regenera docs/manual/ (catalogo + index.html).
 	python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js
 	node docs/manual/compile.js
 
-open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do ciclo de simulacao MIXR na arvore de componentes). Pagina estatica -- nao depende de build/install.
+open-docs: ## Abre docs/manual/index.html no navegador.
 	@scripts/open_browser.sh docs/manual/index.html
 
 # TEMPORARIO -- alvo de conveniencia, fora do fluxo normal do repositorio.
@@ -463,23 +470,23 @@ open-docs: ## Abre docs/manual/index.html no navegador (visualizador animado do 
 # manual, esta NAO e' autocontida -- carrega ./content.js (relativo, versionado
 # ao lado) e as fontes do Google Fonts pela rede; sem rede ela abre igual, so
 # com as fontes de fallback. Remover este alvo quando a apresentacao sair de uso.
-open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide deck da apresentacao do projeto). So ABRE -- o arquivo e' versionado, nao ha passo de geracao.
+open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide deck).
 	@scripts/open_browser.sh docs/presentation/index.html
 
-open-edl-builder: ## Regenera (catalogo+cenario padrao+testes+self-lint+compilacao, tudo automatico via src/ui/scripts/build.js) e abre src/ui/edl-builder.html no navegador. UNICO alvo make deste editor -- as demais rotinas (geracao do catalogo, do cenario padrao, lint, o binario edlcheck) sao scripts chamados direto, ver src/ui/README.md.
+open-edl-builder: ## Regenera e abre src/ui/edl-builder.html (editor visual de cenario).
 	node src/ui/scripts/build.js
 	@scripts/open_browser.sh src/ui/edl-builder.html
 
-open-groot: ## Resolve o pacote groot/1.0.0 no cache Conan (deps/groot/conanfile.py) e abre o Groot -- editor/monitor visual de arvores do BT.CPP v3. Precisa de 'conan create ./deps/groot --build=missing --settings=build_type=Release' rodado antes (ver INSTALL.md secao 7).
+open-groot: ## Abre o Groot (editor/monitor de arvores BT.CPP) -- ver INSTALL.md secao 4.
 	@GROOT_BIN="$$(scripts/find_groot.sh 2>/dev/null)"; \
 	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
 		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
 	else \
-		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan -- rode 'conan create ./deps/groot --build=missing --settings=build_type=Release' primeiro (ver INSTALL.md secao 7)."; \
+		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan -- rode 'conan create ./deps/groot --build=missing --settings=build_type=Release' primeiro (ver INSTALL.md secao 4)."; \
 	fi
 
 # ============================================
 # Misc Targets
 # ============================================
-help: ## Lista os alvos deste Makefile, com descricao (e' o que 'make' sem alvo roda).
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'

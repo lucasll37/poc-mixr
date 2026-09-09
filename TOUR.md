@@ -13,7 +13,7 @@ Duas formas de usar:
 
 ## Antes de começar
 
-- **Não é preciso credencial de nenhum remote privado.** `README.md` e `INSTALL.md` §4/§7 já
+- **Não é preciso credencial de nenhum remote privado.** `README.md` e `INSTALL.md` §4 já
   documentam um caminho 100% sem credencial (`./scripts/deps.sh`) — é o mesmo que o CI usa. Se em
   algum ponto você sentir que precisa "pedir acesso a alguém", pare e releia essa seção antes de
   travar o exercício nisso.
@@ -74,8 +74,7 @@ resultado.
 ### 6. Editar/monitorar uma árvore de comportamento com o Groot
 
 **Objetivo:** abrir uma árvore de comportamento de produção (`models/players/A-4/configs/flight_tree.xml`) no editor visual.
-**Onde procurar:** `CONTRIBUTING.md` (é o ponto de entrada citado por `INSTALL.md` §7 para este
-item).
+**Onde procurar:** `CONTRIBUTING.md` (a instalação do Groot em si é `INSTALL.md` §4).
 **Critério de sucesso:** a árvore abre sem erro de "modelo não registrado" e dá para editar/salvar.
 
 ### 7. Rodar a poc com decisão em Python

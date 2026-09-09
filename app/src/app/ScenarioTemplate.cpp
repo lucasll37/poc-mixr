@@ -23,17 +23,20 @@ const char* const PLACEHOLDER{"@NUM_TC_THREADS@"};
 // partir da RAIZ do repositorio (convencao documentada no CLAUDE.md).
 const char* const kFragmentsDir{"./app/configs/fragments"};
 
-// Uma thread T/C por nucleo, menos a que roda o laco de background; no
-// maximo 4 por padrao. O '-threads N' do usuario ainda e limitado pelo
-// numero de nucleos -- pedir mais threads do que ha CPUs so acrescenta
-// troca de contexto.
+// Por padrao, METADE dos nucleos da maquina -- a outra metade fica para o
+// laco de background, para o resto do processo (TUI, gravador, rede) e para
+// o que mais estiver rodando na maquina. O '-threads N' do usuario sobrepuja
+// esse default, mas nunca o TETO: em todos os casos o resultado fica em
+// [1, nucleos-1] -- pedir mais threads do que ha CPUs so acrescenta troca de
+// contexto, e deixar zero nucleo para o laco de background nao faz sentido.
 int resolveTcThreadCount(const int threadsOverride, unsigned int* const hwThreadsOut)
 {
    const unsigned int hwThreads{std::thread::hardware_concurrency()};
    *hwThreadsOut = hwThreads;
 
    const int maxByCpu{static_cast<int>(hwThreads > 1 ? hwThreads - 1 : 1)};
-   const int wanted{(threadsOverride > 0) ? threadsOverride : std::min(maxByCpu, 8)};
+   const int metadeDosNucleos{static_cast<int>(hwThreads / 2)};
+   const int wanted{(threadsOverride > 0) ? threadsOverride : metadeDosNucleos};
    return std::max(1, std::min(wanted, maxByCpu));
 }
 

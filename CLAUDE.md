@@ -1630,9 +1630,21 @@ Duas peças fecham isso:
 **Prova de neutralidade:** com o modelo fora do executável e carregado de `dist/`, o dump `frame=`
 de `flight` saiu **byte-idêntico** ao de antes de existir plugin nenhum.
 
-`make check-plugin-hotswap` troca o sentido da curva em `models/players/A-4/src/domain/PatrolPlan.cpp`,
-rebuilda **só** o `.so` (2 edges), confere que o executável não foi tocado e mostra o rumo do
-falcon1 indo de 141° para 34°.
+**O alvo `make check-plugin-hotswap` foi REMOVIDO** (junto com
+`tests/plugin/check_hotswap_rebuild.sh`) — não reintroduzir. Ele trocava o sentido da curva em
+`models/players/A-4/src/domain/PatrolPlan.cpp`, rebuildava só o `.so` (2 edges) e conferia que o
+executável não fora tocado. A propriedade de runtime que ele media já é afirmada por
+`plugin-hotswap` (suíte `plugin`, dentro de `make test`), com a **mesma** fixture e a mesma
+comparação de `hdg=` do falcon1; e o "rebuildar só o `.so` não toca o executável" é verdadeiro por
+**construção**, não uma propriedade que possa regredir em silêncio — host e modelo são projetos
+Meson separados, em árvores de build separadas (`build/` × `models/players/A-4/build/`), sem aresta
+possível entre eles, e o invariante estrutural por trás disso já é cobrado por
+`check_host_opaco.sh`. Em troca, o alvo editava fonte **versionado** com `sed -i` (restaurado só
+por um `trap EXIT` — um `Ctrl+C` na hora errada deixava o sentido invertido no working tree),
+sobrescrevia `dist/lib/mixr-plugins/libflight.so` à mão com três passos de restauração terminados
+em `|| true`, e escrevia em `/tmp` (contra a armadilha 9 de "Testes automatizados"). O
+`POC_MODEL_TURN_SIGN` de `PatrolPlan.cpp` **continua existindo** — é o que as duas variantes de
+`-Dvariants=true` usam.
 
 ## Ao adicionar um subprojeto novo
 
@@ -2510,6 +2522,20 @@ maior da rodada — o Mapa passou a carregar MÚLTIPLOS tiles SRTM, não só o d
     míssil): `new base::String(...)`, passa pro setter (que dá `ref()`, incrementando pra 2), e
     `unref()` a própria referência logo em seguida (volta pra 1, agora possuída só pelo
     `Terrain`).
+  - **ATUALIZAÇÃO (passada posterior): os três tiles sintéticos foram SUBSTITUÍDOS por dado real,
+    e o carregador teve de virar preguiçoso para aguentar o volume.** A premissa desta passada —
+    "não há fonte aberta que sirva `.hgt`" — estava incompleta: o espelho *Terrain Tiles* da AWS
+    Open Data (`s3.amazonaws.com/elevation-tiles-prod/skadi/<S23>/<S23W043>.hgt.gz`) serve SRTM1
+    real **sem login**, no formato binário exato que `SrtmHgtFile` exige. `scripts/fetch_srtm.sh`
+    (novo) baixa por nome, por caixa de lat/lon ou `--brasil` (1.600 tiles, ~12 GB, **não
+    versionados** — o `.gitignore` só abre exceção para os 5 tiles do cenário de demonstração).
+    Duas consequências no código, as duas medidas: `tileRepository()` carregava TODO `.hgt` da
+    pasta e nunca liberava (com 1.600 tiles seriam ~41,5 GB de RAM na primeira consulta do Mapa) —
+    virou índice por nome + carga sob demanda + LRU de 12 tiles (~311 MB), com busca por
+    `std::map` no lugar da varredura linear; e `ensureAllTerrainTiles()` descompactava a pasta
+    inteira na partida — ganhou teto de 16 `.gz`, acima disso a descompressão é sob demanda.
+    A/B sob `ulimit -v 2000000`: a versão antiga morre com `std::bad_alloc`, a nova completa em
+    332 MB de pico. Detalhe completo em `shared/data/terrain/srtm/README.md`.
   - **`app/TerrainData.{hpp,cpp}` ganhou `ensureAllTerrainTiles(dir)`** — generaliza a
     descompactação (armadilha 1 já documentada: `SrtmHgtFile` não lê `.gz`) pra QUALQUER
     `.hgt.gz` do diretório, não só o tile do EDL. Deliberadamente TOLERANTE (ao contrário de
@@ -3635,7 +3661,7 @@ completa — o preço aceito, por pedido explícito, para manter `node` independ
 Abrir:
 
 ```bash
-conan create ./deps/groot --build=missing --settings=build_type=Release   # uma vez (ver INSTALL.md §5)
+conan create ./deps/groot --build=missing --settings=build_type=Release   # uma vez (ver INSTALL.md §4)
 make open-groot                                                            # sempre que quiser abrir
 ```
 

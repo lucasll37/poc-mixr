@@ -7,17 +7,19 @@ nenhum dos 5 roda ao mesmo tempo que outro, então reusar a porta padrão evita
 decorar 5 números diferentes). Entre os cinco variam dois eixos: o
 `dynamicsModel:` e quem decide o rumo/altitude/velocidade.
 
-> **Este cenário divergiu dos outros quatro em duas coisas.** (1) A **frota**:
-> são **oito** aeronaves idênticas, `a4_1`..`a4_8`, cumprindo a mesma rota com
-> **1.000 ft de separação vertical** entre uma e a seguinte — uma pilha de
-> 7.000 ft de altura, não um player solitário. (2) A **rota**: uma
-> **figura-de-oito fechada de 20 steerpoints**, com perfil de altitude entre
-> **4.000 e 15.000 ft** para a aeronave mais baixa (11.000 a 22.000 ft para a
-> mais alta). Os outros quatro continuam com um player e a rota original de 4
-> steerpoints num circuito de ~3 km de raio, e os READMEs deles ainda afirmam
-> que "tudo o resto é byte a byte idêntico a `A4-6DOF`" — o que continua valendo
-> para a montagem do player, o `agent:`/árvore e o resto do cenário, mas **não**
-> para a frota nem para a rota.
+> **Este cenário tem frota e rota próprias.** (1) A **frota**: são **oito**
+> aeronaves idênticas, `a4_1`..`a4_8`, cumprindo a mesma rota com **1.000 ft de
+> separação vertical** entre uma e a seguinte — uma pilha de 7.000 ft de altura,
+> não um player solitário. (2) A **rota**: uma **figura-de-oito fechada de 20
+> steerpoints**, com perfil de altitude entre **4.000 e 15.000 ft** para a
+> aeronave mais baixa (11.000 a 22.000 ft para a mais alta).
+>
+> `A4-4DOF` e `A4-3DOF` **acompanharam**: os dois são hoje este arquivo linha a
+> linha, com o `dynamicsModel:` trocado e nada mais (os READMEs deles trazem o
+> `diff` que prova isso). `A4-4DOF-PY` e `A4-4DOF-ONNX` **não** acompanharam —
+> continuam com um player `a4` e a rota original de 4 steerpoints num circuito de
+> ~3 km de raio, então diferem desta pasta na frota e na rota além de em quem
+> decide.
 >
 > **Não há lançamento de bomba nem de míssil.** A `ActionWeaponRelease` que
 > existia num steerpoint foi removida — era o único ponto do cenário que soltava

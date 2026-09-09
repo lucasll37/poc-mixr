@@ -15,5 +15,6 @@
       "task": "Run app",
       "tooltip": "Roda ./build/app/src/app -folder ./sandbox num terminal externo"
     }
-  ]
+  ],
+  "markdown.extension.preview.autoShowPreviewToSide": false
 }

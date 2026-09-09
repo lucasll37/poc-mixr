@@ -99,7 +99,7 @@ ubf/Action → xnative/factory).
 
 Se a decisão é uma árvore do BehaviorTree.CPP (o caso da maioria dos modelos deste repositório),
 o **Groot** ajuda em duas pontas: edita o `.xml` visualmente, e monitora ao vivo uma árvore
-rodando dentro da simulação. Instalação, uma vez por máquina → [`INSTALL.md`](INSTALL.md) §7
+rodando dentro da simulação. Instalação, uma vez por máquina → [`INSTALL.md`](INSTALL.md) §4
 (`./scripts/deps.sh`, ou só `conan create ./deps/groot ...` se as outras dependências já vierem
 do remote privado). Depois de instalado, `make open-groot` sempre abre a janela.
 

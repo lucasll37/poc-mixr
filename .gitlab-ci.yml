@@ -1,26 +1,3 @@
-# CI (GitLab) -- pipeline real, seguindo a MESMA sequencia documentada em
-# README.md ("Build"/"Testes") e INSTALL.md ("Pre-requisitos"): pacotes de
-# sistema -> Conan -> configure -> sdk -> models -> build -> install -> test.
-#
-# As dependencias privadas (mixr/1.0.5, behaviortree.cpp.asa/3.5.6 -- ver
-# conanfile.py) vem por padrao de um remote Conan privado da organizacao
-# (README.md, INSTALL.md SS4) -- mas este pipeline NUNCA usa esse remote, de
-# proposito: nenhum 'conan remote add'/'conan remote login' aparece em lugar
-# nenhum deste arquivo, e nao ha variavel de CI/CD nenhuma para religar isso.
-# O job 'build' sempre cai no caminho documentado em INSTALL.md SS7 e builda
-# mixr/behaviortree.cpp.asa/jsbsim/openrti/groot do FONTE (a mesma receita de
-# './scripts/deps.sh') -- ate HORAS de relogio na primeira execucao (o
-# 'cache:' abaixo evita repetir o custo em pipelines seguintes, enquanto as
-# receitas nao mudarem). O Groot em particular NUNCA teve pacote pronto em
-# remoto nenhum (INSTALL.md SS7) -- so o BUILD dele e testado aqui (`conan
-# create`), nunca abrir a janela: isso exige display de verdade, e o proprio
-# INSTALL.md registra que sem um "o build completa normalmente, mas a janela
-# nao abre".
-#
-# Fora de escopo de proposito: INSTALL.md SS6 (extensoes de VS Code) -- e
-# configuracao de EDITOR, sem efeito nenhum sobre configure/build/install/
-# test; nao faltou, foi deixado de fora.
-#
 # Testar este arquivo localmente antes de empurrar -> 'make test-ci' (roda
 # este pipeline INTEIRO, do zero, num container Docker via gitlab-ci-local --
 # ver o alvo no Makefile e README.md, secao "CI (GitLab)"). E o sucessor de
@@ -38,6 +15,10 @@ variables:
   # runner descarta o resto do filesystem entre jobs -- so CI_PROJECT_DIR e
   # o que 'cache'/'artifacts' sabem preservar).
   CONAN_HOME: "${CI_PROJECT_DIR}/.conan2-cache"
+  # Linha do Node que INSTALL.md SS5 fixa ("24 Krypton", a LTS ativa). Aqui
+  # como variavel para o dia em que o roteiro mudar de linha: troca-se num
+  # lugar so, e o diff mostra a decisao.
+  NODE_MAJOR: "24"
 
 stages:
   - build
@@ -47,7 +28,7 @@ cache:
   # Cache 1: pacotes Conan -- o caro de reconstruir (INSTALL.md SS1: o
   # remote publico so tem binario pronto para gcc11, e o gcc13 deste image
   # forca '--build=missing' recompilar boost/protobuf/onnxruntime/mixr do
-  # zero). Chave pelo CONTEUDO das receitas: só muda quando uma versao de
+  # zero). Chave pelo CONTEUDO das receitas: so muda quando uma versao de
   # dependencia muda, nao a cada commit.
   # 'cache:key:files' aceita no maximo DOIS caminhos (limite do proprio
   # GitLab) -- 'conanfile.py' cobre as versoes fixadas (mixr/1.0.5,
@@ -85,25 +66,55 @@ cache:
 .ambiente:
   before_script:
     - set -euo pipefail
-    # Pacotes de sistema -- EXATAMENTE a lista testada em INSTALL.md SS1
-    # (Ubuntu 24.04 do zero).
+    # -- INSTALL.md SS1: pacotes de sistema ------------------------------
+    # EXATAMENTE a lista testada la (Ubuntu 24.04 do zero), mais
+    # 'ca-certificates' e sem os recomendados -- ver as divergencias 1 e 2
+    # do cabecalho deste arquivo.
     - apt-get update
     - apt-get install -y --no-install-recommends build-essential ninja-build meson pkg-config git curl perl patch zlib1g-dev python3 python3-venv python3-dev pipx gzip sudo ca-certificates
     - rm -rf /var/lib/apt/lists/*
-    # Conan via pipx, nao pip -- Ubuntu 24.04 recusa 'pip install' fora de
-    # venv (PEP 668) e nao ha pacote 'conan' no apt (INSTALL.md SS2).
+    # -- INSTALL.md SS2: Conan via pipx, nao pip -------------------------
+    # Ubuntu 24.04 recusa 'pip install' fora de venv (PEP 668) e nao ha
+    # pacote 'conan' no apt. O 'ensurepath' e o passo do roteiro; o 'export'
+    # e o que substitui o 'exec "$SHELL"' dele aqui (divergencia 4).
     - pipx install conan
+    - pipx ensurepath
     - export PATH="/root/.local/bin:${PATH}"
     - conan --version
-    # Perfil default -- o Conan 2 nao cria sozinho (INSTALL.md SS3): sem
-    # isto o primeiro 'make configure' morre com "The default build profile
-    # doesn't exist".
+    # -- INSTALL.md SS3: perfil default ----------------------------------
+    # O Conan 2 nao cria sozinho: sem isto o primeiro 'make configure' morre
+    # com "The default build profile doesn't exist".
     - conan profile detect --force
     # SEM remote privado nenhum -- ver o comentario do topo deste arquivo.
+    # 'conan remote list' fica como registro no log: o que aparecer aqui e
+    # so o conancenter que o proprio Conan ja traz de fabrica.
     - conan remote list
-    # Checagem final -- EXATAMENTE INSTALL.md SS5 ("com os cinco respondendo,
-    # a maquina esta pronta"), a mesma que fecha o roteiro de instalacao.
-    - gcc --version && meson --version && ninja --version && pkg-config --version && conan --version
+    # -- INSTALL.md SS5: Node.js pelo NodeSource -------------------------
+    # 'apt-cache policy nodejs' do roteiro fica implicito: a imagem
+    # 'ubuntu:24.04' nem tem o pacote instalado, e o INSTALL.md ja registra
+    # que o da distro pode ser velho demais -- por isso o repositorio
+    # NodeSource, e nao 'apt install nodejs' puro.
+    # MEDIDO num 'ubuntu:24.04' limpo, nao redescobrir: o 'setup_<N>.x' roda
+    # o PROPRIO 'apt-get update' e instala sozinho os pre-requisitos que a
+    # imagem nao tem ('gnupg', 'apt-transport-https') -- por isso ele
+    # funciona logo depois do 'rm -rf' do SS1, sem 'apt-get update' antes, e
+    # por isso 'gnupg' nao precisa entrar na lista do SS1. Ja o 'apt install
+    # nodejs' seguinte depende das listas que o setup acabou de popular:
+    # o 'rm -rf' desta secao vem depois DELE, nunca entre os dois.
+    # Medido nesta imagem (2026-09-09): node v24.20.0 traz npm 11.19.0, e o
+    # 'npm install -g npm@latest' do roteiro sobe para 12.0.2 -- que declara
+    # 'engines' recusando linhas antigas do Node, exatamente o risco que o
+    # INSTALL.md SS5 registra ao fixar a linha 24. Se este passo comecar a
+    # falhar por 'engines', e sinal de que a linha do NODE_MAJOR saiu de
+    # suporte: o conserto e no roteiro, nao aqui.
+    - curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | sudo -E bash -
+    - sudo apt install -y nodejs
+    - sudo npm install -g npm@latest
+    - rm -rf /var/lib/apt/lists/*
+    # -- INSTALL.md SS6: checagem final ----------------------------------
+    # Os SETE comandos do roteiro, na mesma ordem -- e o que fecha a
+    # instalacao la, e o que fecha o ambiente aqui.
+    - gcc --version && meson --version && ninja --version && pkg-config --version && conan --version && node --version && npm --version
 
 build:
   stage: build
@@ -111,11 +122,20 @@ build:
   timeout: 6h
   script:
     - set -euo pipefail
-    # Pacotes de sistema do Groot (INSTALL.md SS7) -- so este job precisa
-    # deles (o 'test' nunca toca deps/groot), entao ficam aqui e nao em
-    # '.ambiente'.
+    # -- INSTALL.md SS4: pacotes do Groot + dependencias do fonte --------
+    # So este job precisa deles (o 'test' nunca toca 'deps/groot'), entao
+    # ficam aqui e nao em '.ambiente'.
+    # O 'apt-get update' NAO e redundante com o de '.ambiente': aquele
+    # before_script termina cada bloco com 'rm -rf /var/lib/apt/lists/*',
+    # entao aqui o indice de pacotes NAO existe mais e este 'apt install'
+    # (que numa maquina de usuario roda depois do 'sudo apt update' do SS1)
+    # falha com 'E: Unable to locate package cmake' -- e os outros cinco --,
+    # sem nenhuma pista da causa. Confirmado rodando via 'make test-ci'.
+    - apt-get update
     - sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
+    - rm -rf /var/lib/apt/lists/*
     - ./scripts/deps.sh
+    # -- README.md, secao "Build": os cinco alvos, na ordem --------------
     - make configure
     - make sdk
     - make models

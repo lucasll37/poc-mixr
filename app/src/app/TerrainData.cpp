@@ -62,6 +62,36 @@ void ensureAllTerrainTiles(const std::string& dir)
    if (!fs::exists(dir, ec)) return;
 
    const std::string suffix{".hgt.gz"};
+
+   // TETO: acima disto, NAO descomprime nada aqui -- app::makeTerrainSampler()
+   // (app/TerrainQuery.cpp) descomprime cada tile na primeira vez que alguem
+   // consulta um ponto DENTRO dele, e so esse.
+   //
+   // Esta funcao nasceu para uma pasta de 4 tiles, onde descomprimir tudo na
+   // partida custava ~100 MB de disco e um segundo. Com a cobertura do Brasil
+   // em disco (~1600 tiles) a mesma linha escreveria ~41,5 GB e faria a
+   // partida do ./app levar minutos -- para tiles que aquela execucao nunca
+   // vai consultar. O caminho preguicoso ja cobre o caso grande; este bloco
+   // continua existindo so pela conveniencia do caso pequeno (a pasta padrao
+   // do repositorio, onde adiantar o trabalho nao custa nada).
+   const std::size_t kMaxEagerDecompress{16};
+   std::size_t compactados{0};
+   for (const auto& entry : fs::directory_iterator(dir, ec)) {
+      if (ec) break;
+      if (!entry.is_regular_file()) continue;
+      const std::string name{entry.path().filename().string()};
+      if (name.size() > suffix.size() &&
+          name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0) {
+         ++compactados;
+      }
+   }
+   if (compactados > kMaxEagerDecompress) {
+      std::cout << "[main] " << compactados << " tiles de terreno em disco -- descompressao"
+                << " sob demanda (nenhum descomprimido agora)" << std::endl;
+      return;
+   }
+
+   ec.clear();
    for (const auto& entry : fs::directory_iterator(dir, ec)) {
       if (ec) break;
       if (!entry.is_regular_file()) continue;

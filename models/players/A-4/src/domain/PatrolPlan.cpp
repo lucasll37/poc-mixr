@@ -5,11 +5,14 @@
 //------------------------------------------------------------------------------
 // O SENTIDO da curva do circuito de patrulha.
 //
-// Existe para a demonstracao de recarga do modelo (make check-plugin-hotswap):
-// e a regra de negocio que muda quando SO o plugin e recompilado, sem tocar no
-// .edl e sem relinkar o executavel. O default 1.0 e o comportamento de sempre;
-// -1.0 inverte o circuito inteiro, e a divergencia aparece em TODAS as linhas
-// 'frame=' nos primeiros segundos.
+// Existe para a prova de recarga do modelo -- o teste 'plugin-hotswap'
+// (tests/plugin/run_plugin_hotswap.py, suite 'plugin'): e a regra de negocio
+// que muda quando SO o plugin e recompilado, sem tocar no .edl e sem relinkar
+// o executavel. O default 1.0 e o comportamento de sempre; -1.0 inverte o
+// circuito inteiro, e a divergencia aparece em TODAS as linhas 'frame=' nos
+// primeiros segundos. As duas variantes saem do MESMO fonte, atras de
+// '-Dvariants=true' (ver o meson.build deste projeto), nunca de um sed no
+// fonte versionado.
 //
 // Escolhido de proposito entre as coisas que o EDL NAO sobrescreve: 'legTurn:'
 // ajusta o ANGULO da curva, nunca o sentido. Sem isso a demonstracao provaria
