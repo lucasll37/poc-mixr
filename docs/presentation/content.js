@@ -2,7 +2,7 @@
 //
 // Cada item deste array vira um <section class="slide <extraClass>"
 // data-title="<title>"> dentro de #deck -- o script logo apos a div.deck, em
-// index.html, monta as 30 slides a partir daqui (nesta ORDEM) antes de tudo o
+// index.html, monta as slides a partir daqui (nesta ORDEM) antes de tudo o
 // mais rodar. Adicionar/remover um item deste array adiciona/remove um slide da
 // apresentacao -- nao precisa mexer em index.html para isso.
 //
@@ -12,6 +12,13 @@
 // slides (<b>, <code>, <em>, <p class="eyebrow">, <figure class="diagram">,
 // diagramas SVG, video de demo...) -- e' a mesma coisa que estaria direto num
 // arquivo .html.
+//
+// Roteiro de origem: docs/presentation/SLIDE.md (secoes I-IV). O texto aqui NAO
+// e' copia literal dele -- e' a mesma ideia, convertida no mesmo formato que ja
+// vinha sendo usado (eyebrow/headline, bullets com <b> nos termos-chave,
+// diagrama reaproveitado quando a ideia e' a mesma, callout para o ponto
+// central, stat-row para fato quantificado, media-placeholder para sugestao de
+// midia futura, slide--statement para tese forte, slide--demo para video cheio).
 window.PRESENTATION_SLIDES = [
   {
     extraClass: 'slide--title',
@@ -19,13 +26,15 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">Reestruturação de plataforma · MIXR + BehaviorTree.CPP</p>
   <h1>Refatoração do ASA</h1>
-  <p class="lede">Simulação aeroespacial é difícil por natureza — isso não muda. O que muda é
-  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">tudo o que atrapalha</u>
+  <p class="lede">Simulação aeroespacial é desafiadora por natureza — isso não muda. O que muda é
+  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">arquitura</u>
   ao redor disso.</p>
   <div class="tag-row">
-    <span class="tag">A-4 Skyhawk (produção)</span><span class="tag">onnx-policy</span>
-    <span class="tag">python-flight</span><span class="tag">TOUR.md</span>
+  <!--
+  <span class="tag">A-4 Skyhawk (produção)</span><span class="tag">onnx-policy</span>
+  <span class="tag">python-flight</span><span class="tag">TOUR.md</span>
   </div>
+  -->
   <p class="meta-row">
     <span><b>MIXR</b> 1.0.5</span><span><b>BehaviorTree.CPP</b> 3.5.6</span>
     <span><b>Toolchain</b> Conan → Meson/Ninja → Makefile</span>
@@ -40,9 +49,9 @@ window.PRESENTATION_SLIDES = [
   <h2 class="headline">Um domínio com agentes que interagem</h2>
   <ul class="list">
     <li>Aeronaves, sensores, armas, sistemas de navegação — cada um com <b>dinâmica própria</b>,
-    reagindo e causando efeitos uns nos outros em tempo real.</li>
+    reagindo e causando efeito uns nos outros.</li>
     <li>Tudo isso ao mesmo tempo, com <b>dependências cruzadas</b> — não é dificuldade de código
-    mal escrito, é dificuldade <b>inerente ao domínio</b>.</li>
+    malfeito, é dificuldade <b>inerente ao domínio</b> que estamos simulando.</li>
   </ul>
   <figure class="diagram">
     <svg viewBox="0 0 900 440" style="max-height:38vh" role="img" aria-label="Radar, piloto automatico, alerta e terreno dispostos em circulo, cada um ligado a todos os outros -- nao uma cadeia, uma teia de dependencias cruzadas">
@@ -80,8 +89,11 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
   <h2 class="headline">O trabalho real: revisitar tudo que já existe</h2>
+  <p class="lede muted">Quando alguém implementa um modelo novo, o trabalho não termina em
+  implementar a dinâmica dele. O trabalho real é descrever o comportamento que ele tem frente ao
+  que já existe — e vice-versa.</p>
   <figure class="diagram">
-    <svg viewBox="0 0 800 370" style="max-height:39vh" role="img" aria-label="Um modelo novo se conecta, nos dois sentidos, com cada um dos modelos que ja existem: chaff, sistema de alerta, aeronave">
+    <svg viewBox="0 0 800 370" style="max-height:36vh" role="img" aria-label="Um modelo novo se conecta, nos dois sentidos, com cada um dos modelos que ja existem: chaff, sistema de alerta, aeronave">
       <rect x="20" y="143" width="240" height="83" rx="8" fill="none" stroke="currentColor" stroke-width="1.8" class="svg-accent"/>
       <text x="140" y="180" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">modelo novo</text>
       <text x="140" y="200" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-accent" opacity=".85">míssil · aeronave · sensor</text>
@@ -103,13 +115,13 @@ window.PRESENTATION_SLIDES = [
       <line x1="260" y1="207" x2="478" y2="319" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
     </svg>
     <figcaption>Um míssil novo precisa reagir certo a um chaff que já existia — e ser
-    reconhecido certo por um sistema de alerta e por outras aeronaves escritos antes dele
-    existir. O efeito vale nos dois sentidos, para cada um.</figcaption>
+    reconhecido certo por um sistema de alerta e por outras aeronaves escritos antes dele existir.
+    Vale nos dois sentidos, para cada par.</figcaption>
   </figure>
   <div class="callout">
     <span class="k">Ponto central</span>
     <p>Isso não é acidental — é o próprio significado de simular um domínio com agentes que
-    interagem.</p>
+    interagem. Implementar a dinâmica é a parte fácil.</p>
   </div>
 `
   },
@@ -172,42 +184,30 @@ window.PRESENTATION_SLIDES = [
   <p class="lede muted">A expectativa não é remover a dificuldade de modelar — é recuperar
   produtividade e capacidade de escalar, atacando todo atrito evitável.</p>
   <ul class="list tight">
-    <li><b>Ferramentas usadas do jeito certo</b> — MIXR, BehaviorTree.CPP, Groot</li>
+    <li><b>Uso idiomático das ferramentas</b> — MIXR, BehaviorTree.CPP</li>
     <li><b>Um repositório só</b>, não vários espalhados</li>
     <li><b>Esteira de CI forte</b> — testes em camadas, Makefile claro</li>
     <li><b>Contrato forte de modelo</b> — <code>docs/</code>, <code>CHANGELOG.md</code></li>
     <li><b>Ferramentas de assistência</b> — painel ao vivo, manual, editor visual</li>
-    <li><b>Documentação com apoio de IA</b> + filosofia <b>poc-first</b></li>
-    <li><b>Ambiente padronizado</b> — VSCode, <code>clangd</code></li>
+    <li><b>Ambiente padronizado</b> — extensão VSCode para <code>.edl</code></li>
     <li><b>Roadmap</b> — integração com o asa-engine</li>
   </ul>
 `
   },
   {
     extraClass: '',
-    title: 'Ferramentas usadas do jeito certo',
+    title: 'Ferramentas usadas do jeito que foram desenhadas',
     html: `
   <p class="eyebrow">II · A proposta</p>
   <h2 class="headline">Ferramentas usadas do jeito que foram desenhadas</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>MIXR e BehaviorTree.CPP não são bibliotecas genéricas — são frameworks com
-      <b>opiniões fortes</b> sobre como o código deveria se organizar.</li>
-      <li>A aposta é usá-los como foram desenhados, em vez de reconstruir por fora o que eles já
-      resolvem por dentro — é isso que faz a dinâmica de eventos do MIXR funcionar a nosso
-      favor.</li>
-      <li><b>Groot</b> entra como a ferramenta de edição e monitoramento das árvores de
-      comportamento — visual, não só texto.</li>
-      <li>Extensão VSCode para <code>.edl</code>: realce de sintaxe <b>e</b> validação de
-      verdade — o mesmo parser do framework, antes de tentar rodar. <code>clangd</code> no lugar
-      do IntelliSense padrão para C++.</li>
-    </ul>
-    <div class="media-placeholder">
-      <svg width="30" height="30"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">Groot editando uma árvore de comportamento ao vivo</p>
-    </div>
-  </div>
+  <ul class="list">
+    <li>MIXR e BehaviorTree.CPP não são bibliotecas genéricas — são frameworks com
+    <b>opiniões fortes</b> sobre como o código deveria se organizar.</li>
+    <li>A aposta é usá-los como foram desenhados para ser usados, em vez de reconstruir por fora
+    aquilo que eles já resolvem por dentro.</li>
+    <li>É isso que faz a dinâmica de eventos do MIXR — a mesma que separa modelo A de modelo B
+    sem que um conheça o outro — funcionar a nosso favor, de verdade.</li>
+  </ul>
 `
   },
   {
@@ -279,8 +279,8 @@ window.PRESENTATION_SLIDES = [
       <text x="930" y="196" text-anchor="end" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".6">mais integrado</text>
     </svg>
     <figcaption>Um espectro, não uma grade solta: da regra mais isolada (<code>domain</code>) ao
-    contrato de plugin (<code>guard</code>) — cada camada prova uma coisa diferente, um degrau
-    mais integrada que a anterior. Makefile deixa claro o que fazer em cada passo.</figcaption>
+    contrato de plugin (<code>guard</code>) — cada camada prova uma coisa diferente. Makefile deixa
+    claro o que fazer para configurar, compilar, testar e rodar um modelo, em cada passo.</figcaption>
   </figure>
   <div class="stat-row">
     <span class="stat-chip">8 camadas de teste</span>
@@ -309,9 +309,8 @@ window.PRESENTATION_SLIDES = [
       </ul>
       <div class="callout" style="margin-top:18px">
         <span class="k">Por quê</span>
-        <p>Mensagem de commit se engana. Data de commit não. Isso é gestão de conhecimento de
-        verdade: o conhecimento não fica só na cabeça de quem escreveu — fica registrado de um
-        jeito que sobrevive à saída da pessoa.</p>
+        <p>Mensagem de commit se engana; data de commit, não. O conhecimento sobre aquele modelo
+        fica registrado de um jeito que sobrevive à saída de quem escreveu.</p>
       </div>
     </div>
     <div class="media-placeholder media-placeholder--fill">
@@ -336,51 +335,90 @@ window.PRESENTATION_SLIDES = [
     decisão de verdade que os modelos usam.</li>
     <li>Um <b>editor visual</b> para montar cenários, sem precisar decorar sintaxe.</li>
   </ul>
-  <div class="media-grid">
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">./app (TUI) — painel ao vivo, trocando de aba durante a simulação</p>
-    </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Manual interativo navegando a árvore de decisão</p>
-    </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">Editor visual montando um cenário arrastando classes</p>
+`
+  },
+  {
+    extraClass: 'slide--demo',
+    title: '1. ./app — painel de controle',
+    html: `
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">1. ./app — painel de controle e observação em tempo real</h2>
+  <div class="demo-stage">
+    <video controls playsinline src="demos/01-app.mp4"></video>
+  </div>
+`
+  },
+  {
+    extraClass: 'slide--demo',
+    title: '2. Documentação iterativa',
+    html: `
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">2. Documentação iterativa — o manual interativo</h2>
+  <div class="demo-stage">
+    <video controls playsinline src="demos/02-documentacao-iterativa.mp4"></video>
+  </div>
+`
+  },
+  {
+    extraClass: 'slide--demo',
+    title: '3. Editor visual de cenários (EDL-builder)',
+    html: `
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">3. Editor visual de cenários — EDL-builder</h2>
+  <div class="demo-stage" data-demo="demos/03-editor-edl">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty">
+      <svg width="34" height="34"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo ainda não adicionado</span>
+      <p class="caption">3. Editor visual de cenários — EDL-builder</p>
+      <p class="hint">coloque "03-editor-edl.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
     </div>
   </div>
 `
   },
   {
+    extraClass: 'slide--demo',
+    title: '4. Esteira de build',
+    html: `
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">4. Esteira de build — clean → configure → models → build → install</h2>
+  <div class="demo-stage">
+    <video controls playsinline src="demos/04-esteira-build.mp4"></video>
+  </div>
+`
+  },
+  {
+    extraClass: 'slide--demo',
+    title: '5. Catálogo de modelos e built-in',
+    html: `
+  <p class="eyebrow">Demonstrações em vídeo</p>
+  <h2 class="headline">5. Catálogo de modelos e modelos built-in</h2>
+  <div class="demo-stage">
+    <video controls playsinline src="demos/07-catalogo-modelos.mp4"></video>
+  </div>
+`
+  },
+  {
     extraClass: '',
-    title: 'Documentação com IA + poc-first',
+    title: 'Padronização de ambiente',
     html: `
   <p class="eyebrow">II · A proposta</p>
-  <h2 class="headline">Documentação com apoio de IA + a filosofia poc-first</h2>
+  <h2 class="headline">Padronização de ambiente</h2>
   <div class="grid-2">
     <ul class="list">
-      <li>Não é terceirizar a explicação para uma IA e aceitar o que sai.</li>
-      <li>É usar IA como <b>alavanca</b> para produzir e manter atualizada uma documentação que,
-      historicamente, é a primeira coisa a envelhecer mal em qualquer projeto de engenharia.</li>
+      <li>Extensão VSCode para arquivos <code>.edl</code>: realce de sintaxe — <b>e</b>, mais
+      importante, uma validação de verdade desses arquivos.</li>
+      <li>A validação roda o <b>mesmo parser</b> que o framework usa em produção, antes mesmo de
+      tentar rodar a simulação — o erro de sintaxe aparece no editor, não no meio de um cenário
+      carregando.</li>
     </ul>
-    <ul class="list">
-      <li>Em vez de desenhar a arquitetura ideal no papel antes de escrever qualquer linha, a
-      aposta é começar simples, com uma prova de conceito pequena.</li>
-    </ul>
+    <div class="media-placeholder media-placeholder--fill">
+      <svg width="30" height="30"><use href="#i-image"></use></svg>
+      <span class="tag">Imagem sugerida</span>
+      <p class="caption">Screenshot: um erro de slot apontado direto no editor, antes de rodar
+      qualquer coisa</p>
+    </div>
   </div>
-  <p class="eyebrow" style="margin-top:8px">poc-first, na prática</p>
-  <div class="pipeline">
-    <span class="pipe-step">poc pequena</span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">vira <b>contrato</b></span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">vira <b>exemplo de como fazer</b></span><span class="pipe-arrow">→</span>
-    <span class="pipe-step">próximo modelo copia e adapta</span>
-  </div>
-  <p class="lede muted">Um caminho já percorrido para copiar e adaptar — não um documento de
-  intenções.</p>
 `
   },
   {
@@ -427,132 +465,16 @@ window.PRESENTATION_SLIDES = [
 `
   },
   {
-    extraClass: 'slide--demo',
-    title: '1. ./app — todas as telas possíveis',
+    extraClass: 'slide--statement',
+    title: 'Reescrever é recuperar conhecimento',
     html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">1. ./app — todas as telas possíveis</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/01-app.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '2. Documentação iterativa',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">2. Documentação iterativa</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/02-documentacao-iterativa.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '3. Editor minimalista de EDL',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">3. Editor minimalista de EDL</h2>
-  <div class="demo-stage" data-demo="demos/03-editor-edl">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">3. Editor minimalista de EDL</p>
-      <p class="hint">coloque "03-editor-edl.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '4. Esteira de build',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">4. Esteira de build — clean → configure → models → build → install</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/04-esteira-build.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '5. Criação de modelo + árvore',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">5. Criação de modelo com make + geração da árvore</h2>
-  <div class="demo-stage" data-demo="demos/05-criacao-modelo">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">5. Criação de modelo com make + geração da árvore</p>
-      <p class="hint">coloque "05-criacao-modelo.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '6. Groot acompanhando a simulação',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">6. Groot acompanhando a simulação</h2>
-  <div class="demo-stage" data-demo="demos/06-groot">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">6. Groot acompanhando a simulação</p>
-      <p class="hint">coloque "06-groot.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '7. Catálogo de modelos + built-in',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">7. Catálogo de modelos e modelos built-in</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/07-catalogo-modelos.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '8. Mapa de documentação',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">8. Mapa de documentação</h2>
-  <div class="demo-stage" data-demo="demos/08-mapa-documentacao">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">8. Mapa de documentação</p>
-      <p class="hint">coloque "08-mapa-documentacao.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '9. PoCs de RL e script Python',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">9. PoCs de RL e script Python</h2>
-  <div class="demo-stage" data-demo="demos/09-rl-python">
-    <video controls playsinline hidden></video>
-    <div class="demo-empty">
-      <svg width="34" height="34"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo ainda não adicionado</span>
-      <p class="caption">9. PoCs de RL e script Python</p>
-      <p class="hint">coloque "09-rl-python.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
-    </div>
-  </div>
+  <p class="eyebrow">III · Onde estamos</p>
+  <p class="statement">Reescrever modelos que já existem é um desafio grande — e um desafio que
+  já sabíamos, desde o início, que teria de ser encarado.</p>
+  <p class="lede muted" style="margin-top:4px">O benefício: reescrever é a oportunidade de
+  recuperar um conhecimento que hoje só existe dentro do próprio código. E esse é o melhor
+  momento possível para isso — com IA tornando muito mais viável ler, entender e reescrever
+  código antigo, com documentação e teste junto.</p>
 `
   },
   {
@@ -566,11 +488,10 @@ window.PRESENTATION_SLIDES = [
       <ul class="list">
         <li>Um metaprojeto <b>open-source</b>, com todo o esqueleto do que pode vir a ser, no
         futuro, uma refatoração completa da ASA.</li>
-        <li>Hoje, com um único modelo de produção pronto de ponta a ponta: a aeronave <b>A-4
-        Skyhawk</b>.</li>
-        <li>E provas de conceito que mostram até onde essa estrutura pode ir: uma decisão tomada
-        por uma <b>rede neural treinada via ONNX</b>, e uma decisão escrita <b>inteiramente em
-        Python</b>, sem recompilar nada.</li>
+        <li>Provas de conceito que mostram até onde essa estrutura pode ir, de forma
+        <b>nativa</b>: uma decisão tomada por uma <b>rede neural treinada via ONNX</b>, e uma
+        decisão escrita <b>inteiramente em Python</b>, sem recompilar nada.</li>
+        <li>Adotando boas práticas de desenvolvimento — não é só "funciona", é rastreável.</li>
       </ul>
       <div class="stat-row">
         <span class="stat-chip">MLP 28→64→64→3, 6.211 parâmetros (ONNX)</span>
@@ -674,82 +595,58 @@ window.PRESENTATION_SLIDES = [
       <line x1="480" y1="120" x2="742" y2="83" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
       <text x="605" y="97" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".8">mudou para</text>
     </svg>
-    <figcaption>Hoje o mesmo ciclo decide em <code>updateTC()</code>, fase 3, até 50 Hz — cada
-    aeronave na própria thread do pool, com dumps byte-idênticos em 1, 2 ou 4 threads. Ganho
-    maior em simulações isoladas do que em lote.</figcaption>
+    <figcaption>Hoje o mesmo ciclo decide em <code>updateTC()</code>, fase 3, até 50 Hz — junto
+    com o resto da lógica de decisão da simulação, na mesma cadência da física.</figcaption>
   </figure>
 `
   },
   {
     extraClass: '',
-    title: 'Cobertura garantida na infraestrutura, domínio é do modelista',
+    title: 'Paralelismo determinístico',
     html: `
   <p class="eyebrow">III · Onde estamos</p>
-  <h2 class="headline">Cobertura garantida na infraestrutura, domínio é do modelista</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>As camadas de teste do <b>host</b> — cenário, memória, determinismo, plugin, guarda —
-      já vêm prontas e valem para qualquer modelo que entrar no repositório, sem esforço extra.</li>
-      <li>As camadas de teste do <b>modelo</b> — domínio, árvore, nativo — são a regra de
-      negócio daquela aeronave especificamente, e ficam naturalmente a cargo de quem escreve o
-      modelo.</li>
-      <li>É exatamente aí que a IA brilha: escrever bateria de teste de regra de domínio, com
-      casos de borda, é trabalho repetitivo — o tipo de trabalho onde um assistente multiplica a
-      velocidade sem abrir mão de cobertura.</li>
-    </ul>
-    <div class="callout" style="align-self:start">
-      <span class="k">Consequência prática</span>
-      <p>Quem escreve um modelo novo herda de graça toda a rede de segurança do host — e
-      escreve, com apoio de IA, só os testes que são realmente específicos daquele modelo.</p>
-    </div>
+  <h2 class="headline">Paralelismo determinístico</h2>
+  <p class="lede muted">Cada aeronave decide na própria thread do pool de tempo crítico, em
+  paralelo — e o resultado sai <b>byte-idêntico</b> rodando com uma, duas ou quatro threads.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 900 260" role="img" aria-label="Quatro aeronaves decidindo cada uma na propria thread do pool de tempo critico, convergindo para um dump byte-identico independente do numero de threads">
+      <rect x="20" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-teal"/>
+      <text x="115" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-teal">falcon1</text>
+      <text x="115" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-teal" opacity=".85">thread do pool</text>
+
+      <rect x="237" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-accent"/>
+      <text x="332" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">falcon2</text>
+      <text x="332" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-accent" opacity=".85">thread do pool</text>
+
+      <rect x="454" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-amber"/>
+      <text x="549" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-amber">falcon3</text>
+      <text x="549" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-amber" opacity=".85">thread do pool</text>
+
+      <rect x="671" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-brick"/>
+      <text x="766" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-brick">falcon4</text>
+      <text x="766" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-brick" opacity=".85">thread do pool</text>
+
+      <line x1="115" y1="85" x2="115" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+      <line x1="332" y1="85" x2="332" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+      <line x1="549" y1="85" x2="549" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+      <line x1="766" y1="85" x2="766" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+
+      <rect x="20" y="170" width="840" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="2" class="svg-ink"/>
+      <text x="440" y="202" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-ink">dump byte-idêntico</text>
+      <text x="440" y="222" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".8">com 1, 2 ou 4 threads T/C</text>
+    </svg>
+    <figcaption>Quatro aeronaves, quatro threads, um único resultado possível — o número de
+    threads muda o paralelismo, nunca o resultado.</figcaption>
+  </figure>
+  <div class="stat-row">
+    <span class="stat-chip">1/2/4 threads: dumps byte-idênticos</span>
   </div>
-`
-  },
-  {
-    extraClass: '',
-    title: 'A física também é configurável — sem recompilar',
-    html: `
-  <p class="eyebrow">III · Onde estamos</p>
-  <h2 class="headline">A física também é configurável — sem recompilar</h2>
-  <div class="grid-2">
-    <ul class="list">
-      <li>Mesma aeronave, mesma árvore de comportamento, mesma rota — só o slot
-      <code>dynamicsModel:</code> do <code>.edl</code> muda: seis graus de liberdade completos
-      via <b>JSBSim</b>, um modelo linear de quatro graus via <b>LaeroModel</b>, ou um modelo
-      cinemático de três canais comandados — rumo, altitude, velocidade — via
-      <b>RacModel</b>.</li>
-      <li>Nenhuma das três trocas exige recompilar uma linha de C++ — é configuração de
-      cenário, não mudança de código. E o realce de sintaxe real dos arquivos <code>.edl</code>
-      — o mesmo vocabulário que o parser da simulação entende — ajuda a explorar isso com
-      confiança.</li>
-    </ul>
-    <div>
-      <div class="stat-row" style="margin-top:0">
-        <span class="stat-chip">6 DOF — JSBSimModel (produção)</span>
-        <span class="stat-chip">4 DOF — LaeroModel</span>
-        <span class="stat-chip">3 DOF — RacModel (cinemático)</span>
-      </div>
-      <div class="callout" style="margin-top:18px">
-        <span class="k">Por que importa</span>
-        <p>Nem toda aeronave de um cenário precisa da fidelidade completa do JSBSim o tempo
-        inteiro — um modelo de dinâmica mais barato, para quem está só de pano de fundo, dá
-        fôlego para escalar o número de entidades num cenário grande. Ainda em exploração, não
-        em produção.</p>
-      </div>
-    </div>
+  <div class="callout">
+    <span class="k">Onde o ganho aparece</span>
+    <p>Maior justamente em <b>simulações isoladas</b> — várias entidades decidindo ao mesmo tempo
+    dentro de uma simulação só — e não em lote, rodando várias instâncias em paralelo. É
+    paralelismo de dentro de uma simulação, não entre simulações.</p>
   </div>
-`
-  },
-  {
-    extraClass: 'slide--statement',
-    title: 'Reescrever é recuperar conhecimento',
-    html: `
-  <p class="eyebrow">III · Onde estamos</p>
-  <p class="statement">Código é, por natureza, uma forma difícil de guardar conhecimento —
-  mesmo em uma linguagem tão legível quanto Python. Reescrever um modelo antigo é a
-  oportunidade de recuperar esse conhecimento, com documentação e testes junto.</p>
-  <p class="lede muted" style="margin-top:4px">E esse é o melhor momento possível para isso —
-  com IA tornando muito mais viável ler, entender e reescrever código antigo.</p>
 `
   },
   {
@@ -772,6 +669,11 @@ window.PRESENTATION_SLIDES = [
       <span class="tag">Vídeo sugerido</span>
       <p class="caption">Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview</p>
     </div>
+  </div>
+  <div class="callout">
+    <span class="k">Antes de pedir ajuda a uma IA</span>
+    <p>Reserve um tempo para esse primeiro contato, sem pressa — explorar no seu próprio ritmo
+    rende insights mais ricos.</p>
   </div>
 `
   },
@@ -806,17 +708,17 @@ window.PRESENTATION_SLIDES = [
     extraClass: '',
     title: 'O que se espera',
     html: `
-  <p class="eyebrow">V · O que se espera</p>
+  <p class="eyebrow">IV · O convite</p>
   <h2 class="headline">O que se espera</h2>
   <div class="grid-2">
     <ul class="list">
-      <li>Que cada pessoa que passar por esse processo deixe esse framework com a <b>cara do que
+      <li>Que cada pessoa que passar por esse tour deixe esse framework com a <b>cara do que
       gostaria de trabalhar</b> no futuro.</li>
       <li>Chegar a um núcleo o mais próximo possível do <b>imutável</b> — uma base estável o
-      suficiente para que o esforço de cada equipe vá para o que é específico do modelo dela.</li>
+      suficiente para que o esforço de cada equipe vá para o que é específico.</li>
     </ul>
     <figure class="diagram">
-      <svg viewBox="0 0 520 320" role="img" aria-label="Slot, plugin e folha de arvore de comportamento convergindo para um vocabulario comum">
+      <svg viewBox="0 0 520 320" role="img" aria-label="Slot, plugin e folha de arvore de comportamento convergindo para um contexto tecnico comum">
         <rect x="20" y="10" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
         <text x="130" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">"slot"</text>
 
@@ -828,15 +730,15 @@ window.PRESENTATION_SLIDES = [
         <text x="130" y="296" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-teal">de comportamento"</text>
 
         <rect x="300" y="115" width="200" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.7" class="svg-accent"/>
-        <text x="400" y="152" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">vocabulário</text>
-        <text x="400" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">comum</text>
+        <text x="400" y="152" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">contexto</text>
+        <text x="400" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">técnico comum</text>
 
         <line x1="242" y1="40" x2="298" y2="130" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
         <line x1="242" y1="160" x2="298" y2="160" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
         <line x1="242" y1="280" x2="298" y2="190" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
       </svg>
-      <figcaption>Quando os termos significam a mesma coisa para todo mundo, uma reunião técnica
-      para de gastar tempo alinhando terminologia.</figcaption>
+      <figcaption>Quando os termos significam a mesma coisa para todo mundo, a equipe ganha um
+      contexto técnico comum — não um "só entendo meu quadrado".</figcaption>
     </figure>
   </div>
 `
@@ -845,10 +747,10 @@ window.PRESENTATION_SLIDES = [
     extraClass: 'slide--statement',
     title: 'Fechamento',
     html: `
-  <p class="eyebrow">V · O que se espera</p>
-  <p class="statement">Simulação aeroespacial vai continuar sendo difícil. Mas a forma como
+  <p class="eyebrow">IV · O convite</p>
+  <p class="statement">Simulação aeroespacial vai continuar sendo desafiadora. Mas a forma como
   escrevemos, testamos, documentamos e conversamos sobre os modelos que simulam esse domínio —
-  <em>essa parte está em nossas mãos</em>.</p>
+  <em>essa parte é otimizável</em>.</p>
   <p class="lede muted" style="margin-top:4px">Um eixo de cada vez. Um modelo, hoje. E o convite
   aberto para o próximo.</p>
 `
@@ -857,7 +759,7 @@ window.PRESENTATION_SLIDES = [
     extraClass: 'slide--statement',
     title: 'Encerramento',
     html: `
-  <p class="eyebrow">V · Encerramento</p>
+  <p class="eyebrow">IV · Encerramento</p>
   <p class="statement">Obrigado.</p>
   <p class="lede muted" style="margin-top:4px">poc-mixr · Refatoração do ASA — perguntas?</p>
   <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">

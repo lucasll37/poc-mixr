@@ -1,0 +1,224 @@
+//
+// src/poc/c130-airdrop
+//
+// O C-130 (models/players/C-130) navegando de verdade por Route/Steerpoint
+// nativo -- mesmo padrao ja provado em full-systems-nav -- e liberando um
+// paraquedista no steerpoint wp2, tratado como liberacao de ARMA (mesma
+// familia de Bomb/Decoy/Chaff), nao como Player autonomo. Ver
+// models/players/C-130/docs/ARCHITECTURE.md para a arquitetura completa.
+//
+// Cenario deliberadamente magro comparado a full-systems-nav: nenhum
+// sensor/radar/track manager (obc: ( OnboardComputer ) bare -- so o
+// suficiente pra Route::triggerAction() disparar a Action do steerpoint,
+// que EXIGE um OnboardComputer no player, ou o gatilho vira no-op em
+// silencio) e nenhuma arma de combate -- so o placeholder de paraquedista.
+//
+// wrap:true + 4 estacoes: cada volta libera mais um paraquedista (4 no
+// total); a 5a volta em diante e' no-op inofensivo ("acabou a carga"), nao
+// bug -- ver README.md desta poc.
+//
+// Numeros de posicao/altitude/velocidade dos steerpoints e limites do
+// Autopilot SAO CHUTE INICIAL, nao calibrados rodando -- mesma classe de
+// risco ja documentada para o gotcha de velocidade abaixo do sustentavel em
+// full-systems-nav. Calibrar antes de considerar este cenario "pronto" (ver
+// README.md).
+//
+// Porta Tacview 1241 -- proxima livre (1234 flight, 1235 bandit, 1237
+// python-flight/rl, 1238 onnx-policy, 1239 built-in_mixr_1, 1240
+// full-systems-nav).
+//
+// Cenario hermetico (sem 'networks:') -- roda ao lado das demais pocs sem
+// colidir.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: c130
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libC-130.so"
+               provides: { C130FlightAgentTC C130ActionParatrooperRelease
+                           C130ActionParatrooperStick C130ParatrooperPlaceholder
+                           C130FlightState C130BtBehavior C130FlightAction }
+            )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "c130-airdrop"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1241
+               callsign: "poc-mixr/c130-airdrop"
+               fileName: "./src/poc/c130-airdrop/data/recordings/mission.acmi"
+               modelMap: { c130: "C-130" }
+               typeMap:  { c130: "Air+FixedWing+Transport" }
+               colorMap: { c130: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Mesma referencia das outras pocs -- Serra do Mar / regiao de Nova
+      // Friburgo (RJ).
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         c130: ( Aircraft
+            id: 301
+            side: blue
+            type: "C130"
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 0 )
+            initAlt:      ( Meters 1400 )
+            initHeading:  ( Degrees 20 )
+            initVelocity: 170.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+            components: {
+
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/C-130/jsbsim/"
+                  model:   "C130"
+                  debugLevel: 0
+               )
+
+               // Limites CHUTE INICIAL -- ver o comentario de topo deste
+               // arquivo. maxRateOfTurnDps casa com o limitador de
+               // bt::NavigateAction (kMaxHeadingRateDegPerSec), pra o
+               // Autopilot nunca ser mais apertado que o comando ja
+               // suavizado.
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 3.0
+                  maxBankAngle:    25.0
+                  maxPitchAngle:   15.0
+                  maxClimbRateMps:  9.0
+                  maxAcceleration:  2.0
+               )
+
+               // ( Ins ) E uma ( Navigation ), e o ( Gps ) aninhado tambem
+               // -- por isso o Gps entra como FILHO, nao como irmao (senao
+               // findByType() so acharia um dos dois).
+               nav: ( Ins
+                  route: ( Route
+                     to: 1
+                     autoSequence: true
+                     autoSeqDistance: ( NauticalMiles 1.5 )
+                     wrap: true
+                     components: {
+                        wp1: ( Steerpoint
+                           stptType: DEST
+                           xPos: ( Meters 12000 )
+                           yPos: ( Meters 4000 )
+                           altitude: ( Meters 1400 )
+                           airspeed: 180.0
+                           description: "ingresso"
+                        )
+                        wp2: ( Steerpoint
+                           stptType: TGT
+                           xPos: ( Meters 8000 )
+                           yPos: ( Meters 9000 )
+                           altitude: ( Meters 1400 )
+                           airspeed: 140.0
+                           description: "ponto de largada -- libera paraquedista"
+                           action: ( C130ActionParatrooperRelease storeType: "PARATROOPER" )
+                        )
+                        wp3: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters 4000 )
+                           yPos: ( Meters 5000 )
+                           altitude: ( Meters 1400 )
+                           airspeed: 180.0
+                           description: "egresso -- volta ao ingresso"
+                        )
+                     }
+                  )
+                  components: {
+                     gps: ( Gps )
+                  }
+               )
+
+               // OBRIGATORIO -- sem isto, Route::triggerAction() nunca
+               // acha um OnboardComputer e a ActionParatrooperRelease do
+               // wp2 nunca dispara, em silencio (ver
+               // mixr::models::Route::triggerAction()).
+               obc: ( OnboardComputer )
+
+               // 4 estacoes "PARATROOPER" -- uma liberada por volta
+               // (wrap:true), repetindo a busca generica de
+               // ActionParatrooperRelease a cada passagem por wp2. Volta 5+
+               // e' no-op inofensivo (nenhuma estacao livre).
+               stores: ( StoresMgr
+                  numStations: 4
+                  stores: {
+                     1: ( C130ParatrooperPlaceholder
+                        id: 401  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     2: ( C130ParatrooperPlaceholder
+                        id: 402  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     3: ( C130ParatrooperPlaceholder
+                        id: 403  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     4: ( C130ParatrooperPlaceholder
+                        id: 404  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                  }
+               )
+
+               // Componente do PLAYER (nao da Station), decidindo na FASE 3
+               // do frame de tempo critico -- mesmo padrao de toda poc
+               // deste repositorio. Arvore de UM no so (Navigate) -- este
+               // modelo so navega.
+               agent: ( C130FlightAgentTC
+                  state: ( C130FlightState )
+                  behavior: ( C130BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/C-130/c130_nav_tree.xml"
+                  )
+               )
+
+            } // components
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

@@ -27,6 +27,9 @@ seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de contin
 > - O ponto de partida copiável é `models/players/template/`; `make new-model NAME=... CATEGORY=player`
 >   copia e renomeia por você (`CATEGORY` é obrigatório: `player`/`system`/`others`, decide a
 >   subpasta de `models/` — não existe `CATEGORY=event`, ver seção 2).
+> - Quer ver tudo isto costurado, com código real do modelo de produção (A-4) — criar um nó de
+>   árvore, registrá-lo, colá-lo no XML, publicar o `.so` e rodar num cenário — do início ao fim?
+>   → seção 8, "Exemplo guiado completo".
 >
 > Isto não substitui os documentos abaixo — é só o suficiente para não se perder na primeira
 > passada por eles.
@@ -174,6 +177,9 @@ para `models/players/<seu-modelo>/tools/` sem editar uma linha: o `.cpp` só mon
 `BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()` (ou equivalente) do SEU
 `bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a função nativa do BT.CPP que
 faz o trabalho de verdade; o `.py` descobre as árvores do SEU projeto em `configs/` sozinho.
+
+Ver a seção 8 para o ciclo completo com código real — de escrever o nó em C++ até ele aparecer
+rodando num cenário.
 
 #### Depurar/monitorar ao vivo
 
@@ -336,3 +342,659 @@ devolve só o resumo, sem despejar C++ de terceiro na conversa.
   `python3 src/ui/scripts/edl_lint.py <arquivo>` direto fariam, só que sem esperar o próximo build.
 - `.claude/skills/README.md` e `.claude/mcp/README.md` documentam por que não há nenhum dos dois
   hoje, e quando criar um.
+
+## 8. Exemplo guiado completo: um nó novo do A-4, do C++ até um cenário de sandbox
+
+As seções 2–6 cobrem criar um modelo **do zero**, a partir do `template/`. Esta seção é o
+complemento: como estender um modelo que **já existe**, com código de verdade — usando o A-4
+(`models/players/A-4/`, o modelo de produção) como referência viva, não um exemplo inventado. O
+fio condutor é seguir um nó real de ponta a ponta — `FuelLowCondition` (uma condição) e
+`ReportAndEvadeAction` (uma ação), os dois já em produção — desde o C++ até aparecer rodando num
+cenário de `sandbox/`. Cada subseção termina com a generalização: o que muda se você estiver
+escrevendo um nó **seu**, novo.
+
+Mapa de onde cada peça mora, para não se perder:
+
+```
+models/players/A-4/
+├── include/bt/
+│   ├── DecisionContext.hpp       # a interface que os nos enxergam (8.3)
+│   ├── NodeContext.hpp           # o que um no recebe no construtor + o que a arvore produz (8.3)
+│   ├── bt_factory.hpp/.cpp       # registro dos nos SEM SDK (8.4)
+│   ├── bt_factory_sdk.hpp/.cpp   # registro dos nos que PRECISAM do SDK -- xinfer/xpyembed (8.4)
+│   └── nodes/*.hpp               # um header por no (8.1, 8.2)
+├── src/bt/nodes/*.cpp            # a implementacao de cada no (8.1, 8.2)
+├── configs/flight_tree*.xml      # a(s) arvore(s) -- onde o no e USADO (8.5)
+├── tools/
+│   ├── dump_tree_model.cpp       # gera o <TreeNodesModel> pro Groot (8.5)
+│   └── update_bt_models.py       # sincroniza esse bloco em TODA arvore de configs/ (8.5)
+└── tests/tree/                   # carrega a arvore de PRODUCAO sem Station nenhuma (8.6)
+```
+
+### 8.1 Anatomia de uma Condition: `FuelLowCondition`
+
+`FuelLowCondition` decide se o combustível já caiu abaixo da reserva do avião mais uma margem que
+a própria árvore pode ajustar. É o nó mais simples do modelo — uma condição que só lê, nunca
+escreve:
+
+```cpp
+// models/players/A-4/include/bt/nodes/FuelLowCondition.hpp
+#pragma once
+
+#include "bt/NodeContext.hpp"
+
+#include "behaviortree_cpp_v3/condition_node.h"
+
+namespace bt_nodes {
+
+// SUCCESS quando o combustivel (lido do JSBSim, nao de um modelo nosso)
+// esta abaixo da reserva do comportamento mais a margem do XML.
+//
+// PORT 'margin': convencao do BehaviorTree.CPP para parametrizar um no pelo
+// XML (providedPorts + getInput). A reserva e propriedade da AERONAVE
+// (slot EDL do BtBehavior); a margem e propriedade da ARVORE.
+class FuelLowCondition final : public BT::ConditionNode
+{
+public:
+   FuelLowCondition(const std::string& name, const BT::NodeConfiguration& config,
+                    const NodeContext& context);
+
+   static BT::PortsList providedPorts();
+
+protected:
+   BT::NodeStatus tick() override;
+
+private:
+   NodeContext context_;
+};
+
+} // namespace bt_nodes
+```
+
+```cpp
+// models/players/A-4/src/bt/nodes/FuelLowCondition.cpp
+#include "bt/nodes/FuelLowCondition.hpp"
+
+#include "bt/DecisionContext.hpp"
+
+namespace bt_nodes {
+
+FuelLowCondition::FuelLowCondition(const std::string& name, const BT::NodeConfiguration& config,
+                                   const NodeContext& context)
+   : BT::ConditionNode(name, config), context_(context)
+{
+}
+
+BT::PortsList FuelLowCondition::providedPorts()
+{
+   return { BT::InputPort<double>("margin", 0.0,
+                                  "margem somada a reserva de combustivel (fracao 0..1)") };
+}
+
+BT::NodeStatus FuelLowCondition::tick()
+{
+   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;
+
+   double margin{};
+   const BT::Optional<double> input{getInput<double>("margin")};
+   if (input) margin = input.value();
+
+   const auto& snap = context_.behavior->snapshot();
+   const bool low{snap.fuelFraction < (context_.behavior->getFuelReserve() + margin)};
+   return low ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
+}
+
+} // namespace bt_nodes
+```
+
+Três coisas a notar, generalizáveis para qualquer `Condition` sua:
+
+- **`providedPorts()`** é a lista de atributos que o XML pode passar (`<FuelLow margin="0.05"/>`)
+  — cada `BT::InputPort<T>(nome, default, descrição)` vira um `<input_port>` no `<TreeNodesModel>`
+  (seção 8.5) e uma entrada lida via `getInput<T>("nome")` dentro de `tick()`.
+- **`tick()` só enxerga o mundo através de `context_.behavior`** — nunca um `mixr::models::Player`,
+  nunca um header do MIXR. `context_.behavior` é do tipo `bt_nodes::DecisionContext*` (seção 8.3),
+  a interface abstrata — é isso que mantém este `.cpp` compilável sem MIXR (testável sem
+  `Station`, seção 8.6).
+- **`context_.behavior == nullptr` é checado primeiro, sempre.** Em `dump-tree-model` (seção 8.5)
+  a factory é montada com um `NodeContext{}` vazio — `behavior` fica `nullptr` de propósito, e
+  nenhum nó chega a ser de fato instanciado ali (só o manifesto de portas é lido) — mas o padrão
+  defensivo é o mesmo em todo nó do projeto.
+
+### 8.2 Anatomia de uma Action: `ReportAndEvadeAction`
+
+`ReportAndEvadeAction` executa a manobra de evasão e, se o contato ainda está sendo visto, marca
+o pedido de alerta tático para os outros aviões — um exemplo de `Action` que **escreve** na
+decisão em vez de só ler:
+
+```cpp
+// models/players/A-4/include/bt/nodes/ReportAndEvadeAction.hpp
+#pragma once
+
+#include "bt/NodeContext.hpp"
+
+#include "behaviortree_cpp_v3/action_node.h"
+
+namespace bt_nodes {
+
+// Manobra de evasao E pede a transmissao do alerta aos demais avioes.
+class ReportAndEvadeAction final : public BT::SyncActionNode
+{
+public:
+   ReportAndEvadeAction(const std::string& name, const BT::NodeConfiguration& config, const NodeContext& context);
+
+   static BT::PortsList providedPorts() { return {}; }
+
+protected:
+   BT::NodeStatus tick() override;
+
+private:
+   NodeContext context_;
+};
+
+} // namespace bt_nodes
+```
+
+```cpp
+// models/players/A-4/src/bt/nodes/ReportAndEvadeAction.cpp
+#include "bt/nodes/ReportAndEvadeAction.hpp"
+
+#include "domain/ThreatPolicy.hpp"
+#include "bt/DecisionContext.hpp"
+
+namespace bt_nodes {
+
+ReportAndEvadeAction::ReportAndEvadeAction(const std::string& name,
+                                           const BT::NodeConfiguration& config,
+                                           const NodeContext& context)
+   : BT::SyncActionNode(name, config), context_(context)
+{
+}
+
+//------------------------------------------------------------------------------
+// O no NAO calcula a manobra: ele so entrega o comando que a politica fixou
+// na entrada da evasao (ver domain/ThreatPolicy.hpp -- o alvo e calculado uma
+// vez e mantido, para o piloto automatico ter para onde convergir).
+//
+// Dois rotulos, porque sao dois estados diferentes e vale ve-los no status:
+//    EVADE  -- quebrando COM o intruso na tela
+//    BREAK  -- terminando a quebra no arrasto da histerese, ja sem pista
+//------------------------------------------------------------------------------
+BT::NodeStatus ReportAndEvadeAction::tick()
+{
+   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;
+
+   const domain::ThreatPolicy& policy{context_.behavior->threatPolicy()};
+   if (!policy.engaged()) return BT::NodeStatus::FAILURE;
+
+   const auto& snap = context_.behavior->snapshot();
+   FlightDecision& decision{context_.behavior->decision()};
+
+   decision.take(policy.command(), policy.contactLive() ? "EVADE" : "BREAK");
+
+   // O "influencia os demais": este no NAO alcanca outro player -- ele so
+   // marca o pedido. Quem transmite e o AlertDatalink, na fase 1 do frame
+   // seguinte, com a mensagem chegando aos outros como evento nativo.
+   //
+   // So se avisa o que se esta VENDO: no arrasto da histerese a posicao do
+   // contato ja e velha, e retransmiti-la manteria os outros convergindo
+   // para um ponto que nao vale mais.
+   if (policy.contactLive()) {
+      decision.broadcastAlert = true;
+      decision.alertContactName = snap.contactName;
+      decision.alertNorthM = snap.contactNorthM;
+      decision.alertEastM = snap.contactEastM;
+      decision.alertAltitudeM = snap.contactAltitudeM;
+      decision.alertRangeM = snap.contactRangeM;
+   }
+
+   return BT::NodeStatus::SUCCESS;
+}
+
+} // namespace bt_nodes
+```
+
+`providedPorts()` volta vazio (`{}`) — este nó não é parametrizado pelo XML, ao contrário de
+`FuelLowCondition`. O que ele **produz** é `FlightDecision& decision()` — a estrutura que a árvore
+inteira preenche a cada tick (seção 8.3) — via `decision.take(comando, rótulo)`. Repare que o nó
+**não fala com outro avião**: ele só marca `broadcastAlert = true`; quem de fato transmite é
+`xnative::AlertDatalink`, fora da árvore, na fase seguinte do frame. Generalizando: uma `Action`
+sua também só toca `context_.behavior->decision()` (para comandar algo) e/ou os planos
+(`patrolPlan()`/`rtbPlan()`, se precisar de estado que sobrevive entre ticks) — nunca um objeto
+MIXR direto.
+
+### 8.3 A interface que mantém os nós livres do MIXR
+
+Os dois nós acima só tocam `bt_nodes::DecisionContext` — nunca `ubf::BtBehavior` (a implementação
+concreta, que mora do lado de dentro do `.so` e inclui headers MIXR pesados). A interface
+completa, hoje com 9 métodos:
+
+```cpp
+// models/players/A-4/include/bt/DecisionContext.hpp
+#pragma once
+
+#include "bt/NodeContext.hpp"
+#include "domain/PatrolPlan.hpp"
+#include "domain/RtbPlan.hpp"
+#include "domain/ThreatPolicy.hpp"
+#include "domain/WorldView.hpp"
+
+namespace bt_nodes {
+
+class DecisionContext
+{
+public:
+   virtual ~DecisionContext() = default;
+
+   // percepcao do frame
+   virtual const domain::WorldView& snapshot() const = 0;
+
+   // o que a arvore preenche neste tick
+   virtual FlightDecision& decision() = 0;
+
+   // planos de voo, com o estado que sobrevive entre ticks
+   virtual domain::PatrolPlan& patrolPlan() = 0;
+   virtual domain::RtbPlan& rtbPlan() = 0;
+   virtual const domain::ThreatPolicy& threatPolicy() const = 0;
+
+   // parametros do ciclo e dos slots do EDL
+   virtual double getFrameDt() const = 0;
+   virtual double getFuelReserve() const = 0;
+   virtual double getSupportSpeedKts() const = 0;
+
+   // O piso anti-CFIT (domain/TerrainFloor.hpp) -- ACHADO POR AUDITORIA
+   // (nao redescobrir): so domain::ThreatPolicy::breakCommand() aplicava
+   // este piso; RTB e SUPPORT comandavam altitude (rtbAltitude fixo do
+   // EDL, ou a altitude ABSOLUTA de um contato reportado por outro player)
+   // sem NENHUMA validacao contra o terreno em runtime. Cada no que
+   // comanda altitude fora do ramo de evasao deve passar por aqui antes
+   // de decision().take() -- ver ReturnToBaseAction/SupportAlertAction/
+   // PatrolAction.
+   virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
+};
+
+} // namespace bt_nodes
+```
+
+`ubf::BtBehavior` implementa esta interface sem escrever um método novo — as assinaturas já eram
+os próprios membros dele. O que ela compra: `bt/nodes/*.cpp` e `bt/bt_factory.cpp` passam a
+compilar contra BehaviorTree.CPP + `domain/` apenas, nunca contra o MIXR — o que abre a porta para
+o teste da seção 8.6.
+
+E o que todo nó recebe no construtor, mais o que a árvore produz a cada tick:
+
+```cpp
+// models/players/A-4/include/bt/NodeContext.hpp
+#pragma once
+
+#include "domain/FlightCommand.hpp"
+
+#include <string>
+
+namespace bt_nodes {
+
+//------------------------------------------------------------------------------
+// FlightDecision -- o que a arvore PRODUZ num tick.
+//
+// Os nos nao tocam em nenhum objeto MIXR: eles so preenchem esta estrutura.
+// Quem transforma isto em atuacao e a xnative::FlightAction do UBF.
+//------------------------------------------------------------------------------
+struct FlightDecision
+{
+   bool taken{};
+   domain::FlightCommand command{};
+   std::string label{"?"};
+
+   // pedido de transmissao do alerta tatico para os outros avioes
+   bool broadcastAlert{};
+   std::string alertContactName;
+   double alertNorthM{};
+   double alertEastM{};
+   double alertAltitudeM{};
+   double alertRangeM{};
+
+   void reset() { *this = FlightDecision{}; }
+
+   void take(const domain::FlightCommand& cmd, const std::string& text)
+   {
+      taken = true;
+      command = cmd;
+      label = text;
+   }
+};
+
+// O ponteiro e para a INTERFACE (bt/DecisionContext.hpp), nao para a classe
+// concreta: e o que mantem os nos compilaveis sem o MIXR.
+class DecisionContext;
+
+struct NodeContext
+{
+   DecisionContext* behavior{};
+};
+
+} // namespace bt_nodes
+```
+
+### 8.4 Registrando um nó na fábrica
+
+Um nó só existe para a árvore depois de registrado numa `BT::BehaviorTreeFactory`. O A-4 usa DOIS
+pontos de registro — `bt_factory.cpp` (sem MIXR, compilado também no alvo de teste `test-tree`) e
+`bt_factory_sdk.cpp` (para nós que dependem do SDK — hoje só `OnnxPolicy`/`OnnxScore`/`PyDecide`,
+que linkam `xinfer`/`xpyembed`):
+
+```cpp
+// models/players/A-4/src/bt/bt_factory.cpp
+#include "bt/bt_factory.hpp"
+
+#include "bt/nodes/AlertReceivedCondition.hpp"
+#include "bt/nodes/ContactDetectedCondition.hpp"
+#include "bt/nodes/FuelLowCondition.hpp"
+#include "bt/nodes/NavigateAction.hpp"
+#include "bt/nodes/PatrolAction.hpp"
+#include "bt/nodes/ReportAndEvadeAction.hpp"
+#include "bt/nodes/ReturnToBaseAction.hpp"
+#include "bt/nodes/SupportAlertAction.hpp"
+
+namespace bt_nodes {
+
+namespace {
+
+// registerBuilder<T>(ID, builder) e o ponto de extensao do BehaviorTree.CPP
+// v3 para construtores com argumentos extras (a sobrecarga variadica de
+// registerNodeType so existe em versoes posteriores).
+template <typename NodeType>
+void registerWithContext(BT::BehaviorTreeFactory& factory, const std::string& id,
+                         const NodeContext& context)
+{
+   BT::NodeBuilder builder{
+      [context](const std::string& name, const BT::NodeConfiguration& config) {
+         return std::make_unique<NodeType>(name, config, context);
+      }};
+   factory.registerBuilder<NodeType>(id, builder);
+}
+
+}
+
+// Registrar um no aqui e' so metade do trabalho: o Groot (deps/groot/,
+// CLAUDE.md "Groot -- editor e monitor ao vivo") NAO enxerga estas classes --
+// ele e' um app a parte, nunca viu este .so. Os 5 configs/flight_tree*.xml
+// de producao carregam um <TreeNodesModel> colado a mao, com o MESMO ID
+// desta chamada, so' pra ele reconhecer os nos. Registrou um no novo aqui ou
+// em bt_factory_sdk.cpp? Atualize o bloco nos 5 arquivos tambem, ou o Groot
+// recusa a arvore com "This model has not been registered: <ID>".
+void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
+{
+   registerWithContext<FuelLowCondition>(factory, "FuelLow", context);
+   registerWithContext<ReturnToBaseAction>(factory, "ReturnToBase", context);
+   registerWithContext<ContactDetectedCondition>(factory, "ContactDetected", context);
+   registerWithContext<ReportAndEvadeAction>(factory, "ReportAndEvade", context);
+   registerWithContext<AlertReceivedCondition>(factory, "AlertReceived", context);
+   registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
+   registerWithContext<PatrolAction>(factory, "Patrol", context);
+   registerWithContext<NavigateAction>(factory, "Navigate", context);
+}
+
+} // namespace bt_nodes
+```
+
+`bt_factory_sdk.cpp` segue o MESMO molde (o mesmo `registerWithContext<T>` local, repetido porque
+este arquivo é compilado num alvo diferente que não pode depender de `bt_factory.cpp`):
+
+```cpp
+// models/players/A-4/src/bt/bt_factory_sdk.cpp (miolo)
+void registerSdkNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
+{
+   registerWithContext<OnnxScoreCondition>(factory, "OnnxScore", context);
+   registerWithContext<OnnxPolicyAction>(factory, "OnnxPolicy", context);
+   registerWithContext<PyDecideAction>(factory, "PyDecide", context);
+}
+```
+
+**Generalização — para o SEU nó novo**, três linhas mecânicas: incluir o header do nó, e uma
+chamada `registerWithContext<SeuTipo>(factory, "SeuID", context)` dentro de `registerNodes()` (ou
+`registerSdkNodes()`, se o nó depender do SDK). `"SeuID"` é a tag que vai valer no XML — sem
+espaço, sem acento: é o nome que aparece como `<SeuID/>` na árvore.
+
+### 8.5 Colando o nó na árvore e mantendo o `<TreeNodesModel>` em dia
+
+Trecho real de `configs/flight_tree.xml` — a tag `<FuelLow margin="0.05"/>` é a MESMA string
+`"FuelLow"` passada em `registerWithContext` acima:
+
+```xml
+<Fallback name="root">
+
+  <Sequence name="rtb_sequence">
+    <FuelLow margin="0.05"/>
+    <ReturnToBase/>
+  </Sequence>
+
+  <Sequence name="engage_sequence">
+    <ContactDetected/>
+    <ReportAndEvade/>
+  </Sequence>
+
+  <Sequence name="support_sequence">
+    <AlertReceived/>
+    <SupportAlert/>
+  </Sequence>
+
+  <Patrol/>
+
+</Fallback>
+```
+
+Colar a tag no XML já basta para a árvore de PRODUÇÃO funcionar (`tinyxml2`, o parser que o
+executor usa, não exige o `<TreeNodesModel>` — ele só lê `<BehaviorTree>`). O que falta é
+puramente para o **Groot** — sem um `<TreeNodesModel>` descrevendo `ID`/portas, ele recusa o
+arquivo com *"This model has not been registered: FuelLow"*. Esse bloco não é escrito à mão:
+
+- **`make create-bt`** (dentro de `models/players/A-4/`) — gera `configs/bt.xml`: uma árvore
+  vazia (`<Fallback name="root"/>`) mais o `<TreeNodesModel>` já populado com TODOS os nós que
+  `registerNodes()`/`registerSdkNodes()` registram hoje. Recusa se `configs/bt.xml` já existir.
+- **`make update-bt`** — depois de registrar um nó novo (seção 8.4), este é o passo que sincroniza
+  o `<TreeNodesModel>` de **toda** árvore de `configs/` (descobertas por conteúdo — todo `.xml`
+  com `<BehaviorTree>` dentro, nunca uma lista fixa de nomes) com o que a fábrica de fato exporta
+  agora.
+
+Por baixo dos dois, `tools/dump_tree_model.cpp` monta a MESMA `BT::BehaviorTreeFactory` que o
+modelo real monta e chama a função nativa do BT.CPP para isto:
+
+```cpp
+// models/players/A-4/tools/dump_tree_model.cpp (miolo do main())
+BT::BehaviorTreeFactory factory;
+
+// behavior=nullptr e seguro aqui: registerBuilder<T>() so guarda um
+// construtor (lambda) na factory, nunca instancia um no. Nenhum no e de
+// fato criado -- so' o manifesto (ID + portas) e' lido por
+// writeTreeNodesModelXML(), via factory.manifests().
+bt_nodes::NodeContext context;
+bt_nodes::registerNodes(factory, context);
+bt_nodes::registerSdkNodes(factory, context);
+
+std::string model = extractTreeNodesModel(factory);   // extrai so o miolo <TreeNodesModel>...
+```
+
+O modo `--skeleton [ID]` (usado por `make create-bt`) tem uma checagem que vale a pena conhecer,
+achada por auditoria: recusa gerar uma árvore nova cujo `ID` colida com o de um nó já registrado
+(`Patrol`, `FuelLow`, `Navigate`...) — porque o BT.CPP resolve uma tag XML nua primeiro contra
+`factory.builders()` e só depois contra `tree_roots()`, então uma subárvore com ID colidente
+resolveria **silenciosamente** para o nó, nunca para a subárvore, sempre que referenciada pela
+mesma tag nua noutra árvore.
+
+E `tools/update_bt_models.py` (chamado por `make update-bt` como
+`python3 tools/update_bt_models.py --binary build/tools/dump-tree-model`) roda esse binário e
+aplica o resultado em cada `.xml` de `configs/` — substituindo o bloco existente, ou inserindo
+antes de `</root>` se a árvore ainda não tiver nenhum. Duas armadilhas já resolvidas no próprio
+script, que valem a pena conhecer antes de mexer nele: a regex que acha o bloco existente tolera
+qualquer indentação (`[ \t]*<TreeNodesModel>...`, não só exatamente dois espaços — o Groot
+resalva com indentação própria), e todo comentário XML é mascarado antes da busca — um comentário
+que **menciona** a tag (como "o bloco `<TreeNodesModel>` abaixo é gerado, não edite à mão") não
+pode ser confundido com o bloco de verdade, ou o script engoliria a árvore inteira ao "substituir".
+
+**Rede de segurança automática**: a suíte `tree` (`meson test`, dentro de `models/players/A-4/`)
+tem o alvo `tree-model-sync`, que roda `update_bt_models.py --check` — falha se qualquer árvore
+estiver desatualizada. Esquecer `make update-bt` depois de registrar um nó novo quebra `make test`
+antes de alguém precisar descobrir isso tentando abrir a árvore no Groot.
+
+Editar/visualizar a árvore no Groot em si (arrastar nós, conectar, salvar) já está coberto na
+subseção Groot da seção 4, acima — não repetido aqui.
+
+### 8.6 Testando o nó sem nenhuma simulação
+
+`models/players/A-4/tests/tree/` carrega o `flight_tree.xml` de **produção** contra um
+`FakeDecisionContext` (uma implementação de teste da interface da seção 8.3) — sem `Station`, sem
+MIXR, sem terreno. Dado um `WorldView` sintético (ex.: combustível baixo, ou um contato
+detectado), o teste confirma qual ramo do `Fallback` venceu. `make test`, de dentro de
+`models/players/A-4/`, roda essa suíte (`tree`) junto com `domain` e `native` — é a camada mais
+barata para validar que um nó novo, colado numa `Sequence` nova, muda a prioridade certa.
+
+### 8.7 Recompilando e verificando o `.so`
+
+Mesmo padrão já usado na seção 5.1, nomeado para o A-4:
+
+```bash
+make -C models/players/A-4 build test install-host   # so este modelo, autocontido
+cd ../../..   # de volta a raiz do repositorio, se necessario
+make install                                          # sync-plugins: plugins/ -> dist/
+nm -D --defined-only dist/lib/mixr-plugins/libflight.so | grep ' T '   # 1 linha
+ldd dist/lib/mixr-plugins/libflight.so | grep 'not found'              # vazio
+```
+
+`make -C models/players/A-4 install-host` deposita em `plugins/` (a raiz do repositório) — só o
+`make install` seguinte, na raiz, sincroniza `plugins/` → `dist/`, o lugar onde um cenário de
+verdade procura (ver a seção "Desacoplando `models` de `dist/`" em `CLAUDE.md`).
+
+### 8.8 Carregando o modelo num cenário: o bloco `PluginModule` real
+
+Trecho verbatim de `src/poc/dis/flight/configs/scenario.edl.in` — a PRIMEIRA entrada de
+`components:` da `Station`:
+
+```
+components: {
+
+   plugins: ( PluginLoader
+      searchPaths: {
+         "./dist/lib/mixr-plugins/"
+      }
+      modules: {
+         ( PluginModule
+            file:     "libflight.so"
+            provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                        FlightState BtBehavior AltitudeSafetyBehavior
+                        RLBridgeBehavior FlightAction }
+         )
+      }
+   )
+   ...
+```
+
+**Por que este bloco tem de vir ANTES de qualquer outro uso** — não é estilo, é a gramática: a
+produção `arglist` do `edl_parser` é recursiva à esquerda, então formas irmãs são construídas na
+ordem do TEXTO, e `parse()` (`factory(name)` → `setSlotByName` → `isValid()`) roda no
+fecha-parênteses de cada uma. A carga do `.so` acontece dentro do `isValid()` do `PluginLoader` —
+fora de ordem, o parser chega numa classe do plugin sem ninguém que responda por ela, e
+`mixrFactory` aborta explicando exatamente isso (sem SIGSEGV, sem silêncio).
+
+`provides:` é igualdade EXATA de conjunto contra o que o `.so` exporta hoje — 8 nomes, para
+`libflight.so`. Se o nó novo que você acabou de registrar (seções 8.4–8.5) é um nó de
+**BehaviorTree**, `provides:` **não muda** — nome de nó de árvore não é nome de fábrica MIXR, os
+dois vivem em registros completamente diferentes (`BT::BehaviorTreeFactory` vs.
+`mixr::base::factory`). `provides:` só muda quando você acrescenta uma CLASSE MIXR nova (mais uma
+entrada em `xnative::factory.cpp`) — nesse caso, em TODO cenário que carrega o `.so`, não só o que
+motivou a mudança (já documentado em `.claude/rules/models-plugin.md`).
+
+E o trecho, mais abaixo no mesmo arquivo, onde o agente do UBF entra dentro de cada player:
+
+```
+falcon1: ( Aircraft
+   ...
+   components: {
+      ...
+      // ------------------------------------------------------
+      // O AGENTE.
+      //
+      // POR QUE E O ULTIMO DA LISTA: a lista de componentes e
+      // percorrida na ordem declarada, e tres coisas rodam na
+      // fase 3 -- Autopilot::process(), AirTrkMgr::process() e a
+      // decisao. Declarado por ultimo, o agente ja enxerga as
+      // pistas ATUALIZADAS deste frame; o comando que ele grava
+      // no Autopilot vale a partir do frame seguinte.
+      // ------------------------------------------------------
+      agent: ( FlightAgentTC
+         state: ( FlightState )
+         behavior: ( BtBehavior
+            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            patrolHeading:  ( Degrees 90 )
+            ...
+            fuelReserve:    0.35
+            ...
+         )
+      )
+   }
+)
+```
+
+`treeFile:` é o caminho para onde `make install`/`sync-plugins` publica a árvore junto com o
+`.so` (`dist/share/mixr-plugins/flight/`) — é essa cópia instalada, não o
+`configs/flight_tree.xml` do projeto do modelo, que o cenário de fato carrega em runtime.
+
+### 8.9 Rodando num cenário de sandbox
+
+A família `sandbox/A4-*DOF` já carrega `libflight.so` pelo MESMO mecanismo — prova de que o
+padrão da seção 8.8 vale igual em produção e em sandbox
+(`sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in`):
+
+```
+( ClockStation
+
+   tcPriority: 0.5
+
+   ownship: a4_1
+
+   components: {
+
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libflight.so"
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction }
+            )
+         }
+      )
+      ...
+```
+
+Para rodar sua própria variante — com o nó novo já valendo, já recompilado (seção 8.7) — sem mexer
+em nenhum cenário existente:
+
+```bash
+mkdir -p sandbox/meu-teste/configs sandbox/meu-teste/data/{logs,recordings,messages}
+touch sandbox/meu-teste/data/logs/.gitkeep sandbox/meu-teste/data/recordings/.gitkeep \
+      sandbox/meu-teste/data/messages/.gitkeep
+cp src/poc/dis/flight/configs/scenario.edl.in sandbox/meu-teste/configs/scenario.edl.in
+# editar treeFile:/porta Tacview/callsign dentro da copia, se quiser distingui-la da producao
+
+./build/app/src/app -folder ./sandbox -scenario meu-teste
+./build/app/src/app -folder ./sandbox -scenario meu-teste -deterministic 600
+```
+
+`sandbox/` é gitignorado por padrão (`/*/` em `sandbox/.gitignore`, com exceções nomeadas para os
+exemplos que já vêm no repositório) — sua pasta fica local até você decidir compartilhá-la. Para
+publicar como exemplo versionado: acrescentar `!/meu-teste/` à lista de exceções do
+`sandbox/.gitignore` e `git add sandbox/meu-teste/`.
+
+### 8.10 Fechando o ciclo
+
+Depois de rodando, confirme que o nó novo não quebrou o determinismo — o mesmo
+`tests/determinism/check_determinism.sh` já documentado em `CLAUDE.md`, comparando dumps `frame=`
+com 1, 2 e 4 threads de tempo crítico.
+
+Recapitulando o ciclo inteiro, do C++ ao sandbox: **escrever o `.hpp`/`.cpp` do nó (8.1–8.2) →
+registrar na fábrica (8.4) → colar a tag no XML e `make update-bt` (8.5) → testar sem simulação
+(8.6) → `make ... install-host` + `make install` (8.7) → conferir `provides:`/`agent:` no `.edl`
+— já satisfeito se o nó é só de árvore (8.8) → `-folder ./sandbox -scenario <nome>` (8.9)**.

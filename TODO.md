@@ -1,8 +1,5 @@
-- interface gráfica para montar edl
 - apresentação
-- testes determinismo
 - documentação
-- subir os arquivos que faltam de ./src/ui
-- puxar elevação de terreno somente de locais pertinentes
-- por que CI gera artefato fora da pasta?
-- CI ou CD?
+- monitor groot
+- interface gráfica para montar edl
+- testes determinismo

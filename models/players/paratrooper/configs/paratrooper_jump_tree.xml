@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A arvore de comportamento DESTE modelo.
+
+  Forma: um Fallback (o "primeiro que der SUCCESS vence") com as prioridades
+  de cima para baixo -- LANDED primeiro (estagio terminal), depois CANOPY,
+  com FREEFALL como ramo de degradacao incondicional no fim:
+
+    1) ja pousado          -> rotulo LANDED
+    2) paraquedas aberto   -> rotulo CANOPY
+    3) qualquer outro caso -> rotulo FREEFALL  (sempre SUCCESS, sem condicao)
+
+  O AVANCO do estagio (domain::next(), FREEFALL->CANOPY->LANDED) acontece
+  UMA vez por ciclo, dentro de ubf::ParatrooperBtBehavior::genAction(), ANTES
+  deste tick -- os dois nos aqui (IsStage/SetStage) so LEEM o resultado, nunca
+  mutam. Ver include/bt/DecisionContext.hpp para o porque.
+
+  ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um
+  comentario XML. O tinyxml2 (que o BehaviorTree.CPP usa) tolera; o
+  QDomDocument (que o Groot usa) recusa o ARQUIVO INTEIRO com um generico
+  "erro de sintaxe". Ver CLAUDE.md raiz, secao "Groot", armadilha no 1.
+
+  O bloco <TreeNodesModel> abaixo e GERADO - nao edite a mao. Ele existe
+  para o Groot reconhecer os nos deste modelo (que sao classes dentro do .so,
+  invisiveis a um app externo). Rode 'make update-bt' depois de registrar um
+  no novo em src/bt/bt_factory.cpp.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="pousado">
+        <IsStage stage="LANDED"/>
+        <SetStage label="LANDED"/>
+      </Sequence>
+      <Sequence name="velame">
+        <IsStage stage="CANOPY"/>
+        <SetStage label="CANOPY"/>
+      </Sequence>
+      <SetStage label="FREEFALL"/>
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Condition ID="IsStage">
+            <input_port name="stage" type="std::string" default="LANDED">estagio a comparar: FREEFALL, CANOPY ou LANDED</input_port>
+        </Condition>
+        <Action ID="SetStage">
+            <input_port name="label" type="std::string" default="FREEFALL">rotulo que vai para o xboard e para o dump</input_port>
+        </Action>
+    </TreeNodesModel>
+</root>

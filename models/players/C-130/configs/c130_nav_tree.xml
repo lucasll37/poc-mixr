@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+  Arvore de PRODUCAO do C-130: UM no so, sem Fallback -- este modelo so
+  navega (sem combate/evasao/RTB). Navigate le a guiagem que
+  Route::autoSequencer()/Steerpoint::compute() ja calculam nativamente todo
+  frame (ver ubf/FlightState.cpp) e comanda o Autopilot via
+  ubf/FlightAction.cpp. O bloco <TreeNodesModel> abaixo e gerado por
+  'make update-bt' (tools/update_bt_models.py) -- nao editar a mao; o teste
+  'tree-model-sync' pega divergencia.
+-->
+<root main_tree_to_execute="MainTree">
+    <BehaviorTree ID="MainTree">
+        <Navigate/>
+    </BehaviorTree>
+
+  <TreeNodesModel>
+        <Action ID="Navigate"/>
+    </TreeNodesModel>
+</root>

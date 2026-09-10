@@ -13,14 +13,21 @@ namespace app {
 // Os players que esta aplicacao observa.
 //
 // Uma unica questao: sair da arvore de objetos do cenario com ponteiros
-// diretos para as aeronaves. Depois disso ninguem mais precisa varrer o
+// diretos para os players. Depois disso ninguem mais precisa varrer o
 // PairStream do WorldModel -- status, dump e laco recebem a Fleet pronta.
 //
-// SO para o fixup de app/applyCruiseThrottle (uma questao de SETUP: o c310
-// precisa de manete fixo -- ver o comentario abaixo). A EXIBICAO no
-// dashboard nao usa mais isto -- ver discoverPlayers().
+// GENERICO sobre mixr::models::Player desde que o dump '-deterministic'
+// deixou de ser cego para qualquer player que nao fosse AirVehicle (ex.: um
+// Paratrooper, models/players/paratrooper) -- ANTES disso, um cenario de
+// '-folder' sem nenhum AirVehicle produzia uma Fleet vazia e um dump
+// '-deterministic' sem linha nenhuma, silenciosamente. Widening verificado
+// como NO-OP para todo cenario existente: nenhum player nao-AirVehicle
+// aparece no init de nenhuma poc hoje (falcon1..4/a4/c130/bandit1 sao todos
+// AirVehicle). Campos exclusivos de AirVehicle (combustivel, Mach) sao lidos
+// via dynamic_cast em app::applyCruiseThrottle()/app/DeterministicDump.cpp,
+// mesmo padrao ja usado por app::DashboardState (ver DashboardState.cpp).
 //------------------------------------------------------------------------------
-using Fleet = std::vector<mixr::models::AirVehicle*>;
+using Fleet = std::vector<mixr::models::Player*>;
 
 mixr::models::AirVehicle* findAircraft(mixr::models::WorldModel* wm, const std::string& name);
 
@@ -39,10 +46,13 @@ Fleet collectFleet(mixr::models::WorldModel* wm, const std::vector<std::string>&
 std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm);
 
 //------------------------------------------------------------------------------
-// Como discoverPlayers() acima, mas filtrado para AirVehicle e ja no formato
-// que applyCruiseThrottle()/o dump deterministico esperam (Fleet). USO
-// EXCLUSIVO das entradas sinteticas de '-folder <pasta>' (app/ScenarioFolder.hpp)
-// quando ScenarioEntry::fleet vem vazio -- NUNCA do fallback de
+// Como discoverPlayers() acima, ja no formato que applyCruiseThrottle()/o
+// dump deterministico esperam (Fleet == vector<Player*>, desde o widening
+// documentado acima -- esta funcao e' hoje so um alias de discoverPlayers(),
+// mantido por nome porque varios comentarios deste diretorio (Options.hpp,
+// AdHocScenario.hpp, DashboardLoop.hpp) ja o citam). USO EXCLUSIVO das
+// entradas sinteticas de '-folder <pasta>' (app/ScenarioFolder.hpp) quando
+// ScenarioEntry::fleet vem vazio -- NUNCA do fallback de
 // app::adHocScenario()/'-f', que continua devolvendo falconFleet()
 // explicitamente. Essa funcao ja foi tentada como fallback
 // GENERICO de '-f' e revertida: quebrava as fixtures de teste 'intruder'
@@ -64,6 +74,10 @@ Fleet discoverFleet(mixr::models::WorldModel* wm);
 // cada frame e sobrescreve isto em seguida. Mantida por nao ser nociva
 // (`setThrottles()` e do proprio framework) e por dar um chute inicial
 // razoavel antes do primeiro ciclo do autothrottle.
+//
+// Desde o widening de Fleet, ignora (via dynamic_cast) qualquer player que
+// nao seja AirVehicle -- um Paratrooper na Fleet simplesmente nao tem
+// manete nenhum para fixar.
 //------------------------------------------------------------------------------
 void applyCruiseThrottle(const Fleet& fleet, double throttle);
 

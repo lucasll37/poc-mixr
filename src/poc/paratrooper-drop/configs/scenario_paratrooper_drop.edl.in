@@ -1,0 +1,220 @@
+//
+// src/poc/paratrooper-drop
+//
+// O corpo fisico e a decisao de models/players/paratrooper, sozinho -- SEM
+// nenhuma ligacao com o C-130 (a liberacao de verdade a partir de um
+// StoresMgr e tarefa futura, deliberadamente adiada -- ver
+// models/players/paratrooper/docs/ARCHITECTURE.md). Os quatro paraquedistas
+// ja nascem em queda, como se tivessem acabado de sair de uma aeronave.
+//
+// Escalonados em ALTITUDE (nao so posicao) de proposito: como os limiares
+// (deployAgl/groundAgl) sao relativos a AGL, escalonar so' em posicao faria
+// os quatro pousarem quase no mesmo instante (a perna sob o velame e sempre
+// a MESMA distancia AGL) -- o que esconderia um bug de estado compartilhado
+// entre instancias (ex.: um 'stage_' estatico por engano). Escalonar em
+// altitude MSL faz cada um pousar num frame diferente, E prova que o estagio
+// e' por-instancia quando o dump mostra os quatro em estagios diferentes no
+// MESMO frame.
+//
+// mode: "ACTIVE" e' OBRIGATORIO em cada paraquedista -- AbstractWeapon (a
+// base de Effect/Paratrooper) nasce INACTIVE por padrao (protecao contra uma
+// arma "voar sozinha" pendurada numa estacao). Sem isto, o paraquedista fica
+// parado, sem decidir nada, sem erro nenhum.
+//
+// Porta Tacview 1242 -- proxima livre (1234 flight, 1235 bandit, 1237
+// python-flight/rl, 1238 onnx-policy, 1239 built-in_mixr_1, 1240
+// full-systems-nav, 1241 c130-airdrop).
+//
+// Cenario hermetico (sem 'networks:') -- roda ao lado das demais pocs sem
+// colidir.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: para1
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libparatrooper.so"
+               provides: { Paratrooper ParatrooperAgentTC ParatrooperState
+                           ParatrooperBtBehavior ParatrooperAction }
+            )
+         }
+      )
+
+      // "Medido rodando" primario para esta poc: generico sobre qualquer
+      // models::Player (nao precisa do widening de Fleet do host para
+      // funcionar) -- ver libs/xmsg no CLAUDE.md raiz. 'mudanca-modo' deve
+      // ficar MUDO o cenario inteiro: e' a prova de que nenhum dos quatro
+      // sai de ACTIVE (nem crasha, nem detona) do inicio ao fim.
+      msgFeed: ( MsgFeed
+         maxPlayers:  8
+         healthEvery: ( Seconds 10 )
+         sinks: {
+            ( MsgFileSink
+               fileName: "./src/poc/paratrooper-drop/data/messages/mission.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { altMslM altAglM terrainElevM climbMps northM eastM
+                         damage crashedFlag killedFlag }
+               every: ( Seconds 1.0 ) )
+            ( MsgReport name: mudanca-modo  players: { }
+               labels: { player side mode }
+               fields: { modeNum }
+               when: { ( MsgChanged field: modeNum by: 1 ) } )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "paratrooper-drop"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1242
+               callsign: "poc-mixr/paratrooper-drop"
+               fileName: "./src/poc/paratrooper-drop/data/recordings/mission.acmi"
+               modelMap: { PARATROOPER: "Parachutist" }
+               typeMap:  { PARATROOPER: "Ground+Light+Human+Air+Parachutist" }
+               colorMap: { PARATROOPER: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Mesma referencia das outras pocs -- Serra do Mar / regiao de Nova
+      // Friburgo (RJ). Corredor escolhido (leste de +600 a +1050 m) medido
+      // no proprio tile: elevacao 725-776 m, suave, longe da borda.
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         // Primeiro a sair -- terreno mais alto sob o ponto de pouso (725 m),
+         // altitude inicial mais baixa: pousa primeiro.
+         para1: ( Paratrooper
+            id: 501  side: blue  type: "PARATROOPER"
+            mode: "ACTIVE"
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 1050 )
+            initAlt:      ( Meters 1900 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 0.0
+            dataLogTime:  ( Seconds 0.1 )
+            interpolateTerrain: true
+            killOverride: true
+            dragIndex: 0.18
+            canopyDescentRate: 5.5
+            components: {
+               agent: ( ParatrooperAgentTC
+                  state: ( ParatrooperState )
+                  behavior: ( ParatrooperBtBehavior
+                     treeFile:  "./dist/share/mixr-plugins/paratrooper/paratrooper_jump_tree.xml"
+                     deployAgl: ( Meters 300 )
+                     groundAgl: ( Meters 2 )
+                  )
+               )
+            }
+         )
+
+         para2: ( Paratrooper
+            id: 502  side: blue  type: "PARATROOPER"
+            mode: "ACTIVE"
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 900 )
+            initAlt:      ( Meters 2000 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 0.0
+            dataLogTime:  ( Seconds 0.1 )
+            interpolateTerrain: true
+            killOverride: true
+            dragIndex: 0.18
+            canopyDescentRate: 5.5
+            components: {
+               agent: ( ParatrooperAgentTC
+                  state: ( ParatrooperState )
+                  behavior: ( ParatrooperBtBehavior
+                     treeFile:  "./dist/share/mixr-plugins/paratrooper/paratrooper_jump_tree.xml"
+                     deployAgl: ( Meters 300 )
+                     groundAgl: ( Meters 2 )
+                  )
+               )
+            }
+         )
+
+         para3: ( Paratrooper
+            id: 503  side: blue  type: "PARATROOPER"
+            mode: "ACTIVE"
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 750 )
+            initAlt:      ( Meters 2100 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 0.0
+            dataLogTime:  ( Seconds 0.1 )
+            interpolateTerrain: true
+            killOverride: true
+            dragIndex: 0.18
+            canopyDescentRate: 5.5
+            components: {
+               agent: ( ParatrooperAgentTC
+                  state: ( ParatrooperState )
+                  behavior: ( ParatrooperBtBehavior
+                     treeFile:  "./dist/share/mixr-plugins/paratrooper/paratrooper_jump_tree.xml"
+                     deployAgl: ( Meters 300 )
+                     groundAgl: ( Meters 2 )
+                  )
+               )
+            }
+         )
+
+         // Ultimo a sair -- terreno mais baixo sob o ponto de pouso (776 m),
+         // altitude inicial mais alta: pousa por ultimo.
+         para4: ( Paratrooper
+            id: 504  side: blue  type: "PARATROOPER"
+            mode: "ACTIVE"
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 600 )
+            initAlt:      ( Meters 2200 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 0.0
+            dataLogTime:  ( Seconds 0.1 )
+            interpolateTerrain: true
+            killOverride: true
+            dragIndex: 0.18
+            canopyDescentRate: 5.5
+            components: {
+               agent: ( ParatrooperAgentTC
+                  state: ( ParatrooperState )
+                  behavior: ( ParatrooperBtBehavior
+                     treeFile:  "./dist/share/mixr-plugins/paratrooper/paratrooper_jump_tree.xml"
+                     deployAgl: ( Meters 300 )
+                     groundAgl: ( Meters 2 )
+                  )
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

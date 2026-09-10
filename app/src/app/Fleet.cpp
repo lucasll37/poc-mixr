@@ -43,17 +43,17 @@ Fleet collectFleet(mixr::models::WorldModel* const wm, const std::vector<std::st
 
 Fleet discoverFleet(mixr::models::WorldModel* const wm)
 {
-   Fleet fleet;
-   for (auto* const player : discoverPlayers(wm)) {
-      if (auto* const air = dynamic_cast<mixr::models::AirVehicle*>(player)) fleet.push_back(air);
-   }
-   return fleet;
+   // Fleet == vector<Player*> desde o widening (ver Fleet.hpp) -- nao ha
+   // mais filtro nenhum aqui, e' so um alias por nome de discoverPlayers().
+   return discoverPlayers(wm);
 }
 
 void applyCruiseThrottle(const Fleet& fleet, const double throttle)
 {
-   for (const auto air : fleet) {
-      if (air != nullptr) air->setThrottles(&throttle, 1);
+   for (const auto player : fleet) {
+      if (auto* const air = dynamic_cast<mixr::models::AirVehicle*>(player)) {
+         air->setThrottles(&throttle, 1);
+      }
    }
 }
 

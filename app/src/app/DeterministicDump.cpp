@@ -18,38 +18,53 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
    std::ostringstream oss;
    oss << std::fixed << std::setprecision(9);
 
-   for (const auto air : fleet) {
-      if (air == nullptr) continue;
+   for (const auto player : fleet) {
+      if (player == nullptr) continue;
 
-      const mixr::base::Vec3d& pos{air->getPosition()};
-      const mixr::xtrack::TrackInfo track{mixr::xtrack::nearestHostileTrack(air)};
+      const mixr::base::Vec3d& pos{player->getPosition()};
 
       // Tudo o que vem do MODELO chega por aqui, e so por aqui. O modelo mora
       // num .so carregado com dlopen, entao este arquivo nao pode incluir
       // nenhum header dele -- nem para um dynamic_cast, porque o typeinfo do
       // plugin nao e visivel. Ver libs/xboard/Board.hpp.
       //
-      // E por isso que este arquivo e byte-identico nas duas pocs: o 'dec=' e
-      // o 'bt=' deixaram de vir de lugares diferentes em cada uma.
-      const mixr::xboard::Readout board{mixr::xboard::get(air->getID())};
+      // E por isso que este arquivo e byte-identico entre pocs: o 'dec=' e
+      // o 'bt=' vem sempre do MESMO lugar (o xboard), nunca de um tipo
+      // concreto de Player.
+      const mixr::xboard::Readout board{mixr::xboard::get(player->getID())};
+
+      // 'mach=', 'fuel=' e a busca de pista (radar/track manager) sao
+      // conceito AERODINAMICO, exclusivo de AirVehicle -- 0.0/nenhuma pista
+      // para qualquer outro tipo de player (ex.: um Paratrooper,
+      // models/players/paratrooper), mesmo padrao ja usado por
+      // app::DashboardState (ver DashboardState.cpp) para os campos
+      // opcionais do dashboard.
+      double mach{};
+      double fuelWt{};
+      mixr::xtrack::TrackInfo track{};
+      if (const auto* const air = dynamic_cast<const mixr::models::AirVehicle*>(player)) {
+         mach = air->getMach();
+         fuelWt = air->getFuelWt();
+         track = mixr::xtrack::nearestHostileTrack(air);
+      }
 
       oss << "frame=" << frame
-          << " player=" << (air->getName() != nullptr ? air->getName()->getString() : "?")
+          << " player=" << (player->getName() != nullptr ? player->getName()->getString() : "?")
           << " n=" << pos[mixr::models::Player::INORTH]
           << " e=" << pos[mixr::models::Player::IEAST]
-          << " alt=" << air->getAltitudeM()
+          << " alt=" << player->getAltitudeM()
           // Elevacao e AGL sao estado da simulacao (consulta ao banco de
           // elevacao, imutavel depois de carregado) -- entram no dump pelo
           // mesmo criterio do resto: e por eles que se prova que a consulta
           // ao terreno da o MESMO resultado com 1, 2 e 4 threads T/C.
-          << " elev=" << air->getTerrainElevationM()
-          << " agl=" << air->getAltitudeAglM()
-          << " hdg=" << air->getHeadingD()
-          << " roll=" << air->getRollD()
-          << " pitch=" << air->getPitchD()
-          << " spd=" << air->getTotalVelocity()
-          << " mach=" << air->getMach()
-          << " fuel=" << air->getFuelWt()
+          << " elev=" << player->getTerrainElevationM()
+          << " agl=" << player->getAltitudeAglM()
+          << " hdg=" << player->getHeadingD()
+          << " roll=" << player->getRollD()
+          << " pitch=" << player->getPitchD()
+          << " spd=" << player->getTotalVelocity()
+          << " mach=" << mach
+          << " fuel=" << fuelWt
           << " bt=" << board.label
           << " track=" << (track.found ? track.name : std::string("none"))
           << " trackRange=" << track.rangeM

@@ -10,7 +10,9 @@ própria linha no **fim** da tabela; ao mudar algo, edite só a sua linha, nunca
 | Modelo | Pasta | Responsável | Última atualização | Observação |
 |---|---|---|---|---|
 | A-4 (flight) | `models/players/A-4/` | — | — | produção — `flight`, `bandit`, `python-flight`, `onnx-policy`, `built-in_mixr_1` |
+| C-130 | `models/players/C-130/` | — | 2026-09-10 | produção — navegação nativa (Route/Steerpoint) + liberação de paraquedista, agora em DUAS formas: `C130ActionParatrooperRelease` (uma estação por cruzamento, placeholder `Effect`) e `C130ActionParatrooperStick` (várias em sequência, com intervalo) — poc `c130-airdrop`, `sandbox/C-130-6DOF`, `sandbox/C-130_paratrooper-6DOF` (a integração de verdade com `models/players/paratrooper`, 30 `( Paratrooper )` reais liberados via stick). Rumo/altitude/velocidade sustentam (medido, 600s sem crash) — motor/thruster vendorizados incompatíveis corrigidos (`t56.xml` + thruster `direct`), ver `c130ap.xml` |
 | template | `models/players/template/` | — | — | ponto de partida, não é modelo de produção — não reivindicar; também hospeda o mirror de contrato (`src/mirror.cpp`) usado pelos testes de plugin do host |
+| paratrooper | `models/players/paratrooper/` | — | 2026-09-10 | produção — corpo físico + decisão de um paraquedista (`Effect`-derivado, FSM de mão única FREEFALL→CANOPY→LANDED) — poc `paratrooper-drop`, autônoma. **Já ligado ao C-130** em `sandbox/C-130_paratrooper-6DOF` (30 liberados via `C130ActionParatrooperStick`, 1,5s de intervalo, cruzando plugins sem nenhuma mudança de C++ em nenhum dos dois). Determinismo confirmado 1/2/4 threads T/C, 6000 frames (poc autônoma) |
 
 
 ## Ler também

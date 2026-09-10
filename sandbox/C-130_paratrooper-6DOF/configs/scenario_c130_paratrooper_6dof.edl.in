@@ -1,0 +1,452 @@
+//
+// sandbox/C-130_paratrooper-6DOF
+//
+// A integracao de VERDADE entre os dois modelos, adiada de proposito em
+// src/poc/c130-airdrop (que ainda libera so' um C130ParatrooperPlaceholder --
+// ver models/players/C-130/docs/ARCHITECTURE.md): UM C-130
+// (models/players/C-130, dinamica JSBSim 6-DOF, mesmo estilo aerodinamico de
+// sandbox/C-130-6DOF) que, no SEGUNDO ponto de navegacao (15.000 ft), libera
+// 30 paraquedistas DE VERDADE (models/players/paratrooper, a classe
+// 'Paratrooper' real -- queda livre, paraquedas, pouso -- nao o placeholder),
+// com 1,5 segundos de intervalo entre uma liberacao e a proxima.
+//
+// ROTA -- NOVA e SIMPLES, por decisao explicita (confirmada com o usuario
+// antes de escrever): NAO reaproveita a figura-de-oito de 20 pontos de
+// sandbox/C-130-6DOF. So' 3 steerpoints, em LINHA RETA para leste: wp1
+// (subida inicial, ainda longe do teto), wp2 (o PONTO DE LARGADA, 15.000 ft)
+// e wp3 (egresso). wrap:true mesmo assim, pelo mesmo motivo de sempre (o
+// restante deste repositorio): sem ele a Route chegaria ao fim e pararia de
+// navegar, nao ha necessidade de "encerrar" o cenario sozinho.
+//
+// ACHADO MEDIDO RODANDO, nao suposto -- a primeira versao desta rota ia
+// direto de 1.200 m ate 15.000 ft contando com maxClimbRateMps=9,0 m/s do
+// Autopilot; RODANDO, a subida real fica bem ABAIXO disso no regime inicial
+// (~1,5 m/s nos primeiros 100 s, so' passando de ~6 m/s la pelos 480-500 s) --
+// o mesmo achado ja registrado em sandbox/C-130-6DOF/README.md de que os
+// limitadores do Autopilot generico sao INERTES com ( JSBSimModel ): quem
+// governa de verdade a subida e' o autopilot do proprio airframe
+// (c130ap.xml), nao este slot. Isso empurrou a primeira rota (wp2 a 55 km)
+// para ALEM da borda LESTE do unico tile SRTM vendorizado -- medido rodando
+// 45.000 frames: 'elev=0.000000000' fixo por dezenas de frames a partir de
+// e~50 km, o sintoma exato ja documentado no CLAUDE.md raiz, secao
+// "Terreno" ("fora da celula do tile, o el fica 0.0... nao e' guarda de
+// cobertura"). A borda leste fica a ~49,4 km da referencia (-22.25,-42.48) --
+// medido a partir do proprio arquivo .hgt, nao do README do tile.
+//
+// CORRECAO: comecar mais ALTO (3.200 m, nao 1.200 m) para encurtar a subida
+// necessaria (15.000 ft - 3.200 m = 1.372 m, contra 3.372 m da primeira
+// versao) e manter a rota INTEIRA dentro de 42 km -- ~7,4 km de folga sobre
+// a borda de 49,4 km, absorvendo qualquer deriva do piloto automatico numa
+// curva. Ainda ASSIM NAO HA GARANTIA de que a aeronave esteja EXATAMENTE em
+// 15.000 ft ao cruzar wp2 -- e' o valor COMANDADO, nao um teto travado; ver
+// o README desta poc para o numero de verdade, medido depois de rodar.
+//
+// A ACAO NOVA -- C130ActionParatrooperStick (models/players/C-130), irma de
+// C130ActionParatrooperRelease (esta so' libera UMA estacao por cruzamento;
+// a nova libera VARIAS, espacadas no tempo, a partir de UM cruzamento so).
+// Mecanismo: e' o proprio mixr::models::Action (trigger() uma vez ->
+// OnboardComputer::actionManager() chamando process(dt) a cada ciclo de
+// FUNDO ate isCompleted()) -- nenhum mecanismo de tempo foi inventado, ja
+// existia no framework e nunca tinha sido usado desse jeito neste
+// repositorio. Ver models/players/C-130/include/xnative/ActionParatrooperStick.hpp
+// para o detalhe completo.
+//
+// AS 30 ESTACOES SAO ( Paratrooper ), NAO ( C130ParatrooperPlaceholder) --
+// esta e' a diferenca central desta poc em relacao a c130-airdrop: os dois
+// PLUGINS (libC-130.so E libparatrooper.so) carregam JUNTOS no mesmo
+// processo, e a liberacao generica por 'type:' (ActionParatrooperStick nao
+// faz dynamic_cast em classe concreta nenhuma, so compara Player::getType())
+// alcanca a classe real do OUTRO plugin sem nenhuma mudanca de C++ em
+// nenhum dos dois -- exatamente o contrato que
+// models/players/C-130/docs/ARCHITECTURE.md ja prometia.
+//
+// TACVIEW: dois typeMap/colorMap/modelMap -- um pro c130 (mesmo de
+// C-130-6DOF), outro pro "PARATROOPER" (mesmo de src/poc/paratrooper-drop) --
+// sem o segundo, os 30 apareceriam com o fallback generico de WEAPON
+// ("Weapon+Missile").
+//
+// PORTA 1234 -- mesma convencao da familia sandbox/*-6DOF (nenhum roda ao
+// mesmo tempo que outro).
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: c130
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libC-130.so"
+               provides: { C130FlightAgentTC C130ActionParatrooperRelease
+                           C130ActionParatrooperStick C130ParatrooperPlaceholder
+                           C130FlightState C130BtBehavior C130FlightAction }
+            )
+            ( PluginModule
+               file:     "libparatrooper.so"
+               provides: { Paratrooper ParatrooperAgentTC ParatrooperState
+                           ParatrooperBtBehavior ParatrooperAction }
+            )
+         }
+      )
+
+      // "Medido rodando" primario desta poc -- generico sobre qualquer
+      // models::Player, cobre os 31 (c130 + 30 paraquedistas) com UM MsgReport
+      // so' (players: { } == todos). Ver libs/xmsg no CLAUDE.md raiz.
+      msgFeed: ( MsgFeed
+         maxPlayers:  40
+         healthEvery: ( Seconds 10 )
+         sinks: {
+            ( MsgFileSink
+               fileName: "./sandbox/C-130_paratrooper-6DOF/data/messages/mission_@RUN_ID@.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { altMslM altAglM climbMps northM eastM damage crashedFlag killedFlag }
+               every: ( Seconds 2.0 ) )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "C-130_paratrooper-6DOF"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/C-130_paratrooper-6DOF"
+               fileName: "./sandbox/C-130_paratrooper-6DOF/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { c130: "C-130"  PARATROOPER: "Parachutist" }
+               typeMap:  { c130: "Air+FixedWing+Transport"
+                           PARATROOPER: "Ground+Light+Human+Air+Parachutist" }
+               colorMap: { c130: "Blue"  PARATROOPER: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Mesma referencia de sandbox/C-130-6DOF/src/poc/paratrooper-drop --
+      // Serra do Mar / regiao de Nova Friburgo (RJ).
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         c130: ( Aircraft
+            id: 301
+            side: blue
+            type: "C130"
+
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 0 )
+            initAlt:      ( Meters 3200 )
+            initHeading:  ( Degrees 90 )
+            initVelocityKts: 165.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+
+            components: {
+
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/C-130/jsbsim/"
+                  model:   "C130"
+                  debugLevel: 0
+               )
+
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 3.0
+                  maxBankAngle:    25.0
+                  maxPitchAngle:   15.0
+                  maxClimbRateMps:  9.0
+                  maxAcceleration:  2.0
+               )
+
+               // ( Ins ) E uma ( Navigation ), e o ( Gps ) aninhado tambem
+               // -- por isso o Gps entra como FILHO, nao como irmao.
+               nav: ( Ins
+                  route: ( Route
+                     to: 1
+                     autoSequence: true
+                     autoSeqDistance: ( NauticalMiles 2.0 )
+                     wrap: true
+                     components: {
+                        wp1: ( Steerpoint
+                           stptType: DEST
+                           xPos: ( Meters 0 )
+                           yPos: ( Meters 12000 )
+                           altitude: ( Feet 12500 )
+                           airspeed: 170.0
+                           sca: ( Feet 11500 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 100 )
+                           description: "ponto 1 -- subida inicial, ainda longe do teto"
+                        )
+                        wp2: ( Steerpoint
+                           stptType: TGT
+                           xPos: ( Meters 0 )
+                           yPos: ( Meters 30000 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 150.0
+                           sca: ( Feet 14000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 350 )
+                           description: "ponto 2 -- LARGADA: 30 paraquedistas, 1,5s de intervalo"
+                           action: ( C130ActionParatrooperStick
+                              storeType: "PARATROOPER"
+                              count:     30
+                              interval:  ( Seconds 1.5 )
+                           )
+                        )
+                        wp3: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters 0 )
+                           yPos: ( Meters 42000 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 160.0
+                           sca: ( Feet 11000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 500 )
+                           description: "ponto 3 -- egresso"
+                        )
+                     }
+                  )
+                  components: {
+                     gps: ( Gps )
+                  }
+               )
+
+               // OBRIGATORIO -- sem isto, Route::triggerAction() nunca acha
+               // um OnboardComputer e a ActionParatrooperStick do wp2 nunca
+               // dispara, em silencio (mesma armadilha de c130-airdrop).
+               obc: ( OnboardComputer )
+
+               // 30 estacoes "PARATROOPER" -- a classe REAL do plugin
+               // paratrooper (nao C130ParatrooperPlaceholder). Cada uma nasce
+               // INACTIVE (AbstractWeapon), o normal para algo pendurado numa
+               // estacao -- ActionParatrooperStick::trigger()/process() e'
+               // quem chama StoresMgr::releaseWeapon() e a poe ACTIVE.
+               stores: ( StoresMgr
+                  numStations: 30
+                  stores: {
+                     1: ( Paratrooper
+                        id: 601  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     2: ( Paratrooper
+                        id: 602  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     3: ( Paratrooper
+                        id: 603  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     4: ( Paratrooper
+                        id: 604  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     5: ( Paratrooper
+                        id: 605  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     6: ( Paratrooper
+                        id: 606  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     7: ( Paratrooper
+                        id: 607  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     8: ( Paratrooper
+                        id: 608  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     9: ( Paratrooper
+                        id: 609  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     10: ( Paratrooper
+                        id: 610  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     11: ( Paratrooper
+                        id: 611  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     12: ( Paratrooper
+                        id: 612  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     13: ( Paratrooper
+                        id: 613  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     14: ( Paratrooper
+                        id: 614  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     15: ( Paratrooper
+                        id: 615  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     16: ( Paratrooper
+                        id: 616  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     17: ( Paratrooper
+                        id: 617  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     18: ( Paratrooper
+                        id: 618  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     19: ( Paratrooper
+                        id: 619  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     20: ( Paratrooper
+                        id: 620  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     21: ( Paratrooper
+                        id: 621  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     22: ( Paratrooper
+                        id: 622  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     23: ( Paratrooper
+                        id: 623  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     24: ( Paratrooper
+                        id: 624  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     25: ( Paratrooper
+                        id: 625  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     26: ( Paratrooper
+                        id: 626  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     27: ( Paratrooper
+                        id: 627  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     28: ( Paratrooper
+                        id: 628  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     29: ( Paratrooper
+                        id: 629  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                     30: ( Paratrooper
+                        id: 630  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        interpolateTerrain: true
+                        killOverride: true
+                     )
+                  }
+               )
+
+               // Componente do PLAYER (nao da Station), decidindo na FASE 3
+               // do frame de tempo critico -- mesmo padrao de toda poc deste
+               // repositorio. Arvore de UM no so (Navigate) -- este modelo
+               // so navega.
+               agent: ( C130FlightAgentTC
+                  state: ( C130FlightState )
+                  behavior: ( C130BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/C-130/c130_nav_tree.xml"
+                  )
+               )
+
+            } // components
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

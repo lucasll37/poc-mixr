@@ -67,11 +67,22 @@ button{font:inherit; color:inherit;}
   position:absolute; inset:0; z-index:1; display:flex; flex-direction:column;
   /* gap/padding-top reagem a vmin (o menor entre largura e altura) e padding-bottom a vh --
      numa janela baixa (nao so estreita) isso libera espaco vertical de verdade, em vez de so
-     depender de vw como antes (que ignorava altura por completo). overflow-y:auto continua so
-     como rede de seguranca -- o alvo e' nunca precisar dele numa janela de uso razoavel. */
+     depender de vw como antes (que ignorava altura por completo). O ajuste FINO fica por conta
+     do --fit-scale abaixo (calculado em JS, ver fitAllSlides() no script de navegacao): quando o
+     conteudo natural de uma slide (scrollHeight) ainda nao cabe na altura disponivel
+     (clientHeight) mesmo com esse clamp, a slide inteira encolhe (como um zoom-out, nao so a
+     fonte) ate' caber. overflow-y fica HIDDEN por padrao de proposito -- um transform:scale()
+     NAO muda scrollHeight/clientHeight (e' so' pintura, nao afeta layout), entao um
+     overflow-y:auto full-time deixaria a slide "tecnicamente" scrollavel mesmo depois de encolhida
+     visualmente ate' caber, e um scroll do mouse ficaria preso rolando um resquicio invisivel
+     antes de trocar de slide. So' quando o encolhimento bate no PISO (FIT_MIN_SCALE) e ainda
+     sobra conteudo de verdade e' que a slide ganha a classe ".is-overflowing" (JS) e volta a
+     ser scrollavel de verdade -- ver a regra logo abaixo e o handler de wheel no script de
+     navegacao, que só considera esse scroll interno quando essa classe esta presente. */
   gap:clamp(12px,2.2vmin,22px); padding:clamp(16px,4vmin,72px) clamp(24px,7vw,108px);
   padding-bottom:clamp(64px,13vh,96px);
-  overflow-y:auto;
+  overflow-y:hidden;
+  --fit-scale:1;
   /* centraliza verticalmente por padrao -- numa tela bem maior que o conteudo (4K, por
      exemplo) o excedente de altura fica distribuido em vez de empurrado todo pra baixo do
      conteudo, que parecia vazio/quebrado. Slides cujo conteudo ja preenche o espaco (flex:1
@@ -82,17 +93,24 @@ button{font:inherit; color:inherit;}
      pra baixo ao voltar) dado por [data-dir] no .deck -- ver o script de navegacao. Nao usa
      "visibility" pra esconder (visibility nao interpola, so troca de uma vez): pointer-events
      cobre a parte de "nao e' clicavel enquanto invisivel", e opacity 0 + transform ja bastam
-     pra sumir visualmente sem cortar a transicao de saida no meio. */
-  opacity:0; transform:translate3d(0,3.4vh,0) scale(.985); pointer-events:none;
+     pra sumir visualmente sem cortar a transicao de saida no meio. O scale() de cada estado e'
+     multiplicado por --fit-scale (1 quando o conteudo ja cabe) -- e' a MESMA transform que ja
+     fazia a transicao de entrada/saida, so' com o fator de ajuste de tela embutido, entao o
+     "encolher pra caber" tambem anima suave junto com o crossfade em vez de saltar.  */
+  opacity:0; transform:translate3d(0,3.4vh,0) scale(calc(.985 * var(--fit-scale))); pointer-events:none;
   transition:opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
 }
-.deck[data-dir="back"] .slide{ transform:translate3d(0,-3.4vh,0) scale(.985); }
-.slide.is-active{ opacity:1; transform:translate3d(0,0,0) scale(1); pointer-events:auto; z-index:2; }
+.deck[data-dir="back"] .slide{ transform:translate3d(0,-3.4vh,0) scale(calc(.985 * var(--fit-scale))); }
+.slide.is-active{ opacity:1; transform:translate3d(0,0,0) scale(var(--fit-scale)); pointer-events:auto; z-index:2; }
 /* slide que acabou de perder o foco: continua visivel um instante, saindo pelo lado OPOSTO de
    onde a proxima slide esta entrando -- e' o que da a sensacao de "passar a pagina" em vez de um
    corte seco. Some da lista de is-leaving por JS depois que a transicao termina (ver TRANSITION_MS). */
-.slide.is-leaving{ opacity:0; transform:translate3d(0,-2.2vh,0) scale(.99); z-index:1; pointer-events:none; }
-.deck[data-dir="back"] .slide.is-leaving{ transform:translate3d(0,2.2vh,0) scale(.99); }
+.slide.is-leaving{ opacity:0; transform:translate3d(0,-2.2vh,0) scale(calc(.99 * var(--fit-scale))); z-index:1; pointer-events:none; }
+.deck[data-dir="back"] .slide.is-leaving{ transform:translate3d(0,2.2vh,0) scale(calc(.99 * var(--fit-scale))); }
+/* excecao rara: --fit-scale ja bateu no piso (FIT_MIN_SCALE) e mesmo assim sobra conteudo de
+   verdade -- unico caso em que a slide volta a ser scrollavel (ver o comentario grande em .slide
+   acima e fitAllSlides() no script de navegacao). */
+.slide.is-overflowing{ overflow-y:auto; }
 /* revelacao em cascata dos blocos de 1o nivel de cada slide (eyebrow, headline, listas,
    diagrama...) -- cada um nasce um pouco abaixo e desfocado de opacidade, chegando com um
    atraso pequeno e crescente. So dispara na slide ATIVA; nas outras os filhos ficam parados em
@@ -414,6 +432,44 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   var TRANSITION_MS = 520;
   var leavingTimeout = null;
 
+  // Ajuste automatico de escala -- "ajuste correto ao tamanho da tela" nao e' so o clamp(vmin/vw/vh)
+  // dos tamanhos de fonte (que ja reage a tela, mas so ate' o piso de cada clamp): quando o
+  // conteudo natural de uma slide ainda estoura a altura disponivel (janela baixa, fonte do
+  // sistema maior que o normal, zoom do navegador, etc.), a slide inteira ganha uma escala < 1
+  // via a variavel CSS --fit-scale (ver <style>), do jeito que um visualizador de PDF encolhe a
+  // pagina pra caber -- nunca precisa de scroll interno pra ver o resto do slide. Todo .slide e'
+  // position:absolute;inset:0 e fica sempre no layout (so' opacity:0 quando inativo), entao dá
+  // pra medir TODAS de uma vez, sem esperar cada uma virar ativa.
+  var FIT_MIN_SCALE = 0.55;
+  function fitAllSlides(){
+    // duas passadas -- le TODAS as alturas primeiro, so' depois escreve -- pra nao entrelacar
+    // leitura (forca layout) e escrita (invalida layout) slide a slide, que seria layout
+    // thrashing com ~30 slides.
+    var measurements = slides.map(function(s){
+      return { slide: s, contentH: s.scrollHeight, availH: s.clientHeight };
+    });
+    measurements.forEach(function(m){
+      var needsShrink = m.availH > 0 && m.contentH > m.availH;
+      var rawScale = needsShrink ? m.availH / m.contentH : 1;
+      var scale = needsShrink ? Math.max(FIT_MIN_SCALE, rawScale) : 1;
+      m.slide.style.setProperty('--fit-scale', String(scale));
+      // scale() nao muda scrollHeight/clientHeight (e' so' pintura) -- so' marca "ainda
+      // scrollavel de verdade" quando nem o piso do encolhimento bastou pra cobrir o conteudo;
+      // ver o comentario de ".slide"/".slide.is-overflowing" no <style>.
+      m.slide.classList.toggle('is-overflowing', needsShrink && rawScale < FIT_MIN_SCALE);
+    });
+  }
+
+  var fitResizeTimer = null;
+  window.addEventListener('resize', function(){
+    if (fitResizeTimer) clearTimeout(fitResizeTimer);
+    fitResizeTimer = setTimeout(fitAllSlides, 120);
+  });
+  // fontes web (Big Shoulders/Public Sans/IBM Plex Mono) carregam depois do primeiro layout --
+  // a metrica muda ao trocar do fallback pra fonte de verdade, entao a medida inicial (antes
+  // disso) pode ficar desatualizada pra cima ou pra baixo.
+  if (window.document.fonts && document.fonts.ready) document.fonts.ready.then(fitAllSlides);
+
   function pad(n){ return n < 10 ? '0' + n : '' + n; }
 
   function readStored(){
@@ -566,33 +622,67 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     else if (e.key === 'm' || e.key === 'M') { openMenu(); e.preventDefault(); }
   });
 
-  // scroll do mouse/trackpad passa slide -- com um "cooldown" pra um unico gesto de roda (que
-  // dispara VARIOS eventos "wheel" pequenos, principalmente em trackpad) nao pular mais de uma
-  // slide de uma vez, e respeitando o scroll INTERNO de uma slide que nao coube na tela (o
-  // overflow-y:auto de ".slide" e' so uma rede de seguranca, mas continua existindo -- ver o
-  // comentario dela em <style>): so troca de slide quando a slide ativa ja esta encostada no
-  // topo (scroll pra cima) ou no fundo (scroll pra baixo) do proprio conteudo dela.
-  var WHEEL_COOLDOWN_MS = 650;
-  var WHEEL_THRESHOLD = 10;
-  var wheelLocked = false;
+  // scroll do mouse/trackpad passa slide -- respeitando o scroll INTERNO so' da rara slide
+  // marcada ".is-overflowing" (o piso de --fit-scale nao bastou, ver fitAllSlides() acima): so'
+  // pra essa e' que se espera a slide ativa encostar no topo (scroll pra cima) ou no fundo
+  // (scroll pra baixo) do proprio conteudo antes de trocar de slide. Toda slide comum (a grande
+  // maioria, ja cabendo na tela gracas ao --fit-scale) pula essa checagem por completo -- ela nem
+  // e' um scroll container de verdade (overflow-y:hidden), entao QUALQUER wheel navega direto.
+  //
+  // Quantas slides um gesto de scroll avanca e' proporcional a QUANTO foi scrollado, nao a UM
+  // cooldown de tempo fixo por evento -- uma primeira versao tentava adivinhar "rapido" pelo
+  // intervalo entre eventos, mas o PRIMEIRO evento de qualquer gesto nao tem historico nenhum pra
+  // comparar (intervalo desconhecido), entao sempre nascia com o cooldown mais LENTO -- e como
+  // esse cooldown inicial e' mais longo que uma rajada inteira de scroll rapido (testado: 10
+  // "cliques" de roda em ~400ms so' avancavam 1 slide, travados pelo cooldown do PRIMEIRO evento),
+  // um scroll rapido nunca chegava a se provar rapido. O acumulador abaixo nao tem esse problema
+  // porque nao depende de historico nenhum: cada evento soma sua propria magnitude
+  // (Math.abs(deltaY)) a um saldo, e cada vez que o saldo cruza WHEEL_STEP dispara uma troca de
+  // slide -- um "clique" isolado de roda de mouse (deltaY tipicamente 90-140 num evento so' ja
+  // cruza o piso sozinho -> uma troca, na hora, igual a sempre; girar a roda com forca manda
+  // varios desses eventos em sequencia rapida, cada um cruzando o piso de novo -> varias trocas em
+  // sequencia, sem cooldown nenhum brecando. Trackpad manda muitos eventos PEQUENOS (deltaY baixo)
+  // pra um so' gesto -- o saldo acumula entre eles ate' cruzar o piso, entao um toque leve nao
+  // dispara nada e um "fling" de verdade (soma alta num intervalo curto) dispara varias trocas,
+  // igual ao mouse.
+  var WHEEL_THRESHOLD = 10;   // ignora ruido (deltaY minusculo -- cauda de inercia de trackpad)
+  var WHEEL_STEP = 90;        // "custo" em deltaY de UMA troca de slide
+  var WHEEL_RESET_GAP_MS = 400; // gesto novo (pausa longa antes): zera saldo de um scroll velho
+  var WHEEL_MAX_STEPS_PER_EVENT = 4; // trava contra um deltaY anomalo enorme num unico evento
+  var wheelAccum = 0;
+  var lastWheelTime = 0;
 
   deck.addEventListener('wheel', function(e){
     if (!overlay.hidden) return;
     if (Math.abs(e.deltaY) < WHEEL_THRESHOLD) return;
 
     var active = slides[index];
-    var atBottom = Math.ceil(active.scrollTop + active.clientHeight) >= active.scrollHeight;
-    var atTop = active.scrollTop <= 0;
+    var scrollable = active.classList.contains('is-overflowing');
+    var atBottom = !scrollable || Math.ceil(active.scrollTop + active.clientHeight) >= active.scrollHeight;
+    var atTop = !scrollable || active.scrollTop <= 0;
     if (e.deltaY > 0 && !atBottom) return;
     if (e.deltaY < 0 && !atTop) return;
 
     e.preventDefault();
-    if (wheelLocked) return;
-    wheelLocked = true;
-    go(index + (e.deltaY > 0 ? 1 : -1));
-    setTimeout(function(){ wheelLocked = false; }, WHEEL_COOLDOWN_MS);
+
+    var now = e.timeStamp || Date.now();
+    var dir = e.deltaY > 0 ? 1 : -1;
+    if (!lastWheelTime || (now - lastWheelTime) > WHEEL_RESET_GAP_MS) wheelAccum = 0;
+    lastWheelTime = now;
+    // inverteu o sentido no meio do gesto (ex.: hesitou e voltou) -- o saldo acumulado era
+    // "credito" pro sentido ANTERIOR, nao serve mais.
+    if (wheelAccum !== 0 && (wheelAccum > 0) !== (dir > 0)) wheelAccum = 0;
+    wheelAccum += dir * Math.abs(e.deltaY);
+
+    var steps = 0;
+    while (Math.abs(wheelAccum) >= WHEEL_STEP && steps < WHEEL_MAX_STEPS_PER_EVENT) {
+      go(index + dir);
+      wheelAccum -= dir * WHEEL_STEP;
+      steps++;
+    }
   }, { passive: false });
 
+  fitAllSlides();
   render(null, null);
 })();
 </script>

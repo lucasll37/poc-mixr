@@ -1,0 +1,495 @@
+//
+// sandbox/C-130-6DOF
+//
+// UM C-130 (models/players/C-130 -- o modelo proprio, navegacao nativa por
+// Route/Steerpoint + capacidade de liberar paraquedista, NAO o "player
+// maximo" de 53 componentes que a familia sandbox/A4-*DOF usa), voando a
+// MESMA GEOMETRIA de rota que sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in
+// -- a figura-de-oito fechada de 20 steerpoints, com o MESMO perfil de
+// altitude (4.000 a 15.000 ft) e as MESMAS posicoes/sca/magvar/pta. Ver
+// sandbox/A4-6DOF/README.md para a explicacao COMPLETA de como esse oito foi
+// construido e posicionado sobre o terreno -- nao repetida aqui, so o que
+// muda em relacao aquele cenario esta documentado abaixo.
+//
+// O QUE E IGUAL a sandbox/A4-6DOF:
+//   - As 20 posicoes/altitudes/stptType/sca/magvar/pta dos steerpoints,
+//     byte a byte (mesma figura-de-oito, mesmo cruzamento em (-24000,0) m,
+//     mesmo t=36 graus escolhido por varredura de terreno).
+//   - to:1 / autoSequence:true / autoSeqDistance:(NauticalMiles 2.0) /
+//     wrap:true -- as mesmas pernas de 14 km. O README de A4-6DOF mede que
+//     essa distancia da ~2,9x o raio de curva do A-4 la; aqui sobra MAIS
+//     folga ainda, porque o limitador de guinada do C-130
+//     (bt::NavigateAction::kMaxHeadingRateDegPerSec=3.0, ver
+//     models/players/C-130/docs/ARCHITECTURE.md) e mais conservador que o
+//     do A-4 (indiretamente, via o ganho do a4ap.xml).
+//   - initXPos/initYPos/initHeading: o MESMO ponto de entrada, 4 km antes de
+//     wp1, ja no rumo da perna wp10->wp1 (54 graus) -- evita o mesmo
+//     transiente de juncao que o comentario de A4-6DOF documenta.
+//   - Terreno (mesmo tile SRTM, mesma latitude/longitude de referencia).
+//
+// O QUE MUDA (a decisao consciente desta rodada, conferida com o usuario
+// antes de escrever): UM C-130 SO, nao oito empilhados -- sem a separacao
+// vertical de +1000 ft/aeronave nem o esquema de velocidade-calibrada-por-
+// altitude que a pilha de A4-6DOF precisa pra nao se desmanchar (isso so
+// faz sentido pra formacao; aqui nao ha o que desmanchar). E SEM o "player
+// maximo": nada de Gimbal/Antenna/CommRadio/Iff/SigSwitch/IrSignature/
+// OnboardComputer-com-4-track-managers/StoresMgr-de-11-estacoes/
+// CollisionDetect -- essa aparelhagem e do A-4 "player maximo"
+// (src/poc/built-in_mixr_1), nao do C-130 (que hoje so tem JSBSimModel +
+// Autopilot + Navigation + StoresMgr de paraquedista). O player aqui e a
+// MESMA montagem de src/poc/c130-airdrop, so que voando a rota de A4-6DOF em
+// vez do circuito de 3 pontos daquela poc.
+//
+// AS TRES Action ORIGINAIS TROCAM DE SENTIDO:
+//   - wp5 (decoy em A4-6DOF) -> C130ActionParatrooperRelease. E o unico
+//     ponto desta rota que usa uma capacidade REAL do C-130 (a liberacao de
+//     paraquedista, tratada como arma -- ver
+//     models/players/C-130/docs/ARCHITECTURE.md); "piso do perfil" (4.000
+//     ft) tambem faz sentido operacional pra uma largada.
+//   - wp9 (SAR em A4-6DOF) -> SEM action. ActionImagingSar precisa de um
+//     ( Sar ) RfSensor que este player nao tem (nao faz parte do "player
+//     maximo" que decidimos nao replicar) -- deixar a Action ali seria
+//     declarar algo que nunca dispara nada, silenciosamente.
+//   - wp15 (camuflagem em A4-6DOF) -> SEM action. ActionCamouflageType so
+//     tem efeito visivel com um ( SigSwitch ) multi-modo (este player usa
+//     assinatura simples, herdada do padrao de c130-airdrop) -- mesmo
+//     raciocinio do wp9.
+//   4 estacoes "PARATROOPER" no StoresMgr (mesmo padrao de
+//   src/poc/c130-airdrop) -- cada volta completa (wrap:true) libera mais um,
+//   ate a carga acabar na 5a volta (no-op inofensivo dali em diante).
+//
+// VELOCIDADE COMANDADA: os 210-245 kt de A4-6DOF foram deslocados para baixo
+// em 60 kt (160-185 kt) -- mantem o MESMO padrao relativo (mais rapido nas
+// pernas de descida, mais devagar nas de subida/cruzamento) numa faixa
+// plausivel pra um C-130 (folga sobre o stall ~100-115 kt limpo), em vez de
+// copiar cegamente numeros calibrados pro A-4. NAO SE ESPERA que a
+// velocidade se sustente -- ACHADO JA CONFIRMADO (nao redescobrir, ver
+// src/poc/c130-airdrop/README.md e o cabecalho de
+// models/players/C-130/data/jsbsim/aircraft/C130/c130ap.xml): o par
+// motor/thruster vendorizado (t56.xml declara <turbine_engine>, t56_prop.xml
+// e um <propeller>, tipos incompativeis) faz o empuxo efetivo ficar perto de
+// zero, entao a aeronave desacelera sob arrasto independente do comando de
+// velocidade. Rumo e altitude SUSTENTAM normalmente (mesmo autopilot de
+// c130-airdrop).
+//
+// TACVIEW: modelMap usa "C-130" -- confirmado contra o banco de dados
+// PUBLICO do proprio Tacview (Tacview.DefaultProperties.FixedWing.Military.xml,
+// github.com/Vyrtuoz/Tacview): a entrada FixedWing.C-130 tem "C-130" como
+// ShortName E como primeiro alias de Criteria, resolvendo pro modelo 3D
+// generico do Hercules (nao ha entrada separada H/J/E no banco -- so
+// KC-130, a variante tanque, e' quebrada a parte).
+//
+// PORTA 1234 -- mesma convencao da familia sandbox/A4-*DOF (README de
+// A4-6DOF: "nenhum dos 5 roda ao mesmo tempo que outro, entao reusar a
+// porta padrao evita decorar 5 numeros diferentes"); este cenario segue o
+// mesmo raciocinio.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: c130
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libC-130.so"
+               provides: { C130FlightAgentTC C130ActionParatrooperRelease
+                           C130ActionParatrooperStick C130ParatrooperPlaceholder
+                           C130FlightState C130BtBehavior C130FlightAction }
+            )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "C-130-6DOF"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/C-130-6DOF"
+               fileName: "./sandbox/C-130-6DOF/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { c130: "C-130" }
+               typeMap:  { c130: "Air+FixedWing+Transport" }
+               colorMap: { c130: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Mesma referencia de sandbox/A4-6DOF -- Serra do Mar / regiao de
+      // Nova Friburgo (RJ). O oito foi posicionado sobre ESTE terreno (ver
+      // o README de A4-6DOF) -- reusar a mesma referencia e o que faz a
+      // geometria continuar valendo.
+      latitude:  -22.25
+      longitude: -42.48
+
+      terrain: ( SrtmHgtFile
+         path: "./shared/data/terrain/srtm/"
+         file: "S23W043.hgt"
+      )
+
+      players: {
+
+         c130: ( Aircraft
+            id: 301
+            side: blue
+            type: "C130"
+
+            // MESMO ponto de entrada de A4-6DOF: 4 km antes de wp1, sobre a
+            // perna wp10->wp1 (rumo 54 graus), ja na altitude comandada por
+            // wp1 (11.000 ft) -- sem transiente de juncao.
+            initXPos:     ( Meters -18122 )
+            initYPos:     ( Meters 8090 )
+            initAlt:      ( Feet 11000 )
+            initHeading:  ( Degrees 54 )
+            initVelocityKts: 160.0
+            dataLogTime: ( Seconds 0.1 )
+            interpolateTerrain: true
+
+            components: {
+
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/C-130/jsbsim/"
+                  model:   "C130"
+                  debugLevel: 0
+               )
+
+               // Mesmos limites conservadores de src/poc/c130-airdrop --
+               // maxRateOfTurnDps/maxBankAngle/maxPitchAngle/maxClimbRateMps
+               // sao INERTES com ( JSBSimModel ) de qualquer forma (mesmo
+               // achado do README de A4-6DOF: os dois chegam a
+               // JSBSimModel::setCommandedHeadingD(h,,) como parametros sem
+               // nome e sao descartados -- quem manda e' o autopilot do
+               // proprio airframe, c130ap.xml). Mantidos aqui por
+               // consistencia/documentacao, nao por efeito medido.
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 3.0
+                  maxBankAngle:    25.0
+                  maxPitchAngle:   15.0
+                  maxClimbRateMps:  9.0
+                  maxAcceleration:  2.0
+               )
+
+               // ( Ins ) E uma ( Navigation ), e o ( Gps ) aninhado tambem
+               // -- por isso o Gps entra como FILHO, nao como irmao.
+               nav: ( Ins
+                  bullseye: ( Bullseye
+                     latitude:  ( Degrees -22.25 )
+                     longitude: ( Degrees -42.48 )
+                  )
+                  route: ( Route
+                     to: 1
+                     autoSequence: true
+                     autoSeqDistance: ( NauticalMiles 2.0 )
+                     wrap: true
+                     components: {
+                        // ====================================================
+                        // FIGURA-DE-OITO DE 20 STEERPOINTS -- GEOMETRIA IDENTICA
+                        // a sandbox/A4-6DOF (a4_1, a aeronave mais baixa da
+                        // pilha de la). Ver o README daquele cenario para a
+                        // construcao completa (decagono, varredura de terreno,
+                        // por que 14 km de perna). So airspeed/action mudam
+                        // aqui -- ver o cabecalho deste arquivo.
+                        // ====================================================
+                        wp1: ( Steerpoint
+                           stptType: DEST
+                           xPos: ( Meters -15771 )
+                           yPos: ( Meters 11326 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 160.0
+                           sca: ( Feet 10000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 30 )
+                           description: "ponto 1 -- entrada do lobo LESTE (curvas a direita), inicio da descida"
+                        )
+                        wp2: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters -15771 )
+                           yPos: ( Meters 25326 )
+                           altitude: ( Feet 9000 )
+                           airspeed: 170.0
+                           sca: ( Feet 8000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 135 )
+                           description: "ponto 2 -- descida sobre o litoral"
+                        )
+                        wp3: ( Steerpoint
+                           stptType: MARK
+                           xPos: ( Meters -24000 )
+                           yPos: ( Meters 36652 )
+                           altitude: ( Feet 7000 )
+                           airspeed: 175.0
+                           sca: ( Feet 6000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 235 )
+                           description: "ponto 3 -- descida sobre o litoral"
+                        )
+                        wp4: ( Steerpoint
+                           stptType: OAP
+                           xPos: ( Meters -37315 )
+                           yPos: ( Meters 40979 )
+                           altitude: ( Feet 5000 )
+                           airspeed: 185.0
+                           sca: ( Feet 4000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 340 )
+                           description: "ponto 4 -- piso do perfil (4000 ft), relevo quase plano"
+                        )
+                        wp5: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters -50630 )
+                           yPos: ( Meters 36652 )
+                           altitude: ( Feet 4000 )
+                           airspeed: 185.0
+                           sca: ( Feet 3000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 445 )
+                           description: "ponto 5 -- piso do perfil, libera paraquedista"
+                           action: ( C130ActionParatrooperRelease storeType: "PARATROOPER" )
+                        )
+                        wp6: ( Steerpoint
+                           stptType: MARK
+                           xPos: ( Meters -58859 )
+                           yPos: ( Meters 25326 )
+                           altitude: ( Feet 6000 )
+                           airspeed: 180.0
+                           sca: ( Feet 5000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 550 )
+                           description: "ponto 6 -- inicio da subida longa"
+                        )
+                        wp7: ( Steerpoint
+                           stptType: OAP
+                           xPos: ( Meters -58859 )
+                           yPos: ( Meters 11326 )
+                           altitude: ( Feet 8000 )
+                           airspeed: 170.0
+                           sca: ( Feet 7000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 655 )
+                           description: "ponto 7 -- subida"
+                        )
+                        wp8: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters -50630 )
+                           yPos: ( Meters 0 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 165.0
+                           sca: ( Feet 9000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 755 )
+                           description: "ponto 8 -- subida"
+                        )
+                        wp9: ( Steerpoint
+                           stptType: TGT
+                           xPos: ( Meters -37315 )
+                           yPos: ( Meters -4326 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 160.0
+                           sca: ( Feet 11000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 860 )
+                           description: "ponto 9 -- aproximacao do cruzamento"
+                        )
+                        wp10: ( Steerpoint
+                           stptType: IP
+                           xPos: ( Meters -24000 )
+                           yPos: ( Meters 0 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 150.0
+                           sca: ( Feet 13000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 965 )
+                           description: "ponto 10 -- CRUZAMENTO do oito, no teto do perfil (15000 ft)"
+                        )
+                        wp11: ( Steerpoint
+                           stptType: DEST
+                           xPos: ( Meters -10685 )
+                           yPos: ( Meters 4326 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 150.0
+                           sca: ( Feet 14000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1070 )
+                           description: "ponto 11 -- entrada do lobo OESTE (curvas a esquerda), sobre a serra"
+                        )
+                        wp12: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters 2630 )
+                           yPos: ( Meters 0 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 155.0
+                           sca: ( Feet 12000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1170 )
+                           description: "ponto 12 -- descida sobre a serra"
+                        )
+                        wp13: ( Steerpoint
+                           stptType: MARK
+                           xPos: ( Meters 10859 )
+                           yPos: ( Meters -11326 )
+                           altitude: ( Feet 11000 )
+                           airspeed: 160.0
+                           sca: ( Feet 10000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1275 )
+                           description: "ponto 13 -- descida sobre a serra"
+                        )
+                        wp14: ( Steerpoint
+                           stptType: OAP
+                           xPos: ( Meters 10859 )
+                           yPos: ( Meters -25326 )
+                           altitude: ( Feet 9000 )
+                           airspeed: 170.0
+                           sca: ( Feet 8000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1380 )
+                           description: "ponto 14 -- descida sobre a serra"
+                        )
+                        wp15: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters 2630 )
+                           yPos: ( Meters -36652 )
+                           altitude: ( Feet 8000 )
+                           airspeed: 170.0
+                           sca: ( Feet 7000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1485 )
+                           description: "ponto 15 -- piso do lobo alto (8000 ft)"
+                        )
+                        wp16: ( Steerpoint
+                           stptType: MARK
+                           xPos: ( Meters -10685 )
+                           yPos: ( Meters -40979 )
+                           altitude: ( Feet 10000 )
+                           airspeed: 165.0
+                           sca: ( Feet 9000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1590 )
+                           description: "ponto 16 -- subida"
+                        )
+                        wp17: ( Steerpoint
+                           stptType: OAP
+                           xPos: ( Meters -24000 )
+                           yPos: ( Meters -36652 )
+                           altitude: ( Feet 12000 )
+                           airspeed: 160.0
+                           sca: ( Feet 11000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1690 )
+                           description: "ponto 17 -- subida"
+                        )
+                        wp18: ( Steerpoint
+                           stptType: FIX
+                           xPos: ( Meters -32229 )
+                           yPos: ( Meters -25326 )
+                           altitude: ( Feet 14000 )
+                           airspeed: 150.0
+                           sca: ( Feet 13000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1795 )
+                           description: "ponto 18 -- subida"
+                        )
+                        wp19: ( Steerpoint
+                           stptType: TGT
+                           xPos: ( Meters -32229 )
+                           yPos: ( Meters -11326 )
+                           altitude: ( Feet 15000 )
+                           airspeed: 150.0
+                           sca: ( Feet 14000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 1900 )
+                           description: "ponto 19 -- teto do lobo oeste"
+                        )
+                        wp20: ( Steerpoint
+                           stptType: IP
+                           xPos: ( Meters -24000 )
+                           yPos: ( Meters 0 )
+                           altitude: ( Feet 13000 )
+                           airspeed: 155.0
+                           sca: ( Feet 12000 )
+                           magvar: ( Degrees -21.5 )
+                           pta: ( Seconds 2005 )
+                           description: "ponto 20 -- CRUZAMENTO do oito, fechando a volta"
+                        )
+                     }
+                  )
+                  components: {
+                     gps: ( Gps )
+                  }
+               )
+
+               // OBRIGATORIO -- sem isto, Route::triggerAction() nunca acha
+               // um OnboardComputer e a ActionParatrooperRelease do wp5
+               // nunca dispara, em silencio (mesma armadilha de
+               // src/poc/c130-airdrop).
+               obc: ( OnboardComputer )
+
+               // 4 estacoes "PARATROOPER" -- mesmo padrao de
+               // src/poc/c130-airdrop. Com wrap:true, cada volta completa
+               // (~2000 s simulados) libera mais uma; a 5a volta em diante
+               // e' no-op inofensivo.
+               stores: ( StoresMgr
+                  numStations: 4
+                  stores: {
+                     1: ( C130ParatrooperPlaceholder
+                        id: 401  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     2: ( C130ParatrooperPlaceholder
+                        id: 402  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     3: ( C130ParatrooperPlaceholder
+                        id: 403  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                     4: ( C130ParatrooperPlaceholder
+                        id: 404  side: blue  type: "PARATROOPER"
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 120 )
+                        dragIndex: 0.02
+                     )
+                  }
+               )
+
+               // Componente do PLAYER (nao da Station), decidindo na FASE 3
+               // do frame de tempo critico -- mesmo padrao de toda poc
+               // deste repositorio. Arvore de UM no so (Navigate) -- este
+               // modelo so navega.
+               agent: ( C130FlightAgentTC
+                  state: ( C130FlightState )
+                  behavior: ( C130BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/C-130/c130_nav_tree.xml"
+                  )
+               )
+
+            } // components
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

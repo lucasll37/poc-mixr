@@ -1,0 +1,440 @@
+<?xml version="1.0"?>
+<!--
+
+  Autopilot do C-130 desta PoC-mixr, adaptado de
+  models/players/A-4/data/jsbsim/aircraft/{c310,A4}/*ap.xml (por sua vez
+  adaptados do c310ap.xml original do JSBSim).
+
+  POR QUE ESTE ARQUIVO EXISTE: mixr::models::JSBSimModel comanda a aeronave
+  escrevendo em 'ap/heading_hold'/'ap/heading_setpoint',
+  'ap/altitude_hold'/'ap/altitude_setpoint' e
+  'ap/airspeed_hold'/'ap/airspeed_setpoint' (JSBSimModel.cpp) - e so os
+  amarra (propMgr->HasNode(...)) se essas propriedades ja existirem no
+  modelo JSBSim, isto e, se a aeronave tiver um <autopilot> proprio. O
+  C130.xml vendorizado (Aeromatic/upstream JSBSim, sem piloto automatico
+  proprio) nao tem nenhum - por isso este arquivo, no MESMO papel que
+  c310ap.xml/a4ap.xml ja cumprem para o c310/A-4. A ponte inversa
+  (ap/elevator_cmd/ap/aileron_cmd/ap/rudder_cmd -> fcs/*-cmd-norm) fica no
+  <flight_control> da copia curada de C130.xml - ver o comentario la.
+
+  NENHUM GANHO/LEI ABAIXO FOI CALIBRADO RODANDO - SAO CHUTES INICIAIS,
+  DOCUMENTADOS COMO TAIS. Diferente de c310ap.xml/a4ap.xml (cujos numeros
+  vieram de medir divergencia/saturacao rodando de verdade), este arquivo
+  nasceu antes da primeira execucao do C-130. Ajustar e medir (ver
+  README.md desta poc) antes de considerar o piloto automatico "pronto":
+
+  1. Canal de altitude: lei "ROC (ft/seg) = 30.0 - h/1100.0" - ~1800 ft/min
+     ao nivel do mar, decaindo linearmente a zero por volta de 33.000 ft.
+     Ordem de grandeza plausivel para um C-130 (teto de servico real
+     ~33.000 ft, ROC inicial tipico ~1900-2000 ft/min), mas nao medida
+     nesta celula.
+  2. Ganhos de arfagem/rolagem do canal de rumo/altitude: herdados do
+     c310ap.xml ORIGINAL (kp=6.0 ki=0.13 kd=6.0 no rumo) - a hipotese e
+     que o regime de velocidade de um circuito de largada (baixo, ~130-150
+     kt) fica mais perto do c310 (~160-190 kt) do que do A-4 (~350-430 kt),
+     entao os ganhos MAIORES do c310 (nao os reduzidos do A-4, calibrados
+     para uma celula bem mais rapida) sao o ponto de partida mais plausivel
+     - mas o C-130 cruza bem mais rapido (~250-290 kt) que o c310 em rota,
+     entao isto pode oscilar la e precisar de agendamento por velocidade
+     (fora de escopo aqui: um ganho fixo so).
+  3. Deadband de anti-windup (fcs/windup-trigger, width 34.0): NAO e chute
+     - curso do profundor do C130.xml e IDENTICO ao do A4.xml
+     (fcs/elevator-pos-rad em [-0.35, 0.30] rad, conferido lendo os dois
+     arquivos), entao o mesmo deadband calibrado para aquela faixa de curso
+     se aplica aqui sem re-trabalho.
+  4. SAS (amortecedores de taxa + nivelador de asas/restaurador de
+     atitude), copiado do a4ap.xml: LA ele existe porque o dado
+     aerodinamico Aeromatic do A4.xml viola o criterio classico de
+     estabilidade em espiral (Clb*Cnr < Clr*Cnb), medido rodando - uma
+     propriedade REAL daquele dado, nao um requisito universal. Nao ha
+     medicao equivalente para o C130.xml (aeronave bem maior, mais
+     amortecida por natureza - pode nao precisar de nada disto). Incluido
+     aqui por precaucao, com ganhos BEM mais conservadores que os do A-4
+     (ver os canais abaixo) - se o C-130 se provar estavel sem, zerar os
+     quatro 'gain' e o jeito mais simples de desligar sem reescrever a
+     estrutura.
+  5. Autothrottle: MESMA estrutura do a4ap.xml (PID unico sobre o erro de
+     velocidade), replicado para os 4 motores do C-130 - ver o canal
+     "AP Autothrottle" abaixo.
+
+  As mesmas ressalvas do c310ap.xml/a4ap.xml aplicam: 'gear/unit[2]/WOW' e
+  'gear/unit/WOW' so importam em solo, e nenhum cenario desta PoC-mixr
+  pousa - o ramo "no ar" (WOW == 0) e o unico exercitado.
+
+  ACHADO CONFIRMADO RODANDO, CORRIGIDO (historico - nao redescobrir; o
+  "como" da correcao esta no proprio C130.xml curado, no comentario do
+  bloco <propulsion>): este canal chegou a NAO SUSTENTAR velocidade
+  nenhuma - medido em src/poc/c130-airdrop, a aeronave desacelerava
+  continuamente (170 -> 88 kt em 60s simulados) independente do bias/ganho
+  do PID (testado com bias 0.60/0.85/5.0-clipado-a-1.0: resultado de
+  velocidade PRATICAMENTE IDENTICO nos tres, embora o consumo de
+  combustivel MUDASSE com o bias - prova de que o comando de manete
+  chegava ao motor). Deixado rodar tempo suficiente (~160s em
+  c130-airdrop), a perda de energia terminava em ESTOL DE VERDADE - rolagem
+  divergindo sem limite e AGL caindo ate quase encostar no terreno. Causa
+  raiz isolada lendo os dois arquivos de motor vendorizados originais
+  (shared/data/jsbsim/engine/t56.xml + t56_prop.xml, copiados sem alteracao
+  para data/jsbsim/engine/ deste modelo antes da correcao): 't56.xml'
+  declara '<turbine_engine>' (motor a jato - calcula EMPUXO direto, via as
+  tabelas MilThrust/IdleThrust) mas 't56_prop.xml' era um '<propeller>'
+  (thruster que espera POTENCIA/HP do motor, nao empuxo) - um DESCOMPASSO
+  de tipo dentro do proprio dado JSBSim vendorizado (Aero-Matic).
+  CORRIGIDO trocando o thruster para 'direct' (empuxo passa direto do
+  motor pra celula, sem conversao de potencia por helice) - MESMO padrao
+  ja comprovado neste repositorio em models/players/A-4/data/jsbsim/aircraft/
+  A4/A4.xml (J52, tambem <turbine_engine>, tambem pareado com
+  <thruster file="direct">). 't56_prop.xml' foi removido de
+  data/jsbsim/engine/ deste modelo - ficou de fora de proposito.
+  Medido DEPOIS da correcao (src/poc/c130-airdrop e sandbox/C-130-6DOF,
+  600s simulados cada, sem crash): velocidade agora se RECUPERA em vez de
+  decair sem limite (ex.: 73 -> 87 kt no meio do circuito de c130-airdrop),
+  estabilizando numa faixa plausivel; altitude segue o perfil comandado com
+  alguma folga/atraso ainda nao perfeitamente calibrada (mesma classe de
+  ajuste fino que c310ap.xml/a4ap.xml tambem precisaram) - por isso as
+  margens de terreno dos cenarios que usam este modelo foram alargadas
+  (ver src/poc/c130-airdrop/configs/scenario_c130_airdrop.edl.in) em vez de
+  depender so do ganho do autopilot.
+
+-->
+<autopilot name="C-130 Autopilot">
+
+<!-- INTERFACE PROPERTIES -->
+
+  <property>ap/attitude_hold</property>
+  <property>ap/altitude_hold</property>
+  <property>ap/heading_hold</property>
+  <property>ap/yaw_damper</property>
+  <property>ap/active-waypoint</property>
+  <property>ap/altitude_setpoint</property>
+  <property>ap/heading_setpoint</property>
+  <property>ap/heading-setpoint-select</property>
+  <property>ap/aileron_cmd</property>
+  <property>ap/elevator_cmd</property>
+  <property>ap/rudder_cmd</property>
+  <property>ap/airspeed_setpoint</property>
+  <property>ap/airspeed_hold</property>
+  <property>ap/throttle-cmd-norm</property>
+
+<!--
+=====================================================
+ROLL CHANNEL
+=====================================================
+-->
+
+<!-- Heading hold -->
+
+<channel name="AP Roll Heading Hold">
+
+  <!--
+  SEM o switch de selecao de fonte do setpoint (waypoint vs. ap/heading_setpoint) que
+  c310ap.xml/a4ap.xml tem - ambos referenciam 'guidance/wp-heading-deg', uma property que
+  NENHUM dos dois arquivos (nem C130.xml) declara em lugar nenhum. Medido rodando: JSBSim
+  levanta 'FGPropertyManager::GetNode() No node found for guidance/wp-heading-deg' e aborta o
+  processo assim que o FCS eh montado - mesmo esta ARVORE nunca setando
+  'ap/heading-setpoint-select'. Nao investigado o motivo de c310ap.xml/a4ap.xml nao
+  reproduzirem isto (possivel diferenca de versao/ordem de montagem do FGSwitch) - como este
+  cenario nunca usa selecao por waypoint, a fonte fica fixa em ap/heading_setpoint.
+  -->
+  <pure_gain name="fcs/heading-true-degrees">
+    <input>attitude/heading-true-rad</input>
+    <gain>57.3</gain> <!-- convert to degrees -->
+  </pure_gain>
+
+  <summer name="fcs/heading-error">
+    <input> -fcs/heading-true-degrees</input>
+    <input> ap/heading_setpoint </input>
+  </summer>
+
+  <switch name="fcs/heading-error-bias-switch">
+    <default value="0.0"/>
+    <test value="360.0">
+      fcs/heading-error lt -180
+    </test>
+    <test value="-360.0">
+      fcs/heading-error gt 180
+    </test>
+  </switch>
+
+  <summer name="fcs/heading-corrected">
+    <input> fcs/heading-error-bias-switch </input>
+    <input> fcs/heading-error </input>
+    <clipto>
+      <min>-30</min>
+      <max> 30</max>
+    </clipto>
+  </summer>
+
+  <pure_gain name="fcs/heading-command">
+    <input> fcs/heading-corrected </input>
+    <gain> 0.01745 </gain>
+  </pure_gain>
+
+  <lag_filter name="fcs/heading-roll-error-lag">
+    <input> fcs/heading-command </input>
+    <c1> 0.15 </c1>
+  </lag_filter>
+
+  <summer name="fcs/heading-roll-error">
+    <input> fcs/heading-roll-error-lag </input>
+    <input> -attitude/phi-rad </input>
+  </summer>
+
+  <switch name="fcs/heading-roll-error-switch">
+    <default value="0.0"/>
+    <test value="fcs/heading-roll-error">
+      ap/heading_hold == 1
+    </test>
+  </switch>
+
+  <!-- Ganhos herdados do c310ap.xml ORIGINAL - ver item 2 do cabecalho. -->
+  <pid name="fcs/heading-pi-controller">
+    <input> fcs/heading-roll-error-switch </input>
+    <kp> 6.0 </kp>
+    <ki> 0.13 </ki>
+    <kd> 6.0 </kd>
+  </pid>
+
+  <switch name="fcs/roll-command-selector">
+    <default value="0.0"/>
+    <test value="fcs/heading-pi-controller">
+      ap/heading_hold == 1
+      gear/unit[2]/WOW == 0
+    </test>
+    <output>fcs/heading-hold-aileron-cmd</output>
+  </switch>
+
+  <!--
+  AMORTECEDOR DE ROLAGEM (SAS), SEMPRE ATIVO - ver item 4 do cabecalho.
+  Ganho CONSERVADOR (metade do -0.6 do a4ap.xml): precaucao, nao resposta a
+  divergencia medida nesta celula.
+  -->
+  <pure_gain name="fcs/roll-rate-damper">
+    <input> velocities/p-rad_sec </input>
+    <gain> -0.3 </gain>
+  </pure_gain>
+
+  <!--
+  NIVELADOR DE ASAS, SEMPRE ATIVO - ver item 4 do cabecalho. Ganho
+  CONSERVADOR (um quarto do -0.8 do a4ap.xml).
+  -->
+  <pure_gain name="fcs/wing-leveler-always-on">
+    <input> attitude/phi-rad </input>
+    <gain> -0.2 </gain>
+  </pure_gain>
+
+  <summer name="fcs/aileron-cmd-final">
+    <input> fcs/heading-hold-aileron-cmd </input>
+    <input> fcs/roll-rate-damper </input>
+    <input> fcs/wing-leveler-always-on </input>
+    <clipto>
+      <min>-1.0</min>
+      <max> 1.0</max>
+    </clipto>
+    <output>ap/aileron_cmd</output>
+  </summer>
+
+</channel>
+
+<!--
+=====================================================
+PITCH CHANNEL
+=====================================================
+-->
+
+<!-- Altitude hold -->
+
+<channel name="AP Pitch Altitude hold">
+
+  <summer name="fcs/altitude-error">
+    <input> ap/altitude_setpoint </input>
+    <input> -position/h-sl-ft </input>
+    <clipto>
+      <min>-100</min>
+      <max> 100</max>
+    </clipto>
+  </summer>
+
+  <lag_filter name="fcs/alt-error-lag">
+    <input> fcs/altitude-error </input>
+    <c1> 1 </c1>
+  </lag_filter>
+
+  <!--
+  Lei de subida do C-130 - ver item 1 do cabecalho: 100% de erro (clipado
+  acima) produz 30 ft/seg (~1800 ft/min) de ROC comandado ao nivel do mar,
+  decaindo linearmente ate zero por volta de 33.000 ft.
+  -->
+  <fcs_function name="fcs/hdot-command">
+    <input>fcs/alt-error-lag</input>
+    <function>
+      <quotient>
+        <difference>
+          <value>30.0</value>
+          <quotient>
+            <property>position/h-sl-ft</property>
+            <value>1100.0</value>
+          </quotient>
+        </difference>
+        <value>100.0</value>
+      </quotient>
+    </function>
+  </fcs_function>
+
+  <summer name="fcs/hdot-error">
+    <input>fcs/hdot-command</input>
+    <input>-velocities/h-dot-fps</input>
+  </summer>
+
+  <switch name="fcs/ap-alt-hold-switch">
+    <default value="0.0"/>
+    <test value="fcs/hdot-error">
+      ap/altitude_hold == 1
+    </test>
+  </switch>
+
+  <!--
+  Deadband de anti-windup - ver item 3 do cabecalho: curso do profundor do
+  C130.xml e IDENTICO ao do A4.xml ([-0.35, 0.30] rad), entao o mesmo
+  deadband (34.0) transfere sem recalculo.
+  -->
+  <deadband name="fcs/windup-trigger">
+    <input> fcs/elevator-pos-deg </input>
+    <width>34.0</width>
+  </deadband>
+
+  <integrator name="fcs/integral">
+    <input> fcs/ap-alt-hold-switch </input>
+    <trigger> fcs/windup-trigger </trigger>
+    <c1> 0.00012 </c1>
+  </integrator>
+
+  <pure_gain name="fcs/proportional">
+    <input> fcs/ap-alt-hold-switch </input>
+    <gain> 0.0025 </gain>
+  </pure_gain>
+
+  <summer name="fcs/control-summer">
+    <input> fcs/integral </input>
+    <input> fcs/proportional </input>
+    <clipto>
+      <min>-1.0</min>
+      <max> 1.0</max>
+    </clipto>
+  </summer>
+
+  <pure_gain name="fcs/elevator">
+    <input> fcs/control-summer </input>
+    <gain> -1.0 </gain>
+  </pure_gain>
+
+  <!--
+  AMORTECEDOR DE ARFAGEM (SAS), SEMPRE ATIVO - ver item 4 do cabecalho.
+  Ganhos CONSERVADORES (metade dos do a4ap.xml).
+  -->
+  <pure_gain name="fcs/pitch-rate-damper">
+    <input> velocities/q-rad_sec </input>
+    <gain> 1.25 </gain>
+  </pure_gain>
+
+  <pure_gain name="fcs/pitch-attitude-restore">
+    <input> attitude/theta-rad </input>
+    <gain> 2.0 </gain>
+  </pure_gain>
+
+  <summer name="fcs/elevator-cmd-final">
+    <input> fcs/elevator </input>
+    <input> fcs/pitch-rate-damper </input>
+    <input> fcs/pitch-attitude-restore </input>
+    <clipto>
+      <min>-1.0</min>
+      <max> 1.0</max>
+    </clipto>
+    <output>ap/elevator_cmd</output>
+  </summer>
+
+</channel>
+
+<!--
+=====================================================
+YAW CHANNEL
+=====================================================
+-->
+
+<!-- Yaw Damper -->
+
+<channel name="Yaw Damper">
+
+   <scheduled_gain name="ap/rudder_control">
+      <input> aero/beta-rad </input>
+      <table>
+        <independentVar lookup="row">velocities/ve-kts</independentVar>
+         <tableData>
+            30      0.00
+            60    -40.00
+         </tableData>
+      </table>
+      <gain>ap/yaw_damper</gain>
+      <clipto>
+        <min>-1.0</min>
+        <max> 1.0</max>
+      </clipto>
+      <output> ap/rudder_cmd </output>
+   </scheduled_gain>
+
+</channel>
+
+<!-- ===========================================================================
+     Autothrottle - ver item 5 do cabecalho. Mesma estrutura de
+     a4ap.xml/c310ap.xml, replicada para os 4 motores do C-130 (mesmo PID,
+     4 summers de saida).
+     =========================================================================== -->
+<channel name="AP Autothrottle">
+
+  <fcs_function name="ap/airspeed-error-kts">
+    <function>
+      <difference>
+        <property>ap/airspeed_setpoint</property>
+        <property>velocities/vc-kts</property>
+      </difference>
+    </function>
+  </fcs_function>
+
+  <pid name="ap/throttle-pid">
+    <input>ap/airspeed-error-kts</input>
+    <kp> 0.010 </kp>
+    <ki> 0.0025 </ki>
+    <kd> 0.000 </kd>
+    <clipto> <min> -1.0 </min> <max> 1.0 </max> </clipto>
+  </pid>
+
+  <summer name="ap/throttle-command-0">
+    <input> ap/throttle-pid </input>
+    <bias> 0.60 </bias>
+    <clipto> <min> 0.0 </min> <max> 1.0 </max> </clipto>
+    <output> fcs/throttle-cmd-norm[0] </output>
+  </summer>
+
+  <summer name="ap/throttle-command-1">
+    <input> ap/throttle-pid </input>
+    <bias> 0.60 </bias>
+    <clipto> <min> 0.0 </min> <max> 1.0 </max> </clipto>
+    <output> fcs/throttle-cmd-norm[1] </output>
+  </summer>
+
+  <summer name="ap/throttle-command-2">
+    <input> ap/throttle-pid </input>
+    <bias> 0.60 </bias>
+    <clipto> <min> 0.0 </min> <max> 1.0 </max> </clipto>
+    <output> fcs/throttle-cmd-norm[2] </output>
+  </summer>
+
+  <summer name="ap/throttle-command-3">
+    <input> ap/throttle-pid </input>
+    <bias> 0.60 </bias>
+    <clipto> <min> 0.0 </min> <max> 1.0 </max> </clipto>
+    <output> fcs/throttle-cmd-norm[3] </output>
+  </summer>
+
+</channel>
+
+</autopilot>
