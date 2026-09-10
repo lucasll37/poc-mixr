@@ -29304,7 +29304,7 @@
       "AbstractAction",
       "Object"
     ],
-    "origin": "plugin:template",
+    "origin": "plugin:carro",
     "concrete": true,
     "slots": [],
     "primaryComponents": []
@@ -29319,7 +29319,7 @@
       "Component",
       "Object"
     ],
-    "origin": "plugin:template",
+    "origin": "plugin:carro",
     "concrete": true,
     "slots": [
       {
@@ -29521,7 +29521,7 @@
       "Component",
       "Object"
     ],
-    "origin": "plugin:template",
+    "origin": "plugin:carro",
     "concrete": true,
     "slots": [
       {
