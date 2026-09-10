@@ -6,7 +6,7 @@ pelo mecanismo que 'make models' usa (Makefile: cp plugins/*.so
 dist/lib/mixr-plugins/), e o resultado dessa copia e REALMENTE carregavel e
 USAVEL numa simulacao -- nao so um arquivo presente em disco.
 
-Reaproveita o MIRROR DE CONTRATO do template (models/players/template,
+Reaproveita o MIRROR DE CONTRATO do template (models/template,
 libtemplate_mirror.so) fazendo o papel do "terceiro": e um modelo ja
 pronto, compilado, e ja provado suficiente para rodar o cenario de
 producao (ver plugin-modelo-estranho) -- sem ser nenhum dos plugins que o

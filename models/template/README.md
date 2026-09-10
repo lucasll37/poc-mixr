@@ -5,7 +5,7 @@
 A aplicação principal deste repositório (o "host") não decide nada sozinha: ela carrega a lógica
 de simulação — percepção, decisão, ação — de uma biblioteca compartilhada (`.so`) compilada à
 parte e aberta em tempo de execução, sem que o host precise conhecer o código-fonte dela. Essa
-biblioteca é o que este repositório chama de **modelo** (ver [`../../../CLAUDE.md`](../../../../CLAUDE.md),
+biblioteca é o que este repositório chama de **modelo** (ver [`../../CLAUDE.md`](../../CLAUDE.md),
 seção "O MODELO é um plugin, construído numa etapa PRÉVIA", para a visão geral de como isso se
 encaixa no resto do repositório).
 
@@ -75,13 +75,13 @@ precisa para linkar: o SDK de plugin e os pacotes de terceiros que o MIXR usa.
 
 ```bash
 # uma vez, na raiz do repositorio:
-cd ../../.. && make configure && make sdk
+cd ../.. && make configure && make sdk
 
 # daqui em diante, só aqui dentro:
-cd models/players/template
+cd models/template
 make build            # compila -> ./dist/lib/mixr-plugins/{libtemplate.so,libtemplate_mirror.so} (bare `make` so mostra `make help`)
 make test             # domain/ (o Schmitt trigger) + a arvore + a forma dos DOIS .so
-make install-host     # copia os dois .so para ../../../plugins/ -- ver a proxima secao
+make install-host     # copia os dois .so para ../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos. `./build` e `./dist` nascem e ficam dentro **deste**
@@ -117,6 +117,6 @@ exemplo pela sua decisão de verdade.
   crescer para uma árvore de comportamento
 - [`docs/CONTRATO.md`](docs/CONTRATO.md) — a lista completa e autoritativa do que QUALQUER modelo
   precisa fazer para o host carregá-lo e rodar com ele
-- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
+- [`../../CLAUDE.md`](../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
   Makefile da raiz

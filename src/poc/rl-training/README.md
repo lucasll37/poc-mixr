@@ -15,7 +15,7 @@ sempre: `make configure && make sdk && make build && make install`, pra
 
 ## Makefile AUTOCONTIDO
 
-Mesmo padrao dos `Makefile` de `models/*` (ver `models/players/template/Makefile`
+Mesmo padrao dos `Makefile` de `models/*` (ver `models/template/Makefile`
 para o "porque" completo): entre nesta pasta e rode `make` direto, sem
 precisar do Makefile raiz depois do pre-requisito unico (`dist/python/mixr_gym`
 publicado). O alvo `venv-rl-training` do Makefile raiz so DELEGA pra `venv`

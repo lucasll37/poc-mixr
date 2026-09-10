@@ -50097,6 +50097,64 @@ const EDL_CATALOG = [
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
+      },
+      {
+        "name": "releaseOffsetAft",
+        "declaredIn": "Paratrooper",
+        "comment": "2",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "releaseOffsetBelow",
+        "declaredIn": "Paratrooper",
+        "comment": "3",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
       }
     ],
     "primaryComponents": [
@@ -83837,7 +83895,7 @@ function LeafWidget({
       })
     }, slotDef.acceptsNumber && /*#__PURE__*/React.createElement("option", {
       value: ""
-    }, "(n\xFAmero cru, sem unidade)"), options.map(u => /*#__PURE__*/React.createElement("option", {
+    }, "(número cru, sem unidade)"), options.map(u => /*#__PURE__*/React.createElement("option", {
       key: u,
       value: u
     }, u))));
@@ -83891,7 +83949,7 @@ function Palette({
   }, /*#__PURE__*/React.createElement("input", {
     className: "eb-input",
     type: "text",
-    placeholder: "Buscar classe\u2026",
+    placeholder: "Buscar classe…",
     value: q,
     onChange: e => setQ(e.target.value),
     "aria-label": "Buscar classe"
@@ -83916,12 +83974,12 @@ function Palette({
     onDragEnd: () => onDragStartFactory(null)
   }, e.factory, e.factory !== e.class && /*#__PURE__*/React.createElement("em", {
     className: "eb-alias"
-  }, "\u2192", e.class), e.runtimeOnly && /*#__PURE__*/React.createElement("em", {
+  }, "→", e.class), e.runtimeOnly && /*#__PURE__*/React.createElement("em", {
     className: "eb-alias",
     title: "plugin de terceiros, descoberto em runtime"
-  }, " \u2699"))))), groups.length === 0 && /*#__PURE__*/React.createElement("p", {
+  }, " ⚙"))))), groups.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-empty-msg"
-  }, "nenhuma classe bate com \u201C", q, "\u201D")));
+  }, "nenhuma classe bate com “", q, "”")));
 }
 
 /* ---------------------------- placeholder / drop --------------------------- */
@@ -84000,7 +84058,7 @@ function AddViaSelect({
     onChange: e => setV(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "ou escolha\u2026"), options.map(f => /*#__PURE__*/React.createElement("option", {
+  }, "ou escolha…"), options.map(f => /*#__PURE__*/React.createElement("option", {
     key: f,
     value: f
   }, f))), /*#__PURE__*/React.createElement("button", {
@@ -84051,7 +84109,7 @@ function TreeItem({
       className: "eb-x",
       title: "remover",
       onClick: () => actions.onRemoveItem(parentId, slotName, node.id)
-    }, "\xD7"));
+    }, "×"));
   }
   return /*#__PURE__*/React.createElement(TreeNode, {
     node: node,
@@ -84155,7 +84213,7 @@ function ChildSlotSection({
   }, slotDef.name, isList ? " (lista)" : "", slotDef.uncataloged && /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge",
     title: "slot que o catalogo nao conhece -- preservado como esta, editavel so como texto"
-  }, " n\xE3o catalogado")), /*#__PURE__*/React.createElement("div", {
+  }, " não catalogado")), /*#__PURE__*/React.createElement("div", {
     className: "eb-branch-list"
   }, items.map(it => /*#__PURE__*/React.createElement("div", {
     key: it.node.id,
@@ -84263,7 +84321,7 @@ function TreeNode({
       e.stopPropagation();
       onRemoveLocal();
     }
-  }, "\xD7")), expanded && (entry || extraChildNames.length > 0) && /*#__PURE__*/React.createElement("div", {
+  }, "×")), expanded && (entry || extraChildNames.length > 0) && /*#__PURE__*/React.createElement("div", {
     className: "eb-card-body"
   }, roles.length > 0 && /*#__PURE__*/React.createElement(RoleSection, {
     node: node,
@@ -84316,7 +84374,7 @@ function UncatalogedSlotsSection({
     className: "eb-uncataloged-section"
   }, /*#__PURE__*/React.createElement("div", {
     className: "eb-props-subhead"
-  }, "slots n\xE3o catalogados"), names.map(name => /*#__PURE__*/React.createElement("div", {
+  }, "slots não catalogados"), names.map(name => /*#__PURE__*/React.createElement("div", {
     key: name,
     className: "eb-field"
   }, /*#__PURE__*/React.createElement("label", {
@@ -84356,7 +84414,7 @@ function PropertiesPanel({
       className: "eb-pane eb-props"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "selecione um n\xF3 na \xE1rvore"));
+    }, "selecione um nó na árvore"));
   }
   if (node.isText) {
     return /*#__PURE__*/React.createElement("div", {
@@ -84367,7 +84425,7 @@ function PropertiesPanel({
       className: "eb-props-title"
     }, "valor de texto")), /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "edite o valor direto na \xE1rvore."));
+    }, "edite o valor direto na árvore."));
   }
   const entry = CATALOG_BY_FACTORY[node.factory];
   if (!entry) {
@@ -84384,7 +84442,7 @@ function PropertiesPanel({
       className: "eb-unknown-badge"
     }, "?")), /*#__PURE__*/React.createElement("p", {
       className: "eb-runtime-note"
-    }, "classe N\xC3O catalogada -- n\xE3o reconhecida pelo cat\xE1logo gerado (erro de digita\xE7\xE3o, classe em desenvolvimento, ou plugin de terceiro nunca introspectado). Os valores abaixo foram preservados byte-fi\xE9is a partir do .edl carregado; edite como texto bruto, exatamente como deve sair no arquivo.")), /*#__PURE__*/React.createElement(UncatalogedSlotsSection, {
+    }, "classe NÃO catalogada -- não reconhecida pelo catálogo gerado (erro de digitação, classe em desenvolvimento, ou plugin de terceiro nunca introspectado). Os valores abaixo foram preservados byte-fiéis a partir do .edl carregado; edite como texto bruto, exatamente como deve sair no arquivo.")), /*#__PURE__*/React.createElement(UncatalogedSlotsSection, {
       node: node,
       names: names,
       onChangeSlot: onChangeSlot,
@@ -84408,11 +84466,11 @@ function PropertiesPanel({
     className: "eb-muted"
   }, "origem: ", originLabel(entry.origin)), entry.runtimeOnly && /*#__PURE__*/React.createElement("p", {
     className: "eb-runtime-note"
-  }, "classe descoberta em RUNTIME (plugin de terceiros em ", /*#__PURE__*/React.createElement("code", null, "plugins/"), ", sem fonte C++ neste reposit\xF3rio) \u2014 cadeia de heran\xE7a e nomes de slot v\xEAm de verdade, mas um slot marcado ", /*#__PURE__*/React.createElement("span", {
+  }, "classe descoberta em RUNTIME (plugin de terceiros em ", /*#__PURE__*/React.createElement("code", null, "plugins/"), ", sem fonte C++ neste repositório) — cadeia de herança e nomes de slot vêm de verdade, mas um slot marcado ", /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge"
-  }, "?"), " teve o TIPO adivinhado (texto ou n\xFAmero); confira contra a documenta\xE7\xE3o do plugin antes de confiar no valor.")), leafSlots.length === 0 && extraNames.length === 0 && /*#__PURE__*/React.createElement("p", {
+  }, "?"), " teve o TIPO adivinhado (texto ou número); confira contra a documentação do plugin antes de confiar no valor.")), leafSlots.length === 0 && extraNames.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "eb-muted"
-  }, "esta classe n\xE3o tem slot de valor direto."), leafSlots.map(slotDef => /*#__PURE__*/React.createElement("div", {
+  }, "esta classe não tem slot de valor direto."), leafSlots.map(slotDef => /*#__PURE__*/React.createElement("div", {
     key: slotDef.name,
     className: "eb-field"
   }, /*#__PURE__*/React.createElement("label", {
@@ -84420,7 +84478,7 @@ function PropertiesPanel({
     title: slotDef.comment
   }, slotDef.name, slotDef.isReference && /*#__PURE__*/React.createElement("span", {
     className: "eb-ref-badge",
-    title: "refer\xEAncia por nome, resolvida em runtime"
+    title: "referência por nome, resolvida em runtime"
   }, "#"), slotDef.typeUnknown && /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge",
     title: "tipo adivinhado -- classe de terceiro sem fonte C++, confira com cuidado"
@@ -84459,14 +84517,14 @@ function MapPanel({
       className: "eb-pane eb-map"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nada para mostrar -- crie um cen\xE1rio na aba \xC1rvore primeiro."));
+    }, "nada para mostrar -- crie um cenário na aba Árvore primeiro."));
   }
   if (placements.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-map"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nenhum player (Aircraft/GuidedMissile/...) neste cen\xE1rio ainda."));
+    }, "nenhum player (Aircraft/GuidedMissile/...) neste cenário ainda."));
   }
   const norths = placements.map(p => p.north);
   const easts = placements.map(p => p.east);
@@ -84511,11 +84569,11 @@ function MapPanel({
     className: "eb-map-title"
   }, "Mapa (topo, norte para cima)"), /*#__PURE__*/React.createElement("span", {
     className: "eb-muted"
-  }, placements.length, " player(es) \xB7 grade a cada ", stepNm, " NM")), /*#__PURE__*/React.createElement("svg", {
+  }, placements.length, " player(es) · grade a cada ", stepNm, " NM")), /*#__PURE__*/React.createElement("svg", {
     className: "eb-map-svg",
     viewBox: `0 0 ${W} ${H}`,
     role: "img",
-    "aria-label": "mapa do cen\xE1rio"
+    "aria-label": "mapa do cenário"
   }, /*#__PURE__*/React.createElement("rect", {
     x: 0,
     y: 0,
@@ -84572,7 +84630,7 @@ function MapPanel({
     }, p.label));
   })), /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-map-hint"
-  }, "posi\xE7\xE3o local (norte/leste, relativa ao ponto de refer\xEAncia da Station) lida de initXPos/initYPos/initAlt de cada player -- n\xE3o \xE9 latitude/longitude real. Sem essas posi\xE7\xF5es definidas, o player aparece na origem (0, 0). Clique num marcador para selecion\xE1-lo na aba \xC1rvore/no painel de propriedades."));
+  }, "posição local (norte/leste, relativa ao ponto de referência da Station) lida de initXPos/initYPos/initAlt de cada player -- não é latitude/longitude real. Sem essas posições definidas, o player aparece na origem (0, 0). Clique num marcador para selecioná-lo na aba Árvore/no painel de propriedades."));
 }
 
 /* ------------------------------- pendências --------------------------------- */
@@ -84581,7 +84639,7 @@ function MapPanel({
 // dia precisar) em qualquer outro lugar que queira o mesmo texto.
 function pendencyDescription(p) {
   if (p.kind === "role") return /*#__PURE__*/React.createElement(React.Fragment, null, "sem ", /*#__PURE__*/React.createElement("b", null, p.role), " (esperado: ", p.baseClass, ")");
-  if (p.textOnly) return /*#__PURE__*/React.createElement(React.Fragment, null, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " vazio (s\xF3 aceita texto)");
+  if (p.textOnly) return /*#__PURE__*/React.createElement(React.Fragment, null, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " vazio (só aceita texto)");
   return /*#__PURE__*/React.createElement(React.Fragment, null, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " vazio (esperado: ", p.objectTypes && p.objectTypes.join("/") || "componente", ")");
 }
 
@@ -84600,20 +84658,20 @@ function PendenciesPanel({
       className: "eb-pane eb-pending"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nada para conferir -- crie um cen\xE1rio na aba \xC1rvore primeiro."));
+    }, "nada para conferir -- crie um cenário na aba Árvore primeiro."));
   }
   if (pendencies.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-pending"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-ok-msg"
-    }, "\u2713 nenhuma pend\xEAncia -- todo papel/slot esperado deste cen\xE1rio est\xE1 preenchido."));
+    }, "✓ nenhuma pendência -- todo papel/slot esperado deste cenário está preenchido."));
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-pending"
   }, /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-pending-summary"
-  }, pendencies.length, " pend\xEAncia(s) neste cen\xE1rio -- clique para ir at\xE9 o cart\xE3o:"), /*#__PURE__*/React.createElement("ul", {
+  }, pendencies.length, " pendência(s) neste cenário -- clique para ir até o cartão:"), /*#__PURE__*/React.createElement("ul", {
     className: "eb-pending-list"
   }, pendencies.map((p, i) => /*#__PURE__*/React.createElement("li", {
     key: i,
@@ -84770,12 +84828,12 @@ function ExportPanel({
     className: "eb-export-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eb-export-title"
-  }, "\u2913 Pr\xE9-visualiza\xE7\xE3o .edl"), /*#__PURE__*/React.createElement("span", {
+  }, "⤓ Pré-visualização .edl"), /*#__PURE__*/React.createElement("span", {
     className: "eb-row"
   }, HAS_FS_ACCESS && /*#__PURE__*/React.createElement("button", {
     className: "eb-btn eb-btn-sm",
     onClick: chooseSandboxFolder,
-    title: "Escolher a pasta sandbox/ deste reposit\xF3rio -- uma vez por sess\xE3o"
+    title: "Escolher a pasta sandbox/ deste repositório -- uma vez por sessão"
   }, sandboxDirHandle ? "✓ pasta sandbox/ escolhida" : "Escolher pasta sandbox/…"), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
     disabled: !root,
@@ -84785,7 +84843,7 @@ function ExportPanel({
   }, /*#__PURE__*/React.createElement("label", {
     className: "eb-field-label",
     htmlFor: "eb-scenario-name"
-  }, "nome do cen\xE1rio (pasta em ", /*#__PURE__*/React.createElement("code", null, "sandbox/"), ")"), /*#__PURE__*/React.createElement("input", {
+  }, "nome do cenário (pasta em ", /*#__PURE__*/React.createElement("code", null, "sandbox/"), ")"), /*#__PURE__*/React.createElement("input", {
     id: "eb-scenario-name",
     className: "eb-input",
     type: "text",
@@ -84794,11 +84852,11 @@ function ExportPanel({
     onChange: e => setName(e.target.value)
   }), /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-export-path-hint"
-  }, sandboxDirHandle ? /*#__PURE__*/React.createElement(React.Fragment, null, "salva DIRETO em ", /*#__PURE__*/React.createElement("code", null, relPath), " (dentro da pasta escolhida) -- pronto para ", /*#__PURE__*/React.createElement("code", null, "./app -folder ./sandbox"), ".") : HAS_FS_ACCESS ? /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), " (Downloads/); clique em \u201CEscolher pasta sandbox/\u2026\u201D acima para salvar direto no reposit\xF3rio.") : /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), "."))), warn && /*#__PURE__*/React.createElement("p", {
+  }, sandboxDirHandle ? /*#__PURE__*/React.createElement(React.Fragment, null, "salva DIRETO em ", /*#__PURE__*/React.createElement("code", null, relPath), " (dentro da pasta escolhida) -- pronto para ", /*#__PURE__*/React.createElement("code", null, "./app -folder ./sandbox"), ".") : HAS_FS_ACCESS ? /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), " (Downloads/); clique em “Escolher pasta sandbox/…” acima para salvar direto no repositório.") : /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), "."))), warn && /*#__PURE__*/React.createElement("p", {
     className: "eb-warn"
   }, warn), saved && !warn && /*#__PURE__*/React.createElement("p", {
     className: "eb-ok-msg"
-  }, "\u2713 salvo em ", /*#__PURE__*/React.createElement("code", null, saved)), /*#__PURE__*/React.createElement("pre", {
+  }, "✓ salvo em ", /*#__PURE__*/React.createElement("code", null, saved)), /*#__PURE__*/React.createElement("pre", {
     className: "eb-edl-preview"
   }, text ? tokens.map((t, i) => t.cls ? /*#__PURE__*/React.createElement("span", {
     key: i,
@@ -85378,9 +85436,9 @@ function App() {
     className: "eb-bar"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
     className: "eb-h1"
-  }, "MIXR \u2014 Editor gr\xE1fico de cen\xE1rio .edl"), /*#__PURE__*/React.createElement("p", {
+  }, "MIXR — Editor gráfico de cenário .edl"), /*#__PURE__*/React.createElement("p", {
     className: "eb-sub"
-  }, EDL_CATALOG.length, " classes catalogadas, de todas as factories que este reposit\xF3rio de fato carrega")), /*#__PURE__*/React.createElement("div", {
+  }, EDL_CATALOG.length, " classes catalogadas, de todas as factories que este repositório de fato carrega")), /*#__PURE__*/React.createElement("div", {
     className: "eb-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
@@ -85403,7 +85461,7 @@ function App() {
   }), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
     onClick: handleLoadPreset,
-    title: "Carrega o cen\xE1rio de exemplo (player m\xE1ximo, built-in_mixr_1)"
+    title: "Carrega o cenário de exemplo (player máximo, built-in_mixr_1)"
   }, "Carregar preset"), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
     onClick: () => setTheme(t => t === "light" ? "dark" : "light")
@@ -85422,25 +85480,25 @@ function App() {
   }, /*#__PURE__*/React.createElement("button", {
     className: `eb-tab-btn${mainTab === "tree" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("tree")
-  }, "\xC1rvore"), /*#__PURE__*/React.createElement("button", {
+  }, "Árvore"), /*#__PURE__*/React.createElement("button", {
     className: `eb-tab-btn${mainTab === "map" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("map")
   }, "Mapa"), /*#__PURE__*/React.createElement("button", {
     className: `eb-tab-btn eb-tab-btn-pending${pendencies.length === 0 ? " eb-tab-btn-clear" : ""}${mainTab === "pending" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("pending")
-  }, "Pend\xEAncias ", pendencies.length === 0 ? "✓" : `(${pendencies.length})`), uncatalogedCount > 0 && /*#__PURE__*/React.createElement("span", {
+  }, "Pendências ", pendencies.length === 0 ? "✓" : `(${pendencies.length})`), uncatalogedCount > 0 && /*#__PURE__*/React.createElement("span", {
     className: "eb-uncataloged-count",
-    title: "componentes com f\xE1brica ou slot que o cat\xE1logo n\xE3o conhece -- valores preservados como texto bruto, edit\xE1veis no painel de propriedades"
-  }, uncatalogedCount, " n\xE3o catalogado", uncatalogedCount > 1 ? "s" : ""), mainTab === "tree" && root && /*#__PURE__*/React.createElement("span", {
+    title: "componentes com fábrica ou slot que o catálogo não conhece -- valores preservados como texto bruto, editáveis no painel de propriedades"
+  }, uncatalogedCount, " não catalogado", uncatalogedCount > 1 ? "s" : ""), mainTab === "tree" && root && /*#__PURE__*/React.createElement("span", {
     className: "eb-row eb-tree-utility-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "eb-btn eb-btn-sm",
     onClick: handleExpandAll,
-    title: "Expande todo n\xF3 da \xE1rvore"
+    title: "Expande todo nó da árvore"
   }, "Expandir tudo"), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn eb-btn-sm",
     onClick: handleCollapseAll,
-    title: "Recolhe todo n\xF3 (a raiz continua vis\xEDvel)"
+    title: "Recolhe todo nó (a raiz continua visível)"
   }, "Recolher tudo"))), mainTab === "tree" ? /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-tree"
   }, !root ? /*#__PURE__*/React.createElement("div", {
@@ -85458,7 +85516,7 @@ function App() {
         setExpandedIds(new Set([node.id]));
       }
     }
-  }, "arraste uma classe que implemente Station aqui para come\xE7ar (ex.: Station ou ClockStation)", /*#__PURE__*/React.createElement("div", {
+  }, "arraste uma classe que implemente Station aqui para começar (ex.: Station ou ClockStation)", /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10
     }
@@ -85474,7 +85532,7 @@ function App() {
     style: {
       marginTop: 14
     }
-  }, "ou clique em \u201CCarregar preset\u201D, no topo, para abrir um cen\xE1rio de exemplo j\xE1 pronto")) : /*#__PURE__*/React.createElement(TreeNode, {
+  }, "ou clique em “Carregar preset”, no topo, para abrir um cenário de exemplo já pronto")) : /*#__PURE__*/React.createElement(TreeNode, {
     node: root,
     ui: ui,
     actions: actions,

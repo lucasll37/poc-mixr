@@ -49768,6 +49768,64 @@
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
+      },
+      {
+        "name": "releaseOffsetAft",
+        "declaredIn": "Paratrooper",
+        "comment": "2",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "releaseOffsetBelow",
+        "declaredIn": "Paratrooper",
+        "comment": "3",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
       }
     ],
     "primaryComponents": [

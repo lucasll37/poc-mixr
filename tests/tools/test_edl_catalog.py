@@ -193,7 +193,7 @@ def main():
     if bt_behavior:
         check(slot(bt_behavior, "patrolHeading") is not None,
               "BtBehavior.patrolHeading nao encontrado -- regressao: o mirror de contrato "
-              "(models/players/template/src/mirror.cpp, varrido depois de A-4) pode ter "
+              "(models/template/src/mirror.cpp, varrido depois de A-4) pode ter "
               "sobrescrito os slots reais")
 
     # -- multiplos slots numa linha so (estilo compacto) ---------------------

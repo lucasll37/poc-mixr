@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Gera um modelo novo em models/<categoria>/<nome>/ a partir do unico ponto
-# de partida copiavel: models/players/template/.
+# de partida copiavel: models/template/.
 #
 # A CATEGORIA e obrigatoria (--category player|system|others) e decide a
 # subpasta de destino sob models/ -- mesma taxonomia que 'MODELOS_PRODUCAO'
@@ -15,10 +15,10 @@
 # documentado. Continua fora do escopo deste gerador.
 #
 # Automatiza a receita MECANICA ja documentada em
-# models/players/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
+# models/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
 # novo, so elimina os erros manuais mais citados no repositorio: a linha ROOT
 # do Makefile (calculada aqui pela PROFUNDIDADE REAL do destino, nunca
-# copiada) e o namespace C++ aninhado (models/players/template/docs/
+# copiada) e o namespace C++ aninhado (models/template/docs/
 # CONTRATO.md secao 6) esquecido pela metade -- e apaga o mirror de contrato
 # (src/mirror.cpp + os blocos MIRROR-BLOCK-START/END em meson.build/tests/
 # meson.build), que NAO faz parte do scaffold e colidiria em nome de fabrica
@@ -27,7 +27,7 @@
 #
 # O QUE ESTE SCRIPT NAO FAZ, de proposito:
 #   - nao escreve a logica de dominio (a razao do modelo existir);
-#   - nao escreve o cenario que carrega o modelo (models/players/template/
+#   - nao escreve o cenario que carrega o modelo (models/template/
 #     docs/PRIMEIROS-PASSOS.md, passo 6 -- o .so entra sozinho em
 #     'make models'/'make test' por descoberta via find, mas so aparece num
 #     cenario rodavel depois de um '.edl.in' novo apontar pra ele; nao ha
@@ -315,8 +315,8 @@ EOF
         # producao por ele). Remover isto quebraria a suite sem nenhum aviso
         # que aponte para ca.
         case "$DEST_ABS" in
-            */models/players/template)
-                echo "models/players/template nao e removivel: o segundo artefato dele" >&2
+            */models/template)
+                echo "models/template nao e removivel: o segundo artefato dele" >&2
                 echo "  (libtemplate_mirror.so) e' o mirror de contrato que os testes de plugin" >&2
                 echo "  do host usam -- ver tests/meson.build, plugin-modelo-estranho." >&2
                 exit 1
@@ -473,7 +473,7 @@ if [ -n "$COLISAO" ]; then
         [ -n "$f" ] && echo "    - ${f#"$REPO_ROOT"/}" >&2
     done <<< "$COLISAO"
     echo "  escolha outro --name -- dois modelos com o MESMO namespace colidem em type_info" >&2
-    echo "  entre .so RTLD_LOCAL (models/players/template/docs/CONTRATO.md, secao 6)" >&2
+    echo "  entre .so RTLD_LOCAL (models/template/docs/CONTRATO.md, secao 6)" >&2
     exit 1
 fi
 
@@ -489,8 +489,9 @@ case "$CATEGORIA" in
         ;;
 esac
 
-ORIGEM="$REPO_ROOT/models/players/template"
+ORIGEM="$REPO_ROOT/models/template"
 ORIGEM_NOME="$(basename "$ORIGEM")"
+ORIGEM_REL="${ORIGEM#"$REPO_ROOT"/}"
 
 if [ -n "$DEST" ]; then
     case "$DEST" in
@@ -558,7 +559,7 @@ arquivos_contendo() {
 
 # apagar_bloco_mirror ARQUIVO -- remove, inclusive, tudo entre
 # '# >>> MIRROR-BLOCK-START' e '# <<< MIRROR-BLOCK-END' (ver
-# models/players/template/meson.build e tests/meson.build). Nao-fatal se o
+# models/template/meson.build e tests/meson.build). Nao-fatal se o
 # marcador nao existir (o arquivo pode nao ter bloco de mirror nenhum).
 apagar_bloco_mirror() {
     local caminho="$1"
@@ -573,7 +574,7 @@ apagar_bloco_mirror() {
 
 # linha_root DEST -- 'ROOT := $(abspath ..N vezes..)' calculado da
 # PROFUNDIDADE REAL do destino em relacao a raiz do repo -- elimina a
-# armadilha mais citada de models/players/template/docs/PRIMEIROS-PASSOS.md
+# armadilha mais citada de models/template/docs/PRIMEIROS-PASSOS.md
 # (copiar o Makefile do template, 3 niveis, para um destino de outra
 # profundidade, e esquecer de ajustar os '../').
 linha_root() {
@@ -597,7 +598,7 @@ Falta, MANUALMENTE (nada disto e automatizavel):
   [ ] a regra de negocio de verdade (docs/PRIMEIROS-PASSOS.md, passo 5 --
       domain -> ubf/State -> ubf/Behavior -> ubf/Action -> xnative/factory)
   [ ] preservar as chamadas ao xboard em ubf/*Action::execute() (a UNICA obrigacao que
-      falha em silencio -- ver models/players/template/docs/CONTRATO.md secao 3)
+      falha em silencio -- ver models/template/docs/CONTRATO.md secao 3)
   [ ] atualizar xnative/factory.cpp (NOMES[]/METAS[]) se classes forem renomeadas/removidas
   [ ] revisar a prosa de README.md/docs/*.md -- so o titulo foi trocado, o resto ainda
       descreve a origem (${nome} copiou de template/)
@@ -661,7 +662,7 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 # -- reproduzido com 'make new-model NAME=probe-bt CATEGORY=others'. O
 # models/players/A-4 nao expunha isso porque os nos dele vivem num
 # 'bt_nodes' solto no escopo global (a excecao historica que
-# models/players/template/docs/CONTRATO.md secao 6 manda NAO copiar).
+# models/template/docs/CONTRATO.md secao 6 manda NAO copiar).
 ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests tools)"
 
 # 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'.
@@ -688,6 +689,38 @@ fi
 #    para identificar o plugin no descritor; tem que bater com o novo nome.
 PLUGIN_CPP="$DEST_ABS/src/plugin.cpp"
 substituir "$PLUGIN_CPP" "MIXR_PLUGIN_DEFINE(\"$ORIGEM_NOME\"" "MIXR_PLUGIN_DEFINE(\"$NAME\""
+
+# 5b. Profundidade dos caminhos relativos nos .md/Makefile copiados. O
+#     template mora em models/template/ (DOIS niveis) e o destino normal e
+#     models/<categoria>/<nome>/ (TRES) -- um link '../../CLAUDE.md' que esta
+#     certo na origem aponta um nivel curto demais no destino. Regra: num
+#     arquivo a 'd' niveis dentro do projeto, um caminho com N '../' escapa do
+#     projeto quando N > d; so esses sao reperfilados (N + delta). Os internos
+#     ('../src/mirror.cpp', '../README.md' a partir de docs/) ficam intactos.
+#     Roda ANTES do passo 6 de proposito: linha_root() tem a palavra final
+#     sobre a linha ROOT, para um --dest de profundidade arbitraria.
+DELTA=$(( $(awk -F/ '{print NF}' <<< "$DEST_REL") - $(awk -F/ '{print NF}' <<< "$ORIGEM_REL") ))
+if [ "$DELTA" -ne 0 ]; then
+    DEST_ABS="$DEST_ABS" DELTA="$DELTA" python3 - <<'PY'
+import os, pathlib, re
+
+raiz  = pathlib.Path(os.environ["DEST_ABS"])
+delta = int(os.environ["DELTA"])
+padrao = re.compile(r"(?:\.\./)+")
+
+for f in sorted(raiz.rglob("*")):
+    if not f.is_file() or (f.name != "Makefile" and f.suffix != ".md"):
+        continue
+    d = len(f.relative_to(raiz).parts) - 1        # profundidade do DIRETORIO
+    def troca(m, d=d):
+        n = len(m.group(0)) // 3
+        return "../" * (n + delta) if n > d and n + delta >= 1 else m.group(0)
+    texto = f.read_text(encoding="utf-8")
+    novo  = padrao.sub(troca, texto)
+    if novo != texto:
+        f.write_text(novo, encoding="utf-8")
+PY
+fi
 
 # 6. ROOT do Makefile -- calculado, nunca copiado (ver linha_root()).
 MAKEFILE="$DEST_ABS/Makefile"
@@ -778,7 +811,7 @@ echo "compilando, testando e instalando o scaffold (make test install) ..."
 if ! make -C "$DEST_ABS" test install; then
     echo "
 FALHOU o build/teste de verificacao -- o scaffold ficou em $DEST_REL/,
-incompleto. NAO apague a pasta: compare com models/players/template/ para achar o que
+incompleto. NAO apague a pasta: compare com models/template/ para achar o que
 sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
 fi

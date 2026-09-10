@@ -8,7 +8,7 @@ o modelo e conhecido e identico. Este pode.
 
 Ele roda o cenario de PRODUCAO -- as mesmas construcoes, os mesmos slots com
 tipo e unidade -- trocando UMA COISA: o 'file:' do ( PluginModule ), para o
-mirror de contrato de models/players/template (libtemplate_mirror.so). O
+mirror de contrato de models/template (libtemplate_mirror.so). O
 'provides:' nao muda, porque o mirror declara exatamente os mesmos 9 nomes;
 se declarasse outros, a assercao de igualdade do registro ja recusaria a carga.
 
@@ -20,7 +20,7 @@ O que isso verifica, e nada mais verifica:
 E o que ele obriga e o ganho maior: para o mirror existir, alguem teve de
 DESCOBRIR e ESCREVER todas as obrigacoes que estavam implicitas. Cada uma que
 faltasse apareceria aqui -- como falha de carga, ou como 'bt=--' no dump.
-Ver models/players/template/docs/CONTRATO.md. Herdou este papel de
+Ver models/template/docs/CONTRATO.md. Herdou este papel de
 models/players/fixtures/stub (removido).
 """
 

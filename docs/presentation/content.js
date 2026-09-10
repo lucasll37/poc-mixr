@@ -27,7 +27,7 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">Reestruturação de plataforma · MIXR + BehaviorTree.CPP</p>
   <h1>Refatoração do ASA</h1>
   <p class="lede">Simulação aeroespacial é desafiadora por natureza — isso não muda. O que muda é
-  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">arquitura</u>
+  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">arquitura e ecossistema</u>
   ao redor disso.</p>
   <div class="tag-row">
   <!--
@@ -205,7 +205,7 @@ window.PRESENTATION_SLIDES = [
     <b>opiniões fortes</b> sobre como o código deveria se organizar.</li>
     <li>A aposta é usá-los como foram desenhados para ser usados, em vez de reconstruir por fora
     aquilo que eles já resolvem por dentro.</li>
-    <li>É isso que faz a dinâmica de eventos do MIXR — a mesma que separa modelo A de modelo B
+    <li>É isso que faz a dinâmica de simulação do MIXR — a mesma que separa modelo A de modelo B
     sem que um conheça o outro — funcionar a nosso favor, de verdade.</li>
   </ul>
 `
@@ -218,8 +218,7 @@ window.PRESENTATION_SLIDES = [
   <h2 class="headline">Um repositório, não vários</h2>
   <p class="lede muted"><code>asa-models</code>, <code>asa-libs</code>, <code>asa-models-r</code>
   e o próprio MIXR — cada um com seu ciclo, sua forma de versionar, sua distância dos outros.
-  Hoje, tudo em um repositório integrado: a diferença entre enxergar o efeito de uma mudança de
-  ponta a ponta, ou não.</p>
+  Hoje, tudo em um repositório integrado: a diferença entre ter o contexto da aplicação em mente, ou não.</p>
   <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">
     <svg width="36" height="36"><use href="#i-image"></use></svg>
     <span class="tag">Imagem sugerida</span>
@@ -304,14 +303,8 @@ window.PRESENTATION_SLIDES = [
       <ul class="list">
         <li>Todo modelo que entra no repositório carrega a mesma espinha dorsal:
         <b>documentação de arquitetura</b> em <code>docs/</code>.</li>
-        <li>E um <code>CHANGELOG.md</code> que registra o que mudou e quando — por
-        <b>data de commit</b>, nunca por data da mensagem.</li>
+        <li>E um <code>CHANGELOG.md</code> para registrar o que mudou e quando.</li>
       </ul>
-      <div class="callout" style="margin-top:18px">
-        <span class="k">Por quê</span>
-        <p>Mensagem de commit se engana; data de commit, não. O conhecimento sobre aquele modelo
-        fica registrado de um jeito que sobrevive à saída de quem escreveu.</p>
-      </div>
     </div>
     <div class="media-placeholder media-placeholder--fill">
       <svg width="30" height="30"><use href="#i-image"></use></svg>
@@ -333,7 +326,8 @@ window.PRESENTATION_SLIDES = [
     está ativo, em qual thread, com qual estado de memória.</li>
     <li>Um <b>manual interativo</b> que navega pela estrutura do framework e pela árvore de
     decisão de verdade que os modelos usam.</li>
-    <li>Um <b>editor visual</b> para montar cenários, sem precisar decorar sintaxe.</li>
+    <li>Um <b>editor visual</b> para montar cenários diretamente em .edl, de componentes ainda em desenvolvimento.</li>
+    <li>Um <b>code highlight</b> da sintaxe dos arquivos .edl.</li>
   </ul>
 `
   },
@@ -378,31 +372,9 @@ window.PRESENTATION_SLIDES = [
   },
   {
     extraClass: 'slide--demo',
-    title: '4. Esteira de build',
+    title: '4. Code highlight para arquivos .edl',
     html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">4. Esteira de build — clean → configure → models → build → install</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/04-esteira-build.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: 'slide--demo',
-    title: '5. Catálogo de modelos e built-in',
-    html: `
-  <p class="eyebrow">Demonstrações em vídeo</p>
-  <h2 class="headline">5. Catálogo de modelos e modelos built-in</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/07-catalogo-modelos.mp4"></video>
-  </div>
-`
-  },
-  {
-    extraClass: '',
-    title: 'Padronização de ambiente',
-    html: `
-  <p class="eyebrow">II · A proposta</p>
+  <p class="eyebrow">Demonstrações em imagem</p>
   <h2 class="headline">Padronização de ambiente</h2>
   <div class="grid-2">
     <ul class="list">

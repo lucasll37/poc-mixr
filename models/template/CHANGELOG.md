@@ -2,19 +2,18 @@
 
 Todo projeto de modelo deste repositório tem `tests/`, `docs/`, `README.md` e **este arquivo** —
 a regra, e o porquê dela, estão em
-[`../../../.claude/rules/models-plugin.md`](../../../.claude/rules/models-plugin.md); a guarda
-[`tests/guard/check_modelo_estrutura.sh`](../../../tests/guard/check_modelo_estrutura.sh) a
+[`../../.claude/rules/models-plugin.md`](../../.claude/rules/models-plugin.md); a guarda
+[`tests/guard/check_modelo_estrutura.sh`](../../tests/guard/check_modelo_estrutura.sh) a
 trava (ela descobre projetos por `find`, então este diretório já nasce coberto). **Vale em
-dobro aqui**: este diretório é um dos dois pontos de partida copiáveis deste repositório (o outro
-é [`../fixtures/stub`](../fixtures/stub/)) — o que faltar nele falta em todo modelo que nascer
-dele.
+dobro aqui**: este diretório é o único ponto de partida copiável deste repositório — o que faltar
+nele falta em todo modelo que nascer dele.
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/).
 
 **A versão é a do `project()` em [`meson.build`](meson.build)** — hoje `0.1.0`. Não existe outra:
 não há tag de git, e o descritor do plugin não carrega versão do modelo (`PluginDescV1` tem
 `plugin_name`, `mixr_pkg_version` e `build_id`, e nada mais — ver
-[`../../../libs/xplugin/PluginAbi.hpp`](../../../libs/xplugin/PluginAbi.hpp)).
+[`../../libs/xplugin/PluginAbi.hpp`](../../libs/xplugin/PluginAbi.hpp)).
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`.
@@ -57,9 +56,24 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
   `-->`, o `<root>` e a `<BehaviorTree>` inteira — reportando "substituído", sem erro. Os
   comentários agora são mascarados antes da busca (mesma técnica de
   `tools/mixr_source_scan.py::mask_source()` na raiz). O mesmo defeito existia, latente, na cópia
-  de `A-4` — corrigido nas duas. Ver `../A-4/CHANGELOG.md`.
+  de `A-4` — corrigido nas duas. Ver `../players/A-4/CHANGELOG.md`.
 
 ### Mudado
+
+- **Saiu de `models/players/template/` para `models/template/`** — o template nunca foi um
+  *player*: é o ponto de partida de um modelo de QUALQUER categoria (`player`/`system`/`others`),
+  e morar dentro de uma delas sugeria o contrário. `git mv`, histórico preservado. O que precisou
+  acompanhar, além do caminho literal: `ROOT := $(abspath ../..)` (dois níveis, não três) e a
+  profundidade de todo link relativo deste diretório; o glob de `dispatch_factory_cpp_paths()` em
+  `src/ui/scripts/generate_edl_catalog.py`, que só varria `models/<categoria>/*/` e deixaria as
+  três classes de exemplo caírem para `concrete: false` **em silêncio** (some da paleta do editor
+  EDL e do `edl_lint.py` — conferido nos dois sentidos); e `tests/guard/check_colisao_fabrica.py`,
+  que agora precisa pular `template` também no nível de CATEGORIA. `MODELOS_PRODUCAO` e
+  `check_modelo_estrutura.sh` não precisaram de nada — os dois já descobriam por `find` e o filtro
+  `*/template/*` continua valendo na profundidade nova. `scripts/models.sh` ganhou um passo que
+  reperfila a profundidade dos links dos `.md` copiados: sem ele, todo modelo gerado por
+  `make new-model` nascia com 15 links quebrados, porque o destino (`models/<categoria>/<nome>/`)
+  está um nível mais fundo que o template. (2026-09-10)
 
 - **`install`/`install-host` deixaram de nomear o diretório de dados.** `make new-model` renomeia
   o literal `'template'` dentro do `meson.build` (então o `install_data` passa a escrever em
@@ -68,8 +82,9 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
   (reproduzido). Os dois alvos passaram a copiar o diretório inteiro, sem nome nenhum escrito.
 
 - **O diretório pai passou de `models/player/` para `models/players/`** — este projeto passou a
-  morar em `models/players/template/`. `git mv`, histórico preservado. Detalhe da varredura →
-  [`../A-4/CHANGELOG.md`](../A-4/CHANGELOG.md). (2026-09-07)
+  morar em `models/players/template/` (hoje `models/template/`, ver a entrada acima). `git mv`,
+  histórico preservado. Detalhe da varredura →
+  [`../players/A-4/CHANGELOG.md`](../players/A-4/CHANGELOG.md). (2026-09-07)
 
 ---
 

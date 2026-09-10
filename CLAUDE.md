@@ -29,7 +29,7 @@ desenvolvimento — é dependência binária.
 > referência de arquitetura, não o ponto de partida. Comece por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
 > (`make new-model NAME=... CATEGORY=player|system|others`), o único ponto de partida copiável
-> (`models/players/template/`, em camadas) e o
+> (`models/template/`, em camadas) e o
 > registro de coordenação entre devs, [`models/REGISTRO.md`](models/REGISTRO.md).
 
 As pocs vivem em `src/poc/`, e **duas delas moram juntas em `src/poc/dis/`** — `bandit` e
@@ -747,7 +747,7 @@ divergem, também em qualquer configuração de thread — prova que o jitter qu
 da semente, não uma corrida entre threads. Medido: `hdg=89.811744657` (semente A) contra
 `hdg=89.800627203` (semente B), mesmo `frame=100 player=falcon1`, ambos ainda em `bt=PATROL`.
 
-**O mirror de contrato (`models/players/template/src/mirror.cpp`, `libtemplate_mirror.so`)
+**O mirror de contrato (`models/template/src/mirror.cpp`, `libtemplate_mirror.so`)
 precisou de dois slots novos** (`patrolJitterHeading`/`patrolMasterSeed`, reaproveitando os
 `setSlotIgnora*` já existentes) — sem eles, o cenário de produção (que agora declara esses dois
 slots nos 4 falcons) falha ao parsear contra o "modelo estranho" com `slot not found`,
@@ -1412,42 +1412,43 @@ models/
 ├── events/               # o contrato de eventos que atravessam fronteira de plugin --
 │                         # payload + token (EventTokens.hpp). Mora dentro de models/
 │                         # (nao e um modelo em si -- e' consumido POR eles e por app/).
-└── players/              # os projetos de modelo -- cada um um .so de producao
-    ├── A-4/                 # projeto meson proprio -> build/ -- O MODELO de producao (o
-    │                        # nome de fabrica/biblioteca internos continuam "flight" --
-    │                        # libflight.so, provides: { ... } -- so o titulo
-    │                        # da PASTA e o A-4, a aeronave que este modelo pilota; o
-    │                        # identificador JSBSim da aeronave em si, data/jsbsim/aircraft/A4/,
-    │                        # continua sem hifen -- namespace a parte, ver CHANGELOG.md do A-4)
-    │   ├── include/{domain,bt,ubf,xnative}/   src/...
-    │   ├── configs/flight_tree.xml            # a arvore de comportamento
-    │   ├── data/jsbsim/                       # a aeronave (ver abaixo)
-    │   ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
-    │   ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
-    │   ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
-    │   ├── README.md
-    │   ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
-    │   └── meson.build       # UM artefato: libflight.so, com FlightAgentTC (o agente
-    │                         # de tempo critico) sempre compilado e sempre registrado --
-    │                         # nao ha mais variante sem ele
-    └── template/             # projeto meson proprio -> build-template/ -- NAO e producao,
-                              # e o UNICO ponto de partida copiavel (ver models/players/template/README.md):
-                              # camadas domain/ -> bt/ -> ubf/ -> xnative/ com UMA decisao de
-                              # exemplo (gatilho Schmitt sobre altitude) atravessando uma
-                              # ARVORE de comportamento de dois nos. Hospeda DOIS artefatos:
-        ├── src/{domain,bt,ubf,xnative}/ src/plugin.cpp  # 'template' (template_lib) -- o
-        │                              # scaffold copiavel de verdade -- ver docs/PRIMEIROS-PASSOS.md
-        ├── src/mirror.cpp              # 'template_mirror' (template_mirror_lib) -- o
-        │                              # mirror de contrato que ESTE repositorio usa nos
-        │                              # proprios testes de plugin (exporta os MESMOS 9 nomes
-        │                              # de fabrica que 'flight' exporta) -- NAO faz parte do
-        │                              # scaffold, apagado ao copiar (herdou esse papel de
-        │                              # models/players/fixtures/stub/, removido)
-        ├── configs/example_tree.xml    # a arvore -- dado do MODELO, instalada com o .so
-        ├── tools/                      # dump-tree-model + update_bt_models.py
-        │                              # (por tras de 'make create-bt'/'make update-bt')
-        ├── docs/ARCHITECTURE.md  docs/PRIMEIROS-PASSOS.md  docs/CONTRATO.md
-        ├── Makefile  README.md  CHANGELOG.md
+├── players/              # os projetos de modelo -- cada um um .so de producao
+│   └── A-4/                 # projeto meson proprio -> build/ -- O MODELO de producao (o
+│                            # nome de fabrica/biblioteca internos continuam "flight" --
+│                            # libflight.so, provides: { ... } -- so o titulo
+│                            # da PASTA e o A-4, a aeronave que este modelo pilota; o
+│                            # identificador JSBSim da aeronave em si, data/jsbsim/aircraft/A4/,
+│                            # continua sem hifen -- namespace a parte, ver CHANGELOG.md do A-4)
+│       ├── include/{domain,bt,ubf,xnative}/   src/...
+│       ├── configs/flight_tree.xml            # a arvore de comportamento
+│       ├── data/jsbsim/                       # a aeronave (ver abaixo)
+│       ├── tests/{domain,tree}/               # as duas camadas que testam o MODELO
+│       ├── docs/ARCHITECTURE.md               # calibracao + armadilhas deste modelo
+│       ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
+│       ├── README.md
+│       ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
+│       └── meson.build       # UM artefato: libflight.so, com FlightAgentTC (o agente
+│                             # de tempo critico) sempre compilado e sempre registrado --
+│                             # nao ha mais variante sem ele
+└── template/             # projeto meson proprio -> build/ -- NAO e producao, e por isso
+                          # NAO mora em players/ (nem em categoria nenhuma): e' o UNICO
+                          # ponto de partida copiavel (ver models/template/README.md),
+                          # camadas domain/ -> bt/ -> ubf/ -> xnative/ com UMA decisao de
+                          # exemplo (gatilho Schmitt sobre altitude) atravessando uma
+                          # ARVORE de comportamento de dois nos. Hospeda DOIS artefatos:
+    ├── src/{domain,bt,ubf,xnative}/ src/plugin.cpp  # 'template' (template_lib) -- o
+    │                              # scaffold copiavel de verdade -- ver docs/PRIMEIROS-PASSOS.md
+    ├── src/mirror.cpp              # 'template_mirror' (template_mirror_lib) -- o
+    │                              # mirror de contrato que ESTE repositorio usa nos
+    │                              # proprios testes de plugin (exporta os MESMOS 9 nomes
+    │                              # de fabrica que 'flight' exporta) -- NAO faz parte do
+    │                              # scaffold, apagado ao copiar (herdou esse papel de
+    │                              # models/players/fixtures/stub/, removido)
+    ├── configs/example_tree.xml    # a arvore -- dado do MODELO, instalada com o .so
+    ├── tools/                      # dump-tree-model + update_bt_models.py
+    │                              # (por tras de 'make create-bt'/'make update-bt')
+    ├── docs/ARCHITECTURE.md  docs/PRIMEIROS-PASSOS.md  docs/CONTRATO.md
+    ├── Makefile  README.md  CHANGELOG.md
 ```
 
 **`make new-model NAME=<nome> CATEGORY=player|system|others`** (`scripts/models.sh`) automatiza a
@@ -1469,7 +1470,7 @@ gerador) que ganhe um projeto Meson de verdade dentro. O filtro é o mesmo da gu
 `check_modelo_estrutura.sh`: só conta quem declara `project()` na raiz do próprio `meson.build` —
 o que já exclui `models/events/` (contrato/SDK, consumido por `subdir()`, nunca um projeto Meson
 independente) sem precisar de exceção nomeada. A única exceção por nome que sobra é
-`models/players/template/`: tem `project()` (compila e testa sozinho) mas nunca é produção — segue
+`models/template/`: tem `project()` (compila e testa sozinho) mas nunca é produção — segue
 excluído por path. O diretório novo já entra sozinho em `make models`/`make test`. O que o gerador
 de fato não faz — e que continua manual
 — é escrever um CENÁRIO pra esse modelo (um `.edl.in` novo em `src/poc/<nome>/configs/`, já
@@ -1495,12 +1496,12 @@ local) deposita em `plugins/` da raiz -- **nao** em `dist/`, ver o "porque" logo
 fluxo orquestrado da raiz (`make models`, usado por CI e pelo dia a dia) continua sendo a forma
 canonica de construir os dois de uma vez (flight + template) -- o Makefile por projeto e para
 iterar num modelo so, sem o resto do repositorio aberto. Detalhes e as armadilhas de profundidade
-de caminho: o `README.md` de cada projeto de modelo (ex.: `models/players/template/README.md`, seção
+de caminho: o `README.md` de cada projeto de modelo (ex.: `models/template/README.md`, seção
 "Usando este diretório como ponto de partida para um modelo novo").
 
 **`models/common.mk`** (achado por auditoria, extraído depois de medir — não por suspeita)
 carrega o que é **genuinamente idêntico** entre `models/players/A-4/Makefile` e
-`models/players/template/Makefile`: o bloco de variáveis e os alvos `check-root`/`configure`/
+`models/template/Makefile`: o bloco de variáveis e os alvos `check-root`/`configure`/
 `clean`/`help` — ~90 linhas que já tinham começado a divergir em REDAÇÃO (não em lógica) entre
 os dois antes da extração, o sintoma exato que uma fonte única evita. `build`/`test`/`install`/
 `install-host`/`uninstall-host` (a lista de `.so` publicada e o diretório de dados são
@@ -1598,7 +1599,7 @@ pelo `Autopilot` nativo — e o dump sai com `bt=--` e `dec=0` **com todos os ou
 
 Duas peças fecham isso:
 
-- **`models/players/template/docs/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
+- **`models/template/docs/CONTRATO.md`** — a lista escrita, incluindo a obrigação do `xboard`.
 - **O mirror de contrato do `template/`** (`libtemplate_mirror.so`, `src/mirror.cpp`, ~400 linhas)
   — um modelo escrito **só contra o SDK**, sem árvore de comportamento e sem uma linha de
   `domain/`, que registra os mesmos 9 nomes com os mesmos slots que `flight` exporta. Herdou esse
@@ -3531,7 +3532,7 @@ manter os dois era redundância, não flexibilidade.
   `-folder src/poc/dis`; `python-flight`/`onnx-policy`/`built-in_mixr_1`/`full-systems-nav` via
   `-folder src/poc`, ou `-folder ./sandbox` nas cópias de `sandbox/`), mais `app/README.md` (reescrita
   das seções 3 e 5), `README.md`/`CONTRIBUTING.md`/`models/README.md` (§4.1 deixou de ser "registrar
-  no catálogo" e virou "nada a registrar"), `models/players/template/docs/PRIMEIROS-PASSOS.md`,
+  no catálogo" e virou "nada a registrar"), `models/template/docs/PRIMEIROS-PASSOS.md`,
   `.claude/rules/{host-app-src,models-plugin}.md`, `scripts/models.sh` e comentários do `Makefile`/
   `src/poc/meson.build`. **Não tocado, de propósito**: `docs/presentation/index.html` — slide deck
   órfão (nenhum alvo `make` o gera nem o abre), e as passadas anteriores desta seção, que são
@@ -3909,7 +3910,7 @@ topo da seção `./app` — mas o raciocínio vale igual para qualquer cenário 
 `libflight.so`/`libflight_tc.so`) —
 nenhuma mudança de comportamento, só manter o
 contrato satisfeito. Pelo mesmo motivo, o mirror de contrato
-(`models/players/template/src/mirror.cpp`, `libtemplate_mirror.so` — herdou esse papel de
+(`models/template/src/mirror.cpp`, `libtemplate_mirror.so` — herdou esse papel de
 `models/players/fixtures/stub/`, removido) também ganhou uma `RLBridgeBehavior` trivial
 (`genAction()` sempre devolve `nullptr`) — sem isso, `plugin-modelo-estranho`/
 `plugin-deposito-terceiro` quebravam: o mirror deixava de ser contrato-compatível com o

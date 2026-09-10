@@ -119,7 +119,7 @@ src/poc/rl-training/runs/
 src/poc/rl-training/notebooks/.ipynb_checkpoints/
 tools/__pycache__/
 models/players/A-4/tools/__pycache__/
-models/players/template/tools/__pycache__/
+models/template/tools/__pycache__/
 
 # Saida de 'make create-bt' -- uma arvore VAZIA gerada pelo dump-tree-model,
 # ponto de partida para editar no Groot. Nao e fonte: versionar faria o
@@ -132,4 +132,4 @@ models/players/template/tools/__pycache__/
 # inconsistencia sem ganho. Consequencia conhecida, herdada e nao mexida
 # aqui: 'make -C models/players/A-4 create-bt' recusa, porque o arquivo ja
 # existe la.
-models/players/template/configs/bt.xml
+models/template/configs/bt.xml

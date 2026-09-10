@@ -10,7 +10,7 @@
 # daqui existirem -- mesma razao documentada em models/players/A-4/meson.build.
 #
 # NAO e um projeto de PRODUCAO -- ele nunca entra no `models:` do Makefile
-# raiz por MODELOS_PRODUCAO (ver ../../../Makefile, que o instala a parte)
+# raiz por MODELOS_PRODUCAO (ver ../../Makefile, que o instala a parte)
 # nem em `tests/meson.build` da raiz. Compila e testa sozinho. O ARTEFATO
 # 'template' (template_lib, logo abaixo) e o unico proposito de existir
 # deste diretorio como PONTO DE PARTIDA: ser COPIADO e RENOMEADO -- ver

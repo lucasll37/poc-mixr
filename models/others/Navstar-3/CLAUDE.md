@@ -5,7 +5,7 @@ Complementa o `CLAUDE.md` da raiz e os `.md` deste projeto (`README.md`, `CHANGE
 
 ## `.vscode/launch.json` NAO reflete o build real
 
-Mesmo texto herdado de `models/players/template/` -- aponta pra um caminho que nunca existiu
+Mesmo texto herdado de `models/template/` -- aponta pra um caminho que nunca existiu
 (`src/build/Debug/outDebug`). O build real e' `dist/lib/mixr-plugins/libNavstar-3.so`, via
 Meson/Ninja. `scripts/models.sh` so' reescreve `lib<nome>.so` em `Makefile`/`*.md`, nao em
 `.vscode/`.

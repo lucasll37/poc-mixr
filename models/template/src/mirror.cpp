@@ -23,7 +23,7 @@
 // fonte. Nenhum deles pode falhar por "um .so desconhecido nao serve". Este
 // pode: se o contrato nao bastar, ele nao carrega, ou carrega e o dump sai
 // errado. Herdou este papel de models/players/fixtures/stub (removido) --
-// ver models/players/template/docs/CONTRATO.md.
+// ver models/template/docs/CONTRATO.md.
 //
 // O comportamento e deliberadamente trivial: voa reto e nivelado. O que se
 // verifica aqui NAO e voo bonito, e que a aplicacao INTEIRA sobe, parseia o

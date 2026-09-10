@@ -3,7 +3,7 @@
 # Os dois criterios que CONTRIBUTING.md secao 5.1 ja documentava a mao,
 # automatizados: um .so de plugin tem de exportar EXATAMENTE um simbolo
 # global (o ponto de entrada da macro MIXR_PLUGIN_DEFINE -- ver
-# models/players/template/docs/CONTRATO.md) e nao pode ter dependencia
+# models/template/docs/CONTRATO.md) e nao pode ter dependencia
 # dinamica nao resolvida.
 #
 # Nao afirma nada sobre COMPORTAMENTO -- so a forma do artefato. Script

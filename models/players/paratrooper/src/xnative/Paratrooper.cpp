@@ -4,6 +4,7 @@
 
 #include "mixr/base/String.hpp"
 #include "mixr/base/numeric/Number.hpp"
+#include "mixr/base/units/Distances.hpp"
 
 namespace mixr {
 namespace models {
@@ -13,11 +14,15 @@ IMPLEMENT_SUBCLASS(Paratrooper, "Paratrooper")
 
 // clang-format off
 BEGIN_SLOTTABLE(Paratrooper)
-   "canopyDescentRate",   // 1
+   "canopyDescentRate",    // 1
+   "releaseOffsetAft",     // 2
+   "releaseOffsetBelow",   // 3
 END_SLOTTABLE(Paratrooper)
 
 BEGIN_SLOT_MAP(Paratrooper)
-   ON_SLOT(1, setSlotCanopyDescentRate, base::Number)
+   ON_SLOT(1, setSlotCanopyDescentRate,  base::Number)
+   ON_SLOT(2, setSlotReleaseOffsetAft,   base::Distance)
+   ON_SLOT(3, setSlotReleaseOffsetBelow, base::Distance)
 END_SLOT_MAP()
 
 Paratrooper::Paratrooper()
@@ -62,6 +67,12 @@ void Paratrooper::copyData(const Paratrooper& org, const bool)
    BaseClass::copyData(org);
    stage_ = org.stage_;
    canopyDescentRateMps_ = org.canopyDescentRateMps_;
+
+   // O offset de saida TEM de sobreviver ao clone: 'AbstractWeapon::release()'
+   // libera um 'this->clone()' da estacao, e e' o CLONE (nao o objeto
+   // declarado no 'stores:') que de fato nasce ao lado da aeronave.
+   releaseOffsetAftM_ = org.releaseOffsetAftM_;
+   releaseOffsetBelowM_ = org.releaseOffsetBelowM_;
 }
 
 EMPTY_DELETEDATA(Paratrooper)
@@ -82,6 +93,51 @@ void Paratrooper::setJumpStage(const domain::Stage s)
    LOG(INFO) << "[Paratrooper] id=" << getID() << ": " << domain::labelOf(stage_)
              << " -> " << domain::labelOf(s);
    stage_ = s;
+}
+
+//------------------------------------------------------------------------------
+// dynamics() -- o PONTO DE SAIDA. Enquanto o paraquedista esta em
+// PRE_RELEASE (o estado em que 'AbstractWeapon::release()' poe o clone recem
+// criado, entre a chamada de liberacao e o primeiro frame como ACTIVE), ele
+// nasce 'releaseOffsetAftM_' metros ATRAS e 'releaseOffsetBelowM_' metros
+// ABAIXO da aeronave que o lancou -- nao colado nela, que e' o que o
+// mecanismo nativo faz sozinho (offset zero).
+//
+// POR QUE AQUI, e nao no ciclo de decisao: quem posiciona o clone e'
+// 'AbstractWeapon::dynamics()' (AbstractWeapon.cpp), no ramo PRE_RELEASE, e a
+// conta e' EXATAMENTE esta --
+//
+//    pos0b = ( getInitPosition().x(), getInitPosition().y(), -getInitAltitude() )
+//    pos   = posicao_da_aeronave + pos0b * matriz_de_rotacao_da_aeronave
+//                                          // ^ "body to earth", ver o fonte
+//
+// ou seja, para uma ARMA (e o paraquedista e' um 'Effect', ver o cabecalho da
+// classe) 'initPosition'/'initAltitude' NAO sao a posicao no terreno de jogo:
+// sao um deslocamento em eixos do CORPO da aeronave lancadora -- x para o
+// NARIZ, y para a asa DIREITA, e a altitude com sinal +para CIMA. Fixar os
+// dois aqui, imediatamente antes de 'BaseClass::dynamics()' le-los, entrega o
+// offset no unico ponto em que o framework o consome, e deixa a rotacao (o
+// pedaco dificil, que faz "atras" acompanhar o rumo/arfagem/rolamento da
+// aeronave) com o codigo nativo -- nenhuma trigonometria propria.
+//
+// Duas propriedades que caem de graca deste ponto de insercao:
+//
+//  * e' IDEMPOTENTE e restrito a PRE_RELEASE -- um Paratrooper declarado
+//    direto em 'players: {}' (o caso de src/poc/paratrooper-drop) nunca passa
+//    por este modo, entao os 'initXPos'/'initYPos'/'initAlt' daquele cenario
+//    continuam significando posicao absoluta no terreno de jogo, intocados;
+//  * a VELOCIDADE inicial continua sendo a da aeronave, herdada do ramo
+//    nativo logo abaixo ('setVelocity(getLaunchVehicle()->getVelocity())') --
+//    e' o que se espera de quem acabou de sair pela porta.
+//------------------------------------------------------------------------------
+void Paratrooper::dynamics(const double dt)
+{
+   if (isMode(PRE_RELEASE) && getLaunchVehicle() != nullptr) {
+      setInitPosition(-releaseOffsetAftM_, 0.0);   // x=+nariz  =>  atras e' negativo
+      setInitAltitude(-releaseOffsetBelowM_);      // +para cima  =>  abaixo e' negativo
+   }
+
+   BaseClass::dynamics(dt);
 }
 
 //------------------------------------------------------------------------------
@@ -171,6 +227,25 @@ bool Paratrooper::setSlotCanopyDescentRate(const base::Number* const msg)
 {
    if (msg == nullptr) return false;
    canopyDescentRateMps_ = msg->getReal();
+   return true;
+}
+
+// Os dois offsets aceitam valor NEGATIVO de proposito, sem clamp: um
+// 'releaseOffsetAft' negativo poe o paraquedista A FRENTE da aeronave, e um
+// 'releaseOffsetBelow' negativo, ACIMA dela. Nenhum dos dois faz sentido para
+// um salto, mas nada aqui precisa julgar isso -- e' cenario, nao invariante
+// deste modelo.
+bool Paratrooper::setSlotReleaseOffsetAft(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   releaseOffsetAftM_ = base::Meters::convertStatic(*msg);
+   return true;
+}
+
+bool Paratrooper::setSlotReleaseOffsetBelow(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   releaseOffsetBelowM_ = base::Meters::convertStatic(*msg);
    return true;
 }
 

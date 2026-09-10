@@ -8,7 +8,7 @@
 # que continua certo (tests/), o "porque" das decisoes (docs/), a porta de
 # entrada (README.md) e o que mudou desde a ultima vez (CHANGELOG.md).
 #
-# Vale em dobro para models/players/template: ele e o ponto de partida copiavel
+# Vale em dobro para models/template: ele e o ponto de partida copiavel
 # (CONTRIBUTING.md secao 2), entao o que falta la falta em todo modelo que
 # nascer dele.
 #
@@ -70,7 +70,7 @@ done <<< "$projetos"
 
 if [ "$fail" -ne 0 ]; then
    echo
-   echo "Ver CONTRIBUTING.md (a regra e o porque) e models/players/template/"
+   echo "Ver CONTRIBUTING.md (a regra e o porque) e models/template/"
    echo "(o ponto de partida copiavel, que ja traz as cinco pecas prontas)."
    exit 1
 fi

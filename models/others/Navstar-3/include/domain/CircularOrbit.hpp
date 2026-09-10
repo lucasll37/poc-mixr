@@ -1,7 +1,7 @@
 #pragma once
 
 // namespace ANINHADO em mixr::models::xNavstar_3 -- ver o comentario equivalente,
-// mais detalhado, em models/players/template/docs/CONTRATO.md secao 6: um cenario
+// mais detalhado, em models/template/docs/CONTRATO.md secao 6: um cenario
 // pode carregar mais de um plugin no mesmo processo, e dois tipos com o MESMO
 // nome qualificado em dois .so's distintos colidiriam sob RTLD_LOCAL.
 namespace mixr {

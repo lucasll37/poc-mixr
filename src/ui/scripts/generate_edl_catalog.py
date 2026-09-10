@@ -147,7 +147,7 @@ def extract_slot_types(cpp_roots):
 
     PRIMEIRO achado vence, por classe inteira (mesmo motivo/mesma ordem de
     varredura de extract_slots() em mixr_source_scan.py -- 'models/players/A-4'
-    antes de 'models/players/template'): sem isso, os INDICES de ON_SLOT
+    antes de 'models/template'): sem isso, os INDICES de ON_SLOT
     de dois arquivos diferentes para a mesma classe se MISTURARIAM num so
     dicionario, o que faz ainda menos sentido que so perder um dos dois --
     os indices de um arquivo nao tem relacao nenhuma com os do outro."""
@@ -178,9 +178,11 @@ def dispatch_factory_cpp_paths():
     (os MESMOS EDL_CATALOG_MIXR_MODULES que ja restringem o resto deste
     gerador -- ver o comentario deles), mais
     'models/<categoria>/*/src/xnative/factory.cpp' para toda categoria de
-    MODEL_CATEGORY_DIRS (A-4/C-130/paratrooper/template em players/, e
-    qualquer modelo futuro em systems/ ou others/ -- inclusive template,
-    sem exclusao) e 'libs/*/factory.cpp' (resolve sozinho quais libs tem
+    MODEL_CATEGORY_DIRS (A-4/C-130/paratrooper em players/, e qualquer modelo
+    futuro em systems/ ou others/), MAIS 'models/*/src/xnative/factory.cpp'
+    para um modelo de PRIMEIRO nivel -- hoje so' models/template/, que nao
+    mora em categoria nenhuma e entra sem exclusao, como qualquer outro --
+    e 'libs/*/factory.cpp' (resolve sozinho quais libs tem
     fabrica EDL -- hoje xtacview/xclock/xjoystick/xmsg/xplugin; uma lib sem
     fabrica, como xboard/xlog, so' nao tem o arquivo, sem tabela de exclusao
     curada). Caminhos inexistentes sao tolerados por
@@ -188,6 +190,7 @@ def dispatch_factory_cpp_paths():
     paths = [MIXR_SRC / m / "factory.cpp" for m in EDL_CATALOG_MIXR_MODULES]
     for categoria in sorted(MODEL_CATEGORY_DIRS):
         paths += sorted(MODELS_DIR.glob(f"{categoria}/*/src/xnative/factory.cpp"))
+    paths += sorted(MODELS_DIR.glob("*/src/xnative/factory.cpp"))
     paths += sorted(LIBS_DIR.glob("*/factory.cpp"))
     return paths
 
@@ -211,7 +214,7 @@ def origin_of(impl_file):
     distintos), uma lib propria deste repo (libs/x*), ou algo do USUARIO
     sob ./models/ -- QUALQUER coisa la (nao so models/players/<nome>/): um
     plugin de player (inclusive o mirror de contrato em
-    models/players/template/src/mirror.cpp), ou um payload de evento
+    models/template/src/mirror.cpp), ou um payload de evento
     (models/events/<nome>/...). Generico de proposito -- um modelo novo em
     models/<qualquer-coisa>/ ja aparece rotulado na hora, sem precisar
     editar este arquivo.

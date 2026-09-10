@@ -110,7 +110,7 @@ def find_overrides(cpp_roots, methods=None, capture_body=False):
 
     PRIMEIRO achado vence por (classe, metodo) -- nao sobrescreve -- pelo
     MESMO motivo de extract_slots() (em mixr_source_scan.py): varrer
-    models/ inteiro (incluindo models/players/template/src/mirror.cpp, que
+    models/ inteiro (incluindo models/template/src/mirror.cpp, que
     deliberadamente reimplementa FlightAction::execute/etc. com o MESMO
     nome, so para testar contrato de carga de plugin) faz duas definicoes
     REAIS do mesmo (Classe, metodo) aparecerem em arquivos diferentes.

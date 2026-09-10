@@ -116,7 +116,7 @@ produção a atualizar `provides:`) não serviria aqui: `RLBridgeBehavior::genAc
 visibilidade oculta é frágil. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico:
 `RLBridgeBehavior` é mais um nome que `libflight.so` exporta, e como `provides:` é
 igualdade exata de conjunto contra o que a `.so` exporta, todo cenário que carrega esse plugin
-precisou de uma linha a mais (inclusive o mirror de contrato de `models/players/template`, que
+precisou de uma linha a mais (inclusive o mirror de contrato de `models/template`, que
 precisa continuar contrato-compatível com o cenário de produção mesmo sem instanciar a classe).
 
 ## Latência de um frame

@@ -6,7 +6,7 @@
 # de Bomb/Decoy/Chaff), nao como Player autonomo com UBF proprio. Ver
 # docs/ARCHITECTURE.md para a arquitetura completa.
 #
-# Gerado a partir de models/players/template/ por scripts/models.sh
+# Gerado a partir de models/template/ por scripts/models.sh
 # (make new-model NAME=C-130 CATEGORY=player). Projeto Meson INDEPENDENTE:
 # nao sabe nada do host, e o host nao sabe nada dele -- a unica coisa entre
 # os dois e o SDK publicado em dist/ pelo projeto principal.

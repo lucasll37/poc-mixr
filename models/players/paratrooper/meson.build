@@ -5,7 +5,7 @@
 # usa hoje) -- ver docs/ARCHITECTURE.md para o porque e para o contrato de
 # substituicao futura (troca so' de EDL, sem mudanca de C++ no C-130).
 #
-# Gerado a partir de models/players/template/ por scripts/models.sh
+# Gerado a partir de models/template/ por scripts/models.sh
 # (make new-model NAME=paratrooper CATEGORY=player). Projeto Meson
 # INDEPENDENTE: nao sabe nada do host, e o host nao sabe nada dele -- a unica
 # coisa entre os dois e o SDK publicado em dist/ pelo projeto principal.
@@ -95,7 +95,7 @@ model_sources = domain_sources + bt_sources + files(
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
 # transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
 # dlopen. Nenhum dos dois e opcional -- ver
-# models/players/template/docs/CONTRATO.md secao 1.
+# models/template/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']
 model_deps = [mixr_dep, sdk_dep, behavior_tree_dep]
 

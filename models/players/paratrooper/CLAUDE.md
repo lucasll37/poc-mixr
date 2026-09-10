@@ -21,6 +21,25 @@ restauram o respeito a `isCrashOverride()` e trocam a detonação por `setJumpSt
 os dois problemas — nenhum dos dois seria óbvio sem ler `Effect.cpp`/`AbstractWeapon.cpp`
 diretamente.
 
+## `initXPos`/`initYPos`/`initAlt` MUDAM DE SIGNIFICADO numa arma em `PRE_RELEASE`
+
+A mesma classe, os mesmos três slots, duas semânticas — e nada no nome avisa. Para um player
+declarado em `players: {}`, são posição no terreno de jogo (norte/leste/altitude), lidos por
+`Player::reset()`. Para uma arma que o `StoresMgr` liberou, `AbstractWeapon::dynamics()` os lê de
+novo, no ramo `PRE_RELEASE`, como um deslocamento em eixos do **corpo da aeronave lançadora**
+(x=nariz, y=asa direita, altitude +para cima), rotacionado por `getRotMat()` do lançador e somado
+à posição dele. Sem declarar nada, os três ficam em zero e a arma nasce **na posição exata** da
+aeronave — que é como o `C130ParatrooperPlaceholder` ainda nasce em `src/poc/c130-airdrop`.
+
+`Paratrooper::dynamics()` explora isso: fixa os dois valores só enquanto `PRE_RELEASE`,
+imediatamente antes de `BaseClass::dynamics()` consumi-los, e deixa a rotação com o framework.
+Ver `docs/ARCHITECTURE.md`, "O ponto de saída".
+
+**Detalhe que não se vê lendo só `release()`**: quem voa é `this->clone()`, não o objeto do
+`stores:` — todo estado próprio que deva valer no salto precisa estar em `copyData()`. E
+`Stores::releaseWeapon()` chama `setLaunchVehicle(own)` no objeto da estação ANTES do `release()`,
+então a aeronave já está apontada quando o clone é tirado.
+
 ## `dragIndex` do `Effect` NÃO é utilizável sem calibrar
 
 Default de `Effect` é `0,0006` — equilíbrio de arrasto em `v = g/dragIndex ≈ 16 300 m/s`, puro

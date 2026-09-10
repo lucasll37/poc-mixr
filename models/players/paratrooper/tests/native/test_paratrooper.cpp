@@ -11,9 +11,12 @@
 #include "xnative/ParatrooperAgentTC.hpp"
 
 #include "mixr/models/WorldModel.hpp"
+#include "mixr/models/player/air/Aircraft.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
 
 #include "mixr/base/numeric/Integer.hpp"
+#include "mixr/base/units/Distances.hpp"
+#include "mixr/base/units/angle_utils.hpp"
 
 #include <gtest/gtest.h>
 
@@ -120,6 +123,168 @@ TEST(Paratrooper, MajorTypeEhWeapon)
    // LIFE_FORM) -- errado durante queda livre/velame.
    Paratrooper trooper;
    EXPECT_TRUE(trooper.isMajorType(Player::WEAPON));
+}
+
+//------------------------------------------------------------------------------
+// O PONTO DE SAIDA -- onde o paraquedista nasce em relacao a aeronave que o
+// lancou.
+//
+// 'DropBench' reproduz o estado exato em que 'AbstractWeapon::release()' deixa
+// o clone recem-criado -- container no WorldModel, aeronave lancadora
+// apontada, modo PRE_RELEASE -- sem precisar de StoresMgr, estacao, Station
+// ou cenario nenhum. UM frame basta: 'AbstractWeapon::updateTC()' promove
+// PRE_RELEASE -> ACTIVE no FIM da fase 0, ou seja, logo depois de
+// 'dynamics()' ja ter posicionado o paraquedista.
+//
+// Convencao de eixos, a mesma do MIXR: posicao e' NED
+// (getPosition()[0]=norte, [1]=leste, [2]=BAIXO -- altitude e' -[2]).
+//------------------------------------------------------------------------------
+struct DropBench
+{
+   BenchWorld* const world;
+   Aircraft* const carrier;
+   Paratrooper* const trooper;
+
+   DropBench(const double headingDeg, const double northM, const double eastM, const double altM)
+      : world(new BenchWorld()), carrier(new Aircraft()), trooper(new Paratrooper())
+   {
+      carrier->container(world);
+      carrier->setID(9001);
+      carrier->setEulerAngles(0.0, 0.0, headingDeg * static_cast<double>(base::angle::D2RCC));
+      carrier->setPosition(northM, eastM, -altM);
+
+      trooper->container(world);
+      trooper->setID(9601);
+      trooper->setLaunchVehicle(carrier);
+      trooper->setMode(Player::PRE_RELEASE);
+   }
+
+   ~DropBench()
+   {
+      trooper->unref();
+      carrier->unref();
+      world->unref();
+   }
+
+   // So a fase 0 -- e' a unica que chama dynamics(), e no fim dela o
+   // paraquedista ja saiu de PRE_RELEASE.
+   void releaseFrame()
+   {
+      world->setPhase(0);
+      trooper->updateTC(0.005);
+   }
+};
+
+TEST(Paratrooper, OffsetDeSaidaNasceEm15mAtrasE10mAbaixo)
+{
+   Paratrooper trooper;
+   EXPECT_DOUBLE_EQ(15.0, trooper.getReleaseOffsetAftM());
+   EXPECT_DOUBLE_EQ(10.0, trooper.getReleaseOffsetBelowM());
+}
+
+TEST(Paratrooper, NasceAtrasEAbaixoDaAeronaveQueLancou)
+{
+   // Aeronave rumo LESTE (90 deg) a 1500 m, sobre a origem do terreno de jogo.
+   // "15 m atras" com o nariz para leste e' 15 m para OESTE (leste = -15).
+   DropBench bench(90.0, 0.0, 0.0, 1500.0);
+   bench.releaseFrame();
+
+   const base::Vec3d pos{bench.trooper->getPosition()};
+   EXPECT_NEAR(  0.0, pos[0], 1e-6);    // norte -- inalterado
+   EXPECT_NEAR(-15.0, pos[1], 1e-6);    // leste -- 15 m atras do nariz
+   EXPECT_NEAR(1490.0, -pos[2], 1e-6);  // altitude -- 10 m abaixo da aeronave
+
+   // E ja esta valendo como jogador de verdade, nao mais preso ao lancador.
+   EXPECT_TRUE(bench.trooper->isActive());
+}
+
+TEST(Paratrooper, OffsetDeSaidaAcompanhaORumoDaAeronave)
+{
+   // A prova de que o offset e' em eixos do CORPO, e nao um deslocamento fixo
+   // em norte/leste: a MESMA aeronave, dois rumos, dois pontos de saida
+   // diferentes -- sempre 15 m para TRAS do nariz dela.
+   {
+      DropBench norte(0.0, 4000.0, 7000.0, 1200.0);
+      norte.releaseFrame();
+      const base::Vec3d pos{norte.trooper->getPosition()};
+      EXPECT_NEAR(3985.0, pos[0], 1e-6);   // 15 m ao SUL de uma aeronave rumo norte
+      EXPECT_NEAR(7000.0, pos[1], 1e-6);
+      EXPECT_NEAR(1190.0, -pos[2], 1e-6);
+   }
+   {
+      DropBench oeste(270.0, 4000.0, 7000.0, 1200.0);
+      oeste.releaseFrame();
+      const base::Vec3d pos{oeste.trooper->getPosition()};
+      EXPECT_NEAR(4000.0, pos[0], 1e-6);
+      EXPECT_NEAR(7015.0, pos[1], 1e-6);   // 15 m a LESTE de uma aeronave rumo oeste
+      EXPECT_NEAR(1190.0, -pos[2], 1e-6);
+   }
+}
+
+TEST(Paratrooper, NasceComAVelocidadeDaAeronaveQueLancou)
+{
+   // Herdado do ramo nativo de AbstractWeapon::dynamics() -- quem sai pela
+   // porta sai com a velocidade do aviao, nao parado no ar.
+   DropBench bench(90.0, 0.0, 0.0, 1500.0);
+   bench.carrier->setVelocity(0.0, 72.0, 0.0);   // 72 m/s para leste
+   bench.releaseFrame();
+
+   const base::Vec3d vel{bench.trooper->getVelocity()};
+   EXPECT_NEAR( 0.0, vel[0], 1e-6);
+   EXPECT_NEAR(72.0, vel[1], 1e-6);
+}
+
+TEST(Paratrooper, OffsetDeSaidaEhConfiguravelPorSlot)
+{
+   DropBench bench(90.0, 0.0, 0.0, 1500.0);
+
+   base::Meters atras(40.0);
+   base::Meters abaixo(25.0);
+   ASSERT_TRUE(bench.trooper->setSlotByName("releaseOffsetAft", &atras));
+   ASSERT_TRUE(bench.trooper->setSlotByName("releaseOffsetBelow", &abaixo));
+   EXPECT_DOUBLE_EQ(40.0, bench.trooper->getReleaseOffsetAftM());
+   EXPECT_DOUBLE_EQ(25.0, bench.trooper->getReleaseOffsetBelowM());
+
+   bench.releaseFrame();
+
+   const base::Vec3d pos{bench.trooper->getPosition()};
+   EXPECT_NEAR(-40.0, pos[1], 1e-6);
+   EXPECT_NEAR(1475.0, -pos[2], 1e-6);
+}
+
+TEST(Paratrooper, OffsetDeSaidaSobreviveAoCloneDaLiberacao)
+{
+   // 'AbstractWeapon::release()' nao lanca o objeto declarado no 'stores:' --
+   // lanca um clone() dele. Sem o par em copyData(), o clone nasceria com o
+   // default e um cenario que ajustou os slots seria ignorado em silencio.
+   Paratrooper original;
+   base::Meters atras(40.0);
+   base::Meters abaixo(25.0);
+   ASSERT_TRUE(original.setSlotByName("releaseOffsetAft", &atras));
+   ASSERT_TRUE(original.setSlotByName("releaseOffsetBelow", &abaixo));
+
+   const auto copia = original.clone();
+   ASSERT_NE(copia, nullptr);
+   EXPECT_DOUBLE_EQ(40.0, copia->getReleaseOffsetAftM());
+   EXPECT_DOUBLE_EQ(25.0, copia->getReleaseOffsetBelowM());
+   copia->unref();
+}
+
+TEST(Paratrooper, OffsetDeSaidaNaoTocaUmParaquedistaDeclaradoEmPlayers)
+{
+   // O caso de src/poc/paratrooper-drop: sem aeronave lancadora, os
+   // 'initXPos'/'initYPos'/'initAlt' do .edl sao posicao ABSOLUTA no terreno
+   // de jogo -- e tem de continuar sendo. O offset so' existe em PRE_RELEASE.
+   Bench bench;
+   bench.trooper->setInitPosition(1000.0, 2000.0);
+   bench.trooper->setInitAltitude(3000.0);
+   bench.trooper->reset();
+
+   bench.frame(0.02);
+
+   EXPECT_DOUBLE_EQ(1000.0, bench.trooper->getInitPosition()[0]);
+   EXPECT_DOUBLE_EQ(2000.0, bench.trooper->getInitPosition()[1]);
+   EXPECT_DOUBLE_EQ(3000.0, bench.trooper->getInitAltitude());
 }
 
 //------------------------------------------------------------------------------

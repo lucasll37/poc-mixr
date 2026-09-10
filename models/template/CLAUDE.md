@@ -1,4 +1,4 @@
-# CLAUDE.md — models/players/template
+# CLAUDE.md — models/template
 
 Complementa o `CLAUDE.md` da raiz e os `.md` deste projeto (`README.md`, `CHANGELOG.md`,
 `docs/ARCHITECTURE.md`, `docs/PRIMEIROS-PASSOS.md`). Só entra aqui o que não está em nenhum dos

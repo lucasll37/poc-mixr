@@ -39,7 +39,7 @@ mensagem de commit em uso.
 
 ## [0.1.0] — 2026-09-09
 
-Primeira versão real, sobre o scaffold gerado de `models/players/template` por `scripts/models.sh`:
+Primeira versão real, sobre o scaffold gerado de `models/template` por `scripts/models.sh`:
 
 - Navegação nativa por `Route`/`Steerpoint` (`C130FlightAgentTC` na fase 3 do frame de tempo
   crítico, árvore de um nó só — `Navigate`, sem `Fallback`), mesmo padrão já provado em

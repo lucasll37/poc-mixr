@@ -26,10 +26,11 @@ paths:
 - Modelo novo: `make new-model NAME=<nome> CATEGORY=player|system|others` (`CATEGORY` é
   obrigatório e decide a subpasta — `player`→`models/players/`, `system`→`models/systems/`,
   `others`→`models/others/`; não existe `CATEGORY=event`, ver `scripts/models.sh` para o porquê).
-  Não escreve lógica nenhuma, só copia o esqueleto de `models/players/template/`. Depois, siga
+  Não escreve lógica nenhuma, só copia o esqueleto de `models/template/`. Depois, siga
   `CONTRIBUTING.md` §5 para o cenário (não há catálogo para registrar — basta um `.edl.in` em
   `configs/`) e anote em `models/REGISTRO.md` (coordenação humana, sem enforcement automático).
-- `models/players/template/` **não é produção** — não entra na checagem de colisão de fábrica.
+- `models/template/` **não é produção** — mora no primeiro nível de `models/`, fora de qualquer
+  categoria, justamente por isso, e não entra na checagem de colisão de fábrica.
   Hospeda DOIS artefatos: o scaffold copiável (`libtemplate.so`, exemplo em camadas) e um mirror
   de contrato (`libtemplate_mirror.so`, `src/mirror.cpp` — **não** faz parte do scaffold, apagar ao
   copiar) que exporta de propósito os mesmos nomes/slots do cenário de produção, para

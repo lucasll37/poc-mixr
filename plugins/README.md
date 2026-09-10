@@ -12,7 +12,7 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 ## Os dois jeitos de algo chegar aqui
 
 1. **Compilado por este repositório** — `make models` (na raiz) chama `install-host` de cada
-   projeto de modelo (`models/players/A-4/`, `models/players/template/`, este último instalado
+   projeto de modelo (`models/players/A-4/`, `models/template/`, este último instalado
    incondicionalmente à parte por causa do mirror de contrato — ver o Makefile raiz), e cada um
    copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
    diretamente — ver a seção "Desacoplando `models` de `dist/`" no `CLAUDE.md` da raiz para o

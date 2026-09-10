@@ -22,9 +22,9 @@ seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de contin
 >   que hospeda o agente; ele já chega pronto no contexto de decisão (`genAction()`/`execute()`).
 > - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta — um nome
 >   a mais ou a menos aborta a inicialização, com mensagem dizendo o que faltou/sobrou.
-> - Escrever no `xboard` (seção 3 do [`CONTRATO.md`](models/players/template/docs/CONTRATO.md)) é
+> - Escrever no `xboard` (seção 3 do [`CONTRATO.md`](models/template/docs/CONTRATO.md)) é
 >   obrigatório e **falha em silêncio** se esquecido — sem erro, só `bt=--`/`dec=0` para sempre.
-> - O ponto de partida copiável é `models/players/template/`; `make new-model NAME=... CATEGORY=player`
+> - O ponto de partida copiável é `models/template/`; `make new-model NAME=... CATEGORY=player`
 >   copia e renomeia por você (`CATEGORY` é obrigatório: `player`/`system`/`others`, decide a
 >   subpasta de `models/` — não existe `CATEGORY=event`, ver seção 2).
 > - Quer ver tudo isto costurado, com código real do modelo de produção (A-4) — criar um nó de
@@ -52,7 +52,7 @@ exatamente isto.
 
 ## 2. Escolha o ponto de partida
 
-Um único ponto de partida copiável — [`models/players/template`](models/players/template/): já
+Um único ponto de partida copiável — [`models/template`](models/template/): já
 nasce em camadas (`domain/`→`ubf/`→`xnative/`), com uma única decisão de exemplo em cada camada.
 Se o seu modelo decide com uma regra/condição só, apague o que não precisar — o "porquê" de cada
 camada está no `README.md`/`docs/` do diretório.
@@ -75,12 +75,12 @@ Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespa
 pela profundidade real) e termina com um checklist do que sobra manual — inclusive apagar
 `src/mirror.cpp` e o artefato `template_mirror`, que NÃO fazem parte do scaffold (ver o aviso no
 topo do próprio arquivo). Se preferir fazer à mão, o roteiro completo está em [`template`,
-`docs/PRIMEIROS-PASSOS.md`](models/players/template/docs/PRIMEIROS-PASSOS.md) — mas o gerador
+`docs/PRIMEIROS-PASSOS.md`](models/template/docs/PRIMEIROS-PASSOS.md) — mas o gerador
 cobre exatamente essa receita.
 
 ## 3. O contrato: o que TODO modelo tem que fazer
 
-→ [`models/players/template/docs/CONTRATO.md`](models/players/template/docs/CONTRATO.md) — leia
+→ [`models/template/docs/CONTRATO.md`](models/template/docs/CONTRATO.md) — leia
 inteiro. Três obrigações merecem destaque:
 
 - **`provides:` bate EXATAMENTE com o que o `.so` exporta** (seção 2) — se não bater, o processo

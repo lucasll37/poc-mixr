@@ -21,7 +21,7 @@ referência que este repositório tem hoje:
 |---|---|---|
 | **`template`** (este) | ponto de partida **em camadas**, para decisão nova | a separação `domain/`→`bt/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
 | `template/src/mirror.cpp` (mesmo diretório) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
-| [`A-4`](../../A-4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as duas referências acima já cobrem |
+| [`A-4`](../../players/A-4/) | o modelo de produção — árvore de comportamento completa, terreno, RL, ONNX, Python embarcado | qualquer coisa além do que as duas referências acima já cobrem |
 
 ## As camadas, e por que a separação existe
 

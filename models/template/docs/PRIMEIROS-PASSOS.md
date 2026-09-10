@@ -4,7 +4,7 @@ Este roteiro assume que você já rodou, **uma vez, na raiz do repositório**, o
 todo projeto de modelo precisa (publica o SDK de plugin e os pacotes do Conan):
 
 ```bash
-cd ../../.. && make configure && make sdk
+cd ../.. && make configure && make sdk
 ```
 
 Sem isso, `check-root` (dependência de `configure`/`build`/`test`/`install` — não de `clean`,
@@ -16,7 +16,7 @@ Antes de mudar qualquer coisa, compile e teste o template como ele é. Se isto f
 é do seu ambiente (SDK não publicado, Conan não instalado), não do que você vai escrever depois:
 
 ```bash
-cd models/players/template
+cd models/template
 make build      # -> ./dist/lib/mixr-plugins/libtemplate.so (bare `make` so mostra `make help`)
 make test       # 4 casos de domain/ + a forma do .so (1 símbolo T, deps resolvidas)
 ```
@@ -24,7 +24,7 @@ make test       # 4 casos de domain/ + a forma do .so (1 símbolo T, deps resolv
 ## Passo 1 — copie e escolha um nome
 
 ```bash
-cp -r models/players/template models/players/meu-modelo
+cp -r models/template models/players/meu-modelo
 cd models/players/meu-modelo
 rm -rf build dist   # se a cópia trouxe artefatos de build do template
 rm -f src/mirror.cpp   # NAO faz parte do scaffold -- ver o aviso no topo do proprio arquivo
@@ -57,11 +57,11 @@ grep -rl 'xtemplate' include src tests | xargs sed -i 's/xtemplate/xmeumodelo/g'
 grep -n 'MIXR_PLUGIN_DEFINE' src/plugin.cpp
 
 # 4) a linha ROOT do Makefile -- SÓ SE você mudou a profundidade em relação
-#    à raiz do repositório. Copiado direto para models/players/meu-modelo/,
-#    a profundidade é a MESMA do template (três níveis) -- nada a fazer.
-#    Se você mover para outro lugar (ex.: direto em models/meu-modelo/, dois
-#    níveis), troque 'ROOT := $(abspath ../../..)' por
-#    'ROOT := $(abspath ../..)'.
+#    à raiz do repositório. O template mora em models/template/ (dois níveis).
+#    Copiado para models/players/meu-modelo/ (três níveis), troque
+#    'ROOT := $(abspath ../..)' por 'ROOT := $(abspath ../../..)'.
+#    ('make new-model' calcula essa linha sozinho -- isto vale só para a
+#    cópia manual.)
 ```
 
 Confirme que nada ficou para trás:
@@ -124,8 +124,8 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
 ## Passo 6 — publique para um cenário conseguir carregar
 
 ```bash
-make install-host   # copia ./dist -> ../../../plugins/ (o depósito compartilhado com terceiros)
-cd ../../..
+make install-host   # copia ./dist -> ../../plugins/ (o depósito compartilhado com terceiros)
+cd ../..
 make install         # sincroniza plugins/ -> dist/ -- SÓ ISSO deixa um cenário enxergar o .so
 ```
 
@@ -146,7 +146,7 @@ completa de "nome de fábrica → classe-base exigida → onde entra".
 
 `template` nunca aparece no alvo `models:` do Makefile raiz nem em `tests/meson.build` — mas não
 por estar de fora de uma lista manual: é porque `template/` é excluído **de propósito** da busca
-(`MODELOS_PRODUCAO` no [`../../../../Makefile`](../../../../Makefile) descobre projetos por `find`,
+(`MODELOS_PRODUCAO` no [`../../../Makefile`](../../../Makefile) descobre projetos por `find`,
 ignorando só `template/`/`tests/`/diretórios de build). O SEU modelo, uma vez copiado para fora de
 `template/` (Passo 1), já **entra sozinho** em `make models`/`make test` da raiz — não há linha
 nenhuma para adicionar. Confirme com `make models` na raiz: o log deve citar o nome do seu modelo
@@ -155,7 +155,7 @@ sem você ter tocado no Makefile.
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
 cobertura de teste automática (`tests/meson.build`), isso é um passo separado, documentado em
-[`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md), seções 5.2 e 5.4 — não tem relação
+[`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md), seções 5.2 e 5.4 — não tem relação
 com este Passo 7.
 
 Antes do primeiro commit, vale ler também [`../CLAUDE.md`](../CLAUDE.md) (este projeto,

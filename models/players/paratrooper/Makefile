@@ -4,30 +4,21 @@
 # ==============================================================================
 # Makefile AUTOCONTIDO do modelo paratrooper.
 #
-# "Autocontido" quer dizer: abra o VS Code AQUI (models/players/paratrooper/),
-# rode `make`, e o .so sai em ./dist -- a raiz DESTE projeto, nao a raiz do
-# poc-mixr. Este Makefile nunca chama o Makefile raiz -- mas o INVERSO
-# acontece: o alvo `models` da raiz DESCOBRE este projeto por `find` (todo
-# diretorio sob models/ com um project() no meson.build, exceto
-# models/players/template/) e builda/instala ele junto com A-4/C-130.
+# Abra o VS Code AQUI (models/players/paratrooper/), rode `make`, e o .so sai em ./dist -- a
+# raiz DESTE projeto, nao a do poc-mixr. Este Makefile nunca chama o Makefile
+# raiz; o INVERSO acontece -- o alvo `models` da raiz descobre este projeto por
+# `find` (todo diretorio sob models/ com project() no meson.build, exceto
+# models/template/) e builda/instala ele junto com os demais.
 #
-# Pre-requisito, publicado pelo projeto HOST uma vez:
+# Pre-requisito, publicado pelo HOST uma vez:  cd ../../.. && make configure && make sdk
 #
-#     cd ../../.. && make configure && make sdk
-#
-# Depois disso este Makefile roda sozinho, quantas vezes quiser, so contra o
-# que foi publicado em ../../../dist e ../../../build.
-#
-# `install-host` e o unico alvo que escreve fora de ./dist -- mas so ate
+# 'install-host' e o unico alvo que escreve fora de ./dist -- e so ate
 # ../../../plugins/, o deposito compartilhado com terceiros (ver
-# ../../../plugins/README.md). NUNCA escreve em ../../../dist/ diretamente --
-# quem sincroniza e o 'make install' do projeto raiz (alvo 'sync-plugins').
-# Sem os dois passos, o .so fica so aqui -- util para iterar (compilar,
-# rodar a suite), inutilizavel por um cenario ate ser publicado.
+# ../../../plugins/README.md). NUNCA escreve em ../../../dist/: quem sincroniza e
+# o 'make install' da raiz (alvo 'sync-plugins'). Sem os dois passos o .so
+# compila e testa aqui, mas nao roda em cenario nenhum.
 #
-# check-root/configure/clean/help sao COMPARTILHADOS com models/players/A-4/
-# Makefile -- moram em ../../common.mk. Este arquivo so acrescenta o que e
-# proprio deste modelo.
+# check-root/configure/clean/help sao COMPARTILHADOS -- moram em ../../common.mk.
 # ==============================================================================
 
 ROOT      := $(abspath ../../..)
@@ -47,13 +38,11 @@ test: build ## Roda a suite do paratrooper (domain + tree + native + forma do .s
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
 install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
-	@# '--only-changed' -- ver o "porque" (medido com 'ninja -d explain') no
-	@# Makefile de models/players/A-4.
-	@# NAO hardcodear o nome do .so aqui: depois de renomear o projeto (ver
-	@# docs/PRIMEIROS-PASSOS.md), ele deixa de se chamar libparatrooper.so, e um
-	@# 'ldd' contra um caminho que nao existe mais sai (exit 1, sem a string
-	@# "not found") -- o '|| true' absorvia isso e a linha seguinte imprimia
-	@# "install: OK" apontando pra um arquivo inexistente, incondicionalmente.
+	@# '--only-changed' -- ver o "porque" no Makefile de models/players/A-4.
+	@# Varre todo .so que de fato existe, sem nome cravado: depois de renomear o
+	@# projeto ele deixa de se chamar libparatrooper.so, e um 'ldd' contra um caminho
+	@# inexistente nao contem "not found" -- o '|| true' absorveria o erro e a linha
+	@# seguinte imprimiria "install: OK" apontando pra nada.
 	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
 	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 		[ -e "$$so" ] || continue; \
@@ -65,19 +54,11 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
 install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
 	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@# A arvore vai JUNTO: o 'treeFile:' do ( ParatrooperBtBehavior ) aponta
-	@# pra ca, e os nos que ela referencia so existem dentro deste .so.
-	@# Mesmo motivo (e mesmo destino) do install_data em meson.build.
+	@# A arvore vai JUNTO: o 'treeFile:' do ( ParatrooperBtBehavior ) aponta pra ca, e
+	@# os nos que ela referencia so existem dentro deste .so.
 	@#
-	@# NENHUM nome de modelo escrito aqui, de proposito (ACHADO RODANDO, nao
-	@# redescobrir): 'make new-model' renomeia o literal 'template' dentro do
-	@# meson.build -- entao o install_data passa a escrever em
-	@# share/mixr-plugins/<seu-modelo>/ -- mas NAO mexe neste Makefile. Um
-	@# caminho com 'template' cravado aqui viraria "cp: cannot stat .../
-	@# template/: No such file or directory" no primeiro install-host do
-	@# scaffold copiado (reproduzido). Copiar o diretorio INTEIRO resolve
-	@# sozinho, para qualquer nome, e e' exatamente o que o 'sync-plugins'
-	@# da raiz ja faz um nivel acima.
+	@# Copia o diretorio INTEIRO, sem nome cravado -- o install_data do meson.build
+	@# escreve em share/mixr-plugins/<nome-do-projeto>/, que este Makefile nao sabe.
 	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
 	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
 	 fi
@@ -91,9 +72,8 @@ uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
 	   done; \
 	 fi
-	@# Mesmo raciocinio do install-host: os nomes saem do PROPRIO ./dist
-	@# local, nunca escritos a mao -- so' o que ESTE modelo publicou e'
-	@# removido, nunca o dado de um terceiro que divida o deposito.
+	@# Os nomes saem do PROPRIO ./dist local -- so o que ESTE modelo publicou e
+	@# removido, nunca o de um terceiro que divida o deposito.
 	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
 	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
 	      [ -d "$$d" ] || continue; \

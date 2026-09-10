@@ -63,7 +63,7 @@ NATIVE_MODULES = [
 # disciplina "primeiro achado vence" que extract_slots()/build_inheritance()
 # já usam (mixr_source_scan.py, ordem alfabética de arquivo) garante que
 # models/players/A-4 (alfabeticamente antes de template/) vence sobre
-# qualquer classe de MESMO NOME em models/players/template/.
+# qualquer classe de MESMO NOME em models/template/.
 PLUGIN_LABEL = "plugin:A-4"
 PLUGIN_FACTORY_CPP = MODELS_DIR / "players" / "A-4" / "src" / "xnative" / "factory.cpp"
 

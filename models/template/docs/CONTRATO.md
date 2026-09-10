@@ -9,7 +9,7 @@ declarativo do MIXR) diz qual arquivo `.so` carregar e quais classes esperar del
 viu o código-fonte desse `.so`.
 
 Esse mecanismo de carga (o formato do descritor binário, a macro de registro, as flags de link)
-está definido em [`libs/xplugin/PluginAbi.hpp`](../../../../libs/xplugin/PluginAbi.hpp) — mas
+está definido em [`libs/xplugin/PluginAbi.hpp`](../../../libs/xplugin/PluginAbi.hpp) — mas
 esse arquivo só cobre o **empacotamento**: como o `.so` se anuncia. Ele não diz o que a aplicação,
 já rodando, de fato espera do modelo para funcionar de ponta a ponta. Esta página é essa lista —
 tudo o que falta saber além do empacotamento, incluindo a única obrigação cuja falta **não gera
@@ -83,7 +83,7 @@ tabela acima só dá o NOME da classe-base, nunca os métodos):
 | `AbstractAction` | `execute` (**pura** — obrigatória) | `virtual bool execute(base::Component* actor) = 0` |
 | `AgentTC` (via `Agent`) | `updateTC` (herdado de `AgentTC`) chama `controller` (protegido, de `Agent`) | `void updateTC(const double dt = 0.0) override` / `virtual void controller(const double dt = 0.0)` |
 
-`models/players/template/src/mirror.cpp` e `models/players/A-4/src/{ubf,xnative}/*.cpp` são as
+`models/template/src/mirror.cpp` e `models/players/A-4/src/{ubf,xnative}/*.cpp` são as
 implementações de referência de cada um destes métodos — leia-as depois desta tabela, não em vez
 dela.
 
@@ -168,7 +168,7 @@ que o RTTI degrada, por que aninhar resolve) está em
 
 A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o namespace C++) é
 prima deste problema e já tem guarda automática —
-[`../../../../tests/guard/check_colisao_fabrica.py`](../../../../tests/guard/check_colisao_fabrica.py)
+[`../../../tests/guard/check_colisao_fabrica.py`](../../../tests/guard/check_colisao_fabrica.py)
 — que já pegou um caso real em produção (`ThreadTagProbe` → `MissileThreadTagProbe`, do extinto
 modelo `missile` — ver `CLAUDE.md` raiz). A colisão de `type_info` desta seção é mais difícil de
 flagrar automaticamente — por isso o namespace aninhado é a defesa que não depende de um teste
@@ -187,11 +187,11 @@ pegar o problema depois.
 - [`../src/mirror.cpp`](../src/mirror.cpp) — a implementação de referência, item por item desta
   lista (não é o scaffold copiável — ver o aviso no topo do próprio arquivo)
 - [`../README.md`](../README.md) — como compilar e testar este diretório sozinho
-- [`libs/xplugin/PluginAbi.hpp`](../../../../libs/xplugin/PluginAbi.hpp) — o contrato de
+- [`libs/xplugin/PluginAbi.hpp`](../../../libs/xplugin/PluginAbi.hpp) — o contrato de
   empacotamento binário completo
-- [`libs/xboard/Board.hpp`](../../../../libs/xboard/Board.hpp) — todos os campos e funções do
+- [`libs/xboard/Board.hpp`](../../../libs/xboard/Board.hpp) — todos os campos e funções do
   quadro de leitura da seção 3
-- [`../../../../CONTRIBUTING.md`](../../../../CONTRIBUTING.md) — como registrar um modelo novo
+- [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — como registrar um modelo novo
   num cenário
-- [`../../../../CLAUDE.md`](../../../../CLAUDE.md), seção "O MODELO é um plugin, construído
+- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído
   numa etapa PRÉVIA" — visão geral de como os modelos deste repositório se encaixam no host

@@ -11,9 +11,16 @@ estágios, dirigida pela altitude acima do solo (AGL).
 Deriva de `mixr::models::Effect` (o mesmo idioma nativo de `Chaff`/`Decoy`/`Flare`), e nasce
 compatível com o mecanismo de liberação que `models/players/C-130` já usa hoje (um placeholder,
 `C130ParatrooperPlaceholder`) — a substituição do placeholder por este modelo é tarefa futura, e é
-puramente EDL (ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). **Esta versão não está ligada
-ao C-130** — é demonstrada sozinha, em [`src/poc/paratrooper-drop`](../../../src/poc/paratrooper-drop),
-com os paraquedistas já em queda a partir de uma altitude inicial.
+puramente EDL (ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). **Nenhum cenário versionado o
+liga ao C-130** — ele é demonstrado sozinho, em
+[`src/poc/paratrooper-drop`](../../../src/poc/paratrooper-drop), com os paraquedistas já em queda
+a partir de uma altitude inicial.
+
+Quando ele *é* liberado de uma aeronave, nasce **15 m atrás e 10 m abaixo dela** (em eixos do
+corpo do lançador, então "atrás" acompanha rumo/arfagem/rolamento), com a velocidade da aeronave —
+não colado nela, que é o que o mecanismo nativo faria sozinho. Os dois valores são slots
+(`releaseOffsetAft`/`releaseOffsetBelow`); a seção "O ponto de saída" de
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) tem o porquê e a medição.
 
 ## O que tem em cada arquivo
 
@@ -71,6 +78,19 @@ make install-host     # copia o .so + a arvore para ../../../plugins/ -- ver a p
 `make install-host` só copia até `../../../plugins/`, o depósito compartilhado com terceiros —
 quem sincroniza dali para `dist/`, onde um cenário de fato procura, é `make install` do projeto
 raiz. O fluxo do dia a dia na raiz é `make configure && make models && make install`.
+
+## Slots próprios
+
+| slot | tipo | default | o que é |
+|---|---|---|---|
+| `canopyDescentRate` | `<Number>` | `5.5` | taxa de descida sob o velame, m/s |
+| `releaseOffsetAft` | `<Distance>` | `( Meters 15 )` | quanto ATRÁS da aeronave lançadora ele nasce |
+| `releaseOffsetBelow` | `<Distance>` | `( Meters 10 )` | quanto ABAIXO da aeronave lançadora ele nasce |
+
+Os dois últimos só têm efeito quando o paraquedista é de fato liberado por um `StoresMgr` — um
+declarado direto em `players: {}` nunca passa por `PRE_RELEASE` e mantém `initXPos`/`initYPos`/
+`initAlt` como posição absoluta. Mais `dragIndex` (de `Effect`) e `id`/`side`/`type`/`dataLogTime`/
+`maxTOF`/`crashOverride`/`killOverride` (de `AbstractWeapon`/`Player`).
 
 ## Nomes de fábrica
 

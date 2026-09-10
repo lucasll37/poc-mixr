@@ -171,12 +171,12 @@ def find_dispatch_reachable_classes(factory_cpp_paths):
         reachable = find_dispatch_reachable_classes([modulo_src_root / "factory.cpp"])
         concretas = {cls for cls in factory_map.values() if cls in reachable}
 
-    Nao serve para 'models/players/template/src/mirror.cpp' (o mirror de
+    Nao serve para 'models/template/src/mirror.cpp' (o mirror de
     contrato) -- esse arquivo usa um idioma totalmente diferente (funcao
     'fabrica', comparacao por std::strcmp com string literal, sem
     'getFactoryName()' nenhum) e e deliberadamente fora do escopo de
     producao (ver .claude/rules/models-plugin.md); use
-    'models/players/template/src/xnative/factory.cpp' (o scaffold real) para
+    'models/template/src/xnative/factory.cpp' (o scaffold real) para
     as classes construiveis do template."""
     reachable = set()
     for path in factory_cpp_paths:
@@ -210,7 +210,7 @@ def extract_slots(cpp_roots):
     aparece em mais de um arquivo -- relevante para o catalogo do editor
     grafico, que varre 'models/' (deste repositorio) inteiro:
     'models/players/A-4' (a implementacao de producao) e
-    'models/players/template' (o mirror de contrato em src/mirror.cpp, um
+    'models/template' (o mirror de contrato em src/mirror.cpp, um
     modelo minimo so pra testar o CONTRATO de carga de plugin) declaram as
     MESMAS classes (BtBehavior, AlertDatalink, ...) com o MESMO nome barra,
     e 'A-4' < 'template' alfabeticamente -- sem 'first wins', o mirror

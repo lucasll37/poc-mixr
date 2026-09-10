@@ -2,26 +2,25 @@
 .DEFAULT_GOAL := help
 
 # ==============================================================================
-# Makefile AUTOCONTIDO do modelo C-130.
+# Makefile AUTOCONTIDO deste template.
 #
-# Abra o VS Code AQUI (models/players/C-130/), rode `make`, e o .so sai em ./dist -- a
-# raiz DESTE projeto, nao a do poc-mixr. Este Makefile nunca chama o Makefile
-# raiz; o INVERSO acontece -- o alvo `models` da raiz descobre este projeto por
-# `find` (todo diretorio sob models/ com project() no meson.build, exceto
-# models/template/) e builda/instala ele junto com os demais.
+# Abra o VS Code AQUI, rode `make`, e o .so sai em ./dist -- a raiz DESTE
+# projeto, nao a do poc-mixr. Nao chama o Makefile raiz, e o alvo `models` dela
+# tambem nao constroi este diretorio (ver o cabecalho do meson.build; para
+# copiar isto num modelo de verdade, docs/PRIMEIROS-PASSOS.md).
 #
-# Pre-requisito, publicado pelo HOST uma vez:  cd ../../.. && make configure && make sdk
+# Pre-requisito, publicado pelo HOST uma vez:  cd ../.. && make configure && make sdk
 #
 # 'install-host' e o unico alvo que escreve fora de ./dist -- e so ate
-# ../../../plugins/, o deposito compartilhado com terceiros (ver
-# ../../../plugins/README.md). NUNCA escreve em ../../../dist/: quem sincroniza e
+# ../../plugins/, o deposito compartilhado com terceiros (ver
+# ../../plugins/README.md). NUNCA escreve em ../../dist/: quem sincroniza e
 # o 'make install' da raiz (alvo 'sync-plugins'). Sem os dois passos o .so
 # compila e testa aqui, mas nao roda em cenario nenhum.
 #
-# check-root/configure/clean/help sao COMPARTILHADOS -- moram em ../../common.mk.
+# check-root/configure/clean/help sao COMPARTILHADOS -- moram em ../common.mk.
 # ==============================================================================
 
-ROOT      := $(abspath ../../..)
+ROOT      := $(abspath ../..)
 BUILD_TYPE ?= Debug
 TESTS     ?= true
 
@@ -32,15 +31,18 @@ include $(ROOT)/models/common.mk
 build: configure ## Compila o .so deste projeto.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-test: build ## Roda a suite do C-130 (domain + tree + native + forma do .so).
+test: build ## Roda a suite deste template (domain + tree + forma do .so).
+	@# 4, e nao 5: o teste do mirror de contrato desaparece quando 'make new-model'
+	@# copia este diretorio (o bloco MIRROR-BLOCK sai junto com src/mirror.cpp), e a
+	@# guarda tem de valer nos dois casos.
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 5 ] || { echo "$(RED)suite incompleta ($$N de 5) -- confira TESTS=true$(NC)"; exit 1; }
+	 [ "$$N" -ge 4 ] || { echo "$(RED)suite incompleta ($$N de 4) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
 install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
 	@# '--only-changed' -- ver o "porque" no Makefile de models/players/A-4.
 	@# Varre todo .so que de fato existe, sem nome cravado: depois de renomear o
-	@# projeto ele deixa de se chamar libC-130.so, e um 'ldd' contra um caminho
+	@# projeto ele deixa de se chamar libtemplate.so, e um 'ldd' contra um caminho
 	@# inexistente nao contem "not found" -- o '|| true' absorveria o erro e a linha
 	@# seguinte imprimiria "install: OK" apontando pra nada.
 	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
@@ -51,21 +53,22 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
 
-install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
+install-host: install ## Deposita em ../../plugins/ -- nao toca dist/ do host.
 	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@# A arvore vai JUNTO: o 'treeFile:' do ( ExampleBehavior ) aponta pra ca, e
-	@# os nos que ela referencia so existem dentro deste .so.
+	@# A arvore vai JUNTO: o 'treeFile:' do ( ExampleBehavior ) aponta pra ca, e os
+	@# nos que ela referencia so existem dentro deste .so.
 	@#
-	@# Copia o diretorio INTEIRO, sem nome cravado -- o install_data do meson.build
-	@# escreve em share/mixr-plugins/<nome-do-projeto>/, que este Makefile nao sabe.
+	@# Copia o diretorio INTEIRO, sem nome cravado: 'make new-model' renomeia o
+	@# literal 'template' no meson.build (o install_data passa a escrever em
+	@# share/mixr-plugins/<seu-modelo>/) mas NAO mexe neste Makefile.
 	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
 	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
 	 fi
 	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
-uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
+uninstall-host: ## Remove de ../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
 	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 	      [ -e "$$so" ] || continue; \

@@ -71,7 +71,11 @@ def discover_models():
     entradas precisam coexistir no mapa."""
     models = {}
     for categoria in sorted(MODELS_DIR.iterdir()):
-        if not categoria.is_dir():
+        # 'template' e' entrada de PRIMEIRO nivel (models/template/), nao uma
+        # categoria -- sem este filtro ele seria varrido como se seus src/,
+        # tests/, docs/ fossem modelos. Hoje nenhum deles tem um src/ dentro,
+        # entao nada entraria; o filtro e' explicito para nao depender disso.
+        if not categoria.is_dir() or categoria.name in NAO_PRODUCAO:
             continue
         for d in sorted(categoria.iterdir()):
             if not d.is_dir() or d.name in NAO_PRODUCAO:

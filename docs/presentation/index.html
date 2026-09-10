@@ -286,8 +286,41 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   gap:18px; padding:0 18px; background:var(--surface); border-top:1px solid var(--line);
   font-family:var(--font-mono);
 }
-.hud-section{ font-size:.76rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.hud-bar{ flex:1; display:flex; align-items:center; gap:10px; min-width:80px; }
+/* CURSO FIXO DA BARRA DE PROGRESSO -- a razao de esta coluna ter largura PROPRIA, declarada, e
+   nao a largura do texto que ela mostra. O rotulo de secao (o .eyebrow da slide ativa, ver
+   sectionOf()) varia de 14 a 54 caracteres entre as slides; enquanto a largura saia do conteudo,
+   quem cedia espaco pra ele era a .hud-bar ao lado, o unico item que crescia. Medido em Chrome
+   antes desta regra, nas 29 slides: o .hud-track ia de 757px a 1088px em 1920 e de 37px a 368px em
+   1200 -- a MESMA fracao de progresso desenhava comprimentos diferentes, e a barra pulava de
+   tamanho E de posicao a cada troca de secao (a borda esquerda dela tinha 7 posicoes distintas).
+   Com base declarada, o track fica ancorado nas duas pontas: a esquerda porque a coluna nao varia,
+   a direita porque tudo dali pra frente (contagem, dica, botoes) ja tinha largura constante.
+   --hud-section-w e' publicada por fitHudSection() (script de navegacao) e vale a largura do rotulo
+   MAIS LARGO do deck -- medida, nao chutada, e remedida quando a webfont chega ou a janela muda,
+   pelo mesmo motivo que fitAllSlides() remede: a metrica do fallback nao e' a da fonte final. Sair
+   da MAIOR medida, e nao de um numero fixo, e' o que da curso constante SEM truncar rotulo nenhum
+   enquanto couberem todos (medido: zero truncagem de 1366px pra cima). O teto de 34vw e' quem corta
+   quando nem o maior cabe, e os 460px so' valem se o JS nao rodar. Truncar aqui e' barato: este
+   rotulo e' copia do .eyebrow que continua inteiro na propria slide, e o mapa (M) tambem o mostra
+   integral -- a HUD e' pista redundante de orientacao, nao a portadora unica do dado; ainda assim
+   render() espelha o texto completo no title=, pra o hover devolver o que a reticencia esconde.
+   O min-width:0 e' redundante ENQUANTO existir o overflow:hidden logo abaixo (pela secao 4.5 do
+   css-flexbox-1, um item flex com overflow != visible ja tem minimo automatico zero); esta
+   declarado de proposito, pra o curso fixo nao depender de uma regra que so' esta ali por causa do
+   text-overflow:ellipsis -- se o ellipsis virar mascara de fade e alguem apagar o overflow, o
+   minimo de conteudo (== max-content, por causa do white-space:nowrap) voltaria a empurrar a
+   coluna, e o bug reapareceria so' na faixa estreita, onde passaria despercebido. */
+.hud-section{
+  flex:0 1 min(var(--hud-section-w, 460px), 34vw); min-width:0;
+  font-size:.76rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* flex-basis declarada (nao 0%) porque quando a HUD nao cabe o encolhimento e' repartido na
+   proporcao das bases: com a base em 0% -- o default de "flex:1" -- a barra nao encolhia,
+   batia direto no min-width e virava um toco de 19px enquanto a coluna do rotulo ao lado
+   segurava a largura inteira dela. Os 200px sao o que a barra "pede" pra continuar legivel;
+   acima disso ela cresce igual a antes, porque flex-grow continua 1. */
+.hud-bar{ flex:1 1 200px; display:flex; align-items:center; gap:10px; min-width:80px; }
 .hud-track{ flex:1; height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
 .hud-fill{ height:100%; background:var(--teal); width:3.7%; transition:width .25s ease; }
 @media (prefers-reduced-motion:reduce){ .hud-fill{transition:none;} }
@@ -460,15 +493,62 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     });
   }
 
+  // Largura da coluna do rotulo de secao na HUD -- ver o comentario de ".hud-section" no <style>.
+  // O curso da barra de progresso so' fica constante entre as slides se essa coluna tiver largura
+  // propria; pra isso nao custar rotulo truncado, a largura e' a do rotulo MAIS LARGO do deck,
+  // medida aqui (os rotulos vem do .eyebrow de cada slide, ou seja do content.js -- um numero
+  // fixo no CSS envelheceria calado assim que uma secao fosse renomeada). Mesma disciplina de
+  // fitAllSlides(): escreve TODAS as sondas primeiro, so' depois le -- uma passada de layout, nao
+  // uma por rotulo.
+  function fitHudSection(){
+    var vistos = {};
+    var probes = [];
+    var caixa = document.createElement('div');
+    caixa.setAttribute('aria-hidden', 'true');
+    caixa.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+    var cs = window.getComputedStyle(hudSection);
+    slides.forEach(function(s){
+      var texto = sectionOf(s);
+      if (!texto || vistos[texto]) return;
+      vistos[texto] = true;
+      var probe = document.createElement('span');
+      probe.style.whiteSpace = 'nowrap';
+      ['fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','wordSpacing','textTransform']
+        .forEach(function(prop){ probe.style[prop] = cs[prop]; });
+      probe.textContent = texto;
+      caixa.appendChild(probe);
+      probes.push(probe);
+    });
+    if (!probes.length) return;
+    document.body.appendChild(caixa);
+    var maior = 0;
+    probes.forEach(function(probe){ maior = Math.max(maior, probe.getBoundingClientRect().width); });
+    document.body.removeChild(caixa);
+    // +1 absorve o arredondamento sub-pixel entre a sonda e o proprio elemento (sem essa folga o
+    // rotulo mais largo -- justamente o que define a coluna -- as vezes ganha reticencias por
+    // uma fracao de pixel).
+    if (maior > 0) document.documentElement.style.setProperty('--hud-section-w', Math.ceil(maior + 1) + 'px');
+  }
+
+  // A coluna do rotulo tem largura fixa (ver ".hud-section" no <style>), entao em tela estreita um
+  // rotulo longo sai com reticencias -- ai, e SO' ai, o texto integral vai pro title=, pra o hover
+  // devolver o que foi cortado. Sem a condicao, toda slide ganharia um tooltip repetindo o que ja
+  // esta escrito ao lado. Chamada tanto no render() (rotulo mudou) quanto no resize (a MESMA
+  // string pode passar a caber, ou deixar de caber, sem trocar de slide).
+  function syncSectionTitle(){
+    if (hudSection.scrollWidth > hudSection.clientWidth + 1) hudSection.title = hudSection.textContent;
+    else hudSection.removeAttribute('title');
+  }
+
   var fitResizeTimer = null;
   window.addEventListener('resize', function(){
     if (fitResizeTimer) clearTimeout(fitResizeTimer);
-    fitResizeTimer = setTimeout(fitAllSlides, 120);
+    fitResizeTimer = setTimeout(function(){ fitAllSlides(); fitHudSection(); syncSectionTitle(); }, 120);
   });
   // fontes web (Big Shoulders/Public Sans/IBM Plex Mono) carregam depois do primeiro layout --
   // a metrica muda ao trocar do fallback pra fonte de verdade, entao a medida inicial (antes
   // disso) pode ficar desatualizada pra cima ou pra baixo.
-  if (window.document.fonts && document.fonts.ready) document.fonts.ready.then(fitAllSlides);
+  if (window.document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ fitAllSlides(); fitHudSection(); syncSectionTitle(); });
 
   function pad(n){ return n < 10 ? '0' + n : '' + n; }
 
@@ -540,6 +620,7 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     }
 
     hudSection.textContent = sectionOf(slides[index]);
+    syncSectionTitle();
     hudFill.style.width = ((index + 1) / total * 100) + '%';
     hudCount.textContent = pad(index + 1) + ' / ' + pad(total);
     writeStored(index);
@@ -683,6 +764,7 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   }, { passive: false });
 
   fitAllSlides();
+  fitHudSection();
   render(null, null);
 })();
 </script>

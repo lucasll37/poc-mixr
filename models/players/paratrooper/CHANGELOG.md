@@ -18,12 +18,31 @@ mensagem de commit em uso.
 
 ---
 
+## [Não lançado]
+
+### Adicionado
+
+- **Ponto de saída**: um paraquedista liberado de uma aeronave nasce **15 m atrás e 10 m abaixo**
+  dela, e não colado nela (o que o mecanismo nativo faz sozinho, com offset zero). Implementado
+  como uma sobrescrita de `Paratrooper::dynamics()` que fixa `initPosition`/`initAltitude` —
+  para uma arma em `PRE_RELEASE` esses dois são um deslocamento em eixos do CORPO do lançador,
+  não posição no terreno de jogo — imediatamente antes de `AbstractWeapon::dynamics()` lê-los;
+  a rotação (fazer "atrás" acompanhar rumo/arfagem/rolamento) fica com o código nativo. Dois
+  slots novos, `releaseOffsetAft` e `releaseOffsetBelow` (`<Distance>`, defaults 15 m/10 m),
+  copiados em `copyData()` porque quem voa é o `clone()` da estação, não o objeto declarado nela.
+  Medido contra o C-130 de `models/players/C-130` liberando pelo `StoresMgr` de verdade: 15,001 m
+  atrás e 9,998 m abaixo, contra um controle com os offsets zerados. Sete casos novos em
+  `tests/native/test_paratrooper.cpp` (bancada com aeronave lançadora, sem `Station`); os três
+  posicionais falham se a sobrescrita for removida, e o do clone falha se o par sair de
+  `copyData()` — conferido nos dois sentidos. Não altera `src/poc/paratrooper-drop`, cujos
+  paraquedistas são declarados direto em `players: {}` e nunca passam por `PRE_RELEASE`.
+
 ## [0.1.0] — 2026-09-10
 
 - Corpo físico (`xnative::Paratrooper`, deriva de `mixr::models::Effect`) e decisão (FSM de três
   estágios `FREEFALL`→`CANOPY`→`LANDED`, `domain::ParachuteFsm`, mão única — nunca reverte) de um
   paraquedista, atravessando as quatro camadas (`domain/`→`bt/`→`ubf/`→`xnative/`) que
-  `models/players/template` demonstra. `Effect` escolhido em vez de `LifeForm` porque este último é
+  `models/template` demonstra. `Effect` escolhido em vez de `LifeForm` porque este último é
   auto-grudado ao terreno pelo framework (`Player::positionUpdate()`), errado durante queda
   livre/velame — e porque `Effect` deixa este modelo um substituto de EDL direto para
   `C130ParatrooperPlaceholder` (`models/players/C-130`) numa tarefa futura.

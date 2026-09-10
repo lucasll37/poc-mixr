@@ -7,10 +7,11 @@ mais — não pilota nada, não tem sensor, não decide combate. A pergunta que 
 "quando abrir o paraquedas e quando considerar que já pousou", e a física de cada estágio.
 
 **O que este modelo explicitamente NÃO faz** (fora de escopo desta tarefa, adiado para depois):
-não está ligado ao `models/players/C-130` nem a `src/poc/c130-airdrop` — a liberação de verdade
-(um C-130 largando vários paraquedistas em voo) é tarefa futura. Hoje ele só é demonstrado sozinho
-(`src/poc/paratrooper-drop`), com os paraquedistas já declarados em queda a partir de uma
-altitude inicial.
+nenhum cenário VERSIONADO o liga ao `models/players/C-130` — `src/poc/c130-airdrop` continua
+largando o placeholder (`C130ParatrooperPlaceholder`), e o swap é tarefa futura, puramente de EDL.
+Hoje o modelo só é demonstrado sozinho (`src/poc/paratrooper-drop`), com os paraquedistas já
+declarados em queda a partir de uma altitude inicial. O lado do MODELO da liberação, porém, já
+está pronto e medido contra o C-130 de verdade — ver "O ponto de saída" abaixo.
 
 ## Por que `Effect`, e não `LifeForm`
 
@@ -38,7 +39,7 @@ A classe concreta (`xnative::Paratrooper`) deriva de `mixr::models::Effect`
 ## A FSM de estágio — mão única, não Schmitt trigger
 
 `domain::Stage{FREEFALL, CANOPY, LANDED}` + `domain::next(stage, aglM, profile)`
-(`include/domain/ParachuteFsm.hpp`). Diferente do Schmitt trigger que `models/players/template`
+(`include/domain/ParachuteFsm.hpp`). Diferente do Schmitt trigger que `models/template`
 demonstra (que pode "desengajar" de volta), as transições aqui são **de mão única**: uma vez em
 `CANOPY`, nunca volta a `FREEFALL` mesmo que a AGL suba (ex.: sobrevoar um vale sob o velame);
 `LANDED` é absorvente. Isso simplifica a regra (nenhuma histerese é necessária — o próprio
@@ -97,6 +98,55 @@ de posição a partir da velocidade que `weaponDynamics()` acabou de fixar).
   a velocidade em eixos do corpo. Sem isso, o paraquedista herdaria a atitude nariz-baixo que
   `Effect::weaponDynamics()` produz quando a velocidade de solo cai a zero (`atan2` da componente
   vertical contra velocidade horizontal zero).
+
+## O ponto de saída — 15 m atrás e 10 m abaixo da aeronave
+
+Quem libera um paraquedista é o mecanismo nativo de arma (`Stores::releaseWeapon()` →
+`AbstractWeapon::release()` → `this->clone()`), e é o **clone** — não o objeto declarado no
+`stores:` — que nasce ao lado da aeronave. Entre a liberação e o primeiro frame como jogador de
+verdade, esse clone fica em `PRE_RELEASE`, e é aí que `AbstractWeapon::dynamics()` decide onde ele
+nasce:
+
+```
+pos0b = ( getInitPosition().x(), getInitPosition().y(), -getInitAltitude() )
+pos   = posição_da_aeronave + pos0b * matriz_de_rotação_da_aeronave   // "body to earth"
+```
+
+**A armadilha está aí, e não é óbvia**: para uma arma em `PRE_RELEASE`, `initXPos`/`initYPos`/
+`initAlt` **não são** posição no terreno de jogo, como são para um player declarado direto em
+`players: {}` — são um deslocamento em eixos do **corpo da aeronave lançadora** (x para o nariz,
+y para a asa direita, altitude com sinal +para cima). Um `.edl` que não os declare deixa os três
+em zero, que é o default nativo — e o paraquedista nasce **colado** à aeronave, na posição exata
+dela.
+
+`xnative::Paratrooper` sobrescreve `dynamics()` para fixar esses dois valores enquanto
+`PRE_RELEASE`, imediatamente antes de `BaseClass::dynamics()` lê-los: por padrão, **15 m atrás e
+10 m abaixo** (`releaseOffsetAft`/`releaseOffsetBelow`, os dois `<Distance>`, ajustáveis por
+cenário; valor negativo é aceito sem clamp e põe o paraquedista à frente/acima, o que não faz
+sentido para um salto mas é decisão de cenário, não invariante deste modelo).
+
+Três consequências que caem desse ponto de inserção, e são a razão de ser ele:
+
+- **A rotação fica com o código nativo.** "Atrás" acompanha rumo, arfagem e rolamento da aeronave
+  sozinho — nenhuma trigonometria própria neste modelo. Medido: a mesma aeronave com rumo 0° põe o
+  paraquedista 15 m ao sul; com rumo 270°, 15 m a leste.
+- **A velocidade continua sendo a da aeronave**, herdada do ramo nativo logo abaixo
+  (`setVelocity(getLaunchVehicle()->getVelocity())`) — quem sai pela porta sai com a velocidade do
+  avião, não parado no ar.
+- **Um paraquedista declarado direto em `players: {}` não é afetado.** É o caso de
+  `src/poc/paratrooper-drop`, que nunca passa por `PRE_RELEASE`: lá os `initXPos`/`initYPos`/
+  `initAlt` continuam significando posição absoluta, intocados.
+
+O par também é copiado em `copyData()` — sem isso o clone que de fato voa nasceria com o default,
+e um cenário que ajustasse os slots seria ignorado em silêncio.
+
+**Medido rodando**, num cenário de bancada (não versionado) com o C-130 de `models/players/C-130`
+liberando um `Paratrooper` de verdade pelo `StoresMgr`, contra um controle com os dois offsets
+zerados (o comportamento de antes desta mudança): **15,001 m atrás e 9,998 m abaixo** com o
+default, e 40,003 m / 24,995 m com os slots em 40/25 — os dois em eixos do corpo da aeronave, que
+naquele instante voava com 15° de rolamento e 6° de arfagem. A comparação é DIFERENCIAL contra o
+controle de propósito: uma leitura absoluta carrega o atraso de um frame entre o posicionamento
+(fase 0) e a amostragem do `MsgFeed` (laço de fundo), ~1,5 m a 77 m/s.
 
 ## A rede de segurança contra o `CRASH_EVENT` genérico
 
