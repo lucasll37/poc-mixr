@@ -3,3 +3,4 @@
 - monitor groot
 - interface gráfica para montar edl
 - testes determinismo
+- começar a por lógica dentro da BT com comportamento aleatório (TUNOUR LENTO)
