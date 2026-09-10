@@ -12,8 +12,9 @@ import os
 import shutil
 
 from conan import ConanFile
+from conan.errors import ConanException
 from conan.tools.scm import Git
-from conan.tools.files import replace_in_file
+from conan.tools.files import load, replace_in_file
 from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout
 
 
@@ -137,6 +138,130 @@ class Recipe(ConanFile):
             "INSTALL(TARGETS Groot RUNTIME DESTINATION ${GROOT_BIN_DESTINATION} )\n"
             "INSTALL(TARGETS behavior_tree_editor LIBRARY DESTINATION ${GROOT_LIB_DESTINATION} )",
         )
+
+        # FIX 6: o modo MONITOR do Groot FECHA SOZINHO, sem dialogo e sem
+        # mensagem, poucos milissegundos depois de conectar. Causa raiz, lida no
+        # fonte dos dois lados (ver CLAUDE.md, secao "Groot", armadilha no 3):
+        #
+        #   - 'PublisherZMQ::createStatusBuffer()' publica, 3 bytes por no, o
+        #     UID do TreeNode (bt_zmq_publisher.cpp: WriteScalar(..., node->UID())).
+        #   - 'SidepanelMonitor::on_timer()' le esse campo e o passa DIRETO como
+        #     INDICE para '_loaded_tree.node(index)' -- que e' '&_nodes.at(index)'
+        #     sobre um std::deque (bt_editor_base.h) e portanto LANCA
+        #     std::out_of_range. O mapa certo (_uid_to_index) existe, e' montado
+        #     corretamente no Connect e ate' usado duas linhas abaixo, no laco de
+        #     TRANSICOES -- so' o laco de STATUS o ignora.
+        #   - o unico 'catch' em escopo e' 'catch(zmq::error_t&)', que nao pega
+        #     std::out_of_range. Como 'on_timer' e' slot de um QTimer de 20 ms e o
+        #     main.cpp do Groot e' um 'return app.exec();' puro (sem try/catch,
+        #     sem override de QApplication::notify(), sem set_terminate), a
+        #     excecao escapa do laco de eventos -> std::terminate() -> SIGABRT.
+        #
+        # Por que isso e' intermitente ("por vezes"): o contador de UID do BT.CPP
+        # e' um 'static uint16_t uid = 1' que NUNCA zera (tree_node.cpp), com
+        # escopo por .so de plugin (medido: 'nm -C libflight.so' mostra
+        # 'BT::getUID()::uid' como simbolo LOCAL). Logo, so' a PRIMEIRA arvore
+        # construida naquele .so tem UIDs 1..N -- que e' o unico caso em que a
+        # confusao UID/indice passa despercebida. Com 8 aeronaves construindo a
+        # arvore preguicosamente, em paralelo, sob 'g_treeBuildMutex', quem fica
+        # em primeiro e' corrida de thread.
+        #
+        # A prova de que e' descuido pontual, e nao invariante de desenho: o
+        # MESMO campo do fio e' lido corretamente em sidepanel_replay.cpp, via
+        # 'uid_to_index.at(uid)'.
+        #
+        # O marcador 'POC-MIXR-FIX6' aparece nas mensagens de qDebug de 6c/6d --
+        # ou seja, sobrevive como literal no binario. E' isso que
+        # scripts/find_groot.sh usa para avisar quando o Groot em cache e'
+        # anterior a esta correcao (um pacote velho reintroduz o bug em
+        # silencio). Todos os replace_in_file abaixo sao strict (default): se a
+        # tag 1.0.0 mudar, o build FALHA em vez de aplicar meio patch.
+        monitor = os.path.join("bt_editor", "sidepanel_monitor.cpp")
+
+        # 6a -- o laco de STATUS, a causa direta.
+        replace_in_file(
+            self, monitor,
+            "                uint16_t index = flatbuffers::ReadScalar<uint16_t>(&buffer[offset]);\n"
+            "                AbstractTreeNode* node = _loaded_tree.node( index );",
+            "                // POC-MIXR-FIX6: o campo do fio e' o UID do TreeNode, NAO o\n"
+            "                // indice no deque de nos do Groot. UID desconhecido e' PULADO.\n"
+            "                const uint16_t uid_st = flatbuffers::ReadScalar<uint16_t>(&buffer[offset]);\n"
+            "                const auto it_st = _uid_to_index.find( uid_st );\n"
+            "                if( it_st == _uid_to_index.end() ) continue;\n"
+            "                const int index = it_st->second;\n"
+            "                if( index < 0 || static_cast<size_t>(index) >= _loaded_tree.nodesCount() ) continue;\n"
+            "                AbstractTreeNode* node = _loaded_tree.node( index );",
+        )
+
+        # 6b -- o laco de TRANSICOES: ja usa o mapa, mas com '.at()', que lanca o
+        # MESMO std::out_of_range quando o publicador reconstroi a arvore com o
+        # Groot ja conectado (reset()/copyData()/shutdown, ou o execv de
+        # "reiniciar" do ./app).
+        replace_in_file(
+            self, monitor,
+            "                const uint16_t index = _uid_to_index.at(uid);",
+            "                // POC-MIXR-FIX6: UID desconhecido e' PULADO, nunca '.at()'.\n"
+            "                const auto it_tr = _uid_to_index.find( uid );\n"
+            "                if( it_tr == _uid_to_index.end() ) continue;\n"
+            "                const uint16_t index = static_cast<uint16_t>(it_tr->second);\n"
+            "                if( static_cast<size_t>(index) >= _loaded_tree.nodesCount() ) continue;",
+        )
+
+        # 6c -- rede de seguranca no laco de status. O catch novo vem DEPOIS do
+        # 'zmq::error_t&' (nunca antes: error_t deriva de std::exception, e um
+        # catch mais generico primeiro engoliria o especifico).
+        replace_in_file(
+            self, monitor,
+            "    catch( zmq::error_t& err)\n"
+            "    {\n"
+            "        qDebug() << \"ZMQ receive failed: \" << err.what();\n"
+            "    }",
+            "    catch( zmq::error_t& err)\n"
+            "    {\n"
+            "        qDebug() << \"ZMQ receive failed: \" << err.what();\n"
+            "    }\n"
+            "    catch( const std::exception& err)\n"
+            "    {\n"
+            "        qDebug() << \"POC-MIXR-FIX6: excecao ignorada no laco de status: \" << err.what();\n"
+            "    }",
+        )
+
+        # 6d -- o mesmo no caminho de CONNECT: 'getTreeFromServer()' chama
+        # 'models.at(registration_ID)' (utils.cpp) dentro de um try que tambem so'
+        # pega zmq::error_t. O 'return false' faz on_Connect() cair no QMessageBox
+        # "Was not able to connect" -- a GUI AVISA em vez de sumir.
+        replace_in_file(
+            self, monitor,
+            "    catch( zmq::error_t& err)\n"
+            "    {\n"
+            "        qDebug() << \"ZMQ client receive failed: \" << err.what();\n"
+            "        return false;\n"
+            "    }",
+            "    catch( zmq::error_t& err)\n"
+            "    {\n"
+            "        qDebug() << \"ZMQ client receive failed: \" << err.what();\n"
+            "        return false;\n"
+            "    }\n"
+            "    catch( const std::exception& err)\n"
+            "    {\n"
+            "        qDebug() << \"POC-MIXR-FIX6: falha ao montar a arvore recebida: \" << err.what();\n"
+            "        return false;\n"
+            "    }",
+        )
+
+        # 6e -- pos-condicao. Os replace_in_file acima ja sao strict, mas isto
+        # cobre o caso oposto: um upstream que mude o TEXTO sem mudar o defeito
+        # (ex.: um '.at()' novo em outro ponto do mesmo arquivo).
+        patched = load(self, monitor)
+        if "_uid_to_index.at(" in patched:
+            raise ConanException(
+                "FIX 6: ainda ha '_uid_to_index.at(' em sidepanel_monitor.cpp -- "
+                "um '.at()' nao mapeado mata a janela do Groot no primeiro UID "
+                "desconhecido. Ver deps/groot/conanfile.py.")
+        if patched.count("POC-MIXR-FIX6") < 4:
+            raise ConanException(
+                "FIX 6: marcadores POC-MIXR-FIX6 de menos em sidepanel_monitor.cpp "
+                "-- algum dos quatro passos nao aplicou. Ver deps/groot/conanfile.py.")
 
     def layout(self):
         cmake_layout(self)

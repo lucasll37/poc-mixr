@@ -90,10 +90,23 @@ create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Gr
 update-bt: build ## Sincroniza o <TreeNodesModel> de toda arvore de configs/ com a factory.
 	python3 tools/update_bt_models.py --binary $(BUILD_DIR)/tools/dump-tree-model
 
-open-groot: ## Abre o Groot (editor/monitor de arvores BT.CPP) -- ver INSTALL.md secao 4.
-	@GROOT_BIN="$$($(ROOT)/scripts/find_groot.sh 2>/dev/null)"; \
+# Log em $(ROOT)/build/groot.log -- o MESMO arquivo do 'open-groot' da raiz, de
+# proposito: nao importa por qual Makefile o Groot foi aberto, o rastro fica num
+# lugar so'. Ver a armadilha no 3 da secao "Groot" do CLAUDE.md -- este alvo
+# mandava a saida do Groot para /dev/null e, com ela, a unica pista de que ele
+# tinha ABORTADO em vez de ser fechado. FG=1 roda em primeiro plano.
+open-groot: ## Abre o Groot (editor/monitor BT.CPP). Log em <raiz>/build/groot.log; FG=1 roda no terminal.
+	@GROOT_LOG="$(ROOT)/build/groot.log"; \
+	GROOT_BIN="$$($(ROOT)/scripts/find_groot.sh)"; \
 	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
-		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
+		mkdir -p "$$(dirname "$$GROOT_LOG")"; \
+		{ echo; echo "=== $$(date -Is) -- $$GROOT_BIN"; } >> "$$GROOT_LOG"; \
+		if [ -n "$$FG" ]; then \
+			"$$GROOT_BIN" 2>&1 | tee -a "$$GROOT_LOG"; \
+		else \
+			setsid "$$GROOT_BIN" >> "$$GROOT_LOG" 2>&1 & \
+			echo "open-groot: saida (inclusive um fechamento inesperado) em $$GROOT_LOG"; \
+		fi; \
 	else \
 		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan."; \
 	fi

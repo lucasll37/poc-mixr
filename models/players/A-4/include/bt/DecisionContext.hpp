@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bt/NodeContext.hpp"
+#include "domain/AerobaticPlan.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -46,6 +47,12 @@ public:
    virtual domain::PatrolPlan& patrolPlan() = 0;
    virtual domain::RtbPlan& rtbPlan() = 0;
    virtual const domain::ThreatPolicy& threatPolicy() const = 0;
+
+   // Quando fazer a proxima acrobacia, e por quanto tempo mante-la. Mesmo
+   // contrato dos planos acima: o estado sobrevive entre ticks, e quem o
+   // configura/semeia e' BtBehavior::configurePlans() -- o no
+   // ( SlowRoll ) so o avanca e le.
+   virtual domain::AerobaticPlan& aerobaticPlan() = 0;
 
    // parametros do ciclo e dos slots do EDL
    virtual double getFrameDt() const = 0;

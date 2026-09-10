@@ -36,9 +36,17 @@
      C-310 (aqui nao existe motor[1]).
   4. Um SAS (stability augmentation system) que o c310ap.xml NAO tem:
      amortecedores de taxa em rolagem/arfagem (fcs/roll-rate-damper,
-     fcs/pitch-rate-damper) e um nivelador de asas sempre ativo
-     (fcs/wing-leveler-always-on) - nenhum gateado por ap/heading_hold ou
-     ap/altitude_hold. Ver "LIMITE CONHECIDO" abaixo para o porque.
+     fcs/pitch-rate-damper) e um nivelador de asas (fcs/wing-leveler-raw,
+     via fcs/wing-leveler-gated). Ver "LIMITE CONHECIDO" abaixo para o
+     porque de existirem.
+     ATUALIZADO: o nivelador de asas JA NAO e incondicional - ele e gateado
+     em ap/heading_hold == 1, que xnative::FlightAction::execute() mantem
+     ligado em todo voo normal. Isso preserva byte a byte o comportamento
+     de todo cenario existente E abre o unico caso em que o nivelador
+     impedia a manobra: o no ( SlowRoll ), que desliga o heading hold para
+     tomar o aileron e fazer um tonneau. Sem o gate, a aeronave trava entre
+     ~50 e ~72 graus de banco (a conta esta no comentario do proprio bloco,
+     mais abaixo). Os amortecedores de TAXA seguem incondicionais.
 
   As mesmas ressalvas do c310ap.xml aplicam: 'gear/unit[2]/WOW' e
   'gear/unit/WOW' so importam em solo, e nenhum cenario desta PoC-mixr
@@ -231,26 +239,67 @@ ROLL CHANNEL
   </pure_gain>
 
   <!--
-  NIVELADOR DE ASAS, SEMPRE ATIVO - o amortecedor de rolagem acima so
-  reage a TAXA (p), sem memoria de angulo: sozinho ele elimina a
-  ACELERACAO da divergencia mas deixa a celula estabilizar numa taxa de
-  rolagem constante e nao-nula (medido rodando: ~0.2 rad/s sustentado,
-  banco crescendo linear sem limite). O 'wing leveler' que ja existia no
-  arquivo (fcs/roll-ap-error-pid/fcs/roll-ap-autoswitch) so contribui
-  quando ap/attitude_hold == 1, que este projeto nunca liga - por isso um
-  regulador novo e mais simples, sem gate nenhum: mola proporcional pura
-  puxando o angulo de banco de volta a zero, somada ao heading-hold e ao
-  amortecedor de taxa acima.
+  NIVELADOR DE ASAS - o amortecedor de rolagem acima so reage a TAXA (p),
+  sem memoria de angulo: sozinho ele elimina a ACELERACAO da divergencia
+  mas deixa a celula estabilizar numa taxa de rolagem constante e nao-nula
+  (medido rodando: ~0.2 rad/s sustentado, banco crescendo linear sem
+  limite). O 'wing leveler' que ja existia no arquivo
+  (fcs/roll-ap-error-pid/fcs/roll-ap-autoswitch) so contribui quando
+  ap/attitude_hold == 1, que este projeto nunca liga - por isso um
+  regulador novo e mais simples: mola proporcional pura puxando o angulo de
+  banco de volta a zero, somada ao heading-hold e ao amortecedor de taxa
+  acima.
+
+  GATEADO EM ap/heading_hold (era incondicional ate a acrobacia existir).
+  A conta que obrigou a mudanca, com stick de aileron cheio
+  (fcs/aileron-cmd-norm = +1, escrito por
+  JSBSimModel::setControlStickRollInput -> FCS->SetDaCmd): o aileron
+  LIQUIDO na superficie e clip(ap/aileron_cmd + 1, +-1), e ele ZERA quando
+  0.8*phi + 0.6*p = 1, ou seja em 71.6 graus de banco parado, e em apenas
+  50 graus a 0.5 rad/s de taxa (quanto mais rapido se entra na rolagem,
+  MAIS CEDO a autoridade morre). O aileron nunca fica negativo: ele apenas
+  zera, a rolagem para de acelerar e p decai pelo amortecimento
+  aerodinamico. Resultado medido no papel antes de rodar: sem gate a
+  aeronave TRAVA entre ~50 e ~72 graus de banco e nunca fecha um tonneau -
+  e o modo de falha e MUDO, sem erro nenhum, so uma guinada inclinada.
+
+  Detalhe que vale saber: attitude/phi-rad e um atan2 SEM wrap
+  (FGMatrix33::GetEuler; so psi e normalizado para [0,2pi)), logo vive em
+  (-180, 180]. Passados 180 graus o sinal deste nivelador INVERTE e ele
+  passa a EMPURRAR o giro. O arco realmente bloqueado e [~71.6, 180], nao o
+  giro inteiro - a segunda metade sempre foi assistida.
+
+  POR QUE ap/heading_hold E O GATE CERTO, e por que isto NAO muda nenhum
+  cenario existente: xnative::FlightAction::execute() liga
+  setHeadingHoldMode(true) em TODA decisao atuada do voo normal, entao
+  ap/heading_hold vale 1 o tempo todo e o nivelador segue exatamente como
+  antes. Ele so sai do caminho no unico momento em que atrapalha: quando o
+  no ( SlowRoll ) desliga o heading hold para tomar o aileron. Nao ha como
+  fazer isso do lado C++ - JSBSimModel e 'final' com fdmex/propMgr
+  protected, e nenhuma propriedade arbitraria do JSBSim e alcancavel de um
+  plugin.
+
+  O AMORTECEDOR DE TAXA CONTINUA INCONDICIONAL, de proposito: durante a
+  acrobacia e ele que limita a taxa de rolagem (o aileron liquido vira
+  clip(stick - 0.6*p)), ou seja e ele que faz o slow roll ser SLOW. E, fora
+  da acrobacia, e ele que continua segurando a divergencia da celula.
   -->
-  <pure_gain name="fcs/wing-leveler-always-on">
+  <pure_gain name="fcs/wing-leveler-raw">
     <input> attitude/phi-rad </input>
     <gain> -0.8 </gain>
   </pure_gain>
 
+  <switch name="fcs/wing-leveler-gated">
+    <default value="0.0"/>
+    <test value="fcs/wing-leveler-raw">
+      ap/heading_hold == 1
+    </test>
+  </switch>
+
   <summer name="fcs/aileron-cmd-final">
     <input> fcs/heading-hold-aileron-cmd </input>
     <input> fcs/roll-rate-damper </input>
-    <input> fcs/wing-leveler-always-on </input>
+    <input> fcs/wing-leveler-gated </input>
     <clipto>
       <min>-1.0</min>
       <max> 1.0</max>

@@ -117,8 +117,12 @@ function primaryRolesFor(factory, byFactory) {
 // Entre os itens JÁ presentes em node.children.components, acha o
 // PRIMEIRO cuja cadeia de herança inclui o baseClass do papel -- mesma
 // semântica de findByType() (primeiro que casa vence; o MIXR não promete
-// nenhuma ordem além dessa). Devolve o item {key, node} ou null (papel
-// vazio -- vira placeholder na árvore).
+// nenhuma ordem além dessa). Devolve o item {key, node} ou null.
+//
+// Serve só para AGRUPAR e rotular o que já está montado (RoleSection, em
+// edl_builder.jsx: `dynamicsModel -> JSBSimModel` em vez de uma lista
+// anônima de 12 componentes). Papel vazio NÃO vira mais nada na tela --
+// ver a nota sobre a remoção das "pendências" logo abaixo.
 function roleFillStatus(node, role, byFactory) {
   const items = (node.children && node.children.components) || [];
   for (const it of items) {
@@ -129,63 +133,84 @@ function roleFillStatus(node, role, byFactory) {
   return null;
 }
 
-// Para cada slot-filho (isChildSlot) que a classe do nó declara mas que
-// hoje não tem NENHUM item -- devolve o slotDef, na ordem do catálogo.
-// Generaliza o "placeholder" para QUALQUER slot estrutural vazio (ex.:
-// Station.dataRecorder), não só os papéis especiais de Player acima --
-// que ficam de fora daqui de propósito quando 'components' já tem pelo
-// menos um item (mesmo que nenhum papel esteja preenchido): a seção de
-// papéis já cobre esse caso com um placeholder por papel vazio.
-function emptyChildSlots(node, byFactory) {
-  const entry = byFactory[node.factory];
-  if (!entry) return [];
-  return entry.slots.filter(isChildSlot).filter((s) => {
-    const items = node.children[s.name];
-    return !items || items.length === 0;
-  });
+/* ---------------------------- itens em aberto ----------------------------- */
+
+// NÃO EXISTE MAIS "PENDÊNCIA" -- e a razão está medida, não é gosto.
+//
+// Havia aqui `emptyChildSlots()`/`nodePendencies()`/`collectPendencies()`,
+// que chamavam de "pendência" todo slot-filho declarado pelo catálogo e
+// deixado vazio, mais todo papel primário de Player sem preenchimento. Em
+// EDL praticamente TODO slot é opcional com default sensato, então essa
+// conta media o TAMANHO da árvore, não o que falta nela: 145 para as 90
+// entradas de src/poc/dis/flight, 321 para as 153 de built-in_mixr_1 e
+// 2280 para as 771 de sandbox/A4-6DOF -- os três cenários corretos e
+// rodando (razão ~1,6 / 2,1 / 3,0 por nó). Nos 2280: 518 eram o slot
+// genérico `components` vazio (o normal em toda classe derivada de
+// Component), 720 eram os 10 papéis cobrados de 72 TEMPLATES de armamento
+// dentro de StoresMgr.stores (uma bomba no cabide não tem piloto nem
+// rádio; os 8 ( Aircraft ) de verdade tinham ZERO), 336 eram o par
+// mutuamente exclusivo não usado (o cenário posiciona por xPos/yPos, então
+// latitude/longitude eram cobradas em cima) e 58 eram falso positivo puro
+// -- slot COM valor reportado como vazio, porque a regra só olhava
+// node.children e nunca node.slotValues (ex.: WorldModel.latitude
+// = -22.25, Tws.threshold = ( Decibel 0.0 )).
+//
+// Apertar o predicado não salvava: aplicando TODAS as correções mecânicas
+// possíveis o A4-6DOF ainda dava 558, e os 558 restantes eram slots
+// opcionais legítimos. O MIXR não tem conceito de slot obrigatório
+// (BEGIN_SLOT_MAP/ON_SLOT só registram setters com default), então
+// "obrigatório" não é derivável do fonte -- a régua estava errada na raiz.
+//
+// O que sobra é este coletor: só o que o AUTOR ainda tem de resolver antes
+// de exportar. Os alvos de arraste da árvore (o PlaceholderCard de um slot
+// vazio, em ChildSlotSection) continuam intactos -- aquilo é a mecânica de
+// edição, nunca foi contagem.
+
+// Placeholder de template (`@NUM_TC_THREADS@`, `@RUN_ID@`). Mora AQUI, e
+// não em edl_parser_core.js, porque os dois lados precisam da mesma regra
+// e o `require` só existe na direção parser -> core (nunca o contrário, e
+// compile.js concatena core ANTES do parser no navegador). Fonte única.
+const TOKEN_PLACEHOLDER_RE = /@([A-Za-z_][A-Za-z0-9_]*)@/g;
+
+// Toda ocorrência de @TOKEN@ que ainda está literal num valor de folha da
+// árvore. Varre TODOS os tipos de folha -- inclusive `unit`, `number` e
+// `vector`, que a varredura antiga (só `raw`/`text`) deixava passar: um
+// `( Meters @ALT@ )` era mudo. Também desce nas folhas de texto de lista.
+//
+// `label` segue a MESMA convenção de extractPlacements(): a chave que o
+// PAI deu ao item (`falcon1: ( Aircraft ... )`), não um valor de slot.
+function leafTextOf(sv) {
+  if (!sv || typeof sv !== "object") return "";
+  if (sv.kind === "raw") return typeof sv.raw === "string" ? sv.raw : "";
+  return typeof sv.value === "string" ? sv.value : "";
 }
 
-// Pendências de UM nó só (sem descer aos filhos) -- papéis primários sem
-// preenchimento + slots-filho vazios, excluindo 'components' quando há
-// papéis (mesma exclusão já usada no badge "N pendentes" do cartão: um
-// Aircraft com 'components' vazio já lista os 10 papéis, contar
-// 'components' de novo seria a MESMA ausência duas vezes). Base
-// compartilhada por `missingCount()` (edl_builder.jsx, o badge por cartão)
-// e por `collectPendencies()` (abaixo, o resumo da árvore inteira) -- as
-// duas leem daqui, nunca duplicam o critério.
-function nodePendencies(node, byFactory) {
-  const roles = primaryRolesFor(node.factory, byFactory);
-  const items = [];
-  for (const role of roles) {
-    if (!roleFillStatus(node, role, byFactory)) {
-      items.push({ kind: "role", role: role.role, baseClass: role.baseClass });
+function collectOpenIssues(root) {
+  const out = [];
+  function scan(text, node, label, slotName) {
+    if (typeof text !== "string" || text.indexOf("@") === -1) return;
+    TOKEN_PLACEHOLDER_RE.lastIndex = 0;
+    let m;
+    while ((m = TOKEN_PLACEHOLDER_RE.exec(text))) {
+      out.push({
+        nodeId: node.id,
+        factory: node.factory,
+        label: label || node.factory,
+        slotName,
+        token: m[1],
+      });
     }
   }
-  for (const slotDef of emptyChildSlots(node, byFactory)) {
-    if (roles.length > 0 && slotDef.name === "components") continue;
-    items.push({ kind: "slot", slotName: slotDef.name, objectTypes: slotDef.objectTypes, textOnly: !!slotDef.textOnly });
-  }
-  return items;
-}
-
-// Percorre a árvore INTEIRA e devolve uma entrada por PENDÊNCIA (não por
-// nó) -- é o que alimenta a aba "Pendências" (visível sempre, sem precisar
-// expandir cartão nenhum). `label` segue a MESMA convenção de
-// extractPlacements(): a chave que o PAI deu ao item (`falcon1: (Aircraft
-// ...)`), não um valor de slot -- vale pra qualquer classe, não só Player.
-function collectPendencies(root, byFactory) {
-  const out = [];
   function walk(node, label) {
     if (!node || node.isText) return;
-    const entry = byFactory[node.factory];
-    if (entry) {
-      for (const p of nodePendencies(node, byFactory)) {
-        out.push({ nodeId: node.id, factory: node.factory, label: label || node.factory, ...p });
-      }
-    }
+    const sv = node.slotValues || {};
+    Object.keys(sv).forEach((slotName) => scan(leafTextOf(sv[slotName]), node, label, slotName));
     const children = node.children || {};
     Object.keys(children).forEach((slotName) => {
-      children[slotName].forEach((item) => walk(item.node, item.key));
+      children[slotName].forEach((item) => {
+        if (item.node && item.node.isText) scan(item.node.text, node, label, slotName);
+        else walk(item.node, item.key);
+      });
     });
   }
   walk(root, null);
@@ -193,7 +218,8 @@ function collectPendencies(root, byFactory) {
 }
 
 // Caminho da RAIZ até um nó (ids, inclusive das duas pontas) -- usado pra
-// "pular" de uma pendência (aba Pendências) até o cartão dela na árvore:
+// "pular" de um item em aberto (aba Abertos) ou de um aviso de carga
+// (LoadWarningsBanner) até o cartão dele na árvore:
 // expandir todo id deste caminho é o que garante que o cartão-alvo fique
 // VISÍVEL (um ancestral colapsado esconderia ele), sem precisar expandir a
 // árvore inteira. Devolve null se o id não existe na árvore atual (pode
@@ -720,7 +746,7 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildCatalogIndex, originLabel, originRank, isCompatible, isOfferable, compatibleFactories,
     isLeafSlot, isChildSlot, defaultKindFor,
-    primaryRolesFor, roleFillStatus, emptyChildSlots, nodePendencies, collectPendencies, findAncestorPath,
+    primaryRolesFor, roleFillStatus, TOKEN_PLACEHOLDER_RE, collectOpenIssues, findAncestorPath,
     countUncataloged,
     freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,

@@ -3588,6 +3588,80 @@ fim; o de `./app` teve o fluxo de estado conferido por inspeção (única via de
 `activeTab`/`uiDepth`, confirmado por `grep`) e um teste de fumaça sob pty (drag → troca de
 aba no meio → volta → clique) sem travar/crashar.
 
+**Passada seguinte — a aba "Pendências" saiu inteira; no lugar dela, "Abertos", que conta só o
+que o autor ainda tem de resolver.** Relatado carregando
+`sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in` (7292 linhas, 771 nós): a aba anunciava
+**2280 pendências** num cenário que roda perfeitamente, quando a única coisa de fato em aberto
+eram os 3 placeholders `@<>@`.
+
+- **Não era bug de contagem, era erro de categoria — e a medição é o argumento.**
+  `collectPendencies()` chamava de "pendência" todo slot-filho que o catálogo declara e que o
+  autor deixou vazio; como em EDL praticamente todo slot é opcional com default sensato, aquilo
+  media o **tamanho** da árvore. Medido nos três cenários de produção, todos corretos e rodando:
+  `flight` 90 nós → 145; `built-in_mixr_1` 153 → 321; `A4-6DOF` 771 → **2280** (razão 1,6 / 2,1 /
+  3,0 por nó). Dos 2280: **518** eram o slot genérico `components` vazio (o normal em qualquer
+  classe derivada de `Component`); **720** eram os 10 papéis primários cobrados de **72 templates
+  de armamento** dentro de `StoresMgr.stores` — verificado por caminho, dos 80 nós que herdam de
+  `Player` só **8** estão sob `simulation/players`, e esses 8 `( Aircraft )` tinham **zero**
+  pendência de papel (uma bomba no cabide não tem piloto nem rádio); **336** eram o par
+  mutuamente exclusivo não usado (o cenário posiciona por `xPos`/`yPos` e `initXPos`/`initYPos`,
+  então `latitude`/`initLatitude` — que aparece ZERO vezes no arquivo — eram cobradas em cima);
+  e **58** eram falso positivo puro.
+- **Os 58 eram bug objetivo, não política**: `emptyChildSlots()` perguntava "este slot tem
+  ITENS-FILHO?" quando queria dizer "está preenchido?" — só olhava `node.children[nome]`, nunca
+  `node.slotValues[nome]`. Um slot que é ao mesmo tempo folha e objeto ficava eternamente
+  "vazio" com valor escrito no arquivo e visível no editor: `WorldModel.latitude = -22.25`,
+  `Bullseye.longitude = ( Degrees -42.48 )`, `Tws.threshold = ( Decibel 0.0 )`.
+- **Apertar o predicado NÃO salvava a régua — medido antes de decidir.** Aplicando todas as
+  correções mecânicas possíveis (valor de folha conta como preenchido + papéis só para players
+  implantados + `components` nunca + `textOnly` nunca + grupos alternativos), o A4-6DOF ainda
+  dava **558**, e os 558 eram slots opcionais legítimos (`Steerpoint.action` ×136,
+  `Antenna.gainPattern` ×40, `Gps.route`, `Iff.channels`…). O MIXR **não tem conceito de slot
+  obrigatório** — `BEGIN_SLOT_MAP`/`ON_SLOT` só registram setters com default —, então
+  "obrigatório" não é derivável do fonte nem por tabela curada que não apodreça. Daí a remoção,
+  não o ajuste.
+- **`collectOpenIssues(root)` (novo, `edl_builder_core.js`)** devolve uma entrada por ocorrência
+  de `@TOKEN@` ainda literal num valor de folha. Duas diferenças em relação à varredura antiga:
+  varre **todos** os tipos de folha (a antiga só via `raw`/`text`, então um `( Meters @ALT@ )`
+  passava mudo) e roda sobre a árvore **viva**, memoizada em `[root]` — é isso que faz a
+  contagem cair na hora quando o campo é corrigido, em vez de congelar no instante da carga.
+- **`TOKEN_PLACEHOLDER_RE` mudou de casa** para `edl_builder_core.js`, e `edl_parser_core.js`
+  passou a consumi-lo de lá. A direção é obrigatória, não estética: o `require` só existe no
+  sentido parser → core, e `compile.js` concatena core ANTES do parser — definir o regex nos dois
+  lados seria a duplicação que o comentário de `nodePendencies` já proibia ("as duas leem daqui").
+  O aviso `token-placeholder` da CARGA saiu junto: `warnings` ficou sendo fato sobre o **arquivo
+  lido** (fábrica/slot desconhecido, ASCII, multi-root) e a aba Abertos, fato sobre a **árvore
+  atual** — antes o sinal ruidoso era permanente (contagem fixa no rótulo da aba) e o acionável
+  era descartável (banner que some no primeiro clique). Estava invertido.
+- **`RoleSection` deixou de renderizar papel VAZIO.** "Sistemas principais" continua agrupando e
+  rotulando os papéis PREENCHIDOS (é o que faz um `( Aircraft )` de 12 componentes sair legível
+  em vez de virar lista anônima), mas o cartão tracejado "nenhum DynamicsModel encontrado" foi
+  embora — era o andaime de autoria que virava as 720 linhas acima. O `PlaceholderCard` de
+  "outros componentes" e o de **todo slot-filho vazio** (`ChildSlotSection`) **ficaram**: aquilo
+  nunca foi contagem, é o alvo de arraste pelo qual se acrescenta qualquer componente. Confirmado
+  rodando: 49 alvos de arraste continuam na árvore do A4-6DOF.
+- **Armadilha a não repetir num teste de corpus**: NÃO afirmar "total de itens em aberto ==
+  ocorrências de `@TOKEN@` no TEXTO do arquivo". Quatro arquivos rastreados (`src/poc/dis/flight`,
+  `onnx-policy`, `python-flight`, `src/poc/dis/bandit`) têm token dentro de comentário `//`, que o
+  tokenizador descarta — a asserção nasceria vermelha. Afirmar sobre a ÁRVORE.
+- **Assimetria real, registrada mas deliberadamente NÃO exposta na UI**: rodando o parser de
+  verdade (`./dist/bin/edlcheck`) no A4-6DOF sai **1** erro, não 3 —
+  `error while setting slot name: numTcThreads`. Os dois `@RUN_ID@` estão dentro de string entre
+  aspas (`fileName: "..._@RUN_ID@.acmi"`), são conteúdo válido de `base::String` e o parser
+  aceita; só `numTcThreads: @NUM_TC_THREADS@` é valor NU em slot numérico e quebra. O
+  discriminador já existe pronto em `serializeTextLiteral()` (bare × quoted). Ficou de fora por
+  decisão explícita — os três entram no mesmo contador, que é como o autor lê o arquivo —, mas
+  está aqui para quem um dia quiser separar severidade.
+- **Verificado no DOM de verdade, não só por teste puro**: sem Chromium disponível (o download do
+  binário do Puppeteer é bloqueado neste ambiente), a página foi carregada em `jsdom` com
+  `runScripts:"dangerously"` + `resources:"usable"` (o React vem do cdnjs, alcançável). Medido:
+  a página monta (a armadilha de tela branca já registrada nesta seção não voltou), as abas saem
+  `["Árvore","Mapa","Abertos ✓"]`, carregar o A4-6DOF pelo `<input type=file>` real leva a
+  **"Abertos (3)"** com os três itens certos, clicar num item pula pra árvore e seleciona o nó,
+  corrigir `@NUM_TC_THREADS@` para `4` derruba pra **"Abertos (2)"** ao vivo, e o console fica
+  sem nenhum erro de runtime. Mais: round-trip do A4-6DOF estável byte a byte
+  (`projectToEdl(parse(projectToEdl(parse(src))))` idêntico) e `edl_lint.py` limpo.
+
 ## `src/node` — runner headless e independente de um cenário
 
 Quarto binário do host (depois de `app`, `edlcheck`, `plugininfo`), mas de natureza diferente dos
@@ -3815,15 +3889,96 @@ de abortar com erro. O teste `tree-model-sync` (`meson test`, suíte `tree`) pas
 `update_bt_models.py --check` — mesma função de antes, script novo. O binário `dump-tree-model`
 em si não mudou: é reusado pelos dois alvos de Makefile e pelo teste, como já era.
 
+**Armadilha nº3 — o Groot FECHA SOZINHO, sem diálogo e sem mensagem, poucos milissegundos depois
+de conectar o Monitor.** Ao contrário das duas acima, esta não é de edição: é do **modo Monitor**,
+e é um bug do próprio Groot 1.0.0. Diagnóstico completo, lido no fonte dos dois lados:
+
+1. `PublisherZMQ::createStatusBuffer()` publica, 3 bytes por nó, o **UID** do `TreeNode`
+   (`bt_zmq_publisher.cpp:105-115`).
+2. `SidepanelMonitor::on_timer()` lê esse campo e o passa **direto como ÍNDICE** para
+   `_loaded_tree.node(index)` (`sidepanel_monitor.cpp:52-56`) — que é `&_nodes.at(index)` sobre um
+   `std::deque` (`bt_editor_base.h:93,107-109`) e portanto **lança `std::out_of_range`**. O mapa
+   certo (`_uid_to_index`) existe, é montado corretamente no Connect e é até usado **duas linhas
+   abaixo**, no laço de transições — só o laço de *status* o ignora.
+3. O único `catch` em escopo é `catch(zmq::error_t&)` (`:82`), que não pega `std::out_of_range`.
+   Como `on_timer` é slot de um `QTimer` de 20 ms e o `main.cpp` do Groot é um `return app.exec();`
+   puro (sem try/catch, sem override de `QApplication::notify()`, sem `set_terminate`, sem handler
+   de sinal — conferido por grep no Groot inteiro), a exceção escapa do laço de eventos →
+   `std::terminate()` → **SIGABRT**.
+
+**Por que é intermitente ("por vezes") — e é aqui que este repositório entra.** O contador de UID
+do BT.CPP é um `static uint16_t uid = 1` que **nunca zera** (`tree_node.cpp:19-23`), gravado num
+`const uint16_t uid_` sem setter. **Escopo medido: por `.so` de plugin, não por processo** —
+`nm -C dist/lib/mixr-plugins/*.so` mostra `BT::getUID()::uid` como símbolo **local (`d`)** em
+`libflight.so`, `libC-130.so`, `libparatrooper.so`, `libNavstar-3.so` e `libtemplate.so`,
+consequência de a BT.CPP ser `.a` estática linkada com `gnu_symbol_visibility: 'hidden'` +
+`-Wl,--exclude-libs,ALL`. Logo, **só a PRIMEIRA árvore construída naquele `.so`** tem UIDs `1..N` —
+o único caso em que a confusão UID/índice passa despercebida. E `BtBehavior::buildTree()` é
+**preguiçoso** (primeiro `genAction()`) e serializado por `g_treeBuildMutex`: com 8 aeronaves
+decidindo em paralelo no pool T/C, **quem constrói primeiro é corrida de thread**.
+
+Medido rodando, `sandbox/A4-6DOF` (8 × `a4_N`, `flight_tree_nav.xml` = **1 nó**, deque do Groot com
+**2** entradas), lendo a faixa de UID da linha `[BtBehavior] monitor do Groot ligado`:
+
+| `MIXR_GROOT_MONITOR` | faixa de UID medida | Groot 1.0.0 sem patch |
+|---|---|---|
+| `a4_1` | `uid 1..1` | sobrevive |
+| `a4_5` | `uid 6..6` | `at(6)` num deque de 2 → **aborta** |
+| `a4_8` | `uid 7..7` | **aborta** |
+| `a4_3` | `uid 8..8` | **aborta** |
+
+Não é margem estreita: é **~7 em 8**, e o resultado troca entre execuções idênticas. Cenários de
+**uma** aeronave (`sandbox/A4-4DOF-ONNX`, `A4-4DOF-PY`) funcionavam sempre — pela mesma razão.
+
+**CORRIGIDO — "FIX 6" em `deps/groot/conanfile.py`** (a sexta correção de fonte daquela receita,
+mesmo molde das cinco anteriores): o laço de status passa a consultar `_uid_to_index` (`find` +
+`continue`, nunca `.at()`); o laço de transições troca `.at()` por `find` (fecha o caso "a árvore
+foi reconstruída com o Groot conectado" — `reset()`/`copyData()`/`shutdownNotification()`, ou o
+`execv()` de "reiniciar" do `./app`); `on_timer()` e `getTreeFromServer()` ganham
+`catch(const std::exception&)` **depois** do `catch(zmq::error_t&)` (nunca antes: `error_t` deriva
+de `std::exception`) — no caminho de Connect isso transforma o terceiro `.at()` letal,
+`models.at(registration_ID)` (`utils.cpp:422`), num `QMessageBox` em vez de uma janela que some. E
+uma pós-condição na própria receita levanta `ConanException` se sobrar qualquer `_uid_to_index.at(`
+ou se faltar marcador. **Exige reconstruir o pacote**:
+`conan remove 'groot/*' -c && conan create ./deps/groot --build=missing --settings=build_type=Release`.
+
+**Um pacote `groot` em cache ANTERIOR à FIX 6 reintroduz o bug em silêncio** — daí o marcador
+`POC-MIXR-FIX6` (literais de `qDebug` das FIX 6c/6d, que sobrevivem no binário) e o degrau novo no
+fim de `scripts/find_groot.sh`, que avisa em **stderr** quando `strings` não o encontra.
+
+**Prova de que era descuido pontual, e não invariante de desenho:** o próprio Groot lê o **mesmo
+campo do fio** corretamente em `sidepanel_replay.cpp:224-225`, via `uid_to_index.at(uid)`.
+
+**Por que ninguém tinha visto:** `make open-groot` mandava stdout **e** stderr para `/dev/null`,
+levando junto a linha `Qt has caught an exception thrown from an event handler` e o abort; e no
+WSL2 o `core_pattern` é `|/wsl-capture-crash`, então o SIGABRT não deixa artefato nenhum. Hoje o
+alvo grava em `build/groot.log` (append, com carimbo de tempo por abertura) e aceita `FG=1` para
+rodar em primeiro plano.
+
 ### Monitor ao vivo — `MIXR_GROOT_MONITOR`
 
 ```bash
-MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
+make run-node-monitor PLAYER=a4_1 SCENARIO=sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in
 ```
 
-Em outro terminal/máquina com display: `make open-groot` → aba Monitor → conectar em `localhost`
-(portas **1666** status / **1667** topologia — livres aqui; Tacview usa 1234-1239, DIS usa
-3000-3005). Sem a variável de ambiente, nada disso liga — zero custo, zero porta aberta.
+Os dois alvos de monitor (`run-node-monitor`, `run-app-monitor`) **abrem o Groot** — antes só
+exportavam a variável, e quem esperasse a janela aparecer ficava sem nada acontecendo. `GROOT=0`
+pula esse passo (máquina sem display, ou Groot já aberto). Depois: aba Monitor → conectar em
+`localhost` (portas **1666** status / **1667** topologia — livres aqui; Tacview usa 1234-1239, DIS
+usa 3000-3005). Sem a variável de ambiente, nada disso liga — zero custo, zero porta aberta.
+
+**O exemplo era `PLAYER=falcon1`, e `falcon1` não existe em cenário nenhum de `sandbox/`** (lá os
+nomes são `a4`, `a4_1..a4_8`, `c130`) — um alvo que não casa era **100% silencioso**: nenhuma porta
+abria, nada era logado, e o Groot só dizia "Was not able to connect". Hoje o **host** confere isso
+logo depois de montar a frota — `app::checkGrootMonitorTarget()`
+(`app/include/app/GrootMonitorCheck.hpp`, com uma duplicata deliberada em `src/node/main.cpp`, pela
+regra de independência de `src/node`) — e emite `LOG(WARNING)` nomeando os players reais do
+cenário. **A checagem não pode morar no modelo**: cada `BtBehavior` só conhece o próprio nome, então
+"não casei" e "ninguém casou" são indistinguíveis de lá; só o host tem a lista inteira.
+
+**Hoje só o modelo A-4 implementa o hook.** `MIXR_GROOT_MONITOR=c130` nomeia um player legítimo e
+mesmo assim é no-op completo — daí o segundo ramo da checagem, que avisa que, se a linha
+`[BtBehavior] monitor do Groot ligado` não aparecer, é o modelo que não tem o gancho.
 
 Implementação: `BtBehavior::buildTree()` (`models/players/A-4/src/ubf/BtBehavior.cpp`) liga um
 `BT::PublisherZMQ` nativo do BT.CPP para o player cujo nome bate com a variável.
@@ -3853,8 +4008,35 @@ casos (é a mesma pilha que já lê posição/combustível corretamente para amb
 
 Ciclo de vida: `PublisherZMQ` guarda `const BT::Tree&`, então precisa ser derrubado
 (`treePublisher_.reset()`) **antes** de qualquer `tree = BT::Tree()` — três lugares
-(`reset()`, `shutdownNotification()`, rebuild pós-`copyData()`). Só uma instância por **processo**
-— o próprio BT.CPP lança se tentar uma segunda.
+(`reset()`, `shutdownNotification()`, rebuild pós-`copyData()`). Só uma instância por **`.so`
+carregado** — o próprio BT.CPP lança se tentar uma segunda (o `ref_count` é `static` dentro da
+BT.CPP estática, mesmo escopo por-plugin do contador de UID acima).
+
+A linha de sucesso do `LOG(INFO)` carrega **nº de nós e faixa de UID** de propósito
+(`… 1 nos, uid 6..6`): é o diagnóstico da armadilha nº3 a um `grep` de distância — `uid 1..N`
+significa "esta é a primeira árvore construída neste plugin", qualquer outra faixa significa o
+contrário.
+
+**Duas armadilhas do `PublisherZMQ` nativo, confirmadas lendo o fonte — não redescobrir:**
+
+1. **`ref_count` fica preso em `true` se o `bind()` falhar.** O CAS
+   (`bt_zmq_publisher.cpp:34-38`) acontece **antes** dos dois `bind()`; se a porta estiver ocupada
+   (um `app` anterior ainda vivo), o construtor lança, o destrutor **nunca roda** e o flag nunca
+   volta. Todo monitor subsequente **naquele processo** passa a falhar com *"Only one instance of
+   PublisherZMQ shall be created"* — mensagem que aponta para o lugar errado.
+2. **Use-after-free em `~PublisherZMQ()`.** `callback()` agenda o envio com
+   `std::async(... sleep_for(min_time_between_msgs_); flush(); )` (40 ms no default de 25 msg/s),
+   mas o destrutor faz `delete zmq_` **no corpo** e o único ponto que espera esse future é o
+   destrutor do próprio membro `send_future_`, que só roda **depois** do corpo (e a ordem de
+   declaração no header não salva). A tarefa pendente acorda e chama `flush()` →
+   `zmq_->publisher.send(...)` sobre memória liberada. A janela abre em **todo**
+   `treePublisher_.reset()` — ou seja, no encerramento de qualquer execução com o monitor ligado.
+   Derruba o **simulador**, não o Groot. Corrigido em `deps/behaviortree/conanfile.py` (espera o
+   envio pendente antes do `delete`). Como o patch mora na `source()` da receita, ele existe só em
+   pacote **construído do fonte** — que é o caminho corrente (`scripts/deps.sh`, passo obrigatório
+   de `INSTALL.md` §4, e o mesmo que o CI usa), então é o comportamento que de fato roda aqui. Um
+   pacote **em cache** anterior ao patch o perde em silêncio: `conan remove
+   'behaviortree.cpp.asa/*' -c` antes de recriar.
 
 Medido rodando (pty, log real habilitado): a porta abre e o `LOG(INFO)` confirma com
 `MIXR_GROOT_MONITOR=falcon1`; sem a variável, nenhuma porta abre. `nm`/`ldd` no `.so` do plugin
@@ -4132,6 +4314,23 @@ gerado tem que ter **centenas** de `React.createElement` (429 hoje) e **zero** l
   `mixr::models`) e foi **removido** junto com `docs/TODO.md` — a aba Catálogo de
   `docs/manual/index.html` é a generalização do modo 2 dele; nada do resto sobrevive fora do que
   a aba absorveu.
+- **`docs/estudos/`** (pasta nova) — estudos de viabilidade em Markdown, conteúdo **lido**, fora
+  do pipeline de `make docs` (que só regenera `docs/manual/`). O primeiro é
+  `docs/estudos/snapshot-restore.md`: dá para salvar uma simulação no meio e retomá-la
+  byte-idêntica? Resposta curta: **sim, por REEXECUÇÃO (replay determinístico), nunca por captura
+  de estado**. Três coisas dali que valem para o resto do projeto, mesmo sem ninguém implementar
+  save/restore: **(1)** a causa da deriva de `reset()` do `src/rl` (~1e-5 m em `eastM`, ~1e-6 em
+  `fuelFraction`) está identificada — `JSBSimModel::reset()` termina em `fdmex->RunIC()`
+  (`JSBSimModel.cpp:870`), que **não** chama `ResetToInitialConditions()`, logo
+  `InitializeModels()` nunca roda e **o combustível não é reabastecido entre resets**;
+  **(2)** `FGPropagate::SetVState()` (`FGPropagate.cpp:606-619`) **descarta** os quatro `std::deque`
+  de histórico do Adams-Bashforth, com um `//ToDo` do próprio autor do JSBSim na linha de cima —
+  não existe caminho público para restaurar o integrador multi-step, e o `InitializeDerivatives()`
+  achata o histórico em 5 cópias iguais, o que colapsa o AB3 para Euler puro no primeiro passo;
+  **(3)** três minas latentes de determinismo, nenhuma ativa hoje, nenhuma vigiada: `rand()` global
+  do JSBSim (só dispara se alguém ligar `<noise>`/turbulência nos `.xml`), `relWpnId++` não atômico
+  com dois players armados, e `netRate: > 0` (cujo comentário de slottable em `Station.cpp:43`,
+  dizendo "20 hz", está **desatualizado** — o default é 0).
 
 ## `src/ui` — editor visual de cenário EDL (autoria, não runtime)
 

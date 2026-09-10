@@ -188,9 +188,9 @@ window.PRESENTATION_SLIDES = [
     <li><b>Um repositório só</b>, não vários espalhados</li>
     <li><b>Esteira de CI forte</b> — testes em camadas, Makefile claro</li>
     <li><b>Contrato forte de modelo</b> — <code>docs/</code>, <code>CHANGELOG.md</code></li>
-    <li><b>Ferramentas de assistência</b> — painel ao vivo, manual, editor visual</li>
+    <li><b>Ferramentas de assistência</b> — CLI rico em detalhes, manual iterativo, editor visual de .edl minimalista</li>
     <li><b>Ambiente padronizado</b> — extensão VSCode para <code>.edl</code></li>
-    <li><b>Roadmap</b> — integração com o asa-engine</li>
+    <li><b>Roadmap</b> — integração respeitando interfaces pré-existentes (asa-engine, Flight Gear)</li>
   </ul>
 `
   },
@@ -204,7 +204,7 @@ window.PRESENTATION_SLIDES = [
     <li>MIXR e BehaviorTree.CPP não são bibliotecas genéricas — são frameworks com
     <b>opiniões fortes</b> sobre como o código deveria se organizar.</li>
     <li>A aposta é usá-los como foram desenhados para ser usados, em vez de reconstruir por fora
-    aquilo que eles já resolvem por dentro.</li>
+    aquilo que eles já resolvem por dentro (reasoning, UBF, etc).</li>
     <li>É isso que faz a dinâmica de simulação do MIXR — a mesma que separa modelo A de modelo B
     sem que um conheça o outro — funcionar a nosso favor, de verdade.</li>
   </ul>
@@ -219,11 +219,14 @@ window.PRESENTATION_SLIDES = [
   <p class="lede muted"><code>asa-models</code>, <code>asa-libs</code>, <code>asa-models-r</code>
   e o próprio MIXR — cada um com seu ciclo, sua forma de versionar, sua distância dos outros.
   Hoje, tudo em um repositório integrado: a diferença entre ter o contexto da aplicação em mente, ou não.</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">
-    <svg width="36" height="36"><use href="#i-image"></use></svg>
-    <span class="tag">Imagem sugerida</span>
-    <p class="caption">Screenshot: o repositório poc-mixr integrado — um único histórico de
-    git, uma única árvore de pastas, sem asa-models/asa-libs/asa-models-r espalhados</p>
+  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;" data-media="demos/repo-org" data-media-kind="image">
+    <div class="media-empty">
+      <svg width="36" height="36"><use href="#i-image"></use></svg>
+      <span class="tag">Imagem sugerida</span>
+      <p class="caption">Screenshot: o repositório poc-mixr integrado — um único histórico de
+      git, uma única árvore de pastas, sem asa-models/asa-libs/asa-models-r espalhados</p>
+      <p class="hint">demos/repo-org.png</p>
+    </div>
   </div>
 `
   },
@@ -306,11 +309,14 @@ window.PRESENTATION_SLIDES = [
         <li>E um <code>CHANGELOG.md</code> para registrar o que mudou e quando.</li>
       </ul>
     </div>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="30" height="30"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: pasta de um modelo real — tests/, docs/, README.md,
-      CHANGELOG.md, Makefile</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/modelo-estrutura" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Screenshot: pasta de um modelo real — tests/, docs/, README.md,
+        CHANGELOG.md, Makefile</p>
+        <p class="hint">demos/modelo-estrutura.png</p>
+      </div>
     </div>
   </div>
 `
@@ -337,8 +343,14 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">1. ./app — painel de controle e observação em tempo real</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/01-app.mp4"></video>
+  <div class="demo-stage" data-media="demos/01-app" data-media-kind="video">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty" hidden>
+      <svg width="42" height="42"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo</span>
+      <p class="caption">./app — painel de controle, mostrando as telas possíveis</p>
+      <p class="hint">coloque "01-app.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
   </div>
 `
   },
@@ -348,8 +360,14 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">2. Documentação iterativa — o manual interativo</h2>
-  <div class="demo-stage">
-    <video controls playsinline src="demos/02-documentacao-iterativa.mp4"></video>
+  <div class="demo-stage" data-media="demos/02-documentacao-iterativa" data-media-kind="video">
+    <video controls playsinline hidden></video>
+    <div class="demo-empty" hidden>
+      <svg width="42" height="42"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo</span>
+      <p class="caption">Documentação iterativa — o manual interativo</p>
+      <p class="hint">coloque "02-documentacao-iterativa.mp4" (ou .webm/.mov) em docs/presentation/demos/</p>
+    </div>
   </div>
 `
   },
@@ -359,7 +377,7 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">3. Editor visual de cenários — EDL-builder</h2>
-  <div class="demo-stage" data-demo="demos/03-editor-edl">
+  <div class="demo-stage" data-media="demos/03-editor-edl" data-media-kind="video">
     <video controls playsinline hidden></video>
     <div class="demo-empty">
       <svg width="34" height="34"><use href="#i-video"></use></svg>
@@ -384,11 +402,14 @@ window.PRESENTATION_SLIDES = [
       tentar rodar a simulação — o erro de sintaxe aparece no editor, não no meio de um cenário
       carregando.</li>
     </ul>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="30" height="30"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: um erro de slot apontado direto no editor, antes de rodar
-      qualquer coisa</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/04-edl-highlight" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Screenshot: um erro de slot apontado direto no editor, antes de rodar
+        qualquer coisa</p>
+        <p class="hint">demos/04-edl-highlight.png</p>
+      </div>
     </div>
   </div>
 `
@@ -470,11 +491,14 @@ window.PRESENTATION_SLIDES = [
         <span class="stat-chip">~42 µs/decisão (Python)</span>
       </div>
     </div>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="30" height="30"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: Tacview mostrando a A-4 Skyhawk em voo, com os falcons e o
-      intruso</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/tacview-a4" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Screenshot: Tacview mostrando a A-4 Skyhawk em voo, com os falcons e o
+        intruso</p>
+        <p class="hint">demos/tacview-a4.png</p>
+      </div>
     </div>
   </div>
 `
@@ -488,11 +512,14 @@ window.PRESENTATION_SLIDES = [
   <p class="lede muted">A estrutura de decisão é sempre a mesma — o que varia é o que cada
   folha pode ser: um nó em C++, um script Python interpretado no frame, ou uma política ONNX
   treinada, como folha única.</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">
-    <svg width="36" height="36"><use href="#i-video"></use></svg>
-    <span class="tag">Vídeo sugerido</span>
-    <p class="caption">A mesma árvore rodando com uma folha C++, depois trocando para Python,
-    depois para uma política ONNX — sem recompilar nada</p>
+  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;" data-media="demos/arvore-comportamento" data-media-kind="video">
+    <div class="media-empty">
+      <svg width="36" height="36"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo sugerido</span>
+      <p class="caption">A mesma árvore rodando com uma folha C++, depois trocando para Python,
+      depois para uma política ONNX — sem recompilar nada</p>
+      <p class="hint">demos/arvore-comportamento.mp4</p>
+    </div>
   </div>
 `
   },
@@ -636,10 +663,13 @@ window.PRESENTATION_SLIDES = [
       <li>Segunda trilha, para quem quiser ir mais fundo: o editor visual de cenários, o Groot,
       a decisão em Python, o ambiente de treino de RL.</li>
     </ul>
-    <div class="media-placeholder media-placeholder--fill">
-      <svg width="28" height="28"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/tour" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="28" height="28"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview</p>
+        <p class="hint">demos/tour.mp4</p>
+      </div>
     </div>
   </div>
   <div class="callout">
@@ -668,10 +698,13 @@ window.PRESENTATION_SLIDES = [
       <span class="k">Por quê</span>
       <p>Um sistema assim só amadurece com gente de verdade tentando usá-lo.</p>
     </div>
-    <div class="media-placeholder">
-      <svg width="28" height="28"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Capas dos dois livros — manual do MIXR e do BehaviorTree.CPP</p>
+    <div class="media-placeholder" data-media="demos/livros-capas" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="28" height="28"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Capas dos dois livros — manual do MIXR e do BehaviorTree.CPP</p>
+        <p class="hint">demos/livros-capas.png</p>
+      </div>
     </div>
   </div>
 `
@@ -734,10 +767,13 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">IV · Encerramento</p>
   <p class="statement">Obrigado.</p>
   <p class="lede muted" style="margin-top:4px">poc-mixr · Refatoração do ASA — perguntas?</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;">
-    <svg width="40" height="40"><use href="#i-image"></use></svg>
-    <span class="tag">Imagem sugerida</span>
-    <p class="caption">Logo da ASA ou imagem de encerramento do time</p>
+  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;" data-media="demos/encerramento" data-media-kind="image">
+    <div class="media-empty">
+      <svg width="40" height="40"><use href="#i-image"></use></svg>
+      <span class="tag">Imagem sugerida</span>
+      <p class="caption">Logo da ASA ou imagem de encerramento do time</p>
+      <p class="hint">demos/encerramento.png</p>
+    </div>
   </div>
 `
   },

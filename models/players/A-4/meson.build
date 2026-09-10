@@ -69,6 +69,7 @@ model_sources = files(
     'src/plugin.cpp',
 
     # regras de negocio puras (sem MIXR, sem BehaviorTree.CPP)
+    'src/domain/AerobaticPlan.cpp',
     'src/domain/geometry.cpp',
     'src/domain/PatrolPlan.cpp',
     'src/domain/RtbPlan.cpp',
@@ -103,6 +104,7 @@ model_sources = files(
     'src/bt/nodes/PyDecideAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
+    'src/bt/nodes/SlowRollAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',
 )
 
@@ -140,6 +142,12 @@ install_data('configs/flight_tree.xml',
 # sem Fallback nenhum por baixo -- so segue o Route/Steerpoint nativo. Vai
 # junto pelo mesmo motivo do flight_tree.xml: e do modelo, nao do cenario.
 install_data('configs/flight_tree_nav.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+
+# A arvore de ACROBACIA (sandbox/A4-6DOF-RANDOM): ( SlowRoll ) por cima de
+# ( Navigate ) -- de tempos em tempos a aeronave larga a rota, faz um tonneau
+# e volta. Vai junto pelo mesmo motivo das outras: e do MODELO, nao do cenario.
+install_data('configs/flight_tree_random.xml',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 
 # A arvore de DEPLOY da politica de RL e o .onnx que ela aponta. Vao junto
@@ -220,6 +228,7 @@ endif
 # e deixar as duas subdir() reusarem evita a duplicacao que existiria se cada
 # uma declarasse a propria copia.
 domain_sources = files(
+    'src/domain/AerobaticPlan.cpp',
     'src/domain/geometry.cpp',
     'src/domain/PatrolPlan.cpp',
     'src/domain/RtbPlan.cpp',
@@ -236,6 +245,7 @@ bt_sources = files(
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
+    'src/bt/nodes/SlowRollAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',
 )
 

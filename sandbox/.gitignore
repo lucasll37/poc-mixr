@@ -15,6 +15,7 @@
 # de sandbox/**/data/... do .gitignore da raiz.
 /*/
 !/A4-6DOF/
+!/A4-6DOF-RANDOM/
 !/A4-4DOF/
 !/A4-3DOF/
 !/A4-4DOF-PY/

@@ -279,24 +279,6 @@ test("roleFillStatus atravessa item de texto sem quebrar (children:{} generico, 
   assert.strictEqual(found.key, "dynamicsModel");
 });
 
-test("emptyChildSlots lista os slots-filho sem NENHUM item, na ordem do catalogo", () => {
-  const root = core.makeNode("Aircraft");
-  const names = core.emptyChildSlots(root, BY_FACTORY).map((s) => s.name);
-  assert.deepStrictEqual(names, ["dynamicsModel", "modes", "components"]);
-});
-
-test("emptyChildSlots para de listar um slot assim que ele ganha um item", () => {
-  const root = core.makeNode("Aircraft");
-  root.children.dynamicsModel = [{ key: "1", node: core.makeNode("JSBSimModel") }];
-  const names = core.emptyChildSlots(root, BY_FACTORY).map((s) => s.name);
-  assert.deepStrictEqual(names, ["modes", "components"]);
-});
-
-test("emptyChildSlots devolve vazio pra classe desconhecida (nao explode)", () => {
-  const fake = core.makeNode("NadaAVerComIsso");
-  assert.deepStrictEqual(core.emptyChildSlots(fake, BY_FACTORY), []);
-});
-
 /* ---------------------------------- ascii ---------------------------------- */
 
 test("isAscii aceita texto ASCII puro", () => {
@@ -746,66 +728,91 @@ test("extractPlacements: rotulo usa a CHAVE do pai (convencao 'falcon1: (Aircraf
   assert.strictEqual(childPlacement.label, "falcon1", "item de lista usa a chave que o pai deu a ele");
 });
 
-/* ------------------------------- pendências ------------------------------ */
+/* ------------------------------ itens em aberto ----------------------------- */
+// NAO ha mais testes de nodePendencies/collectPendencies/emptyChildSlots:
+// o conceito de "pendencia" (todo slot-filho declarado e vazio) foi
+// REMOVIDO -- media o tamanho da arvore, nao o que falta nela. A nota com
+// os numeros medidos esta em edl_builder_core.js, secao "itens em aberto".
 
-// NOTA sobre o fixture: o Aircraft sintético (CATALOG, acima) tem tanto o
-// PAPEL 'dynamicsModel' (via primaryComponents, resolvido por TIPO dentro
-// de 'components:') quanto um SLOT LITERAL de mesmo nome, de objeto único
-// ('dynamicsModel', objectTypes:["DynamicsModel"], usado por outro teste
-// deste arquivo pra exercitar isCompatible) -- os dois são coisas
-// DIFERENTES aqui (incidental deste fixture; um Player de verdade nunca
-// declara os dois). isChildSlot() conta esse slot literal (objectTypes não
-// vazio) como mais uma pendência própria, à parte do papel.
-test("nodePendencies: papel primario vazio + slot-filho vazio, sem contar 'components' 2x quando ha papeis", () => {
-  const n = core.makeNode("Aircraft");
-  const items = core.nodePendencies(n, BY_FACTORY);
-  // dynamicsModel + pilot (papeis) + 'modes' + 'dynamicsModel' (slot LITERAL,
-  // ver nota acima) -- 'components' fica de fora por ja' coberto pelos papeis.
-  assert.strictEqual(items.length, 4);
-  assert.ok(items.some((p) => p.kind === "role" && p.role === "dynamicsModel"));
-  assert.ok(items.some((p) => p.kind === "role" && p.role === "pilot"));
-  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "modes"));
-  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "dynamicsModel"));
-  assert.ok(!items.some((p) => p.kind === "slot" && p.slotName === "components"));
+test("collectOpenIssues: acha @TOKEN@ tanto em valor NU quanto entre aspas", () => {
+  const root = core.makeNode("Aircraft");
+  // 'raw' e' o que o parser produz pra slot sem slotDef; 'text' pra string.
+  root.slotValues.numTcThreads = { kind: "raw", raw: "@NUM_TC_THREADS@" };
+  root.slotValues.fileName = { kind: "text", value: "./data/mission_@RUN_ID@.acmi" };
+  const iss = core.collectOpenIssues(root);
+  assert.strictEqual(iss.length, 2);
+  assert.deepStrictEqual(iss.map((i) => i.token).sort(), ["NUM_TC_THREADS", "RUN_ID"]);
+  assert.ok(iss.every((i) => i.nodeId === root.id && i.factory === "Aircraft"));
 });
 
-test("nodePendencies: papel preenchido (via 'components') e slot 'modes' preenchido somem da lista", () => {
-  const n = core.makeNode("Aircraft");
-  const dyn = core.makeNode("JSBSimModel");
-  n.children.components = [{ key: "dynamicsModel", node: dyn }];
-  const other = core.makeNode("Aircraft");
-  n.children.modes = [{ key: "1", node: other }];
-  const items = core.nodePendencies(n, BY_FACTORY);
-  // sobra 'pilot' (papel) e o slot LITERAL 'dynamicsModel' (ver nota acima --
-  // preencher o PAPEL não toca o slot de mesmo nome, são coisas diferentes).
-  assert.strictEqual(items.length, 2);
-  assert.ok(items.some((p) => p.kind === "role" && p.role === "pilot"));
-  assert.ok(items.some((p) => p.kind === "slot" && p.slotName === "dynamicsModel"));
+// A varredura ANTIGA (edl_parser_core.js) so' olhava 'raw' e 'text' --
+// um '( Meters @ALT@ )' passava mudo. Estes dois tipos de folha existem
+// de verdade: assignSlot() dobra '( Meters 500 )' em kind:"unit".
+test("collectOpenIssues: acha @TOKEN@ em folha de unidade, numero e vetor", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.initAlt = { kind: "unit", value: "@ALT@", unit: "Meters" };
+  root.slotValues.id = { kind: "number", value: "@ID@", unit: "" };
+  root.slotValues.feba = { kind: "vector", value: "@X@ @Y@" };
+  const tokens = core.collectOpenIssues(root).map((i) => i.token).sort();
+  assert.deepStrictEqual(tokens, ["ALT", "ID", "X", "Y"]);
 });
 
-test("nodePendencies: classe desconhecida ou sem primaryComponents/slot-filho devolve lista vazia", () => {
-  assert.deepStrictEqual(core.nodePendencies(core.makeNode("JSBSimModel"), BY_FACTORY), []);
-  assert.deepStrictEqual(core.nodePendencies({ id: 1, factory: "NadaAVer", slotValues: {}, children: {} }, BY_FACTORY), []);
+test("collectOpenIssues: acha @TOKEN@ em item de TEXTO dentro de lista", () => {
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "1", node: core.makeTextLeaf("mission_@RUN_ID@") }];
+  const iss = core.collectOpenIssues(root);
+  assert.strictEqual(iss.length, 1);
+  assert.strictEqual(iss[0].token, "RUN_ID");
+  assert.strictEqual(iss[0].slotName, "modes");
 });
 
-test("collectPendencies: soma as pendencias de TODOS os nos da arvore, com o rotulo vindo da CHAVE do pai", () => {
+test("collectOpenIssues: desce nos filhos e o rotulo vem da CHAVE do pai", () => {
   const root = core.makeNode("Aircraft");
   const child = core.makeNode("Aircraft");
+  child.slotValues.fileName = { kind: "text", value: "@RUN_ID@" };
   root.children.modes = [{ key: "falcon2", node: child }];
-  const all = core.collectPendencies(root, BY_FACTORY);
-  // raiz: 4 pendencias de um Aircraft bare (ver nota do fixture acima) menos
-  // 'modes' (que a raiz JA tem preenchido, com o proprio child) = 3;
-  // child (dentro de modes, bare tambem): as 4 pendencias completas.
-  const rootItems = all.filter((p) => p.nodeId === root.id);
-  const childItems = all.filter((p) => p.nodeId === child.id);
-  assert.strictEqual(rootItems.length, 3);
-  assert.strictEqual(childItems.length, 4);
-  assert.ok(childItems.every((p) => p.label === "falcon2"), "rotulo do filho vem da chave que o pai deu a ele");
-  assert.strictEqual(all.find((p) => p.nodeId === root.id).label, "Aircraft", "raiz sem chave de pai cai no nome da fabrica");
+  const iss = core.collectOpenIssues(root);
+  assert.strictEqual(iss.length, 1);
+  assert.strictEqual(iss[0].nodeId, child.id);
+  assert.strictEqual(iss[0].label, "falcon2");
 });
 
-test("collectPendencies: arvore vazia (null) devolve lista vazia", () => {
-  assert.deepStrictEqual(core.collectPendencies(null, BY_FACTORY), []);
+test("collectOpenIssues: raiz sem chave de pai cai no nome da fabrica", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.fileName = { kind: "text", value: "@RUN_ID@" };
+  assert.strictEqual(core.collectOpenIssues(root)[0].label, "Aircraft");
+});
+
+// Duas ocorrencias do MESMO token contam DUAS vezes quando estao em slots
+// diferentes -- cada uma e' um campo distinto a corrigir (no A4-6DOF sao
+// exatamente os dois fileName com @RUN_ID@). O contador nao deduplica.
+test("collectOpenIssues: o mesmo token em slots diferentes conta duas vezes", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.fileName = { kind: "text", value: "a_@RUN_ID@.acmi" };
+  root.slotValues.description = { kind: "text", value: "b_@RUN_ID@.jsonl" };
+  assert.strictEqual(core.collectOpenIssues(root).length, 2);
+});
+
+test("collectOpenIssues: duas ocorrencias no MESMO valor contam duas vezes", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.fileName = { kind: "text", value: "@A@/@B@" };
+  assert.deepStrictEqual(core.collectOpenIssues(root).map((i) => i.token), ["A", "B"]);
+});
+
+test("collectOpenIssues: arvore sem placeholder, e arvore vazia, devolvem lista vazia", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.fileName = { kind: "text", value: "./data/mission.acmi" };
+  root.slotValues.id = { kind: "number", value: "7", unit: "" };
+  assert.deepStrictEqual(core.collectOpenIssues(root), []);
+  assert.deepStrictEqual(core.collectOpenIssues(null), []);
+});
+
+// Um '@' solto NAO e' placeholder -- so' conta a forma fechada @NOME@,
+// com o mesmo regex que o parser usa (fonte unica em edl_builder_core.js).
+test("collectOpenIssues: '@' solto ou '@nome' sem fechar nao conta", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.fileName = { kind: "text", value: "user@host e @aberto" };
+  assert.deepStrictEqual(core.collectOpenIssues(root), []);
 });
 
 test("findAncestorPath: caminho da raiz ate um no profundo, incluindo as duas pontas", () => {

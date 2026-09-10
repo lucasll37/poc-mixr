@@ -676,6 +676,27 @@ test('scenario-app-quit-dis', py,
      depends: app, workdir: raiz, suite: 'scenario',
      timeout: 300, is_parallel: false)
 
+# ESTRESSE do caminho interativo -- o unico modo do ./app que a suite nao
+# exercitava de verdade. 'scenario-app-quit' acima vive ~8 s e a unica
+# interacao dele e '+' e 'q'; este faz ciclos completos com a aba F6 aberta
+# (que percorre a arvore de componentes), passo manual [n] intercalado com
+# pausa/despausa no topo da escada de velocidade, e redimensionamento da
+# janela -- as tres coisas que abriram as corridas documentadas em
+# ClockStation::requestStep() e em app/Shutdown.cpp.
+#
+# ELE GERA A PROPRIA CARGA DE CPU (ver sobe_carga() no script), e isso NAO e
+# ruido: numa maquina ociosa as janelas praticamente nao abrem -- medido, 20/20
+# ciclos limpos com E sem as correcoes --, enquanto sob contencao a mesma
+# bateria acusou 2 falhas em 10 ciclos. Sem a carga o teste passaria vacuamente.
+#
+# Poucos ciclos aqui de proposito: e uma rede de regressao, nao a bateria de
+# caca. Para investigar, rodar a mao com '--ciclos 50'.
+test('scenario-app-stress', py,
+     args: files('scenario/run_app_stress_test.py') + [
+         '--binario', app.full_path(), '--ciclos', '3'],
+     depends: app, workdir: raiz, suite: 'scenario',
+     timeout: 600, is_parallel: false)
+
 # NAO HA MAIS um teste de saida POR POC. Ate o ./app virar o runner unico,
 # cada poc tinha o proprio executavel com uma copia byte a byte do laco de
 # tempo real, e cada copia corria o mesmo risco de auto-deadlock/crescimento de
@@ -921,6 +942,17 @@ test('edl-check', py,
 
 # O host nao pode voltar a conhecer o fonte do modelo.
 test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),
+     workdir: raiz, suite: 'guard', timeout: 60)
+
+# A thread de DESENHO do ./app nao pode tocar o grafo VIVO do MIXR: enquanto o
+# Renderer do FTXUI roda, a thread de tempo critico nativa e o pool criam e
+# destroem esses objetos. Percorrer o grafo dali tem duas saidas ruins -- ler
+# pagina liberada (SIGSEGV) ou ver refCount==0 dentro de Referenced::ref() e
+# LANCAR (SIGABRT, e o MIXR lanca um PONTEIRO fora de std::exception, entao
+# so 'catch (...)' pegaria). Toda leitura de MIXR mora em captureState(), na
+# 'simThread', e atravessa por valor no DashboardState. Ver o cabecalho do
+# script para o invariante inteiro.
+test('ui-thread-sem-mixr', bash, args: files('guard/check_ui_thread_sem_mixr.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
 # Todo projeto de modelo tem tests/, docs/, README.md e CHANGELOG.md -- o que

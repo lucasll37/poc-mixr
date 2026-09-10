@@ -43,6 +43,7 @@
 #include "app/EdlEditorState.hpp"
 #include "app/DeterministicRun.hpp"
 #include "app/Fleet.hpp"
+#include "app/GrootMonitorCheck.hpp"
 #include "app/MetaObjectReport.hpp"
 #include "app/Options.hpp"
 #include "app/Respawn.hpp"
@@ -257,6 +258,11 @@ int main(int argc, char* argv[])
                               ? app::discoverFleet(worldModel)
                               : app::collectFleet(worldModel, cenario.fleet)};
    app::applyCruiseThrottle(fleet, cruiseThrottle);
+
+   // Aqui, e nao dentro do modelo: so' o host tem a lista inteira de players,
+   // entao so' ele consegue afirmar "MIXR_GROOT_MONITOR nao casa com ninguem"
+   // (ver app/GrootMonitorCheck.hpp). Sem a variavel definida, e' no-op.
+   app::checkGrootMonitorTarget(worldModel);
 
    int rc{};
    app::DashboardExit action{app::DashboardExit::Quit};

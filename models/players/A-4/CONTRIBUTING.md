@@ -152,13 +152,17 @@ só um exemplo, troque `-folder`/`-scenario` pelo cenário que você estiver usa
 
 ```bash
 cd ../../..    # a raiz do poc-mixr
-MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder <pasta-do-cenario> -scenario <nome>
+make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl.in>
 ```
 
-Em outro terminal com display: `make open-groot` (raiz) → aba **Monitor** → conectar em
-`localhost`, portas 1666 (status) / 1667 (topologia). A árvore daquele player aparece se colorindo
-em tempo real conforme tica. Sem a variável de ambiente, nenhuma porta abre — zero custo por
-padrão, e só uma instância de `BT::PublisherZMQ` pode existir por processo.
+O alvo abre o Groot junto (`GROOT=0` pula) → aba **Monitor** → conectar em `localhost`, portas
+1666 (status) / 1667 (topologia). A árvore daquele player aparece se colorindo em tempo real
+conforme tica. Sem a variável de ambiente, nenhuma porta abre — zero custo por padrão, e só uma
+instância de `BT::PublisherZMQ` pode existir por `.so` carregado.
+
+O `PLAYER` tem de existir no cenário: um nome que não casa era 100% silencioso, e hoje o host
+avisa com `LOG(WARNING)` listando os players reais. A linha de sucesso traz **nº de nós e faixa de
+UID** (`… 1 nos, uid 6..6`) — é o diagnóstico da armadilha nº3 abaixo a um `grep` de distância.
 
 Armadilhas de ciclo de vida (por que o publisher precisa ser derrubado **antes** de qualquer
 `reset()`/`shutdownNotification()`/cópia da árvore) → [`../../../CLAUDE.md`](../../../CLAUDE.md),

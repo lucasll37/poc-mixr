@@ -46,6 +46,10 @@ BEGIN_SLOTTABLE(BtBehavior)
    "patrolSeedOverride",  // 19 -- opcional; a PRESENCA do slot e o que importa,
                           //       nao o valor (0 e semente valida) -- ver
                           //       setSlotPatrolSeedOverride() abaixo
+   "slowRollMinInterval", // 20
+   "slowRollMaxInterval", // 21
+   "slowRollStick",       // 22 -- 0 DESLIGA a acrobacia (default)
+   "slowRollTimeout",     // 23
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -68,6 +72,10 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(17, setSlotPatrolJitterHeading, base::Angle)
    ON_SLOT(18, setSlotPatrolMasterSeed,    base::Number)
    ON_SLOT(19, setSlotPatrolSeedOverride,  base::Number)
+   ON_SLOT(20, setSlotSlowRollMinInterval, base::Time)
+   ON_SLOT(21, setSlotSlowRollMaxInterval, base::Time)
+   ON_SLOT(22, setSlotSlowRollStick,       base::Number)
+   ON_SLOT(23, setSlotSlowRollTimeout,     base::Time)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -215,6 +223,51 @@ bool BtBehavior::setSlotPatrolSeedOverride(const base::Number* const msg)
    tune.patrolSeedOverrideSet = true;
    return true;
 }
+
+
+//------------------------------------------------------------------------------
+// SLOW ROLL (ver domain/AerobaticPlan.hpp).
+//
+// O intervalo entre manobras e sorteado em [min, max]; max <= min vira
+// intervalo FIXO, sem consumir o gerador. Os dois aceitam zero: um piso de
+// 0 s so quer dizer "pode acontecer logo", nao e configuracao invalida.
+//------------------------------------------------------------------------------
+bool BtBehavior::setSlotSlowRollMinInterval(const base::Time* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.slowRollMinIntervalSec = base::Seconds::convertStatic(*msg);
+   return (tune.slowRollMinIntervalSec >= 0.0);
+}
+
+bool BtBehavior::setSlotSlowRollMaxInterval(const base::Time* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.slowRollMaxIntervalSec = base::Seconds::convertStatic(*msg);
+   return (tune.slowRollMaxIntervalSec >= 0.0);
+}
+
+// Zero e o default E o "recurso desligado" -- mesmo raciocinio de
+// terrainClearance/patrolJitterHeading acima: o dump deterministico so muda se
+// este slot for declarado com um valor nao-nulo. A faixa e' [-1, 1] porque e' a
+// que Autopilot::setControlStickRollInput() aceita: fora dela ele RECUSA o
+// valor em silencio e mantem o anterior.
+bool BtBehavior::setSlotSlowRollStick(const base::Number* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.slowRollStick = msg->getDouble();
+   return (tune.slowRollStick >= -1.0 && tune.slowRollStick <= 1.0);
+}
+
+// Guarda contra a manobra que nunca fecha os 360 graus (aeronave sem
+// autoridade de rolagem suficiente). Tem de ser POSITIVO: zero deixaria a
+// manobra abortar no mesmo tick em que comeca.
+bool BtBehavior::setSlotSlowRollTimeout(const base::Time* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.slowRollTimeoutSec = base::Seconds::convertStatic(*msg);
+   return (tune.slowRollTimeoutSec > 0.0);
+}
+
 
 } // namespace xnative
 } // namespace models

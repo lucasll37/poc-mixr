@@ -85,8 +85,14 @@ TrackInfo nearestHostileTrack(const models::AirVehicle* const air)
    info.deltaAltM = -rel[models::Player::IDOWN];
 
    const models::Player* const tgt{best->getTarget()};
-   info.name = (tgt != nullptr && tgt->getName() != nullptr)
-                ? tgt->getName()->getString()
+   // 'getName() != nullptr' seria uma guarda VAZIA: AbstractPlayer::getName()
+   // devolve '&pname', o endereco de um membro por valor, e nunca e nulo. O
+   // nulo esta um nivel abaixo -- 'String::getString()' devolve o 'char* str{}'
+   // cru, que e nullptr numa String nunca preenchida (String.hpp:77,
+   // String.cpp:13-16). Atribuir isso a std::string e strlen(nullptr).
+   const char* const nomeBruto{(tgt != nullptr) ? tgt->getName()->getString() : nullptr};
+   info.name = (nomeBruto != nullptr && *nomeBruto != '\0')
+                ? std::string{nomeBruto}
                 : ("trk" + std::to_string(best->getTrackID()));
    return info;
 }

@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <iomanip>
 #include <mutex>
@@ -191,9 +192,26 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                            const int numTcThreads, const std::string& scenarioLabel,
                            const BtNode& behaviorTree, const std::string& generatedEdlPath)
 {
+   // Amostrador de terreno da aba Mapa -- construido UMA vez, aqui, e nao a
+   // cada redesenho. makeTerrainSampler() le worldModel->getRefLatitude()/
+   // getRefLongitude() na construcao e captura os dois por VALOR
+   // (app/src/app/TerrainQuery.cpp); o corpo do amostrador so consulta o cache
+   // proprio de tiles, sob mutex, sem tocar o WorldModel. Reconstrui-lo dentro
+   // do Renderer era a ultima leitura de objeto MIXR vivo feita pela thread de
+   // desenho -- e a referencia geografica do cenario nao muda depois do
+   // RESET_EVENT, entao nao havia o que reamostrar.
+   const TerrainSampler terrainSampler{makeTerrainSampler(worldModel)};
+
    std::mutex stateMutex;
    DashboardState latest;
    std::atomic<bool> running{true};
+
+   // A aba F6 esta em cena? Escrito pela thread de DESENHO, lido por
+   // 'simThread', que so entao percorre o grafo vivo do MIXR para montar a
+   // arvore de componentes (ver DashboardState::componentTree). O gate
+   // preserva a otimizacao ja existente de nao pagar a travessia nas outras
+   // seis abas -- o que mudou foi QUEM a executa, nao QUANDO.
+   std::atomic<bool> wantComponentTree{false};
 
    // Estado do breakpoint (ver app/BreakpointController.hpp) --
    // 'fastRunToBreakpoint' e atomico A PARTE (lido a cada iteracao do laco
@@ -202,15 +220,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    std::mutex bpMutex;
    BreakpointController bp;
    std::atomic<bool> fastRunToBreakpoint{false};
-
-   // Pedidos de PASSO de simulacao pendentes -- o "[n] Passo" da aba F6.
-   // Cada um vale UM Station::tcFrame(dt) de verdade, executado la em
-   // 'simThread' (nunca aqui, na thread de desenho): a thread T/C nativa
-   // continua viva, e so nao esta chamando tcFrame() porque
-   // ClockStation::processTimeCriticalTasks() retorna cedo quando pausado
-   // (ver o comentario grande la). Dar o passo com a simulacao RODANDO seria
-   // duas threads dentro do mesmo frame -- por isso o passo pausa antes.
-   std::atomic<int> stepFrameRequests{0};
 
    // A partir daqui o FTXUI e dono do terminal (alternate screen buffer,
    // modo bruto) -- uma linha de log escrita direto em std::cout suja o
@@ -288,17 +297,6 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // TacviewOutput::publishIdentities().
          if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(worldModel);
 
-         // Passo manual pedido pela aba F6 -- ANTES do updateData() para que
-         // a passada de fundo que vem a seguir ja veja o estado novo (e
-         // drene o gravador, alimentando o Tacview com o frame recem-dado).
-         if (const int steps{stepFrameRequests.exchange(0)}; steps > 0) {
-            const double tcRate{station->getTimeCriticalRate()};
-            if (tcRate > 0.0 && clockStation != nullptr && clockStation->isPaused()) {
-               const double tcDt{1.0 / tcRate};
-               for (int i = 0; i < steps; i++) station->tcFrame(tcDt);
-            }
-         }
-
          // Joystick (so o cenario 'bandit' declara um 'ioHandler:'): mesma
          // taxa e mesmo lugar do laco de tempo real que as pocs usavam
          // antes de o ./app virar o runner unico delas -- 10 Hz, fora do
@@ -326,7 +324,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          DashboardState next{captureState(worldModel, station, tacviewOutput,
                                           mixr::base::getComputerTime() - realWallClockStart,
                                           worldModel->getExecTimeSec(), clockStation,
-                                          numTcThreads, scenarioLabel, classHistory)};
+                                          numTcThreads, scenarioLabel, classHistory,
+                                          wantComponentTree.load(std::memory_order_relaxed))};
          classHistory = next.classStats;
 
          {
@@ -689,7 +688,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // sem nenhum efeito util. Com o follow desligado, nada muda: o snap
       // continua exatamente como era.
       if (mapView.followSelected) return;
-      snapPanToGroundLevel(mapView, makeTerrainSampler(worldModel));
+      snapPanToGroundLevel(mapView, terrainSampler);
    };
    // "Seguir" a entidade selecionada -- o pan passa a ser recolocado sobre
    // ela a cada redesenho da aba (ver applyMapFollow(), chamada no Renderer
@@ -778,12 +777,19 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    // [n] = UM Station::tcFrame(dt) de verdade. Pausa antes, se estiver
    // rodando (o mesmo gesto de qualquer depurador: dar um passo implica
-   // parar), porque dar o passo com a thread T/C nativa ativa poria duas
-   // threads dentro do mesmo frame. O ponteiro de fase avanca junto, pra
-   // toques seguidos percorrerem a explicacao da cadeia de chamadas.
+   // parar). O ponteiro de fase avanca junto, pra toques seguidos percorrerem
+   // a explicacao da cadeia de chamadas.
+   //
+   // O passo NAO e executado aqui nem na 'simThread': so acumula um pedido em
+   // ClockStation, que a PROPRIA thread de tempo critico drena dentro de
+   // processTimeCriticalTasks(). Ver o comentario longo de
+   // ClockStation::requestStep() -- executar tcFrame() de outra thread depois
+   // de conferir isPaused() e TOCTOU, e foi reproduzido sob ASan como leitura
+   // de ponteiro de lixo num worker do pool de tempo critico.
    const auto doCompStep = [&] {
-      if (clockStation != nullptr && !clockStation->isPaused()) clockStation->setPaused(true);
-      stepFrameRequests.fetch_add(1);
+      if (clockStation == nullptr) return;
+      if (!clockStation->isPaused()) clockStation->setPaused(true);
+      clockStation->requestStep();
       advanceComponentFlowStep(componentsFlow);
    };
    const auto doCompCycleSpeed = [&] { cycleComponentFlowSpeed(componentsFlow); };
@@ -1033,7 +1039,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // Reconstruido a cada redesenho (barato: dois getters + um ponteiro
       // capturado, ver app/TerrainQuery.hpp) -- so e CHAMADO de verdade por
       // renderMap() quando 'mapView.showTerrain' esta ligado.
-      const TerrainSampler terrainSampler{makeTerrainSampler(worldModel)};
+
 
       // O canvas acompanha a area que o layout DE FATO reservou pro mapa,
       // em vez de um tamanho fixo que sobrava (terminal grande: mapa
@@ -1576,11 +1582,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
             static_cast<int>(treeLines.size()) - 1);
       }
 
-      // Aba Componentes -- recalculada a cada redesenho, direto de
-      // 'station' (mesmo raciocinio de 'makeTerrainSampler(worldModel)' na
-      // aba Mapa: barato, e um cache manual so arriscaria mostrar uma
-      // arvore velha depois de um missil ser liberado ou um fantasma DIS
-      // chegar pela rede) -- MAS so enquanto a aba 5 esta de fato ativa.
+      // Aba Componentes -- a arvore e recapturada a cada amostra (10 Hz), o
+      // que continua fresco o bastante para um missil liberado ou um fantasma
+      // DIS que chegou pela rede aparecerem sozinhos -- mas a captura mudou de
+      // THREAD: hoje ela acontece em captureState(), na 'simThread', e aqui so
+      // se le a copia por valor que veio no DashboardState. Ver o comentario de
+      // DashboardState::componentTree para o defeito que isso corrige.
       //
       // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): isto rodava
       // INCONDICIONALMENTE, com a justificativa de que "o CatchEvent
@@ -1597,8 +1604,15 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // olhando Players/Mapa/Memoria/Log/EDL/Fundo). Gateado, converge no
       // mesmo estado fresco assim que a aba fica ativa (o proprio redesenho
       // do switch de aba ja roda com 'activeTab' atualizado).
+      // Pede a arvore a 'simThread' (ver 'wantComponentTree' la em cima) e
+      // consome a que ela ja capturou. NADA de MIXR vivo e tocado aqui: ao
+      // trocar para a F6 a arvore chega na amostra seguinte (~100 ms), e ate
+      // la 'snap.componentTree' vem vazia -- o que os dois usos abaixo ja
+      // tratam (o auto-fit testa 'children.empty()' e o layout de uma arvore
+      // vazia e vazio).
+      wantComponentTree.store(activeTab == 5, std::memory_order_relaxed);
       if (activeTab == 5) {
-         componentsRoot = discoverComponentTree(station);
+         componentsRoot = snap.componentTree;
 
          // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth: na
          // vertical cada FOLHA custa a largura do proprio rotulo (no
@@ -1629,8 +1643,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       setComponentFlowPlaying(componentsFlow, !snap.paused);
       tickComponentFlowAnimation(componentsFlow);
 
-      frameCallParams.tcRateHz = station->getTimeCriticalRate();
-      frameCallParams.fastForwardRate = station->getFastForwardRate();
+      // De 'snap', nao de 'station->': a thread de desenho nao le mais nada
+      // do grafo vivo do MIXR (ver DashboardState::componentTree). Os dois
+      // campos ja vem de captureState(), na simThread.
+      frameCallParams.tcRateHz = snap.background.stationTcRateHz;
+      frameCallParams.fastForwardRate = snap.background.fastForwardRate;
       frameCallParams.numTcThreads = snap.numTcThreads;
       frameCallParams.paused = snap.paused;
 
@@ -2064,7 +2081,33 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // Ctrl+C: o FTXUI ja instala o proprio handler e sai do Loop() sozinho
    // (App::ForceHandleCtrlC(true) e o default) -- 'action' fica em Quit, que
    // e exatamente o que se quer.
-   screen.Loop(appRoot);
+   //
+   // BARREIRA DE EXCECAO -- por que 'catch (...)' e nao 'catch (std::exception&)':
+   // o MIXR sinaliza erro de contagem de referencia lancando um PONTEIRO que
+   // NAO deriva de std::exception -- 'if (++(refCount) <= 1) throw new
+   // ExpInvalidRefCount();' (Referenced.hpp:79-81). Um catch tipado nao pegaria
+   // nada. E sem catch nenhum (o estado anterior: nao ha 'try' aqui nem em
+   // main.cpp) qualquer throw vindo do laco da interface vira std::terminate ->
+   // SIGABRT, "core dumped" sem uma linha de explicacao -- pior ainda porque
+   // ftxui::Loop::~Loop() restaura o terminal durante o unwinding, entao o
+   // usuario ve um terminal limpo e nenhuma pista de que a culpa foi da TUI.
+   //
+   // NAO se tenta retomar o Loop(): o throw de ref() acontece ANTES do
+   // unlock(semaphore) (o unlock so existe no ramo 'else' da mesma linha),
+   // deixando o spin lock daquele objeto travado para sempre. Depois disto o
+   // processo so pode encerrar -- mas encerrar LIMPO, pelo mesmo caminho do
+   // 'q', que e o que as linhas abaixo fazem.
+   //
+   // std::fputs em stderr, nao LOG(): o log toma um mutex global que pode ser
+   // justamente o que ficou preso (mesmo raciocinio do watchdog de
+   // app/Shutdown.cpp).
+   try {
+      screen.Loop(appRoot);
+   } catch (...) {
+      std::fputs("[app] excecao escapou do laco da interface -- encerrando de "
+                 "forma limpa (ver a barreira em app/DashboardLoop.cpp)\n", stderr);
+      action = DashboardExit::Quit;
+   }
 
    // ---- ENCERRAMENTO, e a ORDEM aqui e o conserto (ver app/Shutdown.hpp) ----
    //

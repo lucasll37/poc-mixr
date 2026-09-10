@@ -333,6 +333,7 @@ Três regras valem para todo subprojeto e todo modelo:
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
 | [`libs/README.md`](libs/README.md) | as 12 bibliotecas de suporte host/modelo (6 compartilhadas via `dlopen`, as demais estáticas), uma por pasta |
 | [`tests/README.md`](tests/README.md) | as suítes de teste, o que cada uma prova |
+| [`docs/estudos/snapshot-restore.md`](docs/estudos/snapshot-restore.md) | é possível salvar uma simulação no meio e retomá-la byte-idêntica? estudo de viabilidade — a resposta é sim, por reexecução, e não por captura de estado |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
 | [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs` — requer navegador na mesma máquina) |
 | [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl-builder` — requer navegador na mesma máquina) |

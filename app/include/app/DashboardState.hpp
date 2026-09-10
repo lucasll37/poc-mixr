@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/ComponentTreeQuery.hpp"
 #include "app/MetaObjectSnapshot.hpp"
 
 #include <cstddef>
@@ -225,6 +226,25 @@ struct DashboardState
 
    // Ver o comentario grande de BackgroundInfo, acima.
    BackgroundInfo background;
+
+   // Arvore de componentes da aba F6.
+   //
+   // POR QUE ELA ATRAVESSA POR AQUI, e nao e recalculada no desenho:
+   // discoverComponentTree() percorre o grafo VIVO do MIXR (getComponents(),
+   // getPlayers(), getNetworks(), mais dezenas de dynamic_cast e getters de
+   // Player/Autopilot/RfSensor/TrackManager). Enquanto isso as threads de tempo
+   // critico criam e destroem esses mesmos objetos. Feita na thread de DESENHO
+   // -- que era o estado anterior -- essa travessia tem duas saidas ruins: ler
+   // pagina ja liberada (SIGSEGV) ou ver refCount==0 dentro de
+   // safe_ptr::getRefPtr() -> Referenced::ref() e LANCAR (SIGABRT, porque o
+   // MIXR lanca um ponteiro fora de std::exception).
+   //
+   // Capturada aqui, na MESMA thread que ja chama station->updateData(), ela
+   // vira dado morto: ComponentTreeNode nao guarda nenhum ponteiro MIXR (so
+   // string/int/double), entao atravessa o 'stateMutex' por valor como o resto
+   // do DashboardState. So e preenchida quando a aba F6 esta ativa -- ver o
+   // parametro 'withComponentTree' de captureState().
+   ComponentTreeNode componentTree;
 };
 
 // 'previousClassStats' e o 'classStats' do DashboardState anterior -- carrega
@@ -241,6 +261,7 @@ DashboardState captureState(mixr::models::WorldModel* worldModel,
                             double wallSec, double simSec,
                             const mixr::xclock::ClockStation* clockStation,
                             int numTcThreads, const std::string& scenarioLabel,
-                            const std::vector<ClassStat>& previousClassStats);
+                            const std::vector<ClassStat>& previousClassStats,
+                            bool withComponentTree);
 
 } // namespace app

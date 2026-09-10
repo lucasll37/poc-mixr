@@ -319,6 +319,61 @@ Diretório presente mas vazio (ou só com `.gitkeep`) conta como ausente.
 
 ---
 
+## Caçando corrida no caminho interativo do `./app`
+
+O modo interativo (TUI + thread de tempo crítico nativa + pool de `numTcThreads`) é o único
+que nenhuma das seis camadas acima exercita: elas rodam `-deterministic`, que chama `tcFrame()`
+direto na própria thread e **nunca cria a thread T/C nativa**. Foi exatamente ali que estavam os
+`core dumped` intermitentes.
+
+**`scenario/run_app_stress_test.py`** cobre esse buraco. Ele sobe o binário num pty de verdade e
+faz ciclos completos: aba **F6** aberta (que percorre a árvore de componentes), passo manual `[n]`
+intercalado com pausa/despausa no topo da escada de velocidade, redimensionamento da janela, e
+saída por `[q]`. Afirma `rc == 0` a cada ciclo — um encerramento por sinal aparece em
+`Popen.returncode` como número **negativo**, e é isso que ele existe para pegar.
+
+**Ele gera a própria carga de CPU, e isso não é ruído.** Medido: numa máquina ociosa a bateria dá
+**20/20 ciclos limpos com E sem as correções** — as janelas de TOCTOU e de interleaving
+praticamente não abrem quando cada thread corre do início ao fim do seu trecho sem ser
+desagendada. Sob contenção (três compilações em paralelo, que foi como o defeito apareceu pela
+primeira vez) a MESMA bateria acusou **2 falhas em 10 ciclos**. Sem a carga o teste passaria
+vacuamente. `--carga 0` desliga; `--ciclos 50` é o modo de investigação.
+
+### Capturar evidência de um crash
+
+1. **Core dump no WSL2.** O `core_pattern` padrão é `|/wsl-capture-crash …`, que manda o core para
+   o lado Windows — ele nunca chega ao repositório, e `ulimit -c` é `0`. Para ter um core local:
+   ```bash
+   ulimit -c unlimited
+   sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p.%s
+   # depois do crash:
+   gdb ./build/app/src/app /tmp/core.* -ex 'thread apply all bt' -ex quit
+   ```
+2. **AddressSanitizer, interativo.** A instrumentação já cobre o `./app`, mas `make test-asan` só
+   roda `-threads 1 -deterministic 500` numa fixture hermética — o oposto do caminho que quebra.
+   Para usá-la de verdade (os DOIS lados: sem instrumentar o plugin o relatório sai sem símbolo):
+   ```bash
+   make models ASAN=true && make sync-plugins ASAN=true
+   meson configure build -Dasan=true && meson compile -C build
+   ASAN_OPTIONS=detect_leaks=0:abort_on_error=1 \
+   LSAN_OPTIONS=suppressions=$PWD/tests/memory/asan.supp \
+     python3 tests/scenario/run_app_stress_test.py --binario ./build/app/src/app --ciclos 20
+   # reverter (o Makefile faz isso no fim de 'make test-asan'):
+   make models ASAN=false && make sync-plugins ASAN=false
+   meson configure build -Dasan=false && meson compile -C build
+   ```
+   Confira que a instrumentação está mesmo ativa antes de confiar no resultado — já aconteceu de
+   um `make configure` de outra sessão zerar a flag no meio da medição:
+   `nm build/app/src/app | grep -c __asan_report` tem de ser > 0.
+   Foi assim que saiu o relatório que fixou a causa raiz: `BUS on unknown address ... in
+   mixr::base::Component::tcFrame()` dentro de `Simulation::updateTcPlayerList()`, num worker do
+   pool percorrendo a lista de players por um ponteiro de lixo.
+3. **ThreadSanitizer: deliberadamente NÃO usado.** O MIXR é dependência **binária** do Conan, e o
+   TSan exige a pilha inteira instrumentada. Pior: o framework usa spin lock próprio
+   (`base::lock()`, `atomics_linux.hpp:18-24`) e mantém `MetaObject::count/mc/tc` como `int` cru
+   sem lock (`macros.hpp:249`) — o TSan reportaria uma avalanche de corridas **verdadeiras e
+   não-corrigíveis daqui**, afogando qualquer sinal. Não reproponha sem resolver isso primeiro.
+
 ## Armadilhas encontradas montando isto
 
 **1. O `-deterministic` não é hermético com o cenário de produção.** O bloco `networks:` abre a

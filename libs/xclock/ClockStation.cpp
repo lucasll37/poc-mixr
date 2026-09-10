@@ -71,8 +71,22 @@ bool ClockStation::setPaused(const bool flag)
 {
    simulation::Simulation* const sim{getSimulation()};
    if (sim == nullptr) return false;
+   // Despausar DESCARTA passo pendente: um passo pedido e nao consumido antes de
+   // a simulacao voltar a rodar perdeu o sentido, e guarda-lo faria a proxima
+   // pausa dar frames "fantasma" que ninguem pediu naquele momento.
+   if (!flag) stepRequests_.store(0, std::memory_order_relaxed);
    sim->freeze(flag);
    return true;
+}
+
+void ClockStation::requestStep(const int passos)
+{
+   if (passos > 0) stepRequests_.fetch_add(passos, std::memory_order_release);
+}
+
+unsigned long ClockStation::tcIdleTicks() const
+{
+   return tcIdleTicks_.load(std::memory_order_acquire);
 }
 
 bool ClockStation::togglePaused()
@@ -143,7 +157,15 @@ void ClockStation::processTimeCriticalTasks(const double dt)
       return;
    }
 
-   if (isPaused()) return;
+   if (isPaused()) {
+      // PASSO MANUAL: o unico lugar do processo em que tcFrame() pode ser
+      // chamado fora do caminho normal, e e AQUI de proposito -- esta e a
+      // propria thread T/C. Ver o comentario longo de requestStep() no .hpp
+      // para o defeito que isto substitui (duas threads no mesmo frame).
+      const int passos{stepRequests_.exchange(0, std::memory_order_acquire)};
+      for (int i = 0; i < passos; i++) tcFrame(dt);
+      return;
+   }
 
    if (slowFactor >= 1.0) {
       // Tempo real ou acelerado: caminho NATIVO, intocado. A base repete

@@ -150,13 +150,62 @@ bool FlightAction::execute(base::Component* actor)
    // vez do comportamento corrente (50 Hz por aeronave).
    const xboard::Readout before{xboard::get(player->getID())};
 
-   autopilot->setHeadingHoldMode(true);
-   autopilot->setAltitudeHoldMode(true);
-   autopilot->setVelocityHoldMode(true);
+   if (command.rollOverride) {
+      // --- MANOBRA ACROBATICA: so o eixo de ROLAGEM e liberado. ---
+      //
+      // Nao existe comando de banco no Autopilot do MIXR (varredura completa:
+      // nao ha setCommandedRollAngleD nem equivalente; 'maxBankAngle' e LIMITE
+      // repassado ao dynamics model, nao setpoint). O unico caminho e o stick
+      // normalizado -- e ele so alcanca o dynamics model pelo ramo 'else' de
+      // Autopilot::headingController():
+      //
+      //    if (isHeadingHoldOn() || isNavModeOn()) { ...setCommandedHeadingD... }
+      //    else { md->setHeadingHoldOn(false);
+      //           md->setControlStickRollInput(getControlStickRollInput()); }
+      //
+      // Por isso o heading hold TEM de cair: ele e a chave do caminho, nao um
+      // detalhe. Dali em diante JSBSimModel::setControlStickRollInput() ->
+      // FCS->SetDaCmd() -> fcs/aileron-cmd-norm.
+      //
+      // O comando vai no AUTOPILOT, nunca no AirVehicle. headingController()
+      // roda toda fase 3 e sobrescreve o dynamics model com o stickRollPos do
+      // PROPRIO Autopilot (0.0 por padrao) -- escrever em
+      // AirVehicle::setControlStick() seria zerado no frame seguinte. E a
+      // mesma regra do exemplo oficial do framework (ver
+      // contexts/MIXR-PATTERN-CONTEXT.md): o comando vai para o Autopilot se
+      // ele existir, senao direto para o AirVehicle.
+      //
+      // setNavMode(false) e obrigatorio e nao e redundante: modeManager()
+      // chama setNavMode(isNavModeOn()) toda fase 3, e setNavMode(true)
+      // RELIGA os tres hold modes de uma vez. Todo cenario deste repositorio
+      // declara 'navMode: false', mas depender disso deixaria a manobra
+      // quebrada em silencio no primeiro cenario que nao declarasse.
+      autopilot->setNavMode(false);
+      autopilot->setHeadingHoldMode(false);
+      autopilot->setControlStickRollInput(command.rollStick);
 
-   autopilot->setCommandedHeadingD(command.headingDeg);
-   autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);
-   autopilot->setCommandedVelocityKts(command.speedKts);
+      // Altitude e velocidade continuam em hold -- liberar um eixo nao e
+      // motivo para largar os outros dois.
+      autopilot->setAltitudeHoldMode(true);
+      autopilot->setVelocityHoldMode(true);
+      autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);
+      autopilot->setCommandedVelocityKts(command.speedKts);
+   } else {
+      // O stick e PEGAJOSO do lado do JSBSim: FCS guarda o ultimo SetDaCmd()
+      // e nada o reaplica por frame. Sem este zero explicito, a aeronave
+      // continuaria rolando para sempre depois que a manobra terminasse.
+      // Custa uma atribuicao por decisao e cobre TODA saida da manobra --
+      // inclusive a que nao passa pelo no (EVADE/RTB assumindo por cima).
+      autopilot->setControlStickRollInput(0.0);
+
+      autopilot->setHeadingHoldMode(true);
+      autopilot->setAltitudeHoldMode(true);
+      autopilot->setVelocityHoldMode(true);
+
+      autopilot->setCommandedHeadingD(command.headingDeg);
+      autopilot->setCommandedAltitudeFt(command.altitudeM * base::distance::M2FT);
+      autopilot->setCommandedVelocityKts(command.speedKts);
+   }
 
    // O quadro de leitura (libs/xboard) e a UNICA coisa que este modelo e o
    // host compartilham: escrevemos aqui, o dump e a linha de status leem la.
@@ -172,11 +221,19 @@ bool FlightAction::execute(base::Component* actor)
    // ("falcon1: PATROL -> EVADE"). A primeira decisao de cada aeronave
    // aparece como "-- -> PATROL", que e o valor inicial do quadro.
    if (before.label != label) {
-      LOG(INFO) << "[FlightAction] " << playerName
-                << ": " << before.label << " -> " << label
-                << "  (hdg=" << command.headingDeg
-                << "deg alt=" << command.altitudeM
-                << "m vel=" << command.speedKts << "kt)";
+      if (command.rollOverride) {
+         LOG(INFO) << "[FlightAction] " << playerName
+                   << ": " << before.label << " -> " << label
+                   << "  (aileron=" << command.rollStick
+                   << " alt=" << command.altitudeM
+                   << "m vel=" << command.speedKts << "kt)";
+      } else {
+         LOG(INFO) << "[FlightAction] " << playerName
+                   << ": " << before.label << " -> " << label
+                   << "  (hdg=" << command.headingDeg
+                   << "deg alt=" << command.altitudeM
+                   << "m vel=" << command.speedKts << "kt)";
+      }
    }
 
    // Batimento: prova que a aeronave continua decidindo mesmo sem trocar

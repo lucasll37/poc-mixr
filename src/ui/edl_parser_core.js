@@ -320,10 +320,18 @@ function astFormToNode(ast, byFactory) {
 // Cada diagnostico e' um objeto ESTRUTURADO ({severity,code,message,line?,
 // nodeId?}), nao uma string solta -- permite testar por codigo estavel e
 // permite a UI (edl_builder.jsx) "pular ate' o no" de um aviso, o mesmo
-// mecanismo ja usado pela aba Pendencias (findAncestorPath).
+// mecanismo da aba Abertos (findAncestorPath).
+//
+// DIVISAO DE PAPEIS -- estes 'warnings' sao fatos sobre a CARGA (fabrica
+// desconhecida, slot desconhecido, ASCII, multi-root): dizem o que este
+// parser encontrou ao ler o arquivo, e nao mudam mais depois. O que o
+// AUTOR ainda tem de resolver na arvore VIVA (o placeholder '@TOKEN@'
+// ainda literal) e' responsabilidade de core.collectOpenIssues(), que a
+// aba Abertos recalcula a cada edicao -- por isso nao ha mais aviso
+// 'token-placeholder' aqui: seria a mesma informacao, congelada no
+// instante da carga e dispensavel num banner.
 
 const INCLUDE_RE = /@include:([^@\n]*)@/g;
-const TOKEN_PLACEHOLDER_RE = /@([A-Za-z_][A-Za-z0-9_]*)@/g;
 
 // '@include:frag@' NAO pode ser deixado sem expandir e so' virar um aviso:
 // o identificador nu do scanner real INCLUI '@' e para no ':' -- '@include:'
@@ -352,25 +360,9 @@ function collectAsciiWarnings(text, warnings) {
   });
 }
 
-function scanLeafTextForPlaceholders(text, nodeId, slotName, warnings, seen) {
-  if (typeof text !== "string") return;
-  TOKEN_PLACEHOLDER_RE.lastIndex = 0;
-  let m;
-  while ((m = TOKEN_PLACEHOLDER_RE.exec(text))) {
-    const dedupeKey = `token:${nodeId}:${slotName}:${m[1]}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    warnings.push({
-      severity: "warning", code: "token-placeholder", nodeId,
-      message: `slot '${slotName}' ainda tem o placeholder '@${m[1]}@' -- edite o valor antes de exportar.`,
-    });
-  }
-}
-
-// Percorre a arvore JA CONSTRUIDA avisando sobre: fabrica desconhecida,
-// slot desconhecido numa classe conhecida, e placeholder '@TOKEN@' ainda
-// literal em algum valor de folha (o loader interativo NAO substitui
-// '@TOKEN@' automaticamente -- ver o comentario de parseEdlDocument()).
+// Percorre a arvore JA CONSTRUIDA avisando sobre: fabrica desconhecida e
+// slot desconhecido numa classe conhecida. Placeholder '@TOKEN@' NAO entra
+// aqui -- ver a "DIVISAO DE PAPEIS" no topo desta secao.
 function collectStructuralWarnings(root, byFactory, warnings) {
   const seen = new Set();
   function walk(node) {
@@ -394,9 +386,6 @@ function collectStructuralWarnings(root, byFactory, warnings) {
           });
         }
       }
-      const sv = node.slotValues[name];
-      if (sv && sv.kind === "raw") scanLeafTextForPlaceholders(sv.raw, node.id, name, warnings, seen);
-      if (sv && sv.kind === "text") scanLeafTextForPlaceholders(sv.value, node.id, name, warnings, seen);
     });
     Object.keys(node.children || {}).forEach((name) => {
       if (entry && !knownNames.has(name)) {
@@ -410,8 +399,7 @@ function collectStructuralWarnings(root, byFactory, warnings) {
         }
       }
       (node.children[name] || []).forEach((it) => {
-        if (it.node.isText) scanLeafTextForPlaceholders(it.node.text, node.id, name, warnings, seen);
-        else walk(it.node);
+        if (!it.node.isText) walk(it.node);
       });
     });
   }
@@ -433,9 +421,10 @@ function collectStructuralWarnings(root, byFactory, warnings) {
 // codigo especial de substituicao. Preferido a adivinhar um valor (o que
 // o script de build faz, substituindo por "2", aceitavel so' pra gerar um
 // preset descartavel): aqui o usuario ve o placeholder exato no campo e
-// digita o valor real antes de exportar, como qualquer outro campo. Um
-// aviso 'token-placeholder' aponta cada ocorrencia pra nao passar
-// despercebida.
+// digita o valor real antes de exportar, como qualquer outro campo. Quem
+// aponta cada ocorrencia, pra nao passar despercebida, e' a aba Abertos
+// (core.collectOpenIssues), recalculada a cada edicao -- nao um aviso
+// desta carga.
 function parseEdlDocument(text, byFactory) {
   const warnings = [];
   const errors = [];

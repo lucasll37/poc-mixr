@@ -173,6 +173,8 @@ BEGIN_SLOTTABLE(BtBehavior)
    "breakTurn", "evadeClimb", "evadeSpeed", "supportSpeed", "evadeHold",
    "terrainClearance", "patrolJitterHeading", "patrolMasterSeed",
    "patrolSeedOverride",
+   "slowRollMinInterval", "slowRollMaxInterval", "slowRollStick",
+   "slowRollTimeout",
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -205,6 +207,16 @@ BEGIN_SLOT_MAP(BtBehavior)
    // 'plugin-modelo-estranho'/'plugin-deposito-terceiro' quebrariam com
    // "slot not found" contra o mirror.
    ON_SLOT(19, setSlotIgnoraNumero,    base::Number)
+   // Slots 20-23: o slow roll (models/players/A-4/include/ubf/BtBehavior.hpp).
+   // Nenhum cenario de PRODUCAO os declara hoje -- so sandbox/A4-6DOF-RANDOM --
+   // entao os testes de plugin ainda passariam sem eles. Estao aqui pelo mesmo
+   // motivo que 'patrolSeedOverride' teve de ser acrescentado depois, por
+   // auditoria: este arquivo e' o espelho EXATO da tabela de producao, e uma
+   // divergencia so aparece quando alguem promove o slot para producao.
+   ON_SLOT(20, setSlotIgnoraTempo,     base::Time)
+   ON_SLOT(21, setSlotIgnoraTempo,     base::Time)
+   ON_SLOT(22, setSlotIgnoraNumero,    base::Number)
+   ON_SLOT(23, setSlotIgnoraTempo,     base::Time)
 END_SLOT_MAP()
 
 class AltitudeSafetyBehavior final : public base::ubf::AbstractBehavior

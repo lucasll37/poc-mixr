@@ -2,8 +2,9 @@
 
 #include "domain/FlightCommand.hpp"
 
+#include "xrandom/DeterministicRng.hpp"
+
 #include <cstdint>
-#include <random>
 
 namespace domain {
 
@@ -30,9 +31,15 @@ namespace domain {
 // derivacao (semente mestra do cenario -> hash do nome do player -> salt de
 // proposito) calculada por quem chama -- ver BtBehavior::configurePlans() e
 // libs/xrandom/DeterministicRng.hpp. Esta classe so semeia e sorteia; nao
-// sabe de master seed, nome de player nem salt -- e por isso continua sem
-// incluir nenhum header do SDK (ver o cabecalho de DeterministicRng.hpp para
-// o motivo: test_domain/test_tree compilam esta classe SEM MIXR/SDK).
+// sabe de master seed, nome de player nem salt.
+//
+// O GERADOR e' o mixr::xrandom::Rng, nao um std::mt19937_64 proprio: toda a
+// aleatoriedade deste repositorio passa por libs/xrandom, e nenhuma outra
+// classe instancia um gerador. Este header e' o UNICO do SDK que domain/
+// inclui, e pode porque e' header-only e sem dependencia nenhuma -- os alvos
+// test_domain/test_tree recebem so o CAMINHO DE INCLUDE do SDK
+// (partial_dependency), nunca o link, entao a propriedade "test_tree NAO
+// linka o MIXR" continua valendo.
 //------------------------------------------------------------------------------
 class PatrolPlan
 {
@@ -75,8 +82,7 @@ private:
    int leg_{};
 
    double jitterAmplitudeDeg_{0.0};
-   std::uint64_t jitterSeed_{0};
-   std::mt19937_64 jitterRng_{};
+   mixr::xrandom::Rng jitterRng_{};   // guarda a propria semente (Rng::reset())
    double currentJitterDeg_{0.0};
 };
 

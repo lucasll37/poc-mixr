@@ -1,4 +1,6 @@
 #include "app/ComponentTreeQuery.hpp"
+
+#include "app/MixrText.hpp"
 #include "app/FleetPanel.hpp"   // modeLabel()/sideLabel() -- o MESMO vocabulario da aba F1,
                                 // reusado em vez de um switch paralelo que envelheceria sozinho
 
@@ -386,7 +388,7 @@ void appendComponentChildren(ComponentTreeNode& node, mixr::base::Component* con
         item != nullptr && nodeCount <= kMaxNodes; item = item->getNext()) {
       auto* const pair{static_cast<mixr::base::Pair*>(item->getValue())};
       if (pair == nullptr) continue;
-      const std::string slotName{(pair->slot() != nullptr) ? pair->slot()->getString() : std::string{}};
+      const std::string slotName{mixrText(pair->slot())};
       addChild(node, pair->object(), slotName, depth, nodeCount);
    }
    kids->unref();
@@ -412,7 +414,7 @@ void appendPlayers(ComponentTreeNode& simNode, mixr::simulation::Simulation* con
         item != nullptr && nodeCount <= kMaxNodes; item = item->getNext()) {
       auto* const pair{static_cast<mixr::base::Pair*>(item->getValue())};
       if (pair == nullptr) continue;
-      const std::string slotName{(pair->slot() != nullptr) ? pair->slot()->getString() : std::string{}};
+      const std::string slotName{mixrText(pair->slot())};
       addChild(playersNode, pair->object(), slotName, depth, nodeCount);
    }
    players->unref();
@@ -449,7 +451,16 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
    }
 
    // EMPRESTADO, nao pre-ref()'d -- ver countBorrowed() acima. Nada de unref().
-   mixr::base::PairStream* const nets{station->getNetworks()};
+   //
+   // Mas "nao dar unref()" so resolve METADE: percorrer uma lista de que nao se
+   // tem referencia e a mesma familia de defeito pelo outro lado. Quem pode
+   // trocar 'networks' embaixo desta travessia e
+   // Station::shutdownNotification() -> setSlotNetworks(nullptr)
+   // (Station.cpp:408). O 'safe_ptr' abaixo toma a referencia enquanto o laco
+   // roda e a solta sozinho no fim do escopo -- exatamente o que
+   // Station::processNetworkInputTasks() faz consigo mesma (Station.cpp:539).
+   mixr::base::safe_ptr<mixr::base::PairStream> netsRef{station->getNetworks()};
+   mixr::base::PairStream* const nets{netsRef};
    if (nets != nullptr) {
       ComponentTreeNode netsNode;
       netsNode.slotName = "networks";
@@ -464,7 +475,7 @@ void appendStationExtras(ComponentTreeNode& stationNode, mixr::simulation::Stati
            item != nullptr && nodeCount <= kMaxNodes; item = item->getNext()) {
          auto* const pair{static_cast<mixr::base::Pair*>(item->getValue())};
          if (pair == nullptr) continue;
-         const std::string slotName{(pair->slot() != nullptr) ? pair->slot()->getString() : std::string{}};
+         const std::string slotName{mixrText(pair->slot())};
          addChild(netsNode, pair->object(), slotName, depth, nodeCount);
       }
       addField(netsNode.state, "itens", std::to_string(netsNode.children.size()));
@@ -489,8 +500,8 @@ void addChild(ComponentTreeNode& parent, mixr::base::Object* const obj, const st
    node.isPlayer = (player != nullptr);
    if (player != nullptr) {
       node.playerId = static_cast<int>(player->getID());
-      if (node.slotName.empty() && player->getName() != nullptr) {
-         node.slotName = player->getName()->getString();
+      if (node.slotName.empty()) {
+         node.slotName = mixrText(player->getName());
       }
    }
 

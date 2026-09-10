@@ -1,5 +1,7 @@
 #include "app/DeterministicDump.hpp"
 
+#include "app/MixrText.hpp"
+
 #include "xboard/Board.hpp"
 #include "xtrack/TrackQuery.hpp"
 
@@ -48,8 +50,10 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
          track = mixr::xtrack::nearestHostileTrack(air);
       }
 
+      const std::string nome{mixrText(player->getName())};
+
       oss << "frame=" << frame
-          << " player=" << (player->getName() != nullptr ? player->getName()->getString() : "?")
+          << " player=" << (nome.empty() ? std::string{"?"} : nome)
           << " n=" << pos[mixr::models::Player::INORTH]
           << " e=" << pos[mixr::models::Player::IEAST]
           << " alt=" << player->getAltitudeM()

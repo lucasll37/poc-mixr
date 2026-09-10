@@ -186,18 +186,28 @@ rodando num cenário.
 O modelo de produção (`A-4`) já tem esse hook pronto, opt-in por variável de ambiente:
 
 ```bash
-MIXR_GROOT_MONITOR=falcon1 ./dist/bin/app -folder src/poc/dis -scenario flight
+make run-node-monitor PLAYER=a4_1 SCENARIO=sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in
 ```
 
-Em outro terminal com display: `make open-groot` → aba **Monitor** → conectar em `localhost`
-(portas 1666/1667, fixas). A árvore daquele player aparece se colorindo em tempo real conforme
-tica. **Se o SEU modelo também usa uma árvore do BT.CPP e você quer essa mesma capacidade**, ela
-não vem de graça do framework — é código do modelo. Replique o padrão de
+O alvo já **abre o Groot** (`GROOT=0` pula, para máquina sem display); lá, aba **Monitor** →
+conectar em `localhost` (portas 1666/1667, fixas). A árvore daquele player aparece se colorindo em
+tempo real conforme tica. `run-app-monitor` faz o mesmo com o TUI — mas o TUI desliga o log no
+console, então para **diagnosticar** prefira o `node`, que loga no terminal.
+
+> **O `PLAYER` tem de existir no cenário.** O exemplo aqui já foi `falcon1`, nome que não existe em
+> cenário nenhum de `sandbox/` — e um alvo que não casa era 100% silencioso. Hoje o host avisa
+> (`LOG(WARNING)`) nomeando os players reais. E **hoje só o modelo A-4 tem o hook**: um player de
+> outro modelo é aceito pela checagem e mesmo assim não liga porta nenhuma.
+
+**Se o SEU modelo também usa uma árvore do BT.CPP e você quer essa mesma capacidade**, ela não vem
+de graça do framework — é código do modelo. Replique o padrão de
 `models/players/A-4/src/ubf/BtBehavior.cpp` (função `startGrootMonitorIfRequested()`): depois de
 `btFactory.createTreeFromFile(...)` ter sucesso, construa um `BT::PublisherZMQ(tree)` se uma
 variável de ambiente bater com o nome do player, e derrube esse objeto (`.reset()`) **antes** de
 qualquer recriação da árvore (`reset()`, `shutdownNotification()`, cópia) — ele guarda uma
-referência a ela.
+referência a ela. **Copiar o hook copia junto as armadilhas** (a nº3 da seção do Groot no
+`CLAUDE.md`: o Monitor do Groot 1.0.0 fechava sozinho, e o destrutor do `PublisherZMQ` tem um
+use-after-free) — vale ler antes de replicar.
 
 Lista completa de armadilhas já pagas (o motivo de cada regra acima, com detalhe de
 implementação) → [`CLAUDE.md`](CLAUDE.md), seção "Groot — editor e monitor ao vivo".

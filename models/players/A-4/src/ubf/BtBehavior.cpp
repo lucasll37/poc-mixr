@@ -14,6 +14,8 @@
 
 #include "mixr/models/player/Player.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <mutex>
@@ -37,6 +39,12 @@ std::mutex g_treeBuildMutex;
 // propria, deriva do MESMO instanceSeed com OUTRO salt, garantindo streams
 // sem correlacao entre si). "PATROLJ" em ASCII, soh para ser memoravel.
 constexpr std::uint64_t kPatrolJitterSalt{0x5041'5452'4F4C'4A00ULL};
+
+// Salt de PROPOSITO do SEGUNDO consumidor do mesmo instanceSeed: o sorteio do
+// intervalo entre acrobacias (domain::AerobaticPlan). E exatamente o caso que
+// o comentario acima antecipa -- mesma semente de instancia, salt diferente,
+// sequencias sem correlacao entre si. "ROLLSALT" em ASCII.
+constexpr std::uint64_t kSlowRollSalt{0x524F'4C4C'5341'4C54ULL};
 }
 
 BtBehavior::BtBehavior()
@@ -120,6 +128,14 @@ void BtBehavior::configurePlans()
       : xrandom::deriveSeed(tune.patrolMasterSeed, xrandom::fnv1a64(playerName));
    patrol.setHeadingJitter(tune.patrolJitterHeadingDeg,
                             xrandom::deriveSeed(instanceSeed, kPatrolJitterSalt));
+
+   // Segundo consumidor da MESMA hierarquia -- reaproveita o instanceSeed ja
+   // calculado acima e deriva com o proprio salt de proposito. Nenhum slot de
+   // semente novo: patrolMasterSeed e a semente do CENARIO (o nome e
+   // historico), e e dela que todo gerador deste player descende.
+   aerobatic.configure(tune.slowRollMinIntervalSec, tune.slowRollMaxIntervalSec,
+                       tune.slowRollStick, tune.slowRollTimeoutSec);
+   aerobatic.setSeed(xrandom::deriveSeed(instanceSeed, kSlowRollSalt));
 
    rtb.configure(0.0, 0.0, tune.arrivalRadiusM, tune.rtbAltitudeM, tune.rtbSpeedKts);
 
@@ -210,8 +226,27 @@ void BtBehavior::startGrootMonitorIfRequested()
 
    try {
       treePublisher_ = std::make_unique<BT::PublisherZMQ>(tree);
+
+      // A faixa de UID vai no log de proposito: ela e' o diagnostico da
+      // armadilha no 3 da secao "Groot" do CLAUDE.md. O contador de UID do
+      // BT.CPP (tree_node.cpp) e' um 'static uint16_t uid = 1' por .so que
+      // NUNCA zera, entao 'uid 1..N' significa "esta e' a primeira arvore
+      // construida neste plugin" e qualquer outra faixa significa "nao e'".
+      // O Groot ANTERIOR a FIX 6 de deps/groot/conanfile.py usa o UID como
+      // INDICE do proprio deque e MORRE (SIGABRT, sem dialogo) fora de 1..N;
+      // com a FIX 6 qualquer faixa funciona. De um jeito ou de outro, esta
+      // linha responde "por que aquele player funcionou e este nao" a um
+      // grep de distancia, em vez de exigir um depurador.
+      std::uint16_t minUid{0xFFFF};
+      std::uint16_t maxUid{0};
+      for (const auto& n : tree.nodes) {
+         if (n == nullptr) continue;
+         minUid = std::min(minUid, n->UID());
+         maxUid = std::max(maxUid, n->UID());
+      }
       LOG(INFO) << "[BtBehavior] monitor do Groot ligado para " << snap.ownerName
-                << " (tcp://*:1666 status, tcp://*:1667 topologia)";
+                << " (tcp://*:1666 status, tcp://*:1667 topologia, "
+                << tree.nodes.size() << " nos, uid " << minUid << ".." << maxUid << ")";
    } catch (const std::exception& ex) {
       LOG(WARNING) << "[BtBehavior] falha ao ligar o monitor do Groot: " << ex.what();
    }

@@ -1,5 +1,6 @@
 from conan import ConanFile
 from conan.tools.scm import Git
+from conan.tools.files import replace_in_file
 from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout
 
 
@@ -51,6 +52,57 @@ class Recipe(ConanFile):
         git = Git(self)
         git.clone(url="https://github.com/ASA-Simulation/BehaviorTree.CPP", target=".")
         git.checkout(self._commit)
+
+        # FIX: use-after-free em ~PublisherZMQ(), achado investigando "o Groot
+        # fecha sozinho" (ver a secao "Groot" do CLAUDE.md). Este NAO e o bug
+        # que mata o Groot -- e um segundo defeito, do lado do SIMULADOR, no
+        # mesmo caminho de codigo.
+        #
+        # 'PublisherZMQ::callback()' agenda o envio com
+        # 'std::async(... sleep_for(min_time_between_msgs_); flush(); )' --
+        # 40 ms no default de 25 msg/s. O destrutor faz 'delete zmq_' no CORPO,
+        # mas o unico ponto que espera esse future e' o destrutor do proprio
+        # membro 'send_future_', que so' roda DEPOIS do corpo (e, pela ordem de
+        # declaracao no header, nem adianta reordenar). Resultado: a tarefa
+        # pendente acorda e chama 'flush()' -> 'zmq_->publisher.send(...)'
+        # sobre memoria ja liberada.
+        #
+        # A janela abre em todo 'treePublisher_.reset()' do modelo --
+        # BtBehavior::reset()/copyData()/shutdownNotification() -- ou seja, no
+        # encerramento de qualquer execucao com MIXR_GROOT_MONITOR ligado.
+        # Esperar o envio pendente ANTES do delete fecha a janela; e' seguro
+        # aqui porque nenhum lock esta em maos neste ponto ('flush()' toma
+        # 'mutex_' por conta propria).
+        #
+        # ONDE ESTE PATCH VALE (verificado, nao suposto -- a primeira redacao
+        # deste comentario dizia o contrario e estava errada): ele e' aplicado
+        # na source() DESTA receita, logo so' existe em pacotes construidos do
+        # FONTE por scripts/deps.sh. E esse E' o caminho corrente -- README.md
+        # ("as cinco dependencias que nao estao no ConanCenter sao construidas
+        # do codigo-fonte para o cache local"), INSTALL.md SS4 (passo obrigatorio)
+        # e o CI (.gitlab-ci.yml: "SEM remote privado nenhum") usam todos
+        # scripts/deps.sh, e 'make configure' e' um 'conan install --build=missing'
+        # que resolve do cache local. Ou seja: esta correcao E' o comportamento
+        # que roda aqui, nao um caso de borda.
+        #
+        # Quem eventualmente consumir um behaviortree.cpp.asa/3.5.6 PRONTO de um
+        # remote NAO recebe este patch; para cobrir esse caso ele tem de subir
+        # para o fork upstream. E um pacote em CACHE anterior a este patch
+        # tambem o perde em silencio -- 'conan remove behaviortree.cpp.asa/*'
+        # antes de recriar.
+        replace_in_file(
+            self, "src/loggers/bt_zmq_publisher.cpp",
+            "    flush();\n"
+            "    delete zmq_;",
+            "    // POC-MIXR: espera o envio agendado por callback() antes de\n"
+            "    // liberar o Pimpl -- ver deps/behaviortree/conanfile.py.\n"
+            "    if (send_future_.valid())\n"
+            "    {\n"
+            "        send_future_.wait();\n"
+            "    }\n"
+            "    flush();\n"
+            "    delete zmq_;",
+        )
 
     def config_options(self):
         if self.settings.os == "Windows":

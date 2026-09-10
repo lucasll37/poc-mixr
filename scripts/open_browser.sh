@@ -22,14 +22,24 @@
 #                      ler de dentro do sistema de arquivos da VM.
 #
 # Nenhum degrau e' obrigatorio: falhando todos, imprime a URL file:// para
-# abrir a mao -- exatamente o que as receitas ja faziam antes, so que agora
-# depois de TENTAR, em vez de desistir so por 'xdg-open' nao existir.
+# abrir a mao -- mas sai com codigo 1, para o alvo do make ACUSAR que nada
+# abriu em vez de terminar verde. Imprimir a URL e' rede de seguranca, nao
+# sucesso.
 #
 # ARMADILHA CONFIRMADA -- nao redescobrir: 'explorer.exe' devolve codigo de
 # saida 1 mesmo quando abre a pagina com sucesso (comportamento conhecido do
-# proprio Windows, nao um erro deste script). Por isso este degrau NUNCA e'
-# julgado pelo codigo de saida -- ele imprime a URL junto, para o usuario ter
-# o caminho a mao se nada abrir.
+# proprio Windows, nao um erro deste script). Por isso o degrau 4 nao pode ser
+# julgado por "codigo != 0".
+#
+# SEGUNDA ARMADILHA, MEDIDA DEPOIS -- e a razao de o teste nao ser mais um
+# '|| true' cru: ignorar o codigo INTEIRO tambem engole o 126 ("cannot execute
+# binary file: Exec format error"), que e' o que sai quando o interop
+# Windows<->WSL esta desligado (sem a entrada 'WSLInterop' em
+# /proc/sys/fs/binfmt_misc/, o kernel nao lanca binario PE nenhum). Nesse
+# estado o script imprimia "aberto via explorer.exe" para uma falha TOTAL --
+# 'make open-docs'/'open-presentation'/'open-edl-builder' saiam 0 sem abrir
+# nada. Hoje 126/127 (nao consegui EXECUTAR) sao separados de 1 (executou e
+# retornou 1), e so os dois primeiros derrubam o degrau.
 #
 # LIMITE CONHECIDO: $BROWSER e' tratado como o nome de UM comando
 # ("BROWSER=firefox", "BROWSER=wslview"). A forma com placeholder da
@@ -82,17 +92,31 @@ if command -v wslview >/dev/null 2>&1; then
     fi
 fi
 
-# 4. explorer.exe (WSL2 sem 'wslu') -- ver a armadilha do codigo de saida 1
-# no cabecalho: aqui o sucesso nao e' julgado pelo 'exit code'.
+# 4. explorer.exe (WSL2 sem 'wslu') -- ver as DUAS armadilhas de codigo de
+# saida no cabecalho: 1 nao e' falha, 126/127 sao.
 if command -v explorer.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
     CAMINHO_WIN=$(wslpath -w "$ABS" 2>/dev/null)
     if [ -n "$CAMINHO_WIN" ]; then
-        explorer.exe "$CAMINHO_WIN" >/dev/null 2>&1 || true
-        echo "aberto via explorer.exe (navegador do Windows): $CAMINHO_WIN"
-        exit 0
+        # A saida e' capturada (em vez de descartada) so para ecoar o erro do
+        # kernel no diagnostico abaixo -- no caminho de sucesso ela e' lixo.
+        SAIDA_EXPLORER=$(explorer.exe "$CAMINHO_WIN" 2>&1)
+        CODIGO=$?
+        if [ "$CODIGO" -ne 126 ] && [ "$CODIGO" -ne 127 ]; then
+            echo "aberto via explorer.exe (navegador do Windows): $CAMINHO_WIN"
+            exit 0
+        fi
+        printf "${AMARELO}open_browser:${SEM_COR} 'explorer.exe' existe mas NAO executa (codigo %s): %s\n" \
+            "$CODIGO" "${SAIDA_EXPLORER:-sem saida}" >&2
+        printf "  O interop Windows<->WSL esta desligado -- nenhum .exe roda nesta VM.\n" >&2
+        printf "  Confira com: ls /proc/sys/fs/binfmt_misc/WSLInterop\n" >&2
+        printf "  Restaurar:   sudo systemctl restart systemd-binfmt\n" >&2
+        printf "  Se nao voltar:\n" >&2
+        printf "    sudo sh -c 'echo \":WSLInterop:M::MZ::/init:P\" > /proc/sys/fs/binfmt_misc/register'\n" >&2
+        printf "  (instalar 'wslu' NAO resolve -- o 'wslview' tambem depende do interop.)\n" >&2
     fi
 fi
 
-printf "${AMARELO}open_browser:${SEM_COR} nenhum abridor encontrado (xdg-open/wslview/explorer.exe) -- abra manualmente: %s\n" "$URL"
-printf "  Linux nativo: sudo apt install xdg-utils   |   WSL2: sudo apt install wslu\n"
-exit 0
+printf "${AMARELO}open_browser:${SEM_COR} nenhum abridor funcionou (\$BROWSER/xdg-open/wslview/explorer.exe) -- abra manualmente: %s\n" "$URL" >&2
+printf "  Linux nativo (e WSL2 com WSLg): sudo apt install xdg-utils firefox\n" >&2
+printf "  WSL2 pelo navegador do Windows: sudo apt install wslu (exige interop vivo)\n" >&2
+exit 1

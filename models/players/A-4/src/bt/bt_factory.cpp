@@ -7,6 +7,7 @@
 #include "bt/nodes/PatrolAction.hpp"
 #include "bt/nodes/ReportAndEvadeAction.hpp"
 #include "bt/nodes/ReturnToBaseAction.hpp"
+#include "bt/nodes/SlowRollAction.hpp"
 #include "bt/nodes/SupportAlertAction.hpp"
 
 namespace bt_nodes {
@@ -46,6 +47,7 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
    registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
    registerWithContext<PatrolAction>(factory, "Patrol", context);
    registerWithContext<NavigateAction>(factory, "Navigate", context);
+   registerWithContext<SlowRollAction>(factory, "SlowRoll", context);
 }
 
 } // namespace bt_nodes

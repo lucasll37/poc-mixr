@@ -22,6 +22,115 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ## [Não versionado]
 
+### Adicionado
+
+- **Slow roll: um nó de árvore que faz a aeronave girar 360° em torno do eixo longitudinal, em
+  instantes sorteados.** Quatro peças novas, uma por camada:
+  - `domain::AerobaticPlan` (`include/domain/AerobaticPlan.hpp`) — regra pura, sem MIXR nem SDK,
+    no molde de `domain::PatrolPlan`: `std::mt19937_64` privado, semente já derivada chegando de
+    fora, e **sorteio num evento discreto** (o fim de uma manobra), nunca por `dt` — é o
+    invariante que preserva o determinismo entre 1/2/4 threads.
+  - `bt_nodes::SlowRollAction`, nome de fábrica BT `SlowRoll`. **Falha** enquanto não é hora de
+    rolar, o que deixa pô-lo no topo de um `Fallback` sem sequestrar a árvore.
+  - `configs/flight_tree_random.xml` — `( SlowRoll )` por cima de `( Navigate )`.
+  - Quatro slots do `( BtBehavior )`: `slowRollMinInterval`, `slowRollMaxInterval`,
+    `slowRollStick`, `slowRollTimeout`. **`slowRollStick` nasce 0, ou seja o recurso nasce
+    desligado** — nenhum cenário existente mudou de comportamento.
+  - `domain::FlightCommand` ganhou `rollOverride`/`rollStick`. Não toca o contrato de RL:
+    `XRLBRIDGE_ACTION_FIELDS` enumera os campos por nome e continua com 3.
+  - A semente é o **segundo consumidor** do mesmo `instanceSeed` de `patrolMasterSeed`, com salt
+    de propósito próprio (`kSlowRollSalt`) — exatamente o caso que o comentário de
+    `kPatrolJitterSalt` antecipava. Nenhum slot de semente novo.
+
+  Cenário de demonstração: `sandbox/A4-6DOF-RANDOM` (as 8 aeronaves de `A4-6DOF`, cada uma
+  rolando em instantes próprios).
+
+### Alterado
+
+- **Toda a aleatoriedade passou a ser tratada por `libs/xrandom`.** A lib tinha só a camada de
+  DERIVAÇÃO de sementes (`fnv1a64`/`deriveSeed`); o gerador em si estava **duplicado** dentro de
+  cada consumidor — `domain::PatrolPlan` e `domain::AerobaticPlan` tinham, cada um, o próprio
+  `std::mt19937_64` privado e a própria `std::uniform_real_distribution`. Agora a lib expõe a
+  classe `Rng`, e os dois a usam: um `grep` por `mt19937`/`uniform_real_distribution` fora de
+  `libs/xrandom/` volta só comentários.
+
+  **O que destravou:** o motivo de a duplicação existir era real — `domain/` é compilado por
+  `test_domain`/`test_tree` **sem o SDK**, e o header só fica visível via `dist/include`. Mas ele
+  é header-only e sem dependência nenhuma, então incluí-lo não arrasta MIXR: bastou dar aos dois
+  alvos o **caminho de include**, nunca o link
+  (`sdk_dep.partial_dependency(includes: true, compile_args: true)` em `tests/meson.build`).
+  A propriedade "`test_tree` NÃO linka o MIXR" continua valendo — conferida com `ldd`: **zero**
+  libs do MIXR nos dois binários.
+
+  **Três decisões que estavam implícitas e agora estão escritas num lugar só**, cada uma com
+  teste próprio em `tests/domain/test_xrandom.cpp`: a distribuição é construída a cada chamada e
+  nunca guardada (uma `uniform_real_distribution` guardada tem estado próprio em algumas
+  implementações, e ele sobreviveria a um `seed()` — resemear não voltaria ao início da
+  sequência); faixa ou amplitude degenerada devolve o piso/zero **sem consumir o gerador** (é como
+  um consumidor desliga a variação sem deslocar a sequência de quem ainda sorteia); e não existe
+  gerador global nem construtor que invente semente (nada de `std::random_device`).
+
+  **Refactor puro, provado:** o dump determinístico da fixture `intruder` de `flight` (3.000
+  frames, 2 threads) sai **byte a byte idêntico** ao de antes da troca — a sequência de sorteios
+  do jitter de patrulha não se moveu.
+
+  Fora de escopo, e por quê: os três `np.random.default_rng(semente)` de
+  `src/poc/onnx-policy/tools/train_policy.py`, `src/poc/rl-training/tools/export_onnx.py` e
+  `src/rl/tests/test_smoke.py` continuam como estão — são numpy, offline, fora do frame de
+  simulação, e já semeados explicitamente; `libs/xrandom` é um header C++ e não os alcança.
+
+
+- **`data/jsbsim/aircraft/A4/a4ap.xml`: o nivelador de asas deixou de ser incondicional e passou
+  a ser gateado em `ap/heading_hold == 1`.** Sem isso a acrobacia era **fisicamente impossível**,
+  e o modo de falha era mudo. A conta, com aileron cheio: o comando líquido na superfície é
+  `clip(ap/aileron_cmd + 1, ±1)` e ele **zera** quando `0,8·φ + 0,6·p = 1` — 71,6° de banco
+  parado, e apenas ~50° a 0,5 rad/s. A aeronave travava de lado e nunca fechava um tonneau.
+  Não há como resolver em C++: `JSBSimModel` é `final` com `fdmex`/`propMgr` `protected`.
+
+  `ap/heading_hold` é o gate certo porque `FlightAction::execute()` o liga em **toda** decisão
+  atuada do voo normal — então o nivelador segue exatamente como antes, e só sai do caminho no
+  único momento em que atrapalha. **Medido (fixture `intruder` de `flight`, 3000 frames, 2
+  threads):** todos os campos físicos do dump — posição, altitude, rumo, banco, arfagem,
+  velocidade, combustível — saem **exatamente iguais** aos de antes do gate, e nenhum rótulo
+  `bt=` divergiu. A única diferença em 120 linhas foram 14 valores de `trackRange` no **último
+  dígito impresso** (~1e-9 em ~20 km, ou seja ~1e-13 relativo): o acréscimo de um nó `<switch>`
+  ao grafo do FCS perturba o estado físico abaixo da precisão impressa, e o filtro alfa-beta do
+  track manager amplifica isso até o último decimal. Confirmado que não é ruído de execução: duas
+  execuções da MESMA configuração saem byte a byte idênticas.
+
+  O **amortecedor de taxa** (`fcs/roll-rate-damper`, `-0,6·p`) continua incondicional, de
+  propósito: fora da acrobacia ele segue segurando a divergência em espiral da célula; durante
+  ela, é ele que limita a taxa de rolagem — é ele que faz o giro ser *slow*.
+
+  **Escopo:** só o A-4. `models/players/C-130/.../c130ap.xml` tem cópia própria do nivelador
+  (ganho `-0,2`) e não foi tocada; uma acrobacia lá exigiria o mesmo gate, à parte.
+
+- **`ubf/FlightAction.cpp` ganhou um ramo de atuação por stick.** Duas armadilhas que ele existe
+  para resolver: (1) o comando de stick é **pegajoso** do lado do JSBSim (o `FCS` guarda o último
+  `SetDaCmd()` e nada o reaplica por frame), então o ramo normal zera explicitamente — o que cobre
+  toda saída da manobra, inclusive a que não passa pelo nó; (2) o comando vai **no `Autopilot`,
+  nunca no `AirVehicle`** — `Autopilot::headingController()` roda toda fase 3 e sobrescreve o
+  dynamics model com o `stickRollPos` do próprio `Autopilot`, então um `AirVehicle::setControlStick()`
+  seria zerado no frame seguinte. `setNavMode(false)` também é obrigatório: `modeManager()` chama
+  `setNavMode(isNavModeOn())` toda fase 3, e `setNavMode(true)` religa os três hold modes.
+
+### Medido
+
+- **A manobra fecha os 360° em ~7,9 s** (≈46 °/s médios, com `slowRollStick: 0.9`) — não por
+  timeout. Banco observado no dump chega a **±177°**, ou seja passa folgadamente da barreira de
+  71,6° que existia antes do gate.
+- **Cada giro custa ~530 m de altitude** (~1.700 ft), comparado contra o mesmo cenário sem
+  acrobacia. É físico: um tonneau só de aileron não tem compensação de profundor, e invertido o
+  *altitude hold* comanda o profundor no sentido contrário. Diminuir `slowRollStick` **piora**
+  (giro mais longo = mais tempo perdendo altitude).
+- **480 s, 8 aeronaves, 5 giros cada: nenhuma caiu nem congelou.** Pior AGL entre as oito:
+  **564 m** (a aeronave mais baixa da pilha), contra ~1.539 m no mesmo cenário sem acrobacia — e
+  ela recupera nas pernas de subida da rota. A altitude comandada durante a manobra continua
+  passando por `clampAltitudeToTerrain()`, mas a aeronave **afunda abaixo do comandado** durante
+  o giro: quem der intervalos curtos, ou voar mais perto do terreno, precisa refazer esta medição.
+- Determinismo com 1, 2 e 4 threads T/C: dumps **byte-idênticos** (4000 frames), mais a repetição
+  de 4 threads.
+
 ### Corrigido
 
 - **`tools/update_bt_models.py` destruiria uma árvore cujo comentário MENCIONASSE

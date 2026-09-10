@@ -15,7 +15,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
  * src/ui/edl_builder_core.js, não aqui -- compile.js concatena os dois no
  * MESMO <script>, então as funções de lá (buildCatalogIndex, isCompatible,
  * makeNode, projectToEdl, primaryRolesFor, roleFillStatus,
- * emptyChildSlots, ...) já chegam em escopo, sem `import`. Ver o
+ * collectOpenIssues, ...) já chegam em escopo, sem `import`. Ver o
  * cabeçalho daquele arquivo para o porquê (é o que permite testá-la em
  * Node puro, sem Babel/React/DOM, em src/ui/edl_builder.test.js).
  *
@@ -43,14 +43,13 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
  * de navegação separado de um painel de edição: cada nó é um cartão
  * retrátil, com fundo em cor suave por ORIGEM (models/base/terrain/.../
  * plugin:*) e, para qualquer classe derivada de Player (Aircraft,
- * GroundVehicle, ...), uma seção "Sistemas principais" com um cartão-
- * placeholder tracejado para cada um dos ~10 papéis (dynamicsModel/pilot/
- * navigation/datalink/radio/gimbal/rfSensor/irSystem/onboardComputer/
- * storesMgr) que Player::updateSystemPointers() resolve por TIPO -- não
- * por slot, ver o comentário de primaryRolesFor()/roleFillStatus() em
- * edl_builder_core.js -- e que por isso nunca apareciam na árvore antiga.
- * Qualquer outro slot-filho vazio (ex.: Station.dataRecorder) também ganha
- * um placeholder genérico, arrastável, com a mesma aparência. O painel de
+ * GroundVehicle, ...), uma seção "Sistemas principais" que agrupa os
+ * componentes já montados sob o PAPEL que cada um satisfaz (dynamicsModel/
+ * pilot/navigation/datalink/radio/gimbal/rfSensor/irSystem/
+ * onboardComputer/storesMgr), resolvidos por TIPO e não por slot -- ver o
+ * comentário de primaryRolesFor()/roleFillStatus() em edl_builder_core.js.
+ * Todo slot-filho vazio (ex.: Station.dataRecorder) ganha um placeholder
+ * arrastável -- é por ele que se acrescenta um componente. O painel de
  * propriedades (coluna da direita) encolheu para só os campos de valor
  * direto do nó selecionado -- editar estrutura (arrastar/remover/
  * renomear) agora acontece direto na árvore.
@@ -91,17 +90,6 @@ function nodeSummary(node, byFactory) {
   const leaves = entry.slots.filter(isLeafSlot);
   const filled = leaves.filter((s) => !isEmptyLeafValue(node.slotValues[s.name])).length;
   return { filled, total: leaves.length };
-}
-
-// Quantos "esperados, mas ausentes" este nó tem AGORA -- vira o badge "N
-// pendentes" no cabeçalho, visível mesmo com o cartão COLAPSADO, pra
-// convidar a abrir sem precisar adivinhar. A REGRA em si (papéis vazios +
-// slots-filho vazios, sem contar 'components' duas vezes) mora em
-// nodePendencies() (edl_builder_core.js) -- a MESMA usada pelo resumo
-// tree-wide da aba "Pendências" (collectPendencies), pra badge por cartão e
-// resumo nunca divergirem sobre o que conta como pendência.
-function missingCount(node, byFactory) {
-  return nodePendencies(node, byFactory).length;
 }
 
 // Profundidade default de expansão ao carregar um cenário -- raiz e seus
@@ -342,11 +330,19 @@ function TreeItem({ parentId, slotName, isList, item, ui, actions }) {
 
 // A seção "Sistemas principais" -- só aparece em nós cuja classe deriva de
 // Player (via primaryRolesFor, que já vem achatado por herança do
-// catálogo). Cada papel é OU o componente real que o preenche (achado por
-// TIPO, não pela chave -- ver roleFillStatus()) OU um PlaceholderCard
-// convidando a arrastar a classe-base esperada. Os itens de 'components'
-// que NÃO satisfazem nenhum papel (sensores extras, etc.) entram à parte,
-// em "outros componentes".
+// catálogo). É um AGRUPAMENTO de leitura: cada papel PREENCHIDO ganha uma
+// linha rotulada com o componente que o satisfaz (achado por TIPO, não
+// pela chave -- ver roleFillStatus()), pra um ( Aircraft ) de 12
+// componentes sair legível em vez de virar lista anônima. Os itens de
+// 'components' que NÃO satisfazem nenhum papel (sensores extras, etc.)
+// entram à parte, em "outros componentes".
+//
+// Papel VAZIO não rende mais nada -- era o andaime de autoria ("nenhum
+// DynamicsModel encontrado") que, num cenário real, virava ruído em massa
+// (720 linhas só em sandbox/A4-6DOF, todas cobradas de templates de
+// armamento que não têm piloto nem rádio por definição). Quem acrescenta
+// um componente é o PlaceholderCard de "outros componentes" logo abaixo,
+// que continua aceitando arraste de qualquer classe compatível.
 function RoleSection({ node, roles, ui, actions }) {
   const items = node.children.components || [];
   const claimedIds = new Set(
@@ -361,18 +357,11 @@ function RoleSection({ node, roles, ui, actions }) {
       <div className="eb-branch-list">
         {roles.map((role) => {
           const found = roleFillStatus(node, role, ui.byFactory);
+          if (!found) return null;
           return (
             <div key={role.role} className="eb-role-row eb-branch-item">
               <div className="eb-role-label">{role.role}</div>
-              {found ? (
-                <TreeItem parentId={node.id} slotName="components" isList item={found} ui={ui} actions={actions} />
-              ) : (
-                <PlaceholderCard
-                  label={`nenhum ${role.baseClass} encontrado`}
-                  slotDef={{ objectTypes: [role.baseClass], acceptsChildList: false }}
-                  dragFactory={ui.dragFactory}
-                  onDrop={(factory) => actions.onDrop(node.id, "components", factory, role.role)} />
-              )}
+              <TreeItem parentId={node.id} slotName="components" isList item={found} ui={ui} actions={actions} />
             </div>
           );
         })}
@@ -468,7 +457,6 @@ function TreeNode({ node, ui, actions, keyBadge, onRenameKeyLocal, onRemoveLocal
   const hasChildren = childSlots.length > 0 || extraChildNames.length > 0;
   const { filled, total } = nodeSummary(node, ui.byFactory);
   const roles = entry ? primaryRolesFor(node.factory, ui.byFactory) : [];
-  const pending = entry ? missingCount(node, ui.byFactory) : 0;
 
   return (
     <div className={`eb-card eb-origin-${originClass}` + (selected ? " eb-card-selected" : "") + (!entry ? " eb-card-uncataloged" : "")}>
@@ -488,9 +476,6 @@ function TreeNode({ node, ui, actions, keyBadge, onRenameKeyLocal, onRemoveLocal
         {!entry && <span className="eb-unknown-badge" title="fabrica nao catalogada -- slots preservados como valor bruto, editaveis no painel de propriedades">?</span>}
         {isRoot && <span className="eb-muted">(raiz)</span>}
         {total > 0 && <span className="eb-fill-count" title="campos de valor preenchidos / total">{filled}/{total}</span>}
-        {pending > 0 && (
-          <span className="eb-missing-badge" title="componentes esperados que ainda faltam">{pending} pendente{pending > 1 ? "s" : ""}</span>
-        )}
         {onRemoveLocal && (
           <button className="eb-x" title="remover" onClick={(e) => { e.stopPropagation(); onRemoveLocal(); }}>×</button>
         )}
@@ -712,41 +697,50 @@ function MapPanel({ root, byFactory, selectedId, onSelect }) {
   );
 }
 
-/* ------------------------------- pendências --------------------------------- */
+/* ------------------------------ itens em aberto ----------------------------- */
 
-// Descrição de UMA pendência -- reaproveitada tanto na lista quanto (se um
-// dia precisar) em qualquer outro lugar que queira o mesmo texto.
-function pendencyDescription(p) {
-  if (p.kind === "role") return <>sem <b>{p.role}</b> (esperado: {p.baseClass})</>;
-  if (p.textOnly) return <>slot <b>{p.slotName}</b> vazio (só aceita texto)</>;
-  return <>slot <b>{p.slotName}</b> vazio (esperado: {(p.objectTypes && p.objectTypes.join("/")) || "componente"})</>;
+// Aba "Abertos" -- o que o AUTOR ainda tem de resolver antes de exportar.
+// Hoje isso e' exatamente um caso: placeholder de template ('@RUN_ID@',
+// '@NUM_TC_THREADS@') ainda literal num valor de folha. A lista sai de
+// core.collectOpenIssues(), recalculada a cada mudanca da arvore -- entao
+// corrigir o campo derruba a contagem NA HORA, sem recarregar.
+//
+// NAO existe mais aba "Pendencias". Ela contava todo slot-filho declarado
+// pelo catalogo e deixado vazio -- e como em EDL quase todo slot e'
+// opcional com default sensato, aquilo media o TAMANHO da arvore, nao o
+// que falta: 2280 "pendencias" para sandbox/A4-6DOF, um cenario correto e
+// rodando. A nota completa, com os numeros medidos, esta em
+// edl_builder_core.js (secao "itens em aberto").
+
+// Uma chave puramente posicional ("1", "2"... de item anonimo de lista)
+// nao identifica nada pra quem le -- nesse caso o nome da fabrica diz
+// mais. Mesmo espirito do fallback de rotulo de extractPlacements().
+function openIssueLabel(p) {
+  return /^[0-9]+$/.test(String(p.label)) ? p.factory : p.label;
 }
 
-// Aba "Pendências" -- o resumo da árvore INTEIRA, sempre visível (a
-// contagem já aparece no rótulo da própria aba, sem precisar clicar) em vez
-// de só o badge por cartão, que exige abrir/expandir cada um pra saber O
-// QUE falta. Cada linha pula direto pro cartão na árvore (onJump), a mesma
-// UX de "Ver no mapa"/seleção compartilhada já usada entre Árvore e Mapa.
-function PendenciesPanel({ root, pendencies, onJump }) {
+function OpenIssuesPanel({ root, issues, onJump }) {
   if (!root) {
     return <div className="eb-pane eb-pending"><p className="eb-muted eb-empty-msg">nada para conferir -- crie um cenário na aba Árvore primeiro.</p></div>;
   }
-  if (pendencies.length === 0) {
+  if (issues.length === 0) {
     return (
       <div className="eb-pane eb-pending">
-        <p className="eb-ok-msg">✓ nenhuma pendência -- todo papel/slot esperado deste cenário está preenchido.</p>
+        <p className="eb-ok-msg">✓ nada em aberto -- nenhum placeholder de template ficou por substituir.</p>
       </div>
     );
   }
   return (
     <div className="eb-pane eb-pending">
-      <p className="eb-muted eb-pending-summary">{pendencies.length} pendência(s) neste cenário -- clique para ir até o cartão:</p>
+      <p className="eb-muted eb-pending-summary">{issues.length} item(ns) em aberto -- clique para ir até o cartão:</p>
       <ul className="eb-pending-list">
-        {pendencies.map((p, i) => (
+        {issues.map((p, i) => (
           <li key={i} className="eb-pending-item" onClick={() => onJump(p.nodeId)}>
             <span className={`eb-origin-dot eb-origin-${originCssClass((CATALOG_BY_FACTORY[p.factory] || {}).origin)}`} />
-            <span className="eb-pending-node">{p.label}</span>
-            <span className="eb-pending-desc">{pendencyDescription(p)}</span>
+            <span className="eb-pending-node">{openIssueLabel(p)}</span>
+            <span className="eb-pending-desc">
+              slot <b>{p.slotName}</b> ainda tem o placeholder <b>@{p.token}@</b> -- substitua antes de exportar
+            </span>
           </li>
         ))}
       </ul>
@@ -916,7 +910,7 @@ function ExportPanel({ root }) {
 // Faixa dispensável, logo abaixo da barra de ferramentas, só quando "Carregar
 // .edl" termina com avisos (não bloqueantes -- nada foi perdido, ver
 // edl_parser_core.js). Mesmo visual de `.eb-pending-item`/`.eb-pending-list`
-// (Pendências) e o MESMO mecanismo de "pular até o nó" (handleJumpToPendency,
+// (Abertos) e o MESMO mecanismo de "pular até o nó" (handleJumpToNode,
 // que já expande ancestrais/seleciona/troca pra aba Árvore -- genérico o
 // bastante pra servir aqui também, sem duplicar lógica).
 function LoadWarningsBanner({ warnings, onJump, onDismiss }) {
@@ -1155,8 +1149,6 @@ const CSS = `
 .eb-map-dot.eb-origin-other { fill:var(--origin-other-fg); }
 .eb-node-factory { font-weight:600; }
 .eb-fill-count { color:var(--muted); font-size:11px; }
-.eb-missing-badge { font-size:10.5px; padding:1px 6px; border-radius:8px; border:1px dashed var(--hot);
-  color:var(--hot); background:transparent; }
 .eb-card-body { padding:6px 10px 8px 22px; }
 .eb-role-frame, .eb-slot-frame { background:var(--frame-bg); border-radius:6px; padding:7px 8px; margin:6px 0; }
 .eb-role-frame-title, .eb-slot-frame-title { font-weight:600; font-size:10.5px; text-transform:uppercase;
@@ -1241,13 +1233,15 @@ export default function App() {
     setExpandedIds(new Set());
   }, []);
 
-  // Aba "Pendências" -- recalculada a cada mudança de árvore (percorrer
-  // ~200 nós é barato; não vale a pena memoizar por nó, só pela árvore
-  // inteira). handleJumpToPendency troca pra aba Árvore, seleciona o nó e
-  // expande todo ancestral no caminho até ele (sem isso o cartão-alvo
-  // poderia estar escondido atrás de um pai colapsado).
-  const pendencies = useMemo(() => collectPendencies(root, CATALOG_BY_FACTORY), [root]);
-  const handleJumpToPendency = useCallback((nodeId) => {
+  // Aba "Abertos" -- recalculada a cada mudança de árvore (percorrer ~800
+  // nós é barato; não vale a pena memoizar por nó, só pela árvore inteira).
+  // É essa recomputação que faz a contagem cair NA HORA quando o campo com
+  // o placeholder é corrigido. handleJumpToNode troca pra aba Árvore,
+  // seleciona o nó e expande todo ancestral no caminho até ele (sem isso o
+  // cartão-alvo poderia estar escondido atrás de um pai colapsado) -- serve
+  // igual à aba Abertos e ao LoadWarningsBanner.
+  const openIssues = useMemo(() => collectOpenIssues(root), [root]);
+  const handleJumpToNode = useCallback((nodeId) => {
     setMainTab("tree");
     setSelectedId(nodeId);
     const path = findAncestorPath(root, nodeId);
@@ -1440,16 +1434,16 @@ export default function App() {
           </button>
         </div>
       </div>
-      <LoadWarningsBanner warnings={loadWarnings} onJump={handleJumpToPendency} onDismiss={() => setLoadWarnings([])} />
+      <LoadWarningsBanner warnings={loadWarnings} onJump={handleJumpToNode} onDismiss={() => setLoadWarnings([])} />
       <div className="eb-body">
         <Palette onDragStartFactory={setDragFactory} />
         <div className="eb-main">
           <div className="eb-row eb-main-tabs">
             <button className={`eb-tab-btn${mainTab === "tree" ? " eb-tab-btn-active" : ""}`} onClick={() => setMainTab("tree")}>Árvore</button>
             <button className={`eb-tab-btn${mainTab === "map" ? " eb-tab-btn-active" : ""}`} onClick={() => setMainTab("map")}>Mapa</button>
-            <button className={`eb-tab-btn eb-tab-btn-pending${pendencies.length === 0 ? " eb-tab-btn-clear" : ""}${mainTab === "pending" ? " eb-tab-btn-active" : ""}`}
+            <button className={`eb-tab-btn eb-tab-btn-pending${openIssues.length === 0 ? " eb-tab-btn-clear" : ""}${mainTab === "pending" ? " eb-tab-btn-active" : ""}`}
               onClick={() => setMainTab("pending")}>
-              Pendências {pendencies.length === 0 ? "✓" : `(${pendencies.length})`}
+              Abertos {openIssues.length === 0 ? "✓" : `(${openIssues.length})`}
             </button>
             {uncatalogedCount > 0 && (
               <span className="eb-uncataloged-count"
@@ -1493,7 +1487,7 @@ export default function App() {
           ) : mainTab === "map" ? (
             <MapPanel root={root} byFactory={CATALOG_BY_FACTORY} selectedId={selectedId} onSelect={setSelectedId} />
           ) : (
-            <PendenciesPanel root={root} pendencies={pendencies} onJump={handleJumpToPendency} />
+            <OpenIssuesPanel root={root} issues={openIssues} onJump={handleJumpToNode} />
           )}
           <ExportPanel root={root} />
         </div>

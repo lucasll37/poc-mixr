@@ -218,14 +218,25 @@ test("'@include:' malformado (sem '@' de fechamento na MESMA linha) tambem vira 
 
 /* ---------------------------------- @TOKEN@ -------------------------------- */
 
-test("'@TOKEN@' (fora de '@include:') carrega LITERAL, com aviso 'token-placeholder' -- nunca adivinha um valor", () => {
+// A CARGA nao avisa mais nada sobre '@TOKEN@' -- quem aponta cada
+// ocorrencia e' core.collectOpenIssues() (aba "Abertos"), sobre a arvore
+// VIVA, entao corrigir o campo derruba a contagem sem recarregar. Aqui se
+// afirma so' o que e' responsabilidade DESTE modulo: o token atravessa a
+// carga e a reexportacao sem ser adivinhado nem corrompido.
+test("'@TOKEN@' (fora de '@include:') carrega LITERAL e sobrevive ao round-trip -- nunca adivinha um valor", () => {
   const text = "( Aircraft type: C310 debugLevel: @NUM_TC_THREADS@ )";
   const { tree, warnings, errors } = parser.parseEdlDocument(text, BY_FACTORY);
   assert.strictEqual(errors.length, 0);
   assert.ok(tree);
-  assert.ok(warnings.some((w) => w.code === "token-placeholder" && w.message.includes("NUM_TC_THREADS")));
+  assert.ok(!warnings.some((w) => w.code === "token-placeholder"),
+    "aviso de carga saiu de proposito -- a aba Abertos cobre isso ao vivo");
   const out = core.projectToEdl(tree, BY_FACTORY);
   assert.ok(out.includes("debugLevel: @NUM_TC_THREADS@"), out);
+  // E o coletor da aba Abertos VE esse mesmo token na arvore carregada.
+  const iss = core.collectOpenIssues(tree);
+  assert.strictEqual(iss.length, 1);
+  assert.strictEqual(iss[0].token, "NUM_TC_THREADS");
+  assert.strictEqual(iss[0].slotName, "debugLevel");
 });
 
 /* ---------------------------------- ascii ---------------------------------- */

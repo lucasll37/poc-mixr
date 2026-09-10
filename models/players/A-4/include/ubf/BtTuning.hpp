@@ -56,6 +56,15 @@ struct BtTuning
 
    // apoio a um alerta recebido
    double supportSpeedKts{420.0};
+
+   // slow roll (acrobacia aleatoria -- ver domain/AerobaticPlan.hpp).
+   // O default de slowRollStick e ZERO, ou seja o recurso nasce DESLIGADO:
+   // nenhum cenario que nao declare estes slots muda de comportamento, e o
+   // dump deterministico continua byte a byte o de antes.
+   double slowRollMinIntervalSec{60.0};    // piso do intervalo entre manobras
+   double slowRollMaxIntervalSec{180.0};   // teto; <= ao piso vira intervalo FIXO
+   double slowRollStick{0.0};              // aileron -1..1; 0 = desligado
+   double slowRollTimeoutSec{20.0};        // aborta a manobra que nao fecha
 };
 
 } // namespace xnative

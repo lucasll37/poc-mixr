@@ -17608,6 +17608,101 @@ const EDL_CATALOG = [
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
+      },
+      {
+        "name": "slowRollMinInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "20",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMaxInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "21",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollStick",
+        "declaredIn": "BtBehavior",
+        "comment": "22 -- 0 DESLIGA a acrobacia (default)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollTimeout",
+        "declaredIn": "BtBehavior",
+        "comment": "23",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
       }
     ],
     "primaryComponents": []
@@ -20642,6 +20737,101 @@ const EDL_CATALOG = [
         "acceptsVector": false,
         "acceptsChildList": false,
         "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMinInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "20",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMaxInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "21",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollStick",
+        "declaredIn": "BtBehavior",
+        "comment": "22 -- 0 DESLIGA a acrobacia (default)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollTimeout",
+        "declaredIn": "BtBehavior",
+        "comment": "23",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
@@ -82534,8 +82724,12 @@ function primaryRolesFor(factory, byFactory) {
 // Entre os itens JÁ presentes em node.children.components, acha o
 // PRIMEIRO cuja cadeia de herança inclui o baseClass do papel -- mesma
 // semântica de findByType() (primeiro que casa vence; o MIXR não promete
-// nenhuma ordem além dessa). Devolve o item {key, node} ou null (papel
-// vazio -- vira placeholder na árvore).
+// nenhuma ordem além dessa). Devolve o item {key, node} ou null.
+//
+// Serve só para AGRUPAR e rotular o que já está montado (RoleSection, em
+// edl_builder.jsx: `dynamicsModel -> JSBSimModel` em vez de uma lista
+// anônima de 12 componentes). Papel vazio NÃO vira mais nada na tela --
+// ver a nota sobre a remoção das "pendências" logo abaixo.
 function roleFillStatus(node, role, byFactory) {
   const items = (node.children && node.children.components) || [];
   for (const it of items) {
@@ -82546,63 +82740,84 @@ function roleFillStatus(node, role, byFactory) {
   return null;
 }
 
-// Para cada slot-filho (isChildSlot) que a classe do nó declara mas que
-// hoje não tem NENHUM item -- devolve o slotDef, na ordem do catálogo.
-// Generaliza o "placeholder" para QUALQUER slot estrutural vazio (ex.:
-// Station.dataRecorder), não só os papéis especiais de Player acima --
-// que ficam de fora daqui de propósito quando 'components' já tem pelo
-// menos um item (mesmo que nenhum papel esteja preenchido): a seção de
-// papéis já cobre esse caso com um placeholder por papel vazio.
-function emptyChildSlots(node, byFactory) {
-  const entry = byFactory[node.factory];
-  if (!entry) return [];
-  return entry.slots.filter(isChildSlot).filter((s) => {
-    const items = node.children[s.name];
-    return !items || items.length === 0;
-  });
+/* ---------------------------- itens em aberto ----------------------------- */
+
+// NÃO EXISTE MAIS "PENDÊNCIA" -- e a razão está medida, não é gosto.
+//
+// Havia aqui `emptyChildSlots()`/`nodePendencies()`/`collectPendencies()`,
+// que chamavam de "pendência" todo slot-filho declarado pelo catálogo e
+// deixado vazio, mais todo papel primário de Player sem preenchimento. Em
+// EDL praticamente TODO slot é opcional com default sensato, então essa
+// conta media o TAMANHO da árvore, não o que falta nela: 145 para as 90
+// entradas de src/poc/dis/flight, 321 para as 153 de built-in_mixr_1 e
+// 2280 para as 771 de sandbox/A4-6DOF -- os três cenários corretos e
+// rodando (razão ~1,6 / 2,1 / 3,0 por nó). Nos 2280: 518 eram o slot
+// genérico `components` vazio (o normal em toda classe derivada de
+// Component), 720 eram os 10 papéis cobrados de 72 TEMPLATES de armamento
+// dentro de StoresMgr.stores (uma bomba no cabide não tem piloto nem
+// rádio; os 8 ( Aircraft ) de verdade tinham ZERO), 336 eram o par
+// mutuamente exclusivo não usado (o cenário posiciona por xPos/yPos, então
+// latitude/longitude eram cobradas em cima) e 58 eram falso positivo puro
+// -- slot COM valor reportado como vazio, porque a regra só olhava
+// node.children e nunca node.slotValues (ex.: WorldModel.latitude
+// = -22.25, Tws.threshold = ( Decibel 0.0 )).
+//
+// Apertar o predicado não salvava: aplicando TODAS as correções mecânicas
+// possíveis o A4-6DOF ainda dava 558, e os 558 restantes eram slots
+// opcionais legítimos. O MIXR não tem conceito de slot obrigatório
+// (BEGIN_SLOT_MAP/ON_SLOT só registram setters com default), então
+// "obrigatório" não é derivável do fonte -- a régua estava errada na raiz.
+//
+// O que sobra é este coletor: só o que o AUTOR ainda tem de resolver antes
+// de exportar. Os alvos de arraste da árvore (o PlaceholderCard de um slot
+// vazio, em ChildSlotSection) continuam intactos -- aquilo é a mecânica de
+// edição, nunca foi contagem.
+
+// Placeholder de template (`@NUM_TC_THREADS@`, `@RUN_ID@`). Mora AQUI, e
+// não em edl_parser_core.js, porque os dois lados precisam da mesma regra
+// e o `require` só existe na direção parser -> core (nunca o contrário, e
+// compile.js concatena core ANTES do parser no navegador). Fonte única.
+const TOKEN_PLACEHOLDER_RE = /@([A-Za-z_][A-Za-z0-9_]*)@/g;
+
+// Toda ocorrência de @TOKEN@ que ainda está literal num valor de folha da
+// árvore. Varre TODOS os tipos de folha -- inclusive `unit`, `number` e
+// `vector`, que a varredura antiga (só `raw`/`text`) deixava passar: um
+// `( Meters @ALT@ )` era mudo. Também desce nas folhas de texto de lista.
+//
+// `label` segue a MESMA convenção de extractPlacements(): a chave que o
+// PAI deu ao item (`falcon1: ( Aircraft ... )`), não um valor de slot.
+function leafTextOf(sv) {
+  if (!sv || typeof sv !== "object") return "";
+  if (sv.kind === "raw") return typeof sv.raw === "string" ? sv.raw : "";
+  return typeof sv.value === "string" ? sv.value : "";
 }
 
-// Pendências de UM nó só (sem descer aos filhos) -- papéis primários sem
-// preenchimento + slots-filho vazios, excluindo 'components' quando há
-// papéis (mesma exclusão já usada no badge "N pendentes" do cartão: um
-// Aircraft com 'components' vazio já lista os 10 papéis, contar
-// 'components' de novo seria a MESMA ausência duas vezes). Base
-// compartilhada por `missingCount()` (edl_builder.jsx, o badge por cartão)
-// e por `collectPendencies()` (abaixo, o resumo da árvore inteira) -- as
-// duas leem daqui, nunca duplicam o critério.
-function nodePendencies(node, byFactory) {
-  const roles = primaryRolesFor(node.factory, byFactory);
-  const items = [];
-  for (const role of roles) {
-    if (!roleFillStatus(node, role, byFactory)) {
-      items.push({ kind: "role", role: role.role, baseClass: role.baseClass });
+function collectOpenIssues(root) {
+  const out = [];
+  function scan(text, node, label, slotName) {
+    if (typeof text !== "string" || text.indexOf("@") === -1) return;
+    TOKEN_PLACEHOLDER_RE.lastIndex = 0;
+    let m;
+    while ((m = TOKEN_PLACEHOLDER_RE.exec(text))) {
+      out.push({
+        nodeId: node.id,
+        factory: node.factory,
+        label: label || node.factory,
+        slotName,
+        token: m[1],
+      });
     }
   }
-  for (const slotDef of emptyChildSlots(node, byFactory)) {
-    if (roles.length > 0 && slotDef.name === "components") continue;
-    items.push({ kind: "slot", slotName: slotDef.name, objectTypes: slotDef.objectTypes, textOnly: !!slotDef.textOnly });
-  }
-  return items;
-}
-
-// Percorre a árvore INTEIRA e devolve uma entrada por PENDÊNCIA (não por
-// nó) -- é o que alimenta a aba "Pendências" (visível sempre, sem precisar
-// expandir cartão nenhum). `label` segue a MESMA convenção de
-// extractPlacements(): a chave que o PAI deu ao item (`falcon1: (Aircraft
-// ...)`), não um valor de slot -- vale pra qualquer classe, não só Player.
-function collectPendencies(root, byFactory) {
-  const out = [];
   function walk(node, label) {
     if (!node || node.isText) return;
-    const entry = byFactory[node.factory];
-    if (entry) {
-      for (const p of nodePendencies(node, byFactory)) {
-        out.push({ nodeId: node.id, factory: node.factory, label: label || node.factory, ...p });
-      }
-    }
+    const sv = node.slotValues || {};
+    Object.keys(sv).forEach((slotName) => scan(leafTextOf(sv[slotName]), node, label, slotName));
     const children = node.children || {};
     Object.keys(children).forEach((slotName) => {
-      children[slotName].forEach((item) => walk(item.node, item.key));
+      children[slotName].forEach((item) => {
+        if (item.node && item.node.isText) scan(item.node.text, node, label, slotName);
+        else walk(item.node, item.key);
+      });
     });
   }
   walk(root, null);
@@ -82610,7 +82825,8 @@ function collectPendencies(root, byFactory) {
 }
 
 // Caminho da RAIZ até um nó (ids, inclusive das duas pontas) -- usado pra
-// "pular" de uma pendência (aba Pendências) até o cartão dela na árvore:
+// "pular" de um item em aberto (aba Abertos) ou de um aviso de carga
+// (LoadWarningsBanner) até o cartão dele na árvore:
 // expandir todo id deste caminho é o que garante que o cartão-alvo fique
 // VISÍVEL (um ancestral colapsado esconderia ele), sem precisar expandir a
 // árvore inteira. Devolve null se o id não existe na árvore atual (pode
@@ -83137,7 +83353,7 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildCatalogIndex, originLabel, originRank, isCompatible, isOfferable, compatibleFactories,
     isLeafSlot, isChildSlot, defaultKindFor,
-    primaryRolesFor, roleFillStatus, emptyChildSlots, nodePendencies, collectPendencies, findAncestorPath,
+    primaryRolesFor, roleFillStatus, TOKEN_PLACEHOLDER_RE, collectOpenIssues, findAncestorPath,
     countUncataloged,
     freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
@@ -83468,10 +83684,18 @@ function astFormToNode(ast, byFactory) {
 // Cada diagnostico e' um objeto ESTRUTURADO ({severity,code,message,line?,
 // nodeId?}), nao uma string solta -- permite testar por codigo estavel e
 // permite a UI (edl_builder.jsx) "pular ate' o no" de um aviso, o mesmo
-// mecanismo ja usado pela aba Pendencias (findAncestorPath).
+// mecanismo da aba Abertos (findAncestorPath).
+//
+// DIVISAO DE PAPEIS -- estes 'warnings' sao fatos sobre a CARGA (fabrica
+// desconhecida, slot desconhecido, ASCII, multi-root): dizem o que este
+// parser encontrou ao ler o arquivo, e nao mudam mais depois. O que o
+// AUTOR ainda tem de resolver na arvore VIVA (o placeholder '@TOKEN@'
+// ainda literal) e' responsabilidade de core.collectOpenIssues(), que a
+// aba Abertos recalcula a cada edicao -- por isso nao ha mais aviso
+// 'token-placeholder' aqui: seria a mesma informacao, congelada no
+// instante da carga e dispensavel num banner.
 
 const INCLUDE_RE = /@include:([^@\n]*)@/g;
-const TOKEN_PLACEHOLDER_RE = /@([A-Za-z_][A-Za-z0-9_]*)@/g;
 
 // '@include:frag@' NAO pode ser deixado sem expandir e so' virar um aviso:
 // o identificador nu do scanner real INCLUI '@' e para no ':' -- '@include:'
@@ -83500,25 +83724,9 @@ function collectAsciiWarnings(text, warnings) {
   });
 }
 
-function scanLeafTextForPlaceholders(text, nodeId, slotName, warnings, seen) {
-  if (typeof text !== "string") return;
-  TOKEN_PLACEHOLDER_RE.lastIndex = 0;
-  let m;
-  while ((m = TOKEN_PLACEHOLDER_RE.exec(text))) {
-    const dedupeKey = `token:${nodeId}:${slotName}:${m[1]}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    warnings.push({
-      severity: "warning", code: "token-placeholder", nodeId,
-      message: `slot '${slotName}' ainda tem o placeholder '@${m[1]}@' -- edite o valor antes de exportar.`,
-    });
-  }
-}
-
-// Percorre a arvore JA CONSTRUIDA avisando sobre: fabrica desconhecida,
-// slot desconhecido numa classe conhecida, e placeholder '@TOKEN@' ainda
-// literal em algum valor de folha (o loader interativo NAO substitui
-// '@TOKEN@' automaticamente -- ver o comentario de parseEdlDocument()).
+// Percorre a arvore JA CONSTRUIDA avisando sobre: fabrica desconhecida e
+// slot desconhecido numa classe conhecida. Placeholder '@TOKEN@' NAO entra
+// aqui -- ver a "DIVISAO DE PAPEIS" no topo desta secao.
 function collectStructuralWarnings(root, byFactory, warnings) {
   const seen = new Set();
   function walk(node) {
@@ -83542,9 +83750,6 @@ function collectStructuralWarnings(root, byFactory, warnings) {
           });
         }
       }
-      const sv = node.slotValues[name];
-      if (sv && sv.kind === "raw") scanLeafTextForPlaceholders(sv.raw, node.id, name, warnings, seen);
-      if (sv && sv.kind === "text") scanLeafTextForPlaceholders(sv.value, node.id, name, warnings, seen);
     });
     Object.keys(node.children || {}).forEach((name) => {
       if (entry && !knownNames.has(name)) {
@@ -83558,8 +83763,7 @@ function collectStructuralWarnings(root, byFactory, warnings) {
         }
       }
       (node.children[name] || []).forEach((it) => {
-        if (it.node.isText) scanLeafTextForPlaceholders(it.node.text, node.id, name, warnings, seen);
-        else walk(it.node);
+        if (!it.node.isText) walk(it.node);
       });
     });
   }
@@ -83581,9 +83785,10 @@ function collectStructuralWarnings(root, byFactory, warnings) {
 // codigo especial de substituicao. Preferido a adivinhar um valor (o que
 // o script de build faz, substituindo por "2", aceitavel so' pra gerar um
 // preset descartavel): aqui o usuario ve o placeholder exato no campo e
-// digita o valor real antes de exportar, como qualquer outro campo. Um
-// aviso 'token-placeholder' aponta cada ocorrencia pra nao passar
-// despercebida.
+// digita o valor real antes de exportar, como qualquer outro campo. Quem
+// aponta cada ocorrencia, pra nao passar despercebida, e' a aba Abertos
+// (core.collectOpenIssues), recalculada a cada edicao -- nao um aviso
+// desta carga.
 function parseEdlDocument(text, byFactory) {
   const warnings = [];
   const errors = [];
@@ -83690,7 +83895,7 @@ const {
  * src/ui/edl_builder_core.js, não aqui -- compile.js concatena os dois no
  * MESMO <script>, então as funções de lá (buildCatalogIndex, isCompatible,
  * makeNode, projectToEdl, primaryRolesFor, roleFillStatus,
- * emptyChildSlots, ...) já chegam em escopo, sem `import`. Ver o
+ * collectOpenIssues, ...) já chegam em escopo, sem `import`. Ver o
  * cabeçalho daquele arquivo para o porquê (é o que permite testá-la em
  * Node puro, sem Babel/React/DOM, em src/ui/edl_builder.test.js).
  *
@@ -83718,14 +83923,13 @@ const {
  * de navegação separado de um painel de edição: cada nó é um cartão
  * retrátil, com fundo em cor suave por ORIGEM (models/base/terrain/.../
  * plugin:*) e, para qualquer classe derivada de Player (Aircraft,
- * GroundVehicle, ...), uma seção "Sistemas principais" com um cartão-
- * placeholder tracejado para cada um dos ~10 papéis (dynamicsModel/pilot/
- * navigation/datalink/radio/gimbal/rfSensor/irSystem/onboardComputer/
- * storesMgr) que Player::updateSystemPointers() resolve por TIPO -- não
- * por slot, ver o comentário de primaryRolesFor()/roleFillStatus() em
- * edl_builder_core.js -- e que por isso nunca apareciam na árvore antiga.
- * Qualquer outro slot-filho vazio (ex.: Station.dataRecorder) também ganha
- * um placeholder genérico, arrastável, com a mesma aparência. O painel de
+ * GroundVehicle, ...), uma seção "Sistemas principais" que agrupa os
+ * componentes já montados sob o PAPEL que cada um satisfaz (dynamicsModel/
+ * pilot/navigation/datalink/radio/gimbal/rfSensor/irSystem/
+ * onboardComputer/storesMgr), resolvidos por TIPO e não por slot -- ver o
+ * comentário de primaryRolesFor()/roleFillStatus() em edl_builder_core.js.
+ * Todo slot-filho vazio (ex.: Station.dataRecorder) ganha um placeholder
+ * arrastável -- é por ele que se acrescenta um componente. O painel de
  * propriedades (coluna da direita) encolheu para só os campos de valor
  * direto do nó selecionado -- editar estrutura (arrastar/remover/
  * renomear) agora acontece direto na árvore.
@@ -83781,17 +83985,6 @@ function nodeSummary(node, byFactory) {
     filled,
     total: leaves.length
   };
-}
-
-// Quantos "esperados, mas ausentes" este nó tem AGORA -- vira o badge "N
-// pendentes" no cabeçalho, visível mesmo com o cartão COLAPSADO, pra
-// convidar a abrir sem precisar adivinhar. A REGRA em si (papéis vazios +
-// slots-filho vazios, sem contar 'components' duas vezes) mora em
-// nodePendencies() (edl_builder_core.js) -- a MESMA usada pelo resumo
-// tree-wide da aba "Pendências" (collectPendencies), pra badge por cartão e
-// resumo nunca divergirem sobre o que conta como pendência.
-function missingCount(node, byFactory) {
-  return nodePendencies(node, byFactory).length;
 }
 
 // Profundidade default de expansão ao carregar um cenário -- raiz e seus
@@ -84123,11 +84316,19 @@ function TreeItem({
 
 // A seção "Sistemas principais" -- só aparece em nós cuja classe deriva de
 // Player (via primaryRolesFor, que já vem achatado por herança do
-// catálogo). Cada papel é OU o componente real que o preenche (achado por
-// TIPO, não pela chave -- ver roleFillStatus()) OU um PlaceholderCard
-// convidando a arrastar a classe-base esperada. Os itens de 'components'
-// que NÃO satisfazem nenhum papel (sensores extras, etc.) entram à parte,
-// em "outros componentes".
+// catálogo). É um AGRUPAMENTO de leitura: cada papel PREENCHIDO ganha uma
+// linha rotulada com o componente que o satisfaz (achado por TIPO, não
+// pela chave -- ver roleFillStatus()), pra um ( Aircraft ) de 12
+// componentes sair legível em vez de virar lista anônima. Os itens de
+// 'components' que NÃO satisfazem nenhum papel (sensores extras, etc.)
+// entram à parte, em "outros componentes".
+//
+// Papel VAZIO não rende mais nada -- era o andaime de autoria ("nenhum
+// DynamicsModel encontrado") que, num cenário real, virava ruído em massa
+// (720 linhas só em sandbox/A4-6DOF, todas cobradas de templates de
+// armamento que não têm piloto nem rádio por definição). Quem acrescenta
+// um componente é o PlaceholderCard de "outros componentes" logo abaixo,
+// que continua aceitando arraste de qualquer classe compatível.
 function RoleSection({
   node,
   roles,
@@ -84146,26 +84347,19 @@ function RoleSection({
     className: "eb-branch-list"
   }, roles.map(role => {
     const found = roleFillStatus(node, role, ui.byFactory);
+    if (!found) return null;
     return /*#__PURE__*/React.createElement("div", {
       key: role.role,
       className: "eb-role-row eb-branch-item"
     }, /*#__PURE__*/React.createElement("div", {
       className: "eb-role-label"
-    }, role.role), found ? /*#__PURE__*/React.createElement(TreeItem, {
+    }, role.role), /*#__PURE__*/React.createElement(TreeItem, {
       parentId: node.id,
       slotName: "components",
       isList: true,
       item: found,
       ui: ui,
       actions: actions
-    }) : /*#__PURE__*/React.createElement(PlaceholderCard, {
-      label: `nenhum ${role.baseClass} encontrado`,
-      slotDef: {
-        objectTypes: [role.baseClass],
-        acceptsChildList: false
-      },
-      dragFactory: ui.dragFactory,
-      onDrop: factory => actions.onDrop(node.id, "components", factory, role.role)
     }));
   })), /*#__PURE__*/React.createElement("div", {
     className: "eb-role-others"
@@ -84277,7 +84471,6 @@ function TreeNode({
     total
   } = nodeSummary(node, ui.byFactory);
   const roles = entry ? primaryRolesFor(node.factory, ui.byFactory) : [];
-  const pending = entry ? missingCount(node, ui.byFactory) : 0;
   return /*#__PURE__*/React.createElement("div", {
     className: `eb-card eb-origin-${originClass}` + (selected ? " eb-card-selected" : "") + (!entry ? " eb-card-uncataloged" : "")
   }, /*#__PURE__*/React.createElement("div", {
@@ -84311,10 +84504,7 @@ function TreeNode({
   }, "(raiz)"), total > 0 && /*#__PURE__*/React.createElement("span", {
     className: "eb-fill-count",
     title: "campos de valor preenchidos / total"
-  }, filled, "/", total), pending > 0 && /*#__PURE__*/React.createElement("span", {
-    className: "eb-missing-badge",
-    title: "componentes esperados que ainda faltam"
-  }, pending, " pendente", pending > 1 ? "s" : ""), onRemoveLocal && /*#__PURE__*/React.createElement("button", {
+  }, filled, "/", total), onRemoveLocal && /*#__PURE__*/React.createElement("button", {
     className: "eb-x",
     title: "remover",
     onClick: e => {
@@ -84633,24 +84823,30 @@ function MapPanel({
   }, "posição local (norte/leste, relativa ao ponto de referência da Station) lida de initXPos/initYPos/initAlt de cada player -- não é latitude/longitude real. Sem essas posições definidas, o player aparece na origem (0, 0). Clique num marcador para selecioná-lo na aba Árvore/no painel de propriedades."));
 }
 
-/* ------------------------------- pendências --------------------------------- */
+/* ------------------------------ itens em aberto ----------------------------- */
 
-// Descrição de UMA pendência -- reaproveitada tanto na lista quanto (se um
-// dia precisar) em qualquer outro lugar que queira o mesmo texto.
-function pendencyDescription(p) {
-  if (p.kind === "role") return /*#__PURE__*/React.createElement(React.Fragment, null, "sem ", /*#__PURE__*/React.createElement("b", null, p.role), " (esperado: ", p.baseClass, ")");
-  if (p.textOnly) return /*#__PURE__*/React.createElement(React.Fragment, null, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " vazio (só aceita texto)");
-  return /*#__PURE__*/React.createElement(React.Fragment, null, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " vazio (esperado: ", p.objectTypes && p.objectTypes.join("/") || "componente", ")");
+// Aba "Abertos" -- o que o AUTOR ainda tem de resolver antes de exportar.
+// Hoje isso e' exatamente um caso: placeholder de template ('@RUN_ID@',
+// '@NUM_TC_THREADS@') ainda literal num valor de folha. A lista sai de
+// core.collectOpenIssues(), recalculada a cada mudanca da arvore -- entao
+// corrigir o campo derruba a contagem NA HORA, sem recarregar.
+//
+// NAO existe mais aba "Pendencias". Ela contava todo slot-filho declarado
+// pelo catalogo e deixado vazio -- e como em EDL quase todo slot e'
+// opcional com default sensato, aquilo media o TAMANHO da arvore, nao o
+// que falta: 2280 "pendencias" para sandbox/A4-6DOF, um cenario correto e
+// rodando. A nota completa, com os numeros medidos, esta em
+// edl_builder_core.js (secao "itens em aberto").
+
+// Uma chave puramente posicional ("1", "2"... de item anonimo de lista)
+// nao identifica nada pra quem le -- nesse caso o nome da fabrica diz
+// mais. Mesmo espirito do fallback de rotulo de extractPlacements().
+function openIssueLabel(p) {
+  return /^[0-9]+$/.test(String(p.label)) ? p.factory : p.label;
 }
-
-// Aba "Pendências" -- o resumo da árvore INTEIRA, sempre visível (a
-// contagem já aparece no rótulo da própria aba, sem precisar clicar) em vez
-// de só o badge por cartão, que exige abrir/expandir cada um pra saber O
-// QUE falta. Cada linha pula direto pro cartão na árvore (onJump), a mesma
-// UX de "Ver no mapa"/seleção compartilhada já usada entre Árvore e Mapa.
-function PendenciesPanel({
+function OpenIssuesPanel({
   root,
-  pendencies,
+  issues,
   onJump
 }) {
   if (!root) {
@@ -84660,20 +84856,20 @@ function PendenciesPanel({
       className: "eb-muted eb-empty-msg"
     }, "nada para conferir -- crie um cenário na aba Árvore primeiro."));
   }
-  if (pendencies.length === 0) {
+  if (issues.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-pending"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-ok-msg"
-    }, "✓ nenhuma pendência -- todo papel/slot esperado deste cenário está preenchido."));
+    }, "✓ nada em aberto -- nenhum placeholder de template ficou por substituir."));
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-pending"
   }, /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-pending-summary"
-  }, pendencies.length, " pendência(s) neste cenário -- clique para ir até o cartão:"), /*#__PURE__*/React.createElement("ul", {
+  }, issues.length, " item(ns) em aberto -- clique para ir até o cartão:"), /*#__PURE__*/React.createElement("ul", {
     className: "eb-pending-list"
-  }, pendencies.map((p, i) => /*#__PURE__*/React.createElement("li", {
+  }, issues.map((p, i) => /*#__PURE__*/React.createElement("li", {
     key: i,
     className: "eb-pending-item",
     onClick: () => onJump(p.nodeId)
@@ -84681,9 +84877,9 @@ function PendenciesPanel({
     className: `eb-origin-dot eb-origin-${originCssClass((CATALOG_BY_FACTORY[p.factory] || {}).origin)}`
   }), /*#__PURE__*/React.createElement("span", {
     className: "eb-pending-node"
-  }, p.label), /*#__PURE__*/React.createElement("span", {
+  }, openIssueLabel(p)), /*#__PURE__*/React.createElement("span", {
     className: "eb-pending-desc"
-  }, pendencyDescription(p))))));
+  }, "slot ", /*#__PURE__*/React.createElement("b", null, p.slotName), " ainda tem o placeholder ", /*#__PURE__*/React.createElement("b", null, "@", p.token, "@"), " -- substitua antes de exportar")))));
 }
 
 /* --------------------------------- exportar -------------------------------- */
@@ -84868,7 +85064,7 @@ function ExportPanel({
 // Faixa dispensável, logo abaixo da barra de ferramentas, só quando "Carregar
 // .edl" termina com avisos (não bloqueantes -- nada foi perdido, ver
 // edl_parser_core.js). Mesmo visual de `.eb-pending-item`/`.eb-pending-list`
-// (Pendências) e o MESMO mecanismo de "pular até o nó" (handleJumpToPendency,
+// (Abertos) e o MESMO mecanismo de "pular até o nó" (handleJumpToNode,
 // que já expande ancestrais/seleciona/troca pra aba Árvore -- genérico o
 // bastante pra servir aqui também, sem duplicar lógica).
 function LoadWarningsBanner({
@@ -85114,8 +85310,6 @@ const CSS = `
 .eb-map-dot.eb-origin-other { fill:var(--origin-other-fg); }
 .eb-node-factory { font-weight:600; }
 .eb-fill-count { color:var(--muted); font-size:11px; }
-.eb-missing-badge { font-size:10.5px; padding:1px 6px; border-radius:8px; border:1px dashed var(--hot);
-  color:var(--hot); background:transparent; }
 .eb-card-body { padding:6px 10px 8px 22px; }
 .eb-role-frame, .eb-slot-frame { background:var(--frame-bg); border-radius:6px; padding:7px 8px; margin:6px 0; }
 .eb-role-frame-title, .eb-slot-frame-title { font-weight:600; font-size:10.5px; text-transform:uppercase;
@@ -85205,13 +85399,15 @@ function App() {
     setExpandedIds(new Set());
   }, []);
 
-  // Aba "Pendências" -- recalculada a cada mudança de árvore (percorrer
-  // ~200 nós é barato; não vale a pena memoizar por nó, só pela árvore
-  // inteira). handleJumpToPendency troca pra aba Árvore, seleciona o nó e
-  // expande todo ancestral no caminho até ele (sem isso o cartão-alvo
-  // poderia estar escondido atrás de um pai colapsado).
-  const pendencies = useMemo(() => collectPendencies(root, CATALOG_BY_FACTORY), [root]);
-  const handleJumpToPendency = useCallback(nodeId => {
+  // Aba "Abertos" -- recalculada a cada mudança de árvore (percorrer ~800
+  // nós é barato; não vale a pena memoizar por nó, só pela árvore inteira).
+  // É essa recomputação que faz a contagem cair NA HORA quando o campo com
+  // o placeholder é corrigido. handleJumpToNode troca pra aba Árvore,
+  // seleciona o nó e expande todo ancestral no caminho até ele (sem isso o
+  // cartão-alvo poderia estar escondido atrás de um pai colapsado) -- serve
+  // igual à aba Abertos e ao LoadWarningsBanner.
+  const openIssues = useMemo(() => collectOpenIssues(root), [root]);
+  const handleJumpToNode = useCallback(nodeId => {
     setMainTab("tree");
     setSelectedId(nodeId);
     const path = findAncestorPath(root, nodeId);
@@ -85467,7 +85663,7 @@ function App() {
     onClick: () => setTheme(t => t === "light" ? "dark" : "light")
   }, theme === "light" ? "☾ escuro" : "☀ claro"))), /*#__PURE__*/React.createElement(LoadWarningsBanner, {
     warnings: loadWarnings,
-    onJump: handleJumpToPendency,
+    onJump: handleJumpToNode,
     onDismiss: () => setLoadWarnings([])
   }), /*#__PURE__*/React.createElement("div", {
     className: "eb-body"
@@ -85484,9 +85680,9 @@ function App() {
     className: `eb-tab-btn${mainTab === "map" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("map")
   }, "Mapa"), /*#__PURE__*/React.createElement("button", {
-    className: `eb-tab-btn eb-tab-btn-pending${pendencies.length === 0 ? " eb-tab-btn-clear" : ""}${mainTab === "pending" ? " eb-tab-btn-active" : ""}`,
+    className: `eb-tab-btn eb-tab-btn-pending${openIssues.length === 0 ? " eb-tab-btn-clear" : ""}${mainTab === "pending" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("pending")
-  }, "Pendências ", pendencies.length === 0 ? "✓" : `(${pendencies.length})`), uncatalogedCount > 0 && /*#__PURE__*/React.createElement("span", {
+  }, "Abertos ", openIssues.length === 0 ? "✓" : `(${openIssues.length})`), uncatalogedCount > 0 && /*#__PURE__*/React.createElement("span", {
     className: "eb-uncataloged-count",
     title: "componentes com fábrica ou slot que o catálogo não conhece -- valores preservados como texto bruto, editáveis no painel de propriedades"
   }, uncatalogedCount, " não catalogado", uncatalogedCount > 1 ? "s" : ""), mainTab === "tree" && root && /*#__PURE__*/React.createElement("span", {
@@ -85543,10 +85739,10 @@ function App() {
     byFactory: CATALOG_BY_FACTORY,
     selectedId: selectedId,
     onSelect: setSelectedId
-  }) : /*#__PURE__*/React.createElement(PendenciesPanel, {
+  }) : /*#__PURE__*/React.createElement(OpenIssuesPanel, {
     root: root,
-    pendencies: pendencies,
-    onJump: handleJumpToPendency
+    issues: openIssues,
+    onJump: handleJumpToNode
   }), /*#__PURE__*/React.createElement(ExportPanel, {
     root: root
   })), /*#__PURE__*/React.createElement(PropertiesPanel, {

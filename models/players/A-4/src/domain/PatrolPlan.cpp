@@ -40,7 +40,7 @@ void PatrolPlan::reset()
 {
    legTimer_ = 0.0;
    leg_ = 0;
-   jitterRng_.seed(jitterSeed_);
+   jitterRng_.reset();
    resampleJitter();
 }
 
@@ -78,16 +78,16 @@ FlightCommand PatrolPlan::command() const
 void PatrolPlan::setHeadingJitter(const double amplitudeDeg, const std::uint64_t seed)
 {
    jitterAmplitudeDeg_ = (amplitudeDeg > 0.0) ? amplitudeDeg : 0.0;
-   jitterSeed_ = seed;
-   jitterRng_.seed(jitterSeed_);
+   jitterRng_.seed(seed);
    resampleJitter();
 }
 
 void PatrolPlan::resampleJitter()
 {
-   currentJitterDeg_ = (jitterAmplitudeDeg_ > 0.0)
-      ? std::uniform_real_distribution<double>(-jitterAmplitudeDeg_, jitterAmplitudeDeg_)(jitterRng_)
-      : 0.0;
+   // symmetric() ja trata amplitude <= 0 devolvendo 0 SEM consumir o
+   // gerador -- mesma semantica do ternario que estava aqui, agora escrita
+   // uma vez so, em libs/xrandom.
+   currentJitterDeg_ = jitterRng_.symmetric(jitterAmplitudeDeg_);
 }
 
 } // namespace domain

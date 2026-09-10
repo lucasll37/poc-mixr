@@ -4,6 +4,7 @@
 #include "mixr/base/ubf/AbstractBehavior.hpp"
 
 #include "bt/DecisionContext.hpp"
+#include "domain/AerobaticPlan.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -56,6 +57,13 @@ namespace xnative {
 //    patrolSeedOverride <Number> ! Opcional: substitui a derivacao acima so para ESTE
 //                                ! player (a presenca do slot e o que importa, nao o
 //                                ! valor -- 0 e uma semente valida)
+//    slowRollMinInterval <Time>  ! Piso do intervalo entre acrobacias (default: 60 s)
+//    slowRollMaxInterval <Time>  ! Teto do intervalo; <= ao piso vira intervalo FIXO
+//                                ! (default: 180 s)
+//    slowRollStick    <Number>   ! Aileron durante o slow roll, -1..1; o SINAL e o
+//                                ! sentido do giro. 0 DESLIGA o recurso (default: 0)
+//    slowRollTimeout  <Time>     ! Aborta a manobra que nao fecha os 360 graus
+//                                ! (default: 20 s)
 //
 // COMO UBF E BehaviorTree.CPP SE ENCAIXAM (o ponto desta poc):
 //
@@ -101,6 +109,7 @@ public:
    bt_nodes::FlightDecision& decision() override         { return currentDecision; }
    domain::PatrolPlan& patrolPlan() override             { return patrol; }
    domain::RtbPlan& rtbPlan() override                   { return rtb; }
+   domain::AerobaticPlan& aerobaticPlan() override       { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
    double getFrameDt() const override                    { return frameDt; }
    double getFuelReserve() const override                { return tune.fuelReserve; }
@@ -133,6 +142,7 @@ private:
 
    domain::PatrolPlan patrol;
    domain::RtbPlan rtb;
+   domain::AerobaticPlan aerobatic;
    domain::ThreatPolicy threat;
 
    BT::BehaviorTreeFactory btFactory;
@@ -165,6 +175,10 @@ private:
    bool setSlotPatrolJitterHeading(const base::Angle* const);
    bool setSlotPatrolMasterSeed(const base::Number* const);
    bool setSlotPatrolSeedOverride(const base::Number* const);
+   bool setSlotSlowRollMinInterval(const base::Time* const);
+   bool setSlotSlowRollMaxInterval(const base::Time* const);
+   bool setSlotSlowRollStick(const base::Number* const);
+   bool setSlotSlowRollTimeout(const base::Time* const);
 };
 
 } // namespace xnative

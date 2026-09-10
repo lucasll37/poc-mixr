@@ -6,7 +6,12 @@
 #include "xlog/Log.hpp"
 
 #include "mixr/simulation/Station.hpp"
+#include "mixr/models/WorldModel.hpp"
+#include "mixr/models/player/Player.hpp"
 #include "mixr/base/Component.hpp"
+#include "mixr/base/List.hpp"
+#include "mixr/base/PairStream.hpp"
+#include "mixr/base/String.hpp"
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/edl_parser.hpp"
 #include "mixr/base/util/system_utils.hpp"
@@ -172,6 +177,62 @@ void primeStation(mixr::simulation::Station* const station)
    station->tcFrame(1.0 / station->getTimeCriticalRate());
 }
 
+//------------------------------------------------------------------------------
+// checkGrootMonitorTarget() -- MIXR_GROOT_MONITOR nomeia um player que existe
+// neste cenario?
+//
+// Duplicata deliberada de app::checkGrootMonitorTarget() (app/GrootMonitorCheck
+// .hpp), pelo mesmo motivo ja registrado no CLAUDE.md, secao 'src/node': este
+// binario nao reaproveita NADA de app/ -- nem 'app::discoverPlayers()'. Sao ~15
+// linhas; o preco esta documentado, nao e' descuido.
+//
+// A checagem nao pode morar no modelo: cada BtBehavior so' conhece o proprio
+// nome, entao "nao casei" e "ninguem casou" sao indistinguiveis de la. So' o
+// host tem a lista inteira.
+//------------------------------------------------------------------------------
+void checkGrootMonitorTarget(mixr::simulation::Station* const station)
+{
+   const char* const target{std::getenv("MIXR_GROOT_MONITOR")};
+   if (target == nullptr || target[0] == '\0') return;
+
+   auto* const wm = dynamic_cast<mixr::models::WorldModel*>(station->getSimulation());
+   if (wm == nullptr) return;
+
+   // getPlayers() e' pre-ref()'d (Simulation.hpp) -- dai o unref() no fim.
+   mixr::base::PairStream* const players{wm->getPlayers()};
+   if (players == nullptr) return;
+
+   std::string nomes;
+   bool achou{false};
+   for (const mixr::base::List::Item* item = players->getFirstItem();
+        item != nullptr; item = item->getNext()) {
+      const auto* const pair = static_cast<const mixr::base::Pair*>(item->getValue());
+      const auto* const player = dynamic_cast<const mixr::models::Player*>(pair->object());
+      if (player == nullptr) continue;
+      const auto* const nm = player->getName();
+      const std::string nome{(nm != nullptr) ? nm->getString() : ""};
+      if (nome.empty()) continue;
+      if (nome == target) achou = true;
+      if (!nomes.empty()) nomes += " ";
+      nomes += nome;
+   }
+   players->unref();
+
+   if (!achou) {
+      LOG(WARNING) << "MIXR_GROOT_MONITOR=\"" << target << "\" nao casa com player NENHUM deste"
+                   << " cenario -- o monitor do Groot nao vai ligar e nenhuma porta sera aberta."
+                   << " Players do cenario: " << nomes;
+      return;
+   }
+
+   // Medido: esta linha sai DEPOIS da do modelo -- o frame de aquecimento de
+   // primeStation() ja constroi a arvore (e liga o monitor) antes daqui. Dai o
+   // texto falar do LOG inteiro, e nao de "logo abaixo".
+   LOG(INFO) << "MIXR_GROOT_MONITOR=\"" << target << "\": player encontrado no cenario. Se a linha"
+             << " \"[BtBehavior] monitor do Groot ligado\" nao aparecer em lugar nenhum deste log, o MODELO desse"
+             << " player nao implementa o hook do monitor (hoje so' o A-4/flight implementa).";
+}
+
 }
 
 int main(int argc, char* argv[])
@@ -204,6 +265,8 @@ int main(int argc, char* argv[])
    }
 
    primeStation(station);
+
+   checkGrootMonitorTarget(station);
 
    const int rc{node::run(station, clockStation)};
    node::shutdownStation(station);

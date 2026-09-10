@@ -17279,6 +17279,101 @@
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
+      },
+      {
+        "name": "slowRollMinInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "20",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMaxInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "21",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollStick",
+        "declaredIn": "BtBehavior",
+        "comment": "22 -- 0 DESLIGA a acrobacia (default)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollTimeout",
+        "declaredIn": "BtBehavior",
+        "comment": "23",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
       }
     ],
     "primaryComponents": []
@@ -20313,6 +20408,101 @@
         "acceptsVector": false,
         "acceptsChildList": false,
         "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMinInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "20",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMaxInterval",
+        "declaredIn": "BtBehavior",
+        "comment": "21",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollStick",
+        "declaredIn": "BtBehavior",
+        "comment": "22 -- 0 DESLIGA a acrobacia (default)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollTimeout",
+        "declaredIn": "BtBehavior",
+        "comment": "23",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Time",
+            "options": [
+              "Days",
+              "Hours",
+              "MicroSeconds",
+              "MilliSeconds",
+              "Minutes",
+              "NanoSeconds",
+              "Seconds"
+            ]
+          }
+        ],
         "objectTypes": [],
         "isReference": false,
         "textOnly": false

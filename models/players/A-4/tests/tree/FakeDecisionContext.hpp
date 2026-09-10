@@ -23,6 +23,7 @@ public:
    bt_nodes::FlightDecision dec{};
    domain::PatrolPlan patrol{};
    domain::RtbPlan rtb{};
+   domain::AerobaticPlan aerobatic{};
    domain::ThreatPolicy threat{};
 
    double frameDt{0.02};
@@ -36,6 +37,7 @@ public:
    bt_nodes::FlightDecision& decision() override             { return dec; }
    domain::PatrolPlan& patrolPlan() override                 { return patrol; }
    domain::RtbPlan& rtbPlan() override                       { return rtb; }
+   domain::AerobaticPlan& aerobaticPlan() override           { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
    double getFrameDt() const override                        { return frameDt; }
    double getFuelReserve() const override                    { return fuelReserve; }

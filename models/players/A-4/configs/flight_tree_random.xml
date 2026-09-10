@@ -1,0 +1,78 @@
+<!--
+  Arvore de ACROBACIA: navegacao normal, interrompida de tempos em tempos por
+  um slow roll (giro de 360 graus em torno do eixo longitudinal).
+
+  Consumidor: sandbox/A4-6DOF-RANDOM.
+
+  Prioridade (Fallback, de cima para baixo):
+    1) e' hora de rolar   -> ( SlowRoll ) assume e comanda o AILERON
+    2) caso contrario     -> ( Navigate ) segue o Route/Steerpoint nativo
+
+  POR QUE ISTO FUNCIONA COM UM Fallback SIMPLES: ( SlowRoll ) devolve FAILURE
+  enquanto NAO e' hora de rolar, entao o Fallback cai para ( Navigate ) e a
+  aeronave voa a rota normalmente. Quando o sorteio vence, ( SlowRoll ) passa
+  a devolver SUCCESS e o Fallback para nele ate o giro fechar. Nao ha
+  condicao separada: o proprio no e' quem sabe se e' hora, porque quem guarda
+  o relogio e' o domain::AerobaticPlan que ele avanca.
+
+  QUANDO ROLAR e' ALEATORIO E CONFIGURAVEL, e vem do .edl, nao daqui: os slots
+  slowRollMinInterval/slowRollMaxInterval/slowRollStick/slowRollTimeout do
+  ( BtBehavior ). O intervalo e' sorteado em [min, max] por um gerador cuja
+  semente cada aeronave deriva do PROPRIO NOME a partir da semente do cenario
+  (patrolMasterSeed) - ver libs/xrandom. Duas consequencias: aeronaves
+  diferentes rolam em instantes diferentes, e a MESMA execucao repetida da
+  exatamente a mesma sequencia, inclusive com 1, 2 ou 4 threads de tempo
+  critico.
+
+  slowRollStick: 0 (o default do slot) DESLIGA a acrobacia. Uma arvore com
+  este XML e sem os slots declarados voa exatamente como flight_tree_nav.xml.
+
+  ARMADILHA DA CELULA, ja resolvida, mas que vale saber ao trocar de
+  aeronave: o aileron so tem autoridade para fechar o giro porque o nivelador
+  de asas de data/jsbsim/aircraft/A4/a4ap.xml e' gateado em ap/heading_hold.
+  Sem esse gate a aeronave trava entre ~50 e ~72 graus de banco, em silencio.
+  Uma aeronave nova que copie o SAS do A-4 precisa do mesmo gate.
+
+  NAO HA rede de seguranca de evasao/combustivel aqui, igual a
+  flight_tree_nav.xml: esta arvore nao sabe evadir, nao sabe voltar para a
+  base e nao sabe apoiar um alerta. A altitude comandada continua passando
+  pelo piso anti-CFIT (clampAltitudeToTerrain) nos dois ramos.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <SlowRoll label="ROLL"/>
+      <Navigate/>
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="OnnxPolicy">
+            <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+            <input_port name="normalized" type="bool" default="1">true: saida em [-1,1], desnormalizada aqui (export do SB3)</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx da politica</input_port>
+        </Action>
+        <Condition ID="OnnxScore">
+            <input_port name="above" type="bool" default="1">true: SUCCESS se saida &gt; limiar; false: se saida &lt; limiar</input_port>
+            <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+            <input_port name="threshold" type="double" default="0.500000">limiar de comparacao</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx (entrada float32[1,28], ver ObservationFields.hpp)</input_port>
+        </Condition>
+        <Action ID="SlowRoll">
+            <input_port name="label" type="std::string" default="ROLL">rotulo no dump e no quadro durante a manobra</input_port>
+        </Action>
+        <Action ID="Navigate"/>
+        <Action ID="SupportAlert"/>
+        <Action ID="ReportAndEvade"/>
+        <Action ID="ReturnToBase"/>
+        <Action ID="PyDecide">
+            <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+            <input_port name="script" type="std::string">caminho do .py que define decide(obs)</input_port>
+        </Action>
+        <Condition ID="FuelLow">
+            <input_port name="margin" type="double" default="0.000000">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+        </Condition>
+        <Condition ID="ContactDetected"/>
+        <Action ID="Patrol"/>
+        <Condition ID="AlertReceived"/>
+    </TreeNodesModel>
+</root>

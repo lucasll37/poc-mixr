@@ -259,6 +259,29 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   color:var(--muted); border:none; background:none; padding:0;
 }
 .media-placeholder .caption{ font-size:clamp(.86rem,min(1.1vw,2vh),1.12rem); max-width:36ch; line-height:1.4; font-style:italic; }
+.media-placeholder .hint{
+  font-family:var(--font-mono); font-size:clamp(.72rem,min(.9vw,1.6vh),.92rem); color:var(--muted);
+  opacity:.75; word-break:break-all;
+}
+/* o mesmo bloco DEPOIS que o arquivo esperado foi encontrado em demos/: deixa de ser
+   placeholder (borda tracejada, texto) e vira a propria midia -- borda solida, sem padding,
+   fundo escuro pra letterbox de imagem/video nao brigar com o tema claro. */
+.media-empty{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+/* OBRIGATORIO, e nao redundante com o atributo: [hidden]{display:none} vem da folha do
+   USER-AGENT, entao o display:flex declarado logo acima (regra de autor) ganha dele e o
+   .hidden=true do script de sondagem nao esconderia nada. Mesmo motivo da regra
+   ".demo-stage video[hidden]" que ja existia mais abaixo -- aqui vale pros dois estados
+   vazios e pra midia criada em runtime. */
+.media-empty[hidden], .demo-empty[hidden], .media-placeholder.is-filled img[hidden],
+.media-placeholder.is-filled video[hidden]{ display:none; }
+.media-placeholder.is-filled{
+  border:1px solid var(--line); background:#050708; padding:0; overflow:hidden; gap:0;
+}
+/* max-* (nao width/height 100%) de proposito pra IMAGEM: screenshot pequeno esticado ate' a
+   caixa fica borrado -- assim ele fica no tamanho natural, centrado pelo flex do container, e
+   so' encolhe quando nao couber. Video usa contain porque a fonte e' sempre grande. */
+.media-placeholder.is-filled img{ max-width:100%; max-height:100%; display:block; }
+.media-placeholder.is-filled video{ width:100%; height:100%; object-fit:contain; display:block; background:#000; }
 .media-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
 
 /* slides de demonstracao em video -- UM video por tela (navegacao pelo proprio deck, igual a
@@ -771,43 +794,92 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 
 <script>
 (function(){
-  // um video por SLIDE (navegacao pelo proprio deck -- setas/HUD/mapa -- nao um menu dentro
-  // do slide). Cada ".demo-stage[data-demo]" tenta 'demos/<nome>.mp4', depois '.webm', depois
-  // '.mov'; sem nenhum dos tres, fica no placeholder que ja vem no HTML. Ver
-  // docs/presentation/demos/README.md pra convencao de nome de arquivo.
-  var EXTS = ['mp4', 'webm', 'mov'];
+  // SONDAGEM DE MIDIA POR NOME DE ARQUIVO -- o mecanismo que faz "soltar o arquivo em
+  // docs/presentation/demos/ com o nome esperado" ser tudo o que e' preciso pra midia aparecer
+  // no slide: nenhuma edicao de HTML/JS, nenhum passo de build.
+  //
+  // Todo slot de midia do deck (os slides de demonstracao em video, ".demo-stage", e os
+  // placeholders de imagem/video no meio do conteudo, ".media-placeholder") declara em
+  // content.js um data-media="demos/<nome>" SEM extensao, mais um data-media-kind que diz qual
+  // formato e' o esperado -- e' so' isso que decide a ORDEM de sondagem, nunca o que e'
+  // aceito: os dois tipos sao sempre tentados, entao trocar um video por um print (ou o
+  // contrario) num slot qualquer nao exige tocar em codigo nenhum.
+  //
+  // Enquanto nenhum arquivo casar, o slot fica no placeholder que ja vem no HTML -- que
+  // mostra, ele mesmo, o nome esperado. Ver docs/presentation/demos/README.md pra tabela.
+  var EXTS = {
+    video: ['mp4', 'webm', 'mov'],
+    image: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']
+  };
 
-  Array.prototype.forEach.call(document.querySelectorAll('.demo-stage[data-demo]'), function(stage){
-    var base = stage.getAttribute('data-demo');
-    var video = stage.querySelector('video');
-    var empty = stage.querySelector('.demo-empty');
+  function sonda(kind, src, achou, faltou){
+    if (kind === 'video'){
+      var v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = function(){ achou(); };
+      v.onerror = function(){ faltou(); };
+      v.src = src;
+    } else {
+      var img = new Image();
+      img.onload = function(){ achou(); };
+      img.onerror = function(){ faltou(); };
+      img.src = src;
+    }
+  }
 
-    function tryExt(i){
-      if (i >= EXTS.length){ video.hidden = true; empty.hidden = false; return; }
-      var src = base + '.' + EXTS[i];
-      var probe = document.createElement('video');
-      probe.preload = 'metadata';
-      probe.onloadedmetadata = function(){
-        empty.hidden = true;
-        video.hidden = false;
-        video.src = src;
-        video.load();
+  Array.prototype.forEach.call(document.querySelectorAll('[data-media]'), function(stage){
+    var base = stage.getAttribute('data-media');
+    var pref = stage.getAttribute('data-media-kind') === 'image' ? 'image' : 'video';
+    var outro = pref === 'image' ? 'video' : 'image';
+
+    // a lista de candidatos e' o tipo preferido primeiro, o outro logo em seguida
+    var cand = [];
+    EXTS[pref].forEach(function(e){ cand.push({ kind: pref, src: base + '.' + e }); });
+    EXTS[outro].forEach(function(e){ cand.push({ kind: outro, src: base + '.' + e }); });
+
+    var vazio = stage.querySelector('.demo-empty, .media-empty');
+
+    function mostra(kind, src){
+      if (vazio) vazio.hidden = true;
+      var el = stage.querySelector(kind === 'video' ? 'video' : 'img');
+      if (!el){
+        el = document.createElement(kind === 'video' ? 'video' : 'img');
+        if (kind === 'video'){ el.controls = true; el.playsInline = true; }
+        else { el.alt = ''; }
+        stage.appendChild(el);
+      }
+      el.hidden = false;
+      el.src = src;
+      if (kind === 'video'){
+        el.load();
         // caso raro mas real: a sessao volta direto neste slide (posicao restaurada do
-        // localStorage), entao ele ja esta "is-active" no instante em que o probing acima de
+        // localStorage), entao ele ja esta "is-active" no instante em que a sondagem acima
         // termina de resolver -- sem isso, o video so tocaria automatico na PROXIMA vez que o
         // slide fosse (re)ativado, nao nesta primeira entrada.
         var slide = stage.closest('.slide');
         if (slide && slide.classList.contains('is-active')){
-          try { video.currentTime = 0; } catch (e) {}
-          var p = video.play();
-          if (p && typeof p.catch === 'function') p.catch(function(){});
+          try { el.currentTime = 0; } catch (e) {}
+          var pr = el.play();
+          if (pr && typeof pr.catch === 'function') pr.catch(function(){});
         }
-      };
-      probe.onerror = function(){ tryExt(i + 1); };
-      probe.src = src;
+      }
+      stage.classList.add('is-filled');
     }
 
-    tryExt(0);
+    function tenta(i){
+      if (i >= cand.length){
+        // nenhum arquivo com esse nome: o placeholder fica de pe, anunciando o nome esperado
+        var v = stage.querySelector('video');
+        if (v) v.hidden = true;
+        if (vazio) vazio.hidden = false;
+        return;
+      }
+      sonda(cand[i].kind, cand[i].src,
+            function(){ mostra(cand[i].kind, cand[i].src); },
+            function(){ tenta(i + 1); });
+    }
+
+    tenta(0);
   });
 })();
 </script>

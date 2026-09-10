@@ -1,6 +1,7 @@
 #include "app/DashboardState.hpp"
 
 #include "app/Fleet.hpp"
+#include "app/MixrText.hpp"
 
 #include "xboard/Board.hpp"
 #include "xclock/ClockStation.hpp"
@@ -63,10 +64,12 @@ EntityState captureEntity(mixr::models::Player* const player)
 {
    EntityState s;
    s.id = player->getID();
-   s.name = (player->getName() != nullptr) ? player->getName()->getString() : "?";
+   s.name = mixrText(player->getName());
+   if (s.name.empty()) s.name = "?";
 
    const mixr::base::String* const type{player->getType()};
-   s.typeLabel = (type != nullptr && type->len() > 0) ? type->getString() : demangledClassName(*player);
+   const std::string typeTexto{mixrText(type)};
+   s.typeLabel = !typeTexto.empty() ? typeTexto : demangledClassName(*player);
 
    s.majorType = player->getMajorType();
    s.side = static_cast<unsigned int>(player->getSide());
@@ -130,7 +133,8 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
                             const double wallSec, const double simSec,
                             const mixr::xclock::ClockStation* const clockStation,
                             const int numTcThreads, const std::string& scenarioLabel,
-                            const std::vector<ClassStat>& previousClassStats)
+                            const std::vector<ClassStat>& previousClassStats,
+                            const bool withComponentTree)
 {
    DashboardState state;
    state.scenarioLabel = scenarioLabel;
@@ -219,6 +223,14 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
       bg.tacviewDeclared = tacviewOutput->declaredObjectCount();
       bg.tacviewIdentified = tacviewOutput->identifiedObjectCount();
       bg.tacviewStreamTime = tacviewOutput->currentStreamTime();
+   }
+
+   // A travessia do grafo vivo (aba F6) roda AQUI de proposito -- ver o
+   // comentario de DashboardState::componentTree. Gateada porque nao e barata:
+   // ~150 nos, um abi::__cxa_demangle() por no (que aloca) e varios
+   // dynamic_cast, a 10 Hz.
+   if (withComponentTree && station != nullptr) {
+      state.componentTree = discoverComponentTree(station);
    }
 
    state.background.residentKb = residentKb();

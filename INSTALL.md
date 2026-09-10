@@ -118,6 +118,31 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 ./scripts/deps.sh
 ```
 
+> **Duas dessas receitas aplicam CORREÇÕES DE FONTE, e um pacote em cache anterior a elas
+> reintroduz o bug em silêncio.** Ao mexer em `deps/groot/conanfile.py` ou
+> `deps/behaviortree/conanfile.py`, **remova o pacote antes de recriar** — só assim a `source()`
+> (que é quem aplica os patches) roda de novo:
+>
+> ```bash
+> conan remove 'groot/*' -c && conan create ./deps/groot --build=missing --settings=build_type=Release
+> ```
+>
+> - **`groot` — FIX 6**: sem ela, o **modo Monitor fecha a janela sozinho**, sem diálogo e sem
+>   mensagem, poucos milissegundos depois de conectar (`std::out_of_range` escapando de um slot Qt).
+>   Detalhe completo em [`CLAUDE.md`](CLAUDE.md), seção "Groot", armadilha nº3. `scripts/find_groot.sh`
+>   avisa em `stderr` quando o binário em cache é anterior à correção — ele procura o marcador
+>   `POC-MIXR-FIX6`, que fica em `lib/libbehavior_tree_editor.so` (é lá que
+>   `sidepanel_monitor.cpp` compila), não em `bin/Groot`.
+> - **`behaviortree.cpp.asa`**: corrige um *use-after-free* no destrutor de `BT::PublisherZMQ`
+>   (confirmado com AddressSanitizer). Como o patch é aplicado na `source()` desta receita, ele
+>   existe **só em pacote construído do fonte** — que é justamente o caminho desta seção e o que o
+>   CI usa, então é o comportamento corrente. Um pacote **em cache** anterior ao patch o perde em
+>   silêncio: `conan remove 'behaviortree.cpp.asa/*' -c` antes de recriar.
+>
+> **Se o Groot fechar sozinho, olhe `build/groot.log`**: `make open-groot` grava ali a saída dele
+> (antes ia para `/dev/null`, e era por isso que não havia onde procurar). `make open-groot FG=1`
+> roda em primeiro plano.
+
 ## 5. Node.js
 
 **Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§4): não é dependência de

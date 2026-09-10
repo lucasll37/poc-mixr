@@ -53,7 +53,9 @@ SO :=
 DATA :=
 FORCE :=
 DRY_RUN :=
-export NAME PLAYER SCENARIO ARGS CATEGORY SO DATA FORCE DRY_RUN
+FG :=
+GROOT :=
+export NAME PLAYER SCENARIO ARGS CATEGORY SO DATA FORCE DRY_RUN FG GROOT
 
 # Colors for output
 RED := \033[0;31m
@@ -291,17 +293,61 @@ package: ## Gera o pacote Conan deste projeto.
 run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
 	$(DEST_DIR)/bin/app -folder ./sandbox
 
-run-app-monitor: install ## Roda o app com o Monitor do Groot. Uso: PLAYER=falcon1 [ARGS=...].
-	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player>";  exit 1; }
-	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app $${ARGS:--folder ./sandbox}
+# Os dois alvos de Monitor abaixo ABREM O GROOT (GROOT=0 pula, para maquina sem
+# display) -- antes so' exportavam MIXR_GROOT_MONITOR, e quem esperasse "make
+# run-app-monitor" abrir a janela ficava sem nada acontecendo.
+#
+# SCENARIO= evita o PICKER: com o default '-folder ./sandbox' da' pra escolher,
+# na tela, um cenario que nao tem aquele player -- e a variavel de ambiente vira
+# no-op silencioso. A validacao de PLAYER de verdade e' feita pelo HOST, em
+# runtime (app::checkGrootMonitorTarget), que e' quem tem a lista real de
+# players; um grep no .edl aqui duplicaria esse conhecimento e envelheceria
+# sozinho.
+#
+# ACHADO POR AUTOREVISAO, CORRIGIDO (nao redescobrir): SCENARIO= entrava por
+# '-f <arquivo>', e '-f' ASSUME a frota falcon1..4 -- 'app::adHocScenario()'
+# devolve 'falconFleet()' incondicionalmente, e o proprio comentario dela manda
+# usar '-folder' para qualquer frota diferente. Como NENHUM cenario de sandbox/
+# tem falcon* (sao a4, a4_1..a4_8, c130), 'make run-app-monitor PLAYER=a4_1
+# SCENARIO=sandbox/...' -- a forma que este mesmo help anuncia -- abria o Groot
+# e morria em seguida com "player 'falcon1' nao encontrado!", em
+# 'app::collectFleet()', ANTES de a checagem nova rodar. Hoje, quando o arquivo
+# esta no layout padrao '<raiz>/<cenario>/configs/<arquivo>', o alvo traduz para
+# '-folder <raiz> -scenario <cenario>', que descobre a frota em runtime
+# (app::discoverFleet()); fora desse layout cai em '-f' e AVISA sobre a
+# suposicao de frota, em vez de falhar sem explicacao.
+#
+# O exemplo destes alvos era 'PLAYER=falcon1' -- nome que NAO existe em cenario
+# nenhum de sandbox/ (os reais sao a4, a4_1..a4_8, c130). Corrigido: e' o texto
+# que 'make help' imprime.
+run-app-monitor: install ## App + Monitor do Groot. Uso: PLAYER=a4_1 [SCENARIO=<arquivo>] [ARGS=...] [GROOT=0].
+	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player> [SCENARIO=<arquivo.edl|.edl.in>]$(NC)"; exit 1; }
+	@if [ -n "$$SCENARIO" ] && [ ! -f "$$SCENARIO" ]; then echo "$(RED)run-app-monitor: cenario nao encontrado: $$SCENARIO$(NC)"; exit 1; fi
+	@test "$$GROOT" = "0" || $(MAKE) --no-print-directory open-groot
+	@echo "$(YELLOW)monitor:$(NC) player=$$PLAYER -- no Groot: aba Monitor -> Connect (localhost; 1666 status, 1667 topologia)."
+	@echo "$(YELLOW)monitor:$(NC) o TUI desliga o log no console -- a confirmacao sai em data/logs/ e na aba F5."
+	@echo "$(YELLOW)monitor:$(NC) para ver o log no terminal, use 'make run-node-monitor'."
+	@if [ -z "$$SCENARIO" ]; then \
+		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app $${ARGS:--folder ./sandbox}; \
+	elif [ "$$(basename "$$(dirname "$$SCENARIO")")" = "configs" ]; then \
+		RAIZ="$$(dirname "$$(dirname "$$(dirname "$$SCENARIO")")")"; \
+		NOME="$$(basename "$$(dirname "$$(dirname "$$SCENARIO")")")"; \
+		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app -folder "$$RAIZ" -scenario "$$NOME" $$ARGS; \
+	else \
+		echo "$(YELLOW)monitor:$(NC) $$SCENARIO fora do layout <raiz>/<cenario>/configs/ -- indo por '-f', que ASSUME a frota falcon1..4 (ver app::adHocScenario)."; \
+		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app -f "$$SCENARIO" $$ARGS; \
+	fi
 
 run-node: install ## Roda dist/bin/node (headless, so log). Uso: SCENARIO=<arquivo.edl>.
 	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
 	$(DEST_DIR)/bin/node "$$SCENARIO"
 
-run-node-monitor: install ## Idem run-node, com o Monitor do Groot. Uso: PLAYER= SCENARIO=<arquivo>.
-	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
-	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>"; exit 1; }
+run-node-monitor: install ## Node (headless, log no terminal) + Monitor do Groot. Uso: PLAYER=a4_1 SCENARIO=<arquivo> [GROOT=0].
+	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>$(NC)"; exit 1; }
+	@test -n "$$SCENARIO" || { echo "$(RED)uso: make run-node-monitor PLAYER=<nome-do-player> SCENARIO=<arquivo.edl|.edl.in>$(NC)"; exit 1; }
+	@test -f "$$SCENARIO" || { echo "$(RED)run-node-monitor: cenario nao encontrado: $$SCENARIO$(NC)"; exit 1; }
+	@test "$$GROOT" = "0" || $(MAKE) --no-print-directory open-groot
+	@echo "$(YELLOW)monitor:$(NC) player=$$PLAYER cenario=$$SCENARIO -- no Groot: aba Monitor -> Connect (localhost; 1666 status, 1667 topologia)."
 	MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/node "$$SCENARIO"
 
 venv-rl: ## Cria/atualiza o venv do wrapper Gymnasium em src/rl/.venv.
@@ -432,10 +478,32 @@ open-edl-builder: ## Regenera e abre src/ui/edl-builder.html (editor visual de c
 	node src/ui/scripts/build.js
 	@scripts/open_browser.sh src/ui/edl-builder.html
 
-open-groot: ## Abre o Groot (editor/monitor de arvores BT.CPP) -- ver INSTALL.md secao 4.
-	@GROOT_BIN="$$(scripts/find_groot.sh 2>/dev/null)"; \
+# ACHADO INVESTIGANDO "o Groot fecha sozinho" (armadilha no 3 da secao "Groot"
+# do CLAUDE.md): este alvo mandava stdout E stderr do Groot para /dev/null, e
+# com eles a UNICA pista do bug -- a linha "Qt has caught an exception thrown
+# from an event handler" que o Qt imprime enquanto desempilha, mais o abort.
+# Sem isso, a janela simplesmente sumia e nao havia onde olhar. Note tambem que
+# o 'find_groot.sh 2>/dev/null' de antes engolia o aviso de "Groot em cache
+# anterior a FIX 6" que o proprio script agora emite.
+#
+# Append (nao truncate) de proposito: o sintoma e' intermitente, entao o
+# historico das execucoes anteriores e' justamente o que se quer comparar --
+# dai o cabecalho com timestamp a cada abertura. build/ ja e' gitignored,
+# mesma convencao de build/tests-determinism e build/generated-scenarios.
+GROOT_LOG := $(BUILD_DIR)/groot.log
+
+open-groot: ## Abre o Groot (editor/monitor BT.CPP). Log em build/groot.log; FG=1 roda no terminal.
+	@GROOT_BIN="$$(scripts/find_groot.sh)"; \
 	if [ -n "$$GROOT_BIN" ] && [ -x "$$GROOT_BIN" ]; then \
-		setsid "$$GROOT_BIN" >/dev/null 2>&1 & \
+		mkdir -p "$$(dirname "$(GROOT_LOG)")"; \
+		{ echo; echo "=== $$(date -Is) -- $$GROOT_BIN"; } >> "$(GROOT_LOG)"; \
+		if [ -n "$$FG" ]; then \
+			echo "$(YELLOW)open-groot:$(NC) primeiro plano (FG=1); saida tambem em $(GROOT_LOG)"; \
+			"$$GROOT_BIN" 2>&1 | tee -a "$(GROOT_LOG)"; \
+		else \
+			setsid "$$GROOT_BIN" >> "$(GROOT_LOG)" 2>&1 & \
+			echo "$(YELLOW)open-groot:$(NC) saida (inclusive um fechamento inesperado) em $(GROOT_LOG)"; \
+		fi; \
 	else \
 		echo "$(YELLOW)open-groot:$(NC) pacote groot/1.0.0 nao encontrado no cache Conan -- rode 'conan create ./deps/groot --build=missing --settings=build_type=Release' primeiro (ver INSTALL.md secao 4)."; \
 	fi

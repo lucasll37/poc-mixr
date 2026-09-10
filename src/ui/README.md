@@ -26,9 +26,10 @@ adicionar um filho — só classes EM CONFORMIDADE com o que aquele slot de fato
 opção (um slot que só aceita texto, como `TacviewOutput.typeMap`, nunca sugere classe nenhuma —
 só o botão "+ texto"). "Expandir tudo"/"Recolher tudo" abrem ou fecham todo nó de uma vez, útil no
 preset de 53 componentes. Três abas ao lado da árvore: **Mapa** (posição de cada `Player`),
-**Pendências** (todo papel/slot esperado ainda vazio, com contagem sempre visível no rótulo da
-aba — clique num item para pular direto ao nó) e a **prévia `.edl`** (sempre visível, embaixo das
-outras duas). O botão "Carregar preset" troca a árvore vazia pelo cenário de mais componentes do
+**Abertos** (o que ainda falta resolver antes de exportar — hoje, placeholder de template
+`@TOKEN@` ainda literal —, com contagem sempre visível no rótulo da aba; clique num item para
+pular direto ao nó, e o número cai NA HORA quando o campo é corrigido) e a **prévia `.edl`**
+(sempre visível, embaixo das outras duas). O botão "Carregar preset" troca a árvore vazia pelo cenário de mais componentes do
 repositório (`built-in_mixr_1`), como ponto de partida. "Exportar .edl" baixa o arquivo; em
 Chrome/Edge, "Escolher pasta sandbox/…" aponta a ferramenta pra pasta `sandbox/` deste
 repositório e o botão vira "Salvar em sandbox/", escrevendo direto em
@@ -42,9 +43,12 @@ gerado ainda não conhece (classe em desenvolvimento, plugin de terceiro nunca i
 de digitação) **nunca é descartado**: fica preservado byte-fiel como valor bruto (marcado com um
 `?` tracejado, editável no painel de propriedades como texto — "slots não catalogados") em vez de
 sumir silenciosamente numa próxima exportação. Depois de carregar, uma faixa dispensável lista os
-avisos não-bloqueantes (fábrica/slot não catalogado, ASCII fora do padrão, placeholder de template
-ainda literal); um clique num aviso pula direto pro cartão correspondente, e um contador "N não
-catalogados" continua visível na barra de abas mesmo depois de dispensar a faixa.
+avisos não-bloqueantes da CARGA (fábrica/slot não catalogado, ASCII fora do padrão, conteúdo
+depois da primeira forma raiz); um clique num aviso pula direto pro cartão correspondente, e um
+contador "N não catalogados" continua visível na barra de abas mesmo depois de dispensar a faixa.
+Placeholder `@TOKEN@` **não** entra nessa faixa: ele é fato sobre a árvore VIVA, não sobre a
+carga, e por isso mora na aba **Abertos**, que recalcula a cada edição em vez de congelar no
+instante em que o arquivo foi aberto.
 
 Dois limites explícitos:
 
@@ -53,8 +57,9 @@ Dois limites explícitos:
   fantasma), não só falharia; por isso é sempre um erro claro, nomeando o fragmento. Nenhum `.edl`
   deste repositório usa isso hoje; se algum dia precisar, substitua a diretiva pelo conteúdo do
   fragmento direto no arquivo antes de carregar.
-- **`@TOKEN@` (fora de `@include:`) carrega literal**, sem adivinhar um valor — um aviso aponta
-  cada ocorrência; edite o campo com o valor real antes de exportar, como qualquer outro campo.
+- **`@TOKEN@` (fora de `@include:`) carrega literal**, sem adivinhar um valor — a aba **Abertos**
+  aponta cada ocorrência; edite o campo com o valor real antes de exportar, como qualquer outro
+  campo.
 
 ### Não há mais "Salvar projeto"/"Abrir projeto" (formato JSON próprio)
 
