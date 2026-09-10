@@ -48045,6 +48045,573 @@ const EDL_CATALOG = [
     "primaryComponents": []
   },
   {
+    "class": "Navstar3Action",
+    "factory": "Navstar3Action",
+    "baseClass": "AbstractAction",
+    "chain": [
+      "Navstar3Action",
+      "AbstractAction",
+      "Object"
+    ],
+    "origin": "plugin:Navstar-3",
+    "concrete": true,
+    "slots": [],
+    "primaryComponents": []
+  },
+  {
+    "class": "Navstar3AgentTC",
+    "factory": "Navstar3AgentTC",
+    "baseClass": "AgentTC",
+    "chain": [
+      "Navstar3AgentTC",
+      "AgentTC",
+      "Agent",
+      "Component",
+      "Object"
+    ],
+    "origin": "plugin:Navstar-3",
+    "concrete": true,
+    "slots": [
+      {
+        "name": "components",
+        "declaredIn": "Component",
+        "comment": "1) Children components                                  (PairStream)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": true,
+        "unitFamilies": [],
+        "objectTypes": [
+          "Component"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "select",
+        "declaredIn": "Component",
+        "comment": "2) Manage only this child component (component idx)     (Number)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableTimingStats",
+        "declaredIn": "Component",
+        "comment": "3) Enable/disable the timing statistics for updateTC()  (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "printTimingStats",
+        "declaredIn": "Component",
+        "comment": "4) Enable/disable the printing of the timing statistics (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "freeze",
+        "declaredIn": "Component",
+        "comment": "5) Freeze flag: true(1), false(0); default: false       (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableMessageType",
+        "declaredIn": "Component",
+        "comment": "6) Enable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "disableMessageType",
+        "declaredIn": "Component",
+        "comment": "7) Disable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "state",
+        "declaredIn": "Agent",
+        "comment": "1) The agent's state object",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [
+          "AbstractState"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "behavior",
+        "declaredIn": "Agent",
+        "comment": "2) behavior",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [
+          "AbstractBehavior"
+        ],
+        "isReference": false,
+        "textOnly": false
+      }
+    ],
+    "primaryComponents": []
+  },
+  {
+    "class": "Navstar3BtBehavior",
+    "factory": "Navstar3BtBehavior",
+    "baseClass": "AbstractBehavior",
+    "chain": [
+      "Navstar3BtBehavior",
+      "AbstractBehavior",
+      "Component",
+      "Object"
+    ],
+    "origin": "plugin:Navstar-3",
+    "concrete": true,
+    "slots": [
+      {
+        "name": "components",
+        "declaredIn": "Component",
+        "comment": "1) Children components                                  (PairStream)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": true,
+        "unitFamilies": [],
+        "objectTypes": [
+          "Component"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "select",
+        "declaredIn": "Component",
+        "comment": "2) Manage only this child component (component idx)     (Number)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableTimingStats",
+        "declaredIn": "Component",
+        "comment": "3) Enable/disable the timing statistics for updateTC()  (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "printTimingStats",
+        "declaredIn": "Component",
+        "comment": "4) Enable/disable the printing of the timing statistics (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "freeze",
+        "declaredIn": "Component",
+        "comment": "5) Freeze flag: true(1), false(0); default: false       (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableMessageType",
+        "declaredIn": "Component",
+        "comment": "6) Enable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "disableMessageType",
+        "declaredIn": "Component",
+        "comment": "7) Disable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "vote",
+        "declaredIn": "AbstractBehavior",
+        "comment": "1) default vote/weight value for actions generated by this behavior",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "treeFile",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "1",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "altitude",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "2",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "inclination",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "3",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Angle",
+            "options": [
+              "Degrees",
+              "Radians",
+              "Semicircles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "raan",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "4",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Angle",
+            "options": [
+              "Degrees",
+              "Radians",
+              "Semicircles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "argLat0",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "5",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Angle",
+            "options": [
+              "Degrees",
+              "Radians",
+              "Semicircles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "sunRightAscension",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "6",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Angle",
+            "options": [
+              "Degrees",
+              "Radians",
+              "Semicircles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "sunDeclination",
+        "declaredIn": "Navstar3BtBehavior",
+        "comment": "7",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Angle",
+            "options": [
+              "Degrees",
+              "Radians",
+              "Semicircles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      }
+    ],
+    "primaryComponents": []
+  },
+  {
+    "class": "Navstar3State",
+    "factory": "Navstar3State",
+    "baseClass": "AbstractState",
+    "chain": [
+      "Navstar3State",
+      "AbstractState",
+      "Component",
+      "Object"
+    ],
+    "origin": "plugin:Navstar-3",
+    "concrete": true,
+    "slots": [
+      {
+        "name": "components",
+        "declaredIn": "Component",
+        "comment": "1) Children components                                  (PairStream)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": true,
+        "unitFamilies": [],
+        "objectTypes": [
+          "Component"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "select",
+        "declaredIn": "Component",
+        "comment": "2) Manage only this child component (component idx)     (Number)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableTimingStats",
+        "declaredIn": "Component",
+        "comment": "3) Enable/disable the timing statistics for updateTC()  (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "printTimingStats",
+        "declaredIn": "Component",
+        "comment": "4) Enable/disable the printing of the timing statistics (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "freeze",
+        "declaredIn": "Component",
+        "comment": "5) Freeze flag: true(1), false(0); default: false       (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableMessageType",
+        "declaredIn": "Component",
+        "comment": "6) Enable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "disableMessageType",
+        "declaredIn": "Component",
+        "comment": "7) Disable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      }
+    ],
+    "primaryComponents": []
+  },
+  {
     "class": "NetHandler",
     "factory": "NetHandler",
     "baseClass": "Component",

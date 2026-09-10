@@ -4506,6 +4506,25 @@ só não tem mais um botão de salvar/abrir ESSE formato específico como arquiv
 reescrito para apontar a expansão manual da diretiva direto no arquivo, já que não perde nada de
 capacidade real (`@include:` continua confirmado não usado por nenhum `.edl` deste repositório).
 
+**Passada seguinte — `generate_edl_catalog.py` só descobria modelo sob `models/players/*`, e o
+primeiro modelo real fora dali (`models/others/Navstar-3`) expôs a lacuna.**
+`dispatch_factory_cpp_paths()` fazia `MODELS_DIR.glob("players/*/src/xnative/factory.cpp")`
+literal — as classes de um modelo em `models/others/`/`models/systems/` nunca entravam no
+catálogo, e `edl_lint.py` (por trás do hook `check-edl-lint.sh`) acusava "fábrica desconhecida"
+para um `.edl` correto. `origin_of()` tinha o mesmo problema ao contrário: uma classe sob
+`models/<categoria>/<nome>/...` saía rotulada `plugin:<categoria>` (ex.: `plugin:others`), não
+`plugin:<nome>` — o rótulo certo só acontecia por acidente para `players/`, porque ali
+`rest[0]` já era o nome do modelo. Corrigido com uma constante `MODEL_CATEGORY_DIRS =
+{"players","systems","others"}` (espelho do `CATEGORIA_DIR` de `scripts/models.sh`, que não tem
+equivalente Python compartilhado) usada nos dois lugares: o glob passou a iterar as três
+categorias, e `origin_of()` passou a testar se o primeiro segmento é uma categoria conhecida
+antes de decidir se o rótulo vem do segundo segmento (nome do modelo) ou do primeiro (caso
+`models/events/...`, que não é uma categoria de scaffold). Regenerado via `node
+src/ui/scripts/build.js` (pipeline completo — catálogo, preset, testes, self-check de lint,
+`edl-builder.html`); a varredura de regressão sobre todo `.edl`/`.edl.in` real do repositório
+(`edl_parser_core.test.js`) passou a cobrir 22 arquivos (antes 21), incluindo o cenário novo,
+sem nenhum aviso de fábrica/slot desconhecido.
+
 ## Estado atual / pendências conhecidas
 
 - A renomeação `poc/` → `src/` foi propagada aos caminhos de arquivo (defaults dos `main.cpp`,

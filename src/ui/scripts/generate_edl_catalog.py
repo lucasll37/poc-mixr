@@ -59,6 +59,15 @@ MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
 MODELS_DIR = REPO_ROOT / scan.MODELS_REL
 LIBS_DIR = REPO_ROOT / scan.LIBS_REL
 
+# As tres subpastas de categoria que 'scripts/models.sh' (CATEGORIA_DIR) usa
+# como destino de 'make new-model' -- nao ha constante Python compartilhada
+# com aquele script (bash), entao esta lista e' o espelho dela aqui. Usada
+# tanto para descobrir factory.cpp de modelo (dispatch_factory_cpp_paths())
+# quanto para rotular a origem de uma classe (origin_of()) -- as duas
+# assumiam "models/players/" ate um modelo real aparecer em
+# models/others/ pela primeira vez (Navstar-3) e expor a lacuna.
+MODEL_CATEGORY_DIRS = {"players", "systems", "others"}
+
 mask_source = scan.mask_source
 iter_files = scan.iter_files
 build_inheritance = scan.build_inheritance
@@ -168,15 +177,17 @@ def dispatch_factory_cpp_paths():
     automatico, sem tratamento especial por nome): os 7 factory.cpp nativos
     (os MESMOS EDL_CATALOG_MIXR_MODULES que ja restringem o resto deste
     gerador -- ver o comentario deles), mais
-    'models/players/*/src/xnative/factory.cpp' (A-4, template, e qualquer
-    modelo futuro -- inclusive template, sem exclusao) e 'libs/*/factory.cpp'
-    (resolve sozinho quais libs tem fabrica EDL -- hoje xtacview/xclock/
-    xjoystick/xmsg/xplugin; uma lib sem fabrica, como xboard/xlog, so' nao
-    tem o arquivo, sem tabela de exclusao curada). Caminhos inexistentes sao
-    tolerados por find_dispatch_reachable_classes() (mesma tolerancia de
-    iter_files)."""
+    'models/<categoria>/*/src/xnative/factory.cpp' para toda categoria de
+    MODEL_CATEGORY_DIRS (A-4/C-130/paratrooper/template em players/, e
+    qualquer modelo futuro em systems/ ou others/ -- inclusive template,
+    sem exclusao) e 'libs/*/factory.cpp' (resolve sozinho quais libs tem
+    fabrica EDL -- hoje xtacview/xclock/xjoystick/xmsg/xplugin; uma lib sem
+    fabrica, como xboard/xlog, so' nao tem o arquivo, sem tabela de exclusao
+    curada). Caminhos inexistentes sao tolerados por
+    find_dispatch_reachable_classes() (mesma tolerancia de iter_files)."""
     paths = [MIXR_SRC / m / "factory.cpp" for m in EDL_CATALOG_MIXR_MODULES]
-    paths += sorted(MODELS_DIR.glob("players/*/src/xnative/factory.cpp"))
+    for categoria in sorted(MODEL_CATEGORY_DIRS):
+        paths += sorted(MODELS_DIR.glob(f"{categoria}/*/src/xnative/factory.cpp"))
     paths += sorted(LIBS_DIR.glob("*/factory.cpp"))
     return paths
 
@@ -205,20 +216,30 @@ def origin_of(impl_file):
     models/<qualquer-coisa>/ ja aparece rotulado na hora, sem precisar
     editar este arquivo.
 
-    Confirmado rodando: antes desta generalizacao, TacticalAlert (o
-    payload real do evento de alerta tatico, implementado em
-    models/events/payloads/EID_ALERT/TacticalAlert.cpp -- nao um
+    Confirmado rodando, duas vezes: (1) antes da generalizacao original,
+    TacticalAlert (o payload real do evento de alerta tatico, implementado
+    em models/events/payloads/EID_ALERT/TacticalAlert.cpp -- nao um
     'models/players/<nome>/') caia no 'return "builtin"' por engano, como
-    se fosse uma classe nativa do MIXR."""
+    se fosse uma classe nativa do MIXR; (2) antes do ajuste de
+    MODEL_CATEGORY_DIRS, uma classe de Navstar-3 (o primeiro modelo real
+    fora de models/players/) saia rotulada 'plugin:others' -- a CATEGORIA,
+    nao o modelo -- porque o codigo so' tratava 'models/players/' como
+    especial e caia no ramo generico para qualquer outra coisa sob
+    models/."""
     if impl_file is None:
         return "unknown"
-    if impl_file.startswith("models/players/"):
-        rest = impl_file[len("models/players/"):].split("/")
-        return f"plugin:{rest[0]}"
     if impl_file.startswith("models/"):
-        # qualquer outra coisa sob models/ que nao seja um player -- ex.:
-        # models/events/payloads/EID_ALERT/TacticalAlert.cpp -> "events".
         rest = impl_file[len("models/"):].split("/")
+        # 'models/<categoria>/<nome>/...' (players/others/systems) rotula
+        # pelo NOME do modelo (rest[1]), nao pela categoria -- e' o que
+        # distingue "plugin:Navstar-3" de "plugin:others" (o bug que existia
+        # antes de um modelo real aparecer fora de players/ pela primeira
+        # vez). Qualquer outra coisa sob models/ (ex.:
+        # models/events/payloads/EID_ALERT/TacticalAlert.cpp) rotula pelo
+        # PRIMEIRO nivel (rest[0], "events") -- nao e' uma categoria de
+        # modelo, e' um projeto proprio.
+        if rest[0] in MODEL_CATEGORY_DIRS and len(rest) > 1:
+            return f"plugin:{rest[1]}"
         return f"plugin:{rest[0]}"
     if impl_file.startswith("libs/"):
         return "libs"

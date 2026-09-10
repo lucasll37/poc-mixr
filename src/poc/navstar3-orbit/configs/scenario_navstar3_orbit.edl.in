@@ -1,0 +1,144 @@
+//
+// src/poc/navstar3-orbit
+//
+// O modelo models/others/Navstar-3 (categoria 'others', primeiro ocupante
+// desta pasta), sozinho: um ( SpaceVehicle ) NATIVO do MIXR orbitando a
+// Terra, sem nenhum ( DynamicsModel ) anexado -- quem move o player e' o
+// propagador orbital circular do modelo (domain/CircularOrbit.hpp), via
+// Player::setGeocPosition(ecef, slaved=true), chamado uma vez por ciclo de
+// decisao (fase 3 do frame de tempo critico) pela cadeia UBF usual deste
+// repositorio (percepcao -> decisao -> atuacao).
+//
+// O MIXR nao tem mecanica orbital nativa nenhuma (SpaceVehicle/
+// SpaceDynamicsModel sao stubs sem fisica -- confirmado lendo o fonte
+// vendorizado, ver models/others/Navstar-3/docs/ARCHITECTURE.md) -- a
+// orbita e' 100% do modelo.
+//
+// Elementos orbitais default (slots do ( Navstar3BtBehavior ) abaixo) sao
+// valores REPRESENTATIVOS de uma orbita GPS/MEO moderna (~20.180 km de
+// altitude, ~55 graus de inclinacao, periodo ~12h) -- NAO e reivindicada
+// precisao historica para o Navstar-3 real (SVN-3, GPS Block I, lancado em
+// 1978 e ja desativado ha decadas, sem efemeride precisa preservada e util
+// para reproduzir aqui).
+//
+// sunRightAscension: 180 poe o vetor do Sol (fixo, referencial inercial --
+// o MIXR nao tem efemeride solar nenhuma, ver ARCHITECTURE.md) apontando
+// para o lado oposto do satelite em t=0: o satelite nasce na SOMBRA da
+// Terra (rotulo ECLIPSE) e sai dela por volta de t=1700s -- e' o que da
+// para ver a transicao ECLIPSE -> SUNLIT -> ECLIPSE ao longo de uma orbita
+// completa, sem precisar rodar o cenario por 12h de tempo real (ver
+// 'fastForwardRate' abaixo).
+//
+// Sem 'terrain:' e sem 'networks:' -- cenario hermetico, roda ao lado das
+// demais pocs sem colidir. Um satelite a ~20.180 km de altitude nao
+// interage com terreno nenhum (Player::positionUpdate() ja exclui
+// SPACE_VEHICLE do clamp ao solo, e a checagem de CRASH_EVENT por AGL
+// negativa nunca dispara a essa altitude).
+//
+// Porta Tacview 1243 -- proxima livre (1234 flight, 1235 bandit, 1237
+// python-flight/rl, 1238 onnx-policy, 1239 built-in_mixr_1, 1240
+// full-systems-nav, 1241 c130-airdrop, 1242 paratrooper-drop).
+//
+// 'fastForwardRate' acelera o tempo simulado em relacao ao de parede (a
+// mesma orbita levaria ~12h reais sem isso) -- mecanismo 100%
+// nativo (Station::processTimeCriticalTasks(), ver CLAUDE.md raiz, secao
+// libs/xclock).
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: navstar3
+   fastForwardRate: 60
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libNavstar-3.so"
+               provides: { Navstar3State Navstar3BtBehavior Navstar3Action Navstar3AgentTC }
+            )
+         }
+      )
+
+      // "Medido rodando" primario para esta poc: o satelite continua
+      // ACTIVE do inicio ao fim (nunca crasha nem detona) e a altitude HAE
+      // se mantem no valor configurado, orbita apos orbita.
+      msgFeed: ( MsgFeed
+         maxPlayers:  4
+         healthEvery: ( Seconds 10 )
+         sinks: {
+            ( MsgFileSink
+               fileName: "./src/poc/navstar3-orbit/data/messages/mission.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { altMslM latDeg lonDeg }
+               every: ( Seconds 60.0 ) )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1243
+               callsign: "poc-mixr/navstar3-orbit"
+               fileName: "./src/poc/navstar3-orbit/data/recordings/mission.acmi"
+               modelMap: { NAVSTAR-3: "GPS-Block-IIF" }
+               typeMap:  { NAVSTAR-3: "Misc+Satellite" }
+               colorMap: { NAVSTAR-3: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Ponto de referencia arbitrario (equatorial) -- so' usado para as
+      // coordenadas locais NED que o mapa/painel de status exibem; a
+      // fisica orbital (ECEF/geodetica) nao depende disto. 'gamingAreaRange'
+      // fica DELIBERADAMENTE nao declarado (default: ilimitado) -- um
+      // satelite a ~26.558 km do centro da Terra excederia qualquer raio de
+      // "area de jogo" tipico de um cenario militar, e Player::
+      // setGeocPosition() marca posVecValid=false quando isso acontece.
+      latitude:  0.0
+      longitude: 0.0
+
+      players: {
+
+         navstar3: ( SpaceVehicle
+            id: 601  side: blue  type: "NAVSTAR-3"
+            initLatitude:  0.0
+            initLongitude: 0.0
+            initAlt:       ( Meters 20180000.0 )
+            dataLogTime:   ( Seconds 1.0 )
+            components: {
+               agent: ( Navstar3AgentTC
+                  state: ( Navstar3State )
+                  behavior: ( Navstar3BtBehavior
+                     treeFile:          "./dist/share/mixr-plugins/Navstar-3/navstar3_sun_tree.xml"
+                     altitude:          ( Meters 20180000.0 )
+                     inclination:       ( Degrees 55.0 )
+                     raan:              ( Degrees 0.0 )
+                     argLat0:           ( Degrees 0.0 )
+                     sunRightAscension: ( Degrees 180.0 )
+                     sunDeclination:    ( Degrees 0.0 )
+                  )
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

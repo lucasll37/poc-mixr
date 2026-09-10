@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A arvore de comportamento do Navstar-3.
+
+  Forma: um Fallback (o "primeiro que der SUCCESS vence"), igual a
+  flight_tree.xml de producao (models/players/A-4), com dois ramos:
+
+    1) na sombra da Terra    -> rotulo ECLIPSE
+    2) qualquer outro caso   -> rotulo SUNLIT   (ramo de degradacao, sempre SUCCESS)
+
+  O estado sol/sombra e' CALCULADO uma vez por ciclo em
+  ubf::Navstar3BtBehavior::genAction() (domain::sunState(), sobre a posicao
+  inercial do satelite e uma direcao de sol fixa vinda dos slots
+  sunRightAscension/sunDeclination) -- o no IsEclipsed so LE esse resultado,
+  nunca recalcula geometria nenhuma.
+
+  ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um
+  comentario XML. O tinyxml2 (que o BehaviorTree.CPP usa) tolera; o
+  QDomDocument (que o Groot usa) recusa o ARQUIVO INTEIRO com um generico
+  "erro de sintaxe". Ver CLAUDE.md raiz, secao "Groot", armadilha no 1.
+
+  O bloco <TreeNodesModel> abaixo e GERADO - nao edite a mao. Rode
+  'make update-bt' depois de registrar um no novo em src/bt/bt_factory.cpp.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="na_sombra">
+        <IsEclipsed/>
+        <SetSunLabel label="ECLIPSE"/>
+      </Sequence>
+      <SetSunLabel label="SUNLIT"/>
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="SetSunLabel">
+            <input_port name="label" type="std::string" default="SUNLIT">rotulo que vai para o xboard e para o dump</input_port>
+        </Action>
+        <Condition ID="IsEclipsed"/>
+    </TreeNodesModel>
+</root>
