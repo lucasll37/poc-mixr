@@ -1,4 +1,4 @@
-- config.json
+- onnx demorado
 - como o modelo novo está nascendo?
 - documentação
-- onnx demorado
+- config.json
