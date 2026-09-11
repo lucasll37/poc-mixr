@@ -74,7 +74,7 @@ bool AaaAction::execute(base::Component* const actor)
       auto* const flyout = storesMgr->releaseOneMissile();
       if (flyout != nullptr) {
          flyout->setTargetPlayer(target, /*posTrkEnb=*/true);
-         LOG(INFO) << "[AaaAction] missil lancado contra " << targetName_;
+         // LOG(INFO) << "[AaaAction] missil lancado contra " << targetName_;
          flyout->unref();   // releaseOneMissile() devolve pre-ref'd
       } else {
          LOG(WARNING) << "[AaaAction] disparo abortado -- releaseOneMissile() devolveu nulo";

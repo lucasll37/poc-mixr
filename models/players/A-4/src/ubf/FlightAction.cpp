@@ -231,30 +231,30 @@ bool FlightAction::execute(base::Component* actor)
    // Transicao de comportamento -- o evento que conta a historia da missao
    // ("falcon1: PATROL -> EVADE"). A primeira decisao de cada aeronave
    // aparece como "-- -> PATROL", que e o valor inicial do quadro.
-   if (before.label != label) {
-      if (command.rollOverride) {
-         LOG(INFO) << "[FlightAction] " << playerName
-                   << ": " << before.label << " -> " << label
-                   << "  (aileron=" << command.rollStick
-                   << " alt=" << command.altitudeM
-                   << "m vel=" << command.speedKts << "kt)";
-      } else {
-         LOG(INFO) << "[FlightAction] " << playerName
-                   << ": " << before.label << " -> " << label
-                   << "  (hdg=" << command.headingDeg
-                   << "deg alt=" << command.altitudeM
-                   << "m vel=" << command.speedKts << "kt)";
-      }
-   }
+   // if (before.label != label) {
+   //    if (command.rollOverride) {
+   //       LOG(INFO) << "[FlightAction] " << playerName
+   //                 << ": " << before.label << " -> " << label
+   //                 << "  (aileron=" << command.rollStick
+   //                 << " alt=" << command.altitudeM
+   //                 << "m vel=" << command.speedKts << "kt)";
+   //    } else {
+   //       LOG(INFO) << "[FlightAction] " << playerName
+   //                 << ": " << before.label << " -> " << label
+   //                 << "  (hdg=" << command.headingDeg
+   //                 << "deg alt=" << command.altitudeM
+   //                 << "m vel=" << command.speedKts << "kt)";
+   //    }
+   // }
 
    // Batimento: prova que a aeronave continua decidindo mesmo sem trocar
    // de comportamento, e da a cadencia real de decisao. Cadenciado pela
    // contagem do proprio quadro (ver kHeartbeatEveryDecisions).
-   if (before.decisions > 0 && (before.decisions % kHeartbeatEveryDecisions) == 0) {
-      LOG(DEBUG) << "[FlightAction] " << playerName
-                 << ": " << before.decisions << " decisoes atuadas, em '" << label
-                 << "' (thread " << xboard::threadTag() << ")";
-   }
+   // if (before.decisions > 0 && (before.decisions % kHeartbeatEveryDecisions) == 0) {
+   //    LOG(DEBUG) << "[FlightAction] " << playerName
+   //               << ": " << before.decisions << " decisoes atuadas, em '" << label
+   //               << "' (thread " << xboard::threadTag() << ")";
+   // }
 
    // Qual thread decidiu. FlightAgentTC::controller() ja escreve o mesmo
    // valor antes de chegar aqui (redundante, inofensivo, mesma tag) -- esta
@@ -317,8 +317,8 @@ bool FlightAction::execute(base::Component* actor)
          auto* const flyout = storesMgr->releaseOneMissile();
          if (flyout != nullptr) {
             flyout->setTargetPlayer(target, /*posTrkEnb=*/true);
-            LOG(INFO) << "[FlightAction] " << playerName
-                      << ": missil lancado contra " << launchTargetName;
+            // LOG(INFO) << "[FlightAction] " << playerName
+            //           << ": missil lancado contra " << launchTargetName;
             flyout->unref();   // releaseOneMissile() devolve pre-ref'd
          } else {
             LOG(WARNING) << "[FlightAction] " << playerName

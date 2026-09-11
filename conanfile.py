@@ -1,3 +1,5 @@
+import os
+
 from conan import ConanFile
 from conan.tools.meson import Meson, MesonToolchain
 from conan.tools.gnu import PkgConfigDeps
@@ -68,7 +70,74 @@ class MixrHelloConan(ConanFile):
 
         pc = PkgConfigDeps(self)
         pc.generate()
-        
+
+        # O abseil.pc que o PkgConfigDeps gera e um "guarda-chuva": nao tem lib
+        # nenhuma, so 'Requires:' dos ~200 componentes, que se requerem entre
+        # si em diamante. O pkgconf 1.8.1 (Ubuntu 24.04) percorre esse grafo
+        # caminho a caminho, sem memoizar: medido, 7 s por consulta ao abseil.pc
+        # e ~15 s ao onnxruntime.pc (que chega nele duas vezes, direto e via
+        # re2) -- e o Meson faz 4 consultas por dependencia (--modversion,
+        # --cflags, --libs duas vezes), ~50 s do 'make configure' so nisso.
+        # Achatado, com as mesmas flags, a consulta cai para milissegundos.
+        self._flatten_umbrella_pc("abseil")
+
+    def _flatten_umbrella_pc(self, name):
+        """Reescreve <name>.pc SEM 'Requires:', com as flags de todos os
+        componentes ja resolvidas. Os <componente>.pc ficam como o Conan gerou.
+
+        aggregated_components() ja devolve os componentes do mais dependente
+        para o menos dependente -- a ordem que a linkagem de .a exige -- e e o
+        mesmo agregado que os outros geradores do Conan usam."""
+        try:
+            dep = self.dependencies.host[name]
+        except KeyError:
+            return
+        pc_path = os.path.join(self.generators_folder, f"{name}.pc")
+        if not os.path.isfile(pc_path):
+            return
+        cpp = dep.cpp_info.aggregated_components()
+        # Componente que requer OUTRO pacote exigiria reescrever o 'Requires:'
+        # com o nome pkg-config dele -- nao e o caso do abseil; na duvida,
+        # fica o arquivo do Conan (lento, mas correto).
+        externos = [r for r in (cpp.requires or [])
+                    if "::" in r and r.split("::")[0] != name]
+        if externos or cpp.frameworks:
+            self.output.warning(f"{name}.pc nao foi achatado: requer {externos}")
+            return
+
+        prefix = dep.package_folder.replace("\\", "/")
+
+        def dirvars(kind, folders):
+            # Mesma forma do PkgConfigDeps: libdir, libdir1, ... relativos a ${prefix}.
+            out = {}
+            for i, folder in enumerate(folders):
+                folder = os.path.normpath(folder).replace("\\", "/")
+                if folder.startswith(prefix):
+                    folder = "${prefix}/" + os.path.relpath(folder, prefix).replace("\\", "/")
+                out[f"{kind}{i or ''}"] = folder
+            return out
+
+        libdirs = dirvars("libdir", cpp.libdirs)
+        includedirs = dirvars("includedir", cpp.includedirs)
+        libs = (['-L"${%s}"' % v for v in libdirs]
+                + ["-l" + lib for lib in cpp.libs + cpp.system_libs]
+                + cpp.sharedlinkflags + cpp.exelinkflags)
+        cflags = (['-I"${%s}"' % v for v in includedirs]
+                  + [f.replace('"', '\\"') for f in cpp.cxxflags + cpp.cflags]
+                  + ["-D" + d.replace('"', '\\"') for d in cpp.defines])
+
+        lines = [f"prefix={prefix}"]
+        lines += [f"{k}={v}" for k, v in {**libdirs, **includedirs}.items()]
+        lines += ["",
+                  f"Name: {name}",
+                  f"Description: Conan package: {name} (achatado por conanfile.py)",
+                  f"Version: {dep.ref.version}",
+                  "Libs: " + " ".join(libs),
+                  "Cflags: " + " ".join(cflags),
+                  ""]
+        with open(pc_path, "w") as f:
+            f.write("\n".join(lines))
+
     def build(self):
         meson = Meson(self)
         meson.configure()

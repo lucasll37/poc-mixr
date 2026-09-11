@@ -90,8 +90,8 @@ void Paratrooper::setJumpStage(const domain::Stage s)
 {
    if (s == stage_) return;
 
-   LOG(INFO) << "[Paratrooper] id=" << getID() << ": " << domain::labelOf(stage_)
-             << " -> " << domain::labelOf(s);
+   // LOG(INFO) << "[Paratrooper] id=" << getID() << ": " << domain::labelOf(stage_)
+   //           << " -> " << domain::labelOf(s);
    stage_ = s;
 }
 

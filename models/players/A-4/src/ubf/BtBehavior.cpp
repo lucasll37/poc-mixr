@@ -266,9 +266,9 @@ void BtBehavior::startGrootMonitorIfRequested()
          minUid = std::min(minUid, n->UID());
          maxUid = std::max(maxUid, n->UID());
       }
-      LOG(INFO) << "[BtBehavior] monitor do Groot ligado para " << snap.ownerName
-                << " (tcp://*:1666 status, tcp://*:1667 topologia, "
-                << tree.nodes.size() << " nos, uid " << minUid << ".." << maxUid << ")";
+      // LOG(INFO) << "[BtBehavior] monitor do Groot ligado para " << snap.ownerName
+      //           << " (tcp://*:1666 status, tcp://*:1667 topologia, "
+      //           << tree.nodes.size() << " nos, uid " << minUid << ".." << maxUid << ")";
    } catch (const std::exception& ex) {
       LOG(WARNING) << "[BtBehavior] falha ao ligar o monitor do Groot: " << ex.what();
    }

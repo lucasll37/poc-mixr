@@ -102,13 +102,13 @@ bool FlightAction::execute(base::Component* actor)
    xboard::bumpDecisionCount(player->getID());
    xboard::setThreadTag(player->getID(), xboard::threadTag());
 
-   if (before.label != label) {
-      LOG(INFO) << "[FlightAction] " << playerName
-                << ": " << before.label << " -> " << label
-                << "  (hdg=" << command.headingDeg
-                << "deg alt=" << command.altitudeM
-                << "m vel=" << command.speedKts << "kt)";
-   }
+   // if (before.label != label) {
+   //    LOG(INFO) << "[FlightAction] " << playerName
+   //              << ": " << before.label << " -> " << label
+   //              << "  (hdg=" << command.headingDeg
+   //              << "deg alt=" << command.altitudeM
+   //              << "m vel=" << command.speedKts << "kt)";
+   // }
 
    return true;
 }

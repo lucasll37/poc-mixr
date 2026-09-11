@@ -38,8 +38,8 @@ check-root: ## Confere que o host ja publicou dist/python/mixr_gym.
 
 venv: ## Cria/atualiza o venv LOCAL de treino (ver requirements.txt).
 	python3 -m venv $(VENV)
-	$(PY) -m pip install -q --upgrade pip
-	$(PY) -m pip install -q -r requirements.txt
+	$(PY) -m pip install --upgrade pip
+	$(PY) -m pip install -r requirements.txt
 	@echo "$(GREEN)venv: OK$(NC) -> $(VENV) (ative com 'source .venv/bin/activate', ou use direto: .venv/bin/python3)"
 
 train: check-root venv ## Treina PPO contra MixrFlightEnv, checkpoint em ./runs/ (ARGS=...).

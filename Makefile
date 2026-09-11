@@ -352,8 +352,8 @@ run-node-monitor: install ## Node (headless, log no terminal) + Monitor do Groot
 
 venv-rl: ## Cria/atualiza o venv do wrapper Gymnasium em src/rl/.venv.
 	python3 -m venv src/rl/.venv
-	src/rl/.venv/bin/pip install -q --upgrade pip
-	src/rl/.venv/bin/pip install -q -r src/rl/requirements.txt
+	src/rl/.venv/bin/pip install --upgrade pip
+	src/rl/.venv/bin/pip install -r src/rl/requirements.txt
 	@echo "$(GREEN)venv-rl: OK$(NC) -> src/rl/.venv (ative com 'source src/rl/.venv/bin/activate', ou use direto: src/rl/.venv/bin/python3)"
 
 test-rl: install venv-rl ## Roda os testes Python do wrapper Gymnasium, no venv de 'venv-rl'.
