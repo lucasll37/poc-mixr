@@ -71,7 +71,18 @@ public:
 
    // Avanca a maquina de estados. 'rollDeg' e' o banco atual em (-180, 180].
    // Devolve true enquanto a manobra esta EM CURSO.
-   bool update(double dt, double rollDeg);
+   //
+   // 'safeToRoll' so' importa na BORDA Idle->Rolling: quando o sorteio vence
+   // mas o chamador diz que nao ha altitude de sobra (ver
+   // bt_nodes::DecisionContext::hasAerobaticAltitudeMargin()), a manobra fica
+   // ADIADA -- o relogio trava em zero (nunca fica mais negativo) e a proxima
+   // chamada tenta de novo, sem redesenhar o intervalo. Uma vez EM CURSO, o
+   // parametro e' ignorado: a manobra sempre completa os 360 graus ou estoura
+   // por timeout, nunca aborta no meio -- terminar a um banco ARBITRARIO
+   // (possivelmente invertido, ver o cabecalho de classe) seria mais perigoso
+   // do que fechar o giro. Default 'true' preserva todo chamador que nao
+   // conhece terreno nenhum, inclusive os testes deste header.
+   bool update(double dt, double rollDeg, bool safeToRoll = true);
 
    bool rolling() const              { return phase_ == Phase::Rolling; }
 

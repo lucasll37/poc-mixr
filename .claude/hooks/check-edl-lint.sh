@@ -5,7 +5,7 @@
 # de verdade, ver o docstring do proprio edl_lint.py).
 #
 # Fail-safe: sai 0 em silencio se faltar python3, se o catalogo ainda nao
-# foi gerado (rode 'make open-edl-builder' uma vez) ou se o arquivo editado
+# foi gerado (rode 'make open-edl' uma vez) ou se o arquivo editado
 # nao for relevante -- nunca trava a sessao por causa de infraestrutura que
 # nao foi montada.
 set -u

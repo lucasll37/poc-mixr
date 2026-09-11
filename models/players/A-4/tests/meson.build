@@ -35,6 +35,7 @@ test_domain = executable('test-domain',
         'domain/test_geometry.cpp',
         'domain/test_TerrainFloor.cpp',
         'domain/test_ThreatPolicy.cpp',
+        'domain/test_LaunchPolicy.cpp',
         'domain/test_PatrolPlan.cpp',
         'domain/test_RtbPlan.cpp',
         'domain/test_AerobaticPlan.cpp',
@@ -70,6 +71,7 @@ test('domain', test_domain, suite: 'domain', timeout: 60)
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
 flight_tree_nav_xml = meson.current_source_dir() / '../configs/flight_tree_nav.xml'
 flight_tree_random_xml = meson.current_source_dir() / '../configs/flight_tree_random.xml'
+flight_tree_missile_demo_xml = meson.current_source_dir() / '../configs/flight_tree_missile_demo.xml'
 
 # O MESMO .onnx de pesos aleatorios que scenario-policy-onnx ja usa (forma
 # certa -- 28 entradas -> 3 saidas -- pesos irrelevantes pros testes de
@@ -100,10 +102,12 @@ test('tree-model-sync',
 test_tree = executable('test-tree',
     files('tree/test_flight_tree.cpp',
           'tree/test_flight_tree_nav.cpp',
-          'tree/test_flight_tree_random.cpp') + bt_sources + domain_sources,
+          'tree/test_flight_tree_random.cpp',
+          'tree/test_flight_tree_missile.cpp') + bt_sources + domain_sources,
     cpp_args            : ['-DFLIGHT_TREE_XML="' + flight_tree_xml + '"',
                            '-DFLIGHT_TREE_NAV_XML="' + flight_tree_nav_xml + '"',
-                           '-DFLIGHT_TREE_RANDOM_XML="' + flight_tree_random_xml + '"'],
+                           '-DFLIGHT_TREE_RANDOM_XML="' + flight_tree_random_xml + '"',
+                           '-DFLIGHT_TREE_MISSILE_DEMO_XML="' + flight_tree_missile_demo_xml + '"'],
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : [model_inc, include_directories('.')],
     dependencies        : [gtest_dep, gtest_main_dep, behavior_tree_dep, sdk_headers_dep],

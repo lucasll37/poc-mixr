@@ -25,6 +25,7 @@ public:
    domain::RtbPlan rtb{};
    domain::AerobaticPlan aerobatic{};
    domain::ThreatPolicy threat{};
+   domain::LaunchEnvelope launch{};
 
    double frameDt{0.02};
    double fuelReserve{0.35};
@@ -32,6 +33,9 @@ public:
    // Mesmo default de ubf::BtTuning::terrainClearanceM -- ver o comentario
    // de clampAltitudeToTerrain() abaixo.
    double terrainClearanceM{500.0};
+   // Mesmo default de ubf::BtTuning::slowRollMinMarginM -- ver o comentario
+   // de hasAerobaticAltitudeMargin() abaixo.
+   double slowRollMinMarginM{1500.0};
 
    const domain::WorldView& snapshot() const override        { return snap; }
    bt_nodes::FlightDecision& decision() override             { return dec; }
@@ -39,6 +43,7 @@ public:
    domain::RtbPlan& rtbPlan() override                       { return rtb; }
    domain::AerobaticPlan& aerobaticPlan() override           { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
+   const domain::LaunchEnvelope& launchEnvelope() const override { return launch; }
    double getFrameDt() const override                        { return frameDt; }
    double getFuelReserve() const override                    { return fuelReserve; }
    double getSupportSpeedKts() const override                { return supportSpeedKts; }
@@ -54,6 +59,19 @@ public:
       ground.valid = snap.terrainValid;
       ground.elevationM = snap.terrainElevM;
       return domain::clampToTerrain(altitudeM, ground, terrainClearanceM, 200.0);
+   }
+
+   // Copia fiel de BtBehavior::hasAerobaticAltitudeMargin() (ver o
+   // comentario dela e o de bt/DecisionContext.hpp) -- mesmo piso absoluto
+   // de clampAltitudeToTerrain() acima (200.0), pelo mesmo motivo.
+   bool hasAerobaticAltitudeMargin() const override
+   {
+      if (slowRollMinMarginM < 0.0) return true;   // negativo desliga a borda
+      domain::GroundReference ground;
+      ground.valid = snap.terrainValid;
+      ground.elevationM = snap.terrainElevM;
+      const double floorM{domain::terrainFloorM(ground, terrainClearanceM, 200.0)};
+      return (snap.altitudeM - floorM) >= slowRollMinMarginM;
    }
 
    // Copia fiel de BtBehavior::feedThreatPolicy(): Snapshot -> domain.
@@ -85,6 +103,12 @@ public:
       lim.terrainClearanceM = 800.0;
       threat.setLimits(lim);
       threat.reset();
+
+      // Mesmo default de ubf::BtTuning::launchMinRangeM/launchMaxRangeM/
+      // launchConeDeg.
+      launch.minRangeM = 500.0;
+      launch.maxRangeM = 9000.0;
+      launch.coneDeg = 45.0;
 
       // Mesmo terrainClearance do bloco acima -- BtTuning::terrainClearanceM
       // e domain::EvasionLimits::terrainClearanceM sao o MESMO slot do EDL

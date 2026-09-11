@@ -64,6 +64,19 @@ namespace xnative {
 //                                ! sentido do giro. 0 DESLIGA o recurso (default: 0)
 //    slowRollTimeout  <Time>     ! Aborta a manobra que nao fecha os 360 graus
 //                                ! (default: 20 s)
+//    slowRollMinMargin <Distance> ! Folga minima sobre o piso anti-CFIT para
+//                                 ! COMECAR uma acrobacia; sem margem, a
+//                                 ! manobra fica adiada, nunca cancelada
+//                                 ! (default: 1500 m; negativo desliga a
+//                                 ! borda -- ver o comentario de
+//                                 ! bt_nodes::DecisionContext::
+//                                 ! hasAerobaticAltitudeMargin())
+//    launchMinRange  <Distance>  ! Alcance minimo do envelope de disparo de
+//                                ! missil (default: 500 m)
+//    launchMaxRange  <Distance>  ! Alcance maximo do envelope de disparo
+//                                ! (default: 9000 m)
+//    launchCone      <Angle>     ! Meio-angulo do cone de disparo, em torno
+//                                ! do nariz (default: 45 deg)
 //
 // COMO UBF E BehaviorTree.CPP SE ENCAIXAM (o ponto desta poc):
 //
@@ -111,10 +124,12 @@ public:
    domain::RtbPlan& rtbPlan() override                   { return rtb; }
    domain::AerobaticPlan& aerobaticPlan() override       { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
+   const domain::LaunchEnvelope& launchEnvelope() const override { return launchEnvelope_; }
    double getFrameDt() const override                    { return frameDt; }
    double getFuelReserve() const override                { return tune.fuelReserve; }
    double getSupportSpeedKts() const override            { return tune.supportSpeedKts; }
    double clampAltitudeToTerrain(double altitudeM) const override;
+   bool hasAerobaticAltitudeMargin() const override;
 
 protected:
    bool shutdownNotification() override;
@@ -144,6 +159,7 @@ private:
    domain::RtbPlan rtb;
    domain::AerobaticPlan aerobatic;
    domain::ThreatPolicy threat;
+   domain::LaunchEnvelope launchEnvelope_;
 
    BT::BehaviorTreeFactory btFactory;
    BT::Tree tree;
@@ -171,6 +187,9 @@ private:
    bool setSlotEvadeSpeed(const base::Number* const);
    bool setSlotEvadeHold(const base::Time* const);
    bool setSlotSupportSpeed(const base::Number* const);
+   bool setSlotLaunchMinRange(const base::Distance* const);
+   bool setSlotLaunchMaxRange(const base::Distance* const);
+   bool setSlotLaunchCone(const base::Angle* const);
    bool setSlotTerrainClearance(const base::Distance* const);
    bool setSlotPatrolJitterHeading(const base::Angle* const);
    bool setSlotPatrolMasterSeed(const base::Number* const);
@@ -179,6 +198,7 @@ private:
    bool setSlotSlowRollMaxInterval(const base::Time* const);
    bool setSlotSlowRollStick(const base::Number* const);
    bool setSlotSlowRollTimeout(const base::Time* const);
+   bool setSlotSlowRollMinMargin(const base::Distance* const);
 };
 
 } // namespace xnative

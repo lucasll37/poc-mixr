@@ -1,10 +1,7 @@
 - video abrindo groot para edição e monitoramento
 - video edl-builder
-- como remover a pasta do mixr e bt do mapeamento
-- documentação
+- apresentação incluir (que já encontra um wrapper gymnasium RL)
 - config.json
-- criar preset na web
-- layout da edl.builder
+- documentação
 
-- testes determinismo
-- explorar RL e script python
+- implementar uma antiaérea com domo que dispara o mesmo missil já implementado num A-4 que entra no seu raio de atuação

@@ -139,6 +139,10 @@ void BtBehavior::configurePlans()
 
    rtb.configure(0.0, 0.0, tune.arrivalRadiusM, tune.rtbAltitudeM, tune.rtbSpeedKts);
 
+   launchEnvelope_.minRangeM = tune.launchMinRangeM;
+   launchEnvelope_.maxRangeM = tune.launchMaxRangeM;
+   launchEnvelope_.coneDeg = tune.launchConeDeg;
+
    domain::EvasionLimits limits;
    limits.breakTurnDeg = tune.breakTurnDeg;
    limits.climbM = tune.evadeClimbM;
@@ -301,6 +305,28 @@ double BtBehavior::clampAltitudeToTerrain(const double altitudeM) const
 }
 
 //------------------------------------------------------------------------------
+// hasAerobaticAltitudeMargin() -- MESMA traducao Snapshot->GroundReference de
+// clampAltitudeToTerrain() acima, mas responde uma pergunta diferente: nao
+// "que altitude e' segura comandar agora", e sim "ha folga de sobra para
+// COMECAR uma acrobacia" -- ver o comentario grande em bt/DecisionContext.hpp
+// para o "porque". Reusa o MESMO MIN_SAFE_ALT_M de clampAltitudeToTerrain().
+//------------------------------------------------------------------------------
+bool BtBehavior::hasAerobaticAltitudeMargin() const
+{
+   // Negativo DESLIGA a borda (qualquer altitude "basta", inclusive abaixo
+   // do proprio piso anti-CFIT) -- distinto de zero, que exige estar
+   // NO MINIMO no piso, sem folga extra nenhuma.
+   if (tune.slowRollMinMarginM < 0.0) return true;
+
+   domain::GroundReference ground;
+   ground.valid = snap.terrainValid;
+   ground.elevationM = snap.terrainElevM;
+
+   const double floorM{domain::terrainFloorM(ground, tune.terrainClearanceM, MIN_SAFE_ALT_M)};
+   return (snap.altitudeM - floorM) >= tune.slowRollMinMarginM;
+}
+
+//------------------------------------------------------------------------------
 // genAction() -- chamado pelo Agent (fase 3), depois de updateState().
 //------------------------------------------------------------------------------
 base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState* const state,
@@ -350,6 +376,9 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
       action->setAlertBroadcast(currentDecision.alertContactName,
                                 currentDecision.alertNorthM, currentDecision.alertEastM,
                                 currentDecision.alertAltitudeM, currentDecision.alertRangeM);
+   }
+   if (currentDecision.launchRequested) {
+      action->setLaunchRequest(currentDecision.launchTargetName);
    }
 
    // O voto do comportamento vai junto: e por ele que o UbfArbiter escolhe

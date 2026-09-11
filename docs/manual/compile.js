@@ -10,7 +10,7 @@
 //
 // O que faz, em ordem:
 //   1) injeta docs/manual/catalog.generated.js (MODEL/FACTORIES/SNIPPETS/
-//      STATS, escrito por tools/generate_manual_catalog.py -- 'make docs'
+//      STATS, escrito por tools/generate_manual_catalog.py -- 'make open-docs'
 //      roda o gerador ANTES deste script) num <script> proprio, ANTES do
 //      app -- mesma mecanica de src/ui/scripts/compile.js para
 //      EDL_CATALOG, so que aqui os 4 consts ja vem prontos como texto JS
@@ -27,8 +27,8 @@
 //   5) concatena quatro <script>: React, ReactDOM, o catalogo gerado, o app
 //      transpilado -- e fecha com o mount (ReactDOM.createRoot(...).render(...)).
 //
-// Uso: node docs/manual/compile.js   (ou `make docs`, que roda o gerador
-// Python e depois isto)
+// Uso: node docs/manual/compile.js   (ou `make open-docs`, que roda o gerador
+// Python, depois isto, e por fim abre o resultado no navegador)
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
@@ -82,7 +82,7 @@ function main() {
   src = src.replace(exportLine, "function App()");
 
   if (!fs.existsSync(CATALOG)) {
-    throw new Error(`${path.relative(ROOT, CATALOG)} nao existe -- rode 'python3 tools/generate_manual_catalog.py > ${path.relative(ROOT, CATALOG)}' antes (ou 'make docs', que ja encadeia isso).`);
+    throw new Error(`${path.relative(ROOT, CATALOG)} nao existe -- rode 'python3 tools/generate_manual_catalog.py > ${path.relative(ROOT, CATALOG)}' antes (ou 'make open-docs', que ja encadeia isso).`);
   }
   // catalog.generated.js ja e' texto JS pronto ('const MODEL = {...};' etc,
   // escrito por tools/generate_manual_catalog.py) -- diferente do

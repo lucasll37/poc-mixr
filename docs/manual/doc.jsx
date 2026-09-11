@@ -6,8 +6,9 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
  * MODEL, FACTORIES, SNIPPETS e STATS NAO sao declarados neste arquivo --
  * sao injetados em tempo de build por docs/manual/compile.js, concatenando
  * o texto de docs/manual/catalog.generated.js (escrito por
- * tools/generate_manual_catalog.py; 'make docs' roda o gerador ANTES do
- * compile.js) como um <script> proprio, antes do app transpilado. Universo:
+ * tools/generate_manual_catalog.py; 'make open-docs' roda o gerador ANTES do
+ * compile.js, e so entao abre a pagina) como um <script> proprio, antes do
+ * app transpilado. Universo:
  * as 7 factories nativas que models/BUILT-IN.md ja usa como escopo (base,
  * models, simulation, terrain, interop/dis, linkage, recorder) mais o
  * plugin de producao models/players/A-4 -- so classe com despacho REAL num

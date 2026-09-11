@@ -1,7 +1,7 @@
 # diretorios de build do Meson: a raiz (build/) e o de cada projeto de modelo
 # (models/players/*/build/). A BARRA FINAL nao e' decorativa -- 'build*' sem
 # ela casa tambem com ARQUIVO, em qualquer nivel, e engolia
-# src/ui/scripts/build.js (o orquestrador de 'make open-edl-builder'): ele
+# src/ui/scripts/build.js (o orquestrador de 'make open-edl'): ele
 # nunca entrava em commit nenhum, sem aviso, e o alvo quebrava com
 # MODULE_NOT_FOUND em toda maquina que nao fosse a de quem o escreveu.
 build*/
@@ -33,6 +33,17 @@ docs/manual/.cache/
 # mesma coisa, cache PROPRIO (nao compartilhado com docs/) de src/ui/compile.js
 # -- ver src/ui/README.md ("Por que src/ui/ e nao docs/").
 src/ui/.cache/
+
+# presets PROPRIOS do usuario, baixados pela secao "Meus presets" do editor
+# grafico (botao "Salvar como preset", src/ui/edl_builder.jsx) e movidos
+# pra ca' manualmente -- cada preset_<nome>.edl(.in) e' trabalho local de
+# quem esta usando a ferramenta, nunca fonte deste repositorio. So' o
+# README.md da pasta (explica a convencao) fica rastreado -- ver
+# src/ui/presets/README.md. '.edl.in' (nao so' '.edl') porque um cenario
+# com placeholder de template ainda pendente baixa com essa extensao --
+# ver o comentario de edlExtension() em edl_builder.jsx.
+src/ui/presets/*.edl
+src/ui/presets/*.edl.in
 
 # Tiles SRTM. O .hgt descomprimido (25 MB cada) e artefato gerado sob
 # demanda -- ver app/TerrainQuery.cpp::residentTerrain().

@@ -2,6 +2,7 @@
 
 #include "bt/NodeContext.hpp"
 #include "domain/AerobaticPlan.hpp"
+#include "domain/LaunchPolicy.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -54,6 +55,13 @@ public:
    // ( SlowRoll ) so o avanca e le.
    virtual domain::AerobaticPlan& aerobaticPlan() = 0;
 
+   // Alcance/cone dentro dos quais o disparo de missil e' permitido (ver
+   // domain/LaunchPolicy.hpp e bt/nodes/LaunchEnvelopeCondition.cpp). Ao
+   // contrario dos planos acima, nao ha estado que sobreviva entre ticks
+   // aqui -- e so' os numeros configurados pelos slots
+   // launchMinRange/launchMaxRange/launchCone (ver ubf/BtBehavior.hpp).
+   virtual const domain::LaunchEnvelope& launchEnvelope() const = 0;
+
    // parametros do ciclo e dos slots do EDL
    virtual double getFrameDt() const = 0;
    virtual double getFuelReserve() const = 0;
@@ -72,6 +80,21 @@ public:
    // ramo de evasao deve passar por aqui antes de decision().take() --
    // ver ReturnToBaseAction/SupportAlertAction/PatrolAction.
    virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
+
+   // Ha altitude de sobra para COMECAR uma acrobacia (domain::AerobaticPlan)
+   // agora? -- ACHADO investigando uma colisao real: um giro de aileron
+   // puro, sem compensacao de profundor, custa bem mais que a media
+   // documentada quando o banco passa por invertido (o altitude hold
+   // comanda profundor no sentido CONTRARIO nessa faixa -- ver o README de
+   // sandbox/A4-6DOF-RANDOM). Sem esta borda, giros sucessivos catam
+   // altitude, um perto do pior caso apos o outro, ate colidir com o
+   // terreno -- medido rodando: as 8 aeronaves daquele cenario colidem entre
+   // t=680s e t=1142s sem este piso, nenhuma com ele em 4000s (ver
+   // ubf/BtTuning.hpp::slowRollMinMarginM). So' a BORDA Idle->Rolling de
+   // AerobaticPlan::update() consulta isto -- uma vez em curso, a manobra
+   // sempre completa os 360 graus ou estoura por timeout, nunca aborta no
+   // meio (ver o comentario de AerobaticPlan::update()).
+   virtual bool hasAerobaticAltitudeMargin() const = 0;
 };
 
 } // namespace bt_nodes

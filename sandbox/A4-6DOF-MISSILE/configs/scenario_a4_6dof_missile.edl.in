@@ -1,0 +1,294 @@
+//
+// A4-6DOF-MISSILE -- um A-4 (a4_shooter) detecta outro A-4 (a4_target) pelo
+//                    radar e dispara um ( GuidedMissile ) contra ele
+//
+// Exercicio (ver TODO.md, raiz): "implementar um missil ... para verificar
+// como isso e modelado em termos de uso idiomatico do MIXR". NAO e um
+// cenario de producao -- e o MINIMO necessario pra observar disparo ->
+// guiagem -> detonacao de ponta a ponta, isolado de qualquer outro ramo de
+// decisao (evasao, apoio, patrulha de verdade).
+//
+// DOIS players, deliberadamente assimetricos:
+//
+//   a4_shooter -- pilha COMPLETA de sensor/stores (mesmo padrao de
+//      src/poc/dis/flight/configs/scenario.edl.in): Gimbal+Antenna(TWS),
+//      SensorMgr+Tws, OnboardComputer+AirTrkMgr, StoresMgr com UM
+//      ( GuidedMissile ), agent: ( FlightAgentTC ) com a arvore de
+//      DEMONSTRACAO (configs/flight_tree_missile_demo.xml em
+//      models/players/A-4 -- NAO a arvore de producao, que fica intocada).
+//
+//   a4_target -- so' dynamicsModel + pilot (Autopilot com os tres hold
+//      modes ligados, SEM nenhum cmdHeading/cmdAltitude/cmdSpeed
+//      declarado): Autopilot::reset() (Autopilot.cpp:181-183) semeia os
+//      comandos a partir de initHeading/initAlt/initVelocity quando o hold
+//      esta ligado mas nao ha slot de comando -- o MESMO padrao ja usado
+//      por bandit1 em src/poc/dis/bandit. Sem agente, sem sensor, sem
+//      stores: um alvo que so' voa reto e nivelado, sem reagir a nada.
+//
+// GEOMETRIA: a4_target comeca 15 NM a LESTE de a4_shooter (a frente do
+// rumo inicial de patrulha, 090), voando para OESTE (270) -- direto na
+// direcao do atirador. a4_shooter comeca patrulhando rumo 090 a 250 kts;
+// a4_target fecha a 220 kts -- taxa de aproximacao ~470 kts (~242 m/s). O
+// alvo entra no alcance do radar (40 NM) e no cone de deteccao (+-60 graus
+// da antena) desde o instante inicial (esta bem a frente do nariz) -- mas
+// a 15 NM ainda esta bem FORA do envelope de disparo (0.3..5.0 NM, ver
+// launchMinRange/launchMaxRange abaixo), entao a arvore do atirador entra
+// primeiro em bt=EVADE/BREAK (o ramo de ameaca detectada, que roda antes
+// do ramo de disparo no Fallback) e comeca a curva de fuga -- o alvo
+// continua fechando em linha reta e o alcance entra no envelope MEDIDO em
+// t=~67s (nao uma travessia direta prevista por geometria estatica; ver
+// sandbox/A4-6DOF-MISSILE/README.md, secao "O que foi medido rodando",
+// para os numeros de disparo/deteccao/detonacao medidos de verdade).
+//
+// SEM TERRENO (nenhum slot 'terrain:' em simulation:): o unico ponto desta
+// poc e o mecanismo de disparo, nao navegacao sobre relevo -- terreno so
+// acrescentaria risco de CRASH_EVENT (AGL<0) sem nenhum ganho pro que se
+// quer observar. Sem banco de elevacao, getAltitudeAgl() == altitude HAE
+// (ver a secao "Terreno" do CLAUDE.md raiz) -- nunca negativo nas
+// altitudes usadas aqui.
+//
+// SEM 'networks:' -- hermetico, mesmo motivo de toda fixture de teste
+// deste repositorio (CLAUDE.md, "Testes automatizados", armadilha 1).
+//
+// Alcancado via '-folder <pasta>' do ./app (nome da subpasta:
+// "A4-6DOF-MISSILE"):
+//
+//    ./build/app/src/app -folder ./sandbox -scenario A4-6DOF-MISSILE
+//
+// PORTA TACVIEW: 1234, igual as outras 9 pastas de sandbox/ -- nenhuma
+// roda ao mesmo tempo que outra (variantes de comparacao, uma execucao por
+// vez), entao reusar a porta padrao evita decorar mais um numero.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+
+   ownship: a4_shooter
+
+   components: {
+
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libflight.so"
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction }
+            )
+            ( PluginModule
+               file:     "libmissile.so"
+               provides: { GuidedMissile }
+            )
+         }
+      )
+
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "A4-6DOF-MISSILE"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/A4-6DOF-MISSILE"
+               fileName: "./sandbox/A4-6DOF-MISSILE/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { a4_shooter: "A-4E" a4_target: "A-4E" }
+               typeMap:  { a4_shooter: "Air+FixedWing" a4_target: "Air+FixedWing" }
+               colorMap: { a4_shooter: "Blue" a4_target: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      latitude:  -22.25
+      longitude: -42.48
+
+      players: {
+
+         // ==============================================================
+         // a4_shooter -- radar + stores + arvore de demo de disparo
+         // ==============================================================
+         a4_shooter: ( Aircraft
+            id: 101
+            side: blue
+            type: "A4"
+
+            signature: ( SigSphere radius: 3.0 )
+
+            initXPos:     ( NauticalMiles 0.0 )
+            initYPos:     ( NauticalMiles 0.0 )
+            initAlt:      ( Meters 2000.0 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 129.0                   // ~250 kts
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  model:   "A4"
+                  debugLevel: 0
+               )
+
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   20.0
+                  maxClimbRateMps:  40.0
+                  maxAcceleration:  6.0
+               )
+
+               // Radar de busca -- mesma cadeia de src/poc/dis/flight (um
+               // subconjunto do "player maximo" de built-in_mixr_1: so' o
+               // necessario pra deteccao TWS, nada de Stt/Gmti/Sar/Rwr/
+               // Jammer, que nao servem a este exercicio).
+               antennas: ( Gimbal
+                  components: {
+                     radar: ( Antenna
+                        polarization: horizontal
+                        gain: ( dB 42 )
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.01745  0.02618   0.04363   0.05236   0.061087  0.06981   0.07854 ]
+                           data: [ 0.0  -3.0    -10.0     -30.0     -20.0     -14.0     -25.0     -80.0 ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]  maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth: ( Degrees 60 )  commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]  searchVolume: [ 1.0472 0.05 ]  numBars: 2
+                        maxPlayersOfInterest: 8  playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 60.0 )
+                        localPlayersOfInterestOnly: false  useWorldCoordinates: false
+                     )
+                  }
+               )
+
+               sensors: ( SensorMgr components: { ( Tws
+                  trackManagerName: twsTrkMgr  antennaName: radar
+                  powerPeak: ( KiloWatts 200.0 )  frequency: ( GigaHertz 3.0 )
+                  bandwidth: ( GigaHertz 2.0 )  PRF: ( Hertz 500.0 )
+                  pulseWidth: ( MilliSeconds 0.01 )  threshold: ( dB 0.0 )  igain: ( dB 0 )
+                  ranges: [ 10 20 40 80 ]  initRangeIdx: 2 ) } )
+
+               obc: ( OnboardComputer components: { twsTrkMgr: ( AirTrkMgr
+                  maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
+                  positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 1000 ) } )
+
+               // Um so' estacao, um so' missil -- o envelope de disparo
+               // (BtBehavior abaixo) so' precisa disparar UMA vez (ver o
+               // comentario de bt_nodes::LaunchMissileAction::tick()):
+               // apos o disparo, available() cai a zero e weaponReady vira
+               // false no frame seguinte, sem precisar de estado extra na
+               // arvore.
+               stores: ( StoresMgr
+                  numStations: 1
+                  stores: {
+                     1: ( GuidedMissile
+                        id: 501
+                        side: blue
+                        type: "AIM-X"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 60 )
+                        lethalRange: ( Meters 30 )
+                        maxBurstRng: ( Meters 150 )
+                     )
+                  }
+               )
+
+               // O AGENTE -- ultimo componente de proposito (fase 3 roda
+               // Autopilot/AirTrkMgr/decisao nessa ordem; decidir por
+               // ultimo ja ve as pistas atualizadas deste frame).
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_missile_demo.xml"
+                     patrolHeading:  ( Degrees 90 )
+                     legTime:        ( Seconds 120 )
+                     legTurn:        ( Degrees 90 )
+                     patrolAltitude: ( Meters 2000 )
+                     patrolSpeed:    250.0
+                     rtbAltitude:    ( Meters 2100 )
+                     rtbSpeed:       260.0
+                     arrivalRadius:  ( NauticalMiles 2.0 )
+                     fuelReserve:    0.35
+                     breakTurn:      ( Degrees 110 )
+                     evadeClimb:     ( Meters 400 )
+                     evadeSpeed:     280.0
+                     supportSpeed:   260.0
+                     evadeHold:      ( Seconds 30 )
+                     terrainClearance: ( Meters 0 )     // sem terreno neste cenario -- piso absoluto (200 m) so
+                     // Envelope de disparo (domain/LaunchPolicy.hpp) --
+                     // dentro da distancia inicial de 15 NM entre os dois
+                     // players, alcancado por volta de t=75..115s.
+                     launchMinRange: ( NauticalMiles 0.3 )
+                     launchMaxRange: ( NauticalMiles 5.0 )
+                     launchCone:     ( Degrees 45 )
+                  )
+               )
+            }
+         )
+
+         // ==============================================================
+         // a4_target -- so' voa reto e nivelado, sem reagir a nada (mesmo
+         // padrao degenerado de bandit1 em src/poc/dis/bandit)
+         // ==============================================================
+         a4_target: ( Aircraft
+            id: 102
+            side: red
+            type: "A4"
+
+            signature: ( SigSphere radius: 3.0 )
+
+            initXPos:     ( NauticalMiles 0.0 )
+            initYPos:     ( NauticalMiles 15.0 )
+            initAlt:      ( Meters 2000.0 )
+            initHeading:  ( Degrees 270 )
+            initVelocity: 113.0                   // ~220 kts
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  model:   "A4"
+                  debugLevel: 0
+               )
+
+               // SEM cmdHeading/cmdAltitude/cmdSpeed: Autopilot::reset()
+               // (Autopilot.cpp:181-183) semeia os tres comandos a partir
+               // de initHeading/initAlt/initVelocity quando o hold esta
+               // ligado mas nenhum slot de comando foi declarado -- o
+               // mesmo padrao ja usado por bandit1.
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   20.0
+                  maxClimbRateMps:  40.0
+                  maxAcceleration:  6.0
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

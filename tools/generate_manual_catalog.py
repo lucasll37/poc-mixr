@@ -24,10 +24,10 @@ extract_slots, iter_files, DECLARE_RE) e tools/extract_execution_chain.py
 Uso:
     python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js
 
-Chamado automaticamente por 'make docs' (Makefile raiz), antes de
-docs/manual/compile.js. O arquivo gerado é COMMITADO (mesmo tratamento que
-src/ui/edl_catalog.generated.json já recebe) -- abrir docs/manual/index.html
-não exige rodar Python antes.
+Chamado automaticamente por 'make open-docs' (Makefile raiz), antes de
+docs/manual/compile.js e da abertura no navegador. O arquivo gerado é
+COMMITADO (mesmo tratamento que src/ui/edl_catalog.generated.json já recebe)
+-- abrir docs/manual/index.html não exige rodar Python antes.
 """
 from __future__ import annotations
 

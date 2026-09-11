@@ -74,7 +74,7 @@ function main() {
     process.exit(1);
   }
   if (!fs.existsSync(CATALOG_PATH)) {
-    console.error(`catalogo nao encontrado em ${CATALOG_PATH} -- rode 'node src/ui/scripts/generate_edl_catalog.py' (ou 'make open-edl-builder') primeiro.`);
+    console.error(`catalogo nao encontrado em ${CATALOG_PATH} -- rode 'node src/ui/scripts/generate_edl_catalog.py' (ou 'make open-edl') primeiro.`);
     process.exit(1);
   }
   const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8"));

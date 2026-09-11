@@ -252,9 +252,8 @@ Falta, MANUALMENTE (nada disto e automatizavel com seguranca):
   [ ] .gitlab-ci.yml e .gitignore -- entradas por nome, se houver
   [ ] regenerar os catalogos COMMITADOS que carregam o rotulo 'plugin:<nome>':
       src/ui/edl_catalog.generated.json, src/ui/edl-builder.html e
-      docs/manual/catalog.generated.js  ('make docs' cobre o ultimo; o do editor
-      EDL e' 'make open-edl-builder', que HOJE FALHA -- chama src/ui/scripts/build.js,
-      arquivo que nao existe)
+      docs/manual/catalog.generated.js  ('make open-docs' cobre o ultimo; o do
+      editor EDL e' 'make open-edl')
   [ ] apagar *.generated.edl velhos (alguns ainda nomeiam .so que nao existem mais)
   [ ] CI: o cache por branch guarda plugins/ e dist/ -- limpar pela UI do GitLab,
       nao ha alvo make que alcance o cache remoto

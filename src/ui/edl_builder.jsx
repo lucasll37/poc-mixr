@@ -178,7 +178,7 @@ function LeafWidget({ slotDef, value, onChange }) {
 
 /* -------------------------------- paleta ---------------------------------- */
 
-function Palette({ onDragStartFactory }) {
+function Palette({ onDragStartFactory, collapsed, onToggleCollapse }) {
   const [q, setQ] = useState("");
   const groups = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -196,10 +196,27 @@ function Palette({ onDragStartFactory }) {
     return Object.entries(byOrigin).sort((a, b) => originRank(a[0]) - originRank(b[0]));
   }, [q]);
 
+  // Colapsada, a paleta vira uma tira estreita -- só o botão que a
+  // reabre -- pra devolver a largura pro par árvore/prévia .edl quando o
+  // catálogo não é o que importa no momento (ver eb-main-split, mais
+  // abaixo). Estado mora em App (persistido, mesmo padrão do tema).
+  if (collapsed) {
+    return (
+      <div className="eb-pane eb-palette eb-palette-collapsed">
+        <button className="eb-btn eb-btn-sm eb-palette-toggle" onClick={onToggleCollapse}
+          title="Mostrar a paleta de componentes">»</button>
+      </div>
+    );
+  }
+
   return (
     <div className="eb-pane eb-palette">
-      <input className="eb-input" type="text" placeholder="Buscar classe…" value={q}
-        onChange={(e) => setQ(e.target.value)} aria-label="Buscar classe" />
+      <div className="eb-palette-head">
+        <input className="eb-input" type="text" placeholder="Buscar classe…" value={q}
+          onChange={(e) => setQ(e.target.value)} aria-label="Buscar classe" />
+        <button className="eb-btn eb-btn-sm eb-palette-toggle" onClick={onToggleCollapse}
+          title="Esconder a paleta de componentes">«</button>
+      </div>
       <div className="eb-palette-list">
         {groups.map(([origin, list]) => (
           <div key={origin} className="eb-group">
@@ -516,13 +533,13 @@ function TreeNode({ node, ui, actions, keyBadge, onRenameKeyLocal, onRemoveLocal
 // comentario de scalarToSlotValue() em edl_parser_core.js pro porque disso
 // importar). "+ slot" acrescenta um slot NOVO a mao -- util pra editar uma
 // classe ainda em desenvolvimento, cujo catalogo nao foi regenerado ainda.
-function UncatalogedSlotsSection({ node, names, onChangeSlot, onAddRawSlot }) {
+function UncatalogedSlotsSection({ node, names, onChangeSlot, onAddRawSlot, onFieldFocus }) {
   const [newName, setNewName] = useState("");
   return (
     <div className="eb-uncataloged-section">
       <div className="eb-props-subhead">slots não catalogados</div>
       {names.map((name) => (
-        <div key={name} className="eb-field">
+        <div key={name} className="eb-field" onFocus={() => onFieldFocus && onFieldFocus(name)}>
           <label className="eb-field-label">
             {name} <span className="eb-unknown-badge" title="nao catalogado -- valor bruto, sem checagem de tipo">?</span>
           </label>
@@ -542,7 +559,7 @@ function UncatalogedSlotsSection({ node, names, onChangeSlot, onAddRawSlot }) {
   );
 }
 
-function PropertiesPanel({ node, onChangeSlot, onAddRawSlot }) {
+function PropertiesPanel({ node, onChangeSlot, onAddRawSlot, onFieldFocus }) {
   if (!node) {
     return <div className="eb-pane eb-props"><p className="eb-muted eb-empty-msg">selecione um nó na árvore</p></div>;
   }
@@ -569,7 +586,8 @@ function PropertiesPanel({ node, onChangeSlot, onAddRawSlot }) {
             bruto, exatamente como deve sair no arquivo.
           </p>
         </div>
-        <UncatalogedSlotsSection node={node} names={names} onChangeSlot={onChangeSlot} onAddRawSlot={onAddRawSlot} />
+        <UncatalogedSlotsSection node={node} names={names} onChangeSlot={onChangeSlot} onAddRawSlot={onAddRawSlot}
+          onFieldFocus={onFieldFocus} />
       </div>
     );
   }
@@ -594,7 +612,7 @@ function PropertiesPanel({ node, onChangeSlot, onAddRawSlot }) {
       </div>
       {leafSlots.length === 0 && extraNames.length === 0 && <p className="eb-muted">esta classe não tem slot de valor direto.</p>}
       {leafSlots.map((slotDef) => (
-        <div key={slotDef.name} className="eb-field">
+        <div key={slotDef.name} className="eb-field" onFocus={() => onFieldFocus && onFieldFocus(slotDef.name)}>
           <label className="eb-field-label" title={slotDef.comment}>
             {slotDef.name}
             {slotDef.isReference && <span className="eb-ref-badge" title="referência por nome, resolvida em runtime">#</span>}
@@ -605,7 +623,8 @@ function PropertiesPanel({ node, onChangeSlot, onAddRawSlot }) {
         </div>
       ))}
       {extraNames.length > 0 && (
-        <UncatalogedSlotsSection node={node} names={extraNames} onChangeSlot={onChangeSlot} onAddRawSlot={onAddRawSlot} />
+        <UncatalogedSlotsSection node={node} names={extraNames} onChangeSlot={onChangeSlot} onAddRawSlot={onAddRawSlot}
+          onFieldFocus={onFieldFocus} />
       )}
     </div>
   );
@@ -766,73 +785,311 @@ function slugify(name) {
 // disco fora do download do navegador) -- por isso o nome vira parte do
 // nome sugerido do download (Chrome cria as subpastas dentro de Downloads/)
 // E aparece como texto, pra quem for mover o arquivo saber exatamente onde
-// ele precisa cair pra `-folder ./sandbox` enxergar o cenário.
-// A File System Access API (showDirectoryPicker/getDirectoryHandle/
-// getFileHandle/createWritable) está disponível em Chrome/Edge mesmo
-// abrindo este .html direto por `file://` (confirmado rodando: window.
-// isSecureContext e' true nos dois casos, file:// e http://localhost --
-// Chromium trata file: como contexto seguro). Ausente no Firefox -- daí o
-// feature-detect: com ela, "Exportar .edl" ESCREVE direto em
-// sandbox/<nome>/configs/scenario.edl (a MESMA pasta que `./app -folder
-// ./sandbox` já varre, sem passo manual de mover o arquivo baixado); sem
-// ela, cai no download de sempre, que só pode SUGERIR esse caminho como
-// nome do arquivo (Chrome/Firefox então criam a subpasta dentro de
-// Downloads/, não no repositório).
+// ele precisa cair pra `-folder ./sandbox` enxergar o cenário. DELIBERADO:
+// esta ferramenta não oferece "escolher uma pasta" nenhuma (nem pra
+// cenário, nem pra preset) -- só download, sempre pro mesmo caminho
+// sugerido; simplicidade e previsibilidade venceram a conveniência de
+// escrever direto no disco (que a File System Access API permitiria, mas
+// só em Chrome/Edge, com um fluxo de permissão a mais pra explicar).
+//
+// Extensão do arquivo: `.edl` normalmente, `.edl.in` quando o cenário ainda
+// tem placeholder de template (`@TOKEN@` literal, aba Abertos) -- um
+// arquivo assim NÃO é um `.edl` válido pro parser real (que rejeitaria o
+// `@TOKEN@` como token desconhecido), é um TEMPLATE ainda por preencher, e
+// a extensão precisa dizer isso -- mesma convenção já usada em todo o
+// repositório (`scenario.edl.in` vira `scenario.edl` só depois de resolvido,
+// ver `app::ScenarioTemplate`/CLAUDE.md). Vale pro cenário completo E pro
+// preset -- as duas coisas são o MESMO tipo de arquivo.
+function edlExtension(hasOpenIssues) {
+  return hasOpenIssues ? "edl.in" : "edl";
+}
+
+// Precisa estar ANEXADO ao document pra disparar o download com confiança
+// em todo navegador -- um <a> solto (nunca inserido no DOM) funciona na
+// maioria dos casos, mas é o padrão conhecidamente frágil (Firefox, em
+// particular, documenta clique sintético em elemento fora da árvore como
+// não confiável). E revogar o blob: URL na MESMA tarefa síncrona do
+// clique é a OUTRA armadilha clássica desta técnica -- click() dispara o
+// download de forma assíncrona por baixo; revogar cedo demais corrompe/
+// cancela o download em alguns navegadores. Por isso o `setTimeout` antes
+// de revogar, e o elemento só é removido do DOM depois do clique, não
+// antes.
+//
+// NENHUM dos dois consertos acima resolveu o problema relatado -- então
+// isto para de depender só de Blob+<a download>+click() dar certo em
+// silêncio. Devolve true/false (sucesso conhecido) e SEMPRE tenta um
+// segundo caminho antes de desistir: window.open() com um data: URI puro
+// -- não depende de Blob nem de URL.createObjectURL, só do próprio
+// window.open (a API mais antiga e mais amplamente suportada que existe
+// pra "tirar texto do JS pra fora da página"), então funciona mesmo num
+// ambiente onde Blob esteja bloqueado/ausente por algum motivo que não dá
+// pra prever daqui. Se os DOIS falharem, quem chama mostra um aviso
+// explícito apontando pra prévia (que já é sempre selecionável/copiável --
+// user-select:none só no número de linha, ver .eb-edl-lineno) como
+// caminho garantido de qualquer forma.
+function downloadTextFile(text, filename) {
+  try {
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch (err) {
+    try {
+      const opened = window.open("data:text/plain;charset=utf-8," + encodeURIComponent(text), "_blank");
+      return !!opened;
+    } catch (err2) {
+      return false;
+    }
+  }
+}
+
+// Escreve DIRETO em disco via File System Access API -- feature-detectado
+// (Chrome/Edge têm, Firefox não: daí o feature-detect em vez de assumir).
+// `pathParts` é a cadeia de subpastas a partir do handle já concedido
+// (ex.: [slug, "configs"] pra sandbox/<slug>/configs/); cada uma é
+// criada sob demanda (`{create:true}`) -- é assim que "Escolher pasta
+// sandbox/" (a pasta RAIZ) mais um `slug` digitado no campo de nome
+// resultam em sandbox/<slug>/configs/scenario.edl sem o usuário escolher
+// a subpasta toda vez. Lança se a permissão da pasta tiver expirado
+// (handle não sobrevive a um F5, e o usuário pode ter revogado a
+// permissão do navegador) -- quem chama trata isso com fallback pra
+// download, nunca deixa o erro subir pra UI crua.
 const HAS_FS_ACCESS = typeof window !== "undefined" && "showDirectoryPicker" in window;
 
-async function writeEdlIntoSandbox(sandboxDirHandle, slug, text) {
-  const scenarioDir = await sandboxDirHandle.getDirectoryHandle(slug, { create: true });
-  const configsDir = await scenarioDir.getDirectoryHandle("configs", { create: true });
-  const fileHandle = await configsDir.getFileHandle("scenario.edl", { create: true });
+async function writeFileIntoDir(dirHandle, pathParts, filename, text) {
+  let dir = dirHandle;
+  for (const part of pathParts) {
+    dir = await dir.getDirectoryHandle(part, { create: true });
+  }
+  const fileHandle = await dir.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(text);
   await writable.close();
 }
 
-function ExportPanel({ root }) {
+// "Meus presets" -- preset_<nome>.<edl|edl.in>, baixado pelo navegador
+// (mesmo mecanismo de "Exportar .edl" acima, nunca escreve em disco
+// direto). NÃO é o mesmo botão que "Carregar preset" na barra de
+// ferramentas (esse carrega o ÚNICO cenário de exemplo embutido no build,
+// built-in_mixr_1) -- por isso o rótulo aqui é "Meus presets": tantos
+// quanto o usuário quiser salvar. Reabrir um preset já salvo é o mesmo
+// "Carregar .edl" de sempre (é só um .edl/.edl.in como outro qualquer) --
+// ver src/ui/presets/README.md pra convenção de onde guardá-los.
+// Colapsada por padrão (persistido, mesmo padrão da paleta) -- é uma ação
+// SECUNDÁRIA (a primária é "Exportar .edl", sempre visível no cabeçalho),
+// e a versão anterior (sempre aberta, com rótulo+hint em texto solto)
+// competia por altura com a própria prévia .edl logo abaixo -- ver
+// eb-edl-preview: flex:1 só sobra o que os irmãos ACIMA não usam, então
+// "Meus presets" sempre aberta empurrava a prévia pra baixo à toa na
+// maioria das sessões, que nem chegam a usar a seção.
+function PresetsSection({ root, text, slug, ext }) {
+  const [presetName, setPresetName] = useState("");
+  const [warn, setWarn] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("mx-edl-builder-presets-collapsed") !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mx-edl-builder-presets-collapsed", collapsed ? "1" : "0"); } catch { /* sem storage -- ok */ }
+  }, [collapsed]);
+  // Handle de diretório PRÓPRIO desta seção -- não o de ExportPanel (são
+  // pastas diferentes: sandbox/<nome>/configs/ vs. onde quer que o usuário
+  // guarde os presets, sugerido src/ui/presets/ mas não presumido). Não
+  // sobrevive a um F5 (a API não persiste o handle) -- reescolher é
+  // barato (um clique) e evita reconfirmar permissão via IndexedDB.
+  const [dirHandle, setDirHandle] = useState(null);
+
+  const chooseFolder = async () => {
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      setDirHandle(handle);
+      setWarn(null);
+    } catch (err) {
+      // usuário cancelou o seletor -- sem erro, sem aviso
+    }
+  };
+
+  const saveAsPreset = async () => {
+    if (!isAscii(text)) {
+      setWarn("Não é possível salvar: o cenário tem caractere fora de ASCII -- corrija e tente de novo.");
+      return;
+    }
+    const filename = `preset_${slugify(presetName) || slug}.${ext}`;
+    setMsg(null);
+    let fallbackWarn = null;
+    if (dirHandle) {
+      try {
+        await writeFileIntoDir(dirHandle, [], filename, text);
+        setWarn(null);
+        setMsg(`✓ salvo como ${filename} na pasta escolhida`);
+        return;
+      } catch (err) {
+        fallbackWarn = "Não consegui escrever na pasta escolhida (a permissão pode ter expirado) -- baixando em vez disso.";
+      }
+    }
+    setWarn(fallbackWarn);
+    if (downloadTextFile(text, filename)) {
+      setMsg(`✓ baixado como ${filename}`);
+    } else if (!fallbackWarn) {
+      setWarn("Não consegui iniciar o download por nenhum caminho disponível neste navegador -- " +
+        "selecione o texto na prévia abaixo e copie manualmente.");
+    }
+  };
+
+  if (collapsed) {
+    return (
+      <div className="eb-presets eb-presets-collapsed">
+        <button className="eb-btn eb-btn-sm" onClick={() => setCollapsed(false)}>▸ Meus presets</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="eb-presets">
+      <div className="eb-presets-head">
+        <p className="eb-props-subhead">Meus presets</p>
+        <button className="eb-btn eb-btn-sm" onClick={() => setCollapsed(true)}>▾ recolher</button>
+      </div>
+      <div className="eb-row eb-presets-save">
+        <input className="eb-input" type="text" placeholder={`nome do preset (padrão: ${slug})`} value={presetName}
+          title={dirHandle
+            ? `salva direto como preset_${slugify(presetName) || slug}.${ext} na pasta escolhida`
+            : `baixa como preset_${slugify(presetName) || slug}.${ext}; mova pra src/ui/presets/ se quiser manter organizado -- reabra com "Carregar .edl"`}
+          onChange={(e) => setPresetName(e.target.value)} />
+        {HAS_FS_ACCESS && !dirHandle && (
+          <button className="eb-btn eb-btn-sm" onClick={chooseFolder} title="escolher uma pasta (ex.: src/ui/presets/) pra salvar direto, sem download">
+            Escolher pasta…
+          </button>
+        )}
+        <button className="eb-btn eb-btn-sm" disabled={!root} onClick={saveAsPreset}>
+          {dirHandle ? "Salvar na pasta escolhida" : "Salvar como preset"}
+        </button>
+      </div>
+      {dirHandle && <p className="eb-muted eb-fsaccess-status">pasta escolhida ✓</p>}
+      {warn && <p className="eb-warn">{warn}</p>}
+      {msg && !warn && <p className="eb-ok-msg">{msg}</p>}
+    </div>
+  );
+}
+
+// Monta as linhas prontas pra renderizar na prévia .edl -- uma por linha de
+// texto (splitTokensIntoLines/computeLineRanges, edl_builder_core.js), cada
+// uma já com a marcação de numeração (o ÍNDICE, 1-based na hora de exibir)
+// e se ela entra no destaque do nó selecionado. Destaque é POR LINHA, não
+// por caractere: a linha inteira entra se o intervalo dela SOBREPÕE
+// highlightRange, mesmo que só parcialmente (ex.: a linha onde um slot de
+// objeto único abre, "dynamicsModel: ( JSBSimModel", entra inteira mesmo o
+// span só começando no '(') -- é isso que faz o destaque virar um
+// RETÂNGULO uniforme (mesma largura em toda linha tocada, até o fim dela),
+// em vez de abraçar só o texto exato do span.
+function buildPreviewLines(text, tokens, highlightRange) {
+  const tokenLines = splitTokensIntoLines(tokens);
+  const ranges = computeLineRanges(text);
+  return tokenLines.map((lineTokens, i) => {
+    const [ls, le] = ranges[i] || [0, 0];
+    const highlighted = !!highlightRange && ls < highlightRange[1] && le > highlightRange[0];
+    return { tokens: lineTokens, highlighted };
+  });
+}
+
+function ExportPanel({ root, hasOpenIssues, selectedId, focusedSlotName }) {
   const [warn, setWarn] = useState(null);
   const [saved, setSaved] = useState(null);
+  // 'download' | 'write' -- de qual caminho veio o `saved` acima, só pra
+  // fraseá-lo certo ("baixado" vs. "salvo em") sem duas variáveis de
+  // mensagem separadas.
+  const [savedVia, setSavedVia] = useState("download");
   const [name, setName] = useState(() => {
-    try { return localStorage.getItem("mx-edl-builder-scenario-name") || ""; } catch { return ""; }
+    try {
+      const stored = localStorage.getItem("mx-edl-builder-scenario-name") || "";
+      // Migração de uma vez: "apaga" era o valor DIGITADO numa sessão de
+      // teste, persistido sem querer -- e por causa disso reabria
+      // pré-preenchido pra sempre (é exatamente o pedido, ainda de uma
+      // passada antiga, "não adote nome default de apaga"). Tratado como
+      // "nunca digitado" aqui pra cair no fallback de baixo ("base"), em
+      // vez de ficar preso em "apaga" indefinidamente.
+      return stored === "apaga" ? "" : stored;
+    } catch {
+      return "";
+    }
   });
   useEffect(() => { try { localStorage.setItem("mx-edl-builder-scenario-name", name); } catch { /* sem storage -- ok */ } }, [name]);
-  // O handle da pasta sandbox/ só vive NESTA aba/sessão (a API não promete
-  // persistência entre recarregamentos sem um passo extra de IndexedDB, que
-  // teria de re-pedir permissão de qualquer forma) -- por isso é estado
-  // local, não localStorage: escolher de novo a cada sessão é o preço
-  // aceitável por nunca escrever fora de onde o usuário apontou.
+  // Handle de diretório concedido UMA vez por sessão (não sobrevive a um
+  // F5) para escrever DIRETO em sandbox/<slug>/configs/ -- a pasta em si
+  // é sempre a mesma (a raiz do repositório dá acesso a sandbox/ pelo
+  // seletor), só o SLUG (do campo de nome, abaixo) muda qual subpasta é
+  // criada/reescrita a cada exportação; o usuário nunca escolhe uma pasta
+  // arbitrária a cada clique -- só concede acesso à raiz uma vez.
   const [sandboxDirHandle, setSandboxDirHandle] = useState(null);
-  const text = useMemo(() => projectToEdl(root, CATALOG_BY_FACTORY), [root]);
+
+  const chooseSandboxFolder = async () => {
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      setSandboxDirHandle(handle);
+      setWarn(null);
+    } catch (err) {
+      // usuário cancelou o seletor -- sem erro, sem aviso
+    }
+  };
+  // 'spans' mapeia todo nó REAL da árvore pro trecho [start,end) que ele
+  // ocupa em `text` -- é o que permite destacar, na prévia, exatamente a
+  // região do nó selecionado na árvore (ver highlightRange/scrollRef
+  // abaixo). projectToEdl continua existindo com o MESMO contrato (usado
+  // em PresetsSection/PropertiesPanel de outras telas) -- aqui se usa a
+  // variante com spans porque é a ÚNICA consumidora que precisa deles.
+  const { text, spans } = useMemo(() => projectToEdlWithSpans(root, CATALOG_BY_FACTORY), [root]);
   // Mesma gramatica de .vscode/extensions/edl/syntaxes/edl.tmLanguage.json,
   // portada em JS puro (tokenizeEdlText, edl_builder_core.js) -- so' pra
   // colorir a previa, nao muda o texto exportado em nada (o download usa
   // `text` cru, nunca os tokens).
   const tokens = useMemo(() => tokenizeEdlText(text), [text]);
-  const slug = slugify(name) || "meu-cenario";
-  const relPath = `sandbox/${slug}/configs/scenario.edl`;
-
-  const chooseSandboxFolder = async () => {
-    setWarn(null);
-    setSaved(null);
-    try {
-      const handle = await window.showDirectoryPicker({ id: "mixr-edl-sandbox", mode: "readwrite" });
-      setSandboxDirHandle(handle);
-    } catch (err) {
-      if (err && err.name !== "AbortError") {
-        setWarn("Não consegui abrir o seletor de pasta: " + err.message);
-      }
+  // undefined (Map.get de um id que não está na árvore atual -- pode
+  // acontecer num instante entre trocar de árvore e o próximo redesenho)
+  // vira null, não undefined -- só pra o resto do componente ter um único
+  // valor "nada selecionado" pra checar. Com um CAMPO focado no painel de
+  // propriedades (focusedSlotName), prefere o span GRANULAR daquele slot
+  // (chave "<id>#<slot>", ver pushLeafLine em edl_builder_core.js) -- só a
+  // linha do campo que está sendo editado, não o bloco do nó inteiro; sem
+  // campo focado (ou se o slot não tiver span próprio -- ex.: um papel que
+  // na verdade é um nó filho, não uma folha), cai pro span do nó inteiro,
+  // o comportamento de sempre.
+  const highlightRange = (selectedId != null && (
+    (focusedSlotName && spans.get(`${selectedId}#${focusedSlotName}`)) || spans.get(selectedId)
+  )) || null;
+  // Uma entrada por LINHA (numeração + se ela entra no retângulo de
+  // destaque) -- recalculada quando o texto OU a seleção mudam (trocar de
+  // nó selecionado sem editar nada já muda qual linha está destacada).
+  const previewLines = useMemo(() => buildPreviewLines(text, tokens, highlightRange), [text, tokens, highlightRange]);
+  // Largura do gutter de numeração cresce com o total de linhas (cenário de
+  // 800 linhas precisa de 3 dígitos; um vazio/pequeno não desperdiça
+  // espaço com dígitos de sobra) -- mesmo princípio de qualquer IDE.
+  const linenoWidth = String(previewLines.length).length;
+  const highlightRef = useRef(null);
+  // 'start', não 'nearest' -- a PRIMEIRA linha destacada tem que ficar o
+  // mais perto possível do limite SUPERIOR da prévia, sempre que a seleção
+  // muda (ou o texto, ao editar) -- não só "rolar o mínimo pra aparecer
+  // em algum lugar da tela" (que é o que 'nearest' fazia, podendo deixar a
+  // linha bem no rodapé se ela tivesse entrando por baixo). Se a linha já
+  // estiver perto do fim do documento (sem conteúdo suficiente abaixo dela
+  // pra rolar até o topo de verdade), o navegador rola o quanto der -- é
+  // o próprio sentido de "o mais próximo possível".
+  useEffect(() => {
+    if (highlightRef.current && highlightRef.current.scrollIntoView) {
+      highlightRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
     }
-  };
-
-  const downloadFallback = () => {
-    const blob = new Blob([text], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = relPath;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setSaved(null);
-  };
+  }, [selectedId, root, focusedSlotName]);
+  const slug = slugify(name) || "base";
+  // .edl.in em vez de .edl enquanto sobrar placeholder de template (aba
+  // Abertos) -- ver o comentário de edlExtension() acima.
+  const ext = edlExtension(hasOpenIssues);
+  const relPath = `sandbox/${slug}/configs/scenario.${ext}`;
 
   const exportEdl = async () => {
     if (!isAscii(text)) {
@@ -841,29 +1098,26 @@ function ExportPanel({ root }) {
         "rejeitar o arquivo inteiro. Troque o texto pelo equivalente sem acento e exporte de novo.");
       return;
     }
-    setWarn(null);
-    if (!sandboxDirHandle) {
-      downloadFallback();
-      return;
-    }
-    try {
-      // 'readwrite' já foi concedido em chooseSandboxFolder(); queryPermission
-      // confirma que ainda vale (o usuário pode ter revogado pelo próprio
-      // navegador entre um export e outro) sem precisar pedir de novo à toa.
-      const perm = await sandboxDirHandle.queryPermission({ mode: "readwrite" });
-      if (perm !== "granted") {
-        const reasked = await sandboxDirHandle.requestPermission({ mode: "readwrite" });
-        if (reasked !== "granted") {
-          setWarn("Permissão de escrita em sandbox/ não concedida -- exportado por download em vez disso.");
-          downloadFallback();
-          return;
-        }
+    setSaved(null);
+    let fallbackWarn = null;
+    if (sandboxDirHandle) {
+      try {
+        await writeFileIntoDir(sandboxDirHandle, [slug, "configs"], `scenario.${ext}`, text);
+        setWarn(null);
+        setSavedVia("write");
+        setSaved(relPath);
+        return;
+      } catch (err) {
+        fallbackWarn = `Não consegui escrever em ./${relPath} (a permissão da pasta pode ter expirado) -- baixando em vez disso.`;
       }
-      await writeEdlIntoSandbox(sandboxDirHandle, slug, text);
+    }
+    setWarn(fallbackWarn);
+    if (downloadTextFile(text, relPath)) {
+      setSavedVia("download");
       setSaved(relPath);
-    } catch (err) {
-      setWarn("Falha ao salvar em " + relPath + ": " + err.message + " -- exportado por download em vez disso.");
-      downloadFallback();
+    } else if (!fallbackWarn) {
+      setWarn("Não consegui iniciar o download por nenhum caminho disponível neste navegador -- " +
+        "selecione o texto na prévia abaixo (o número da linha não entra na seleção) e copie manualmente.");
     }
   };
 
@@ -871,37 +1125,61 @@ function ExportPanel({ root }) {
     <div className="eb-pane eb-export">
       <div className="eb-export-head">
         <span className="eb-export-title">⤓ Pré-visualização .edl</span>
-        <span className="eb-row">
-          {HAS_FS_ACCESS && (
+        <span className="eb-row eb-export-controls">
+          <input id="eb-scenario-name" className="eb-input eb-export-name" type="text" value={name}
+            placeholder="nome do cenário" aria-label="nome do cenário (pasta em sandbox/)"
+            title={sandboxDirHandle ? `salva direto em ./${relPath}` : `baixa como ./${relPath}`}
+            onChange={(e) => setName(e.target.value)} />
+          {HAS_FS_ACCESS && !sandboxDirHandle && (
             <button className="eb-btn eb-btn-sm" onClick={chooseSandboxFolder}
-              title="Escolher a pasta sandbox/ deste repositório -- uma vez por sessão">
-              {sandboxDirHandle ? "✓ pasta sandbox/ escolhida" : "Escolher pasta sandbox/…"}
+              title="escolher a pasta sandbox/ do repositório pra salvar direto, sem download">
+              Escolher pasta sandbox/…
             </button>
           )}
-          <button className="eb-btn" disabled={!root} onClick={exportEdl}>
-            {sandboxDirHandle ? "Salvar em sandbox/" : "Exportar .edl"}
+          <button className="eb-btn eb-btn-sm" disabled={!root} onClick={exportEdl}>
+            {sandboxDirHandle ? "Salvar em sandbox/" : `Exportar .${ext}`}
           </button>
         </span>
       </div>
-      <div className="eb-export-path">
-        <label className="eb-field-label" htmlFor="eb-scenario-name">nome do cenário (pasta em <code>sandbox/</code>)</label>
-        <input id="eb-scenario-name" className="eb-input" type="text" value={name} placeholder="meu-cenario"
-          onChange={(e) => setName(e.target.value)} />
+      {sandboxDirHandle && (
+        <p className="eb-muted eb-fsaccess-status">pasta sandbox/ escolhida ✓ -- salva direto em ./{relPath}</p>
+      )}
+      {hasOpenIssues && (
         <p className="eb-muted eb-export-path-hint">
-          {sandboxDirHandle
-            ? <>salva DIRETO em <code>{relPath}</code> (dentro da pasta escolhida) -- pronto para <code>./app -folder ./sandbox</code>.</>
-            : HAS_FS_ACCESS
-              ? <>baixa como <code>./{relPath}</code> (Downloads/); clique em “Escolher pasta sandbox/…” acima para salvar direto no repositório.</>
-              : <>baixa como <code>./{relPath}</code>.</>}
+          Extensão <code>.edl.in</code> porque ainda há placeholder de template pendente (aba "Abertos").
         </p>
-      </div>
+      )}
       {warn && <p className="eb-warn">{warn}</p>}
-      {saved && !warn && <p className="eb-ok-msg">✓ salvo em <code>{saved}</code></p>}
-      <pre className="eb-edl-preview">
-        {text
-          ? tokens.map((t, i) => (t.cls ? <span key={i} className={t.cls}>{t.text}</span> : t.text))
-          : "(cenário vazio -- arraste uma classe para começar)"}
-      </pre>
+      {saved && !warn && (
+        <p className="eb-ok-msg">
+          {savedVia === "write" ? "✓ salvo em " : "✓ baixado como "}<code>{saved}</code>
+        </p>
+      )}
+      <PresetsSection root={root} text={text} slug={slug} ext={ext} />
+      <div className="eb-edl-preview">
+        {text ? (
+          <div className="eb-edl-lines" style={{ "--eb-lineno-w": `${linenoWidth}ch` }}>
+            {(() => {
+              let refAssigned = false;
+              return previewLines.map((line, i) => {
+                let ref;
+                if (line.highlighted && !refAssigned) { ref = highlightRef; refAssigned = true; }
+                return (
+                  <div key={i} ref={ref}
+                    className={"eb-edl-line" + (line.highlighted ? " eb-edl-line-highlight" : "")}>
+                    <span className="eb-edl-lineno">{i + 1}</span>
+                    <span className="eb-edl-linecontent">
+                      {line.tokens.map((t, j) => (t.cls ? <span key={j} className={t.cls}>{t.text}</span> : t.text))}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        ) : (
+          <p className="eb-muted eb-empty-msg eb-edl-empty">(cenário vazio -- arraste uma classe para começar)</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -940,7 +1218,7 @@ const CSS = `
   --rule:#C6CDC3; --hot:#B4661E; --ok:#4A6B4F; --bad:#9C3B3B;
   --frame-bg: rgba(0,0,0,0.035); --placeholder-bg: rgba(0,0,0,0.02); --branch:#8A968D;
   --syn-comment:#7C8A82; --syn-string:#4A7A5E; --syn-class:#2C4B7C; --syn-slot:#8A5A1E;
-  --syn-bool:#B4661E; --syn-num:#6B4FA0;
+  --syn-bool:#B4661E; --syn-num:#6B4FA0; --edl-highlight-bg: rgba(180,102,30,0.22);
   --mono: ui-monospace,'JetBrains Mono','SF Mono',Menlo,monospace;
   --sans: 'Inter',system-ui,-apple-system,sans-serif;
   background:var(--paper); color:var(--ink); font-family:var(--sans);
@@ -960,7 +1238,7 @@ const CSS = `
   --rule:#3A413B; --hot:#D98A4A; --ok:#7FBE8B; --bad:#E08A8A; color-scheme: dark;
   --frame-bg: rgba(255,255,255,0.04); --placeholder-bg: rgba(255,255,255,0.025); --branch:#6E7A73;
   --syn-comment:#7E8983; --syn-string:#8FCB9E; --syn-class:#9DBBE3; --syn-slot:#E8C284;
-  --syn-bool:#D98A4A; --syn-num:#C3ADEA;
+  --syn-bool:#D98A4A; --syn-num:#C3ADEA; --edl-highlight-bg: rgba(217,138,74,0.30);
   --origin-models-bg:#1E2A3C; --origin-models-fg:#9DBBE3;
   --origin-base-bg:#2A2C27; --origin-base-fg:#C7CAC0;
   --origin-terrain-bg:#223420; --origin-terrain-fg:#A9CC9A;
@@ -989,6 +1267,10 @@ const CSS = `
   padding:12px 18px 24px; box-sizing:border-box; overflow:hidden; }
 .eb-pane { border:1px solid var(--rule); border-radius:2px; background:var(--panel); padding:10px; box-sizing:border-box; }
 .eb-palette { width:300px; flex-shrink:0; height:100%; overflow-y:auto; overflow-x:hidden; }
+.eb-palette-collapsed { width:30px; padding:10px 4px; display:flex; justify-content:center; overflow:hidden; }
+.eb-palette-head { display:flex; gap:6px; align-items:center; }
+.eb-palette-head .eb-input { flex:1; min-width:0; }
+.eb-palette-toggle { flex-shrink:0; }
 .eb-palette-list { margin-top:8px; }
 .eb-group-title { font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
   color:var(--muted); margin:10px 0 4px; }
@@ -997,12 +1279,26 @@ const CSS = `
   display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .eb-chip:hover { border-color:var(--hot); }
 .eb-alias { color:var(--muted); font-style:normal; font-size:10.5px; }
-/* .eb-main: a coluna do meio -- arvore + previa .edl empilhadas, rolando
-   JUNTAS numa unica barra de rolagem propria (nunca mais um "rodape" que
-   se estende por baixo da paleta: a previa mora DENTRO desta coluna,
-   nunca mais grid-column:1/-1). */
-.eb-main { flex:1; min-width:0; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+/* .eb-main: a coluna do meio -- barra de abas (altura fixa) em cima e,
+   embaixo, .eb-main-split: TRES colunas lado a lado -- a aba ativa
+   (árvore/mapa/abertos), o painel de PROPRIEDADES do nó selecionado (saiu
+   de fora de .eb-body, à direita de tudo, pra cá) e a prévia .edl, cada
+   uma com a PRÓPRIA barra de rolagem (mesmo princípio já documentado acima pra
+   .eb-body -- nenhuma coluna "vaza" nem sobrepõe a vizinha). Nessa ordem
+   de propósito: clicar um nó na árvore (1ª coluna) mostra os campos dele
+   bem ao lado (2ª) e, mais à direita ainda, a região correspondente já vem
+   destacada na prévia (3ª, ver eb-edl-line-highlight) -- as três colunas que
+   importam pro fluxo "selecionar -> editar -> conferir" ficam ADJACENTES,
+   sem a prévia no meio quebrando a proximidade árvore<->propriedades (o
+   problema real de quando a prévia ficou entre as duas, na passada
+   anterior). .eb-main em si não rola mais: quem rola são os filhos de
+   .eb-main-split. */
+.eb-main { flex:1; min-width:0; height:100%; overflow:hidden; display:flex; flex-direction:column; gap:12px; }
 .eb-main-tabs { flex-shrink:0; }
+.eb-main-split { flex:1; min-height:0; display:flex; flex-direction:row; gap:12px; overflow:hidden; }
+.eb-main-split > .eb-pane { flex:1; height:100%; }
+.eb-main-split > .eb-tree, .eb-main-split > .eb-map, .eb-main-split > .eb-pending { min-width:0; overflow-y:auto; }
+.eb-main-split > .eb-props { flex:0 0 320px; }
 .eb-tree-utility-row { margin-left:auto; }
 .eb-tab-btn { font:inherit; font-size:12.5px; padding:5px 14px; cursor:pointer;
   border:1px solid var(--rule); border-bottom:none; background:var(--paper); color:var(--muted); border-radius:2px 2px 0 0; }
@@ -1082,19 +1378,62 @@ const CSS = `
 /* Visualmente DISTINTO da árvore acima -- borda superior grossa + fundo
    trocado (paper no lugar de panel) + título maiúsculo, pra não parecer
    "mais um cartão dentro da árvore" (era a confusão relatada): isto é uma
-   ferramenta à parte (exportar), não um nó do cenário. */
-.eb-export { flex-shrink:0; background:var(--paper); border-top:3px solid var(--hot); }
-.eb-export-head { display:flex; justify-content:space-between; align-items:center; }
+   ferramenta à parte (exportar), não um nó do cenário. Dentro de
+   .eb-main-split fica na SEGUNDA coluna, ao lado da aba ativa -- por isso
+   é coluna CHEIA (flex-direction:column, altura de .eb-main-split) com UMA
+   rolagem só dentro de .eb-edl-preview (vira flex:1 mais abaixo), não mais
+   um bloco empilhado de altura natural. */
+.eb-export { flex:1; min-width:340px; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--paper); border-top:3px solid var(--hot); }
+/* Cabeçalho numa ÚNICA linha (título + nome do cenário + botão) -- era
+   título+botão numa linha e label+input+parágrafo de dica em TRÊS linhas
+   abaixo (.eb-export-path, removida): o "pra onde salva" virou tooltip
+   (title=) no próprio campo, não texto sempre visível. Cada linha a menos
+   aqui é uma linha a mais pra .eb-edl-preview (flex:1 -- só recebe o que
+   sobra depois de tudo que vem antes dela nesta coluna). */
+.eb-export-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
 .eb-export-title { font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
-.eb-export-path { margin-top:8px; max-width:480px; }
-.eb-export-path input { margin-top:2px; }
+.eb-export-controls { flex:1; min-width:160px; justify-content:flex-end; }
+.eb-export-name { flex:1; min-width:100px; max-width:220px; }
 .eb-export-path-hint { margin:4px 0 0; }
 .eb-export-path-hint code, .eb-field-label code { font-family:var(--mono); background:var(--paper);
   border:1px solid var(--rule); border-radius:2px; padding:0 3px; }
-.eb-edl-preview { font-family:var(--mono); font-size:11.5px; background:var(--paper); border:1px solid var(--rule);
-  border-radius:2px; padding:10px; max-height:280px; overflow:auto; white-space:pre; margin-top:8px; }
-.eb-warn { color:var(--bad); font-size:12.5px; }
-.eb-ok-msg { color:var(--ok); font-size:12.5px; }
+.eb-warn { color:var(--bad); font-size:12.5px; margin:4px 0 0; }
+.eb-ok-msg { color:var(--ok); font-size:12.5px; margin:4px 0 0; }
+/* "Meus presets" -- ver PresetsSection. Colapsada por padrão (só o botão
+   de reabrir, mesma ideia da paleta) -- pelo MESMO motivo do cabeçalho
+   acima: cada linha que esta seção NÃO ocupa quando fechada é uma linha a
+   mais pra prévia. */
+.eb-presets { flex-shrink:0; margin-top:8px; padding-top:8px; border-top:1px dashed var(--rule); }
+.eb-presets-collapsed { padding-top:6px; }
+.eb-presets-head { display:flex; justify-content:space-between; align-items:center; }
+.eb-presets-save { margin-top:6px; }
+/* -------------------------- prévia .edl, estilo IDE ------------------------ */
+/* Container que rola (uma barra só, vertical E horizontal se alguma linha
+   for muito comprida) -- não é mais um <pre>: cada LINHA é um <div> próprio
+   (.eb-edl-line), o que é o que permite um destaque em RETÂNGULO por linha
+   (ver .eb-edl-line-highlight) e uma coluna de numeração (.eb-edl-lineno)
+   -- nenhum dos dois dá pra fazer com um <pre> de texto corrido. */
+.eb-edl-preview { flex:1; min-height:0; overflow:auto; margin-top:8px;
+  border:1px solid var(--rule); border-radius:2px; background:var(--paper); }
+.eb-edl-empty { padding:10px; }
+.eb-edl-lines { font-family:var(--mono); font-size:11.5px; line-height:1.6; padding:6px 0; }
+/* Cada linha e' uma LINHA DE FLEXBOX (gutter + conteudo) -- e' o bloco
+   inteiro (largura 100% do container que rola) que recebe o fundo de
+   destaque, nao o texto: e' isso que faz o destaque virar um retangulo
+   ate' o fim da linha, mesmo numa linha curta, em vez de "abracar" so' os
+   caracteres que tem conteudo. */
+.eb-edl-line { display:flex; white-space:pre; }
+.eb-edl-line-highlight { background: var(--edl-highlight-bg); }
+/* Gutter com FUNDO OPACO (var(--panel), a mesma cor da paleta/props) --
+   fica por CIMA do destaque da linha (que pinta o <div> inteiro por baixo),
+   entao o retangulo visualmente comeca DEPOIS do numero, nunca por cima
+   dele. 'position:sticky' mantem a numeracao visivel mesmo rolando pra
+   direita numa linha comprida (mesmo principio de um editor de codigo). */
+.eb-edl-lineno { flex:0 0 var(--eb-lineno-w, 3ch); box-sizing:content-box; text-align:right;
+  padding:0 10px; color:var(--muted); background:var(--paper); user-select:none;
+  border-right:1px solid var(--rule); position:sticky; left:0; }
+.eb-edl-linecontent { padding:0 10px; }
 /* Mesmas categorias de .vscode/extensions/edl/syntaxes/edl.tmLanguage.json
    (ver tokenizeEdlText, edl_builder_core.js) -- so' cor, sem negrito extra
    pesado (a fonte mono ja' e' pequena o bastante sem precisar competir). */
@@ -1209,8 +1548,29 @@ export default function App() {
     try { return localStorage.getItem("mx-edl-builder-theme") === "dark" ? "dark" : "light"; } catch { return "light"; }
   });
   useEffect(() => { try { localStorage.setItem("mx-edl-builder-theme", theme); } catch { /* sem storage -- ok */ } }, [theme]);
+  // Colapsar a paleta devolve largura pro par árvore/prévia .edl (ver
+  // .eb-main-split) sem precisar de mouse-wheel/scroll horizontal --
+  // persistido como o tema, mesmo raciocínio (preferência de sessão a
+  // sessão, não fato sobre o cenário).
+  const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
+    try { return localStorage.getItem("mx-edl-builder-palette-collapsed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mx-edl-builder-palette-collapsed", paletteCollapsed ? "1" : "0"); } catch { /* sem storage -- ok */ }
+  }, [paletteCollapsed]);
+  const togglePalette = useCallback(() => setPaletteCollapsed((c) => !c), []);
 
   const selectedNode = useMemo(() => findNode(root, selectedId), [root, selectedId]);
+
+  // Qual CAMPO do painel de propriedades está com foco agora -- clicar num
+  // campo pra editá-lo destaca/rola a prévia até a LINHA daquele slot
+  // especificamente (ver highlightRange em ExportPanel), não mais o bloco
+  // inteiro do nó. Reseta pra null sempre que a SELEÇÃO muda (trocar de nó
+  // na árvore) -- até focar um campo do nó novo, o destaque volta a ser o
+  // nó inteiro, o mesmo comportamento de sempre.
+  const [focusedSlotName, setFocusedSlotName] = useState(null);
+  useEffect(() => { setFocusedSlotName(null); }, [selectedId]);
+  const handleFieldFocus = useCallback((slotName) => setFocusedSlotName(slotName), []);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -1436,7 +1796,7 @@ export default function App() {
       </div>
       <LoadWarningsBanner warnings={loadWarnings} onJump={handleJumpToNode} onDismiss={() => setLoadWarnings([])} />
       <div className="eb-body">
-        <Palette onDragStartFactory={setDragFactory} />
+        <Palette onDragStartFactory={setDragFactory} collapsed={paletteCollapsed} onToggleCollapse={togglePalette} />
         <div className="eb-main">
           <div className="eb-row eb-main-tabs">
             <button className={`eb-tab-btn${mainTab === "tree" ? " eb-tab-btn-active" : ""}`} onClick={() => setMainTab("tree")}>Árvore</button>
@@ -1458,40 +1818,44 @@ export default function App() {
               </span>
             )}
           </div>
-          {mainTab === "tree" ? (
-            <div className="eb-pane eb-tree">
-              {!root ? (
-                <div className="eb-root-drop" data-active={dragFactory ? "1" : "0"}
-                  onDragOver={(e) => { if (dragFactory && isOfferable(dragFactory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) e.preventDefault(); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const factory = e.dataTransfer.getData("text/plain");
-                    if (factory && isOfferable(factory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) {
-                      const node = makeNode(factory);
-                      setRoot(node);
-                      setExpandedIds(new Set([node.id]));
-                    }
-                  }}>
-                  arraste uma classe que implemente Station aqui para começar (ex.: Station ou ClockStation)
-                  <div style={{ marginTop: 10 }}>
-                    <AddViaSelect slotDef={ROOT_SLOT_DEF} onPick={(f) => { const n = makeNode(f); setRoot(n); setExpandedIds(new Set([n.id])); }} />
+          <div className="eb-main-split">
+            {mainTab === "tree" ? (
+              <div className="eb-pane eb-tree">
+                {!root ? (
+                  <div className="eb-root-drop" data-active={dragFactory ? "1" : "0"}
+                    onDragOver={(e) => { if (dragFactory && isOfferable(dragFactory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const factory = e.dataTransfer.getData("text/plain");
+                      if (factory && isOfferable(factory, ROOT_SLOT_DEF, CATALOG_BY_FACTORY)) {
+                        const node = makeNode(factory);
+                        setRoot(node);
+                        setExpandedIds(new Set([node.id]));
+                      }
+                    }}>
+                    arraste uma classe que implemente Station aqui para começar (ex.: Station ou ClockStation)
+                    <div style={{ marginTop: 10 }}>
+                      <AddViaSelect slotDef={ROOT_SLOT_DEF} onPick={(f) => { const n = makeNode(f); setRoot(n); setExpandedIds(new Set([n.id])); }} />
+                    </div>
+                    <p className="eb-muted eb-empty-msg" style={{ marginTop: 14 }}>
+                      ou clique em “Carregar preset”, no topo, para abrir um cenário de exemplo já pronto
+                    </p>
                   </div>
-                  <p className="eb-muted eb-empty-msg" style={{ marginTop: 14 }}>
-                    ou clique em “Carregar preset”, no topo, para abrir um cenário de exemplo já pronto
-                  </p>
-                </div>
-              ) : (
-                <TreeNode node={root} ui={ui} actions={actions} isRoot onRemoveLocal={handleRemoveRoot} />
-              )}
-            </div>
-          ) : mainTab === "map" ? (
-            <MapPanel root={root} byFactory={CATALOG_BY_FACTORY} selectedId={selectedId} onSelect={setSelectedId} />
-          ) : (
-            <OpenIssuesPanel root={root} issues={openIssues} onJump={handleJumpToNode} />
-          )}
-          <ExportPanel root={root} />
+                ) : (
+                  <TreeNode node={root} ui={ui} actions={actions} isRoot onRemoveLocal={handleRemoveRoot} />
+                )}
+              </div>
+            ) : mainTab === "map" ? (
+              <MapPanel root={root} byFactory={CATALOG_BY_FACTORY} selectedId={selectedId} onSelect={setSelectedId} />
+            ) : (
+              <OpenIssuesPanel root={root} issues={openIssues} onJump={handleJumpToNode} />
+            )}
+            <PropertiesPanel node={selectedNode} onChangeSlot={handleChangeSlot} onAddRawSlot={handleAddRawSlot}
+              onFieldFocus={handleFieldFocus} />
+            <ExportPanel root={root} hasOpenIssues={openIssues.length > 0} selectedId={selectedId}
+              focusedSlotName={focusedSlotName} />
+          </div>
         </div>
-        <PropertiesPanel node={selectedNode} onChangeSlot={handleChangeSlot} onAddRawSlot={handleAddRawSlot} />
       </div>
     </div>
   );

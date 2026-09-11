@@ -454,12 +454,92 @@ function orderedSlotsForSerialization(slots) {
   return dataSlot ? [...withoutData, dataSlot] : slots;
 }
 
+// Devolve { text, spans }, nao mais so' o texto -- 'spans' e' um
+// Map<nodeId, [start,end)> com a posicao, DENTRO DE `text`, do bloco
+// "( Fabrica ... ) // Fabrica" de CADA no real (nao-texto) que participou
+// deste no OU de qualquer descendente dele. Existe pra alimentar o
+// destaque "clicar na arvore -> ver a regiao correspondente na previa
+// .edl" (ExportPanel) -- ver o comentario de projectToEdlWithSpans() logo
+// abaixo. `indent` e' SEMPRE 0 em todo call site deste arquivo (nenhum
+// lugar chama com indent != 0) -- e' por isso que o `.trim()` que o codigo
+// tinha nas chamadas recursivas era sempre um no-op (pad="" em indent=0,
+// sem nada pra cortar): removido aqui, pra o comprimento de `value` bater
+// exatamente com o que foi de fato embutido na linha, sem risco de off-by-
+// one no calculo de offset.
+//
+// A tecnica: em vez de retornar uma string e deixar o CHAMADOR descobrir
+// onde ela caiu dentro do documento final (impossivel sem refazer todo o
+// trabalho de concatenacao), cada chamada mantem um cursor PROPRIO
+// (relativo so' ao texto que ELA MESMA produz) e, ao embutir o texto de um
+// filho, desloca (soma) os spans que o filho ja devolveu (relativos ao
+// PROPRIO texto do filho) pelo offset onde esse texto caiu dentro da linha
+// que acabou de ser empilhada. Como cada nivel so' soma um deslocamento
+// (nunca reconstroi nada), o span de um no MUITO aninhado acumula a soma
+// certa sem precisar que nenhum ancestral saiba da profundidade real --
+// mesmo raciocinio que ja' fazia lines.join("\n") produzir o texto certo
+// sem `indent` nunca variar.
 function serializeNode(node, indent, byFactory) {
   const pad = "   ".repeat(indent);
   const pad1 = "   ".repeat(indent + 1);
   const entry = byFactory[node.factory];
   const lines = [];
-  lines.push(`${pad}( ${node.factory}`);
+  const spans = new Map();
+  let cursor = 0;
+
+  // Empilha uma linha (que pode conter "\n" embutido, se `s` for o
+  // resultado de embutir um filho multi-linha inteiro numa "linha" do
+  // array -- exatamente como o codigo original ja fazia) e devolve o
+  // offset onde ELA COMEÇA dentro de lines.join("\n"). O "+1" de cada push
+  // representa o separador que join() insere ANTES da PROXIMA entrada;
+  // sobra um "+1" fantasma depois da ultima linha (nunca usado, porque
+  // nada e' empilhado depois dela) -- inofensivo.
+  function pushLine(s) {
+    const start = cursor;
+    lines.push(s);
+    cursor += s.length + 1;
+    return start;
+  }
+
+  // Serializa o VALOR de um filho (texto puro ou nó de verdade) sem
+  // empilhar linha nenhuma -- só quem chama sabe o prefixo (`chave: ` ou
+  // `pad1   chave: `) que vai na frente, e é o prefixo que decide o
+  // deslocamento dos spans do filho.
+  function childValue(childNode) {
+    if (childNode.isText) return { value: serializeTextLiteral(childNode.text), childSpans: null };
+    const child = serializeNode(childNode, 0, byFactory);
+    return { value: child.text, childSpans: child.spans };
+  }
+
+  // Empilha `${prefix}${valor do filho}` como UMA linha (igual ao código
+  // original) e funde os spans do filho (relativos ao texto DELE) nos
+  // spans DESTE nó, deslocados pelo offset onde o valor caiu.
+  function embedChild(prefix, childNode) {
+    const { value, childSpans } = childValue(childNode);
+    const lineStart = pushLine(`${prefix}${value}`);
+    if (childSpans) {
+      const base = lineStart + prefix.length;
+      for (const [id, range] of childSpans) spans.set(id, [base + range[0], base + range[1]]);
+    }
+  }
+
+  // Empilha a linha de um slot de FOLHA ("nome: valor") e registra o span
+  // DELE também -- chave string "<nodeId>#<slotName>" (nunca colide com a
+  // chave numérica que cada nó já ganha para o próprio bloco inteiro,
+  // Map distingue 5 de "5"). É o que permite destacar, na prévia, só a
+  // LINHA do campo que está sendo editado no painel de propriedades, em
+  // vez do bloco inteiro do nó -- ver highlightRange em ExportPanel
+  // (edl_builder.jsx). Assim como os spans de nó, este também é relativo
+  // ao texto QUE ESTA CHAMADA produz -- embedChild() já desloca TODO o
+  // conteúdo de `spans` (inclusive estas chaves de slot) ao fundir um
+  // filho no pai, então a granularidade sobrevive em qualquer profundidade
+  // sem código extra.
+  function pushLeafLine(slotName, text) {
+    const line = `${pad1}${slotName}: ${text}`;
+    const start = pushLine(line);
+    spans.set(`${node.id}#${slotName}`, [start, start + line.length]);
+  }
+
+  pushLine(`${pad}( ${node.factory}`);
 
   const knownNames = new Set();
   for (const slotDef of entry ? orderedSlotsForSerialization(entry.slots) : []) {
@@ -474,27 +554,20 @@ function serializeNode(node, indent, byFactory) {
       // do fallback permissivo de isCompatible(): o setter real aceita
       // PairStream item-a-item, invisivel na assinatura do ON_SLOT.
       if (slotDef.acceptsChildList || kids.length > 1) {
-        lines.push(`${pad1}${slotDef.name}: {`);
-        kids.forEach((it) => {
-          const value = it.node.isText
-            ? serializeTextLiteral(it.node.text)
-            : serializeNode(it.node, 0, byFactory).trim();
-          lines.push(`${pad1}   ${it.key}: ${value}`);
-        });
-        lines.push(`${pad1}}`);
+        pushLine(`${pad1}${slotDef.name}: {`);
+        kids.forEach((it) => embedChild(`${pad1}   ${it.key}: `, it.node));
+        pushLine(`${pad1}}`);
       } else {
         // slot de objeto UNICO (sem PairStream aceito) -- forma NUA, sem
         // chaves: uma lista aqui faria dynamic_cast<PairStream*> falhar no
         // consumidor (RfSensor::setSlotModeStream vs setSlotModeSingle,
         // Component::setSlotComponent(PairStream) vs (Component) --
         // confirmado no fonte real).
-        const only = kids[0].node;
-        const value = only.isText ? serializeTextLiteral(only.text) : serializeNode(only, 0, byFactory).trim();
-        lines.push(`${pad1}${slotDef.name}: ${value}`);
+        embedChild(`${pad1}${slotDef.name}: `, kids[0].node);
       }
     } else if (sv !== undefined) {
       const text = serializeLeafValue(slotDef, sv);
-      if (text !== null) lines.push(`${pad1}${slotDef.name}: ${text}`);
+      if (text !== null) pushLeafLine(slotDef.name, text);
     }
   }
 
@@ -522,27 +595,22 @@ function serializeNode(node, indent, byFactory) {
       const remembered = node.unknownSlotForms && node.unknownSlotForms[name];
       const asList = remembered === "list" ? true : remembered === "single" ? false : kids.length > 1;
       if (asList) {
-        lines.push(`${pad1}${name}: {`);
-        kids.forEach((it) => {
-          const value = it.node.isText
-            ? serializeTextLiteral(it.node.text)
-            : serializeNode(it.node, 0, byFactory).trim();
-          lines.push(`${pad1}   ${it.key}: ${value}`);
-        });
-        lines.push(`${pad1}}`);
+        pushLine(`${pad1}${name}: {`);
+        kids.forEach((it) => embedChild(`${pad1}   ${it.key}: `, it.node));
+        pushLine(`${pad1}}`);
       } else {
-        const only = kids[0].node;
-        const value = only.isText ? serializeTextLiteral(only.text) : serializeNode(only, 0, byFactory).trim();
-        lines.push(`${pad1}${name}: ${value}`);
+        embedChild(`${pad1}${name}: `, kids[0].node);
       }
     } else if (node.slotValues[name] !== undefined) {
       const text = serializeLeafValue(null, node.slotValues[name]);
-      if (text !== null) lines.push(`${pad1}${name}: ${text}`);
+      if (text !== null) pushLeafLine(name, text);
     }
   });
 
-  lines.push(`${pad}) // ${node.factory}`);
-  return lines.join("\n");
+  pushLine(`${pad}) // ${node.factory}`);
+  const text = lines.join("\n");
+  spans.set(node.id, [0, text.length]);
+  return { text, spans };
 }
 
 // Conta, na arvore inteira, quantos NOS tem fabrica nao catalogada ou pelo
@@ -572,9 +640,23 @@ function countUncataloged(root, byFactory) {
   return count;
 }
 
+// A versão COM posição -- ExportPanel usa esta para saber, dado um
+// selectedId, que trecho da prévia .edl destacar (ver highlightNodeSpan()
+// em edl_builder.jsx). `spans` cobre todo nó REAL (não-texto) da árvore --
+// nó de texto (item de lista escalar, ex. TacviewOutput.typeMap) nunca é
+// selecionável na árvore (TreeItem não lhe dá onClick de seleção), então
+// nunca precisou de span.
+function projectToEdlWithSpans(root, byFactory) {
+  if (!root) return { text: "", spans: new Map() };
+  const { text, spans } = serializeNode(root, 0, byFactory);
+  return { text: text + "\n", spans };
+}
+
+// Mantido com a MESMA assinatura/contrato de sempre (string simples) --
+// todo chamador existente (ExportPanel, os testes deste arquivo,
+// selfLintPreset() em build.js) continua funcionando sem mudança nenhuma.
 function projectToEdl(root, byFactory) {
-  if (!root) return "";
-  return serializeNode(root, 0, byFactory) + "\n";
+  return projectToEdlWithSpans(root, byFactory).text;
 }
 
 /* ------------------------- destaque de sintaxe .edl ------------------------ */
@@ -653,6 +735,51 @@ function tokenizeEdlText(text) {
   }
   if (last < text.length) tokens.push({ text: text.slice(last), cls: null });
   return tokens;
+}
+
+// Quebra o array de tokens (tokenizeEdlText) em UM ARRAY POR LINHA de
+// origem -- alimenta a prévia .edl com numeração de linha, estilo IDE
+// (ExportPanel/edl_builder.jsx). Um token pode conter "\n" embutido (o
+// "gap" sem classe entre dois tokens reconhecidos quase sempre atravessa
+// quebra de linha; uma string entre aspas multi-linha, mais raro, também
+// pode) -- por isso é preciso FATIAR, não só agrupar por índice. Nenhuma
+// linha resultante contém "\n"; concatenar o `text` de todos os tokens de
+// todas as linhas, com "\n" entre cada linha, reproduz o texto original --
+// mesmo invariante de round-trip que tokenizeEdlText() já garante sozinho.
+function splitTokensIntoLines(tokens) {
+  const lines = [[]];
+  for (const t of tokens) {
+    let rest = t.text;
+    for (;;) {
+      const nl = rest.indexOf("\n");
+      if (nl === -1) {
+        if (rest) lines[lines.length - 1].push({ text: rest, cls: t.cls });
+        break;
+      }
+      const before = rest.slice(0, nl);
+      if (before) lines[lines.length - 1].push({ text: before, cls: t.cls });
+      lines.push([]);
+      rest = rest.slice(nl + 1);
+    }
+  }
+  return lines;
+}
+
+// [start,end) de cada linha de `text` (sem contar o "\n" de quebra em si) --
+// MESMO índice de linha que splitTokensIntoLines() devolve, pra decidir,
+// linha a linha, se ela entra no destaque de seleção (ver highlightRange em
+// ExportPanel): a linha INTEIRA entra se o intervalo dela sobrepõe
+// highlightRange, mesmo que só parcialmente -- é isso que faz o destaque
+// virar um RETÂNGULO por linha (a linha toda, do começo ao fim), não só o
+// texto exato do span de projectToEdlWithSpans().
+function computeLineRanges(text) {
+  const ranges = [];
+  let offset = 0;
+  for (const part of text.split("\n")) {
+    ranges.push([offset, offset + part.length]);
+    offset += part.length + 1;
+  }
+  return ranges;
 }
 
 /* ------------------------- mapa: posições georreferenciadas ------------- */
@@ -750,7 +877,8 @@ if (typeof module !== "undefined" && module.exports) {
     countUncataloged,
     freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
-    tokenizeEdlText,
+    projectToEdlWithSpans,
+    tokenizeEdlText, splitTokensIntoLines, computeLineRanges,
     leafValueToMeters, extractPlacements,
   };
 }

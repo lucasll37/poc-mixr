@@ -86,7 +86,7 @@ REFERENCE_VALUE_RE = re.compile(r"([a-zA-Z0-9~!@#$%^&*\-_+=<>?/]+)")
 def load_catalog():
     if not CATALOG_PATH.exists():
         raise SystemExit(
-            f"catalogo nao encontrado em {CATALOG_PATH} -- rode 'make open-edl-builder' "
+            f"catalogo nao encontrado em {CATALOG_PATH} -- rode 'make open-edl' "
             f"(ou 'node src/ui/scripts/build.js') primeiro."
         )
     entries = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))

@@ -1,2 +1,38 @@
 CompileFlags:
   CompilationDatabase: build
+---
+# contexts/src/ e' copia vendorizada (mixr + BehaviorTree.CPP), git-ignored, fora do
+# compile_commands.json do build/. Sem flags de compilacao corretas o clangd cai no
+# fallback e acusa erro em quase todo arquivo -- suprime diagnostico e indexacao la.
+# PathMatch exige match INTEGRAL do caminho, relativo a raiz do projeto (.clangd fica
+# na raiz) -- por isso "contexts/src/.*", nunca ".*/contexts/.*" (que exigiria uma "/"
+# antes de "contexts", ausente num caminho relativo raiz). So o ./contexts/src, nunca
+# outra pasta "contexts" que venha a existir em outro lugar da arvore.
+# Duas lacunas confirmadas rodando (nao redescobrir), com o fragmento acima sozinho:
+# 1) sem CompileFlags proprio aqui, o "CompilationDatabase: build" do fragmento
+#    global (incondicional) continuava valendo, e o mecanismo de inferencia do
+#    clangd (sem entrada exata no compile_commands.json, ele toma EMPRESTADAS as
+#    flags de QUALQUER outro arquivo do banco) produzia comandos sem sentido --
+#    ex.: Missile.cpp (vendorizado) compilado com as flags de
+#    "../app/tests/test_terrain_data.cpp". Apontar CompilationDatabase para
+#    contexts/src (pasta sem compile_commands.json nenhum) faz o clangd cair no
+#    proprio fallback GENERICO, nunca emprestado.
+# 2) Diagnostics.Suppress: "*" nao filtra o aviso interno do proprio clang
+#    "too many errors emitted, stopping now" (fatal_too_many_errors) -- ele
+#    chega ao cliente LSP mesmo com Suppress ligado (confirmado com uma sessao
+#    LSP crua; "clangd --check" NAO serve pra testar isso, porque ele sempre
+#    ecoa diagnostico no stderr, ignorando Suppress). Com centenas de simbolos
+#    nao resolvidos por arquivo vendorizado (sem -I nenhum), o limite padrao de
+#    erros do clang estourava antes dos outros diagnosticos serem descartados.
+#    -ferror-limit=0 desliga o limite -- dai cada diagnostico individual e'
+#    descartado normalmente (log mostra "Dropped diagnostic: ..."), e a lista
+#    publicada ao editor fica vazia de verdade.
+If:
+  PathMatch: contexts/src/.*
+CompileFlags:
+  CompilationDatabase: contexts/src
+  Add: [-ferror-limit=0]
+Diagnostics:
+  Suppress: "*"
+Index:
+  Background: Skip

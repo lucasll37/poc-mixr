@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci docs open-docs open-presentation open-edl-builder open-groot new-model rm-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci open-docs open-presentation open-edl open-groot new-model rm-model
 
 .DEFAULT_GOAL := help
 
@@ -460,11 +460,9 @@ clean-ci: ## Remove .gitlab-ci-local/ (estado + cache de 'test-ci').
 # Documentation Targets
 # ============================================
 
-docs: ## Regenera docs/manual/ (catalogo + index.html).
+open-docs: ## Regenera e abre docs/manual/index.html (catalogo + manual do framework).
 	python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js
 	node docs/manual/compile.js
-
-open-docs: ## Abre docs/manual/index.html no navegador.
 	@scripts/open_browser.sh docs/manual/index.html
 
 # TEMPORARIO -- o slide deck e orfao por natureza (nenhum alvo o GERA, o
@@ -474,7 +472,7 @@ open-docs: ## Abre docs/manual/index.html no navegador.
 open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide deck).
 	@scripts/open_browser.sh docs/presentation/index.html
 
-open-edl-builder: ## Regenera e abre src/ui/edl-builder.html (editor visual de cenario).
+open-edl: ## Regenera e abre src/ui/edl-builder.html (editor visual de cenario).
 	node src/ui/scripts/build.js
 	@scripts/open_browser.sh src/ui/edl-builder.html
 

@@ -223,11 +223,11 @@ virou pacote à parte; sem ele o build do Groot quebra em `sidepanel_monitor.cpp
 §5), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
 aqui.
 
-**Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make docs`/`open-docs` (a
+**Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make open-docs` (a
 visualização em `docs/`, ver a seção própria) e a família `edl-*`/`new-model` (o editor visual de
 cenário em `src/ui/` e o scaffold de modelo novo, ambos com seção própria mais abaixo).
 
-Os dois alvos que **abrem uma página no navegador** (`open-docs`, `open-edl-builder`) delegam
+Os dois alvos que **abrem uma página no navegador** (`open-docs`, `open-edl`) delegam
 para `scripts/open_browser.sh`, e não mais para um `xdg-open` direto: a imagem padrão do Ubuntu
 no **WSL2** não traz nem `xdg-utils` nem `wslu`, então o encadeamento antigo
 (`command -v xdg-open && xdg-open ... || echo`) caía sempre no aviso "abra manualmente" ali. O
@@ -4248,12 +4248,14 @@ fase 3, com 1, 2 e 4 threads T/C, mais uma repetição com 4: dumps **byte-idên
 `docs/` é conteúdo **lido**, nunca escrito por uma execução: páginas HTML estáticas (sem
 servidor, sem dependência de rede depois do primeiro carregamento). A peça viva é gerada por
 `tools/generate_manual_catalog.py` (que escreve `docs/manual/catalog.generated.js` — commitado,
-injetado em `docs/manual/index.html` por `docs/manual/compile.js`, `make docs` roda os dois em
-sequência) a partir do fonte real de `contexts/src/mixr/` e de `models/players/A-4/`, reaproveitando
+injetado em `docs/manual/index.html` por `docs/manual/compile.js`, `make open-docs` roda os dois
+em sequência antes de abrir a página) a partir do fonte real de `contexts/src/mixr/` e de
+`models/players/A-4/`, reaproveitando
 `tools/mixr_source_scan.py`/`tools/extract_execution_chain.py` como módulos — não é desenho à mão
 do ciclo de fases, é extraído do código.
 
-- **`docs/manual/index.html`** (`make docs`/`make open-docs`; fonte em `docs/manual/doc.jsx` +
+- **`docs/manual/index.html`** (`make open-docs`, único alvo — sem `make docs` separado desde que
+  os dois se fundiram, mesmo padrão de `make open-edl`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
   `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
   `docs/`) tem **quatro abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
@@ -4278,7 +4280,7 @@ do ciclo de fases, é extraído do código.
      recorte curado de 19 classes fundacionais do MIXR (`Referenced`/`Object`/`Component`/`Player`/
      `Station`/`Simulation`/`Agent`/`NetIO`/...): caixa completa com atributos/componentes/métodos,
      extraídos de verdade do header C++ por `tools/extract_class_diagram.py` (mesmo precedente,
-     ainda sem passo de `make docs` que regenere sozinho — o JSON é colado à mão como
+     ainda sem passo de `make open-docs` que regenere sozinho — o JSON é colado à mão como
      `const CLASS_DIAGRAM` em `doc.jsx`) — não as 342 classes do Catálogo. Mais 28 alvos de
      composição em caixa mínima (Tier 2 — só nome + base real). A TOPOLOGIA (quem aparece filho de
      quem) e as notas de "filosofia de emprego" no card de detalhe são organizadas **à mão**
@@ -4315,7 +4317,7 @@ gerado tem que ter **centenas** de `React.createElement` (429 hoje) e **zero** l
   `docs/manual/index.html` é a generalização do modo 2 dele; nada do resto sobrevive fora do que
   a aba absorveu.
 - **`docs/estudos/`** (pasta nova) — estudos de viabilidade em Markdown, conteúdo **lido**, fora
-  do pipeline de `make docs` (que só regenera `docs/manual/`). O primeiro é
+  do pipeline de `make open-docs` (que só regenera `docs/manual/`). O primeiro é
   `docs/estudos/snapshot-restore.md`: dá para salvar uma simulação no meio e retomá-la
   byte-idêntica? Resposta curta: **sim, por REEXECUÇÃO (replay determinístico), nunca por captura
   de estado**. Três coisas dali que valem para o resto do projeto, mesmo sem ninguém implementar
@@ -4331,6 +4333,19 @@ gerado tem que ter **centenas** de `React.createElement` (429 hoje) e **zero** l
   do JSBSim (só dispara se alguém ligar `<noise>`/turbulência nos `.xml`), `relWpnId++` não atômico
   com dois players armados, e `netRate: > 0` (cujo comentário de slottable em `Station.cpp:43`,
   dizendo "20 hz", está **desatualizado** — o default é 0).
+
+**`make docs` foi APOSENTADO — `make open-docs` passou a fazer as duas coisas (regenerar E
+abrir), mesmo padrão já usado por `make open-edl` desde que ele absorveu o antigo
+`edl-builder`/`edl-catalog`/etc.** Antes desta mudança, `docs`/`open-docs` eram alvos separados
+(regenerar exigia Node; abrir sozinho não, porque o HTML gerado é versionado) — mas na prática
+ninguém abre a página sem antes garantir que ela reflete o fonte atual, e ter dois passos
+manuais pra uma operação que sempre acontece em sequência era só fricção. `open-docs` agora
+chama `tools/generate_manual_catalog.py`/`docs/manual/compile.js` (o mesmo par de comandos de
+antes) e só então `scripts/open_browser.sh docs/manual/index.html`. O HTML gerado continua
+versionado (não é hermético — depende de `contexts/src/mixr/`, git-ignored, estar presente; sem
+essa árvore o gerador cai nos headers instalados pelo Conan, como sempre) e `open-docs` continua
+regenerando incondicionalmente a cada chamada, então "a página abre desatualizada" deixou de ser
+possível por construção.
 
 ## `src/ui` — editor visual de cenário EDL (autoria, não runtime)
 
@@ -4358,9 +4373,9 @@ navegador) e `compile.js` (Babel via CDN, sem bundler) — compilados num `edl-b
 **autocontido** (2,3 MB, abre sem rede nenhuma), mesmo padrão de `docs/manual/index.html`. **Não há
 servidor.**
 
-**Build: um único alvo `make open-edl-builder`.** Por baixo, `node src/ui/scripts/build.js` — o
+**Build: um único alvo `make open-edl`.** Por baixo, `node src/ui/scripts/build.js` — o
 orquestrador que substituiu os antigos alvos separados `edl-catalog`/`edl-default-scenario`/
-`edl-builder`/`edl-builder-test` (removidos do Makefile; `open-edl-builder` é o ÚNICO alvo `make`
+`edl-builder`/`edl-builder-test` (removidos do Makefile; `open-edl` é o ÚNICO alvo `make`
 que este editor ainda tem). Sempre do zero, sempre na ordem certa, abortando no primeiro erro:
 `src/ui/scripts/generate_edl_catalog.py` (Python stdlib, sem MIXR compilado — todas as
 classes/slots que as fábricas encadeadas publicam, mais os ~10 "papéis primários" de `Player`, ver
@@ -4724,6 +4739,495 @@ src/ui/scripts/build.js` (pipeline completo — catálogo, preset, testes, self-
 `edl-builder.html`); a varredura de regressão sobre todo `.edl`/`.edl.in` real do repositório
 (`edl_parser_core.test.js`) passou a cobrir 22 arquivos (antes 21), incluindo o cenário novo,
 sem nenhum aviso de fábrica/slot desconhecido.
+
+**Passada seguinte — layout lado a lado (árvore + prévia `.edl`), paleta colapsável, e "Meus
+presets" (`src/ui/presets/`, salvar/listar/carregar/apagar).**
+
+- **A prévia `.edl` (`ExportPanel`) saiu de EMBAIXO da aba ativa e virou coluna IRMÃ dela**, dentro
+  de um novo `.eb-main-split` (flex row) que substitui o empilhamento vertical antigo de
+  `.eb-main`. Cada coluna passou a ter a PRÓPRIA barra de rolagem (`.eb-tree`/`.eb-map`/
+  `.eb-pending` com `overflow-y:auto`; `.eb-export` virou `display:flex; flex-direction:column`
+  com `.eb-edl-preview` em `flex:1` no lugar do antigo `max-height:280px` fixo) — mesmo princípio
+  já usado por `.eb-body` (nenhuma coluna vaza nem sobrepõe a vizinha, altura vem do flexbox, não
+  de `calc(100vh-Npx)`). `.eb-main` em si parou de rolar (`overflow:hidden`) — quem rola agora são
+  os filhos de `.eb-main-split`.
+- **`Palette` ganhou `collapsed`/`onToggleCollapse`** — colapsada vira uma tira de ~30px com só o
+  botão de reabrir (`»`), devolvendo a largura pro par árvore/prévia quando o catálogo não importa
+  no momento. Estado (`paletteCollapsed`) mora em `App`, persistido em `localStorage`
+  (`mx-edl-builder-palette-collapsed`), mesmo padrão já usado pelo tema.
+- **`PresetsSection` (novo componente, dentro de `ExportPanel`)** — "Meus presets": salvar a árvore
+  atual como `src/ui/presets/preset_<nome>.edl`, listar os já salvos, carregar um de volta, apagar.
+  Handle de diretório PRÓPRIO (`dirHandle`, local a `PresetsSection` — não o `sandboxDirHandle` de
+  `ExportPanel`, é uma pasta diferente), mesmo mecanismo de `showDirectoryPicker`/`getFileHandle`/
+  `createWritable` que `chooseSandboxFolder()`/`writeEdlIntoSandbox()` já usavam. Lista via
+  `dirHandle.entries()` (async iterable nativo de `FileSystemDirectoryHandle`), filtrando por
+  `/^preset_.+\.edl$/i`; apaga via `dirHandle.removeEntry(nome)`. Carregar chama
+  `parseEdlDocument()` (o MESMO motor de "Carregar .edl") e devolve pra `App` via um callback
+  (`onLoadPreset`) — a confirmação de descarte e o trio `resetIdCounter`/`setRoot`/`setExpandedIds`
+  continuam em `App` (`handleLoadPresetFile`, espelhando `handleOpenEdl`/`handleLoadPreset`), não
+  duplicados aqui.
+- **Deliberadamente NÃO é o mesmo botão que "Carregar preset" da barra** (esse carrega o único
+  cenário de exemplo embutido no build, `built-in_mixr_1`) — por isso o rótulo é "Meus presets":
+  tantos quanto o usuário quiser, numa pasta que ele escolhe. O botão "Carregar preset" da barra
+  não foi tocado (nome, comportamento, `EDL_PRESET`/`loadPresetTree()` — tudo igual), pra não
+  precisar reescrever as referências a ele espalhadas em `compile.js`/`build.js`/
+  `edl_to_ui_project.js`/este arquivo.
+- **`src/ui/presets/*.edl` não é versionado** (`.gitignore`, mesma entrada nova) — só
+  `src/ui/presets/README.md` (novo, explica a convenção `preset_<nome>.edl`) fica rastreado, pra a
+  pasta existir num clone limpo (o seletor de diretório do navegador precisa de algo pra apontar).
+- **Verificado com `node src/ui/scripts/build.js`** (pipeline completo -- catálogo, preset embutido,
+  os dois arquivos de teste puros, self-lint, `compile.js` via Babel) sem nenhuma falha -- prova
+  que o JSX novo não quebrou a transpilação nem os testes existentes (nenhum deles toca layout/DOM,
+  só a lógica pura de `edl_builder_core.js`/`edl_parser_core.js`, que não mudou nesta passada).
+- **E com dois scripts jsdom descartáveis** (mesma técnica já registrada na "Vigésima oitava
+  passada" desta seção, sem Chromium disponível neste ambiente): o primeiro monta
+  `edl-builder.html` de verdade e confirma, no DOM real (não inspeção de código) -- `.eb-main-split`
+  contendo a aba ativa e `.eb-export` como filhos DIRETOS (irmãos, lado a lado, não aninhados); o
+  botão de colapsar a paleta escondendo/reexibindo o campo de busca e persistindo em
+  `localStorage`; e, sem `showDirectoryPicker` no `window` (simula Firefox), a seção "Meus presets"
+  degradando pro aviso de indisponibilidade, sem nenhum botão morto. O segundo MOCKA
+  `showDirectoryPicker` com um `FileSystemDirectoryHandle` fake em memória (`getFileHandle`/
+  `createWritable`/`entries`/`removeEntry`) e roda o ciclo INTEIRO ponta a ponta: escolher pasta →
+  carregar o exemplo embutido (61 cartões) → "Salvar como preset" (confirma o arquivo escrito no
+  fake, com conteúdo `.edl` de verdade) → o dropdown listando o arquivo salvo → "Carregar" (a
+  árvore recarregada bate cartão por cartão com a original, 61 == 61) → "Apagar" (arquivo some do
+  fake, dropdown volta a ficar vazio/desabilitado) -- zero `console.error` do início ao fim das
+  duas baterias.
+
+**Passada seguinte — destaque "clicar num nó da árvore → ver a região correspondente na prévia
+`.edl`", e o painel de Propriedades saiu do canto direito extremo para ficar ENTRE a árvore e a
+prévia.**
+
+- **`serializeNode()` (`edl_builder_core.js`) passou a devolver `{ text, spans }`, não mais só
+  `text`** — `spans` é um `Map<nodeId, [start,end)>` com a posição, DENTRO do texto que a própria
+  chamada produz, do bloco `( Fábrica ... ) // Fábrica` de CADA nó real (não-texto) participante,
+  o próprio E qualquer descendente embutido. A técnica: um `cursor`/`pushLine()` locais rastreiam
+  onde cada linha empilhada começa dentro de `lines.join("\n")`; ao embutir o valor serializado de
+  um filho como `${prefix}${value}` numa linha, os spans QUE O FILHO JÁ DEVOLVEU (relativos ao
+  próprio texto dele) são deslocados por `lineStart + prefix.length` e fundidos no mapa do pai —
+  o mesmo raciocínio, recursivo, que já fazia `lines.join("\n")` produzir o texto certo sem
+  `indent` nunca variar (confirmado por grep: TODO call site de `serializeNode()` neste arquivo
+  passa `indent=0`, inclusive os dois recursivos — é por isso que os `.trim()` que o código velho
+  tinha nas chamadas recursivas eram sempre no-op, e por isso puderam ser removidos sem mudar
+  NADA do texto final: sem pad nenhum pra cortar). `projectToEdl()` continua com o MESMO contrato
+  de sempre (string simples) — virou um wrapper fino sobre a nova `projectToEdlWithSpans()`,
+  confirmado byte-idêntico ao comportamento anterior pela suíte inteira de `edl_builder.test.js`
+  (nenhuma mudança de expectativa em teste nenhum, incluindo os de `projectToEdl` que já existiam).
+- **Nó de TEXTO (item escalar de lista, ex. `TacviewOutput.typeMap`) nunca ganha span** — nunca é
+  selecionável na árvore (`TreeItem` não lhe dá `onClick` de seleção), então nunca precisou de uma
+  posição pra destacar.
+- **11 testes novos em `edl_builder.test.js`** (bloco `projectToEdlWithSpans`) travam as
+  propriedades que importam: span de um nó reproduz EXATAMENTE `serializeNode(nóIsolado,...).text`
+  quando fatiado do texto final (tanto pra filho de LISTA quanto de slot de objeto ÚNICO/"nu");
+  contenção em três níveis (neto ⊆ filho ⊆ raiz); dois irmãos na mesma lista nunca se sobrepõem;
+  raiz cobre o texto inteiro menos o `\n` final; árvore vazia devolve `spans` vazio; contagem de
+  spans bate com a contagem de nós REAIS da árvore; `projectToEdl`/`projectToEdlWithSpans(...)
+  .text` continuam idênticos; e — a dupla que cobre o ramo mais arriscado, `extraNames` (slot
+  NÃO CATALOGADO, fábrica inteiramente desconhecida do catálogo) — um filho aninhado ali, nas
+  formas de LISTA e de objeto ÚNICO, reproduz a própria serialização isolada do mesmo jeito que no
+  ramo de slot catalogado. `embedChild()`/`childValue()` (os helpers extraídos nesta passada)
+  são a MESMA função chamada pelos dois laços de `serializeNode()`, então esses dois testes
+  confirmam que a extração não deixou nenhum caminho de embutir-e-deslocar span divergente entre
+  os dois laços.
+- **`ExportPanel` ganhou a prop `selectedId`** (de `App`) e computa `highlightRange =
+  spans.get(selectedId)`. `renderHighlightedEdl(tokens, highlightRange, highlightRef)` (novo,
+  módulo, com JSX — por isso mora em `edl_builder.jsx`, não em `edl_builder_core.js`) cruza isso
+  com os tokens de `tokenizeEdlText()`: todo token cujo intervalo OVERLAPA `highlightRange` ganha a
+  classe extra `eb-edl-highlight` (fundo translúcido âmbar, `--edl-highlight-bg`, uma cor por tema
+  — nunca troca a cor do texto, só marca por cima, pra continuar legível), inclusive token SEM
+  classe de sintaxe nenhuma (espaço/quebra de linha), pra o bloco destacado sair CONTÍNUO em vez de
+  com furos a cada linha interna do nó. Os limites de span sempre caem em fronteira de token de
+  propósito — começam no `(` de abertura, terminam no fim do comentário `// Fábrica` de fechamento
+  — então não há token cortado ao meio pra tratar. O PRIMEIRO token destacado carrega uma `ref`
+  (`highlightRef`, `ExportPanel`); um `useEffect` chama `scrollIntoView({block:"nearest",
+  behavior:"smooth"})` nele sempre que `selectedId`/`root` mudam — rola só a prévia (que já tem a
+  própria `overflow:auto`), não a página.
+- **O painel de Propriedades saiu de fora de `.eb-body` (onde era a coluna mais à direita de
+  TODAS, depois de `.eb-main` inteiro) e entrou DENTRO de `.eb-main-split`, entre a aba ativa e a
+  prévia `.edl`.** Motivo, medido como problema real e não só preferência: quando a prévia `.edl`
+  virou coluna irmã da árvore (passada anterior), a ORDEM visual passou a ser árvore → prévia →
+  propriedades — o clique (na árvore) e a edição (nas propriedades) deixaram de ser vizinhos,
+  agora com a prévia INTEIRA no meio dos dois. Com propriedades na posição do meio: árvore →
+  propriedades → prévia, o fluxo "selecionar → editar → conferir" fica com as três colunas que
+  importam ADJACENTES, e propriedades/prévia (que também fazem sentido lado a lado, pra comparar
+  campo com texto destacado) continuam vizinhas também. CSS: `.eb-main-split > .eb-props { flex:0
+  0 320px; }`, sobrepondo (mesma especificidade, ordem de origem posterior) o `flex:1` genérico de
+  `.eb-main-split > .eb-pane` — só a coluna de propriedades fica de largura FIXA; árvore e prévia
+  dividem o resto.
+- **Verificado no DOM real (jsdom), não só nos testes puros de `edl_builder_core.js`**: um terceiro
+  script descartável confirma, contra `edl-builder.html` compilado de verdade — `.eb-main-split`
+  com os filhos, EM ORDEM, `[eb-tree, eb-props, eb-export]`; sem seleção nenhuma, zero
+  `.eb-edl-highlight` na prévia e `scrollIntoView` nunca chamado; clicar no PRIMEIRO card
+  (`ClockStation`, a raiz) acende milhares de tokens (esperado — a raiz cobre o cenário inteiro) e
+  chama `scrollIntoView` uma vez, com o trecho destacado começando literalmente em `"("`; clicar
+  num SEGUNDO card troca o destaque pra uma região DIFERENTE (não fica preso no primeiro clique).
+  Os dois scripts de bateria anterior (paleta colapsável + "Meus presets") foram rerrodados sem
+  nenhuma regressão.
+
+**Passada seguinte — o destaque virou RETÂNGULO por linha (não mais por caractere/token), a prévia
+ganhou numeração de linha estilo IDE, e a rolagem automática passou a acontecer também ao EDITAR o
+nó selecionado, não só ao selecioná-lo.** Pedido direto: o destaque por token da passada anterior
+"abraçava" só o texto exato do span — numa linha como `dynamicsModel: ( JSBSimModel`, só o `(` em
+diante acendia, deixando o resto da linha sem cor; o pedido foi que a linha INTEIRA, até o fim,
+vire retângulo.
+
+- **`splitTokensIntoLines(tokens)`/`computeLineRanges(text)` (novas, `edl_builder_core.js`,
+  puras)** reagrupam a saída de `tokenizeEdlText()`/`projectToEdlWithSpans()` por LINHA. A parte não
+  óbvia: um token do tokenizer pode conter `\n` embutido (o "gap" sem classe entre dois tokens
+  reconhecidos quase sempre atravessa quebra de linha; uma string entre aspas multi-linha, mais
+  rara, também pode) — `splitTokensIntoLines()` FATIA esses tokens no `\n`, nunca só agrupa por
+  índice; concatenar o texto de todas as linhas resultantes, com `\n` entre cada uma, reproduz o
+  texto original byte a byte (mesmo invariante de round-trip que `tokenizeEdlText()` já garantia
+  sozinho — 5 testes novos travam isso, inclusive linhas em branco consecutivas e string
+  multi-linha). `computeLineRanges()` devolve o `[start,end)` de cada linha (mesmo índice) — usado
+  só pra decidir, linha a linha, se ela SOBREPÕE `highlightRange`: a linha inteira entra se houver
+  QUALQUER sobreposição, mesmo parcial — é isso que produz o retângulo uniforme (3 testes novos:
+  fatiamento exato por linha, aritmética do offset início-de-linha = fim-da-anterior+1, texto vazio).
+- **`ExportPanel` trocou o `<pre>` de token corrido por uma lista de LINHAS** (`buildPreviewLines()`,
+  `edl_builder.jsx` — combina as duas funções puras acima com `highlightRange`), cada uma um
+  `<div className="eb-edl-line">` com dois filhos: `.eb-edl-lineno` (número, 1-based, largura em
+  `ch` que cresce com o total de linhas via a custom property `--eb-lineno-w`, `position:sticky`
+  pra continuar visível rolando pro lado numa linha comprida) e `.eb-edl-linecontent` (os tokens
+  daquela linha, syntax-highlighted como sempre). O destaque (`eb-edl-line-highlight`, renomeada de
+  `eb-edl-highlight` — mudou de "por token" pra "por linha") vai no `<div>` da linha INTEIRA, que
+  ocupa 100% da largura do container que rola — é isso que faz o fundo âmbar ir até o fim da linha
+  mesmo numa linha curta, não só até o último caractere com conteúdo. O gutter de numeração tem
+  fundo OPACO próprio (`var(--paper)`, por cima do destaque da linha) — o retângulo visualmente
+  começa depois do número, nunca por cima dele.
+- **A `ref` de scroll (`highlightRef`) migrou do primeiro TOKEN destacado pra o primeiro `<div>` de
+  LINHA destacada** — alvo maior e mais estável pro `scrollIntoView({block:"nearest"})`.
+- **Rolagem automática também ao EDITAR**: o `useEffect` que chama `scrollIntoView()` já dependia de
+  `[selectedId, root]` desde a passada anterior — e `root` muda (nova referência, via `updateNode()`
+  imutável) a cada edição de campo, então o efeito já refazia o scroll a cada edição
+  MECANICAMENTE; o que fica registrado aqui é a VERIFICAÇÃO explícita disso (não existia teste
+  provando que editar, e não só selecionar, disparava o scroll), porque com destaque por LINHA
+  (mais estável que por token) o comportamento ficou visivelmente mais confiável.
+- **Verificado no DOM real (jsdom), quarto script descartável, contra `edl-builder.html` compilado
+  de verdade**: 1122 linhas numeradas sequencialmente (1, 2, 3, ..., a última bate com o total);
+  selecionar um nó acende um bloco de linhas CONTÍGUO (sem pular número, ex. `[3,4,...,23]`), cada
+  elemento destacado sendo o `<div class="eb-edl-line">` inteiro (nunca mais um `<span>` parcial
+  dentro dele) e zero sobra da classe antiga por-token; editar um campo de texto do nó selecionado
+  (achado varrendo os primeiros cards até um com `<input type=text>` de verdade, escrito via o
+  truque do setter nativo do `HTMLInputElement` pra disparar o `onChange` do React) chama
+  `scrollIntoView` DE NOVO (contagem antes/depois comparada explicitamente) e o texto editado
+  aparece de fato na prévia. As três baterias anteriores (paleta, "Meus presets", layout/seleção)
+  foram rerrodadas sem regressão.
+
+**Passada seguinte — a File System Access API saiu INTEIRA (nem cenário nem preset ganham mais
+"escolher pasta"; sempre download), e a extensão do arquivo virou `.edl.in` quando sobra
+placeholder de template, tanto pro cenário quanto pro preset.** Pedido direto: simplificar,
+tirando a opção de apontar pra pastas arbitrárias.
+
+- **`HAS_FS_ACCESS`/`writeEdlIntoSandbox()`/`chooseSandboxFolder()`/`sandboxDirHandle`
+  desapareceram de `ExportPanel`** — "Exportar .edl" agora é só `downloadTextFile()` (a mesma
+  função nova que `Blob`+`<a download>`+`click()`, extraída do antigo `downloadFallback()`) depois
+  do bloqueio de ASCII de sempre. Zero `showDirectoryPicker`/`getDirectoryHandle`/
+  `createWritable`/permissão restando no arquivo inteiro.
+- **`PresetsSection` encolheu de ~150 linhas (handle de diretório, `refreshFiles`/`chooseFolder`/
+  `ensurePermission`/`loadSelected`/`deleteSelected`, dropdown de listagem) pra ~25** — vira só um
+  campo de nome + botão "Salvar como preset", que chama a MESMA `downloadTextFile()` do cenário.
+  Sem handle de diretório, não há mais como LISTAR o que já foi salvo — "Carregar"/"Apagar"
+  dedicados a preset saíram junto; reabrir um preset salvo é o `parseEdlDocument()`/`onLoadPreset`
+  aliás **também removido** — `handleLoadPresetFile()` (App) virou código morto e foi apagado. O
+  caminho de volta é sempre o "Carregar .edl" que já existia (é só mais um `.edl`/`.edl.in`).
+- **`edlExtension(hasOpenIssues)` (nova, pequena, em `edl_builder.jsx`)** decide `"edl"` vs.
+  `"edl.in"` a partir de UM booleano — se a árvore tem QUALQUER item na aba Abertos (placeholder
+  `@TOKEN@` ainda literal). `App` já calculava `openIssues` (pra aba Abertos) — `ExportPanel`
+  ganhou a prop `hasOpenIssues={openIssues.length > 0}` em vez de recalcular a mesma travessia. A
+  MESMA função decide a extensão do cenário (`relPath`) e do preset (`PresetsSection`, prop `ext`)
+  -- "vale pro preset como pro cenário" era pedido explícito. O rótulo do botão já mostra qual vai
+  sair ("Exportar .edl" ou "Exportar .edl.in"), e a dica de caminho abaixo do campo explica o
+  porquê quando é `.edl.in`.
+- **`.gitignore`/`src/ui/presets/README.md` atualizados**: a pasta de presets deixou de ser
+  destino de escrita AUTOMÁTICA (nunca mais um handle de diretório aponta pra lá) e virou só
+  convenção de organização manual — mover o arquivo baixado pra lá é opcional, a ferramenta não
+  sabe que aquela pasta existe. `.gitignore` ganhou uma segunda linha (`src/ui/presets/*.edl.in`,
+  ao lado da `*.edl` que já existia) porque agora um preset pode nascer com qualquer uma das duas
+  extensões.
+- **Verificado no DOM real (jsdom), quinto script descartável**: com `showDirectoryPicker` MOCKADO
+  pra lançar erro se chamado (prova de que a ferramenta não tenta mais usá-lo, mesmo quando o
+  navegador ofereceria a API), nenhum botão "escolher pasta" aparece em `.eb-export`/`.eb-presets`,
+  "Meus presets" não tem mais `<select>` nem botão Carregar/Apagar; exportar sem placeholder baixa
+  `sandbox/<nome>/configs/scenario.edl`, preset baixa `preset_<nome>.edl`; introduzindo um
+  `@MEU_TOKEN@` literal num campo de texto (o mesmo truque de setter nativo da passada anterior) a
+  aba Abertos passa a mostrar `(1)`, o botão de exportar muda pra "Exportar .edl.in" sozinho, e os
+  dois downloads seguintes (cenário E preset) saem com `.edl.in` no fim do nome — as quatro
+  baterias anteriores (paleta, layout/seleção, numeração+retângulo) seguem passando sem
+  regressão (a bateria "Meus presets" antiga, que testava especificamente o fluxo de pasta agora
+  removido, ficou obsoleta por construção -- não foi rerrodada, seu lugar foi tomado por esta).
+
+**Passada seguinte — o scroll de seleção passou a alinhar a linha destacada no TOPO da prévia
+(não mais "o mínimo pra aparecer"), e o download ganhou dois consertos de confiabilidade
+relatados como "não funciona" pelo usuário.**
+
+- **`scrollIntoView({block:"nearest",...})` virou `{block:"start",...}`** — `"nearest"` só rola o
+  suficiente pra trazer o elemento pra dentro da área visível (podia deixar a linha destacada bem
+  no rodapé se ela estivesse entrando por baixo); `"start"` alinha o topo do elemento ao topo do
+  container que rola, o que é "a primeira linha o mais perto possível do limite superior" — pedido
+  explícito. Quando não há conteúdo suficiente ABAIXO da linha pra empurrar o scroll até o fim
+  (ela já está perto do fim do documento), o navegador rola o quanto der — é o próprio sentido de
+  "o mais próximo possível", não um caso a tratar à parte.
+- **`downloadTextFile()` ganhou dois consertos, os dois padrões conhecidos da técnica
+  Blob+`<a download>`+`click()`, nenhum novo neste repositório**: (1) o `<a>` passou a ser
+  ANEXADO a `document.body` antes do `click()` e removido logo depois — um `<a>` nunca inserido no
+  DOM tem clique sintético documentado como não-confiável em alguns navegadores (Firefox, em
+  particular); (2) `URL.revokeObjectURL(url)` deixou de rodar na MESMA tarefa síncrona do
+  `click()` — o clique dispara o download de forma assíncrona por baixo, e revogar o `blob:` URL
+  cedo demais é a armadilha clássica dessa técnica (pode corromper/cancelar o download em curso).
+  Virou um `setTimeout` de 1s. Diagnóstico, não confirmado em navegador real (sem GUI neste
+  ambiente) — a causa mais provável dado o sintoma relatado ("não funciona, só faz o download" —
+  ou seja: nada de fato baixava), mas fica registrado como diagnóstico, não como medição.
+- **Verificado no DOM real (jsdom), sexto script descartável**: o `<a>` de download está
+  `document.body.contains(a) === true` NO INSTANTE do `click()` (tanto pro cenário quanto pro
+  preset) e é removido logo depois; `revokeObjectURL` não é chamado na mesma tarefa síncrona do
+  clique, só depois de um atraso; `scrollIntoView` é chamado com `block:"start"`, não mais
+  `"nearest"`. As duas baterias mais recentes (simplificação sem escolha de pasta, retângulo por
+  linha) foram rerrodadas sem regressão, e a suíte de testes puros (`edl_builder.test.js`/
+  `edl_parser_core.test.js`) continua 100% verde.
+- **Em aberto, não resolvido nesta passada**: o pedido "não adote nome default de 'apaga'" não
+  foi implementado — não há, no código atual, nenhuma string ou comportamento que corresponda a
+  "apaga", e a pergunta de esclarecimento feita ao usuário ainda não teve resposta. Não
+  redescobrir isto como um bug pendente sem contexto: é uma peça de feedback ainda não entendida,
+  registrada aqui pra não se perder entre passadas.
+
+**Passada seguinte — terceiro relato de "exportar/salvar preset não funciona": `downloadTextFile()`
+ganhou fallback de verdade (não só os dois consertos de confiabilidade da passada anterior);
+destaque na prévia `.edl` passou a ser GRANULAR por campo (não mais o nó inteiro) quando se edita
+um valor já preenchido no painel de propriedades; e a prévia ganhou altura maximizada com um
+cabeçalho bem mais compacto.**
+
+- **Contexto**: mesmo depois do anexar-ao-DOM + revoke tardio da passada anterior, o usuário
+  reportou o MESMO sintoma ("continua o mesmo problemático") pela terceira vez, em wording
+  ligeiramente diferente a cada vez. Sem navegador disponível neste ambiente (só jsdom), a causa
+  raiz nunca foi confirmada por medição direta — só diagnosticada por eliminação dos padrões
+  conhecidos da técnica Blob+`<a download>`+`click()`. Esta passada assume DEFESA EM PROFUNDIDADE
+  em vez de tentar mais um diagnóstico: se o caminho primário falhar por QUALQUER razão (inclusive
+  uma que este ambiente não consegue reproduzir), há um caminho alternativo E uma mensagem
+  explícita na tela apontando pro texto da prévia como último recurso manual.
+- **`downloadTextFile(text, filename)` (`edl_builder.jsx`) virou uma função com retorno
+  BOOLEANO e dois caminhos**: o de sempre (Blob+`<a download>`+`click()`, já com os dois consertos
+  da passada anterior) dentro de um `try`; se ELE lançar (por exemplo, `Blob`/`URL.createObjectURL`
+  indisponível ou bloqueado por alguma política do navegador), cai num `catch` que tenta
+  `window.open("data:text/plain;charset=utf-8," + encodeURIComponent(text), "_blank")` — abre uma
+  aba/janela nova com o conteúdo puro, que o usuário pode salvar manualmente (`Ctrl+S`) mesmo sem
+  o mecanismo de download automático funcionar. `exportEdl()`/`saveAsPreset()` (`ExportPanel`/
+  `PresetsSection`) passaram a CONFERIR o retorno: sucesso mostra a mensagem de sempre
+  (`✓ baixado como ...`); falha nos dois caminhos mostra um aviso novo, apontando explicitamente
+  pra selecionar o texto na prévia abaixo (que já é `user-select:none` no GUTTER de numeração,
+  não no conteúdo — o texto da linha continua selecionável) e copiar manualmente.
+- **Isto não é confirmação de que a causa raiz foi encontrada** — é o texto do próprio aviso que
+  diz isso, e fica registrado aqui: sem um navegador real disponível neste ambiente, a única
+  verificação possível é estrutural (jsdom mockando `Blob` pra lançar, confirmando que o fallback
+  de fato dispara e que a UI reage certo). Se o usuário ainda reportar falha depois desta
+  passada, o próximo passo exige detalhe concreto de reprodução (qual navegador, erro no console,
+  se alguma aba/diálogo chega a abrir) — os consertos padrão da técnica já foram todos tentados.
+- **Destaque granular por campo — a segunda parte do pedido** ("ao se clicar para modificar
+  atributo... a linha no edl deve ser destacada e rolada, tal como quando se seleciona um
+  componente" + "o tipo da informação a ser modificada ali deve ser condizente com o que se
+  espera", interpretado como: o destaque deve ser específico do CAMPO focado, não o bloco inteiro
+  do nó). Até aqui, `serializeNode()` só rastreava span por NÓ (`spans.get(nodeId)`); um campo
+  dentro de um nó grande (ex. um `( Aircraft )` com dezenas de slots) destacava o bloco inteiro,
+  não a linha específica sendo editada.
+  - **`pushLeafLine(slotName, text)` (novo helper interno de `serializeNode()`,
+    `edl_builder_core.js`)** — substitui os dois `pushLine()` diretos que emitiam uma linha de
+    slot-folha (o laço de slots CATALOGADOS e o de `extraNames`/não catalogados). Além de
+    empilhar a linha, registra o span dela sob a chave STRING `"${node.id}#${slotName}"` (nunca
+    colide com uma chave de nó, que é sempre numérica) — granularidade de LINHA, não de nó.
+    Puramente aditivo: não muda nada do texto que `projectToEdl()` produz, só acrescenta entradas
+    ao mapa de spans. 5 testes novos em `edl_builder.test.js` travam isso: span de slot
+    catalogado reproduz exatamente a linha; span de slot fica CONTIDO no span do próprio nó (em
+    qualquer profundidade); slot não catalogado (`extraNames`) também ganha span granular; slot
+    sem valor (`undefined`) não ganha span nenhum (consistente com nunca virar linha); e dois
+    slots do mesmo nó nunca têm spans sobrepostos.
+  - **`App` ganhou `focusedSlotName`** (estado, resetado pra `null` sempre que `selectedId`
+    muda — trocar de nó nunca deixa o destaque "preso" no campo do nó anterior) e
+    `handleFieldFocus(slotName)`, passado como `onFieldFocus` pra `PropertiesPanel`. Cada
+    `.eb-field` (o `<div>` que envolve um campo editável, tanto em slots catalogados quanto em
+    `UncatalogedSlotsSection`) ganhou `onFocus={() => onFieldFocus && onFieldFocus(slotName)}` —
+    reaproveitando o MESMO mecanismo de bubbling (`focusin`, que React expõe como `onFocus`) que
+    já existia nesses wrappers antes desta passada, sem precisar de handler individual em cada
+    tipo de widget (`LeafWidget` continua sem saber nada sobre highlight).
+  - **`ExportPanel.highlightRange` passou a preferir o span granular, com fallback pro nó
+    inteiro**: `(focusedSlotName && spans.get(`${selectedId}#${focusedSlotName}`)) ||
+    spans.get(selectedId)`. O fallback cobre o caso comum de um campo NUNCA preenchido (slot
+    `undefined` nunca vira linha, logo nunca tem span próprio) — destacar o nó inteiro continua
+    sendo a resposta certa ali, não "nada". O `useEffect` de scroll ganhou `focusedSlotName` no
+    array de dependências — focar um campo dispara o mesmo `scrollIntoView({block:"start",...})`
+    de sempre, agora mirando a linha estreita em vez do bloco inteiro.
+- **A leitura de "o tipo da informação... condizente com o que se espera"**: não havia, nesta
+  passada, nenhum sinal concreto de um campo com WIDGET errado (texto onde devia ser número, etc.)
+  — `LeafWidget` já despacha por `kind` (`text`/`number`/`boolean`/`unit`/`raw`) desde passadas
+  bem anteriores, e nenhuma investigação encontrou um `kind` incorreto no catálogo atual. A frase
+  foi tratada como parte do MESMO pedido de destaque (no contexto do parágrafo, entre "deve ser
+  destacada e rolada" e "por fim, a região... deve ser maximizada" — os três fazem parte da MESMA
+  frase sobre a experiência de editar um campo), não como um bug de tipo de widget separado. Se
+  havia um caso concreto de widget incompatível em mente, não foi possível identificá-lo sem mais
+  detalhe — fica como possível mal-entendido a esclarecer, não implementado à parte.
+- **Prévia maximizada em altura — cabeçalho compactado, "Meus presets" colapsada por padrão.**
+  `ExportPanel` tinha DOIS blocos empilhados acima da prévia: `.eb-export-head` (título + botão)
+  e, embaixo, um `.eb-export-path` separado (label + input + parágrafo de dica sempre visível).
+  Os dois viraram UM `.eb-export-head` só — título, campo de nome (com a explicação de "pra onde
+  salva" virando `title=` tooltip em vez de parágrafo fixo) e botão de exportar, todos na MESMA
+  linha (`flex-wrap` pra continuar cabendo em telas estreitas). `PresetsSection` ganhou
+  `collapsed` (estado, persistido em `localStorage` como `mx-edl-builder-presets-collapsed`,
+  default COLAPSADA) — vira só o botão "▸ Meus presets" até o usuário abrir, no lugar do
+  campo-de-nome+botão+dica sempre expandidos. Como `.eb-edl-preview` já era `flex:1` dentro de
+  uma coluna flex, cada linha a menos no que fica ACIMA dela vira altura a mais pra prévia — sem
+  precisar de nenhum `calc()`/altura fixa nova.
+- **Verificado com um script jsdom novo, descartável** (`smoke_round4.js`, no scratchpad — não
+  faz parte do repositório): "Meus presets" nasce colapsada (só 1 botão, nenhum campo de texto
+  montado); o bloco antigo `.eb-export-path` não existe mais; o campo de nome tem `title=`
+  mencionando "sandbox/"; selecionar a raiz destaca um bloco de 1121 linhas; focar um campo de
+  texto JÁ PREENCHIDO (achado varrendo `.eb-props` por um `<input>` com `value` não-vazio, via
+  `el.focus()` — o disparo real de foco em jsdom, que emite `focusin`/bubble; um `dispatchEvent`
+  manual de `"focus"` NÃO bubble e não alcançaria o handler delegado do React, armadilha
+  encontrada e corrigida na escrita do próprio teste) estreita o destaque pra exatamente 1 linha;
+  trocar de seleção depois disso volta pro destaque do nó inteiro (não fica preso no campo do nó
+  anterior); e, mockando `window.Blob` pra lançar, o fallback `window.open()` dispara com uma URI
+  `data:text/plain...` e a mensagem de sucesso aparece mesmo assim. `node
+  src/ui/edl_builder.test.js` (as 5 novas mais a suíte inteira) e `node
+  src/ui/scripts/build.js` (pipeline completo, mesmo tamanho de saída) confirmam sem regressão;
+  as baterias anteriores relevantes (`smoke_highlight2.js`) seguem passando sem mudança. Duas
+  baterias mais antigas (`smoke_simplify.js`, `smoke_downloadfix.js`) passaram a falhar numa
+  asserção que assumia o botão de salvar preset sempre visível — ficaram OBSOLETAS por
+  construção (o comportamento novo, "colapsado por padrão", é o pedido desta própria passada),
+  substituídas por `smoke_round4.js`, que já cobre o mesmo terreno com a UI nova.
+- **Em aberto, ainda sem resposta**: o pedido "não adote nome default de 'apaga'" (relatado há
+  duas passadas) continua sem esclarecimento do usuário.
+
+**Passada seguinte — a File System Access API voltou: "Exportar .edl"/"Meus presets" escrevem
+DIRETO em disco de novo, quando o navegador permite, com download como fallback.** Reversão
+deliberada de uma decisão anterior desta própria seção ("a File System Access API saiu INTEIRA...
+sempre download"), motivada por feedback direto do usuário depois daquela mudança: "tá
+melhorando, mas continua fazendo o download ao invés de salvar na pasta".
+
+- **A contradição aparente, resolvida por releitura do pedido original.** O pedido que motivou a
+  remoção era "não permita que se escolha outras pastas para salvar cenários e salvar presets.
+  simplifique" — mas a implementação de então (a "Terceira passada" desta seção, ainda mais
+  acima) já não deixava escolher uma pasta ARBITRÁRIA a cada exportação: o seletor pedia
+  permissão pra pasta RAIZ (`sandbox/`) UMA vez por sessão, e cada exportação subsequente escrevia
+  sempre na MESMA subpasta derivada do slug (`sandbox/<slug>/configs/`), sem seletor nenhum depois
+  disso. A remoção anterior leu "simplifique" como "elimine a escrita direta inteira" quando o
+  pedido real era mais estreito: "não deixe escolher uma pasta diferente a cada vez". Restaurado
+  com esse escopo mais preciso — o mecanismo é o MESMO da "Terceira passada" (não uma reinvenção),
+  só reintegrado ao código atual (que mudou de forma nas passadas seguintes: `downloadTextFile()`
+  virou uma função com try/catch + fallback `window.open`, o cabeçalho da prévia virou uma linha
+  compacta, "Meus presets" nasce colapsada).
+- **`HAS_FS_ACCESS`/`writeFileIntoDir()` (novos, `edl_builder.jsx`, módulo)** — feature-detect
+  (`"showDirectoryPicker" in window`) e um helper genérico que cria a cadeia de subpastas sob
+  demanda (`getDirectoryHandle(nome, {create:true})` encadeado) e escreve o arquivo
+  (`getFileHandle` + `createWritable` + `write` + `close`) — usado pelos DOIS lugares (`ExportPanel`
+  com `pathParts=[slug,"configs"]`, `PresetsSection` com `pathParts=[]`, flat).
+- **Dois handles de diretório INDEPENDENTES, um por seção** (`sandboxDirHandle` em `ExportPanel`,
+  `dirHandle` em `PresetsSection`) — são pastas DIFERENTES por natureza (`sandbox/` do repositório
+  vs. onde quer que o usuário guarde presets, sugerido `src/ui/presets/` mas nunca presumido);
+  compartilhar um handle só faria sentido se as duas seções sempre escrevessem no mesmo lugar, o
+  que não é o caso. Nenhum dos dois sobrevive a um F5 (a API não persiste o handle entre cargas de
+  página — mesma limitação já documentada na "Terceira passada"; re-escolher é um clique, e
+  persistir pediria IndexedDB + reconfirmação de permissão de qualquer forma, sem ganho real).
+- **Botão "Escolher pasta sandbox/…" (Exportar) / "Escolher pasta…" (Meus presets)** — só aparece
+  quando `HAS_FS_ACCESS` e ainda sem handle; some depois de escolhido, e o botão principal muda de
+  rótulo (`"Exportar .{ext}"` → `"Salvar em sandbox/"`; `"Salvar como preset"` → `"Salvar na pasta
+  escolhida"`) — o mesmo botão principal decide, no clique, entre escrever direto ou baixar,
+  conforme o handle presente; não há dois botões concorrentes de "salvar" que o usuário precise
+  escolher entre si.
+- **Três caminhos, cada um coberto por asserção própria — falha de escrita direta NUNCA vaza como
+  erro cru pra UI, sempre cai pro download com aviso explicando o motivo**: (1) handle presente e
+  escrita bem-sucedida → mensagem "✓ salvo em .../..." (`savedVia` novo em `ExportPanel`, só pra
+  fraseá-lo certo contra "✓ baixado como ..." sem duas variáveis de mensagem paralelas); (2) handle
+  presente mas a escrita LANÇA (permissão expirada, ou qualquer outro erro do FS Access) → aviso
+  nomeando o caminho que falhou e "baixando em vez disso", seguido de um download de verdade
+  (nunca finge sucesso, nunca trava sem fallback); (3) sem `HAS_FS_ACCESS` (Firefox) ou sem handle
+  ainda escolhido → comportamento IDÊNTICO ao de antes desta passada (download direto,
+  `downloadTextFile()` com seu próprio fallback `window.open` interno, inalterado).
+- **Verificado no DOM real (jsdom), com um `FileSystemDirectoryHandle` FAKE em memória** (novo
+  script descartável, `smoke_fsaccess_restore.js`, 21 asserções, 4 cenários): (1) escolher a pasta
+  sandbox/, digitar um nome de cenário e exportar cria `sandbox/<slug>/configs/scenario.edl` de
+  verdade no fake, SEM disparar download nenhum, com a mensagem "✓ salvo em"; (2) um handle que
+  sempre LANÇA (simulando permissão perdida) faz a exportação cair pro download com o aviso certo,
+  e SEM mensagem de sucesso concorrente; (3) sem `showDirectoryPicker` no `window` (Firefox), nem
+  Exportar nem "Meus presets" mostram botão de escolher pasta, e os dois continuam baixando do
+  jeito de sempre; (4) "Meus presets" com sua PRÓPRIA pasta escolhida (handle distinto do de
+  Exportar) escreve `preset_<nome>.edl` direto, sem download, confirmando que as duas seções não
+  compartilham handle por engano. `node src/ui/scripts/build.js` (pipeline completo) e as duas
+  baterias mais relevantes (`smoke_highlight2.js`, `smoke_round4.js`) seguem passando sem
+  regressão — só a lógica de `ExportPanel`/`PresetsSection` mudou, nenhuma função pura de
+  `edl_builder_core.js`/`edl_parser_core.js` foi tocada.
+- **`src/ui/presets/README.md`/`src/ui/README.md` atualizados** pra descrever o botão "Escolher
+  pasta…" e a escrita direta como caminho PRIMÁRIO agora (quando disponível), com o download
+  continuando documentado como fallback — não mais como "é sempre assim, de propósito".
+  `.gitignore` não precisou de mudança (`src/ui/presets/*.edl`/`*.edl.in` já cobrem qualquer
+  arquivo salvo ali, direto ou baixado-e-movido manualmente).
+- **Em aberto, ainda sem resposta**: o pedido "não adote nome default de 'apaga'" (de várias
+  passadas atrás) continua sem esclarecimento do usuário.
+
+**Passada seguinte — o pedido "não adote nome default de 'apaga'" (em aberto desde a passada do
+scroll-to-start/download, várias passadas atrás) finalmente esclarecido pelo usuário: "mude o nome
+default de 'apaga' para 'base'".** Resolvido — e a causa raiz, uma vez vista, explica por que a
+frase original era tão difícil de decifrar sem o contexto: não havia string "apaga" nenhuma no
+CÓDIGO pra encontrar (as buscas de passadas anteriores por essa string, todas negativas, estavam
+certas) — "apaga" era um valor **digitado pelo usuário** no campo "nome do cenário" em algum teste
+antigo, capturado pelo `localStorage` (`mx-edl-builder-scenario-name`, que persiste o campo entre
+sessões — ver a seção "Prévia `.edl`"/"Exportar .edl" mais acima) e reaparecendo pré-preenchido
+TODA vez que a ferramenta reabre desde então — dava a impressão de ser "o nome default", porque na
+prática funcionava como um.
+
+- **Confirmado com evidência concreta, não só pela frase do usuário**: dois artefatos REAIS
+  apareceram em disco entre a passada anterior (restauração do File System Access API) e esta —
+  `sandbox/apaga/configs/scenario.edl.in` e `src/ui/presets/preset_apaga.edl.in`, com timestamp
+  ~1h40 depois da restauração, provando que o usuário testou a escrita direta de verdade no
+  próprio navegador, com "apaga" ainda preso no campo (de uma sessão anterior a este trabalho, bem
+  antes da atual). Os dois foram renomeados pra `sandbox/base/` /
+  `src/ui/presets/preset_base.edl.in` (`mv`, sem `git mv` — as duas pastas já são gitignored,
+  confirmado com `git check-ignore` antes de mexer).
+- **Duas mudanças no código, cobrindo tanto o usuário JÁ afetado quanto qualquer sessão futura**:
+  (1) `const slug = slugify(name) || "meu-cenario"` virou `|| "base"` (`ExportPanel`,
+  `edl_builder.jsx`) — o fallback usado quando o campo está vazio, tanto pro slug do cenário
+  quanto (por herança, via a prop `slug` que `PresetsSection` já recebia) pro nome de preset
+  default; (2) a inicialização de `name` a partir do `localStorage` ganhou uma migração de uma
+  vez: `stored === "apaga" ? "" : stored` — trata o valor preso especificamente como "nunca
+  digitado", em vez de reproduzi-lo pra sempre; o campo volta a ficar vazio (cai no fallback
+  "base") e o `useEffect` de persistência já existente regrava o `localStorage` com o valor novo
+  (vazio) no próximo redesenho, então a migração só precisa rodar UMA vez por navegador afetado —
+  depois disso o `localStorage` nunca mais tem "apaga" armazenado.
+- **Por que não foi tratado como caso geral ("qualquer valor preso deve ser limpo")**: só "apaga"
+  é o valor CONHECIDO como problemático (é literalmente o que o usuário reportou, duas vezes, em
+  wording diferente) — um usuário que tenha digitado e queira manter outro nome qualquer no campo
+  (mesmo que pareça um nome de teste) continua tendo esse valor preservado normalmente; a migração
+  é cirúrgica, não uma política nova de "sempre limpar o campo ao abrir".
+- **Verificado no DOM real (jsdom), script novo descartável** (`smoke_default_name_base.js`, 7
+  asserções): com `localStorage` vazio, o campo nasce vazio e o tooltip do campo de nome mostra
+  `sandbox/base/configs/scenario.edl` (o slug default); com `localStorage` contendo exatamente
+  `"apaga"`, o campo migra pra vazio no mount (não reproduz "apaga"), o tooltip volta a mostrar
+  `sandbox/base/...`, e o PRÓPRIO `localStorage` deixa de conter "apaga" depois do primeiro
+  redesenho (confirmando que a migração se auto-completa, não é só cosmética na tela). A bateria
+  de restauração do File System Access (`smoke_fsaccess_restore.js`) foi rerrodada e confirma de
+  quebra: sem nome digitado, "Meus presets" agora produz `preset_base.edl` (era
+  `preset_meu-cenario.edl`). `src/ui/README.md` atualizado (a única outra menção a
+  `meu-cenario`, no texto de "Meus presets"). `node src/ui/scripts/build.js` (pipeline completo) e
+  as duas baterias mais recentes de layout/highlight seguem passando sem regressão. A varredura de
+  regressão de `.edl`/`.edl.in` reais (`edl_parser_core.test.js`) passou a cobrir 25 arquivos (era
+  24) — o `sandbox/base/configs/scenario.edl.in` renomeado entrou na varredura por caminho, sem
+  precisar de nenhuma mudança de código (mesmo mecanismo de descoberta por `find`, não lista fixa).
+
+**Passada seguinte — o alvo `make open-edl-builder` foi renomeado pra `make open-edl`**, pedido
+explícito do usuário, propagado por todo o resto do repositório. Mudança mecânica: o NOME DO
+`.cpp`/`.hpp`/`.jsx`/`.js` dos arquivos-fonte (`edl_builder.jsx`, `edl_builder_core.js`,
+`edl_parser_core.js`, `edl_builder.test.js`) e o nome do ARQUIVO GERADO (`src/ui/edl-builder.html`)
+**não mudaram** — só o nome do alvo `make`, em toda referência textual a ele: `Makefile` (alvo em
+si + `.PHONY`), `README.md`/`INSTALL.md`/`TOUR.md`/`.claude/skills/README.md` (as três tabelas/
+menções que citavam o comando), comentários de código que mencionavam o comando por nome
+(`src/meson.build`, `src/ui/edl_builder.test.js`, `src/ui/scripts/{build.js,compile.js,
+edl_lint.py,edl_to_ui_project.js}`, `.gitignore`, `scripts/{open_browser.sh,models.sh}`,
+`.claude/hooks/check-edl-lint.sh`), os PRÓPRIOS rótulos de progresso que `build.js` imprime na
+tela (`${YELLOW}open-edl-builder:${NC}` → `open-edl:`, nas quatro ocorrências — eram uma
+autorreferência ao nome do alvo que o script já sabia que rodava sob ele) e a allowlist de
+permissão do `.claude/settings.json` (`"Bash(make open-edl-builder)"` → `"Bash(make open-edl)"`).
+Verificado com `grep -rn` no repositório inteiro (zero ocorrência restante de "open-edl-builder"
+em qualquer arquivo) e `make -n open-edl` (resolve pro mesmo recipe de sempre); `node
+src/ui/scripts/build.js` rerrodado depois da mudança produz o MESMO `edl-builder.html`
+(2729488 bytes, idêntico ao de antes) — confirma que só os RÓTULOS de progresso mudaram, nenhuma
+lógica do pipeline.
 
 ## Estado atual / pendências conhecidas
 

@@ -95,6 +95,53 @@ TEST(AerobaticPlan, DisparaDentroDaFaixaConfigurada)
 }
 
 //------------------------------------------------------------------------------
+// safeToRoll -- a borda de altitude (ver bt_nodes::DecisionContext::
+// hasAerobaticAltitudeMargin()). AerobaticPlan nao sabe de terreno nenhum;
+// so' obedece o booleano que o chamador ja calculou. So' pesa na borda
+// Idle->Rolling: um sorteio vencido sem 'safeToRoll' fica ADIADO -- o
+// relogio trava em zero e a proxima chamada tenta de novo, sem redesenhar o
+// intervalo.
+//------------------------------------------------------------------------------
+TEST(AerobaticPlan, SemSafeToRollAManobraFicaAdiada)
+{
+   auto plan = fazerPlano(0.0, 0.0, 1);   // sorteio ja vencido no 1o update()
+   for (int i = 0; i < 500; ++i) {        // 10 s -- bem alem de um unico tick
+      plan.update(kDt, 0.0, false);
+      ASSERT_FALSE(plan.rolling()) << "rolou sem safeToRoll, no passo " << i;
+   }
+   EXPECT_DOUBLE_EQ(plan.timeToNextSec(), 0.0) << "o relogio nao deveria ficar negativo nem redesenhar";
+}
+
+TEST(AerobaticPlan, ComecaNoTickEmQueSafeToRollViraTrue)
+{
+   auto plan = fazerPlano(0.0, 0.0, 1);
+   for (int i = 0; i < 100; ++i) plan.update(kDt, 0.0, false);
+   ASSERT_FALSE(plan.rolling());
+
+   plan.update(kDt, 0.0, true);
+   EXPECT_TRUE(plan.rolling()) << "nao comecou assim que a margem apareceu";
+}
+
+TEST(AerobaticPlan, SafeToRollNaoAfetaManobraJaEmCurso)
+{
+   auto plan = fazerPlano(0.0, 0.0, 1);
+   plan.update(kDt, 0.0, true);
+   ASSERT_TRUE(plan.rolling());
+
+   // 'safeToRoll=false' NAO aborta uma manobra ja em curso -- so' a borda
+   // Idle->Rolling consulta o parametro.
+   double banco{};
+   for (int i = 0; i < 400 && plan.rolling(); ++i) {
+      banco += 90.0 * kDt;
+      while (banco > 180.0) banco -= 360.0;
+      plan.update(kDt, banco, false);
+   }
+
+   EXPECT_FALSE(plan.rolling()) << "a manobra deveria ter fechado os 360 graus";
+   EXPECT_GE(std::abs(plan.accumulatedRollDeg()), 360.0);
+}
+
+//------------------------------------------------------------------------------
 // O giro fecha, e o comando volta a zero. O 'stick' importa porque o comando
 // e' PEGAJOSO do lado do JSBSim -- quem atua precisa do zero explicito.
 //------------------------------------------------------------------------------

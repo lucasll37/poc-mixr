@@ -1144,6 +1144,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -2050,6 +2074,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -2956,6 +3004,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -3862,6 +3934,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -4768,6 +4864,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -5674,6 +5794,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -6580,6 +6724,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )
@@ -7486,6 +7654,30 @@
                      slowRollMaxInterval: ( Seconds 120 )
                      slowRollStick:       0.9
                      slowRollTimeout:     ( Seconds 20 )
+                     // Duas redes de seguranca contra a colisao com o
+                     // terreno medida rodando 4000-6000s sem elas (as 8
+                     // aeronaves caiam entre t=680s e t=1142s -- ver o
+                     // README desta poc, secao "Corrigido"):
+                     //
+                     // terrainClearance eleva o piso anti-CFIT que
+                     // ( Navigate ) mantem O TEMPO TODO (nao so' durante o
+                     // giro) -- e' esta folga que decide se a aeronave tem
+                     // espaco de sobra quando um giro custa altitude, porque
+                     // ela muda a altitude de CRUZEIRO sobre relevo
+                     // acidentado, nao so' o comando no instante do giro.
+                     // O default do modelo (500 m) somado ao custo medio de
+                     // um giro isolado (~530 m, README) deixa margem quase
+                     // nula contra uma serra que o perfil da rota nao
+                     // previa -- por isso 1200 m aqui, bem acima do default.
+                     //
+                     // slowRollMinMargin adia um giro NOVO se a aeronave nao
+                     // tiver folga de sobra sobre esse MESMO piso no
+                     // instante do sorteio (ver ubf/BtTuning.hpp::
+                     // slowRollMinMarginM) -- rede independente, contra
+                     // giros em sequencia sem tempo de recuperar entre um e
+                     // outro.
+                     terrainClearance:    ( Meters 1200 )
+                     slowRollMinMargin:   ( Meters 1500 )
                      patrolMasterSeed:    20260910
                   )
                )

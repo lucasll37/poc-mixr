@@ -2,7 +2,7 @@
 
 Nenhuma skill foi criada na reestruturação da camada de extensão (sessão de 2026-09-06): todo
 procedimento repetível deste repositório já é um alvo de `Makefile` de uma linha
-(`build`/`test`/`docs`/`open-edl-builder`/...) — a premissa declarada do projeto é que "o
+(`build`/`test`/`open-docs`/`open-edl`/...) — a premissa declarada do projeto é que "o
 Makefile é a única fonte de automação". Há CI real (`.gitlab-ci.yml`, jobs `build`+`test`; testável
 localmente com `make test-ci`), mas ele reforça a premissa em vez de contradizê-la: o pipeline
 inteiro é a MESMA sequência `make configure && make sdk && make models && make build && make

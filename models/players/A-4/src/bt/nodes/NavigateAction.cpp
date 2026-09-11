@@ -94,7 +94,21 @@ BT::NodeStatus NavigateAction::tick()
 
    domain::FlightCommand cmd;
    cmd.headingDeg = commandedHeadingDeg_;
-   cmd.altitudeM = view.hasNavCmdAlt ? view.navCmdAltM : view.altitudeM;
+   // ACHADO POR AUDITORIA (nao redescobrir): faltava aqui o MESMO piso
+   // anti-CFIT que Patrol/RTB/Support/SlowRoll ja aplicam (ver o comentario
+   // grande de bt_nodes::DecisionContext::clampAltitudeToTerrain()) -- a
+   // altitude do Steerpoint e' um numero ESTATICO do .edl, escolhido pelo
+   // autor do cenario para o PERFIL pretendido da rota, sem visibilidade do
+   // banco de elevacao real. Sem o piso, uma rota cujo relevo real e' mais
+   // alto do que o autor assumiu faz o Navigate manter a aeronave voando
+   // reto e nivelado direto para dentro do terreno -- medido rodando em
+   // sandbox/A4-6DOF-RANDOM: depois de um giro (que custa altitude, ver
+   // domain/AerobaticPlan.hpp), a arvore volta para NAV a uma altitude
+   // baixa o bastante para colidir com uma serra que o perfil da rota nao
+   // previa, em voo reto e nivelado, sem giro nenhum acontecendo no
+   // instante do impacto.
+   cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(
+      view.hasNavCmdAlt ? view.navCmdAltM : view.altitudeM);
    cmd.speedKts = view.hasNavCmdSpeed ? view.navCmdSpeedKts : view.speedKts;
 
    context_.behavior->decision().take(cmd, "NAV");

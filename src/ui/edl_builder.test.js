@@ -466,6 +466,181 @@ test("projectToEdl: arvore vazia (null) serializa para string vazia", () => {
   assert.strictEqual(core.projectToEdl(null, BY_FACTORY), "");
 });
 
+/* --------------------------- projectToEdlWithSpans -------------------------- */
+// Span = [start,end) do bloco "( Fabrica ... ) // Fabrica" de um no DENTRO do
+// texto final -- alimenta o destaque "clicar na arvore -> ver a regiao
+// correspondente na previa .edl" (ExportPanel/edl_builder.jsx). A garantia
+// central testada aqui: cada span reproduz EXATAMENTE o que uma serializacao
+// ISOLADA daquele mesmo no produziria (nunca um offset torto), e spans de
+// filho ficam CONTIDOS no span do pai, em qualquer profundidade.
+
+test("projectToEdlWithSpans: raiz tem span cobrindo o texto inteiro, exceto o '\\n' final", () => {
+  const root = core.makeNode("Aircraft");
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(root.id);
+  assert.strictEqual(s, 0);
+  assert.strictEqual(text.slice(s, e), text.slice(0, text.length - 1));
+  assert.strictEqual(text.slice(e), "\n");
+});
+
+test("projectToEdlWithSpans: no aninhado dentro de uma LISTA reproduz sua propria serializacao isolada, contido no span da raiz", () => {
+  const child = core.makeNode("Aircraft");
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "asa2", node: child }];
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(child.id);
+  assert.strictEqual(text.slice(s, e), core.serializeNode(child, 0, BY_FACTORY).text);
+  const [ps, pe] = spans.get(root.id);
+  assert.ok(s >= ps && e <= pe, `filho [${s},${e}) fora do span do pai [${ps},${pe})`);
+});
+
+test("projectToEdlWithSpans: no aninhado num slot de OBJETO UNICO (forma nua, sem chaves) tambem reproduz sua propria serializacao", () => {
+  const engine = core.makeNode("JSBSimModel");
+  const root = core.makeNode("Aircraft");
+  root.children.dynamicsModel = [{ key: "1", node: engine }];
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(engine.id);
+  assert.strictEqual(text.slice(s, e), core.serializeNode(engine, 0, BY_FACTORY).text);
+});
+
+test("projectToEdlWithSpans: tres niveis -- span do NETO contido no do FILHO, contido no da RAIZ", () => {
+  const engine = core.makeNode("JSBSimModel");
+  const child = core.makeNode("Aircraft");
+  child.children.dynamicsModel = [{ key: "1", node: engine }];
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "asa2", node: child }];
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [rs, re] = spans.get(root.id);
+  const [cs, ce] = spans.get(child.id);
+  const [gs, ge] = spans.get(engine.id);
+  assert.ok(rs <= cs && ce <= re, "filho nao contido na raiz");
+  assert.ok(cs <= gs && ge <= ce, "neto nao contido no filho");
+  assert.strictEqual(text.slice(gs, ge), core.serializeNode(engine, 0, BY_FACTORY).text);
+  assert.strictEqual(text.slice(cs, ce), core.serializeNode(child, 0, BY_FACTORY).text);
+});
+
+test("projectToEdlWithSpans: dois filhos-irmaos na MESMA lista -- spans nao se sobrepoem", () => {
+  const a = core.makeNode("Aircraft");
+  const b = core.makeNode("Aircraft");
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "a", node: a }, { key: "b", node: b }];
+  const { spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [as_, ae] = spans.get(a.id);
+  const [bs, be] = spans.get(b.id);
+  assert.ok(ae <= bs || be <= as_, `irmaos sobrepostos: a=[${as_},${ae}) b=[${bs},${be})`);
+});
+
+test("projectToEdlWithSpans: no aninhado num slot de LISTA NAO CATALOGADO (fabrica inteiramente desconhecida, ramo extraNames) reproduz sua propria serializacao, contido no span do pai", () => {
+  const child = core.makeNode("Aircraft");
+  const root = core.makeNode("FabricaDesconhecida"); // ausente de BY_FACTORY -- entry undefined,
+  // entao TODO slot cai no laco extraNames (o ramo que a duplicacao list-vs-
+  // objeto-unico original tinha SEPARADO do laco de slots catalogados, hoje
+  // compartilhando o mesmo embedChild()).
+  root.children.slotEstranho = [{ key: "1", node: child }];
+  root.unknownSlotForms = { slotEstranho: "list" };
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(child.id);
+  assert.strictEqual(text.slice(s, e), core.serializeNode(child, 0, BY_FACTORY).text);
+  const [ps, pe] = spans.get(root.id);
+  assert.ok(s >= ps && e <= pe, `filho [${s},${e}) fora do span do pai [${ps},${pe})`);
+});
+
+test("projectToEdlWithSpans: no aninhado num slot UNICO NAO CATALOGADO (forma nua, ramo extraNames) reproduz sua propria serializacao", () => {
+  const child = core.makeNode("Aircraft");
+  const root = core.makeNode("FabricaDesconhecida");
+  root.children.slotEstranho = [{ key: "1", node: child }];
+  root.unknownSlotForms = { slotEstranho: "single" };
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(child.id);
+  assert.strictEqual(text.slice(s, e), core.serializeNode(child, 0, BY_FACTORY).text);
+  assert.ok(!text.slice(0, s).includes("{"), "forma 'single' nao deveria ter aberto chaves de lista antes do filho");
+});
+
+/* -------------------- spans de SLOT DE FOLHA ("<id>#<slot>") -------------- */
+// Granularidade abaixo do NO -- alimenta o destaque de UM CAMPO especifico
+// sendo editado no painel de propriedades (ExportPanel/edl_builder.jsx),
+// nao mais so' o bloco do no inteiro. Chave string "<nodeId>#<slotName>",
+// nunca colide com a chave numerica que o proprio no ja usa.
+
+test("projectToEdlWithSpans: span de um slot de folha CONHECIDO reproduz EXATAMENTE a linha 'nome: valor'", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.initAlt = { kind: "unit", value: 1750, unit: "Meters" };
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const key = `${root.id}#initAlt`;
+  assert.ok(spans.has(key), "chave '<id>#initAlt' presente no mapa de spans");
+  const [s, e] = spans.get(key);
+  assert.strictEqual(text.slice(s, e), "   initAlt: ( Meters 1750 )");
+});
+
+test("projectToEdlWithSpans: span de slot de folha fica CONTIDO no span do proprio no, em qualquer profundidade", () => {
+  const child = core.makeNode("Aircraft");
+  child.slotValues.type = { kind: "text", value: "C310" };
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "asa2", node: child }];
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [ns, ne] = spans.get(child.id);
+  const [ls, le] = spans.get(`${child.id}#type`);
+  assert.ok(ns <= ls && le <= ne, `span do slot [${ls},${le}) fora do span do no [${ns},${ne})`);
+  assert.strictEqual(text.slice(ls, le), "   type: C310");
+});
+
+test("projectToEdlWithSpans: span de slot NAO CATALOGADO (ramo extraNames) tambem e' granular", () => {
+  const root = core.makeNode("FabricaDesconhecida");
+  root.slotValues.estranho = { kind: "raw", raw: "42" };
+  const { text, spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [s, e] = spans.get(`${root.id}#estranho`);
+  assert.strictEqual(text.slice(s, e), "   estranho: 42");
+});
+
+test("projectToEdlWithSpans: slot de folha SEM valor (undefined) nao ganha span nenhum", () => {
+  const root = core.makeNode("Aircraft"); // initAlt nunca tocado
+  const { spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  assert.ok(!spans.has(`${root.id}#initAlt`));
+});
+
+test("projectToEdlWithSpans: dois slots de folha do MESMO no tem spans que nao se sobrepoem", () => {
+  const root = core.makeNode("Aircraft");
+  root.slotValues.type = { kind: "text", value: "C310" };
+  root.slotValues.initAlt = { kind: "unit", value: 100, unit: "" };
+  const { spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  const [as_, ae] = spans.get(`${root.id}#type`);
+  const [bs, be] = spans.get(`${root.id}#initAlt`);
+  assert.ok(ae <= bs || be <= as_, `slots sobrepostos: type=[${as_},${ae}) initAlt=[${bs},${be})`);
+});
+
+test("projectToEdlWithSpans: item de TEXTO numa lista nao ganha span (nunca e selecionavel na arvore)", () => {
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "1", node: core.makeTextLeaf("hover") }];
+  const { spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  assert.strictEqual(spans.size, 1); // so a raiz
+});
+
+test("projectToEdlWithSpans: arvore vazia devolve spans vazio", () => {
+  const { text, spans } = core.projectToEdlWithSpans(null, BY_FACTORY);
+  assert.strictEqual(text, "");
+  assert.strictEqual(spans.size, 0);
+});
+
+test("projectToEdlWithSpans: numero de spans bate com o numero de nos REAIS (nao-texto) da arvore", () => {
+  const engine = core.makeNode("JSBSimModel");
+  const child1 = core.makeNode("Aircraft");
+  child1.children.dynamicsModel = [{ key: "1", node: engine }];
+  const child2 = core.makeNode("Aircraft");
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "a", node: child1 }, { key: "b", node: child2 }];
+  const { spans } = core.projectToEdlWithSpans(root, BY_FACTORY);
+  assert.strictEqual(spans.size, 4); // root, child1, child2, engine
+});
+
+test("projectToEdlWithSpans: projectToEdl (o contrato antigo) continua byte-identico -- so' um wrapper novo por cima", () => {
+  const engine = core.makeNode("JSBSimModel");
+  const child = core.makeNode("Aircraft");
+  child.children.dynamicsModel = [{ key: "1", node: engine }];
+  const root = core.makeNode("Aircraft");
+  root.children.modes = [{ key: "asa2", node: child }];
+  assert.strictEqual(core.projectToEdl(root, BY_FACTORY), core.projectToEdlWithSpans(root, BY_FACTORY).text);
+});
+
 /* ------------------------------ folha de texto ------------------------------ */
 // TacviewOutput.modelMap/typeMap/colorMap (catalogo real) sao PairStream de
 // VALOR ESCALAR -- cada item e um base::String, nao uma classe MIXR. Sem
@@ -503,7 +678,7 @@ test("findNode/removeNode atravessam um item de texto sem quebrar (children:{} g
 
 /* ----------------------- integração com o catálogo REAL --------------------- */
 // Carrega src/ui/edl_catalog.generated.json (gerado por
-// src/ui/scripts/generate_edl_catalog.py, via `make open-edl-builder`) e
+// src/ui/scripts/generate_edl_catalog.py, via `make open-edl`) e
 // monta uma arvore minima real (Station -> ... ), pra pegar qualquer
 // divergencia entre o catalogo de verdade e as regras acima que o catalogo
 // sintetico, pequeno demais de proposito, nao exercitaria.
@@ -653,6 +828,77 @@ test("tokenizeEdlText: round-trip tambem no .edl REAL do preset (se o catalogo e
   const text = core.projectToEdl(scenario, REAL_BY_FACTORY);
   const tokens = core.tokenizeEdlText(text);
   assert.strictEqual(joinTokens(tokens), text, "round-trip deveria reproduzir o .edl real byte a byte");
+});
+
+/* ----------------- linhas da prévia .edl (numeração + destaque) ----------- */
+// splitTokensIntoLines()/computeLineRanges() alimentam a prévia com
+// numeração de linha (estilo IDE) e o destaque em RETÂNGULO por linha (a
+// linha inteira, não só o span exato) -- ver ExportPanel/edl_builder.jsx.
+
+function joinLines(lines) {
+  return lines.map((line) => line.map((t) => t.text).join("")).join("\n");
+}
+
+test("splitTokensIntoLines: sem quebra de linha nenhuma, tudo fica numa unica linha", () => {
+  const tokens = core.tokenizeEdlText("( A )");
+  const lines = core.splitTokensIntoLines(tokens);
+  assert.strictEqual(lines.length, 1);
+  assert.strictEqual(joinLines(lines), "( A )");
+});
+
+test("splitTokensIntoLines: token 'gap' sem classe que atravessa quebra de linha e' FATIADO, nao vira uma linha so", () => {
+  // O espaco+quebra entre ')' de uma forma e '(' da proxima e' um UNICO
+  // token sem classe (cls:null) no tokenizeEdlText -- tem que virar dois
+  // pedacos, um em cada linha.
+  const text = "( A\n   b: ( B\n) // B\n) // A";
+  const tokens = core.tokenizeEdlText(text);
+  const lines = core.splitTokensIntoLines(tokens);
+  assert.strictEqual(lines.length, 4);
+  assert.strictEqual(joinLines(lines), text, "reconstruir com '\\n' entre linhas reproduz o texto original");
+  lines.forEach((line) => {
+    line.forEach((t) => assert.ok(!t.text.includes("\n"), `token nao deveria conter '\\n': ${JSON.stringify(t.text)}`));
+  });
+});
+
+test("splitTokensIntoLines: string multi-linha (rara, mas a gramatica aceita) tambem e' fatiada corretamente", () => {
+  const text = '( A\n   s: "linha1\nlinha2"\n) // A';
+  const tokens = core.tokenizeEdlText(text);
+  const lines = core.splitTokensIntoLines(tokens);
+  assert.strictEqual(joinLines(lines), text);
+});
+
+test("splitTokensIntoLines: linhas em branco consecutivas (varios '\\n' seguidos) viram linhas VAZIAS, nao sao engolidas", () => {
+  const text = "( A\n\n\n) // A";
+  const tokens = core.tokenizeEdlText(text);
+  const lines = core.splitTokensIntoLines(tokens);
+  assert.strictEqual(lines.length, 4);
+  assert.deepStrictEqual(lines[1], []);
+  assert.deepStrictEqual(lines[2], []);
+  assert.strictEqual(joinLines(lines), text);
+});
+
+test("splitTokensIntoLines: texto vazio devolve UMA linha vazia (mesma convencao de ''.split('\\n'))", () => {
+  const lines = core.splitTokensIntoLines(core.tokenizeEdlText(""));
+  assert.strictEqual(lines.length, 1);
+  assert.deepStrictEqual(lines[0], []);
+});
+
+test("computeLineRanges: cada [start,end) fatia EXATAMENTE a linha correspondente de `text`", () => {
+  const text = "( A\n   b: ( B\n) // B\n) // A";
+  const ranges = core.computeLineRanges(text);
+  const expectedLines = text.split("\n");
+  assert.strictEqual(ranges.length, expectedLines.length);
+  ranges.forEach(([s, e], i) => assert.strictEqual(text.slice(s, e), expectedLines[i]));
+});
+
+test("computeLineRanges: o INICIO de uma linha e' sempre o FIM da anterior + 1 (o '\\n' entre elas)", () => {
+  const text = "aa\nbbb\nc";
+  const ranges = core.computeLineRanges(text);
+  assert.deepStrictEqual(ranges, [[0, 2], [3, 6], [7, 8]]);
+});
+
+test("computeLineRanges: texto vazio devolve uma unica faixa [0,0)", () => {
+  assert.deepStrictEqual(core.computeLineRanges(""), [[0, 0]]);
 });
 
 /* ------------------------- mapa: posições georreferenciadas ------------- */

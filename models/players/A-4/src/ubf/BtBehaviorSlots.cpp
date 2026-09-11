@@ -50,6 +50,10 @@ BEGIN_SLOTTABLE(BtBehavior)
    "slowRollMaxInterval", // 21
    "slowRollStick",       // 22 -- 0 DESLIGA a acrobacia (default)
    "slowRollTimeout",     // 23
+   "slowRollMinMargin",   // 24 -- folga anti-CFIT p/ COMECAR o giro (default: 1500 m)
+   "launchMinRange",      // 25
+   "launchMaxRange",      // 26
+   "launchCone",          // 27
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -76,6 +80,10 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(21, setSlotSlowRollMaxInterval, base::Time)
    ON_SLOT(22, setSlotSlowRollStick,       base::Number)
    ON_SLOT(23, setSlotSlowRollTimeout,     base::Time)
+   ON_SLOT(24, setSlotSlowRollMinMargin,   base::Distance)
+   ON_SLOT(25, setSlotLaunchMinRange,      base::Distance)
+   ON_SLOT(26, setSlotLaunchMaxRange,      base::Distance)
+   ON_SLOT(27, setSlotLaunchCone,          base::Angle)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -266,6 +274,45 @@ bool BtBehavior::setSlotSlowRollTimeout(const base::Time* const msg)
    if (msg == nullptr) return false;
    tune.slowRollTimeoutSec = base::Seconds::convertStatic(*msg);
    return (tune.slowRollTimeoutSec > 0.0);
+}
+
+// NEGATIVO desliga a borda por completo (qualquer altitude "basta",
+// inclusive abaixo do proprio piso anti-CFIT) -- controle negativo util para
+// provar que o campo esta vivo sem recompilar nada. Zero e' diferente: exige
+// estar NO MINIMO no piso anti-CFIT, sem folga extra nenhuma.
+bool BtBehavior::setSlotSlowRollMinMargin(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.slowRollMinMarginM = base::Meters::convertStatic(*msg);
+   return true;
+}
+
+
+//------------------------------------------------------------------------------
+// ENVELOPE DE LANCAMENTO (ver domain/LaunchPolicy.hpp e
+// bt_nodes::LaunchEnvelopeCondition). So' importa em cenarios com
+// 'stores:'/GuidedMissile declarado -- ver o comentario do campo em
+// ubf/BtTuning.hpp.
+//------------------------------------------------------------------------------
+bool BtBehavior::setSlotLaunchMinRange(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.launchMinRangeM = base::Meters::convertStatic(*msg);
+   return (tune.launchMinRangeM >= 0.0);
+}
+
+bool BtBehavior::setSlotLaunchMaxRange(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.launchMaxRangeM = base::Meters::convertStatic(*msg);
+   return (tune.launchMaxRangeM > 0.0);
+}
+
+bool BtBehavior::setSlotLaunchCone(const base::Angle* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.launchConeDeg = base::Degrees::convertStatic(*msg);
+   return (tune.launchConeDeg >= 0.0 && tune.launchConeDeg <= 180.0);
 }
 
 

@@ -5,8 +5,11 @@
 #include "xboard/Board.hpp"
 #include "xlog/Log.hpp"
 
+#include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
+#include "mixr/models/player/weapon/Missile.hpp"
 #include "mixr/models/system/Autopilot.hpp"
+#include "mixr/models/system/StoresMgr.hpp"
 
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/units/distance_utils.hpp"
@@ -87,6 +90,8 @@ void FlightAction::copyData(const FlightAction& org, const bool)
    alertEastM = org.alertEastM;
    alertAltitudeM = org.alertAltitudeM;
    alertRangeM = org.alertRangeM;
+   launchRequested = org.launchRequested;
+   launchTargetName = org.launchTargetName;
 }
 
 void FlightAction::setAlertBroadcast(const std::string& contactName,
@@ -99,6 +104,12 @@ void FlightAction::setAlertBroadcast(const std::string& contactName,
    alertEastM = eastM;
    alertAltitudeM = altitudeM;
    alertRangeM = rangeM;
+}
+
+void FlightAction::setLaunchRequest(const std::string& targetName)
+{
+   launchRequested = true;
+   launchTargetName = targetName;
 }
 
 //------------------------------------------------------------------------------
@@ -275,6 +286,45 @@ bool FlightAction::execute(base::Component* actor)
       }
    } else {
       changedFor(lastAlertContact, player->getID(), std::string{});
+   }
+
+   // Lancamento de missil -- o UNICO ponto deste modelo que toca um objeto
+   // MIXR de arma. Padrao idiomatico do proprio framework, nao invencao
+   // deste modelo: Player::getStoresManagement() -> StoresMgr::
+   // releaseOneMissile() (publico, PRE-REF'D, dynamic_cast<Missile*> por
+   // baixo -- casa QUALQUER subclasse de Missile, nativa ou de terceiro) ->
+   // AbstractWeapon::setTargetPlayer(alvo, /*posTrkEnb=*/true) -> unref().
+   // 'posTrkEnb=true' e' o que liga isGuidanceEnabled() do lado do missil
+   // (alem do proprio tof>=tsg) -- ver models/players/missile/docs/ARCHITECTURE.md.
+   if (launchRequested) {
+      launchRequested = false;   // um pedido so' vale para UM frame
+
+      auto* const world = player->getWorldModel();
+      const auto target = (world != nullptr)
+         ? dynamic_cast<models::Player*>(world->findPlayerByName(launchTargetName.c_str()))
+         : nullptr;
+
+      auto* const storesMgr = player->getStoresManagement();
+
+      if (target == nullptr) {
+         LOG(WARNING) << "[FlightAction] " << playerName
+                      << ": lancamento abortado -- alvo '" << launchTargetName
+                      << "' nao encontrado";
+      } else if (storesMgr == nullptr || storesMgr->available() == 0) {
+         LOG(WARNING) << "[FlightAction] " << playerName
+                      << ": lancamento abortado -- cabide vazio";
+      } else {
+         auto* const flyout = storesMgr->releaseOneMissile();
+         if (flyout != nullptr) {
+            flyout->setTargetPlayer(target, /*posTrkEnb=*/true);
+            LOG(INFO) << "[FlightAction] " << playerName
+                      << ": missil lancado contra " << launchTargetName;
+            flyout->unref();   // releaseOneMissile() devolve pre-ref'd
+         } else {
+            LOG(WARNING) << "[FlightAction] " << playerName
+                         << ": lancamento abortado -- releaseOneMissile() devolveu nulo";
+         }
+      }
    }
 
    return true;

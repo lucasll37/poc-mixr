@@ -2,7 +2,7 @@
 #
 # Abre um arquivo local (uma pagina HTML estatica) no navegador do usuario,
 # funcionando tanto em Linux nativo quanto dentro do WSL2. Usado por
-# 'make open-docs' e 'make open-edl-builder' -- separado em script proprio
+# 'make open-docs' e 'make open-edl' -- separado em script proprio
 # porque a cadeia de tentativas nao cabe numa linha de receita, e porque as
 # duas receitas carregavam a MESMA copia dela.
 #
@@ -37,7 +37,7 @@
 # Windows<->WSL esta desligado (sem a entrada 'WSLInterop' em
 # /proc/sys/fs/binfmt_misc/, o kernel nao lanca binario PE nenhum). Nesse
 # estado o script imprimia "aberto via explorer.exe" para uma falha TOTAL --
-# 'make open-docs'/'open-presentation'/'open-edl-builder' saiam 0 sem abrir
+# 'make open-docs'/'open-presentation'/'open-edl' saiam 0 sem abrir
 # nada. Hoje 126/127 (nao consegui EXECUTAR) sao separados de 1 (executou e
 # retornou 1), e so os dois primeiros derrubam o degrau.
 #

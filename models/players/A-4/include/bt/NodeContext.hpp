@@ -29,6 +29,14 @@ struct FlightDecision
    double alertAltitudeM{};
    double alertRangeM{};
 
+   // pedido de lancamento de missil contra um alvo nomeado -- a resolucao
+   // do nome para o Player* e o disparo em si (StoresMgr::releaseOneMissile()
+   // + setTargetPlayer()) acontecem so' na atuacao, em
+   // xnative::FlightAction::execute() (ver o comentario la). Nenhum no
+   // toca em objeto MIXR.
+   bool launchRequested{};
+   std::string launchTargetName;
+
    void reset() { *this = FlightDecision{}; }
 
    void take(const domain::FlightCommand& cmd, const std::string& text)

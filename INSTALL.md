@@ -152,8 +152,8 @@ repositório. Três alvos o exigem:
 
 | alvo | por que precisa de Node |
 |---|---|
-| `make docs` | regenera `docs/manual/index.html` a partir de `doc.jsx`. **O HTML gerado é versionado**, então `make open-docs` abre a página já pronta sem Node nenhum — só *regenerar* exige |
-| `make open-edl-builder` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
+| `make open-docs` | regenera `docs/manual/index.html` a partir de `doc.jsx` e abre no navegador — mesmo padrão de `make open-edl`, sem alvo `docs` separado |
+| `make open-edl` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
 | `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina host** (é lá que o `npx` roda) e **também dentro do container**, onde o pipeline o instala do zero seguindo exatamente esta seção — é assim que este §5 fica coberto por processo automatizado. Também precisa de Docker (ver [`README.md`](README.md)) |
 
 **Versão mínima: 18** — e o pacote da distro pode não servir. Medido nesta base de código: o `apt`

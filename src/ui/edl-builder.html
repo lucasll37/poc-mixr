@@ -17703,6 +17703,35 @@ const EDL_CATALOG = [
         "objectTypes": [],
         "isReference": false,
         "textOnly": false
+      },
+      {
+        "name": "slowRollMinMargin",
+        "declaredIn": "BtBehavior",
+        "comment": "24 -- folga anti-CFIT p/ COMECAR o giro (default: 1500 m)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
       }
     ],
     "primaryComponents": []
@@ -20829,6 +20858,35 @@ const EDL_CATALOG = [
               "Minutes",
               "NanoSeconds",
               "Seconds"
+            ]
+          }
+        ],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "slowRollMinMargin",
+        "declaredIn": "BtBehavior",
+        "comment": "24 -- folga anti-CFIT p/ COMECAR o giro (default: 1500 m)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [
+          {
+            "family": "Distance",
+            "options": [
+              "CentiMeters",
+              "Feet",
+              "Inches",
+              "KiloMeters",
+              "Meters",
+              "MicroMeters",
+              "Microns",
+              "NauticalMiles",
+              "StatuteMiles"
             ]
           }
         ],
@@ -29633,7 +29691,7 @@ const EDL_CATALOG = [
       "AbstractAction",
       "Object"
     ],
-    "origin": "plugin:carro",
+    "origin": "plugin:missile",
     "concrete": true,
     "slots": [],
     "primaryComponents": []
@@ -29648,7 +29706,7 @@ const EDL_CATALOG = [
       "Component",
       "Object"
     ],
-    "origin": "plugin:carro",
+    "origin": "plugin:missile",
     "concrete": true,
     "slots": [
       {
@@ -29850,7 +29908,7 @@ const EDL_CATALOG = [
       "Component",
       "Object"
     ],
-    "origin": "plugin:carro",
+    "origin": "plugin:missile",
     "concrete": true,
     "slots": [
       {
@@ -83061,12 +83119,92 @@ function orderedSlotsForSerialization(slots) {
   return dataSlot ? [...withoutData, dataSlot] : slots;
 }
 
+// Devolve { text, spans }, nao mais so' o texto -- 'spans' e' um
+// Map<nodeId, [start,end)> com a posicao, DENTRO DE `text`, do bloco
+// "( Fabrica ... ) // Fabrica" de CADA no real (nao-texto) que participou
+// deste no OU de qualquer descendente dele. Existe pra alimentar o
+// destaque "clicar na arvore -> ver a regiao correspondente na previa
+// .edl" (ExportPanel) -- ver o comentario de projectToEdlWithSpans() logo
+// abaixo. `indent` e' SEMPRE 0 em todo call site deste arquivo (nenhum
+// lugar chama com indent != 0) -- e' por isso que o `.trim()` que o codigo
+// tinha nas chamadas recursivas era sempre um no-op (pad="" em indent=0,
+// sem nada pra cortar): removido aqui, pra o comprimento de `value` bater
+// exatamente com o que foi de fato embutido na linha, sem risco de off-by-
+// one no calculo de offset.
+//
+// A tecnica: em vez de retornar uma string e deixar o CHAMADOR descobrir
+// onde ela caiu dentro do documento final (impossivel sem refazer todo o
+// trabalho de concatenacao), cada chamada mantem um cursor PROPRIO
+// (relativo so' ao texto que ELA MESMA produz) e, ao embutir o texto de um
+// filho, desloca (soma) os spans que o filho ja devolveu (relativos ao
+// PROPRIO texto do filho) pelo offset onde esse texto caiu dentro da linha
+// que acabou de ser empilhada. Como cada nivel so' soma um deslocamento
+// (nunca reconstroi nada), o span de um no MUITO aninhado acumula a soma
+// certa sem precisar que nenhum ancestral saiba da profundidade real --
+// mesmo raciocinio que ja' fazia lines.join("\n") produzir o texto certo
+// sem `indent` nunca variar.
 function serializeNode(node, indent, byFactory) {
   const pad = "   ".repeat(indent);
   const pad1 = "   ".repeat(indent + 1);
   const entry = byFactory[node.factory];
   const lines = [];
-  lines.push(`${pad}( ${node.factory}`);
+  const spans = new Map();
+  let cursor = 0;
+
+  // Empilha uma linha (que pode conter "\n" embutido, se `s` for o
+  // resultado de embutir um filho multi-linha inteiro numa "linha" do
+  // array -- exatamente como o codigo original ja fazia) e devolve o
+  // offset onde ELA COMEÇA dentro de lines.join("\n"). O "+1" de cada push
+  // representa o separador que join() insere ANTES da PROXIMA entrada;
+  // sobra um "+1" fantasma depois da ultima linha (nunca usado, porque
+  // nada e' empilhado depois dela) -- inofensivo.
+  function pushLine(s) {
+    const start = cursor;
+    lines.push(s);
+    cursor += s.length + 1;
+    return start;
+  }
+
+  // Serializa o VALOR de um filho (texto puro ou nó de verdade) sem
+  // empilhar linha nenhuma -- só quem chama sabe o prefixo (`chave: ` ou
+  // `pad1   chave: `) que vai na frente, e é o prefixo que decide o
+  // deslocamento dos spans do filho.
+  function childValue(childNode) {
+    if (childNode.isText) return { value: serializeTextLiteral(childNode.text), childSpans: null };
+    const child = serializeNode(childNode, 0, byFactory);
+    return { value: child.text, childSpans: child.spans };
+  }
+
+  // Empilha `${prefix}${valor do filho}` como UMA linha (igual ao código
+  // original) e funde os spans do filho (relativos ao texto DELE) nos
+  // spans DESTE nó, deslocados pelo offset onde o valor caiu.
+  function embedChild(prefix, childNode) {
+    const { value, childSpans } = childValue(childNode);
+    const lineStart = pushLine(`${prefix}${value}`);
+    if (childSpans) {
+      const base = lineStart + prefix.length;
+      for (const [id, range] of childSpans) spans.set(id, [base + range[0], base + range[1]]);
+    }
+  }
+
+  // Empilha a linha de um slot de FOLHA ("nome: valor") e registra o span
+  // DELE também -- chave string "<nodeId>#<slotName>" (nunca colide com a
+  // chave numérica que cada nó já ganha para o próprio bloco inteiro,
+  // Map distingue 5 de "5"). É o que permite destacar, na prévia, só a
+  // LINHA do campo que está sendo editado no painel de propriedades, em
+  // vez do bloco inteiro do nó -- ver highlightRange em ExportPanel
+  // (edl_builder.jsx). Assim como os spans de nó, este também é relativo
+  // ao texto QUE ESTA CHAMADA produz -- embedChild() já desloca TODO o
+  // conteúdo de `spans` (inclusive estas chaves de slot) ao fundir um
+  // filho no pai, então a granularidade sobrevive em qualquer profundidade
+  // sem código extra.
+  function pushLeafLine(slotName, text) {
+    const line = `${pad1}${slotName}: ${text}`;
+    const start = pushLine(line);
+    spans.set(`${node.id}#${slotName}`, [start, start + line.length]);
+  }
+
+  pushLine(`${pad}( ${node.factory}`);
 
   const knownNames = new Set();
   for (const slotDef of entry ? orderedSlotsForSerialization(entry.slots) : []) {
@@ -83081,27 +83219,20 @@ function serializeNode(node, indent, byFactory) {
       // do fallback permissivo de isCompatible(): o setter real aceita
       // PairStream item-a-item, invisivel na assinatura do ON_SLOT.
       if (slotDef.acceptsChildList || kids.length > 1) {
-        lines.push(`${pad1}${slotDef.name}: {`);
-        kids.forEach((it) => {
-          const value = it.node.isText
-            ? serializeTextLiteral(it.node.text)
-            : serializeNode(it.node, 0, byFactory).trim();
-          lines.push(`${pad1}   ${it.key}: ${value}`);
-        });
-        lines.push(`${pad1}}`);
+        pushLine(`${pad1}${slotDef.name}: {`);
+        kids.forEach((it) => embedChild(`${pad1}   ${it.key}: `, it.node));
+        pushLine(`${pad1}}`);
       } else {
         // slot de objeto UNICO (sem PairStream aceito) -- forma NUA, sem
         // chaves: uma lista aqui faria dynamic_cast<PairStream*> falhar no
         // consumidor (RfSensor::setSlotModeStream vs setSlotModeSingle,
         // Component::setSlotComponent(PairStream) vs (Component) --
         // confirmado no fonte real).
-        const only = kids[0].node;
-        const value = only.isText ? serializeTextLiteral(only.text) : serializeNode(only, 0, byFactory).trim();
-        lines.push(`${pad1}${slotDef.name}: ${value}`);
+        embedChild(`${pad1}${slotDef.name}: `, kids[0].node);
       }
     } else if (sv !== undefined) {
       const text = serializeLeafValue(slotDef, sv);
-      if (text !== null) lines.push(`${pad1}${slotDef.name}: ${text}`);
+      if (text !== null) pushLeafLine(slotDef.name, text);
     }
   }
 
@@ -83129,27 +83260,22 @@ function serializeNode(node, indent, byFactory) {
       const remembered = node.unknownSlotForms && node.unknownSlotForms[name];
       const asList = remembered === "list" ? true : remembered === "single" ? false : kids.length > 1;
       if (asList) {
-        lines.push(`${pad1}${name}: {`);
-        kids.forEach((it) => {
-          const value = it.node.isText
-            ? serializeTextLiteral(it.node.text)
-            : serializeNode(it.node, 0, byFactory).trim();
-          lines.push(`${pad1}   ${it.key}: ${value}`);
-        });
-        lines.push(`${pad1}}`);
+        pushLine(`${pad1}${name}: {`);
+        kids.forEach((it) => embedChild(`${pad1}   ${it.key}: `, it.node));
+        pushLine(`${pad1}}`);
       } else {
-        const only = kids[0].node;
-        const value = only.isText ? serializeTextLiteral(only.text) : serializeNode(only, 0, byFactory).trim();
-        lines.push(`${pad1}${name}: ${value}`);
+        embedChild(`${pad1}${name}: `, kids[0].node);
       }
     } else if (node.slotValues[name] !== undefined) {
       const text = serializeLeafValue(null, node.slotValues[name]);
-      if (text !== null) lines.push(`${pad1}${name}: ${text}`);
+      if (text !== null) pushLeafLine(name, text);
     }
   });
 
-  lines.push(`${pad}) // ${node.factory}`);
-  return lines.join("\n");
+  pushLine(`${pad}) // ${node.factory}`);
+  const text = lines.join("\n");
+  spans.set(node.id, [0, text.length]);
+  return { text, spans };
 }
 
 // Conta, na arvore inteira, quantos NOS tem fabrica nao catalogada ou pelo
@@ -83179,9 +83305,23 @@ function countUncataloged(root, byFactory) {
   return count;
 }
 
+// A versão COM posição -- ExportPanel usa esta para saber, dado um
+// selectedId, que trecho da prévia .edl destacar (ver highlightNodeSpan()
+// em edl_builder.jsx). `spans` cobre todo nó REAL (não-texto) da árvore --
+// nó de texto (item de lista escalar, ex. TacviewOutput.typeMap) nunca é
+// selecionável na árvore (TreeItem não lhe dá onClick de seleção), então
+// nunca precisou de span.
+function projectToEdlWithSpans(root, byFactory) {
+  if (!root) return { text: "", spans: new Map() };
+  const { text, spans } = serializeNode(root, 0, byFactory);
+  return { text: text + "\n", spans };
+}
+
+// Mantido com a MESMA assinatura/contrato de sempre (string simples) --
+// todo chamador existente (ExportPanel, os testes deste arquivo,
+// selfLintPreset() em build.js) continua funcionando sem mudança nenhuma.
 function projectToEdl(root, byFactory) {
-  if (!root) return "";
-  return serializeNode(root, 0, byFactory) + "\n";
+  return projectToEdlWithSpans(root, byFactory).text;
 }
 
 /* ------------------------- destaque de sintaxe .edl ------------------------ */
@@ -83260,6 +83400,51 @@ function tokenizeEdlText(text) {
   }
   if (last < text.length) tokens.push({ text: text.slice(last), cls: null });
   return tokens;
+}
+
+// Quebra o array de tokens (tokenizeEdlText) em UM ARRAY POR LINHA de
+// origem -- alimenta a prévia .edl com numeração de linha, estilo IDE
+// (ExportPanel/edl_builder.jsx). Um token pode conter "\n" embutido (o
+// "gap" sem classe entre dois tokens reconhecidos quase sempre atravessa
+// quebra de linha; uma string entre aspas multi-linha, mais raro, também
+// pode) -- por isso é preciso FATIAR, não só agrupar por índice. Nenhuma
+// linha resultante contém "\n"; concatenar o `text` de todos os tokens de
+// todas as linhas, com "\n" entre cada linha, reproduz o texto original --
+// mesmo invariante de round-trip que tokenizeEdlText() já garante sozinho.
+function splitTokensIntoLines(tokens) {
+  const lines = [[]];
+  for (const t of tokens) {
+    let rest = t.text;
+    for (;;) {
+      const nl = rest.indexOf("\n");
+      if (nl === -1) {
+        if (rest) lines[lines.length - 1].push({ text: rest, cls: t.cls });
+        break;
+      }
+      const before = rest.slice(0, nl);
+      if (before) lines[lines.length - 1].push({ text: before, cls: t.cls });
+      lines.push([]);
+      rest = rest.slice(nl + 1);
+    }
+  }
+  return lines;
+}
+
+// [start,end) de cada linha de `text` (sem contar o "\n" de quebra em si) --
+// MESMO índice de linha que splitTokensIntoLines() devolve, pra decidir,
+// linha a linha, se ela entra no destaque de seleção (ver highlightRange em
+// ExportPanel): a linha INTEIRA entra se o intervalo dela sobrepõe
+// highlightRange, mesmo que só parcialmente -- é isso que faz o destaque
+// virar um RETÂNGULO por linha (a linha toda, do começo ao fim), não só o
+// texto exato do span de projectToEdlWithSpans().
+function computeLineRanges(text) {
+  const ranges = [];
+  let offset = 0;
+  for (const part of text.split("\n")) {
+    ranges.push([offset, offset + part.length]);
+    offset += part.length + 1;
+  }
+  return ranges;
 }
 
 /* ------------------------- mapa: posições georreferenciadas ------------- */
@@ -83357,7 +83542,8 @@ if (typeof module !== "undefined" && module.exports) {
     countUncataloged,
     freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
-    tokenizeEdlText,
+    projectToEdlWithSpans,
+    tokenizeEdlText, splitTokensIntoLines, computeLineRanges,
     leafValueToMeters, extractPlacements,
   };
 }
@@ -84088,7 +84274,7 @@ function LeafWidget({
       })
     }, slotDef.acceptsNumber && /*#__PURE__*/React.createElement("option", {
       value: ""
-    }, "(número cru, sem unidade)"), options.map(u => /*#__PURE__*/React.createElement("option", {
+    }, "(n\xFAmero cru, sem unidade)"), options.map(u => /*#__PURE__*/React.createElement("option", {
       key: u,
       value: u
     }, u))));
@@ -84119,7 +84305,9 @@ function LeafWidget({
 /* -------------------------------- paleta ---------------------------------- */
 
 function Palette({
-  onDragStartFactory
+  onDragStartFactory,
+  collapsed,
+  onToggleCollapse
 }) {
   const [q, setQ] = useState("");
   const groups = useMemo(() => {
@@ -84137,16 +84325,36 @@ function Palette({
     Object.values(byOrigin).forEach(l => l.sort((a, b) => a.factory.localeCompare(b.factory)));
     return Object.entries(byOrigin).sort((a, b) => originRank(a[0]) - originRank(b[0]));
   }, [q]);
+
+  // Colapsada, a paleta vira uma tira estreita -- só o botão que a
+  // reabre -- pra devolver a largura pro par árvore/prévia .edl quando o
+  // catálogo não é o que importa no momento (ver eb-main-split, mais
+  // abaixo). Estado mora em App (persistido, mesmo padrão do tema).
+  if (collapsed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "eb-pane eb-palette eb-palette-collapsed"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "eb-btn eb-btn-sm eb-palette-toggle",
+      onClick: onToggleCollapse,
+      title: "Mostrar a paleta de componentes"
+    }, "\xBB"));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-palette"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eb-palette-head"
   }, /*#__PURE__*/React.createElement("input", {
     className: "eb-input",
     type: "text",
-    placeholder: "Buscar classe…",
+    placeholder: "Buscar classe\u2026",
     value: q,
     onChange: e => setQ(e.target.value),
     "aria-label": "Buscar classe"
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm eb-palette-toggle",
+    onClick: onToggleCollapse,
+    title: "Esconder a paleta de componentes"
+  }, "\xAB")), /*#__PURE__*/React.createElement("div", {
     className: "eb-palette-list"
   }, groups.map(([origin, list]) => /*#__PURE__*/React.createElement("div", {
     key: origin,
@@ -84167,12 +84375,12 @@ function Palette({
     onDragEnd: () => onDragStartFactory(null)
   }, e.factory, e.factory !== e.class && /*#__PURE__*/React.createElement("em", {
     className: "eb-alias"
-  }, "→", e.class), e.runtimeOnly && /*#__PURE__*/React.createElement("em", {
+  }, "\u2192", e.class), e.runtimeOnly && /*#__PURE__*/React.createElement("em", {
     className: "eb-alias",
     title: "plugin de terceiros, descoberto em runtime"
-  }, " ⚙"))))), groups.length === 0 && /*#__PURE__*/React.createElement("p", {
+  }, " \u2699"))))), groups.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-empty-msg"
-  }, "nenhuma classe bate com “", q, "”")));
+  }, "nenhuma classe bate com \u201C", q, "\u201D")));
 }
 
 /* ---------------------------- placeholder / drop --------------------------- */
@@ -84251,7 +84459,7 @@ function AddViaSelect({
     onChange: e => setV(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "ou escolha…"), options.map(f => /*#__PURE__*/React.createElement("option", {
+  }, "ou escolha\u2026"), options.map(f => /*#__PURE__*/React.createElement("option", {
     key: f,
     value: f
   }, f))), /*#__PURE__*/React.createElement("button", {
@@ -84302,7 +84510,7 @@ function TreeItem({
       className: "eb-x",
       title: "remover",
       onClick: () => actions.onRemoveItem(parentId, slotName, node.id)
-    }, "×"));
+    }, "\xD7"));
   }
   return /*#__PURE__*/React.createElement(TreeNode, {
     node: node,
@@ -84407,7 +84615,7 @@ function ChildSlotSection({
   }, slotDef.name, isList ? " (lista)" : "", slotDef.uncataloged && /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge",
     title: "slot que o catalogo nao conhece -- preservado como esta, editavel so como texto"
-  }, " não catalogado")), /*#__PURE__*/React.createElement("div", {
+  }, " n\xE3o catalogado")), /*#__PURE__*/React.createElement("div", {
     className: "eb-branch-list"
   }, items.map(it => /*#__PURE__*/React.createElement("div", {
     key: it.node.id,
@@ -84511,7 +84719,7 @@ function TreeNode({
       e.stopPropagation();
       onRemoveLocal();
     }
-  }, "×")), expanded && (entry || extraChildNames.length > 0) && /*#__PURE__*/React.createElement("div", {
+  }, "\xD7")), expanded && (entry || extraChildNames.length > 0) && /*#__PURE__*/React.createElement("div", {
     className: "eb-card-body"
   }, roles.length > 0 && /*#__PURE__*/React.createElement(RoleSection, {
     node: node,
@@ -84557,16 +84765,18 @@ function UncatalogedSlotsSection({
   node,
   names,
   onChangeSlot,
-  onAddRawSlot
+  onAddRawSlot,
+  onFieldFocus
 }) {
   const [newName, setNewName] = useState("");
   return /*#__PURE__*/React.createElement("div", {
     className: "eb-uncataloged-section"
   }, /*#__PURE__*/React.createElement("div", {
     className: "eb-props-subhead"
-  }, "slots não catalogados"), names.map(name => /*#__PURE__*/React.createElement("div", {
+  }, "slots n\xE3o catalogados"), names.map(name => /*#__PURE__*/React.createElement("div", {
     key: name,
-    className: "eb-field"
+    className: "eb-field",
+    onFocus: () => onFieldFocus && onFieldFocus(name)
   }, /*#__PURE__*/React.createElement("label", {
     className: "eb-field-label"
   }, name, " ", /*#__PURE__*/React.createElement("span", {
@@ -84597,14 +84807,15 @@ function UncatalogedSlotsSection({
 function PropertiesPanel({
   node,
   onChangeSlot,
-  onAddRawSlot
+  onAddRawSlot,
+  onFieldFocus
 }) {
   if (!node) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-props"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "selecione um nó na árvore"));
+    }, "selecione um n\xF3 na \xE1rvore"));
   }
   if (node.isText) {
     return /*#__PURE__*/React.createElement("div", {
@@ -84615,7 +84826,7 @@ function PropertiesPanel({
       className: "eb-props-title"
     }, "valor de texto")), /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "edite o valor direto na árvore."));
+    }, "edite o valor direto na \xE1rvore."));
   }
   const entry = CATALOG_BY_FACTORY[node.factory];
   if (!entry) {
@@ -84632,11 +84843,12 @@ function PropertiesPanel({
       className: "eb-unknown-badge"
     }, "?")), /*#__PURE__*/React.createElement("p", {
       className: "eb-runtime-note"
-    }, "classe NÃO catalogada -- não reconhecida pelo catálogo gerado (erro de digitação, classe em desenvolvimento, ou plugin de terceiro nunca introspectado). Os valores abaixo foram preservados byte-fiéis a partir do .edl carregado; edite como texto bruto, exatamente como deve sair no arquivo.")), /*#__PURE__*/React.createElement(UncatalogedSlotsSection, {
+    }, "classe N\xC3O catalogada -- n\xE3o reconhecida pelo cat\xE1logo gerado (erro de digita\xE7\xE3o, classe em desenvolvimento, ou plugin de terceiro nunca introspectado). Os valores abaixo foram preservados byte-fi\xE9is a partir do .edl carregado; edite como texto bruto, exatamente como deve sair no arquivo.")), /*#__PURE__*/React.createElement(UncatalogedSlotsSection, {
       node: node,
       names: names,
       onChangeSlot: onChangeSlot,
-      onAddRawSlot: onAddRawSlot
+      onAddRawSlot: onAddRawSlot,
+      onFieldFocus: onFieldFocus
     }));
   }
   const leafSlots = entry.slots.filter(isLeafSlot);
@@ -84656,19 +84868,20 @@ function PropertiesPanel({
     className: "eb-muted"
   }, "origem: ", originLabel(entry.origin)), entry.runtimeOnly && /*#__PURE__*/React.createElement("p", {
     className: "eb-runtime-note"
-  }, "classe descoberta em RUNTIME (plugin de terceiros em ", /*#__PURE__*/React.createElement("code", null, "plugins/"), ", sem fonte C++ neste repositório) — cadeia de herança e nomes de slot vêm de verdade, mas um slot marcado ", /*#__PURE__*/React.createElement("span", {
+  }, "classe descoberta em RUNTIME (plugin de terceiros em ", /*#__PURE__*/React.createElement("code", null, "plugins/"), ", sem fonte C++ neste reposit\xF3rio) \u2014 cadeia de heran\xE7a e nomes de slot v\xEAm de verdade, mas um slot marcado ", /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge"
-  }, "?"), " teve o TIPO adivinhado (texto ou número); confira contra a documentação do plugin antes de confiar no valor.")), leafSlots.length === 0 && extraNames.length === 0 && /*#__PURE__*/React.createElement("p", {
+  }, "?"), " teve o TIPO adivinhado (texto ou n\xFAmero); confira contra a documenta\xE7\xE3o do plugin antes de confiar no valor.")), leafSlots.length === 0 && extraNames.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "eb-muted"
-  }, "esta classe não tem slot de valor direto."), leafSlots.map(slotDef => /*#__PURE__*/React.createElement("div", {
+  }, "esta classe n\xE3o tem slot de valor direto."), leafSlots.map(slotDef => /*#__PURE__*/React.createElement("div", {
     key: slotDef.name,
-    className: "eb-field"
+    className: "eb-field",
+    onFocus: () => onFieldFocus && onFieldFocus(slotDef.name)
   }, /*#__PURE__*/React.createElement("label", {
     className: "eb-field-label",
     title: slotDef.comment
   }, slotDef.name, slotDef.isReference && /*#__PURE__*/React.createElement("span", {
     className: "eb-ref-badge",
-    title: "referência por nome, resolvida em runtime"
+    title: "refer\xEAncia por nome, resolvida em runtime"
   }, "#"), slotDef.typeUnknown && /*#__PURE__*/React.createElement("span", {
     className: "eb-unknown-badge",
     title: "tipo adivinhado -- classe de terceiro sem fonte C++, confira com cuidado"
@@ -84680,7 +84893,8 @@ function PropertiesPanel({
     node: node,
     names: extraNames,
     onChangeSlot: onChangeSlot,
-    onAddRawSlot: onAddRawSlot
+    onAddRawSlot: onAddRawSlot,
+    onFieldFocus: onFieldFocus
   }));
 }
 
@@ -84707,14 +84921,14 @@ function MapPanel({
       className: "eb-pane eb-map"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nada para mostrar -- crie um cenário na aba Árvore primeiro."));
+    }, "nada para mostrar -- crie um cen\xE1rio na aba \xC1rvore primeiro."));
   }
   if (placements.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-map"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nenhum player (Aircraft/GuidedMissile/...) neste cenário ainda."));
+    }, "nenhum player (Aircraft/GuidedMissile/...) neste cen\xE1rio ainda."));
   }
   const norths = placements.map(p => p.north);
   const easts = placements.map(p => p.east);
@@ -84759,11 +84973,11 @@ function MapPanel({
     className: "eb-map-title"
   }, "Mapa (topo, norte para cima)"), /*#__PURE__*/React.createElement("span", {
     className: "eb-muted"
-  }, placements.length, " player(es) · grade a cada ", stepNm, " NM")), /*#__PURE__*/React.createElement("svg", {
+  }, placements.length, " player(es) \xB7 grade a cada ", stepNm, " NM")), /*#__PURE__*/React.createElement("svg", {
     className: "eb-map-svg",
     viewBox: `0 0 ${W} ${H}`,
     role: "img",
-    "aria-label": "mapa do cenário"
+    "aria-label": "mapa do cen\xE1rio"
   }, /*#__PURE__*/React.createElement("rect", {
     x: 0,
     y: 0,
@@ -84820,7 +85034,7 @@ function MapPanel({
     }, p.label));
   })), /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-map-hint"
-  }, "posição local (norte/leste, relativa ao ponto de referência da Station) lida de initXPos/initYPos/initAlt de cada player -- não é latitude/longitude real. Sem essas posições definidas, o player aparece na origem (0, 0). Clique num marcador para selecioná-lo na aba Árvore/no painel de propriedades."));
+  }, "posi\xE7\xE3o local (norte/leste, relativa ao ponto de refer\xEAncia da Station) lida de initXPos/initYPos/initAlt de cada player -- n\xE3o \xE9 latitude/longitude real. Sem essas posi\xE7\xF5es definidas, o player aparece na origem (0, 0). Clique num marcador para selecion\xE1-lo na aba \xC1rvore/no painel de propriedades."));
 }
 
 /* ------------------------------ itens em aberto ----------------------------- */
@@ -84854,20 +85068,20 @@ function OpenIssuesPanel({
       className: "eb-pane eb-pending"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-muted eb-empty-msg"
-    }, "nada para conferir -- crie um cenário na aba Árvore primeiro."));
+    }, "nada para conferir -- crie um cen\xE1rio na aba \xC1rvore primeiro."));
   }
   if (issues.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "eb-pane eb-pending"
     }, /*#__PURE__*/React.createElement("p", {
       className: "eb-ok-msg"
-    }, "✓ nada em aberto -- nenhum placeholder de template ficou por substituir."));
+    }, "\u2713 nada em aberto -- nenhum placeholder de template ficou por substituir."));
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-pending"
   }, /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-pending-summary"
-  }, issues.length, " item(ns) em aberto -- clique para ir até o cartão:"), /*#__PURE__*/React.createElement("ul", {
+  }, issues.length, " item(ns) em aberto -- clique para ir at\xE9 o cart\xE3o:"), /*#__PURE__*/React.createElement("ul", {
     className: "eb-pending-list"
   }, issues.map((p, i) => /*#__PURE__*/React.createElement("li", {
     key: i,
@@ -84900,41 +85114,265 @@ function slugify(name) {
 // disco fora do download do navegador) -- por isso o nome vira parte do
 // nome sugerido do download (Chrome cria as subpastas dentro de Downloads/)
 // E aparece como texto, pra quem for mover o arquivo saber exatamente onde
-// ele precisa cair pra `-folder ./sandbox` enxergar o cenário.
-// A File System Access API (showDirectoryPicker/getDirectoryHandle/
-// getFileHandle/createWritable) está disponível em Chrome/Edge mesmo
-// abrindo este .html direto por `file://` (confirmado rodando: window.
-// isSecureContext e' true nos dois casos, file:// e http://localhost --
-// Chromium trata file: como contexto seguro). Ausente no Firefox -- daí o
-// feature-detect: com ela, "Exportar .edl" ESCREVE direto em
-// sandbox/<nome>/configs/scenario.edl (a MESMA pasta que `./app -folder
-// ./sandbox` já varre, sem passo manual de mover o arquivo baixado); sem
-// ela, cai no download de sempre, que só pode SUGERIR esse caminho como
-// nome do arquivo (Chrome/Firefox então criam a subpasta dentro de
-// Downloads/, não no repositório).
+// ele precisa cair pra `-folder ./sandbox` enxergar o cenário. DELIBERADO:
+// esta ferramenta não oferece "escolher uma pasta" nenhuma (nem pra
+// cenário, nem pra preset) -- só download, sempre pro mesmo caminho
+// sugerido; simplicidade e previsibilidade venceram a conveniência de
+// escrever direto no disco (que a File System Access API permitiria, mas
+// só em Chrome/Edge, com um fluxo de permissão a mais pra explicar).
+//
+// Extensão do arquivo: `.edl` normalmente, `.edl.in` quando o cenário ainda
+// tem placeholder de template (`@TOKEN@` literal, aba Abertos) -- um
+// arquivo assim NÃO é um `.edl` válido pro parser real (que rejeitaria o
+// `@TOKEN@` como token desconhecido), é um TEMPLATE ainda por preencher, e
+// a extensão precisa dizer isso -- mesma convenção já usada em todo o
+// repositório (`scenario.edl.in` vira `scenario.edl` só depois de resolvido,
+// ver `app::ScenarioTemplate`/CLAUDE.md). Vale pro cenário completo E pro
+// preset -- as duas coisas são o MESMO tipo de arquivo.
+function edlExtension(hasOpenIssues) {
+  return hasOpenIssues ? "edl.in" : "edl";
+}
+
+// Precisa estar ANEXADO ao document pra disparar o download com confiança
+// em todo navegador -- um <a> solto (nunca inserido no DOM) funciona na
+// maioria dos casos, mas é o padrão conhecidamente frágil (Firefox, em
+// particular, documenta clique sintético em elemento fora da árvore como
+// não confiável). E revogar o blob: URL na MESMA tarefa síncrona do
+// clique é a OUTRA armadilha clássica desta técnica -- click() dispara o
+// download de forma assíncrona por baixo; revogar cedo demais corrompe/
+// cancela o download em alguns navegadores. Por isso o `setTimeout` antes
+// de revogar, e o elemento só é removido do DOM depois do clique, não
+// antes.
+//
+// NENHUM dos dois consertos acima resolveu o problema relatado -- então
+// isto para de depender só de Blob+<a download>+click() dar certo em
+// silêncio. Devolve true/false (sucesso conhecido) e SEMPRE tenta um
+// segundo caminho antes de desistir: window.open() com um data: URI puro
+// -- não depende de Blob nem de URL.createObjectURL, só do próprio
+// window.open (a API mais antiga e mais amplamente suportada que existe
+// pra "tirar texto do JS pra fora da página"), então funciona mesmo num
+// ambiente onde Blob esteja bloqueado/ausente por algum motivo que não dá
+// pra prever daqui. Se os DOIS falharem, quem chama mostra um aviso
+// explícito apontando pra prévia (que já é sempre selecionável/copiável --
+// user-select:none só no número de linha, ver .eb-edl-lineno) como
+// caminho garantido de qualquer forma.
+function downloadTextFile(text, filename) {
+  try {
+    const blob = new Blob([text], {
+      type: "text/plain"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch (err) {
+    try {
+      const opened = window.open("data:text/plain;charset=utf-8," + encodeURIComponent(text), "_blank");
+      return !!opened;
+    } catch (err2) {
+      return false;
+    }
+  }
+}
+
+// Escreve DIRETO em disco via File System Access API -- feature-detectado
+// (Chrome/Edge têm, Firefox não: daí o feature-detect em vez de assumir).
+// `pathParts` é a cadeia de subpastas a partir do handle já concedido
+// (ex.: [slug, "configs"] pra sandbox/<slug>/configs/); cada uma é
+// criada sob demanda (`{create:true}`) -- é assim que "Escolher pasta
+// sandbox/" (a pasta RAIZ) mais um `slug` digitado no campo de nome
+// resultam em sandbox/<slug>/configs/scenario.edl sem o usuário escolher
+// a subpasta toda vez. Lança se a permissão da pasta tiver expirado
+// (handle não sobrevive a um F5, e o usuário pode ter revogado a
+// permissão do navegador) -- quem chama trata isso com fallback pra
+// download, nunca deixa o erro subir pra UI crua.
 const HAS_FS_ACCESS = typeof window !== "undefined" && "showDirectoryPicker" in window;
-async function writeEdlIntoSandbox(sandboxDirHandle, slug, text) {
-  const scenarioDir = await sandboxDirHandle.getDirectoryHandle(slug, {
-    create: true
-  });
-  const configsDir = await scenarioDir.getDirectoryHandle("configs", {
-    create: true
-  });
-  const fileHandle = await configsDir.getFileHandle("scenario.edl", {
+async function writeFileIntoDir(dirHandle, pathParts, filename, text) {
+  let dir = dirHandle;
+  for (const part of pathParts) {
+    dir = await dir.getDirectoryHandle(part, {
+      create: true
+    });
+  }
+  const fileHandle = await dir.getFileHandle(filename, {
     create: true
   });
   const writable = await fileHandle.createWritable();
   await writable.write(text);
   await writable.close();
 }
+
+// "Meus presets" -- preset_<nome>.<edl|edl.in>, baixado pelo navegador
+// (mesmo mecanismo de "Exportar .edl" acima, nunca escreve em disco
+// direto). NÃO é o mesmo botão que "Carregar preset" na barra de
+// ferramentas (esse carrega o ÚNICO cenário de exemplo embutido no build,
+// built-in_mixr_1) -- por isso o rótulo aqui é "Meus presets": tantos
+// quanto o usuário quiser salvar. Reabrir um preset já salvo é o mesmo
+// "Carregar .edl" de sempre (é só um .edl/.edl.in como outro qualquer) --
+// ver src/ui/presets/README.md pra convenção de onde guardá-los.
+// Colapsada por padrão (persistido, mesmo padrão da paleta) -- é uma ação
+// SECUNDÁRIA (a primária é "Exportar .edl", sempre visível no cabeçalho),
+// e a versão anterior (sempre aberta, com rótulo+hint em texto solto)
+// competia por altura com a própria prévia .edl logo abaixo -- ver
+// eb-edl-preview: flex:1 só sobra o que os irmãos ACIMA não usam, então
+// "Meus presets" sempre aberta empurrava a prévia pra baixo à toa na
+// maioria das sessões, que nem chegam a usar a seção.
+function PresetsSection({
+  root,
+  text,
+  slug,
+  ext
+}) {
+  const [presetName, setPresetName] = useState("");
+  const [warn, setWarn] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("mx-edl-builder-presets-collapsed") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("mx-edl-builder-presets-collapsed", collapsed ? "1" : "0");
+    } catch {/* sem storage -- ok */}
+  }, [collapsed]);
+  // Handle de diretório PRÓPRIO desta seção -- não o de ExportPanel (são
+  // pastas diferentes: sandbox/<nome>/configs/ vs. onde quer que o usuário
+  // guarde os presets, sugerido src/ui/presets/ mas não presumido). Não
+  // sobrevive a um F5 (a API não persiste o handle) -- reescolher é
+  // barato (um clique) e evita reconfirmar permissão via IndexedDB.
+  const [dirHandle, setDirHandle] = useState(null);
+  const chooseFolder = async () => {
+    try {
+      const handle = await window.showDirectoryPicker({
+        mode: "readwrite"
+      });
+      setDirHandle(handle);
+      setWarn(null);
+    } catch (err) {
+      // usuário cancelou o seletor -- sem erro, sem aviso
+    }
+  };
+  const saveAsPreset = async () => {
+    if (!isAscii(text)) {
+      setWarn("Não é possível salvar: o cenário tem caractere fora de ASCII -- corrija e tente de novo.");
+      return;
+    }
+    const filename = `preset_${slugify(presetName) || slug}.${ext}`;
+    setMsg(null);
+    let fallbackWarn = null;
+    if (dirHandle) {
+      try {
+        await writeFileIntoDir(dirHandle, [], filename, text);
+        setWarn(null);
+        setMsg(`✓ salvo como ${filename} na pasta escolhida`);
+        return;
+      } catch (err) {
+        fallbackWarn = "Não consegui escrever na pasta escolhida (a permissão pode ter expirado) -- baixando em vez disso.";
+      }
+    }
+    setWarn(fallbackWarn);
+    if (downloadTextFile(text, filename)) {
+      setMsg(`✓ baixado como ${filename}`);
+    } else if (!fallbackWarn) {
+      setWarn("Não consegui iniciar o download por nenhum caminho disponível neste navegador -- " + "selecione o texto na prévia abaixo e copie manualmente.");
+    }
+  };
+  if (collapsed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "eb-presets eb-presets-collapsed"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "eb-btn eb-btn-sm",
+      onClick: () => setCollapsed(false)
+    }, "\u25B8 Meus presets"));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "eb-presets"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eb-presets-head"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "eb-props-subhead"
+  }, "Meus presets"), /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm",
+    onClick: () => setCollapsed(true)
+  }, "\u25BE recolher")), /*#__PURE__*/React.createElement("div", {
+    className: "eb-row eb-presets-save"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "eb-input",
+    type: "text",
+    placeholder: `nome do preset (padrão: ${slug})`,
+    value: presetName,
+    title: dirHandle ? `salva direto como preset_${slugify(presetName) || slug}.${ext} na pasta escolhida` : `baixa como preset_${slugify(presetName) || slug}.${ext}; mova pra src/ui/presets/ se quiser manter organizado -- reabra com "Carregar .edl"`,
+    onChange: e => setPresetName(e.target.value)
+  }), HAS_FS_ACCESS && !dirHandle && /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm",
+    onClick: chooseFolder,
+    title: "escolher uma pasta (ex.: src/ui/presets/) pra salvar direto, sem download"
+  }, "Escolher pasta\u2026"), /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm",
+    disabled: !root,
+    onClick: saveAsPreset
+  }, dirHandle ? "Salvar na pasta escolhida" : "Salvar como preset")), dirHandle && /*#__PURE__*/React.createElement("p", {
+    className: "eb-muted eb-fsaccess-status"
+  }, "pasta escolhida \u2713"), warn && /*#__PURE__*/React.createElement("p", {
+    className: "eb-warn"
+  }, warn), msg && !warn && /*#__PURE__*/React.createElement("p", {
+    className: "eb-ok-msg"
+  }, msg));
+}
+
+// Monta as linhas prontas pra renderizar na prévia .edl -- uma por linha de
+// texto (splitTokensIntoLines/computeLineRanges, edl_builder_core.js), cada
+// uma já com a marcação de numeração (o ÍNDICE, 1-based na hora de exibir)
+// e se ela entra no destaque do nó selecionado. Destaque é POR LINHA, não
+// por caractere: a linha inteira entra se o intervalo dela SOBREPÕE
+// highlightRange, mesmo que só parcialmente (ex.: a linha onde um slot de
+// objeto único abre, "dynamicsModel: ( JSBSimModel", entra inteira mesmo o
+// span só começando no '(') -- é isso que faz o destaque virar um
+// RETÂNGULO uniforme (mesma largura em toda linha tocada, até o fim dela),
+// em vez de abraçar só o texto exato do span.
+function buildPreviewLines(text, tokens, highlightRange) {
+  const tokenLines = splitTokensIntoLines(tokens);
+  const ranges = computeLineRanges(text);
+  return tokenLines.map((lineTokens, i) => {
+    const [ls, le] = ranges[i] || [0, 0];
+    const highlighted = !!highlightRange && ls < highlightRange[1] && le > highlightRange[0];
+    return {
+      tokens: lineTokens,
+      highlighted
+    };
+  });
+}
 function ExportPanel({
-  root
+  root,
+  hasOpenIssues,
+  selectedId,
+  focusedSlotName
 }) {
   const [warn, setWarn] = useState(null);
   const [saved, setSaved] = useState(null);
+  // 'download' | 'write' -- de qual caminho veio o `saved` acima, só pra
+  // fraseá-lo certo ("baixado" vs. "salvo em") sem duas variáveis de
+  // mensagem separadas.
+  const [savedVia, setSavedVia] = useState("download");
   const [name, setName] = useState(() => {
     try {
-      return localStorage.getItem("mx-edl-builder-scenario-name") || "";
+      const stored = localStorage.getItem("mx-edl-builder-scenario-name") || "";
+      // Migração de uma vez: "apaga" era o valor DIGITADO numa sessão de
+      // teste, persistido sem querer -- e por causa disso reabria
+      // pré-preenchido pra sempre (é exatamente o pedido, ainda de uma
+      // passada antiga, "não adote nome default de apaga"). Tratado como
+      // "nunca digitado" aqui pra cair no fallback de baixo ("base"), em
+      // vez de ficar preso em "apaga" indefinidamente.
+      return stored === "apaga" ? "" : stored;
     } catch {
       return "";
     }
@@ -84944,78 +85382,104 @@ function ExportPanel({
       localStorage.setItem("mx-edl-builder-scenario-name", name);
     } catch {/* sem storage -- ok */}
   }, [name]);
-  // O handle da pasta sandbox/ só vive NESTA aba/sessão (a API não promete
-  // persistência entre recarregamentos sem um passo extra de IndexedDB, que
-  // teria de re-pedir permissão de qualquer forma) -- por isso é estado
-  // local, não localStorage: escolher de novo a cada sessão é o preço
-  // aceitável por nunca escrever fora de onde o usuário apontou.
+  // Handle de diretório concedido UMA vez por sessão (não sobrevive a um
+  // F5) para escrever DIRETO em sandbox/<slug>/configs/ -- a pasta em si
+  // é sempre a mesma (a raiz do repositório dá acesso a sandbox/ pelo
+  // seletor), só o SLUG (do campo de nome, abaixo) muda qual subpasta é
+  // criada/reescrita a cada exportação; o usuário nunca escolhe uma pasta
+  // arbitrária a cada clique -- só concede acesso à raiz uma vez.
   const [sandboxDirHandle, setSandboxDirHandle] = useState(null);
-  const text = useMemo(() => projectToEdl(root, CATALOG_BY_FACTORY), [root]);
+  const chooseSandboxFolder = async () => {
+    try {
+      const handle = await window.showDirectoryPicker({
+        mode: "readwrite"
+      });
+      setSandboxDirHandle(handle);
+      setWarn(null);
+    } catch (err) {
+      // usuário cancelou o seletor -- sem erro, sem aviso
+    }
+  };
+  // 'spans' mapeia todo nó REAL da árvore pro trecho [start,end) que ele
+  // ocupa em `text` -- é o que permite destacar, na prévia, exatamente a
+  // região do nó selecionado na árvore (ver highlightRange/scrollRef
+  // abaixo). projectToEdl continua existindo com o MESMO contrato (usado
+  // em PresetsSection/PropertiesPanel de outras telas) -- aqui se usa a
+  // variante com spans porque é a ÚNICA consumidora que precisa deles.
+  const {
+    text,
+    spans
+  } = useMemo(() => projectToEdlWithSpans(root, CATALOG_BY_FACTORY), [root]);
   // Mesma gramatica de .vscode/extensions/edl/syntaxes/edl.tmLanguage.json,
   // portada em JS puro (tokenizeEdlText, edl_builder_core.js) -- so' pra
   // colorir a previa, nao muda o texto exportado em nada (o download usa
   // `text` cru, nunca os tokens).
   const tokens = useMemo(() => tokenizeEdlText(text), [text]);
-  const slug = slugify(name) || "meu-cenario";
-  const relPath = `sandbox/${slug}/configs/scenario.edl`;
-  const chooseSandboxFolder = async () => {
-    setWarn(null);
-    setSaved(null);
-    try {
-      const handle = await window.showDirectoryPicker({
-        id: "mixr-edl-sandbox",
-        mode: "readwrite"
+  // undefined (Map.get de um id que não está na árvore atual -- pode
+  // acontecer num instante entre trocar de árvore e o próximo redesenho)
+  // vira null, não undefined -- só pra o resto do componente ter um único
+  // valor "nada selecionado" pra checar. Com um CAMPO focado no painel de
+  // propriedades (focusedSlotName), prefere o span GRANULAR daquele slot
+  // (chave "<id>#<slot>", ver pushLeafLine em edl_builder_core.js) -- só a
+  // linha do campo que está sendo editado, não o bloco do nó inteiro; sem
+  // campo focado (ou se o slot não tiver span próprio -- ex.: um papel que
+  // na verdade é um nó filho, não uma folha), cai pro span do nó inteiro,
+  // o comportamento de sempre.
+  const highlightRange = selectedId != null && (focusedSlotName && spans.get(`${selectedId}#${focusedSlotName}`) || spans.get(selectedId)) || null;
+  // Uma entrada por LINHA (numeração + se ela entra no retângulo de
+  // destaque) -- recalculada quando o texto OU a seleção mudam (trocar de
+  // nó selecionado sem editar nada já muda qual linha está destacada).
+  const previewLines = useMemo(() => buildPreviewLines(text, tokens, highlightRange), [text, tokens, highlightRange]);
+  // Largura do gutter de numeração cresce com o total de linhas (cenário de
+  // 800 linhas precisa de 3 dígitos; um vazio/pequeno não desperdiça
+  // espaço com dígitos de sobra) -- mesmo princípio de qualquer IDE.
+  const linenoWidth = String(previewLines.length).length;
+  const highlightRef = useRef(null);
+  // 'start', não 'nearest' -- a PRIMEIRA linha destacada tem que ficar o
+  // mais perto possível do limite SUPERIOR da prévia, sempre que a seleção
+  // muda (ou o texto, ao editar) -- não só "rolar o mínimo pra aparecer
+  // em algum lugar da tela" (que é o que 'nearest' fazia, podendo deixar a
+  // linha bem no rodapé se ela tivesse entrando por baixo). Se a linha já
+  // estiver perto do fim do documento (sem conteúdo suficiente abaixo dela
+  // pra rolar até o topo de verdade), o navegador rola o quanto der -- é
+  // o próprio sentido de "o mais próximo possível".
+  useEffect(() => {
+    if (highlightRef.current && highlightRef.current.scrollIntoView) {
+      highlightRef.current.scrollIntoView({
+        block: "start",
+        behavior: "smooth"
       });
-      setSandboxDirHandle(handle);
-    } catch (err) {
-      if (err && err.name !== "AbortError") {
-        setWarn("Não consegui abrir o seletor de pasta: " + err.message);
-      }
     }
-  };
-  const downloadFallback = () => {
-    const blob = new Blob([text], {
-      type: "text/plain"
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = relPath;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setSaved(null);
-  };
+  }, [selectedId, root, focusedSlotName]);
+  const slug = slugify(name) || "base";
+  // .edl.in em vez de .edl enquanto sobrar placeholder de template (aba
+  // Abertos) -- ver o comentário de edlExtension() acima.
+  const ext = edlExtension(hasOpenIssues);
+  const relPath = `sandbox/${slug}/configs/scenario.${ext}`;
   const exportEdl = async () => {
     if (!isAscii(text)) {
       setWarn("Exportação BLOQUEADA: o cenário tem caractere fora de ASCII (acento, etc.). " + "Um único caractere assim, em qualquer lugar do arquivo, faz o parser real do MIXR " + "rejeitar o arquivo inteiro. Troque o texto pelo equivalente sem acento e exporte de novo.");
       return;
     }
-    setWarn(null);
-    if (!sandboxDirHandle) {
-      downloadFallback();
-      return;
-    }
-    try {
-      // 'readwrite' já foi concedido em chooseSandboxFolder(); queryPermission
-      // confirma que ainda vale (o usuário pode ter revogado pelo próprio
-      // navegador entre um export e outro) sem precisar pedir de novo à toa.
-      const perm = await sandboxDirHandle.queryPermission({
-        mode: "readwrite"
-      });
-      if (perm !== "granted") {
-        const reasked = await sandboxDirHandle.requestPermission({
-          mode: "readwrite"
-        });
-        if (reasked !== "granted") {
-          setWarn("Permissão de escrita em sandbox/ não concedida -- exportado por download em vez disso.");
-          downloadFallback();
-          return;
-        }
+    setSaved(null);
+    let fallbackWarn = null;
+    if (sandboxDirHandle) {
+      try {
+        await writeFileIntoDir(sandboxDirHandle, [slug, "configs"], `scenario.${ext}`, text);
+        setWarn(null);
+        setSavedVia("write");
+        setSaved(relPath);
+        return;
+      } catch (err) {
+        fallbackWarn = `Não consegui escrever em ./${relPath} (a permissão da pasta pode ter expirado) -- baixando em vez disso.`;
       }
-      await writeEdlIntoSandbox(sandboxDirHandle, slug, text);
+    }
+    setWarn(fallbackWarn);
+    if (downloadTextFile(text, relPath)) {
+      setSavedVia("download");
       setSaved(relPath);
-    } catch (err) {
-      setWarn("Falha ao salvar em " + relPath + ": " + err.message + " -- exportado por download em vez disso.");
-      downloadFallback();
+    } else if (!fallbackWarn) {
+      setWarn("Não consegui iniciar o download por nenhum caminho disponível neste navegador -- " + "selecione o texto na prévia abaixo (o número da linha não entra na seleção) e copie manualmente.");
     }
   };
   return /*#__PURE__*/React.createElement("div", {
@@ -85024,40 +85488,69 @@ function ExportPanel({
     className: "eb-export-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "eb-export-title"
-  }, "⤓ Pré-visualização .edl"), /*#__PURE__*/React.createElement("span", {
-    className: "eb-row"
-  }, HAS_FS_ACCESS && /*#__PURE__*/React.createElement("button", {
-    className: "eb-btn eb-btn-sm",
-    onClick: chooseSandboxFolder,
-    title: "Escolher a pasta sandbox/ deste repositório -- uma vez por sessão"
-  }, sandboxDirHandle ? "✓ pasta sandbox/ escolhida" : "Escolher pasta sandbox/…"), /*#__PURE__*/React.createElement("button", {
-    className: "eb-btn",
-    disabled: !root,
-    onClick: exportEdl
-  }, sandboxDirHandle ? "Salvar em sandbox/" : "Exportar .edl"))), /*#__PURE__*/React.createElement("div", {
-    className: "eb-export-path"
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "eb-field-label",
-    htmlFor: "eb-scenario-name"
-  }, "nome do cenário (pasta em ", /*#__PURE__*/React.createElement("code", null, "sandbox/"), ")"), /*#__PURE__*/React.createElement("input", {
+  }, "\u2913 Pr\xE9-visualiza\xE7\xE3o .edl"), /*#__PURE__*/React.createElement("span", {
+    className: "eb-row eb-export-controls"
+  }, /*#__PURE__*/React.createElement("input", {
     id: "eb-scenario-name",
-    className: "eb-input",
+    className: "eb-input eb-export-name",
     type: "text",
     value: name,
-    placeholder: "meu-cenario",
+    placeholder: "nome do cen\xE1rio",
+    "aria-label": "nome do cen\xE1rio (pasta em sandbox/)",
+    title: sandboxDirHandle ? `salva direto em ./${relPath}` : `baixa como ./${relPath}`,
     onChange: e => setName(e.target.value)
-  }), /*#__PURE__*/React.createElement("p", {
+  }), HAS_FS_ACCESS && !sandboxDirHandle && /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm",
+    onClick: chooseSandboxFolder,
+    title: "escolher a pasta sandbox/ do reposit\xF3rio pra salvar direto, sem download"
+  }, "Escolher pasta sandbox/\u2026"), /*#__PURE__*/React.createElement("button", {
+    className: "eb-btn eb-btn-sm",
+    disabled: !root,
+    onClick: exportEdl
+  }, sandboxDirHandle ? "Salvar em sandbox/" : `Exportar .${ext}`))), sandboxDirHandle && /*#__PURE__*/React.createElement("p", {
+    className: "eb-muted eb-fsaccess-status"
+  }, "pasta sandbox/ escolhida \u2713 -- salva direto em ./", relPath), hasOpenIssues && /*#__PURE__*/React.createElement("p", {
     className: "eb-muted eb-export-path-hint"
-  }, sandboxDirHandle ? /*#__PURE__*/React.createElement(React.Fragment, null, "salva DIRETO em ", /*#__PURE__*/React.createElement("code", null, relPath), " (dentro da pasta escolhida) -- pronto para ", /*#__PURE__*/React.createElement("code", null, "./app -folder ./sandbox"), ".") : HAS_FS_ACCESS ? /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), " (Downloads/); clique em “Escolher pasta sandbox/…” acima para salvar direto no repositório.") : /*#__PURE__*/React.createElement(React.Fragment, null, "baixa como ", /*#__PURE__*/React.createElement("code", null, "./", relPath), "."))), warn && /*#__PURE__*/React.createElement("p", {
+  }, "Extens\xE3o ", /*#__PURE__*/React.createElement("code", null, ".edl.in"), " porque ainda h\xE1 placeholder de template pendente (aba \"Abertos\")."), warn && /*#__PURE__*/React.createElement("p", {
     className: "eb-warn"
   }, warn), saved && !warn && /*#__PURE__*/React.createElement("p", {
     className: "eb-ok-msg"
-  }, "✓ salvo em ", /*#__PURE__*/React.createElement("code", null, saved)), /*#__PURE__*/React.createElement("pre", {
+  }, savedVia === "write" ? "✓ salvo em " : "✓ baixado como ", /*#__PURE__*/React.createElement("code", null, saved)), /*#__PURE__*/React.createElement(PresetsSection, {
+    root: root,
+    text: text,
+    slug: slug,
+    ext: ext
+  }), /*#__PURE__*/React.createElement("div", {
     className: "eb-edl-preview"
-  }, text ? tokens.map((t, i) => t.cls ? /*#__PURE__*/React.createElement("span", {
-    key: i,
-    className: t.cls
-  }, t.text) : t.text) : "(cenário vazio -- arraste uma classe para começar)"));
+  }, text ? /*#__PURE__*/React.createElement("div", {
+    className: "eb-edl-lines",
+    style: {
+      "--eb-lineno-w": `${linenoWidth}ch`
+    }
+  }, (() => {
+    let refAssigned = false;
+    return previewLines.map((line, i) => {
+      let ref;
+      if (line.highlighted && !refAssigned) {
+        ref = highlightRef;
+        refAssigned = true;
+      }
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        ref: ref,
+        className: "eb-edl-line" + (line.highlighted ? " eb-edl-line-highlight" : "")
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "eb-edl-lineno"
+      }, i + 1), /*#__PURE__*/React.createElement("span", {
+        className: "eb-edl-linecontent"
+      }, line.tokens.map((t, j) => t.cls ? /*#__PURE__*/React.createElement("span", {
+        key: j,
+        className: t.cls
+      }, t.text) : t.text)));
+    });
+  })()) : /*#__PURE__*/React.createElement("p", {
+    className: "eb-muted eb-empty-msg eb-edl-empty"
+  }, "(cen\xE1rio vazio -- arraste uma classe para come\xE7ar)")));
 }
 
 /* -------------------------- avisos de carregamento -------------------------- */
@@ -85101,7 +85594,7 @@ const CSS = `
   --rule:#C6CDC3; --hot:#B4661E; --ok:#4A6B4F; --bad:#9C3B3B;
   --frame-bg: rgba(0,0,0,0.035); --placeholder-bg: rgba(0,0,0,0.02); --branch:#8A968D;
   --syn-comment:#7C8A82; --syn-string:#4A7A5E; --syn-class:#2C4B7C; --syn-slot:#8A5A1E;
-  --syn-bool:#B4661E; --syn-num:#6B4FA0;
+  --syn-bool:#B4661E; --syn-num:#6B4FA0; --edl-highlight-bg: rgba(180,102,30,0.22);
   --mono: ui-monospace,'JetBrains Mono','SF Mono',Menlo,monospace;
   --sans: 'Inter',system-ui,-apple-system,sans-serif;
   background:var(--paper); color:var(--ink); font-family:var(--sans);
@@ -85121,7 +85614,7 @@ const CSS = `
   --rule:#3A413B; --hot:#D98A4A; --ok:#7FBE8B; --bad:#E08A8A; color-scheme: dark;
   --frame-bg: rgba(255,255,255,0.04); --placeholder-bg: rgba(255,255,255,0.025); --branch:#6E7A73;
   --syn-comment:#7E8983; --syn-string:#8FCB9E; --syn-class:#9DBBE3; --syn-slot:#E8C284;
-  --syn-bool:#D98A4A; --syn-num:#C3ADEA;
+  --syn-bool:#D98A4A; --syn-num:#C3ADEA; --edl-highlight-bg: rgba(217,138,74,0.30);
   --origin-models-bg:#1E2A3C; --origin-models-fg:#9DBBE3;
   --origin-base-bg:#2A2C27; --origin-base-fg:#C7CAC0;
   --origin-terrain-bg:#223420; --origin-terrain-fg:#A9CC9A;
@@ -85150,6 +85643,10 @@ const CSS = `
   padding:12px 18px 24px; box-sizing:border-box; overflow:hidden; }
 .eb-pane { border:1px solid var(--rule); border-radius:2px; background:var(--panel); padding:10px; box-sizing:border-box; }
 .eb-palette { width:300px; flex-shrink:0; height:100%; overflow-y:auto; overflow-x:hidden; }
+.eb-palette-collapsed { width:30px; padding:10px 4px; display:flex; justify-content:center; overflow:hidden; }
+.eb-palette-head { display:flex; gap:6px; align-items:center; }
+.eb-palette-head .eb-input { flex:1; min-width:0; }
+.eb-palette-toggle { flex-shrink:0; }
 .eb-palette-list { margin-top:8px; }
 .eb-group-title { font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
   color:var(--muted); margin:10px 0 4px; }
@@ -85158,12 +85655,26 @@ const CSS = `
   display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .eb-chip:hover { border-color:var(--hot); }
 .eb-alias { color:var(--muted); font-style:normal; font-size:10.5px; }
-/* .eb-main: a coluna do meio -- arvore + previa .edl empilhadas, rolando
-   JUNTAS numa unica barra de rolagem propria (nunca mais um "rodape" que
-   se estende por baixo da paleta: a previa mora DENTRO desta coluna,
-   nunca mais grid-column:1/-1). */
-.eb-main { flex:1; min-width:0; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+/* .eb-main: a coluna do meio -- barra de abas (altura fixa) em cima e,
+   embaixo, .eb-main-split: TRES colunas lado a lado -- a aba ativa
+   (árvore/mapa/abertos), o painel de PROPRIEDADES do nó selecionado (saiu
+   de fora de .eb-body, à direita de tudo, pra cá) e a prévia .edl, cada
+   uma com a PRÓPRIA barra de rolagem (mesmo princípio já documentado acima pra
+   .eb-body -- nenhuma coluna "vaza" nem sobrepõe a vizinha). Nessa ordem
+   de propósito: clicar um nó na árvore (1ª coluna) mostra os campos dele
+   bem ao lado (2ª) e, mais à direita ainda, a região correspondente já vem
+   destacada na prévia (3ª, ver eb-edl-line-highlight) -- as três colunas que
+   importam pro fluxo "selecionar -> editar -> conferir" ficam ADJACENTES,
+   sem a prévia no meio quebrando a proximidade árvore<->propriedades (o
+   problema real de quando a prévia ficou entre as duas, na passada
+   anterior). .eb-main em si não rola mais: quem rola são os filhos de
+   .eb-main-split. */
+.eb-main { flex:1; min-width:0; height:100%; overflow:hidden; display:flex; flex-direction:column; gap:12px; }
 .eb-main-tabs { flex-shrink:0; }
+.eb-main-split { flex:1; min-height:0; display:flex; flex-direction:row; gap:12px; overflow:hidden; }
+.eb-main-split > .eb-pane { flex:1; height:100%; }
+.eb-main-split > .eb-tree, .eb-main-split > .eb-map, .eb-main-split > .eb-pending { min-width:0; overflow-y:auto; }
+.eb-main-split > .eb-props { flex:0 0 320px; }
 .eb-tree-utility-row { margin-left:auto; }
 .eb-tab-btn { font:inherit; font-size:12.5px; padding:5px 14px; cursor:pointer;
   border:1px solid var(--rule); border-bottom:none; background:var(--paper); color:var(--muted); border-radius:2px 2px 0 0; }
@@ -85243,19 +85754,62 @@ const CSS = `
 /* Visualmente DISTINTO da árvore acima -- borda superior grossa + fundo
    trocado (paper no lugar de panel) + título maiúsculo, pra não parecer
    "mais um cartão dentro da árvore" (era a confusão relatada): isto é uma
-   ferramenta à parte (exportar), não um nó do cenário. */
-.eb-export { flex-shrink:0; background:var(--paper); border-top:3px solid var(--hot); }
-.eb-export-head { display:flex; justify-content:space-between; align-items:center; }
+   ferramenta à parte (exportar), não um nó do cenário. Dentro de
+   .eb-main-split fica na SEGUNDA coluna, ao lado da aba ativa -- por isso
+   é coluna CHEIA (flex-direction:column, altura de .eb-main-split) com UMA
+   rolagem só dentro de .eb-edl-preview (vira flex:1 mais abaixo), não mais
+   um bloco empilhado de altura natural. */
+.eb-export { flex:1; min-width:340px; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--paper); border-top:3px solid var(--hot); }
+/* Cabeçalho numa ÚNICA linha (título + nome do cenário + botão) -- era
+   título+botão numa linha e label+input+parágrafo de dica em TRÊS linhas
+   abaixo (.eb-export-path, removida): o "pra onde salva" virou tooltip
+   (title=) no próprio campo, não texto sempre visível. Cada linha a menos
+   aqui é uma linha a mais pra .eb-edl-preview (flex:1 -- só recebe o que
+   sobra depois de tudo que vem antes dela nesta coluna). */
+.eb-export-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
 .eb-export-title { font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
-.eb-export-path { margin-top:8px; max-width:480px; }
-.eb-export-path input { margin-top:2px; }
+.eb-export-controls { flex:1; min-width:160px; justify-content:flex-end; }
+.eb-export-name { flex:1; min-width:100px; max-width:220px; }
 .eb-export-path-hint { margin:4px 0 0; }
 .eb-export-path-hint code, .eb-field-label code { font-family:var(--mono); background:var(--paper);
   border:1px solid var(--rule); border-radius:2px; padding:0 3px; }
-.eb-edl-preview { font-family:var(--mono); font-size:11.5px; background:var(--paper); border:1px solid var(--rule);
-  border-radius:2px; padding:10px; max-height:280px; overflow:auto; white-space:pre; margin-top:8px; }
-.eb-warn { color:var(--bad); font-size:12.5px; }
-.eb-ok-msg { color:var(--ok); font-size:12.5px; }
+.eb-warn { color:var(--bad); font-size:12.5px; margin:4px 0 0; }
+.eb-ok-msg { color:var(--ok); font-size:12.5px; margin:4px 0 0; }
+/* "Meus presets" -- ver PresetsSection. Colapsada por padrão (só o botão
+   de reabrir, mesma ideia da paleta) -- pelo MESMO motivo do cabeçalho
+   acima: cada linha que esta seção NÃO ocupa quando fechada é uma linha a
+   mais pra prévia. */
+.eb-presets { flex-shrink:0; margin-top:8px; padding-top:8px; border-top:1px dashed var(--rule); }
+.eb-presets-collapsed { padding-top:6px; }
+.eb-presets-head { display:flex; justify-content:space-between; align-items:center; }
+.eb-presets-save { margin-top:6px; }
+/* -------------------------- prévia .edl, estilo IDE ------------------------ */
+/* Container que rola (uma barra só, vertical E horizontal se alguma linha
+   for muito comprida) -- não é mais um <pre>: cada LINHA é um <div> próprio
+   (.eb-edl-line), o que é o que permite um destaque em RETÂNGULO por linha
+   (ver .eb-edl-line-highlight) e uma coluna de numeração (.eb-edl-lineno)
+   -- nenhum dos dois dá pra fazer com um <pre> de texto corrido. */
+.eb-edl-preview { flex:1; min-height:0; overflow:auto; margin-top:8px;
+  border:1px solid var(--rule); border-radius:2px; background:var(--paper); }
+.eb-edl-empty { padding:10px; }
+.eb-edl-lines { font-family:var(--mono); font-size:11.5px; line-height:1.6; padding:6px 0; }
+/* Cada linha e' uma LINHA DE FLEXBOX (gutter + conteudo) -- e' o bloco
+   inteiro (largura 100% do container que rola) que recebe o fundo de
+   destaque, nao o texto: e' isso que faz o destaque virar um retangulo
+   ate' o fim da linha, mesmo numa linha curta, em vez de "abracar" so' os
+   caracteres que tem conteudo. */
+.eb-edl-line { display:flex; white-space:pre; }
+.eb-edl-line-highlight { background: var(--edl-highlight-bg); }
+/* Gutter com FUNDO OPACO (var(--panel), a mesma cor da paleta/props) --
+   fica por CIMA do destaque da linha (que pinta o <div> inteiro por baixo),
+   entao o retangulo visualmente comeca DEPOIS do numero, nunca por cima
+   dele. 'position:sticky' mantem a numeracao visivel mesmo rolando pra
+   direita numa linha comprida (mesmo principio de um editor de codigo). */
+.eb-edl-lineno { flex:0 0 var(--eb-lineno-w, 3ch); box-sizing:content-box; text-align:right;
+  padding:0 10px; color:var(--muted); background:var(--paper); user-select:none;
+  border-right:1px solid var(--rule); position:sticky; left:0; }
+.eb-edl-linecontent { padding:0 10px; }
 /* Mesmas categorias de .vscode/extensions/edl/syntaxes/edl.tmLanguage.json
    (ver tokenizeEdlText, edl_builder_core.js) -- so' cor, sem negrito extra
    pesado (a fonte mono ja' e' pequena o bastante sem precisar competir). */
@@ -85377,7 +85931,36 @@ function App() {
       localStorage.setItem("mx-edl-builder-theme", theme);
     } catch {/* sem storage -- ok */}
   }, [theme]);
+  // Colapsar a paleta devolve largura pro par árvore/prévia .edl (ver
+  // .eb-main-split) sem precisar de mouse-wheel/scroll horizontal --
+  // persistido como o tema, mesmo raciocínio (preferência de sessão a
+  // sessão, não fato sobre o cenário).
+  const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("mx-edl-builder-palette-collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("mx-edl-builder-palette-collapsed", paletteCollapsed ? "1" : "0");
+    } catch {/* sem storage -- ok */}
+  }, [paletteCollapsed]);
+  const togglePalette = useCallback(() => setPaletteCollapsed(c => !c), []);
   const selectedNode = useMemo(() => findNode(root, selectedId), [root, selectedId]);
+
+  // Qual CAMPO do painel de propriedades está com foco agora -- clicar num
+  // campo pra editá-lo destaca/rola a prévia até a LINHA daquele slot
+  // especificamente (ver highlightRange em ExportPanel), não mais o bloco
+  // inteiro do nó. Reseta pra null sempre que a SELEÇÃO muda (trocar de nó
+  // na árvore) -- até focar um campo do nó novo, o destaque volta a ser o
+  // nó inteiro, o mesmo comportamento de sempre.
+  const [focusedSlotName, setFocusedSlotName] = useState(null);
+  useEffect(() => {
+    setFocusedSlotName(null);
+  }, [selectedId]);
+  const handleFieldFocus = useCallback(slotName => setFocusedSlotName(slotName), []);
   const toggleExpand = useCallback(id => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -85632,9 +86215,9 @@ function App() {
     className: "eb-bar"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
     className: "eb-h1"
-  }, "MIXR — Editor gráfico de cenário .edl"), /*#__PURE__*/React.createElement("p", {
+  }, "MIXR \u2014 Editor gr\xE1fico de cen\xE1rio .edl"), /*#__PURE__*/React.createElement("p", {
     className: "eb-sub"
-  }, EDL_CATALOG.length, " classes catalogadas, de todas as factories que este repositório de fato carrega")), /*#__PURE__*/React.createElement("div", {
+  }, EDL_CATALOG.length, " classes catalogadas, de todas as factories que este reposit\xF3rio de fato carrega")), /*#__PURE__*/React.createElement("div", {
     className: "eb-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
@@ -85657,7 +86240,7 @@ function App() {
   }), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
     onClick: handleLoadPreset,
-    title: "Carrega o cenário de exemplo (player máximo, built-in_mixr_1)"
+    title: "Carrega o cen\xE1rio de exemplo (player m\xE1ximo, built-in_mixr_1)"
   }, "Carregar preset"), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn",
     onClick: () => setTheme(t => t === "light" ? "dark" : "light")
@@ -85668,7 +86251,9 @@ function App() {
   }), /*#__PURE__*/React.createElement("div", {
     className: "eb-body"
   }, /*#__PURE__*/React.createElement(Palette, {
-    onDragStartFactory: setDragFactory
+    onDragStartFactory: setDragFactory,
+    collapsed: paletteCollapsed,
+    onToggleCollapse: togglePalette
   }), /*#__PURE__*/React.createElement("div", {
     className: "eb-main"
   }, /*#__PURE__*/React.createElement("div", {
@@ -85676,7 +86261,7 @@ function App() {
   }, /*#__PURE__*/React.createElement("button", {
     className: `eb-tab-btn${mainTab === "tree" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("tree")
-  }, "Árvore"), /*#__PURE__*/React.createElement("button", {
+  }, "\xC1rvore"), /*#__PURE__*/React.createElement("button", {
     className: `eb-tab-btn${mainTab === "map" ? " eb-tab-btn-active" : ""}`,
     onClick: () => setMainTab("map")
   }, "Mapa"), /*#__PURE__*/React.createElement("button", {
@@ -85684,18 +86269,20 @@ function App() {
     onClick: () => setMainTab("pending")
   }, "Abertos ", openIssues.length === 0 ? "✓" : `(${openIssues.length})`), uncatalogedCount > 0 && /*#__PURE__*/React.createElement("span", {
     className: "eb-uncataloged-count",
-    title: "componentes com fábrica ou slot que o catálogo não conhece -- valores preservados como texto bruto, editáveis no painel de propriedades"
-  }, uncatalogedCount, " não catalogado", uncatalogedCount > 1 ? "s" : ""), mainTab === "tree" && root && /*#__PURE__*/React.createElement("span", {
+    title: "componentes com f\xE1brica ou slot que o cat\xE1logo n\xE3o conhece -- valores preservados como texto bruto, edit\xE1veis no painel de propriedades"
+  }, uncatalogedCount, " n\xE3o catalogado", uncatalogedCount > 1 ? "s" : ""), mainTab === "tree" && root && /*#__PURE__*/React.createElement("span", {
     className: "eb-row eb-tree-utility-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "eb-btn eb-btn-sm",
     onClick: handleExpandAll,
-    title: "Expande todo nó da árvore"
+    title: "Expande todo n\xF3 da \xE1rvore"
   }, "Expandir tudo"), /*#__PURE__*/React.createElement("button", {
     className: "eb-btn eb-btn-sm",
     onClick: handleCollapseAll,
-    title: "Recolhe todo nó (a raiz continua visível)"
-  }, "Recolher tudo"))), mainTab === "tree" ? /*#__PURE__*/React.createElement("div", {
+    title: "Recolhe todo n\xF3 (a raiz continua vis\xEDvel)"
+  }, "Recolher tudo"))), /*#__PURE__*/React.createElement("div", {
+    className: "eb-main-split"
+  }, mainTab === "tree" ? /*#__PURE__*/React.createElement("div", {
     className: "eb-pane eb-tree"
   }, !root ? /*#__PURE__*/React.createElement("div", {
     className: "eb-root-drop",
@@ -85712,7 +86299,7 @@ function App() {
         setExpandedIds(new Set([node.id]));
       }
     }
-  }, "arraste uma classe que implemente Station aqui para começar (ex.: Station ou ClockStation)", /*#__PURE__*/React.createElement("div", {
+  }, "arraste uma classe que implemente Station aqui para come\xE7ar (ex.: Station ou ClockStation)", /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10
     }
@@ -85728,7 +86315,7 @@ function App() {
     style: {
       marginTop: 14
     }
-  }, "ou clique em “Carregar preset”, no topo, para abrir um cenário de exemplo já pronto")) : /*#__PURE__*/React.createElement(TreeNode, {
+  }, "ou clique em \u201CCarregar preset\u201D, no topo, para abrir um cen\xE1rio de exemplo j\xE1 pronto")) : /*#__PURE__*/React.createElement(TreeNode, {
     node: root,
     ui: ui,
     actions: actions,
@@ -85743,13 +86330,17 @@ function App() {
     root: root,
     issues: openIssues,
     onJump: handleJumpToNode
-  }), /*#__PURE__*/React.createElement(ExportPanel, {
-    root: root
-  })), /*#__PURE__*/React.createElement(PropertiesPanel, {
+  }), /*#__PURE__*/React.createElement(PropertiesPanel, {
     node: selectedNode,
     onChangeSlot: handleChangeSlot,
-    onAddRawSlot: handleAddRawSlot
-  })));
+    onAddRawSlot: handleAddRawSlot,
+    onFieldFocus: handleFieldFocus
+  }), /*#__PURE__*/React.createElement(ExportPanel, {
+    root: root,
+    hasOpenIssues: openIssues.length > 0,
+    selectedId: selectedId,
+    focusedSlotName: focusedSlotName
+  })))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
 </script>

@@ -101,6 +101,28 @@ TEST(FlightTreeNav, SemAltitudeOuVelocidadeComandadaMantemOAtual)
 }
 
 //------------------------------------------------------------------------------
+// ACHADO POR AUDITORIA (nao redescobrir): a altitude do Steerpoint e' um
+// numero ESTATICO do .edl -- sem passar por clampAltitudeToTerrain() (como
+// Patrol/RTB/Support/SlowRoll ja fazem), uma rota cujo relevo real e' mais
+// alto do que o autor do cenario assumiu leva a aeronave, em voo reto e
+// nivelado, para dentro do terreno. Medido rodando: sandbox/A4-6DOF (sem
+// nenhuma acrobacia) colide com uma serra que o perfil da rota nao previa.
+//------------------------------------------------------------------------------
+TEST(FlightTreeNav, AltitudeComandadaRespeitaOPisoDeTerrenoQuandoORelevoEMaisAltoQueARota)
+{
+   FakeDecisionContext ctx{contextoComRotaValida()};
+   ctx.snap.navCmdAltM = 1000.0;           // o que a rota pede para este trecho
+   ctx.snap.terrainValid = true;
+   ctx.snap.terrainElevM = 900.0;
+   ctx.terrainClearanceM = 500.0;          // piso = 900 + 500 = 1400 m
+   ArvoreDeNavegacao arvore{ctx};
+
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   EXPECT_NEAR(ctx.dec.command.altitudeM, 1400.0, TOL)
+      << "deveria subir ate o piso, nao manter a altitude ESTATICA da rota";
+}
+
+//------------------------------------------------------------------------------
 // Sem guiagem valida: nao ha rede de seguranca -- a arvore nao decide
 //------------------------------------------------------------------------------
 

@@ -46,6 +46,12 @@ public:
                           const double northM, const double eastM,
                           const double altitudeM, const double rangeM);
 
+   // Pedido de lancamento de missil contra um alvo nomeado -- a resolucao
+   // do nome para o Player* e o disparo em si (StoresMgr::releaseOneMissile()
+   // + AbstractWeapon::setTargetPlayer()) acontecem dentro de execute(), o
+   // UNICO ponto deste modelo que toca um objeto MIXR de arma.
+   void setLaunchRequest(const std::string& targetName);
+
 private:
    domain::FlightCommand command{};
    std::string label{"?"};
@@ -56,6 +62,9 @@ private:
    double alertEastM{};
    double alertAltitudeM{};
    double alertRangeM{};
+
+   bool launchRequested{};
+   std::string launchTargetName;
 };
 
 } // namespace xnative

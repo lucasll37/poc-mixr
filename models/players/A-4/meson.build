@@ -71,6 +71,7 @@ model_sources = files(
     # regras de negocio puras (sem MIXR, sem BehaviorTree.CPP)
     'src/domain/AerobaticPlan.cpp',
     'src/domain/geometry.cpp',
+    'src/domain/LaunchPolicy.cpp',
     'src/domain/PatrolPlan.cpp',
     'src/domain/RtbPlan.cpp',
     'src/domain/TerrainFloor.cpp',
@@ -97,6 +98,8 @@ model_sources = files(
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
+    'src/bt/nodes/LaunchEnvelopeCondition.cpp',
+    'src/bt/nodes/LaunchMissileAction.cpp',
     'src/bt/nodes/NavigateAction.cpp',
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/OnnxScoreCondition.cpp',
@@ -148,6 +151,12 @@ install_data('configs/flight_tree_nav.xml',
 # ( Navigate ) -- de tempos em tempos a aeronave larga a rota, faz um tonneau
 # e volta. Vai junto pelo mesmo motivo das outras: e do MODELO, nao do cenario.
 install_data('configs/flight_tree_random.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+
+# A arvore de DEMONSTRACAO de lancamento de missil (sandbox/A4-6DOF-MISSILE):
+# um ramo de disparo (LaunchEnvelope/LaunchMissile) a mais que flight_tree.xml,
+# NAO a arvore de producao. Vai junto pelo mesmo motivo das outras.
+install_data('configs/flight_tree_missile_demo.xml',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 
 # A arvore de DEPLOY da politica de RL e o .onnx que ela aponta. Vao junto
@@ -230,6 +239,7 @@ endif
 domain_sources = files(
     'src/domain/AerobaticPlan.cpp',
     'src/domain/geometry.cpp',
+    'src/domain/LaunchPolicy.cpp',
     'src/domain/PatrolPlan.cpp',
     'src/domain/RtbPlan.cpp',
     'src/domain/TerrainFloor.cpp',
@@ -241,6 +251,8 @@ bt_sources = files(
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
+    'src/bt/nodes/LaunchEnvelopeCondition.cpp',
+    'src/bt/nodes/LaunchMissileAction.cpp',
     'src/bt/nodes/NavigateAction.cpp',
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',

@@ -63,7 +63,7 @@ double AerobaticPlan::stick() const
    return (phase_ == Phase::Rolling) ? stickCommand_ : 0.0;
 }
 
-bool AerobaticPlan::update(const double dt, const double rollDeg)
+bool AerobaticPlan::update(const double dt, const double rollDeg, const bool safeToRoll)
 {
    // Recurso desligado (o default): nunca sai de Idle, nunca consome o RNG,
    // nunca produz comando. E' o que mantem os cenarios existentes com dump
@@ -77,10 +77,16 @@ bool AerobaticPlan::update(const double dt, const double rollDeg)
       timer_ -= dt;
       if (timer_ > 0.0) return false;
 
-      // Entra na manobra. O timer nao fica negativo: ele so volta a valer
-      // quando drawNextInterval() rodar no fim desta manobra, e ate la
-      // timeToNextSec() reportaria lixo.
+      // O timer nao fica negativo: ele so volta a valer quando
+      // drawNextInterval() rodar no fim da manobra, e ate la timeToNextSec()
+      // reportaria lixo.
       timer_ = 0.0;
+
+      // O sorteio venceu, mas sem margem de altitude a manobra fica ADIADA
+      // -- nao cancelada, nao redesenhada. Ver o comentario de update() no
+      // header para o "porque" de nao abortar no meio em vez de nao comecar.
+      if (!safeToRoll) return false;
+
       phase_ = Phase::Rolling;
       accumulatedDeg_ = 0.0;
       elapsedSec_ = 0.0;

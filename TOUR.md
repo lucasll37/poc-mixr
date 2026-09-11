@@ -68,7 +68,7 @@ tempo, e abrir o card de detalhe de uma entidade.
 
 **Objetivo:** montar um `.edl` do zero arrastando classes de uma paleta, exportar, e validar o
 resultado.
-**Onde procurar:** `src/ui/README.md`; `make open-edl-builder`.
+**Onde procurar:** `src/ui/README.md`; `make open-edl`.
 **Critério de sucesso:** exportar um `.edl` que passa sem erro em `./dist/bin/edlcheck <arquivo>`.
 
 ### 6. Editar/monitorar uma árvore de comportamento com o Groot

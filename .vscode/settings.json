@@ -5,6 +5,12 @@
     "--header-insertion=iwyu",
     "--query-driver=/usr/bin/g++,/usr/bin/gcc"
   ],
+  "files.watcherExclude": {
+    "contexts/src/**": true
+  },
+  "search.exclude": {
+    "contexts/src/**": true
+  },
   "files.associations": {
     "*.edl.in": "edl"
   },
@@ -15,5 +21,6 @@
       "task": "Run app",
       "tooltip": "Roda ./build/app/src/app -folder ./sandbox num terminal externo",
     }
-  ]
+  ],
+  "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild"
 }

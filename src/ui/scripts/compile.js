@@ -36,7 +36,7 @@
 //      fecha com o mount (ReactDOM.createRoot(...).render(...)).
 //
 // Uso: node src/ui/scripts/compile.js -- chamado automaticamente por
-// src/ui/scripts/build.js (que e' o que `make open-edl-builder` roda).
+// src/ui/scripts/build.js (que e' o que `make open-edl` roda).
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");

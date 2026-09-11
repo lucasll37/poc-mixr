@@ -58,7 +58,7 @@ normalmente sem ele, ele só recebe telemetria ao vivo por *socket*, ver "Pré-r
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução (SRTM = dados públicos de elevação de terreno, NASA) |
 | Qt5 + ZeroMQ (dev) | Qt5 ≥ 5.5, CMake ≥ 3.2 | builda o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento; só necessário se for usar o Groot (ver "Leia mais") |
 | Tacview (opcional) | Standard/Advanced | visualizador 3D de terceiros, [tacview.net](https://www.tacview.net/) — Standard é gratuito, Advanced é pago; sem ele a simulação roda normalmente, só sem visualização 3D ao vivo |
-| Node.js + npm | ≥ 18 | `make docs`, `make open-edl-builder` e `make test-ci` (`gitlab-ci-local`). Os dois primeiros baixam React/ReactDOM via `curl` e o Babel via `npm` na primeira execução — precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`; depois disso cacheiam e rodam offline. **O pacote da distro pode ser velho demais** (medido: o `apt` do Ubuntu 22.04 traz `nodejs 12.22.9`) — instale a LTS pelo NodeSource e atualize o npm em seguida, ver [`INSTALL.md`](INSTALL.md) §5. Não é dependência de *build* (o C++ compila sem ele), mas é pré-requisito do projeto — o ferramental documentado depende dele |
+| Node.js + npm | ≥ 18 | `make open-docs`, `make open-edl` e `make test-ci` (`gitlab-ci-local`). Os dois primeiros baixam React/ReactDOM via `curl` e o Babel via `npm` na primeira execução — precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`; depois disso cacheiam e rodam offline. **O pacote da distro pode ser velho demais** (medido: o `apt` do Ubuntu 22.04 traz `nodejs 12.22.9`) — instale a LTS pelo NodeSource e atualize o npm em seguida, ver [`INSTALL.md`](INSTALL.md) §5. Não é dependência de *build* (o C++ compila sem ele), mas é pré-requisito do projeto — o ferramental documentado depende dele |
 | Docker (opcional) | qualquer | só para `make test-ci` — roda o pipeline de `.gitlab-ci.yml` (que segue esta seção) num `ubuntu:24.04` limpo. Não instala Docker aqui; ver [docker.com](https://www.docker.com/) |
 
 
@@ -336,7 +336,7 @@ Três regras valem para todo subprojeto e todo modelo:
 | [`docs/estudos/snapshot-restore.md`](docs/estudos/snapshot-restore.md) | é possível salvar uma simulação no meio e retomá-la byte-idêntica? estudo de viabilidade — a resposta é sim, por reexecução, e não por captura de estado |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
 | [`docs/manual/`](docs/manual/) | visualizador do ciclo de execução MIXR e catálogo de classes (`make open-docs` — requer navegador na mesma máquina) |
-| [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl-builder` — requer navegador na mesma máquina) |
+| [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl` — requer navegador na mesma máquina) |
 | Groot (`deps/groot/`, ver `INSTALL.md` §4) | editor/monitor ao vivo de árvores de comportamento (`make open-groot` — requer display X11/Wayland na mesma máquina); diferente do `src/ui`, que edita o `.edl` inteiro, não só a árvore |
 | [`src/rl/`](src/rl/) | treinar uma política de RL contra a mesma simulação |
 | [`app/README.md`](app/README.md) | o painel de controle (TUI) por dentro |

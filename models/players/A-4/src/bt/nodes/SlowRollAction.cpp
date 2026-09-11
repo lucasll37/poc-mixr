@@ -39,7 +39,13 @@ BT::NodeStatus SlowRollAction::tick()
 
    // O plano precisa ser avancado TODO tick em que o no e' visitado -- e' o
    // 'dt' dele que faz a contagem regressiva ate a proxima manobra correr.
-   if (!plan.update(context_.behavior->getFrameDt(), view.rollDeg)) {
+   //
+   // hasAerobaticAltitudeMargin() so' pesa na BORDA Idle->Rolling (ver o
+   // comentario de AerobaticPlan::update()): sem folga suficiente, o
+   // sorteio vencido fica ADIADO, nao cancelado -- este no' so' FALHA (e a
+   // navegacao segue normal) ate a folga voltar.
+   if (!plan.update(context_.behavior->getFrameDt(), view.rollDeg,
+                     context_.behavior->hasAerobaticAltitudeMargin())) {
       return BT::NodeStatus::FAILURE;
    }
 

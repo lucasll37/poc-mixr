@@ -121,6 +121,11 @@ TEST(ArvoreRandom, AltitudeDaAcrobaciaRespeitaOPisoDeTerreno)
    ctx.snap.terrainValid = true;
    ctx.snap.terrainElevM = 800.0;
    ctx.terrainClearanceM = 500.0;          // piso = 800 + 500 = 1300 m
+   // Este teste comeca deliberadamente ABAIXO do piso (900 < 1300) para
+   // exercitar o clamp -- negativo DESLIGA a borda de "margem para COMECAR"
+   // (testada a parte), inclusive abaixo do proprio piso anti-CFIT, para nao
+   // confundir as duas propriedades.
+   ctx.slowRollMinMarginM = -1.0;
    ctx.aerobatic.configure(0.0, 0.0, 1.0, 20.0);
    ctx.aerobatic.setSeed(1);
    ArvoreDeAcrobacia arvore{ctx};
@@ -128,6 +133,72 @@ TEST(ArvoreRandom, AltitudeDaAcrobaciaRespeitaOPisoDeTerreno)
    arvore.tick();
    ASSERT_EQ(ctx.dec.label, "ROLL");
    EXPECT_NEAR(ctx.dec.command.altitudeM, 1300.0, 1e-9);
+}
+
+//------------------------------------------------------------------------------
+// Sem folga de altitude, o sorteio vencido fica ADIADO: a arvore continua
+// navegando (SlowRoll falha, Navigate assume), nunca cancelado -- assim que
+// a folga aparece, a manobra comeca no PROXIMO tick, sem esperar um novo
+// sorteio.
+//------------------------------------------------------------------------------
+TEST(ArvoreRandom, SemMargemDeAltitudeAdiaAManobra)
+{
+   FakeDecisionContext ctx{contextoEmRota()};
+   ctx.snap.altitudeM = 900.0;
+   ctx.snap.terrainValid = true;
+   ctx.snap.terrainElevM = 0.0;
+   ctx.terrainClearanceM = 500.0;          // piso = 500 m
+   ctx.slowRollMinMarginM = 900.0;         // exige 1400 m; aeronave esta a 900 m
+   ctx.aerobatic.configure(0.0, 0.0, 1.0, 20.0);   // sorteio ja vencido no 1o tick
+   ctx.aerobatic.setSeed(1);
+   ArvoreDeAcrobacia arvore{ctx};
+
+   for (int i = 0; i < 100; ++i) {   // 2 s -- bem alem de um unico tick
+      arvore.tick();
+      ASSERT_EQ(ctx.dec.label, "NAV") << "rolou sem margem, no tick " << i;
+   }
+
+   // A folga aparece (a aeronave "subiu"): a manobra ja pendente comeca no
+   // PROXIMO tick, sem novo sorteio.
+   ctx.snap.altitudeM = 3000.0;
+   arvore.tick();
+   EXPECT_EQ(ctx.dec.label, "ROLL");
+   EXPECT_TRUE(ctx.dec.command.rollOverride);
+}
+
+//------------------------------------------------------------------------------
+// Uma manobra JA EM CURSO nunca aborta no meio, mesmo que a margem suma
+// depois de comecar -- terminar a um banco arbitrario (possivelmente
+// invertido) seria mais perigoso do que fechar o giro. So' a borda
+// Idle->Rolling consulta a margem.
+//------------------------------------------------------------------------------
+TEST(ArvoreRandom, ManobraEmCursoNaoAbortaSeAMargemSumirDepois)
+{
+   FakeDecisionContext ctx{contextoEmRota()};
+   ctx.snap.altitudeM = 3000.0;   // margem de sobra ao COMECAR
+   ctx.aerobatic.configure(1.0, 1.0, 1.0, 20.0);
+   ctx.aerobatic.setSeed(1);
+   ArvoreDeAcrobacia arvore{ctx};
+
+   for (int i = 0; i < 60; ++i) arvore.tick();   // 1.2 s -> comeca a rolar
+   ASSERT_EQ(ctx.dec.label, "ROLL");
+
+   // A margem some (a propria manobra derruba a altitude, como no mundo
+   // real) -- a manobra continua e fecha os 360 graus de qualquer jeito.
+   ctx.snap.altitudeM = 0.0;
+   double banco{};
+   for (int i = 0; i < 400 && ctx.dec.label == "ROLL"; ++i) {
+      banco += 90.0 * ctx.frameDt;
+      while (banco > 180.0) banco -= 360.0;
+      ctx.snap.rollDeg = banco;
+      arvore.tick();
+   }
+
+   EXPECT_EQ(ctx.dec.label, "NAV") << "a manobra deveria ter fechado os 360 graus";
+   // Fechou por COMPLETAR o giro, nao por timeout nem por aborto de margem:
+   // o acumulador chega perto de 360, o mesmo criterio de
+   // FechaOsTrezentosESessentaGrausEVoltaAIdle em test_AerobaticPlan.cpp.
+   EXPECT_GE(std::abs(ctx.aerobatic.accumulatedRollDeg()), 360.0);
 }
 
 } // namespace

@@ -10,9 +10,14 @@ registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm 
 ## Como se usar
 
 ```bash
-make open-docs   # zero rede, nenhum servidor -- Linux nativo (xdg-open) e WSL2
-                 # (wslview/explorer.exe) pelo mesmo alvo, ver scripts/open_browser.sh
+make open-docs   # regenera (catalogo + index.html) e abre -- nenhum servidor;
+                 # Linux nativo (xdg-open) e WSL2 (wslview/explorer.exe) pelo
+                 # mesmo alvo, ver scripts/open_browser.sh
 ```
+
+A primeira execução baixa React/ReactDOM UMD + Babel para `docs/manual/.cache/` (gitignored,
+precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`); as próximas rodam
+offline.
 
 **Execução** — o ciclo de fases do MIXR (dynamics/transmit/receive/process + as duas threads de
 decisão/fundo) desenhado sobre a árvore de um `( Aircraft )` com os dez sistemas primários que
@@ -55,15 +60,16 @@ outras que não têm entrada lá.
 ## Regenerar depois de editar `doc.jsx`
 
 ```bash
-make docs   # ou: python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js && node docs/manual/compile.js
+make open-docs   # regenera e ja abre
+# ou, so para regenerar sem abrir navegador (ex.: ambiente headless):
+python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js && node docs/manual/compile.js
 ```
 
-A primeira execução baixa React/ReactDOM UMD + Babel para `docs/manual/.cache/` (gitignored); as
-próximas rodam sem rede. `index.html` **e** `catalog.generated.js` são committed — abrir a página
-não exige gerar nada antes.
+`index.html` **e** `catalog.generated.js` continuam committed — um clone que só quer LER a página
+não precisa rodar nada antes; só editar o fonte (`doc.jsx`/o scanner Python) exige regenerar.
 
 `CLASS_DIAGRAM` (a aba Estrutura) segue o mesmo precedente, já imperfeito, de `MODEL`/
-`FLIGHT_MODEL`: não há passo de `make docs` que regenere sozinho — `python3
+`FLIGHT_MODEL`: não há passo de `make open-docs` que regenere sozinho — `python3
 tools/extract_class_diagram.py` imprime o JSON (com auto-verificação embutida, sai com código≠0 se
 falhar) pra colar manualmente como `const CLASS_DIAGRAM = {...};` em `doc.jsx`, precedido do
 comentário `/* GERADO por tools/extract_class_diagram.py. Nao editar. */`. `STRUCT_TOPOLOGY`/

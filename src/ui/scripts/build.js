@@ -3,11 +3,11 @@
 //
 // Orquestrador UNICO do editor grafico de cenario .edl -- substitui os
 // antigos alvos separados do Makefile (`edl-catalog`, `edl-default-scenario`,
-// `edl-builder`, `edl-builder-test`): ao rodar `make open-edl-builder`, TUDO
+// `edl-builder`, `edl-builder-test`): ao rodar `make open-edl`, TUDO
 // que este editor precisa acontece aqui, sempre do zero, na ordem certa,
 // abortando com erro claro no primeiro passo que falhar -- nunca produz um
 // `edl-builder.html` parcial nem deixa abrir uma versao desatualizada (o
-// defeito que o `open-edl-builder` antigo tinha: nao dependia de
+// defeito que o `open-edl` antigo tinha: nao dependia de
 // `edl-builder`, entao abria o que estivesse la, mesmo obsoleto).
 //
 // Sempre regenera do ZERO, sem cache de staleness: os tres artefatos
@@ -32,7 +32,7 @@
 //   4) self-check: lint leve do .edl que o preset exportaria          -- edl_lint.py
 //   5) compila edl_builder.jsx -> edl-builder.html                  -- compile.js
 //
-// Uso: node src/ui/scripts/build.js   (ou `make open-edl-builder`, que ja
+// Uso: node src/ui/scripts/build.js   (ou `make open-edl`, que ja
 // chama isto antes de abrir o navegador).
 const fs = require("fs");
 const os = require("os");
@@ -55,16 +55,16 @@ const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
 
 function step(label, fn) {
-  process.stdout.write(`${YELLOW}open-edl-builder:${NC} ${label}...\n`);
+  process.stdout.write(`${YELLOW}open-edl:${NC} ${label}...\n`);
   fn();
 }
 
 function ok(label) {
-  process.stdout.write(`${GREEN}open-edl-builder:${NC} ${label} OK\n`);
+  process.stdout.write(`${GREEN}open-edl:${NC} ${label} OK\n`);
 }
 
 function fail(label, err) {
-  process.stderr.write(`${RED}open-edl-builder:${NC} ${label} FALHOU\n`);
+  process.stderr.write(`${RED}open-edl:${NC} ${label} FALHOU\n`);
   if (err) process.stderr.write(String(err.message || err) + "\n");
   process.exit(1);
 }
@@ -161,7 +161,7 @@ function main() {
   runUnitTests();
   selfLintPreset();
   compile();
-  process.stdout.write(`${GREEN}open-edl-builder:${NC} pipeline completo -- src/ui/edl-builder.html pronto\n`);
+  process.stdout.write(`${GREEN}open-edl:${NC} pipeline completo -- src/ui/edl-builder.html pronto\n`);
 }
 
 main();

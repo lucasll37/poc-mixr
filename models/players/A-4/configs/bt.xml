@@ -18,9 +18,11 @@
         <Action ID="SlowRoll">
             <input_port name="label" type="std::string" default="ROLL">rotulo no dump e no quadro durante a manobra</input_port>
         </Action>
-        <Action ID="Navigate"/>
         <Action ID="SupportAlert"/>
         <Action ID="ReportAndEvade"/>
+        <Action ID="Navigate"/>
+        <Action ID="LaunchMissile"/>
+        <Condition ID="LaunchEnvelope"/>
         <Action ID="ReturnToBase"/>
         <Action ID="PyDecide">
             <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>

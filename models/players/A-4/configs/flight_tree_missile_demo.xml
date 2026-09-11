@@ -1,0 +1,88 @@
+<!--
+  Arvore de DEMONSTRACAO de lancamento de missil -- NAO e a arvore de
+  producao (essa continua em flight_tree.xml, intocada).
+
+  Usada so' pelo cenario sandbox/A4-6DOF-MISSILE, no player atirador: mesma
+  prioridade do flight_tree.xml, com UM ramo novo entre "voltar pra base" e
+  "evadir" -- disparar contra o contato, quando ha arma disponivel e ele
+  esta dentro do envelope de lancamento (domain/LaunchPolicy.hpp).
+
+  Prioridade (Fallback, de cima para baixo):
+    1) combustivel abaixo da reserva                    -> volta para a base
+    2) arma disponivel + contato dentro do envelope      -> dispara
+    3) manobra de evasao valendo                         -> quebra E AVISA os outros
+    4) alerta recebido de outro caca                     -> vai apoiar no ponto avisado
+    5) caso contrario                                    -> patrulha
+
+  O item 2 dispara UMA vez por engajamento sem precisar de estado proprio na
+  arvore: apos o disparo, StoresMgr::available() cai (um cenario com um so'
+  missil no cabide vai a zero), weaponReady vira false no PROXIMO frame, e
+  LaunchEnvelope deixa de suceder sozinho -- ver o comentario de
+  bt_nodes::LaunchMissileAction::tick().
+
+  O disparo em si (StoresMgr::releaseOneMissile() + setTargetPlayer()) NAO
+  acontece aqui -- nenhum no toca em objeto MIXR. LaunchMissileAction so'
+  marca o pedido; quem executa e' xnative::FlightAction::execute() (ver o
+  comentario la).
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="launch_sequence">
+        <LaunchEnvelope/>
+        <LaunchMissile/>
+      </Sequence>
+
+      <Sequence name="engage_sequence">
+        <ContactDetected/>
+        <ReportAndEvade/>
+      </Sequence>
+
+      <Sequence name="support_sequence">
+        <AlertReceived/>
+        <SupportAlert/>
+      </Sequence>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="OnnxPolicy">
+            <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+            <input_port name="normalized" type="bool" default="1">true: saida em [-1,1], desnormalizada aqui (export do SB3)</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx da politica</input_port>
+        </Action>
+        <Condition ID="OnnxScore">
+            <input_port name="above" type="bool" default="1">true: SUCCESS se saida &gt; limiar; false: se saida &lt; limiar</input_port>
+            <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+            <input_port name="threshold" type="double" default="0.500000">limiar de comparacao</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx (entrada float32[1,28], ver ObservationFields.hpp)</input_port>
+        </Condition>
+        <Action ID="SlowRoll">
+            <input_port name="label" type="std::string" default="ROLL">rotulo no dump e no quadro durante a manobra</input_port>
+        </Action>
+        <Action ID="SupportAlert"/>
+        <Action ID="ReportAndEvade"/>
+        <Action ID="Navigate"/>
+        <Action ID="LaunchMissile"/>
+        <Condition ID="LaunchEnvelope"/>
+        <Action ID="ReturnToBase"/>
+        <Action ID="PyDecide">
+            <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+            <input_port name="script" type="std::string">caminho do .py que define decide(obs)</input_port>
+        </Action>
+        <Condition ID="FuelLow">
+            <input_port name="margin" type="double" default="0.000000">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+        </Condition>
+        <Condition ID="ContactDetected"/>
+        <Action ID="Patrol"/>
+        <Condition ID="AlertReceived"/>
+    </TreeNodesModel>
+</root>

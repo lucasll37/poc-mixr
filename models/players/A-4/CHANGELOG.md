@@ -24,6 +24,34 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Adicionado
 
+- **Envelope de lançamento de míssil: dois nós novos que decidem QUANDO disparar contra o
+  contato atual, e a extensão de `FlightAction::execute()` que faz o disparo de verdade.**
+  Peças novas, mesma disciplina de camadas de sempre:
+  - `domain::LaunchPolicy` (`include/domain/LaunchPolicy.hpp`) — regra pura, sem MIXR: alcance
+    dentro de `[minRangeM, maxRangeM]` e marcação relativa dentro de `±coneDeg`. Sem histerese
+    (ao contrário de `domain::ThreatPolicy`) — não há "continuar valendo" depois que o contato
+    sai do envelope, só checar de novo a cada tick.
+  - `bt_nodes::LaunchEnvelopeCondition`/`LaunchMissileAction`, nomes de fábrica BT `LaunchEnvelope`/
+    `LaunchMissile`. A condição olha `snapshot().weaponReady`/`hasContact` (contato DE VERDADE,
+    não a histerese de `ThreatPolicy::engaged()` — disparar contra uma pista que já sumiu
+    mandaria o míssil atrás de uma posição velha). A ação só marca o pedido
+    (`FlightDecision::launchRequested`/`launchTargetName`) — nenhum nó toca em objeto MIXR.
+  - Três slots do `( BtBehavior )`: `launchMinRange`, `launchMaxRange`, `launchCone` (defaults
+    500 m / 9000 m / 45°). Sem `stores:`/`GuidedMissile` no `.edl`, `weaponReady` nunca fica
+    `true` e a condição nunca sucede — inerte em qualquer cenário existente.
+  - `ubf::FlightAction::execute()` ganhou o único ponto deste modelo que toca um objeto MIXR de
+    arma: `Player::getStoresManagement()` → `StoresMgr::releaseOneMissile()` (pré-`ref()`'d,
+    casa qualquer subclasse de `Missile`, nativa ou de terceiro) →
+    `AbstractWeapon::setTargetPlayer(alvo, true)` → `unref()`. Dispara uma vez por engajamento
+    sem estado extra: depois do disparo `StoresMgr::available()` cai, `weaponReady` vira `false`
+    no frame seguinte, e a condição deixa de suceder sozinha.
+  - `configs/flight_tree_missile_demo.xml` — cópia de `flight_tree.xml` com o ramo
+    `launch_sequence` inserido entre RTB e evasão. A árvore de **produção** não muda.
+
+  Modelo-missil (`models/players/missile`, `( GuidedMissile )`) e cenário de demonstração
+  (`sandbox/A4-6DOF-MISSILE`, um A-4 detecta outro pelo radar e dispara) em subprojetos
+  separados — ver `models/players/missile/README.md`.
+
 - **Slow roll: um nó de árvore que faz a aeronave girar 360° em torno do eixo longitudinal, em
   instantes sorteados.** Quatro peças novas, uma por camada:
   - `domain::AerobaticPlan` (`include/domain/AerobaticPlan.hpp`) — regra pura, sem MIXR nem SDK,
@@ -132,6 +160,53 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   de 4 threads.
 
 ### Corrigido
+
+- **As 8 aeronaves de `sandbox/A4-6DOF-RANDOM` colidiam com o terreno depois de múltiplos
+  giros — o teste de 480 s acima era curto demais para pegar.** Rodando o mesmo cenário por
+  4000 s (200.000 frames), as 8 aeronaves colidem, uma a uma, entre t=680 s e t=1142 s
+  (`agl` cruza 0, `dec` congela — `Player::setMode(CRASHED)` do framework). Dois defeitos reais,
+  e a medição corrigiu a hipótese inicial sobre qual dos dois decidia o resultado — ver o detalhe
+  completo, incluindo o A/B que descartou a primeira hipótese, no README desta poc
+  (`sandbox/A4-6DOF-RANDOM/README.md`, seção "Corrigido"). Resumo:
+
+  1. **`bt_nodes::NavigateAction::tick()` nunca aplicava `clampAltitudeToTerrain()`** — o mesmo
+     piso anti-CFIT que Patrol/RTB/Support/SlowRoll já aplicavam. A altitude do steerpoint é um
+     número ESTÁTICO do `.edl`, sem visibilidade do relevo real; um trecho de rota onde o relevo é
+     mais alto do que o autor assumiu levava a aeronave para dentro do terreno em voo reto e
+     nivelado, sem giro nenhum acontecendo no instante do impacto. Corrigido — agora o mesmo piso
+     de sempre.
+  2. **`domain::AerobaticPlan` não tinha nenhuma borda de altitude antes de começar um giro** —
+     `update()` ganhou um terceiro parâmetro, `safeToRoll` (default `true`, preservando todo
+     chamador que não conhece terreno), que só pesa na borda Idle→Rolling: sem a folga de
+     `slowRollMinMargin` (novo slot, default 1500 m) sobre o piso anti-CFIT
+     (`bt_nodes::DecisionContext::hasAerobaticAltitudeMargin()`, novo método), o sorteio vencido
+     fica **adiado** — nunca cancelado, nunca reagendado. Uma manobra **já em curso nunca aborta
+     no meio** mesmo que a margem suma depois de começar — terminar a um banco arbitrário
+     (possivelmente invertido) seria mais perigoso do que fechar o giro.
+
+  **Medido, não presumido: o fix (2) sozinho não mudou o resultado** — com o fix (1) já aplicado,
+  `slowRollMinMargin` em 900 m e em 1500 m deram as MESMAS colisões, nos mesmos frames: nenhum
+  giro estava de fato sendo adiado, todo sorteio já vencia com folga de sobra. O mecanismo real
+  era outro: um único giro derruba a aeronave, e a recuperação seguinte é oscilante (fenômeno de
+  fugoide), às vezes tão lenta quanto ~4-5 m/s líquidos — bem abaixo do `maxClimbRateMps: 40` do
+  `Autopilot`. Quando esse vale coincide com um trecho de relevo real em subida (o mesmo que o fix
+  1 passou a respeitar continuamente), a colisão acontece mesmo com a aeronave COMANDADA a subir.
+  O que de fato eliminou as colisões foi elevar `terrainClearance` **deste cenário** (não o
+  default do modelo) de 500 m para 1200 m — diferente de `slowRollMinMargin`, que só olha o piso
+  no instante de começar um giro novo, `terrainClearance` eleva o piso que `( Navigate )` mantém
+  o tempo todo, dando margem tanto contra o custo do giro quanto contra a variação normal do
+  relevo. `slowRollMinMargin` continua valendo a pena manter como rede independente (giro
+  sucessivo sem tempo de recuperação), mesmo não tendo sido o fator decisivo aqui.
+
+  **Medido depois dos dois fixes:** as mesmas 8 aeronaves, 300.000 frames (6000 s simulados) —
+  **zero colisões** (`agl` nunca cruza 0, `dec` nunca congela, pior AGL 800 m). Determinismo com
+  1, 2 e 4 threads T/C confirmado byte-idêntico. `make test` do modelo (domain + tree + native)
+  segue verde, com seis testes novos exercitando as duas bordas: três em
+  `tests/domain/test_AerobaticPlan.cpp` (`safeToRoll` isolado, sem terreno), dois em
+  `tests/tree/test_flight_tree_random.cpp` (a mesma borda pela árvore de produção via
+  `FakeDecisionContext`), e um em `tests/tree/test_flight_tree_nav.cpp`
+  (`AltitudeComandadaRespeitaOPisoDeTerrenoQuandoORelevoEMaisAltoQueARota`, o clamp que faltava
+  em `( Navigate )`).
 
 - **`tools/update_bt_models.py` destruiria uma árvore cujo comentário MENCIONASSE
   `<TreeNodesModel>`** — defeito latente aqui, achado (e reproduzido, com perda real do arquivo)

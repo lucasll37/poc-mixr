@@ -1,0 +1,197 @@
+//
+// sandbox/Navstar-3-constellation
+//
+// O modelo models/others/Navstar-3 (ver src/poc/navstar3-orbit para a
+// demonstracao de UM satelite so), aqui com QUATRO instancias -- o proposito
+// deste sandbox e mostrar o que src/poc/navstar3-orbit deixou de proposito
+// fora de escopo (ver models/others/Navstar-3/docs/ARCHITECTURE.md, secao
+// "O que fica de fora"): o modelo aceita multiplas instancias porque os
+// elementos orbitais (altitude/inclination/raan/argLat0) sao slots POR
+// PLAYER, nao globais -- uma constelacao e' so' EDL, sem nenhuma mudanca de
+// C++.
+//
+// Quatro planos orbitais espalhados por 'raan' (0/90/180/270 graus),
+// mesma altitude/inclinacao/fase inicial -- o mesmo desenho de plano-unico
+// por satelite que uma constelacao GPS real usa (6 planos reais; 4 aqui,
+// o suficiente para ver planos DIFERENTES no Tacview sem inflar o cenario).
+// 'argLat0: 0' nos quatro (nenhuma fase relativa dentro do plano) -- a
+// separacao visual vem inteiramente do RAAN, nao de estar em pontos
+// diferentes da mesma orbita.
+//
+// Mesma direcao de sol fixa de src/poc/navstar3-orbit (sunRightAscension:
+// 180) -- o Sol e' um so' na vida real, entao os quatro compartilham a
+// MESMA direcao (nao ha razao pra variar isso entre instancias). Cada
+// satelite entra/sai da sombra num INSTANTE DIFERENTE (planos diferentes
+// cruzam o eixo de sombra em momentos diferentes) -- e' a prova visual mais
+// interessante deste sandbox: rotulos ECLIPSE/SUNLIT divergindo entre os
+// quatro no MESMO frame, mesmo eles sendo a MESMA classe C++.
+//
+// Porta Tacview 1234 -- mesma convencao da familia sandbox/A4-*DOF e
+// sandbox/C-130*-6DOF (nenhum cenario deste sandbox roda ao mesmo tempo que
+// outro).
+//
+// Sem terrain:, sem networks: -- cenario hermetico.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: navstar1
+   fastForwardRate: 60
+
+   components: {
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libNavstar-3.so"
+               provides: { Navstar3State Navstar3BtBehavior Navstar3Action Navstar3AgentTC }
+            )
+         }
+      )
+
+      // "Medido rodando" primario deste sandbox: os quatro planos cruzam a
+      // sombra em instantes diferentes -- o campo 'mode' fica mudo (nenhum
+      // dos quatro crasha/detona), e a telemetria periodica mostra as
+      // quatro altitudes se mantendo no valor configurado, orbita apos
+      // orbita.
+      msgFeed: ( MsgFeed
+         maxPlayers:  8
+         healthEvery: ( Seconds 10 )
+         sinks: {
+            ( MsgFileSink
+               fileName: "./sandbox/Navstar-3-constellation/data/messages/mission_@RUN_ID@.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            ( MsgReport name: telemetria  players: { }
+               labels: { player side mode }
+               fields: { altMslM latDeg lonDeg }
+               every: ( Seconds 60.0 ) )
+            ( MsgReport name: mudanca-modo  players: { }
+               labels: { player side mode }
+               fields: { modeNum }
+               when: { ( MsgChanged field: modeNum by: 1 ) } )
+         }
+      )
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/Navstar-3-constellation"
+               fileName: "./sandbox/Navstar-3-constellation/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { NAVSTAR-1: "GPS-Block-IIF"  NAVSTAR-2: "GPS-Block-IIF"
+                           NAVSTAR-3: "GPS-Block-IIF"  NAVSTAR-4: "GPS-Block-IIF" }
+               typeMap:  { NAVSTAR-1: "Misc+Satellite"  NAVSTAR-2: "Misc+Satellite"
+                           NAVSTAR-3: "Misc+Satellite"  NAVSTAR-4: "Misc+Satellite" }
+               colorMap: { NAVSTAR-1: "Blue"  NAVSTAR-2: "Yellow"
+                           NAVSTAR-3: "Cyan"  NAVSTAR-4: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      // Ponto de referencia arbitrario (equatorial) -- so' usado para as
+      // coordenadas locais NED do mapa/painel de status; a fisica orbital
+      // (ECEF/geodetica) nao depende disto. 'gamingAreaRange' fica
+      // DELIBERADAMENTE nao declarado (default: ilimitado) -- ver
+      // models/others/Navstar-3/docs/ARCHITECTURE.md.
+      latitude:  0.0
+      longitude: 0.0
+
+      players: {
+
+         navstar1: ( SpaceVehicle
+            id: 601  side: blue    type: "NAVSTAR-1"
+            initLatitude:  0.0  initLongitude: 0.0  initAlt: ( Meters 20180000.0 )
+            dataLogTime:   ( Seconds 1.0 )
+            components: {
+               agent: ( Navstar3AgentTC
+                  state: ( Navstar3State )
+                  behavior: ( Navstar3BtBehavior
+                     treeFile:          "./dist/share/mixr-plugins/Navstar-3/navstar3_sun_tree.xml"
+                     altitude:          ( Meters 20180000.0 )
+                     inclination:       ( Degrees 55.0 )
+                     raan:              ( Degrees 0.0 )
+                     argLat0:           ( Degrees 0.0 )
+                     sunRightAscension: ( Degrees 180.0 )
+                     sunDeclination:    ( Degrees 0.0 )
+                  )
+               )
+            }
+         )
+
+         navstar2: ( SpaceVehicle
+            id: 602  side: yellow  type: "NAVSTAR-2"
+            initLatitude:  0.0  initLongitude: 90.0  initAlt: ( Meters 20180000.0 )
+            dataLogTime:   ( Seconds 1.0 )
+            components: {
+               agent: ( Navstar3AgentTC
+                  state: ( Navstar3State )
+                  behavior: ( Navstar3BtBehavior
+                     treeFile:          "./dist/share/mixr-plugins/Navstar-3/navstar3_sun_tree.xml"
+                     altitude:          ( Meters 20180000.0 )
+                     inclination:       ( Degrees 55.0 )
+                     raan:              ( Degrees 90.0 )
+                     argLat0:           ( Degrees 0.0 )
+                     sunRightAscension: ( Degrees 180.0 )
+                     sunDeclination:    ( Degrees 0.0 )
+                  )
+               )
+            }
+         )
+
+         navstar3: ( SpaceVehicle
+            id: 603  side: cyan    type: "NAVSTAR-3"
+            initLatitude:  0.0  initLongitude: 180.0  initAlt: ( Meters 20180000.0 )
+            dataLogTime:   ( Seconds 1.0 )
+            components: {
+               agent: ( Navstar3AgentTC
+                  state: ( Navstar3State )
+                  behavior: ( Navstar3BtBehavior
+                     treeFile:          "./dist/share/mixr-plugins/Navstar-3/navstar3_sun_tree.xml"
+                     altitude:          ( Meters 20180000.0 )
+                     inclination:       ( Degrees 55.0 )
+                     raan:              ( Degrees 180.0 )
+                     argLat0:           ( Degrees 0.0 )
+                     sunRightAscension: ( Degrees 180.0 )
+                     sunDeclination:    ( Degrees 0.0 )
+                  )
+               )
+            }
+         )
+
+         navstar4: ( SpaceVehicle
+            id: 604  side: red     type: "NAVSTAR-4"
+            initLatitude:  0.0  initLongitude: -90.0  initAlt: ( Meters 20180000.0 )
+            dataLogTime:   ( Seconds 1.0 )
+            components: {
+               agent: ( Navstar3AgentTC
+                  state: ( Navstar3State )
+                  behavior: ( Navstar3BtBehavior
+                     treeFile:          "./dist/share/mixr-plugins/Navstar-3/navstar3_sun_tree.xml"
+                     altitude:          ( Meters 20180000.0 )
+                     inclination:       ( Degrees 55.0 )
+                     raan:              ( Degrees 270.0 )
+                     argLat0:           ( Degrees 0.0 )
+                     sunRightAscension: ( Degrees 180.0 )
+                     sunDeclination:    ( Degrees 0.0 )
+                  )
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station
