@@ -81,8 +81,11 @@ struct EntityState
    std::string alertSender;
    std::string alertContact;
 
-   // libs/xtrack::nearestHostileTrack -- exclusivo de AirVehicle hoje (ver
-   // o comentario no .cpp); so preenchido quando o cast funciona.
+   // libs/xtrack::nearestHostileTrack -- a funcao em si aceita qualquer
+   // Player desde a generalizacao para models/players/aaa; aqui continua
+   // amarrada ao bloco exclusivo de AirVehicle do .cpp so por conveniencia
+   // (e onde 'air' ja existe), nao por exigencia da funcao. So preenchido
+   // quando o cast funciona.
    bool hasTrack{};
    std::string trackName;
    double trackRangeNm{};

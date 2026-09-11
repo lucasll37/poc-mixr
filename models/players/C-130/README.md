@@ -18,10 +18,13 @@ para este modelo em `data/jsbsim/`). Duas capacidades:
    disparada pelo mesmo caminho nativo de `ActionWeaponRelease`/`ActionDecoyRelease`) acha, por
    `Player::getType()`, a próxima estação livre do `StoresMgr` cujo tipo bata com `storeType:`
    (default `"PARATROOPER"`) e libera — genérico contra `mixr::models::AbstractWeapon`, nunca
-   contra uma classe concreta. O modelo `models/players/paratrooper` (tarefa futura, ainda um
-   scaffold vazio) vai substituir só o EDL — a classe concreta declarada na estação + `provides:` —
-   sem precisar de nenhuma mudança de C++ aqui. Até lá, `ParatrooperPlaceholder` (um `Effect`
-   nativo trivial) faz o papel.
+   contra uma classe concreta. O modelo `models/players/paratrooper` (produção, FSM completa:
+   queda livre, paraquedas, pouso) já substitui isso hoje — a classe concreta declarada na estação
+   + `provides:` de `libparatrooper.so`, sem nenhuma mudança de C++ aqui — em
+   `src/poc/c130-airdrop` e em `sandbox/C-130_paratrooper-6DOF`. `ParatrooperPlaceholder` (um
+   `Effect` nativo trivial) permanece no `.so` e em `provides:`, mas hoje só como bancada dos
+   testes nativos deste modelo (`tests/native/test_paratrooper_release.cpp`/
+   `test_paratrooper_stick.cpp`) — não é mais usada por nenhum cenário de produção.
 
 Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para a arquitetura completa, e
 [`src/poc/c130-airdrop/README.md`](../../../src/poc/c130-airdrop/README.md) para o cenário de

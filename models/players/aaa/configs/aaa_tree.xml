@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A arvore de comportamento DESTA antiaerea.
+
+  Forma: um Fallback (o "primeiro que der SUCCESS vence") com DOIS ramos --
+  a regra e' UNICA ("alvo hostil no domo + arma disponivel -> dispara"), sem
+  prioridades concorrentes, entao nao ha o Fallback de 4 ramos que
+  models/players/A-4/configs/flight_tree.xml tem:
+
+    1) alvo no domo + arma disponivel -> Sequence(TargetInDome, FireMissile), rotulo FIRE
+    2) qualquer outro caso            -> Watch (sempre SUCCESS), rotulo WATCHING
+
+  Note que o ramo 2 nao tem condicao: um Fallback sem um ultimo ramo
+  incondicional devolveria FAILURE quando nada casasse, e a antiaerea
+  ficaria sem decisao nenhuma no frame (bt=-- para sempre no xboard/dump).
+
+  Nao ha estado de "ja disparei" -- StoresMgr::available() volta a 0 depois
+  do unico ( GuidedMissile ) do cabide sair, e TargetInDomeCondition ja
+  checa isso: o cabide vazio e' o que impede um segundo disparo,
+  naturalmente.
+
+  ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um
+  comentario XML. O tinyxml2 (que o BehaviorTree.CPP usa) tolera; o
+  QDomDocument (que o Groot usa) recusa o ARQUIVO INTEIRO com um generico
+  "erro de sintaxe". Ver CLAUDE.md raiz, secao "Groot", armadilha no 1.
+
+  O bloco <TreeNodesModel> abaixo e' GERADO - nao edite a mao. Ele existe
+  para o Groot reconhecer os nos deste modelo (que sao classes dentro do
+  .so, invisiveis a um app externo). Rode 'make update-bt' depois de
+  registrar um no novo em src/bt/bt_factory.cpp.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+      <Sequence name="disparo">
+        <TargetInDome/>
+        <FireMissile/>
+      </Sequence>
+      <Watch/>
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="Watch"/>
+        <Action ID="FireMissile"/>
+        <Condition ID="TargetInDome"/>
+    </TreeNodesModel>
+</root>

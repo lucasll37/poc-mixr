@@ -12,10 +12,11 @@ Duas propriedades a observar rodando:
 1. **Navegação nativa**: o `bt=` da linha de status/dashboard mostra `NAV` (não `--`), `dec=`
    avança, e a aeronave de fato segue os três steerpoints em loop (`wrap:true`).
 2. **Liberação genérica**: até 4 paraquedistas (uma estação por volta) aparecem no Tacview saindo
-   de `wp2` — cada um é um `C130ParatrooperPlaceholder` (entidade nativa provisória, ver
-   `models/players/C-130/docs/ARCHITECTURE.md`), liberado por `C130ActionParatrooperRelease` sem
-   nenhuma referência a uma classe concreta de paraquedista. A 5ª volta em diante não libera nada
-   — comportamento esperado ("acabou a carga"), não bug.
+   de `wp2` — cada um é um `Paratrooper` de produção (`models/players/paratrooper`, FSM completa:
+   queda livre, abertura de paraquedas, pouso), liberado por `C130ActionParatrooperRelease` sem
+   nenhuma referência a uma classe concreta de paraquedista (a busca é só por `Player::getType()`
+   == `"PARATROOPER"`). A 5ª volta em diante não libera nada — comportamento esperado ("acabou a
+   carga"), não bug.
 
 ## Rodar
 

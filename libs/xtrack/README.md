@@ -23,6 +23,9 @@ if (track.found) {
    s.contactDeltaAltM = track.deltaAltM;
    // ...
 }
+
+// --- ameaca de RWR: MESMA funcao, so trocando o track manager nomeado ---
+const xtrack::TrackInfo rwr{xtrack::nearestHostileTrack(air, "rwrTrkMgr")};
 ```
 
 **Do lado do host** (`app/src/app/DeterministicDump.cpp`, o dump `frame=` que os `check-*`
@@ -36,10 +39,16 @@ oss << " track=" << (track.found ? track.name : std::string("none"))
     << " trackRange=" << track.rangeM;
 ```
 
-`air` é um `const models::AirVehicle*` — qualquer um, não só `falcon1..4`. Não há nada para
-declarar em `.edl`: `nearestHostileTrack()` não é uma classe MIXR registrada em factory, é só uma
-função que lê o `TrackManager` já vivo (`twsTrkMgr`, ver `configs/scenario.edl.in` de qualquer poc)
-— o cenário só precisa ter o radar/`OnboardComputer` configurados como sempre.
+`nearestHostileTrack(ownship, trackManagerName = "twsTrkMgr")` recebe um `const models::Player*`
+— **qualquer** player com um `OnboardComputer`, não só `AirVehicle`/`falcon1..4` (generalizado de
+`AirVehicle*` para `Player*` ao acrescentar `models/players/aaa`, cuja antiaérea consulta o próprio
+track manager de aquisição de alvo a partir de um `GroundVehicle`). O segundo parâmetro nomeia QUAL
+`TrackManager` consultar — `"twsTrkMgr"` por default (o contato aéreo de sempre), ou qualquer outro
+nome declarado em `obc:` no `.edl` (ex.: `"rwrTrkMgr"` para uma pista de RWR, `"aaaTrkMgr"` para o
+radar de tiro de uma antiaérea). Não há nada para declarar em `.edl` além do `TrackManager` em si:
+`nearestHostileTrack()` não é uma classe MIXR registrada em factory, é só uma função que lê o
+`TrackManager` já vivo — o cenário só precisa ter o radar/`OnboardComputer` configurados como
+sempre.
 
 `TrackInfo` devolvido:
 
@@ -57,8 +66,8 @@ struct TrackInfo {
 
 ## Duas regras que não são do sensor, e por isso moram aqui
 
-O caminho é sempre o mesmo do framework: `AirVehicle -> OnboardComputer ->
-TrackManager("twsTrkMgr") -> Track`. Duas decisões, deliberadamente fora do radar nativo:
+O caminho é sempre o mesmo do framework: `Player -> OnboardComputer ->
+TrackManager(trackManagerName) -> Track`. Duas decisões, deliberadamente fora do radar nativo:
 
 1. **O radar nativo não filtra por lado.** `playerOfInterestTypes` filtra por *tipo* de player,
    não por `side` — a esquadrilha inteira entra na lista de pistas do `TrackManager`. Separar
@@ -109,5 +118,5 @@ cobre `selectNearestHostileIndex()` isolada — sem `Station`, sem `Player`/`Tra
 vazia, só-amigos, hostil mais próximo ignorando amigo mais perto, empate de alcance resolvido pelo
 menor `trackId`, independência da ordem da lista, e as duas variações de pista sem alvo resolvido
 (sozinha, e competindo na mesma lista com amigo e hostil resolvidos). A travessia
-`AirVehicle -> OnboardComputer -> TrackManager -> Track` em si só é exercitada com `Station` viva,
+`Player -> OnboardComputer -> TrackManager -> Track` em si só é exercitada com `Station` viva,
 pelos testes de cenário que passam pelo `track=` do dump (`tests/scenario/`).

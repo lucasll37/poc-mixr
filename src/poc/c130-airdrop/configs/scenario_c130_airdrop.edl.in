@@ -3,15 +3,18 @@
 //
 // O C-130 (models/players/C-130) navegando de verdade por Route/Steerpoint
 // nativo -- mesmo padrao ja provado em full-systems-nav -- e liberando um
-// paraquedista no steerpoint wp2, tratado como liberacao de ARMA (mesma
-// familia de Bomb/Decoy/Chaff), nao como Player autonomo. Ver
-// models/players/C-130/docs/ARCHITECTURE.md para a arquitetura completa.
+// paraquedista de verdade (models/players/paratrooper, a classe Paratrooper
+// real -- queda livre, paraquedas, pouso) no steerpoint wp2, tratado como
+// liberacao de ARMA (mesma familia de Bomb/Decoy/Chaff), nao como Player
+// autonomo. Ver models/players/C-130/docs/ARCHITECTURE.md e
+// models/players/paratrooper/docs/ARCHITECTURE.md para a arquitetura
+// completa dos dois modelos.
 //
 // Cenario deliberadamente magro comparado a full-systems-nav: nenhum
 // sensor/radar/track manager (obc: ( OnboardComputer ) bare -- so o
 // suficiente pra Route::triggerAction() disparar a Action do steerpoint,
 // que EXIGE um OnboardComputer no player, ou o gatilho vira no-op em
-// silencio) e nenhuma arma de combate -- so o placeholder de paraquedista.
+// silencio) e nenhuma arma de combate -- so o paraquedista.
 //
 // wrap:true + 4 estacoes: cada volta libera mais um paraquedista (4 no
 // total); a 5a volta em diante e' no-op inofensivo ("acabou a carga"), nao
@@ -48,6 +51,11 @@
                            C130ActionParatrooperStick C130ParatrooperPlaceholder
                            C130FlightState C130BtBehavior C130FlightAction }
             )
+            ( PluginModule
+               file:     "libparatrooper.so"
+               provides: { Paratrooper ParatrooperAgentTC ParatrooperState
+                           ParatrooperBtBehavior ParatrooperAction }
+            )
          }
       )
    } // components
@@ -61,9 +69,16 @@
                port: 1241
                callsign: "poc-mixr/c130-airdrop"
                fileName: "./src/poc/c130-airdrop/data/recordings/mission.acmi"
-               modelMap: { c130: "C-130" }
-               typeMap:  { c130: "Air+FixedWing+Transport" }
-               colorMap: { c130: "Blue" }
+               // Sem a chave PARATROOPER, um Effect de tipo nao reconhecido
+               // (Chaff/Decoy/Flare/Bomb/Bullet/Missile) cai no fallback
+               // generico de WEAPON ("Weapon+Missile") com Name= nao
+               // reconhecido pelo Tacview -- aparece como bloco generico em
+               // vez de paraquedista (mesma convencao de
+               // src/poc/paratrooper-drop/configs/scenario_paratrooper_drop.edl.in).
+               modelMap: { c130: "C-130"  PARATROOPER: "Parachutist" }
+               typeMap:  { c130: "Air+FixedWing+Transport"
+                           PARATROOPER: "Ground+Light+Human+Air+Parachutist" }
+               colorMap: { c130: "Blue"  PARATROOPER: "Blue" }
             )
          }
       )
@@ -172,33 +187,38 @@
                // 4 estacoes "PARATROOPER" -- uma liberada por volta
                // (wrap:true), repetindo a busca generica de
                // ActionParatrooperRelease a cada passagem por wp2. Volta 5+
-               // e' no-op inofensivo (nenhuma estacao livre).
+               // e' no-op inofensivo (nenhuma estacao livre). Classe REAL do
+               // plugin models/players/paratrooper (nao mais
+               // C130ParatrooperPlaceholder) -- sem maxTOF:/dragIndex: aqui,
+               // que eram calibracao so do placeholder; a classe real ja tem
+               // defaults proprios (ver models/players/paratrooper/docs/
+               // ARCHITECTURE.md), sobrescreve-los aqui anularia a troca.
                stores: ( StoresMgr
                   numStations: 4
                   stores: {
-                     1: ( C130ParatrooperPlaceholder
+                     1: ( Paratrooper
                         id: 401  side: blue  type: "PARATROOPER"
                         dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 120 )
-                        dragIndex: 0.02
+                        interpolateTerrain: true
+                        killOverride: true
                      )
-                     2: ( C130ParatrooperPlaceholder
+                     2: ( Paratrooper
                         id: 402  side: blue  type: "PARATROOPER"
                         dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 120 )
-                        dragIndex: 0.02
+                        interpolateTerrain: true
+                        killOverride: true
                      )
-                     3: ( C130ParatrooperPlaceholder
+                     3: ( Paratrooper
                         id: 403  side: blue  type: "PARATROOPER"
                         dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 120 )
-                        dragIndex: 0.02
+                        interpolateTerrain: true
+                        killOverride: true
                      )
-                     4: ( C130ParatrooperPlaceholder
+                     4: ( Paratrooper
                         id: 404  side: blue  type: "PARATROOPER"
                         dataLogTime: ( Seconds 0.1 )
-                        maxTOF: ( Seconds 120 )
-                        dragIndex: 0.02
+                        interpolateTerrain: true
+                        killOverride: true
                      )
                   }
                )

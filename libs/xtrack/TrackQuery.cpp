@@ -2,7 +2,6 @@
 
 #include "mixr/models/Track.hpp"
 #include "mixr/models/player/Player.hpp"
-#include "mixr/models/player/air/AirVehicle.hpp"
 #include "mixr/models/system/OnboardComputer.hpp"
 #include "mixr/models/system/trackmanager/TrackManager.hpp"
 
@@ -15,7 +14,6 @@ namespace xtrack {
 
 namespace {
 const int MAX_TRACKS{20};
-const char* const TRACK_MANAGER_NAME{"twsTrkMgr"};
 }
 
 int selectNearestHostileIndex(const std::vector<TrackCandidate>& candidates,
@@ -36,17 +34,18 @@ int selectNearestHostileIndex(const std::vector<TrackCandidate>& candidates,
    return bestIndex;
 }
 
-TrackInfo nearestHostileTrack(const models::AirVehicle* const air)
+TrackInfo nearestHostileTrack(const models::Player* const ownship,
+                              const char* const trackManagerName)
 {
    TrackInfo info;
-   if (air == nullptr) return info;
+   if (ownship == nullptr || trackManagerName == nullptr) return info;
 
    // getTrackManagerByName() nao e const no framework, mas a consulta e de
    // leitura -- o const_cast fica confinado aqui.
-   const auto obc = const_cast<models::OnboardComputer*>(air->getOnboardComputer());
+   const auto obc = const_cast<models::OnboardComputer*>(ownship->getOnboardComputer());
    if (obc == nullptr) return info;
 
-   models::TrackManager* const trkMgr{obc->getTrackManagerByName(TRACK_MANAGER_NAME)};
+   models::TrackManager* const trkMgr{obc->getTrackManagerByName(trackManagerName)};
    if (trkMgr == nullptr) return info;
 
    base::safe_ptr<models::Track> tracks[MAX_TRACKS];
@@ -71,7 +70,7 @@ TrackInfo nearestHostileTrack(const models::AirVehicle* const air)
       origIndex.push_back(i);
    }
 
-   const int bestIdx{selectNearestHostileIndex(candidates, air->getSide())};
+   const int bestIdx{selectNearestHostileIndex(candidates, ownship->getSide())};
    if (bestIdx < 0) return info;
 
    const models::Track* const best{tracks[origIndex[static_cast<std::size_t>(bestIdx)]]};

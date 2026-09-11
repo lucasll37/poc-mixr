@@ -36,7 +36,7 @@ ubf/       -- os tres papeis do UBF:
 xnative/   -- a cola de registro + as duas classes novas:
               FlightAgentTC             -- o agente de tempo critico (fase 3 do frame)
               ActionParatrooperRelease  -- a liberacao generica (ver secao propria)
-              ParatrooperPlaceholder    -- entidade nativa provisoria (ver secao propria)
+              ParatrooperPlaceholder    -- bancada de teste, nao mais producao (ver secao propria)
               factory.{hpp,cpp}         -- registro das 6 classes, nomes "C130*"
 ```
 
@@ -127,14 +127,38 @@ o paraquedas abre, ele pousa. Isso não precisa de `AbstractState`/`AbstractBeha
 (`isInactive() || isReleaseHold()`) cujo `Player::getType()` bata com o slot `storeType:` (default
 `"PARATROOPER"`) — usando `Stores::releaseWeapon(AbstractWeapon*)`, o método público e genérico que
 `releaseOneBomb`/`releaseOneDecoy` já chamam por baixo. **Nunca há `dynamic_cast` para uma classe
-concreta de paraquedista** — é isso que deixa a troca futura pelo `models/players/paratrooper` real
-livre de mudança de C++ aqui: só o EDL muda (a classe declarada na estação de `stores:` + o
-`provides:` do cenário).
+concreta de paraquedista** — é isso que já deixou a troca pelo `models/players/paratrooper` real
+livre de mudança de C++ aqui: a troca já aconteceu (`src/poc/c130-airdrop` e
+`sandbox/C-130_paratrooper-6DOF` liberam a classe `Paratrooper` de verdade hoje), e foi só EDL —
+a classe declarada na estação de `stores:` + o `provides:` de `libparatrooper.so` no cenário,
+confirmando o contrato acima.
 
-`xnative::ParatrooperPlaceholder` (`Effect` trivial, `EMPTY_SLOTTABLE`) é o que ocupa essa estação
-até o modelo de verdade existir. Nome de fábrica `"C130ParatrooperPlaceholder"` — **não**
-`"Paratrooper"` — de propósito: registrar esse nome colidiria com `check_colisao_fabrica.py` assim
-que o modelo real nascer com esse nome mais óbvio.
+`xnative::ParatrooperPlaceholder` (`Effect` quase trivial, `EMPTY_SLOTTABLE`) ocupava essa estação
+antes do modelo de verdade existir; hoje permanece no `.so` e em `provides:`, mas só como bancada
+dos testes nativos deste modelo (`tests/native/test_paratrooper_release.cpp`/
+`test_paratrooper_stick.cpp`), que a constroem direto para não precisar linkar `libparatrooper.so`.
+Nome de fábrica `"C130ParatrooperPlaceholder"` — **não** `"Paratrooper"` — de propósito: registrar
+esse nome colidiria com `check_colisao_fabrica.py` assim que os dois `.so` carregassem juntos no
+mesmo processo (como já acontece hoje nos dois cenários citados acima).
+
+**Uma sobrescrita, não zero — `dynamics()`, o offset de liberação (achado rodando
+`src/poc/c130-airdrop`, corrigido, não redescobrir).** Sem ela, `AbstractWeapon::dynamics()` em
+`PRE_RELEASE` aplica um deslocamento zero (`initXPos`/`initYPos`/`initAlt` nunca declarados no
+EDL da estação) e o placeholder nasce **exatamente** na posição do C-130 — no Tacview, o instante
+da largada parecia o paraquedista colidindo com a aeronave, e ele aparecia como um bloco genérico
+(ver o próximo parágrafo). `ParatrooperPlaceholder::dynamics()` fixa `-15 m`/`-10 m` (atrás/abaixo
+em eixos do corpo do C-130, mesma convenção de sinal), os mesmos defaults de
+`models/players/paratrooper` — mirror do `dynamics()` de `xparatrooper::Paratrooper`, sem herdar
+slot nenhum (permanece só um placeholder, sem `releaseOffsetAft`/`releaseOffsetBelow`
+configuráveis).
+
+**A segunda metade do mesmo bug era Tacview, não física**: `src/poc/c130-airdrop`'s
+`TacviewOutput` não declarava `typeMap`/`modelMap`/`colorMap` para a chave `PARATROOPER` — sem
+essas entradas, um `Effect` de tipo não reconhecido (`Chaff`/`Decoy`/`Flare`/`Bomb`/`Bullet`/
+`Missile`, ver `libs/xtacview/TacviewOutput.cpp::defaultTypeForPlayer()`) cai no fallback genérico
+de `WEAPON`, e o `Name=` não reconhecido faz o Tacview desenhar um bloco/cubo genérico em vez de
+um modelo de paraquedista. Corrigido copiando as mesmas três entradas que
+`src/poc/paratrooper-drop`/`sandbox/C-130_paratrooper-6DOF` já usam.
 
 **`( OnboardComputer )` é obrigatório no player**, mesmo sem nenhum sensor — confirmado lendo
 `mixr::models::Route::triggerAction()`: sem um `OnboardComputer`, a chamada `obc->triggerAction()`

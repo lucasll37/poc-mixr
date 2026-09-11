@@ -14,14 +14,14 @@
 # GERADO (gravacoes/logs/mensagens) continua de fora sozinho, via as regras
 # de sandbox/**/data/... do .gitignore da raiz.
 /*/
-!/A4-6DOF/
-!/A4-6DOF-RANDOM/
-!/A4-4DOF/
 !/A4-3DOF/
-!/A4-4DOF-PY/
+!/A4-4DOF/
 !/A4-4DOF-ONNX/
+!/A4-4DOF-PY/
+!/A4-6DOF/
+!/A4-6DOF-MISSILE/
+!/A4-6DOF-RANDOM/
 !/C-130_paratrooper-6DOF/
 !/C-130-6DOF/
 !/Navstar-3-constellation/
-!/A4-6DOF-MISSILE/
 

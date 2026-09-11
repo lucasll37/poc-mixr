@@ -1,0 +1,1 @@
+option('tests', type: 'boolean', value: false, description: 'Compila a suite deste modelo (domain + tree + forma do .so); requer gtest')

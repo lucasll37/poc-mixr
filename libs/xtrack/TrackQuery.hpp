@@ -7,19 +7,29 @@
 #include <vector>
 
 namespace mixr {
-namespace models { class AirVehicle; }
-
 namespace xtrack {
 
 //------------------------------------------------------------------------------
 // Consulta ao radar NATIVO: qual e o contato hostil mais proximo.
 //
-// Uma unica questao, e ela aparece em dois lugares muito diferentes -- na
-// percepcao do UBF (ubf::FlightState) e no status/dump da aplicacao. Manter
-// a consulta num so lugar garante que os dois digam a mesma coisa.
+// Uma unica questao, e ela aparece em varios lugares diferentes -- na
+// percepcao do UBF (ubf::FlightState), no status/dump da aplicacao, e (desde
+// a generalizacao abaixo) na aquisicao de alvo de um modelo terrestre
+// (models/players/aaa) e na percepcao de RWR do A-4. Manter a consulta num
+// so lugar garante que todos digam a mesma coisa.
 //
 // O caminho e sempre o mesmo do framework:
-//    AirVehicle -> OnboardComputer -> TrackManager("twsTrkMgr") -> Track
+//    Player -> OnboardComputer -> TrackManager(trackManagerName) -> Track
+//
+// GENERALIZADO de 'const models::AirVehicle*' para 'const models::Player*'
+// mais um 'trackManagerName' com default -- os dois unicos usos do parametro
+// aqui dentro ('getOnboardComputer()'/'getSide()') ja eram metodos de
+// Player, nunca especificos de AirVehicle. Callers existentes (um
+// 'AirVehicle*' sobe implicitamente para 'Player*') continuam compilando sem
+// mudanca nenhuma. E o que permite a MESMA funcao servir tanto o RWR do A-4
+// (consultando "rwrTrkMgr") quanto o radar de aquisicao de uma antiaerea
+// terrestre (consultando um track manager proprio, num Player que nao e
+// AirVehicle nenhum).
 //
 // DUAS REGRAS QUE NAO SAO DO SENSOR, E POR ISSO MORAM AQUI:
 //
@@ -43,7 +53,8 @@ struct TrackInfo
    double deltaAltM{};    // positivo = contato acima
 };
 
-TrackInfo nearestHostileTrack(const models::AirVehicle* air);
+TrackInfo nearestHostileTrack(const models::Player* ownship,
+                              const char* trackManagerName = "twsTrkMgr");
 
 //------------------------------------------------------------------------------
 // A REGRA de selecao, separada da TRAVESSIA que a alimenta (AirVehicle ->

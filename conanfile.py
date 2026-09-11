@@ -5,7 +5,7 @@ from conan.tools.layout import basic_layout
 
 
 class MixrHelloConan(ConanFile):
-    name = "mixr-hello"
+    name = "poc-mixr"
     version = "1.0.0"
 
     settings = "os", "compiler", "build_type", "arch"

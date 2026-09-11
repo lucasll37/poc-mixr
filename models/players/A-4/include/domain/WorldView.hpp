@@ -57,6 +57,27 @@ struct WorldView
    double contactEastM{};
    double contactAltitudeM{};
 
+   // ameaca de RWR: ha um emissor hostil sendo percebido pelo receptor
+   // passivo (mixr::models::Rwr) neste frame? Populado por
+   // xtrack::nearestHostileTrack(air, "rwrTrkMgr") -- MESMA funcao do
+   // contato de radar proprio acima, so trocando o track manager nomeado
+   // (ver libs/xtrack/README.md). false em qualquer aviao sem
+   // ( Rwr )/( RwrTrkMgr ) declarados no EDL -- inerte em producao, dump
+   // byte-identico aos cenarios que nao usam RWR.
+   //
+   // LIMITACAO REAL, documentada de proposito (nao contornada): o RWR
+   // nativo do MIXR detecta uma antena hostil TRANSMITINDO, nao um missil
+   // especificamente -- Track::isMissileWarning() existe mas esta MORTO
+   // neste fork (nenhum caller). Este campo significa "estou sendo
+   // iluminado por um radar hostil", nao "ha um missil no ar contra mim" --
+   // a mesma ambiguidade que um piloto de verdade enfrenta ao ver o RWR
+   // acender.
+   bool hasRwrThreat{};
+   std::string rwrThreatName;
+   double rwrThreatRangeM{};
+   double rwrThreatRelBearingDeg{};
+   double rwrThreatDeltaAltM{};
+
    // alerta recebido de OUTRO aviao (ver xnative::AlertDatalink)
    bool hasAlert{};
    std::string alertSender;

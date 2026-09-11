@@ -20,6 +20,41 @@ mensagem de commit em uso.
 
 ## [Não versionado]
 
+### Corrigido
+
+- **`ParatrooperPlaceholder` nascia colado no C-130, e aparecia como bloco genérico no Tacview**
+  (relatado: "alguns paraquedistas saiam como bloquinhos... impressão de que estavam se chocando
+  contra o avião", em `src/poc/c130-airdrop`). Duas causas independentes: (1)
+  `ParatrooperPlaceholder` nunca sobrescrevia `dynamics()` — ao contrário do modelo real
+  `models/players/paratrooper`, o placeholder herdava offset ZERO de `AbstractWeapon::dynamics()`
+  em `PRE_RELEASE`, nascendo na posição exata da aeronave lançadora; (2) o `TacviewOutput` do
+  cenário não tinha `typeMap`/`modelMap`/`colorMap` para a chave `PARATROOPER`, então o objeto
+  caía no fallback genérico de `WEAPON` com um `Name=` não reconhecido pelo Tacview — um bloco
+  genérico, não um paraquedista. Corrigido dando a `ParatrooperPlaceholder` o mesmo `dynamics()`
+  de `xparatrooper::Paratrooper` (15 m atrás / 10 m abaixo, sem slot — continua só um
+  placeholder) e copiando para `src/poc/c130-airdrop` as mesmas três entradas `PARATROOPER` que
+  `src/poc/paratrooper-drop`/`sandbox/C-130_paratrooper-6DOF` já usavam. Ver
+  `docs/ARCHITECTURE.md`, seção "A liberação de paraquedista".
+
+### Alterado
+
+- **`src/poc/c130-airdrop` passou a liberar o `Paratrooper` real** (`models/players/paratrooper`,
+  FSM completa: queda livre → paraquedas → pouso), não mais `C130ParatrooperPlaceholder` — a
+  troca que este modelo já previa desde a v0.1.0 ("o mecanismo genérico que o futuro
+  `models/players/paratrooper` reaproveita trocando só o EDL"). Mudança só de EDL: a classe
+  declarada nas 4 estações de `stores:` + um segundo `( PluginModule file: "libparatrooper.so"
+  ... )` no cenário — nenhuma linha de C++ tocada em nenhum dos dois modelos.
+  `C130ParatrooperPlaceholder` PERMANECE no `.so` e em `provides:` (não removida) — hoje só usada
+  por `tests/native/test_paratrooper_release.cpp`/`test_paratrooper_stick.cpp` como bancada leve,
+  pra esses testes não precisarem linkar `libparatrooper.so`. Medido rodando (600 s simulados,
+  `-threads 2`, `MsgFeed` temporário de instrumentação): 1 liberação em `wp2` (a mesma cadência
+  já registrada em `src/poc/c130-airdrop/README.md` — uma por volta, e uma volta completa leva
+  bem mais que 270 s), o paraquedista percorre queda livre (~660 m AGL na largada, medido pelo
+  próprio C-130) até pouso limpo em ~24 s (`damage=0`/`crashedFlag=0`/`killedFlag=0`, altitude
+  estável pelos 305 s restantes de simulação — sem drift, sem re-trigger). Determinismo
+  reconfirmado com o modelo novo: `tests/determinism/check_determinism.sh`, 2000 frames, 1/2/4
+  threads T/C + repetição de 4, dumps byte-idênticos.
+
 ### Adicionado
 
 - `C130ActionParatrooperStick`: libera **várias** estações em sequência, espaçadas no tempo, a

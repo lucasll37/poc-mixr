@@ -121,6 +121,22 @@ void FlightState::updateState(const base::Component* const actor)
       s.contactAltitudeM = s.altitudeM + track.deltaAltM;
    }
 
+   // --- ameaca: pista do RWR NATIVO (Rwr, passivo -> RwrTrkMgr) ---
+   // MESMA funcao do contato acima, so trocando o track manager nomeado --
+   // ver a nota em domain/WorldView.hpp sobre o que "ameaca" de fato
+   // significa aqui (emissor hostil detectado, nao "missil confirmado").
+   // 'found==false' em qualquer cenario sem ( Rwr )/( RwrTrkMgr rwrTrkMgr )
+   // declarados -- getTrackManagerByName() devolve nullptr e a consulta
+   // sai vazia, sem custo alem da chamada.
+   const xtrack::TrackInfo rwr{xtrack::nearestHostileTrack(air, "rwrTrkMgr")};
+   if (rwr.found) {
+      s.hasRwrThreat = true;
+      s.rwrThreatName = rwr.name;
+      s.rwrThreatRangeM = rwr.rangeM;
+      s.rwrThreatRelBearingDeg = rwr.relBearingDeg;
+      s.rwrThreatDeltaAltM = rwr.deltaAltM;
+   }
+
    // --- alerta recebido pelo datalink NATIVO ---
    const auto datalink = dynamic_cast<const AlertDatalink*>(air->getDatalink());
    if (datalink != nullptr) {
