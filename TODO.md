@@ -1,5 +1,3 @@
-- video abrindo groot para edição e monitoramento
-- apresentação incluir (que já encontra um wrapper gymnasium RL)
 - config.json
 - como o modelo novo está nascendo?
 - documentação
