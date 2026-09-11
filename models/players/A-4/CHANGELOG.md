@@ -52,6 +52,48 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   (`sandbox/A4-6DOF-MISSILE`, um A-4 detecta outro pelo radar e dispara) em subprojetos
   separados — ver `models/players/missile/README.md`.
 
+- **Evasão disparada por RWR, com atraso ESTOCÁSTICO de reação do piloto.** Exercício de
+  `TODO.md`: um A-4 percebe uma antiaérea (`models/players/aaa`) via `( Rwr )`/`( RwrTrkMgr )`
+  nativos e evade, depois de um atraso sorteado que representa o tempo de reação humana. Peças
+  novas, mesma disciplina de camadas:
+  - `libs/xtrack::nearestHostileTrack()` generalizado de `const models::AirVehicle*` para
+    `const models::Player*` + `trackManagerName` (default `"twsTrkMgr"`) — zero mudança nos call
+    sites existentes (upcast implícito + argumento com default). A MESMA função agora serve o
+    contato de radar próprio (`"twsTrkMgr"`) e a ameaça de RWR (`"rwrTrkMgr"`) — ver
+    `libs/xtrack/README.md`.
+  - `domain::WorldView` ganhou `hasRwrThreat`/`rwrThreatName`/`rwrThreatRangeM`/
+    `rwrThreatRelBearingDeg`/`rwrThreatDeltaAltM`, populados em `FlightState.cpp` espelhando o
+    bloco de `hasContact` já existente. **Limitação documentada de propósito**: o RWR nativo do
+    MIXR detecta um emissor hostil transmitindo (o radar de tiro da antiaérea), não um míssil —
+    `Track::isMissileWarning()` está morto neste fork (zero callers). `hasRwrThreat` significa
+    "estou sendo iluminado", não "há um míssil no ar", a mesma ambiguidade real que um piloto
+    enfrenta.
+  - `domain::EvasionReactionPlan` (`include/domain/EvasionReactionPlan.hpp`) — regra pura, no
+    molde de `domain::AerobaticPlan`: sorteia o atraso de reação numa ÚNICA borda discreta
+    (a primeira vez que a ameaça aparece), nunca por `dt`. Sem crédito parcial: se a ameaça some
+    antes do atraso vencer, a próxima detecção sorteia um atraso NOVO. O sorteio e o decremento
+    acontecem no MESMO `update()` — um atraso de X segundos é X segundos de verdade, não X+dt.
+  - **Segunda instância** de `domain::ThreatPolicy` (`rwrThreat`, independente de `threat` — a
+    evasão por contato de radar próprio continua intocada) reusa a MESMA geometria de manobra
+    (`EvasionLimits`), só alimentada com contato quando `EvasionReactionPlan` já liberou a
+    manobra (`ubf::BtBehavior::feedRwrEvasion()`).
+  - `bt_nodes::RwrThreatDetectedCondition`/`EvadeRwrThreatAction`, nomes de fábrica BT
+    `RwrThreatDetected`/`EvadeRwrThreat`, rótulos `RWR_EVADE`/`RWR_BREAK` (distintos de
+    `EVADE`/`BREAK` da evasão por contato próprio, para não confundir no xboard/dump/Tacview).
+  - Dois slots do `( BtBehavior )`: `evadeReactionMinDelay`/`evadeReactionMaxDelay` (defaults
+    `0 s`/`0 s` — reage no próprio frame em que a ameaça aparece, nunca desligado por completo:
+    sem `( Rwr )`/`( RwrTrkMgr )` no `.edl`, `hasRwrThreat` nunca fica `true`).
+  - A semente é o **terceiro consumidor** do mesmo `instanceSeed` de `patrolMasterSeed`, com
+    salt de propósito próprio (`kRwrReactionSalt`) — o mesmo caso que `kPatrolJitterSalt`/
+    `kSlowRollSalt` já antecipavam. Nenhum slot de semente novo.
+  - `configs/flight_tree_rwr_evade_demo.xml` — cópia de `flight_tree.xml` com o ramo
+    `rwr_evade_sequence` inserido entre RTB e a evasão por contato próprio. A árvore de
+    **produção** não muda.
+
+  Modelo-antiaérea (`models/players/aaa`, `( AaaSite )`, pilha BT/UBF completa — decisão
+  confirmada com o usuário) e cenário de demonstração (`sandbox/AAA-A4-6DOF`) em subprojetos
+  separados — ver `models/players/aaa/README.md`.
+
 - **Slow roll: um nó de árvore que faz a aeronave girar 360° em torno do eixo longitudinal, em
   instantes sorteados.** Quatro peças novas, uma por camada:
   - `domain::AerobaticPlan` (`include/domain/AerobaticPlan.hpp`) — regra pura, sem MIXR nem SDK,

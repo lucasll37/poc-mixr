@@ -57,6 +57,19 @@ struct BtTuning
    // apoio a um alerta recebido
    double supportSpeedKts{420.0};
 
+   // atraso de reacao do piloto a uma ameaca de RWR (domain::
+   // EvasionReactionPlan) -- estocastico, derivado do MESMO
+   // patrolMasterSeed/instanceSeed acima (ver ubf::BtBehavior::
+   // configurePlans(), salt proprio). Os dois defaults em 0.0 fazem o
+   // recurso reagir no PROPRIO frame em que a ameaca aparece (ver
+   // domain/EvasionReactionPlan.hpp), nunca desligado por completo: ao
+   // contrario de slowRollStick, nao ha estado "sem RWR" que precise ser
+   // preservado byte a byte -- sem ( Rwr )/( RwrTrkMgr ) no .edl,
+   // snapshot().hasRwrThreat nunca fica true e o atraso nunca comeca a
+   // contar (mesmo raciocinio de weaponReady em domain/WorldView.hpp).
+   double evadeReactionMinDelaySec{0.0};
+   double evadeReactionMaxDelaySec{0.0};
+
    // envelope de lancamento de missil (domain/LaunchPolicy.hpp). So' importa
    // em cenarios com 'stores:'/GuidedMissile declarado -- sem StoresMgr,
    // snapshot().weaponReady nunca fica true e LaunchEnvelopeCondition nunca

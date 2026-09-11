@@ -2,6 +2,7 @@
 
 #include "bt/nodes/AlertReceivedCondition.hpp"
 #include "bt/nodes/ContactDetectedCondition.hpp"
+#include "bt/nodes/EvadeRwrThreatAction.hpp"
 #include "bt/nodes/FuelLowCondition.hpp"
 #include "bt/nodes/LaunchEnvelopeCondition.hpp"
 #include "bt/nodes/LaunchMissileAction.hpp"
@@ -9,6 +10,7 @@
 #include "bt/nodes/PatrolAction.hpp"
 #include "bt/nodes/ReportAndEvadeAction.hpp"
 #include "bt/nodes/ReturnToBaseAction.hpp"
+#include "bt/nodes/RwrThreatDetectedCondition.hpp"
 #include "bt/nodes/SlowRollAction.hpp"
 #include "bt/nodes/SupportAlertAction.hpp"
 
@@ -34,11 +36,12 @@ void registerWithContext(BT::BehaviorTreeFactory& factory, const std::string& id
 
 // Registrar um no aqui e' so metade do trabalho: o Groot (deps/groot/,
 // CLAUDE.md "Groot -- editor e monitor ao vivo") NAO enxerga estas classes --
-// ele e' um app a parte, nunca viu este .so. Os 5 configs/flight_tree*.xml
+// ele e' um app a parte, nunca viu este .so. Os configs/flight_tree*.xml
 // de producao carregam um <TreeNodesModel> colado a mao, com o MESMO ID
 // desta chamada, so' pra ele reconhecer os nos. Registrou um no novo aqui ou
-// em bt_factory_sdk.cpp? Atualize o bloco nos 5 arquivos tambem, ou o Groot
-// recusa a arvore com "This model has not been registered: <ID>".
+// em bt_factory_sdk.cpp? Atualize o bloco em TODOS os arquivos tambem (rode
+// 'make update-bt'), ou o Groot recusa a arvore com "This model has not
+// been registered: <ID>".
 void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
 {
    registerWithContext<FuelLowCondition>(factory, "FuelLow", context);
@@ -47,6 +50,8 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
    registerWithContext<LaunchMissileAction>(factory, "LaunchMissile", context);
    registerWithContext<ContactDetectedCondition>(factory, "ContactDetected", context);
    registerWithContext<ReportAndEvadeAction>(factory, "ReportAndEvade", context);
+   registerWithContext<RwrThreatDetectedCondition>(factory, "RwrThreatDetected", context);
+   registerWithContext<EvadeRwrThreatAction>(factory, "EvadeRwrThreat", context);
    registerWithContext<AlertReceivedCondition>(factory, "AlertReceived", context);
    registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
    registerWithContext<PatrolAction>(factory, "Patrol", context);

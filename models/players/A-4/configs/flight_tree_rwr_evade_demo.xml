@@ -1,44 +1,36 @@
 <!--
-  Arvore de comportamento de producao
+  Arvore de DEMONSTRACAO de evasao disparada por RWR -- NAO e a arvore de
+  producao (essa continua em flight_tree.xml, intocada).
 
-  Arvore de comportamento de UM caca. Ela e a politica interna do
-  xnative::BtBehavior, que por sua vez e um AbstractBehavior do UBF nativo -
-  ou seja, esta arvore PODE concorrer por voto com outros comportamentos
-  dentro de um UbfArbiter, se o .edl declarar um.
-
-  ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este comentario
-  afirmava que o scenario.edl de producao SEMPRE declara um UbfArbiter com
-  ( AltitudeSafetyBehavior vote: 90 ) por cima - nao e mais verdade. Os
-  consumidores atuais desta arvore (src/poc/dis/flight,
-  src/poc/built-in_mixr_1) NAO usam mais UbfArbiter/AltitudeSafetyBehavior,
-  so ( BtBehavior ) direto (ver CLAUDE.md raiz, secao "SEM ARBITRO").
-  Enquanto o BtBehavior decide com sucesso, ELE tem a ultima palavra sobre
-  altitude - nao ha piso independente por cima. A UNICA excecao hoje e
-  src/rl/configs/scenario_rl.edl (falcon2..4), que ainda declara o arbitro
-  de verdade. Quem edita esta arvore no Groot/le so este arquivo: nao
-  presuma a rede de seguranca sem antes conferir o `.edl` que de fato a
-  carrega.
+  Usada so' pelo cenario sandbox/AAA-A4-6DOF, no A-4 que entra no domo de
+  uma antiaerea (models/players/aaa): mesma prioridade do flight_tree.xml,
+  com UM ramo novo entre "voltar pra base" e "evadir contato de radar
+  proprio" -- reagir a um emissor hostil detectado passivamente pelo RWR
+  (Rwr/RwrTrkMgr nativos), depois de um atraso ESTOCASTICO que representa o
+  tempo de reacao do piloto (domain/EvasionReactionPlan.hpp, semeado via
+  libs/xrandom).
 
   Prioridade (Fallback, de cima para baixo):
-    1) combustivel abaixo da reserva      -> volta para a base
-    2) manobra de evasao valendo          -> quebra E AVISA os outros
-    3) alerta recebido de outro caca      -> vai apoiar no ponto avisado
-    4) caso contrario                     -> patrulha
+    1) combustivel abaixo da reserva                     -> volta para a base
+    2) RWR mostra ameaca (apos o atraso de reacao vencer) -> quebra contra ela
+    3) contato de radar proprio (TWS) dentro do envelope  -> quebra E AVISA os outros
+    4) alerta recebido de outro caca                      -> vai apoiar no ponto avisado
+    5) caso contrario                                     -> patrulha
 
-  Os itens 2 e 3 sao os dois lados da interacao entre players: quem viu
-  transmite (AlertDatalink, fase 1) e quem recebeu reage (fase 3 do frame
-  seguinte). Nenhum no fala diretamente com outro aviao.
+  O item 2 NAO e "o RWR mostra alguem agora". RwrThreatDetectedCondition
+  consulta domain::ThreatPolicy::engaged() de uma SEGUNDA instancia
+  (rwrThreatPolicy(), independente da threatPolicy() do item 3) -- e essa
+  instancia so' recebe contato quando domain::EvasionReactionPlan ja'
+  liberou a manobra (ver ubf::BtBehavior::feedRwrEvasion()). Antes do atraso
+  vencer, a aeronave continua patrulhando normalmente, como se nada tivesse
+  sido percebido -- e' isso que representa o piloto ainda nao ter reagido.
 
-  ATENCAO AO ITEM 2 - ele NAO e "estou vendo o intruso agora". Os itens 2
-  e 3 comandam sentidos OPOSTOS sobre o mesmo objeto (fugir dele / ir ate
-  ele), e a propria quebra tira o intruso do setor do radar (+-30 graus,
-  contra uma quebra de 110): a pista pisca, e sem tempo minimo de
-  permanencia os dois ramos alternam para sempre - observado no Tacview
-  como aeronaves "batendo asa", +-25 graus de banco a cada ~12 s.
-
-  Por isso ContactDetected consulta domain::ThreatPolicy::engaged(), que
-  continua true por 'evadeHold' segundos depois de a pista sumir. A
-  histerese e do MODELO, nao da arvore: trocar o XML nao a desliga.
+  LIMITACAO REAL, documentada de proposito (ver domain/WorldView.hpp): o RWR
+  nativo do MIXR detecta um EMISSOR hostil transmitindo (o radar de tiro da
+  antiaerea), nao um missil especificamente -- nao ha como distinguir "estou
+  sendo varrido" de "um missil foi lancado contra mim" neste fork
+  (Track::isMissileWarning() esta morto, sem nenhum caller). O rotulo
+  RWR_EVADE/RWR_BREAK reflete essa ambiguidade honestamente.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -47,6 +39,11 @@
       <Sequence name="rtb_sequence">
         <FuelLow margin="0.05"/>
         <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="rwr_evade_sequence">
+        <RwrThreatDetected/>
+        <EvadeRwrThreat/>
       </Sequence>
 
       <Sequence name="engage_sequence">

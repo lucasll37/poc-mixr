@@ -5,6 +5,7 @@
 
 #include "bt/DecisionContext.hpp"
 #include "domain/AerobaticPlan.hpp"
+#include "domain/EvasionReactionPlan.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -77,6 +78,10 @@ namespace xnative {
 //                                ! (default: 9000 m)
 //    launchCone      <Angle>     ! Meio-angulo do cone de disparo, em torno
 //                                ! do nariz (default: 45 deg)
+//    evadeReactionMinDelay <Time> ! Piso do atraso de reacao a uma ameaca de
+//                                 ! RWR, sorteado (default: 0 s)
+//    evadeReactionMaxDelay <Time> ! Teto do atraso; <= ao piso vira atraso
+//                                 ! FIXO (default: 0 s)
 //
 // COMO UBF E BehaviorTree.CPP SE ENCAIXAM (o ponto desta poc):
 //
@@ -124,6 +129,7 @@ public:
    domain::RtbPlan& rtbPlan() override                   { return rtb; }
    domain::AerobaticPlan& aerobaticPlan() override       { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
+   const domain::ThreatPolicy& rwrThreatPolicy() const override { return rwrThreat; }
    const domain::LaunchEnvelope& launchEnvelope() const override { return launchEnvelope_; }
    double getFrameDt() const override                    { return frameDt; }
    double getFuelReserve() const override                { return tune.fuelReserve; }
@@ -142,6 +148,13 @@ private:
    // histerese da evasao envelhece (ver domain/ThreatPolicy.hpp).
    void feedThreatPolicy(double dt);
 
+   // Percepcao de RWR (snap.hasRwrThreat) -> domain::EvasionReactionPlan
+   // (o atraso estocastico de reacao do piloto) -> a SEGUNDA instancia de
+   // domain::ThreatPolicy (rwrThreat), so' alimentada com contato quando o
+   // atraso ja' venceu. Ver domain/EvasionReactionPlan.hpp para o "porque"
+   // completo do desenho.
+   void feedRwrEvasion(double dt);
+
    // Monitor ao vivo pelo Groot (opt-in via variavel de ambiente
    // MIXR_GROOT_MONITOR=<nome-do-player> -- ver o corpo em BtBehavior.cpp).
    // So' pode existir UMA instancia de PublisherZMQ por PROCESSO (o proprio
@@ -159,6 +172,8 @@ private:
    domain::RtbPlan rtb;
    domain::AerobaticPlan aerobatic;
    domain::ThreatPolicy threat;
+   domain::EvasionReactionPlan rwrReaction;
+   domain::ThreatPolicy rwrThreat;
    domain::LaunchEnvelope launchEnvelope_;
 
    BT::BehaviorTreeFactory btFactory;
@@ -199,6 +214,8 @@ private:
    bool setSlotSlowRollStick(const base::Number* const);
    bool setSlotSlowRollTimeout(const base::Time* const);
    bool setSlotSlowRollMinMargin(const base::Distance* const);
+   bool setSlotEvadeReactionMinDelay(const base::Time* const);
+   bool setSlotEvadeReactionMaxDelay(const base::Time* const);
 };
 
 } // namespace xnative

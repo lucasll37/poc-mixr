@@ -1,0 +1,360 @@
+//
+// AAA-A4-6DOF -- um A-4 (a4_intruder) entra no domo de uma antiaerea
+//               estacionaria (aaa_site), que dispara um ( GuidedMissile )
+//               contra ele; o A-4 percebe a ameaca pelo proprio RWR
+//               (passivo) e evade apos um atraso ESTOCASTICO de reacao do
+//               piloto (domain::EvasionReactionPlan, semeado via
+//               libs/xrandom).
+//
+// Exercicio (ver TODO.md, raiz): segundo da serie que comeca com
+// sandbox/A4-6DOF-MISSILE -- "implementar uma antiaerea com domo que
+// dispara o mesmo missil ... que entra no seu raio de atuacao". NAO e um
+// cenario de producao -- e o MINIMO necessario pra observar deteccao ->
+// disparo -> percepcao via RWR -> atraso de reacao -> evasao, de ponta a
+// ponta.
+//
+// DOIS players, deliberadamente assimetricos:
+//
+//   aaa_site -- ( AaaSite ), estacionaria (sem dynamicsModel,
+//      initVelocity:0.0). Radar de aquisicao PROPRIO (mesma cadeia
+//      Gimbal+Antenna+SensorMgr(Tws)+OnboardComputer(AirTrkMgr), so' que
+//      nomeado "aaaTrkMgr" -- ver models/players/aaa/docs/ARCHITECTURE.md),
+//      StoresMgr com UM ( GuidedMissile ), agent: ( UbfAgent ) NATIVO (sem
+//      subclasse de AgentTC -- decide a taxa de FUNDO, 10 Hz, de sobra pra
+//      um alvo a ~130 m/s). minLaunchRange/maxLaunchRange (slots nativos de
+//      SamVehicle) sao o "domo".
+//
+//   a4_intruder -- 6-DOF completo (JSBSim+Autopilot), SEM radar de busca
+//      proprio (nao ha outra aeronave neste cenario para detectar) -- so'
+//      o trio de RWR PASSIVO (( Rwr )/( RwrTrkMgr ), mesma receita ja
+//      provada em src/poc/built-in_mixr_1: antena dedicada 'ant_rwr' com
+//      playerOfInterestTypes incluindo 'ground', disableEmissions:true).
+//      agent: ( FlightAgentTC ) com a arvore de DEMONSTRACAO
+//      (flight_tree_rwr_evade_demo.xml em models/players/A-4 -- NAO a
+//      arvore de producao, que fica intocada).
+//
+// GEOMETRIA: a4_intruder comeca na origem, patrulhando rumo 090 (LESTE) a
+// ~250 kts. aaa_site fica parada 6000 m a leste (diretamente no caminho da
+// primeira perna de patrulha), virada para OESTE (rumo 270) para o cone do
+// proprio radar apontar na direcao de onde o A-4 se aproxima. O domo
+// (500..4500 m) e' dimensionado para a DISTANCIA INCLINADA (a antiaerea
+// esta no chao, o A-4 a 2000 m de altitude -- ~2000 m de distancia vertical
+// pura, mesmo sobrevoando bem em cima): com esses limites o A-4 passa
+// aproximadamente 8 km de trajeto (~60 s a 250 kts) dentro do domo,
+// centrado no ponto de maior aproximacao horizontal.
+//
+// SEM TERRENO (nenhum slot 'terrain:' em simulation:): o ponto desta poc e'
+// o mecanismo de deteccao/disparo/evasao, nao navegacao sobre relevo.
+//
+// SEM 'networks:' -- hermetico, mesmo motivo de toda fixture de teste
+// deste repositorio (CLAUDE.md, "Testes automatizados", armadilha 1).
+//
+// Alcancado via '-folder <pasta>' do ./app (nome da subpasta:
+// "AAA-A4-6DOF"):
+//
+//    ./build/app/src/app -folder ./sandbox -scenario AAA-A4-6DOF
+//
+// PORTA TACVIEW: 1234, igual as outras pastas de sandbox/ -- nenhuma roda
+// ao mesmo tempo que outra.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+
+   ownship: a4_intruder
+
+   components: {
+
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libflight.so"
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction }
+            )
+            ( PluginModule
+               file:     "libmissile.so"
+               provides: { GuidedMissile }
+            )
+            ( PluginModule
+               file:     "libaaa.so"
+               provides: { AaaSite AaaState AaaBehavior AaaAction }
+            )
+         }
+      )
+
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "AAA-A4-6DOF"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/AAA-A4-6DOF"
+               fileName: "./sandbox/AAA-A4-6DOF/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { a4_intruder: "A-4E" aaa_site: "SAM" }
+               typeMap:  { a4_intruder: "Air+FixedWing" aaa_site: "Ground+AntiAircraft" }
+               colorMap: { a4_intruder: "Blue" aaa_site: "Red" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+
+      latitude:  -22.25
+      longitude: -42.48
+
+      players: {
+
+         // ==============================================================
+         // aaa_site -- estacionaria, radar de aquisicao proprio, um so
+         // missil no cabide, decisao via UbfAgent nativo (sem AgentTC)
+         // ==============================================================
+         aaa_site: ( AaaSite
+            id: 201
+            side: red
+            type: "SAM"
+
+            signature: ( SigSphere radius: 5.0 )
+
+            initXPos:     ( NauticalMiles 0.0 )
+            initYPos:     ( NauticalMiles 3.239 )   // ~6000 m a leste da origem
+            initAlt:      ( Meters 0.0 )
+            initHeading:  ( Degrees 270 )            // virada para OESTE -- de onde o A-4 vem
+            initVelocity: 0.0                        // parada (sem dynamicsModel abaixo)
+
+            dataLogTime: ( Seconds 0.1 )
+
+            // O "domo" -- slots NATIVOS de mixr::models::SamVehicle.
+            minLaunchRange: ( Meters 500.0 )
+            maxLaunchRange: ( Meters 4500.0 )
+
+            components: {
+
+               // Radar de AQUISICAO proprio -- mesma cadeia de
+               // sandbox/A4-6DOF-MISSILE, so' que o track manager se chama
+               // "aaaTrkMgr" (ver ubf::AaaState::updateState()).
+               antennas: ( Gimbal
+                  components: {
+                     radar: ( Antenna
+                        polarization: horizontal
+                        gain: ( dB 42 )
+                        // Padrao de ganho LARGO de proposito (nao o feixe
+                        // estreito de ~4.5 graus que src/poc/dis/flight usa) --
+                        // uma antena terrestre de aquisicao precisa "olhar
+                        // para cima" numa faixa de elevacao ampla, e o
+                        // varredor mecanico (searchVolume/numBars abaixo)
+                        // so cobre uma bar HORIZONTAL, nivelada -- e' o
+                        // proprio padrao de ganho, nao o apontamento
+                        // mecanico, que da conta da cobertura vertical.
+                        // ARMADILHA CONFIRMADA RODANDO (nao redescobrir):
+                        // ScanGimbal::setSearchVolume() AUTO-CALCULA numBars
+                        // a partir da altura de searchVolume (limiares em
+                        // graus: <1 -> 1 bar, <5 -> 2, <10 -> 3, senao 4) --
+                        // um 'numBars:' EXPLICITO no .edl e' um SLOT
+                        // SEPARADO que so sobrescreve o numero, sem
+                        // recalcular barSpacing, entao um valor explicito
+                        // que diverge do auto-calculado deixa o antena
+                        // varrendo bars na elevacao ERRADA, em silencio.
+                        // Aqui: sem numBars: nenhum (searchVolume com altura
+                        // ~0 auto-escolhe numBars=1, bar unica e nivelada).
+                        gainPattern: ( Func1 table: ( Table1
+                           x:    [ 0.0   0.1745  0.3491  0.5236  0.6981  0.8727  1.0472  1.4835 ]
+                           data: [ 0.0  -3.0    -6.0    -10.0   -15.0   -20.0   -25.0   -60.0   ] ) )
+                        gainPatternDeg: false
+                        initPosition: [ 0 0 ]  maxRates: [ 0.8727 0.8727 ]
+                        commandRateAzimuth: ( Degrees 60 )  commandRateElevation: ( Degrees 60 )
+                        reference: [ 0 0 ]  searchVolume: [ 1.0472 0.0 ]
+                        maxPlayersOfInterest: 8  playerOfInterestTypes: { air }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 20.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 85.0 )
+                        localPlayersOfInterestOnly: false  useWorldCoordinates: false
+                     )
+                  }
+               )
+
+               sensors: ( SensorMgr components: { ( Tws
+                  trackManagerName: aaaTrkMgr  antennaName: radar
+                  powerPeak: ( KiloWatts 200.0 )  frequency: ( GigaHertz 3.0 )
+                  bandwidth: ( GigaHertz 2.0 )  PRF: ( Hertz 500.0 )
+                  pulseWidth: ( MilliSeconds 0.01 )  threshold: ( dB 0.0 )  igain: ( dB 0 )
+                  ranges: [ 5 10 20 40 ]  initRangeIdx: 1 ) } )
+
+               obc: ( OnboardComputer components: { aaaTrkMgr: ( AirTrkMgr
+                  maxTracks: 20  alpha: 1.0  beta: 0.5  gamma: 0.0
+                  positionGate: 1500  rangeGate: 500  velocityGate: 10  firstTrackId: 3000 ) } )
+
+               // Um so' estacao, um so' missil -- disparo unico por
+               // engajamento (ver ubf::AaaBehavior::genAction(): sem
+               // estado extra, a checagem StoresMgr::available()>0 dentro
+               // de TargetInDomeCondition ja impede um segundo disparo
+               // depois que este sai do cabide).
+               stores: ( StoresMgr
+                  numStations: 1
+                  stores: {
+                     1: ( GuidedMissile
+                        id: 601
+                        side: red
+                        type: "AIM-X"
+                        signature: ( SigSphere radius: 0.2 )
+                        dataLogTime: ( Seconds 0.1 )
+                        maxTOF: ( Seconds 60 )
+                        lethalRange: ( Meters 30 )
+                        maxBurstRng: ( Meters 150 )
+                     )
+                  }
+               )
+
+               // O AGENTE -- UbfAgent NATIVO (nao AgentTC), decidindo a
+               // taxa de FUNDO (updateData(), ~10 Hz): de sobra pra "alvo
+               // a ~130 m/s entra no domo, dispara". Ver
+               // models/players/aaa/docs/ARCHITECTURE.md para o porque de
+               // nao existir nenhuma subclasse propria de AgentTC aqui.
+               agent: ( UbfAgent
+                  state: ( AaaState )
+                  behavior: ( AaaBehavior
+                     treeFile: "./dist/share/mixr-plugins/aaa/aaa_tree.xml"
+                  )
+               )
+            }
+         )
+
+         // ==============================================================
+         // a4_intruder -- 6-DOF completo, so RWR passivo (sem radar de
+         // busca proprio -- nao ha outra aeronave para detectar neste
+         // cenario), arvore de demo de evasao por RWR
+         // ==============================================================
+         a4_intruder: ( Aircraft
+            id: 101
+            side: blue
+            type: "A4"
+
+            signature: ( SigSphere radius: 3.0 )
+
+            initXPos:     ( NauticalMiles 0.0 )
+            initYPos:     ( NauticalMiles 0.0 )
+            initAlt:      ( Meters 2000.0 )
+            initHeading:  ( Degrees 90 )
+            initVelocity: 129.0                   // ~250 kts
+
+            dataLogTime: ( Seconds 0.1 )
+
+            components: {
+
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  model:   "A4"
+                  debugLevel: 0
+               )
+
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   20.0
+                  maxClimbRateMps:  40.0
+                  maxAcceleration:  6.0
+               )
+
+               // RWR PASSIVO -- antena dedicada (NUNCA compartilhada com um
+               // radar de busca: Antenna::setSystem() guarda um unico
+               // ponteiro, o ultimo reset() vence em silencio), mesma
+               // receita ja provada em
+               // src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in
+               // (cobertura quase esferica, ganho baixo -- so escuta,
+               // nunca ilumina). 'ground' em playerOfInterestTypes e'
+               // obrigatorio: sem ele o RWR nunca veria o radar de
+               // aquisicao terrestre da aaa_site (que e' um player
+               // 'ground', nao 'air').
+               antennas: ( Gimbal
+                  components: {
+                     ant_rwr: ( Antenna
+                        // polarization: none (default, nao declarado de proposito) -- um
+                        // RWR de verdade tem que detectar qualquer radar hostil
+                        // independente da polarizacao TRANSMITIDA por ele. ARMADILHA
+                        // CONFIRMADA RODANDO (achada por auditoria, gdb ao vivo): declarar
+                        // 'polarization: vertical' aqui contra o 'polarization: horizontal'
+                        // do radar da aaa_site zera Antenna::getPolarizationGain() por
+                        // completo (tabela cruzada VERTICAL x HORIZONTAL = 0.0,
+                        // Antenna.cpp:718-731) -- raGain sai EXATAMENTE 0.0 em toda
+                        // emissao recebida (medido: Antenna::rfReceivedEmission raGain=
+                        // 0.000000 sempre), entao o sinal nunca vence o limiar de SNR do
+                        // Rwr mesmo com o pacote chegando (np=1 a cada ciclo). O caminho
+                        // de retorno do radar da propria aaa_site (RF_EMISSION_RETURN,
+                        // usado pela deteccao da Tws) NAO passa por essa tabela -- e' por
+                        // isso que a aaa_site detecta normalmente enquanto o RWR do A-4
+                        // ficava sempre cego.
+                        gain: ( dB 3 )
+                        initPosition: [ 0 0 ]
+                        maxPlayersOfInterest: 16
+                        playerOfInterestTypes: { air ground ship }
+                        maxRange2PlayersOfInterest: ( NauticalMiles 40.0 )
+                        maxAngle2PlayersOfInterest: ( Degrees 180.0 )
+                        localPlayersOfInterestOnly: false
+                        useWorldCoordinates: false
+                     )
+                  }
+               )
+
+               sensors: ( SensorMgr components: { ( Rwr
+                  trackManagerName: rwrTrkMgr
+                  antennaName: ant_rwr
+                  disableEmissions: true
+                  frequency:  ( GigaHertz 6.0 )
+                  bandwidth:  ( GigaHertz 10.0 )
+                  threshold:  ( dB 0.0 )
+               ) } )
+
+               obc: ( OnboardComputer components: { rwrTrkMgr: ( RwrTrkMgr
+                  maxTracks: 20  alpha: 2.0  beta: 0.0  gamma: 0.0  firstTrackId: 4000 ) } )
+
+               // O AGENTE -- ultimo componente de proposito (fase 3 roda
+               // Autopilot/RwrTrkMgr/decisao nessa ordem; decidir por
+               // ultimo ja ve as pistas atualizadas deste frame).
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_rwr_evade_demo.xml"
+                     patrolHeading:  ( Degrees 90 )
+                     legTime:        ( Seconds 120 )
+                     legTurn:        ( Degrees 90 )
+                     patrolAltitude: ( Meters 2000 )
+                     patrolSpeed:    250.0
+                     rtbAltitude:    ( Meters 2100 )
+                     rtbSpeed:       260.0
+                     arrivalRadius:  ( NauticalMiles 2.0 )
+                     fuelReserve:    0.35
+                     breakTurn:      ( Degrees 110 )
+                     evadeClimb:     ( Meters 400 )
+                     evadeSpeed:     280.0
+                     supportSpeed:   260.0
+                     evadeHold:      ( Seconds 30 )
+                     terrainClearance: ( Meters 0 )     // sem terreno neste cenario -- piso absoluto (200 m) so
+                     // Atraso ESTOCASTICO de reacao do piloto a uma ameaca
+                     // de RWR (domain::EvasionReactionPlan) -- o coracao
+                     // deste exercicio.
+                     evadeReactionMinDelay: ( Seconds 2.0 )
+                     evadeReactionMaxDelay: ( Seconds 6.0 )
+                  )
+               )
+            }
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

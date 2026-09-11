@@ -54,6 +54,8 @@ BEGIN_SLOTTABLE(BtBehavior)
    "launchMinRange",      // 25
    "launchMaxRange",      // 26
    "launchCone",          // 27
+   "evadeReactionMinDelay", // 28
+   "evadeReactionMaxDelay", // 29
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -84,6 +86,8 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(25, setSlotLaunchMinRange,      base::Distance)
    ON_SLOT(26, setSlotLaunchMaxRange,      base::Distance)
    ON_SLOT(27, setSlotLaunchCone,          base::Angle)
+   ON_SLOT(28, setSlotEvadeReactionMinDelay, base::Time)
+   ON_SLOT(29, setSlotEvadeReactionMaxDelay, base::Time)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -313,6 +317,28 @@ bool BtBehavior::setSlotLaunchCone(const base::Angle* const msg)
    if (msg == nullptr) return false;
    tune.launchConeDeg = base::Degrees::convertStatic(*msg);
    return (tune.launchConeDeg >= 0.0 && tune.launchConeDeg <= 180.0);
+}
+
+
+//------------------------------------------------------------------------------
+// ATRASO DE REACAO A AMEACA DE RWR (ver domain/EvasionReactionPlan.hpp). O
+// atraso e' sorteado em [min, max]; max <= min vira atraso FIXO, sem
+// consumir o gerador. Os dois aceitam zero: um piso de 0 s so' quer dizer
+// "pode reagir ja'", nao e' configuracao invalida -- mesmo raciocinio de
+// slowRollMinInterval/MaxInterval acima.
+//------------------------------------------------------------------------------
+bool BtBehavior::setSlotEvadeReactionMinDelay(const base::Time* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.evadeReactionMinDelaySec = base::Seconds::convertStatic(*msg);
+   return (tune.evadeReactionMinDelaySec >= 0.0);
+}
+
+bool BtBehavior::setSlotEvadeReactionMaxDelay(const base::Time* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.evadeReactionMaxDelaySec = base::Seconds::convertStatic(*msg);
+   return (tune.evadeReactionMaxDelaySec >= 0.0);
 }
 
 

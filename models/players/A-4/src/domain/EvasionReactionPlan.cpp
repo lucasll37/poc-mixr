@@ -42,10 +42,12 @@ bool EvasionReactionPlan::update(const double dt, const bool hasThreat)
 
    if (phase_ == Phase::Idle) {
       // Borda: a ameaca acabou de aparecer -- sorteia o atraso de reacao
-      // UMA vez aqui, nunca por 'dt'.
+      // UMA vez aqui, nunca por 'dt'. Cai direto no ramo Waiting abaixo, NO
+      // MESMO update(): um atraso configurado de X segundos correspode a X
+      // segundos de espera de verdade, nao X+dt (um tick 'de graca' so por
+      // causa da borda de transicao).
       phase_ = Phase::Waiting;
       drawNextDelay();
-      return false;
    }
 
    if (phase_ == Phase::Waiting) {

@@ -55,6 +55,16 @@ public:
    // ( SlowRoll ) so o avanca e le.
    virtual domain::AerobaticPlan& aerobaticPlan() = 0;
 
+   // SEGUNDA instancia de domain::ThreatPolicy, dedicada a ameaca de RWR
+   // (emissor hostil detectado passivamente, ver domain/WorldView.hpp) --
+   // independente de threatPolicy() acima (contato de radar proprio contra
+   // outra aeronave). As duas nunca interferem entre si: ThreatPolicy
+   // recebe TODO o estado por parametro a cada update(), sem nenhum membro
+   // compartilhado. Alimentada em ubf::BtBehavior::feedRwrEvasion(), so'
+   // com hasContact=true depois que domain::EvasionReactionPlan libera a
+   // manobra (o atraso estocastico de reacao do piloto).
+   virtual const domain::ThreatPolicy& rwrThreatPolicy() const = 0;
+
    // Alcance/cone dentro dos quais o disparo de missil e' permitido (ver
    // domain/LaunchPolicy.hpp e bt/nodes/LaunchEnvelopeCondition.cpp). Ao
    // contrario dos planos acima, nao ha estado que sobreviva entre ticks

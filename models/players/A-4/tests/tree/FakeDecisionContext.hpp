@@ -13,6 +13,7 @@
 // uma politica falsa esconderia justamente a interacao que interessa.
 
 #include "bt/DecisionContext.hpp"
+#include "domain/EvasionReactionPlan.hpp"
 
 namespace testing_support {
 
@@ -25,6 +26,8 @@ public:
    domain::RtbPlan rtb{};
    domain::AerobaticPlan aerobatic{};
    domain::ThreatPolicy threat{};
+   domain::EvasionReactionPlan rwrReaction{};
+   domain::ThreatPolicy rwrThreat{};
    domain::LaunchEnvelope launch{};
 
    double frameDt{0.02};
@@ -43,6 +46,7 @@ public:
    domain::RtbPlan& rtbPlan() override                       { return rtb; }
    domain::AerobaticPlan& aerobaticPlan() override           { return aerobatic; }
    const domain::ThreatPolicy& threatPolicy() const override { return threat; }
+   const domain::ThreatPolicy& rwrThreatPolicy() const override { return rwrThreat; }
    const domain::LaunchEnvelope& launchEnvelope() const override { return launch; }
    double getFrameDt() const override                        { return frameDt; }
    double getFuelReserve() const override                    { return fuelReserve; }
@@ -89,6 +93,24 @@ public:
       threat.update(dt, snap.hasContact, contact, snap.headingDeg, snap.altitudeM, ground);
    }
 
+   // Copia fiel de BtBehavior::feedRwrEvasion(): Snapshot -> domain, na
+   // MESMA ordem (atraso estocastico primeiro, so' depois a manobra).
+   void alimentarRwrPolitica(const double dt)
+   {
+      const bool reacting{rwrReaction.update(dt, snap.hasRwrThreat)};
+
+      domain::ThreatContact contact;
+      contact.rangeM = snap.rwrThreatRangeM;
+      contact.relBearingDeg = snap.rwrThreatRelBearingDeg;
+      contact.deltaAltM = snap.rwrThreatDeltaAltM;
+
+      domain::GroundReference ground;
+      ground.valid = snap.terrainValid;
+      ground.elevationM = snap.terrainElevM;
+
+      rwrThreat.update(dt, reacting, contact, snap.headingDeg, snap.altitudeM, ground);
+   }
+
    // Mesma configuracao que o cenario da falcon1 aplica pelos slots do EDL.
    void configurarComoNoCenario()
    {
@@ -114,6 +136,15 @@ public:
       // e domain::EvasionLimits::terrainClearanceM sao o MESMO slot do EDL
       // (BtBehavior::configurePlans() alimenta os dois com tune.terrainClearanceM).
       terrainClearanceM = lim.terrainClearanceM;
+
+      // rwrThreat reusa a MESMA geometria de manobra (lim) -- so' o gatilho
+      // muda entre as duas ThreatPolicy. rwrReaction fica com semente/atraso
+      // fixos, sobrescrevaveis por teste (campo publico) quando o caso
+      // precisar de um atraso especifico.
+      rwrThreat.setLimits(lim);
+      rwrThreat.reset();
+      rwrReaction.configure(0.0, 0.0);
+      rwrReaction.setSeed(1);
    }
 };
 

@@ -45,6 +45,13 @@ constexpr std::uint64_t kPatrolJitterSalt{0x5041'5452'4F4C'4A00ULL};
 // o comentario acima antecipa -- mesma semente de instancia, salt diferente,
 // sequencias sem correlacao entre si. "ROLLSALT" em ASCII.
 constexpr std::uint64_t kSlowRollSalt{0x524F'4C4C'5341'4C54ULL};
+
+// Salt de PROPOSITO do TERCEIRO consumidor do mesmo instanceSeed: o atraso
+// de reacao do piloto a uma ameaca de RWR (domain::EvasionReactionPlan).
+// Mesmo raciocinio dos dois acima -- sequencia sem correlacao com o jitter
+// de patrulha ou o sorteio de acrobacia, mesmo vindo do MESMO instanceSeed.
+// "EVADELAY" em ASCII.
+constexpr std::uint64_t kRwrReactionSalt{0x4556'4144'454C'4159ULL};
 }
 
 BtBehavior::BtBehavior()
@@ -72,6 +79,7 @@ void BtBehavior::copyData(const BtBehavior& org, const bool)
    snap = FlightState::Snapshot{};
    currentDecision.reset();
    threat.reset();
+   rwrThreat.reset();
 }
 
 void BtBehavior::reset()
@@ -151,6 +159,16 @@ void BtBehavior::configurePlans()
    limits.terrainClearanceM = tune.terrainClearanceM;
    threat.setLimits(limits);
    threat.reset();
+
+   // Terceiro consumidor da MESMA hierarquia -- reaproveita 'instanceSeed'
+   // mais uma vez, com o proprio salt de proposito. rwrThreat_ reusa a
+   // MESMA geometria de manobra (limits) que a evasao por contato de radar
+   // proprio ja usa: a forma da quebra (virar para longe, desconflitar em
+   // altitude) nao muda com a origem da ameaca, so' o GATILHO muda.
+   rwrReaction.configure(tune.evadeReactionMinDelaySec, tune.evadeReactionMaxDelaySec);
+   rwrReaction.setSeed(xrandom::deriveSeed(instanceSeed, kRwrReactionSalt));
+   rwrThreat.setLimits(limits);
+   rwrThreat.reset();
 }
 
 void BtBehavior::buildTree()
@@ -288,6 +306,34 @@ void BtBehavior::feedThreatPolicy(const double dt)
 }
 
 //------------------------------------------------------------------------------
+// feedRwrEvasion() -- Snapshot -> domain::EvasionReactionPlan (o atraso
+// estocastico) -> domain::ThreatPolicy (a manobra em si), nessa ordem.
+//
+// O PONTO CENTRAL: rwrThreat SO' recebe hasContact=true depois que
+// rwrReaction.update() devolve true (o atraso ja' venceu, com a ameaca
+// ainda presente) -- antes disso, rwrThreat.update() e' alimentada com
+// 'false', exatamente como se nao houvesse ameaca nenhuma. E' isso que faz
+// o piloto "demorar para reagir": a arvore (via RwrThreatDetectedCondition)
+// so' enxerga rwrThreat.engaged() virar true no frame em que o atraso
+// sorteado ja' se esgotou, nunca antes.
+//------------------------------------------------------------------------------
+void BtBehavior::feedRwrEvasion(const double dt)
+{
+   const bool reacting{rwrReaction.update(dt, snap.hasRwrThreat)};
+
+   domain::ThreatContact contact;
+   contact.rangeM = snap.rwrThreatRangeM;
+   contact.relBearingDeg = snap.rwrThreatRelBearingDeg;
+   contact.deltaAltM = snap.rwrThreatDeltaAltM;
+
+   domain::GroundReference ground;
+   ground.valid = snap.terrainValid;
+   ground.elevationM = snap.terrainElevM;
+
+   rwrThreat.update(dt, reacting, contact, snap.headingDeg, snap.altitudeM, ground);
+}
+
+//------------------------------------------------------------------------------
 // clampAltitudeToTerrain() -- ACHADO POR AUDITORIA (nao redescobrir, ver o
 // comentario grande em bt/DecisionContext.hpp): so' domain::ThreatPolicy
 // aplicava domain/TerrainFloor.hpp; RTB/SUPPORT/PATROL comandavam altitude
@@ -349,6 +395,7 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
 
    frameDt = dt;
    feedThreatPolicy(dt);
+   feedRwrEvasion(dt);
 
    if (!treeBuilt) buildTree();
    if (!treeValid) return nullptr;

@@ -70,6 +70,7 @@ model_sources = files(
 
     # regras de negocio puras (sem MIXR, sem BehaviorTree.CPP)
     'src/domain/AerobaticPlan.cpp',
+    'src/domain/EvasionReactionPlan.cpp',
     'src/domain/geometry.cpp',
     'src/domain/LaunchPolicy.cpp',
     'src/domain/PatrolPlan.cpp',
@@ -97,6 +98,7 @@ model_sources = files(
     'src/bt/bt_factory_sdk.cpp',
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
+    'src/bt/nodes/EvadeRwrThreatAction.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
     'src/bt/nodes/LaunchEnvelopeCondition.cpp',
     'src/bt/nodes/LaunchMissileAction.cpp',
@@ -107,6 +109,7 @@ model_sources = files(
     'src/bt/nodes/PyDecideAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
+    'src/bt/nodes/RwrThreatDetectedCondition.cpp',
     'src/bt/nodes/SlowRollAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',
 )
@@ -157,6 +160,12 @@ install_data('configs/flight_tree_random.xml',
 # um ramo de disparo (LaunchEnvelope/LaunchMissile) a mais que flight_tree.xml,
 # NAO a arvore de producao. Vai junto pelo mesmo motivo das outras.
 install_data('configs/flight_tree_missile_demo.xml',
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+
+# A arvore de DEMONSTRACAO de evasao disparada por RWR (sandbox/AAA-A4-6DOF):
+# um ramo (RwrThreatDetected/EvadeRwrThreat) a mais que flight_tree.xml, NAO
+# a arvore de producao. Vai junto pelo mesmo motivo das outras.
+install_data('configs/flight_tree_rwr_evade_demo.xml',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
 
 # A arvore de DEPLOY da politica de RL e o .onnx que ela aponta. Vao junto
@@ -238,6 +247,7 @@ endif
 # uma declarasse a propria copia.
 domain_sources = files(
     'src/domain/AerobaticPlan.cpp',
+    'src/domain/EvasionReactionPlan.cpp',
     'src/domain/geometry.cpp',
     'src/domain/LaunchPolicy.cpp',
     'src/domain/PatrolPlan.cpp',
@@ -250,6 +260,7 @@ bt_sources = files(
     'src/bt/bt_factory.cpp',
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
+    'src/bt/nodes/EvadeRwrThreatAction.cpp',
     'src/bt/nodes/FuelLowCondition.cpp',
     'src/bt/nodes/LaunchEnvelopeCondition.cpp',
     'src/bt/nodes/LaunchMissileAction.cpp',
@@ -257,6 +268,7 @@ bt_sources = files(
     'src/bt/nodes/PatrolAction.cpp',
     'src/bt/nodes/ReportAndEvadeAction.cpp',
     'src/bt/nodes/ReturnToBaseAction.cpp',
+    'src/bt/nodes/RwrThreatDetectedCondition.cpp',
     'src/bt/nodes/SlowRollAction.cpp',
     'src/bt/nodes/SupportAlertAction.cpp',
 )
