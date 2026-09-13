@@ -81,9 +81,8 @@ comentário completo está no próprio header: um cenário PODERIA, em tese, car
 plugin no mesmo processo, e dois tipos com o **mesmo nome qualificado** (`domain::Foo`) em dois
 `.so`s distintos teriam o mesmo símbolo *mangled* — a comparação de `type_info` deste toolchain
 degrada para `strcmp` entre objetos `RTLD_LOCAL`, então dois tipos DIFERENTES com o mesmo nome
-qualificado colidiriam. O `flight` (`models/players/A-4`) chegou primeiro e usa `domain::` solto —
-já documentado e usado em dezenas de lugares, caro demais para mudar agora (é a exceção histórica,
-**não** o exemplo a copiar). Os dois artefatos deste diretório (o scaffold `xtemplate` e o mirror
+qualificado colidiriam. `models/players/A-4` chegou primeiro e usou `domain::`/`bt_nodes::` soltos
+por um tempo — a exceção histórica, já corrigida (ver `CHANGELOG.md` daquele modelo). Os dois artefatos deste diretório (o scaffold `xtemplate` e o mirror
 de contrato `xtemplate_mirror`, em `../src/mirror.cpp`) já nascem certos, cada um no seu próprio
 namespace. Ao copiar o scaffold, troque `xtemplate` pelo nome do seu modelo em TODA a árvore (ver
 [`PRIMEIROS-PASSOS.md`](PRIMEIROS-PASSOS.md)), e o seu `domain::` sai automaticamente livre de

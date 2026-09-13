@@ -3,8 +3,9 @@
 cenarios de sandbox, ver app/ScenarioFolder.hpp).
 
 Monta uma pasta temporaria com TRES subpastas -- uma valida (uma copia do
-'.edl.in' de 'full-systems-nav', cenario real de um player so, chamado
-'a4'), uma deliberadamente malformada ('configs/' vazia) e uma valida mas
+'.edl.in' de 'full-systems-nav', em tests/fixtures/ (ex-poc, ver
+CLAUDE.md/TODO.md), cenario real de um player so, chamado 'a4'), uma
+deliberadamente malformada ('configs/' vazia) e uma valida mas
 com ZERO players (so 'Station'/'WorldModel') -- e roda o caminho
 NAO-INTERATIVO ('-folder <pasta> -scenario <nome-da-subpasta>'), que pula
 a tela de navegacao. Isso exercita, de ponta a ponta:
@@ -36,7 +37,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
-CATALOGADO = RAIZ / "src" / "poc" / "full-systems-nav" / "configs" / "scenario_full_nav.edl.in"
+CATALOGADO = RAIZ / "tests" / "fixtures" / "full-systems-nav" / "configs" / "scenario_full_nav.edl.in"
 
 CAMPO = re.compile(r"(\w+)=(\S+)")
 

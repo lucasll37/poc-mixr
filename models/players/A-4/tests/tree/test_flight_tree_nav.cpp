@@ -15,6 +15,9 @@
 
 #include <gtest/gtest.h>
 
+namespace domain = mixr::models::xA_4::domain;
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
+
 namespace {
 
 constexpr double TOL{1e-9};
@@ -138,8 +141,9 @@ TEST(FlightTreeNav, SemGuiagemValidaNaoDecideNada)
 
 //------------------------------------------------------------------------------
 // ACHADO POR AUDITORIA (nao redescobrir): um GAP de guiagem invalida no meio
-// da vida da MESMA arvore (ex.: NAV -> EVADE -> NAV, o caso real de
-// full-systems-nav) tem que "recomecar do zero" no rumo comandado, nao
+// da vida da MESMA arvore (ex.: NAV -> EVADE -> NAV, o caso real do
+// cenario full-systems-nav em tests/fixtures/) tem que "recomecar do zero"
+// no rumo comandado, nao
 // retomar suavizando a partir do valor congelado de ANTES do gap -- senao o
 // primeiro tick apos reconectar fica sujeito ao limitador de taxa como se
 // fosse uma correcao continua, quando na verdade e uma bearing nova sem

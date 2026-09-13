@@ -42,6 +42,15 @@ Convenções deste documento (as mesmas do documento irmão):
 - Blocos de código são transcrição dos arquivos reais (eventualmente condensada, com
   omissões marcadas por `// ...`), nunca reescrita.
 
+> **NOTA DE DESATUALIZAÇÃO.** As anotações "NESTA POC" deste documento, e os caminhos
+> `poc/NN-slug/` (`poc/01-flying-aircraft` ... `poc/10-satellite-constellation`) citados ao
+> longo do texto, são anteriores a uma reestruturação geral deste repositório que apagou
+> essa numeração e moveu os subprojetos para `src/poc/`. Os nomes e caminhos atuais de cada
+> um (`src/poc/dis/flight`, `src/poc/dis/bandit`, `src/poc/python-flight`,
+> `src/poc/onnx-policy` etc.) estão documentados em `README.md`, seção "Rodar" — não foram
+> retroaplicados a este documento, que descreve os padrões dos exemplos oficiais do MIXR e
+> não foi reescrito depois da mudança.
+
 ---
 
 # 0. APLICABILIDADE: O FORK EMPACOTADO NÃO TEM TUDO QUE OS EXEMPLOS USAM

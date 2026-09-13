@@ -11,7 +11,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(AltitudeSafetyBehavior, "AltitudeSafetyBehavior")
 
@@ -127,6 +127,6 @@ bool AltitudeSafetyBehavior::setSlotRecoverClearance(const base::Distance* const
    return (recoverClearanceM >= 0.0);
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

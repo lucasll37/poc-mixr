@@ -14,8 +14,8 @@ VERDADE competindo pela mesma porta ao mesmo tempo -- toda a suite roda com
 'is_parallel: false' (nunca dois testes de poc ao mesmo tempo), entao esse
 caminho nunca era exercitado.
 
-Duas copias do MESMO cenario real (src/poc/full-systems-nav, 1 player, porta
-Tacview propria) sao derivadas para pastas de sandbox com nomes DIFERENTES
+Duas copias do MESMO cenario real (tests/fixtures/full-systems-nav, ex-poc, 1
+player, porta Tacview propria) sao derivadas para pastas de sandbox com nomes DIFERENTES
 (evita a disputa, ja documentada em CLAUDE.md, pelo MESMO
 '.generated.edl' que dois processos do mesmo cenario teriam) e caminhos de
 gravacao/mensagem PROPRIOS (evita disputa pelo MESMO '.acmi'/'.jsonl' --
@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
-CATALOGADO = RAIZ / "src" / "poc" / "full-systems-nav" / "configs" / "scenario_full_nav.edl.in"
+CATALOGADO = RAIZ / "tests" / "fixtures" / "full-systems-nav" / "configs" / "scenario_full_nav.edl.in"
 
 CAMPO = re.compile(r"(\w+)=(\S+)")
 

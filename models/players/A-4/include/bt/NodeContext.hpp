@@ -5,13 +5,16 @@
 #include <string>
 
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 //------------------------------------------------------------------------------
 // FlightDecision -- o que a arvore PRODUZ num tick.
 //
 // Os nos nao tocam em nenhum objeto MIXR: eles so preenchem esta estrutura.
-// Quem transforma isto em atuacao e a xnative::FlightAction do UBF. Assim o
+// Quem transforma isto em atuacao e a xA_4::FlightAction do UBF. Assim o
 // mesmo conjunto de nos serviria a outra aeronave, outro atuador, ou a um
 // teste unitario sem simulacao nenhuma.
 //------------------------------------------------------------------------------
@@ -32,7 +35,7 @@ struct FlightDecision
    // pedido de lancamento de missil contra um alvo nomeado -- a resolucao
    // do nome para o Player* e o disparo em si (StoresMgr::releaseOneMissile()
    // + setTargetPlayer()) acontecem so' na atuacao, em
-   // xnative::FlightAction::execute() (ver o comentario la). Nenhum no
+   // xA_4::FlightAction::execute() (ver o comentario la). Nenhum no
    // toca em objeto MIXR.
    bool launchRequested{};
    std::string launchTargetName;
@@ -64,3 +67,6 @@ struct NodeContext
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

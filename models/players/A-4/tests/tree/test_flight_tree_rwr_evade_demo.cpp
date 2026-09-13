@@ -18,6 +18,9 @@
 
 #include <string>
 
+namespace domain = mixr::models::xA_4::domain;
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
+
 namespace {
 
 using testing_support::FakeDecisionContext;

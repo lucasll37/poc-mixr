@@ -22,13 +22,13 @@ atraso estocástico de reação → evasão, de ponta a ponta.
 
 A resposta tem duas metades, cada uma num subprojeto separado:
 
-- **`models/players/aaa`** (novo) — `( AaaSite )`, subclasse de `mixr::models::SamVehicle`
+- **`models/players/AAA`** (novo) — `( AaaSite )`, subclasse de `mixr::models::SamVehicle`
   (que já traz os slots nativos `minLaunchRange`/`maxLaunchRange` — o "domo" já é dado nativo,
   não código novo). Pilha completa `domain/bt/ubf/xnative`, com uma árvore de comportamento de
   verdade (`Sequence(TargetInDome, FireMissile)` num `Fallback` com `Watch` de degradação) e
   decisão via `( UbfAgent )` **nativo** (sem subclasse de `AgentTC` — a antiaérea decide na
   taxa de FUNDO, ~10 Hz, de sobra para um alvo a ~130 m/s). Ver
-  [`docs/ARCHITECTURE.md`](../../models/players/aaa/docs/ARCHITECTURE.md) para o porquê de não
+  [`docs/ARCHITECTURE.md`](../../models/players/AAA/docs/ARCHITECTURE.md) para o porquê de não
   existir nenhum `AgentTC` próprio e para a armadilha do `SamVehicle`/`Sam`-cast (documentada
   abaixo também).
 - **`models/players/A-4`** (estendido) — um segundo par condição/ação de árvore
@@ -47,7 +47,7 @@ A resposta tem duas metades, cada uma num subprojeto separado:
   `maxLaunchRange: 4500 m`.
 - **`a4_intruder`** (azul) — 6-DOF completo (JSBSim+Autopilot), **sem** radar de busca próprio
   (não há outra aeronave neste cenário para detectar) — só o trio de RWR **passivo**
-  (`( Rwr )`/`( RwrTrkMgr )`, mesma receita já provada em `src/poc/built-in_mixr_1`: antena
+  (`( Rwr )`/`( RwrTrkMgr )`, mesma receita já provada em `tests/fixtures/built-in_mixr_1`: antena
   dedicada `ant_rwr` com `playerOfInterestTypes` incluindo `ground` — obrigatório, é assim que
   o RWR enxerga o radar de aquisição **terrestre** da `aaa_site`). Agente
   `( FlightAgentTC )` com a árvore de demonstração.
@@ -145,8 +145,8 @@ sai do cabide, exatamente como um RWR de verdade avisaria "estou sendo iluminado
 
 ## Ler também
 
-- [`models/players/aaa/README.md`](../../models/players/aaa/README.md) e
-  [`docs/ARCHITECTURE.md`](../../models/players/aaa/docs/ARCHITECTURE.md) — o modelo da
+- [`models/players/AAA/README.md`](../../models/players/AAA/README.md) e
+  [`docs/ARCHITECTURE.md`](../../models/players/AAA/docs/ARCHITECTURE.md) — o modelo da
   antiaérea.
 - [`models/players/A-4/CHANGELOG.md`](../../models/players/A-4/CHANGELOG.md) — a entrada da
   extensão de RWR/evasão estocástica.

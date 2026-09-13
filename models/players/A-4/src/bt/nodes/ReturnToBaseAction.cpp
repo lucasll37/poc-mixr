@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 ReturnToBaseAction::ReturnToBaseAction(const std::string& name, const BT::NodeConfiguration& config,
@@ -33,3 +36,6 @@ BT::NodeStatus ReturnToBaseAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

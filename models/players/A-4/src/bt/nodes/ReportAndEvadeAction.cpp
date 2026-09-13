@@ -3,6 +3,9 @@
 #include "domain/ThreatPolicy.hpp"
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 ReportAndEvadeAction::ReportAndEvadeAction(const std::string& name,
@@ -53,3 +56,6 @@ BT::NodeStatus ReportAndEvadeAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

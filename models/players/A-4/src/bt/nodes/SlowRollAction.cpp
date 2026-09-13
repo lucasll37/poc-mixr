@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 SlowRollAction::SlowRollAction(const std::string& name, const BT::NodeConfiguration& config,
@@ -65,3 +68,6 @@ BT::NodeStatus SlowRollAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

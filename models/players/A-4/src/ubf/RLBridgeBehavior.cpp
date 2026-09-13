@@ -9,7 +9,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(RLBridgeBehavior, "RLBridgeBehavior")
 EMPTY_SLOTTABLE(RLBridgeBehavior)
@@ -116,6 +116,6 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
    return action;
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

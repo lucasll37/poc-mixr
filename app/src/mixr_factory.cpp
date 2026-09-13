@@ -38,11 +38,12 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    if (obj == nullptr) obj = mixr::xclock::factory(name);
 
    // Joystick e mensageria: o ./app nao usa NENHUM dos dois por conta propria
-   // (o proprio TUI ja e o "feed"), mas e o runner UNICO das pocs -- e os
-   // cenarios delas usam: 'bandit' declara ( JoystickIoHandler ) no slot
-   // 'ioHandler:', e flight/python-flight/onnx-policy/built-in_mixr_1
-   // declaram ( MsgFeed ) em 'components:'. Sem estas duas
-   // linhas o parser recusa esses cenarios com "nome de fabrica desconhecido".
+   // (o proprio TUI ja e o "feed"), mas e o runner UNICO das pocs (e de
+   // fixtures como tests/fixtures/*) -- e os cenarios delas usam: 'bandit'
+   // declara ( JoystickIoHandler ) no slot 'ioHandler:', e flight/
+   // python-flight/onnx-policy declaram ( MsgFeed ) em 'components:'. Sem
+   // estas duas linhas o parser recusa esses cenarios com "nome de fabrica
+   // desconhecido".
    if (obj == nullptr) obj = mixr::xjoystick::factory(name);
    if (obj == nullptr) obj = mixr::xmsg::factory(name);
 

@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 ContactDetectedCondition::ContactDetectedCondition(const std::string& name,
@@ -31,3 +34,6 @@ BT::NodeStatus ContactDetectedCondition::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

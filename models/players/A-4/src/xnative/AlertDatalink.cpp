@@ -14,7 +14,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(AlertDatalink, "AlertDatalink")
 
@@ -229,6 +229,6 @@ bool AlertDatalink::setSlotHoldTime(const base::Time* const msg)
    return (holdTimeSec > 0.0);
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

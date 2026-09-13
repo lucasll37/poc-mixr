@@ -154,4 +154,4 @@ das oito aeronaves, a rota em figura-de-oito de 20 steerpoints com as três
 `Action` (decoy/SAR/troca de camuflagem) disparando a cada volta,
 `pilot:`/`Autopilot`, `agent:`/`flight_tree_nav.xml`, terreno SRTM
 compartilhado, `provides:`. Ver `sandbox/A4-6DOF/README.md` e
-`src/poc/built-in_mixr_1/README.md`.
+`tests/fixtures/built-in_mixr_1/README.md`.

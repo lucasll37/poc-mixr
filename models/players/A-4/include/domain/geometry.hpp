@@ -1,5 +1,8 @@
 #pragma once
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 // Geometria relativa entre duas posicoes no plano tangente local (NED da
@@ -34,3 +37,6 @@ RelativeGeometry relativeTo(double ownN, double ownE, double ownAltM, double own
                             double tgtN, double tgtE, double tgtAltM);
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

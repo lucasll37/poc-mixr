@@ -13,7 +13,7 @@ nada impedia uma regressao futura no PROPRIO detector de passar batido.
 
 Este script torna esse "falhar de proposito" PERMANENTE, sem tocar o binario
 de producao: 'model_leak' (models/players/A-4/meson.build, atras da opcao
-'variants') e compilada do MESMO fonte de 'libflight.so', com uma UNICA
+'variants') e compilada do MESMO fonte de 'libA-4.so', com uma UNICA
 diferenca -- POC_LEAK_ONE_REF_PER_DECISION acrescenta um action->ref() logo
 apos "new FlightAction()" em BtBehavior.cpp, nunca balanceado por um
 unref(). O mecanismo de troca de plugin e o MESMO de run_stub_model.py/

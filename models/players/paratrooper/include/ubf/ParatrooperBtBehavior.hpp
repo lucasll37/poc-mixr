@@ -47,8 +47,8 @@ namespace xparatrooper {
 // 'stage_' e' ESTADO PROPRIO deste comportamento, persistido entre chamadas
 // -- cada entidade do cenario tem sua PROPRIA instancia de
 // ( ParatrooperBtBehavior ... ), entao este campo nunca e' compartilhado
-// entre paraquedistas (achado confirmado com o escalonamento por altitude da
-// poc de demonstracao -- ver src/poc/paratrooper-drop).
+// entre paraquedistas (achado confirmado com o escalonamento por altitude de
+// varios paraquedistas no mesmo cenario, ver sandbox/C-130_paratrooper-6DOF).
 //------------------------------------------------------------------------------
 class ParatrooperBtBehavior final : public base::ubf::AbstractBehavior,
                                     public bt::DecisionContext

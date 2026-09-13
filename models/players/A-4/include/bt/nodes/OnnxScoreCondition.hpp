@@ -6,6 +6,9 @@
 
 #include <string>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // SUCCESS quando a saida de um modelo .onnx passa de um limiar.
@@ -49,3 +52,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

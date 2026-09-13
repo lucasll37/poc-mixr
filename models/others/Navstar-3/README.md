@@ -70,6 +70,7 @@ cd ../../.. && make configure && make sdk
 cd models/others/Navstar-3
 make build            # compila -> ./dist/lib/mixr-plugins/libNavstar-3.so
 make test             # domain (orbita + sombra) + tree + native + a forma do .so -- 5 testes
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install-host     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
 ```
 
@@ -99,9 +100,11 @@ inercial; por que `eciPosition()`/`groundTrack()` têm que ficar separadas).
 
 ## Demonstração rodável
 
-[`src/poc/navstar3-orbit`](../../../src/poc/navstar3-orbit) — o satélite sozinho, cenário
-hermético (sem `terrain:`, sem `networks:`). Determinismo confirmado com 1, 2 e 4 threads T/C
-(`tests/determinism/check_determinism.sh`, 1200 frames, dumps byte-idênticos).
+[`sandbox/Navstar-3-constellation`](../../../sandbox/Navstar-3-constellation) — quatro satélites,
+um por plano orbital (não mais um sozinho: essa demonstração de instância única não sobrevive
+como cenário rastreado hoje), hermético (sem `terrain:`, sem `networks:`). Determinismo
+confirmado com 1, 2 e 4 threads T/C (`tests/determinism/check_determinism.sh`, 1200 frames, dumps
+byte-idênticos).
 
 ## Se você quiser mais contexto
 
@@ -112,8 +115,8 @@ hermético (sem `terrain:`, sem `networks:`). Determinismo confirmado com 1, 2 e
   o agente de tempo crítico (`AgentTC`) e o padrão de três armadilhas resolvidas, copiado aqui
 - [`../players/template/docs/CONTRATO.md`](../players/template/docs/CONTRATO.md) — o contrato
   completo que qualquer modelo, desta categoria ou de qualquer outra, precisa cumprir
-- [`../../../src/poc/navstar3-orbit/README.md`](../../../src/poc/navstar3-orbit/README.md) — a
-  demonstração rodável deste modelo, com o que foi medido rodando
+- [`../../../sandbox/Navstar-3-constellation/README.md`](../../../sandbox/Navstar-3-constellation/README.md)
+  — a demonstração rodável deste modelo (quatro satélites), com o que foi medido rodando
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o build orquestrado pelo Makefile
   da raiz

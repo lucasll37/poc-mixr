@@ -3,6 +3,9 @@
 #include "domain/FlightCommand.hpp"
 #include "domain/TerrainFloor.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 // Contato "cru" entregue pela percepcao -- de novo sem nenhum tipo do MIXR:
@@ -108,3 +111,6 @@ private:
 };
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

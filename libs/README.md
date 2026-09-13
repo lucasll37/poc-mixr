@@ -5,8 +5,10 @@ Nem todas cruzam a fronteira `dlopen` como `shared_library()`: hoje só seis (`x
 entre host e plugin — as demais ficam estáticas/header-only (ver `CLAUDE.md`, seção "O SDK de
 plugin", para o porquê de cada caso).
 
-Uma biblioteca por pasta, no padrão `libs/x<nome>` das bibliotecas de extensão dos exemplos
-oficiais do MIXR (`contexts/MIXR-PATTERN-CONTEXT.md`). Cada uma tem o próprio `README.md`: o que
+Uma biblioteca por pasta, no padrão `libs/x<nome>` — herdado do "x" = *eXample* das bibliotecas
+de exemplo dos tutoriais oficiais do MIXR (`contexts/MIXR-PATTERN-CONTEXT.md` §1.5); aqui a letra
+é reaproveitada, sem trocar o "x" só porque o papel de cada lib deste repositório é de suporte
+host↔plugin, não de exemplo pedagógico. Cada uma tem o próprio `README.md`: o que
 resolve, como usar (com exemplo real — trecho de `.edl`/`.xml` ou chamada C++) e por que é
 `shared_library()`, `static_library()` ou header-only.
 
@@ -15,7 +17,7 @@ resolve, como usar (com exemplo real — trecho de `.edl`/`.xml` ou chamada C++)
 | [`xboard`](xboard/README.md) | quadro de leitura host↔modelo (`bt=`/`dec=`/`thread=`) |
 | [`xclock`](xclock/README.md) | acelerar/frear/pausar o tempo simulado |
 | [`xinfer`](xinfer/README.md) | inferência ONNX dentro do frame |
-| [`xjoystick`](xjoystick/README.md) | controle do ownship por joystick físico |
+| [`xjoystick`](xjoystick/README.md) | controle do ownship (a aeronave controlada) por joystick físico |
 | [`xlog`](xlog/README.md) | log com nível, sintaxe de stream e buffer em memória |
 | [`xmsg`](xmsg/README.md) | mensagens/telemetria configuráveis por EDL |
 | [`xplugin`](xplugin/README.md) | carga dinâmica de modelos em runtime (`dlopen`) |

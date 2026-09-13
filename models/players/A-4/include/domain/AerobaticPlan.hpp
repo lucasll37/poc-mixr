@@ -4,6 +4,9 @@
 
 #include <cstdint>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 //------------------------------------------------------------------------------
@@ -118,3 +121,6 @@ private:
 };
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

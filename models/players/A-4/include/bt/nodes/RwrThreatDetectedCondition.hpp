@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/condition_node.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // SUCCESS enquanto a manobra evasiva disparada por RWR esta' valendo
@@ -29,3 +32,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

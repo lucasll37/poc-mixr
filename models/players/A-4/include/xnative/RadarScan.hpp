@@ -1,11 +1,10 @@
-#ifndef __xnative_RadarScan_H__
-#define __xnative_RadarScan_H__
+#pragma once
 
 namespace mixr {
 namespace models { class AirVehicle; }
 
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Consulta ao radar NATIVO: para onde a antena esta apontando AGORA.
@@ -33,8 +32,7 @@ struct RadarScanInfo
 
 RadarScanInfo radarScanOf(const models::AirVehicle* air);
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

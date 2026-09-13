@@ -3,11 +3,13 @@
 Quatro caças A-4 (Douglas A-4 Skyhawk) patrulham quadrantes distintos sobre a Serra do Mar; um
 intruso (`bandit1`) cruza a área — chegando **só pela rede**, ver [`../bandit/`](../bandit/) e
 [`../README.md`](../README.md) para o grupo. Quem detecta avisa os outros pelo datalink, e quem
-recebe o aviso muda de comportamento e vai apoiar. Sobre terreno real, com dinâmica 6-DOF real,
-radar real, e a decisão saindo **direto** de uma árvore de comportamento — sem árbitro por voto no
-meio (`behavior:` do agente aponta direto para `( BtBehavior )`; ver a nota "SEM ARBITRO" no topo
-de [`configs/scenario.edl.in`](configs/scenario.edl.in) e a [§6.6](#66--flightagenttc---o-agente)
-para onde o árbitro nativo continua em uso de verdade neste repositório).
+recebe o aviso muda de comportamento e vai apoiar. Sobre terreno real, com dinâmica 6-DOF
+(**6-DOF**, *six degrees of freedom* — seis graus de liberdade: translação e rotação nos três
+eixos) real, radar real, e a decisão saindo **direto** de uma árvore de comportamento — sem
+árbitro por voto no meio (`behavior:` do agente aponta direto para `( BtBehavior )`; ver a nota
+"SEM ARBITRO" no topo de [`configs/scenario.edl.in`](configs/scenario.edl.in) e a
+[§6.6](#66--flightagenttc---o-agente) para onde o árbitro nativo continua em uso de verdade
+neste repositório).
 
 A regra de projeto é uma só: **herdar do MIXR tudo o que o framework já tem pronto**. Player,
 dinâmica 6-DOF, controle de voo, radar e banco de elevação são nativos. O que é nosso é o que o
@@ -36,7 +38,11 @@ que a roda dentro do frame de tempo crítico, e a carga útil da mensagem trocad
 > [libs/xplugin/README.md](../../../../libs/xplugin/README.md) para o contrato.
 
 ```bash
-make build
+make configure && make models && make install   # build/models sao DECOPLADOS de proposito -- sem
+                                                  # 'make models' antes, 'install' sincroniza um
+                                                  # plugins/ vazio (aviso, sem erro) e o
+                                                  # PluginLoader nao acha libA-4.so -- ver a secao
+                                                  # Build do README.md raiz
 ./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in
 # equivalente (configs/ tem um único .edl.in): ./build/app/src/app -folder src/poc/dis -scenario flight
 # Tacview Real-Time Telemetry na porta 1234; Ctrl+C encerra
@@ -45,9 +51,14 @@ make build
 # verifica o determinismo (1, 2 e 4 threads T/C) sobre uma fixture hermética derivada deste cenário
 ```
 
+> **Sozinho, isto é meia demonstração.** `flight` não tem mais um `bandit1:` local — o intruso só
+> chega pela rede (`networks:`). Sem [`bandit`](../bandit/) rodando em **outro terminal**
+> (`-folder src/poc/dis -scenario bandit`), não há intruso nenhum: os quatro falcons ficam em
+> `PATROL` para sempre, e nenhuma evasão/alerta/apoio acontece para observar.
+
 > **Rode sempre a partir da raiz do repositório**: o cenário, os dados do JSBSim, o tile SRTM e a
 > gravação `.acmi` são resolvidos por caminho relativo (`./src/poc/dis/flight/...`,
-> `./shared/data/...`, `./dist/share/mixr-plugins/flight/...`).
+> `./shared/data/...`, `./dist/share/mixr-plugins/A-4/...`).
 
 ---
 
@@ -103,7 +114,7 @@ make build
 
 **Nove classes próprias**, registradas em
 [`models/players/A-4/src/xnative/factory.cpp`](../../../../models/players/A-4/src/xnative/factory.cpp)
-e publicadas por `libflight.so`. Nenhuma delas é player, dinâmica, controle ou sensor:
+e publicadas por `libA-4.so`. Nenhuma delas é player, dinâmica, controle ou sensor:
 
 | classe nossa | herda de | por que não dá para herdar pronta |
 |---|---|---|
@@ -118,7 +129,8 @@ e publicadas por `libflight.so`. Nenhuma delas é player, dinâmica, controle ou
 | `xnative::ThreadTagProbe` | `base::Component` | publica em qual thread do pool T/C um player **sem** agente próprio (o `bandit1` local de outros cenários, um míssil de outro modelo) está sendo processado |
 
 O que se ganha ao herdar não é só linha de código economizada — é modelo que ninguém escreve por
-gosto: equação do radar com RCS e perdas, correlação de pistas com filtro alfa-beta, transporte de
+gosto: equação do radar com RCS (**RCS**, *Radar Cross Section* — seção reta radar, a área
+equivalente de reflexão do alvo) e perdas, correlação de pistas com filtro alfa-beta, transporte de
 datalink com fila de rede, limites de autopilot, integração 6-DOF, consulta a banco de elevação. E o
 que se **paga** aparece nas bordas, catalogado na [seção 13](#13-armadilhas-encontradas-rodando).
 
@@ -247,7 +259,7 @@ antes do parse, porque o teto depende da máquina — ver [§14](#14-controle-de
 
    components: {
       plugins: ( PluginLoader                           ← CARREGA O MODELO, dlopen, ANTES de tudo
-         modules: { ( PluginModule file: "libflight.so"
+         modules: { ( PluginModule file: "libA-4.so"
                        provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                                    FlightState BtBehavior AltitudeSafetyBehavior
                                    RLBridgeBehavior FlightAction } ) } )
@@ -876,7 +888,7 @@ Por que a disciplina encena/promove existe, e por que a fusão é comutativa, es
 decide nada — só existe para tornar observável a thread de um player **sem** agente próprio (o
 `bandit1` de outros cenários deste repositório, um míssil de outro modelo). Nenhum player deste
 cenário o declara (os quatro falcons já têm `FlightAgentTC`); existe porque é uma das nove classes
-que `libflight.so` publica.
+que `libA-4.so` publica.
 
 **[`libs/xtrack/TrackQuery`](../../../../libs/xtrack/TrackQuery.hpp)** — uma função livre,
 `nearestHostileTrack(air)`, que percorre `AirVehicle → OnboardComputer → TrackManager("twsTrkMgr")
@@ -1004,7 +1016,7 @@ de verdade, para blindar uma política de RL ruim.
 
 **6. [`ubf/RLBridgeBehavior.hpp`](../../../../models/players/A-4/include/ubf/RLBridgeBehavior.hpp)**
 — a ponte com `src/rl`: publica a percepção como `Observation` via `libs/xrlbridge` e consome um
-`Command` pendente. Também não instanciada por este cenário; mora aqui (dentro de `libflight.so`,
+`Command` pendente. Também não instanciada por este cenário; mora aqui (dentro de `libA-4.so`,
 não num plugin próprio) porque precisa de `dynamic_cast` para tipos concretos do modelo
 (`xnative::FlightState`), frágil de atravessar a fronteira de `dlopen` entre dois `.so` distintos.
 
@@ -1030,8 +1042,9 @@ mas para a **interface**, não para a classe concreta.
 > `Blackboard::create(parent)` **não** compartilha entradas automaticamente via `get`/`set`. Aqui a
 > árvore é criada com um blackboard vazio, que ninguém usa para estado.
 
-**2. Os sete nós que `flight_tree.xml` usa** (de um total de onze registrados no modelo — os outros
-quatro servem outras árvores: `Navigate`, `OnnxPolicy`, `OnnxScore`, `PyDecide`), em
+**2. Os sete nós que `flight_tree.xml` usa** (de um total de dezesseis registrados no modelo hoje —
+os outros nove servem outras árvores: `Navigate`, `OnnxPolicy`, `OnnxScore`, `PyDecide`,
+`LaunchEnvelope`, `LaunchMissile`, `RwrThreatDetected`, `EvadeRwrThreat`, `SlowRoll`), em
 [`src/bt/nodes/`](../../../../models/players/A-4/src/bt/nodes/) — cada um guarda o `NodeContext`
 **por valor** e não faz nada além de ler o comportamento e preencher a decisão:
 
@@ -1103,7 +1116,7 @@ A-4. É dado do **MODELO**, não do cenário: `domain::TerrainFloor`/`domain::Th
 velocidades comandadas (`patrolSpeed`/`rtbSpeed`/`evadeSpeed`/`supportSpeed`, ajustadas por
 cenário, não por aeronave) são calibrados para esta aeronave especificamente — trocar de aeronave
 sem recalibrar não faria sentido. `install_subdir()` publica em
-`dist/share/mixr-plugins/flight/jsbsim/`, e é lá que o `rootDir:` do `( JSBSimModel )` deste cenário
+`dist/share/mixr-plugins/A-4/jsbsim/`, e é lá que o `rootDir:` do `( JSBSimModel )` deste cenário
 (e do de [`../bandit/`](../bandit/), que pilota a mesma aeronave sem carregar o plugin nenhum)
 aponta.
 
@@ -1508,7 +1521,8 @@ A exportação é a de [`libs/xtacview`](../../../../libs/xtacview/), ligada na 
 Nenhum código de stream no `main.cpp`. Cada player precisa de `dataLogTime: ( Seconds 0.1 )` — o
 slot nasce zero e, sem ele, o player nunca aparece.
 
-Semântica ACMI (é onde quase todo mundo erra):
+Semântica ACMI (**ACMI**, *Air Combat Maneuvering Instrumentation* — o formato de gravação/
+streaming nativo do Tacview; é onde quase todo mundo erra):
 
 | campo | conteúdo | slot |
 |---|---|---|
@@ -1525,9 +1539,11 @@ cima de outra aeronave (a dinâmica é o próprio JSBSim `A4`):
 65,T=...,Name=A-4E,Type=Air+FixedWing,Color=Blue,CallSign=falcon1,Pilot=falcon1
 ```
 
-**Posição:** o registro do gravador carrega ECEF, convertido com `base::nav::convertEcef2Geod()`
-antes de virar linha ACMI. A altitude no `.acmi` é **MSL/HAE — não há referência de solo no
-stream**, mesmo com terreno carregado.
+**Posição:** o registro do gravador carrega ECEF (**ECEF**, *Earth-Centered, Earth-Fixed* —
+coordenadas geocêntricas, não geodésicas), convertido com `base::nav::convertEcef2Geod()`
+antes de virar linha ACMI. A altitude no `.acmi` é **MSL** (*Mean Sea Level*, nível médio do mar)
+**/ HAE** (*Height Above Ellipsoid*, altura sobre o elipsoide de referência) — não há referência de
+solo no stream, mesmo com terreno carregado.
 
 **O intruso aparece no Tacview de dois lados.** `bandit1` chega por rede (`inputEntityTypes:`) e
 entra em `modelMap`/`typeMap`/`colorMap` deste cenário como `red`; e as quatro falcons chegam no
@@ -1779,7 +1795,7 @@ intacta até a política.
 # build + execucao. 'build'/'models' sao DECOPLADOS de proposito (ver CLAUDE.md) --
 # 'make install' NAO puxa 'make models' (sync-plugins so' copia o que 'models' ja
 # depositou em plugins/; sem 'make models' antes, sincroniza uma pasta vazia, com
-# aviso, sem erro) -- e so' depois dos dois o PluginLoader acha libflight.so em
+# aviso, sem erro) -- e so' depois dos dois o PluginLoader acha libA-4.so em
 # dist/lib/mixr-plugins/.
 make configure && make models && make install && ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
 

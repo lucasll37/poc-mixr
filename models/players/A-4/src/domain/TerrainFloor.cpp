@@ -2,6 +2,9 @@
 
 #include <algorithm>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 double terrainFloorM(const GroundReference& ground, const double clearanceM,
@@ -22,3 +25,6 @@ double clampToTerrain(const double commandedAltM, const GroundReference& ground,
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

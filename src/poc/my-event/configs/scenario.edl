@@ -1,0 +1,145 @@
+//
+// src/poc/my-event
+//
+// Nao demonstra decisao nenhuma (sem BT, sem UBF, sem agente) -- demonstra
+// EVENTO: tres ( Beacon ) (models/players/Beacon, plugin novo, ver o
+// README dele) parados, cada um emitindo um "ping" periodico (payload
+// events::PingMessage, nao-nulo) para os outros dois, e cada um TRATANDO os
+// pings que recebe -- a mesma classe nos dois papeis. Ver
+// models/events/README.md para a convencao completa e
+// models/players/Beacon/docs/ARCHITECTURE.md para o "porque" de cada
+// decisao deste modelo.
+//
+// Os tres nascem com 'pingTimer' zerado (ver Beacon::reset()), entao o
+// PRIMEIRO frame de fundo ja mostra os tres emitindo ao mesmo tempo -- dali
+// em diante cada um reemite no seu PROPRIO 'pingInterval' (propositalmente
+// diferente entre os tres), e a leitura do log/console mostra os tres
+// relogios saindo de fase.
+//
+// Sem @NUM_TC_THREADS@/.edl.in: nenhum player aqui decide via agente de
+// tempo critico (Beacon emite/trata na fase de FUNDO, updateData() --
+// ver o cabecalho de Beacon.cpp), entao nao ha motivo para variar o numero
+// de threads T/C -- fica fixo em 1.
+//
+// Sem terreno/DIS/joystick: esta poc nao pertence ao grupo src/poc/dis/, e
+// um "farol" parado nao precisa de nenhum dos tres.
+//
+// Porta propria de Tacview (1239) para poder rodar ao lado de qualquer
+// outra poc deste repositorio sem colidir (flight=1234, bandit=1235,
+// python-flight/rl-training=1237, onnx-policy=1238).
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+   ownship: beacon1
+
+   components: {
+
+      // ------------------------------------------------------------------
+      // O MODELO DESTA POC, CARREGADO EM TEMPO DE EXECUCAO (dlopen).
+      //
+      // ESTE BLOCO TEM DE VIR ANTES DO PRIMEIRO USO -- e por isso e a
+      // primeira entrada de 'components:' (o parser EDL constroi formas
+      // irmas na ordem do TEXTO, e a carga do plugin acontece no
+      // isValid() do ( PluginLoader ) -- ver o comentario identico em
+      // src/poc/python-flight/configs/scenario.edl.in).
+      //
+      // 'provides:' e uma ASSERCAO: se a .so nao entregar EXATAMENTE esses
+      // dois nomes, o processo morre dizendo o que ela entrega de verdade.
+      // 'PingMessage' entra aqui porque o proprio plugin a registra no
+      // proprio factoryNames() (ver models/players/Beacon/src/plugin.cpp)
+      // -- nao porque este .edl construa uma por nome.
+      // ------------------------------------------------------------------
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libBeacon.so"
+               provides: { Beacon PingMessage }
+            )
+         }
+      )
+   }
+
+   // ExposedDataRecorder = DataRecorder nativo, so com getOutputHandler()
+   // publico -- mesmo padrao de toda poc deste repositorio.
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "poc-my-event"
+
+      // REID_WEAPON_RELEASED (61) aborta o gravador nativo -- nao ha arma
+      // nenhuma aqui, mas manter a lista restrita nao custa nada (mesma
+      // precaucao de toda poc deste repositorio).
+      //   43 = REID_PLAYER_DATA     42 = REID_PLAYER_REMOVED
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1239
+               callsign: "poc-mixr/my-event"
+               fileName: "./src/poc/my-event/data/recordings/mission.acmi"
+
+               // Sem dado 3D real para um "farol" -- Ground generico basta
+               // pra aparecer no mapa do Tacview como instalacao fixa.
+               typeMap:  { beacon1: "Ground+Radio"  beacon2: "Ground+Radio"  beacon3: "Ground+Radio" }
+               colorMap: { beacon1: "Blue"  beacon2: "Blue"  beacon3: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: 1
+
+      // Referencia arbitraria -- Beacon nao le terreno nem precisa de uma
+      // regiao especifica (nao ha risco de CFIT: os tres ficam parados).
+      latitude:  -22.25
+      longitude: -42.48
+
+      players: {
+
+         // Os tres formam um triangulo de ~2 NM de lado -- so para
+         // aparecerem separados no mapa do Tacview; o alcance do ping nao e
+         // filtrado por distancia nenhuma (ver o cabecalho de
+         // Beacon::broadcastPing()).
+         beacon1: ( Beacon
+            id: 1
+            side: blue
+            initXPos: ( NauticalMiles 0.0 )
+            initYPos: ( NauticalMiles 0.0 )
+            initAlt:  ( Meters 50.0 )
+            dataLogTime: ( Seconds 0.1 )
+            pingInterval: ( Seconds 3.0 )
+            pingMessage: "temperatura 21C, sem anomalias"
+         )
+
+         beacon2: ( Beacon
+            id: 2
+            side: blue
+            initXPos: ( NauticalMiles 2.0 )
+            initYPos: ( NauticalMiles 0.0 )
+            initAlt:  ( Meters 50.0 )
+            dataLogTime: ( Seconds 0.1 )
+            pingInterval: ( Seconds 4.0 )
+            pingMessage: "bateria 87%, carregando"
+         )
+
+         beacon3: ( Beacon
+            id: 3
+            side: blue
+            initXPos: ( NauticalMiles 1.0 )
+            initYPos: ( NauticalMiles 1.7 )
+            initAlt:  ( Meters 50.0 )
+            dataLogTime: ( Seconds 0.1 )
+            pingInterval: ( Seconds 6.0 )
+            pingMessage: "enlace estavel, 0 perdas"
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

@@ -41,6 +41,8 @@
 
 #include <gtest/gtest.h>
 
+namespace domain = mixr::models::xA_4::domain;
+
 namespace {
 
 using namespace mixr;
@@ -88,7 +90,7 @@ struct Bench
 //------------------------------------------------------------------------------
 TEST(FlightState, ActorQueNaoEhAirVehicleInvalidaSnapshot)
 {
-   xnative::FlightState state;
+   xA_4::FlightState state;
    base::Component naoEhAviao;
    state.updateState(&naoEhAviao);
    EXPECT_FALSE(state.snapshot().valid);
@@ -100,7 +102,7 @@ TEST(FlightState, PopulaCamposBasicosDeUmAirVehicleReal)
    bench.air->setAltitude(1800.0);
    bench.air->setTerrainElevation(1200.0);
 
-   xnative::FlightState state;
+   xA_4::FlightState state;
    state.updateState(bench.air);
 
    const auto& snap = state.snapshot();
@@ -126,7 +128,7 @@ TEST(FlightState, PopulaCamposBasicosDeUmAirVehicleReal)
 //------------------------------------------------------------------------------
 TEST(AltitudeSafetyBehavior, EstadoDeTipoErradoDevolveNulo)
 {
-   xnative::AltitudeSafetyBehavior behavior;
+   xA_4::AltitudeSafetyBehavior behavior;
    EXPECT_EQ(behavior.genAction(nullptr, 0.02), nullptr);
 }
 
@@ -135,10 +137,10 @@ TEST(AltitudeSafetyBehavior, AcimaDoPisoNaoGeraAcao)
    Bench bench(9002);
    bench.air->setAltitude(2000.0);   // acima do minAltitude default (1500 m)
 
-   xnative::FlightState state;
+   xA_4::FlightState state;
    state.updateState(bench.air);
 
-   xnative::AltitudeSafetyBehavior behavior;
+   xA_4::AltitudeSafetyBehavior behavior;
    EXPECT_EQ(behavior.genAction(&state, 0.02), nullptr);
 }
 
@@ -147,12 +149,12 @@ TEST(AltitudeSafetyBehavior, AbaixoDoPisoAbsolutoComandaRecuperacaoMantendoRumo)
    Bench bench(9003, /*withAutopilot=*/true);
    bench.air->setAltitude(500.0);   // abaixo do minAltitude default (1500 m)
 
-   xnative::FlightState state;
+   xA_4::FlightState state;
    state.updateState(bench.air);
    ASSERT_TRUE(state.snapshot().valid);
 
-   xnative::AltitudeSafetyBehavior behavior;
-   const auto action = dynamic_cast<xnative::FlightAction*>(behavior.genAction(&state, 0.02));
+   xA_4::AltitudeSafetyBehavior behavior;
+   const auto action = dynamic_cast<xA_4::FlightAction*>(behavior.genAction(&state, 0.02));
    ASSERT_NE(action, nullptr) << "abaixo do piso absoluto tinha que gerar acao de recuperacao";
 
    EXPECT_TRUE(action->execute(bench.air));
@@ -179,12 +181,12 @@ TEST(AltitudeSafetyBehavior, AbaixoDoPisoAglRecuperaParaOMaiorEntreNominalETerre
    bench.air->setTerrainElevation(1400.0);
    bench.air->setAltitude(1450.0);   // AGL = 50 m
 
-   xnative::FlightState state;
+   xA_4::FlightState state;
    state.updateState(bench.air);
    ASSERT_TRUE(state.snapshot().terrainValid);
    EXPECT_NEAR(state.snapshot().altitudeAglM, 50.0, 1e-6);
 
-   xnative::AltitudeSafetyBehavior behavior;
+   xA_4::AltitudeSafetyBehavior behavior;
 
    // minAltitude bem baixo para isolar SO a camada AGL (senao o piso
    // absoluto default, 1500 m, tambem dispararia com altitude 1450 m e o
@@ -201,7 +203,7 @@ TEST(AltitudeSafetyBehavior, AbaixoDoPisoAglRecuperaParaOMaiorEntreNominalETerre
    ASSERT_TRUE(behavior.setSlotByName("minClearance", &minClearance));
    ASSERT_TRUE(behavior.setSlotByName("recoverClearance", &recoverClearance));
 
-   const auto action = dynamic_cast<xnative::FlightAction*>(behavior.genAction(&state, 0.02));
+   const auto action = dynamic_cast<xA_4::FlightAction*>(behavior.genAction(&state, 0.02));
    ASSERT_NE(action, nullptr) << "AGL abaixo de minClearance tinha que gerar acao";
 
    EXPECT_TRUE(action->execute(bench.air));
@@ -215,7 +217,7 @@ TEST(AltitudeSafetyBehavior, AbaixoDoPisoAglRecuperaParaOMaiorEntreNominalETerre
 //------------------------------------------------------------------------------
 TEST(FlightAction, ExecuteComAtorQueNaoEhPlayerDevolveFalse)
 {
-   xnative::FlightAction action;
+   xA_4::FlightAction action;
    base::Component naoEhPlayer;
    EXPECT_FALSE(action.execute(&naoEhPlayer));
 }
@@ -224,7 +226,7 @@ TEST(FlightAction, ExecuteSemAutopilotDevolveFalseESeguraOComando)
 {
    Bench bench(9005, /*withAutopilot=*/false);
 
-   xnative::FlightAction action;
+   xA_4::FlightAction action;
    domain::FlightCommand cmd;
    cmd.headingDeg = 90.0;
    cmd.altitudeM = 2000.0;
@@ -245,7 +247,7 @@ TEST(FlightAction, ExecuteComAutopilotAplicaComandoEAtualizaQuadro)
 {
    Bench bench(9006, /*withAutopilot=*/true);
 
-   xnative::FlightAction action1;
+   xA_4::FlightAction action1;
    domain::FlightCommand cmd1;
    cmd1.headingDeg = 180.0;
    cmd1.altitudeM = 2500.0;
@@ -267,7 +269,7 @@ TEST(FlightAction, ExecuteComAutopilotAplicaComandoEAtualizaQuadro)
 
    // Segunda decisao, rotulo diferente -- exercita a transicao (before.label
    // != label) e confere que 'decisions' acompanha a taxa de atuacao.
-   xnative::FlightAction action2;
+   xA_4::FlightAction action2;
    domain::FlightCommand cmd2;
    cmd2.headingDeg = 200.0;
    cmd2.altitudeM = 2600.0;
@@ -288,14 +290,14 @@ TEST(FlightAction, ExecuteComAutopilotAplicaComandoEAtualizaQuadro)
 //------------------------------------------------------------------------------
 TEST(RadarScan, AirNuloNaoEncontraNada)
 {
-   const xnative::RadarScanInfo info{xnative::radarScanOf(nullptr)};
+   const xA_4::RadarScanInfo info{xA_4::radarScanOf(nullptr)};
    EXPECT_FALSE(info.found);
 }
 
 TEST(RadarScan, AirSemGimbalChamadoRadarNaoEncontraNada)
 {
    Bench bench(9007);
-   const xnative::RadarScanInfo info{xnative::radarScanOf(bench.air)};
+   const xA_4::RadarScanInfo info{xA_4::radarScanOf(bench.air)};
    EXPECT_FALSE(info.found);
 }
 

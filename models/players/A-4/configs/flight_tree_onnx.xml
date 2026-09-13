@@ -26,14 +26,14 @@
   `terrainClearance:` do proprio BtBehavior so entra em jogo se o .onnx
   FALHAR ao carregar e o Fallback cair no ramo Patrol abaixo.
 
-  O caminho do modelo e o de INSTALACAO (dist/share/mixr-plugins/flight/), a
+  O caminho do modelo e o de INSTALACAO (dist/share/mixr-plugins/A-4/), a
   mesma convencao do proprio flight_tree.xml e do rootDir: do JSBSim.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
     <Fallback name="root">
 
-      <OnnxPolicy model="./dist/share/mixr-plugins/flight/policy_example.onnx"
+      <OnnxPolicy model="./dist/share/mixr-plugins/A-4/policy_example.onnx"
                   normalized="true"
                   label="ONNX"/>
 

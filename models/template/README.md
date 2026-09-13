@@ -81,6 +81,7 @@ cd ../.. && make configure && make sdk
 cd models/template
 make build            # compila -> ./dist/lib/mixr-plugins/{libtemplate.so,libtemplate_mirror.so} (bare `make` so mostra `make help`)
 make test             # domain/ (o Schmitt trigger) + a arvore + a forma dos DOIS .so
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install-host     # copia os dois .so para ../../plugins/ -- ver a proxima secao
 ```
 

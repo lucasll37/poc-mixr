@@ -57,6 +57,7 @@ cd ../../.. && make configure && make sdk
 # daqui em diante, so' aqui dentro:
 make build            # -> ./dist/lib/mixr-plugins/libmissile.so
 make test             # domain/ (a lei de PN + a espoleta) + a forma do .so
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install-host     # copia pra ../../../plugins/ -- ver a proxima secao
 ```
 

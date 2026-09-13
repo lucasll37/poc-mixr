@@ -15,7 +15,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(FlightState, "FlightState")
 EMPTY_SLOTTABLE(FlightState)
@@ -202,6 +202,6 @@ void FlightState::updateState(const base::Component* const actor)
                         scan.rangeM, scan.horizontalBeamwidthDeg, scan.verticalBeamwidthDeg);
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

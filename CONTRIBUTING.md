@@ -3,27 +3,81 @@
 Este arquivo não repete o que já está escrito em outro lugar — ele COSTURA, na ordem certa, os
 documentos que já são autoridade sobre cada assunto. Cada passo abaixo aponta para o documento
 certo; leia-o antes de seguir para o próximo passo. Este roteiro é sobre escrever um **modelo**
-novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivalente; o mais próximo
-é [`CLAUDE.md`](CLAUDE.md), que é referência de arquitetura, não passo a passo.
+novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivalente. O mais próximo é
+consultar, pontualmente, a seção de `CLAUDE.md` que cobre a parte específica que você for mexer
+(ex.: "`./app` — TUI (*Text User Interface*, interface de texto interativa em terminal) de
+controle/monitoramento" para o painel, "`src/rl`" para o wrapper de RL, ou
+o `README.md` de cada `libs/x<nome>` para uma lib) — nunca o arquivo inteiro como leitura de
+fundo, ver a ressalva do próprio [`TOUR.md`](TOUR.md), seção "Antes de começar".
+
+> **Para só escrever um modelo do zero, as seções 0–7 bastam.** A seção 8 (mais da metade deste
+> arquivo) é um estudo de caso opcional, mais longo — código real de como *estender* um modelo que
+> já existe — e não é um passo necessário do roteiro; pule direto para ela só se for esse o seu
+> caso, ou volte depois de terminar a seção 7. **"Bastam" é sobre o roteiro, não sobre não sair
+> deste arquivo**: como este documento COSTURA em vez de duplicar (ver o parágrafo acima), as
+> seções 0–7 ainda mandam abrir `models/REGISTRO.md`, `CONTRATO.md`/`PRIMEIROS-PASSOS.md` inteiros
+> e algumas seções específicas de `CLAUDE.md` — é o preço de ter uma fonte de verdade só por
+> assunto, em vez de uma segunda cópia aqui que envelheceria em silêncio.
+
+## Sumário
+
+- [0. O que você vai construir](#0-o-que-você-vai-construir)
+- [1. Pré-requisitos e SDK do host](#1-pré-requisitos-e-sdk-do-host-uma-vez-por-máquina)
+- [2. Escolha o ponto de partida](#2-escolha-o-ponto-de-partida)
+- [3. O contrato: o que TODO modelo tem que fazer](#3-o-contrato-o-que-todo-modelo-tem-que-fazer)
+- [4. Escreva a lógica](#4-escreva-a-lógica)
+  - [Editando e depurando a árvore com o Groot](#editando-e-depurando-a-árvore-com-o-groot)
+    (editar uma árvore existente, criar uma árvore nova, depurar/monitorar ao vivo)
+- [5. Publique e aponte um cenário](#5-publique-e-aponte-um-cenário)
+  - [5.1 Verificar o `.so`](#51-verificar-o-so) · [5.2 Registrar num cenário](#52-registrar-num-cenário)
+    · [5.3 Terreno](#53-terreno-quando-o-cenário-sai-da-área-coberta) ·
+    [5.4 Cobertura de teste](#54-cobertura-de-teste-automática-opcional)
+- [6. Teste](#6-teste)
+- [7. Onde consultar durante o trabalho](#7-onde-consultar-durante-o-trabalho)
+- [8. Exemplo guiado completo (opcional)](#8-exemplo-guiado-completo-opcional-um-nó-novo-do-a-4-do-c-até-um-cenário-de-sandbox)
+  — estudo de caso mais longo, pule se as seções 0–7 já bastaram para o seu caso
+  - [8.1 Condition](#81-anatomia-de-uma-condition-fuellowcondition) ·
+    [8.2 Action](#82-anatomia-de-uma-action-reportandevadeaction) ·
+    [8.3 DecisionContext](#83-a-interface-que-mantém-os-nós-livres-do-mixr) ·
+    [8.4 Registrando na fábrica](#84-registrando-um-nó-na-fábrica) ·
+    [8.5 Colando na árvore](#85-colando-o-nó-na-árvore-e-mantendo-o-treenodesmodel-em-dia)
+  - [8.6 Testando](#86-testando-o-nó-sem-nenhuma-simulação) ·
+    [8.7 Recompilando](#87-recompilando-e-verificando-o-so) ·
+    [8.8 Carregando num cenário](#88-carregando-o-modelo-num-cenário-o-bloco-pluginmodule-real) ·
+    [8.9 Rodando em sandbox](#89-rodando-num-cenário-de-sandbox) ·
+    [8.10 Fechando o ciclo](#810-fechando-o-ciclo)
 
 ## 0. O que você vai construir
 
 Um **modelo** é uma biblioteca (`.so`) compilada à parte, aberta em tempo de execução via
 `dlopen` (o `.so` é aberto em *runtime* pelo host, nunca linkado em tempo de compilação) — o host
-nunca vê seu código-fonte. Se este parágrafo é novidade, leia primeiro [`CLAUDE.md`](CLAUDE.md),
-seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de continuar.
+nunca vê seu código-fonte. Esse é o mecanismo em si; a garantia complementar — que o host nem
+sequer precisa do FONTE do modelo para **compilar**, porque os dois são projetos Meson (o sistema
+de build usado por este repositório) separados em etapas de build distintas — é o que a seção de
+`CLAUDE.md` abaixo detalha. Se algo disso é
+novidade, confira agora — é uma consulta pontual a essa seção, não leitura do arquivo inteiro —
+[`CLAUDE.md`](CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa PRÉVIA".
 
 > **Resumo de uma tela**, para quem só quer os fatos mínimos antes de abrir os documentos abaixo:
 >
 > - Um **modelo** decide via um agente **UBF** (*Unified Behavior Framework*, o mecanismo nativo
 >   do MIXR para plugar decisão externa num `Player`) — hoje, quase sempre uma árvore do
 >   BehaviorTree.CPP por trás dele.
-> - `playerId` (usado em toda chamada ao `xboard`) é `player->getID()` — o `mixr::models::Player`
->   que hospeda o agente; ele já chega pronto no contexto de decisão (`genAction()`/`execute()`).
-> - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta — um nome
->   a mais ou a menos aborta a inicialização, com mensagem dizendo o que faltou/sobrou.
+> - `playerId` (usado em toda chamada ao `xboard` — `mixr::xboard::Readout`, a estrutura
+>   compartilhada e protegida por mutex, indexada por id de player, que reporta o estado da
+>   decisão para status/testes) é `player->getID()` — o `mixr::models::Player` que hospeda o
+>   agente; ele já chega pronto no contexto de decisão (`genAction()`/`execute()`).
+> - `provides:` no `.edl` (**EDL**, a linguagem de configuração declarativa do MIXR — cenário,
+>   *players*, sensores; ver o parágrafo de abertura do [`README.md`](README.md) para a definição
+>   completa) é **igualdade exata de conjunto** contra o que o `.so` exporta — um nome
+>   a mais ou a menos aborta a inicialização, com mensagem mostrando as duas listas lado a lado
+>   ("cenário declarou" / "a .so entrega").
 > - Escrever no `xboard` (seção 3 do [`CONTRATO.md`](models/template/docs/CONTRATO.md)) é
->   obrigatório e **falha em silêncio** se esquecido — sem erro, só `bt=--`/`dec=0` para sempre.
+>   obrigatório e **falha em silêncio** se esquecido — sem erro, só `bt=--`/`dec=0` para sempre
+>   (os rótulos literais que aparecem nos dumps `frame=...` — `-deterministic`, `check_determinism.sh`
+>   — e, sob outra forma, na própria tela do `./app`; `dec` abrevia "contagem de decisões". Detalhe
+>   de cada token em [`tests/README.md`](tests/README.md): `frame=`/`-deterministic` na seção
+>   "Camada 3 — cenário", `dec`/`check_determinism.sh` na seção "Camada 5 — determinismo").
 > - O ponto de partida copiável é `models/template/`; `make new-model NAME=... CATEGORY=player`
 >   copia e renomeia por você (`CATEGORY` é obrigatório: `player`/`system`/`others`, decide a
 >   subpasta de `models/` — não existe `CATEGORY=event`, ver seção 2).
@@ -36,7 +90,13 @@ seção "O MODELO é um plugin, construído numa etapa PRÉVIA", antes de contin
 
 Antes de começar, confira [`models/REGISTRO.md`](models/REGISTRO.md) — a tabela de quem já está
 mexendo em qual modelo. Se o modelo que você quer escrever já tem alguém trabalhando nele, evite
-duplicar; se não, essa é a hora de acrescentar sua própria linha.
+duplicar; se não, essa é a hora de reservar seu lugar com uma linha informal — só as colunas
+**Modelo** (o nome pretendido) e **Responsável** (você) preenchidas, **Pasta**/**Última
+atualização**/**Observação** como `—` (a pasta ainda não existe antes da seção 2) — a atualização
+formal, com os detalhes finais, fica para quando você abrir o PR (é o
+único momento que o próprio `REGISTRO.md` documenta: "ao abrir um PR de modelo novo, acrescente
+sua própria linha no fim da tabela"); a reserva antecipada é só uma convenção deste roteiro, para
+o próximo que for checar a tabela não duplicar o seu trabalho.
 
 Para entender o **framework** por baixo dos modelos (MIXR/BehaviorTree.CPP) além do necessário
 para este roteiro → seção 7, "Onde consultar durante o trabalho".
@@ -44,8 +104,12 @@ para este roteiro → seção 7, "Onde consultar durante o trabalho".
 ## 1. Pré-requisitos e SDK do host (uma vez por máquina)
 
 → [`README.md`](README.md), seções "Pré-requisitos" e "Build" ([`INSTALL.md`](INSTALL.md) tem o
-passo a passo comentado, se faltar algo). Para escrever um modelo, pare na etapa `make sdk` — não
-precisa compilar o host inteiro (`make build`/`make install`) ainda.
+passo a passo comentado, se faltar algo). Para escrever um modelo, pare na etapa `make sdk` — o
+alvo que publica em `dist/` o contrato de ABI (*Application Binary Interface* — o formato binário
+que um `.so` de modelo tem que respeitar para o host conseguir carregá-lo,
+`libs/xplugin/PluginAbi.hpp`) mais as bibliotecas compartilhadas host↔modelo (`libs/x<nome>`;
+lista completa em [`CLAUDE.md`](CLAUDE.md), seção "O SDK de plugin") — não precisa compilar o host
+inteiro (`make build`/`make install`) ainda.
 
 Sem isso, todo `Makefile` autocontido de modelo (o seu vai ter um) falha em `check-root` dizendo
 exatamente isto.
@@ -53,28 +117,34 @@ exatamente isto.
 ## 2. Escolha o ponto de partida
 
 Um único ponto de partida copiável — [`models/template`](models/template/): já
-nasce em camadas (`domain/`→`ubf/`→`xnative/`), com uma única decisão de exemplo em cada camada.
+nasce em camadas (`domain/`→`bt/`→`ubf/`→`xnative/` — esta última é a camada que expõe as classes
+que o MIXR de fato instancia via `factory.cpp`: os `State`/`Behavior`/`Action` concretos e os
+utilitários específicos do framework, a fronteira nativa do modelo), com uma única decisão de
+exemplo em cada camada.
 Se o seu modelo decide com uma regra/condição só, apague o que não precisar — o "porquê" de cada
 camada está no `README.md`/`docs/` do diretório.
 
 **O caminho recomendado é o gerador automático**, que já existe neste repositório:
 
 ```bash
-make new-model NAME=meu_modelo CATEGORY=player
+make new-model NAME=meu-modelo CATEGORY=player
 ```
 
 `CATEGORY` é **obrigatório** e decide em qual subpasta de `models/` o scaffold entra —
 `player`→`models/players/`, `system`→`models/systems/`, `others`→`models/others/` (a mesma
 taxonomia que `MODELOS_PRODUCAO`, no `Makefile` raiz, já descobre por `find` sob qualquer
 subpasta de `models/`). Não existe `CATEGORY=event`: `models/events/` não é uma pasta de
-projetos-modelo, um por evento — é **um** projeto Meson só (a lib `events`), e um evento novo
+projetos-modelo, um por evento — é **um** projeto Meson (o sistema de build usado por este
+repositório) só (a lib `events`), e um evento novo
 ganha uma pasta `payloads/<TOKEN>/` *dentro* dele, não um scaffold de `template/` novo (ver
 [`models/events/README.md`](models/events/README.md)).
 
 Ele faz a cópia e a renomeação mecânica por você (projeto, módulo, namespace, `ROOT` do Makefile
-pela profundidade real) e termina com um checklist do que sobra manual — inclusive apagar
-`src/mirror.cpp` e o artefato `template_mirror`, que NÃO fazem parte do scaffold (ver o aviso no
-topo do próprio arquivo). Se preferir fazer à mão, o roteiro completo está em [`template`,
+pela profundidade real) — já apagando sozinho, antes de qualquer renomeação, `src/mirror.cpp` e o
+artefato `template_mirror`, que NÃO fazem parte do scaffold (ver o aviso no topo do próprio
+arquivo) — e termina imprimindo um checklist do que ainda sobra manual (regra de negócio,
+`xboard`, `xnative/factory.cpp`, prosa do README, `provides:`, `git add`, cenário/`REGISTRO.md`).
+Se preferir fazer à mão, o roteiro completo está em [`template`,
 `docs/PRIMEIROS-PASSOS.md`](models/template/docs/PRIMEIROS-PASSOS.md) — mas o gerador
 cobre exatamente essa receita.
 
@@ -84,19 +154,35 @@ cobre exatamente essa receita.
 inteiro. Três obrigações merecem destaque:
 
 - **`provides:` bate EXATAMENTE com o que o `.so` exporta** (seção 2) — se não bater, o processo
-  aborta na inicialização dizendo o que entregou; não é silencioso, mas é a causa mais comum de
-  "meu cenário não sobe".
+  aborta na inicialização mostrando as duas listas lado a lado ("cenário declarou" / "a .so
+  entrega"); não é silencioso, mas é a causa mais comum de "meu cenário não sobe".
 - **escrever no `xboard`** (seção 3) — a única obrigação que falha em **silêncio**: sem isso, o
   host sobe, roda, e a tela de status mostra `bt=--`/`dec=0` para sempre, sem erro em lugar
   nenhum.
 - **namespace aninhado sob `mixr::models::x<nome>`** (seção 6) — sem isso, dois `.so` carregados
-  juntos no mesmo processo podem colidir em RTTI silenciosamente.
+  juntos no mesmo processo podem colidir em RTTI (*Run-Time Type Information*, o mecanismo de C++
+  por trás de `dynamic_cast`/`typeid`) silenciosamente.
 
 ## 4. Escreva a lógica
 
 Depois do contrato, é trabalho de domínio — não tem receita mecânica. Se veio do `template`,
-`docs/PRIMEIROS-PASSOS.md`, passo 5, sugere a ordem (domain → ubf/State → ubf/Behavior →
-ubf/Action → xnative/factory).
+`docs/PRIMEIROS-PASSOS.md`, passo 5, sugere a ordem completa (domain → ubf/State → **bt/nodes +
+a árvore em `configs/`, onde a decisão de fato mora** → ubf/Behavior → ubf/Action →
+xnative/factory → `src/plugin.cpp`) — ver o passo 5 na íntegra, não um resumo abreviado aqui.
+
+**Se você nunca usou BehaviorTree.CPP (BT.CPP), o vocabulário abaixo já é o mínimo pra acompanhar
+o resto desta seção e a seção 8** — não é preciso ler
+[`contexts/BTCPP-CONTEXT.md`](contexts/BTCPP-CONTEXT.md) inteiro antes de escrever o primeiro nó:
+o próprio documento se declara pensado para consulta pontual (alimentar um RAG — *Retrieval
+Augmented Generation*, busca que recupera só o trecho relevante), seção por seção, cada uma
+autocontida — não para leitura linear de ponta a ponta (tem ~55 mil palavras — ver o cabeçalho
+"COMO USAR ESTE DOCUMENTO" do próprio arquivo). Consulte-o por seção, conforme a dúvida aparecer
+(seção 7 detalha como); um nó da árvore expõe um método `tick()`, chamado a cada avaliação, que
+devolve
+`SUCCESS`, `FAILURE` ou `RUNNING` (em andamento — raro no uso deste repositório, que tickeia a
+árvore inteira a cada frame); um `Fallback` tenta os filhos em ordem até um devolver `SUCCESS`
+(senão falha ele também); um `Sequence` executa os filhos em ordem até um devolver `FAILURE`
+(senão sucede ele também). É assim que a prioridade da árvore de produção é expressa (seção 8.5).
 
 ### Editando e depurando a árvore com o Groot
 
@@ -115,17 +201,17 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
 
 **Para a árvore do SEU modelo**, que ainda não tem nada disso:
 
-1. Nunca abra o `.xml` de produção direto — copie:
-   ```bash
-   cp models/players/<seu-modelo>/configs/<sua-arvore>.xml /tmp/arvore_groot.xml
-   ```
+1. Abra o `.xml` do seu modelo diretamente pelo caminho real onde ele já está —
+   `make open-groot` → `File > Load...` → navegue até
+   `models/players/<seu-modelo>/configs/<sua-arvore>.xml`. Não é preciso copiar o arquivo para
+   nenhum outro lugar antes: o Groot navega até qualquer diretório do disco.
 2. **Verifique se o comentário de cabeçalho tem `--` (hífen duplo)** — o parser XML do Groot
    (`QDomDocument`, estrito) recusa o arquivo **inteiro** se tiver; o parser que o host usa
    (`tinyxml2`) é tolerante e deixa passar, então esse problema só aparece no Groot, nunca ao
    rodar a simulação de verdade. Sintoma: Groot recusa o arquivo com um erro genérico de sintaxe,
    sem apontar a causa real.
    ```bash
-   grep -n -- '--' /tmp/arvore_groot.xml   # se aparecer fora de <!-- / -->, troque por "-" e pronto
+   grep -n -- '--' models/players/<seu-modelo>/configs/<sua-arvore>.xml   # se aparecer fora de <!-- / -->, troque por "-" e pronto
    ```
 3. Sem um `<TreeNodesModel>`, o Groot não conhece os nós customizados do SEU modelo (eles só
    existem registrados dentro do `.so`, que o Groot nunca viu) — aparecem sem porta/genéricos.
@@ -142,9 +228,11 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
        <!-- um <Condition>/<Action> por nó customizado que o SEU bt_factory.cpp registra -->
    </TreeNodesModel>
    ```
-4. `make open-groot` → `File > Load...` → `/tmp/arvore_groot.xml`. Edite arrastando/soltando,
-   salve. O arquivo salvo continua carregando normalmente em `createTreeFromFile()` — o
-   `<TreeNodesModel>` é ignorado pelo executor, só existe para o Groot.
+4. Edite arrastando/soltando, salve. O arquivo salvo continua carregando normalmente em
+   `createTreeFromFile()` — o `<TreeNodesModel>` é ignorado pelo executor, só existe para o
+   Groot. Se preferir não misturar experimentos com o histórico do arquivo versionado,
+   `git diff`/`git checkout -- <arquivo>` revisa ou descarta a edição antes de commitar — não é
+   preciso trabalhar numa cópia à parte para isso.
 
 #### Criar uma árvore nova (com os nós que você já implementou)
 
@@ -153,27 +241,40 @@ Nada aqui monta a árvore por você — o Groot não tem "começar em branco com
 que produz o **arquivo inteiro, pronto pra abrir**: uma árvore vazia (um `<Fallback>` só, de
 partida) mais o `<TreeNodesModel>` com os nós do SEU `bt_factory.cpp`, os dois no mesmo `<root>`.
 
-No modelo `A-4` (produção), já está pronto — um único alvo de Makefile:
+O gerador (`make create-bt`) já vem pronto tanto no `template` quanto no `A-4` (produção) — um
+único alvo de Makefile. Para experimentar sem esbarrar em nada já commitado, use o `template`:
 
 ```bash
-cd models/players/A-4 && make create-bt
+cd models/template && make create-bt
 ```
 
-Cria `models/players/A-4/configs/bt.xml` (recusa se o arquivo já existir — renomeie/mova a árvore
-anterior antes de rodar de novo). `make open-groot` → `File > Load...` →
-`models/players/A-4/configs/bt.xml`. A paleta já mostra todos os nós do modelo (em azul, distintos
-dos nativos do BT.CPP); arraste da paleta pro canvas, conecte arrastando de uma saída pra uma
-entrada, e `File > Save` — depois de validada, renomeie para o nome definitivo e aponte o
-`treeFile:` do seu `.edl` pra ele. Registrou um nó novo em `bt_factory.cpp`/`bt_factory_sdk.cpp`
-depois disso? `make update-bt` atualiza o `<TreeNodesModel>` de **toda** árvore de `configs/`
-(descobertas por conteúdo, não por nome) de uma vez, inclusive árvores já existentes que ainda não
-tinham o bloco.
+Cria `models/template/configs/bt.xml` (recusa se o arquivo já existir — renomeie/mova a árvore
+anterior antes de rodar de novo; um `.gitignore` dedicado a esse caminho existe justamente para
+`make create-bt` continuar funcionando em toda cópia nova do `template`). `make open-groot` →
+`File > Load...` → `models/template/configs/bt.xml`. A paleta já mostra todos os nós do modelo (em
+azul, distintos dos nativos do BT.CPP); arraste da paleta pro canvas, conecte arrastando de uma
+saída pra uma entrada, e `File > Save` — depois de validada, renomeie para o nome definitivo e
+aponte o `treeFile:` do seu `.edl` pra ele. Registrou um nó novo em
+`bt_factory.cpp`/`bt_factory_sdk.cpp` depois disso? `make update-bt` atualiza o `<TreeNodesModel>`
+de **toda** árvore de `configs/` (descobertas por conteúdo, não por nome) de uma vez, inclusive
+árvores já existentes que ainda não tinham o bloco.
 
-**Se o SEU modelo não é o `A-4`**, estes dois alvos não existem automaticamente pra ele — é código
-(`models/players/A-4/tools/dump_tree_model.cpp` + `tools/update_bt_models.py`, mais os alvos
-`create-bt`/`update-bt` do `Makefile` daquele projeto). Copie o padrão de lá — os três arquivos
-não têm nada amarrado ao nome/pastas do `A-4` especificamente, então dá pra copiar `tools/` inteiro
-para `models/players/<seu-modelo>/tools/` sem editar uma linha: o `.cpp` só monta uma
+> **No `A-4` (produção) o mesmo `make create-bt` falha de propósito.**
+> `models/players/A-4/configs/bt.xml` já está commitado neste repositório — decisão registrada no
+> próprio `.gitignore` (comentário acima da exceção `models/template/configs/bt.xml`) —, então
+> rodar o comando ali recusa com "já existe" até você renomear/remover esse arquivo primeiro. Não é
+> um artefato esquecido: é o mesmo arquivo já citado em "Editar uma árvore" acima, que o Groot já
+> consegue abrir sem precisar gerar nada.
+
+**Se você veio do `template` (seção 2), estes dois alvos já vêm prontos** — o próprio
+`models/template/Makefile` já declara `create-bt`/`update-bt`/`open-groot` (o mesmo texto que
+`models/players/A-4/Makefile` tem), com `tools/dump_tree_model.cpp`/`tools/update_bt_models.py` já
+dentro do scaffold — então todo modelo gerado por `make new-model` já nasce com os mesmos 8 alvos
+que o `A-4` tem, sem copiar nada à mão. Isso só não vale se o seu projeto de modelo **não** partiu
+do `template` (por exemplo, um `.so` de terceiro trazido para dentro do repositório): nesse caso,
+copie `tools/dump_tree_model.cpp` + `tools/update_bt_models.py` do `A-4` ou do `template` — os
+três arquivos não têm nada amarrado ao nome/pastas de origem, então dá pra copiar `tools/` inteiro
+para `models/<categoria>/<seu-modelo>/tools/` sem editar uma linha: o `.cpp` só monta uma
 `BT::BehaviorTreeFactory`, chama os `registerNodes()`/`registerSdkNodes()` (ou equivalente) do SEU
 `bt_factory.cpp`, e imprime `BT::writeTreeNodesModelXML(factory)` — a função nativa do BT.CPP que
 faz o trabalho de verdade; o `.py` descobre as árvores do SEU projeto em `configs/` sozinho.
@@ -202,12 +303,15 @@ console, então para **diagnosticar** prefira o `node`, que loga no terminal.
 **Se o SEU modelo também usa uma árvore do BT.CPP e você quer essa mesma capacidade**, ela não vem
 de graça do framework — é código do modelo. Replique o padrão de
 `models/players/A-4/src/ubf/BtBehavior.cpp` (função `startGrootMonitorIfRequested()`): depois de
-`btFactory.createTreeFromFile(...)` ter sucesso, construa um `BT::PublisherZMQ(tree)` se uma
-variável de ambiente bater com o nome do player, e derrube esse objeto (`.reset()`) **antes** de
+`btFactory.createTreeFromFile(...)` ter sucesso, construa um `BT::PublisherZMQ(tree)` (ZMQ =
+*ZeroMQ*, a biblioteca de mensageria usada para publicar o estado da árvore em rede, nas portas
+1666/1667) se uma variável de ambiente bater com o nome do player, e derrube esse objeto
+(`.reset()`) **antes** de
 qualquer recriação da árvore (`reset()`, `shutdownNotification()`, cópia) — ele guarda uma
-referência a ela. **Copiar o hook copia junto as armadilhas** (a nº3 da seção do Groot no
-`CLAUDE.md`: o Monitor do Groot 1.0.0 fechava sozinho, e o destrutor do `PublisherZMQ` tem um
-use-after-free) — vale ler antes de replicar.
+referência a ela. **Copiar o hook copia junto as armadilhas** — duas, com rótulos diferentes na
+seção do Groot no `CLAUDE.md`: a "armadilha nº3" (o Monitor do Groot 1.0.0 fechava sozinho) e o
+item 2 de "Duas armadilhas do `PublisherZMQ` nativo" (o destrutor tem um use-after-free) — vale
+ler as duas antes de replicar.
 
 Lista completa de armadilhas já pagas (o motivo de cada regra acima, com detalhe de
 implementação) → [`CLAUDE.md`](CLAUDE.md), seção "Groot — editor e monitor ao vivo".
@@ -218,11 +322,17 @@ implementação) → [`CLAUDE.md`](CLAUDE.md), seção "Groot — editor e monit
 
 ```bash
 make models
-nm -D --defined-only dist/lib/mixr-plugins/libmeu_modelo.so | grep ' T '   # 1 linha só
-ldd dist/lib/mixr-plugins/libmeu_modelo.so | grep 'not found'             # vazio
+make install                                                              # sync-plugins: plugins/ -> dist/
+nm -D --defined-only dist/lib/mixr-plugins/libmeu-modelo.so | grep ' T '   # 1 linha só
+ldd dist/lib/mixr-plugins/libmeu-modelo.so | grep 'not found'             # vazio
 ```
 
-Se veio do `template`, o mesmo passo está em `docs/PRIMEIROS-PASSOS.md`, passo 6.
+`make models` sozinho deposita só em `plugins/` (a raiz do repositório) — nunca em `dist/`; é o
+`make install` acima quem sincroniza os dois (ver "Desacoplando `models` de `dist/`" em
+`CLAUDE.md`). Sem ele, os dois comandos de checagem abaixo falham com "No such file or directory".
+
+Se veio do `template`, os mesmos comandos estão em `docs/PRIMEIROS-PASSOS.md`, na seção
+"Checklist rápido, para revisar antes do primeiro commit" (depois do Passo 7).
 
 ### 5.2 Registrar num cenário
 
@@ -232,11 +342,42 @@ adicionar um subprojeto novo": uma pasta `src/poc/<nome>/` com `configs/scenario
 entrada de `components:` no `.edl.in` (`provides:` é igualdade EXATA de conjunto contra o que o
 `.so` exporta); e nada mais a registrar — sem catálogo estático, a poc já fica alcançável por
 `./app -folder <pasta> -scenario <nome>` assim que `configs/` tiver um único `.edl`/`.edl.in`.
+(`.edl.in` é só um `.edl` com tokens — `@NUM_TC_THREADS@`, `@include:...@` — que
+`app/ScenarioTemplate.*` substitui antes de o parser ler o arquivo final; ver `CLAUDE.md`, seção
+"Estrutura de um subprojeto", tabela "A aplicação". Sem token nenhum para substituir, `.edl` puro
+já basta — as duas extensões convivem no repositório conforme o cenário precisa ou não desse
+passo.)
+
+**Um exemplo mínimo e literal**, para não ficar só na descrição acima: o caminho mais rápido para
+conferir que o SEU `.so` carrega — sem ainda decidir entre virar uma poc de verdade em `src/poc/`
+ou ganhar cobertura de teste automática (seção 5.4) — é uma pasta solta em `sandbox/`, copiando um
+cenário que já funciona como base e trocando só o bloco `PluginModule` (seção 5.1) pelo do seu
+modelo:
+
+```bash
+mkdir -p sandbox/meu-teste/configs sandbox/meu-teste/data/{logs,recordings,messages}
+touch sandbox/meu-teste/data/logs/.gitkeep sandbox/meu-teste/data/recordings/.gitkeep \
+      sandbox/meu-teste/data/messages/.gitkeep
+cp src/poc/dis/flight/configs/scenario.edl.in sandbox/meu-teste/configs/scenario.edl.in
+# dentro da copia: troque o bloco PluginModule (file:/provides:) pelo do SEU .so -- seção 5.1 --
+# e o treeFile:/nome das classes do agente pelos que o SEU modelo de fato exporta
+
+./build/app/src/app -folder ./sandbox -scenario meu-teste
+```
+
+`sandbox/` é gitignorado por padrão — publicar essa pasta como exemplo versionado é opcional (a
+seção 8.9, que repete esta MESMA receita usando o A-4 como modelo concreto em vez de placeholders,
+mostra como).
 
 ### 5.3 Terreno: quando o cenário sai da área coberta
 
-O `terrain:` do `.edl` nomeia **um** tile SRTM, e é ele que o `Player::updateElevation()` nativo lê
-(AGL, anti-CFIT). O repositório versiona **cinco** tiles reais, todos em torno da Serra do Mar (RJ),
+O `terrain:` do `.edl` nomeia **um** tile SRTM (*Shuttle Radar Topography Mission*, o
+levantamento de elevação de terreno de acesso público da NASA que este projeto usa), e é ele que o
+`Player::updateElevation()` nativo lê
+(AGL — *above ground level*, altitude acima do solo, por oposição a MSL/*mean sea level* ou
+HAE/*height above ellipsoid*; anti-CFIT — *controlled flight into terrain*, o acidente de uma
+aeronave em pleno controle colidindo contra o terreno, que o piso calculado a partir do AGL existe
+para evitar). O repositório versiona **cinco** tiles reais, todos em torno da Serra do Mar (RJ),
 que é onde os cenários de demonstração voam:
 
 ```
@@ -269,9 +410,10 @@ que no histórico do git inviabilizariam o clone — e não há nada a preservar
 público e o script reconstrói tudo. O `.hgt` descompactado nunca é versionado; é gerado sob demanda
 (`app::makeTerrainSampler()`) na primeira consulta que cai dentro daquele tile.
 
-**Não há passo de registro.** `app/TerrainQuery.cpp` varre a pasta inteira na primeira consulta e
+**Não há passo de registro.** `app/src/app/TerrainQuery.cpp` varre a pasta inteira na primeira consulta e
 indexa por nome — tile novo aparece sozinho, sem editar código. A vista de Mapa do `./app` enxerga
-**todos** os tiles em disco (com teto de 12 residentes em memória, troca por LRU); a simulação em
+**todos** os tiles em disco (com teto de 12 residentes em memória, troca por LRU — *Least Recently
+Used*, descarta o tile menos usado recentemente para abrir espaço para um novo); a simulação em
 si continua lendo só o que o `terrain:` do cenário nomeia.
 
 Detalhe completo, incluindo por que o carregador é preguiçoso e a cobertura medida dos cenários da
@@ -284,9 +426,9 @@ A poc já roda sem nenhuma linha em `tests/meson.build`. Decida se vale a pena p
 
 | a poc... | cobertura | precedente |
 |---|---|---|
-| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `flight`, `python-flight` |
+| segue o formato dual `intruder`/`lowfuel` com rótulos `EVADE`/`SUPPORT`/`RTB` (*Return To Base* — retornar à base) | entra na lista `pocs` — ganha `scenario-*`/`memory-*`/`determinism-*` de graça, via `foreach` | `flight`, `python-flight` |
 | não segue esse formato, mas tem uma propriedade que vale a pena provar | bloco(s) `test()` manuais, reaproveitando `scenario_runner`/`leak_runner`/`determinism_sh` fora do `foreach` | `onnx-policy` |
-| nenhuma das duas — é só composição de players já testados em outro lugar | nenhuma entrada; documente o porquê no `README.md` da própria poc | `built-in_mixr_1`, `full-systems-nav` |
+| nenhuma das duas — é só composição de players já testados em outro lugar | nenhuma entrada; documente o porquê no `README.md` da própria poc | — |
 
 ## 6. Teste
 
@@ -301,7 +443,7 @@ repositório.
 
 `make test-asan` (raiz, ver [`README.md`](README.md#make-test-asan) para o passo a passo) é hoje
 **hardcoded para o A-4**: reconstrói `models/players/A-4` com `-Dasan=true` e roda uma fixture da poc
-`flight` (que carrega `libflight.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
+`flight` (que carrega `libA-4.so`, o plugin do A-4) sob LeakSanitizer. Ele **não**
 aceita `NAME=`, e a razão é mecânica — `make models ASAN=true` (que ele chama por baixo) passa
 `ASAN=true` para **todo** projeto de modelo encontrado por `find` sob `models/` (qualquer subpasta
 com `project()` no próprio `meson.build`, não só `models/players/`), mas só
@@ -326,20 +468,30 @@ modelo).
 
 Três camadas diferentes, para perguntas diferentes:
 
-**Aprender o framework do zero** — `contexts/mixr-report.pdf`/`contexts/bt-report.pdf` são os
-manuais técnicos completos (13 capítulos cada) do MIXR e do BehaviorTree.CPP, leitura contínua.
-[`docs/manual/`](docs/manual/) (`make open-docs`, página estática) complementa com três visões
-interativas: a animação do ciclo de execução do MIXR sobre uma árvore de componentes real, um
-catálogo buscável das classes do fork (fábrica, slots, participação por fase) e um ensaio sobre a
-cadeia de decisão `FlightAgentTC → UBF → BehaviorTree`.
+**Aprender o framework do zero** — comece pelos dois manuais técnicos completos vendorizados,
+[`docs/books/mixr-report.pdf`](docs/books/mixr-report.pdf) (MIXR) e
+[`docs/books/bt-report.pdf`](docs/books/bt-report.pdf) (BehaviorTree.CPP): são a leitura de ponta a
+ponta pensada para quem nunca viu o framework.
+[`contexts/MIXR-CONTEXT.md`](contexts/MIXR-CONTEXT.md),
+[`contexts/MIXR-PATTERN-CONTEXT.md`](contexts/MIXR-PATTERN-CONTEXT.md) e
+[`contexts/BTCPP-CONTEXT.md`](contexts/BTCPP-CONTEXT.md) são a destilação vendorizada dos dois
+PDFs — um resumo para consulta pontual enquanto essa leitura está em andamento, ou depois dela —,
+e `contexts/src/` (vendorizado e versionado no próprio repositório) tem o fonte completo das duas
+árvores para quando nem os PDFs nem a destilação bastarem. [`docs/manual/`](docs/manual/) (`make
+open-docs`, página estática) complementa com seis visões interativas: a animação do ciclo de
+execução do MIXR sobre uma árvore de componentes real, um catálogo buscável das classes do fork
+(fábrica, slots, participação por fase), um ensaio sobre a cadeia de decisão `FlightAgentTC → UBF
+→ BehaviorTree`, entre outras.
 
 **Consulta rápida sobre uma classe/API específica (inclusive por um agente de IA)** — os três
 `contexts/*-CONTEXT.md` (`MIXR-CONTEXT.md`, `MIXR-PATTERN-CONTEXT.md`, `BTCPP-CONTEXT.md`) são
-destilações voltadas a resposta rápida, não substituem os PDFs acima para quem está aprendendo do
-zero. Quando a destilação não basta ou parece contraditória, a autoridade final é o fonte
-vendorizado em `contexts/src/` (git-ignored — não vem num clone limpo) ou os headers instalados
-pelo Conan. O agente `mixr-vendor-lookup` (`.claude/agents/`) já sabe essa ordem de consulta e
-devolve só o resumo, sem despejar C++ de terceiro na conversa.
+destilações voltadas a resposta rápida: é o recurso indicado aqui, não os PDFs completos acima
+([`mixr-report.pdf`](docs/books/mixr-report.pdf)/[`bt-report.pdf`](docs/books/bt-report.pdf)), que
+continuam sendo o ponto de partida recomendado para quem está aprendendo do zero (ver acima).
+Quando a destilação não basta ou parece contraditória, a autoridade final é o fonte vendorizado em
+`contexts/src/` (versionado neste repositório) ou os headers instalados pelo Conan. O agente
+`mixr-vendor-lookup` (`.claude/agents/`) já sabe essa ordem de consulta e devolve só o resumo, sem
+despejar C++ de terceiro na conversa.
 
 **`.claude/` — automação e contexto para quem trabalha com um agente Claude Code neste repo**:
 
@@ -353,17 +505,32 @@ devolve só o resumo, sem despejar C++ de terceiro na conversa.
 - `.claude/skills/README.md` e `.claude/mcp/README.md` documentam por que não há nenhum dos dois
   hoje, e quando criar um.
 
-## 8. Exemplo guiado completo: um nó novo do A-4, do C++ até um cenário de sandbox
+## 8. Exemplo guiado completo (opcional): um nó novo do A-4, do C++ até um cenário de sandbox
 
-As seções 2–6 cobrem criar um modelo **do zero**, a partir do `template/`. Esta seção é o
-complemento: como estender um modelo que **já existe**, com código de verdade — usando o A-4
+**Opcional — não é parte do roteiro de "escrever um modelo do zero".** As seções 2–6 cobrem isso,
+a partir do `template/`. Esta seção é um estudo de caso à parte, bem mais longo (código real,
+~600 linhas): como estender um modelo que **já existe**, usando o A-4
 (`models/players/A-4/`, o modelo de produção) como referência viva, não um exemplo inventado. O
 fio condutor é seguir um nó real de ponta a ponta — `FuelLowCondition` (uma condição) e
 `ReportAndEvadeAction` (uma ação), os dois já em produção — desde o C++ até aparecer rodando num
 cenário de `sandbox/`. Cada subseção termina com a generalização: o que muda se você estiver
 escrevendo um nó **seu**, novo.
 
-Mapa de onde cada peça mora, para não se perder:
+> **Namespace simplificado nos exemplos abaixo, de propósito.** O A-4 real já aninha TODO o
+> próprio namespace — `domain::`/`bt_nodes::` incluídos — sob `mixr::models::xA_4` (a mesma
+> obrigação da seção 3 acima, "namespace aninhado sob `mixr::models::x<nome>`"): ele nasceu como
+> a exceção histórica, com os dois soltos no escopo global, mas isso já foi corrigido — ver
+> `CHANGELOG.md` daquele modelo e `CONTRATO.md`, seção 6, que hoje descreve isto como caso
+> encerrado, não como exceção em aberto. Os trechos de código desta seção 8 OMITEM esse wrapper
+> externo (`namespace mixr { namespace models { namespace xA_4 { ... } } }`) só para manter o
+> foco na anatomia de cada nó — copie a FORMA (classe, `tick()`, portas, interface), mas aninhe
+> `domain::`/`bt_nodes::` (ou o namespace equivalente) sob `mixr::models::x<seu-modelo>` desde o
+> início, como a seção 3/6 já exige.
+
+Mapa de onde cada peça mora, para não se perder (`Station` — citada abaixo, e usada nos exemplos
+de EDL como `( ClockStation ... )` — é o objeto raiz de uma simulação MIXR, dono do laço de
+execução; a hierarquia completa (`Station` → `WorldModel` → players) está no parágrafo de abertura
+do [`README.md`](README.md)):
 
 ```
 models/players/A-4/
@@ -577,13 +744,18 @@ MIXR direto.
 
 Os dois nós acima só tocam `bt_nodes::DecisionContext` — nunca `ubf::BtBehavior` (a implementação
 concreta, que mora do lado de dentro do `.so` e inclui headers MIXR pesados). A interface
-completa, hoje com 9 métodos:
+completa, hoje com 13 métodos (o modelo cresceu desde que este exemplo foi escrito — acrescentou
+acrobacia e ameaça de RWR (*Radar Warning Receiver*, receptor que detecta emissão de radar hostil
+de forma passiva); o padrão de "só domínio, nunca MIXR" continua o mesmo em cada método
+novo):
 
 ```cpp
 // models/players/A-4/include/bt/DecisionContext.hpp
 #pragma once
 
 #include "bt/NodeContext.hpp"
+#include "domain/AerobaticPlan.hpp"
+#include "domain/LaunchPolicy.hpp"
 #include "domain/PatrolPlan.hpp"
 #include "domain/RtbPlan.hpp"
 #include "domain/ThreatPolicy.hpp"
@@ -607,6 +779,17 @@ public:
    virtual domain::RtbPlan& rtbPlan() = 0;
    virtual const domain::ThreatPolicy& threatPolicy() const = 0;
 
+   // quando fazer a proxima acrobacia e por quanto tempo mante-la -- o no
+   // ( SlowRoll ) so avanca/le este plano, quem o semeia e configurePlans()
+   virtual domain::AerobaticPlan& aerobaticPlan() = 0;
+
+   // SEGUNDA instancia de ThreatPolicy, dedicada a ameaca de RWR (emissor
+   // hostil detectado passivamente) -- independente da threatPolicy() acima
+   virtual const domain::ThreatPolicy& rwrThreatPolicy() const = 0;
+
+   // alcance/cone dentro dos quais o disparo de missil e permitido
+   virtual const domain::LaunchEnvelope& launchEnvelope() const = 0;
+
    // parametros do ciclo e dos slots do EDL
    virtual double getFrameDt() const = 0;
    virtual double getFuelReserve() const = 0;
@@ -621,6 +804,10 @@ public:
    // de decision().take() -- ver ReturnToBaseAction/SupportAlertAction/
    // PatrolAction.
    virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
+
+   // ha altitude de sobra para COMECAR uma acrobacia agora? -- so a borda
+   // Idle->Rolling de AerobaticPlan::update() consulta isto
+   virtual bool hasAerobaticAltitudeMargin() const = 0;
 };
 
 } // namespace bt_nodes
@@ -727,11 +914,12 @@ void registerWithContext(BT::BehaviorTreeFactory& factory, const std::string& id
 
 // Registrar um no aqui e' so metade do trabalho: o Groot (deps/groot/,
 // CLAUDE.md "Groot -- editor e monitor ao vivo") NAO enxerga estas classes --
-// ele e' um app a parte, nunca viu este .so. Os 5 configs/flight_tree*.xml
+// ele e' um app a parte, nunca viu este .so. Os configs/flight_tree*.xml
 // de producao carregam um <TreeNodesModel> colado a mao, com o MESMO ID
 // desta chamada, so' pra ele reconhecer os nos. Registrou um no novo aqui ou
-// em bt_factory_sdk.cpp? Atualize o bloco nos 5 arquivos tambem, ou o Groot
-// recusa a arvore com "This model has not been registered: <ID>".
+// em bt_factory_sdk.cpp? Atualize o bloco em TODOS esses arquivos tambem
+// (make update-bt faz isso por voce, ver a secao 8.5 logo abaixo), ou o
+// Groot recusa a arvore com "This model has not been registered: <ID>".
 void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
 {
    registerWithContext<FuelLowCondition>(factory, "FuelLow", context);
@@ -742,6 +930,10 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
    registerWithContext<SupportAlertAction>(factory, "SupportAlert", context);
    registerWithContext<PatrolAction>(factory, "Patrol", context);
    registerWithContext<NavigateAction>(factory, "Navigate", context);
+   // ... o modelo de producao registra mais nos aqui hoje (acrobacia,
+   // ameaca de RWR, disparo de missil) -- omitidos deste exemplo porque o
+   // padrao de registro e identico; ver models/players/A-4/src/bt/bt_factory.cpp
+   // para a lista completa e atual.
 }
 
 } // namespace bt_nodes
@@ -866,8 +1058,8 @@ Mesmo padrão já usado na seção 5.1, nomeado para o A-4:
 make -C models/players/A-4 build test install-host   # so este modelo, autocontido
 cd ../../..   # de volta a raiz do repositorio, se necessario
 make install                                          # sync-plugins: plugins/ -> dist/
-nm -D --defined-only dist/lib/mixr-plugins/libflight.so | grep ' T '   # 1 linha
-ldd dist/lib/mixr-plugins/libflight.so | grep 'not found'              # vazio
+nm -D --defined-only dist/lib/mixr-plugins/libA-4.so | grep ' T '   # 1 linha
+ldd dist/lib/mixr-plugins/libA-4.so | grep 'not found'              # vazio
 ```
 
 `make -C models/players/A-4 install-host` deposita em `plugins/` (a raiz do repositório) — só o
@@ -888,7 +1080,7 @@ components: {
       }
       modules: {
          ( PluginModule
-            file:     "libflight.so"
+            file:     "libA-4.so"
             provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                         FlightState BtBehavior AltitudeSafetyBehavior
                         RLBridgeBehavior FlightAction }
@@ -905,8 +1097,8 @@ fecha-parênteses de cada uma. A carga do `.so` acontece dentro do `isValid()` d
 fora de ordem, o parser chega numa classe do plugin sem ninguém que responda por ela, e
 `mixrFactory` aborta explicando exatamente isso (sem SIGSEGV, sem silêncio).
 
-`provides:` é igualdade EXATA de conjunto contra o que o `.so` exporta hoje — 8 nomes, para
-`libflight.so`. Se o nó novo que você acabou de registrar (seções 8.4–8.5) é um nó de
+`provides:` é igualdade EXATA de conjunto contra o que o `.so` exporta hoje — 9 nomes, para
+`libA-4.so`. Se o nó novo que você acabou de registrar (seções 8.4–8.5) é um nó de
 **BehaviorTree**, `provides:` **não muda** — nome de nó de árvore não é nome de fábrica MIXR, os
 dois vivem em registros completamente diferentes (`BT::BehaviorTreeFactory` vs.
 `mixr::base::factory`). `provides:` só muda quando você acrescenta uma CLASSE MIXR nova (mais uma
@@ -933,7 +1125,7 @@ falcon1: ( Aircraft
       agent: ( FlightAgentTC
          state: ( FlightState )
          behavior: ( BtBehavior
-            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            treeFile: "./dist/share/mixr-plugins/A-4/flight_tree.xml"
             patrolHeading:  ( Degrees 90 )
             ...
             fuelReserve:    0.35
@@ -945,12 +1137,12 @@ falcon1: ( Aircraft
 ```
 
 `treeFile:` é o caminho para onde `make install`/`sync-plugins` publica a árvore junto com o
-`.so` (`dist/share/mixr-plugins/flight/`) — é essa cópia instalada, não o
+`.so` (`dist/share/mixr-plugins/A-4/`) — é essa cópia instalada, não o
 `configs/flight_tree.xml` do projeto do modelo, que o cenário de fato carrega em runtime.
 
 ### 8.9 Rodando num cenário de sandbox
 
-A família `sandbox/A4-*DOF` já carrega `libflight.so` pelo MESMO mecanismo — prova de que o
+A família `sandbox/A4-*DOF` já carrega `libA-4.so` pelo MESMO mecanismo — prova de que o
 padrão da seção 8.8 vale igual em produção e em sandbox
 (`sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in`):
 
@@ -969,7 +1161,7 @@ padrão da seção 8.8 vale igual em produção e em sandbox
          }
          modules: {
             ( PluginModule
-               file:     "libflight.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -980,7 +1172,10 @@ padrão da seção 8.8 vale igual em produção e em sandbox
 ```
 
 Para rodar sua própria variante — com o nó novo já valendo, já recompilado (seção 8.7) — sem mexer
-em nenhum cenário existente:
+em nenhum cenário existente, é a MESMA receita já mostrada na seção 5.2, agora com `flight` (o
+cenário de produção do próprio A-4) como base concreta em vez de um placeholder — ele já
+referencia `libA-4.so`, então só `treeFile:`/porta Tacview/callsign do EDL copiado precisam mudar,
+não o bloco `PluginModule` inteiro:
 
 ```bash
 mkdir -p sandbox/meu-teste/configs sandbox/meu-teste/data/{logs,recordings,messages}

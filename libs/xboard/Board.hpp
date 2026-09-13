@@ -17,7 +17,7 @@ namespace xboard {
 //------------------------------------------------------------------------------
 // POR QUE ESTA E A PRIMEIRA shared_library() DE libs/
 //
-// As outras cinco (xtacview, xclock, xjoystick, xlog, xmsg) sao
+// As outras cinco (xtacview, xclock, xjoystick, xmsg, xplugin) sao
 // static_library(). Esta NAO pode ser, e o motivo e estrutural:
 //
 //    quem ESCREVE aqui e o modelo, que mora num .so carregado com dlopen;
@@ -32,8 +32,10 @@ namespace xboard {
 //
 // E tambem a saida que libs/xplugin/README.md ja aponta como a honesta
 // quando o plugin precisa de codigo compartilhado: "promover a peca necessaria
-// a shared_library com SONAME", em vez de relaxar a regra de que um plugin so
-// depende de mixr_dep + xplugin_abi_dep.
+// a shared_library instalada com SONAME", em vez de relaxar a regra de que um plugin so
+// depende de mixr_dep + xplugin_abi_dep. xlog foi promovida depois por esse
+// mesmo motivo -- ver libs/xlog/README.md, secao "Por que e shared_library(),
+// nao estatica".
 //------------------------------------------------------------------------------
 // CONCORRENCIA: escrito nas threads de tempo critico (a atuacao do UBF roda
 // la), lido no laco de background. Por isso todo acesso passa por um mutex.
@@ -72,7 +74,8 @@ struct Readout
 void setBehaviorLabel(int playerId, const std::string& label);
 
 // Conta DECISAO, nao candidatura: e chamada no ponto da atuacao, depois de o
-// UbfArbiter ja ter escolhido o vencedor.
+// comportamento (hoje, BtBehavior -- a producao nao usa mais UbfArbiter) ja
+// ter decidido a acao.
 //
 // Existe para o dump poder AFIRMAR -- e nao so imprimir -- que a decisao esta
 // amarrada ao frame: em passo fixo, o avanco deste numero entre dois dumps tem
@@ -93,7 +96,7 @@ Readout get(int playerId);
 // Identidade da thread que esta executando -- indice pequeno e ESTAVEL
 // (0,1,2...) para a thread chamadora.
 //
-// PROMOVIDO de models/players/A-4/xnative/ThreadTag para CA -- ver o
+// PROMOVIDO de models/players/A-4/xnative/ThreadTag para ca -- ver o
 // "porque" no CLAUDE.md ("o do missil que nao aparece"): com a numeracao
 // como contador PRIVADO de cada .so, dois plugins DIFERENTES no MESMO
 // processo (models/players/A-4 e models/players/missile) numerariam a MESMA

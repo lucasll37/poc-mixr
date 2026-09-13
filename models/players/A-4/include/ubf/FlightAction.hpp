@@ -1,5 +1,4 @@
-#ifndef __xnative_ubf_FlightAction_H__
-#define __xnative_ubf_FlightAction_H__
+#pragma once
 
 #include "mixr/base/ubf/AbstractAction.hpp"
 
@@ -9,7 +8,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: FlightAction
@@ -41,7 +40,7 @@ public:
    void setLabel(const std::string& text)              { label = text; }
 
    // Pedido de transmissao do alerta tatico (a transmissao em si acontece
-   // na fase 1 do frame seguinte -- ver xnative::AlertRadio).
+   // na fase 1 do frame seguinte -- ver xA_4::AlertRadio).
    void setAlertBroadcast(const std::string& contactName,
                           const double northM, const double eastM,
                           const double altitudeM, const double rangeM);
@@ -67,8 +66,7 @@ private:
    std::string launchTargetName;
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

@@ -14,6 +14,9 @@
 #include "bt/nodes/SlowRollAction.hpp"
 #include "bt/nodes/SupportAlertAction.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 namespace {
@@ -60,3 +63,6 @@ void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context)
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

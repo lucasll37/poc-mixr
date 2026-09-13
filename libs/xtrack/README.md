@@ -40,12 +40,15 @@ oss << " track=" << (track.found ? track.name : std::string("none"))
 ```
 
 `nearestHostileTrack(ownship, trackManagerName = "twsTrkMgr")` recebe um `const models::Player*`
-— **qualquer** player com um `OnboardComputer`, não só `AirVehicle`/`falcon1..4` (generalizado de
-`AirVehicle*` para `Player*` ao acrescentar `models/players/aaa`, cuja antiaérea consulta o próprio
+— **qualquer** player com um `OnboardComputer` (o componente nativo do MIXR que hospeda os
+`TrackManager`s do player, declarado no slot `obc:` do `.edl`), não só `AirVehicle`/`falcon1..4`
+(generalizado de
+`AirVehicle*` para `Player*` ao acrescentar `models/players/AAA`, cuja antiaérea consulta o próprio
 track manager de aquisição de alvo a partir de um `GroundVehicle`). O segundo parâmetro nomeia QUAL
 `TrackManager` consultar — `"twsTrkMgr"` por default (o contato aéreo de sempre), ou qualquer outro
-nome declarado em `obc:` no `.edl` (ex.: `"rwrTrkMgr"` para uma pista de RWR, `"aaaTrkMgr"` para o
-radar de tiro de uma antiaérea). Não há nada para declarar em `.edl` além do `TrackManager` em si:
+nome declarado em `obc:` no `.edl` (ex.: `"rwrTrkMgr"` para uma pista de RWR — *Radar Warning
+Receiver*, o sensor passivo que detecta iluminação de radar hostil sobre o próprio avião —,
+`"aaaTrkMgr"` para o radar de tiro de uma antiaérea). Não há nada para declarar em `.edl` além do `TrackManager` em si:
 `nearestHostileTrack()` não é uma classe MIXR registrada em factory, é só uma função que lê o
 `TrackManager` já vivo — o cenário só precisa ter o radar/`OnboardComputer` configurados como
 sempre.
@@ -92,8 +95,8 @@ detectado* — é a pista.
 
 ## Por que é `shared_library()`, e não estática
 
-Mesmo argumento de [`xboard`](../xboard/Board.hpp): é a única peça disputada pelos dois lados da
-fronteira de `dlopen`. O host precisa dela para o `track=`/`trackRange=` do dump (e do painel do
+Mesmo argumento de [`xboard`](../xboard/README.md) (ver `Board.hpp`): é a única peça disputada
+pelos dois lados da fronteira de `dlopen`. O host precisa dela para o `track=`/`trackRange=` do dump (e do painel do
 `./app`); o modelo precisa dela para a percepção (`ubf::FlightState`). A alternativa seria
 compilar o mesmo `.cpp` dos dois lados — funciona (as funções não têm estado), mas depois que o
 fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do arquivo em duas
@@ -107,13 +110,19 @@ fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do 
    preenche um array de `base::safe_ptr<Track>` que pode ter buracos; o `.cpp` mantém `origIndex[]`
    à parte para mapear de volta do índice em `candidates` (denso, sem buracos) para o índice
    original em `tracks[]` (com buracos).
-3. **`deltaAltM` é o negativo da componente `IDOWN`** do vetor de posição relativa (`NED`) — o
-   sinal já sai invertido do `.cpp` para que "positivo" signifique "contato acima", que é a
-   convenção que o resto da aplicação espera.
+3. **`deltaAltM` é o negativo da componente `IDOWN`** do vetor de posição relativa em coordenadas
+   `NED` (*North-East-Down*: plano tangente local com o terceiro eixo apontando para BAIXO, a
+   convenção padrão de sensores/dinâmica de voo — ver `contexts/MIXR-CONTEXT.md`); `IDOWN` é o
+   índice desse eixo "para baixo" dentro do vetor (`models::Player::IDOWN`), então um contato
+   ACIMA do ownship chega com valor NEGATIVO ali — o sinal já sai invertido no `.cpp` para que
+   "positivo" em `deltaAltM` signifique "contato acima", que é a convenção que o resto da
+   aplicação espera.
 
 ## Testes
 
-`tests/domain/test_track_selection.cpp` (alvo registrado na suíte `domain`, ver `tests/meson.build`)
+`tests/domain/test_track_selection.cpp` (alvo registrado na suíte `domain` do **host** —
+`tests/meson.build`, `make test`; não confundir com a suíte `domain` do MODELO, dentro de
+`make test-models`, ver [`tests/README.md`](../../tests/README.md))
 cobre `selectNearestHostileIndex()` isolada — sem `Station`, sem `Player`/`Track` ao vivo: lista
 vazia, só-amigos, hostil mais próximo ignorando amigo mais perto, empate de alcance resolvido pelo
 menor `trackId`, independência da ordem da lista, e as duas variações de pista sem alvo resolvido

@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/action_node.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // Pede o lancamento de um missil contra o contato atual. Nao toca em objeto
@@ -25,3 +28,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

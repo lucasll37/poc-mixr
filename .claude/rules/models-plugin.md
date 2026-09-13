@@ -16,8 +16,10 @@ paths:
   nunca edite ou crie arquivo neles à mão.
 - **Nomes de fábrica MIXR são globais ao processo, não por-plugin.** Dois `.so` carregados juntos
   publicando o mesmo nome derrubam o processo (`die()` em `PluginRegistry::loadModule`). Já
-  aconteceu de verdade (`ThreadTagProbe`, A-4×missile — o extinto modelo de demo — ver CLAUDE.md,
-  "vigésima terceira passada"). Depois de acrescentar uma classe nova a qualquer `factory.cpp`,
+  aconteceu de verdade (`ThreadTagProbe`, A-4×missile — o modelo de demo `missile` que existia
+  então, removido depois; não o modelo atual de mesmo nome, que é implementação diferente — ver
+  CLAUDE.md, "vigésima terceira passada"). Depois de acrescentar uma classe nova a qualquer
+  `factory.cpp`,
   rode `python3 tests/guard/check_colisao_fabrica.py` — o hook `check-colisao-fabrica.sh` já faz
   isso automaticamente após editar `.cpp`/`.hpp` sob `models/`.
 - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta. Acrescentar
@@ -29,6 +31,17 @@ paths:
   Não escreve lógica nenhuma, só copia o esqueleto de `models/template/`. Depois, siga
   `CONTRIBUTING.md` §5 para o cenário (não há catálogo para registrar — basta um `.edl.in` em
   `configs/`) e anote em `models/REGISTRO.md` (coordenação humana, sem enforcement automático).
+- **`make check-organization`** roda `tools/check_organization.py` — linter OPCIONAL (não roda em CI, não bloqueia
+  `build`/`test`/`install`) de boas práticas de organização interna: camadas sem MIXR vazando
+  (`domain/`, `bt/`), namespace aninhado sob `mixr::models::x<nome>`, as três listas de
+  `xnative/factory.cpp` em sincronia, a obrigação de escrever no `xboard`, versão do `CHANGELOG.md`
+  batendo com `meson.build`, empacotamento de plugin (`shared_module()`, símbolo escondido,
+  `-Wl,--no-undefined`), dado próprio publicado via `install_data()`/`install_subdir()`, entre
+  outras (15 verificações ao todo). O alvo mora em `models/common.mk` (compartilhado — todo
+  modelo já nasce com ele); o script em si é copiado byte a byte para `tools/check_organization.py`
+  de cada modelo (o único ponto customizável por modelo é `KNOWN_EXCEPTIONS`, no topo do próprio
+  arquivo — vazio em todos os 7 modelos hoje; existe para registrar uma exceção já decidida sem
+  escondê-la do relatório, não para problema esquecido).
 - `models/template/` **não é produção** — mora no primeiro nível de `models/`, fora de qualquer
   categoria, justamente por isso, e não entra na checagem de colisão de fábrica.
   Hospeda DOIS artefatos: o scaffold copiável (`libtemplate.so`, exemplo em camadas) e um mirror

@@ -23,7 +23,7 @@ USO
     python3 src/poc/rl-training/tools/export_onnx.py --random -o models/players/A-4/configs/policy_example.onnx
 
     # exporta uma politica treinada com Stable-Baselines3
-    python3 src/poc/rl-training/tools/export_onnx.py --sb3 runs/ppo_falcon.zip -o politica.onnx
+    python3 src/poc/rl-training/tools/export_onnx.py --sb3 src/poc/rl-training/runs/ppo_falcon1.zip -o politica.onnx
 
 Rode com cwd na raiz do repositorio e PYTHONPATH=./dist/python -- a mesma
 convencao de src/rl/tests/test_smoke.py.

@@ -123,7 +123,7 @@ void Paratrooper::setJumpStage(const domain::Stage s)
 // Duas propriedades que caem de graca deste ponto de insercao:
 //
 //  * e' IDEMPOTENTE e restrito a PRE_RELEASE -- um Paratrooper declarado
-//    direto em 'players: {}' (o caso de src/poc/paratrooper-drop) nunca passa
+//    direto em 'players: {}' (sem aeronave lancadora) nunca passa
 //    por este modo, entao os 'initXPos'/'initYPos'/'initAlt' daquele cenario
 //    continuam significando posicao absoluta no terreno de jogo, intocados;
 //  * a VELOCIDADE inicial continua sendo a da aeronave, herdada do ramo

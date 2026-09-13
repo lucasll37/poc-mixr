@@ -14,7 +14,7 @@ namespace xC_130 {
 //              test_paratrooper_stick.cpp, que constroem esta classe direto
 //              para exercitar ActionParatrooperRelease/ActionParatrooperStick
 //              sem depender de outro plugin). NAO e mais usada por nenhum
-//              cenario de producao -- src/poc/c130-airdrop passou a liberar
+//              cenario real -- sandbox/C-130_paratrooper-6DOF ja libera
 //              o 'Paratrooper' real (models/players/paratrooper, FSM
 //              completa: queda livre, paraquedas, pouso), troca que foi so'
 //              EDL (a classe da estacao + 'provides:' de libparatrooper.so),
@@ -31,7 +31,7 @@ namespace xC_130 {
 //              docs/ARCHITECTURE.md): registrar o mesmo nome que o modelo de
 //              producao usa colidiria com tests/guard/check_colisao_fabrica.py
 //              assim que os dois `.so` carregassem juntos no mesmo processo
-//              (como ja acontece em src/poc/c130-airdrop hoje).
+//              (como ja acontece em sandbox/C-130_paratrooper-6DOF hoje).
 //
 //              UMA sobrescrita, dynamics() -- o MESMO ponto de saida que
 //              models/players/paratrooper/src/xnative/Paratrooper.cpp usa
@@ -39,7 +39,7 @@ namespace xC_130 {
 //              nativo de AbstractWeapon::dynamics() em PRE_RELEASE aplica
 //              offset ZERO, e o placeholder nasce colado na posicao exata do
 //              C-130 -- no Tacview, o instante da liberacao parece uma
-//              colisao com a aeronave (achado rodando src/poc/c130-airdrop).
+//              colisao com a aeronave (achado rodando sandbox/C-130_paratrooper-6DOF).
 //              15 m atras / 10 m abaixo, fixos aqui sem slot (esta classe e
 //              so um placeholder provisorio) -- os mesmos defaults do modelo
 //              real.

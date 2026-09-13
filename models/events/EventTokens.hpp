@@ -39,7 +39,14 @@ namespace events {
 // caminho que xnative::AlertDatalink::broadcastAlert() usa, ALEM do
 // sendMessage() nativo (que so entrega a quem tem Datalink).
 //
-// Proximo token livre: USER_EVENTS + 2.
+// EID_PING (payload: events::PingMessage, events/payloads/EID_PING/
+// PingMessage.hpp): broadcast DIRETO tambem -- mas aqui quem EMITE e quem
+// TRATA e' a MESMA classe (models/players/Beacon), nos dois papeis ao mesmo
+// tempo. Existe para exercitar a convencao completa (token + payload +
+// emissor + receptor) sem depender de nenhum subsistema nativo, ver
+// models/players/Beacon/README.md e events/README.md.
+//
+// Proximo token livre: USER_EVENTS + 3.
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -134,6 +141,7 @@ namespace events {
 //                        // USER_EVENTS + 1, e assim por diante).
 //------------------------------------------------------------------------------
 constexpr int EID_ALERT{base::Component::USER_EVENTS + 1};
+constexpr int EID_PING{base::Component::USER_EVENTS + 2};
 
 // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o "ledger unico" acima
 // dependia inteiramente de disciplina MANUAL para evitar colisao -- nada
@@ -145,7 +153,7 @@ constexpr int EID_ALERT{base::Component::USER_EVENTS + 1};
 // COMPILACAO (nao em runtime, nem so' em teste) se dois coincidirem.
 namespace detail {
 
-constexpr int kAllTokens[]{ EID_ALERT };
+constexpr int kAllTokens[]{ EID_ALERT, EID_PING };
 
 constexpr bool allTokensDistinct(const int* const tokens, const int n)
 {

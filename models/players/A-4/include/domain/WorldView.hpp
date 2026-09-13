@@ -2,6 +2,9 @@
 
 #include <string>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 //------------------------------------------------------------------------------
@@ -14,7 +17,7 @@ namespace domain {
 //
 // Morando aqui, em domain/, quem CONSOME a percepcao (os nos da arvore, as
 // politicas) compila sem o MIXR. A percepcao continua sendo produzida pela
-// xnative::FlightState, que mantem o alias 'FlightState::Snapshot' para esta
+// xA_4::FlightState, que mantem o alias 'FlightState::Snapshot' para esta
 // estrutura -- nenhum call site precisou mudar.
 //
 // E de proposito que isto e um struct de dados, e nao uma classe com
@@ -78,7 +81,7 @@ struct WorldView
    double rwrThreatRelBearingDeg{};
    double rwrThreatDeltaAltM{};
 
-   // alerta recebido de OUTRO aviao (ver xnative::AlertDatalink)
+   // alerta recebido de OUTRO aviao (ver xA_4::AlertDatalink)
    bool hasAlert{};
    std::string alertSender;
    std::string alertContactName;
@@ -106,3 +109,6 @@ struct WorldView
 };
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

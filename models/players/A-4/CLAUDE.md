@@ -35,7 +35,8 @@ entrega é BROADCAST GLOBAL (alcança até um `bandit1` vermelho, se ele tiver `
 
 Deliberado — sem esse limitador, medido rodando: a aeronave entra em espiral e colide com o
 terreno em ~200s (perseguição pura divergindo). Só usado por `flight_tree_nav.xml`/
-`full-systems-nav`. (`src/bt/nodes/NavigateAction.cpp:12-58`)
+`full-systems-nav` (ex-poc, cenário hoje em `tests/fixtures/full-systems-nav/`).
+(`src/bt/nodes/NavigateAction.cpp:12-58`)
 
 ## Testar `FlightState`/`FlightAction`/`AltitudeSafetyBehavior` sem `Station` exige `WorldModel` + `reset()`
 

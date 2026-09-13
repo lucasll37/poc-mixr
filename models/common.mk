@@ -2,11 +2,21 @@
 # Logica compartilhada entre os Makefiles dos modelos (models/<categoria>/<nome>/).
 # E' 'include'do, nunca chamado direto.
 #
-# AQUI: as variaveis comuns + clean/check-root/configure/help.
+# AQUI: as variaveis comuns + clean/check-root/configure/check-organization/help.
 # NO MAKEFILE-FILHO: build/test/install/install-host/uninstall-host (a lista de
 # .so publicada e o diretorio de dados sao por-modelo) e create-bt/update-bt/
 # open-groot (dependem de tools/dump-tree-model, que so existe num modelo que de
 # fato tenha uma arvore de comportamento). O filho os declara DEPOIS do include.
+#
+# 'check-organization' fica AQUI (nao no filho) porque tools/check_organization.py
+# e a MESMA copia, byte a byte, em todo modelo (ver o cabecalho do proprio
+# script) -- nao ha nada por-modelo pra declarar. Nao precisa de
+# 'configure'/'build': e analise estatica sobre o FONTE, sem compilar nada.
+# Nome do ALVO em ingles, como todo alvo deste Makefile (build/test/install/
+# check-root/create-bt/...) -- so' os COMENTARIOS/mensagens ficam em pt-BR, a
+# convencao deste repositorio. Deliberadamente DIFERENTE de 'lint' -- esse
+# nome ja e' de src/ui/scripts/edl_lint.py (lint ESTRUTURAL de arquivo .edl,
+# conceito nao relacionado), e usa-lo aqui tambem confundiria os dois.
 #
 # Contrato -- definir ANTES do 'include':
 #   ROOT              obrigatorio. $(abspath ../../..) ou equivalente para a
@@ -24,7 +34,7 @@
 # grep abaixo varre a lista inteira, nao so este arquivo.
 # ==============================================================================
 
-.PHONY: clean check-root configure help
+.PHONY: clean check-root configure check-organization help
 .DEFAULT_GOAL := help
 
 PWD        := $(shell pwd)
@@ -104,6 +114,12 @@ configure: check-root ## meson setup isolado em ./build, consumindo o SDK do hos
 	       $(BUILD_DIR)/ .; \
 	    echo "$$WANT" > $(BUILD_DIR)/.configure-args; \
 	 fi
+
+check-organization: ## Linter OPCIONAL de organizacao interna (tools/check_organization.py) -- nao bloqueia build/test/install.
+	@test -f tools/check_organization.py || { \
+		echo "$(RED)faltando tools/check_organization.py$(NC)"; \
+		echo "  copie de models/template/tools/check_organization.py (ver o cabecalho do proprio arquivo)."; exit 1; }
+	@python3 tools/check_organization.py
 
 help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
 	@# 'grep -h': $(MAKEFILE_LIST) tem mais de um arquivo (o Makefile-filho +

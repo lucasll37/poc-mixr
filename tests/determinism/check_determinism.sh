@@ -21,10 +21,11 @@
 # src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por '-f'
 # (a fixture, gerada por make_fixture.py, sempre tem a frota falcon1..4) e ja
 # diz tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o de
-# built-in_mixr_1/full-systems-nav, ou qualquer cenario de sandbox/), e
-# preciso dizer ao runner QUAL arquivo carregar, e e isso que
-# <arquivo-de-cenario> faz -- por '-folder <pasta> -scenario <nome>' (nao
-# '-f'): a frota desses cenarios pode nao ser falcon1..4 (a familia
+# tests/fixtures/built-in_mixr_1 e tests/fixtures/full-systems-nav, ou
+# qualquer cenario de sandbox/), e preciso dizer ao runner QUAL arquivo
+# carregar, e e isso que <arquivo-de-cenario> faz -- por '-folder <pasta>
+# -scenario <nome>' (nao '-f'): a frota desses cenarios pode nao ser
+# falcon1..4 (a familia
 # sandbox/A4-*DOF, p.ex., tem so 'a4'), e '-f' SEMPRE assume falcon1..4
 # (app::adHocScenario()) enquanto '-folder' descobre a frota em runtime
 # (app::discoverFleet()) -- ver a armadilha documentada junto da montagem de
@@ -202,7 +203,7 @@ for n in 1 2 4; do
             # Jogador SEM agente (dec parado em 0 nos dois extremos do
             # intervalo) nao tem vinculo decisao/frame nenhum pra afirmar --
             # nao e um desvio, e o esperado. Achado testando este script
-            # contra src/poc/built-in_mixr_1 (arquivo-de-cenario, ver a
+            # contra tests/fixtures/built-in_mixr_1 (arquivo-de-cenario, ver a
             # secao de montagem de "args" mais acima): falcon1..4 decidem
             # via ( FlightAgentTC ), mas o bandit1 daquele cenario e so
             # pilotado por Autopilot, sem agente nenhum -- dec fica em 0 do

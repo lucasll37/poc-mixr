@@ -31,7 +31,7 @@
 # linha separada da dos modelos de producao) e deposita libtemplate.so/
 # libtemplate_mirror.so em plugins/ igual a qualquer modelo real; 'make
 # install' (sync-plugins) copia os dois para a RAIZ dist/lib/mixr-plugins/
-# junto com libflight.so -- confirmado com 'ls dist/lib/mixr-plugins/'. E
+# junto com libA-4.so -- confirmado com 'ls dist/lib/mixr-plugins/'. E
 # libtemplate_mirror.so nao e decorativo: e o que os testes
 # 'plugin-modelo-estranho'/'plugin-deposito-terceiro' carregam para provar
 # que o CONTRATO (nao o fonte do modelo de producao) basta. Excluir

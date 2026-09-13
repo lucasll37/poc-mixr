@@ -22,6 +22,9 @@
    #define POC_MODEL_TURN_SIGN 1.0
 #endif
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 void PatrolPlan::configure(const double startHeadingDeg, const double legSeconds,
@@ -91,3 +94,6 @@ void PatrolPlan::resampleJitter()
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

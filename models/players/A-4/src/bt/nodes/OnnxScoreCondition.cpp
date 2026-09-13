@@ -8,6 +8,9 @@
 
 #include <array>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 OnnxScoreCondition::OnnxScoreCondition(const std::string& name, const BT::NodeConfiguration& config,
@@ -91,3 +94,6 @@ BT::NodeStatus OnnxScoreCondition::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -1,11 +1,11 @@
 <!--
-  Arvore de DEMONSTRACAO de evasao disparada por RWR -- NAO e a arvore de
+  Arvore de DEMONSTRACAO de evasao disparada por RWR - NAO e a arvore de
   producao (essa continua em flight_tree.xml, intocada).
 
   Usada so' pelo cenario sandbox/AAA-A4-6DOF, no A-4 que entra no domo de
-  uma antiaerea (models/players/aaa): mesma prioridade do flight_tree.xml,
+  uma antiaerea (models/players/AAA): mesma prioridade do flight_tree.xml,
   com UM ramo novo entre "voltar pra base" e "evadir contato de radar
-  proprio" -- reagir a um emissor hostil detectado passivamente pelo RWR
+  proprio" - reagir a um emissor hostil detectado passivamente pelo RWR
   (Rwr/RwrTrkMgr nativos), depois de um atraso ESTOCASTICO que representa o
   tempo de reacao do piloto (domain/EvasionReactionPlan.hpp, semeado via
   libs/xrandom).
@@ -19,15 +19,15 @@
 
   O item 2 NAO e "o RWR mostra alguem agora". RwrThreatDetectedCondition
   consulta domain::ThreatPolicy::engaged() de uma SEGUNDA instancia
-  (rwrThreatPolicy(), independente da threatPolicy() do item 3) -- e essa
+  (rwrThreatPolicy(), independente da threatPolicy() do item 3) - e essa
   instancia so' recebe contato quando domain::EvasionReactionPlan ja'
   liberou a manobra (ver ubf::BtBehavior::feedRwrEvasion()). Antes do atraso
   vencer, a aeronave continua patrulhando normalmente, como se nada tivesse
-  sido percebido -- e' isso que representa o piloto ainda nao ter reagido.
+  sido percebido - e' isso que representa o piloto ainda nao ter reagido.
 
   LIMITACAO REAL, documentada de proposito (ver domain/WorldView.hpp): o RWR
   nativo do MIXR detecta um EMISSOR hostil transmitindo (o radar de tiro da
-  antiaerea), nao um missil especificamente -- nao ha como distinguir "estou
+  antiaerea), nao um missil especificamente - nao ha como distinguir "estou
   sendo varrido" de "um missil foi lancado contra mim" neste fork
   (Track::isMissileWarning() esta morto, sem nenhum caller). O rotulo
   RWR_EVADE/RWR_BREAK reflete essa ambiguidade honestamente.

@@ -107,8 +107,9 @@ um índice de leitura rápida, para não colidir números ao adicionar um evento
 | token | valor | payload (arquivo) | emitido por | tratado por |
 |---|---|---|---|---|
 | `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/players/A-4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) |
+| `events::EID_PING` | `USER_EVENTS + 2` | `events::PingMessage` ([payloads/EID_PING/PingMessage.hpp](payloads/EID_PING/PingMessage.hpp)) | `xBeacon::Beacon::broadcastPing()` (`models/players/Beacon`) | `xBeacon::Beacon::onPingEvent()` — a MESMA classe, caminho (b) |
 
-Próximo token livre: `USER_EVENTS + 2`.
+Próximo token livre: `USER_EVENTS + 3`.
 
 ## Caso de referência: o `TacticalAlert` generalizado
 
@@ -120,6 +121,20 @@ direto) além da original (`DATALINK_MESSAGE`/`Datalink`). Isso já provou as du
 convenção ao mesmo tempo, rodando com o extinto modelo `missile`: (1) um payload definido uma vez
 pode ser tratado por mais de um caminho de despacho, e (2) um handler pode ser escrito num plugin
 sem nenhuma relação de compilação com quem define ou emite o evento (`models/players/A-4`).
+
+## Segundo caso de referência: o `PingMessage`, emissor e receptor na MESMA classe
+
+`events::EID_PING`/`events::PingMessage` (`models/players/Beacon`) é o segundo evento desta pasta,
+e cobre uma combinação que `TacticalAlert` não cobre sozinha: uma classe que **emite e trata** o
+próprio evento, sem depender de nenhum subsistema nativo (`Datalink`, `RfSensor`, ...) — só
+`Component::event()`/caminho (b) direto. `Beacon` (`mixr::models::xBeacon::Beacon`) herda
+`models::Player` **diretamente** (o mesmo padrão mínimo de `mixr::models::Building`) e existe só
+para isso: cada instância dispara um `PingMessage` periódico para os demais `Beacon`s locais
+ativos e, no mesmo `event()` sobrescrito, processa o `PingMessage` que os outros mandam — a prova
+de que "definir o evento" e "tratar o evento" (as duas seções acima) são passos genuinamente
+independentes, mesmo quando o mesmo autor escreve os dois ao mesmo tempo. Ver
+[`../players/Beacon/README.md`](../players/Beacon/README.md) e o cenário de demonstração em
+[`../../../src/poc/my-event/`](../../../src/poc/my-event/).
 
 ## Um caso futuro conhecido, ainda não implementado
 

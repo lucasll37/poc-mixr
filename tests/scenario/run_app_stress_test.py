@@ -248,7 +248,7 @@ def ciclo(binario, pasta, cenario, indice, agitar):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--binario", required=True)
-    ap.add_argument("--folder", default="src/poc")
+    ap.add_argument("--folder", default="tests/fixtures")
     ap.add_argument("--scenario", default="built-in_mixr_1")
     ap.add_argument("--ciclos", type=int, default=3)
     ap.add_argument("--sem-agitar", action="store_true",

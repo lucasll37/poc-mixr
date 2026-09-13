@@ -11,6 +11,8 @@
 
 #include <vector>
 
+namespace domain = mixr::models::xA_4::domain;
+
 namespace {
 
 constexpr double kDt{0.02};   // 50 Hz, o passo de decisao de producao

@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // Registra os nos desta PoC na factory do BehaviorTree.CPP. Cada BtBehavior
@@ -11,3 +14,6 @@ namespace bt_nodes {
 void registerNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context);
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

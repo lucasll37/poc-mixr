@@ -52,7 +52,8 @@ values[4])`, não tem overload de string. Remendar o `.proto` vendorizado é o t
 este projeto evita (MIXR é dependência binária, não objeto de desenvolvimento).
 
 O que **é** reaproveitado: `mixr::recorder::PrintHandler` (a base de `TabPrinter` e companhia),
-mas usado **por fora** do pipeline `recordData()`/REID/protobuf. `Log.cpp` instancia um
+mas usado **por fora** do pipeline `recordData()`/REID (o identificador `REID_*` de evento do
+gravador nativo, ex. `REID_PLAYER_DATA`)/protobuf. `Log.cpp` instancia um
 `PrintHandler` direto em C++ (`new recorder::PrintHandler()` + `setFilename()`) e chama
 `printToOutput(const char*)` — que escreve num `std::ofstream` próprio, sem nunca passar por
 `processRecordImp()`/`DataRecordHandle`, então nunca esbarra no schema fechado. Já é dependência
@@ -61,7 +62,8 @@ transitiva de `mixr_dep` (`mixr-recorder` no `Requires:` do `mixr.pc`, a mesma l
 
 ## Por que é `shared_library()`, não estática
 
-Ao contrário da maioria de `libs/x*`, `xlog` cruza a fronteira de plugin: o modelo
+Ao contrário de metade de `libs/x*` (6 das 12 libs ficam estáticas/header-only, ver `libs/
+README.md`), `xlog` cruza a fronteira de plugin: o modelo
 (`models/players/A-4`, `.so` aberto por `dlopen`) chama `LOG(...)` ao carregar a árvore de
 comportamento (`ubf/BtBehavior.cpp`) e a cada decisão atuada (`ubf/FlightAction.cpp`). Com duas
 cópias da lib, o `setLoggingEnabled(false)` que `main.cpp` chama sob `-deterministic` não
@@ -72,7 +74,7 @@ Efeito colateral, e é o motivo estrutural do buffer em memória (abaixo): como 
 no processo, o `LOG(...)` emitido de dentro do `.so` do modelo cai no **mesmo** buffer que o do
 host. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
 `flight_tree.xml` do lugar: as 4 linhas `LOG(ERROR)` de `BtBehavior` (uma por falcon, de dentro de
-`libflight.so`) aparecem na aba sem código nenhum do lado do host.
+`libA-4.so`) aparecem na aba sem código nenhum do lado do host.
 
 ## O buffer em memória
 
@@ -117,7 +119,9 @@ alinhar o carimbo em coluna própria.
 
 ## Testes
 
-`app/tests/test_log_panel.cpp` (alvo `app-log`, suíte `domain`): ordem do buffer (mais antigo →
+`app/tests/test_log_panel.cpp` (alvo `app-log`, suíte `domain` do **host** — `tests/meson.build`,
+`make test`; não confundir com a suíte `domain` do MODELO, dentro de `make test-models`, ver
+[`tests/README.md`](../../tests/README.md)): ordem do buffer (mais antigo →
 mais novo), `seq` monotônico, descarte do mais antigo passada a capacidade, o desligamento não
 registrando nada, e as duas variantes do gotcha de `isOpen()` acima — console ligado não duplica
 quando o arquivo falha ao abrir, console desligado não vaza quando o arquivo falha ao abrir.

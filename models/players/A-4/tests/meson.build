@@ -152,3 +152,16 @@ test_native = executable('test-native',
     build_rpath         : mixr_libdir + ':' + sdk_libdir,
 )
 test('native', test_native, suite: 'native', timeout: 60)
+
+# Camada 4 -- a FORMA do artefato (nao o comportamento): exatamente um
+# simbolo T exportado (o ponto de entrada de MIXR_PLUGIN_DEFINE) e nenhuma
+# dependencia dinamica nao resolvida -- os dois criterios que CONTRIBUTING.md
+# secao 5.1 (raiz) ja documentava a mao. Convencao herdada de
+# models/template/ (e de todo modelo gerado por 'make new-model' depois
+# dela) -- faltava aqui porque este modelo nasceu antes dessa convencao.
+check_contract = find_program('check_contract.sh')
+test('contrato-simbolo-unico-e-deps-resolvidas', check_contract,
+    args    : [a4_lib],
+    suite   : 'contract',
+    timeout : 30,
+)

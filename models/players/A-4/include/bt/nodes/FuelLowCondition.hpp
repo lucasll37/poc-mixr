@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/condition_node.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // SUCCESS quando o combustivel (lido do JSBSim, nao de um modelo nosso)
@@ -28,3 +31,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

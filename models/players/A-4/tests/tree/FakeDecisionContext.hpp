@@ -3,7 +3,7 @@
 // O contexto que os nos da arvore enxergam, montado a mao.
 //
 // E a peca que o refactor de bt/DecisionContext.hpp destravou: antes os nos
-// so existiam pendurados num mixr::models::xnative::BtBehavior, e exercitar a arvore
+// so existiam pendurados num mixr::models::xA_4::BtBehavior, e exercitar a arvore
 // exigia subir uma Station inteira. Aqui os campos sao publicos e o teste
 // escreve neles direto -- a arvore carregada e a DE PRODUCAO.
 //
@@ -14,6 +14,9 @@
 
 #include "bt/DecisionContext.hpp"
 #include "domain/EvasionReactionPlan.hpp"
+
+namespace domain = mixr::models::xA_4::domain;
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
 
 namespace testing_support {
 

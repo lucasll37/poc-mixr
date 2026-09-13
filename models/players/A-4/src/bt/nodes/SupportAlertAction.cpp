@@ -3,6 +3,9 @@
 #include "domain/geometry.hpp"
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 SupportAlertAction::SupportAlertAction(const std::string& name, const BT::NodeConfiguration& config,
@@ -38,3 +41,6 @@ BT::NodeStatus SupportAlertAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

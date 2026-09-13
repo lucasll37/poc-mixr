@@ -4,6 +4,9 @@
 
 #include <cmath>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 namespace {
@@ -124,3 +127,6 @@ bool AerobaticPlan::update(const double dt, const double rollDeg, const bool saf
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

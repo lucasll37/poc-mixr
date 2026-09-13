@@ -1527,7 +1527,7 @@ const CSS = `
 // automaticamente um cenário grande de exemplo escondia com que se estava
 // mexendo de fato). EDL_PRESET é injetado por compile.js (mesmo mecanismo
 // de EDL_CATALOG) a partir de src/ui/preset.json -- gerado por
-// src/ui/scripts/build.js contra src/poc/built-in_mixr_1/configs/
+// src/ui/scripts/build.js contra tests/fixtures/built-in_mixr_1/configs/
 // scenario_max_player.edl.in, o cenário com mais componentes do
 // repositório (53 das 96 classes de mixr::models num Aircraft só) -- fica
 // disponível SOB DEMANDA, pelo botão "Carregar preset", nunca mais
@@ -1786,7 +1786,7 @@ export default function App() {
           </button>
           <input ref={edlFileInputRef} type="file" accept=".edl,.edl.in,text/plain" style={{ display: "none" }}
             onChange={(e) => { if (e.target.files[0]) handleOpenEdl(e.target.files[0]); e.target.value = ""; }} />
-          <button className="eb-btn" onClick={handleLoadPreset} title="Carrega o cenário de exemplo (player máximo, built-in_mixr_1)">
+          <button className="eb-btn" onClick={handleLoadPreset} title="Carrega o cenário de exemplo (o player mais completo do catálogo)">
             Carregar preset
           </button>
           <button className="eb-btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}>

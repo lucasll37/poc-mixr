@@ -1,5 +1,8 @@
 #pragma once
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 // A referencia de solo que a decisao enxerga. Como todo o resto de domain/,
@@ -39,3 +42,6 @@ double clampToTerrain(double commandedAltM, const GroundReference& ground,
                       double clearanceM, double absoluteFloorM);
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

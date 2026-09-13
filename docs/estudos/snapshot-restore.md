@@ -92,8 +92,9 @@ e é pior — ver §2.6.
 
 ### 2.2 Boa parte do estado do FDM é privada e está fora da property tree
 
-A property tree do JSBSim é enumerável e escrevível, o que sugere um caminho de captura. Ela não
-cobre o que importa:
+FDM (*Flight Dynamics Model*) é o termo genérico do JSBSim para o modelo de dinâmica de voo — a
+classe `FGFDMExec` citada abaixo é a implementação concreta dele. A property tree do JSBSim é
+enumerável e escrevível, o que sugere um caminho de captura. Ela não cobre o que importa:
 
 | estado | onde | acesso |
 |---|---|---|
@@ -360,7 +361,7 @@ offset absoluto cancela na subtração, mas a **magnitude** de `simTime` muda o 
 dessa diferença, e há o wrap de meia-noite. Como a liberação de um store muda a massa da aeronave,
 isso chega na física.
 
-Só existe hoje em `src/poc/built-in_mixr_1`. Fecha-se declarando os quatro slots no cenário e
+Só existe hoje em `tests/fixtures/built-in_mixr_1`. Fecha-se declarando os quatro slots no cenário e
 registrando os valores no manifesto.
 
 ### 5.3 DIS contra um simulador de terceiro fica com uma fresta
@@ -477,7 +478,7 @@ e nada no repositório vigia isso ainda. São candidatas naturais a guardas em `
 | mina | evidência | estado hoje |
 |---|---|---|
 | **`rand()` global do JSBSim** em ruído de sensor e turbulência, mais o `static double V1, V2, S` de `GaussianRandomNumber()`, compartilhado entre todas as aeronaves e não thread-safe | `FGSensor.cpp:184-187`; `FGWinds.cpp:216`; `FGJSBBase.cpp:217-240` | **inerte** — o único `<sensor>` com `<noise>` do repositório está inteiramente comentado (`c310ap.xml:45-58`) e não há turbulência ativa |
-| **`relWpnId++`** em `unsigned short` sem atomicidade, com a lista de players ordenada por ID (`insertPlayerSort`) — duas armas liberadas no mesmo frame por players em threads diferentes recebem IDs em ordem dependente de escalonamento | `Simulation.cpp:787-790,1074` | **não dispara** — `flight`/`python-flight`/`onnx-policy` não têm armas, e em `built-in_mixr_1` só `falcon1` libera. (Nota: `relWpnId`/`eventID`/`eventWpnID` são `unsigned short` e dão wrap em 65536 numa corrida longa — determinístico, mas semanticamente quebrado) |
+| **`relWpnId++`** em `unsigned short` sem atomicidade, com a lista de players ordenada por ID (`insertPlayerSort`) — duas armas liberadas no mesmo frame por players em threads diferentes recebem IDs em ordem dependente de escalonamento | `Simulation.cpp:787-790,1074` | **não dispara** — `flight`/`python-flight`/`onnx-policy` não têm armas, e em `built-in_mixr_1` (hoje `tests/fixtures/built-in_mixr_1`) só `falcon1` libera. (Nota: `relWpnId`/`eventID`/`eventWpnID` são `unsigned short` e dão wrap em 65536 numa corrida longa — determinístico, mas semanticamente quebrado) |
 | **`netRate: > 0`** num cenário tiraria a rede de dentro de `updateData()` para uma thread própria, e a sequência de `recvData()` deixaria de estar amarrada ao frame | `Station.hpp:266` (default é 0) | **não acontece** — e vale corrigir de passagem: o comentário da slottable em `Station.cpp:43` diz "default: 20 hz" e está **desatualizado** |
 
 E uma quarta, mais barata de fechar do que de lembrar: `libs/xpyembed` chama `Py_InitializeEx(0)`
@@ -620,6 +621,280 @@ correto, mas não é o que a palavra "edição" promete.
 | C — checkpoint de processo | **inviável** | sim, por construção | `CONFIG_INET_DIAG_DESTROY` ausente e `criu` sem candidato no apt; artefato opaco que não sobrevive a rebuild; é infra de SO, não funcionalidade (§8.1) |
 | D — `fork()` COW | **inviável** para o pedido | sim, por construção | não persiste em disco; pool de workers trava o filho; mutexes herdados travados; 7 fds compartilhados (§8.2) |
 | E — híbrido | viável | sim — mas vem 100% de A | complexidade sobre A; o retrato verifica, não restaura (§8.3) |
+
+## 9. E se o modelo de dinâmica não fosse o JSBSim?
+
+> Pergunta de acompanhamento a este estudo, não um documento novo: revisita §2 trocando **uma**
+> variável — o modelo de dinâmica — e mantém tudo o mais. Onde a conclusão de §2 dependia
+> especificamente do JSBSim, ela é reexaminada aqui; onde não dependia, ela permanece, e é dito
+> explicitamente. Mesma disciplina do resto do documento: nenhuma linha de código foi escrita, e
+> toda afirmação decisiva foi conferida no fonte vendorizado (`contexts/src/mixr/`), lido
+> diretamente nesta investigação — não só por relato de um agente.
+
+### 9.1 A resposta
+
+**Sim, para a trajetória do player — condicionalmente — mas isso não muda a resposta de §1.**
+
+O eixo decisivo não é "JSBSim contra não-JSBSim": é (a) o modelo ter **100% do próprio estado
+alcançável por getter/setter público, sem histórico de integrador oculto**, e (b) escrever a
+posição **totalmente "slaved"** a cada frame — um detalhe que nem o JSBSim deste fork faz hoje, e
+que destrava um bloqueio do `Player` (a classe base, não o `DynamicsModel`) que independe de qual
+física está por baixo.
+
+O que isso **não** destrava: §5.1 (retomar uma sessão interativa), §2.4 (ainda precisa de um
+processo novo), §2.5 (estado do interpretador Python, se a decisão usar `libs/xpyembed`). A
+recomendação de §3 (replay determinístico) continua sendo a pragmática — isto mapeia o que seria
+preciso para uma versão parcial da arquitetura B (§2), não reverte o veredito de §1.
+
+### 9.2 O que era específico do JSBSim, e desaparece trocando de modelo — mas só se o modelo novo
+for desenhado para isso
+
+Comparando `RacModel` (cinemático) contra `LaeroModel` (4 graus de liberdade), os dois nativos
+deste fork (`contexts/src/mixr/include/mixr/models/dynamics/`,
+`contexts/src/mixr/src/models/dynamics/`):
+
+- **`RacModel`** — sem histórico oculto. `updateRAC()` (`RacModel.cpp:184` em diante) só lê o
+  estado ATUAL do `Player` a cada chamada, inclusive a "taxa anterior", que já vem de um getter
+  público do próprio `Player` (`getAngularVelocities()`). O estado runtime-relevante
+  (`cmdAltitude`/`cmdHeading`/`cmdVelocity`, `RacModel.hpp:64-66`) tem getter público
+  (`getCommandedHeadingD()`/`getCommandedVelocityKts()`/`getCommandedAltitude()`,
+  `RacModel.cpp:117,140,163`); só as constantes de ajuste (`vpMin`/`vpMaxG`/`gMax`/`maxAccel`,
+  `RacModel.hpp:60-63`, fixadas uma vez pelo `.edl`) não têm getter — irrelevante para snapshot de
+  ESTADO, já que nunca mudam em runtime. **Bug análogo ao do JSBSim, de escala menor**:
+  `reset()` (`RacModel.cpp:62-65`) só chama `BaseClass::reset()` — não zera os sentinelas
+  `cmdAltitude`/`cmdHeading`/`cmdVelocity` (`-9999.0` por padrão, `RacModel.hpp:64-66`), então um
+  comando anterior ao reset sobrevive em silêncio.
+- **`LaeroModel`** — tem SEU PRÓPRIO integrador Adams-Bashforth de dois pontos, com os coeficientes
+  escritos por extenso: `phi += 0.5 * (3.0 * phiDot - phiDot1) * dT;` e o mesmo padrão para
+  `tht`/`psi`/`u`/`v`/`w` (`LaeroModel.cpp:126,130,134,193-195`), consumindo o histórico da derivada
+  anterior guardado em `phiDot1, thtDot1, psiDot1, uDot1, vDot1, wDot1`
+  (`LaeroModel.hpp:91-96`) — estruturalmente o mesmo mecanismo do AB2/AB3 do JSBSim (§2.1), só que
+  com `double`s soltos em vez de `std::deque`. E **nenhum dos ~24 campos de estado da classe
+  tem getter ou setter público** (`LaeroModel.hpp:49-96` é `private` por completo; os únicos
+  métodos públicos são o construtor, `dynamics()`, `reset()` e os três `setCommanded*` de
+  autopilot, que fixam ALVOS, não o estado) — pior que o JSBSim nesse aspecto específico, que ao
+  menos expõe uma fração do próprio estado. `reset()` (`LaeroModel.cpp:96-105`) só recalcula `u` a
+  partir de `Player::getInitVelocity()`; o resto — incluindo o histórico AB2 inteiro e a atitude
+  (`phi`/`tht`/`psi`/`p`/`q`/`r`) — sobrevive ao reset sem ser tocado.
+
+  **A conclusão a reter**: "mais simples" (menos graus de liberdade) e "restaurável" não são o
+  mesmo eixo. Um modelo tem que ser desenhado com estado público e reset completo — ter menos
+  física, por si, não basta, e pode até ser pior (`LaeroModel` é 4-DOF contra o 6-DOF do JSBSim, e
+  ainda assim tem 100% do seu histórico de integrador inacessível, contra uma fração do JSBSim).
+
+  Uso hoje neste repositório: `RacModel` em `sandbox/A4-3DOF/`, `LaeroModel` em
+  `sandbox/A4-4DOF{,-PY,-ONNX}/` — nenhum wireado em `tests/meson.build` (os READMEs de cada
+  `sandbox/` documentam uma verificação manual de determinismo com `check_determinism.sh`, sem
+  guarda automática em CI).
+
+  Bônus ao abandonar o JSBSim, registrado por completude: a mina "`rand()` global do JSBSim"
+  (§7.6) deixa de existir — nem `RacModel` nem `LaeroModel` têm gerador de números aleatórios
+  próprio.
+
+### 9.3 O achado que revisa §2.7: o bloqueio real é `Player::velVecN1`, não "a ordem de recomputação
+externa" — e ele independe do `DynamicsModel`
+
+§2.7 atribuiu a impossibilidade de "capturar um subconjunto mínimo e recomputar o resto" a uma
+razão vaga — a ordem das operações de um recomputador externo não bater com a do framework. Lendo
+`contexts/src/mixr/src/models/player/Player.cpp` diretamente, o mecanismo é mais específico, e a
+distinção importa porque ele tem uma saída que a formulação vaga não deixava ver:
+
+- `Player::positionUpdate(dt)` (`Player.cpp:2835-3079`) faz integração trapezoidal usando a
+  velocidade ATUAL **e** `velVecN1` — a velocidade guardada do frame anterior — em qualquer um dos
+  três sistemas de coordenadas (`CS_LOCAL`/`CS_GEOD`/`CS_WORLD`, os três ramos em
+  `:2861,2906,2988`; ex.: `newPosVecNED[INORTH] += (ue + ue0) * 0.5 * dt;` com `ue0` vindo de
+  `velVecN1.x()`, `:2876,2881`). `velVecN1` é **privado**
+  (`Player.hpp:1077-1080` — na verdade um pouco acima, junto dos outros campos internos), sem
+  setter público nenhum, e cada ramo só o SOBRESCREVE com a velocidade do frame que acabou de
+  rodar (`velVecN1 = velVecNED;`/`velVecN1 = velVecECEF;`, `:2900,2982,3021`) — nunca aceita um
+  valor "anterior" injetado de fora. Isto é o mecanismo concreto por trás da frase de §2.7, e é um
+  campo do `Player` — a classe BASE do MIXR — não do `DynamicsModel`: afeta JSBSim, `RacModel`,
+  `LaeroModel` ou qualquer modelo futuro igualmente, sempre que a posição não estiver totalmente
+  "slaved".
+
+- **A saída, verificada em código, não hipotética.** `positionUpdate()` só executa o bloco de
+  integração inteiro — incluindo toda leitura/escrita de `velVecN1` — quando
+  `enabled = (vp>0 && dt!=0 && (!pfrz || !afrz))` (`Player.cpp:2855`), com
+  `pfrz = isPositionFrozen()||isPositionSlaved()` e `afrz = isAltitudeFrozen()||isAltitudeSlaved()`
+  (`:2840,2843`). Quando as DUAS flags são verdadeiras, `enabled` é falso e o bloco inteiro é
+  pulado — `velVecN1` nem é lido. E os três setters de posição "completa" fazem as duas flags
+  juntas, num único parâmetro `slaved`, confirmado lendo as três implementações:
+  `setPosition(n,e,d,slaved)` (`Player.cpp:1817-1857`, flags em `:1853-1854`),
+  `setPositionLLA(lat,lon,alt,slaved)` (`:1878-1920`, flags em `:1916-1917`) e
+  `setGeocPosition(pos,slaved)` (`:1924-1966`, flags em `:1962-1963`) — todas fazem
+  `altSlaved = slaved; posSlaved = slaved;` no mesmo `bool`. **Ou seja**: um modelo que calcula sua
+  PRÓPRIA posição completa a cada frame (não só a altitude) e chama `setPositionLLA(...,true)` (ou
+  o equivalente NED/ECEF) elimina de vez a dependência de `velVecN1` — o caminho vira código morto,
+  nunca executado.
+
+- **O JSBSim deste fork não faz isso hoje.** `JSBSimModel::dynamics()`
+  (`contexts/src/mixr/src/models/dynamics/JSBSimModel.cpp:678-681`) traz o comentário
+  `"Set values for Player & AirVehicle interfaces (Note: Player::dynamics() computes the new
+  position)"` bem acima da única chamada relacionada a posição — `p->setAltitude(...,
+  true)` (`:681`, altitude slaved) — e nunca chama `setPosition`/`setPositionLLA`/
+  `setGeocPosition`. Ou seja: o próprio wrapper JSBSim deste projeto delega DELIBERADAMENTE a
+  posição horizontal ao `positionUpdate()` opaco do `Player`, apesar de o JSBSim já calcular
+  lat/lon internamente (`FGPropagate`). Um modelo simples PODE evitar esse desenho (slavando
+  posição completa); o JSBSim, como está integrado aqui, não evita — mas nada impede reescrever
+  esse ponto específico do wrapper para também slavar a posição completa, o que sozinho já
+  destravaria este bloqueio SEM abandonar o JSBSim. Fica registrado como achado à parte: a saída
+  de §9.3 não é exclusiva de "modelo mais simples" — é de "modelo (qualquer) que slave a posição
+  inteira".
+
+- **Mas "reescrever esse ponto do wrapper" não é herdar dele — é composição, e é preciso dizer por
+  quê.** `JSBSimModel`, `RacModel` e `LaeroModel` são as TRÊS declaradas `final`
+  (`JSBSimModel.hpp:17`, `RacModel.hpp:27`, `LaeroModel.hpp:16`) — `final` é imposto pelo
+  compilador C++, não pela convenção do projeto: `class MeuModelo : public JSBSimModel {...}`
+  simplesmente não compila, e não há como contornar isso subclassando (o próprio
+  `JSBSimModel::dynamics()` carrega um segundo `final` no MÉTODO, `JSBSimModel.hpp:56`, redundante
+  com o da classe, mas confirma que a intenção é deliberada, não descuido). Ou seja: **estender a
+  classe de dinâmica, no sentido de herdar de uma das três concretas, não resolve nada — está
+  bloqueado antes de qualquer questão de design.**
+
+  A saída real fica um nível acima, e é **composição, não herança**: `AerodynamicsModel`/
+  `DynamicsModel` (`AerodynamicsModel.hpp:17`, `DynamicsModel.hpp:34`) NÃO são `final` e não têm
+  estado próprio (confirmado em §9.2 do lado de `RacModel`/`LaeroModel`). Uma classe NOVA,
+  derivada de `AerodynamicsModel`, pode:
+
+  1. Manter uma instância de `JSBSimModel` como filho PRÓPRIO — não pendurado no `components:` do
+     `Player`, só dentro do wrapper — e registrar-se como o container dela chamando
+     `innerJsb->container(this)`. Isto é legal porque `Component::container(Component* const p)`
+     (a versão SETTER, distinta do getter) é **pública**
+     (`contexts/src/mixr/include/mixr/base/Component.hpp:288`) — qualquer código pode chamá-la em
+     qualquer `Component`, não só uma subclasse dele. Confirmado lendo o header, não suposto.
+  2. No `dynamics(dt)` do wrapper, chamar `innerJsb->dynamics(dt)` primeiro — como o wrapper agora
+     é o container do `innerJsb`, e o wrapper por sua vez é container do `innerJsb` através da
+     cadeia `innerJsb->container()==wrapper`, `wrapper->container()==Player` (esta última já
+     garantida pelo parser EDL normal, porque É o wrapper que está no slot `dynamicsModel:` do
+     `Player`), o `findContainerByType(typeid(Player))` que o `JSBSimModel::dynamics()` já faz por
+     dentro **atravessa os dois elos e encontra o `Player` real** — `findContainerByType` sobe por
+     `container()`, elo a elo, sem limite de profundidade (é uma busca simples, sem lógica que
+     pare num nível). O JSBSim continua rodando sua física de verdade e continua chamando
+     `setAltitude(...,true)`/`setVelocity(...)`/`setEulerAngles(...)`/`setAngularVelocities(...)`/
+     `setAcceleration(...)` no `Player` real, exatamente como hoje.
+  3. Depois dessa chamada retornar, o `dynamics(dt)` do WRAPPER lê a velocidade que o JSBSim
+     ACABOU de escrever (getter público do `Player`) e a posição AINDA não tocada deste frame
+     (também pública, ainda com o valor do frame anterior), faz o PRÓPRIO avanço de posição —
+     agora de UM PASSO SÓ, sem precisar de nenhuma velocidade "anterior" oculta, porque não está
+     fazendo integração trapezoidal com histórico, só um Euler simples sobre dado 100% visível — e
+     chama `player->setPositionLLA(novaLat, novaLon, novaAlt, true)`. **É esse terceiro passo,
+     não a existência do wrapper em si, que fecha o `velVecN1`.**
+  4. `reset()`/`shutdownNotification()` do wrapper precisam encaminhar explicitamente para
+     `innerJsb`: como o `DynamicsModel` é acionado por chamada DIRETA de `Player::dynamics()`
+     (`getDynamicsModel()->dynamics(dt)`), não pela cascata genérica de `updateTC()` sobre
+     `getComponents()`, o encadeamento de eventos do framework não alcança sozinho um filho que só
+     está ligado por `container()` — é responsabilidade do wrapper propagar.
+
+  **Um risco que parecia real e se dissolveu ao conferir, não a confirmar de outra forma**: será
+  que `Player::updateSystemPointers()` (que resolve o papel "dynamicsModel" por `findByType()`)
+  poderia achar o `innerJsb` por engano, em vez do wrapper? Não — `Component::findByType()`
+  (`contexts/src/mixr/src/base/Component.cpp:492-509`) primeiro varre a lista de filhos DIRETOS do
+  `Player` (`subcomponents->findByType(type)`, uma busca plana) e só desce para os netos
+  (`obj->findByType(type)`, a recursão) **se nada foi achado nesse primeiro passo**
+  (`while (item != nullptr && q == nullptr)`) — como o wrapper já É um filho direto do `Player`
+  (é o valor do slot `dynamicsModel:`) e já É um `DynamicsModel`, ele é achado na varredura plana,
+  antes de a recursão sequer visitar o `innerJsb` (que só existe como neto, dentro do wrapper).
+  Não há ambiguidade a resolver — o próprio algoritmo já favorece o nível mais raso.
+
+  **O que isto custa, e por que não é de graça**: é código novo (uma classe C++ inteira, um
+  `meson.build`, um nome de fábrica), e ainda TEM UM PONTO DE APROXIMAÇÃO PRÓPRIO — o passo de
+  posição do wrapper deixa de ser exatamente o que `FGPropagate` computaria (que integra lat/lon
+  internamente, com seu próprio esquema); passa a ser um Euler de um passo, escrito por fora. Não
+  é mais impreciso que o `positionUpdate()` atual do `Player` (que TAMBÉM é só uma aproximação
+  trapezoidal, não a física "verdadeira"), mas é uma aproximação DIFERENTE — então trocar de uma
+  para a outra muda a trajetória numérica (ainda que ambas deterministas e capturáveis), não é uma
+  correção que preserva o comportamento anterior byte a byte. Se a exigência for usar o lat/lon que
+  o PRÓPRIO `FGPropagate` calculou (não uma aproximação escrita à parte), a alternativa é ler
+  `JSBSim::FGFDMExec`/`FGPropagate` diretamente pela API pública do JSBSim (que este projeto já
+  compila do fonte via `deps/jsbsim/`, ao contrário do MIXR) — o que significa reescrever boa parte
+  da lógica de `JSBSimModel::dynamics()`/`reset()` (centenas de linhas, `JSBSimModel.cpp:620-870`),
+  não só compor em torno dela. Isto não foi verificado rodando — é um caminho de código lido e
+  conferido nos pontos de acesso (`final`, visibilidade de `container()`, ordem de busca de
+  `findByType()`), não implementado nem testado nesta investigação.
+
+### 9.4 O resto dos "31 campos duplicados" de §2.7 não é bloqueio, se os setters forem chamados na
+ordem documentada
+
+- Cada setter público de posição/orientação/velocidade recomputa SINCRONAMENTE os campos
+  derivados — não é recomputação externa, é o MESMO código que qualquer `DynamicsModel` já aciona
+  todo frame. Confirmado em `JSBSimModel`/`RacModel`: os dois só tocam o `Player` pelos setters
+  públicos listados acima (nenhum `friend class Player` em `DynamicsModel.hpp`, confirmado por
+  varredura — não há bypass de campo privado). Restaurar só o estado "primário" (posição,
+  velocidade, atitude, taxa angular) e chamar os setters na ordem que o próprio `Player.hpp`
+  documenta — posição primeiro (`:215-217`, "setting the position in any one coordinate system
+  will set the position for all three... and will compute the world matrix"), depois orientação
+  (`:235-236`, mesma garantia entre Euler/matriz/quaternion), e só então velocidade/aceleração
+  (`:252-254`, "set the velocity and acceleration vectors AFTER the player's position and
+  orientation have been set") — reproduz o resto deterministicamente, porque é a MESMA sequência
+  que qualquer frame normal já executa.
+- `syncState1`/`syncState2` (o double-buffer citado em §2.7, `Player.hpp:1077-1080`) não é um
+  bloqueio de verdade: é um cache de LEITURA, repopulado do zero a cada `dynamics()`
+  (`Player.cpp:2781-2804`) a partir do estado JÁ conhecido nesse instante, e consumido só por
+  serialização de interoperabilidade (`interop/common/Nib.cpp`) — nunca realimenta física futura.
+  Fica correto de novo depois de um frame pós-restore, independente do que continha antes de
+  restaurar.
+- Isto **estreita** a afirmação de §2.7 ("ou se capturam os 31, ou não se captura"): na prática só
+  a posição completa + atitude + velocidade + taxa angular precisam ser capturadas e restauradas
+  NA ORDEM CERTA via a API pública — o resto se deriva, e o motivo de derivar corretamente não é
+  sorte, é que o `Player` já garante essa derivação por contrato documentado.
+
+### 9.5 O que continua bloqueado, e é ortogonal à escolha de dinâmica
+
+- **`Simulation::execTime`/`simTime` ainda não têm setter** (mesmos `Simulation.hpp:263,269` já
+  citados em §2.3) — mas, para o caminho de código que este repositório de fato exercita, os dois
+  únicos consumidores confirmados são timestamping de telemetria/log/DIS: `execTime` alcança o
+  Tacview via `app/src/app/DashboardLoop.cpp:311` (`getExecTimeSec()`) →
+  `TacviewOutput::updateRadarScan(...)` → `syncFrame(simTimeSec)`
+  (`libs/xtacview/TacviewOutput.cpp:386-390`), e via `libs/xmsg/MsgFeed.cpp:279` para o campo de
+  tempo das mensagens; DIS carrega tempo de parede/exec para os PDUs de saída
+  (`interop/dis/{Nib_entity_state,Nib,EmissionPduHandler,NetIO}.cpp`). Nenhum desses caminhos
+  entra em `DynamicsModel::dynamics(const double dt)` (`DynamicsModel.hpp:42` — recebe só um
+  delta, nunca tempo absoluto), e nenhum arquivo de `models/players/A-4/{include,src}` referencia
+  `getExecTimeSec`/`getSimTimeOfDay`/`execTime`/`simTime`. Ou seja: um restore sem `execTime`
+  reproduz a TRAJETÓRIA byte-idêntica; só o timestamp do replay no Tacview/log/DIS ficaria
+  descontínuo no ponto de retomada — degradação cosmética, não física. **Ressalva que precisa
+  ficar escrita**: isto vale para o que o modelo A-4 exercita HOJE, não para o MIXR como um todo —
+  o próprio framework tem um consumidor de DECISÃO que lê `getSimTimeOfDay()` como gatilho de
+  temporizador (`Actions.cpp`, a ação de liberação de chaff/decoy — já citada na seção "Terreno"
+  deste `CLAUDE.md` por outro motivo), simplesmente não usado por nenhum código do A-4 hoje. Um
+  modelo futuro que reusasse essa classe nativa reintroduziria a dependência.
+- **§2.4 (`sealed_`)**, **§5.1 (tempo real contra passo fixo)** e **§2.5 (estado do
+  interpretador Python via `xpyembed`)** são inteiramente independentes de qual `DynamicsModel`
+  está em uso — nenhum se resolve trocando de modelo de dinâmica. Trocar de modelo não muda a taxa
+  do laço de fundo (10 Hz) contra a thread de tempo crítico (50 Hz) que sustenta §5.1, não cria um
+  segundo `Station` no mesmo processo, e não serializa objetos Python arbitrários.
+- **Estado próprio do domínio** (`models/players/A-4/src/domain/`) — `domain::ThreatPolicy`
+  (`limits_`, `cmd_`, `engaged_`/`contactLive_`, `holdTimer_`) e os timers de `PatrolPlan`/
+  `AerobaticPlan`/`EvasionReactionPlan`/`RtbPlan` são todos POD, sem opacidade de framework
+  nenhuma — trivialmente serializáveis por um código próprio deste repositório. A ÚNICA lacuna
+  real, e pequena: `libs/xrandom::Rng` (`DeterministicRng.hpp`, usado pelas três primeiras classes
+  acima) só expõe reseed (`seed()`/`reset()`), não o estado completo do `std::mt19937_64` interno
+  — que a biblioteca padrão já sabe serializar por completo via `operator<<`/`operator>>` (fato da
+  linguagem, não algo a confirmar no fonte deste projeto). É um gap do *wrapper* deste
+  repositório, não do MIXR nem do JSBSim; registrado aqui como nota, sem propor a mudança (fora do
+  escopo desta seção, que é só viabilidade).
+
+### 9.6 Quadro de síntese
+
+| bloqueio de §2 (original, com JSBSim) | causa raiz real | desaparece trocando de `DynamicsModel`? |
+|---|---|---|
+| §2.1 histórico do integrador (Adams-Bashforth 2/3) | específico do `FGPropagate` do JSBSim | **sim** — se o modelo novo não tiver histórico oculto próprio (`RacModel` não tem; `LaeroModel` tem o seu, pior: zero acessores) |
+| §2.2 estado privado do FCS/filtros/motor | específico do JSBSim (`FGFilter`/`FGFCSComponent`/`FGEngine`) | **sim**, automaticamente — um modelo sem essas peças não herda o problema |
+| §2.6 `reset()` incompleto | bug específico de `JSBSimModel::reset()` (não chama `ResetToInitialConditions()`) | **depende do modelo** — `RacModel`/`LaeroModel` têm bugs análogos e menores, também corrigíveis |
+| §2.7 "31 campos duplicados" | na verdade é `Player::velVecN1`/`positionUpdate()` — específico do `Player`, a classe BASE do MIXR | **sim, mas só se a posição for escrita totalmente "slaved"** todo frame — independe do `DynamicsModel`; é um padrão de USO da API do `Player`, alcançável até sem trocar de física (§9.3) |
+| §2.3 `execTime`/`simTime` sem setter | `Simulation` (MIXR), não o modelo | **não** — mas o impacto real, para o A-4, é só cosmético (timestamp de Tacview/log/DIS), nunca a trajetória |
+| §2.4 `sealed_` | `xplugin::PluginRegistry` (host) | **não** — processo novo continua obrigatório, com ou sem JSBSim |
+| §2.5 estado do interpretador Python | escolha de MECANISMO DE DECISÃO, não de dinâmica | **não** — ortogonal; evitável só evitando `xpyembed` |
+| §5.1 tempo real contra passo fixo | cadência do laço de fundo (10 Hz) contra a thread de tempo crítico (50 Hz) | **não** — ortogonal, o mesmo problema existe com qualquer física |
+
+**Em uma frase**: trocar o JSBSim por um modelo mais simples resolve a metade do problema que já
+era específica do JSBSim (§2.1/§2.2/§2.6, e só se o modelo novo for desenhado sem estado oculto —
+"simples" não é sinônimo de "restaurável", `LaeroModel` prova o contrário) e, como achado
+adicional desta seção, também resolve — via um padrão de uso da API do `Player` que não depende
+de abandonar o JSBSim — o bloqueio que §2.7 descrevia vagamente. Não resolve nada do que já não
+era sobre a física (§2.3-cosmético, §2.4, §2.5, §5.1). A resposta a "vale a pena" continua sendo a
+de §1: para o caso de uso que mais motiva a pergunta — salvar uma sessão em andamento e continuar
+depois — não, porque esse caso está em §5.1, que nenhuma troca de dinâmica alcança.
 
 ## Apêndice — método e limites deste estudo
 

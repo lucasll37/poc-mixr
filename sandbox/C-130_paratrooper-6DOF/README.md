@@ -1,7 +1,7 @@
 # C-130_paratrooper-6DOF — a integração de verdade: C-130 largando 30 paraquedistas reais
 
-A integração entre `models/players/C-130` e `models/players/paratrooper` que `src/poc/c130-airdrop`
-deixou para depois: **um C-130** (dinâmica JSBSim 6-DOF) que, no **segundo ponto de navegação**,
+A integração entre `models/players/C-130` e `models/players/paratrooper`: **um C-130**
+(dinâmica JSBSim 6-DOF) que, no **segundo ponto de navegação**,
 libera **30 paraquedistas de verdade** (a classe `Paratrooper` real — queda livre, paraquedas,
 pouso — não o placeholder `C130ParatrooperPlaceholder`), com **1,5 segundos de intervalo** entre
 uma liberação e a próxima.
@@ -88,7 +88,7 @@ borda de 49,4 km).
 ## Tacview
 
 Dois `typeMap`/`colorMap`/`modelMap` — um para `c130` (mesmo de `sandbox/C-130-6DOF`), outro para
-`PARATROOPER` (mesmo de `src/poc/paratrooper-drop`). Sem o segundo, os 30 apareceriam com o
+a categoria de store `PARATROOPER`. Sem o segundo, os 30 apareceriam com o
 fallback genérico de `WEAPON` ("Weapon+Missile").
 
 ## Por que o `-deterministic` não mostra os paraquedistas no dump `frame=`
@@ -123,17 +123,16 @@ bash tests/determinism/check_determinism.sh ./build/app/src/app c130-paratrooper
 # OK -- 1, 2 e 4 threads T/C batem byte a byte, e uma repeticao de 4 threads confirma
 # reprodutibilidade na MESMA configuracao
 
-# regressao nos DOIS cenarios cujo provides: mudou (a classe nova entrou no MESMO .so):
-bash tests/determinism/check_determinism.sh ./build/app/src/app c130-airdrop-regress 1500 "" \
-   src/poc/c130-airdrop/configs/scenario_c130_airdrop.edl.in
+# regressao no outro cenario cujo provides: tambem mudou (a classe nova entrou no MESMO .so):
 bash tests/determinism/check_determinism.sh ./build/app/src/app c130-6dof-regress 1500 "" \
    sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in
 ```
 
-Os tres passaram. `meson test -C build` (suite completa do HOST) tambem passou -- 68/68, sem
-nenhuma regressao nas suites `scenario`/`memory`/`determinism`/`plugin`/`guard` existentes. As
-duas suites do MODELO (`cd models/players/C-130 && make test`, `cd models/players/paratrooper &&
-make test`) passam 5/5 cada.
+Os dois passaram (um terceiro, contra a poc `c130-airdrop` que existia na epoca, tambem passou --
+essa poc foi removida do repositorio desde entao). `meson test -C build` (suite completa do HOST)
+tambem passou -- 68/68, sem nenhuma regressao nas suites `scenario`/`memory`/`determinism`/
+`plugin`/`guard` existentes. As duas suites do MODELO (`cd models/players/C-130 && make test`,
+`cd models/players/paratrooper && make test`) passam 5/5 cada.
 
 **Confirmado nos 30 paraquedistas, nao por amostragem** (rodando um `-deterministic 25000` limpo e
 lendo o `mission_*.jsonl` inteiro): os 30 aparecem (`W10001`..`W10030`), as 29 lacunas entre

@@ -186,7 +186,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -1177,7 +1177,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -2113,7 +2113,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -3049,7 +3049,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -3985,7 +3985,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -4921,7 +4921,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -5857,7 +5857,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -6793,7 +6793,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }
@@ -7729,7 +7729,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_nav.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                   )
                )
             }

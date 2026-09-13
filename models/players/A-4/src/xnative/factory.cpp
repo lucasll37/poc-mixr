@@ -15,7 +15,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Registra as classes proprias -- nenhuma delas e player, dinamica,
@@ -94,6 +94,6 @@ const base::MetaObject* const METAS[] = {
 const char* const* factoryNames()             { return NOMES; }
 const base::MetaObject* const* metaObjects()  { return METAS; }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

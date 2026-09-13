@@ -173,6 +173,7 @@ install_headers('libs/xrlbridge/ObservationFields.hpp', subdir: 'xrlbridge')
 install_headers('libs/xinfer/Infer.hpp',          subdir: 'xinfer')
 install_headers('libs/xpyembed/PyEmbed.hpp',      subdir: 'xpyembed')
 install_headers('models/events/payloads/EID_ALERT/TacticalAlert.hpp', subdir: 'events/payloads/EID_ALERT')
+install_headers('models/events/payloads/EID_PING/PingMessage.hpp',    subdir: 'events/payloads/EID_PING')
 install_headers('models/events/EventTokens.hpp',                       subdir: 'events')
 install_headers('libs/xrandom/DeterministicRng.hpp', subdir: 'xrandom')
 

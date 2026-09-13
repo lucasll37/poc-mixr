@@ -1,5 +1,8 @@
 #include "domain/EvasionReactionPlan.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 void EvasionReactionPlan::configure(const double minDelaySec, const double maxDelaySec)
@@ -66,3 +69,6 @@ bool EvasionReactionPlan::update(const double dt, const bool hasThreat)
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -67,7 +67,7 @@ MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
 # rglob() sobre a pasta toda e imune a esse tipo de mudanca de endereco.
 MODELS_DIR = REPO_ROOT / scan.MODELS_REL
 LIBS_DIR = REPO_ROOT / scan.LIBS_REL
-DEFAULT_SCENARIO = REPO_ROOT / "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in"
+DEFAULT_SCENARIO = REPO_ROOT / "tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in"
 
 INCLUDE_ROOTS = [MIXR_INCLUDE, MODELS_DIR, LIBS_DIR]
 SRC_ROOTS = [MIXR_SRC, MODELS_DIR, LIBS_DIR]
@@ -247,7 +247,7 @@ def main():
         "classes",
         nargs="*",
         help="nomes de fabrica ou de classe C++; default: tokens de "
-        "src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in",
+        "tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in",
     )
     ap.add_argument("--json", action="store_true", help="saida em JSON em vez de tabela")
     args = ap.parse_args()

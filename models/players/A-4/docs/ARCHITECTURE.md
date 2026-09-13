@@ -1,7 +1,7 @@
 # `flight` — notas de arquitetura
 
 Complementa [../README.md](../README.md) (visão geral, as quatro camadas, o artefato único
-`libflight.so`). Este documento junta as decisões de calibração e as armadilhas
+`libA-4.so`). Este documento junta as decisões de calibração e as armadilhas
 específicas deste modelo que, de outra forma, só existiam espalhadas em
 [../../../CLAUDE.md](../../../../CLAUDE.md) — útil para quem abriu só `models/players/A-4/` (ver o
 `Makefile` ao lado para o build autocontido) e não tem o resto do repositório em mente.
@@ -10,7 +10,7 @@ específicas deste modelo que, de outra forma, só existiam espalhadas em
 
 `data/jsbsim/` (o A-4, desde a troca do c310 — ver `data/jsbsim/aircraft/A4/a4ap.xml` para o
 autopilot escrito para esta PoC-mixr) e `configs/flight_tree.xml` são publicados junto com o `.so`
-(`install_subdir()`/`install_data()` no `meson.build`, para `<prefix>/share/mixr-plugins/flight/`)
+(`install_subdir()`/`install_data()` no `meson.build`, para `<prefix>/share/mixr-plugins/A-4/`)
 — não moram em `src/poc/<poc>/data/` de nenhuma poc. Não é só arrumação: `domain/`/`bt/` deste modelo
 são calibrados **para a aeronave que voa aqui** especificamente:
 

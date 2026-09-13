@@ -38,7 +38,7 @@
 
   CAMINHOS RELATIVOS A RAIZ DO REPOSITORIO, como todo caminho de configs/ e
   data/ das pocs (o binario e executado de la). O .onnx mora ao lado deste
-  arquivo (nao em dist/share/mixr-plugins/flight/), porque a politica e do
+  arquivo (nao em dist/share/mixr-plugins/A-4/), porque a politica e do
   CENARIO, nao do modelo.
 -->
 <root main_tree_to_execute="MainTree">

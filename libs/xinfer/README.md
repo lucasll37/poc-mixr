@@ -76,7 +76,7 @@ seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui
 
 | | |
 |---|---|
-| Inferência (MLP 28→64→64→3, 6.211 parâmetros) | **50,1 µs** média, p99 71,5 µs — 0,25% do frame de 20 ms |
+| Inferência (MLP — *multilayer perceptron*, rede neural totalmente conectada — 28→64→64→3, 6.211 parâmetros) | **50,1 µs** média, p99 71,5 µs — 0,25% do frame de 20 ms |
 | Mesma sessão, 4 threads concorrentes | 55,1 µs média, p99 88,8 µs |
 | Com as opções *default* (sem fixar `intra_op`) | **mais lento**: 76,0 µs (1 thread), 96,8 µs (4) |
 | `Ort::Session` ctor | 51 ms a frio, 8–9 ms depois — daí o cache |

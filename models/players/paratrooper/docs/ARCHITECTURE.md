@@ -6,12 +6,14 @@ O corpo físico e a decisão de UM paraquedista: queda livre → paraquedas aber
 mais — não pilota nada, não tem sensor, não decide combate. A pergunta que este modelo responde é
 "quando abrir o paraquedas e quando considerar que já pousou", e a física de cada estágio.
 
-**O que este modelo explicitamente NÃO faz** (fora de escopo desta tarefa, adiado para depois):
-nenhum cenário VERSIONADO o liga ao `models/players/C-130` — `src/poc/c130-airdrop` continua
-largando o placeholder (`C130ParatrooperPlaceholder`), e o swap é tarefa futura, puramente de EDL.
-Hoje o modelo só é demonstrado sozinho (`src/poc/paratrooper-drop`), com os paraquedistas já
-declarados em queda a partir de uma altitude inicial. O lado do MODELO da liberação, porém, já
-está pronto e medido contra o C-130 de verdade — ver "O ponto de saída" abaixo.
+**O que já aconteceu, e o que já não existe mais como demonstração**: o swap do placeholder pelo
+modelo real já aconteceu — `sandbox/C-130_paratrooper-6DOF` é um `models/players/C-130` liberando
+30 `( Paratrooper )` reais pelo `StoresMgr` de verdade (ver "O ponto de saída" abaixo para a
+medição contra o C-130). `sandbox/C-130-6DOF` (a rota simples do C-130, sem a integração) continua
+largando o placeholder (`C130ParatrooperPlaceholder`) — os dois cenários convivem sem contradição:
+o swap é por cenário/EDL, não uma mudança de C++ que afete os dois de uma vez. Não há mais cenário
+rastreado demonstrando este modelo SOZINHO, declarado direto em `players: {}` com os paraquedistas
+já em queda a partir de uma altitude inicial.
 
 ## Por que `Effect`, e não `LifeForm`
 
@@ -31,9 +33,10 @@ A classe concreta (`xnative::Paratrooper`) deriva de `mixr::models::Effect`
    ActionParatrooperRelease` (em `models/players/C-130`) já libera qualquer `AbstractWeapon*` cujo
    `Player::getType()` bata com uma string configurável (default `"PARATROOPER"`) — **sem
    `dynamic_cast`** para nenhuma classe concreta. `xnative::Paratrooper` já nasce com `type:
-   "PARATROOPER"` por padrão (mesma convenção do placeholder), então o swap futuro (trocar
-   `C130ParatrooperPlaceholder` por `Paratrooper` dentro do `stores:` de `c130-airdrop`) é **só
-   EDL** — a classe concreta declarada na estação + `provides:` — sem tocar C++ nenhum em C-130.
+   "PARATROOPER"` por padrão (mesma convenção do placeholder), então o swap (trocar
+   `C130ParatrooperPlaceholder` por `Paratrooper` dentro do `stores:` de um cenário do C-130) é
+   **só EDL** — a classe concreta declarada na estação + `provides:` — sem tocar C++ nenhum em
+   C-130. Já demonstrado em `sandbox/C-130_paratrooper-6DOF`.
    Ver `models/players/C-130/docs/ARCHITECTURE.md`, seção "A liberação de paraquedista".
 
 ## A FSM de estágio — mão única, não Schmitt trigger
@@ -133,9 +136,9 @@ Três consequências que caem desse ponto de inserção, e são a razão de ser 
 - **A velocidade continua sendo a da aeronave**, herdada do ramo nativo logo abaixo
   (`setVelocity(getLaunchVehicle()->getVelocity())`) — quem sai pela porta sai com a velocidade do
   avião, não parado no ar.
-- **Um paraquedista declarado direto em `players: {}` não é afetado.** É o caso de
-  `src/poc/paratrooper-drop`, que nunca passa por `PRE_RELEASE`: lá os `initXPos`/`initYPos`/
-  `initAlt` continuam significando posição absoluta, intocados.
+- **Um paraquedista declarado direto em `players: {}` não é afetado.** Nesse caso ele nunca passa
+  por `PRE_RELEASE`: os `initXPos`/`initYPos`/`initAlt` continuam significando posição absoluta,
+  intocados.
 
 O par também é copiado em `copyData()` — sem isso o clone que de fato voa nasceria com o default,
 e um cenário que ajustasse os slots seria ignorado em silêncio.

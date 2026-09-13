@@ -41,7 +41,7 @@ using namespace mixr::models;
 
 TEST(RLBridgeBehavior, GenActionComEstadoNuloDevolveNulo)
 {
-   auto* const bridge = new xnative::RLBridgeBehavior();
+   auto* const bridge = new xA_4::RLBridgeBehavior();
 
    // dynamic_cast<const FlightState*>(nullptr) e nullptr -- genAction() tem
    // de recusar sem crashar, o mesmo contrato de BtBehavior/

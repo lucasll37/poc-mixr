@@ -11,7 +11,8 @@ sempre; mover o arquivo baixado pra cá continua sendo passo manual, opcional.
 
 Não confundir com o botão **"Carregar preset"** da barra de ferramentas: esse
 carrega o único cenário de exemplo embutido no próprio build
-(`built-in_mixr_1`, ver `src/ui/README.md`). Os arquivos aqui são os SEUS —
+(`built-in_mixr_1`, hoje em `tests/fixtures/built-in_mixr_1/` — ver
+`src/ui/README.md`). Os arquivos aqui são os SEUS —
 tantos quantos você quiser, salvos a partir do cenário que você montou na
 ferramenta.
 

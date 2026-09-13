@@ -43,8 +43,8 @@ esperava `== 1`). `tests/native/test_navstar3.cpp::Bench` usa um contador atomic
 
 ## Testar via `./dist/bin/node` NAO chama `TacviewOutput::publishIdentities()`
 
-Achado comparando: rodar `src/poc/navstar3-orbit` via `node` (o runner headless, ver `src/node/
-README.md`) grava `Type=Misc,Color=Violet` no `.acmi` (os DEFAULTS de fallback por major-type/
+Achado comparando: rodar `sandbox/Navstar-3-constellation` via `node` (o runner headless, ver
+`src/node/README.md`) grava `Type=Misc,Color=Violet` no `.acmi` (os DEFAULTS de fallback por major-type/
 side) em vez de `Type=Misc+Satellite,Color=Blue` (o `typeMap`/`colorMap` do proprio cenario) --
 `REID_PLAYER_DATA` traz `PlayerId` PARCIAL (so' `id`/`name`, sem `ac_type`/`side`,
 CLAUDE.md raiz, secao xtacview), e so' `./app` (`DeterministicRun.cpp`/`DashboardLoop.cpp`) chama

@@ -92,9 +92,9 @@ TEST(Paratrooper, NasceInativoComoTodaArma)
 {
    // AbstractWeapon::AbstractWeapon() forca INACTIVE -- e' o motivo de
    // 'mode: "ACTIVE"' ser OBRIGATORIO no .edl de qualquer cenario que
-   // declare um Paratrooper direto em players: {} (ver
-   // src/poc/paratrooper-drop). Um Effect/AbstractWeapon nasce assim para
-   // nao "decolar sozinho" enquanto ainda esta pendurado numa estacao.
+   // declare um Paratrooper direto em players: {}. Um Effect/AbstractWeapon
+   // nasce assim para nao "decolar sozinho" enquanto ainda esta pendurado
+   // numa estacao.
    Paratrooper trooper;
    EXPECT_TRUE(trooper.isInactive());
 }
@@ -272,9 +272,10 @@ TEST(Paratrooper, OffsetDeSaidaSobreviveAoCloneDaLiberacao)
 
 TEST(Paratrooper, OffsetDeSaidaNaoTocaUmParaquedistaDeclaradoEmPlayers)
 {
-   // O caso de src/poc/paratrooper-drop: sem aeronave lancadora, os
-   // 'initXPos'/'initYPos'/'initAlt' do .edl sao posicao ABSOLUTA no terreno
-   // de jogo -- e tem de continuar sendo. O offset so' existe em PRE_RELEASE.
+   // O caso de um Paratrooper declarado direto em players: {}, sem aeronave
+   // lancadora: os 'initXPos'/'initYPos'/'initAlt' do .edl sao posicao
+   // ABSOLUTA no terreno de jogo -- e tem de continuar sendo. O offset so'
+   // existe em PRE_RELEASE.
    Bench bench;
    bench.trooper->setInitPosition(1000.0, 2000.0);
    bench.trooper->setInitAltitude(3000.0);

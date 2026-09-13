@@ -1,16 +1,18 @@
 # src/rl -- wrapper Gymnasium sobre a simulacao MIXR/flight
 
 Um agente de RL/Python controla **uma** aeronave (`falcon1`, por padrao) do
-mesmo cenario que `flight`/`app` ja rodam -- mesmo plugin `libflight.so`,
-mesma pilha nativa. O `state` do `gymnasium.Env` e
+mesmo cenario que `flight`/`app` ja rodam -- mesmo plugin `libA-4.so`,
+mesma pilha nativa, exposto como um `gymnasium.Env` (Gymnasium -- a API
+padrao de ambientes de RL em Python: `reset()`/`step()`/`observation_space`,
+sucessora do OpenAI Gym). O `state` desse `Env` e
 a mesma percepcao que o UBF (*Unified Behavior Framework* -- o mecanismo nativo do MIXR pra
 plugar decisao externa num `Player`) ja usa para decidir (`domain::WorldView`); a
 `action` e o mesmo comando que `xnative::FlightAction` ja aplica no
 `Autopilot` (heading/altitude/speed). As outras aeronaves do cenario
 (`falcon2..4`) continuam decidindo pela arvore de comportamento nativa --
 trafego/companheiros de cenario, nao controlados pelo agente RL (v1 e
-single-agent; ver "Escopo" no plano de implementacao original desta
-feature).
+single-agent -- ver "Um agente RL por processo", na secao de limites
+conhecidos mais abaixo, para o porque).
 
 ## Arquitetura
 
@@ -29,10 +31,16 @@ MixrFlightEnv.step(action) ──call──>      NativeSimulation::step(cmd)
                             <──obs,term──   xrlbridge::getObservation() + Player::isCrashed()
 ```
 
-Um modulo de extensao **pybind11** (`src/rl/bindings/`, compila para
-`_native*.so`) mantem a `Station` viva no MESMO processo Python -- sem
+Um modulo de extensao **pybind11** (a lib de bindings C++/Python que gera a extensao nativa
+a partir de headers anotados -- `src/rl/bindings/`, compila para
+`_native*.so`) mantem a `Station` (a classe do MIXR que e o objeto raiz da simulacao --
+dona do laco de frames e do gravador; a lista de players e o terreno ficam num `WorldModel`
+intermediario que a Station hospeda -- ver `CLAUDE.md`, secao "O modelo MIXR
+em uma tela", para a hierarquia completa `Station` -> `WorldModel` -> players) viva no MESMO processo Python -- sem
 round-trip de rede por passo. A troca de comando/observacao entre o host
-(este modulo) e o modelo (`models/players/A-4`, um `.so` carregado por `dlopen`)
+(este modulo) e o modelo (`models/players/A-4`, um `.so` carregado por `dlopen`
+-- a chamada de sistema que carrega uma biblioteca compartilhada em tempo de
+execucao, sem o host precisar conhecer o modelo em tempo de compilacao)
 passa por `libs/xrlbridge` -- uma shared_library pequena, dedicada,
 mesmo motivo estrutural de `libs/xboard::Board` (ver o cabecalho de
 `libs/xrlbridge/RLBridge.hpp`): o host **nao pode** incluir headers do
@@ -40,8 +48,11 @@ modelo nem linkar contra o `.so` dele em tempo de compilacao
 (`tests/guard/check_host_opaco.sh` trava esse invariante), entao a troca
 so pode passar por uma peca que os dois lados linkam de verdade.
 
-`models/players/A-4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior` que
-faz esse papel do lado do modelo -- entra no `UbfArbiter` de `falcon1` no
+`models/players/A-4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior`
+(a classe-base do UBF da qual todo Behavior plugavel no `UbfArbiter` herda --
+`genAction()` devolve uma acao a partir do estado, com um `vote` que pesa essa
+acao contra as dos outros Behaviors) que faz esse papel do lado do modelo --
+entra no `UbfArbiter` de `falcon1` no
 lugar de `BtBehavior`, ao lado do MESMO `AltitudeSafetyBehavior` (voto 90,
 maior que o voto 50 do bridge) que ja protege as outras aeronaves: uma
 politica ruim do agente RL nao derruba o aviao no terreno, o arbitro nativo
@@ -52,14 +63,37 @@ sobrepoe.
 ```bash
 make configure   # inclui pybind11 (conanfile.py) alem das dependencias de sempre
 make sdk         # publica libxboard/libxlog/libxtrack/libxrlbridge + headers em dist/
-make models      # compila libflight.so (com RLBridgeBehavior) -> plugins/
+make models      # compila libA-4.so (com RLBridgeBehavior) -> plugins/
 make build       # compila o host, incluindo o modulo _native (src/rl/bindings/)
 make install     # dist/python/mixr_gym/{__init__.py, env.py, _native*.so}
 ```
 
-Ou o fluxo de sempre: `make configure && make build && make install`.
+Ou o fluxo de sempre: `make configure && make sdk && make models && make build && make install`.
+**Sem `make sdk`**, o modulo pybind11 (`src/rl/bindings/`) nao acha `libxrlbridge`/headers pra
+linkar; **sem `make models` no meio**, `install` sincroniza um `plugins/` vazio (aviso, sem erro) e
+`dist/lib/mixr-plugins/` fica sem `libA-4.so` -- mesmo risco ja documentado em
+`src/poc/python-flight/README.md`.
 
 ## Rodando
+
+Forma recomendada -- alvos do Makefile raiz, com venv proprio
+(`src/rl/.venv`, separado do `.venv` de treino em `src/poc/rl-training/`):
+
+```bash
+# depois de 'make configure && make sdk && make models && make build && make install'
+# (a sequencia completa esta na secao "Build" acima -- 'test-rl' encadeia
+# 'install'/'venv-rl' sozinho, mas NAO 'models')
+make venv-rl   # cria/atualiza src/rl/.venv com src/rl/requirements.txt
+make test-rl   # roda test_smoke.py + test_contract.py + test_bad_player.py no venv acima
+```
+
+`test_contract.py` cobre o contrato de `gymnasium.Env` alem do que
+`test_smoke.py` ja cobre (shape/dtype/limites da observacao,
+`truncated`/`close()`); `test_bad_player.py` e a regressao do bug de
+`player_name` descrito em "Limites conhecidos" mais abaixo, isolada num
+processo proprio pelo mesmo motivo (uma unica `Station` por processo).
+
+Ou manualmente, sem os alvos de Makefile:
 
 ```bash
 pip install -r src/rl/requirements.txt
@@ -89,7 +123,22 @@ env.close()
 Tacview ([tacview.net](https://www.tacview.net/) — visualizador 3D de terceiros; porta 1237,
 opcional, so para acompanhar visualmente um episodio; ver "Pre-requisitos" no README.md raiz):
 aponte o Tacview Real-Time Telemetry para `<host>:1237` enquanto o processo
-Python estiver rodando.
+Python estiver rodando. **A porta e a MESMA de `src/poc/python-flight`** -- nao ha checagem
+nenhuma contra isso: se os dois processos abrirem ao mesmo tempo, o segundo a chamar
+`server.start()` (`libs/xtacview/TacviewOutput.cpp`) so falha em pegar a porta 1237 -- a
+gravacao local (`data/recordings/`) continua normal, so o socket de rede daquele processo fica
+sem cliente. Nao rode `src/rl`/`rl-training` e `python-flight` ao mesmo tempo se quiser
+telemetria visual dos dois.
+
+Existe uma copia byte-identica deste arquivo em
+`src/poc/rl-training/configs/scenario_rl.edl` -- ela **nao** e lida por
+`train.py`/`MixrFlightEnv` nenhum: o default (`DEFAULT_SCENARIO`, em
+`mixr_gym/env.py`, o mesmo que `make train` sem `--scenario` usa) aponta pra
+ESTE arquivo aqui (`src/rl/configs/scenario_rl.edl`). A copia em
+`rl-training/configs/` so existe pra entrar na varredura de corpus real de
+`.edl`/`.edl.in` que `tests/tools/test_edl_{catalog,lint}.py`/
+`test_edlcheck.py` rodam contra todo cenario do repositorio -- ela nunca abre
+porta nem roda sozinha.
 
 **Isto aqui e so o AMBIENTE.** `src/rl/requirements.txt` fica minimo de proposito
 (so o que basta pra importar `mixr_gym` e rodar o smoke test acima) -- nenhuma
@@ -101,17 +150,23 @@ com venv proprio (`make venv-rl-training`) e as dependencias de treino
 ## Contrato de dados
 
 **Observacao** (`spaces.Dict`): um item por campo numerico/booleano de
-`domain::WorldView` -- posicao (`northM`/`eastM`/`altitudeM`), atitude
+`domain::WorldView` -- numerico vira `spaces.Box`, booleano vira
+`spaces.Discrete(2)`. Cinco campos sao booleanos (`valid`, a observacao
+deste frame e utilizavel; `terrainValid`; `hasContact`; `hasAlert`;
+`weaponReady`); o resto e numerico: posicao
+(`northM`/`eastM`/`altitudeM`), atitude
 (`headingDeg`/`rollDeg`/`pitchDeg`), `speedKts`/`fuelFraction`/`mach`/
-`gLoad`/`alphaDeg`, terreno (`terrainValid`/`terrainElevM`/`altitudeAglM`),
-contato de radar (`hasContact` + `contactRangeM`/`contactRelBearingDeg`/...)
-e alerta tatico (`hasAlert` + `alertRangeM`/...), mais `weaponReady`. Campos
+`gLoad`/`alphaDeg`, terreno (`terrainElevM`/`altitudeAglM`),
+contato de radar (`contactRangeM`/`contactRelBearingDeg`/...)
+e alerta tatico (`alertRangeM`/...). Campos
 de texto (`contactName`, `alertSender`, `alertContactName`) ficam de fora do
 espaco de observacao -- disponiveis em `info["raw_state"]` para debug/log.
 
 **Acao** (`spaces.Box(3,)`): `[headingDeg, altitudeM, speedKts]` -- os tres
 campos de `domain::FlightCommand`, os unicos que `FlightAction::execute()`
-de fato atua (via os hold-modes do `Autopilot`). Os efeitos colaterais
+de fato atua (via os hold-modes do `Autopilot` -- as flags
+`headingHoldMode`/`altitudeHoldMode`/`velocityHoldMode` que travam rumo,
+altitude e velocidade no valor comandado). Os efeitos colaterais
 opcionais de `FlightAction` (transmitir alerta, lancar missil) ficam de fora
 do v1.
 
@@ -163,10 +218,19 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   PRIMEIRO a tocar essas bibliotecas no processo). Sem isso, a primeira
   chamada a `reset()` SEGFAULTA dentro de libstdc++ (dentro de um
   `std::cout` de `libs/xplugin/PluginRegistry.cpp`, ao carregar
-  `libflight.so`) -- confirmado rodando, tudo indica estouro do
-  excedente de TLS estatico do glibc quando muitas extensoes C ja foram
-  carregadas (numpy sozinho traz ~15) antes da nossa. `mixr_gym/__init__.py`
-  documenta os dois experimentos que isolaram a causa. `src/rl/tests/
+  `libA-4.so`) -- confirmado rodando, causa isolada em duas pontas: (1) o
+  CPython importa extensao C (`._native`) com `RTLD_LOCAL` por padrao, o
+  que deixa `libmixr_base.so` fora do escopo global do processo pro
+  `dlopen()` interno que carrega `libA-4.so` depois; (2) SEPARADAMENTE, se
+  `numpy` (ou outra extensao C que traga sua propria copia de simbolos de
+  libstdc++) for importado ANTES de `._native`, uma chamada de iostream
+  dentro de `libmixr_base.so` pode resolver uma versao incompativel de um
+  simbolo (ex.: template de `codecvt`) vinda de numpy em vez da propria --
+  mesmo com `._native` marcado `RTLD_GLOBAL` depois. `mixr_gym/__init__.py`
+  documenta os dois experimentos que isolaram essa causa (`RTLD_GLOBAL`
+  sozinho, com numpy importado antes, nao bastou; import antes de numpy
+  sozinho tambem resolveu -- os dois juntos, nessa ordem, sao o fix
+  aplicado ali). `src/rl/tests/
   test_smoke.py` importa `mixr_gym` antes de `numpy` de proposito, fora de
   ordem alfabetica -- e o padrao recomendado pra qualquer script que use
   este pacote.

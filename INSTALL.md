@@ -29,14 +29,25 @@ Por que cada um:
 - **`pkg-config`** — sem ele o `meson setup` de `make configure` falha, mesmo com o Conan tendo
   gerado os `.pc` corretos: é por `pkg-config` que o `meson.build` raiz resolve MIXR, protobuf e
   gtest.
-- **`git`**, **`curl`**, **`perl`**, **`patch`**, **`zlib1g-dev`** — o remote público (ConanCenter)
-  só publica binário de `mixr/1.0.5` para **GCC 11**; o Ubuntu 24.04 traz **GCC 13**, então o
-  `package_id` não casa e o `--build=missing` do `make configure` recompila boost, OpenSSL,
-  protobuf, JSBSim e o próprio MIXR **do fonte** — e essas receitas autotools/CMake precisam desse
-  ferramental. Sem eles o primeiro `make configure` quebra horas depois de começar, no meio da
-  compilação de uma dependência transitiva. Se a máquina tiver GCC 11 disponível (ex.: Ubuntu
-  22.04, ou um `update-alternatives` apontando para ele), o build usa binário pronto e nada disso
-  chega a ser exercitado — mas ainda assim vale instalar, é barato.
+- **`git`**, **`curl`**, **`perl`**, **`patch`**, **`zlib1g-dev`** — necessários no caminho que
+  este roteiro documenta (`./scripts/deps.sh`, §4), que **nunca** configura nem depende do remote
+  Conan privado da ASA (ASA-Simulation, a organização que mantém os forks `mixr`/
+  `behaviortree.cpp.asa` consumidos aqui — `github.com/ASA-Simulation`; nenhum dos dois está no
+  ConanCenter, e por padrão
+  viriam prontos daquele remote privado — ver [`README.md`](README.md), seção "CI (GitLab)" —, mas
+  aqui vêm sempre de `deps/`). `mixr`, `behaviortree.cpp.asa`, `jsbsim` e `openrti` são sempre
+  clonados do fonte (`git`) e compilados via Meson/CMake com `--build=missing`, incondicionalmente
+  e independente de GCC. Esse mesmo `--build=missing` também alcança as dependências que essas
+  receitas puxam do **ConanCenter** (`boost`, `OpenSSL`, `protobuf`, entre outras) sempre que o
+  `package_id` (o hash que o Conan usa para casar um binário pré-compilado com a configuração/
+  settings local) não casa com nenhum binário publicado para o GCC local — o Ubuntu 24.04 traz
+  **GCC 13**, e o comentário em [`.gitlab-ci.yml`](.gitlab-ci.yml) confirma esse efeito rodando
+  (ali, para boost/protobuf/onnxruntime). É aí que essas receitas autotools/CMake do lado
+  ConanCenter passam a precisar deste ferramental. Sem eles o primeiro `make configure` quebra
+  horas depois de começar, no meio da compilação de uma dependência transitiva. Se a máquina tiver
+  GCC 11 disponível (ex.: Ubuntu 22.04, ou um `update-alternatives` apontando para ele), o
+  ConanCenter tem binário pronto para essas dependências e nada disso chega a ser exercitado —
+  mas ainda assim vale instalar, é barato.
 - **`python3`**, **`python3-venv`**, **`pipx`** — para instalar o Conan (não há pacote `conan` no
   `apt`; ver §2) e para os scripts de teste em `tests/`.
 - **`python3-dev`** — cabeçalhos do Python (`Python.h`). `src/rl/bindings/` compila sempre como
@@ -66,8 +77,10 @@ install conan` e colocar `~/.venvs/conan/bin` no `PATH`.)
 
 ## 3. Perfil do Conan (uma vez por máquina)
 
-O Conan 2 **não** cria o perfil `default` sozinho. Sem este passo, o primeiro `make configure`
-morre com *"The default build profile doesn't exist"*:
+Um *profile* do Conan descreve compilador, SO, arquitetura e `build_type` (Debug/Release) da
+máquina local — é contra esse perfil que o Conan decide se usa um pacote binário já pronto de um
+remote ou compila a dependência do zero. O Conan 2 **não** cria o perfil `default` sozinho. Sem
+este passo, o primeiro `make configure` morre com *"The default build profile doesn't exist"*:
 
 ```bash
 conan profile detect --force
@@ -81,8 +94,9 @@ que este projeto usa (ver glossário no [`README.md`](README.md)), `jsbsim` é o
 voo (ver o mesmo glossário), `openrti` é uma implementação de RTI (*Runtime Infrastructure*) para
 HLA (*High Level Architecture*, padrão IEEE 1516) que o MIXR declara mas
 este fork não compila (a interoperabilidade usada aqui é DIS), e `groot` é o editor/monitor visual
-das árvores de comportamento; `./scripts/deps.sh` builda as cinco, na ordem certa, Debug e
-Release.
+das árvores de comportamento; `./scripts/deps.sh` builda as cinco, na ordem certa — as quatro
+primeiras (jsbsim/openrti/mixr/behaviortree.cpp.asa) em Debug e Release, o Groot só uma vez, em
+Release (não é dependência de build do host/modelo, é um app Qt standalone à parte).
 
 Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (as outras quatro
 receitas não usam nada disto):

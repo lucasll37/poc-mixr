@@ -122,7 +122,7 @@ def main():
     # (PluginRegistry.cpp:416-430, "ja foi registrado por"), distinta da
     # ramificacao builtin que "plugin sombreia um nome do framework" ja cobre
     # (linhas 431-443, "JA e construido pelo framework"). A ORDEM importa:
-    # libflight.so (o PRIMEIRO ( PluginModule ) do texto) tem que continuar
+    # libA-4.so (o PRIMEIRO ( PluginModule ) do texto) tem que continuar
     # vindo ANTES do segundo, pra 'FlightAction' ja estar em registry() quando
     # o segundo .so tenta se registrar -- mesma tecnica de parenteses
     # balanceados de sem_bloco(), so que sem apagar nada.
@@ -185,7 +185,7 @@ def main():
          args.binario,
          [r"JA e construido pelo framework", r"Aircraft"])
 
-    # DUAS ( PluginModule ) no MESMO cenario -- libflight.so (producao) carrega
+    # DUAS ( PluginModule ) no MESMO cenario -- libA-4.so (producao) carrega
     # primeiro e registra "FlightAction"; o segundo .so tenta registrar o
     # MESMO nome. Ramificacao DIFERENTE da anterior (colide com outro PLUGIN,
     # nao com o framework) -- check_colisao_fabrica.py (guarda estatica) nao
@@ -193,7 +193,7 @@ def main():
     caso("plugin colide com nome de OUTRO plugin ja carregado",
          variante("collide-own-name", injeta_segundo_modulo(args.bad_collide_own_name)),
          args.binario,
-         [r"ja foi registrado por", r"FlightAction", r"libflight"])
+         [r"ja foi registrado por", r"FlightAction", r"libA-4"])
 
     caso("'provides:' do cenario nao bate com o que a .so entrega",
          variante("provides", troca_provides("OutraCoisa")),

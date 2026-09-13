@@ -29,7 +29,9 @@ declarado em `players: {}`, são posição no terreno de jogo (norte/leste/altit
 novo, no ramo `PRE_RELEASE`, como um deslocamento em eixos do **corpo da aeronave lançadora**
 (x=nariz, y=asa direita, altitude +para cima), rotacionado por `getRotMat()` do lançador e somado
 à posição dele. Sem declarar nada, os três ficam em zero e a arma nasce **na posição exata** da
-aeronave — que é como o `C130ParatrooperPlaceholder` ainda nasce em `src/poc/c130-airdrop`.
+aeronave — exatamente o problema que tanto `xnative::Paratrooper::dynamics()` (este modelo) quanto
+`C130ParatrooperPlaceholder::dynamics()` (`models/players/C-130`) corrigem, sobrescrevendo esses
+dois valores em `PRE_RELEASE` antes que `BaseClass::dynamics()` os leia.
 
 `Paratrooper::dynamics()` explora isso: fixa os dois valores só enquanto `PRE_RELEASE`,
 imediatamente antes de `BaseClass::dynamics()` consumi-los, e deixa a rotação com o framework.

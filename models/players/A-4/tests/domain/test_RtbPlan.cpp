@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+namespace domain = mixr::models::xA_4::domain;
+
 namespace {
 
 constexpr double TOL{1e-9};

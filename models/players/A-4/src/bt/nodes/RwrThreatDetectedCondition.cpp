@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 RwrThreatDetectedCondition::RwrThreatDetectedCondition(const std::string& name,
@@ -20,3 +23,6 @@ BT::NodeStatus RwrThreatDetectedCondition::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

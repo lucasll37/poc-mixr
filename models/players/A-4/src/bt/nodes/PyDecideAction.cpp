@@ -9,6 +9,9 @@
 #include <array>
 #include <atomic>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 namespace {
@@ -82,3 +85,6 @@ BT::NodeStatus PyDecideAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -9,12 +9,13 @@ pousado**. Não pilota, não sensoreia, não decide combate — a única decisã
 estágios, dirigida pela altitude acima do solo (AGL).
 
 Deriva de `mixr::models::Effect` (o mesmo idioma nativo de `Chaff`/`Decoy`/`Flare`), e nasce
-compatível com o mecanismo de liberação que `models/players/C-130` já usa hoje (um placeholder,
-`C130ParatrooperPlaceholder`) — a substituição do placeholder por este modelo é tarefa futura, e é
-puramente EDL (ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). **Nenhum cenário versionado o
-liga ao C-130** — ele é demonstrado sozinho, em
-[`src/poc/paratrooper-drop`](../../../src/poc/paratrooper-drop), com os paraquedistas já em queda
-a partir de uma altitude inicial.
+compatível com o mecanismo de liberação que `models/players/C-130` já usa (um placeholder,
+`C130ParatrooperPlaceholder`) — a substituição do placeholder por este modelo já aconteceu, e foi
+puramente EDL (ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). A demonstração rodável hoje é
+a integração de verdade, em
+[`sandbox/C-130_paratrooper-6DOF`](../../../sandbox/C-130_paratrooper-6DOF) — um C-130 liberando
+30 paraquedistas reais pelo `StoresMgr`; não há mais cenário rastreado demonstrando este modelo
+sozinho (declarado direto em `players: {}`, já em queda a partir de uma altitude inicial).
 
 Quando ele *é* liberado de uma aeronave, nasce **15 m atrás e 10 m abaixo dela** (em eixos do
 corpo do lançador, então "atrás" acompanha rumo/arfagem/rolamento), com a velocidade da aeronave —
@@ -68,6 +69,7 @@ cd ../../.. && make configure && make sdk
 cd models/players/paratrooper
 make build            # compila -> ./dist/lib/mixr-plugins/libparatrooper.so
 make test             # domain (a FSM) + tree + native + a forma do .so -- 5 testes
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install-host     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
 ```
 
@@ -102,8 +104,8 @@ plugin precisa declarar exatamente estes cinco em `provides:`.
 
 `Paratrooper` deriva de `Effect`/`AbstractWeapon`, que nasce em modo `INACTIVE` (a mesma proteção
 que mantém uma arma pendurada numa estação sem "voar sozinha"). Um paraquedista declarado direto
-em `players: {}` (como faz `src/poc/paratrooper-drop`, já que a liberação de verdade a partir de
-um `StoresMgr` é tarefa futura) **precisa** do slot `mode: "ACTIVE"`, ou fica parado, sem decidir
+em `players: {}` (em vez de liberado de verdade a partir de um `StoresMgr`, como
+`sandbox/C-130_paratrooper-6DOF` já faz) **precisa** do slot `mode: "ACTIVE"`, ou fica parado, sem decidir
 nada, sem erro nenhum. Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para os demais gotchas
 (a rede de segurança contra o `CRASH_EVENT` genérico, o slot `requireTerrain`, a restrição sobre
 `groundAgl`).
@@ -116,8 +118,8 @@ nada, sem erro nenhum. Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para o
   genérica (hoje contra um placeholder) que este modelo já nasce compatível para substituir
 - [`../template/docs/ARCHITECTURE.md`](../template/docs/ARCHITECTURE.md) — a separação em
   camadas que este modelo segue
-- [`../../../src/poc/paratrooper-drop/README.md`](../../../src/poc/paratrooper-drop/README.md) —
-  a demonstração rodável deste modelo
+- [`../../../sandbox/C-130_paratrooper-6DOF/README.md`](../../../sandbox/C-130_paratrooper-6DOF/README.md)
+  — a demonstração rodável deste modelo, integrado à liberação real do C-130
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o build orquestrado pelo Makefile
   da raiz

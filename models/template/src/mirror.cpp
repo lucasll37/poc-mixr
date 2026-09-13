@@ -199,7 +199,7 @@ BEGIN_SLOT_MAP(BtBehavior)
    // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'patrolSeedOverride'
    // (slot 19 de producao, models/players/A-4/src/ubf/BtBehaviorSlots.cpp)
    // faltava aqui -- o mirror parava em 18 slots. Confirmado via
-   // 'plugininfo' que essa era a UNICA diferenca entre libflight.so e
+   // 'plugininfo' que essa era a UNICA diferenca entre libA-4.so e
    // libtemplate_mirror.so. Inofensivo enquanto nenhum .edl de producao usa
    // esse slot (check_falcons_estrutura.sh exige o MESMO esqueleto nos 4
    // falcons, entao um slot so num deles ja quebraria essa guarda antes de

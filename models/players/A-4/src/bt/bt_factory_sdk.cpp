@@ -7,6 +7,9 @@
 #include <memory>
 #include <string>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 namespace {
@@ -35,3 +38,6 @@ void registerSdkNodes(BT::BehaviorTreeFactory& factory, const NodeContext& conte
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

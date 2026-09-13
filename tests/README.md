@@ -20,11 +20,14 @@ make test                            # so a suite do HOST (64 testes hoje -- num
 > combustível baixo; **CFIT** = *Controlled Flight Into Terrain*, o acidente (aeronave em
 > perfeito controle colidindo com o terreno) que o piso anti-CFIT existe para evitar; **PDU** =
 > *Protocol Data Unit*, o pacote de rede do protocolo **DIS** (*Distributed Interactive
-> Simulation*, IEEE 1278 — ver glossário no [`README.md`](../README.md) raiz); **`bt=`**/**`xmsg`**/**`BehaviorBoard`**
+> Simulation*, IEEE 1278 — ver glossário no [`README.md`](../README.md) raiz); **`bt=`**/**`xmsg`**/**`xboard`**
 > — `bt=` é o rótulo do comportamento vencedor (`PATROL`/`EVADE`/`SUPPORT`/...) que aparece nos
-> dumps; quem mantém esse valor é o [`BehaviorBoard`](../libs/xboard/Board.hpp) (`libs/xboard`,
+> dumps; quem mantém esse valor é o [`xboard::Readout`](../libs/xboard/Board.hpp) (`libs/xboard`,
 > escrito pelo modelo, lido pelo host); `libs/xmsg` é a biblioteca de mensagens configuráveis por
-> EDL (ver `libs/xmsg/README.md`), sem relação com `bt=`. **Tacview**/**JSBSim**/
+> EDL (ver `libs/xmsg/README.md`), sem relação com `bt=`; **TOCTOU** = *Time-Of-Check to
+> Time-Of-Use*, a janela entre uma thread verificar uma condição e agir sobre ela, na qual outra
+> thread pode intercalar (*interleaving*) e invalidar o que foi checado — citado só na seção
+> "Caçando corrida no caminho interativo do `./app`", mais abaixo. **Tacview**/**JSBSim**/
 > **BehaviorTree.CPP** (a árvore de decisão que a suíte `tree` testa) também são citados abaixo
 > sem redefinição — os três estão no glossário de abertura do [`README.md`](../README.md) raiz.
 
@@ -39,8 +42,8 @@ make test-models   # a suíte de CADA projeto de modelo descoberto na hora (find
                      # de models/players/A-4/tools/dump-tree-model — ver a seção Groot
                      # do CLAUDE.md raiz), mais os 5 alvos do template/. Modelo novo
                      # entra sozinho, sem editar alvo nenhum.
-make test           # só a do host — builda/sincroniza o(s) modelo(s) antes (dlopen precisa do
-                     # .so), mas não roda a suíte deles
+make test           # só a do host — sincroniza (nao builda) o(s) modelo(s) antes, via
+                     # 'install' (dlopen precisa do .so em dist/), mas nao roda a suite deles
 meson test -C build --suite plugin   # só uma camada do host
 ```
 
@@ -57,8 +60,8 @@ roda os dois, nessa ordem, para cobrir os dois relatórios JUnit.
 > `meson test -C build --suite domain` (30 alvos hoje) deixou de ser só as primitivas do
 > `libs/xmsg`: a maior parte agora é lógica pura de `./app` extraída pra fora do FTXUI/MIXR
 > (mapa, memória, log, EDL, breakpoint, árvore de componentes, ...) mais uma unidade por
-> `libs/x*` que ainda não tinha teste direto (`xboard`, `xinfer`, `xjoystick`, `xpyembed`,
-> `xrandom`, `xrlbridge`, `xtrack`). Todos entram em `domain` pelo mesmo critério original —
+> `libs/x*` que ainda não tinha teste direto (`xboard`, `xinfer`, `xjoystick`, `xlog`,
+> `xpyembed`, `xrandom`, `xrlbridge`, `xtrack`). Todos entram em `domain` pelo mesmo critério original —
 > puro, rápido, sem `Station` — não porque testem um diretório chamado `domain/`.
 
 > **A terceira poc na bateria de cenário/memória/determinismo.** `src/poc/python-flight` troca as
@@ -84,7 +87,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | suite | pergunta | como | custo |
 |---|---|---|---|
 | `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 50 casos, ~10 ms |
-| `domain` (host) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 30 alvos, ~10 s no total |
+| `domain` (host) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,log,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 30 alvos, ~10 s no total |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 19 casos, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 24 casos, ~10 ms |
 | `scenario` | o modelo se comporta voando? | o binário de verdade, com fixture, asserções sobre `frame=` | 12 execuções |
@@ -189,9 +192,11 @@ nenhum, que é o oposto do que se quer.
 
 ## Camada 4 — vazamento ([memory/](memory/))
 
-Usa instrumentação que **já existia no MIXR e estava sem uso aqui**. Toda classe com
-`DECLARE_SUBCLASS` carrega um `base::MetaObject` estático com três contadores públicos, mantidos
-pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`:
+Usa instrumentação que **já existia no MIXR e estava sem uso aqui**. Toda classe MIXR ganha RTTI
+própria com as macros `DECLARE_SUBCLASS(Classe, Base)` (no `.hpp`) e `IMPLEMENT_SUBCLASS(Classe,
+"FactoryName")` (no `.cpp`) — ver "O modelo MIXR em uma tela" no [`CLAUDE.md`](../CLAUDE.md) raiz
+para o padrão completo. De graça, isso já carrega um `base::MetaObject` estático com três
+contadores públicos, mantidos pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`:
 
 | campo | é |
 |---|---|
@@ -233,8 +238,10 @@ vazar. Se o fork for corrigido um dia, apaga-se a linha e o teste passa a cobrir
 É a lógica que vivia inline no `Makefile`, extraída para
 [`determinism/check_determinism.sh`](determinism/check_determinism.sh) — mesmas 4 execuções, mesmas
 3 comparações — e registrada como `determinism-flight`: a decisão roda em `( FlightAgentTC )`,
-componente do `Player`, na fase 3 do frame de tempo crítico — o único agente que este repositório
-usa hoje (não há mais um caminho alternativo via `( SimAgent )` nativo na `Station`).
+componente do `Player`, na fase 3 do frame de tempo crítico — o único agente que a suíte
+automatizada do HOST exercita hoje (não há mais um caminho alternativo via `( SimAgent )` nativo na
+`Station`; fora da suíte, `sandbox/AAA-A4-6DOF` usa `( UbfAgent )` nativo decidindo em fundo — uma
+classe irmã de `SimAgent`, não a mesma, e não coberta por esta camada de teste).
 
 > **Vocabulário desta seção:** o "frame de tempo crítico" é o laço de simulação a 50 Hz, dividido
 > em 4 fases (`0` *dynamics*, `1` *transmit*, `2` *receive*, `3` *process*) — a decisão do UBF
@@ -248,7 +255,7 @@ verificava nada. Agora se afirma que `dec` avança na **mesma taxa** que `frame`
 consecutivos. A asserção *não* é `dec == frames`: a poc decide uma vez a mais na inicialização (601
 em 600 frames, idêntico nas três configurações de thread) — isso é *offset* de partida, não perda
 de vínculo com o frame. Comparar deltas mede a propriedade certa e ignora o *offset*. Quem conta é
-o [`BehaviorBoard`](../libs/xboard/Board.hpp), no ponto da atuação.
+o [`xboard::Readout`](../libs/xboard/Board.hpp), no ponto da atuação.
 
 **A saída de mensagens entra na mesma comparação.** O `libs/xmsg` **não** é desligado em
 `-deterministic` (ao contrário do `xlog`): tudo que ele emite carrega tempo simulado, nunca

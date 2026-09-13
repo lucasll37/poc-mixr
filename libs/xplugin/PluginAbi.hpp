@@ -13,15 +13,22 @@
 // execucao (dlopen).
 //
 // Este e o UNICO arquivo que o autor de um plugin inclui do lado da
-// aplicacao, e ele e HEADER-ONLY de proposito. As cinco bibliotecas de
-// libs/ (xtacview, xclock, xjoystick, xlog, xmsg) sao static_library(): um
-// plugin que linkasse a lib do registro ganharia a SUA PROPRIA copia do
-// registro -- a aplicacao registraria de um lado e consultaria do outro.
-// E a armadilha registrada em contexts/BTCPP-CONTEXT.md:7262-7270.
+// aplicacao, e ele e HEADER-ONLY de proposito. Quatro bibliotecas de
+// libs/ (xtacview, xclock, xjoystick, xmsg) sao static_library(): um
+// plugin que as linkasse ganharia a SUA PROPRIA copia do estado delas --
+// a aplicacao registraria/leria de um lado e o plugin do outro. E a
+// armadilha registrada em contexts/BTCPP-CONTEXT.md:7262-7270. Seis outras
+// (xboard, xlog, xtrack, xrlbridge, xinfer, xpyembed) foram promovidas a
+// shared_library() exatamente para escapar dessa mesma armadilha -- essas
+// SAO permitidas, e um plugin de producao (models/players/A-4) de fato
+// linka varias delas. Detalhe em libs/xplugin/README.md, secao "Regras
+// para escrever um plugin", item 2.
 //
 // REGRA DERIVADA, valida para todo plugin:
-//    dependencies : [mixr_dep, xplugin_abi_dep]
-// e NUNCA xlog_dep / xmsg_dep / xtacview_dep / xclock_dep / xjoystick_dep.
+//    dependencies : [mixr_dep, xplugin_abi_dep, xlog_dep, xboard_dep,
+//                    xtrack_dep, xrlbridge_dep, xinfer_dep, xpyembed_dep]
+// (as ultimas seis conforme o modelo precise de cada uma) e NUNCA
+// xtacview_dep / xclock_dep / xjoystick_dep / xmsg_dep.
 //
 // Isso e reforcado pelo build: o executavel nao exporta simbolo nenhum e
 // todo alvo compartilhado leva -Wl,--no-undefined, entao um plugin que

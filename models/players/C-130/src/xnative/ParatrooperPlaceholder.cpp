@@ -35,7 +35,7 @@ ParatrooperPlaceholder::ParatrooperPlaceholder()
 // y=asa direita, altitude +para cima). Sem fixar os dois aqui, os tres ficam
 // em zero (o default de um player que nunca os declarou) e o placeholder
 // nasce EXATAMENTE na posicao do C-130 -- e' o que fazia os paraquedistas
-// liberados por src/poc/c130-airdrop parecerem colidir com a aeronave no
+// liberados por sandbox/C-130_paratrooper-6DOF parecerem colidir com a aeronave no
 // Tacview no instante da largada.
 //------------------------------------------------------------------------------
 void ParatrooperPlaceholder::dynamics(const double dt)

@@ -30,10 +30,10 @@ desmanchar — isso só faz sentido para formação; aqui não há o que desmanc
 
 **Sem o "player máximo".** Nada de `Gimbal`/`Antenna`/`CommRadio`/`Iff`/`SigSwitch`/
 `IrSignature`/`OnboardComputer`-com-4-track-managers/`StoresMgr`-de-11-estações/
-`CollisionDetect` — essa aparelhagem é do A-4 "player máximo" (`src/poc/built-in_mixr_1`), não
-do C-130 (que hoje só tem `JSBSimModel` + `Autopilot` + `Navigation` + `StoresMgr` de
-paraquedista). A montagem do player é a mesma de `src/poc/c130-airdrop`, só voando a rota de
-A4-6DOF em vez do circuito de 3 pontos daquela poc.
+`CollisionDetect` — essa aparelhagem é do A-4 "player máximo" (`tests/fixtures/built-in_mixr_1`),
+não do C-130 (que hoje só tem `JSBSimModel` + `Autopilot` + `Navigation` + `StoresMgr` de
+paraquedista). A montagem do player é a mesma de `models/players/C-130`, voando a rota de
+A4-6DOF em vez de um circuito mais simples.
 
 **As três `Action` originais trocam de sentido:**
 
@@ -43,7 +43,7 @@ A4-6DOF em vez do circuito de 3 pontos daquela poc.
 | wp9 | `ActionImagingSar` | *(nenhuma)* | precisa de um `( Sar )` RfSensor que este player não tem |
 | wp15 | `ActionCamouflageType` | *(nenhuma)* | só tem efeito visível com um `( SigSwitch )` multi-modo que este player não tem |
 
-4 estações `"PARATROOPER"` no `StoresMgr` (mesmo padrão de `c130-airdrop`) — cada volta completa
+4 estações `"PARATROOPER"` no `StoresMgr` — cada volta completa
 (`wrap:true`, ~2000 s simulados na velocidade nominal) libera mais uma, até a carga acabar na
 5ª volta.
 
@@ -67,24 +67,25 @@ modelo, `t56.xml` `<turbine_engine>` + `t56_prop.xml` `<propeller>`, era um desc
 dado JSBSim vendorizado: o motor "rodava" (combustível consumido normalmente) mas o empuxo efetivo
 que chegava na célula ficava perto de zero. **Corrigido** trocando o thruster para `direct` (mesmo
 padrão já comprovado em `models/players/A-4/data/jsbsim/aircraft/A4/A4.xml`) — ver o cabeçalho de
-`c130ap.xml` e `src/poc/c130-airdrop/README.md` para o achado completo.
+`c130ap.xml` (`models/players/C-130/data/jsbsim/aircraft/C130/c130ap.xml`) para o achado completo.
 
-**Medido depois da correção, nesta rota especificamente** (mais longa que `c130-airdrop`, ~2000 s
-por volta contra ~130 s do circuito de 3 pontos): 600 s simulados (frame 30000) sem crash, `dec=`
+**Medido depois da correção, nesta rota especificamente** (~2000 s por volta, a figura-de-oito
+herdada de A4-6DOF): 600 s simulados (frame 30000) sem crash, `dec=`
 avançando 1:1 com `frame=`, velocidade estabilizada em torno de 200 kt (não mais decaindo sem
 limite), e altitude tracking bem próxima do perfil comandado (~1.217 m contra os ~1.219 m/4.000 ft
 esperados perto de `wp5`, a estação mais baixa do perfil) — a folga generosa de terreno que este
 perfil já tinha (herdada de `A4-6DOF`, escolhida por varredura de terreno para o A-4) absorveu sem
 drama a imprecisão residual da malha de altitude do C-130. Completar uma volta inteira (~2000 s)
-não foi verificado até o fim nesta poc, mas a liberação do paraquedista em `wp5` já está provada
-funcionando, ponta a ponta, em `src/poc/c130-airdrop`.
+não foi verificado até o fim nesta poc — mas o mecanismo de liberação (`releaseNextStoreOfType()`,
+a base de `C130ActionParatrooperRelease`) já está provado funcionando ponta a ponta em
+`sandbox/C-130_paratrooper-6DOF`, que libera paraquedistas reais até o pouso.
 
 ## Verificação manual
 
 ```bash
 python3 src/ui/scripts/edl_lint.py sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in
 # fábrica desconhecida C130* é esperado -- catálogo estático do lint nunca viu estas
-# classes (mesmo caso já documentado para c130-airdrop). edlcheck é a autoridade real:
+# classes (mesmo caso já documentado para outros cenários deste modelo). edlcheck é a autoridade real:
 sed 's/@NUM_TC_THREADS@/1/; s/@RUN_ID@/x/g' sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in \
    > /tmp/c130_6dof_check.edl && dist/bin/edlcheck /tmp/c130_6dof_check.edl
 

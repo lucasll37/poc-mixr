@@ -18,8 +18,8 @@ decaía continuamente independente do ganho do autothrottle (testado com bias 0.
 resultado de velocidade praticamente idêntico nos três, embora o consumo de combustível mudasse
 com o bias, provando que o comando de manete chegava ao motor). Rodando tempo suficiente
 (~160 s), isso terminava em **estol de verdade e colisão com o terreno** — não descoberto pelos
-testes curtos da primeira versão, só ao rodar `sandbox/C-130-6DOF` (rota mais longa) e
-`c130-airdrop` por mais tempo.
+testes curtos da primeira versão, só ao rodar `sandbox/C-130-6DOF` (rota mais longa) por mais
+tempo.
 
 **Corrigido**: `data/jsbsim/engine/t56_prop.xml` foi removido e o thruster de cada um dos 4
 motores em `C130.xml` trocado para `direct` — mesmo padrão já comprovado em
@@ -32,8 +32,7 @@ autothrottle se a velocidade não sustentar de novo — a causa provável é a m
 Ganhos PID/lei de subida/limites do `Autopilot` continuam chute inicial (herdados de
 `c310ap.xml`/`a4ap.xml` por semelhança de regime) e ainda têm folga/atraso perceptível ao seguir
 mudanças de altitude — funcional e seguro com margem de terreno generosa (ver
-`src/poc/c130-airdrop/configs/scenario_c130_airdrop.edl.in`, perfil achatado em 1.400 m), mas não
-uma calibração fina.
+`sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in`), mas não uma calibração fina.
 
 ## `Effect` não é construível via EDL puro — precisou de `ParatrooperPlaceholder`
 

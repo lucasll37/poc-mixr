@@ -117,8 +117,10 @@ fi
 # 'uninstall-host' itera o ./dist LOCAL do proprio modelo. Apagar a pasta
 # primeiro destroi a unica fonte, e ela NAO e recuperavel depois: o
 # meson.build exige a pasta; nao ha manifesto; 'plugininfo' nem devolve
-# plugin_name (a saida e' so {"classes":[...]}); e a convencao de nome falha
-# no caso vivo -- a pasta 'A-4' publica libflight.so em plugins/data/flight.
+# plugin_name (a saida e' so {"classes":[...]}); e nada impede um modelo
+# futuro de publicar .so/diretorio de dados com nome diferente do da propria
+# pasta (ja aconteceu com models/players/A-4, ate ser alinhado) -- nao dá para
+# simplesmente assumir "nome da pasta == nome do artefato".
 #
 # Dai a ordem abaixo, escolhida para que TODO PREFIXO seja um estado
 # consistente (um Ctrl+C no meio e' retomavel e nunca destroi a fonte):
@@ -189,8 +191,9 @@ if [ "$REMOVER" = "1" ]; then
     # artefatos_publicados(); o fallback le o terceiro segmento de
     # "get_option('datadir') / 'mixr-plugins' / '<nome>'".
     #
-    # NAO da para derivar do nome da PASTA: models/players/A-4 publica em
-    # plugins/data/flight.
+    # NAO da para assumir que bate com o nome da PASTA -- so' porque todo
+    # modelo de hoje publica no proprio nome nao significa que um futuro vai
+    # fazer o mesmo (ver o comentario equivalente la' em cima).
     # -----------------------------------------------------------------------
     datadirs_publicados() {
         local dir="$1" achou=0 d
@@ -326,8 +329,8 @@ EOF
             echo "'${DEST_ABS#"$REPO_ROOT"/}' nao existe." >&2
             echo "" >&2
             echo "  Se voce ja apagou a pasta a mao, a informacao de propriedade foi junto:" >&2
-            echo "  o nome do artefato NAO e' derivavel do nome da pasta (models/players/A-4" >&2
-            echo "  publica libflight.so em plugins/data/flight). Remova o artefato pelo nome:" >&2
+            echo "  o nome do artefato nao e' necessariamente derivavel do nome da pasta (nada" >&2
+            echo "  impede um modelo de publicar .so/dados com outro nome). Remova pelo nome:" >&2
             echo "" >&2
             echo "    scripts/models.sh --remove --so lib<X>.so [--data <dir>]" >&2
             echo "" >&2
@@ -595,7 +598,8 @@ imprimir_checklist() {
 Falta, MANUALMENTE (nada disto e automatizavel):
 
   [ ] a regra de negocio de verdade (docs/PRIMEIROS-PASSOS.md, passo 5 --
-      domain -> ubf/State -> ubf/Behavior -> ubf/Action -> xnative/factory)
+      domain -> ubf/State -> bt/nodes + a arvore em configs/, onde a decisao de fato
+      mora -> ubf/Behavior -> ubf/Action -> xnative/factory -> src/plugin.cpp)
   [ ] preservar as chamadas ao xboard em ubf/*Action::execute() (a UNICA obrigacao que
       falha em silencio -- ver models/template/docs/CONTRATO.md secao 3)
   [ ] atualizar xnative/factory.cpp (NOMES[]/METAS[]) se classes forem renomeadas/removidas

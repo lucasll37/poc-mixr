@@ -1,5 +1,4 @@
-#ifndef __xnative_AlertDatalink_H__
-#define __xnative_AlertDatalink_H__
+#pragma once
 
 #include "mixr/models/system/Datalink.hpp"
 
@@ -10,7 +9,7 @@ namespace mixr {
 namespace base { class Time; }
 
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: AlertDatalink
@@ -128,8 +127,7 @@ private:
    bool setSlotHoldTime(const base::Time* const);
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

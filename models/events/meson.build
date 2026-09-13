@@ -23,7 +23,10 @@ events_inc_dir = include_directories('..')
 # payload aqui e um mixr::base::Object de verdade (DECLARE_SUBCLASS,
 # ref-contagem, RTTI proprio do framework) -- precisa de mixr_dep.
 events_lib = shared_library('events',
-    files('payloads/EID_ALERT/TacticalAlert.cpp'),
+    files(
+        'payloads/EID_ALERT/TacticalAlert.cpp',
+        'payloads/EID_PING/PingMessage.cpp',
+    ),
     include_directories : events_inc_dir,
     dependencies        : mixr_dep,
     install             : true,

@@ -48,7 +48,7 @@ mensagem de commit em uso.
   por `tests/native/test_paratrooper_release.cpp`/`test_paratrooper_stick.cpp` como bancada leve,
   pra esses testes não precisarem linkar `libparatrooper.so`. Medido rodando (600 s simulados,
   `-threads 2`, `MsgFeed` temporário de instrumentação): 1 liberação em `wp2` (a mesma cadência
-  já registrada em `src/poc/c130-airdrop/README.md` — uma por volta, e uma volta completa leva
+  já registrada em `sandbox/C-130-6DOF/README.md` — uma por volta, e uma volta completa leva
   bem mais que 270 s), o paraquedista percorre queda livre (~660 m AGL na largada, medido pelo
   próprio C-130) até pouso limpo em ~24 s (`damage=0`/`crashedFlag=0`/`killedFlag=0`, altitude
   estável pelos 305 s restantes de simulação — sem drift, sem re-trigger). Determinismo

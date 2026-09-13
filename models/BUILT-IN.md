@@ -500,7 +500,8 @@ O schema `DataRecord.proto` por trás é fechado (sem campo de texto livre) — 
 
 `Player::updateSystemPointers()` resolve por **tipo** (não por nome de slot) os ~10 papéis
 primários de um `Player` — `findByType()` acha o primeiro componente de `components:` cuja cadeia
-de herança bate com o tipo procurado (ver CLAUDE.md, seção do `built-in_mixr_1`).
+de herança bate com o tipo procurado (ver CLAUDE.md, seção "`built-in_mixr_1`/`full-systems-nav` —
+removidas como pocs").
 
 Sete desses papéis (`Pilot`, `Navigation`, `Datalink`, `Radio`, `Gimbal`, `RfSensor`,
 `OnboardComputer`) já são classes concretas dentro de `mixr::models` (tabelas acima) — usáveis
@@ -669,6 +670,6 @@ repositório, se algum dia precisar, devem ocupar).
 - [`REGISTRO.md`](REGISTRO.md) — quem já está mexendo em qual modelo deste repositório (os
   próprios, não os nativos catalogados aqui)
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — o roteiro de contribuir com um modelo novo
-- [`../src/poc/built-in_mixr_1/README.md`](../src/poc/built-in_mixr_1/README.md) — o inventário
+- [`../tests/fixtures/README.md`](../tests/fixtures/README.md) — o inventário
   parcial (53 das 96 classes de `mixr::models`, as que cabem nos ~10 papéis primários de um único
   `Player`) que este documento generaliza para as 225 classes nativas construíveis do fork inteiro

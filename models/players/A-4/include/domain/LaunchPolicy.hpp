@@ -1,5 +1,8 @@
 #pragma once
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 //------------------------------------------------------------------------------
@@ -24,3 +27,6 @@ struct LaunchEnvelope
 bool inLaunchEnvelope(const LaunchEnvelope& env, double rangeM, double relBearingDeg);
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

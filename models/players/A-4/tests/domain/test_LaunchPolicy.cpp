@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 namespace {
 
@@ -47,3 +50,6 @@ TEST(LaunchPolicy, BordaDoConeEInclusiva)
 
 } // namespace
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -1,5 +1,4 @@
-#ifndef __xnative_ubf_AltitudeSafetyBehavior_H__
-#define __xnative_ubf_AltitudeSafetyBehavior_H__
+#pragma once
 
 #include "mixr/base/ubf/AbstractBehavior.hpp"
 
@@ -7,7 +6,7 @@ namespace mixr {
 namespace base { class Distance; class Number; }
 
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: AltitudeSafetyBehavior
@@ -71,8 +70,7 @@ private:
    bool setSlotRecoverClearance(const base::Distance* const);
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

@@ -5,7 +5,7 @@
 // colisao (libs/xplugin/PluginRegistry.cpp:412-444): bad_collide.cpp declara
 // um nome que o FRAMEWORK ja constroi ("Aircraft" -- builtinFactory_(n) !=
 // nullptr, mensagem "JA e construido pelo framework"); este declara um nome
-// que outro PLUGIN ja registrou ("FlightAction", do libflight.so de
+// que outro PLUGIN ja registrou ("FlightAction", do libA-4.so de
 // producao -- registry().find(n) != registry().end(), mensagem "ja foi
 // registrado por <dono>"). As duas ramificacoes sao codigo DIFERENTE
 // (PluginRegistry.cpp:416-430 contra 431-443) e so esta segunda cobre o
@@ -14,7 +14,7 @@
 // (guarda ESTATICA, so compara nomes ENTRE modelos sob models/players/) nao
 // alcanca: ela nunca chama loadModule() de verdade.
 //
-// Por isso este .so so faz sentido carregado JUNTO com libflight.so (ver
+// Por isso este .so so faz sentido carregado JUNTO com libA-4.so (ver
 // run_plugin_negatives.py, caso "plugin colide com nome de OUTRO plugin ja
 // carregado") -- sozinho ele carregaria sem erro nenhum.
 //
@@ -23,7 +23,7 @@
 
 namespace {
 mixr::base::Object* fabrica(const char*) { return nullptr; }
-const char* const NAMES[] = { "FlightAction", nullptr };   // <- o defeito: nome ja usado por libflight.so
+const char* const NAMES[] = { "FlightAction", nullptr };   // <- o defeito: nome ja usado por libA-4.so
 }
 
 extern "C" MIXR_PLUGIN_EXPORT const mixr::xplugin::PluginDescV1* mixr_plugin_v1(void)

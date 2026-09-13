@@ -16,6 +16,8 @@
 
 #include <string>
 
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
+
 namespace {
 
 constexpr double TOL{1e-9};

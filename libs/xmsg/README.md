@@ -2,7 +2,8 @@
 
 Escolher **o que** sai da simulação e **quando** sai vira configuração no `.edl`, não recompilação:
 um `( MsgFeed )` amostra os players, avalia condições (mudou / cruzou limiar / muda rápido demais)
-e entrega o resultado a uma lista de destinos, em NDJSON.
+e entrega o resultado a uma lista de destinos, em NDJSON (*Newline Delimited JSON* — um objeto
+JSON por linha, sem array externo).
 
 ## Como se usar
 
@@ -79,8 +80,11 @@ menos não é silenciosa, mas o cenário perde o sink. Cada poc que declara `msg
 
 A resposta óbvia — usar `DataRecorder`/`OutputHandler`/`recordData()`, que já existe no MIXR — foi
 avaliada e descartada antes de escrever qualquer coisa. O schema `DataRecord.proto` é fechado:
-`PlayerState` carrega só `pos`/`angles`/`vel` (ECEF) e `damage` — **não há combustível, motor,
-Mach nem AGL**, justamente as grandezas que `fields:` pede acima. Tokens REID de usuário
+`PlayerState` carrega só `pos`/`angles`/`vel` (`ECEF` — *Earth-Centered, Earth-Fixed*: sistema
+cartesiano com origem no centro da Terra, eixos fixos ao planeta, girando junto com ele) e
+`damage` — **não há combustível, motor,
+Mach nem AGL** (*Above Ground Level* — altitude acima do solo, ao contrário da MSL já usada em
+`altMslM`), justamente as grandezas que `fields:` pede acima. Tokens REID de usuário
 (1000-9999) são descartados em silêncio, e não existe primitiva nenhuma de mudança/limiar/
 histerese no framework (grep por `hysteresis|Schmitt|Threshold|Debounce` em `include/mixr/`: zero
 — ver o cabeçalho de `rules/Schmitt.hpp`). Remendar o `.proto` vendorizado está fora de cogitação —
@@ -153,6 +157,18 @@ evento sob saturação) é travado.
    ali emudeceria exatamente na borda que existe para reportar. `MsgFeed` amostra de
    `Station::updateData()` em vez disso — preço aceito: resolução limitada ao passo do laço que
    chama `station->updateData()` (10 Hz em tempo real, 50 Hz em `-deterministic`).
+
+## Por que é `static_library()`, não `shared_library()`
+
+`xmsg` só fala com a `Station`/`Player` nativos, do lado do HOST — nenhum modelo em
+`models/players/*` inclui `MsgFeed`/`MsgReport`/as regras de `rules/`, e o `.edl` de produção
+declara `msgFeed:` como mais um componente da `Station`, nunca dentro do plugin. Como nunca
+cruza a fronteira `dlopen` host↔plugin, fica estática, no mesmo padrão de `xtacview`/`xclock`/
+`xjoystick`/`xplugin`: as seis libs que viram `shared_library()` (`xboard`/`xlog`/`xtrack`/
+`xrlbridge`/`xinfer`/`xpyembed`) só existem porque host e plugin precisam compartilhar uma cópia
+só de algum estado através do `dlopen` — `xmsg` não tem esse requisito, e um plugin que a
+linkasse (proibido pela regra 2 de `libs/xplugin/README.md`) ganharia cópia própria dos
+estáticos dela, quebrando exatamente o compartilhamento que justifica as seis serem `.so`.
 
 ## Testes
 

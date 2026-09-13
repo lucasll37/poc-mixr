@@ -103,7 +103,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight_tc.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert FlightAgentTC FlightState
                            BtBehavior AltitudeSafetyBehavior RLBridgeBehavior
                            FlightAction }
@@ -365,7 +365,7 @@
 
                // 6-DOF nativo: JSBSim pelo adaptador do framework.
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "c310"
                   debugLevel: 0
                )
@@ -571,7 +571,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -646,7 +646,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -721,7 +721,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "c310"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "c310"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true

@@ -2,6 +2,9 @@
 
 #include <cmath>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 namespace {
@@ -51,3 +54,6 @@ RelativeGeometry relativeTo(const double ownN, const double ownE, const double o
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

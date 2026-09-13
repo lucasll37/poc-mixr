@@ -2,6 +2,9 @@
 
 #include "domain/geometry.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 namespace {
@@ -83,3 +86,6 @@ void ThreatPolicy::update(const double dt, const bool hasContact, const ThreatCo
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

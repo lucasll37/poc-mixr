@@ -22,7 +22,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(BtBehavior, "BtBehavior")
 
@@ -434,6 +434,6 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
    return action;
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

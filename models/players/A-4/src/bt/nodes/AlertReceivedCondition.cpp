@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 AlertReceivedCondition::AlertReceivedCondition(const std::string& name,
@@ -22,3 +25,6 @@ BT::NodeStatus AlertReceivedCondition::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -1,4 +1,4 @@
-# `libs/xjoystick` — controle do ownship por joystick físico
+# `libs/xjoystick` — controle do ownship (a aeronave controlada, em oposição às demais entidades simuladas) por joystick físico
 
 Aplica roll/pitch/leme/manete de um `UsbJoystick` nativo direto no `AirVehicle` indicado por
 nome, desengatando o `Autopilot` scripted enquanto o hardware estiver presente.
@@ -37,7 +37,9 @@ parte da `mixr_dep`) mais um `( JoystickIoHandler )` desta lib, no slot `ioHandl
 - Os quatro `ai:` (1 a 4) são os canais lógicos do `IoData`, definidos como `ROLL_AI`/`PITCH_AI`/
   `RUDDER_AI`/`THROTTLE_AI` em [`ChannelMap.hpp`](ChannelMap.hpp) — únicos entre este `.cpp` e o
   EDL para não repetir o número em dois lugares. Os `channel:` (0 a 3) são os canais **físicos**
-  do dispositivo, confirmados para um Logitech Extreme 3D com `tools/joystick_mapper.py`.
+  do dispositivo, confirmados para um Logitech Extreme 3D com
+  [`tools/joystick_mapper.py`](tools/joystick_mapper.py) (caminho relativo a esta pasta, não à
+  raiz do repositório).
 
 Nenhuma classe/factory própria precisa ser encadeada por quem escreve o cenário — o host já
 encadeia `mixr::linkage::factory` e a [`factory()`](factory.hpp) desta lib antes dela.
@@ -73,8 +75,9 @@ chamadas pelo laço de background do runner (`app`/pocs) na mesma cadência do r
    no controle.
 4. **O manete precisa de `offset:`/`gain:` juntos, para inverter E reescalar no mesmo passo.** O
    eixo físico do slider do Extreme 3D sai em `-1.0` no batente de potência plena e `+1.0` no de
-   cutoff. `DynamicsModel::setThrottles()` é unidirecional — `0.0` idle, `1.0` MIL, `2.0`
-   pós-combustão (ver o comentário de `DynamicsModel.hpp`; é a mesma faixa `[0.0, 2.0]` que o
+   cutoff. `DynamicsModel::setThrottles()` é unidirecional — `0.0` idle, `1.0` MIL (potência
+   militar, o máximo de empuxo sem pós-combustão), `2.0` pós-combustão (ver o comentário de
+   `DynamicsModel.hpp`; é a mesma faixa `[0.0, 2.0]` que o
    `.cpp` clampa antes de chamar `setThrottles()`) — ao contrário de roll/pitch/leme (`-1..1`,
    sem transformação nenhuma). É por isso que só o `ai: 4` leva `offset: 1.0 gain: -1.0`: o
    `AnalogInput` calcula `t = (raw - offset) * gain`, e essa combinação inverte e reescala de

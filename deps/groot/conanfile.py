@@ -159,7 +159,7 @@ class Recipe(ConanFile):
         #
         # Por que isso e' intermitente ("por vezes"): o contador de UID do BT.CPP
         # e' um 'static uint16_t uid = 1' que NUNCA zera (tree_node.cpp), com
-        # escopo por .so de plugin (medido: 'nm -C libflight.so' mostra
+        # escopo por .so de plugin (medido: 'nm -C libA-4.so' mostra
         # 'BT::getUID()::uid' como simbolo LOCAL). Logo, so' a PRIMEIRA arvore
         # construida naquele .so tem UIDs 1..N -- que e' o unico caso em que a
         # confusao UID/indice passa despercebida. Com 8 aeronaves construindo a

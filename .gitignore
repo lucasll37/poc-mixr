@@ -89,6 +89,13 @@ src/poc/**/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
 
+# tests/fixtures/: as duas ex-pocs relocadas (built-in_mixr_1/full-systems-nav,
+# ver tests/fixtures/README.md) continuam tendo data/{recordings,logs,messages}/
+# de verdade -- mesmo padrao das pocs, mesma razao.
+tests/fixtures/**/data/recordings/*.acmi
+tests/fixtures/**/data/logs/*.log*
+tests/fixtures/**/data/messages/*.jsonl
+
 # src/node/: so usa a propria data/logs/ no caminho de FALLBACK (cenario
 # apontado por um caminho raso demais pra derivar a pasta do proprio poc) --
 # o caso normal grava no data/logs/ do poc que esta sendo rodado, ja coberto

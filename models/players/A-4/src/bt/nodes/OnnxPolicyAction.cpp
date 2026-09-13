@@ -9,6 +9,9 @@
 
 #include <array>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 OnnxPolicyAction::OnnxPolicyAction(const std::string& name, const BT::NodeConfiguration& config,
@@ -101,3 +104,6 @@ BT::NodeStatus OnnxPolicyAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

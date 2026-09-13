@@ -1,11 +1,10 @@
-#ifndef __xnative_ubf_RLBridgeBehavior_H__
-#define __xnative_ubf_RLBridgeBehavior_H__
+#pragma once
 
 #include "mixr/base/ubf/AbstractBehavior.hpp"
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: RLBridgeBehavior
@@ -45,8 +44,7 @@ public:
                                         const double dt) override;
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

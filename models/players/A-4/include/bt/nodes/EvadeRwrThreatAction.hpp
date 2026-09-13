@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/action_node.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // Entrega o comando que rwrThreatPolicy() ja' fixou na entrada da manobra
@@ -32,3 +35,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

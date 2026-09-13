@@ -21,6 +21,12 @@ tokens em código — este arquivo é a HISTÓRIA de como ele cresceu, não subs
 
 ### Adicionado
 
+- **`events::EID_PING` / `events::PingMessage`** ([payloads/EID_PING/PingMessage.hpp](payloads/EID_PING/PingMessage.hpp)) —
+  segundo evento da convenção, e o primeiro em que emissor e receptor são a MESMA classe
+  (`mixr::models::xBeacon::Beacon`, `models/players/Beacon` — modelo novo, criado só para exercitar
+  esta convenção, sem nenhum subsistema nativo por trás). Broadcast direto (caminho b), payload com
+  campos de verdade (remetente, sequência, mensagem) — não os dois `uint32` crus de um
+  `REID_MARKER`. Cenário de demonstração: `src/poc/my-event/`. (2026-09-13)
 - **`events::EID_ALERT` / `events::TacticalAlert`** ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) —
   primeiro evento da convenção, generalizando o `xnative::TacticalAlert` que já existia só dentro
   de `models/players/A-4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do

@@ -20,7 +20,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 namespace {
 
@@ -260,7 +260,7 @@ bool FlightAction::execute(base::Component* actor)
    // valor antes de chegar aqui (redundante, inofensivo, mesma tag) -- esta
    // linha existe porque este e o unico ponto de atuacao comum a QUALQUER
    // agente que chame FlightAction::execute() (inclusive um player sem
-   // agente proprio, via xnative::ThreadTagProbe -- ver CLAUDE.md).
+   // agente proprio, via xA_4::ThreadTagProbe -- ver CLAUDE.md).
    // threadTag() e por-thread (cache thread_local), entao o valor reflete a
    // thread do pool T/C que de fato processou este player no frame.
    xboard::setThreadTag(player->getID(), xboard::threadTag());
@@ -317,8 +317,8 @@ bool FlightAction::execute(base::Component* actor)
          auto* const flyout = storesMgr->releaseOneMissile();
          if (flyout != nullptr) {
             flyout->setTargetPlayer(target, /*posTrkEnb=*/true);
-            // LOG(INFO) << "[FlightAction] " << playerName
-            //           << ": missil lancado contra " << launchTargetName;
+            LOG(INFO) << "[FlightAction] " << playerName
+                      << ": missil lancado contra " << launchTargetName;
             flyout->unref();   // releaseOneMissile() devolve pre-ref'd
          } else {
             LOG(WARNING) << "[FlightAction] " << playerName
@@ -330,6 +330,6 @@ bool FlightAction::execute(base::Component* actor)
    return true;
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

@@ -6,7 +6,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 namespace {
 const char* const RADAR_GIMBAL_NAME{"radar"};
@@ -34,6 +34,6 @@ RadarScanInfo radarScanOf(const models::AirVehicle* const air)
    return info;
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

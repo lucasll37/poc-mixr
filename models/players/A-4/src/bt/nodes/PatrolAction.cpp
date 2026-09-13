@@ -2,6 +2,9 @@
 
 #include "bt/DecisionContext.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 PatrolAction::PatrolAction(const std::string& name, const BT::NodeConfiguration& config,
@@ -30,3 +33,6 @@ BT::NodeStatus PatrolAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

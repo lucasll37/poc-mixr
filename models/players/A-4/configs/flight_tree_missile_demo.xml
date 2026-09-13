@@ -1,10 +1,10 @@
 <!--
-  Arvore de DEMONSTRACAO de lancamento de missil -- NAO e a arvore de
+  Arvore de DEMONSTRACAO de lancamento de missil - NAO e a arvore de
   producao (essa continua em flight_tree.xml, intocada).
 
   Usada so' pelo cenario sandbox/A4-6DOF-MISSILE, no player atirador: mesma
   prioridade do flight_tree.xml, com UM ramo novo entre "voltar pra base" e
-  "evadir" -- disparar contra o contato, quando ha arma disponivel e ele
+  "evadir" - disparar contra o contato, quando ha arma disponivel e ele
   esta dentro do envelope de lancamento (domain/LaunchPolicy.hpp).
 
   Prioridade (Fallback, de cima para baixo):
@@ -17,11 +17,11 @@
   O item 2 dispara UMA vez por engajamento sem precisar de estado proprio na
   arvore: apos o disparo, StoresMgr::available() cai (um cenario com um so'
   missil no cabide vai a zero), weaponReady vira false no PROXIMO frame, e
-  LaunchEnvelope deixa de suceder sozinho -- ver o comentario de
+  LaunchEnvelope deixa de suceder sozinho - ver o comentario de
   bt_nodes::LaunchMissileAction::tick().
 
   O disparo em si (StoresMgr::releaseOneMissile() + setTargetPlayer()) NAO
-  acontece aqui -- nenhum no toca em objeto MIXR. LaunchMissileAction so'
+  acontece aqui - nenhum no toca em objeto MIXR. LaunchMissileAction so'
   marca o pedido; quem executa e' xnative::FlightAction::execute() (ver o
   comentario la).
 -->

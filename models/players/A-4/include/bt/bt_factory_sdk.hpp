@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // Registra os nos que dependem do SDK do poc-mixr (libs/xinfer,
@@ -23,3 +26,6 @@ namespace bt_nodes {
 void registerSdkNodes(BT::BehaviorTreeFactory& factory, const NodeContext& context);
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

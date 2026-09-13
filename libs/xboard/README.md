@@ -1,21 +1,23 @@
 # `libs/xboard` — o quadro de leitura entre host e modelo
 
-Um mapa `playerId → Readout` (rótulo de comportamento, contagem de decisões, thread do pool T/C,
-alerta tático, contadores de datalink, varredura de radar) — a **única** coisa que o host
-executável e o modelo carregado por `dlopen` compartilham.
+Um mapa `playerId → Readout` (rótulo de comportamento, contagem de decisões, thread do pool de
+tempo crítico (T/C), alerta tático, contadores de datalink, varredura de radar) — a **única**
+coisa que o host executável e o modelo carregado por `dlopen` compartilham.
 
 ## Como se usar
 
 Não há slot de EDL: `xboard` não é uma classe MIXR, é uma API C++ livre, escrita pelo modelo e
 lida pelo host. O que o cenário precisa é só carregar um plugin que a use — o `flight`, por
-exemplo, via `PluginModule`:
+exemplo, via `PluginModule` (a carga dinâmica em si — o que `PluginLoader`/`PluginModule` fazem —
+é o assunto de [`libs/xplugin/README.md`](../xplugin/README.md); aqui o que importa é só que o
+plugin carregado passa a escrever no quadro):
 
 ```
 components: {
    plugins: ( PluginLoader
       searchPaths: { "./dist/lib/mixr-plugins/" }
       modules: {
-         ( PluginModule  file: "libflight.so"
+         ( PluginModule  file: "libA-4.so"
             provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                         FlightState BtBehavior AltitudeSafetyBehavior
                         RLBridgeBehavior FlightAction } )
@@ -25,7 +27,12 @@ components: {
 ```
 
 **Lado que escreve — dentro do plugin**, no ponto de atuação do `FlightAgentTC`, depois de o
-`UbfArbiter`/`Fallback` já ter escolhido o vencedor (`models/players/A-4/src/ubf/FlightAction.cpp`):
+`UbfArbiter` (o `Arbiter` nativo do UBF, que compõe vários `Behavior` por votação — ver
+`contexts/MIXR-CONTEXT.md` §14.3) ou o `Fallback` da árvore de comportamento já ter escolhido o
+vencedor (`models/players/A-4/src/ubf/FlightAction.cpp`).
+Sem prefixo `mixr::` porque esse `.cpp` já está aninhado em `namespace mixr { namespace models {
+namespace xnative { ... } } }` — a busca de nome do C++ enxerga `mixr::xboard` a partir dali sem
+qualificar:
 
 ```cpp
 #include "xboard/Board.hpp"
@@ -40,7 +47,8 @@ xboard::setThreadTag(player->getID(), xboard::threadTag());
 
 **Lado que lê — no host**, para compor `bt=`/`dec=` no dump determinístico
 (`app/src/app/DeterministicDump.cpp`) ou o quadro ao vivo da TUI
-(`app/src/app/DashboardState.cpp`):
+(`app/src/app/DashboardState.cpp`). Aqui o `mixr::` é obrigatório: esses arquivos vivem em
+`namespace app { ... }`, fora de `mixr`, então o caminho tem de ser escrito por inteiro:
 
 ```cpp
 #include "xboard/Board.hpp"
@@ -52,9 +60,9 @@ out << " bt=" << board.label << " dec=" << board.decisions;
 Um playerId sem nenhuma escrita ainda devolve `Readout{}` (`label="--"`, `decisions=0`,
 `threadTag=-1`) — é o valor com que toda aeronave nasce no dump, não um erro.
 
-## Por que esta é a ÚNICA `shared_library()` de `libs/` até este ponto
+## Por que esta é uma `shared_library()` de `libs/`, e não `static_library()`
 
-As demais libs "leves" de `libs/` (`xtacview`, `xclock`, `xjoystick`, `xmsg`) são
+Outras libs "leves" de `libs/` (`xtacview`, `xclock`, `xjoystick`, `xmsg`, `xplugin`) são
 `static_library()`. `xboard` não pode ser, e o motivo é estrutural, não de gosto: quem **escreve**
 aqui é o modelo, que mora num `.so` carregado com `dlopen`; quem **lê** é o host, que é o
 executável. Com uma lib estática cada lado ganharia sua **própria cópia** dos mapas — o modelo
@@ -62,12 +70,14 @@ escreveria num, o host leria do outro, e o dump sairia com `bt=--`/`dec=0` para 
 de link, sem crash, sem aviso** — só o número errado, silenciosamente, pra sempre. É a mesma
 armadilha documentada no cabeçalho de `libs/xplugin/PluginAbi.hpp`, e a saída que
 `libs/xplugin/README.md` já registra como a honesta quando um plugin precisa de código
-compartilhado: promover a peça a `shared_library()` com SONAME em vez de relaxar a regra de que um
-plugin só depende de `mixr_dep` + `xplugin_abi_dep`.
+compartilhado: promover a peça a `shared_library()` com **SONAME** (`Shared Object Name` — o nome
+interno gravado no `.so`, usado pelo *loader* para identificar a biblioteca em tempo de execução)
+em vez de relaxar a regra de que um plugin só depende de `mixr_dep` + `xplugin_abi_dep`.
 
 `meson.build` instala a lib (`install_dir: get_option('libdir')`, `install_tag: 'sdk'`) pelo mesmo
-motivo: o executável em `dist/bin/` precisa achá-la em `dist/lib/`, e é isso que o rpath
-`$ORIGIN/../lib` dos alvos que a consomem espera.
+motivo: o executável em `dist/bin/` precisa achá-la em `dist/lib/`, e é isso que o **rpath**
+(`run-time search path` — a lista de diretórios, gravada no próprio binário, onde o *loader*
+procura bibliotecas compartilhadas) `$ORIGIN/../lib` dos alvos que a consomem espera.
 
 ## Concorrência
 
@@ -91,7 +101,9 @@ míssil processados lado a lado no mesmo frame. Com uma única `libxboard.so` co
 
 ## Testes
 
-`tests/domain/test_xboard_concurrency.cpp` (suíte `domain`) — nunca tinha teste direto antes
+`tests/domain/test_xboard_concurrency.cpp` (suíte `domain` do **host** — `tests/meson.build`,
+`make test`; não confundir com a suíte `domain` do MODELO, dentro de `make test-models`, ver
+[`tests/README.md`](../../tests/README.md)) — nunca tinha teste direto antes
 dele: só validação indireta pelos números `dec=`/`bt=`/`thread=` nos dumps end-to-end. Cobre
 incrementos concorrentes exatos (8 threads × 200000, sem perda), escritores concorrentes em
 chaves diferentes não se atropelando, os seis setters gravando os campos certos sem vazar um no

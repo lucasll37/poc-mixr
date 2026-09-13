@@ -1,5 +1,8 @@
 #pragma once
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 // Comando de voo "de alto nivel" produzido pelas regras de negocio puras
@@ -33,3 +36,6 @@ struct FlightCommand
 };
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

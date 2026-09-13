@@ -2,7 +2,7 @@
 """Treina PPO (Stable-Baselines3) contra MixrFlightEnv e salva o checkpoint.
 
 Caso de uso completo do ambiente de src/rl -- nao um brinquedo: PPO de
-verdade, contra a Station de verdade (mesmo plugin libflight.so que
+verdade, contra a Station de verdade (mesmo plugin libA-4.so que
 flight/app usam), com checkpoints periodicos (o
 episodio inteiro depende do JSBSim integrando em tempo real de CPU; perder
 progresso a um crash no meio de 200k passos custa caro) e salvamento no

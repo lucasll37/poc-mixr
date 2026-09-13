@@ -14,7 +14,7 @@
   <BehaviorTree ID="MainTree">
     <Fallback name="root">
 
-      <PyDecide script="./dist/share/mixr-plugins/flight/policy_example.py"
+      <PyDecide script="./dist/share/mixr-plugins/A-4/policy_example.py"
                 label="PY"/>
 
       <Patrol/>

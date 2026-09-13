@@ -2,16 +2,21 @@
 
 Sob `src/poc/` por escolha, mas de natureza diferente das outras pastas dali
 (as pocs sob `src/poc/dis/` e as demais -- cenarios EDL, sem `main.cpp` proprio
-desde que `./app` virou o runner unico; ver a tabela em `CLAUDE.md`): esta pasta nao
+desde que `./app` virou o runner unico; ver `CLAUDE.md`, secao "Estrutura de
+um subprojeto"): esta pasta nao
 produz nenhum binario, e so Python. Separada de [`src/rl`](../../rl/) pelo
 mesmo motivo que separa `models/players/A-4` (o modelo) de `src/poc/*` (quem
 consome): `src/rl` e so o AMBIENTE (`mixr_gym.MixrFlightEnv`, contrato
 reset/step/observacao); aqui e onde entram as dependencias de treino e o
 script que de fato roda um algoritmo de RL contra ele.
 
-Nao entra no grafo do Meson. O unico pre-requisito nativo e o mesmo de
-sempre: `make configure && make sdk && make build && make install`, pra
-`dist/python/mixr_gym` existir.
+Nao entra no grafo do Meson. O pre-requisito nativo e o mesmo de
+sempre: `make configure && make sdk && make models && make build && make
+install` (a mesma sequencia de `src/rl/README.md`, secao "Build") -- **sem
+`make models` no meio**, `libA-4.so` (com `RLBridgeBehavior`) nunca e
+compilado nem sincronizado para `dist/`, e a `Station` que `train.py`
+levanta por baixo do pano falha ao carregar o plugin -- mesmo aviso
+silencioso de `plugins/` vazio documentado em `src/poc/python-flight/README.md`.
 
 ## Makefile AUTOCONTIDO
 
@@ -27,17 +32,37 @@ make help     # lista os alvos
 make venv     # cria .venv/ e instala requirements.txt (gymnasium+numpy+stable-baselines3+torch)
 ```
 
-Separado do `venv-rl` de `src/rl/` de proposito: o ambiente nao precisa saber
-com que algoritmo alguem vai treinar contra ele, entao as dependencias de
-treino ficam so aqui, nunca em `src/rl/requirements.txt`.
+Separado do alvo `make venv-rl` da raiz (cria `src/rl/.venv`, so com as
+dependencias minimas do proprio ambiente -- `gymnasium`+`numpy`, ver
+`src/rl/requirements.txt`) de proposito: o ambiente nao precisa saber com que
+algoritmo alguem vai treinar contra ele, entao as dependencias de treino
+ficam so aqui, nunca em `src/rl/requirements.txt`.
 
 ## Treinar
+
+**Armadilha de nome nesta propria pasta**: `configs/scenario_rl.edl` aqui e uma
+copia byte-identica de `src/rl/configs/scenario_rl.edl`, mas `train.py`/
+`MixrFlightEnv` **nunca** leem esta copia -- o cenario de fato usado
+(`DEFAULT_SCENARIO`, em `mixr_gym/env.py`) e sempre o de `src/rl/configs/`.
+Editar o arquivo desta pasta esperando afetar `make train` nao tem efeito
+nenhum; ela existe so para entrar na varredura de corpus de `.edl` que os
+testes do host rodam (ver `src/rl/README.md`, secao "Rodando", para o
+detalhe completo).
 
 `train.py` e um caso de uso completo, nao um trecho solto: PPO de verdade
 (Stable-Baselines3) contra a `Station` de verdade, com checkpoints
 periodicos e salvamento no `Ctrl+C` (o episodio inteiro depende do JSBSim
 integrando em tempo real de CPU -- perder progresso a uma interrupcao no
 meio de uma corrida longa custa caro).
+
+**Usa o `default_reward()` generico de `MixrFlightEnv`, sem nenhum shaping
+de dominio** -- custo pequeno por passo mais penalidade grande se
+`terminated` (ver `src/rl/README.md`, secao "Contrato de dados"); nao ha
+recompensa especifica para patrulhar/evadir/apoiar/retornar. `train.py` nao
+passa `reward_fn` no construtor de `MixrFlightEnv` (o proprio cabecalho do
+arquivo documenta essa escolha) -- quem quiser uma politica que de fato
+aprenda esses comportamentos precisa escrever a propria funcao de reward e
+passa-la via `reward_fn=minha_reward` na chamada de `MixrFlightEnv(...)`.
 
 ```bash
 make train                                    # 200k passos, default
@@ -55,9 +80,15 @@ PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 \
 Checkpoints saem em `./runs/checkpoints/` (periodicos) e `./runs/ppo_<player>.zip`
 (final ou parcial, se interrompido) -- gitignored, nunca versionados.
 
-**Treina com `MlpPolicy`, nao `MultiInputPolicy`** -- [`flatten_obs.py`](flatten_obs.py)
-tem um `FlattenedObservation` que embrulha `MixrFlightEnv` e achata o
-`Dict`/`Discrete` dela num `Box(28,)` plano, na ordem canonica do C++.
+**Treina com `MlpPolicy`, nao `MultiInputPolicy`** -- as duas familias de
+politica do [Stable-Baselines3](https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html)
+(a biblioteca de RL usada por `train.py`): `MlpPolicy` espera a observacao ja
+achatada num vetor (`Box`); `MultiInputPolicy` aceita um `Dict` de entradas
+separadas, uma por chave, processadas por um `CombinedExtractor` proprio do
+SB3 -- dai a diferenca de shape discutida abaixo. Por isso
+[`flatten_obs.py`](flatten_obs.py) tem um `FlattenedObservation` que embrulha
+`MixrFlightEnv` e achata o `Dict`/`Discrete` dela num `Box(28,)` plano, na
+ordem canonica do C++.
 MEDIDO QUEBRANDO ao escrever isto: uma `MultiInputPolicy` treinada direto
 sobre o `Dict` nao exporta para o contrato `.onnx` de producao
 (`float32[1,28] -> float32[1,3]`) -- o `CombinedExtractor` do SB3 exige um
@@ -122,6 +153,7 @@ relativa tipo `"./runs"` escreveria em `<raiz-do-repo>/runs/`, fora do
 
 ## Limites herdados de `src/rl`
 
-Os mesmos do ambiente (ver `src/rl/README.md`, secao "Limites conhecidos"):
-uma `Station` por processo, `import mixr_gym` antes de `numpy`/`gymnasium`,
-um agente RL por processo, um frame de latencia na atuacao.
+Os mesmos do ambiente (ver `src/rl/README.md`, secao "Limites conhecidos e
+armadilhas confirmadas rodando"): uma `Station` por processo, `import
+mixr_gym` antes de `numpy`/`gymnasium`, um agente RL por processo, um frame
+de latencia na atuacao.

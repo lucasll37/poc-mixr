@@ -1,11 +1,10 @@
-#ifndef __xnative_ThreadTagProbe_H__
-#define __xnative_ThreadTagProbe_H__
+#pragma once
 
 #include "mixr/base/Component.hpp"
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: ThreadTagProbe
@@ -46,8 +45,7 @@ protected:
    void updateTC(const double dt = 0.0) override;
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

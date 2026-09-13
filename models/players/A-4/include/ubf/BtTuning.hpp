@@ -1,12 +1,11 @@
-#ifndef __xnative_ubf_BtTuning_H__
-#define __xnative_ubf_BtTuning_H__
+#pragma once
 
 #include <cstdint>
 #include <string>
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Os numeros que o cenario ajusta no BtBehavior -- e SO eles.
@@ -105,8 +104,7 @@ struct BtTuning
    double slowRollMinMarginM{1500.0};
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

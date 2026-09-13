@@ -4,6 +4,9 @@
 
 #include "behaviortree_cpp_v3/condition_node.h"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // SUCCESS quando ha arma disponivel, contato de verdade (nao so o arrasto
@@ -23,3 +26,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

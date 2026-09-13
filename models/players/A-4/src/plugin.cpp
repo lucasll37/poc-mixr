@@ -33,12 +33,12 @@ namespace {
 // assinatura do resto do repo; a adaptacao e esta linha.
 mixr::base::Object* fabrica(const char* const name)
 {
-   return (name != nullptr) ? mixr::models::xnative::factory(std::string{name}) : nullptr;
+   return (name != nullptr) ? mixr::models::xA_4::factory(std::string{name}) : nullptr;
 }
 
 } // namespace
 
-MIXR_PLUGIN_DEFINE("flight",
+MIXR_PLUGIN_DEFINE("A-4",
                    fabrica,
-                   mixr::models::xnative::factoryNames(),
-                   mixr::models::xnative::metaObjects())
+                   mixr::models::xA_4::factoryNames(),
+                   mixr::models::xA_4::metaObjects())

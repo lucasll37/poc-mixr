@@ -2,17 +2,17 @@
 .DEFAULT_GOAL := help
 
 # ==============================================================================
-# Makefile AUTOCONTIDO do modelo `flight` (o modelo de producao; a PASTA chama-se
-# A-4, a aeronave que ele pilota -- o nome de fabrica/biblioteca continua flight).
+# Makefile AUTOCONTIDO do modelo `A-4` (o modelo de producao, nomeado pela
+# aeronave que ele pilota -- nome de pasta, de fabrica e de biblioteca iguais).
 #
 # Abra o VS Code AQUI, rode `make test` (ou qualquer alvo abaixo), e o artefato
-# (libflight.so) + os dados (flight_tree.xml, data/jsbsim/) saem em ./dist -- a
+# (libA-4.so) + os dados (flight_tree.xml, data/jsbsim/) saem em ./dist -- a
 # raiz DESTE projeto, nao a do poc-mixr. Nao chama o Makefile raiz.
 #
 # Pre-requisito, publicado pelo HOST uma vez:  cd ../../.. && make configure && make sdk
 #
 # 'install-host' e o unico alvo que toca o projeto raiz -- e so ate
-# ../../../plugins/ (lib, flat) e ../../../plugins/data/flight/, o MESMO deposito
+# ../../../plugins/ (lib, flat) e ../../../plugins/data/A-4/, o MESMO deposito
 # que um .so de terceiro usaria (ver plugins/README.md). NUNCA escreve em
 # ../../../dist/: quem sincroniza plugins/ -> dist/ e o 'make install' da raiz
 # (alvo 'sync-plugins'). Sem os dois passos o .so compila mas nao roda em cenario
@@ -34,15 +34,15 @@ YELLOW := \033[1;33m
 
 include $(ROOT)/models/common.mk
 
-build: configure ## Compila libflight.so.
+build: configure ## Compila libA-4.so.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-test: build ## Roda a suite do modelo (domain + tree + native).
+test: build ## Roda a suite do modelo (domain + tree + native + contract).
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 3 ] || { echo "$(RED)suite incompleta ($$N de 3) -- confira TESTS=true$(NC)"; exit 1; }
+	 [ "$$N" -ge 5 ] || { echo "$(RED)suite incompleta ($$N de 5) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
-install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/flight/).
+install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/A-4/).
 	@# '--only-changed': sem isto o 'meson install' recopia com mtime NOVO mesmo
 	@# com conteudo identico, e um destino mais novo que um input ja linkado (ex.:
 	@# dist/lib/libxtrack.so, do SDK) faz o ninja RELINKAR na proxima chamada.
@@ -54,14 +54,15 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/fli
 		ldd "$$so" | grep -q 'not found' && \
 			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
 	done
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/flight/"
+	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/A-4/"
 
 install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
 	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@# Copia o diretorio de dados INTEIRO, sem nome cravado: o nome nao e derivavel
-	@# do nome da pasta (pasta 'A-4', dados em 'flight/'), e um literal aqui tornaria
-	@# a remocao do modelo impossivel de automatizar. Mesmo que 'sync-plugins' faz.
+	@# Copia o diretorio de dados INTEIRO, sem nome cravado: outro modelo pode
+	@# publicar dados num nome diferente do da propria pasta, e um literal aqui
+	@# tornaria a remocao daquele modelo impossivel de automatizar. Mesmo que
+	@# 'sync-plugins' faz.
 	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
 	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
 	 fi

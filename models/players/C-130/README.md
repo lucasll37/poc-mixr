@@ -7,7 +7,7 @@ aeronave C-130 Hercules (dados JSBSim vendorizados em `shared/data/jsbsim/aircra
 para este modelo em `data/jsbsim/`). Duas capacidades:
 
 1. **Navega de verdade** por `Route`/`Steerpoint` nativo do MIXR — mesmo padrão já provado em
-   `src/poc/full-systems-nav/`: `Autopilot` nativo (`headingHoldMode`/`altitudeHoldMode`/
+   `tests/fixtures/full-systems-nav/`: `Autopilot` nativo (`headingHoldMode`/`altitudeHoldMode`/
    `velocityHoldMode`, `navMode: false`) comandado por uma árvore de comportamento de **um nó só**
    (`Navigate`, sem `Fallback`) que relaia a guiagem que `Route::autoSequencer()`/
    `Steerpoint::compute()` já calculam a cada frame, independente do agente. Sem combate, sem
@@ -21,14 +21,14 @@ para este modelo em `data/jsbsim/`). Duas capacidades:
    contra uma classe concreta. O modelo `models/players/paratrooper` (produção, FSM completa:
    queda livre, paraquedas, pouso) já substitui isso hoje — a classe concreta declarada na estação
    + `provides:` de `libparatrooper.so`, sem nenhuma mudança de C++ aqui — em
-   `src/poc/c130-airdrop` e em `sandbox/C-130_paratrooper-6DOF`. `ParatrooperPlaceholder` (um
+   `sandbox/C-130-6DOF` e em `sandbox/C-130_paratrooper-6DOF`. `ParatrooperPlaceholder` (um
    `Effect` nativo trivial) permanece no `.so` e em `provides:`, mas hoje só como bancada dos
    testes nativos deste modelo (`tests/native/test_paratrooper_release.cpp`/
    `test_paratrooper_stick.cpp`) — não é mais usada por nenhum cenário de produção.
 
 Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para a arquitetura completa, e
-[`src/poc/c130-airdrop/README.md`](../../../src/poc/c130-airdrop/README.md) para o cenário de
-demonstração (a poc que exercita este modelo).
+[`sandbox/C-130-6DOF/README.md`](../../../sandbox/C-130-6DOF/README.md) para o cenário de
+demonstração (o sandbox que exercita este modelo navegando uma rota).
 
 ## Estrutura
 
@@ -75,6 +75,7 @@ cd ../../.. && make configure && make sdk
 cd models/players/C-130
 make build            # -> ./dist/lib/mixr-plugins/libC-130.so
 make test             # domain + tree + native + forma do .so
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install-host     # copia pra ../../../plugins/ (deposito compartilhado)
 ```
 
@@ -89,7 +90,7 @@ As seis classes deste modelo se registram como `"C130FlightAgentTC"`, `"C130Acti
 compara nome de fábrica par a par entre **todos** os modelos sob `models/`, independente de alguma
 vez serem carregados juntos no mesmo `.edl` — reaproveitar os nomes da A-4 derrubaria essa guarda
 na hora. O EDL de qualquer cenário que carregue este modelo precisa usar os nomes `C130*` — ver
-`src/poc/c130-airdrop/configs/scenario_c130_airdrop.edl.in`.
+`sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in`.
 
 ## Se você quiser mais contexto
 

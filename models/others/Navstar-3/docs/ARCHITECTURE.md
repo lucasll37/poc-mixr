@@ -62,7 +62,8 @@ mascara de clamp ao solo (so' se aplica a `GROUND_VEHICLE|SHIP|BUILDING|LIFE_FOR
 declarado. A UNICA coisa a evitar e' declarar `gamingAreaRange:` finito no `WorldModel` --
 `setGeocPosition()` marca `posVecValid=false` quando a distancia local excede esse raio, e uma
 orbita MEO facilmente excede qualquer raio de "area de jogo" tipico de cenario militar. O cenario
-de producao deste modelo (`src/poc/navstar3-orbit`) simplesmente nao declara esse slot.
+de demonstracao deste modelo (`sandbox/Navstar-3-constellation`) simplesmente nao declara esse
+slot.
 
 ## O propagador orbital -- `domain::CircularOrbit`
 
@@ -165,8 +166,8 @@ frame.
 inteiro que o agente ja recupera (`dt*4`). E' o que mantem a orbita reproduzivel entre 1, 2 e 4
 threads de tempo critico: a mesma sequencia fixa de `dt` produz a MESMA sequencia de posicoes,
 independente de quantas threads o pool tem. Medido: `tests/determinism/check_determinism.sh`
-sobre `src/poc/navstar3-orbit`, 1200 frames, 1/2/4 threads T/C (mais a repeticao de 4), dumps
-byte-identicos.
+sobre `sandbox/Navstar-3-constellation`, 1200 frames, 1/2/4 threads T/C (mais a repeticao de 4),
+dumps byte-identicos.
 
 ## Sem classe de "corpo fisico" propria -- `( SpaceVehicle )` e' nativa
 
@@ -210,9 +211,10 @@ um leitor comparando contra a formula ingenua de orbita circular esperaria ~3874
 - Efemeride solar real (data/hora -> posicao do sol) -- ver "Sol/sombra" acima.
 - Atitude apontada para o nadir -- `setEulerAngles()` cosmetico para o Tacview, ideia registrada
   mas nao implementada (nenhum consumidor deste modelo precisa de atitude correta hoje).
-- Constelacao completa -- o modelo aceita multiplas instancias (elementos orbitais sao slots por
-  instancia), mas o cenario de producao (`src/poc/navstar3-orbit`) demonstra so' UM satelite,
-  correspondendo ao pedido original ("um satelite... Navstar-3").
+- Constelacao com o numero real de planos GPS (6, nao 4) -- o modelo ja aceita multiplas
+  instancias (elementos orbitais sao slots por instancia) e isso ja e' demonstrado com quatro
+  satelites, um por plano orbital, em `sandbox/Navstar-3-constellation`; ir alem de quatro planos
+  e' so' mais EDL, sem mudanca de C++, mas nao foi feito por nao ter sido pedido.
 
 ## Ler tambem
 

@@ -36,6 +36,7 @@ public:
    const char* getNickname() const override;    // "GuidedMissile"
 
    void updateTC(const double dt = 0.0) override;
+   void atReleaseInit() override;
 
 protected:
    void weaponGuidance(const double dt) override;

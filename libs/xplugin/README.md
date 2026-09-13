@@ -16,7 +16,7 @@ No cenário, como **primeira entrada de `components:`** da Station:
       plugins: ( PluginLoader
          searchPaths: { "./dist/lib/mixr-plugins/" }
          modules: {
-            ( PluginModule  file: "libflight.so"
+            ( PluginModule  file: "libA-4.so"
                provides: { AlertDatalink TacticalAlert FlightState
                            BtBehavior AltitudeSafetyBehavior FlightAction } )
          }
@@ -54,19 +54,21 @@ Fora de ordem, o parser chega na classe do plugin sem ninguém que responda por 
 
 1. **`shared_module()`, não `library()`.** Produz artefato não-linkável, o que impede
    estruturalmente que alguém o ponha num `link_with:` e acabe com duas cópias de
-   `Player::metaObject` no processo (o símbolo é `GLOBAL OBJECT` forte — exatamente um por
+   `Player::metaObject` no processo (o símbolo é **`GLOBAL OBJECT`** — o par tipo/binding que
+   `nm`/`readelf` reportam para um dado de escopo global — forte, ou seja exatamente um por
    processo).
 2. **`dependencies:` só pode conter `mixr_dep`, `xplugin_abi_dep`, `xlog_dep`, `xboard_dep`,
-   `xtrack_dep` e `xrlbridge_dep`.**
+   `xtrack_dep`, `xrlbridge_dep`, `xinfer_dep` e `xpyembed_dep`.**
    Nunca `xmsg_dep`, `xtacview_dep`, `xclock_dep` ou `xjoystick_dep`: as quatro são
    `static_library()`, e o `.so` ganharia a **própria cópia** dos estáticos delas. É a armadilha de
    `contexts/BTCPP-CONTEXT.md:7262-7270`.
 
-   `xlog`, `xboard`, `xtrack` e `xrlbridge` são exceção porque foram **promovidas a
-   `shared_library()`** exatamente por isto — é a saída documentada no item 6 dos Limites,
-   aplicada. As libs do MIXR já eram `.so` de verdade, com tudo exportado. (Um modelo que enxerga
-   estes quatro nomes por fora do SDK publicado — via `sdk_dep`, um único `pkg-config` agregado —
-   nem precisa declará-los individualmente; a regra vale igual para quem os consome direto.)
+   `xlog`, `xboard`, `xtrack`, `xrlbridge`, `xinfer` e `xpyembed` são exceção porque foram
+   **promovidas a `shared_library()`** exatamente por isto — é a saída documentada no item 6 dos
+   Limites, aplicada. As libs do MIXR já eram `.so` de verdade, com tudo exportado. (Um modelo que
+   enxerga estes seis nomes por fora do SDK publicado — via `sdk_dep`, um único `pkg-config`
+   agregado — nem precisa declará-los individualmente; a regra vale igual para quem os consome
+   direto.)
 
    **Biblioteca estática de terceiro é caso à parte:** a BehaviorTree.CPP deste pacote Conan é um
    `.a` com 447 símbolos `T` globais, e `gnu_symbol_visibility: 'hidden'` **não se aplica a
@@ -80,8 +82,9 @@ Fora de ordem, o parser chega na classe do plugin sem ninguém que responda por 
 
 ## O que o contrato garante
 
-`PluginDescV1` (ver `PluginAbi.hpp`) é um POD com `struct_size` na frente, devolvido por um
-símbolo `extern "C"` de nome fixo. **Dois mecanismos de versão, para dois tipos de mudança:**
+`PluginDescV1` (ver `PluginAbi.hpp`) é um **POD** (`Plain Old Data` — um tipo sem
+construtor/destrutor customizado nem métodos virtuais, com layout de memória previsível) com
+`struct_size` na frente, devolvido por um símbolo `extern "C"` de nome fixo. **Dois mecanismos de versão, para dois tipos de mudança:**
 `struct_size` + `abi` cobrem mudança *aditiva* (campo novo no fim); o `_v1` **no nome do símbolo**
 cobre mudança *destrutiva* — um host novo procura `mixr_plugin_v2` e um plugin velho falha com
 "símbolo ausente" em vez de ter os bytes reinterpretados.
@@ -97,8 +100,9 @@ cobre mudança *destrutiva* — um host novo procura `mixr_plugin_v2` e um plugi
 interoperam hoje, em produção. Uma checagem de igualdade rejeitaria todo plugin correto.
 
 **Por que a contagem de slots não é usada como guarda:** `BEGIN_SLOT_MAP` lê
-`BaseClass::getSlotTable().n()` em **runtime**, via PLT (`macros.hpp:305`), e `SlotTable::n()`
-percorre a cadeia viva. Medido: o plugin vê os 45 slots acumulados do host e põe os seus em 46 e
+`BaseClass::getSlotTable().n()` em **runtime**, via **PLT** (`Procedure Linkage Table` — o
+mecanismo de ligação dinâmica do ELF que resolve a chamada para o símbolo de verdade em tempo de
+execução, `macros.hpp:305`), e `SlotTable::n()` percorre a cadeia viva. Medido: o plugin vê os 45 slots acumulados do host e põe os seus em 46 e
 47. Drift de contagem na base **não desalinha** o plugin — recusar por isso mataria plugins que
 funcionam.
 
@@ -149,8 +153,10 @@ Esta seção existe porque um contrato que promete demais é pior do que nenhum.
 ## Por que `RTLD_LOCAL`, contra o prior art do BehaviorTree.CPP
 
 O BT.CPP usa `RTLD_GLOBAL` (`BTCPP-CONTEXT.md:8641`) com um comentário herdado do POCO dizendo
-que *"RTTI não funciona para tipos definidos na shared library"*. Isso está **obsoleto para este
-caso**: no Linux/GCC `__GXX_MERGED_TYPEINFO_NAMES == 0`, então `type_info::operator==` cai em
+que a **RTTI** (`Run-Time Type Information` — a informação de tipo que `dynamic_cast`/`typeid`
+consultam em tempo de execução) *"não funciona para tipos definidos na shared library"*. Isso está
+**obsoleto para este caso**: no Linux/GCC `__GXX_MERGED_TYPEINFO_NAMES == 0`, então
+`type_info::operator==` cai em
 `strcmp`, e o payload real na `.so` entregue (`_ZTSN4mixr6models6PlayerE` = `"N4mixr6models6PlayerE\0"`)
 não tem o `*` inicial que forçaria comparação por endereço. Além disso, o escopo de busca de um
 objeto `RTLD_LOCAL` **já inclui** o escopo global.
@@ -163,6 +169,25 @@ Confirmado rodando, com o plugin em `-fvisibility=hidden` e `RTLD_LOCAL`:
 `dynamic_cast<AirVehicle*>`, `isClassType(typeid(Player))` e `findByType` funcionam. É o teste
 `plugin-contrato`, e ele é o **gate** dessa decisão: se ficar vermelho, tire
 `gnu_symbol_visibility: 'hidden'` do `meson.build` do plugin.
+
+## Por que é `static_library()`, não `shared_library()`
+
+Esta pasta tem dois papéis, e só um deles cruza a fronteira `dlopen`. O **contrato**
+(`PluginAbi.hpp`, `xplugin_abi_dep`) é header-only — sem uma linha de código, só declarações,
+macros e constantes — e é isso que um PLUGIN enxerga. O **registro** (`PluginRegistry`/
+`PluginLoader`/`PluginModule`, os `.cpp` que este README documenta, `xplugin_dep`) só é
+consumido pelo HOST: os executáveis que decidem qual `.so` carregar (`./app`, `./src/node`,
+`edlcheck`, `plugininfo`, os bindings de `src/rl`). Um plugin **nunca** linka `xplugin_dep` — a
+regra 2 desta página proíbe exatamente isso — então o registro nunca precisa existir dos dois
+lados do `dlopen` ao mesmo tempo, e fica `static_library()`, no mesmo padrão de `xtacview`/
+`xclock`/`xjoystick`/`xmsg`.
+
+Essa separação em dois `dependency()` é o que evita, de propósito, o problema que promoveu
+`xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed` a `shared_library()`: se um plugin
+linkasse o registro estático, ganharia a **própria cópia** dele — a aplicação registraria um
+plugin de um lado e consultaria do outro, a mesma armadilha de
+`contexts/BTCPP-CONTEXT.md:7262-7270`, só que aplicada ao próprio mecanismo de registro em vez de
+a um estado como `bt=`/`dec=`.
 
 ## Testes
 

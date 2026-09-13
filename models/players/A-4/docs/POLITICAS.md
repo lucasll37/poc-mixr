@@ -34,7 +34,7 @@ arquivo** — não recompilar. Três árvores vêm instaladas:
 | `flight_tree_py.xml` | um script Python |
 | `flight_tree_onnx.xml` | uma política `.onnx` |
 
-Todas em `dist/share/mixr-plugins/flight/`.
+Todas em `dist/share/mixr-plugins/A-4/`.
 
 **Não há árbitro aqui — leia isto antes de testar algo arriscado.** Versões anteriores deste
 diagrama tinham um `( UbfArbiter )` entre o agente e o `( BtBehavior )`, com um
@@ -83,11 +83,11 @@ A lista sai do C++, não de uma cópia em Python — é a mesma que o `.onnx` re
 
 ### 1.2 O laço rápido
 
-O nó lê o script de `dist/share/mixr-plugins/flight/`. Para iterar, **edite a cópia instalada
+O nó lê o script de `dist/share/mixr-plugins/A-4/`. Para iterar, **edite a cópia instalada
 direto** — nenhum passo de build:
 
 ```bash
-$EDITOR dist/share/mixr-plugins/flight/policy_example.py
+$EDITOR dist/share/mixr-plugins/A-4/policy_example.py
 ./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in                # ou o comando de -deterministic abaixo
 ```
 
@@ -146,9 +146,9 @@ make venv
 make train ARGS="--timesteps 200000"
 ```
 
-Ver `src/poc/rl-training/README.md` para as opções (`--player`, `--scenario`, `--seed`...) e
-`train.py --help` — ou o equivalente interativo, célula a célula, em
-`src/poc/rl-training/notebooks/train.ipynb`.
+Ver `train.py --help` para as opções (`--player`, `--scenario`, `--seed`...) — ou o equivalente
+interativo, célula a célula, em `src/poc/rl-training/notebooks/train.ipynb` (o
+`src/poc/rl-training/README.md` cobre o fluxo de treino/export, não a lista de flags).
 
 > Um `MixrFlightEnv` por **processo** — o registro de plugins é selado depois do primeiro parse.
 > Para vários episódios em paralelo, um processo por env (`multiprocessing`).
@@ -156,8 +156,8 @@ Ver `src/poc/rl-training/README.md` para as opções (`--player`, `--scenario`, 
 ### 2.2 Exportar
 
 ```bash
-PYTHONPATH=./dist/python python3 src/poc/rl-training/tools/export_onnx.py \
-    --sb3 runs/ppo_falcon.zip -o models/players/A-4/configs/policy_example.onnx
+PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \
+    --sb3 src/poc/rl-training/runs/ppo_falcon1.zip -o models/players/A-4/configs/policy_example.onnx
 ```
 
 O exportador **lê a ordem dos campos do C++**, não de uma lista em Python. É o que impede a deriva
@@ -172,7 +172,7 @@ PYTHONPATH=./dist/python python3 src/poc/rl-training/tools/export_onnx.py --rand
 ### 2.3 Implantar
 
 ```bash
-make install     # copia o .onnx para dist/share/mixr-plugins/flight/
+make install     # copia o .onnx para dist/share/mixr-plugins/A-4/
 ```
 
 Depois aponte o `treeFile:` do cenário para `flight_tree_onnx.xml`. Pronto — **sem Python no
@@ -203,7 +203,7 @@ treinar a escrever.
 <Fallback name="root">
 
   <Sequence name="engajar">
-    <OnnxScore model="./dist/share/mixr-plugins/flight/ameaca.onnx"
+    <OnnxScore model="./dist/share/mixr-plugins/A-4/ameaca.onnx"
                index="0" threshold="0.7" above="true"/>
     <ReportAndEvade/>
   </Sequence>

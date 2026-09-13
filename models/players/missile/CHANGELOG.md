@@ -18,6 +18,35 @@ mensagem de commit em uso.
 
 ---
 
+## [0.1.0] — 2026-09-13
+
+**Corrigido: `GuidedMissile` não semeava `cmdHeadingRad_`/`cmdPitchRad_`/`cmdSpeedMps_` na
+transição PRE_RELEASE→ACTIVE**, achado investigando um relato de "o míssil passa do lado do
+alvo e não acontece nada" em `sandbox/A4-6DOF-MISSILE`. `weaponDynamics()` já roda todo frame
+independente do TSG (`AbstractWeapon::dynamics()` não tem gate nenhum por TSG na chamada — só
+`weaponGuidance()` consulta `isGuidanceEnabled()`), então enquanto `tof < tsg` (1,0 s) os três
+campos ficavam no inicializador de classe (`0.0`) e o míssil guinava ativamente para
+rumo/pitch **geográfico zero** (Norte, nivelado) e desacelerava em direção a **zero m/s**, no
+turn-rate/aceleração máximos, antes de a navegação proporcional assumir — até ~66° de rumo e
+uma fração relevante da velocidade perdidos logo no primeiro segundo de voo, medido no próprio
+cenário via a gravação Tacview (`data/recordings/mission_*.acmi`). `mixr::models::Missile`
+nativo evita exatamente isto em `atReleaseInit()` (semeia `cmdPitch`/`cmdHeading`/`cmdVelocity`
+com a atitude/velocidade de lançamento) — mas esses são campos PRÓPRIOS de `Missile`, nunca
+lidos por `GuidedMissile::weaponDynamics()`, que consome campos próprios homônimos.
+`GuidedMissile::atReleaseInit()` (novo override) semeia os três campos certos
+(`getHeadingR()`/`getPitchR()`/`getVpMax()`). Determinismo confirmado inalterado (o
+míssil continua convergindo ao alvo na mesma fixture, agora sem a manobra inicial
+desperdiçada).
+
+Ganhou também o único ponto de observabilidade do desfecho do disparo: `LOG(INFO/WARNING)` no
+instante em que a espoleta de proximidade dispara, com o alcance de menor aproximação e
+acerto/erro (`xnative/GuidedMissile.cpp`) — sem isso, nem o Tacview (o REID de detonação fica
+fora do `enabledList`, mesma armadilha do `REID_WEAPON_RELEASED`) nem o alvo (nenhum dano
+visível) davam qualquer sinal de que algo aconteceu; um acerto e um erro pareciam idênticos na
+tela. A linha de log de lançamento em
+`models/players/A-4/src/ubf/FlightAction.cpp` (existente, comentada) foi reativada pelo mesmo
+motivo.
+
 ## [0.1.0] — 2026-09-10
 
 Primeira decisão real deste modelo, gerado a partir de `models/players/template` via

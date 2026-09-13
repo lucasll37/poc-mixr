@@ -259,7 +259,9 @@ test("conteudo sobrando apos a primeira forma raiz vira aviso 'multi-root' -- o 
 });
 
 /* ----------------------- integração com o catálogo REAL --------------------- */
-// Varre TODO '.edl'/'.edl.in' real rastreado sob sandbox/, src/poc/, src/rl/
+// Varre TODO '.edl'/'.edl.in' real rastreado sob sandbox/, src/poc/, src/rl/,
+// tests/fixtures/ (as duas ex-pocs relocadas, built-in_mixr_1/full-systems-nav
+// -- ver tests/fixtures/README.md e CLAUDE.md)
 // (descoberta por caminho, nao lista fixa -- mesmo espirito de
 // tests/guard/check_falcons_estrutura.sh) e afirma ZERO avisos de
 // fabrica/slot desconhecido contra o catalogo REAL atual: todo arquivo
@@ -288,11 +290,11 @@ if (fs.existsSync(CATALOG_PATH)) {
   const REAL_CATALOG = JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8"));
   const REAL_BY_FACTORY = core.buildCatalogIndex(REAL_CATALOG);
 
-  const sweepDirs = ["sandbox", "src/poc", "src/rl"].map((d) => path.join(REPO_ROOT, d));
+  const sweepDirs = ["sandbox", "src/poc", "src/rl", "tests/fixtures"].map((d) => path.join(REPO_ROOT, d));
   const files = [].concat(...sweepDirs.map(findEdlFiles));
 
   test(`varredura de regressao: ${files.length} arquivo(s) .edl/.edl.in reais nao geram aviso de fabrica/slot desconhecido`, () => {
-    assert.ok(files.length > 0, "deveria ter encontrado pelo menos um .edl real sob sandbox/src/poc/src/rl para varrer");
+    assert.ok(files.length > 0, "deveria ter encontrado pelo menos um .edl real sob sandbox/src/poc/src/rl/tests/fixtures para varrer");
     const offenders = [];
     files.forEach((file) => {
       const text = fs.readFileSync(file, "utf8");

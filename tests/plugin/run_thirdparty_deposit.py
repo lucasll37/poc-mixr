@@ -54,7 +54,7 @@ def main():
         return 1
 
     # Nome DISTINTO de qualquer plugin real -- nao pode colidir com
-    # libflight.so/libtemplate.so/libtemplate_mirror.so (os que 'make
+    # libA-4.so/libtemplate.so/libtemplate_mirror.so (os que 'make
     # models' ja instala direto), senao o teste nao provaria nada: estaria
     # so verificando um arquivo que ja estava la por outro motivo.
     nome = "libthirdparty_deposit_test.so"

@@ -81,9 +81,12 @@ for (auto* const player : discoverPlayers(worldModel)) {
 
 Em vez de o `main.cpp` montar as linhas ACMI na mão a cada tick, o framework **empurra** os dados:
 cada registro `REID_*` que já existe no `DataRecorder` nativo vira uma linha do stream, de graça —
-`REID_PLAYER_DATA` → posição/atitude, `REID_NEW_PLAYER`/`REID_PLAYER_REMOVED` → declaração/remoção,
-`REID_MARKER` → evento de texto. É por isso que o cenário só precisa de um bloco EDL — nenhuma poc
-deste repositório monta stream ACMI na mão.
+`REID_PLAYER_DATA` → posição/atitude, `REID_PLAYER_REMOVED` → remoção, `REID_MARKER` → evento de
+texto. `REID_NEW_PLAYER` fica de fora: nunca é emitido para um player que já nasce declarado no
+`.edl` (bug do framework) e, de quebra, cai fora do `enabledList: [ 43 42 ]` fixo que todo cenário
+deste repositório declara — a declaração de identidade de verdade vem do workaround
+`publishIdentities()`, descrito na seção abaixo. É por isso que o cenário só precisa de um bloco
+EDL — nenhuma poc deste repositório monta stream ACMI na mão.
 
 ## Por que existem `publishIdentities()`/`updateRadarScan()` — dois caminhos por fora do pipeline
 
@@ -160,6 +163,8 @@ não há como o host achar o `TacviewOutput` para chamar `publishIdentities()`/`
 
 ## Testes
 
-`tests/scenario/run_tacview_identity_test.py` — prova a resolução de identidade (`typeMap`/
-`colorMap`/`modelMap`, inclusive para um míssil criado em runtime) ponta a ponta contra o
-binário de verdade.
+**Lacuna conhecida**: não há, hoje, um teste de cenário provando a resolução de identidade
+(`typeMap`/`colorMap`/`modelMap`, inclusive para um objeto criado em runtime como um míssil) ponta
+a ponta contra o binário de verdade — nenhum `test()` de `tests/meson.build` cobre isso. O que
+existe sob a suíte `scenario` para esta lib é `tests/scenario/run_dual_tacview_port_test.py`, que
+prova disputa de porta entre dois processos `./app`, não resolução de identidade.

@@ -183,7 +183,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -315,7 +315,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -1124,7 +1124,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -1245,7 +1245,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -2054,7 +2054,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -2175,7 +2175,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -2984,7 +2984,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -3105,7 +3105,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -3914,7 +3914,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -4035,7 +4035,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -4844,7 +4844,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -4965,7 +4965,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -5774,7 +5774,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -5895,7 +5895,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -6704,7 +6704,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed
@@ -6825,7 +6825,7 @@
 
                // --- 1) DynamicsModel ------------------------------------
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -7634,7 +7634,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_random.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_random.xml"
 
                      // ACROBACIA ALEATORIA (ver libs/xrandom e
                      // domain/AerobaticPlan.hpp). A MESMA patrolMasterSeed

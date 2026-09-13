@@ -22,6 +22,35 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ## [Não versionado]
 
+### Corrigido
+
+- **Namespace deixou de estar solto no escopo global — aninhado sob `mixr::models::xA_4`, como
+  todo outro modelo.** Era a exceção histórica registrada em `docs/CONTRATO.md` seção 6 (o modelo
+  nasceu antes de `mixr::models::x<nome>` virar convenção): `domain::`/`bt_nodes::` viviam soltos,
+  e `ubf::`/`xnative::` sob `mixr::models::xnative` em vez de `mixr::models::xA_4`. Motivado por
+  `tools/check_organization.py` (`make check-organization`) acusar a divergência com um `[EXCECAO]` — o pedido
+  concreto foi "ajuste A-4 para que ele passe no linter", e passar de verdade significava corrigir
+  o código, não só manter a exceção documentada em `KNOWN_EXCEPTIONS`.
+  - `domain/`/`bt/` (namespace `bt_nodes`): cada arquivo ganhou o wrap
+    `namespace mixr { namespace models { namespace xA_4 { namespace <domain|bt_nodes> { ... } } } }`
+    em volta do que já existia — sem re-qualificar nenhuma referência INTERNA (`domain::Foo`/
+    `bt_nodes::Foo` continuam resolvendo sem prefixo entre si, porque passam a compartilhar o
+    mesmo `xA_4` como ancestral comum).
+  - `ubf/`/`xnative/`: só o nome do terceiro nível mudou, de `xnative` para `xA_4` — sem
+    sub-namespace novo (mesmo padrão de `AAA`/`C-130`/etc., onde `ubf`/`xnative` vivem direto em
+    `mixr::models::x<nome>`, sem camada extra).
+  - `src/plugin.cpp` e `tools/dump_tree_model.cpp` (os dois pontos que qualificavam
+    `mixr::models::xnative::.../bt_nodes::...` por fora da própria árvore de camadas) e ~16
+    arquivos de `tests/` (que reabriam `domain`/`bt_nodes` como namespace GLOBAL, ou os
+    referenciavam sem qualificação a partir de fora) — corrigidos com qualificação explícita ou
+    um alias local (`namespace domain = mixr::models::xA_4::domain;`), conforme o caso.
+  - Zero mudança de comportamento — o ABI do plugin nunca expôs namespace C++ nenhum, só as
+    strings de `IMPLEMENT_SUBCLASS`/`provides:`, intocadas. `make test` (domain+tree+native+
+    contract, 5/5) confere igual antes e depois.
+- **11 headers de `ubf/`/`xnative/` trocaram `#ifndef`/`#define` por `#pragma once`** — o resto do
+  modelo (e os outros 6 projetos de modelo) já usava só `#pragma once`; `tools/
+  check_organization.py` (`guarda-de-inclusao`) acusava o estilo misturado como `AVISO`.
+
 ### Adicionado
 
 - **Envelope de lançamento de míssil: dois nós novos que decidem QUANDO disparar contra o
@@ -53,7 +82,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   separados — ver `models/players/missile/README.md`.
 
 - **Evasão disparada por RWR, com atraso ESTOCÁSTICO de reação do piloto.** Exercício de
-  `TODO.md`: um A-4 percebe uma antiaérea (`models/players/aaa`) via `( Rwr )`/`( RwrTrkMgr )`
+  `TODO.md`: um A-4 percebe uma antiaérea (`models/players/AAA`) via `( Rwr )`/`( RwrTrkMgr )`
   nativos e evade, depois de um atraso sorteado que representa o tempo de reação humana. Peças
   novas, mesma disciplina de camadas:
   - `libs/xtrack::nearestHostileTrack()` generalizado de `const models::AirVehicle*` para
@@ -90,9 +119,9 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
     `rwr_evade_sequence` inserido entre RTB e a evasão por contato próprio. A árvore de
     **produção** não muda.
 
-  Modelo-antiaérea (`models/players/aaa`, `( AaaSite )`, pilha BT/UBF completa — decisão
+  Modelo-antiaérea (`models/players/AAA`, `( AaaSite )`, pilha BT/UBF completa — decisão
   confirmada com o usuário) e cenário de demonstração (`sandbox/AAA-A4-6DOF`) em subprojetos
-  separados — ver `models/players/aaa/README.md`.
+  separados — ver `models/players/AAA/README.md`.
 
 - **Slow roll: um nó de árvore que faz a aeronave girar 360° em torno do eixo longitudinal, em
   instantes sorteados.** Quatro peças novas, uma por camada:
@@ -114,6 +143,18 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
   Cenário de demonstração: `sandbox/A4-6DOF-RANDOM` (as 8 aeronaves de `A4-6DOF`, cada uma
   rolando em instantes próprios).
+
+### Corrigido
+
+- **`FlightAction::execute()` reativou o `LOG(INFO)` de lançamento de míssil, comentado desde
+  a primeira versão do envelope de disparo.** Achado investigando um relato de "o míssil passa
+  do lado do alvo e não acontece nada": sem esta linha (e sem nada do lado do `GuidedMissile`
+  — ver `models/players/missile/CHANGELOG.md`, que traz a correção de fato: o míssil guinava
+  para rumo/pitch zero por 1 s logo após o lançamento, por falta de um `atReleaseInit()`
+  próprio), o único jeito de saber se um disparo aconteceu era abrir a gravação `.acmi` à mão e
+  procurar o objeto pelo `Type=Weapon+Missile` — nem o Tacview (REID de detonação fora do
+  `enabledList`) nem o alvo (nenhum dano visível) davam qualquer sinal, e um acerto e um erro
+  pareciam idênticos na tela.
 
 ### Alterado
 
@@ -354,7 +395,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   A-4 Skyhawk, ver a entrada de 2026-09-05 abaixo). Só o título do diretório-fonte e as
   referências de PROSA/caminho mudaram — nome de fábrica (`MIXR_PLUGIN_DEFINE("flight", ...)`),
   bibliotecas (`libflight.so`/`libflight_tc.so`), destino de instalação
-  (`dist/share/mixr-plugins/flight/`) e o identificador JSBSim da aeronave (`data/jsbsim/
+  (`dist/share/mixr-plugins/A-4/`) e o identificador JSBSim da aeronave (`data/jsbsim/
   aircraft/A4/`, `model: "A4"` nos `.edl`/`.edl.in`) continuam **`flight`**/**`A4`** — o
   identificador JSBSim é um namespace À PARTE (a pasta de dados da aeronave, não o modelo/plugin
   em si) e deliberadamente não foi tocado: renomeá-lo exigiria migrar `model: "A4"` em toda
@@ -404,7 +445,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 - **A pasta deste modelo passou de `models/player/flight/` para `models/player/A4/`** — só o
   título do diretório-fonte; o nome de fábrica do plugin (`MIXR_PLUGIN_DEFINE("flight", ...)`),
   as bibliotecas (`libflight.so`/`libflight_tc.so`) e o destino de instalação
-  (`dist/share/mixr-plugins/flight/`) continuam `flight`, então nenhum `.edl`/`.edl.in` de
+  (`dist/share/mixr-plugins/A-4/`) continuam `flight`, então nenhum `.edl`/`.edl.in` de
   cenário precisou mudar por causa do rename em si (só pela troca de aeronave, acima). Makefile
   raiz, `tests/meson.build`, `tests/guard/check_modelo_fresco.sh` e
   `tests/plugin/check_hotswap_rebuild.sh` tinham o caminho antigo hardcoded e foram atualizados.

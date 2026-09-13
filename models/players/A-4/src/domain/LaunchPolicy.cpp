@@ -4,6 +4,9 @@
 
 #include <cmath>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 bool inLaunchEnvelope(const LaunchEnvelope& env, const double rangeM, const double relBearingDeg)
@@ -16,3 +19,6 @@ bool inLaunchEnvelope(const LaunchEnvelope& env, const double rangeM, const doub
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

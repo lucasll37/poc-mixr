@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo orienta o Claude Code (claude.ai/code) ao trabalhar com o código deste repositório.
 
 > **Isto não é documentação de onboarding — é um diário de arquitetura.** Escrito para dar
 > contexto a sessões de programação agêntica (Claude Code), não para leitura humana sequencial:
@@ -36,10 +36,8 @@ As pocs vivem em `src/poc/`, e **duas delas moram juntas em `src/poc/dis/`** —
 `flight`. Esse agrupamento não é arrumação: o que as junta é só fazerem sentido **juntas**, em
 processos separados trocando **DIS nativo do MIXR**. O intruso mora no `bandit` e chega em
 `flight` apenas pela rede (`networks:`), enquanto `falcon1..4` fazem o caminho de volta; rodar
-qualquer uma sozinha é meia demonstração. As demais pocs (`python-flight`, `onnx-policy`,
-`built-in_mixr_1`, `full-systems-nav` — o mesmo player máximo de `built-in_mixr_1`, mas navegando
-de verdade por `Route`/`Steerpoint`; ver `src/poc/full-systems-nav/README.md`) continuam soltas em
-`src/poc/`, uma pasta cada.
+qualquer uma sozinha é meia demonstração. As demais pocs (`python-flight`, `onnx-policy`)
+continuam soltas em `src/poc/`, uma pasta cada.
 
 `src/poc/dis/flight/` é o subprojeto de decisão do grupo: mesmo cenário, mesma pilha nativa —
 o agente do UBF é `( FlightAgentTC )`, componente do **`Player`**, decidindo na **fase 3** do
@@ -76,11 +74,14 @@ dentro da fase 3, sem Python no processo. A `python-flight` troca as **folhas** 
 da árvore de produção; aqui a árvore some, porque uma política treinada **é** o mapa observação →
 ação inteiro, inclusive a decisão de *quando* evadir. Ver a seção própria mais abaixo.
 
-E um **quinto**, `src/poc/built-in_mixr_1/`, que não muda eixo nenhum da decisão: a aplicação dele é
-a da `flight` **byte a byte**. O que ele muda é o **cenário** — `falcon1` carrega **53 das 96
-classes** que `mixr::models::factory` publica, num único `( Aircraft )`. É a resposta escrita e
-rodável para "qual o player mais elaborado que dá para montar só com componentes built-in". Ver a
-seção própria mais abaixo.
+> **`built-in_mixr_1`/`full-systems-nav` não são mais pocs.** Existiam aqui como um quinto/sexto
+> subprojeto que não mudava eixo nenhum da decisão — a aplicação era a da `flight` byte a byte, só
+> o **cenário** mudava (`falcon1`/`a4` carregando **53 das 96 classes** que `mixr::models::factory`
+> publica, num único `( Aircraft )`, respondendo "qual o player mais elaborado que dá para montar
+> só com componentes built-in", e no caso de `full-systems-nav`, navegando de verdade por
+> `Route`/`Steerpoint`). Removidas como pocs; os dois `.edl.in` sobrevivem como
+> fixture em [`tests/fixtures/`](tests/fixtures/README.md), que outras partes do repositório
+> (o editor gráfico de EDL, testes de `-folder`/porta dupla do Tacview) ainda consomem.
 
 Antes destas duas o repositório foi uma progressão numerada (`01-flying-aircraft` …
 `12-jsbsim-ubf`), citada como história ao longo dos textos ("a poc/12 fazia isso à mão"). Essas
@@ -347,7 +348,9 @@ separados do arquivo que trata da decisão; utilitários de runtime são um por 
 
 ### O modelo MIXR em uma tela
 
-- Tudo herda de `mixr::base::Object` (ref-counting + RTTI própria):
+- Tudo herda de `mixr::base::Object` (ref-counting + RTTI própria — RTTI = Run-Time Type
+  Information, identificação de tipo em tempo de execução; aqui é implementada pelo próprio MIXR,
+  não a do C++ nativo):
   `DECLARE_SUBCLASS(Classe, Base)` no `.hpp`, `IMPLEMENT_SUBCLASS(Classe, "FactoryName")` no `.cpp`.
 - Parâmetros configuráveis por EDL são **slots**: `BEGIN_SLOTTABLE`/`END_SLOTTABLE` +
   `BEGIN_SLOT_MAP`/`ON_SLOT`/`END_SLOT_MAP`, com `setSlotX()` privados.
@@ -383,16 +386,21 @@ dataRecorder: ( DataRecorder
 ```
 
 **Armadilhas já confirmadas rodando — não redescobrir** (detalhes nos comentários de
-`libs/xtacview/TacviewOutput.cpp`):
+`libs/xtacview/TacviewOutput.cpp`; todo `REID_*` abaixo é um **REID** — *Recorder Event ID*, o
+token que identifica um evento gravável do `mixr::recorder`, ver `dataRecorderTokens.hpp`):
 
 1. `dataLogTime` é slot do **`Player`** e nasce **zero**; sem `dataLogTime: ( Seconds 0.1 )` o
    player **nunca** emite `REID_PLAYER_DATA` e some do Tacview. Parece bug do handler, não é.
-2. `PlayerState.pos`/`.angles` são **ECEF/geocêntricos**, não geodésicos: converter com
+2. `PlayerState.pos`/`.angles` são **ECEF** (*Earth-Centered, Earth-Fixed*, referencial
+   cartesiano geocêntrico) — não geodésicos: converter com
    `base::nav::convertEcef2Geod()` e `convertEcefAngles2GeodAngles()`.
 3. `REID_NEW_TRACK` (81) **nunca chega** (degradado para `REID_UNHANDLED_ID_TOKEN`); use
    `REID_TRACK_DATA` (83) e deduza o primeiro contato pela primeira amostra de cada `track_id`.
 4. `REID_WEAPON_RELEASED` (61) **aborta o processo** (bug do `DataRecorder` nativo, reproduzível
-   com `TabPrinter` puro). Workaround da poc/09: `enabledList: [ 43 42 ]` — `disabledList` não basta.
+   com `TabPrinter` puro). Workaround, hoje replicado em todo cenário de produção deste
+   repositório (não numa poc só — "poc/09" era o nome dela na numeração `01-flying-aircraft` …
+   `12-jsbsim-ubf` de antes da renomeação `poc/` → `src/poc/`, ver o topo deste arquivo):
+   `enabledList: [ 43 42 ]` — `disabledList` não basta.
 5. Tokens de usuário (1000+) também não têm handler: eventos próprios são gravados como
    `REID_MARKER` (só dois `uint32`, sem texto).
 6. `REID_PLAYER_DATA` traz `PlayerId` **parcial** (só `id` e `name`; sem `ac_type`/`side`) e
@@ -780,17 +788,21 @@ só emite `bandit1`; `flight` só emite `falcon1..4`).
 **Por que dá pra confiar que o radar/UBF das falcons reage a um contato que só existe na rede —
 investigado antes de desenhar isto, não depois de quebrar:**
 `interop::NetIO::createIPlayer()` (`contexts/src/mixr/src/interop/common/NetIO.cpp:639-711`), ao
-receber o primeiro PDU de uma entidade nova, clona o `template:` do `Ntm` que casou o tipo —
+receber o primeiro PDU de uma entidade nova, clona o `template:` do `Ntm` (*Network Type Mapper*:
+a classe que casa o tipo de player MIXR ao código de entidade de uma rede de interoperabilidade,
+através de um player-molde declarado no próprio slot `template:`) que casou o tipo —
 `templatePlayer->clone()`, um clone **completo** via `Player::copyData()`/`Component::copyData()`
 (`Player.cpp:273-404`, `Component.cpp:70-99`): `signature` (`SigSphere`), `dataLogTime`, tudo
 sobrevive. Só posição/atitude são sobrescritas na criação e depois mantidas por *dead reckoning*
-a cada PDU (`Player::deadReckonPosition()`, `Player.cpp:3084-3094`). O clone entra na **mesma**
+(extrapolação de posição/atitude entre um PDU e o próximo, sem recalcular a física completa) a
+cada PDU (`Player::deadReckonPosition()`, `Player.cpp:3084-3094`). O clone entra na **mesma**
 lista que `Simulation::getPlayers()` devolve (`NetIO.cpp:699-700`, `addNewPlayer()`) — a mesma
 que `AirTrkMgr`/`Antenna` já varriam para achar o `bandit1` nativo. **Nenhum player local
 precisa existir no lado receptor** — só o `Ntm` com o `template:` já basta
 (`Ntm::getTemplatePlayer()`, `Ntm.hpp:69`). `dynamicsModel`/`pilot` do template do lado receptor
 não precisam reproduzir `JSBSimModel`/`Autopilot`: a posição do fantasma nunca é simulada ali, só
-*dead reckoning* — `side:` também é irrelevante, quem manda é o Force ID do próprio PDU
+*dead reckoning* — `side:` também é irrelevante, quem manda é o Force ID do próprio PDU (o campo
+DIS que marca a afiliação da entidade — amiga/inimiga/neutra)
 (`Nib_entity_state.cpp:463-469`), sobrescrito logo após o clone (`NetIO.cpp:684`).
 
 **Testado rodando, ponta a ponta, nos dois sentidos**: `bandit` sozinho (sem
@@ -850,6 +862,12 @@ precisa ser **idêntico** nos dois lados de cada par emissor/receptor.
    antes também — ele estava na `Fleet` dessa poc e recebia a mesma correção. Como
    `bandit` não tem `Fleet` (um player só), `main.cpp` aplica `setThrottles(0.95, 1)` uma vez
    direto no `bandit1`, achado por nome via `getPlayers()`.
+
+> **Adendo (mesma atualização já registrada na seção "Desacoplando `models` de `dist/`" acima):**
+> a aeronave citada no item 6 também trocou — não é mais o c310, e sim o Douglas A-4 Skyhawk
+> (`CHANGELOG.md` do modelo, entrada de 2026-09-05). O raciocínio do item continua valendo sem
+> mudança nenhuma (o autopilot não fecha malha de velocidade sozinho; sem manete fixo a
+> aeronave perde velocidade e estola) — só o nome da aeronave mudou.
 
 ### `src/poc/python-flight` — as LEIS DE VOO em Python, dentro do frame
 
@@ -1040,92 +1058,27 @@ por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exc
 sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.edl.in`
 por glob. Poc nova nasce cobrada pelas duas sem editar arquivo nenhum.
 
-### `src/poc/built-in_mixr_1` — o PLAYER MÁXIMO, só com componentes nativos
+### `built-in_mixr_1`/`full-systems-nav` — removidas como pocs; sobrevivem como fixture
 
-Quinto subprojeto de `src/poc/`, e o único cuja diferença é **100% de cenário**: a aplicação é a da
-`flight` byte a byte (era o que `check_duplication.sh` cobrava, antes de o `./app` virar o
-runner único e a camada por poc deixar de existir), o agente é o mesmo
-`( FlightAgentTC )`, aninhado dentro de cada player, que `flight` usa — este cenário não tem mais
-nenhum `( SimAgent )` nativo —, o plugin é o mesmo `libflight.so`. **Nenhuma linha de C++ nova,
-nenhum nome de fábrica novo, nenhum rebuild do modelo.** Porta Tacview **1239**, cenário hermético
-(sem `networks:`), então roda ao lado das outras quatro.
+Existiam aqui como um quinto e um sexto subprojeto de `src/poc/`, cuja diferença era **100% de
+cenário** — a aplicação era a da `flight` byte a byte, o agente o mesmo `( FlightAgentTC )`, o
+plugin o mesmo `libflight.so`. `built-in_mixr_1` respondia "qual o player mais elaborado que dá
+para montar só com componentes built-in" (`falcon1` com **53 das 96 classes** de `mixr::models`
+num único `( Aircraft )`); `full-systems-nav` reusava o mesmo player máximo (um `a4` só) trocando a
+árvore de comportamento por `( Navigate )`, um nó só que navega de verdade por
+`Route`/`Steerpoint`, em vez de patrulha geométrica.
 
-`falcon1` monta **53 das 96 classes** de `mixr::models` num único `( Aircraft )`. O teto é
-estrutural: `Player::updateSystemPointers()` resolve **dez** ponteiros com `findByType()`, que
-devolve o **primeiro** casamento — um segundo `( Navigation )` irmão seria invisível. Pluralidade só
-existe onde o framework deu um **contêiner**:
-
-| tipo primário | o que `falcon1` põe lá |
-|---|---|
-| `DynamicsModel` | `JSBSimModel` |
-| `Pilot` | `Autopilot` |
-| `Navigation` | `Ins` ← `Gps`; `Route` com 4 `Steerpoint` + as **4** `Action*`; `Bullseye` |
-| `Datalink` | `AlertDatalink` (única peça não nativa) |
-| `Radio` | `CommRadio` ← `Iff` |
-| `Gimbal` | `Gimbal` ← 6 `Antenna` + `StabilizingGimbal` + `IrSeeker` |
-| `RfSensor` | `SensorMgr` ← `Tws` `Stt` `Sar` `Gmti` `Rwr` `Jammer` |
-| `IrSystem` | `IrSensor` |
-| `OnboardComputer` | `AirTrkMgr` `RwrTrkMgr` `GmtiTrkMgr` `AirAngleOnlyTrkMgr` |
-| `StoresMgr` | 11 estações: `AamMissile`×2 `AgmMissile` `Sam` `Bomb` `Chaff` `Flare` `Decoy` `Gun`+`Bullet` `FuelTank` `AvionicsPod` |
-
-Fora dos dez: `CollisionDetect` (Component comum) e as assinaturas — `SigSwitch` com as **seis**
-classes de RCS como filhos, comutadas em runtime pelo `camouflageType`, mais `IrSignature` +
-`IrSphere`. `falcon2/3/4` ficam na pilha de produção: contraste, e alvo para o RWR de `falcon1`.
-
-**Três regras de montagem, lidas no fonte:** (1) `Iff` **é** um `Radio` e `Gps` **é** uma
-`Navigation`, então vão **aninhados**, não como irmãos — irmãos disputariam o mesmo ponteiro
-primário; (2) **uma antena por sensor de RF**, porque `Antenna::setSystem()` guarda um único
-ponteiro e o último a dar `reset()` vence em silêncio; (3) sensor→antena e sensor→trackmanager casam
-**por nome de slot**, e `Component::findByName()` é recursivo — antena pendurada em gimbal interno
-continua alcançável por nome simples.
-
-**O cenário NÃO se chama `scenario.edl.in`**, e é deliberado: `check_falcons_estrutura.sh` varre
-esse nome por glob e exige que `falcon1..4` tenham o mesmo esqueleto de slots — aqui `falcon1` é
-propositalmente diferente dos outros três. O arquivo é `configs/scenario_max_player.edl.in` (o
-default do `main.cpp`, sem precisar de `-f`), mesmo recurso que a `bandit` já usa. Pelo mesmo
-motivo a poc **não entra na lista `pocs`** de `tests/meson.build` (as suítes `scenario`/`memory`
-derivam fixtures de `scenario.edl.in` via `make_fixture.py`); o determinismo é conferido direto
-por `tests/determinism/check_determinism.sh <binário> <rótulo> [frames] "" <arquivo-de-cenario>`
-(poc vazio, arquivo apontando pra `scenario_max_player.edl.in`) — já hermético, sem fixture.
-
-**O que foi medido rodando (30.000 frames):** zero erro de parse e zero `was not found!` (as 6
-antenas, os 4 track managers e o seeker casam todos); a cadeia de produção intacta (`falcon1`
-detecta `bandit1` no TWS, `EVADE`, alerta propaga, os outros vão para `SUPPORT`); a rota sequenciou
-os **quatro** steerpoints numa volta — decoy solto em **t=37,0 s** (wp1, `ActionDecoyRelease`) e
-bomba em **t=225,3 s** (wp4, `ActionWeaponRelease`), os dois com ciclo `preRelease → active →
-detonated`, visíveis no `MsgFeed` e no Tacview; e dumps `frame=` **byte-idênticos** com 1, 2 e 4
-threads T/C.
-
-**Armadilhas confirmadas — não redescobrir:**
-
-1. **`AircraftIrSignature` derruba o processo** se declarada sem as 6 tabelas —
-   `getAirframeSignature()` desreferencia `airframeSignatureTable` sem checar nulo
-   (`AircraftIrSignature.cpp:566`). Por isso aqui é `( IrSignature )` simples.
-2. **`MergingIrSensor` é um beco sem saída neste fork**: `MergingIrSensor::reset()` exige um
-   `( AirAngleOnlyTrkMgrPT )` e avisa a cada partida quando não acha — e essa classe **não é
-   construível**, porque o header dela é incluído em `models/factory.cpp` mas não há branch para ela
-   (o irmão `AirAngleOnlyTrkMgr` tem). É a consequência medida de uma das seis classes órfãs da
-   factory.
-3. **`ActionWeaponRelease` ignora o slot `station`** — `trigger()` sempre chama
-   `sms->releaseOneBomb()`; quem sai é a primeira `( Bomb )` livre da lista.
-4. **`ActionDecoyRelease` conta o `interval` em relógio de PAREDE** (`getSimTimeOfDay()`), não em
-   tempo simulado: em `-deterministic` (que roda ~200× mais rápido) um `( Seconds 1.0 )` virou
-   ~190 s de tempo **simulado** entre um decoy e o seguinte.
-5. **`Table2`**: o `data:` é **lista de listas** (`{ [...] [...] }`), uma sublista por ponto de `y`
-   — `Table2::loadData()` exige `ny` sublistas de `nx` números, e a lista plana falha com *"Data
-   table aborted"*.
-6. **`sarLatitude`/`sarLongitude`/`targetLatitude`/`targetLongitude` são `base::LatLon`**, não
-   `base::Angle`: `( LatLon direction: "s" degrees: 22 minutes: 12 )`. E `IrSensor.sensorType` é
-   `base::String` com valor `"contrast"` ou `"hot spot"` (com espaço); o slot `FOR` da slottable
-   dele está **comentado** no fonte — usá-lo dá `slot not found`. `Bomb.arming` é `base::Identifier`
-   e o valor é `free_fall` (snake_case).
-7. **`dataLogTime:` em cada store liberável** — sem ele o flyout nasce, voa e detona sem nunca
-   aparecer no Tacview (armadilha 1 do `xtacview`, que vale igual para arma liberada). O `MsgFeed`
-   enxerga assim mesmo, porque lê o `Player` direto em vez de passar pelo gravador.
-8. **As `( Action )` só disparam se a aeronave PASSAR pelos steerpoints**, e quem pilota é a árvore
-   de comportamento (`navMode: false`) — assim que há contato ela abandona o circuito e nenhuma ação
-   roda mais. Daí o `bandit1` a 30 NM neste cenário: dá tempo de fechar a volta antes do primeiro
-   contato (medido: a 12 NM, nenhuma ação dispara).
+Removidas como pocs — não aparecem mais em `-folder src/poc`, não têm mais
+`README.md` próprio. Os dois `.edl.in` continuam existindo, relocados para
+[`tests/fixtures/`](tests/fixtures/README.md) (que documenta a tabela dos dez sistemas primários,
+as regras de montagem e as oito armadilhas confirmadas — `AircraftIrSignature` sem as 6 tabelas
+derruba o processo, `MergingIrSensor` é beco sem saída, `Table2.data` é lista de listas, etc.),
+porque outras partes do repositório ainda os consomem de verdade: `src/ui/scripts/build.js` lê
+`built-in_mixr_1` como fonte do preset "carregar exemplo" do editor gráfico de EDL, e
+`tests/scenario/run_scenario_folder_test.py`/`run_dual_tacview_port_test.py` derivam cópias de
+`full-systems-nav` (cenário real de **um** player só) para testar `-folder`/porta dupla do
+Tacview. Continuam executáveis direto: `./build/app/src/app -folder tests/fixtures -scenario
+built-in_mixr_1` (ou `full-systems-nav`).
 
 ### Terreno (elevação) — `mixr_terrain`, e o que ele muda no modelo
 
@@ -1414,9 +1367,9 @@ models/
 │                         # (nao e um modelo em si -- e' consumido POR eles e por app/).
 ├── players/              # os projetos de modelo -- cada um um .so de producao
 │   └── A-4/                 # projeto meson proprio -> build/ -- O MODELO de producao (o
-│                            # nome de fabrica/biblioteca internos continuam "flight" --
-│                            # libflight.so, provides: { ... } -- so o titulo
-│                            # da PASTA e o A-4, a aeronave que este modelo pilota; o
+│                            # nome de fabrica/biblioteca ja bate com o da PASTA -- "A-4",
+│                            # libA-4.so, provides: { ... } (renomeado de "flight"/libflight.so,
+│                            # ver o "Adendo" logo abaixo), a aeronave que este modelo pilota; o
 │                            # identificador JSBSim da aeronave em si, data/jsbsim/aircraft/A4/,
 │                            # continua sem hifen -- namespace a parte, ver CHANGELOG.md do A-4)
 │       ├── include/{domain,bt,ubf,xnative}/   src/...
@@ -1427,7 +1380,7 @@ models/
 │       ├── Makefile          # build AUTOCONTIDO deste projeto sozinho -- ver abaixo
 │       ├── README.md
 │       ├── CHANGELOG.md      # o que mudou -- datas do COMMIT, nunca da mensagem
-│       └── meson.build       # UM artefato: libflight.so, com FlightAgentTC (o agente
+│       └── meson.build       # UM artefato: libA-4.so, com FlightAgentTC (o agente
 │                             # de tempo critico) sempre compilado e sempre registrado --
 │                             # nao ha mais variante sem ele
 └── template/             # projeto meson proprio -> build/ -- NAO e producao, e por isso
@@ -1450,6 +1403,54 @@ models/
     ├── docs/ARCHITECTURE.md  docs/PRIMEIROS-PASSOS.md  docs/CONTRATO.md
     ├── Makefile  README.md  CHANGELOG.md
 ```
+
+> **Adendo (achado por auditoria de documentação, não uma nova passada de trabalho): o diagrama
+> acima já foi corrigido para o nome atual, mas as centenas de menções a
+> `libflight.so`/`mixr-plugins/flight/` nas passadas abaixo — diário cronológico, não reescrito —
+> continuam descrevendo o estado da ÉPOCA em que foram escritas, que não é mais verdade hoje.**
+> `A-4` nasceu **antes** de `models/template/`
+> existir — e por isso não seguia a convenção (hoje estabelecida por ele e por todo modelo gerado
+> depois, `AAA`/`C-130`/`missile`/`paratrooper` inclusive) de o artefato ser publicado sob o MESMO
+> nome da pasta. O artefato foi renomeado: `project('flight', ...)`/`shared_module('flight', ...)`
+> → `'A-4'`, `libflight.so` → `libA-4.so`, `plugins/data/flight/`/`mixr-plugins/flight/` →
+> `.../A-4/`, `MIXR_PLUGIN_DEFINE("flight", ...)` → `"A-4"` — em todo cenário de produção e sandbox
+> que carrega esse plugin, docs operacionais (`README.md`, `CONTRIBUTING.md`, os do próprio
+> modelo) e nos testes do host que afirmavam sobre o nome antigo (`tests/plugin/test_plugin_load.cpp`,
+> os demais já usavam o nome do **poc** `flight`, que é outra coisa — ver abaixo — e não mudou).
+> Na mesma passada, `A-4` ganhou o teste de "contrato" (`tests/check_contract.sh`, suíte
+> `contract`) que `models/template/` e todo modelo gerado depois dele já tinham — faltava aqui pela
+> mesma razão: a convenção não existia quando este modelo nasceu.
+>
+> **O que NÃO mudou, de propósito, e por quê**: o nome do **poc** `src/poc/dis/flight/` (pasta de
+> cenário, sem nenhuma relação de nome obrigatória com o modelo que carrega — veja `bandit`
+> carregando a mesma aeronave sem carregar plugin nenhum), os nomes de **classe** C++
+> (`FlightAgentTC`/`FlightAction`/`FlightState`/`FlightCommand`/`FlightDecision` — convenção deste
+> repositório de nomear classe pela função, não pelo modelo que a hospeda, igual a `AaaState`/
+> `AaaBehavior` no modelo `AAA`) e os nomes de **arquivo** das árvores/dados
+> (`flight_tree*.xml`, `policy_example.*`, `data/jsbsim/`) — só o *diretório* que os hospeda
+> (`mixr-plugins/A-4/`) mudou, não o nome de cada arquivo dentro dele. Na época desta limpeza,
+> ficou deliberadamente de fora: `A-4` não usava o namespace por-modelo (`mixr::models::x<nome>`)
+> que `CONTRATO.md` seção 6 já exigia de todo modelo copiado do template (as classes viviam direto
+> em `mixr::models::xnative::`/`domain::`/`bt_nodes::`) — proteção contra colisão de `type_info`
+> entre `.so` `RTLD_LOCAL`, que nunca mordeu este modelo na prática, mas que corrigir exigiria
+> re-qualificar todo símbolo do modelo, um refactor bem maior do que "acertar o nome do artefato".
+> Registrada então como lacuna conhecida, não corrigida — **e corrigida numa passada posterior**
+> (ver "Vigésima nona passada" ou a entrada de `CHANGELOG.md` do próprio `A-4`, o item que motivou
+> a correção foi o linter `tools/check_organization.py` acusando a divergência): hoje `domain`/
+> `bt_nodes` aninham sob `mixr::models::xA_4::{domain,bt_nodes}` e `ubf`/`xnative` sob
+> `mixr::models::xA_4` direto, igual a qualquer outro modelo — sem `KNOWN_EXCEPTIONS` nenhuma
+> registrada para `A-4` no linter. O `.so` continua se chamando `libA-4.so`; só o C++ interno
+> mudou, invisível do outro lado do `dlopen`.
+
+> **Nota (achado por auditoria de documentação, não uma nova passada de trabalho): o diagrama
+> acima ilustra o FORMATO de um projeto de modelo (`players/A-4/` e `template/`), não um
+> inventário completo de `models/`.** Hoje `models/` também hospeda outros modelos de
+> produção/exercício fora deste diagrama — `players/C-130`, `players/paratrooper`,
+> `players/missile`, `players/AAA` e `others/Navstar-3` —, cada um com a mesma forma (`meson.build`
+> próprio com `project()` na raiz, `tests/`/`docs/`/`README.md`/`CHANGELOG.md`, descoberto por
+> `find` como a seção "make new-model" logo abaixo já explica). A lista viva, atualizada por quem
+> abre cada PR, é [`models/REGISTRO.md`](models/REGISTRO.md) — não este diagrama, que
+> desatualizaria a cada modelo novo se tentasse listar todos.
 
 **`make new-model NAME=<nome> CATEGORY=player|system|others`** (`scripts/models.sh`) automatiza a
 cópia do `template/`: recalcula a profundidade de `ROOT :=` do `Makefile` copiado, corrige o
@@ -1521,12 +1522,113 @@ arquivos na lista em vez de um, o comportamento multi-arquivo padrão do grep pa
 cada linha com o nome do arquivo, empurrando o nome do ALVO pra fora da primeira coluna do
 `make help`.
 
+**`common.mk` ganhou um quinto alvo compartilhado, `check-organization`** — roda
+`tools/check_organization.py`, um linter OPCIONAL (nunca entra em `test`/`build`/`install`, nunca
+roda em CI) de boas práticas de organização interna do modelo: `domain/`/`bt/` sem `#include` de
+MIXR/BT.CPP vazando a camada errada, namespace aninhado sob `mixr::models::x<nome>` (a defesa
+contra colisão de `type_info` da seção 6 de `docs/CONTRATO.md`), as três listas de
+`xnative/factory.cpp` (`if/else`/`NOMES[]`/`METAS[]`) descrevendo o mesmo conjunto de classes —
+conferido contra `IMPLEMENT_SUBCLASS(Classe, "string")` de verdade, não contra o nome da classe
+C++, porque os dois podem divergir de propósito (medido em `C-130`: `FlightAgentTC` registra a
+string `"C130FlightAgentTC"`, para não colidir com o nome de fábrica que `A-4` já usa) —, a
+obrigação de escrever no `xboard` (seção 3 do CONTRATO, "a obrigação que falha em silêncio"), a
+versão do `CHANGELOG.md` batendo com `version:` do `project()`, as cinco peças, `plugin.cpp` como
+fronteira fina, cada camada com a suíte de teste correspondente, e todo `.cpp` de `src/`
+referenciado em algum `meson.build`. Ao contrário de `build`/`test`/`install-host`, o script em si
+**não** fica no Makefile-filho: é uma cópia byte a byte de `tools/check_organization.py` em cada
+projeto de modelo (nasce assim em `models/template/`, propagado por `make new-model`), auto-descrita
+no próprio cabeçalho como agnóstica ao nome do modelo — deriva o namespace/artefato esperado de
+`project()` no `meson.build`, nunca escrito à mão. O único ponto pensado para customização
+por-modelo é `KNOWN_EXCEPTIONS` (dict no topo do arquivo): uma verificação que falharia vira
+`[EXCECAO]` em vez de `[FALHA]`, mas continua RODANDO e REPORTANDO. Vazio nos 7 modelos hoje —
+existe pra registrar uma decisão já tomada sem escondê-la do relatório, não pra problema
+esquecido.
+
+**Passada seguinte: a saída virou estilo gtest (colorida, compacta, com `-v`/`--verbose` e cap de
+6 itens por verificação — ver `MAX_DETAILS`), duas verificações novas entraram (`guarda-de-
+inclusao`: todo header tem `#pragma once` OU `#ifndef`/`#define`; `arvores-xml-validas`: todo
+`.xml` de `configs/` é XML bem formado, com o MESMO parser estrito que o Groot usa), e o A-4
+deixou de ser exceção.** O motivo de redesenhar a saída foi medido, não hipotético: a saída
+default do A-4 (a única com uma `EXCECAO`) chegava a ~90 linhas, ilegível. `arvores-xml-validas`
+achou problema REAL do lado de fora do A-4, não hipotético: `AAA`/`C-130`/`paratrooper`/
+`Navstar-3` tinham hífen duplo (`--`) dentro de comentário XML — a mesma Armadilha nº1 do Groot já
+documentada na seção própria mais abaixo, presente porque `tinyxml2` (runtime) tolera e só o
+Groot (estrito) recusaria — corrigido nos 4 arquivos (`--` → `-`, só no comentário).
+`guarda-de-inclusao` achou a mistura de estilo do PRÓPRIO A-4 (`ubf`/`xnative` com `#ifndef`, o
+resto com `#pragma once`) — também corrigido, convertendo os 11 arquivos pra `#pragma once`.
+
+**E a exceção do A-4 em si foi corrigida, não só documentada como aceita.** `domain::`/`bt_nodes::`
+(soltos no escopo global) e `ubf::`/`xnative::` (sob `mixr::models::xnative`) passaram a aninhar
+sob `mixr::models::xA_4::{domain,bt_nodes}`/`mixr::models::xA_4` — o mesmo padrão dos outros 6
+modelos. Mecânico na maior parte (nenhuma referência interna precisou de qualificação nova: C++
+resolve `domain::Foo`/`bt_nodes::Foo` sem qualificar contra o `mixr::models::xA_4` comum, contanto
+que quem lê esteja aninhado no MESMO escopo — só arquivos FORA de `include/`/`src/` do próprio
+modelo, que reabriam `domain`/`bt_nodes` como namespace GLOBAL — `tools/dump_tree_model.cpp` e
+~16 arquivos de `tests/` — precisaram de correção explícita: um `namespace domain =
+mixr::models::xA_4::domain;`/`namespace bt_nodes = mixr::models::xA_4::bt_nodes;` por arquivo
+(alias, não qualificar cada uso), ou o mesmo wrap de bloco nos dois casos que reabriam o
+namespace inteiro em vez de referenciá-lo qualificado (`test_LaunchPolicy.cpp`). Achado rodando,
+não só lendo: a primeira tentativa de alias incluiu um `bt_nodes` num arquivo
+(`test_AerobaticPlan.cpp`) que só MENCIONAVA `bt_nodes::` em comentário — sem nenhum `#include`
+de `bt/`, o alias não compilava (`'bt_nodes' is not a namespace-name`); corrigido removendo o
+alias supérfluo. **Zero mudança de comportamento** — é troca de nome de símbolo C++, invisível do
+outro lado do `dlopen` (o ABI do plugin nunca expõe namespace C++, só as strings de
+`IMPLEMENT_SUBCLASS`/`provides:`, intocadas) — confirmado pela suíte do próprio A-4
+(`domain`+`tree`+`native`+`contract`, 5/5) antes e depois, byte a byte a mesma contagem. Testado
+contra os 7 projetos de modelo: todos saem `13 ok` hoje, `KNOWN_EXCEPTIONS` vazio em todos os 7.
+
+**Passada seguinte: mais duas verificações, fechando as seções restantes do `CONTRATO.md` que
+davam pra checar sem tocar em design nenhum do modelo.** O critério que já guiava as 13 de antes
+continuou valendo: nunca exigir COMO o modelo decide (nenhuma pula por causa de camada ausente
+vira falha), só COMO ele se empacota/organiza — o que preserva `mirror.cpp` (zero camadas, um
+arquivo só) como válido. `empacotamento-plugin` (seção 1: `shared_module()`, nunca `library()`,
+`gnu_symbol_visibility:'hidden'`, `-Wl,--no-undefined`, e `-Wl,--exclude-libs,ALL` SE o modelo
+linkar `behavior_tree_dep` — `missile`, sem `bt/`, não precisa dela e o check não cobra) e
+`dados-publicados` (seção 4: `configs/`/`data/` com conteúdo tem que aparecer em algum
+`install_data()`/`install_subdir()` do `meson.build`, senão o cenário nunca acharia o arquivo que
+o slot aponta depois de instalado). A seção 2 do CONTRATO (`provides:` bater com o `.edl`) ficou
+de fora de propósito — é inerentemente sobre a relação modelo↔cenário, e o cenário mora FORA do
+projeto de modelo; não dá pra checar sem sair do que este linter sabe alcançar.
+
+**Achado ao escrever a primeira versão, não hipotético**: a busca por `library(`/`-Wl,--no-
+undefined`/etc. batia no PRÓPRIO comentário que documenta a regra (`# shared_module(), NUNCA
+library() -- ...`, presente em todo `meson.build` de modelo) — toda verificação nova saía `FALHA`
+no `template`, por causa do comentário que EXPLICA a regra, não de uma violação dela. Corrigido com
+`strip_meson_comments()` (corta tudo depois de `#` em cada linha antes de qualquer busca) — a
+mesma armadilha, em espírito, do `--` dentro de comentário XML que `arvores-xml-validas` já existe
+pra pegar do lado do modelo: o texto que EXPLICA uma regra pode acidentalmente parecer o CÓDIGO que
+a viola. Testado contra os 7: os 6 com dado em `configs:`/`data/` saem `15 ok`; `missile` (sem
+`bt/`, sem `configs/`/`data/`) sai `11 ok, 4 pulado`.
+
+**Passada seguinte: o alvo `lint` virou `check-organizacao`.** Nome ruim desde o início — este
+repositório já tinha "lint" com outro significado (`src/ui/scripts/edl_lint.py`/`check-edl-lint.sh`,
+lint ESTRUTURAL de arquivo `.edl`, conceito não relacionado) — `make lint` para "organização
+interna do C++ do modelo" convidava a confundir os dois. Mecânico: `.PHONY`/nome do alvo em
+`models/common.mk`, o texto de uso dentro do próprio script (as 7 cópias),
+e toda menção em prosa (`README.md` dos 7 modelos + `Beacon` — outro modelo já criado via
+`make new-model` nesta árvore, fora da lista de produção —, `docs/PRIMEIROS-PASSOS.md`/
+`CONTRATO.md` do template, `.claude/rules/models-plugin.md`, este arquivo). Nenhuma lógica mudou.
+
+**Passada seguinte: `check-organizacao` virou `check-organization` (e o script,
+`check_organizacao.py` → `check_organization.py`).** A troca anterior corrigiu a colisão de
+conceito com "lint", mas manteve um português no meio de um alvo de Makefile — e TODO outro alvo
+deste ecossistema é em inglês (`build`/`test`/`install`/`check-root`/`create-bt`/`update-bt`/
+`open-groot`, e os dois scripts irmãos no MESMO `tools/`, `dump_tree_model.cpp`/
+`update_bt_models.py`). Só o nome do ALVO e do ARQUIVO mudou — comentários, mensagens de
+console, `check_id` de cada verificação (`camadas-domain-pura`, `namespace-aninhado`, ...)
+continuam em português, a mesma convenção de sempre para prosa. Mecânico de novo: `mv` do
+arquivo nas 7 cópias, `.PHONY`/nome do alvo/texto do alvo em `models/common.mk`, e toda menção em
+prosa nos mesmos lugares da passada anterior.
+
 ### Desacoplando `models` de `dist/` -- `plugins/` e o unico deposito
 
-**`make models` nao escreve em `dist/lib/mixr-plugins/` -- nunca.** flight (producao) e template
-(mirror de contrato), via o
+**`make models` nao escreve em `dist/lib/mixr-plugins/` -- nunca.** O modelo de producao (hoje
+`A-4`) e o `template` (mirror de contrato) -- e, na pratica, qualquer projeto de modelo sob
+`models/`, ja que o alvo `models` da raiz descobre por `find` (ver "O MODELO é um plugin,
+construído numa etapa PRÉVIA" mais acima) -- via o
 `install-host` de cada um, depositam SO em `plugins/` (lib, flat) e
-`plugins/data/flight/` (a arvore + a aeronave, unica excecao ao deposito flat) -- o MESMO
+`plugins/data/<nome>/` (ex.: `plugins/data/A-4/`, a arvore + a aeronave, unica excecao ao
+deposito flat) -- o MESMO
 lugar que um `.so` de terceiro ja usava (ver a secao `plugins/` mais abaixo). Dali em
 diante, um `.so` compilado por este repositorio e um de terceiro sao **indistinguiveis**: os dois
 so viram visiveis a um cenario quando `make install` roda o alvo `sync-plugins`, que copia
@@ -1542,12 +1644,16 @@ compila os modelos) nunca precisa saber que o host existe -- so `make install` (
 dependem dele: `test`, `run-*`, `check-*`) une os dois, no unico momento em que a uniao importa
 de verdade: alguem vai RODAR algo.
 
-**Armadilha evitada, nao redescobrir**: `sync-plugins` depende de `models` (`sync-plugins:
-models` no Makefile) e ambos sao alvos `.PHONY` -- toda chamada de `sync-plugins` reavalia
-`models` (nao ha timestamp para pular). Isso e intencional (garante que o deposito esta fresco
-antes de sincronizar), mas significa que passar `ASAN=true`/`ASAN=false` por linha de comando
-(`make sync-plugins ASAN=true`) tem de propagar corretamente ate o `install-host` de
-`models/players/A-4` -- confirmado funcionando (`test-asan` depende exatamente disso).
+**Armadilha evitada, nao redescobrir**: `sync-plugins` NAO depende de `models` -- os dois sao
+alvos `.PHONY` DECOPLADOS de proposito (o mesmo desacoplamento documentado em "Desacoplando
+`models` de `dist/`" acima), e e por isso que `make sync-plugins` sozinho nunca reconstroi nada:
+ele so copia o que ja estiver em `plugins/` no momento da chamada. Isso significa que garantir um
+deposito FRESCO antes de sincronizar exige as DUAS chamadas, em sequencia, sempre que o modelo
+mudou (`test-asan` e o exemplo vivo: `make models ASAN=true` builda o modelo instrumentado, so
+depois `make sync-plugins ASAN=true` copia pra `dist/` -- chamar so a segunda copiaria o `.so`
+JA existente e daria "asan: OK" sem instrumentacao nenhuma). `ASAN=true`/`ASAN=false` por linha
+de comando tem de propagar corretamente ate o `install-host` de `models/players/A-4` nos dois
+casos -- confirmado funcionando.
 
 **A duplicação entre as gêmeas foi dissolvida por construção, e depois foi além disso.** O modelo
 já tinha ido de ~3.100 linhas copiadas (sustentadas por um teste de guarda) para uma árvore só,
@@ -1558,18 +1664,34 @@ junto com a poc gêmea que ele comparava.
 
 **A aeronave é dado do MODELO, não do cenário — e por isso mora aqui, não em `src/poc/<poc>/data/`.**
 As duas pocs (`flight`, `bandit`) pilotavam a mesma cópia
-byte-idêntica de `data/jsbsim/` (o c310), vendorizada duas vezes. Não é coincidência: o próprio
-`domain/`/`bt/` deste modelo é calibrado **para o c310** especificamente —
+byte-idêntica de `data/jsbsim/` (o A-4 Skyhawk), vendorizada duas vezes. Não é coincidência: o
+próprio `domain/`/`bt/` deste modelo é calibrado **para o A-4 Skyhawk** especificamente —
 `maxClimbRateMps`/`maxRateOfTurnDps` do `Autopilot`, a folga de `TerrainFloor` contra o piso
 anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
 trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
-`data/jsbsim/` em `plugins/data/flight/jsbsim/` junto com `flight_tree.xml` (via
-`install-host` de `models/players/A-4/`) e dali para `dist/share/mixr-plugins/flight/jsbsim/` (via
+`data/jsbsim/` em `plugins/data/A-4/jsbsim/` junto com `flight_tree.xml` (via
+`install-host` de `models/players/A-4/`) e dali para `dist/share/mixr-plugins/A-4/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos dois
 cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
-aeronave — aponta para lá. `make install` já encadeia `build` → `sync-plugins` → `models`, então
-a ordem normal (`configure → build → install`, ou só `test`, que já inclui `install`) garante o
-arquivo no lugar antes de qualquer binário RODAR — não antes de compilar, que não precisa dele.
+aeronave — aponta para lá. `make install` encadeia `build` → `sync-plugins`, mas **não** `models`
+(a mesma armadilha já registrada acima) — é o fluxo do dia a dia (`make configure && make models
+&& make install`) que garante o arquivo no lugar antes de qualquer binário RODAR, desde que
+`make models` já tenha rodado antes; sem ele, `sync-plugins` sincroniza um `plugins/` vazio, em
+silêncio — não antes de compilar, que não precisa dele.
+
+> **Adendo (achado por auditoria de documentação, não uma nova passada de trabalho) — nota
+> histórica sobre o rename, repetida aqui de propósito porque `CONTRIBUTING.md` §8.7 aponta para
+> ESTA seção isoladamente, sem passar pela seção irmã "O MODELO é um plugin, construído numa etapa
+> PRÉVIA".** O parágrafo acima já está com os nomes ATUAIS. Antes do rename (ver o adendo daquela
+> seção irmã para o histórico completo), o artefato se chamava `flight`/`libflight.so`, publicado
+> em `plugins/data/flight/`/`dist/share/mixr-plugins/flight/` — e a aeronave pilotada era o c310,
+> não o A-4 Skyhawk. A troca de aeronave (`CHANGELOG.md` deste modelo, entrada de 2026-09-05)
+> também levou a recalibrar `domain/`/`bt/` inteiros para o A-4, que inclusive ganhou um SAS novo
+> (amortecedores de taxa + nivelador de asas) porque os coeficientes látero-direcionais do dado
+> Aeromatic violam o critério clássico de estabilidade em espiral sem ele. O RACIOCÍNIO do
+> parágrafo continua valendo (o modelo é calibrado para UMA aeronave específica, e trocá-la sem
+> recalibrar não faria sentido) — só o nome da aeronave, do artefato e dos caminhos de instalação
+> mudaram.
 
 ### O SDK de plugin
 
@@ -1747,6 +1869,19 @@ carrega qualquer poc por `-f`/`-folder` (§3 do `app/README.md`).
 > mais par de subprojetos gêmeos..." no início deste arquivo) e `multi-thread` (a variante
 > `( FlightAgentTC )`, renomeada para `flight` e hoje em `src/poc/dis/`) — os nomes atuais das
 > pocs estão definidos no início deste arquivo, não neste diário.**
+>
+> **Adendo (achado por auditoria de documentação, não uma nova passada de trabalho): a frase acima
+> — "a remoção do modelo de demo `missile`... não existe mais" — descrevia um estado que não é
+> mais verdade.** Em 2026-09-10/11, um `models/players/missile` foi **recriado**, com implementação
+> nova (guiagem por navegação proporcional cinemática, sem `JSBSimModel` — ver
+> `models/players/missile/README.md`, seção "Por que não é o modelo antigo de mesmo nome": não
+> reaproveita o fonte antigo, é deliberadamente mais leve). Na mesma leva, `models/players/AAA`
+> (uma antiaérea, decidindo via `( UbfAgent )` nativo em background — não `( SimAgent )`, mas
+> também não `( FlightAgentTC )` no pool de tempo crítico) entrou em `models/players/`, exercitada
+> por `sandbox/AAA-A4-6DOF/`. O registro histórico acima (por que o `missile` original foi
+> removido, o que ele fazia) continua válido como história — só deixou de descrever o presente.
+> `.claude/rules/models-plugin.md` também foi ajustado para não chamar mais o nome `missile` de
+> "extinto" sem qualificar qual das duas implementações.
 
 **O `./app` é o RUNNER ÚNICO das pocs.** Elas não têm mais executável próprio: cada pasta sob
 `src/poc/` é só `configs/` + `data/` + `README.md`, e quem as executa é este binário —
@@ -3717,14 +3852,15 @@ Tacview (cosméticos do painel Mapa da TUI — o Tacview padrão via `DataRecord
 funcionando normal através de `updateData()`).
 
 **Sem alvo de Makefile, sem entrada em `tests/meson.build`** — mesma lógica já aceita para
-`built-in_mixr_1`/`full-systems-nav`: nenhum comportamento de simulação novo (é composição de API
-do framework já exercitada indiretamente pelas suítes de `./app`/`src/rl`), documentado no
-próprio `src/node/README.md` em vez de forçar encaixe na convenção estreita de
-`tests/meson.build`.
+pocs sem árvore de decisão no formato dual (precedente: `bandit`): nenhum comportamento de
+simulação novo (é composição de API do framework já exercitada indiretamente pelas suítes de
+`./app`/`src/rl`), documentado no próprio `src/node/README.md` em vez de forçar encaixe na
+convenção estreita de `tests/meson.build`.
 
-**Testado rodando** (não só compilando): contra `src/poc/built-in_mixr_1/configs/
-scenario_max_player.edl.in` (hermético) — só linhas `LOG(...)` na tela durante o laço, arquivo de
-log criado em `data/logs/` do próprio poc, `SIGTERM` encerra em ~40 ms com código de saída 0
+**Testado rodando** (não só compilando): contra `tests/fixtures/built-in_mixr_1/configs/
+scenario_max_player.edl.in` (hermético, ex-poc — ver "`built-in_mixr_1`/`full-systems-nav` —
+removidas como pocs" acima) — só linhas `LOG(...)` na tela durante o laço, arquivo de
+log criado em `data/logs/` da própria fixture, `SIGTERM` encerra em ~40 ms com código de saída 0
 (sem o aviso de watchdog). Contra `src/poc/dis/flight/configs/scenario.edl.in` (`(
 ClockStation )` + `networks:` de verdade) — o `dynamic_cast` para `ClockStation` resolve sem
 aviso de fallback, mesmo comportamento de encerramento limpo.
@@ -3889,6 +4025,16 @@ de abortar com erro. O teste `tree-model-sync` (`meson test`, suíte `tree`) pas
 `update_bt_models.py --check` — mesma função de antes, script novo. O binário `dump-tree-model`
 em si não mudou: é reusado pelos dois alvos de Makefile e pelo teste, como já era.
 
+**ATUALIZAÇÃO (passada posterior): a contagem de `flight_tree*.xml` cresceu de 4 para 7.**
+`models/players/A-4/configs/` tem hoje `flight_tree.xml`, `flight_tree_nav.xml`,
+`flight_tree_onnx.xml`, `flight_tree_py.xml`, `flight_tree_random.xml`,
+`flight_tree_missile_demo.xml` e `flight_tree_rwr_evade_demo.xml` — o "4" citado várias vezes
+acima (Armadilha nº1, o bloco `<TreeNodesModel>` colado, `sync_tree_models.py`/
+`update_bt_models.py`, o teste `tree-model-sync`) era a fotografia de quando cada trecho foi
+escrito, não um teto. Nenhum código precisou mudar por causa disso: `update_bt_models.py` e o
+teste `tree-model-sync` já descobrem a lista por CONTEÚDO (todo `.xml` com `<BehaviorTree>` em
+`configs/`), nunca por um número fixo — só esta nota, para quem lê "4" acima e confere no disco.
+
 **Armadilha nº3 — o Groot FECHA SOZINHO, sem diálogo e sem mensagem, poucos milissegundos depois
 de conectar o Monitor.** Ao contrário das duas acima, esta não é de edição: é do **modo Monitor**,
 e é um bug do próprio Groot 1.0.0. Diagnóstico completo, lido no fonte dos dois lados:
@@ -3910,7 +4056,9 @@ e é um bug do próprio Groot 1.0.0. Diagnóstico completo, lido no fonte dos do
 do BT.CPP é um `static uint16_t uid = 1` que **nunca zera** (`tree_node.cpp:19-23`), gravado num
 `const uint16_t uid_` sem setter. **Escopo medido: por `.so` de plugin, não por processo** —
 `nm -C dist/lib/mixr-plugins/*.so` mostra `BT::getUID()::uid` como símbolo **local (`d`)** em
-`libflight.so`, `libC-130.so`, `libparatrooper.so`, `libNavstar-3.so` e `libtemplate.so`,
+`libA-4.so` (o modelo de produção, renomeado de `libflight.so` — ver o "Adendo" na seção "O MODELO
+é um plugin, construído numa etapa PRÉVIA"), `libC-130.so`, `libparatrooper.so`,
+`libNavstar-3.so` e `libtemplate.so`,
 consequência de a BT.CPP ser `.a` estática linkada com `gnu_symbol_visibility: 'hidden'` +
 `-Wl,--exclude-libs,ALL`. Logo, **só a PRIMEIRA árvore construída naquele `.so`** tem UIDs `1..N` —
 o único caso em que a confusão UID/índice passa despercebida. E `BtBehavior::buildTree()` é
@@ -4175,7 +4323,7 @@ um frame de latência. Isso treina, mas não põe em produção. Os nós novos d
 
 | nó | o que faz | árvore |
 |---|---|---|
-| `OnnxPolicy` | roda a política treinada em `src/rl`, exportada para `.onnx` | `flight_tree_onnx.xml`; e a folha única de `src/poc/onnx-policy` |
+| `OnnxPolicy` | roda a política treinada por `src/poc/rl-training` contra o ambiente de `src/rl`, exportada para `.onnx` | `flight_tree_onnx.xml`; e a folha única de `src/poc/onnx-policy` |
 | `OnnxScore` | condição genérica: compara uma saída do modelo com um limiar | (qualquer) |
 | `PyDecide` | roda um `decide(obs)` escrito em Python — prototipagem | `flight_tree_py.xml`; e as quatro folhas de `src/poc/python-flight` |
 
@@ -4258,9 +4406,9 @@ do ciclo de fases, é extraído do código.
   os dois se fundiram, mesmo padrão de `make open-edl`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
   `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
-  `docs/`) tem **quatro abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
-  **"Catálogo"**/**"Estrutura"** (`docs/manual/doc.jsx`); os nomes abaixo descrevem o conteúdo de
-  cada uma:
+  `docs/`) tem **seis abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
+  **"step-by-step"**/**"Diagrama de Classes"**/**"Referência"**/**"Catálogo"** (`docs/manual/doc.jsx`);
+  os nomes abaixo descrevem o conteúdo de cada uma:
   1. **Simulação** ("Execução" no conteúdo) — o ciclo de fases do frame MIXR
      (dynamics/transmit/receive/process/background) animado sobre a árvore de componentes de um
      `( Aircraft )` só com peças **built-in** (~72 nós), com pan/zoom, tema claro/escuro, "seguir
@@ -4269,14 +4417,252 @@ do ciclo de fases, é extraído do código.
      automaticamente, portanto sujeito a envelhecer em silêncio — o próprio texto avisa disso)
      percorrendo a cadeia de decisão real de produção — `FlightAgentTC → Agent::controller →
      UbfArbiter → {AltitudeSafetyBehavior, BtBehavior} → flight_tree.xml → FlightAction` —
-     através dos cenários que a usam.
-  3. **Catálogo** — as 225 classes nativas do MIXR com despacho **real** num `factory.cpp`
+     através dos cenários que a usam. **ATUALIZAÇÃO:** a cadeia acima já está desatualizada — o
+     cenário de produção não usa mais `( UbfArbiter )`/`( AltitudeSafetyBehavior )` (ver a seção
+     "SEM ARBITRO" no topo de `src/poc/dis/flight/configs/scenario.edl.in`, e as duas atualizações
+     já registradas alhures neste arquivo). A cadeia real hoje é `FlightAgentTC →
+     Agent::controller → BtBehavior → flight_tree.xml → FlightAction`, sem árbitro no meio — a
+     mesma que `docs/manual/README.md` já descreve.
+  3. **step-by-step** (nome em inglês por pedido explícito, mesma exceção já registrada para
+     "Players" no `./app`) — outro "ensaio" à mão, mesmo espírito da aba Comportamento, mas sobre
+     um eixo diferente: não "qual comportamento venceu", e sim "o que acontece, chamada por
+     chamada, entre um `tick()` de árvore que decide disparar um míssil e o `event(KILL_EVENT,
+     ...)` do lado do alvo". 35 passos em ordem de execução, em **7 estágios** (contexto → decisão
+     → liberação → transição → guiagem → detonação → epílogo — `MISSILE_STAGES`/`MISSILE_TRACE`/
+     `MISSILE_SNIPPETS` em `doc.jsx`), cada um com o trecho de código REAL — modelo
+     (`models/players/A-4`, `models/players/missile`) ou fonte nativo
+     (`contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp`, `Missile.cpp`,
+     `Player.cpp`, `contexts/src/mixr/src/models/system/{Stores,SimpleStoresMgr}.cpp`,
+     `contexts/src/mixr/include/mixr/simulation/AbstractPlayer.hpp` — o `enum Mode`) — e uma nota
+     sobre o evento emitido (ou não) naquele instante. O estágio "contexto" (7 passos, o primeiro
+     acréscimo desta trilha depois da versão inicial de 23 passos) parte do `.edl` do cenário
+     (dois passos SEM highlight de sintaxe — `snip.lang === "edl"` desliga o tokenizer C++ de
+     propósito, calibrado só para C++) até `BtBehavior::configurePlans()` copiando os três slots
+     novos (`launchMinRange`/`launchMaxRange`/`launchCone`) para `domain::LaunchEnvelope`, e
+     REAPROVEITA sem duplicar fonte os snippets já extraídos de `FlightAgentTC::controller`/
+     `Agent::controller`/`FlightState::updateState` (a mesma cadeia de fallback de `flightSnip()`,
+     agora também em `missileSnip()`) — é a ponte que liga esta trilha à cadeia de decisão já
+     documentada na aba Comportamento. Os outros quatro passos novos: `domain::inLaunchEnvelope`
+     (a geometria pura por trás do primeiro nó de árvore), `Stores::isWeaponAvailable` (por que o
+     SEGUNDO disparo nunca sai — `isReleased()` é o campo que o derruba), e o par
+     `domain::proportionalNavigation`/`domain::proximityFuze` (a lei de guiagem e a espoleta,
+     antes só citadas em prosa, agora com o corpo real). Cenário de referência:
+     `sandbox/A4-6DOF-MISSILE`. Motivo de existir SEPARADA da aba
+     Comportamento, não mais um passo dela: atravessa DOIS plugins (A-4 + missile) e duas classes
+     ABSTRATAS do MIXR (`AbstractWeapon`, `StoresMgr`) que ficam fora do Catálogo por definição
+     (ele só cobre classe concreta, despachada por `factory.cpp` — ver o item 5) — nada que
+     `tools/generate_manual_catalog.py` alcance sozinho. Três nuances medidas lendo o fonte, não
+     supostas, são o motivo de a trilha existir: **(a)** `GuidedMissile::weaponGuidance()` nunca
+     chama `setLocationOfDetonation()` antes de `checkDetonationEffect()` (os caminhos nativos —
+     `collisionNotification()`/`crashNotification()` do lado da arma, e o
+     `Missile::weaponGuidance()` nativo — sempre chamam), então `AbstractWeapon::
+     detonationRange` fica no default `0.0`; **(b)** dentro de `Player::processDetonation()`, pro
+     alvo DESIGNADO (`this == wpn->getTargetPlayer()`) o `rng` usado é justamente esse
+     `getDetonationRange()`, não a distância real calculada por `checkDetonationEffect()` — logo
+     `0.0 < lethalRange` é sempre verdadeiro e o alvo designado recebe `KILL_EVENT` garantido,
+     pulando o cálculo probabilístico de dano que qualquer OUTRO player dentro do raio de burst
+     usaria; **(c)** `Player::killedNotification()` só faz `setMode(KILLED)` se o slot
+     `killRemoval` (default `false`, `Player.hpp`) estiver ligado — e `a4_target` em
+     `sandbox/A4-6DOF-MISSILE` não liga —, então o "abate" acontece por inteiro no nível de
+     EVENTO (`KILL_EVENT` despachado, subcomponentes notificados, `damage=1.0`,
+     `REID_PLAYER_KILLED` gravado) sem nenhum efeito visível: o avião continua `ACTIVE`, voando
+     normalmente. Um quarto detalhe, sem ser exatamente um "gotcha" do framework: nem
+     `REID_WEAPON_RELEASED`(61) nem `REID_PLAYER_KILLED`(47) chegam ao Tacview/arquivo deste
+     cenário — `enabledList: [ 43 42 ]` do `dataRecorder` (o mesmo workaround do
+     `REID_WEAPON_RELEASED` já documentado na seção `libs/xtacview` acima) é uma allowlist, e os
+     dois tokens de arma/kill não estão nela. Também confirmado, e registrado como aside dentro da
+     trilha: não existe ponte nativa entre "um míssil detonou perto de mim" e
+     `crashNotification()`/`collisionNotification()` — são três funções com três gatilhos
+     totalmente distintos (dano de arma → `KILL_EVENT`; terreno, via `Player::updateTC()` testando
+     `getAltitudeAgl() < 0.0` → `CRASH_EVENT`; colisão em pleno voo, via o `system` opcional
+     `mixr::models::CollisionDetect`, `sendCrashEvents` default `false` → também `CRASH_EVENT`,
+     por sobrecarga de assinatura no mesmo `BEGIN_EVENT_HANDLER(Player)`) — não existem
+     `COLLISION_EVENT`/`DETONATION_EVENT` como tokens nativos separados
+     (`mixr::base::eventTokens.hpp`: só `KILL_EVENT=1304`, `CRASH_EVENT=1305`,
+     `JETTISON_EVENT=1306`, entre outros). Um quinto ponto, no aside `updatetof-timeout` (estágio
+     "epílogo"): `AbstractWeapon::updateTOF()` (o "fim de tempo de voo", `maxTOF`) também chama
+     `setMode(DETONATED)` e grava `REID_WEAPON_DETONATION` -- mas NUNCA chama
+     `checkDetonationEffect()`, nem daqui nem de nenhum outro lugar alcançável a partir dela. Um
+     míssil que "morre de velhice" sem nunca ter passado pelo ponto de menor aproximação
+     (`domain::proximityFuze`) não tem como ferir ninguém, mesmo que por coincidência geométrica
+     esteja perto de um player no instante do timeout -- diferente do caminho de acerto/falha por
+     proximidade, que SEMPRE chama `checkDetonationEffect()`. Play/pause, `←`/`→`, clique em
+     qualquer passo da lista lateral; link "Ver classe completa no Catálogo →" só aparece nos
+     passos cuja classe é concreta e está lá (`Missile`/`Player`/`Stores`/`SimpleStoresMgr`/
+     `FlightAction`) — nunca para `AbstractWeapon`/`StoresMgr`/`GuidedMissile`/os nós de BT.CPP,
+     que não têm entrada. Todo bloco de código desta aba (e das outras três que mostram C++ --
+     Simulação, Comportamento, Catálogo) passa por `cppTokenizeLines()`/`renderCppSrc()`
+     (`doc.jsx`), um highlight de sintaxe LEVE por heurística (regex + um conjunto de palavras
+     reservadas, não um lexer C++ de verdade): palavra reservada, string/char, número, comentário
+     (com suporte a comentário de bloco atravessando linha, tokenizando o snippet INTEIRO antes de
+     janelar para exibição -- janelar primeiro perderia o estado de "dentro de um comentário de
+     bloco" de uma linha acima da janela), identificador `TODO_MAIUSCULO` (macro de verdade E
+     constante de enum na MESMA cor -- o que importa é "constante nomeada do framework", não a
+     distinção lexical), chamada de função (identificador seguido de `(`) e qualificador de
+     namespace/classe (identificador seguido de `::`). Sete cores fixas (`--cpp-*`), NÃO
+     redefinidas no tema escuro -- o fundo do bloco de código (`--code`) já é escuro nos dois
+     temas da página (só muda de tom), então uma paleta calibrada pra fundo escuro serve nos dois
+     sem duplicar variável nenhuma. Blocos de texto EDL (dois passos desta trilha, mais os painéis
+     de EDL das abas Execução/Comportamento) ficam DE FORA de propósito -- a heurística é
+     calibrada para C++, coloriria sintaxe EDL errado (parênteses de classe, slots). Verificado num
+     navegador de verdade via jsdom (sem Chromium disponível neste ambiente): as cinco abas montam
+     sem erro de console, os 35 passos navegam do primeiro (o prólogo em EDL) ao último (a síntese
+     final, sem bloco de código), o link para o Catálogo troca de aba corretamente, os passos EDL
+     saem com zero span de highlight enquanto os passos C++ saem com dezenas, e o conteúdo de cada
+     snippet novo (losAzRate, closestApproachReached, isReleased, REID_WEAPON_DETONATION,
+     DELETE_REQUEST) aparece de fato renderizado na tela.
+  4. **Referência** — enciclopédia CURADA de classes built-in (`REF_CLASSES`/`MissileReferencePage`
+     em `doc.jsx`), complementar ao Catálogo (item 5): o Catálogo é FLAT e automático (as 225
+     classes, sem opinião sobre qual merece mais espaço); Referência é PROFUNDA e manual (poucas
+     classes, escolhidas a dedo, com recursos didáticos — animação, gráfico, diagrama de estados —
+     que o Catálogo não tenta oferecer). Nasceu com UMA única classe, `mixr::models::Missile` (o
+     míssil ar-ar GENÉRICO -- herdado por `( AamMissile )`/`( Sam )`/qualquer subclasse que não
+     sobrescreva a guiagem); a barra lateral, desenhada desde o início pra crescer, hoje tem
+     QUATRO entradas -- Missile, Steerpoint/Route, Navigation e Autopilot (a segunda leva tem
+     "Passada seguinte" própria, logo depois do item de Missile abaixo). Missile em si, quatro
+     peças, todas em cima de fonte real:
+     - **Cadeia de herança + slots**, reaproveitando `MODEL["Missile"]` do próprio Catálogo (chain,
+       slots próprios, contagem) sem duplicar extração nenhuma. Achado documentando os 8 slots
+       próprios, não suposto: `speedMaxG` (member `vpMaxG`) tem slot, getter e participa de
+       `copyData()` mas **nunca é lido** dentro de `weaponGuidance()`/`weaponDynamics()` -- grep
+       confirma. O G máximo de verdade usado na taxa de giro é sempre a constante `maxG`, nunca
+       escalado pela velocidade atual, apesar do nome do slot sugerir o contrário.
+     - **Diagrama de ciclo de vida** (`enum Mode`, `mixr::simulation::AbstractPlayer`) que
+       acompanha AO VIVO o laboratório abaixo dele (`onModeChange`, o mesmo padrão de callback já
+       usado entre abas para `onOpenCatalog`) -- a caixa DETONATED acende no exato quadro em que a
+       simulação detona, não antes. Mesma observação já registrada na aba step-by-step: nada
+       nativo tira Missile de DETONATED pra DELETE_REQUEST (só `( GuidedMissile )`, com código
+       próprio, faz isso).
+     - **Laboratório de guiagem interativo** -- `simulateNativeMissileIntercept()`, uma
+       reimplementação LITERAL em JS puro (não uma metáfora, não uma física livre) de
+       `Missile::weaponGuidance()`/`weaponDynamics()` (o par de hooks nativo que
+       `AbstractWeapon::dynamics()` chama quando `getDynamicsModel()==nullptr` -- MESMO padrão do
+       `( GuidedMissile )` deste repositório, só que a lei de guiagem nativa é **ponto de
+       interceptação** -- extrapola onde o alvo VAI estar por tempo-até-o-encontro e mira lá --
+       enquanto `( GuidedMissile )` usa navegação proporcional; ver step-by-step para o contraste).
+       2D (plano N/E; a fórmula 3D nativa usa `p1.z()` pra `cmdPitch`, mas com os dois na mesma
+       altitude isso já sai 0 sozinho -- nada foi omitido, só nunca ativado). Pré-computa os
+       quadros uma vez (`useMemo`, recalculado só quando o rumo/velocidade do alvo mudam via dois
+       sliders) e reproduz com o MESMO vocabulário de transporte do resto do app (play/pause,
+       `←`/`→`, scrubber) -- animação SVG top-down com viewBox auto-ajustado ao envelope inteiro da
+       trajetória (nunca corta, qualquer que seja a geometria escolhida) mais um gráfico de
+       alcance×tempo marcando o quadro exato da detonação (onde `trdot` cruza de negativo pra
+       positivo).
+     - **Observação, explicitamente marcada como NÃO confirmada rodando** (uma leitura, registrada
+       como isso, não como fato medido): `weaponDynamics()` usa `static const double g =
+       base::ETHG` -- 32,16, em PÉS/s² (`contexts/src/mixr/include/mixr/base/util/
+       constants.hpp`) -- para computar `ra_max = gmax * g / getTotalVelocity()`, enquanto os
+       PRÓPRIOS comentários do slot table de `Missile` documentam `getTotalVelocity()` em METROS/s
+       ("Minimum Velocity (m/s)", "Maximum Velocity (m/s)"). Se os dois se misturam sem conversão,
+       a taxa de giro nativa sairia ~3,28× (1/0,3048) maior do que o pretendido -- a MESMA razão,
+       já documentada no construtor do `( GuidedMissile )` deste repositório, que levou aquele
+       modelo a usar `base::ETHGM` (a versão já convertida pra metros) em vez de `base::ETHG`. O
+       laboratório reproduz o valor LITERAL do C++ nativo (32,16 sem conversão nenhuma) -- é essa
+       taxa de giro, potencialmente inflada, que a animação mostra.
+     Link "Ver no Catálogo →" para a própria classe. Verificado via jsdom: as seis abas montam sem
+     erro, o diagrama de ciclo de vida sincroniza corretamente com o quadro corrente do laboratório
+     (incluindo ao arrastar o scrubber direto pro último quadro), trocar o rumo/velocidade do alvo
+     reinicia a reprodução do zero e recalcula de verdade, e os dois blocos de código nativo
+     (`weaponGuidance()`/`weaponDynamics()`, ~190 e ~80 linhas) aparecem com highlight de sintaxe e
+     conteúdo real (`vtnlos2`, `ra_max` confirmados presentes no DOM).
+
+     **Passada seguinte — reorganização visual, sem mudar nenhum fato acima.** A primeira versão
+     empilhava hero + diagrama de ciclo de vida + laboratório + slots + três blocos de código +
+     enum numa rolagem só. Virou: um card de cabeçalho FIXO (nome/fábrica/categoria/cadeia de
+     herança/link pro Catálogo) + **4 sub-abas** (`.mx-dtabs`/`.mx-dtab`, o MESMO padrão que a aba
+     Simulação já usa pra Passo/Código/EDL/Classe — reaproveitado, não reinventado): "Visão geral"
+     (os 4 passos de "como a guiagem decide" ao lado do `enum Detonation`), "Laboratório de
+     guiagem" (a simulação interativa), "Slots" e "Código-fonte". O diagrama de ciclo de vida
+     completo (4 estados + o `DELETE_REQUEST` tracejado) saiu da Visão geral -- estava ESTÁTICO
+     lá, sem ligação com simulação nenhuma, e por isso não fazia falta fora do Laboratório; uma
+     versão COMPACTA dele (só a caixa ativa, sem as setas/notas) entrou DENTRO do Laboratório,
+     onde o sincronismo ao vivo (`onModeChange`) faz sentido de verdade. Leituras do quadro atual
+     (alcance/taxa/velocidade/rumo) viraram tiles `.mx-stat` (rótulo pequeno em maiúsculas + valor
+     mono em destaque -- idioma de "HUD", novo nesta página) no lugar do `.mx-slotgrid` genérico
+     (que continua usado, sem mudança, nas abas Slots e nos detalhes de outras partes do app).
+     Um `.mx-pill` novo (cor por estado -- neutro "EM VOO", verde "ACERTO", vermelho "FALHA")
+     substitui o texto plano que antes ficava perdido dentro de um `.mx-lbl`. Nenhuma das quatro
+     nuances já registradas mudou -- é reorganização de APRESENTAÇÃO, a lógica pura
+     (`simulateNativeMissileIntercept`, `REF_MISSILE_CONST`, os wrappers de ângulo) ficou
+     byte-a-byte intocada. Verificado via jsdom: as 4 sub-abas trocam de conteúdo sem vazar bloco
+     de código de uma pra outra (Visão geral e Slots têm zero `.mx-code`, Código-fonte tem
+     exatamente 3), a pílula de status muda de "EM VOO" pra "ACERTO" no quadro certo ao arrastar o
+     scrubber até o fim, e o link "Ver no Catálogo →" do cabeçalho fixo continua funcionando
+     estando em QUALQUER sub-aba.
+
+     **Passada seguinte — três entradas novas na barra lateral (Steerpoint/Route, Navigation,
+     Autopilot), cobrindo a cadeia completa de navegação nativa que este projeto NÃO usa em
+     produção.** Mesmo padrão da entrada de Missile (hero + sub-abas Visão geral/Slots/
+     Código-fonte, mais Laboratório só na página de Autopilot), mesma disciplina de citação
+     arquivo:linha. A cadeia documentada é `Steerpoint` (dado do waypoint) → `Route`
+     (sequenciador) → `Navigation` (agregador, "copia, não calcula") → `Autopilot` (consumidor,
+     quando `navMode` está ligado) — e o motivo de documentar algo que a produção não usa é
+     justamente esse: entender POR QUE este projeto escreveu `NavigateAction.cpp`/
+     `domain/TerrainFloor.hpp` em vez de ligar `navMode: true` direto.
+     - **Steerpoint/Route (mesma página — um não navega sem o outro)**: `Steerpoint::compute()`
+       usa geodésia real (`base::nav::gll2bd()`, WGS-84, não plano cartesiano) para
+       marcação/distância, e cross-track error contra a PERNA (from→to), não contra o ponto em
+       si. Dois achados por leitura direta do fonte, nenhum suposto: **(1)**
+       `Route::autoSequencer()` só sequencia quando distância ≤ `autoSeqDistance` **E** a marcação
+       relativa já passou de ±90° do rumo atual (a aeronave já "virou as costas" pro ponto) — não
+       um raio simples; **(2)** `Route::triggerAction()` roda **ANTES** de `incStpt()`
+       (Route.cpp:176-177) — a `Action` do steerpoint dispara enquanto o "to" ainda é esse mesmo
+       ponto, contradizendo o comentário do próprio slot table (`Steerpoint.hpp`: "the 'to'
+       steerpoint will have sequenced ... when action is triggered"). Achado extra sobre slots:
+       `Steerpoint.sca`/`isWarnSCA()` calcula um valor a cada frame mas **zero** chamador (no fork
+       inteiro e neste projeto) lê esse getter — grep confirma; `Steerpoint.next` é mais simples
+       ainda, nunca lido, só escrito.
+     - **Navigation**: roda na fase 3 (mesma fase da decisão); `updateNavSteering()` só COPIA o
+       que `Steerpoint::compute()` já calculou (oito `setX(to->getX())`, zero cálculo próprio) —
+       desenho deliberado para permitir sobrescrever com um sensor de verdade sem mexer em quem
+       consome. Medido neste fork: `Ins`/`Gps` são a MESMA classe que `Navigation`, 0 slots
+       próprios, 0 overrides nas duas — trocar o nome de fábrica no `.edl` não muda nenhum
+       comportamento.
+     - **Autopilot**: `modeManager()` re-latcha `navMode` incondicionalmente todo frame (a
+       PRIMEIRA linha do método), antes de escolher entre os quatro modos mutuamente exclusivos;
+       `processModeNavigation()` é perseguição pura -- `setCommandedHeadingD(marcação bruta)`,
+       todo frame, zero filtro. **Achado central desta página**: os cinco slots de limite de
+       manobra do Autopilot (`maxRateOfTurnDps`/`maxBankAngle`/`maxClimbRateMps`/
+       `maxPitchAngle`/`maxAcceleration`) são passados para o `DynamicsModel` a cada frame, mas
+       **nenhum dos dois** `DynamicsModel` nativos deste fork (`RacModel`, `JSBSimModel`) os
+       aplica — os quatro primeiros chegam como parâmetro SEM NOME
+       (`setCommandedHeadingD(h, const double, const double)`/`setCommandedAltitude(a, const
+       double, const double)`, descartados em tempo de compilação, é impossível referenciá-los
+       mesmo por engano) e o quinto chega COM nome (`vNps`, em `setCommandedVelocityKts()`) mas
+       nenhum corpo o usa — descartado em runtime, uma variante mais sutil do mesmo achado. O
+       próprio `Autopilot.hpp` já avisa que isso PODE acontecer ("these inputs will have no
+       effect" se o `DynamicsModel` não suportar) — aqui é o caso medido, não hipotético.
+     - **Laboratório de navegação** (sub-aba de Autopilot) -- usa os 4 waypoints REAIS de
+       `tests/fixtures/full-systems-nav/configs/scenario_full_nav.edl.in` (coordenadas,
+       velocidades comandadas e `autoSeqDistance: 1.5 NM`, nada inventado) para contrastar, lado a
+       lado, o comando de rumo de `Autopilot::processModeNavigation()` (nativo) contra o de
+       `NavigateAction.cpp` (a resposta deste projeto). O design do laboratório passou por um
+       pivô deliberado durante a pesquisa: a primeira ideia era reproduzir a divergência REAL
+       medida (~200s até espiral e colisão com o terreno, documentada em `NavigateAction.cpp`/
+       `models/players/A-4/CLAUDE.md`) — descartada por não ser honestamente alcançável num
+       modelo cinemático 2D simplificado (a divergência real nasce do acoplamento
+       rolagem/guinada do JSBSim 6-DOF, que um ponto de massa não tem). O laboratório final
+       demonstra, em vez disso, a propriedade que o PRÓPRIO código garante sem precisar de
+       nenhuma física inventada: o salto DESCONTÍNUO no rumo comandado no instante do
+       sequenciamento. Medido rodando o modelo simplificado até a convergência: modo nativo,
+       salto máximo de 180° instantâneo entre dois quadros consecutivos (a marcação inverte de
+       sentido ao cruzar um waypoint); modo próprio, salto máximo de exatamente 1,5°/quadro — o
+       teto teórico (`kMaxHeadingRateDegPerSec=3,0°/s × dt=0,5s`), sem desvio. Uma armadilha de
+       medição encontrada e corrigida no processo: semear `cmdHeading`/`heading` com a marcação
+       inicial ANTES do primeiro quadro (não com um valor arbitrário) — sem isso, o primeiro
+       quadro de "aquecimento" produzia um salto artificial de ~36° que não vinha de
+       sequenciamento nenhum, só da inicialização, e mascarava o teto real do limitador na
+       medição. Verificado via jsdom: as três páginas montam sem erro de console, trocam de
+       sub-aba sem vazar bloco de código para outra classe, o laboratório alterna entre os dois
+       modos e avança a reprodução até o fim sem erro nos dois, e voltar para Missile depois de
+       visitar Autopilot não deixa nenhum conteúdo residual no DOM renderizado.
+  5. **Catálogo** — as 225 classes nativas do MIXR com despacho **real** num `factory.cpp`
      (`base`/`models`/`simulation`/`terrain`/`interop::dis`/`linkage`/`recorder` — o mesmo escopo
      de `models/BUILT-IN.md`) mais as 9 do plugin de produção `models/players/A-4`, com slots e
      participação por fase — buscável/filtrável. Não é "toda classe `DECLARE_SUBCLASS` do fork"
      (esse universo mais amplo, ~118 classes a mais nunca despachadas por fábrica nenhuma, saiu do
      catálogo por completo — filtro de concretude, mesma decisão de `models/BUILT-IN.md`).
-  4. **Estrutura** ("Diagrama de Classe Estrutural" no conteúdo) — diagrama de classe UML sobre um
+  6. **Estrutura** ("Diagrama de Classe Estrutural" no conteúdo) — diagrama de classe UML sobre um
      recorte curado de 19 classes fundacionais do MIXR (`Referenced`/`Object`/`Component`/`Player`/
      `Station`/`Simulation`/`Agent`/`NetIO`/...): caixa completa com atributos/componentes/métodos,
      extraídos de verdade do header C++ por `tools/extract_class_diagram.py` (mesmo precedente,
@@ -4380,7 +4766,8 @@ que este editor ainda tem). Sempre do zero, sempre na ordem certa, abortando no 
 `src/ui/scripts/generate_edl_catalog.py` (Python stdlib, sem MIXR compilado — todas as
 classes/slots que as fábricas encadeadas publicam, mais os ~10 "papéis primários" de `Player`, ver
 abaixo) → `src/ui/scripts/edl_to_ui_project.js` (converte
-`src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in` — o cenário do "player máximo" — no
+`tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in` — o cenário do "player
+máximo", ex-poc, ver "`built-in_mixr_1`/`full-systems-nav` — removidas como pocs" acima — no
 projeto default que a ferramenta já abre carregado) → os testes puros de `edl_builder_core.js`
 (gate de regressão) → um self-check de lint sobre o `.edl` que o cenário padrão exportaria →
 `src/ui/scripts/compile.js` (React+Babel via CDN, sem bundler, gera `edl-builder.html`). As
@@ -5242,7 +5629,10 @@ lógica do pipeline.
 - **`src/node/` deixou de ser placeholder** — é um runner headless e independente de UM cenário
   passado por argumento (`./dist/bin/node <arquivo.edl|.edl.in>`), sem TUI, só logs na tela. Seção
   própria mais acima (logo depois de `./app`). `TODO.md` continua valendo como próximo passo
-  (integração com o asa-engine é direção futura, não coberta pelo runner em si).
+  (integração com o **asa-engine** — roadmap externo a este repositório, ainda não implementado
+  aqui: o conjunto que transformaria o binário de simulação num serviço de verdade, conectado ao
+  `asa-py`/`webstation`, ver `TODO.md`/`src/node/TODO.md` — é direção futura, não coberta pelo
+  runner em si).
 - **A extensão dos cenários EDL passou de `.epp` para `.edl`** (`.epp.in`/`.generated.epp` →
   `.edl.in`/`.generated.edl`, e `tacview_recorder.epp.frag` → `.edl.frag`) — alinha o nome do
   arquivo com o nome da própria linguagem (EDL) e com a convenção dos exemplos oficiais do MIXR
@@ -5255,5 +5645,18 @@ lógica do pipeline.
   poupados desta renomeação — descrevem arquivos de terceiro, não desta aplicação.
 - `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
   destrackeado com `git rm -r --cached`.
-- Limitação conhecida na poc/09: chaff/flare saem no Tacview como `Misc`/`Grey` em vez de
-  `Misc+Decoy+Chaff`/`+Flare` — soma das armadilhas 4, 6 e 7 do xtacview.
+- Limitação conhecida do `libs/xtacview` (chaff/flare — hoje exercitado pelos cenários
+  `sandbox/A4-*DOF*`, não mais por uma poc numerada "poc/09" da numeração `01-flying-aircraft` …
+  `12-jsbsim-ubf` de antes da renomeação `poc/` → `src/poc/`): saem no Tacview como `Misc`/`Grey`
+  em vez de `Misc+Decoy+Chaff`/`+Flare` — soma das armadilhas 4, 6 e 7 do xtacview.
+- **Cinco pocs removidas**: `c130-airdrop`, `navstar3-orbit`, `paratrooper-drop` (documentação
+  pura, sem nenhum código/teste dependendo delas — os modelos que pilotavam, `C-130`/`Navstar-3`/
+  `paratrooper`, continuam existindo e servindo os cenários equivalentes em `sandbox/`, que não
+  mudaram) e `built-in_mixr_1`/`full-systems-nav` (ver a seção própria, "`built-in_mixr_1`/
+  `full-systems-nav` — removidas como pocs", entre `onnx-policy` e "Terreno" acima — os `.edl.in`
+  sobrevivem como fixture em `tests/fixtures/`, consumidos por `src/ui/scripts/build.js` e por
+  testes de `-folder`/porta dupla do Tacview).
+  **ATUALIZAÇÃO:** "documentação pura" acima já não é exata — hoje `src/poc/c130-airdrop/`,
+  `src/poc/paratrooper-drop/` e `src/poc/navstar3-orbit/` têm só `data/` de execuções passadas,
+  sem `configs/` nem `README.md` nenhum (nem a documentação sobreviveu) — mesma descrição que
+  `README.md`, seção "Rodar", já usa.

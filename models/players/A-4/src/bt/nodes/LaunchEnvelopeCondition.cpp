@@ -3,6 +3,9 @@
 #include "bt/DecisionContext.hpp"
 #include "domain/LaunchPolicy.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 LaunchEnvelopeCondition::LaunchEnvelopeCondition(const std::string& name,
@@ -33,3 +36,6 @@ BT::NodeStatus LaunchEnvelopeCondition::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

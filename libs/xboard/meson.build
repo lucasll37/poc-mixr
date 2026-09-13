@@ -1,6 +1,7 @@
 # O quadro de leitura entre o host e o modelo.
 #
-# UNICA shared_library() de libs/ -- as outras cinco sao static_library().
+# Uma das seis shared_library() de libs/ (xboard/xlog/xtrack/xrlbridge/xinfer/
+# xpyembed -- ver libs/README.md); as demais ficam static_library()/header-only.
 # A excecao nao e estilo: este estado e ESCRITO pelo modelo (que mora num .so
 # aberto com dlopen) e LIDO pelo executavel. Estatica daria uma copia de cada
 # lado, e o dump imprimiria 'bt=--' e 'dec=0' para sempre, sem erro nenhum.

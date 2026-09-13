@@ -57,9 +57,10 @@ const N = (id, c, o = {}) => ({ id, cls: c, children: [], ...o });
 // Um único ( Aircraft ) carregando os DEZ sistemas primários que
 // Player::updateSystemPointers() resolve por TIPO (Player.cpp:3141-3151) — e,
 // dentro de cada um, tudo que a fábrica nativa de mixr::models sabe construir.
-// É o mesmo desenho de src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in
-// ("qual o player mais elaborado que dá para montar só com componentes NATIVOS
-// do mixr::models?"), com uma única diferença deliberada: ali o Datalink é
+// É o mesmo desenho de tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in
+// (ex-poc, removida de src/poc/ -- ver CLAUDE.md) -- "qual o player mais
+// elaborado que dá para montar só com componentes NATIVOS
+// do mixr::models?", com uma única diferença deliberada: ali o Datalink é
 // ( AlertDatalink ) — a ÚNICA classe não nativa daquele cenário — e aqui é
 // ( Datalink ) puro, porque esta página é sobre o framework, não sobre um
 // plugin. falcon2 (o alvo, pilha mínima) e o míssil dinâmico completam o
@@ -79,7 +80,7 @@ const SCENARIO = N("station", "Station", {
 
         N("ac", "Aircraft", {
           edl: "falcon1", via: "players:", player: true, thread: "tc",
-          note: "53 das 96 classes que mixr::models::factory publica, num Aircraft só — ver 'built-in_mixr_1' no CLAUDE.md.",
+          note: "53 das 96 classes que mixr::models::factory publica, num Aircraft só — ver a seção 'built-in_mixr_1/full-systems-nav — removidas como pocs' no CLAUDE.md.",
           children: [
             // --- 1) DynamicsModel ---------------------------------------
             N("dyn", "JSBSimModel", { edl: "dyn", via: "components:", thread: "tc" }),
@@ -318,7 +319,8 @@ const NAME_LINKS = [
 /* =============================== EDL ================================ */
 
 // Condensado do MESMO cenário real que o motivou --
-// src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in ("qual o player
+// tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in (ex-poc,
+// removida de src/poc/ -- ver CLAUDE.md; "qual o player
 // mais elaborado que dá para montar só com componentes NATIVOS do
 // mixr::models?") -- com uma troca deliberada: datalink: ( Datalink ) puro no
 // lugar de ( AlertDatalink ), a única classe NÃO nativa daquele cenário. Aqui
@@ -372,7 +374,7 @@ const EDL_TEXT = `( Station
 
                // --- 1) DynamicsModel -------------------------------
                dyn: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model: "A4"
                )
 
@@ -624,6 +626,91 @@ function windowLines(lines, hl, max) {
     cutBefore: start > 0,
     cutAfter: start + max < n,
   };
+}
+
+/* ---------------------------------------------------------------------------
+ * cppTokenizeLines(lines) -- highlight de sintaxe C++ LEVE, por heurística
+ * (não é um lexer C++ de verdade -- não precisa: o objetivo é dar pista
+ * visual num trecho de código já correto, não validar sintaxe). Roda sobre
+ * TODAS as linhas do snippet de uma vez (não sobre a janela recortada por
+ * windowLines()) porque um comentário de bloco C (o de barra-asterisco, não
+ * o de barra-barra) pode abrir numa linha ACIMA da janela visível --
+ * tokenizar só o recorte perderia esse estado e coloriria código como
+ * comentário por engano.
+ *
+ * Sete categorias, coloridas por --cpp-* (CSS, fixas nos dois temas -- ver
+ * o comentário ao lado da declaração): kw (palavra reservada), str
+ * (string/char literal), num (número), com (comentário), macro
+ * (identificador TODO-MAIUSCULO -- cobre macro de verdade, ex.
+ * BEGIN_RECORD_DATA_SAMPLE, E constante de enum, ex. KILL_EVENT/PRE_RELEASE/
+ * DETONATED -- a mesma classe visual serve às duas porque o que importa
+ * aqui é "isto é uma CONSTANTE nomeada do framework", não a distinção
+ * lexical entre as duas), fn (identificador seguido de "(", exceto palavra
+ * reservada) e type (identificador seguido de "::"). Tudo o mais fica sem
+ * cor -- pontuação, operadores, identificador comum.
+ * ------------------------------------------------------------------------ */
+const CPP_KEYWORDS = new Set([
+  "if", "else", "for", "while", "do", "return", "switch", "case", "default", "break", "continue",
+  "class", "struct", "namespace", "public", "private", "protected", "virtual", "override", "final",
+  "static", "const", "constexpr", "void", "bool", "double", "float", "int", "unsigned", "char",
+  "long", "short", "auto", "new", "delete", "nullptr", "true", "false", "typename", "template",
+  "using", "typedef", "enum", "this", "sizeof", "explicit", "friend", "inline", "mutable",
+  "operator", "throw", "try", "catch", "noexcept", "volatile", "goto", "union", "signed",
+]);
+
+const CPP_TOKEN_RE = /\/\/.*$|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b0[xX][0-9a-fA-F]+\b|\b\d+\.?\d*[fFuUlL]*\b|[A-Za-z_]\w*|\/\*|\*\//g;
+
+function cppTokenizeLines(lines) {
+  let inBlock = false;
+  return lines.map((line) => {
+    const out = [];
+    let last = 0;
+    if (inBlock) {
+      const endIdx = line.indexOf("*/");
+      if (endIdx === -1) { out.push({ t: line, c: "com" }); return out; }
+      out.push({ t: line.slice(0, endIdx + 2), c: "com" });
+      last = endIdx + 2;
+      inBlock = false;
+    }
+    CPP_TOKEN_RE.lastIndex = last;
+    let m;
+    while ((m = CPP_TOKEN_RE.exec(line))) {
+      if (m.index > last) out.push({ t: line.slice(last, m.index), c: null });
+      const tok = m[0];
+      if (tok === "/*") {
+        const endIdx = line.indexOf("*/", m.index + 2);
+        if (endIdx === -1) { out.push({ t: line.slice(m.index), c: "com" }); inBlock = true; last = line.length; break; }
+        out.push({ t: line.slice(m.index, endIdx + 2), c: "com" });
+        last = endIdx + 2;
+        CPP_TOKEN_RE.lastIndex = last;
+        continue;
+      }
+      if (tok === "*/") { out.push({ t: tok, c: null }); last = m.index + tok.length; continue; }
+      if (tok.startsWith("//")) { out.push({ t: tok, c: "com" }); last = line.length; break; }
+      if (tok[0] === "\"" || tok[0] === "'") { out.push({ t: tok, c: "str" }); last = m.index + tok.length; continue; }
+      if (/^[0-9]/.test(tok)) { out.push({ t: tok, c: "num" }); last = m.index + tok.length; continue; }
+      if (CPP_KEYWORDS.has(tok)) { out.push({ t: tok, c: "kw" }); last = m.index + tok.length; continue; }
+      if (tok.length > 2 && /^[A-Z][A-Z0-9_]*$/.test(tok)) { out.push({ t: tok, c: "macro" }); last = m.index + tok.length; continue; }
+      const after = line.slice(m.index + tok.length);
+      if (/^\s*\(/.test(after)) out.push({ t: tok, c: "fn" });
+      else if (/^\s*::/.test(after)) out.push({ t: tok, c: "type" });
+      else out.push({ t: tok, c: null });
+      last = m.index + tok.length;
+    }
+    if (last < line.length) out.push({ t: line.slice(last), c: null });
+    return out;
+  });
+}
+
+/* Renderiza uma linha já tokenizada dentro de .mx-src -- usado pelas quatro
+ * telas que mostram código C++ (Execução, Comportamento, step-by-step,
+ * Catálogo), então uma mudança na paleta/heurística vale pras quatro de
+ * uma vez. 'raw' é o texto puro da linha, usado só se não houver token
+ * nenhum (linha vazia) -- mesma razão do "{ln || ' '}" que existia antes:
+ * uma <span> sem filho nenhum não ocupa altura de linha em todo navegador. */
+function renderCppSrc(tokens, raw) {
+  if (!tokens || !tokens.length) return raw || " ";
+  return tokens.map((tk, i) => (tk.c ? <span key={i} className={`mx-cpp-${tk.c}`}>{tk.t}</span> : <React.Fragment key={i}>{tk.t}</React.Fragment>));
 }
 
 /* método de fonte a mostrar para um nó numa fase */
@@ -1007,6 +1094,13 @@ html, body { margin:0; padding:0; }
   --seg-phase-0:#9AA79F; --seg-phase-1:#8FA0A8; --seg-phase-2:#A8A08F; --seg-phase-3:#9E93A8;
   --edl-bg:#F0F2EC; --edl-muted:#A3ADA4; --edl-hl:#E2DBCE;
   --code-muted:#5E7280; --code-hl:#2E4250;
+  /* Cores de sintaxe C++ (mx-cpp-*) -- FIXAS, não redefinidas no tema escuro:
+   * o fundo do bloco de código (--code) já é escuro nos DOIS temas (só muda
+   * de tom, #1B2730 claro / #12171B escuro), então uma paleta calibrada pra
+   * fundo escuro serve nos dois sem duplicar sete variáveis a mais no bloco
+   * [data-theme="dark"]. */
+  --cpp-kw:#E3A15A; --cpp-str:#9BC97C; --cpp-num:#7FB8D9; --cpp-com:#6E828C;
+  --cpp-macro:#D98CDB; --cpp-fn:#D9C77D; --cpp-type:#6FD1C5;
   --mono: ui-monospace,'JetBrains Mono','SF Mono',Menlo,monospace;
   --sans: 'Inter',system-ui,-apple-system,sans-serif;
   background:var(--paper); color:var(--ink); font-family:var(--sans);
@@ -1125,6 +1219,22 @@ html, body { margin:0; padding:0; }
 .mx-edl .mx-num { width:30px; color:var(--edl-muted); }
 .mx-src { white-space:pre; border-left:2px solid transparent; padding-left:8px; }
 .mx-cl[data-on="1"] .mx-src { border-left-color:var(--hot); }
+.mx-cpp-kw { color:var(--cpp-kw); }
+.mx-cpp-str { color:var(--cpp-str); }
+.mx-cpp-num { color:var(--cpp-num); }
+.mx-cpp-com { color:var(--cpp-com); font-style:italic; }
+.mx-cpp-macro { color:var(--cpp-macro); font-weight:600; }
+.mx-cpp-fn { color:var(--cpp-fn); }
+.mx-cpp-type { color:var(--cpp-type); }
+
+/* --- aba Referência: tile de leitura (HUD) e pilula de status -- reusa as       *
+ * mesmas variaveis de tema de sempre, nenhuma cor nova. --- */
+.mx-stat { background:var(--panel); border-radius:3px; padding:6px 12px; min-width:92px; }
+.mx-stat-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px; }
+.mx-stat-value { font-family:var(--mono); font-size:13.5px; font-weight:700; color:var(--ink); white-space:nowrap; }
+.mx-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:11px;
+  font-size:11px; font-weight:600; font-family:var(--mono); }
+.mx-refhero { border:1px solid var(--rule); border-radius:3px; background:var(--panel); padding:14px 16px; }
 .mx-node { cursor:pointer; }
 .mx-node rect { transition:fill 130ms, stroke 130ms, opacity 220ms, stroke-width 130ms; }
 .mx-node[data-pop="1"] { animation:mx-popin 320ms cubic-bezier(.2,.9,.3,1.3); }
@@ -1230,7 +1340,9 @@ export default function App() {
           <div className="mx-tabs">
             <button className="mx-tab" data-on={mode === "exec" ? 1 : 0} onClick={() => setMode("exec")}>Simulação</button>
             <button className="mx-tab" data-on={mode === "dec" ? 1 : 0} onClick={() => setMode("dec")}>Comportamento</button>
+            <button className="mx-tab" data-on={mode === "steps" ? 1 : 0} onClick={() => setMode("steps")}>step-by-step</button>
             <button className="mx-tab" data-on={mode === "struct" ? 1 : 0} onClick={() => setMode("struct")}>Diagrama de Classes</button>
+            <button className="mx-tab" data-on={mode === "ref" ? 1 : 0} onClick={() => setMode("ref")}>Referência</button>
             <button className="mx-tab" data-on={mode === "cat" ? 1 : 0} onClick={() => setMode("cat")}>Catálogo</button>
           </div>
           <button className="mx-zbtn" data-w="1" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Alternar modo claro/escuro">
@@ -1245,9 +1357,15 @@ export default function App() {
       {mode === "dec" && (
         <FlightDecision onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }} />
       )}
+      {mode === "steps" && (
+        <MissileTrace onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }} />
+      )}
       {mode === "struct" && (
         <StructDiagram onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }}
                        focus={structFocus} setFocus={setStructFocus} />
+      )}
+      {mode === "ref" && (
+        <Reference onOpenCatalog={(c) => { setCatalogFocus(c); setMode("cat"); }} />
       )}
       {mode === "cat" && (
         <Catalog onOpen={(c) => { setFocus(c); setMode("exec"); }}
@@ -1416,6 +1534,7 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
   const pathEdges = useMemo(() => new Set(ancestors(step.node || "station").map(([a, b]) => a + ">" + b)), [step.node]);
 
   const snip = SNIPPETS[step.src];
+  const cppTokens = useMemo(() => (snip ? cppTokenizeLines(snip.lines) : null), [snip]);
   // Os novos nós de decisão UBF (agent/ubfstate/ubfarb/ubfbeh*) não têm EDL de
   // produção real (ver a nota em UBF_EDL_TEXT) — checa a tabela ilustrativa
   // primeiro, cai para o EDL real dos outros 72 nós senão.
@@ -1940,7 +2059,7 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
                   {codeWin.lines.map((ln, k) => {
                     const abs = k + codeWin.offset;
                     const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
-                    return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{ln || " "}</span></div>;
+                    return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{renderCppSrc(cppTokens && cppTokens[abs], ln)}</span></div>;
                   })}
                   {codeWin.cutAfter && <div className="mx-codecut">⋯ {snip.lines.length - codeWin.offset - codeWin.lines.length} linhas abaixo ⋯</div>}
                 </div>
@@ -2978,7 +3097,7 @@ const FLIGHT_EDL_TEXT = `falcon1: ( Aircraft
       agent: ( FlightAgentTC
          state: ( FlightState )
          behavior: ( BtBehavior
-            treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+            treeFile: "./dist/share/mixr-plugins/A-4/flight_tree.xml"
             patrolHeading:  ( Degrees 90 )
             legTime:        ( Seconds 60 )
             legTurn:        ( Degrees 90 )
@@ -3430,6 +3549,7 @@ function FlightDecision({ onOpenCatalog }) {
   // mais contexto ao redor do trecho destacado.
   const previewWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 12) : null), [snip, step.hl]);
   const codeWin = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 22) : null), [snip, step.hl]);
+  const cppTokens = useMemo(() => (snip ? cppTokenizeLines(snip.lines) : null), [snip]);
   const activeEdlText = activeTrace.edlText || FLIGHT_EDL_TEXT;
   const edlWin = useMemo(() => windowLines(activeEdlText, edlRange, 22), [activeEdlText, edlRange]);
   useEffect(() => { if (detailTab === "code" && !snip) setDetailTab("step"); }, [detailTab, snip]);
@@ -3479,7 +3599,7 @@ function FlightDecision({ onOpenCatalog }) {
       {win.lines.map((ln, k) => {
         const abs = k + win.offset;
         const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
-        return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{ln || " "}</span></div>;
+        return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{renderCppSrc(cppTokens && cppTokens[abs], ln)}</span></div>;
       })}
       {win.cutAfter && <div className="mx-codecut">⋯ {snip.lines.length - win.offset - win.lines.length} linhas abaixo ⋯</div>}
     </div>
@@ -3858,6 +3978,4728 @@ function FlightDecision({ onOpenCatalog }) {
   );
 }
 
+/* ====================== rastreio: disparo de missil, passo a passo (aba "step-by-step") ==========
+ * Curadoria manual sobre dado real -- MESMA pratica ja registrada acima para FLIGHT_SNIPPETS:
+ * cada trecho abaixo foi conferido direto no fonte, arquivo e linha reais, nao gerado pelo
+ * extrator automatico. Aqui por um motivo a mais que o de FLIGHT_SNIPPETS: esta trilha atravessa
+ * DOIS plugins (models/players/A-4 e models/players/missile) e duas classes ABSTRATAS do MIXR
+ * (AbstractWeapon, StoresMgr) que ficam de fora do Catalogo (ele so' cobre classe CONCRETA,
+ * IMPLEMENT_SUBCLASS -- ver MOD_ORDER/Catalog abaixo) -- tools/generate_manual_catalog.py nao
+ * tem como alcancar nada disso automaticamente.
+ *
+ * O cenario de referencia e' sandbox/A4-6DOF-MISSILE (ver README la): a4_shooter detecta
+ * a4_target pelo radar e dispara um ( GuidedMissile ) contra ele. Os numeros medidos citados nas
+ * notas (t=67.1s disparo, ~35m aproximacao, t=93.9s remocao) sao os do README daquele cenario,
+ * nao inventados aqui.
+ *
+ * O ponto do exercicio inteiro: MOSTRAR onde o MIXR emite (ou deixa de emitir) evento de verdade
+ * dentro do proprio disparo -- nao so' "o que a classe faz", mas o INSTANTE em que ela
+ * efetivamente chama event()/BEGIN_RECORD_DATA_SAMPLE, e o que fica faltando quando ninguem do
+ * lado do cenario liga o flag certo (killRemoval) ou inclui o token certo no enabledList.
+ * ==================================================================================== */
+
+const MISSILE_STAGES = [
+  { n: 0, label: "contexto" },
+  { n: 1, label: "decisão" },
+  { n: 2, label: "liberação" },
+  { n: 3, label: "transição" },
+  { n: 4, label: "guiagem" },
+  { n: 5, label: "detonação" },
+  { n: 6, label: "epílogo" },
+];
+
+const MISSILE_SNIPPETS = {
+  "LaunchEnvelopeCondition::tick": {
+    file: "models/players/A-4/src/bt/nodes/LaunchEnvelopeCondition.cpp",
+    line: 15,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Deliberadamente CONTATO DE VERDADE (snapshot().hasContact), nao",
+      "// threatPolicy().engaged() -- ao contrario de ContactDetectedCondition, que",
+      "// consulta a histerese justamente para NAO oscilar entre evadir e apoiar.",
+      "// Disparar contra uma pista que ja sumiu (so' sobrevivendo no arrasto da",
+      "// histerese) mandaria o missil atras de uma posicao velha.",
+      "//------------------------------------------------------------------------------",
+      "BT::NodeStatus LaunchEnvelopeCondition::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& snap = context_.behavior->snapshot();",
+      "   if (!snap.weaponReady || !snap.hasContact) return BT::NodeStatus::FAILURE;",
+      "",
+      "   return domain::inLaunchEnvelope(context_.behavior->launchEnvelope(),",
+      "                                   snap.contactRangeM, snap.contactRelBearingDeg)",
+      "      ? BT::NodeStatus::SUCCESS",
+      "      : BT::NodeStatus::FAILURE;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "LaunchMissileAction::tick": {
+    file: "models/players/A-4/src/bt/nodes/LaunchMissileAction.cpp",
+    line: 14,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// So marca o PEDIDO -- o comando de voo mantem rumo/altitude/velocidade",
+      "// atuais (disparar nao e motivo pra mudar de trajetoria; o disparo em si",
+      "// acontece na atuacao, ver ubf/FlightAction.cpp). Mesmo piso anti-CFIT que",
+      "// RTB/SUPPORT/PATROL ja respeitam fora do ramo de evasao (ver",
+      "// bt/DecisionContext.hpp::clampAltitudeToTerrain()).",
+      "//",
+      "// So' dispara UMA vez por engajamento sem precisar de estado proprio aqui:",
+      "// depois do primeiro disparo, StoresMgr::available() cai (um cenario com",
+      "// um so' missil no cabide vai a zero), snapshot().weaponReady vira false no",
+      "// PROXIMO frame, e LaunchEnvelopeCondition passa a falhar sozinho -- a",
+      "// mesma latencia de um frame entre decisao e percepcao que o resto deste",
+      "// modelo ja tem (ver o comentario de domain::ThreatPolicy sobre",
+      "// contactLive()/engaged()).",
+      "//------------------------------------------------------------------------------",
+      "BT::NodeStatus LaunchMissileAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& snap = context_.behavior->snapshot();",
+      "   FlightDecision& decision{context_.behavior->decision()};",
+      "",
+      "   domain::FlightCommand cmd;",
+      "   cmd.headingDeg = snap.headingDeg;",
+      "   cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(snap.altitudeM);",
+      "   cmd.speedKts = snap.speedKts;",
+      "   decision.take(cmd, \"LAUNCH\");",
+      "",
+      "   decision.launchRequested = true;",
+      "   decision.launchTargetName = snap.contactName;",
+      "",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "FlightAction::execute (lancamento)": {
+    file: "models/players/A-4/src/ubf/FlightAction.cpp",
+    line: 291,
+    lines: [
+      "   // Lancamento de missil -- o UNICO ponto deste modelo que toca um objeto",
+      "   // MIXR de arma. Padrao idiomatico do proprio framework, nao invencao",
+      "   // deste modelo: Player::getStoresManagement() -> StoresMgr::",
+      "   // releaseOneMissile() (publico, PRE-REF'D, dynamic_cast<Missile*> por",
+      "   // baixo -- casa QUALQUER subclasse de Missile, nativa ou de terceiro) ->",
+      "   // AbstractWeapon::setTargetPlayer(alvo, /*posTrkEnb=*/true) -> unref().",
+      "   // 'posTrkEnb=true' e' o que liga isGuidanceEnabled() do lado do missil",
+      "   // (alem do proprio tof>=tsg) -- ver models/players/missile/docs/ARCHITECTURE.md.",
+      "   if (launchRequested) {",
+      "      launchRequested = false;   // um pedido so' vale para UM frame",
+      "",
+      "      auto* const world = player->getWorldModel();",
+      "      const auto target = (world != nullptr)",
+      "         ? dynamic_cast<models::Player*>(world->findPlayerByName(launchTargetName.c_str()))",
+      "         : nullptr;",
+      "",
+      "      auto* const storesMgr = player->getStoresManagement();",
+      "",
+      "      if (target == nullptr) {",
+      "         LOG(WARNING) << \"[FlightAction] \" << playerName",
+      "                      << \": lancamento abortado -- alvo '\" << launchTargetName",
+      "                      << \"' nao encontrado\";",
+      "      } else if (storesMgr == nullptr || storesMgr->available() == 0) {",
+      "         LOG(WARNING) << \"[FlightAction] \" << playerName",
+      "                      << \": lancamento abortado -- cabide vazio\";",
+      "      } else {",
+      "         auto* const flyout = storesMgr->releaseOneMissile();",
+      "         if (flyout != nullptr) {",
+      "            flyout->setTargetPlayer(target, /*posTrkEnb=*/true);",
+      "            LOG(INFO) << \"[FlightAction] \" << playerName",
+      "                      << \": missil lancado contra \" << launchTargetName;",
+      "            flyout->unref();   // releaseOneMissile() devolve pre-ref'd",
+      "         } else {",
+      "            LOG(WARNING) << \"[FlightAction] \" << playerName",
+      "                         << \": lancamento abortado -- releaseOneMissile() devolveu nulo\";",
+      "         }",
+      "      }",
+      "   }",
+    ],
+    trunc: true,
+  },
+  "SimpleStoresMgr::getNextMissileImp": {
+    file: "contexts/src/mixr/src/models/system/SimpleStoresMgr.cpp",
+    line: 168,
+    lines: [
+      "Missile* SimpleStoresMgr::getNextMissileImp()",
+      "{",
+      "   Missile* msl{};",
+      "",
+      "   base::PairStream* list{getWeapons()};",
+      "   if (list != nullptr) {",
+      "",
+      "      // find the first free (inactive) missile",
+      "      base::List::Item* item{list->getFirstItem()};",
+      "      while (item != nullptr && msl == nullptr) {",
+      "         const auto pair = static_cast<base::Pair*>(item->getValue());",
+      "         const auto p = dynamic_cast<Missile*>(pair->object());",
+      "         if (p != nullptr) {",
+      "            if (p->isInactive() || p->isReleaseHold()) {",
+      "               msl = static_cast<Missile*>(p->getPointer());",
+      "            }",
+      "         }",
+      "         item = item->getNext();",
+      "      }",
+      "      list->unref();",
+      "   }",
+      "",
+      "   return msl;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Stores::releaseWeapon": {
+    file: "contexts/src/mixr/src/models/system/Stores.cpp",
+    line: 312,
+    lines: [
+      "// By weapon",
+      "AbstractWeapon* Stores::releaseWeapon(AbstractWeapon* const wpn)",
+      "{",
+      "   AbstractWeapon* flyout{};",
+      "",
+      "   Player* own{getOwnship()};",
+      "   if (wpn != nullptr && own != nullptr) {",
+      "",
+      "      // Release the weapon",
+      "      wpn->setLaunchVehicle(own);",
+      "      flyout = wpn->release();",
+      "",
+      "   }",
+      "",
+      "   return flyout;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "AbstractWeapon::release": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 560,
+    lines: [
+      "AbstractWeapon* AbstractWeapon::release()",
+      "{",
+      "   AbstractWeapon* flyout{};",
+      "",
+      "   // When this weapon isn't already released, blocked or jettisoned.",
+      "   if ( !isReleased() && !isBlocked() && !isJettisoned() ) {",
+      "",
+      "      // and isn't flagged to be a hung store (i.e., failure mode),",
+      "      if (!getWillHang()) {",
+      "",
+      "         // and we have a launching player and a simulation ...",
+      "         Player* lplayer{getLaunchVehicle()};",
+      "         const auto sim = static_cast<WorldModel*>( findContainerByType(typeid(WorldModel)) );",
+      "         if ( lplayer != nullptr && sim != nullptr) {",
+      "",
+      "            // then release the weapon!",
+      "",
+      "            flyout = getFlyoutWeapon();",
+      "            if (flyout != nullptr) {",
+      "               // When we've already created a flyout weapon, which is on the",
+      "               // player list in 'release hold' ...",
+      "",
+      "               // we'll just need to clear the \"release",
+      "               // hold\" flag, which will let the flyout weapon go ACTIVE.",
+      "               flyout->setReleased(true);",
+      "               flyout->setReleaseHold(false);",
+      "",
+      "               // Set the initial weapon's mode flags to fully released.",
+      "               AbstractWeapon* initWpn{getInitialWeapon()};",
+      "               initWpn->setMode(Player::LAUNCHED);",
+      "               initWpn->setReleased(true);",
+      "               initWpn->setReleaseHold(false);",
+      "               initWpn->unref();",
+      "            } else {",
+      "               // When we haven't already created a flyout then this is",
+      "               // a direct release ...",
+      "",
+      "               // Get a release event",
+      "               eventID = sim->getNewWeaponEventID();",
+      "",
+      "               // Next we'll clone ourself --",
+      "               //  -- this will be the actual weapon player what will do the fly-out.",
+      "               flyout = this->clone();",
+      "",
+      "               flyout->container( sim );",
+      "               flyout->reset();",
+      "",
+      "               flyout->setFlyoutWeapon(flyout);",
+      "               flyout->setInitialWeapon(this);",
+      "               flyout->setID( sim->getNewReleasedWeaponID() );",
+      "",
+      "               flyout->setLaunchVehicle( lplayer );",
+      "               flyout->setSide( lplayer->getSide() );",
+      "",
+      "               // and set the weapon prerelease",
+      "               flyout->setMode(PRE_RELEASE);",
+      "               flyout->setReleased(true);",
+      "               flyout->setReleaseHold(false);",
+      "",
+      "               // Set our mode flags to fully released.",
+      "               setFlyoutWeapon(flyout);",
+      "               setInitialWeapon(this);",
+      "               setMode(Player::LAUNCHED);",
+      "               setReleased(true);",
+      "               setReleaseHold(false);",
+      "",
+      "               // add it to the flyout weapon player list",
+      "               char pname[32];",
+      "               std::sprintf(pname,\"W%05d\", flyout->getID());",
+      "               sim->addNewPlayer(pname,flyout);",
+      "            }",
+      "",
+      "            BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_RELEASED )",
+      "               SAMPLE_3_OBJECTS( flyout, getLaunchVehicle(), nullptr )  // weapon, shooter, target",
+      "               SAMPLE_2_VALUES( 0, 0.0 )",
+      "            END_RECORD_DATA_SAMPLE()",
+      "",
+      "         }",
+      "",
+      "      } else {",
+      "         // We have a hung store",
+      "         setHung(true);",
+      "",
+      "         BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_HUNG )",
+      "            SAMPLE_3_OBJECTS( this, getLaunchVehicle(), nullptr )",
+      "         END_RECORD_DATA_SAMPLE()",
+      "",
+      "      }",
+      "   }",
+      "",
+      "   return flyout;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Missile::setTargetPlayer": {
+    file: "contexts/src/mixr/src/models/player/weapon/Missile.cpp",
+    line: 250,
+    lines: [
+      "// setTargetPlayer() -- sets a pointer to the target player",
+      "bool Missile::setTargetPlayer(Player* const tgt, const bool pt)",
+      "{",
+      "   // if our tgt has changed, reset ground truth vals for weaponGuidance's fuzing logic",
+      "   if (tgt != nullptr && tgt != getTargetPlayer()) {",
+      "      trngT = (tgt->getPosition()-getPosition()).length();",
+      "      trdotT=0.0;",
+      "   }",
+      "   return BaseClass::setTargetPlayer(tgt, pt);",
+      "}",
+    ],
+    trunc: false,
+  },
+  "AbstractWeapon::setTargetPlayer": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 1063,
+    lines: [
+      "// setTargetPlayer() -- sets a pointer to the target player",
+      "bool AbstractWeapon::setTargetPlayer(Player* const tgt, const bool pt)",
+      "{",
+      "    tgtPlayer = tgt;",
+      "    tgtTrack = nullptr;",
+      "",
+      "    // Track position?",
+      "    posTrkEnb = (pt && tgt != nullptr);",
+      "    positionTracking();",
+      "    return true;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "AbstractWeapon::updateTC": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 222,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// updateTC() -- update time critical stuff here",
+      "//------------------------------------------------------------------------------",
+      "void AbstractWeapon::updateTC(const double dt)",
+      "{",
+      "   BaseClass::updateTC(dt);",
+      "",
+      "   unsigned int ph{getWorldModel()->phase()};",
+      "",
+      "   // Phase #0 -- Transition from pre-release to active at the end of dynamics",
+      "   // phase (after the call to BaseClass), so that our position, which was",
+      "   // relative to our launch vehicle, has been computed.",
+      "   if (ph == 0 && isMode(PRE_RELEASE) && !isReleaseHold() ) {",
+      "      atReleaseInit();",
+      "      setMode(ACTIVE);",
+      "   }",
+      "",
+      "   // Phase #3",
+      "   if (ph == 3 && isActive() && isLocalPlayer() && !isJettisoned() && !isDummy()) {",
+      "",
+      "      // Simple function to get target coordinates",
+      "      if (posTrkEnb) positionTracking();",
+      "",
+      "      // Update our Time-Of-Flight (TOF)",
+      "      if (isMode(ACTIVE)) updateTOF(dt * 4.0);",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Missile::atReleaseInit": {
+    file: "contexts/src/mixr/src/models/player/weapon/Missile.cpp",
+    line: 102,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// atReleaseInit() -- Init weapon data at release",
+      "//------------------------------------------------------------------------------",
+      "void Missile::atReleaseInit()",
+      "{",
+      "   // First the base class will setup the initial conditions",
+      "   BaseClass::atReleaseInit();",
+      "",
+      "   if (getDynamicsModel() == nullptr) {",
+      "      // set initial commands",
+      "      cmdPitch = static_cast<double>(getPitch());",
+      "      cmdHeading = static_cast<double>(getHeading());",
+      "      cmdVelocity = vpMax;",
+      "",
+      "      if (getTargetTrack() != nullptr) {",
+      "         // Set initial range and range dot",
+      "         base::Vec3d los = getTargetTrack()->getPosition();",
+      "         trng = los.length();",
+      "         trngT = trng;",
+      "      }",
+      "      else if (getTargetPlayer() != nullptr) {",
+      "         // Set initial range and range dot",
+      "         base::Vec3d los = getTargetPosition();",
+      "         trng = los.length();",
+      "         trngT = trng;",
+      "      }",
+      "      else {",
+      "         trng = 0.0;",
+      "      }",
+      "",
+      "      // Range dot",
+      "      trdot = 0.0;",
+      "      trdotT = 0.0;",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "GuidedMissile::atReleaseInit": {
+    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    line: 88,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// atReleaseInit() -- semeia cmdHeadingRad_/cmdPitchRad_/cmdSpeedMps_ com a",
+      "// atitude/velocidade de LANCAMENTO (mesmo padrao de Missile::atReleaseInit()",
+      "// nativo, que semeia cmdPitch/cmdHeading/cmdVelocity -- so' que aqueles sao",
+      "// campos PROPRIOS de Missile, nunca lidos por GuidedMissile::weaponDynamics(),",
+      "// que consome os campos abaixo).",
+      "//",
+      "// Sem este metodo (achado rodando, nao suposto -- ver o comentario de",
+      "// weaponGuidance() sobre isGuidanceEnabled()): os tres campos ficam no",
+      "// inicializador de classe (0.0) ate tof>=tsg, e weaponDynamics() ja roda",
+      "// TODO frame independente do TSG -- o missil guina ativamente para",
+      "// rumo/pitch GEOGRAFICO ZERO (Norte, nivelado) e desacelera em direcao a",
+      "// ZERO m/s durante toda a janela do TSG (aqui, 1.0 s), a taxa/aceleracao",
+      "// maxima (maxG/maxAccel). Medido no cenario sandbox/A4-6DOF-MISSILE: o",
+      "// missil abre mao de ate ~66 graus de rumo e perde velocidade real antes de",
+      "// a navegacao proporcional assumir -- o suficiente, em geometrias menos",
+      "// favoraveis que a testada, para nao convergir dentro de maxBurstRng e",
+      "// \"passar do lado\" do alvo sem detonar.",
+      "//------------------------------------------------------------------------------",
+      "void GuidedMissile::atReleaseInit()",
+      "{",
+      "   BaseClass::atReleaseInit();",
+      "",
+      "   cmdHeadingRad_ = getHeadingR();",
+      "   cmdPitchRad_ = getPitchR();",
+      "   cmdSpeedMps_ = getVpMax();",
+      "}",
+    ],
+    trunc: false,
+  },
+  "AbstractWeapon::dynamics": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 250,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// dynamics() -- update vehicle dynamics",
+      "//------------------------------------------------------------------------------",
+      "void AbstractWeapon::dynamics(const double dt)",
+      "{",
+      "   if (isMode(PRE_RELEASE)) {",
+      "      // Weapon is on the same side as the launcher",
+      "      setSide( getLaunchVehicle()->getSide() );",
+      "",
+      "      // Launch vehicles rotational matrix",
+      "      base::Matrixd lvM{getLaunchVehicle()->getRotMat()};",
+      "",
+      "      // Set weapon's position at launch",
+      "      // 1) Weapon's position is its position relative to the launcher (launcher's body coordinates)",
+      "      // 2) Rotate to earth coordinates",
+      "      // 3) Add the launcher's position",
+      "      const base::Vec2d ip{getInitPosition()};",
+      "      const base::Vec3d pos0b(ip.x(), ip.y(), -getInitAltitude());",
+      "      const base::Vec3d pos0e{pos0b * lvM}; // body to earth",
+      "      const base::Vec3d lpos{getLaunchVehicle()->getPosition()};",
+      "      const base::Vec3d pos1{lpos + pos0e};",
+      "      setPosition( pos1 );",
+      "",
+      "      // Weapon's orientation at launch",
+      "      const base::Vec3d ia{getInitAngles()};",
+      "      base::Matrixd rr;",
+      "      base::nav::computeRotationalMatrix( ia[0], ia[1], ia[2], &rr);",
+      "      rr *= lvM;",
+      "",
+      "      setRotMat(rr);",
+      "",
+      "      // Set velocities are the same as the launcher",
+      "      setVelocity( getLaunchVehicle()->getVelocity() );",
+      "",
+      "      // Not accelerations or angular velocities",
+      "      setAcceleration( 0, 0, 0 );",
+      "      setAngularVelocities( 0, 0, 0 );",
+      "   } else if (!isJettisoned()) {",
+      "",
+      "      if (isLocalPlayer() && !isDummy() && getDynamicsModel() == nullptr) {",
+      "         // Use our default (simple) weapon model",
+      "         weaponGuidance(dt);",
+      "         weaponDynamics(dt);",
+      "      }",
+      "      BaseClass::dynamics(dt);",
+      "",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "GuidedMissile::weaponGuidance": {
+    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    line: 116,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// weaponGuidance() -- le a posicao/velocidade do alvo DIRETO do Player*",
+      "// (mesmo padrao de Missile::calculateVectors() nativo -- nao usa o cache",
+      "// tgtPos/tgtVel de AbstractWeapon, que mistura convencao absoluta com",
+      "// relativa entre os dois campos). Delega a lei de guiagem inteira para",
+      "// domain::proportionalNavigation() (sem MIXR, testada isolada em",
+      "// tests/domain/test_Guidance.cpp) e guarda o comando para",
+      "// weaponDynamics() consumir no MESMO frame.",
+      "//------------------------------------------------------------------------------",
+      "void GuidedMissile::weaponGuidance(const double dt)",
+      "{",
+      "   const Player* const tgt{getTargetPlayer()};",
+      "   if (tgt == nullptr || !tgt->isActive()) return;",
+      "",
+      "   const base::Vec3d& tgtPos{tgt->getPosition()};",
+      "   const base::Vec3d& tgtVel{tgt->getVelocity()};",
+      "   const base::Vec3d& ownPos{getPosition()};",
+      "   const base::Vec3d& ownVel{getVelocity()};",
+      "",
+      "   const domain::Vec3 relPos{tgtPos.x() - ownPos.x(), tgtPos.y() - ownPos.y(), tgtPos.z() - ownPos.z()};",
+      "   const domain::Vec3 relVel{tgtVel.x() - ownVel.x(), tgtVel.y() - ownVel.y(), tgtVel.z() - ownVel.z()};",
+      "",
+      "   if (isGuidanceEnabled()) {",
+      "      const domain::GuidanceGains gains{kNavRatio, /*cruiseSpeedMps=*/getVpMax()};",
+      "      const auto cmd{domain::proportionalNavigation(relPos, relVel, gains)};",
+      "      cmdHeadingRad_ = cmd.cmdHeadingRad;",
+      "      cmdPitchRad_ = cmd.cmdPitchRad;",
+      "      cmdSpeedMps_ = cmd.cmdSpeedMps;",
+      "   }",
+      "",
+      "   // Espoleta de proximidade -- roda independente de isGuidanceEnabled()",
+      "   // (mesmo padrao do Missile nativo): usa o alcance/velocidade relativa de",
+      "   // VERDADE, nao o comando -- um missil ainda sem guiagem ligada (tof <",
+      "   // tsg) pode passar perto o bastante do alvo por trajetoria balistica.",
+      "   if (!isDummy() && getTOF() > 2.0) {",
+      "      const auto outcome{domain::proximityFuze(relPos, relVel, getMaxBurstRng(), fuzeState_)};",
+      "      fuzeState_ = outcome.nextState;",
+      "",
+      "      if (outcome.closestApproachReached) {",
+      "         setMode(DETONATED);",
+      "",
+      "         // Unico ponto de observabilidade do desfecho -- nem o Tacview (o",
+      "         // token REID de detonacao fica de fora do enabledList, mesma",
+      "         // armadilha ja documentada pro REID_WEAPON_RELEASED) nem o alvo",
+      "         // (nenhum dano visivel: a4_target/GuidedMissile nao ligam",
+      "         // checkDetonationEffect() a reacao nenhuma da aeronave) mostram",
+      "         // isto sozinhos -- sem esta linha, um acerto e um erro parecem",
+      "         // IDENTICOS na tela: o missil so' desaparece silenciosamente",
+      "         // ~2s depois (kLingerSec).",
+      "         const char* const tgtName = (tgt->getName() != nullptr) ? tgt->getName()->getString() : \"?\";",
+      "         mixr::xlog::Stream(outcome.hit ? mixr::xlog::Level::INFO : mixr::xlog::Level::WARNING)",
+      "            << \"[GuidedMissile] \" << (getName() != nullptr ? getName()->getString() : \"?\")",
+      "            << \": \" << (outcome.hit ? \"ACERTO\" : \"FALHA\")",
+      "            << \" contra \" << tgtName",
+      "            << \" -- alcance de menor aproximacao \" << outcome.rangeAtEventM << \" m\"",
+      "            << \" (burst \" << getMaxBurstRng() << \" m)\";",
+      "",
+      "         if (outcome.hit) {",
+      "            setDetonationResults(DETONATE_ENTITY_IMPACT);",
+      "            checkDetonationEffect();",
+      "         } else {",
+      "            // passou do ponto de menor aproximacao sem acertar --",
+      "            // autodestruicao, mesmo comportamento do Missile nativo.",
+      "            setDetonationResults(DETONATE_DETONATION);",
+      "            setTargetPlayer(nullptr, false);",
+      "            setTargetTrack(nullptr, false);",
+      "         }",
+      "      }",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "GuidedMissile::weaponDynamics": {
+    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    line: 187,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// weaponDynamics() -- integra heading/pitch/velocidade em direcao ao",
+      "// comando guardado por weaponGuidance(), limitado por taxa de giro (de",
+      "// maxG, herdado de Missile) e por aceleracao (maxAccel, idem). NAO integra",
+      "// posicao: confirmado lendo AbstractWeapon::dynamics() do fork vendorizado",
+      "// -- ele chama weaponGuidance()+weaponDynamics() e, logo em seguida,",
+      "// BaseClass::dynamics(dt) (Player::dynamics()), que SEMPRE chama",
+      "// positionUpdate(dt), integrando a posicao a partir da velocidade que",
+      "// acabamos de escrever aqui. Escrever a posicao nos dois lugares",
+      "// duplicaria a integracao.",
+      "//------------------------------------------------------------------------------",
+      "void GuidedMissile::weaponDynamics(const double dt)",
+      "{",
+      "   const double speed{std::max(getTotalVelocity(), 1.0)};",
+      "",
+      "   // g em METROS/s^2 (base::ETHGM), nao base::ETHG (pes/s^2) -- este missil",
+      "   // trabalha em m/s do inicio ao fim; a constante em pes daria uma taxa de",
+      "   // giro maxima ~3,28x errada.",
+      "   const double maxTurnRateRadPerS{(getMaxG() * base::ETHGM) / speed};",
+      "",
+      "   double dPitch{base::angle::aepcdRad(cmdPitchRad_ - getPitchR())};",
+      "   dPitch = std::clamp(dPitch, -maxTurnRateRadPerS * dt, maxTurnRateRadPerS * dt);",
+      "   const double newPitch{getPitchR() + dPitch};",
+      "",
+      "   double dHeading{base::angle::aepcdRad(cmdHeadingRad_ - getHeadingR())};",
+      "   dHeading = std::clamp(dHeading, -maxTurnRateRadPerS * dt, maxTurnRateRadPerS * dt);",
+      "   double newHeading{getHeadingR() + dHeading};",
+      "   // (...) fecha o angulo em [0, 2*PI) e calcula o angulo de banco cosmetico",
+      "",
+      "   setEulerAngles(bankRad, newPitch, newHeading);",
+      "",
+      "   double dSpeed{cmdSpeedMps_ - getTotalVelocity()};",
+      "   dSpeed = std::clamp(dSpeed, -getMaxAccel() * dt, getMaxAccel() * dt);",
+      "   const double newSpeed{getTotalVelocity() + dSpeed};",
+      "",
+      "   const double cosPitch{std::cos(newPitch)};",
+      "   const double vN{newSpeed * cosPitch * std::cos(newHeading)};",
+      "   const double vE{newSpeed * cosPitch * std::sin(newHeading)};",
+      "   const double vD{-newSpeed * std::sin(newPitch)};",
+      "   setVelocity(vN, vE, vD);",
+      "}",
+    ],
+    trunc: true,
+  },
+  "AbstractWeapon::checkDetonationEffect": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 380,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Check local players for the effects of the detonation -- did we hit anyone?",
+      "//------------------------------------------------------------------------------",
+      "void AbstractWeapon::checkDetonationEffect()",
+      "{",
+      "   WorldModel* s{getWorldModel()};",
+      "   if (s != nullptr) {",
+      "      // Only local players within 10X max burst range",
+      "      double maxRng{10.0 * getMaxBurstRng()};",
+      "",
+      "      // Find our target (if any)",
+      "      const Player* tgt{getTargetPlayer()};",
+      "      if (tgt == nullptr) {",
+      "         const Track* trk{getTargetTrack()};",
+      "         if (trk != nullptr) tgt = trk->getTarget();",
+      "      }",
+      "",
+      "      base::PairStream* plist{s->getPlayers()};",
+      "      if (plist != nullptr) {",
+      "         base::List::Item* item{plist->getFirstItem()};",
+      "",
+      "         // Process the detonation for all local, in-range players",
+      "         bool finished{};",
+      "         while (item != nullptr && !finished) {",
+      "            base::Pair* pair{static_cast<base::Pair*>(item->getValue())};",
+      "            Player* p{static_cast<Player*>(pair->object())};",
+      "            finished = p->isNetworkedPlayer();  // local only",
+      "            if (!finished && (p != this) ) {",
+      "               base::Vec3d dpos{p->getPosition() - getPosition()};",
+      "               const double rng{dpos.length()};",
+      "               if ( (rng <= maxRng) || (p == tgt) ) p->processDetonation(rng, this);",
+      "            }",
+      "            item = item->getNext();",
+      "         }",
+      "",
+      "         // cleanup",
+      "         plist->unref();",
+      "         plist = nullptr;",
+      "      }",
+      "",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Player::processDetonation": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 2312,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Process weapon detonation",
+      "//------------------------------------------------------------------------------",
+      "void Player::processDetonation(const double detRange, AbstractWeapon* const wpn)",
+      "{",
+      "   if (!isKillOverride()) {",
+      "",
+      "      // Weapon, launcher & range info",
+      "      Player* launcher{};",
+      "      double rng{detRange};",
+      "      double blastRange{500.0};    // burst range (meters)",
+      "      double lethalRange{50.0};    // lethal range  (meters)",
+      "      if (wpn != nullptr) {",
+      "         launcher = wpn->getLaunchVehicle();",
+      "         blastRange = wpn->getMaxBurstRng();",
+      "         lethalRange  = wpn->getLethalRange();",
+      "         if (this == wpn->getTargetPlayer()) {",
+      "            // If we're the target -- use the weapon's detonation range",
+      "            rng = wpn->getDetonationRange();",
+      "         }",
+      "      }",
+      "",
+      "      // Very close?",
+      "      if (rng < lethalRange) {",
+      "         // and like horseshoes -- being close does matter",
+      "         event(KILL_EVENT, launcher);",
+      "      }",
+      "",
+      "      // Near by?",
+      "      else if (rng <= blastRange) {",
+      "         // use distance to compute amount of damage",
+      "         double damageRng{blastRange - lethalRange};",
+      "         if (damageRng <= 1.0) damageRng = 1.0;",
+      "         double newDamage{1.0 - ( (rng - lethalRange) / damageRng )};",
+      "         setDamage(newDamage + getDamage());",
+      "         setFlames( getDamage() - 0.25 );",
+      "         setSmoke( getDamage() + 0.25 );",
+      "         if ( isDestroyed() ) {",
+      "            event(KILL_EVENT, launcher);",
+      "         }",
+      "      }",
+      "",
+      "   }",
+      "",
+      "   // record EVERYTHING that had the potential to cause damage, even if killOverride",
+      "",
+      "   BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_PLAYER_DAMAGED )",
+      "      SAMPLE_2_OBJECTS( this, wpn )",
+      "   END_RECORD_DATA_SAMPLE()",
+      "",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Player::event (KILL_EVENT)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 175,
+    lines: [
+      "BEGIN_EVENT_HANDLER(Player)",
+      "",
+      "   // We're just killed by 'Player'",
+      "   ON_EVENT_OBJ(KILL_EVENT, killedNotification, Player)",
+      "",
+      "   // We're just killed by unknown player",
+      "   ON_EVENT(KILL_EVENT, killedNotification)",
+      "",
+      "   // We just collided 'Player'",
+      "   ON_EVENT_OBJ(CRASH_EVENT, collisionNotification, Player)",
+      "",
+      "   // We just crashed",
+      "   ON_EVENT(CRASH_EVENT,crashNotification)",
+      "",
+      "   // (... mais 15 tokens no mesmo despacho: RF_EMISSION, DATALINK_MESSAGE, ...)",
+    ],
+    trunc: true,
+  },
+  "Player::killedNotification": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 2364,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// killedNotification() -- We were just killed by a weapon from player 'p'",
+      "//------------------------------------------------------------------------------",
+      "bool Player::killedNotification(Player* const p)",
+      "{",
+      "   if (!isKillOverride()) {",
+      "      // When not in 'kill override' mode ...",
+      "",
+      "      // Let all of our subcomponents know that we were just killed",
+      "      {",
+      "         base::PairStream* subcomponents{getComponents()};",
+      "         if (subcomponents != nullptr) {",
+      "            for (base::List::Item* item = subcomponents->getFirstItem(); item != nullptr; item = item->getNext()) {",
+      "               base::Pair* pair{static_cast<base::Pair*>(item->getValue())};",
+      "               base::Component* sc{static_cast<base::Component*>(pair->object())};",
+      "               sc->event(KILL_EVENT, p);",
+      "            }",
+      "            subcomponents->unref();",
+      "            subcomponents = nullptr;",
+      "         }",
+      "      }",
+      "",
+      "      setDamage(1.0);",
+      "      setSmoke(1.0);",
+      "      setFlames(1.0);",
+      "",
+      "      // Set our status",
+      "      if (killRemoval && isLocalPlayer()) {",
+      "",
+      "         justKilled = true;",
+      "         setMode(KILLED);",
+      "",
+      "         if (p != nullptr) killedBy = p->getID();",
+      "         else killedBy = 0;",
+      "      }",
+      "",
+      "   }",
+      "",
+      "   // record kill, even if killOverride",
+      "   BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_PLAYER_KILLED )",
+      "      SAMPLE_2_OBJECTS( this, p )",
+      "   END_RECORD_DATA_SAMPLE()",
+      "",
+      "   return true;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Player::updateTC (AGL<0)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 2808,
+    lines: [
+      "      // ---",
+      "      // Check for ground collisions",
+      "      // ---",
+      "      if (getAltitudeAgl() < 0.0 && isLocalPlayer() && isMajorType(AIR_VEHICLE | WEAPON | SPACE_VEHICLE)) {",
+      "         // We're below the ground!",
+      "         this->event(CRASH_EVENT,nullptr);",
+      "      }",
+    ],
+    trunc: true,
+  },
+  "GuidedMissile::updateTC": {
+    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    line: 65,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// updateTC() -- so' acrescenta o timer de remocao pos-detonacao; o resto",
+      "// (TOF, positionTracking(), a transicao PRE_RELEASE->ACTIVE) continua",
+      "// inteiramente a cargo de AbstractWeapon::updateTC(), via BaseClass.",
+      "//------------------------------------------------------------------------------",
+      "void GuidedMissile::updateTC(const double dt)",
+      "{",
+      "   BaseClass::updateTC(dt);",
+      "",
+      "   if (isLocalPlayer() && isMode(DETONATED)) {",
+      "      // MESMO gating de fase que AbstractWeapon::updateTC() usa para o TOF",
+      "      // (fase 3, dt*4.0 -- o frame de tempo critico inteiro, nao so' o",
+      "      // quarto que corresponde a esta fase).",
+      "      const unsigned int ph{getWorldModel()->phase()};",
+      "      if (ph == 3) {",
+      "         detonatedLingerSec_ += dt * 4.0;",
+      "         if (detonatedLingerSec_ >= kLingerSec) {",
+      "            setMode(DELETE_REQUEST);",
+      "         }",
+      "      }",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "EDL: stores GuidedMissile": {
+    file: "sandbox/A4-6DOF-MISSILE/configs/scenario_a4_6dof_missile.edl.in",
+    line: 196,
+    lang: "edl",
+    lines: [
+      "               stores: ( StoresMgr",
+      "                  numStations: 1",
+      "                  stores: {",
+      "                     1: ( GuidedMissile",
+      "                        id: 501",
+      "                        side: blue",
+      "                        type: \"AIM-X\"",
+      "                        signature: ( SigSphere radius: 0.2 )",
+      "                        dataLogTime: ( Seconds 0.1 )",
+      "                        maxTOF: ( Seconds 60 )",
+      "                        lethalRange: ( Meters 30 )",
+      "                        maxBurstRng: ( Meters 150 )",
+      "                     )",
+      "                  }",
+    ],
+    trunc: true,
+  },
+  "EDL: behavior launchEnvelope": {
+    file: "sandbox/A4-6DOF-MISSILE/configs/scenario_a4_6dof_missile.edl.in",
+    line: 217,
+    lang: "edl",
+    lines: [
+      "                  behavior: ( BtBehavior",
+      "                     treeFile: \"./dist/share/mixr-plugins/A-4/flight_tree_missile_demo.xml\"",
+      "                     patrolHeading:  ( Degrees 90 )",
+      "                     legTime:        ( Seconds 120 )",
+      "                     legTurn:        ( Degrees 90 )",
+      "                     patrolAltitude: ( Meters 2000 )",
+      "                     patrolSpeed:    250.0",
+      "                     rtbAltitude:    ( Meters 2100 )",
+      "                     rtbSpeed:       260.0",
+      "                     arrivalRadius:  ( NauticalMiles 2.0 )",
+      "                     fuelReserve:    0.35",
+      "                     breakTurn:      ( Degrees 110 )",
+      "                     evadeClimb:     ( Meters 400 )",
+      "                     evadeSpeed:     280.0",
+      "                     supportSpeed:   260.0",
+      "                     evadeHold:      ( Seconds 30 )",
+      "                     terrainClearance: ( Meters 0 )     // sem terreno neste cenario -- piso absoluto (200 m) so",
+      "                     // Envelope de disparo (domain/LaunchPolicy.hpp) --",
+      "                     // dentro da distancia inicial de 15 NM entre os dois",
+      "                     // players, alcancado por volta de t=75..115s.",
+      "                     launchMinRange: ( NauticalMiles 0.3 )",
+      "                     launchMaxRange: ( NauticalMiles 5.0 )",
+      "                     launchCone:     ( Degrees 45 )",
+      "                  )",
+    ],
+    trunc: true,
+  },
+  "BtBehavior::configurePlans (launchEnvelope)": {
+    file: "models/players/A-4/src/ubf/BtBehavior.cpp",
+    line: 148,
+    lines: [
+      "   rtb.configure(0.0, 0.0, tune.arrivalRadiusM, tune.rtbAltitudeM, tune.rtbSpeedKts);",
+      "",
+      "   launchEnvelope_.minRangeM = tune.launchMinRangeM;",
+      "   launchEnvelope_.maxRangeM = tune.launchMaxRangeM;",
+      "   launchEnvelope_.coneDeg = tune.launchConeDeg;",
+      "",
+      "   domain::EvasionLimits limits;",
+    ],
+    trunc: true,
+  },
+  "domain::inLaunchEnvelope": {
+    file: "models/players/A-4/src/domain/LaunchPolicy.cpp",
+    line: 1,
+    lines: [
+      "#include \"domain/LaunchPolicy.hpp\"",
+      "",
+      "#include \"domain/geometry.hpp\"",
+      "",
+      "#include <cmath>",
+      "",
+      "namespace domain {",
+      "",
+      "bool inLaunchEnvelope(const LaunchEnvelope& env, const double rangeM, const double relBearingDeg)",
+      "{",
+      "   if (rangeM < env.minRangeM || rangeM > env.maxRangeM) return false;",
+      "",
+      "   // wrap180() por defesa -- contactRelBearingDeg ja chega em (-180,180] da",
+      "   // percepcao, mas a funcao nao deveria depender disso pra estar correta.",
+      "   return std::fabs(wrap180(relBearingDeg)) <= env.coneDeg;",
+      "}",
+      "",
+      "} // namespace domain",
+    ],
+    trunc: false,
+  },
+  "AbstractPlayer::Mode (enum)": {
+    file: "contexts/src/mixr/include/mixr/simulation/AbstractPlayer.hpp",
+    line: 34,
+    lines: [
+      "   // Player mode",
+      "   enum Mode {",
+      "      INACTIVE,         // Player is not being updated and is not being sent to the networks",
+      "      ACTIVE,           // Player is being updated and is being sent to the networks",
+      "      KILLED,           // Player was killed   (One of the dead conditions)",
+      "      CRASHED,          // Player crashed      (One of the dead conditions)",
+      "      DETONATED,        // Weapon player has detonated (One of the dead conditions) (Original & flyout weapons)",
+      "      PRE_RELEASE,      // Weapon player is created but not released (Flyout weapons only)",
+      "      LAUNCHED,         // Weapon player has been launched (Original weapons only)",
+      "      DELETE_REQUEST    // Request player removal from the active player list",
+      "   };",
+    ],
+    trunc: false,
+  },
+  "Stores::isWeaponAvailable": {
+    file: "contexts/src/mixr/src/models/system/Stores.cpp",
+    line: 174,
+    lines: [
+      "// Default weapon availability function",
+      "bool Stores::isWeaponAvailable(const unsigned int s) const",
+      "{",
+      "   // Map 's' to a station array index",
+      "   int idx{mapSta2Idx(s)};",
+      "",
+      "   // get the weapon",
+      "   bool isAvail{};",
+      "   if (idx >= 0 && weaponTbl[idx] != nullptr) {",
+      "      const AbstractWeapon* wpn{weaponTbl[idx]->getPointer()};",
+      "",
+      "      // Reasons why the weapon may not be available ...",
+      "      bool notAvail{wpn->isReleased() || wpn->isBlocked() || wpn->isJettisoned() || wpn->isFailed() || wpn->isHung()};",
+      "",
+      "      // and it is if it is not not ;-)",
+      "      isAvail = !notAvail;",
+      "",
+      "      wpn->unref();",
+      "   }",
+      "   return isAvail;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "domain::proportionalNavigation": {
+    file: "models/players/missile/src/domain/Guidance.cpp",
+    line: 14,
+    lines: [
+      "GuidanceCommand proportionalNavigation(const Vec3& relPos, const Vec3& relVel, const GuidanceGains& gains)",
+      "{",
+      "   const double range2d = std::sqrt(relPos.n * relPos.n + relPos.e * relPos.e);",
+      "   const double range3d = std::sqrt(relPos.n * relPos.n + relPos.e * relPos.e + relPos.d * relPos.d);",
+      "",
+      "   const double losAz = std::atan2(relPos.e, relPos.n);",
+      "   const double losEl = std::atan2(-relPos.d, range2d);",
+      "",
+      "   // taxa de azimute da LOS: d(atan2(e,n))/dt = (n*ve - e*vn) / (n^2+e^2).",
+      "   double losAzRate{0.0};",
+      "   if (range2d > kMinRangeForLosRateM) {",
+      "      losAzRate = (relPos.n * relVel.e - relPos.e * relVel.n) / (range2d * range2d);",
+      "   }",
+      "",
+      "   // taxa de elevacao da LOS: el = atan2(h, r), h=-relPos.d, r=range2d.",
+      "   // d(el)/dt = (r*dh/dt - h*dr/dt) / (r^2+h^2), dr/dt = (n*vn+e*ve)/r.",
+      "   double losElRate{0.0};",
+      "   if (range3d > kMinRangeForLosRateM && range2d > kMinRangeForLosRateM) {",
+      "      const double h{-relPos.d};",
+      "      const double dRange2dDt{(relPos.n * relVel.n + relPos.e * relVel.e) / range2d};",
+      "      const double dhDt{-relVel.d};",
+      "      losElRate = (range2d * dhDt - h * dRange2dDt) / (range3d * range3d);",
+      "   }",
+      "",
+      "   GuidanceCommand cmd{};",
+      "   cmd.cmdHeadingRad = losAz + gains.navRatio * losAzRate;",
+      "   cmd.cmdPitchRad = losEl + gains.navRatio * losElRate;",
+      "   cmd.cmdSpeedMps = gains.cruiseSpeedMps;",
+      "   return cmd;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "domain::proximityFuze": {
+    file: "models/players/missile/src/domain/Guidance.cpp",
+    line: 45,
+    lines: [
+      "FuzeOutcome proximityFuze(const Vec3& relPos, const Vec3& relVel, const double burstRangeM, const FuzeState& prev)",
+      "{",
+      "   const double range{std::sqrt(relPos.n * relPos.n + relPos.e * relPos.e + relPos.d * relPos.d)};",
+      "",
+      "   // taxa de alcance: d(range)/dt = (relPos . relVel) / range. Negativa =",
+      "   // aproximando (alcance diminuindo).",
+      "   double rangeRate{0.0};",
+      "   if (range > kMinRangeForLosRateM) {",
+      "      rangeRate = (relPos.n * relVel.n + relPos.e * relVel.e + relPos.d * relVel.d) / range;",
+      "   }",
+      "   const bool approaching{rangeRate < 0.0};",
+      "",
+      "   FuzeOutcome out{};",
+      "   out.nextState = FuzeState{/*hasSample=*/true, approaching};",
+      "",
+      "   if (prev.hasSample && prev.wasApproaching && !approaching) {",
+      "      out.closestApproachReached = true;",
+      "      out.rangeAtEventM = range;",
+      "      out.hit = (range <= burstRangeM);",
+      "   }",
+      "",
+      "   return out;",
+      "}",
+    ],
+    trunc: false,
+  },
+  "AbstractWeapon::updateTOF": {
+    file: "contexts/src/mixr/src/models/player/weapon/AbstractWeapon.cpp",
+    line: 691,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// updateTOF -- default time of flight",
+      "//------------------------------------------------------------------------------",
+      "void AbstractWeapon::updateTOF(const double dt)",
+      "{",
+      "   // As long as we're active ...",
+      "   if (isMode(ACTIVE)) {",
+      "",
+      "      // update time of flight,",
+      "      setTOF( getTOF() + dt );",
+      "",
+      "      // and check for the end of the flight",
+      "      if (getTOF() >= getMaxTOF()) {",
+      "         setMode(DETONATED);",
+      "         setDetonationResults( DETONATE_DETONATION );",
+      "",
+      "         BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_DETONATION )",
+      "            SAMPLE_3_OBJECTS( this, getLaunchVehicle(), getTargetPlayer() )",
+      "            SAMPLE_2_VALUES( DETONATE_DETONATION, 0.0 )",
+      "         END_RECORD_DATA_SAMPLE()",
+      "",
+      "         return;",
+      "      }",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Missile::Missile (construtor)": {
+    file: "contexts/src/mixr/src/models/player/weapon/Missile.cpp",
+    line: 51,
+    lines: [
+      "Missile::Missile()",
+      "{",
+      "   STANDARD_CONSTRUCTOR()",
+      "",
+      "   static base::String generic(\"GenericMissile\");",
+      "   setType(&generic);",
+      "",
+      "   setMaxTOF(60.0);",
+      "   setLethalRange(30.0f);",
+      "   setMaxBurstRng(150.0f);",
+      "   setTSG(1.0);",
+      "   setSOBT(0.0f);",
+      "   setEOBT(60.0f);",
+      "",
+      "   setVpMin(0.0);",
+      "   setVpMax(800.0f);",
+      "   setVpMaxG(800.0f);",
+      "   setMaxG(4.0);",
+      "   setMaxAccel(50.0);",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Missile::weaponGuidance (native)": {
+    file: "contexts/src/mixr/src/models/player/weapon/Missile.cpp",
+    line: 275,
+    lines: [
+      "void Missile::weaponGuidance(const double dt)",
+      "{",
+      "   // ---",
+      "   // Control velocity:  During burn time, accel to max velocity,",
+      "   //  after burn time, deaccelerate to min velocity.",
+      "   // ---",
+      "   if (isEngineBurnEnabled()) cmdVelocity = vpMax;",
+      "   else cmdVelocity = vpMin;",
+      "",
+      "   // ---",
+      "   // If the target's already dead,",
+      "   //    then don't go away mad, just go away.",
+      "   // ---",
+      "   const Player* tgt = getTargetPlayer();",
+      "   const Track* trk = getTargetTrack();",
+      "   if (trk != nullptr) tgt = trk->getTarget();",
+      "",
+      "   if (tgt != nullptr && !tgt->isActive()) return;",
+      "",
+      "   base::Vec3d los; // Target Line of Sight",
+      "   base::Vec3d vel; // Target velocity",
+      "",
+      "   // ---",
+      "   // Basic guidance",
+      "   // ---",
+      "   {",
+      "      // ---",
+      "      // Get position and velocity vectors from the target/track",
+      "      // ---",
+      "      base::Vec3d posx;",
+      "      calculateVectors(tgt, trk, &los, &vel, &posx);",
+      "",
+      "      // compute range to target",
+      "      const double trng0 = trng;",
+      "      trng = los.length();",
+      "",
+      "      // compute range rate,",
+      "      //double trdot0 = trdot;",
+      "      if (dt > 0)",
+      "         trdot = (trng - trng0)/dt;",
+      "      else",
+      "         trdot = 0.0;",
+      "",
+      "      // Target total velocity",
+      "      const double totalVel = vel.length();",
+      "",
+      "      // compute target velocity parallel to LOS,",
+      "      const double vtplos = (los * vel/trng);",
+      "",
+      "      // ---",
+      "      // guidance - fly to intercept point",
+      "      // ---",
+      "",
+      "      // if we have guidance ...",
+      "      if ( isGuidanceEnabled() && trng > 0) {",
+      "",
+      "         // get missile velocity (must be faster than target),",
+      "         double v = vpMax;",
+      "         if (v < totalVel) v = totalVel + 1;",
+      "",
+      "         // compute target velocity normal to LOS squared,",
+      "         const double tgtVp = totalVel;",
+      "         const double vtnlos2 = tgtVp*tgtVp - vtplos*vtplos;",
+      "",
+      "         // and compute missile velocity parallex to LOS.",
+      "         const double vmplos = std::sqrt( v*v - vtnlos2 );",
+      "",
+      "         // Now, use both velocities parallel to LOS to compute",
+      "         //  closure rate.",
+      "         const double vclos = vmplos - vtplos;",
+      "",
+      "         // Use closure rate and range to compute time to intercept.",
+      "         double dt1 = 0;",
+      "         if (vclos > 0) dt1 = trng/vclos;",
+      "",
+      "         // Use time to intercept to extrapolate target position.",
+      "         base::Vec3d p1 = (los + (vel * dt1));",
+      "",
+      "         // Compute missile commanded heading and",
+      "         cmdHeading = std::atan2(p1.y(),p1.x());",
+      "",
+      "         // commanded pitch.",
+      "         const double grng = std::sqrt(p1.x()*p1.x() + p1.y()*p1.y());",
+      "         cmdPitch = -std::atan2(p1.z(),grng);",
+      "",
+      "      }",
+      "   }",
+      "",
+      "   // ---",
+      "   // fuzing logic  (let's see if we've scored a hit)",
+      "   //  (compute range at closest point and compare to max burst radius)",
+      "   //  (use target truth data)",
+      "   // ---",
+      "   {",
+      "      // ---",
+      "      // Get position and velocity vectors from the target (truth)",
+      "      // (or default to the values from above)",
+      "      // ---",
+      "      if (tgt != nullptr) {",
+      "         calculateVectors(tgt, nullptr, &los, &vel, nullptr);",
+      "      }",
+      "",
+      "      // compute range to target",
+      "      const double trng0 = trngT;",
+      "      trngT = los.length();",
+      "",
+      "      // compute range rate,",
+      "      double trdot0 = trdotT;",
+      "      if (dt > 0)",
+      "         trdotT = (trngT - trng0)/dt;",
+      "      else",
+      "         trdotT = 0;",
+      "",
+      "      // when we've just passed the target ...",
+      "      if (trdotT > 0 && trdot0 < 0 && !isDummy() && getTOF() > 2.0) {",
+      "         bool missed = true;   // assume the worst",
+      "",
+      "         // compute relative velocity vector.",
+      "         const base::Vec3d velRel = (vel - getVelocity());",
+      "",
+      "         // compute missile velocity squared,",
+      "         double vm2 = velRel.length2();",
+      "         if (vm2 > 0) {",
+      "",
+      "            // relative range (dot) relative velocity",
+      "            const double rdv = los * velRel;",
+      "",
+      "            // interpolate back to closest point",
+      "            const double ndt = -rdv/vm2;",
+      "            const base::Vec3d p0 = los + (velRel*ndt);",
+      "",
+      "            // range squared at closest point",
+      "            const double r2 = p0.length2();",
+      "",
+      "            // compare to burst radius squared",
+      "            if (r2 <= (getMaxBurstRng()*getMaxBurstRng()) ) {",
+      "",
+      "               // We've detonated",
+      "               missed = false;",
+      "               setMode(DETONATED);",
+      "               setDetonationResults( DETONATE_ENTITY_IMPACT );",
+      "",
+      "               // compute location of the detonation relative to the target",
+      "               base::Vec3d p0n = -p0;",
+      "               if (tgt != nullptr) p0n = tgt->getRotMat() * p0n;",
+      "               setDetonationLocation(p0n);",
+      "",
+      "               // Did we hit anyone?",
+      "               checkDetonationEffect();",
+      "",
+      "               // Log the event",
+      "               const double detRange = getDetonationRange();",
+      "               if (isMessageEnabled(MSG_INFO)) {",
+      "                  std::cout << \"DETONATE_ENTITY_IMPACT rng = \" << detRange << std::endl;",
+      "               }",
+      "",
+      "               BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_DETONATION )",
+      "                  SAMPLE_3_OBJECTS( this, getLaunchVehicle(), getTargetPlayer() )",
+      "                  SAMPLE_2_VALUES( DETONATE_ENTITY_IMPACT, detRange )",
+      "               END_RECORD_DATA_SAMPLE()",
+      "",
+      "            }",
+      "         }",
+      "",
+      "         // Did we miss the target?",
+      "         if (missed) {",
+      "            // We've detonated ...",
+      "            setMode(DETONATED);",
+      "            setDetonationResults( DETONATE_DETONATION );",
+      "",
+      "            // because we've just missed the target",
+      "            setTargetPlayer(nullptr,false);",
+      "            setTargetTrack(nullptr,false);",
+      "",
+      "            // Log the event",
+      "            const double detRange = trngT;",
+      "            if (isMessageEnabled(MSG_INFO)) {",
+      "               std::cout << \"DETONATE_OTHER rng = \" << detRange << std::endl;",
+      "            }",
+      "",
+      "            BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_WEAPON_DETONATION )",
+      "               SAMPLE_3_OBJECTS( this, getLaunchVehicle(), getTargetPlayer() )",
+      "               SAMPLE_2_VALUES( DETONATE_DETONATION, detRange )",
+      "            END_RECORD_DATA_SAMPLE()",
+      "",
+      "         }",
+      "",
+      "      }",
+      "   }",
+      "}",
+    ],
+    trunc: false,
+  },
+  "Missile::weaponDynamics (native)": {
+    file: "contexts/src/mixr/src/models/player/weapon/Missile.cpp",
+    line: 469,
+    lines: [
+      "void Missile::weaponDynamics(const double dt)",
+      "{",
+      "   static const double g = base::ETHG;              // Acceleration of Gravity",
+      "",
+      "   // ---",
+      "   // Max turning G (Missiles: Use Gmax)",
+      "   // ---",
+      "   const double gmax = maxG;",
+      "",
+      "   // ---",
+      "   // Computer max turn rate, max/min pitch rates",
+      "   // ---",
+      "",
+      "   // Turn rate base on vp and g,s",
+      "   const double ra_max = gmax * g / getTotalVelocity();",
+      "",
+      "   // Set max (pull up) pitch rate same as turn rate",
+      "   const double qa_max = ra_max;",
+      "",
+      "   // Set min (push down) pitch rate",
+      "   const double qa_min = -qa_max;",
+      "",
+      "   // ---",
+      "   // Get old angular values",
+      "   // ---",
+      "   const base::Vec3d oldRates = getAngularVelocities();",
+      "   //double pa1 = oldRates[IROLL];",
+      "   const double qa1 = oldRates[IPITCH];",
+      "   const double ra1 = oldRates[IYAW];",
+      "",
+      "   // ---",
+      "   // Find pitch rate and update pitch",
+      "   // ---",
+      "   double qa = base::angle::aepcdRad(cmdPitch - static_cast<double>(getPitchR()));",
+      "   if(qa > qa_max) qa = qa_max;",
+      "   if(qa < qa_min) qa = qa_min;",
+      "",
+      "   // Using Pitch rate, integrate pitch",
+      "   const double newTheta = static_cast<double>(getPitch() + (qa + qa1) * dt / 2.0);",
+      "",
+      "   // Find turn rate",
+      "   double ra = base::angle::aepcdRad(cmdHeading - static_cast<double>(getHeadingR()));",
+      "   if(ra > ra_max) ra = ra_max;",
+      "   if(ra < -ra_max) ra = -ra_max;",
+      "",
+      "   // Use turn rate integrate heading",
+      "   double newPsi = static_cast<double>(getHeading() + (ra + ra1) * dt / 2.0);",
+      "   if(newPsi > 2.0f*base::PI) newPsi -= static_cast<double>(2.0*base::PI);",
+      "   if(newPsi < 0.0f) newPsi += static_cast<double>(2.0*base::PI);",
+      "",
+      "   // Roll angle proportional to max turn rate - filtered",
+      "   double pa = 0.0;",
+      "   const double newPhi = static_cast<double>( 0.98 * getRollR() + 0.02 * ((ra / ra_max) * (base::angle::D2RCC * 60.0)) );",
+      "",
+      "   // Sent angular values",
+      "   setEulerAngles(newPhi, newTheta, newPsi);",
+      "   setAngularVelocities(pa, qa, ra);",
+      "",
+      "   // Find Acceleration",
+      "   double vpdot = (cmdVelocity - getTotalVelocity());",
+      "   if(vpdot > maxAccel)  vpdot = maxAccel;",
+      "   if(vpdot < -maxAccel) vpdot = -maxAccel;",
+      "",
+      "   // Set acceleration vector",
+      "   base::Vec3d aa(vpdot, 0.0, 0.0);",
+      "   base::Vec3d ae = aa * getRotMat();",
+      "   setAcceleration(ae);",
+      "",
+      "   // Compute new velocity",
+      "   const double newVP = getTotalVelocity() + vpdot * dt;",
+      "",
+      "   // Set acceleration vector",
+      "   //base::Vec3 ve0 = getVelocity();",
+      "   const base::Vec3d va(newVP, 0.0, 0.0);",
+      "   const base::Vec3d ve1 = va * getRotMat();",
+      "   setVelocity(ve1);",
+      "   setVelocityBody(newVP, 0.0, 0.0);",
+      "}",
+    ],
+    trunc: false,
+  },
+};
+
+// Mesma cadeia de fallback de flightSnip() logo acima -- FlightAgentTC::controller
+// e Agent::controller ja estao extraidos de verdade (FLIGHT_SNIPPETS/SNIPPETS), a
+// trilha do missil so precisou preencher o que faltava (MISSILE_SNIPPETS).
+const missileSnip = (key) => (key ? MISSILE_SNIPPETS[key] || FLIGHT_SNIPPETS[key] || SNIPPETS[key] || null : null);
+
+/* Cada passo: {id, stage, cls, method, call, src, hl, tag, flag, note}
+ *  - cls/method   -- cabecalho mostrado acima do codigo ("ClasseDona::metodo").
+ *  - call         -- descricao curta de UMA linha ("quem chama quem").
+ *  - src/hl       -- chave em MISSILE_SNIPPETS + janela [inicio,fim] (indices EM 'lines', 0-based).
+ *  - tag          -- selo curto (token/valor do evento nativo, ou null se nao emite nada).
+ *  - flag         -- null | "info" | "gotcha" -- controla a cor do selo/borda no detalhe.
+ *  - note         -- array de paragrafos (string) explicando a nuance deste passo.
+ */
+const MISSILE_TRACE = [
+  {
+    id: "edl-stores",
+    stage: 0,
+    cls: null,
+    method: null,
+    title: "EDL -- o cabide do atirador",
+    call: "dado -- o cabide do atirador antes de qualquer C++ rodar",
+    src: "EDL: stores GuidedMissile",
+    hl: [3, 12],
+    tag: null,
+    flag: null,
+    note: [
+      "Ponto de partida: o bloco stores: do a4_shooter, em sandbox/A4-6DOF-MISSILE/configs/scenario_a4_6dof_missile.edl.in. UMA estação, UM ( GuidedMissile ) -- é essa contagem que faz o segundo disparo ser impossível: StoresMgr::available() (ver mais abaixo) só volta a contar quando há OUTRA arma livre no cabide, e não há nenhuma.",
+      "maxTOF/lethalRange/maxBurstRng aqui são valores do CENÁRIO, sobrescrevendo os defaults do construtor de GuidedMissile (60 s / 30 m / 150 m -- por coincidência, os mesmos números; o cenário só está sendo explícito). id/side/type são slots comuns de qualquer Player -- nada específico de arma.",
+    ],
+  },
+  {
+    id: "edl-behavior",
+    stage: 0,
+    cls: null,
+    method: null,
+    title: "EDL -- o envelope de disparo",
+    call: "dado -- o envelope de disparo, três slots a mais na MESMA árvore de tuning que já existia",
+    src: "EDL: behavior launchEnvelope",
+    hl: [17, 22],
+    tag: null,
+    flag: null,
+    note: [
+      "launchMinRange/launchMaxRange/launchCone são TRÊS slots novos de BtBehavior, ao lado de dezenas de outros já existentes (patrolHeading, breakTurn, evadeHold, ...) -- é a MESMA classe que já orquestra patrulha/evasão/RTB, só ganhando mais três números. Não há um 'behavior de lançamento' separado.",
+      "0,3-5,0 NM (556-9260 m) é DIFERENTE do default do domain::LaunchEnvelope (500-9000 m, ver o próximo passo) -- o cenário está deliberadamente estreitando a janela superior um pouco. Nada aqui impede o autor de um cenário de esquecer estes três slots: sem eles, os defaults do struct C++ valem, silenciosamente.",
+    ],
+  },
+  {
+    id: "btbehavior-configureplans",
+    stage: 0,
+    cls: "BtBehavior",
+    method: "configurePlans() -- trecho",
+    call: "roda uma vez, no reset() do player -- é aqui que os três slots acima viram o struct domain::LaunchEnvelope",
+    src: "BtBehavior::configurePlans (launchEnvelope)",
+    hl: [2, 4],
+    tag: null,
+    flag: null,
+    note: [
+      "tune (um domain::BtTuning já preenchido a partir dos slots de EDL) é só copiado campo a campo para launchEnvelope_ -- nenhuma conversão de unidade aqui (NauticalMiles/Degrees já viraram double em metros/graus na própria fronteira do slot, setSlotLaunchMinRange() etc. em BtBehaviorSlots.cpp, fora desta trilha).",
+      "launchEnvelope_ é um MEMBRO do BtBehavior, lido por LaunchEnvelopeCondition::tick() via context_.behavior->launchEnvelope() (ver o primeiro passo desta trilha) -- o nó de árvore nunca lê o EDL diretamente, só esse getter.",
+    ],
+  },
+  {
+    id: "flightagenttc-controller",
+    stage: 0,
+    cls: "FlightAgentTC",
+    method: "controller(dt) -- de onde tudo começa, a cada frame",
+    call: "roda na fase 3 do frame de tempo crítico, uma vez por aeronave, no pool T/C",
+    src: "FlightAgentTC::controller",
+    hl: [0, 24],
+    tag: null,
+    flag: null,
+    note: [
+      "Este é o ponto de entrada real de TODA a cadeia desta trilha -- os 23 passos seguintes só acontecem porque este método roda, a até 50 Hz, para o a4_shooter. world->phase() != 3 filtra as outras três fases do frame (dynamics/transmit/receive) -- decisão só na fase 3, mesmo padrão documentado na seção 'O modelo MIXR em uma tela' do CLAUDE.md raiz.",
+      "BaseClass::controller(dt * 4.0) é quem desce para base::ubf::Agent::controller() (próximo passo) -- FlightAgentTC não decide nada sozinho, só publica no xboard (thread, contagem) e repassa pro framework UBF genérico.",
+    ],
+  },
+  {
+    id: "agent-controller",
+    stage: 0,
+    cls: "Agent",
+    method: "controller(dt) -- framework UBF NATIVO, não deste modelo",
+    call: "state->updateState(actor) primeiro, depois getBehavior()->genAction(state, dt)",
+    src: "Agent::controller",
+    hl: [0, 15],
+    tag: null,
+    flag: null,
+    note: [
+      "mixr::base::ubf::Agent -- classe NATIVA do MIXR, genérica: não sabe nada sobre BtBehavior, míssil ou A-4. getState()->updateState(actor) (próximo passo) primeiro, sempre -- a percepção é atualizada ANTES de qualquer decisão no mesmo frame.",
+      "getBehavior()->genAction(state, dt) é o polimorfismo que alcança BtBehavior::genAction() (fora desta trilha -- percorre a árvore de comportamento, tickRoot(), e é lá dentro que o Fallback/Sequence chega em LaunchEnvelopeCondition/LaunchMissileAction, os dois próximos passos). action->execute(actor) (se genAction() devolveu algo) é o ponto que, para uma decisão de lançamento, alcança ubf::FlightAction::execute() -- o mesmo método que aparece mais abaixo nesta trilha fazendo o disparo de verdade.",
+    ],
+  },
+  {
+    id: "flightstate-updatestate",
+    stage: 0,
+    cls: "FlightState",
+    method: "updateState(actor) -- de onde vem snap.weaponReady",
+    call: "chamado pelo passo anterior, ANTES de qualquer nó de árvore ticar neste frame",
+    src: "FlightState::updateState",
+    hl: [78, 84],
+    tag: null,
+    flag: null,
+    note: [
+      "Responde a pergunta que o primeiro passo desta trilha deixou em aberto: de onde vem snap.weaponReady. air->getStoresManagement() é o MESMO Player::getStoresManagement() que ubf::FlightAction::execute() usa para disparar de verdade -- a percepção e a atuação leem o MESMO StoresMgr, só em momentos diferentes do frame.",
+      "storesMgr->available() > 0 -- StoresMgr é OPCIONAL (nem todo player de produção declara stores:); sem ele, storesMgr é nullptr e weaponReady fica false para sempre, sem erro nenhum. isWeaponAvailable() por baixo de available() é o passo 'Stores::isWeaponAvailable' mais adiante nesta trilha.",
+    ],
+  },
+  {
+    id: "abstractplayer-mode",
+    stage: 0,
+    cls: "AbstractPlayer",
+    method: "enum Mode -- o vocabulário que o resto desta trilha inteira usa",
+    call: "referência -- não é uma chamada, é a declaração que dá nome a cada estado citado adiante",
+    src: "AbstractPlayer::Mode (enum)",
+    hl: [1, 10],
+    tag: null,
+    flag: null,
+    note: [
+      "Todo mode: citado nos passos seguintes (PRE_RELEASE, ACTIVE, DETONATED, KILLED, CRASHED, LAUNCHED, DELETE_REQUEST) vem desta ÚNICA declaração, em mixr::simulation::AbstractPlayer -- a classe-base que mixr::models::Player estende. Os comentários originais (em inglês, preservados aqui) já dizem o essencial: KILLED e CRASHED são duas das 'dead conditions', DETONATED é a terceira (mísseis/flyouts); PRE_RELEASE e LAUNCHED só existem para arma (o objeto ORIGINAL no cabide vira LAUNCHED, o CLONE que voa nasce PRE_RELEASE -- ver o passo AbstractWeapon::release() mais adiante).",
+      "Note o que NÃO existe: não há COLLIDED nem TIMEOUT nem HIT/MISS -- um acerto e um erro de míssil são ambos DETONATED (diferenciados só por getDetonationResults(), um campo separado, não pelo mode). O mode é sobre CICLO DE VIDA do objeto, não sobre o resultado do que aconteceu a ele.",
+    ],
+  },
+  {
+    id: "envelope",
+    stage: 1,
+    cls: "LaunchEnvelopeCondition",
+    method: "tick()",
+    call: "condição da árvore (BT.CPP) -- roda na fase 3, thread do POOL T/C do atirador",
+    src: "LaunchEnvelopeCondition::tick",
+    hl: [7, 18],
+    tag: null,
+    flag: null,
+    note: [
+      "Primeiro nó do ramo de disparo (Sequence \"launch_sequence\" de flight_tree_missile_demo.xml). Nenhum objeto MIXR de arma é tocado aqui -- é uma condição pura de domínio sobre um SNAPSHOT já colhido (WorldView), a mesma disciplina que o resto da árvore deste modelo já segue.",
+      "snap.weaponReady vem de domain::WorldView, preenchido no início do frame a partir de StoresMgr::available() > 0 -- ou seja, este nó nunca chama available() ele mesmo; lê um valor que já pode ter até um frame de atraso (mesma latência já documentada para contactLive()/engaged() em domain::ThreatPolicy).",
+    ],
+  },
+  {
+    id: "inlaunchenvelope",
+    stage: 1,
+    cls: "domain",
+    method: "inLaunchEnvelope(env, rangeM, relBearingDeg)",
+    call: "chamado pelo passo anterior -- a geometria pura por trás do SUCCESS/FAILURE",
+    src: "domain::inLaunchEnvelope",
+    hl: [8, 15],
+    tag: null,
+    flag: null,
+    note: [
+      "Função LIVRE (não é método de classe nenhuma), sem MIXR, sem BehaviorTree.CPP -- só dois double e um struct de entrada. Mesmo alcance mínimo (556 m) e cone (45°) de tune.launchMinRange/launchCone, já convertidos para metros/graus antes de chegar aqui (a conversão de unidade acontece na fronteira do slot, não nesta função).",
+      "wrap180(relBearingDeg) é defesa, não necessidade medida: o comentário do próprio código admite que contactRelBearingDeg já chega em (-180,180] da percepção -- a chamada aqui é para a função nunca DEPENDER dessa garantia externa para estar correta, o mesmo tipo de rigor defensivo que domain::ThreatPolicy já demonstra em outro lugar deste modelo.",
+    ],
+  },
+  {
+    id: "launch-action",
+    stage: 1,
+    cls: "LaunchMissileAction",
+    method: "tick()",
+    call: "segundo nó da Sequence -- só executa se LaunchEnvelope já teve SUCCESS neste tick",
+    src: "LaunchMissileAction::tick",
+    hl: [15, 32],
+    tag: null,
+    flag: null,
+    note: [
+      "Ainda nenhum objeto MIXR de arma é tocado. O nó só marca um PEDIDO -- decision.launchRequested = true e decision.launchTargetName = snap.contactName -- dois campos de FlightDecision, uma estrutura própria deste modelo, não do MIXR.",
+      "Quem de fato libera o míssil é a ATUAÇÃO (o próximo passo), não este nó de árvore. É a mesma separação decisão/atuação que o resto do modelo já usa (domain/bt decidem, xnative::FlightAction executa) -- aqui só chega mais longe: até tocar um Player::getStoresManagement() de verdade.",
+    ],
+  },
+  {
+    id: "flightaction-find",
+    stage: 2,
+    cls: "FlightAction",
+    method: "execute()",
+    call: "atuação -- acha o Player-alvo por nome e confere o cabide antes de liberar",
+    src: "FlightAction::execute (lancamento)",
+    hl: [8, 26],
+    tag: null,
+    flag: null,
+    note: [
+      "PRIMEIRO ponto deste modelo que toca um objeto MIXR de ARMA -- tudo antes disso (os dois nós de árvore) era domínio puro. O alvo é resolvido por NOME (WorldModel::findPlayerByName), não por ponteiro guardado -- a árvore só sabia o nome da pista (snap.contactName), nunca um Player* (o snapshot não guarda ponteiro nenhum de framework).",
+      "storesMgr->available() == 0 aborta o lançamento em silêncio funcional (só um LOG(WARNING) -- nenhuma exceção, nenhum crash). Num cabide de UM só míssil (como sandbox/A4-6DOF-MISSILE), isto é exatamente o que impede o SEGUNDO disparo: available() cai a zero assim que o primeiro sai, e LaunchEnvelopeCondition já falha no frame seguinte -- sem nenhum estado extra escrito por este modelo.",
+    ],
+  },
+  {
+    id: "isweaponavailable",
+    stage: 2,
+    cls: "Stores",
+    method: "isWeaponAvailable(s) -- por que o SEGUNDO disparo nunca sai",
+    call: "chamado por available(), que roda a cada frame dentro de FlightState::updateState() (ver o prólogo desta trilha)",
+    src: "Stores::isWeaponAvailable",
+    hl: [8, 15],
+    tag: null,
+    flag: null,
+    note: [
+      "StoresMgr::available() (herdado, não sobrescrito -- é este mesmo Stores::available(), não mostrado à parte por ser um laço trivial de UMA linha somando isWeaponAvailable(s) para s de 1 a ns) conta quantas estações têm uma arma 'disponível'. Esta função é onde 'disponível' vira uma definição concreta: nem released, nem blocked, nem jettisoned, nem failed, nem hung.",
+      "isReleased() é o campo que o passo AbstractWeapon::release() (mais adiante) vai LIGAR no míssil original assim que o disparo acontecer -- é essa mudança, sozinha, que faz available() cair de 1 para 0 no PRÓXIMO frame, sem nenhum contador escrito por este modelo. wpn->getPointer() (a mesma função pré-ref'd já vista em SimpleStoresMgr::getNextMissileImp) e wpn->unref() logo depois fecham o ciclo de referência dentro da PRÓPRIA checagem -- nada vaza mesmo rodando a até 50 Hz.",
+    ],
+  },
+  {
+    id: "getnextmissile",
+    stage: 2,
+    cls: "SimpleStoresMgr",
+    method: "getNextMissileImp()",
+    call: "storesMgr->releaseOneMissile() (chamado no passo anterior) desce até aqui",
+    src: "SimpleStoresMgr::getNextMissileImp",
+    hl: [0, 22],
+    tag: null,
+    flag: "info",
+    note: [
+      "\"StoresMgr\" no .edl deste cenário NÃO constrói a classe abstrata StoresMgr (cujo releaseOneMissile() nativo é só `{ return nullptr; }`) -- constrói SimpleStoresMgr, que registra o nome de fábrica \"StoresMgr\" (IMPLEMENT_SUBCLASS(SimpleStoresMgr, \"StoresMgr\")). Mesma armadilha já documentada no CLAUDE.md para o cenário 'player máximo'.",
+      "getNextMissileImp() acha o míssil por dynamic_cast<Missile*> em CADA item de stores -- casa QUALQUER subclasse de Missile, nativa (Aam/Agm/Sam) ou de terceiro (GuidedMissile deste repo). Pega o PRIMEIRO cujo isInactive()||isReleaseHold() seja true -- \"o primeiro livre\", não \"o mais adequado\" (não há lógica de seleção por alcance/tipo de alvo).",
+      "p->getPointer() é o nascimento da referência PRÉ-REF'D: devolve flyoutWpn (se já existir) ou faz this->ref() e devolve this. É essa referência extra que o chamador (FlightAction::execute()) tem a obrigação de desfazer com unref() mais adiante -- ver o passo \"seta o alvo\".",
+    ],
+  },
+  {
+    id: "releaseweapon",
+    stage: 2,
+    cls: "Stores",
+    method: "releaseWeapon(AbstractWeapon*)",
+    call: "SimpleStoresMgr::releaseOneMissile() repassa o Missile* achado",
+    src: "Stores::releaseWeapon",
+    hl: [0, 14],
+    tag: null,
+    flag: null,
+    note: [
+      "Duas linhas, nenhuma decisão: fixa o lançador (setLaunchVehicle(own)) e delega tudo -- clonagem, troca de mode, registro no DataRecorder -- para AbstractWeapon::release() (próximo passo). \"own\" aqui é o Player dono do StoresMgr (a4_shooter), obtido por getOwnship().",
+    ],
+  },
+  {
+    id: "abstractweapon-release",
+    stage: 2,
+    cls: "AbstractWeapon",
+    method: "release()",
+    call: "clona a si mesmo -- o CLONE é quem de fato voa; o objeto original (no cabide) fica \"LAUNCHED\"",
+    src: "AbstractWeapon::release",
+    hl: [67, 90],
+    tag: "REID_WEAPON_RELEASED (61)",
+    flag: "gotcha",
+    note: [
+      "flyout = this->clone() -- o míssil que sobrevoa a partir daqui NÃO é o objeto declarado em stores: no .edl; é uma CÓPIA dele, inserida na lista de players via sim->addNewPlayer(\"W%05d\", flyout) (a mesma convenção de nome \"W00501\" etc. que aparece no Tacview/dump de qualquer flyout deste framework). O original vira setMode(Player::LAUNCHED) -- \"disparado\", não removido -- e nunca mais voa.",
+      "flyout->setMode(PRE_RELEASE) -- o clone nasce em PRE_RELEASE, não ACTIVE: ainda vai levar UM frame inteiro preso à posição/atitude do lançador (ver o próximo passo, AbstractWeapon::dynamics()) antes de ganhar vida própria.",
+      "GOTCHA medido neste projeto: este método grava BEGIN_RECORD_DATA_SAMPLE(..., REID_WEAPON_RELEASED) incondicionalmente -- mas o `dataRecorder:` de sandbox/A4-6DOF-MISSILE declara `enabledList: [ 43 42 ]` (REID_PLAYER_DATA + REID_PLAYER_REMOVED), o mesmo workaround já documentado no CLAUDE.md para a poc/09 (token 61 tem histórico de derrubar o processo em outro handler nativo). Resultado: o evento de LANÇAMENTO É emitido pelo C++ nativo, mas nunca chega ao Tacview/arquivo desta demonstração -- é filtrado hoje pelo `isDataEnabled()` do lado do gravador (allowlist, não denylist: com enabledList não-vazio, SÓ os IDs listados passam).",
+    ],
+  },
+  {
+    id: "settarget",
+    stage: 2,
+    cls: "FlightAction",
+    method: "execute() -- continuação",
+    call: "de volta à atuação: mira o flyout recém-liberado e devolve a referência extra",
+    src: "FlightAction::execute (lancamento)",
+    hl: [26, 31],
+    tag: null,
+    flag: null,
+    note: [
+      "flyout->setTargetPlayer(target, /*posTrkEnb=*/true) -- o segundo (e último) objeto MIXR de arma que este modelo toca diretamente. 'target' é o Player* do a4_target, resolvido por nome dois passos atrás.",
+      "flyout->unref() -- fecha o ciclo de referência aberto em getPointer() (passo \"getNextMissileImp\"): releaseOneMissile() devolve pré-ref'd, e este é o unref() correspondente. Sem ele, o míssil vazaria uma referência a cada disparo -- o padrão \"pega pré-ref'd, usa, unref()\" é o mesmo já usado em qualquer outro ponteiro pré-ref'd deste framework (ex.: getPilotByType() duas linhas acima, no início de execute()).",
+    ],
+  },
+  {
+    id: "settargetplayer-native",
+    stage: 2,
+    cls: "Missile",
+    method: "setTargetPlayer(Player*, bool) -- override",
+    call: "GuidedMissile NÃO sobrescreve este método -- quem roda é o de Missile (que chama o de AbstractWeapon por baixo)",
+    src: "Missile::setTargetPlayer",
+    hl: [0, 9],
+    tag: null,
+    flag: "info",
+    note: [
+      "A ÚNICA coisa que Missile acrescenta sobre o AbstractWeapon::setTargetPlayer() de base (mostrado no próximo passo) é resetar trngT/trdotT -- o alcance/taxa 'ground truth' que o FUZING NATIVO de Missile::weaponGuidance() usaria. GuidedMissile não usa esses dois campos (tem a própria espoleta em domain::proximityFuze) -- eles ficam escritos e nunca lidos neste modelo, herança inofensiva.",
+      "posTrkEnb=true aqui não é o gate de isGuidanceEnabled() (que olha isTargetPositionValid()/tgtPosValid) -- é o que decide se AbstractWeapon::updateTC() (fase 3) vai RECONTINUAMENTE reatualizar a posição do alvo a cada tick (positionTracking(), 'fake it and just follow the target' no comentário nativo) em vez de congelar no valor lido uma única vez.",
+    ],
+  },
+  {
+    id: "settargetplayer-base",
+    stage: 2,
+    cls: "AbstractWeapon",
+    method: "setTargetPlayer(Player*, bool)",
+    call: "Missile::setTargetPlayer() chama BaseClass::setTargetPlayer(tgt, pt) no final",
+    src: "AbstractWeapon::setTargetPlayer",
+    hl: [0, 10],
+    tag: null,
+    flag: null,
+    note: [
+      "tgtPlayer é base::safe_ptr<Player> -- a atribuição tgtPlayer = tgt já cuida do ref-count sozinha, sem ref()/unref() escrito à mão aqui.",
+      "positionTracking() (chamado na última linha) já popula tgtPos/tgtVel NA HORA, via setTargetPosition() -- que também liga tgtPosValid=true. É esse flag, não posTrkEnb, que entra em isGuidanceEnabled() (ver o próximo estágio).",
+    ],
+  },
+  {
+    id: "phase0-transition",
+    stage: 3,
+    cls: "AbstractWeapon",
+    method: "updateTC(dt)",
+    call: "frame SEGUINTE, fase 0 do pool T/C -- roda pra TODO player ativo, não só o míssil",
+    src: "AbstractWeapon::updateTC",
+    hl: [11, 15],
+    tag: null,
+    flag: "info",
+    note: [
+      "Fase 0 é dinâmica -- por que a transição PRE_RELEASE→ACTIVE mora exatamente aqui, e não na liberação: o comentário do próprio fonte (linhas 231-233 do arquivo) explica que a posição do míssil em PRE_RELEASE ainda é RELATIVA ao lançador (calculada em AbstractWeapon::dynamics(), próximo estágio) -- só depois que BaseClass::updateTC(dt) já rodou essa dinâmica é que a posição absoluta existe, e só então faz sentido soltar o míssil sozinho no mundo.",
+      "!isReleaseHold() -- neste projeto sempre true (release() já chama setReleaseHold(false) na liberação direta), mas é o gate que faz o padrão 'prerelease() primeiro, release() depois' (usado por outras classes deste framework, ex. estações com tempo de preparo) funcionar sem duplicar este método.",
+    ],
+  },
+  {
+    id: "atreleaseinit-native",
+    stage: 3,
+    cls: "Missile",
+    method: "atReleaseInit()",
+    call: "atReleaseInit() chamado pelo passo anterior -- Missile faz a parte NATIVA, depois GuidedMissile sobrescreve",
+    src: "Missile::atReleaseInit",
+    hl: [8, 33],
+    tag: null,
+    flag: null,
+    note: [
+      "getDynamicsModel() == nullptr aqui é o MESMO gate que decide, em AbstractWeapon::dynamics() (dois estágios à frente), se o míssil usa os hooks cinemáticos -- ambos checam a mesma condição, cada um na sua própria classe.",
+      "Este método semeia cmdPitch/cmdHeading/cmdVelocity -- campos PRÓPRIOS de Missile. GuidedMissile nunca os lê (usa cmdHeadingRad_/cmdPitchRad_/cmdSpeedMps_, campos próprios dele) -- é herança que roda e não faz mal, mas também não faz nada útil aqui: quem de fato importa é o override do próximo passo.",
+    ],
+  },
+  {
+    id: "atreleaseinit-custom",
+    stage: 3,
+    cls: "GuidedMissile",
+    method: "atReleaseInit() -- override",
+    call: "chamado no MESMO ponto do passo anterior (é BaseClass::atReleaseInit(); primeira linha do override)",
+    src: "GuidedMissile::atReleaseInit",
+    hl: [19, 26],
+    tag: null,
+    flag: "gotcha",
+    note: [
+      "Sem este override (achado RODANDO, não suposto -- o comentário do próprio arquivo documenta a medição): os campos cmdHeadingRad_/cmdPitchRad_/cmdSpeedMps_ ficam no valor de inicialização de classe (0.0) até tof>=tsg -- mas weaponDynamics() já roda TODO frame, independente do TSG. Resultado medido: o míssil guina ativamente para rumo/pitch GEOGRÁFICO ZERO (Norte, nivelado) e desacelera para 0 m/s durante toda a janela do TSG (aqui, 1.0 s) -- até ~66° de rumo perdidos antes da navegação proporcional assumir.",
+      "getHeadingR()/getPitchR()/getVpMax() no instante da chamada são a atitude/velocidade de LANÇAMENTO -- copiadas do lançador em AbstractWeapon::dynamics() (isMode(PRE_RELEASE), estágio anterior), então o comando inicial é 'continue fazendo o que já estava fazendo' até a guiagem ligar de verdade.",
+    ],
+  },
+  {
+    id: "dynamics-dispatch",
+    stage: 4,
+    cls: "AbstractWeapon",
+    method: "dynamics(dt)",
+    call: "TODO frame, fase 0 -- decide o caminho CINEMÁTICO vs. dynamicsModel de verdade",
+    src: "AbstractWeapon::dynamics",
+    hl: [37, 46],
+    tag: null,
+    flag: "info",
+    note: [
+      "getDynamicsModel() == nullptr é a ÚNICA condição que decide se weaponGuidance(dt)/weaponDynamics(dt) rodam -- exatamente esta linha é a razão de GuidedMissile nunca declarar dynamicsModel: nenhum no .edl (nem JSBSimModel, nem qualquer outro): declarar um desligaria os dois hooks silenciosamente, sem erro nenhum, e o míssil voaria reto pela inércia do release() até bater no maxTOF.",
+      "BaseClass::dynamics(dt) roda LOGO DEPOIS, incondicionalmente -- é Player::dynamics(), que sempre chama positionUpdate(dt): a POSIÇÃO nunca é escrita pelos hooks cinemáticos, só velocidade/atitude (ver o próximo estágio). Integrar posição nos dois lugares duplicaria a conta -- por isso GuidedMissile::weaponDynamics() nunca chama setPosition().",
+    ],
+  },
+  {
+    id: "weaponguidance-nav",
+    stage: 4,
+    cls: "GuidedMissile",
+    method: "weaponGuidance(dt) -- navegação",
+    call: "chamado pelo passo anterior -- lê Player* do alvo DIRETO (não usa o cache tgtPos/tgtVel herdado)",
+    src: "GuidedMissile::weaponGuidance",
+    hl: [22, 28],
+    tag: null,
+    flag: null,
+    note: [
+      "isGuidanceEnabled() = (getTOF() >= tsg) && ((getCategory() & GUIDED) != 0) && isTargetPositionValid() -- vem de AbstractWeapon, mas o framework NÃO impõe esse gate automaticamente sobre uma weaponGuidance() sobrescrita: quem escreveu este modelo teve que chamar isGuidanceEnabled() explicitamente (esta mesma linha). Sem ela, o míssil guiaria desde o frame 1, ignorando o TSG por completo.",
+      "domain::proportionalNavigation() é função PURA (sem MIXR, testada isolada) -- soma perseguição pura (mira no ângulo atual da linha de visada) com uma correção proporcional à TAXA dessa linha, o termo clássico N'×λ̇ da navegação proporcional de verdade. Contraste: o Missile::weaponGuidance() NATIVO (usado por AamMissile/Sam/etc. quando ninguém sobrescreve) faz guiagem por PONTO DE INTERCEPTAÇÃO -- reage só a um snapshot geométrico do instante, não à taxa da LOS.",
+    ],
+  },
+  {
+    id: "proportionalnavigation",
+    stage: 4,
+    cls: "domain",
+    method: "proportionalNavigation(relPos, relVel, gains)",
+    call: "chamado pelo passo anterior -- a lei de guiagem inteira, função pura",
+    src: "domain::proportionalNavigation",
+    hl: [24, 28],
+    tag: null,
+    flag: null,
+    note: [
+      "Perseguição pura (losAz/losEl -- mira direto no ângulo atual da linha de visada) SOMADA a uma correção proporcional à TAXA dessa linha (losAzRate/losElRate) -- o termo clássico N'×λ̇ da navegação proporcional de verdade, aqui em heading/pitch comandados em vez de aceleração cartesiana (que é o que weaponDynamics(), com seu limitador de taxa de giro, já sabe integrar direto).",
+      "Contraste com o Missile::weaponGuidance() NATIVO (usado por AamMissile/Sam/etc. quando ninguém sobrescreve): aquele calcula um PONTO DE INTERCEPTAÇÃO -- extrapola a posição do alvo pelo tempo estimado de fechamento e mira nesse ponto futuro -- reagindo só a um snapshot geométrico do instante, nunca à taxa da LOS. Testado (não só em unidade): tests/domain/test_Guidance.cpp::ConvergeContraAlvoEmCruzamento mede um míssil a 280 m/s fechando para menos de 200 m de alcance mínimo contra um alvo cruzando a 60 m/s a 8,5 km.",
+    ],
+  },
+  {
+    id: "proximityfuze",
+    stage: 4,
+    cls: "domain",
+    method: "proximityFuze(relPos, relVel, burstRangeM, prev)",
+    call: "também chamado pelo passo anterior, no MESMO frame -- a espoleta, função pura",
+    src: "domain::proximityFuze",
+    hl: [10, 18],
+    tag: null,
+    flag: null,
+    note: [
+      "Detecta a TRANSIÇÃO 'aproximando → não mais aproximando' comparando o SINAL da taxa de alcance contra o do frame anterior (prev.wasApproaching) -- é por isso que o estado (FuzeState) tem que sobreviver entre frames: um instante isolado não diz se o alcance ACABOU de parar de diminuir, só um segundo ponto de comparação diz.",
+      "hit = (range <= burstRangeM) -- readonly booleano, calculado no MESMO instante da transição, nunca antes nem depois. É esta comparação, e não lethalRange, que decide 'ACERTO' vs. 'FALHA' no próximo passo desta trilha (ver a nota de weaponguidance-hit sobre por que ~35 m ainda conta como acerto contra um burst de 150 m).",
+    ],
+  },
+  {
+    id: "weapondynamics",
+    stage: 4,
+    cls: "GuidedMissile",
+    method: "weaponDynamics(dt)",
+    call: "chamado logo após weaponGuidance() no MESMO frame -- consome cmdHeadingRad_/cmdPitchRad_/cmdSpeedMps_",
+    src: "GuidedMissile::weaponDynamics",
+    hl: [12, 18],
+    tag: null,
+    flag: null,
+    note: [
+      "maxTurnRateRadPerS vem de maxG (slot herdado de Missile, aqui 15G -- 'míssil vira muito mais apertado que uma aeronave tripulada', comentário do construtor) convertido com base::ETHGM (METROS/s², não base::ETHG em pés/s² -- usar a constante errada daria uma taxa de giro ~3,28× errada; este míssil trabalha em m/s do início ao fim).",
+      "setEulerAngles()/setVelocity() são as ÚNICAS escritas deste método -- nenhuma escrita de posição (ver a nota do passo 'dynamics-dispatch' sobre por quê).",
+    ],
+  },
+  {
+    id: "weaponguidance-hit",
+    stage: 5,
+    cls: "GuidedMissile",
+    method: "weaponGuidance(dt) -- ramo de acerto",
+    call: "MESMO método do estágio anterior -- agora no frame em que a espoleta detecta o ponto de menor aproximação",
+    src: "GuidedMissile::weaponGuidance",
+    hl: [38, 67],
+    tag: "setMode(DETONATED)",
+    flag: "gotcha",
+    note: [
+      "domain::proximityFuze() (função pura, mesmo espírito de proportionalNavigation()) detecta a TRANSIÇÃO \"alcance diminuindo → alcance aumentando\" comparando o sinal da taxa de alcance contra o frame anterior -- por isso precisa de estado (fuzeState_, membro privado do GuidedMissile) entre frames: um único frame não basta para saber se HOUVE transição.",
+      "outcome.hit compara contra getMaxBurstRng() (150 m neste cenário), NÃO contra getLethalRange() (30 m) -- README mede ~35 m de aproximação mínima, dentro do burst e portanto 'ACERTO', mesmo estando acima do alcance letal nominal.",
+      "GOTCHA: este ramo chama setDetonationResults(DETONATE_ENTITY_IMPACT) + checkDetonationEffect() -- mas NUNCA chama setLocationOfDetonation() antes. Os caminhos NATIVOS de detonação (collisionNotification()/crashNotification() do lado da ARMA, e o Missile::weaponGuidance() nativo) sempre chamam setLocationOfDetonation() logo antes de checkDetonationEffect() -- é essa chamada que calcula detonationRange a partir da posição relativa real. Sem ela, detonationRange fica no valor de inicialização de AbstractWeapon (double detonationRange {}, ou seja 0.0) -- consequência no próximo passo.",
+    ],
+  },
+  {
+    id: "checkdetonationeffect",
+    stage: 5,
+    cls: "AbstractWeapon",
+    method: "checkDetonationEffect()",
+    call: "herdado sem override -- varre TODOS os players LOCAIS, não só o alvo designado",
+    src: "AbstractWeapon::checkDetonationEffect",
+    hl: [17, 33],
+    tag: null,
+    flag: "info",
+    note: [
+      "NÃO calcula probabilidade de dano nenhuma -- só resolve o alvo (getTargetPlayer(), ou o Player por trás de getTargetTrack() se o alvo tiver sido perdido) e delega TUDO para Player::processDetonation() de cada player elegível, no próximo passo.",
+      "'Elegível' = local (para de varrer no primeiro networked, p->isNetworkedPlayer() -- a lista é assumida ordenada com locais primeiro) E (dentro de 10×maxBurstRng OU é o próprio alvo designado). Ou seja: NESTE cenário, a4_shooter também seria verificado se estivesse a menos de 1500 m (10×150m) do ponto de detonação -- não medido neste README, mas o mecanismo não distingue 'quem eu mirei' de 'quem está perto', exceto pelo `|| (p == tgt)` que GARANTE o alvo designado mesmo se ele já estiver longe.",
+    ],
+  },
+  {
+    id: "processdetonation",
+    stage: 5,
+    cls: "Player",
+    method: "processDetonation(detRange, wpn) -- do lado do a4_target",
+    call: "chamado uma vez por player elegível, dentro do laço do passo anterior",
+    src: "Player::processDetonation",
+    hl: [12, 27],
+    tag: "KILL_EVENT (1304)",
+    flag: "gotcha",
+    note: [
+      "A NUANCE CENTRAL desta trilha inteira: para o alvo DESIGNADO (this == wpn->getTargetPlayer()), rng NÃO é a distância recém-calculada por checkDetonationEffect() -- é sobrescrito por wpn->getDetonationRange(). Como o passo anterior nunca chamou setLocationOfDetonation(), esse valor é 0.0 (o default de inicialização de AbstractWeapon).",
+      "0.0 < lethalRange (30 m, o default de GuidedMissile) é SEMPRE verdadeiro -- então o a4_target designado recebe um event(KILL_EVENT, launcher) INCONDICIONAL e IMEDIATO, pulando inteiramente o cálculo probabilístico de dano (o ramo 'Near by?' logo abaixo, que É o caminho que qualquer OUTRO player dentro de 10×burst usaria). Em outras palavras: contra o alvo que o míssil de fato mirou, 'entrar no burst' (150 m) e 'acertar em cheio' (0 m) são, neste código, INDISTINGUÍVEIS -- os dois resultam no mesmo event(KILL_EVENT).",
+      "launcher = wpn->getLaunchVehicle() -- é o a4_shooter que aparece como 'quem matou' (P2 do REID_PLAYER_KILLED daqui a dois passos), não o míssil em si.",
+    ],
+  },
+  {
+    id: "event-dispatch",
+    stage: 5,
+    cls: "Player",
+    method: "event(KILL_EVENT, launcher) -- despacho nativo",
+    call: "macro BEGIN_EVENT_HANDLER(Player) -- a MESMA tabela usada por CRASH_EVENT (terreno) e por qualquer outro token",
+    src: "Player::event (KILL_EVENT)",
+    hl: [0, 12],
+    tag: null,
+    flag: "info",
+    note: [
+      "ON_EVENT_OBJ(KILL_EVENT, killedNotification, Player) casa a sobrecarga com objeto (event(KILL_EVENT, launcher) -- o caso daqui); ON_EVENT(KILL_EVENT, killedNotification) casaria event(KILL_EVENT) ou event(KILL_EVENT, nullptr). As DUAS chamam o MESMO método, Player::killedNotification(Player*) -- é despacho por assinatura, não por token duplicado.",
+      "Não existe COLLISION_EVENT nem DETONATION_EVENT como tokens NATIVOS separados (mixr::base::eventTokens.hpp: só KILL_EVENT=1304, CRASH_EVENT=1305, JETTISON_EVENT=1306, entre outros). Quem 'colide em pleno voo' também usa CRASH_EVENT (via mixr::models::CollisionDetect, um system component OPCIONAL com sendCrashEvents default false -- não usado nesta demonstração) -- e quem bate no terreno usa o MESMO CRASH_EVENT, disparado direto por Player::updateTC() quando AGL<0 (ver o passo à parte, mais abaixo). A detonação de ARMA nunca passa por CRASH_EVENT -- só por KILL_EVENT, através de processDetonation().",
+    ],
+  },
+  {
+    id: "killednotification",
+    stage: 5,
+    cls: "Player",
+    method: "killedNotification(Player* p)",
+    call: "despachado pelo passo anterior -- é AQUI que 'abater' vira (ou não vira) algo visível",
+    src: "Player::killedNotification",
+    hl: [26, 34],
+    tag: "REID_PLAYER_KILLED (47)",
+    flag: "gotcha",
+    note: [
+      "SEMPRE roda (independente de killRemoval): propaga KILL_EVENT para CADA subcomponente do a4_target (sc->event(KILL_EVENT, p) -- Autopilot, JSBSimModel, tudo que estiver em components:), e faz setDamage(1.0); setSmoke(1.0); setFlames(1.0). Nenhum desses três setters tem efeito colateral -- são clamp 0..1 puro sobre um double, sem consumidor nativo que os torne visíveis (fork headless, sem sistema gráfico de fumaça/chama).",
+      "GOTCHA -- a linha que decide se o avião 'cai': if (killRemoval && isLocalPlayer()) { setMode(KILLED); ... }. killRemoval é um slot do Player, default false ('If true destroyed players are set to KILLED and are eventually removed (default: false)') -- e o bloco a4_target de sandbox/A4-6DOF-MISSILE NÃO declara killRemoval: true. Resultado medido: mode nunca sai de ACTIVE. O Autopilot do a4_target continua com os três hold modes ligados, o JSBSimModel continua integrando voo normalmente -- o avião simplesmente continua voando reto e nivelado, como se nada tivesse acontecido.",
+      "BEGIN_RECORD_DATA_SAMPLE(..., REID_PLAYER_KILLED) grava INCONDICIONALMENTE (fora do if(killRemoval)) -- mas, como REID_WEAPON_RELEASED no passo 'AbstractWeapon::release', o token 47 também não está no enabledList: [ 43 42 ] deste cenário. O evento nativo aconteceu de ponta a ponta -- KILL_EVENT despachado, subcomponentes notificados, damage=1.0 -- só não aparece em lugar NENHUM que o operador da simulação esteja olhando.",
+    ],
+  },
+  {
+    id: "aside-crash",
+    stage: 5,
+    cls: "Player",
+    method: "updateTC() -- o caminho que NÃO roda aqui",
+    call: "aside: por que um míssil nunca aciona crashNotification()/collisionNotification() do alvo",
+    src: "Player::updateTC (AGL<0)",
+    hl: [0, 6],
+    tag: "CRASH_EVENT (1305)",
+    flag: "info",
+    note: [
+      "crashNotification() só é disparado por ESTA linha -- Player::updateTC() testando getAltitudeAgl() < 0.0 (colisão com o TERRENO), fora de qualquer laço de detonação de arma. collisionNotification(Player*) só é disparado por mixr::models::CollisionDetect (varredura par-a-par de distância entre players em pleno voo, sendCrashEvents default false) -- também sem relação com míssil.",
+      "Não há PONTE nativa entre 'um míssil detonou perto de mim' e 'eu colidi'/'eu bati no chão': são três funções (killedNotification/collisionNotification/crashNotification) com três gatilhos totalmente distintos, e a única que a cadeia de detonação de arma aciona é a primeira. Se um dia se quisesse que um abate por míssil derrubasse o alvo do MESMO jeito visual que um impacto no terreno, isso exigiria código NOVO -- o framework não faz essa ligação sozinho.",
+    ],
+  },
+  {
+    id: "linger",
+    stage: 6,
+    cls: "GuidedMissile",
+    method: "updateTC(dt) -- timer pós-detonação",
+    call: "roda todo frame depois de DETONATED, até completar kLingerSec (2.0 s)",
+    src: "GuidedMissile::updateTC",
+    hl: [9, 19],
+    tag: "setMode(DELETE_REQUEST)",
+    flag: null,
+    note: [
+      "Nada NATIVO tira um Missile de DETONATED para DELETE_REQUEST -- confirmado lendo AbstractWeapon::updateTOF() e Missile::weaponGuidance(): os dois só chamam setMode(DETONATED), nunca DELETE_REQUEST. Sem este timer, o míssil detonado ficaria PARA SEMPRE na lista de players e no Tacview.",
+      "É este timer, não a detonação em si, que faz o objeto W-alguma-coisa sumir da gravação (~2 s depois, medido em sandbox/A4-6DOF-MISSILE: detonação e remoção ~t=91.8s / ~t=93.9s). Do ponto de vista de quem só olha o Tacview, o SUMIÇO do míssil é o único sinal visível de que algo aconteceu -- o a4_target continua lá, voando, sem nenhuma marca.",
+    ],
+  },
+  {
+    id: "updatetof-timeout",
+    stage: 6,
+    cls: "AbstractWeapon",
+    method: "updateTOF(dt) -- aside: e se o míssil nunca acertasse?",
+    call: "chamado toda fase 3 por AbstractWeapon::updateTC() (ver o passo phase0-transition) enquanto isMode(ACTIVE)",
+    src: "AbstractWeapon::updateTOF",
+    hl: [12, 20],
+    tag: "REID_WEAPON_DETONATION (63)",
+    flag: "info",
+    note: [
+      "Contraste com o desfecho principal desta trilha: se domain::proximityFuze() NUNCA detectasse a transição de aproximação (alvo evadindo com sucesso, guiagem perdendo o alvo, etc.), o míssil não ficaria voando para sempre -- updateTOF() força DETONATED assim que getTOF() >= getMaxTOF() (60 s neste cenário), incondicionalmente.",
+      "GOTCHA confirmado lendo o fonte: este caminho NUNCA chama checkDetonationEffect() -- nem aqui, nem em lugar nenhum chamado a partir daqui. Um míssil que 'morre de velhice' por fim de tempo de voo grava REID_WEAPON_DETONATION (o mesmo token do acerto, só o DetonationResults muda para DETONATE_DETONATION) mas NUNCA aciona Player::processDetonation() em ninguém -- sem risco de dano, mesmo que por coincidência geométrica o míssil esteja fisicamente perto de algum player no instante do timeout.",
+      "GuidedMissile::updateTC() (o timer de remoção pós-DETONATED, passo anterior desta trilha) trata os dois casos IGUAL: tanto o DETONATED por acerto/falha da espoleta quanto o DETONATED por timeout de TOF entram no mesmo linger de 2 s antes de DELETE_REQUEST -- do ponto de vista da limpeza da lista de players, não importa qual dos dois caminhos chegou lá.",
+    ],
+  },
+  {
+    id: "synthesis",
+    stage: 6,
+    cls: null,
+    method: null,
+    title: "o que esta trilha prova",
+    call: "síntese -- o que esta trilha prova, linha a linha",
+    src: null,
+    hl: null,
+    tag: null,
+    flag: "gotcha",
+    note: [
+      "O \"abate\" aconteceu por inteiro no nível de EVENTO: KILL_EVENT foi emitido, despachado pela tabela nativa de Player, propagado a cada subcomponente do a4_target, e REID_PLAYER_KILLED foi gravado no recorder -- tudo isso são chamadas de verdade, não simulado por este texto. O que NÃO aconteceu foi visível: mode nunca saiu de ACTIVE (falta killRemoval: true no .edl do alvo) e os dois REID relevantes (WEAPON_RELEASED=61, PLAYER_KILLED=47) nunca chegaram ao Tacview (fora do enabledList do cenário).",
+      "As duas lacunas são CONFIGURAÇÃO, não bug: killRemoval é um slot público de Player, e enabledList aceita qualquer lista de tokens. sandbox/A4-6DOF-MISSILE deliberadamente não liga nenhum dos dois -- o próprio objetivo daquele cenário é isolar disparo→guiagem→detonação, e o README já é honesto sobre 'nem o alvo mostra dano visível'. Esta trilha existe para mostrar EXATAMENTE onde, no C++ nativo, essa escolha se materializa.",
+      "Um terceiro gotcha, independente dos dois acima e não configurável por EDL: o alvo DESIGNADO sempre recebe KILL_EVENT garantido (rng=0.0 via getDetonationRange() nunca setado), não uma avaliação real de distância -- corrigível só com código (GuidedMissile chamando setLocationOfDetonation() antes de checkDetonationEffect(), como os caminhos nativos já fazem).",
+    ],
+  },
+];
+/* ---------------------------- step-by-step (missil) ----------------------------- */
+
+function MissileTrace({ onOpenCatalog }) {
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(2200);
+
+  const step = MISSILE_TRACE[idx];
+  const snip = missileSnip(step.src);
+  const win = useMemo(() => (snip ? windowLines(snip.lines, step.hl, 24) : null), [snip, step.hl]);
+  // snip.lang === "edl" pula o tokenizer C++ -- o heuristico e' calibrado pra
+  // C++ e coloriria sintaxe EDL (parenteses de classe, slots) errado.
+  const cppTokens = useMemo(() => (snip && snip.lang !== "edl" ? cppTokenizeLines(snip.lines) : null), [snip]);
+
+  const move = useCallback((d) => {
+    setPlaying(false);
+    setIdx((p) => Math.max(0, Math.min(MISSILE_TRACE.length - 1, p + d)));
+  }, []);
+
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => {
+      setIdx((p) => (p + 1 >= MISSILE_TRACE.length ? (setPlaying(false), p) : p + 1));
+    }, speed);
+    return () => clearTimeout(t);
+  }, [playing, idx, speed]);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+      if (e.key === "ArrowRight") move(1);
+      else if (e.key === "ArrowLeft") move(-1);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [move]);
+
+  const flagColor = (f) => (f === "gotcha" ? "var(--rf)" : f === "info" ? "var(--bgc)" : "var(--muted)");
+  const inCatalog = step.cls ? !!MODEL[step.cls] : false;
+
+  return (
+    <>
+      <div className="mx-body" style={{ paddingBottom: 110 }}>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 900, marginBottom: 12 }}>
+          Do <b style={{ color: "var(--ink)" }}>tick()</b> que decide disparar até o <b style={{ color: "var(--ink)" }}>event(KILL_EVENT, ...)</b> do outro lado --
+          cada passo é código de verdade (modelo A-4/míssil ou fonte nativo do MIXR, <code className="mx-mono">contexts/src/mixr/</code>), na ordem em que roda,
+          com o instante exato em que um evento nativo é (ou não é) emitido. Cenário de referência: <code className="mx-mono">sandbox/A4-6DOF-MISSILE</code>.
+        </p>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          {MISSILE_STAGES.map((s) => {
+            const on = step.stage === s.n;
+            const done = step.stage > s.n;
+            return (
+              <div key={s.n} style={{
+                padding: "3px 10px", borderRadius: 2, fontSize: 11.5, letterSpacing: "0.02em",
+                background: on ? "var(--ink)" : "var(--panel)",
+                color: on ? "var(--paper)" : "var(--muted)",
+                opacity: done || on ? 1 : 0.55,
+              }}>
+                {s.n + 1}. {s.label}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* -------- coluna 1: lista de passos, clicavel -------- */}
+          <div style={{ width: 300, flexShrink: 0, border: "1px solid var(--rule)", borderRadius: 3, maxHeight: 620, overflowY: "auto" }}>
+            {MISSILE_TRACE.map((s, k) => {
+              const active = k === idx;
+              return (
+                <div key={s.id} onClick={() => { setPlaying(false); setIdx(k); }}
+                  style={{
+                    padding: "7px 10px", cursor: "pointer", borderBottom: "1px solid var(--rule)",
+                    background: active ? "var(--active-bg)" : "transparent",
+                    borderLeft: `3px solid ${active ? "var(--hot)" : s.flag ? flagColor(s.flag) : "transparent"}`,
+                  }}>
+                  <div className="mx-mono" style={{ fontSize: 11, color: "var(--muted)" }}>{k + 1}/{MISSILE_TRACE.length} · {MISSILE_STAGES[s.stage].label}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: "var(--ink)" }}>
+                    {s.cls ? <span className="mx-mono">{s.cls}</span> : s.title}{s.method ? <span style={{ color: "var(--muted)" }}> :: {s.method}</span> : ""}
+                  </div>
+                  {s.tag && (
+                    <span className="mx-chip" style={{ marginTop: 3, borderColor: flagColor(s.flag), color: flagColor(s.flag) }}>{s.tag}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* -------- coluna 2: detalhe do passo ativo -------- */}
+          <div style={{ flex: 1, minWidth: 340 }}>
+            <div className="mx-lbl">
+              <span>Passo {idx + 1} de {MISSILE_TRACE.length}</span>
+              <span>{step.call}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              <span className="mx-mono mx-step-title" style={{ fontSize: 15, fontWeight: 700 }}>
+                {step.cls ? `${step.cls}::${step.method}` : step.title}
+              </span>
+              {step.tag && (
+                <span className="mx-chip" style={{ borderColor: flagColor(step.flag), color: flagColor(step.flag), fontSize: 11.5 }}>{step.tag}</span>
+              )}
+              {inCatalog && onOpenCatalog && (
+                <button className="mx-btn" style={{ fontSize: 11 }} onClick={() => onOpenCatalog(step.cls)}>Ver classe completa no Catálogo →</button>
+              )}
+            </div>
+
+            {win && (
+              <div style={{ marginBottom: 10 }}>
+                <div className="mx-lbl">
+                  <span className="mx-mono">{snip.file}</span>
+                  <span>{snip.lang === "edl" ? "EDL (cenário)" : snip.trunc ? "excerto -- ver arquivo completo" : "C++"}</span>
+                </div>
+                <div className="mx-code">
+                  {win.cutBefore && <div className="mx-codecut">⋯ {win.offset} linha{win.offset === 1 ? "" : "s"} acima ⋯</div>}
+                  {win.lines.map((ln, k) => {
+                    const abs = k + win.offset;
+                    const on = step.hl && abs >= step.hl[0] && abs <= step.hl[1];
+                    return <div key={abs} className="mx-cl" data-on={on ? 1 : 0}><span className="mx-num">{snip.line + abs}</span><span className="mx-src">{renderCppSrc(cppTokens && cppTokens[abs], ln)}</span></div>;
+                  })}
+                  {win.cutAfter && <div className="mx-codecut">⋯ {snip.lines.length - win.offset - win.lines.length} linhas abaixo ⋯</div>}
+                </div>
+              </div>
+            )}
+
+            {step.note.map((p, k) => (
+              <p key={k} className={step.flag === "gotcha" && k === step.note.length - 1 ? "mx-warn" : ""}
+                 style={{ fontSize: 12.5, lineHeight: 1.55, color: step.flag === "gotcha" && k === step.note.length - 1 ? undefined : "var(--ink)", marginBottom: 8 }}>
+                {p}
+              </p>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-transport">
+        <button className="mx-btn" data-primary="1" onClick={() => setPlaying((p) => !p)}>{playing ? "Pausar" : "Reproduzir"}</button>
+        <button className="mx-btn" onClick={() => move(-1)}>←</button>
+        <button className="mx-btn" onClick={() => move(1)}>→</button>
+        <button className="mx-btn" onClick={() => { setPlaying(false); setIdx(0); }}>Início</button>
+        <div className="mx-tl" role="slider" aria-label="Linha do tempo" aria-valuenow={idx} aria-valuemin={0} aria-valuemax={MISSILE_TRACE.length - 1} tabIndex={0}
+             onKeyDown={(e) => { if (e.key === "ArrowRight") move(1); if (e.key === "ArrowLeft") move(-1); }}>
+          {MISSILE_TRACE.map((s, k) => (
+            <div key={k} onClick={() => { setPlaying(false); setIdx(k); }} title={`${s.cls || s.title} :: ${s.method || ""}`}
+              style={{ background: k === idx ? "var(--hot)" : s.flag ? flagColor(s.flag) : "var(--rule)", height: k === idx ? "100%" : "45%", opacity: k <= idx ? 1 : 0.4 }} />
+          ))}
+        </div>
+        <span className="mx-mono" style={{ fontSize: 11.5, color: "var(--muted)", minWidth: 52 }}>{idx + 1}/{MISSILE_TRACE.length}</span>
+        <select className="mx-input" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Velocidade">
+          <option value={3200}>Lento</option><option value={2200}>Normal</option><option value={1100}>Rápido</option>
+        </select>
+      </div>
+    </>
+  );
+}
+
+/* ====================== aba "Referência" -- enciclopédia de classes built-in =======
+ * Diferença para o Catálogo: o Catálogo é FLAT e automático (as 225 classes nativas,
+ * slots/herança extraídos por tools/generate_manual_catalog.py, sem opinião nenhuma
+ * sobre qual classe merece mais espaço). Referência é CURADA e PROFUNDA -- poucas
+ * classes, escolhidas a dedo, cada uma com recursos didáticos que o Catálogo não
+ * tenta oferecer (animação, gráfico, diagrama de estados). Começa com uma única
+ * classe -- Missile -- e nasce desenhada para crescer (REF_CLASSES é uma lista, o
+ * layout já tem barra lateral).
+ *
+ * A animação de guiagem NÃO é enfeite: ela roda a MESMA fórmula de
+ * Missile::weaponGuidance()/weaponDynamics() (o par de hooks que
+ * AbstractWeapon::dynamics() chama quando getDynamicsModel()==nullptr -- ver a aba
+ * step-by-step), reimplementada em JS puro sobre um alvo em linha reta. Não é uma
+ * simulação de física livre: é a tradução literal do C++ (mesmas fórmulas, mesmas
+ * constantes nativas), pré-computada quadro a quadro e reproduzida com os mesmos
+ * controles de transporte do resto do app.
+ * ==================================================================================== */
+
+const REF_CLASSES = [
+  { key: "Missile", label: "Missile", sub: "míssil ar-ar genérico -- guiagem por ponto de interceptação" },
+  { key: "Steerpoint", label: "Steerpoint / Route", sub: "waypoint + o sequenciador que anda entre eles" },
+  { key: "Navigation", label: "Navigation", sub: "agregador de dados de navegação -- Ins/Gps são a mesma classe" },
+  { key: "Autopilot", label: "Autopilot", sub: "piloto automático nativo -- navMode e os limites que não limitam" },
+  { key: "Player", label: "Player", sub: "base de todo player -- despacho de fase, os 10 papéis, local vs. rede" },
+  { key: "System", label: "System", sub: "base de todo subsistema anexado a um player -- ownship e o freeze em cascata" },
+];
+
+const REF_MISSILE_CONST = {
+  VP_MAX: 800,        // m/s -- Missile::Missile(), setVpMax(800.0f)
+  MAX_G: 4.0,         // g's -- setMaxG(4.0)
+  MAX_ACCEL: 50.0,    // m/s/s -- setMaxAccel(50.0)
+  G_FTS2: 32.16,      // base::ETHG -- PÉS/s^2, usado LITERAL (ver nota didática)
+  MAX_BURST_RNG: 150, // m -- setMaxBurstRng(150.0f)
+  LETHAL_RANGE: 30,   // m -- setLethalRange(30.0f)
+  TSG: 1.0,           // s -- setTSG(1.0)
+  MAX_TOF: 60,        // s -- setMaxTOF(60.0)
+  SEPARATION_M: 5000, // geometria do DEMO -- não é slot nenhum do MIXR
+  DT: 0.1,
+  SIM_CEILING_S: 25,
+  LINGER_S: 1.2,
+};
+
+function refWrapPi(a) {
+  let x = a % (2 * Math.PI);
+  if (x > Math.PI) x -= 2 * Math.PI;
+  if (x < -Math.PI) x += 2 * Math.PI;
+  return x;
+}
+function refWrap2pi(a) {
+  let x = a % (2 * Math.PI);
+  if (x < 0) x += 2 * Math.PI;
+  return x;
+}
+function refClamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+
+/* ------------------------------------------------------------------------------
+ * simulateNativeMissileIntercept() -- reimplementação LITERAL, em JS puro, de
+ * Missile::weaponGuidance()/weaponDynamics() (contexts/src/mixr/src/models/player/
+ * weapon/Missile.cpp) sobre um alvo em linha reta a velocidade constante. 2D
+ * (plano N/E) -- a formula 3D nativa usa p1.z()/grng pra cmdPitch, mas com os dois
+ * players na MESMA altitude (z=0 o tempo todo) isso já sai 0 sozinho, então nada
+ * foi simplificado ou omitido: é o MESMO cálculo, só que com uma entrada que nunca
+ * ativa o eixo vertical.
+ *
+ * NÃO modela track (getTargetTrack()) -- só Player direto (getTargetPlayer()),
+ * o caminho mais comum. Sem track, o bloco de "fuzing logic" nativo usa a MESMA
+ * geometria já calculada no bloco de guiagem (não há posição de track separada
+ * pra recalcular) -- é exatamente esse caminho que este simulador reproduz.
+ * ------------------------------------------------------------------------------ */
+function simulateNativeMissileIntercept(targetBearingDeg, targetSpeedMps) {
+  const C = REF_MISSILE_CONST;
+  const bearingRad = (targetBearingDeg * Math.PI) / 180;
+  const tVelN = targetSpeedMps * Math.cos(bearingRad);
+  const tVelE = targetSpeedMps * Math.sin(bearingRad);
+  const tN0 = C.SEPARATION_M;
+  const tE0 = 0;
+
+  let mN = 0, mE = 0;
+  let mHeading = Math.atan2(tE0 - mE, tN0 - mN); // atReleaseInit(): comeca apontado pro alvo inicial
+  let mSpeed = C.VP_MAX;
+  let prevRa = 0;
+  let trngPrev = null, trdotPrev = null;
+  let detonated = false, hit = null, detFrameIndex = null;
+  let cmdHeading = mHeading;
+
+  const frames = [];
+  let tof = 0;
+  while (tof <= C.SIM_CEILING_S) {
+    const tN = tN0 + tVelN * tof;
+    const tE = tE0 + tVelE * tof;
+    const losN = tN - mN, losE = tE - mE;
+    const trng = Math.hypot(losN, losE);
+    const trdot = trngPrev === null ? 0 : (trng - trngPrev) / C.DT;
+
+    let justDetonated = false;
+    if (!detonated && tof > 2.0 && trdotPrev !== null && trdotPrev < 0 && trdot > 0) {
+      const mVelN = mSpeed * Math.cos(mHeading), mVelE = mSpeed * Math.sin(mHeading);
+      const velRelN = tVelN - mVelN, velRelE = tVelE - mVelE;
+      const vm2 = velRelN * velRelN + velRelE * velRelE;
+      let r2 = Infinity;
+      if (vm2 > 0) {
+        const rdv = losN * velRelN + losE * velRelE;
+        const ndt = -rdv / vm2;
+        const p0N = losN + velRelN * ndt, p0E = losE + velRelE * ndt;
+        r2 = p0N * p0N + p0E * p0E;
+      }
+      detonated = true;
+      hit = r2 <= C.MAX_BURST_RNG * C.MAX_BURST_RNG;
+      justDetonated = true;
+    }
+
+    const totalVel = targetSpeedMps;
+    const vtplos = trng > 0 ? (losN * tVelN + losE * tVelE) / trng : 0;
+    const guidanceEnabled = !detonated && tof >= C.TSG && trng > 0;
+    if (guidanceEnabled) {
+      let v = C.VP_MAX;
+      if (v < totalVel) v = totalVel + 1;
+      const vtnlos2 = Math.max(0, totalVel * totalVel - vtplos * vtplos);
+      const vmplos = Math.sqrt(Math.max(0, v * v - vtnlos2));
+      const vclos = vmplos - vtplos;
+      const dt1 = vclos > 0 ? trng / vclos : 0;
+      const p1N = losN + tVelN * dt1, p1E = losE + tVelE * dt1;
+      cmdHeading = Math.atan2(p1E, p1N);
+    }
+
+    frames.push({
+      t: tof, mN, mE, mHeadingDeg: (refWrap2pi(mHeading) * 180) / Math.PI, mSpeed,
+      tN, tE, range: trng, trdot,
+      cmdHeadingDeg: (refWrap2pi(cmdHeading) * 180) / Math.PI, guidanceEnabled,
+      detonated, hit, justDetonated,
+    });
+    if (justDetonated) detFrameIndex = frames.length - 1;
+    if (detonated && tof - frames[detFrameIndex].t >= C.LINGER_S) break;
+
+    if (!detonated) {
+      const raMax = (C.MAX_G * C.G_FTS2) / Math.max(mSpeed, 1);
+      let ra = refWrapPi(cmdHeading - mHeading);
+      ra = refClamp(ra, -raMax, raMax);
+      const newHeading = refWrap2pi(mHeading + ((ra + prevRa) / 2) * C.DT);
+
+      const cmdSpeed = C.VP_MAX; // sobt=0 / eobt=60 -- motor "queimando" a janela toda deste demo
+      const vpdot = refClamp(cmdSpeed - mSpeed, -C.MAX_ACCEL, C.MAX_ACCEL);
+      const newSpeed = mSpeed + vpdot * C.DT;
+
+      // Integração de POSIÇÃO fica fora de weaponDynamics() no C++ real -- é
+      // Player::dynamics() (via positionUpdate()) quem faz isso, logo depois,
+      // no MESMO frame. Reproduzido aqui como um Euler simples.
+      const velN = newSpeed * Math.cos(newHeading), velE = newSpeed * Math.sin(newHeading);
+      mN += velN * C.DT;
+      mE += velE * C.DT;
+      mHeading = newHeading;
+      mSpeed = newSpeed;
+      prevRa = ra;
+    }
+
+    trngPrev = trng;
+    trdotPrev = trdot;
+    tof += C.DT;
+  }
+
+  return { frames, hit, detFrameIndex };
+}
+
+function refFmt(n, d) { return Number.isFinite(n) ? n.toFixed(d != null ? d : 0) : "--"; }
+
+function MissileStat({ label, value }) {
+  return (
+    <div className="mx-stat">
+      <div className="mx-stat-label">{label}</div>
+      <div className="mx-stat-value">{value}</div>
+    </div>
+  );
+}
+
+function MissileGuidanceLab({ onModeChange }) {
+  const [bearing, setBearing] = useState(200);
+  const [speed, setSpeed] = useState(230);
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(60);
+
+  const sim = useMemo(() => simulateNativeMissileIntercept(bearing, speed), [bearing, speed]);
+  const frames = sim.frames;
+  const clampedIdx = Math.min(idx, frames.length - 1);
+  const frame = frames[clampedIdx] || frames[0];
+
+  useEffect(() => { setIdx(0); setPlaying(false); }, [bearing, speed]);
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => {
+      setIdx((p) => (p + 1 >= frames.length ? (setPlaying(false), p) : p + 1));
+    }, playSpeed);
+    return () => clearTimeout(t);
+  }, [playing, idx, playSpeed, frames.length]);
+  useEffect(() => { if (onModeChange) onModeChange(frame.detonated ? "DETONATED" : "ACTIVE"); }, [frame.detonated, onModeChange]);
+
+  // viewBox auto-ajustado ao envelope INTEIRO da trajetoria -- nunca sai da tela,
+  // qualquer que seja o rumo/velocidade do alvo escolhidos.
+  const bounds = useMemo(() => {
+    let minN = 0, maxN = 0, minE = 0, maxE = 0;
+    frames.forEach((f) => {
+      minN = Math.min(minN, f.mN, f.tN); maxN = Math.max(maxN, f.mN, f.tN);
+      minE = Math.min(minE, f.mE, f.tE); maxE = Math.max(maxE, f.mE, f.tE);
+    });
+    const pad = Math.max(300, (maxN - minN) * 0.12, (maxE - minE) * 0.12);
+    return { minN: minN - pad, maxN: maxN + pad, minE: minE - pad, maxE: maxE + pad };
+  }, [frames]);
+
+  const W = 520, H = 380;
+  const spanN = Math.max(1, bounds.maxN - bounds.minN);
+  const spanE = Math.max(1, bounds.maxE - bounds.minE);
+  const scale = Math.min((W - 20) / spanE, (H - 20) / spanN);
+  const px = (e) => (e - bounds.minE) * scale + (W - spanE * scale) / 2;
+  const py = (n) => H - ((n - bounds.minN) * scale + (H - spanN * scale) / 2);
+
+  const trailUpTo = (getN, getE) => frames.slice(0, clampedIdx + 1).map((f) => `${px(getE(f))},${py(getN(f))}`).join(" ");
+  const missileTrail = trailUpTo((f) => f.mN, (f) => f.mE);
+  const targetTrail = trailUpTo((f) => f.tN, (f) => f.tE);
+
+  const detFrame = sim.detFrameIndex != null ? frames[sim.detFrameIndex] : null;
+  const showBurst = detFrame && clampedIdx >= sim.detFrameIndex;
+
+  const move = useCallback((d) => { setPlaying(false); setIdx((p) => refClamp(p + d, 0, frames.length - 1)); }, [frames.length]);
+
+  const maxRange = Math.max(...frames.map((f) => f.range), 1);
+  const chartW = 520, chartH = 100, chartPad = 30;
+  const lastT = Math.max(frames[frames.length - 1].t, 0.001);
+  const chartX = (t) => chartPad + (t / lastT) * (chartW - chartPad - 8);
+  const chartY = (r) => chartH - 16 - (r / maxRange) * (chartH - 28);
+
+  const status = !frame.detonated
+    ? { text: "EM VOO", bg: "var(--panel)", fg: "var(--muted)" }
+    : frame.hit
+      ? { text: "ACERTO", bg: "var(--ok)", fg: "var(--paper)" }
+      : { text: "FALHA -- passou do alvo", bg: "var(--rf)", fg: "var(--paper)" };
+
+  return (
+    <div className="mx-card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>Laboratório de guiagem</span>
+        <span className="mx-pill" style={{ background: status.bg, color: status.fg }}>● {status.text}</span>
+      </div>
+
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
+        {/* -------- coluna principal: animacao + leitura + grafico -------- */}
+        <div style={{ flex: "1 1 540px", minWidth: 320 }}>
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+            <polyline points={targetTrail} fill="none" stroke="var(--rf)" strokeWidth="1.4" opacity="0.55" />
+            <polyline points={missileTrail} fill="none" stroke="var(--hot)" strokeWidth="1.6" opacity="0.8" />
+            <line x1={px(frame.mE)} y1={py(frame.mN)} x2={px(frame.tE)} y2={py(frame.tN)} stroke="var(--muted)" strokeWidth="1" strokeDasharray="3 3" />
+            <g transform={`translate(${px(frame.tE)},${py(frame.tN)})`}>
+              <rect x="-5" y="-5" width="10" height="10" transform="rotate(45)" fill="var(--rf)" />
+            </g>
+            <g transform={`translate(${px(frame.mE)},${py(frame.mN)}) rotate(${frame.mHeadingDeg})`}>
+              <polygon points="0,-8 5,7 -5,7" fill="var(--hot)" />
+            </g>
+            {showBurst && (
+              <g transform={`translate(${px(detFrame.tE)},${py(detFrame.tN)})`} opacity="0.9">
+                <circle r="10" fill="none" stroke={detFrame.hit ? "var(--ok)" : "var(--rf)"} strokeWidth="2.4" />
+                <circle r="3" fill={detFrame.hit ? "var(--ok)" : "var(--rf)"} />
+              </g>
+            )}
+          </svg>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 11, color: "var(--muted)", margin: "5px 0 12px" }}>
+            <span><span style={{ color: "var(--hot)" }}>▲</span> míssil</span>
+            <span><span style={{ color: "var(--rf)" }}>◆</span> alvo</span>
+            <span style={{ marginLeft: "auto" }}>Missile::weaponGuidance()/weaponDynamics() -- ver Código-fonte</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="mx-btn" data-primary="1" onClick={() => setPlaying((p) => !p)}>{playing ? "Pausar" : "Reproduzir"}</button>
+            <button className="mx-btn" onClick={() => move(-1)}>←</button>
+            <button className="mx-btn" onClick={() => move(1)}>→</button>
+            <button className="mx-btn" onClick={() => { setPlaying(false); setIdx(0); }}>Início</button>
+            <input type="range" min={0} max={frames.length - 1} value={clampedIdx}
+                   onChange={(e) => { setPlaying(false); setIdx(Number(e.target.value)); }}
+                   style={{ flex: 1, minWidth: 120 }} />
+            <span className="mx-mono" style={{ fontSize: 11, color: "var(--muted)", minWidth: 82, textAlign: "right" }}>{refFmt(frame.t, 1)}s ({clampedIdx + 1}/{frames.length})</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            <MissileStat label="alcance" value={`${refFmt(frame.range)} m`} />
+            <MissileStat label="taxa (trdot)" value={`${refFmt(frame.trdot)} m/s`} />
+            <MissileStat label="veloc. míssil" value={`${refFmt(frame.mSpeed)} m/s`} />
+            <MissileStat label="rumo atual" value={`${refFmt(frame.mHeadingDeg)}°`} />
+            <MissileStat label="rumo comandado" value={frame.guidanceEnabled ? `${refFmt(frame.cmdHeadingDeg)}°` : "tof < tsg"} />
+          </div>
+
+          <div className="mx-lbl">
+            <span>Alcance × tempo -- a detonação é onde trdot cruza de negativo pra positivo</span>
+            <span>maxBurstRng = {REF_MISSILE_CONST.MAX_BURST_RNG} m</span>
+          </div>
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: "100%", display: "block", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+            <line x1={chartPad} y1={chartH - 16} x2={chartW - 6} y2={chartH - 16} stroke="var(--rule)" />
+            <polyline fill="none" stroke="var(--bgc)" strokeWidth="1.6" points={frames.map((f) => `${chartX(f.t)},${chartY(f.range)}`).join(" ")} />
+            {sim.detFrameIndex != null && (
+              <circle cx={chartX(frames[sim.detFrameIndex].t)} cy={chartY(frames[sim.detFrameIndex].range)} r="3.4"
+                      fill={frames[sim.detFrameIndex].hit ? "var(--ok)" : "var(--rf)"} />
+            )}
+            <line x1={chartX(frame.t)} y1="4" x2={chartX(frame.t)} y2={chartH - 16} stroke="var(--hot)" strokeWidth="1" opacity="0.6" />
+          </svg>
+        </div>
+
+        {/* -------- coluna lateral: controles + ciclo de vida ao vivo -------- */}
+        <div style={{ flex: "0 1 240px", minWidth: 210 }}>
+          <div className="mx-lbl"><span>Geometria do alvo</span></div>
+          <label style={{ display: "block", fontSize: 11.5, marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span>rumo</span><span className="mx-mono">{bearing}°</span></div>
+            <input type="range" min={0} max={359} value={bearing} onChange={(e) => setBearing(Number(e.target.value))} style={{ width: "100%" }} />
+          </label>
+          <label style={{ display: "block", fontSize: 11.5, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span>velocidade</span><span className="mx-mono">{speed} m/s ({refFmt(speed * 1.94384, 0)} kt)</span></div>
+            <input type="range" min={50} max={420} step={10} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} style={{ width: "100%" }} />
+          </label>
+          <select className="mx-input" value={playSpeed} onChange={(e) => setPlaySpeed(Number(e.target.value))} style={{ width: "100%", marginBottom: 14 }}>
+            <option value={140}>Reprodução lenta</option>
+            <option value={60}>Reprodução normal</option>
+            <option value={25}>Reprodução rápida</option>
+          </select>
+
+          <div className="mx-lbl"><span>Ciclo de vida -- ao vivo</span></div>
+          <MissileLifecycleDiagram mode={frame.detonated ? "DETONATED" : "ACTIVE"} compact />
+
+          <p style={{ fontSize: 11, lineHeight: 1.5, color: "var(--muted)", marginTop: 10 }}>
+            O míssil sai da origem apontado para a posição INICIAL do alvo (5000 m) -- imitando
+            <code className="mx-mono"> atReleaseInit()</code>. Nos primeiros {REF_MISSILE_CONST.TSG.toFixed(1)} s
+            (tsg) ele mantém esse rumo fixo; a guiagem só liga depois.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MissileLifecycleDiagram({ mode, compact }) {
+  const boxes = compact
+    ? [
+        { id: "ACTIVE", x: 8, y: 8, w: 90, h: 36 },
+        { id: "DETONATED", x: 112, y: 8, w: 100, h: 36 },
+      ]
+    : [
+        { id: "INACTIVE", x: 10, y: 10, w: 92, h: 40, note: "nunca lançado" },
+        { id: "PRE_RELEASE", x: 132, y: 10, w: 110, h: 40, note: "clone recém-criado" },
+        { id: "ACTIVE", x: 272, y: 10, w: 84, h: 40, note: "voando, guiando" },
+        { id: "DETONATED", x: 386, y: 10, w: 104, h: 40, note: "acertou OU errou" },
+      ];
+  const activeIdx = boxes.findIndex((b) => b.id === mode);
+  const vb = compact ? "0 0 224 52" : "0 0 620 96";
+  return (
+    <svg viewBox={vb} style={{ width: "100%", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+      {boxes.map((b, i) => (
+        <g key={b.id}>
+          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="3"
+                fill={i === activeIdx ? "var(--hot)" : "var(--panel)"}
+                stroke={i === activeIdx ? "var(--hot)" : "var(--rule)"} strokeWidth="1.4" />
+          <text x={b.x + b.w / 2} y={compact ? b.y + 22 : b.y + 17} textAnchor="middle" className="mx-mono"
+                style={{ fontSize: compact ? 10 : 10.5, fontWeight: 700, fill: i === activeIdx ? "var(--paper)" : "var(--ink)" }}>{b.id}</text>
+          {!compact && (
+            <text x={b.x + b.w / 2} y={b.y + 31} textAnchor="middle"
+                  style={{ fontSize: 8.6, fill: i === activeIdx ? "var(--running-fg)" : "var(--muted)" }}>{b.note}</text>
+          )}
+        </g>
+      ))}
+      {!compact && (
+        <>
+          <g transform="translate(508, 10)">
+            <rect x="0" y="0" width="108" height="40" rx="3" fill="none" stroke="var(--rf)" strokeWidth="1.2" strokeDasharray="4 3" />
+            <text x="54" y="17" textAnchor="middle" className="mx-mono" style={{ fontSize: 10.5, fontWeight: 700, fill: "var(--rf)" }}>DELETE_REQUEST</text>
+            <text x="54" y="31" textAnchor="middle" style={{ fontSize: 8.2, fill: "var(--rf)" }}>não nativo (ver Visão geral)</text>
+          </g>
+          {[["release()", 0, 1], ["AbstractWeapon::updateTC() fase 0", 1, 2], ["weaponGuidance() -- hit/miss/timeout", 2, 3]].map(([label, a, b], i) => {
+            const bf = boxes[a], bt = boxes[b];
+            const x1 = bf.x + bf.w, x2 = bt.x;
+            return (
+              <g key={i}>
+                <line x1={x1} y1="30" x2={x2 - 2} y2="30" stroke="var(--muted)" strokeWidth="1.2" markerEnd="url(#refArrow)" />
+                <text x={(x1 + x2) / 2} y="25" textAnchor="middle" className="mx-mono" style={{ fontSize: 7.6, fill: "var(--muted)" }}>{label}</text>
+              </g>
+            );
+          })}
+          <line x1="490" y1="30" x2="506" y2="30" stroke="var(--rf)" strokeWidth="1.2" strokeDasharray="2 2" markerEnd="url(#refArrowDashed)" />
+          <defs>
+            <marker id="refArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--muted)" /></marker>
+            <marker id="refArrowDashed" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--rf)" /></marker>
+          </defs>
+        </>
+      )}
+    </svg>
+  );
+}
+
+const REF_DETONATION_ENUM = [
+  ["DETONATE_OTHER", "0", "default -- nunca setado por Missile"],
+  ["DETONATE_ENTITY_IMPACT", "1", "acertou (r² dentro de maxBurstRng²)"],
+  ["DETONATE_ENTITY_PROXIMATE_DETONATION", "2", "não usado por Missile"],
+  ["DETONATE_GROUND_IMPACT", "3", "não usado -- é o caminho de crashNotification()"],
+  ["DETONATE_GROUND_PROXIMATE_DETONATION", "4", "não usado por Missile"],
+  ["DETONATE_DETONATION", "5", "passou do ponto de menor aproximação sem acertar"],
+  ["DETONATE_NONE", "6", "reset() inicial, antes de qualquer detonação"],
+];
+
+const REF_SLOT_DOCS = {
+  minSpeed: ["m/s", "cmdVelocity após o fim da queima (isEngineBurnEnabled()==false) -- vpMin"],
+  maxSpeed: ["m/s", "cmdVelocity durante a queima, E a velocidade assumida do PRÓPRIO míssil no cálculo do ponto de interceptação (v, em weaponGuidance()) -- vpMax"],
+  speedMaxG: ["m/s", "NUNCA lido em weaponGuidance()/weaponDynamics() -- grep confirma. Slot morto para efeito de comportamento nesta classe -- vpMaxG"],
+  maxg: ["g's", "taxa de giro máxima (ra_max), uma CONSTANTE -- não escala com a velocidade atual apesar do nome parecido com speedMaxG -- maxG"],
+  maxAccel: ["m/s/s", "limite de aceleração longitudinal (vpdot) -- maxAccel"],
+  cmdPitch: ["rad", "comando de arfagem -- sobrescrito a cada frame por weaponGuidance() quando a guiagem está ligada"],
+  cmdHeading: ["rad", "comando de rumo -- idem, sobrescrito toda vez que isGuidanceEnabled()"],
+  cmdSpeed: ["m/s", "campo cmdVelocity -- também recalculado toda vez em weaponGuidance() (burn/no-burn)"],
+};
+
+function renderMissileSnippet(key) {
+  const snip = missileSnip(key);
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+function MissileReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Missile"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Missile</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "Missile"</span>
+          <span className="mx-chip">MISSILE | GUIDED</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Missile")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          Míssil ar-ar GENÉRICO (nickname/descrição nativa: "AAM") -- é o que qualquer subclasse concreta
+          (`( AamMissile )`, `( Sam )`) herda quando não sobrescreve a guiagem. Guia por{" "}
+          <b>ponto de interceptação</b>: a cada frame extrapola onde o alvo VAI estar e mira nesse ponto
+          futuro -- não onde ele ESTÁ agora. Cinemático por padrão (sem dynamicsModel), como o{" "}
+          <code className="mx-mono">( GuidedMissile )</code> deste repositório (aba step-by-step) -- só a
+          LEI DE GUIAGEM muda: aqui é ponto de interceptação, lá é navegação proporcional.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Missile → AbstractWeapon → Player → AbstractPlayer → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Missile" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "lab"} data-on={tab === "lab" ? 1 : 0} onClick={() => setTab("lab")}>Laboratório de guiagem</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Como a guiagem decide, em 4 passos</div>
+              <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.7 }}>
+                <li>Mede o alcance (<code className="mx-mono">trng</code>) e sua taxa de variação (<code className="mx-mono">trdot</code>) até o alvo.</li>
+                <li>Se <code className="mx-mono">isGuidanceEnabled()</code> (TOF ≥ tsg), estima o tempo até o encontro e extrapola a posição FUTURA do alvo.</li>
+                <li>Comanda rumo/arfagem para esse ponto futuro -- <code className="mx-mono">weaponDynamics()</code> integra até lá, limitado por G/aceleração.</li>
+                <li>A cada frame, uma espoleta separada verifica se o alcance PAROU de diminuir -- é esse instante, não um limiar de distância, que decide a detonação.</li>
+              </ol>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>enum Detonation -- o resultado, separado do mode</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 8px" }}>
+                O <code className="mx-mono">mode</code> só diz DETONATED -- nunca "por quê". A razão fica aqui.
+              </p>
+              <div className="mx-slotgrid">
+                {REF_DETONATION_ENUM.map(([k, v, d]) => (
+                  <div className="mx-slot" key={k}><span>{k} <span style={{ color: "var(--muted)" }}>={v}</span></span><span>{d}</span></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "lab" && <MissileGuidanceLab />}
+
+        {tab === "slots" && (
+          <div className="mx-card">
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Missile</div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>
+              {entry ? entry.own : 8} slots próprios. Mais os herdados de AbstractWeapon (maxTOF, tsg, maxBurstRng,
+              lethalRange, sobt, eobt, dummy, jettisonable...) -- ver Catálogo para a lista completa da cadeia.
+            </p>
+            <div className="mx-slotgrid">
+              {(entry ? entry.sl : Object.keys(REF_SLOT_DOCS)).map((s) => (
+                <div className="mx-slot" key={s}>
+                  <span>{s}{REF_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                  <span style={{ maxWidth: 360 }}>{REF_SLOT_DOCS[s] ? REF_SLOT_DOCS[s][1] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Missile::Missile() -- construtor, os defaults usados no laboratório</span><span>C++</span></div>
+              {renderMissileSnippet("Missile::Missile (construtor)")}
+            </div>
+
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Missile::weaponGuidance(dt) -- ponto de interceptação + espoleta, na íntegra</span><span>C++</span></div>
+              {renderMissileSnippet("Missile::weaponGuidance (native)")}
+              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+                <code className="mx-mono">v = max(vpMax, |alvo|+1)</code>: o míssil sempre se assume mais rápido que o
+                alvo por pelo menos 1 m/s -- sem essa garantia, <code className="mx-mono">vtnlos2</code> poderia superar{" "}
+                <code className="mx-mono">v²</code> e <code className="mx-mono">vmplos</code> (a raiz) sairia de um
+                número negativo. Não é defesa contra caso extremo -- é uma pré-condição que o próprio código impõe
+                antes da raiz.
+              </p>
+            </div>
+
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Missile::weaponDynamics(dt) -- integra rumo/arfagem/velocidade limitados por G/aceleração</span><span>C++</span></div>
+              {renderMissileSnippet("Missile::weaponDynamics (native)")}
+              <p className="mx-warn" style={{ marginTop: 10, marginBottom: 0 }}>
+                Observação, NÃO medida rodando (uma leitura, não uma confirmação):{" "}
+                <code className="mx-mono">g = base::ETHG</code> vale 32,16 -- em PÉS/s²
+                (<code className="mx-mono">contexts/src/mixr/include/mixr/base/util/constants.hpp</code>).
+                Os próprios comentários do slot table, duas seções acima, documentam a velocidade em METROS/s
+                ("Minimum Velocity (m/s)"). Se os dois se misturam sem conversão em{" "}
+                <code className="mx-mono">ra_max = gmax * g / getTotalVelocity()</code>, a taxa de giro nativa sai
+                ~3,28× (1/0,3048) maior do que o autor provavelmente pretendia -- a mesma razão que levou o{" "}
+                <code className="mx-mono">( GuidedMissile )</code> deste repositório a usar{" "}
+                <code className="mx-mono">base::ETHGM</code> (já convertida) em vez de <code className="mx-mono">base::ETHG</code>.
+                O laboratório reproduz o valor LITERAL do código (32,16 sem conversão) -- é por isso que a taxa de
+                giro ali é o que é.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ====================== Referência -- Steerpoint / Route / Navigation / Autopilot ================
+ * Segunda leva da enciclopédia (a primeira foi só Missile). Mesmo padrão: hero + sub-abas
+ * (Visão geral / Laboratório / Slots / Código-fonte), tudo fundado em código real com
+ * citação de arquivo:linha -- nada aqui foi suposto. A cadeia coberta é
+ * Steerpoint (dado do waypoint) -> Route (sequenciador) -> Navigation (agregador,
+ * repassa o que o Route já calculou) -> Autopilot (consumidor, navMode).
+ * ==================================================================================== */
+
+const NAV_SNIPPETS = {
+  "Steerpoint::compute (geodesia)": {
+    file: "contexts/src/mixr/src/models/navigation/Steerpoint.cpp",
+    line: 611,
+    trunc: true,
+    lines: [
+      "bool Steerpoint::compute(const Navigation* const nav, const Steerpoint* const from)",
+      "{",
+      "    bool ok{};",
+      "    if (nav != nullptr) {",
+      "",
+      "        // ---",
+      "        // Update Mag Var (if needed)",
+      "        // ---",
+      "        if (haveInitMagVar) {",
+      "            magvar = initMagVar;",
+      "        } else {",
+      "            magvar = static_cast<double>(nav->getMagVarDeg());",
+      "        }",
+      "",
+      "        // ---",
+      "        // Make sure we have a position vector and compute lat/lon, if needed",
+      "        // ---",
+      "        if ( !isLatLonValid() && isPosVecValid() ) {",
+      "            // Compute our lat/lon when we only have the Pos Vec",
+      "            double elev = 0.0;",
+      "            base::nav::convertPosVec2LL(nav->getRefLatitude(), nav->getRefLongitude(), posVec, &latitude, &longitude, &elev);",
+      "            elevation  = static_cast<double>(elev);",
+      "            needLL = false;",
+      "        }",
+      "        if ( isLatLonValid() && !isPosVecValid() ) {",
+      "            // Compute our Pos Vec when we only have the lat/lon",
+      "            base::nav::convertLL2PosVec(nav->getRefLatitude(), nav->getRefLongitude(), latitude, longitude, elevation, &posVec);",
+      "            needPosVec = false;",
+      "        }",
+      "",
+      "        // ## Note: at this point we need a valid lat/lon position",
+      "",
+      "        if (isLatLonValid()) {",
+      "",
+      "            // ---",
+      "            // Compute 'direct-to' bearing,  distance & time",
+      "            // ---",
+      "            double toBrg{};",
+      "            double toDist{};",
+      "            double toTTG{};",
+      "            base::nav::gll2bd(nav->getLatitude(), nav->getLongitude(), getLatitude(), getLongitude(), &toBrg, &toDist);",
+      "",
+      "            setTrueBrgDeg( static_cast<double>(toBrg) );",
+      "            setDistNM( static_cast<double>(toDist) );",
+      "            setMagBrgDeg( base::angle::aepcdDeg( getTrueBrgDeg() - getMagVarDeg() ) );",
+    ],
+  },
+  "Route::autoSequencer+triggerAction (native)": {
+    file: "contexts/src/mixr/src/models/navigation/Route.cpp",
+    line: 163,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Auto Sequence through Steerpoints",
+      "//------------------------------------------------------------------------------",
+      "void Route::autoSequencer(const double, const Navigation* const nav)",
+      "{",
+      "   if (isAutoSequence() && to != nullptr && nav != nullptr) {",
+      "      Steerpoint* toSP{static_cast<Steerpoint*>(to->object())};",
+      "      if (toSP->getDistNM() <= autoSeqDistNM) {",
+      "         // We're within range of the steerpoint, so compute our relative",
+      "         // to see if we just passed it.",
+      "         const double rbrg{base::angle::aepcdDeg(toSP->getTrueBrgDeg() - nav->getHeadingDeg())};",
+      "         if ( std::fabs(rbrg) >= 90.0) {",
+      "            // We're within range and we're going away from it, so ...",
+      "            triggerAction();",
+      "            incStpt();",
+      "         }",
+      "      }",
+      "   }",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// trigger the 'to' steerpoint's action (if any)",
+      "//------------------------------------------------------------------------------",
+      "void Route::triggerAction()",
+      "{",
+      "   // ---",
+      "   // find and start the current 'to' steerpoint action",
+      "   // ---",
+      "   Player* own{static_cast<Player*>(findContainerByType(typeid(Player)))};",
+      "   if (to != nullptr && own != nullptr) {",
+      "      Steerpoint* toSP{static_cast<Steerpoint*>(to->object())};",
+      "      Action* toAction{toSP->getAction()};",
+      "      if (toAction != nullptr) {",
+      "         OnboardComputer* obc{own->getOnboardComputer()};",
+      "         if (obc != nullptr) obc->triggerAction(toAction);",
+      "      }",
+      "   }",
+      "}",
+    ],
+  },
+  "Navigation::process (fase 3)": {
+    file: "contexts/src/mixr/src/models/navigation/Navigation.cpp",
+    line: 191,
+    trunc: false,
+    lines: [
+      "void Navigation::process(const double dt)",
+      "{",
+      "   BaseClass::process(dt);",
+      "",
+      "   // ---",
+      "   // Update our position, attitude and velocities",
+      "   // ---",
+      "   if (getOwnship() != nullptr) {",
+      "      velValid = updateSysVelocity();",
+      "      posValid = updateSysPosition();",
+      "      attValid = updateSysAttitude();",
+      "      magVarValid = updateMagVar();",
+      "   }",
+      "   else {",
+      "      posValid = false;",
+      "      attValid = false;",
+      "      velValid = false;",
+      "      magVarValid = false;",
+      "   }",
+      "",
+      "   // Update UTC",
+      "   double v {utc + dt};",
+      "   if (v >= base::time::D2S) {",
+      "      v = (v - base::time::D2S);",
+      "   }",
+      "   setUTC(v);",
+      "",
+      "   // ---",
+      "   // Update our primary route",
+      "   // ---",
+      "   if (priRoute != nullptr) priRoute->tcFrame(dt);",
+      "",
+      "   // Update our bullseye",
+      "   if (bull != nullptr) bull->compute(this);",
+      "",
+      "   // ---",
+      "   // Update our navigational steering data",
+      "   // ---",
+      "   updateNavSteering();",
+      "}",
+    ],
+  },
+  "Navigation::updateNavSteering (native)": {
+    file: "contexts/src/mixr/src/models/navigation/Navigation.cpp",
+    line: 700,
+    trunc: false,
+    lines: [
+      "// (default) Nav steering function (pull data from the 'to' steerpoint)",
+      "bool Navigation::updateNavSteering()",
+      "{",
+      "   if (getPriRoute() != nullptr) {",
+      "      const Steerpoint* to{getPriRoute()->getSteerpoint()};",
+      "      if (to != nullptr) {",
+      "         if (to->isNavDataValid()) {",
+      "            setTrueBrgDeg( to->getTrueBrgDeg() );",
+      "            setMagBrgDeg( to->getMagBrgDeg() );",
+      "            setDistNM( to->getDistNM()) ;",
+      "            setTrueCrsDeg( to->getTrueCrsDeg() );",
+      "            setMagCrsDeg( to->getMagCrsDeg() );",
+      "            setTTG( to->getTTG() );",
+      "            setETA( to->getETA() );",
+      "            setCrossTrackErrorNM( to->getCrossTrackErrNM() );",
+      "            setNavSteeringValid( true );",
+      "         } else {",
+      "            setNavSteeringValid( false );",
+      "         }",
+      "      }",
+      "   }",
+      "   return isNavSteeringValid();",
+      "}",
+    ],
+  },
+  "Autopilot::modeManager (native)": {
+    file: "contexts/src/mixr/src/models/system/Autopilot.cpp",
+    line: 200,
+    trunc: false,
+    lines: [
+      "bool Autopilot::modeManager()",
+      "{",
+      "   // ---",
+      "   // Re-latch the modes -- (just command the previous mode.)",
+      "   //  If the mode was off, it still is.",
+      "   //  If the mode was on, the 'is' functions will make sure that all",
+      "   //  prerequisite are still met.",
+      "   // ---",
+      "   setNavMode( isNavModeOn() );",
+      "   if (!isLoiterModeOn()) {",
+      "      //loiterState = 0;",
+      "      loiterEntryMode = PREENTRY;",
+      "      loiterEntryPhase = 0;",
+      "   }",
+      "",
+      "   // ---",
+      "   // Follow our leader mode",
+      "   // ---",
+      "   if ( isFollowTheLeadModeOn() ) {",
+      "      processModeFollowTheLead();",
+      "   }",
+      "",
+      "   // ---",
+      "   // Loiter Mode",
+      "   // ---",
+      "   else if ( isLoiterModeOn() ) {",
+      "      processModeLoiter();",
+      "   }",
+      "",
+      "   // ---",
+      "   // Navigation (e.g., waypoint follow) Mode",
+      "   // ---",
+      "   else if ( isNavModeOn() ) {",
+      "      processModeNavigation();",
+      "   }",
+      "",
+      "   return true;",
+      "}",
+    ],
+  },
+  "Autopilot::processModeNavigation (native)": {
+    file: "contexts/src/mixr/src/models/system/Autopilot.cpp",
+    line: 242,
+    trunc: false,
+    lines: [
+      "bool Autopilot::processModeNavigation()",
+      "{",
+      "   bool ok{};",
+      "",
+      "   const Navigation* nav{getOwnship()->getNavigation()};",
+      "",
+      "   if (nav != nullptr) {",
+      "      // Do we have valid NAV steering data?",
+      "      if (nav->isNavSteeringValid()) {",
+      "         const double a{nav->getTrueBrgDeg()};",
+      "         setCommandedHeadingD( a );",
+      "      }",
+      "",
+      "      // Do we have NAV commanded altitude?",
+      "      const Route* route{nav->getPriRoute()};",
+      "      if (route != nullptr) {",
+      "         const Steerpoint* sp{route->getSteerpoint()};",
+      "         if (sp != nullptr) {",
+      "            if (sp->isCmdAltValid()) {",
+      "               setCommandedAltitudeFt( sp->getCmdAltitudeFt() );",
+      "            }",
+      "            {",
+      "               const double spd{sp->getCmdAirspeedKts()};",
+      "               if (spd > 0) {",
+      "                  setCommandedVelocityKts( spd );",
+      "               }",
+      "            }",
+      "         }",
+      "      }",
+      "      ok = true;",
+      "   }",
+      "",
+      "   if (!ok) setNavMode( false );",
+      "   return ok;",
+      "}",
+    ],
+  },
+  "Autopilot::setNavMode (native)": {
+    file: "contexts/src/mixr/src/models/system/Autopilot.cpp",
+    line: 1039,
+    trunc: false,
+    lines: [
+      "bool Autopilot::setNavMode(const bool flag)",
+      "{",
+      "   bool navModeOn1{navModeOn};",
+      "",
+      "   // Set NAV mode",
+      "   navModeOn = flag && isRollSasOn() && isPitchSasOn();",
+      "   if (navModeOn) {",
+      "      setHeadingHoldMode(true);",
+      "      setAltitudeHoldMode(true);",
+      "      setVelocityHoldMode(true);",
+      "   }",
+      "",
+      "   // If Nav mode was just turned off,",
+      "   // set commanded heading and altitude to our current values",
+      "   if ( !navModeOn && navModeOn1 ) {",
+      "      Player* pv{getOwnship()};",
+      "      if (pv != nullptr) {",
+      "        const double hdg{pv->getHeadingD()};",
+      "        setCommandedHeadingD(hdg);",
+      "        setCommandedAltitudeFt(pv->getAltitudeFt());",
+      "        setCommandedVelocityKts( pv->getTotalVelocityKts() );",
+      "      }",
+      "   }",
+      "",
+      "   return (flag == navModeOn);",
+      "}",
+    ],
+  },
+  "Autopilot::headingController (native)": {
+    file: "contexts/src/mixr/src/models/system/Autopilot.cpp",
+    line: 877,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Heading/roll controller --",
+      "//------------------------------------------------------------------------------",
+      "bool Autopilot::headingController()",
+      "{",
+      "   // Re-latch the mode",
+      "   setHeadingHoldMode( isHeadingHoldOn() );",
+      "",
+      "   Player* pv{getOwnship()};",
+      "   if (pv != nullptr) {",
+      "      DynamicsModel* md{pv->getDynamicsModel()};",
+      "      if (md != nullptr) {",
+      "         // why mess with the player?  All it does is send it to the dynamics model anyways!  Skip the middle man!",
+      "         if ( isHeadingHoldOn() || isNavModeOn() ) {",
+      "            const int ihdg10{static_cast<int>( getCommandedHeadingD() * 10.0f )};",
+      "            const double hdg{static_cast<double>(ihdg10) / 10.0};",
+      "            md->setCommandedHeadingD(hdg, maxTurnRateDps, maxBankAngleDegs);",
+      "            md->setHeadingHoldOn( true );",
+      "         } else {",
+      "            md->setHeadingHoldOn( false );",
+      "            md->setControlStickRollInput( getControlStickRollInput() );",
+      "         }",
+      "      }",
+      "   }",
+      "   return true;",
+      "}",
+    ],
+  },
+  "RacModel::setCommandedHeadingD (native)": {
+    file: "contexts/src/mixr/src/models/dynamics/RacModel.cpp",
+    line: 128,
+    trunc: false,
+    lines: [
+      "// setCommandedHeadingD() --   Sets commanded heading (true: degs)",
+      "bool RacModel::setCommandedHeadingD(const double degs, const double, const double)",
+      "{",
+      "   cmdHeading = degs;",
+      "   return true;",
+      "}",
+    ],
+  },
+  "JSBSimModel::setCommandedHeadingD (native)": {
+    file: "contexts/src/mixr/src/models/dynamics/JSBSimModel.cpp",
+    line: 925,
+    trunc: false,
+    lines: [
+      "bool JSBSimModel::setHeadingHoldOn(const bool b)",
+      "{",
+      "    if (hasHeadingHold) {",
+      "        headingHoldOn = b;",
+      "    }",
+      "    return hasHeadingHold;",
+      "}",
+      "",
+      "bool JSBSimModel::setCommandedHeadingD(const double h, const double, const double)",
+      "{",
+      "    commandedHeadingDeg = h;",
+      "    return hasHeadingHold;",
+      "}",
+    ],
+  },
+  "NavigateAction (constante)": {
+    file: "models/players/A-4/src/bt/nodes/NavigateAction.cpp",
+    line: 10,
+    trunc: false,
+    lines: [
+      "namespace {",
+      "",
+      "// Taxa maxima do RUMO COMANDADO, deliberadamente mais apertada que o",
+      "// maxRateOfTurnDps do Autopilot (6 deg/s nos cenarios desta poc): o limite",
+      "// da AERONAVE nao e o que causa o problema (medido rodando: a divergencia",
+      "// aparecia girando a ~1.6 deg/s, bem abaixo do teto da aeronave) -- o",
+      "// limite tem de estar no COMANDO em si. Ver o comentario de tick().",
+      "constexpr double kMaxHeadingRateDegPerSec{3.0};",
+      "",
+      "} // namespace",
+    ],
+  },
+  "NavigateAction::tick (próprio deste projeto)": {
+    file: "models/players/A-4/src/bt/nodes/NavigateAction.cpp",
+    line: 61,
+    trunc: false,
+    lines: [
+      "BT::NodeStatus NavigateAction::tick()",
+      "{",
+      "   if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;",
+      "",
+      "   const auto& view = context_.behavior->snapshot();",
+      "   if (!view.hasNavSteering) {",
+      "      hasCommandedHeading_ = false;",
+      "      return BT::NodeStatus::FAILURE;",
+      "   }",
+      "",
+      "   if (!hasCommandedHeading_) {",
+      "      // Primeiro tick com guiagem valida: nao ha rumo anterior para",
+      "      // suavizar a partir dele -- comeca exatamente na marcacao.",
+      "      commandedHeadingDeg_ = view.navTrueBrgDeg;",
+      "      hasCommandedHeading_ = true;",
+      "   } else {",
+      "      const double dt{context_.behavior->getFrameDt()};",
+      "      const double errorDeg{domain::wrap180(view.navTrueBrgDeg - commandedHeadingDeg_)};",
+      "      const double maxStepDeg{kMaxHeadingRateDegPerSec * dt};",
+      "      const double stepDeg{std::clamp(errorDeg, -maxStepDeg, maxStepDeg)};",
+      "",
+      "      commandedHeadingDeg_ = domain::wrap360(commandedHeadingDeg_ + stepDeg);",
+      "   }",
+      "",
+      "   domain::FlightCommand cmd;",
+      "   cmd.headingDeg = commandedHeadingDeg_;",
+      "   cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(",
+      "      view.hasNavCmdAlt ? view.navCmdAltM : view.altitudeM);",
+      "   cmd.speedKts = view.hasNavCmdSpeed ? view.navCmdSpeedKts : view.speedKts;",
+      "",
+      "   context_.behavior->decision().take(cmd, \"NAV\");",
+      "   return BT::NodeStatus::SUCCESS;",
+      "}",
+    ],
+  },
+};
+
+const navSnip = (key) => (key ? NAV_SNIPPETS[key] || null : null);
+
+function renderNavSnippet(key) {
+  const snip = navSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------------
+ * A rota REAL de tests/fixtures/full-systems-nav/configs/scenario_full_nav.edl.in
+ * (linhas 293-336) -- os 4 únicos steerpoints deste repositório navegados de
+ * verdade por Route/Steerpoint nativo (todo o resto pilota via árvore de
+ * comportamento com navMode:false). autoSeqDistance/wrap também são os valores
+ * reais do arquivo -- nada aqui foi inventado para o laboratório.
+ * ------------------------------------------------------------------------------ */
+const NAV_ROUTE_WPTS = [
+  { n: 9290, e: 3000, altM: 1750, kt: 350, action: "ActionDecoyRelease", desc: "solta decoy" },
+  { n: 6000, e: 7370, altM: 1900, kt: 370, action: "ActionImagingSar", desc: "imageamento SAR" },
+  { n: 3230, e: 4000, altM: 1750, kt: 350, action: "ActionCamouflageType", desc: "troca de camuflagem" },
+  { n: 6000, e: 1600, altM: 1600, kt: 360, action: "ActionWeaponRelease", desc: "libera arma" },
+];
+const NAV_AUTO_SEQ_DIST_M = 1.5 * 1852; // autoSeqDistance: ( NauticalMiles 1.5 )
+const NAV_AC_MAX_TURN_DPS = 6.0;        // maxRateOfTurnDps tipico deste projeto -- limite FISICO
+const NAV_CMD_MAX_TURN_DPS = 3.0;       // NavigateAction.cpp: kMaxHeadingRateDegPerSec -- limite do COMANDO
+const NAV_DT = 0.5;
+const NAV_KT2MPS = 0.514444;
+
+/* ------------------------------------------------------------------------------
+ * simulateRouteNavigation(mode) -- reimplementação em JS puro da MESMA cadeia
+ * medida no fonte: Route::autoSequencer() decide QUANDO sequenciar (distância
+ * <= autoSeqDistance E marcação já variou >=90° do rumo atual -- não um raio
+ * simples), e o rumo comandado responde de duas formas possíveis:
+ *
+ *  - "native": Autopilot::processModeNavigation() -- setCommandedHeadingD(a
+ *    marcação bruta), TODO frame, sem filtro nenhum. Perseguição pura.
+ *  - "own": NavigateAction::tick() (bt/nodes/NavigateAction.cpp, este
+ *    repositório) -- rampa a no máximo kMaxHeadingRateDegPerSec (3°/s) por
+ *    frame.
+ *
+ * Não modela guinada em 3D nem JSBSim -- é um ponto de massa 2D (plano N/E)
+ * cujo ÚNICO papel é tornar visível o SALTO DISCONTINUO no rumo comandado no
+ * instante em que o Route sequencia, que é o que os dois trechos de código
+ * acima de fato fazem (ou deixam de fazer). Reproduzir a divergência real de
+ * ~200s medida com JSBSim 6-DOF (ver NavigateAction.cpp e
+ * models/players/A-4/CLAUDE.md) exigiria a dinâmica acoplada de rolagem/guinada
+ * real -- fora do que um modelo cinemático simples pode honestamente alegar.
+ * ------------------------------------------------------------------------------ */
+function simulateRouteNavigation(mode) {
+  let n = NAV_ROUTE_WPTS[3].n, e = NAV_ROUTE_WPTS[3].e - 1000;
+  let wpIdx = 0;
+  const seedBrg = Math.atan2(NAV_ROUTE_WPTS[0].e - e, NAV_ROUTE_WPTS[0].n - n);
+  let heading = seedBrg;
+  let cmdHeading = seedBrg;
+
+  const frames = [];
+  const events = [];
+  let t = 0, seqCount = 0;
+  const MAXT = 400;
+  while (t <= MAXT && seqCount < 8) {
+    const wp = NAV_ROUTE_WPTS[wpIdx];
+    const dn = wp.n - n, de = wp.e - e;
+    const dist = Math.hypot(dn, de);
+    const brg = Math.atan2(de, dn);
+    const rel = Math.abs(refWrapPi(brg - heading)) * (180 / Math.PI);
+
+    let sequenced = false;
+    if (dist <= NAV_AUTO_SEQ_DIST_M && rel >= 90) {
+      events.push({ t, wpIdx, action: wp.action, desc: wp.desc, distM: dist });
+      wpIdx = (wpIdx + 1) % NAV_ROUTE_WPTS.length;
+      seqCount++;
+      sequenced = true;
+    }
+
+    frames.push({
+      t, n, e, wpIdx, dist, sequenced,
+      headingDeg: refWrap2pi(heading) * (180 / Math.PI),
+      rawBrgDeg: refWrap2pi(brg) * (180 / Math.PI),
+      cmdHeadingDeg: refWrap2pi(cmdHeading) * (180 / Math.PI),
+    });
+
+    if (mode === "native") {
+      cmdHeading = brg; // Autopilot::processModeNavigation(): setCommandedHeadingD(nav->getTrueBrgDeg())
+    } else {
+      const err = refWrapPi(brg - cmdHeading);
+      const maxStep = NAV_CMD_MAX_TURN_DPS * (Math.PI / 180) * NAV_DT;
+      cmdHeading = refWrap2pi(cmdHeading + refClamp(err, -maxStep, maxStep)); // NavigateAction::tick()
+    }
+
+    const errH = refWrapPi(cmdHeading - heading);
+    const maxStepH = NAV_AC_MAX_TURN_DPS * (Math.PI / 180) * NAV_DT;
+    heading = refWrap2pi(heading + refClamp(errH, -maxStepH, maxStepH));
+
+    const speed = wp.kt * NAV_KT2MPS;
+    n += speed * Math.cos(heading) * NAV_DT;
+    e += speed * Math.sin(heading) * NAV_DT;
+    t += NAV_DT;
+  }
+  return { frames, events };
+}
+
+function AutopilotNavLab() {
+  const [mode, setMode] = useState("native");
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(30);
+
+  const sim = useMemo(() => simulateRouteNavigation(mode), [mode]);
+  const frames = sim.frames;
+  const clampedIdx = Math.min(idx, frames.length - 1);
+  const frame = frames[clampedIdx] || frames[0];
+
+  useEffect(() => { setIdx(0); setPlaying(false); }, [mode]);
+  useEffect(() => {
+    if (!playing) return;
+    const tmr = setTimeout(() => {
+      setIdx((p) => (p + 1 >= frames.length ? (setPlaying(false), p) : p + 1));
+    }, playSpeed);
+    return () => clearTimeout(tmr);
+  }, [playing, idx, playSpeed, frames.length]);
+
+  const bounds = useMemo(() => {
+    let minN = 0, maxN = 0, minE = 0, maxE = 0;
+    NAV_ROUTE_WPTS.forEach((wp) => { minN = Math.min(minN, wp.n); maxN = Math.max(maxN, wp.n); minE = Math.min(minE, wp.e); maxE = Math.max(maxE, wp.e); });
+    frames.forEach((f) => { minN = Math.min(minN, f.n); maxN = Math.max(maxN, f.n); minE = Math.min(minE, f.e); maxE = Math.max(maxE, f.e); });
+    const pad = Math.max(600, (maxN - minN) * 0.15, (maxE - minE) * 0.15);
+    return { minN: minN - pad, maxN: maxN + pad, minE: minE - pad, maxE: maxE + pad };
+  }, [frames]);
+
+  const W = 520, H = 380;
+  const spanN = Math.max(1, bounds.maxN - bounds.minN);
+  const spanE = Math.max(1, bounds.maxE - bounds.minE);
+  const scale = Math.min((W - 20) / spanE, (H - 20) / spanN);
+  const px = (e) => (e - bounds.minE) * scale + (W - spanE * scale) / 2;
+  const py = (n) => H - ((n - bounds.minN) * scale + (H - spanN * scale) / 2);
+
+  const trail = frames.slice(0, clampedIdx + 1).map((f) => `${px(f.e)},${py(f.n)}`).join(" ");
+  const move = useCallback((d) => { setPlaying(false); setIdx((p) => refClamp(p + d, 0, frames.length - 1)); }, [frames.length]);
+
+  const chartW = 520, chartH = 130, chartPad = 30;
+  const lastT = Math.max(frames[frames.length - 1].t, 0.001);
+  const chartX = (tv) => chartPad + (tv / lastT) * (chartW - chartPad - 8);
+  const chartY = (deg) => chartH - 14 - (deg / 360) * (chartH - 24);
+
+  const passedEvents = sim.events.filter((ev) => ev.t <= frame.t);
+  const lastEvent = passedEvents[passedEvents.length - 1];
+
+  return (
+    <div className="mx-card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>Laboratório de navegação -- rumo comandado na sequência de steerpoints</span>
+        <span className="mx-pill" style={{ background: mode === "native" ? "var(--rf)" : "var(--ok)", color: "var(--paper)" }}>
+          ● {mode === "native" ? "Autopilot nativo (navMode)" : "NavigateAction (este projeto)"}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ flex: "1 1 540px", minWidth: 320 }}>
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+            {NAV_ROUTE_WPTS.map((wp, i) => (
+              <g key={i}>
+                <circle cx={px(wp.e)} cy={py(wp.n)} r={NAV_AUTO_SEQ_DIST_M * scale} fill="none" stroke="var(--rule)" strokeDasharray="3 3" opacity="0.5" />
+                <circle cx={px(wp.e)} cy={py(wp.n)} r={i === frame.wpIdx ? 6 : 4} fill={i === frame.wpIdx ? "var(--hot)" : "var(--muted)"} />
+                <text x={px(wp.e) + 8} y={py(wp.n) - 8} style={{ fontSize: 9.5, fill: "var(--muted)" }}>wp{i + 1}</text>
+              </g>
+            ))}
+            <polyline points={trail} fill="none" stroke="var(--bgc)" strokeWidth="1.6" opacity="0.85" />
+            <g transform={`translate(${px(frame.e)},${py(frame.n)}) rotate(${frame.headingDeg})`}>
+              <polygon points="0,-8 5,7 -5,7" fill="var(--bgc)" />
+            </g>
+            <line x1={px(frame.e)} y1={py(frame.n)}
+                  x2={px(frame.e) + Math.sin((frame.cmdHeadingDeg * Math.PI) / 180) * 26}
+                  y2={py(frame.n) - Math.cos((frame.cmdHeadingDeg * Math.PI) / 180) * 26}
+                  stroke="var(--hot)" strokeWidth="2" markerEnd="url(#navCmdArrow)" />
+            <defs>
+              <marker id="navCmdArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--hot)" /></marker>
+            </defs>
+          </svg>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 11, color: "var(--muted)", margin: "5px 0 12px" }}>
+            <span><span style={{ color: "var(--bgc)" }}>▲</span> aeronave (rumo real)</span>
+            <span><span style={{ color: "var(--hot)" }}>→</span> rumo COMANDADO</span>
+            <span style={{ marginLeft: "auto" }}>círculo tracejado = autoSeqDistance (1,5 NM)</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="mx-btn" data-primary="1" onClick={() => setPlaying((p) => !p)}>{playing ? "Pausar" : "Reproduzir"}</button>
+            <button className="mx-btn" onClick={() => move(-1)}>←</button>
+            <button className="mx-btn" onClick={() => move(1)}>→</button>
+            <button className="mx-btn" onClick={() => { setPlaying(false); setIdx(0); }}>Início</button>
+            <input type="range" min={0} max={frames.length - 1} value={clampedIdx}
+                   onChange={(ev) => { setPlaying(false); setIdx(Number(ev.target.value)); }}
+                   style={{ flex: 1, minWidth: 120 }} />
+            <span className="mx-mono" style={{ fontSize: 11, color: "var(--muted)", minWidth: 90, textAlign: "right" }}>{refFmt(frame.t, 1)}s ({clampedIdx + 1}/{frames.length})</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            <MissileStat label="distância ao wp" value={`${refFmt(frame.dist)} m`} />
+            <MissileStat label="marcação bruta" value={`${refFmt(frame.rawBrgDeg)}°`} />
+            <MissileStat label="rumo comandado" value={`${refFmt(frame.cmdHeadingDeg)}°`} />
+            <MissileStat label="rumo real" value={`${refFmt(frame.headingDeg)}°`} />
+            <MissileStat label="steerpoint" value={`wp${frame.wpIdx + 1} -- ${NAV_ROUTE_WPTS[frame.wpIdx].desc}`} />
+          </div>
+          {lastEvent && (
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 10px" }}>
+              Último sequenciamento: t={refFmt(lastEvent.t, 1)}s, avançou para wp{((lastEvent.wpIdx + 1) % 4) + 1}
+              {" "}(ação disparada em wp{lastEvent.wpIdx + 1}: <code className="mx-mono">{lastEvent.action}</code>).
+            </p>
+          )}
+
+          <div className="mx-lbl">
+            <span>Rumo comandado × tempo -- a LINHA VERTICAL marca cada sequenciamento do Route</span>
+            <span>máx. salto: {mode === "native" ? "180° instantâneo" : `${NAV_CMD_MAX_TURN_DPS * NAV_DT}°/quadro`}</span>
+          </div>
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: "100%", display: "block", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+            <line x1={chartPad} y1={chartH - 14} x2={chartW - 6} y2={chartH - 14} stroke="var(--rule)" />
+            {sim.events.map((ev, i) => (
+              <line key={i} x1={chartX(ev.t)} y1="4" x2={chartX(ev.t)} y2={chartH - 14} stroke="var(--rf)" strokeWidth="1" strokeDasharray="2 2" opacity="0.65" />
+            ))}
+            <polyline fill="none" stroke="var(--hot)" strokeWidth="1.4"
+                       points={frames.map((f) => `${chartX(f.t)},${chartY(f.cmdHeadingDeg)}`).join(" ")} />
+            <polyline fill="none" stroke="var(--muted)" strokeWidth="1" opacity="0.55" strokeDasharray="1 2"
+                       points={frames.map((f) => `${chartX(f.t)},${chartY(f.rawBrgDeg)}`).join(" ")} />
+            <line x1={chartX(frame.t)} y1="4" x2={chartX(frame.t)} y2={chartH - 14} stroke="var(--bgc)" strokeWidth="1" opacity="0.6" />
+          </svg>
+        </div>
+
+        <div style={{ flex: "0 1 240px", minWidth: 210 }}>
+          <div className="mx-lbl"><span>Comando de rumo</span></div>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, marginBottom: 6, cursor: "pointer" }}>
+            <input type="radio" checked={mode === "native"} onChange={() => setMode("native")} /> Autopilot::processModeNavigation()
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, marginBottom: 14, cursor: "pointer" }}>
+            <input type="radio" checked={mode === "own"} onChange={() => setMode("own")} /> NavigateAction::tick() (este projeto)
+          </label>
+          <select className="mx-input" value={playSpeed} onChange={(ev) => setPlaySpeed(Number(ev.target.value))} style={{ width: "100%", marginBottom: 14 }}>
+            <option value={70}>Reprodução lenta</option>
+            <option value={30}>Reprodução normal</option>
+            <option value={12}>Reprodução rápida</option>
+          </select>
+          <p style={{ fontSize: 11, lineHeight: 1.5, color: "var(--muted)" }}>
+            Os 4 waypoints, a distância de sequenciamento (1,5 NM) e as velocidades comandadas são os
+            valores REAIS de <code className="mx-mono">tests/fixtures/full-systems-nav/</code> -- o único
+            cenário deste repositório que voa por <code className="mx-mono">Route</code>/
+            <code className="mx-mono">Steerpoint</code> nativo (os demais usam <code className="mx-mono">navMode: false</code> e
+            a própria árvore de comportamento).
+          </p>
+          <p style={{ fontSize: 11, lineHeight: 1.5, color: "var(--muted)" }}>
+            Alterne o modo e repare no gráfico: o modo nativo (linha tracejada = marcação bruta,
+            sobreposta à linha cheia = comando) SALTA no instante do sequenciamento -- sem filtro
+            nenhum. O modo próprio deste projeto rampa a no máximo 3°/s, visivelmente mais lento
+            para acompanhar, mas contínuo.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- Steerpoint / Route ---------------------------- */
+
+const REF_STEERPOINT_SLOT_DOCS = {
+  stptType: ["enum", "DEST/MARK/FIX/OAP/IP/TGT/TGT_GRP -- só rótulo; compute() não ramifica por ele"],
+  latitude: ["LatLon|Number", "posição geodésica -- fonte primária do cálculo em compute() quando presente"],
+  longitude: ["LatLon|Number", "idem, longitude"],
+  xPos: ["m", "posição local (N), relativa ao ponto de referência do cenário -- convertida para lat/lon em compute() quando só ela está presente"],
+  yPos: ["m", "posição local (E) -- idem"],
+  elevation: ["m", "elevação de terreno no ponto -- só armazenada; nada nesta classe a lê de volta"],
+  altitude: ["m", "altitude comandada -- lida por getCmdAltitudeFt()/M(), consumida por Autopilot::processModeNavigation() e por NavigateAction (este projeto)"],
+  airspeed: ["kt", "velocidade comandada -- lida por getCmdAirspeedKts(), mesmo consumo"],
+  pta: ["s", "hora planejada de chegada -- alimenta só o ELT (adiantado/atrasado); zero efeito de voo"],
+  sca: ["ft", "altitude de segurança -- alimenta só isWarnSCA(), e NENHUM chamador (nesta classe, no fork ou neste projeto) lê esse getter -- grep confirma zero call sites. Slot morto para efeito de comportamento"],
+  description: ["texto", "metadado puro -- nunca lido por compute()/autoSequencer()"],
+  magvar: ["deg", "variação magnética override -- sem ele, vem de Navigation::getMagVarDeg()"],
+  next: ["nome|índice", "NUNCA lido -- só escrito por setSlotNext(); grep no .cpp inteiro não acha outro uso do membro 'next'. Morto, apesar do comentário do slot table sugerir uma cadeia navegável"],
+  action: ["Action", "disparada por Route::triggerAction() -- NÃO pela própria Steerpoint"],
+};
+
+const REF_ROUTE_SLOT_DOCS = {
+  to: ["nome|índice", "steerpoint \"to\" inicial -- por Identifier (nome) ou Number (índice, 1-based)"],
+  autoSequence: ["bool", "liga o avanço automático -- sem ele, só directTo()/incStpt() manuais mudam o \"to\""],
+  autoSeqDistance: ["NM", "raio de teste em autoSequencer() -- é só METADE da condição real (ver Código-fonte)"],
+  wrap: ["bool", "volta ao steerpoint 1 depois do último em incStpt()/decStpt(), em vez de travar na ponta"],
+};
+
+function SteerpointGeometryDiagram() {
+  const from = { x: 40, y: 230 };
+  const to = { x: 460, y: 60 };
+  const own = { x: 210, y: 175 };
+  // projecao do ownship sobre a reta from-to, para desenhar o erro de cross-track
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const len2 = dx * dx + dy * dy;
+  const tproj = ((own.x - from.x) * dx + (own.y - from.y) * dy) / len2;
+  const proj = { x: from.x + dx * tproj, y: from.y + dy * tproj };
+  return (
+    <svg viewBox="0 0 520 260" style={{ width: "100%", background: "var(--graph-bg)", border: "1px solid var(--rule)", borderRadius: 3 }}>
+      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="var(--muted)" strokeWidth="1.4" strokeDasharray="5 3" />
+      <line x1={own.x} y1={own.y} x2={to.x} y2={to.y} stroke="var(--hot)" strokeWidth="1.6" />
+      <line x1={own.x} y1={own.y} x2={proj.x} y2={proj.y} stroke="var(--rf)" strokeWidth="1.4" strokeDasharray="2 2" />
+      <circle cx={from.x} cy={from.y} r="5" fill="var(--muted)" />
+      <circle cx={to.x} cy={to.y} r="5" fill="var(--bgc)" />
+      <circle cx={own.x} cy={own.y} r="5" fill="var(--hot)" />
+      <text x={from.x - 6} y={from.y + 18} textAnchor="middle" style={{ fontSize: 9.5, fill: "var(--muted)" }}>from</text>
+      <text x={to.x + 4} y={to.y - 10} textAnchor="start" style={{ fontSize: 9.5, fill: "var(--ink)" }}>to</text>
+      <text x={own.x} y={own.y + 18} textAnchor="middle" style={{ fontSize: 9.5, fill: "var(--hot)" }}>navegação atual</text>
+      <text x={(own.x + to.x) / 2 + 8} y={(own.y + to.y) / 2 - 4} style={{ fontSize: 8.6, fill: "var(--hot)" }}>trueBrgDeg (direct-to)</text>
+      <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 8} style={{ fontSize: 8.6, fill: "var(--muted)" }}>trueCrsDeg (leg, from→to)</text>
+      <text x={(own.x + proj.x) / 2 + 6} y={(own.y + proj.y) / 2} style={{ fontSize: 8.6, fill: "var(--rf)" }}>crossTrackErrNM</text>
+    </svg>
+  );
+}
+
+function SteerpointReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Steerpoint"];
+  const routeEntry = MODEL["Route"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Steerpoint</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "Steerpoint"</span>
+          <span className="mx-chip">+ Route (sequenciador)</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Steerpoint")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          Um <b>Steerpoint</b> é um waypoint: posição (lat/lon OU N/E local -- as duas formas convivem,
+          uma calcula a outra), mais altitude/velocidade COMANDADAS e uma <code className="mx-mono">Action</code>{" "}
+          opcional. Sozinho, ele só sabe calcular sua PRÓPRIA geodésia (marcação, distância, cross-track)
+          contra a posição atual -- quem decide QUANDO avançar para o próximo é a classe irmã{" "}
+          <code className="mx-mono">Route</code>, que mantém a lista de steerpoints e o índice "to" atual.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Steerpoint → Component → Object"}
+          {" "}·{" "}
+          {routeEntry ? routeEntry.ch.join(" → ") : "Route → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Steerpoint" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Steerpoint::compute() -- a geodesia, em 3 números</div>
+              <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.7 }}>
+                <li><code className="mx-mono">trueBrgDeg</code>/<code className="mx-mono">distNM</code> -- marcação e distância DIRETO daqui até este ponto (<code className="mx-mono">base::nav::gll2bd()</code>, geodésia WGS-84 real, não plana).</li>
+                <li><code className="mx-mono">trueCrsDeg</code> -- o RUMO DA PERNA (from→to), só existe quando há um steerpoint "from" anterior; sem ele, é igual ao direct-to.</li>
+                <li><code className="mx-mono">crossTrackErrNM</code> -- o desvio lateral em relação a essa perna, não à posição do waypoint em si.</li>
+              </ol>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "8px 0 0" }}>
+                É <code className="mx-mono">trueBrgDeg</code> (o direct-to, não o course da perna) que
+                <code className="mx-mono"> Navigation::updateNavSteering()</code> repassa adiante -- ver a aba Navigation.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Geometria (diagrama)</div>
+              <SteerpointGeometryDiagram />
+              <p style={{ fontSize: 11, color: "var(--muted)", margin: "8px 0 0" }}>
+                <code className="mx-mono">crossTrackErrNM</code> é negativo quando o rumo desejado (a perna) está à
+                ESQUERDA da posição atual -- fórmula: <code className="mx-mono">distNM · sin(trueBrgDeg − trueCrsDeg)</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Route::autoSequencer() -- o teste real é EM DUAS PARTES</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                Não é "cheguei perto, avanço": <code className="mx-mono">autoSequencer()</code> só avança quando as
+                DUAS condições valem no MESMO frame -- <b>(1)</b> a distância ao steerpoint "to" já caiu para dentro
+                de <code className="mx-mono">autoSeqDistance</code>, <b>E</b> <b>(2)</b> a marcação relativa a esse
+                ponto (marcação menos rumo ATUAL) já passou de ±90° -- ou seja, a aeronave já está indo EMBORA dele,
+                não só perto. Um sobrevoo tangencial que nunca chega a "virar as costas" para o ponto (rel &lt; 90°)
+                nunca sequencia, mesmo dentro do raio.
+              </p>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado, não redescobrir:</b> <code className="mx-mono">triggerAction()</code> é chamado{" "}
+                <b>ANTES</b> de <code className="mx-mono">incStpt()</code> (Route.cpp, linha 176-177) -- a{" "}
+                <code className="mx-mono">Action</code> do steerpoint atual dispara enquanto o "to" AINDA é esse
+                mesmo steerpoint, só avançando um comando depois. Isso contradiz o comentário do próprio slot table de
+                Steerpoint.hpp ("the 'to' steerpoint will have sequenced to the next steerpoint when action is
+                triggered") -- a documentação nativa descreve a ordem TROCADA em relação ao código real.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Steerpoint</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{entry ? entry.own : 14} slots próprios.</p>
+              <div className="mx-slotgrid">
+                {(entry ? entry.sl : Object.keys(REF_STEERPOINT_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_STEERPOINT_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_STEERPOINT_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 360 }}>{REF_STEERPOINT_SLOT_DOCS[s] ? REF_STEERPOINT_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Route</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{routeEntry ? routeEntry.own : 4} slots próprios -- o "container" que agrega os Steerpoint (via <code className="mx-mono">components:</code>, não um slot próprio).</p>
+              <div className="mx-slotgrid">
+                {(routeEntry ? routeEntry.sl : Object.keys(REF_ROUTE_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_ROUTE_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_ROUTE_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 300 }}>{REF_ROUTE_SLOT_DOCS[s] ? REF_ROUTE_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Steerpoint::compute(nav, from) -- geodésia real (WGS-84), não plana</span><span>C++</span></div>
+              {renderNavSnippet("Steerpoint::compute (geodesia)")}
+              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+                <code className="mx-mono">base::nav::gll2bd()</code> é a mesma família de utilitário geodésico que{" "}
+                <code className="mx-mono">domain::pursuit()</code> (aba step-by-step) usa por trás -- great-circle
+                sobre o elipsoide WGS-84, não uma aproximação de plano cartesiano local.
+              </p>
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Route::autoSequencer() + Route::triggerAction() -- na íntegra</span><span>C++</span></div>
+              {renderNavSnippet("Route::autoSequencer+triggerAction (native)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- Navigation (Ins/Gps) ---------------------------- */
+
+const REF_NAVIGATION_SLOT_DOCS = {
+  route: ["Route", "a rota PRIMÁRIA agregada -- getPriRoute() -- Navigation só repassa o que ela já calculou"],
+  utc: ["s", "hora do dia (UTC) -- avança +dt por frame em process(); usada só para setETA() dos steerpoints"],
+  feba: ["[N E]", "linha de frente (forward edge of battle area) -- coordenadas puras; nenhum consumidor NESTA classe as lê de volta para navegação"],
+  bullseye: ["Bullseye", "referência de reporte tático -- recomputada a cada process(), independente da rota"],
+};
+
+function NavigationReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Navigation"];
+  const insEntry = MODEL["Ins"];
+  const gpsEntry = MODEL["Gps"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Navigation</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models::System</span>
+          <span className="mx-chip">factory: "Navigation"</span>
+          <span className="mx-chip">Ins / Gps = mesma classe, sem override</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Navigation")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          <code className="mx-mono">Navigation</code> é um <code className="mx-mono">System</code> -- roda na{" "}
+          <b>fase 3</b> do frame de tempo crítico, junto com sensores/decisão. Não CALCULA nada de novo: agrega um{" "}
+          <code className="mx-mono">Route</code> e, a cada frame, copia para si o que o steerpoint "to" já calculou
+          (<code className="mx-mono">Steerpoint::compute()</code>, que roda antes, no laço de{" "}
+          <code className="mx-mono">Route::updateData()</code> em BACKGROUND). É a peça que{" "}
+          <code className="mx-mono">Autopilot</code>/<code className="mx-mono">NavigateAction</code> de fato
+          consultam via <code className="mx-mono">getTrueBrgDeg()</code>/<code className="mx-mono">isNavSteeringValid()</code>.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Navigation → System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Navigation" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>"Copiar, não calcular"</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">updateNavSteering()</code> faz oito atribuições
+                (<code className="mx-mono">setTrueBrgDeg(to-&gt;getTrueBrgDeg())</code>, etc.) e nada mais -- toda a
+                geodésia real já rodou dentro de <code className="mx-mono">Steerpoint::compute()</code>. Isso é
+                deliberado: <code className="mx-mono">Ins</code>/<code className="mx-mono">Gps</code> existem
+                justamente para permitir SOBRESCREVER este método com um sensor de verdade (com ruído, drift, taxa
+                própria) sem mexer em quem consome os dados -- neste fork, porém, nenhuma delas sobrescreve nada.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Ins / Gps -- 0 slots, 0 overrides</div>
+              <div className="mx-slotgrid">
+                <div className="mx-slot"><span>Ins</span><span>{insEntry ? `${insEntry.own} slots próprios, ${insEntry.ov.length} overrides` : "0 slots próprios, 0 overrides"}</span></div>
+                <div className="mx-slot"><span>Gps</span><span>{gpsEntry ? `${gpsEntry.own} slots próprios, ${gpsEntry.ov.length} overrides` : "0 slots próprios, 0 overrides"}</span></div>
+              </div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "8px 0 0" }}>
+                Neste fork, as três classes são <b>funcionalmente idênticas</b>. Declarar{" "}
+                <code className="mx-mono">( Gps )</code> em vez de <code className="mx-mono">( Navigation )</code>{" "}
+                muda só o nome de fábrica no <code className="mx-mono">.edl</code> -- nenhum comportamento.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Onde isso roda no frame</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">process(dt)</code> é a <b>fase 3</b> -- a mesma fase em que a decisão
+                (árvore de comportamento/UBF) roda. Dentro dela: posição/atitude/velocidade próprias, o UTC, o{" "}
+                <code className="mx-mono">Route</code> (<code className="mx-mono">tcFrame()</code>, ainda fase 3),
+                o bullseye, e só por último <code className="mx-mono">updateNavSteering()</code> -- ou seja, os
+                dados de guiagem que a decisão desta MESMA fase vai ler já estão atualizados quando ela roda, desde
+                que <code className="mx-mono">Navigation</code> apareça ANTES do agente na lista de{" "}
+                <code className="mx-mono">components:</code> do player.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div className="mx-card">
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Navigation</div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>
+              {entry ? entry.own : 4} slots próprios -- Ins/Gps não acrescentam nenhum.
+            </p>
+            <div className="mx-slotgrid">
+              {(entry ? entry.sl : Object.keys(REF_NAVIGATION_SLOT_DOCS)).map((s) => (
+                <div className="mx-slot" key={s}>
+                  <span>{s}{REF_NAVIGATION_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_NAVIGATION_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                  <span style={{ maxWidth: 360 }}>{REF_NAVIGATION_SLOT_DOCS[s] ? REF_NAVIGATION_SLOT_DOCS[s][1] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Navigation::process(dt) -- fase 3, na íntegra</span><span>C++</span></div>
+              {renderNavSnippet("Navigation::process (fase 3)")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Navigation::updateNavSteering() -- oito atribuições, zero cálculo</span><span>C++</span></div>
+              {renderNavSnippet("Navigation::updateNavSteering (native)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- Autopilot ---------------------------- */
+
+const REF_AUTOPILOT_SLOT_DOCS = {
+  navMode: ["bool", "liga processModeNavigation() -- RE-LATCHED todo frame por modeManager(), mesmo que algo desligue \"na mão\" entre um frame e outro"],
+  holdAltitude: ["Distance", "altitude retida quando altitudeHoldMode -- default: altitude atual do player, no reset()"],
+  altitudeHoldMode: ["bool", "hold de altitude -- forçado true quando navMode liga"],
+  holdVelocityKts: ["kt", "velocidade retida -- default: velocidade atual do player"],
+  velocityHoldMode: ["bool", "hold de velocidade -- forçado true quando navMode liga"],
+  holdHeading: ["Angle", "rumo retido -- default: rumo atual do player"],
+  headingHoldMode: ["bool", "hold de rumo -- forçado true quando navMode liga"],
+  loiterMode: ["bool", "modo de espera (hipódromo) -- mutuamente exclusivo com navMode/followTheLead em modeManager()"],
+  loiterPatternLength: ["NM", "comprimento da perna reta do hipódromo"],
+  loiterPatternCcwFlag: ["bool", "sentido anti-horário do hipódromo (default: horário)"],
+  leadFollowingDistanceTrail: ["m", "distância atrás do líder, modo \"seguir líder\""],
+  leadFollowingDistanceRight: ["m", "distância à direita do líder"],
+  leadFollowingDeltaAltitude: ["m", "altitude acima/abaixo do líder"],
+  leadPlayerName: ["Identifier", "nome do player líder -- setar DEPOIS, não antes, de followTheLeadMode"],
+  followTheLeadMode: ["bool", "modo \"seguir líder\" -- maior prioridade em modeManager(), acima de loiter e nav"],
+  maxRateOfTurnDps: ["deg/s", "2º parâmetro de DynamicsModel::setCommandedHeadingD() -- RacModel E JSBSimModel (os dois nativos deste fork) declaram esse parâmetro SEM NOME e o descartam. Slot sem efeito nos dois dynamics model shipped aqui"],
+  maxBankAngle: ["deg", "3º parâmetro do mesmo setCommandedHeadingD() -- mesmo destino: descartado nos dois"],
+  maxClimbRateFpm: ["ft/min", "variante em pés/min de maxClimbRateMps -- mesmo parâmetro de setCommandedAltitude()"],
+  maxClimbRateMps: ["m/s", "2º parâmetro de setCommandedAltitude() -- RacModel/JSBSimModel também o declaram sem nome e descartam"],
+  maxPitchAngle: ["deg", "3º parâmetro de setCommandedAltitude() -- idem, descartado nos dois"],
+  loiterPatternTime: ["s", "tempo da perna reta, alternativa a loiterPatternLength"],
+  maxAcceleration: ["NPS", "2º parâmetro de setCommandedVelocityKts() -- aqui o parâmetro TEM nome (vNps) nos dois DynamicsModel, mas nenhum dos dois corpos o referencia. Dead code sutilmente diferente do de cima: não é descartado por assinatura, é ignorado no corpo"],
+};
+
+function AutopilotReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Autopilot"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Autopilot</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models::Pilot</span>
+          <span className="mx-chip">factory: "Autopilot"</span>
+          <span className="mx-chip">navMode | hold modes | loiter | follow-the-lead</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Autopilot")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          O piloto automático NATIVO -- quatro modos mutuamente exclusivos escolhidos a cada frame por{" "}
+          <code className="mx-mono">modeManager()</code> (follow-the-lead &gt; loiter &gt; nav), mais os três
+          "hold" (rumo/altitude/velocidade) que os controladores de baixo nível de fato atuam. Este projeto NÃO
+          usa <code className="mx-mono">navMode</code> em produção -- todo cenário real pilota via árvore de
+          comportamento, com <code className="mx-mono">navMode: false</code>. O único lugar onde
+          <code className="mx-mono"> navMode: true</code> chegou a ser exercitado de propósito foi{" "}
+          <code className="mx-mono">tests/fixtures/full-systems-nav</code>, e o resultado medido lá é o que motivou
+          este próprio piloto rate-limited em <code className="mx-mono">NavigateAction.cpp</code> -- ver o laboratório abaixo.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Autopilot → Pilot → System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Autopilot" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "lab"} data-on={tab === "lab" ? 1 : 0} onClick={() => setTab("lab")}>Laboratório de navegação</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>modeManager() -- re-latch incondicional</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                A PRIMEIRA linha de <code className="mx-mono">modeManager()</code> é{" "}
+                <code className="mx-mono">setNavMode(isNavModeOn())</code> -- todo frame, mesmo que ninguém tenha
+                pedido nada. O comentário nativo chama isso de "re-latch": se algo desligasse{" "}
+                <code className="mx-mono">navMode</code> só chamando <code className="mx-mono">setHeadingHoldMode
+                (false)</code> direto (sem tocar <code className="mx-mono">navMode</code> em si), o próximo frame
+                reimporia os três hold modes de volta -- <code className="mx-mono">navMode</code> é a fonte da
+                verdade, os hold modes individuais só refletem o que ele mandou.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>processModeNavigation() -- perseguição pura, zero avanço</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Quando <code className="mx-mono">navMode</code> está ligado, o comando de rumo é{" "}
+                <code className="mx-mono">setCommandedHeadingD(nav-&gt;getTrueBrgDeg())</code> -- a marcação BRUTA,
+                recalculada a cada frame, sem filtro/rampa nenhum. Altitude e velocidade vêm do próprio steerpoint
+                (<code className="mx-mono">getCmdAltitudeFt()</code>/<code className="mx-mono">getCmdAirspeedKts()</code>).
+                É pure pursuit com ganho instantâneo -- exatamente o padrão que diverge perto de um alvo/waypoint
+                quando a taxa de variação da marcação supera a taxa de guinada disponível (mesma classe de
+                instabilidade documentada para <code className="mx-mono">domain::pursuit()</code> na aba step-by-step).
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Os limites de manobra do Autopilot -- e por que não limitam nada aqui</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                <code className="mx-mono">maxRateOfTurnDps</code>/<code className="mx-mono">maxBankAngle</code> (rumo)
+                e <code className="mx-mono">maxClimbRateMps</code>/<code className="mx-mono">maxPitchAngle</code> (altitude)
+                são passados para o <code className="mx-mono">DynamicsModel</code> a cada frame
+                (<code className="mx-mono">headingController()</code>/<code className="mx-mono">altitudeController()</code>).
+                O PRÓPRIO cabeçalho de <code className="mx-mono">Autopilot.hpp</code> já avisa: "Limiting the
+                autopilot inputs ... will work if the dynamics model can support the limits as well. If not ...
+                these inputs will have no effect." Medido neste fork: <b>nenhum dos dois</b>{" "}
+                <code className="mx-mono">DynamicsModel</code> shipped (<code className="mx-mono">RacModel</code>,{" "}
+                <code className="mx-mono">JSBSimModel</code>) suporta -- os dois declaram os parâmetros de rumo/altitude
+                SEM NOME (descartados em tempo de compilação) e o de velocidade (<code className="mx-mono">maxAcceleration</code>)
+                COM nome mas nunca referenciado no corpo (descartado em runtime). As cinco slots de limite do Autopilot
+                são, hoje, decorativas nos dois dynamics model deste fork -- ver Código-fonte.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "lab" && <AutopilotNavLab />}
+
+        {tab === "slots" && (
+          <div className="mx-card">
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Autopilot</div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{entry ? entry.own : 22} slots próprios.</p>
+            <div className="mx-slotgrid">
+              {(entry ? entry.sl : Object.keys(REF_AUTOPILOT_SLOT_DOCS)).map((s) => (
+                <div className="mx-slot" key={s}>
+                  <span>{s}{REF_AUTOPILOT_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_AUTOPILOT_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                  <span style={{ maxWidth: 380 }}>{REF_AUTOPILOT_SLOT_DOCS[s] ? REF_AUTOPILOT_SLOT_DOCS[s][1] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Autopilot::modeManager() -- re-latch, na íntegra</span><span>C++</span></div>
+              {renderNavSnippet("Autopilot::modeManager (native)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Autopilot::processModeNavigation() -- na íntegra</span><span>C++</span></div>
+              {renderNavSnippet("Autopilot::processModeNavigation (native)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Autopilot::setNavMode() -- o que acontece ao DESLIGAR</span><span>C++</span></div>
+              {renderNavSnippet("Autopilot::setNavMode (native)")}
+              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+                Desligar <code className="mx-mono">navMode</code> trava rumo/altitude/velocidade comandados no valor
+                ATUAL do player -- não zera nem mantém o último comando de navegação. É o que evita um "salto" para
+                um alvo velho se alguém desligar o modo no meio do voo.
+              </p>
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Autopilot::headingController() -- onde os limites de manobra SAEM do Autopilot</span><span>C++</span></div>
+              {renderNavSnippet("Autopilot::headingController (native)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">RacModel::setCommandedHeadingD() / JSBSimModel::setCommandedHeadingD() -- onde eles ENTRAM</span><span>C++</span></div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 220px" }}>{renderNavSnippet("RacModel::setCommandedHeadingD (native)")}</div>
+                <div style={{ flex: "1 1 260px" }}>{renderNavSnippet("JSBSimModel::setCommandedHeadingD (native)")}</div>
+              </div>
+              <p className="mx-warn" style={{ marginTop: 10, marginBottom: 0 }}>
+                Os dois últimos parâmetros de <code className="mx-mono">setCommandedHeadingD(hdg, maxTurnRateDps,
+                maxBankAngleDegs)</code> chegam sem NOME nas duas implementações -- não é possível referenciá-los
+                mesmo por engano; <code className="mx-mono">maxTurnRateDps</code>/<code className="mx-mono">maxBankAngleDegs</code>{" "}
+                do <code className="mx-mono">Autopilot</code> não têm efeito algum na taxa de giro real da aeronave
+                nestes dois <code className="mx-mono">DynamicsModel</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">NavigateAction (este projeto) -- a resposta ao pure pursuit divergente</span><span>C++</span></div>
+              {renderNavSnippet("NavigateAction (constante)")}
+              {renderNavSnippet("NavigateAction::tick (próprio deste projeto)")}
+              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+                Lê os MESMOS dados de <code className="mx-mono">Route</code>/<code className="mx-mono">Steerpoint</code> que{" "}
+                <code className="mx-mono">Autopilot::processModeNavigation()</code> consultaria -- não reimplementa
+                navegação, só amortece o COMANDO de rumo a no máximo 3°/s (contra os 6°/s de{" "}
+                <code className="mx-mono">maxRateOfTurnDps</code> da AERONAVE, que -- como visto acima -- nem chega a
+                ser aplicado pelo <code className="mx-mono">DynamicsModel</code>). Ver o laboratório para o efeito,
+                medido com dados reais de rota.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+/* ====================== Referência -- Player / System (base de todo player/subsistema) ============
+ * Terceira leva da enciclopédia (a primeira foi só Missile; a segunda, Steerpoint/Route/
+ * Navigation/Autopilot). Mesmo padrão das duas mais simples (Steerpoint/Navigation): hero +
+ * Visão geral / Slots / Código-fonte, SEM laboratório -- Player/System não têm uma única
+ * grandeza numérica pra simular (a fase do frame já tem sua própria aba, "Simulação"; o ciclo
+ * de vida do Mode já aparece na aba Missile). O que falta documentar aqui é ESTRUTURAL: o
+ * despacho de fase em DOIS NÍVEIS (Player só resolve a fase 0 por si; cada System resolve as
+ * quatro por si, um nível abaixo), os "10 papéis" de Player resolvidos por TIPO -- não por nome
+ * de slot --, e o freeze em cascata que a seção libs/xclock do CLAUDE.md já documenta de fora;
+ * aqui é a fonte, com arquivo:linha.
+ * ==================================================================================== */
+
+const PLAYER_SNIPPETS = {
+  "Player::updateTC (despacho de fase -- so' a fase 0 e' PROPRIA)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 528,
+    trunc: false,
+    lines: [
+      "void Player::updateTC(const double dt0)",
+      "{",
+      "   // Make sure we've loaded our system pointers",
+      "   if (loadSysPtrs) {",
+      "      updateSystemPointers();",
+      "      loadSysPtrs = false;",
+      "   }",
+      "",
+      "   if (mode == ACTIVE || mode == PRE_RELEASE) {",
+      "",
+      "      // ---",
+      "      // Time-out requests for reflections of RF emissions hitting us",
+      "      // ---",
+      "      for (unsigned int i = 0; i < MAX_RF_REFLECTIONS; i++) {",
+      "         if (rfReflect[i] != nullptr) {",
+      "            rfReflectTimer[i] -= dt0;",
+      "            if (rfReflectTimer[i] <= 0) {",
+      "               // Clear the request",
+      "               rfReflect[i]->unref();",
+      "               rfReflect[i] = nullptr;",
+      "            }",
+      "         }",
+      "      }",
+      "",
+      "      // ---",
+      "      // Delta time -- real or frozen?",
+      "      // ---",
+      "      double dt{dt0};",
+      "      if (isFrozen()) dt = 0.0;",
+      "",
+      "      // ---",
+      "      // Compute delta time for modules running every fourth phase",
+      "      // ---",
+      "      double dt4{dt * 4.0};     // Delta time for items running every fourth phase",
+      "      switch (getWorldModel()->phase()) {",
+      "",
+      "         // Phase 0 -- Dynamics",
+      "         case 0 : {",
+      "            // Our dynamics",
+      "            dynamics(dt4);",
+      "",
+      "            // Log our player's dynamic data just after its been updated ...",
+      "            if (dataLogTime > 0.0) {",
+      "               // When we have a data logging time, update the timer",
+      "               dataLogTimer -= dt4;",
+      "               if (dataLogTimer <= 0.0) {",
+      "                  // At timeout, log the player's data and ...",
+      "",
+      "                  BEGIN_RECORD_DATA_SAMPLE( getWorldModel()->getDataRecorder(), REID_PLAYER_DATA )",
+      "                     SAMPLE_1_OBJECT( this )",
+      "                  END_RECORD_DATA_SAMPLE()",
+      "",
+      "                  // reset the timer.",
+      "                  dataLogTimer = dataLogTime;",
+      "               }",
+      "            }",
+      "",
+      "            // Update signatures after we've updated our dynamics",
+      "            if (signature != nullptr) signature->updateTC(dt4);",
+      "            if (irSignature != nullptr) irSignature->updateTC(dt4);",
+      "         }",
+      "         break;",
+      "",
+      "         // Phase 1 -- Sensors transmit",
+      "         case 1 :",
+      "         break;",
+      "",
+      "         // Phase 2 -- Sensors Receive",
+      "         case 2 :",
+      "         break;",
+      "",
+      "         // Phase 3 -- PDL and other logic",
+      "         case 3 :",
+      "         break;",
+      "",
+      "      }",
+      "",
+      "      // ---",
+      "      // Notes:",
+      "      //  a) Remember that our subsystems in the components list (e.g., pilot, nav,",
+      "      //     sms and obc) are updated by our call to BaseClass:updateTC()",
+      "      //  b) We're calling BaseClass::updateTC() class because we want to update",
+      "      //     our player dynamics, etc before our subsystems.",
+      "      // ---",
+      "      BaseClass::updateTC(dt);",
+      "   }",
+      "}",
+    ],
+  },
+  "Player::dynamics (local vs. rede)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 2764,
+    trunc: false,
+    lines: [
+      "void Player::dynamics(const double dt)",
+      "{",
+      "   // ---",
+      "   // Local player ...",
+      "   // ---",
+      "   if (isLocalPlayer()) {",
+      "      // Update the external dynamics model (if any)",
+      "      if (getDynamicsModel() != nullptr) {",
+      "         // If we have a dynamics model ...",
+      "         getDynamicsModel()->freeze( isFrozen() );",
+      "         getDynamicsModel()->dynamics(dt);",
+      "      }",
+      "",
+      "      // Update our position",
+      "      positionUpdate(dt);",
+      "",
+      "      if (getNib() != nullptr || true) {",
+      "         if (!syncState1Ready) {",
+      "            syncState1.setGeocPosition(getGeocPosition());",
+      "            syncState1.setGeocVelocity(getGeocVelocity());",
+      "            syncState1.setGeocAcceleration(getGeocAcceleration());",
+      "            syncState1.setGeocEulerAngles(getGeocEulerAngles());",
+      "            syncState1.setAngularVelocities(getAngularVelocities());",
+      "            syncState1.setTimeExec(getWorldModel()->getExecTimeSec());",
+      "            syncState1.setTimeUtc(getWorldModel()->getSysTimeOfDay());",
+      "            syncState1.setValid(true);",
+      "            syncState1Ready = true;",
+      "            syncState2Ready = false;",
+      "            //std::cout << \"Set syncState1\" << std::endl;",
+      "         } else {",
+      "            syncState2.setGeocPosition(getGeocPosition());",
+      "            syncState2.setGeocVelocity(getGeocVelocity());",
+      "            syncState2.setGeocAcceleration(getGeocAcceleration());",
+      "            syncState2.setGeocEulerAngles(getGeocEulerAngles());",
+      "            syncState2.setAngularVelocities(getAngularVelocities());",
+      "            syncState2.setTimeExec(getWorldModel()->getExecTimeSec());",
+      "            syncState2.setTimeUtc(getWorldModel()->getSysTimeOfDay());",
+      "            syncState2.setValid(true);",
+      "            syncState2Ready = true;",
+      "            syncState1Ready = false;",
+      "            //std::cout << \"Set syncState2\" << std::endl;",
+      "         }",
+      "      }",
+      "",
+      "      // ---",
+      "      // Check for ground collisions",
+      "      // ---",
+      "      if (getAltitudeAgl() < 0.0 && isLocalPlayer() && isMajorType(AIR_VEHICLE | WEAPON | SPACE_VEHICLE)) {",
+      "         // We're below the ground!",
+      "         this->event(CRASH_EVENT,nullptr);",
+      "      }",
+      "   }",
+      "",
+      "   // ---",
+      "   // Network I-player ...",
+      "   // ---",
+      "   else {",
+      "      // dead reckoning our position and orientation",
+      "      deadReckonPosition(dt);",
+      "   }",
+      "}",
+    ],
+  },
+  "Player::updateSystemPointers (os 10 papeis)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 3138,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// updateSystemPointers() -- update all of our system (component) pointers",
+      "//------------------------------------------------------------------------------",
+      "void Player::updateSystemPointers()",
+      "{",
+      "   // ---",
+      "   // Set base::Pair pointers for our primary systems located in our list of subcomponents",
+      "   // ---",
+      "   loadSysPtrs = false;",
+      "   setDynamicsModel( findByType(typeid(DynamicsModel)) );",
+      "   setDatalink( findByType(typeid(Datalink)) );",
+      "   setGimbal( findByType(typeid(Gimbal)) );",
+      "   setIrSystem( findByType(typeid(IrSystem)) );",
+      "   setNavigation( findByType(typeid(Navigation)) );",
+      "   setOnboardComputer( findByType(typeid(OnboardComputer)) );",
+      "   setPilot( findByType(typeid(Pilot)) );",
+      "   setRadio( findByType(typeid(Radio)) );",
+      "   setSensor( findByType(typeid(RfSensor)) );",
+      "   setStoresMgr( findByType(typeid(StoresMgr)) );",
+      "}",
+    ],
+  },
+  "Player::isFrozen (cascata ate' a Simulation)": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 442,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// isFrozen() -- checks both player's freeze flag and the simulation's freeze flag",
+      "//------------------------------------------------------------------------------",
+      "bool Player::isFrozen() const",
+      "{",
+      "   bool frz{BaseClass::isFrozen()};",
+      "   if (!frz && sim != nullptr) frz = sim->isFrozen();",
+      "   return frz;",
+      "}",
+    ],
+  },
+};
+
+const playerSnip = (key) => (key ? PLAYER_SNIPPETS[key] || null : null);
+
+function renderPlayerSnippet(key) {
+  const snip = playerSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_PLAYER_SLOT_DOCS = {
+  initXPos: ["Distance|Number", "posição inicial (+norte) -- só usada se a posição inicial escolhida for LOCAL (as três formas -- LOCAL/GEOD/WORLD -- são mutuamente exclusivas)"],
+  initYPos: ["Distance|Number", "posição inicial (+leste) -- idem"],
+  initAlt: ["Distance|Number", "altitude inicial (HAE, +acima) -- usada pelas três formas de posição inicial"],
+  initPosition: ["List", "atalho [ norte leste baixo ] de uma vez -- o próprio header já avisa: será removido numa versão futura"],
+  initLatitude: ["LatLon|Angle|Number", "latitude inicial -- segunda forma de posição, alternativa a initXPos/initYPos"],
+  initLongitude: ["LatLon|Angle|Number", "longitude inicial -- idem"],
+  initGeocentric: ["List", "posição inicial em ECEF [ x y z ], metros -- terceira forma, independente das duas acima"],
+  initRoll: ["Angle|Number", "rolagem inicial (radianos por padrão)"],
+  initPitch: ["Angle|Number", "arfagem inicial"],
+  initHeading: ["Angle|Number", "rumo inicial"],
+  initEuler: ["List", "atalho [ roll pitch yaw ] de uma vez, radianos"],
+  initVelocity: ["Number", "velocidade total inicial, m/s -- vira velocidade de corpo (ua) no reset()"],
+  initVelocityKts: ["Number", "idem, em nós"],
+  type: ["String", "string livre (\"F-16A\", \"Tank\"...) -- é o que TacviewOutput usa para casar typeMap/colorMap/modelMap quando REID_NEW_PLAYER nunca chega (ver a seção libs/xtacview do CLAUDE.md)"],
+  side: ["String", "BLUE/RED/YELLOW/CYAN/GRAY/WHITE (enum Side, bitmask) -- default GRAY"],
+  signature: ["RfSignature", "assinatura de RCS (ex.: SigSphere, SigPlate)"],
+  irSignature: ["IrSignature", "assinatura infravermelha"],
+  camouflageType: ["Number", "inteiro definido pelo usuário, 0 = nenhum -- consultado por SigSwitch para alternar assinatura"],
+  terrainElevReq: ["Number(bool)", "true = a elevação de terreno vem do sistema de imagem gerada (IG), NUNCA do banco DTED/SRTM local -- ver updateElevation()"],
+  interpolateTerrain: ["Number(bool)", "interpola a elevação entre postes do DTED/SRTM local, em vez do valor bruto da célula"],
+  terrainOffset: ["Distance", "offset de ground clamping do terreno até o CG do player, metros"],
+  positionFreeze: ["Number(bool)", "congela X/Y (LOCAL) ou lat/lon (GEOD) -- ver altitudeFreeze para o eixo vertical"],
+  altitudeFreeze: ["Number(bool)", "congela Z (LOCAL) ou altitude (GEOD)"],
+  attitudeFreeze: ["Number(bool)", "congela atitude -- quem de fato precisa respeitar isso é o dynamicsModel, não Player sozinho"],
+  fuelFreeze: ["Number(bool)", "congela consumo de combustível -- também depende do dynamicsModel"],
+  crashOverride: ["Number(bool)", "ignora CRASH_EVENT -- crashNotification()/collisionNotification() ainda gravam o REID, só não mudam mode nem propagam KILL_EVENT"],
+  killOverride: ["Number(bool)", "ignora KILL_EVENT -- killedNotification() ainda grava REID_PLAYER_KILLED, só não muda dano/mode"],
+  killRemoval: ["Number(bool)", "default false -- SEM ele, killedNotification() nunca faz setMode(KILLED), mesmo com o evento chegando de verdade (ver a trilha step-by-step, achado sobre a4_target)"],
+  enableNetOutput: ["Number(bool)", "habilita a saída de rede (DIS/HLA) deste player -- default true"],
+  dataLogTime: ["Time", "intervalo entre amostras REID_PLAYER_DATA para o gravador -- default 0 (zero = nunca loga), ver a armadilha 1 de libs/xtacview"],
+  testRollRate: ["Angle", "taxa de rolagem de TESTE (corpo ou Euler, ver testBodyAxis) -- só faz sentido sem dynamicsModel"],
+  testPitchRate: ["Angle", "idem, arfagem"],
+  testYawRate: ["Angle", "idem, guinada (rumo)"],
+  testBodyAxis: ["Number(bool)", "true = as três taxas de teste acima são do CORPO -- false (default) = são taxas de Euler"],
+  useCoordSys: ["String", "força o sistema usado para ATUALIZAR a posição (WORLD/GEOD/LOCAL) -- por default é herdado de qual das três formas de posição inicial foi de fato usada"],
+};
+
+function PlayerReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Player"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Player</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "Player"</span>
+          <span className="mx-chip">35 slots próprios · 314 métodos</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Player")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          A base de TODO player da simulação (aeronave, veículo terrestre, navio, prédio, forma de vida,
+          veículo espacial...) -- apesar do comentário do próprio header chamá-la de "interface abstrata"
+          (ver o achado mais abaixo), é uma classe CONCRETA: um <code className="mx-mono">( Player )</code> nu
+          já monta e roda, só sem comportamento físico nenhum (<code className="mx-mono">getMajorType()</code> devolve
+          apenas <code className="mx-mono">GENERIC</code>). Toda subclasse concreta (<code className="mx-mono">AirVehicle</code>,{" "}
+          <code className="mx-mono">GroundVehicle</code>, <code className="mx-mono">Ship</code>...) sobrescreve pouco
+          mais que <code className="mx-mono">getMajorType()</code>/<code className="mx-mono">getGrossWeight()</code> --
+          a mecânica inteira de posição/atitude/freeze/fase já mora aqui.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Player → AbstractPlayer → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Player" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>updateTC() -- despacho de fase EM DOIS NÍVEIS</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">Player::updateTC()</code> só faz algo de verdade na <b>fase 0</b>{" "}
+                (<code className="mx-mono">dynamics()</code> + log de <code className="mx-mono">REID_PLAYER_DATA</code> +{" "}
+                <code className="mx-mono">updateTC()</code> das assinaturas) -- as fases 1/2/3 são vazias NA PRÓPRIA
+                classe. Quem de fato processa cada fase são os SUBCOMPONENTES (todo <code className="mx-mono">System</code>{" "}
+                em <code className="mx-mono">components:</code>), cada um rodando o MESMO switch de novo, sozinho,
+                dentro do próprio <code className="mx-mono">updateTC()</code> (ver a aba System).{" "}
+                <code className="mx-mono">BaseClass::updateTC(dt)</code> roda incondicionalmente no fim -- é ele quem
+                desce a cada subcomponente, EM TODA FASE, independente de qual <code className="mx-mono">case</code> bateu
+                aqui em cima. O <code className="mx-mono">dt</code> que chega já é 1/4 do <code className="mx-mono">dt</code>{" "}
+                do frame (<code className="mx-mono">Simulation::updateTcPlayerList()</code> divide por 4 antes de
+                chamar); <code className="mx-mono">dt4 = dt * 4.0</code> multiplica de volta, pro módulo "que roda a cada
+                quarta fase" receber o <code className="mx-mono">dt</code> do FRAME inteiro.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>dynamics() -- local escolhe a física, rede nunca toca nela</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">isLocalPlayer()</code> decide tudo: local roda{" "}
+                <code className="mx-mono">dynamicsModel-&gt;dynamics(dt)</code> (se houver) e{" "}
+                <code className="mx-mono">positionUpdate()</code> -- integração trapezoidal sobre LOCAL/GEOD/WORLD,
+                com ground clamping para <code className="mx-mono">GROUND_VEHICLE|SHIP|BUILDING|LIFE_FORM</code>. Em
+                rede, <code className="mx-mono">dynamics()</code> NUNCA toca nenhum <code className="mx-mono">dynamicsModel</code> --
+                só <code className="mx-mono">deadReckonPosition()</code>, que extrapola posição/atitude a partir do
+                último PDU (<code className="mx-mono">nib-&gt;updateDeadReckoning()</code>), com o MESMO teste de ground
+                clamping. É a peça que fecha por que um fantasma DIS (ver <code className="mx-mono">src/poc/dis/bandit</code>{" "}
+                no CLAUDE.md) nunca precisa de <code className="mx-mono">JSBSimModel</code>/<code className="mx-mono">Autopilot</code>{" "}
+                do lado receptor -- a física dele nunca roda ali, só a extrapolação.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado, não redescobrir:</b> <code className="mx-mono">CRASH_EVENT</code> por altitude negativa só
+                dispara para 3 dos 8 <code className="mx-mono">MajorType</code> -- dentro de{" "}
+                <code className="mx-mono">dynamics()</code>, a condição é{" "}
+                <code className="mx-mono">getAltitudeAgl() &lt; 0.0 &amp;&amp; isMajorType(AIR_VEHICLE|WEAPON|SPACE_VEHICLE)</code>{" "}
+                (Player.cpp:2811). <code className="mx-mono">GROUND_VEHICLE|SHIP|BUILDING|LIFE_FORM</code> nunca
+                crasham por AQUI -- são ground-clamped por <code className="mx-mono">positionUpdate()</code>/{" "}
+                <code className="mx-mono">deadReckonPosition()</code> em vez disso.{" "}
+                <code className="mx-mono">Player::getMajorType()</code> puro devolve sempre{" "}
+                <code className="mx-mono">GENERIC</code> (0x01, Player.cpp:645-648) -- um{" "}
+                <code className="mx-mono">( Player )</code> sem subclasse nenhuma não pertence a NENHUM dos dois
+                grupos: não é ground-clamped e nunca dispara <code className="mx-mono">CRASH_EVENT</code> por altitude.
+                Atravessaria o chão para sempre, sem aviso nenhum.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>updateSystemPointers() -- os 10 papéis, resolvidos por TIPO</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                Os dez papéis primários (<code className="mx-mono">dynamicsModel/datalink/gimbal/irSystem/
+                navigation/onboardComputer/pilot/radio/sensor/storesMgr</code>) são todos declarados como{" "}
+                <code className="mx-mono">base::Pair*</code> genérico no header -- o tipo real só aparece dentro do
+                CORPO do setter, via <code className="mx-mono">findByType(typeid(X))</code>. É por isso que o nome do
+                slot EDL (<code className="mx-mono">dynamicsModel:</code>) é cosmético: quem resolve o papel é o
+                TIPO C++ do objeto, nunca a chave usada no arquivo. <code className="mx-mono">loadSysPtrs</code>{" "}
+                (setado por <code className="mx-mono">processComponents()</code> sempre que a lista de{" "}
+                <code className="mx-mono">components:</code> muda) só é consumido no TOPO de{" "}
+                <code className="mx-mono">updateTC()</code>/<code className="mx-mono">reset()</code> -- trocar um
+                subcomponente NO MEIO de um frame não reembaralha os ponteiros até o próximo ciclo.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>isFrozen() -- onde a cascata de freeze começa</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">Player::isFrozen()</code> testa o próprio flag OU{" "}
+                <code className="mx-mono">sim-&gt;isFrozen()</code> (445-450). Dentro de{" "}
+                <code className="mx-mono">updateTC()</code>, congelar não pula a chamada -- ela roda igual, só com{" "}
+                <code className="mx-mono">dt=0</code>, o que mantém os subcomponentes "vivos" (recebendo tick, sem
+                avançar nada) durante a pausa. É o MESMO padrão, um nível abaixo, que{" "}
+                <code className="mx-mono">System::isFrozen()</code> usa contra o próprio <code className="mx-mono">ownship</code>{" "}
+                (ver a aba System) -- essa cadeia (Simulation → Player → System) é o que permite ao{" "}
+                <code className="mx-mono">setPaused()</code> de <code className="mx-mono">libs/xclock</code> bastar
+                tocar só a <code className="mx-mono">Simulation</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado, não redescobrir:</b> o comentário do header (Player.hpp, linha 55) documenta{" "}
+                <code className="mx-mono">Factory name: AbstractPlayer</code> -- mas{" "}
+                <code className="mx-mono">AbstractPlayer</code> é uma classe DIFERENTE (a interface, em{" "}
+                <code className="mx-mono">mixr::simulation</code>, da qual <code className="mx-mono">Player</code>{" "}
+                deriva), e <code className="mx-mono">IMPLEMENT_SUBCLASS(Player, "Player")</code> (Player.cpp:52)
+                registra o nome de fábrica REAL: <code className="mx-mono">"Player"</code>. O próprio{" "}
+                <code className="mx-mono">models/BUILT-IN.md</code> deste repositório já registra o achado --
+                "apesar do nome, é concreta e alcançável via EDL". Não é bug do framework, é o comentário que
+                envelheceu: ler o <code className="mx-mono">.cpp</code>, não o header.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div className="mx-card">
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Player</div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{entry ? entry.own : 35} slots próprios.</p>
+            <div className="mx-slotgrid">
+              {(entry ? entry.sl : Object.keys(REF_PLAYER_SLOT_DOCS)).map((s) => (
+                <div className="mx-slot" key={s}>
+                  <span>{s}{REF_PLAYER_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_PLAYER_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                  <span style={{ maxWidth: 380 }}>{REF_PLAYER_SLOT_DOCS[s] ? REF_PLAYER_SLOT_DOCS[s][1] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Player::updateTC() -- o despacho de fase, na íntegra</span><span>C++</span></div>
+              {renderPlayerSnippet("Player::updateTC (despacho de fase -- so' a fase 0 e' PROPRIA)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Player::dynamics() -- local (positionUpdate) vs. rede (deadReckonPosition)</span><span>C++</span></div>
+              {renderPlayerSnippet("Player::dynamics (local vs. rede)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Player::updateSystemPointers() -- na íntegra</span><span>C++</span></div>
+              {renderPlayerSnippet("Player::updateSystemPointers (os 10 papeis)")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Player::isFrozen()</span><span>C++</span></div>
+              {renderPlayerSnippet("Player::isFrozen (cascata ate' a Simulation)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- System ---------------------------- */
+
+const SYSTEM_SNIPPETS = {
+  "System::updateTC (o mesmo switch, um nivel abaixo)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 81,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// updateTC() -- update time critical stuff here",
+      "//------------------------------------------------------------------------------",
+      "void System::updateTC(const double dt0)",
+      "{",
+      "   // We're nothing without an ownship ...",
+      "   if (ownship == nullptr && getOwnship() == nullptr) return;",
+      "",
+      "   // ---",
+      "   // Delta time",
+      "   // ---",
+      "",
+      "   // real or frozen?",
+      "   double dt{dt0};",
+      "   if (isFrozen()) dt = 0.0;",
+      "",
+      "   // Delta time for methods that are running every fourth phase",
+      "   double dt4{dt * 4.0};",
+      "",
+      "   // ---",
+      "   // Four phases per frame",
+      "   // ---",
+      "   WorldModel* sim{ownship->getWorldModel()};",
+      "   if (sim == nullptr) return;",
+      "",
+      "   switch (sim->phase()) {",
+      "",
+      "      case 0 : // Frame0 --- Dynamics method",
+      "         dynamics(dt4);",
+      "         break;",
+      "",
+      "      case 1 : // Frame1 --- Transmit method",
+      "         transmit(dt4);",
+      "         break;",
+      "",
+      "      case 2 : // Frame2 --- Receive method",
+      "         receive(dt4);",
+      "         break;",
+      "",
+      "      case 3 : // Frame3 --- Process method",
+      "         process(dt4);",
+      "         break;",
+      "   }",
+      "",
+      "   // ---",
+      "   // Last, update our base class",
+      "   // and use 'dt' because if we're frozen then so are our subcomponents.",
+      "   // ---",
+      "   BaseClass::updateTC(dt);",
+      "}",
+    ],
+  },
+  "System::isFrozen+reset+updateData (o mesmo guarda, tres vezes)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 49,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// isFrozen() -- checks both the system's freeze flag and its ownship's freeze flag",
+      "//------------------------------------------------------------------------------",
+      "bool System::isFrozen() const",
+      "{",
+      "   bool frz{BaseClass::isFrozen()};",
+      "   if (!frz && ownship != nullptr) frz = ownship->isFrozen();",
+      "   return frz;",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// reset() -- Reset parameters",
+      "//------------------------------------------------------------------------------",
+      "void System::reset()",
+      "{",
+      "   // We're nothing without an ownship ...",
+      "   if (ownship == nullptr && getOwnship() == nullptr) return;",
+      "",
+      "   BaseClass::reset();",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// updateData() -- update background data here",
+      "//------------------------------------------------------------------------------",
+      "void System::updateData(const double dt)",
+      "{",
+      "   // We're nothing without an ownship ...",
+      "   if (ownship == nullptr && getOwnship() == nullptr) return;",
+      "",
+      "   BaseClass::updateData(dt);",
+      "}",
+    ],
+  },
+  "System::getOwnship (lazy)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 196,
+    trunc: false,
+    lines: [
+      "// Returns a pointer to our ownship player",
+      "Player* System::getOwnship()",
+      "{",
+      "   if (ownship == nullptr) findOwnship();",
+      "   return ownship;",
+      "}",
+      "",
+      "// Returns a pointer to our ownship player (const version)",
+      "const Player* System::getOwnship() const",
+      "{",
+      "   if (ownship == nullptr) {",
+      "      (const_cast<System*>(this))->findOwnship();",
+      "   }",
+      "   return ownship;",
+      "}",
+    ],
+  },
+  "System::findOwnship (o mesmo findContainerByType de sempre)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 223,
+    trunc: false,
+    lines: [
+      "// find our ownship",
+      "bool System::findOwnship()",
+      "{",
+      "   if (ownship == nullptr) {",
+      "      ownship = static_cast<Player*>(findContainerByType( typeid(Player) ));",
+      "   }",
+      "",
+      "   return (ownship != nullptr);",
+      "}",
+    ],
+  },
+  "System::copyData (ownship nunca sobrevive a um clone)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 34,
+    trunc: false,
+    lines: [
+      "void System::copyData(const System& org, const bool)",
+      "{",
+      "   BaseClass::copyData(org);",
+      "",
+      "   // Don't copy ownship, we'll need to reacquire it.",
+      "   ownship = nullptr;",
+      "",
+      "   pwrSw = org.pwrSw;",
+      "}",
+    ],
+  },
+  "System::killedNotification (so' repassa)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 151,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// killedNotification() -- Default killed notification handler",
+      "//------------------------------------------------------------------------------",
+      "bool System::killedNotification(Player* const p)",
+      "{",
+      "   // Just let all of our subcomponents know that we were just killed",
+      "   base::PairStream* subcomponents{getComponents()};",
+      "   if(subcomponents != nullptr) {",
+      "      for (base::List::Item* item = subcomponents->getFirstItem(); item != nullptr; item = item->getNext()) {",
+      "         base::Pair* pair{static_cast<base::Pair*>(item->getValue())};",
+      "         base::Component* sc{static_cast<base::Component*>(pair->object())};",
+      "         sc->event(KILL_EVENT, p);",
+      "      }",
+      "      subcomponents->unref();",
+      "      subcomponents = nullptr;",
+      "   }",
+      "   return true;",
+      "}",
+    ],
+  },
+  "System::dynamics/transmit/receive/process (no-op default)": {
+    file: "contexts/src/mixr/src/models/system/System.cpp",
+    line: 132,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// Default phase callbacks",
+      "//------------------------------------------------------------------------------",
+      "void System::dynamics(const double)",
+      "{",
+      "}",
+      "",
+      "void System::transmit(const double)",
+      "{",
+      "}",
+      "",
+      "void System::receive(const double)",
+      "{",
+      "}",
+      "",
+      "void System::process(const double)",
+      "{",
+      "}",
+    ],
+  },
+};
+
+const systemSnip = (key) => (key ? SYSTEM_SNIPPETS[key] || null : null);
+
+function renderSystemSnippet(key) {
+  const snip = systemSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_SYSTEM_SLOT_DOCS = {
+  powerSwitch: ["String", "\"OFF\"/\"STBY\"/\"ON\" (case-insensitive) -- vira PWR_OFF/PWR_STBY/PWR_ON; nenhum callback de fase da própria classe consulta isso, é convenção para as subclasses"],
+};
+
+const REF_SYSTEM_POWER_ENUM = [
+  ["PWR_OFF", "0", "\"OFF\"/\"off\" no slot"],
+  ["PWR_STBY", "1", "\"STBY\"/\"stby\""],
+  ["PWR_ON", "2", "\"ON\"/\"on\" -- default do slot e do membro pwrSw"],
+  ["PWR_LAST", "3", "não é valor válido -- gancho para subclasses estenderem o enum (PWR_NEW1 = BaseClass::PWR_LAST, ...)"],
+];
+
+function SystemReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["System"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>System</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "System"</span>
+          <span className="mx-chip">ownship + despacho de fase</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("System")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          A base de TODO subsistema que se anexa a um <code className="mx-mono">Player</code> via{" "}
+          <code className="mx-mono">components:</code> -- <code className="mx-mono">Autopilot</code>,{" "}
+          <code className="mx-mono">RfSensor</code>, <code className="mx-mono">Gimbal</code>,{" "}
+          <code className="mx-mono">Datalink</code>, <code className="mx-mono">StoresMgr</code>,{" "}
+          <code className="mx-mono">Navigation</code> e as outras classes dos "10 papéis" de{" "}
+          <code className="mx-mono">Player</code> (ver a aba Player) são TODAS <code className="mx-mono">System</code>{" "}
+          por baixo. Não decide NADA sozinha -- os quatro callbacks de fase (
+          <code className="mx-mono">dynamics/transmit/receive/process</code>) são no-op por padrão. O que ela garante
+          é o ENCAIXE: despacho de fase, descoberta do <code className="mx-mono">ownship</code> e freeze em cascata --
+          não o comportamento em si.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de System" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>updateTC() -- o MESMO switch de fase, um nível abaixo</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">System::updateTC()</code> recalcula <code className="mx-mono">dt4 = dt * 4.0</code>{" "}
+                de novo -- o mesmo valor que <code className="mx-mono">Player::updateTC()</code> já tinha computado
+                um nível acima, mas de forma totalmente independente: cada <code className="mx-mono">System</code>{" "}
+                redescobre a fase perguntando a <code className="mx-mono">ownship-&gt;getWorldModel()-&gt;phase()</code>{" "}
+                e despacha para <code className="mx-mono">dynamics/transmit/receive/process</code> conforme o caso.{" "}
+                <code className="mx-mono">Component::updateTC()</code> desce chamando{" "}
+                <code className="mx-mono">obj-&gt;tcFrame(dt)</code> em CADA filho, TODA fase -- quem filtra por fase
+                é cada <code className="mx-mono">System</code>, individualmente, dentro do PRÓPRIO{" "}
+                <code className="mx-mono">updateTC()</code>, nunca um despachante central.{" "}
+                <code className="mx-mono">BaseClass::updateTC(dt)</code> no fim usa <code className="mx-mono">dt</code>{" "}
+                (não <code className="mx-mono">dt0</code>) -- "porque se estamos congelados, nossos subcomponentes
+                também estão" (comentário nativo).
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>"We're nothing without an ownship" -- o mesmo guarda, três vezes</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">reset()</code>/<code className="mx-mono">updateData()</code>/{" "}
+                <code className="mx-mono">updateTC()</code> começam todos com{" "}
+                <code className="mx-mono">if (ownship == nullptr &amp;&amp; getOwnship() == nullptr) return;</code> --
+                um <code className="mx-mono">System</code> sem <code className="mx-mono">ownship</code> (situação
+                transitória, entre ser adicionado a <code className="mx-mono">components:</code> e o próximo ciclo de{" "}
+                <code className="mx-mono">updateSystemPointers()</code>/<code className="mx-mono">findOwnship()</code>)
+                simplesmente não faz NADA, em silêncio -- nem propaga a chamada para os próprios subcomponentes.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>findOwnship() -- a origem da família de armadilhas "container()" deste repositório</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                <code className="mx-mono">getOwnship()</code> é preguiçoso: só chama{" "}
+                <code className="mx-mono">findOwnship()</code> se <code className="mx-mono">ownship</code> ainda é{" "}
+                <code className="mx-mono">nullptr</code>; <code className="mx-mono">findOwnship()</code> usa{" "}
+                <code className="mx-mono">findContainerByType(typeid(Player))</code>, subindo a árvore de{" "}
+                <code className="mx-mono">Component</code> até achar o primeiro <code className="mx-mono">Player</code>{" "}
+                ancestral -- exatamente o MESMO mecanismo que{" "}
+                <code className="mx-mono">TacviewOutput::resolveInfo()</code>, o monitor do Groot e{" "}
+                <code className="mx-mono">configurePlans()</code> (CLAUDE.md) já usam, e cuja família de armadilhas
+                (objeto aninhado num slot NOMEADO não é alcançado por <code className="mx-mono">container()</code>, só
+                quem está em <code className="mx-mono">components:</code> recursivo é) nasce exatamente aqui.{" "}
+                <code className="mx-mono">copyData()</code> zera <code className="mx-mono">ownship</code>{" "}
+                explicitamente num clone ("Don't copy ownship, we'll need to reacquire it") -- um{" "}
+                <code className="mx-mono">System</code> clonado (hot-swap de plugin, ou o template de um{" "}
+                <code className="mx-mono">Ntm</code> ao materializar um fantasma DIS) sempre redescobre o{" "}
+                <code className="mx-mono">ownship</code> do zero, nunca herda um ponteiro potencialmente errado do
+                original.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>killedNotification() default -- só repassa, nunca muda mode</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Ao contrário de <code className="mx-mono">Player::killedNotification()</code> (que marca dano/fumaça/
+                chamas em 1.0 e pode fazer <code className="mx-mono">setMode(KILLED)</code>), o default de{" "}
+                <code className="mx-mono">System::killedNotification()</code> só propaga{" "}
+                <code className="mx-mono">KILL_EVENT</code> para os PRÓPRIOS subcomponentes e devolve{" "}
+                <code className="mx-mono">true</code> -- reagir de verdade (desligar um sensor, por exemplo) é
+                responsabilidade de cada subclasse concreta (<code className="mx-mono">Radar</code>/{" "}
+                <code className="mx-mono">Rwr</code>/<code className="mx-mono">TrackManager</code> sobrescrevem isso,
+                ver <code className="mx-mono">models/BUILT-IN.md</code>).
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>enum de powerSwitch -- a única coisa que System faz sozinha</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 8px" }}>
+                Os quatro callbacks de fase são corpo VAZIO na base -- um <code className="mx-mono">( System )</code>{" "}
+                puro é um componente legal e inofensivo, que não decide nem lê nada. O único estado que a própria
+                classe manipula é <code className="mx-mono">powerSwitch</code>, e nem esse é consultado por{" "}
+                <code className="mx-mono">updateTC()</code>/<code className="mx-mono">dynamics()</code> nativamente --
+                é convenção para as subclasses lerem via <code className="mx-mono">getPowerSwitch()</code>.
+              </p>
+              <div className="mx-slotgrid">
+                {REF_SYSTEM_POWER_ENUM.map(([k, v, d]) => (
+                  <div className="mx-slot" key={k}><span>{k} <span style={{ color: "var(--muted)" }}>={v}</span></span><span>{d}</span></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div className="mx-card">
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de System</div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{entry ? entry.own : 1} slot próprio.</p>
+            <div className="mx-slotgrid">
+              {(entry ? entry.sl : Object.keys(REF_SYSTEM_SLOT_DOCS)).map((s) => (
+                <div className="mx-slot" key={s}>
+                  <span>{s}{REF_SYSTEM_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SYSTEM_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                  <span style={{ maxWidth: 380 }}>{REF_SYSTEM_SLOT_DOCS[s] ? REF_SYSTEM_SLOT_DOCS[s][1] : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">System::updateTC() -- na íntegra</span><span>C++</span></div>
+              {renderSystemSnippet("System::updateTC (o mesmo switch, um nivel abaixo)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">System::isFrozen() / reset() / updateData() -- o guarda "sem ownship" repetido</span><span>C++</span></div>
+              {renderSystemSnippet("System::isFrozen+reset+updateData (o mesmo guarda, tres vezes)")}
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+              <div className="mx-card" style={{ flex: "1 1 260px" }}>
+                <div className="mx-lbl"><span className="mx-mono">System::getOwnship()</span><span>C++</span></div>
+                {renderSystemSnippet("System::getOwnship (lazy)")}
+              </div>
+              <div className="mx-card" style={{ flex: "1 1 220px" }}>
+                <div className="mx-lbl"><span className="mx-mono">System::findOwnship()</span><span>C++</span></div>
+                {renderSystemSnippet("System::findOwnship (o mesmo findContainerByType de sempre)")}
+              </div>
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">System::copyData()</span><span>C++</span></div>
+              {renderSystemSnippet("System::copyData (ownship nunca sobrevive a um clone)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">System::killedNotification()</span><span>C++</span></div>
+              {renderSystemSnippet("System::killedNotification (so' repassa)")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">System::dynamics() / transmit() / receive() / process() -- default no-op</span><span>C++</span></div>
+              {renderSystemSnippet("System::dynamics/transmit/receive/process (no-op default)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Reference({ onOpenCatalog }) {
+  const [selected, setSelected] = useState("Missile");
+  return (
+    <div className="mx-body" style={{ display: "flex", gap: 0, paddingBottom: 40 }}>
+      <div style={{ width: 208, flexShrink: 0, borderRight: "1px solid var(--rule)", paddingRight: 14, marginRight: 14 }}>
+        <div className="mx-lbl"><span>classes documentadas</span></div>
+        {REF_CLASSES.map((c) => (
+          <div key={c.key} onClick={() => setSelected(c.key)}
+               style={{ padding: "9px 10px", cursor: "pointer", borderRadius: 3, marginBottom: 4,
+                        background: selected === c.key ? "var(--active-bg)" : "transparent",
+                        borderLeft: `3px solid ${selected === c.key ? "var(--hot)" : "transparent"}` }}>
+            <div className="mx-mono" style={{ fontSize: 13, fontWeight: selected === c.key ? 700 : 500 }}>{c.label}</div>
+            <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.35, marginTop: 2 }}>{c.sub}</div>
+          </div>
+        ))}
+        <div style={{ padding: "9px 10px", borderRadius: 3, border: "1px dashed var(--rule)", marginTop: 6 }}>
+          <div className="mx-mono" style={{ fontSize: 12, color: "var(--sub-muted)" }}>+ mais em breve</div>
+          <p style={{ fontSize: 10, color: "var(--sub-muted)", margin: "4px 0 0", lineHeight: 1.4 }}>
+            Referência é curadoria manual, não extração automática -- cresce uma classe de cada vez.
+          </p>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selected === "Missile" && <MissileReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "Steerpoint" && <SteerpointReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "Navigation" && <NavigationReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "Autopilot" && <AutopilotReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "Player" && <PlayerReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "System" && <SystemReferencePage onOpenCatalog={onOpenCatalog} />}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------- catálogo ----------------------------- */
 
 const MOD_ORDER = ["base", "simulation", "terrain", "linkage", "recorder", "models", "interop/dis", "plugin:A-4"];
@@ -4031,17 +8873,20 @@ function ClassCard({ c, onClose, onOpen }) {
           <span>Código-fonte</span>
           <span>{ownSnippets.length ? `${ownSnippets.length} método${ownSnippets.length > 1 ? "s" : ""} extraído${ownSnippets.length > 1 ? "s" : ""}` : "nenhum método extraído"}</span>
         </div>
-        {ownSnippets.length ? ownSnippets.map(([m, s]) => (
+        {ownSnippets.length ? ownSnippets.map(([m, s]) => {
+          const toks = cppTokenizeLines(s.lines);
+          return (
           <div key={m} style={{ marginBottom: 10 }}>
             <div className="mx-mono" style={{ fontSize: 11, color: "var(--muted)", marginBottom: 3 }}>{c}::{m} — {s.file}:{s.line}</div>
             <div className="mx-code">
               {s.lines.map((ln, k) => (
-                <div key={k} className="mx-cl"><span className="mx-num">{s.line + k}</span><span className="mx-src">{ln || " "}</span></div>
+                <div key={k} className="mx-cl"><span className="mx-num">{s.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
               ))}
               {s.trunc && <div className="mx-codecut">⋯ corpo truncado nesta visualização ⋯</div>}
             </div>
           </div>
-        )) : (
+          );
+        }) : (
           <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
             Esta classe não sobrescreve nenhum dos métodos rastreados com corpo próprio (dado puro, sem trabalho de fase) — nada para extrair aqui. arquivo:linha do topo do card continua valendo.
           </div>

@@ -1,5 +1,4 @@
-#ifndef __xnative_FlightAgentTC_H__
-#define __xnative_FlightAgentTC_H__
+#pragma once
 
 #include "mixr/base/ubf/Agent.hpp"
 
@@ -9,7 +8,7 @@ namespace mixr {
 namespace models { class AirVehicle; }
 
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: FlightAgentTC
@@ -33,7 +32,7 @@ namespace xnative {
 //     base/factory.cpp registra apenas 'UbfAgent' e 'UbfArbiter'. Escrever
 //     ( UbfAgentTC ... ) no EDL nao constroi nada -- a menos que a
 //     aplicacao registre a classe na propria factory, que e o que
-//     xnative::factory() faz com esta subclasse. Nao ha atalho: um agente
+//     xA_4::factory() faz com esta subclasse. Nao ha atalho: um agente
 //     de tempo critico e, na pratica, codigo da aplicacao.
 //
 //  2) AgentTC::updateTC() CHAMA controller() EM TODA FASE.
@@ -97,8 +96,7 @@ private:
 //------------------------------------------------------------------------------
 const FlightAgentTC* findFlightAgent(const models::AirVehicle* air);
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

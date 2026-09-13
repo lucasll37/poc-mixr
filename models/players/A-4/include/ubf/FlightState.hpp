@@ -1,5 +1,4 @@
-#ifndef __xnative_ubf_FlightState_H__
-#define __xnative_ubf_FlightState_H__
+#pragma once
 
 #include "mixr/base/ubf/AbstractState.hpp"
 
@@ -9,7 +8,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 //------------------------------------------------------------------------------
 // Class: FlightState
@@ -54,8 +53,7 @@ private:
    Snapshot snap;
 };
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

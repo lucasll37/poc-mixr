@@ -36,13 +36,14 @@ calibrado para o A-4 — não do cenário que o carrega.
 dia a dia, em ordem:
 
 ```bash
-make build           # -> ./build/ (compila libflight.so)
+make build           # -> ./build/ (compila libA-4.so)
 make test            # domain + tree + native (~1 s, nenhuma levanta Station)
-make install         # -> ./dist/lib/mixr-plugins/*.so + ./dist/share/mixr-plugins/flight/ (arvore + aeronave)
+make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
+make install         # -> ./dist/lib/mixr-plugins/*.so + ./dist/share/mixr-plugins/A-4/ (arvore + aeronave)
 make install-host    # -> ../../../plugins/ -- ainda não é dist/ do HOST, ver CONTRIBUTING.md
 ```
 
-Um artefato só, `libflight.so` — `FlightAgentTC` (o agente que decide na fase 3 do frame de tempo
+Um artefato só, `libA-4.so` — `FlightAgentTC` (o agente que decide na fase 3 do frame de tempo
 crítico, componente do player) é registrado incondicionalmente; não há mais um segundo `.so` sem
 ele.
 

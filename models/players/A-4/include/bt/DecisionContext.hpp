@@ -8,19 +8,22 @@
 #include "domain/ThreatPolicy.hpp"
 #include "domain/WorldView.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 //------------------------------------------------------------------------------
 // DecisionContext -- o que um no da arvore precisa do comportamento que o
 // hospeda, e NADA ALEM DISSO.
 //
-// Antes, NodeContext carregava um mixr::models::xnative::BtBehavior* cru. Os headers
+// Antes, NodeContext carregava um mixr::models::xA_4::BtBehavior* cru. Os headers
 // dos nos ja eram limpos, mas todo .cpp tinha de incluir "ubf/BtBehavior.hpp"
 // para chamar oito getters -- e com ele vinha o MIXR inteiro. O efeito
 // pratico era que a arvore, a peca mais propria desta poc, so podia ser
 // exercitada subindo uma Station.
 //
-// Esta interface e aquele conjunto de getters (hoje nove). BtBehavior a
+// Esta interface e aquele conjunto de getters (hoje treze). BtBehavior a
 // implementa sem escrever um metodo novo: as assinaturas ja eram estas
 // (exceto clampAltitudeToTerrain(), acrescentado para fechar um buraco
 // achado por auditoria -- ver o comentario dela mais abaixo).
@@ -108,3 +111,6 @@ public:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

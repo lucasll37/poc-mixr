@@ -21,7 +21,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 // clang-format off
 BEGIN_SLOTTABLE(BtBehavior)
@@ -342,6 +342,6 @@ bool BtBehavior::setSlotEvadeReactionMaxDelay(const base::Time* const msg)
 }
 
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

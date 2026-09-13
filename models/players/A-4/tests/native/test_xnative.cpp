@@ -31,6 +31,8 @@
 #include <set>
 #include <string>
 
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
+
 namespace {
 
 using namespace mixr;
@@ -42,7 +44,7 @@ using namespace mixr::models;
 // mudar uma linha da API de producao: alargar o acesso so por causa de teste
 // seria pior do que este 'using'.
 //------------------------------------------------------------------------------
-class SondaDatalink : public xnative::AlertDatalink
+class SondaDatalink : public xA_4::AlertDatalink
 {
 public:
    using AlertDatalink::onDatalinkMessageEvent;
@@ -59,8 +61,8 @@ public:
 //------------------------------------------------------------------------------
 TEST(Factory, ConstroiTudoQueDeclara)
 {
-   for (const char* const* p = xnative::factoryNames(); *p != nullptr; ++p) {
-      base::Object* const obj{xnative::factory(*p)};
+   for (const char* const* p = xA_4::factoryNames(); *p != nullptr; ++p) {
+      base::Object* const obj{xA_4::factory(*p)};
       EXPECT_NE(obj, nullptr) << "declarou '" << *p << "' mas a fabrica devolveu nulo";
       if (obj != nullptr) obj->unref();
    }
@@ -68,17 +70,17 @@ TEST(Factory, ConstroiTudoQueDeclara)
 
 TEST(Factory, RecusaNomeDesconhecido)
 {
-   EXPECT_EQ(xnative::factory("NaoExiste"), nullptr);
-   EXPECT_EQ(xnative::factory(""), nullptr);
+   EXPECT_EQ(xA_4::factory("NaoExiste"), nullptr);
+   EXPECT_EQ(xA_4::factory(""), nullptr);
 }
 
 TEST(Factory, TodaClasseDeclaradaExportaMetaObject)
 {
    std::set<std::string> nomes;
-   for (const char* const* p = xnative::factoryNames(); *p != nullptr; ++p) nomes.insert(*p);
+   for (const char* const* p = xA_4::factoryNames(); *p != nullptr; ++p) nomes.insert(*p);
 
    std::set<std::string> comMeta;
-   for (const base::MetaObject* const* m = xnative::metaObjects(); *m != nullptr; ++m) {
+   for (const base::MetaObject* const* m = xA_4::metaObjects(); *m != nullptr; ++m) {
       comMeta.insert((*m)->getFactoryName());
    }
    EXPECT_EQ(nomes, comMeta) << "factoryNames() e metaObjects() divergiram";
@@ -93,7 +95,7 @@ TEST(Factory, TodaClasseDeclaradaExportaMetaObject)
 //------------------------------------------------------------------------------
 TEST(Slots, AlertDatalinkAceitaHoldTimeEmTempo)
 {
-   base::Object* const obj{xnative::factory("AlertDatalink")};
+   base::Object* const obj{xA_4::factory("AlertDatalink")};
    ASSERT_NE(obj, nullptr);
 
    base::Seconds s{25.0};
@@ -110,7 +112,7 @@ TEST(Slots, AlertDatalinkAceitaHoldTimeEmTempo)
 
 TEST(Slots, BtBehaviorAceitaOsSlotsDoCenario)
 {
-   base::Object* const obj{xnative::factory("BtBehavior")};
+   base::Object* const obj{xA_4::factory("BtBehavior")};
    ASSERT_NE(obj, nullptr);
 
    base::String arquivo{"./nao/existe.xml"};
@@ -156,8 +158,8 @@ TEST(Slots, BtBehaviorAceitaOsSlotsDoCenario)
 //------------------------------------------------------------------------------
 TEST(Slots, PatrolSeedOverrideAusenteUsaDerivacaoDoMaster)
 {
-   auto* const a = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
-   auto* const b = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   auto* const a = static_cast<xA_4::BtBehavior*>(xA_4::factory("BtBehavior"));
+   auto* const b = static_cast<xA_4::BtBehavior*>(xA_4::factory("BtBehavior"));
    ASSERT_NE(a, nullptr);
    ASSERT_NE(b, nullptr);
 
@@ -180,8 +182,8 @@ TEST(Slots, PatrolSeedOverrideAusenteUsaDerivacaoDoMaster)
 
 TEST(Slots, PatrolSeedOverridePresenteTemPrioridadeSobreOMaster)
 {
-   auto* const semOverride = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
-   auto* const comOverride = static_cast<xnative::BtBehavior*>(xnative::factory("BtBehavior"));
+   auto* const semOverride = static_cast<xA_4::BtBehavior*>(xA_4::factory("BtBehavior"));
+   auto* const comOverride = static_cast<xA_4::BtBehavior*>(xA_4::factory("BtBehavior"));
    ASSERT_NE(semOverride, nullptr);
    ASSERT_NE(comOverride, nullptr);
 
@@ -219,7 +221,7 @@ TEST(AlertDatalink, AlertaSoValeNoFrameSEGUINTE)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const alerta = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const alerta = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    ASSERT_NE(alerta, nullptr);
    alerta->setSender(101, "falcon1");
    alerta->setContactName("bandit1");
@@ -247,7 +249,7 @@ TEST(AlertDatalink, AlertaEnvelheceEExpira)
    base::Seconds hold{1.0};
    ASSERT_TRUE(dl->setSlotByName("holdTime", &hold));
 
-   auto* const alerta = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const alerta = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    alerta->setSender(102, "falcon2");
    alerta->setContactName("bandit1");
    dl->onDatalinkMessageEvent(alerta);
@@ -271,9 +273,9 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const longe = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const longe = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    longe->setSender(101, "falcon1"); longe->setContactName("bandit1"); longe->setRangeM(30000.0);
-   auto* const perto = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const perto = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    perto->setSender(103, "falcon3"); perto->setContactName("bandit1"); perto->setRangeM(9000.0);
 
    // Os dois no MESMO frame -- o desempate tem de ser por distancia, e nao
@@ -304,9 +306,9 @@ TEST(AlertDatalink, EmpateExatoDeAlcanceVenceOMenorSenderId)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const idMaior = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const idMaior = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    idMaior->setSender(103, "falcon3"); idMaior->setContactName("bandit1"); idMaior->setRangeM(9000.0);
-   auto* const idMenor = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const idMenor = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    idMenor->setSender(101, "falcon1"); idMenor->setContactName("bandit1"); idMenor->setRangeM(9000.0);
 
    // MESMO rangeM (9000.0, empate exato) -- o desempate tem de ser por
@@ -331,9 +333,9 @@ TEST(AlertDatalink, EmpateExatoDeAlcanceEIndependenteDaOrdemDeChegada)
    auto* const dl = new SondaDatalink();
    ASSERT_NE(dl, nullptr);
 
-   auto* const idMaior = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const idMaior = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    idMaior->setSender(103, "falcon3"); idMaior->setContactName("bandit1"); idMaior->setRangeM(9000.0);
-   auto* const idMenor = static_cast<events::TacticalAlert*>(xnative::factory("TacticalAlert"));
+   auto* const idMenor = static_cast<events::TacticalAlert*>(xA_4::factory("TacticalAlert"));
    idMenor->setSender(101, "falcon1"); idMenor->setContactName("bandit1"); idMenor->setRangeM(9000.0);
 
    // Ordem invertida em relacao ao teste acima.

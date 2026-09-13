@@ -16,11 +16,11 @@ tudo o que falta saber além do empacotamento, incluindo a única obrigação cu
 erro nenhum** (seção 3).
 
 `mirror.cpp`, no diretório `../src/` (`../src/mirror.cpp`), é uma implementação completa e mínima
-(~360 linhas) de tudo o que está aqui — o mirror de contrato que este repositório usa nos próprios
+(ver o arquivo para o tamanho atual) de tudo o que está aqui — o mirror de contrato que este repositório usa nos próprios
 testes de plugin, herdado de `models/players/fixtures/stub` (removido). Leia esta lista primeiro;
 use o `.cpp` como referência de como cada item fica em código. **Ele não é o scaffold copiável** —
-esse é o resto deste diretório (`src/domain/`, `src/ubf/`, `src/xnative/factory.cpp`), que mostra a
-separação em camadas em vez do atalho achatado que `mirror.cpp` usa.
+esse é o resto deste diretório (`src/domain/`, `src/bt/`, `src/ubf/`, `src/xnative/factory.cpp`),
+que mostra a separação em camadas em vez do atalho achatado que `mirror.cpp` usa.
 
 ## 1. Empacotar como plugin, não como biblioteca comum
 
@@ -50,7 +50,8 @@ Esse arquivo tem um bloco assim:
 
 `provides:` precisa bater **exatamente** com o conjunto de nomes que o seu `.so` de fato registra
 (nem a mais, nem a menos) — se não bater, o processo aborta na inicialização, com uma mensagem
-dizendo o que o `.so` entregou. Não é uma falha silenciosa.
+mostrando as duas listas lado a lado (o que o cenário declarou em `provides:` e o que o `.so`
+de fato entrega — `PluginRegistry.cpp`, passo 8). Não é uma falha silenciosa.
 
 Cada nome também precisa derivar da classe-base do MIXR que o ponto de uso espera (ex.: um nome
 usado no slot `state:` de um agente de decisão precisa herdar de `AbstractState`), e os slots que
@@ -79,9 +80,19 @@ tabela acima só dá o NOME da classe-base, nunca os métodos):
 | classe-base | método(s) a sobrescrever | assinatura |
 |---|---|---|
 | `AbstractState` | `updateState` (virtual, não pura — mas é o único ponto de entrada real) | `virtual void updateState(const base::Component* const actor)` |
-| `AbstractBehavior` | `genAction` (**pura** — obrigatória) | `virtual AbstractAction* genAction(const AbstractState* const state, const double dt) = 0` — devolve um ponteiro **pré-`ref()`'d** (ou `nullptr` se não decidir nada) |
+| `AbstractBehavior` | `genAction` (**pura** — obrigatória) | `virtual AbstractAction* genAction(const AbstractState* const state, const double dt) = 0` — devolve um ponteiro **pré-`ref()`'d** (ou `nullptr` se não decidir nada) — ver nota¹ |
 | `AbstractAction` | `execute` (**pura** — obrigatória) | `virtual bool execute(base::Component* actor) = 0` |
 | `AgentTC` (via `Agent`) | `updateTC` (herdado de `AgentTC`) chama `controller` (protegido, de `Agent`) | `void updateTC(const double dt = 0.0) override` / `virtual void controller(const double dt = 0.0)` |
+
+¹ Todo `mixr::base::Object` (a raiz de que tudo neste framework deriva) conta suas próprias
+referências: `ref()` incrementa esse contador, `unref()` decrementa e destrói o objeto quando ele
+chega a zero — não há coletor de lixo nem `shared_ptr` aqui, a contagem é manual. "Devolver
+pré-`ref()`'d" quer dizer que `genAction()` já chamou `ref()` no objeto antes de devolvê-lo (ou o
+construiu com `new`, que já nasce com contagem 1): quem recebe o ponteiro se torna dono de uma
+referência e é responsável por eventualmente chamar `unref()` — o framework, não o seu código, é
+quem faz isso do lado de quem consome a `AbstractAction*` devolvida aqui. Esquecer o `ref()` (ou
+devolver um ponteiro que ninguém possui) é a classe de bug que essa convenção existe para evitar:
+o objeto seria destruído por baixo de quem ainda o está usando.
 
 `models/template/src/mirror.cpp` e `models/players/A-4/src/{ubf,xnative}/*.cpp` são as
 implementações de referência de cada um destes métodos — leia-as depois desta tabela, não em vez
@@ -146,20 +157,28 @@ satisfazer as seções 1 a 4.
 ## 6. Nomear certo: namespace aninhado sob `mixr::models::x<nome>`
 
 Esta seção é sobre RISCO DE RUNTIME, não sobre estilo, e — como a seção 3 — não é imposta pelo
-compilador nem por guarda nenhuma hoje: se ignorada, o sintoma aparece longe do lugar do erro.
+compilador, nem por nenhuma checagem que bloqueie `build`/`test`/`install`/CI hoje (`make
+check-organization` cobre isso, mas é opcional e não bloqueante — ver "Limites do que este
+documento garante", mais abaixo): se ignorada, o sintoma aparece longe do lugar do erro.
 
 Um cenário PODERIA, em tese, carregar mais de um `.so` de modelo no mesmo processo (nenhum cenário
-de produção deste repositório faz isso hoje). Os `.so` são abertos com `RTLD_LOCAL`, e sob esse
-modo a comparação de `type_info` deste toolchain degrada para `strcmp` do nome *mangled* — dois
+de produção deste repositório faz isso hoje). Os `.so` são abertos com `RTLD_LOCAL` (a flag de
+`dlopen()` que isola os símbolos de cada `.so`, sem deixar um plugin enxergar os símbolos de
+outro), e sob esse modo a comparação de `type_info` (o objeto de runtime por trás de
+`dynamic_cast`/`typeid`) deste toolchain degrada para `strcmp` do nome *mangled* (o nome interno
+que o compilador C++ gera para cada símbolo, diferente do nome que aparece no código-fonte) — dois
 tipos DIFERENTES com o MESMO nome qualificado, em dois `.so` distintos, colidiriam
 silenciosamente.
 
 Por isso, todo modelo NOVO (qualquer coisa além dos dois artefatos deste diretório, que já seguem
 isto — `xtemplate` para o scaffold copiável, `xtemplate_mirror` para o mirror de contrato, nunca
 compartilhando namespace) precisa aninhar TODO o próprio namespace — incluindo um eventual
-`domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto. `models/players/A-4`
-(`domain::` solto no global) é a exceção histórica, cara demais para corrigir agora — **não** é o
-exemplo a copiar. Em resumo: dois `.so` carregados com `RTLD_LOCAL` no mesmo processo fazem o
+`domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto. `models/players/A-4` foi a
+exceção histórica (nasceu antes desta convenção existir, com `domain::`/`bt_nodes::` soltos no
+escopo global e `ubf::`/`xnative::` sob `mixr::models::xnative` em vez de `mixr::models::xA_4`) —
+já corrigido (ver `CHANGELOG.md` daquele modelo); hoje os 7 projetos de modelo deste repositório
+seguem a convenção, sem exceção nenhuma. Em resumo: dois `.so` carregados com `RTLD_LOCAL` no
+mesmo processo fazem o
 toolchain comparar `type_info` por `strcmp` do nome *mangled* — dois tipos `domain::Foo`
 DIFERENTES, um em cada `.so`, colidiriam por terem o mesmo nome qualificado; aninhar sob
 `mixr::models::x<seu-modelo>` torna esse nome único e imune à colisão. O raciocínio completo (por
@@ -178,9 +197,14 @@ pegar o problema depois.
 
 - A tabela da seção 2 é um retrato do cenário de produção **de hoje**; ela muda se o cenário
   mudar. O que não muda é o mecanismo: sempre é o `.edl` que manda.
-- Nada aqui é verificado pelo compilador — a única forma de conferir é rodar o modelo dentro do
-  host de verdade. Uma interface abstrata em C++ resolveria isso, mas traria de volta o
-  acoplamento binário (vtable) que este mecanismo de plugin existe justamente para evitar.
+- Nada aqui é verificado pelo compilador. `make check-organization` (`tools/check_organization.py`) confere
+  estaticamente, sem compilar nada, quatro destas obrigações — o empacotamento como plugin
+  (seção 1), a escrita no `xboard` (seção 3), o dado próprio publicado (seção 4) e o namespace
+  aninhado (seção 6), entre outras verificações de organização interna que não correspondem a uma
+  seção deste documento — mas é um linter opcional, por busca textual, não uma prova
+  formal; a confirmação de ponta a ponta continua sendo rodar o modelo dentro do host de verdade.
+  Uma interface abstrata em C++ resolveria isso, mas traria de volta o acoplamento binário
+  (vtable) que este mecanismo de plugin existe justamente para evitar.
 
 ## Para ir além deste documento
 

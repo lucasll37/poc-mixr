@@ -108,13 +108,14 @@ porque nenhum cenário precisa disso ainda.
 
 ## Por que `RLBridgeBehavior` mora DENTRO de `models/players/A-4`, e não num plugin próprio
 
-Um plugin separado (no molde do que o extinto modelo `missile` fazia, para não obrigar as pocs de
-produção a atualizar `provides:`) não serviria aqui: `RLBridgeBehavior::genAction()` precisa de
+Um plugin separado (no molde do que o modelo de demo `missile` fazia antes de ser removido — não o
+modelo atual de mesmo nome em `models/players/missile`, que é uma implementação diferente — para
+não obrigar as pocs de produção a atualizar `provides:`) não serviria aqui: `RLBridgeBehavior::genAction()` precisa de
 `dynamic_cast<const xnative::FlightState*>` e construir um `xnative::FlightAction*` — tipos
 **concretos** do modelo, não só o nome de fábrica. Como cada plugin compila com
 `gnu_symbol_visibility: 'hidden'`, um `dynamic_cast` cruzando dois `.so` distintos para um tipo com
 visibilidade oculta é frágil. Ficar no mesmo `.so` elimina esse risco; o preço é mecânico:
-`RLBridgeBehavior` é mais um nome que `libflight.so` exporta, e como `provides:` é
+`RLBridgeBehavior` é mais um nome que `libA-4.so` exporta, e como `provides:` é
 igualdade exata de conjunto contra o que a `.so` exporta, todo cenário que carrega esse plugin
 precisou de uma linha a mais (inclusive o mirror de contrato de `models/template`, que
 precisa continuar contrato-compatível com o cenário de produção mesmo sem instanciar a classe).

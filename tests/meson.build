@@ -543,8 +543,8 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # modelo novo que nao decide nesse formato (a maioria dos que vem por ai --
 # ver TODO.md) NAO deve ser forcado aqui; ele ganha cobertura por um bloco
 # test() manual (precedente: 'onnx-policy', mais abaixo neste arquivo) ou
-# nenhuma cobertura em tests/meson.build (precedente: 'built-in_mixr_1',
-# que so tem um 'make check-<nome>' no Makefile raiz). A arvore de decisao
+# nenhuma cobertura em tests/meson.build (precedente: 'bandit', que nao
+# aparece neste arquivo nenhuma vez). A arvore de decisao
 # completa esta em CONTRIBUTING.md secao 5.4 -- leia antes de editar esta
 # lista OU de escrever um bloco test() novo.
 pocs = [
@@ -607,11 +607,11 @@ test('patrol-seed-determinism', bash,
 # adHocScenario() ('-f <arquivo>') casava o caminho contra um catalogo
 # estatico de cenarios antes de assumir falcon1..4 -- esse catalogo foi
 # removido (ver CLAUDE.md). '-f' hoje SEMPRE assume falcon1..4; um cenario
-# com frota diferente (ex.: full-systems-nav, frota {"a4"}) deve ser
-# carregado por '-folder <pasta>' em vez de '-f' -- a mesma propriedade que
-# este teste defendia (full-systems-nav com a frota certa) continua coberta
-# por 'scenario-folder' logo abaixo, que carrega o MESMO .edl.in via
-# '-folder'.
+# com frota diferente (ex.: tests/fixtures/full-systems-nav, frota {"a4"})
+# deve ser carregado por '-folder <pasta>' em vez de '-f' -- a mesma
+# propriedade que este teste defendia (full-systems-nav com a frota certa)
+# continua coberta por 'scenario-folder' logo abaixo, que carrega o MESMO
+# .edl.in via '-folder'.
 
 # './app -folder <pasta>' -- a navegacao por pasta de cenarios de sandbox
 # (app/ScenarioFolder.hpp). Ponta a ponta pelo caminho NAO-INTERATIVO
@@ -811,7 +811,7 @@ foreach b : ['nosym', 'abi', 'collide', 'collide_own_name']
     )}
 endforeach
 
-modelo_so = dist_plugins / 'libflight.so'
+modelo_so = dist_plugins / 'libA-4.so'
 
 test_plugin_load = executable('test-plugin-load',
     files('plugin/test_plugin_load.cpp'),

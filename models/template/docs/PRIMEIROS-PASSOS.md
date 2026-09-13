@@ -1,7 +1,9 @@
 # Primeiros passos — de `template` a um modelo com nome próprio
 
-Este roteiro assume que você já rodou, **uma vez, na raiz do repositório**, o pré-requisito que
-todo projeto de modelo precisa (publica o SDK de plugin e os pacotes do Conan):
+Este roteiro assume que você já rodou, **uma vez**, o pré-requisito que todo projeto de modelo
+precisa (publica o SDK de plugin e os pacotes do Conan) **na raiz do repositório**. O comando
+abaixo parte de `models/template` (o diretório de trabalho que o Passo 0, logo adiante, também
+usa) — se você já estiver na raiz, rode só `make configure && make sdk`, sem o `cd ../..`:
 
 ```bash
 cd ../.. && make configure && make sdk
@@ -18,7 +20,7 @@ Antes de mudar qualquer coisa, compile e teste o template como ele é. Se isto f
 ```bash
 cd models/template
 make build      # -> ./dist/lib/mixr-plugins/libtemplate.so (bare `make` so mostra `make help`)
-make test       # 4 casos de domain/ + a forma do .so (1 símbolo T, deps resolvidas)
+make test       # 4 casos de domain/ + a árvore (bt/) + a forma do .so (1 símbolo T, deps resolvidas)
 ```
 
 ## Passo 1 — copie e escolha um nome
@@ -45,8 +47,11 @@ porque não dá erro de build óbvio se ficar pela metade — dá um nome de cla
 ou, pior, uma colisão silenciosa com outro plugin, ver `docs/ARCHITECTURE.md`):
 
 ```bash
-# 1) o nome do project() e do shared_module() em meson.build
-sed -i "s/'template'/'meu_modelo'/g" meson.build
+# 1) o nome do project() e do shared_module() em meson.build -- o MESMO nome
+#    (com o MESMO hifen) da pasta do Passo 1. O Meson aceita hifen sem problema
+#    (confirmado: A-4/ e C-130/ usam project('A-4', ...)/project('C-130', ...) e
+#    publicam libA-4.so/libC-130.so) -- nao ha por que trocar para underscore aqui.
+sed -i "s/'template'/'meu-modelo'/g" meson.build
 
 # 2) o namespace C++ (troque xtemplate -> xmeumodelo, ou o nome que preferir,
 #    em TODOS os arquivos de uma vez)
@@ -70,6 +75,12 @@ Confirme que nada ficou para trás:
 grep -rn 'xtemplate\|"template"' include src tests meson.build src/plugin.cpp
 # (deve devolver vazio, ou só ocorrências que você quis manter)
 ```
+
+`make check-organization` confere os quatro pontos deste passo sozinho — sem grep manual, e sem precisar
+compilar nada: `namespace-aninhado` (se o `sed` do namespace pegou TODOS os arquivos) e
+`nome-plugin-consistente` (se `project()`/`shared_module()`/`MIXR_PLUGIN_DEFINE` continuam usando
+o MESMO nome novo). É um linter opcional — não substitui `make test` — mas é o jeito mais rápido
+de descobrir um `xtemplate` esquecido antes do primeiro `make build`.
 
 ## Passo 3 — esvazie o `CHANGELOG.md` e recomece pela sua versão
 
@@ -95,9 +106,14 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
 
 1. **`domain/ExampleThreshold.*`** → apague e escreva a(s) regra(s) pura(s) que o seu modelo
    precisa. Teste-as em `tests/domain/` **antes** de tocar em qualquer coisa que dependa do MIXR
-   — é a camada mais barata de iterar.
+   — é a camada mais barata de iterar. (O exemplo usa `>=` nos dois limiares —
+   `engaged ? value >= offValue : value >= onValue` — e os defaults `onValue=1.0`/`offValue=0.0`
+   fazem ele parecer sempre "ENGAGED" se o `.edl` não declarar os dois slots; se a regra nova
+   também for um limiar com histerese, decida a convenção de borda de propósito, não por acidente.)
 2. **`ubf/ExampleState.*`** → troque `getValue()`/o que `updateState()` lê do ator pelo que a SUA
-   decisão precisa enxergar do mundo.
+   decisão precisa enxergar do mundo. (O exemplo lê `Player::getAltitudeM()` só porque é o único
+   getter presente em QUALQUER `Player`, inclusive um que não seja veículo aéreo — não é uma dica
+   de que sua decisão deveria usar altitude.)
 3. **`bt/nodes/Example*.*` + `configs/example_tree.xml`** → é aqui que a decisão de fato mora.
    Um nó por condição ou ação, registrado em `src/bt/bt_factory.cpp`, lendo o que precisa pela
    interface `bt/DecisionContext.hpp` (acrescente um getter lá se faltar algo). A forma da
@@ -133,7 +149,7 @@ Um `.edl` referencia o seu modelo com um bloco assim (o nome do arquivo e o `pro
 bater **exatamente** com o que a sua `.so` exporta):
 
 ```
-( PluginModule  file: "libmeu_modelo.so"
+( PluginModule  file: "libmeu-modelo.so"
    provides: { ExampleState ExampleBehavior ExampleAction } )
 ```
 
@@ -144,13 +160,16 @@ completa de "nome de fábrica → classe-base exigida → onde entra".
 
 ## Passo 7 — nada a fazer aqui: o build orquestrado já descobre o seu modelo sozinho
 
-`template` nunca aparece no alvo `models:` do Makefile raiz nem em `tests/meson.build` — mas não
-por estar de fora de uma lista manual: é porque `template/` é excluído **de propósito** da busca
-(`MODELOS_PRODUCAO` no [`../../../Makefile`](../../../Makefile) descobre projetos por `find`,
-ignorando só `template/`/`tests/`/diretórios de build). O SEU modelo, uma vez copiado para fora de
-`template/` (Passo 1), já **entra sozinho** em `make models`/`make test` da raiz — não há linha
-nenhuma para adicionar. Confirme com `make models` na raiz: o log deve citar o nome do seu modelo
-sem você ter tocado no Makefile.
+`template` nunca entra na lista `MODELOS_PRODUCAO` (a descoberta automática por `find`, em
+[`../../../Makefile`](../../../Makefile)) — mas isso não significa que `template/` fique de fora
+do alvo `models:` como um todo: a receita do alvo chama `$(MAKE) -C models/template install-host
+...` **à parte**, depois do laço sobre `MODELOS_PRODUCAO`, porque o segundo artefato do template
+(`libtemplate_mirror.so`, o mirror de contrato) é usado pelos próprios testes de plugin do host
+(`tests/meson.build` referencia `libtemplate_mirror.so` diretamente, em mais de um teste). O que
+importa para o SEU modelo é só a parte da lista automática: uma vez copiado para fora de
+`template/` (Passo 1), ele **entra sozinho** em `MODELOS_PRODUCAO` e portanto em `make
+models`/`make test` da raiz — não há linha nenhuma para adicionar. Confirme com `make models` na
+raiz: o log deve citar o nome do seu modelo sem você ter tocado no Makefile.
 
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
@@ -162,13 +181,17 @@ Antes do primeiro commit, vale ler também [`../CLAUDE.md`](../CLAUDE.md) (este 
 não o da raiz): registra armadilhas do próprio scaffold que nenhum outro `.md` cobre — em
 particular, `.vscode/launch.json`/`meson_options.txt` **não** são reescritos por
 `scripts/models.sh` (ficam com caminho/descrição do template original) e a suíte de testes
-copiada cobre só `domain/`, com **zero** cobertura automática da camada `ubf/`
+copiada cobre `domain/`, a árvore de comportamento (`bt/`) e a forma do `.so` publicado, com
+**zero** cobertura automática da integração ponta a ponta das classes `ubf/` concretas
 (percepção→regra→rótulo) até você escrever a sua.
 
 ## Checklist rápido, para revisar antes do primeiro commit
 
 - [ ] `grep -rn 'xtemplate\|Example' include src tests` não acha mais nada do template original
       (a menos que você tenha decidido manter algum nome por coincidência)
+- [ ] `make check-organization` passa sem FALHA (organização interna — namespace, as três listas da factory,
+      as cinco peças de todo projeto de modelo (`tests/`, `docs/`, `README.md`, `CHANGELOG.md`,
+      `Makefile`), etc.; ver `tools/check_organization.py`)
 - [ ] `make test` passa, com a contagem de casos que você espera (não a herdada do template)
 - [ ] `CHANGELOG.md` começou do zero, na versão do seu `meson.build`
 - [ ] `nm -D --defined-only dist/lib/mixr-plugins/lib<nome>.so | grep ' T '` mostra **uma** linha

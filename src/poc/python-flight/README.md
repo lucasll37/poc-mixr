@@ -2,7 +2,10 @@
 
 > **ATUALIZAÇÃO — esta poc não tem mais executável próprio.** A camada de aplicação
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
-> cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
+> cada poc) saiu daqui: quem executa agora é o subprojeto **`app/`**, o runner único de todas as
+> pocs — o binário compilado é `./build/app/src/app` (ou `./dist/bin/app` depois de `make
+> install`; são o mesmo binário, ver a seção ["Rodar"](../../../README.md#rodar) do `README.md`
+> da raiz):
 > `./build/app/src/app -folder src/poc -scenario python-flight`. O que sobra nesta pasta é o **cenário**
 > (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
@@ -12,19 +15,24 @@
 
 A [flight](../dis/flight/) **inteira**, com **uma** diferença: as **leis de voo** não estão
 compiladas em lugar nenhum. São quatro arquivos `.py` em [`configs/policy/`](configs/policy/),
-lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo crítico** — mesma
-thread, mesmo tick, sem processo nem soquete no meio.
+lidos em tempo de execução e avaliados **dentro da fase 3 do frame de tempo crítico** — o laço de
+simulação de até 50 Hz é dividido em quatro fases (0: dinâmica; 1 e 2: transmissão/recepção de
+sensores; 3: decisão), e é na última que a árvore de comportamento roda — mesma thread, mesmo
+tick, sem processo nem soquete no meio.
 
 ```bash
 make models && make install   # build/models sao DECOPLADOS de proposito -- sem 'make models'
                                # antes, 'install' sincroniza um plugins/ vazio (aviso, sem erro)
-                               # e o PluginLoader nao acha libflight.so
+                               # e o PluginLoader nao acha libA-4.so
 ./build/app/src/app -folder src/poc -scenario python-flight         # Tacview Real-Time Telemetry na porta 1237; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight       # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
 
-> **Rode sempre a partir da raiz do repositório**: cenário, árvore, scripts, dados do JSBSim, tile
-> SRTM e gravação `.acmi` são resolvidos por caminho relativo.
+> **Rode sempre a partir da raiz do repositório**: cenário, árvore, scripts, dados do JSBSim (o
+> motor de dinâmica de voo integrado ao MIXR — ver a tabela da [seção 1](#1-o-que-é-novo-e-o-que-não-é)),
+> tile SRTM (dados públicos de elevação de terreno, NASA — ver
+> ["Pré-requisitos"](../../../README.md#pré-requisitos) no `README.md` da raiz) e gravação `.acmi`
+> são resolvidos por caminho relativo.
 
 **O ciclo de trabalho que esta poc existe para ter:**
 
@@ -64,8 +72,8 @@ na primeira decisão de cada aeronave.
 | o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`libs/xpyembed`](../../../libs/xpyembed/) |
 | o nó de árvore `( PyDecide )` | `models/players/A-4/src/bt/nodes/PyDecideAction.cpp` |
 | a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
-| a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
-| o plugin | o **mesmo** `libflight.so` da poc `flight`, byte a byte |
+| a pilha inteira: `Aircraft` + `JSBSimModel` (o adaptador MIXR para o **JSBSim**, motor de dinâmica de voo de código aberto que integra as equações de movimento da aeronave a cada frame) + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
+| o plugin | o **mesmo** `libA-4.so` da poc `flight`, byte a byte |
 
 **É novo** — o que esta pasta acrescenta:
 
@@ -82,7 +90,9 @@ na primeira decisão de cada aeronave.
 
 **Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da poc `flight` com
 caminhos e banner trocados; o modelo não mudou. Isso é o resultado a observar, não uma economia:
-a extensibilidade que o `( PluginModule )` + `( PyDecide )` prometiam se paga aqui.
+a extensibilidade que o `( PluginModule )` (o bloco que carrega o `.so` do modelo num cenário —
+ver [`CONTRIBUTING.md` §8.8](../../../CONTRIBUTING.md#88-carregando-o-modelo-num-cenário-o-bloco-pluginmodule-real))
++ `( PyDecide )` prometiam se paga aqui.
 
 ---
 
@@ -144,14 +154,38 @@ def decide(obs) -> (heading_deg, altitude_m, speed_kts)
 
 `obs` são 28 floats na ordem canônica de
 [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) — 23
-floats e depois 5 booleanos, todos vindos do mesmo `domain::WorldView` que o UBF já usa para
-decidir. Os três campos de texto (`contactName`, `alertSender`, `alertContactName`) ficam de fora:
-não são números.
+floats e depois 5 booleanos, todos vindos do mesmo `domain::WorldView` (o struct que reúne, a cada
+tick, a percepção inteira da aeronave naquele frame — posição, atitude, combustível, contato de
+radar, alerta recebido, terreno sob a aeronave —, sem nenhum tipo do MIXR, preenchido por
+`xnative::FlightState::updateState()`) que o UBF (o *Unified Behavior Framework*, o mecanismo
+nativo do MIXR para plugar decisão externa num `Player` — ver [`src/rl/README.md`](../../rl/README.md)) já usa
+para decidir. Os três campos de texto (`contactName`, `alertSender`, `alertContactName`) ficam de
+fora: não são números.
 
-**Essa é exatamente a entrada de um `.onnx`.** Um script desta pasta pode virar uma política
-treinada em [`src/rl`](../../rl/) sem tocar em mais nada — troca-se `( PyDecide script=... )` por
-`( OnnxPolicy model=... )` na árvore e o resto continua igual. É por isso que a ordem é tratada
-como contrato, mantido numa X-macro única, e não como detalhe.
+**Essa é exatamente a entrada de um `.onnx`.** O contrato de observação (28 floats, mesma ordem)
+é o mesmo que um `( OnnxPolicy model=... )` consome — trocar `( PyDecide script=... )` por ele
+**dentro de um único ramo**, mantendo os outros três intactos, é uma troca pontual de nó, válida
+se a política treinada for escopada àquele ramo. **Não é, porém, o que a poc irmã
+[onnx-policy](../onnx-policy/) faz** com uma política treinada ponta a ponta: lá a árvore inteira
+vira uma folha só, porque um modelo assim **é** o mapa observação → ação inteiro — inclusive a
+decisão de *quando* evadir — e manter os quatro ramos pediria à rede que decidisse dentro de um
+recorte que ela não conhece (ver
+[onnx-policy/README.md, seção 2](../onnx-policy/README.md#2-a-árvore-tem-uma-folha-só--e-por-quê)).
+É por isso que a ordem dos 28 campos é tratada como contrato, mantido numa X-macro única — uma
+técnica de pré-processador C/C++ que declara a lista de campos **uma vez**, em
+`ObservationFields.hpp`, e a reexpande em cada lugar que precisa dela, sem repetir a lista à mão —
+e não como detalhe: o consumidor do outro lado pode ser uma folha isolada ou a árvore inteira.
+
+**A SAÍDA dos dois nós, porém, não é igual — só a entrada.** `( PyDecide )` espera de volta
+unidades físicas diretas (`heading_deg, altitude_m, speed_kts`, como acima); `( OnnxPolicy )`, por
+padrão (`normalized: true`), espera a saída da rede em `[-1,1]` e a desnormaliza com
+`xrlbridge::unscaleCommand()` antes de aplicar — é para produzir esse `[-1,1]` que
+`src/poc/rl-training/tools/export_onnx.py` embute a equação inversa (físico → `[-1,1]`) no próprio
+grafo exportado. Uma política treinada como script Python devolvendo unidades físicas não pluga
+direto num `( OnnxPolicy )` só por bater a entrada — o `.onnx` exportado por esse caminho já tem
+que sair na escala que `unscaleCommand()` espera.
+
+
 
 ---
 
@@ -167,7 +201,10 @@ guarda a altitude da **primeira** decisão. Ele não precisa saber que existem q
 qual delas está rodando.
 
 **(b) Dois aviões rodando o mesmo arquivo não se enxergam** — que é o que mantém o resultado
-independente da ordem em que as threads do pool adquirem o GIL, e portanto o que mantém o
+independente da ordem em que as threads do pool adquirem o GIL (o *Global Interpreter Lock* do
+CPython — o mutex que serializa a execução de bytecode Python entre threads, de forma que só uma
+thread por vez executa um script, mesmo com quatro aeronaves "decidindo em paralelo" na fase 3),
+e portanto o que mantém o
 `./tests/determinism/check_determinism.sh ./build/app/src/app python-flight 2000 python-flight` verde.
 
 **O caso difícil é o `evade.py`.** Recalcular o alvo da quebra a cada tick é a armadilha clássica:
@@ -247,7 +284,7 @@ resto não.
 
 1. `treeFile:` aponta para a árvore desta pasta, e não para a de produção instalada em `dist/`;
 2. Tacview na porta **1237** e gravação em `data/recordings/` próprio;
-3. DIS emitindo da porta **3004** (bandit 3001, flight 3002) — as
+3. DIS emitindo da porta **3004** (bandit 3001, flight 3002, onnx-policy 3005) — as
    quatro pocs podem rodar ao mesmo tempo;
 4. o `MsgFileSink` grava no `data/messages/` próprio.
 
@@ -259,10 +296,13 @@ inertes, de propósito, `rtbAltitude`, `rtbSpeed`, `arrivalRadius` e `supportSpe
 agora são de `rtb.py` e `support.py`.
 
 **Este cenário não tem árbitro.** `behavior:` do agente aponta direto para o `( BtBehavior )` —
-sem `( UbfArbiter )`/`( AltitudeSafetyBehavior )` no meio. A `.so` continua exportando
-`AltitudeSafetyBehavior` (ver `provides:` em [`configs/scenario.edl.in`](configs/scenario.edl.in));
-a classe não saiu do plugin, só este cenário parou de instanciá-la. `src/rl`/`src/poc/rl-training`
-continuam usando o árbitro normalmente — mudança sem relação com esta poc.
+sem `( UbfArbiter )` (o compositor de comportamentos nativo do MIXR: cada `Behavior`-filho propõe
+uma ação com um `vote:`, e o árbitro adota a de maior voto a cada frame) nem `( AltitudeSafetyBehavior )`
+(o piso anti-CFIT nativo: também um `Behavior`-filho do árbitro, propõe uma correção de altitude
+com `vote:` alto para vencer qualquer comando perigoso vindo dos demais) no meio. A `.so` continua exportando `AltitudeSafetyBehavior` (ver `provides:` em
+[`configs/scenario.edl.in`](configs/scenario.edl.in)); a classe não saiu do plugin, só este
+cenário parou de instanciá-la. `src/rl` e `src/poc/rl-training` continuam usando o árbitro
+normalmente — mudança sem relação com esta poc.
 
 A consequência real: durante `PATROL`/`RTB`/`SUPPORT` não sobra **nenhum** piso independente por
 cima do que o script Python comanda. O que resta é só o `terrainClearance:` do próprio
@@ -286,7 +326,7 @@ mais quem o corrija.
 | altitude de cruzeiro *latcheada* por aeronave | 1750 / 1850 / 2050 / 2100 m, exatamente as do `.edl`, sem o script saber quais são |
 | precisão da órbita geométrica | raio mantido a **menos de 1 m** dos 5 NM nominais, sem deriva |
 | degradação com o script removido | `bt=PATROL` (o nó nativo); a aeronave não cai nem congela |
-| custo do Python no frame | **~42 µs por decisão**, ~0,8% de um frame de 20 ms (ver abaixo) |
+| custo do Python no frame | **~42 µs por decisão** → **~168 µs por frame** (4 aeronaves) → ~0,8% de um frame de 20 ms (ver abaixo) |
 | linhas de C++ escritas para tudo isto | **zero** (o host é cópia; o modelo não mudou) |
 
 **O custo, medido.** Os dois binários rodando a **mesma** fixture com intruso, 4000 frames de
@@ -301,6 +341,15 @@ A diferença é ~0,67 s em **16 000 decisões** (4000 frames × 4 aeronaves) —
 ou ~168 µs por frame contra um orçamento de 20 ms. O GIL serializa as quatro aeronaves, e ainda
 assim sobra folga de duas ordens de grandeza. **Não faça I/O dentro de `decide()`** — é o único
 jeito conhecido de gastar esse orçamento.
+
+**Este número não é comparável ao de
+[`models/players/A-4/docs/POLITICAS.md`](../../../models/players/A-4/docs/POLITICAS.md), seção
+1.4** (~8 µs com uma thread, ~18 µs com quatro), que mede outra coisa: uma única chamada a
+`policy_example.py` — o script de exemplo de dez linhas do modelo, não os quatro scripts de
+produção desta poc —, cronometrada chamada a chamada, não pela diferença de tempo de parede entre
+dois binários completos rodando a mesma fixture (como acima). Scripts diferentes, metodologias
+diferentes: os dois números não medem a mesma coisa e não devem ser lidos como contraditórios
+entre si.
 
 ---
 

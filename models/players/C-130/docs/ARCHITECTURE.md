@@ -93,7 +93,7 @@ nativamente, sem agente) também depende.
   malha de rumo/altitude do `c310ap.xml`, canal de autothrottle (4 motores) e SAS (amortecedores +
   nivelador de asas) do `a4ap.xml`.
 
-**Rumo, altitude e velocidade, medido rodando `src/poc/c130-airdrop/` e `sandbox/C-130-6DOF/` por
+**Rumo, altitude e velocidade, medido rodando `sandbox/C-130-6DOF/` por
 600 s simulados sem crash, funcionam.** Nem sempre foi assim — histórico, corrigido, não
 redescobrir: a primeira versão de `data/jsbsim/engine/t56.xml` (copiado sem alteração do
 vendorizado `shared/data/jsbsim/engine/`) estava pareada com `t56_prop.xml`, um `<propeller>`
@@ -128,7 +128,7 @@ o paraquedas abre, ele pousa. Isso não precisa de `AbstractState`/`AbstractBeha
 `"PARATROOPER"`) — usando `Stores::releaseWeapon(AbstractWeapon*)`, o método público e genérico que
 `releaseOneBomb`/`releaseOneDecoy` já chamam por baixo. **Nunca há `dynamic_cast` para uma classe
 concreta de paraquedista** — é isso que já deixou a troca pelo `models/players/paratrooper` real
-livre de mudança de C++ aqui: a troca já aconteceu (`src/poc/c130-airdrop` e
+livre de mudança de C++ aqui: a troca já aconteceu (`sandbox/C-130-6DOF` e
 `sandbox/C-130_paratrooper-6DOF` liberam a classe `Paratrooper` de verdade hoje), e foi só EDL —
 a classe declarada na estação de `stores:` + o `provides:` de `libparatrooper.so` no cenário,
 confirmando o contrato acima.
@@ -142,7 +142,7 @@ esse nome colidiria com `check_colisao_fabrica.py` assim que os dois `.so` carre
 mesmo processo (como já acontece hoje nos dois cenários citados acima).
 
 **Uma sobrescrita, não zero — `dynamics()`, o offset de liberação (achado rodando
-`src/poc/c130-airdrop`, corrigido, não redescobrir).** Sem ela, `AbstractWeapon::dynamics()` em
+`sandbox/C-130-6DOF`, corrigido, não redescobrir).** Sem ela, `AbstractWeapon::dynamics()` em
 `PRE_RELEASE` aplica um deslocamento zero (`initXPos`/`initYPos`/`initAlt` nunca declarados no
 EDL da estação) e o placeholder nasce **exatamente** na posição do C-130 — no Tacview, o instante
 da largada parecia o paraquedista colidindo com a aeronave, e ele aparecia como um bloco genérico
@@ -152,13 +152,13 @@ em eixos do corpo do C-130, mesma convenção de sinal), os mesmos defaults de
 slot nenhum (permanece só um placeholder, sem `releaseOffsetAft`/`releaseOffsetBelow`
 configuráveis).
 
-**A segunda metade do mesmo bug era Tacview, não física**: `src/poc/c130-airdrop`'s
-`TacviewOutput` não declarava `typeMap`/`modelMap`/`colorMap` para a chave `PARATROOPER` — sem
+**A segunda metade do mesmo bug era Tacview, não física**: o `TacviewOutput` do cenário que
+expôs isso não declarava `typeMap`/`modelMap`/`colorMap` para a chave `PARATROOPER` — sem
 essas entradas, um `Effect` de tipo não reconhecido (`Chaff`/`Decoy`/`Flare`/`Bomb`/`Bullet`/
 `Missile`, ver `libs/xtacview/TacviewOutput.cpp::defaultTypeForPlayer()`) cai no fallback genérico
 de `WEAPON`, e o `Name=` não reconhecido faz o Tacview desenhar um bloco/cubo genérico em vez de
 um modelo de paraquedista. Corrigido copiando as mesmas três entradas que
-`src/poc/paratrooper-drop`/`sandbox/C-130_paratrooper-6DOF` já usam.
+`sandbox/C-130_paratrooper-6DOF` já usa.
 
 **`( OnboardComputer )` é obrigatório no player**, mesmo sem nenhum sensor — confirmado lendo
 `mixr::models::Route::triggerAction()`: sem um `OnboardComputer`, a chamada `obc->triggerAction()`
@@ -190,7 +190,7 @@ para sempre, sem erro em lugar nenhum. Ver `../template/docs/CONTRATO.md` §3.
 ## Ler também
 
 - [`../README.md`](../README.md) — como compilar, testar e instalar este diretório sozinho
-- [`../../../src/poc/c130-airdrop/README.md`](../../../src/poc/c130-airdrop/README.md) — o cenário
+- [`../../../../sandbox/C-130-6DOF/README.md`](../../../../sandbox/C-130-6DOF/README.md) — o cenário
   de demonstração
 - [`../template/docs/CONTRATO.md`](../template/docs/CONTRATO.md) — a lista completa e autoritativa
   do que um modelo precisa fazer

@@ -2,6 +2,9 @@
 
 #include "domain/geometry.hpp"
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace domain {
 
 void RtbPlan::configure(const double baseN, const double baseE, const double arrivalRadiusM,
@@ -44,3 +47,6 @@ double RtbPlan::distanceToBaseM(const double ownN, const double ownE) const
 }
 
 } // namespace domain
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

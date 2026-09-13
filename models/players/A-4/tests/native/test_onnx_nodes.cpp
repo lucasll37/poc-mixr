@@ -26,6 +26,8 @@
 
 #include <gtest/gtest.h>
 
+namespace bt_nodes = mixr::models::xA_4::bt_nodes;
+
 #ifndef POLICY_EXAMPLE_ONNX
 #error "POLICY_EXAMPLE_ONNX precisa ser definido pelo build -- ver tests/meson.build"
 #endif

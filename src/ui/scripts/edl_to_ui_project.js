@@ -17,8 +17,8 @@
  * Existe para gerar o cenario DEFAULT que a ferramenta carrega sob demanda
  * (botao "Carregar preset", ver src/ui/README.md) -- chamado automaticamente
  * por src/ui/scripts/build.js, sempre contra o cenario de referencia
- * (src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in -- o TEMPLATE,
- * nao o '.generated.edl' -- ver a nota abaixo).
+ * (tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in -- o
+ * TEMPLATE, nao o '.generated.edl' -- ver a nota abaixo).
  *
  * ATENCAO -- rode contra o '.edl.in', nao o '.generated.edl': confirmado
  * lendo os dois lado a lado que o 'scenario.generated.edl' committed desta

@@ -41,7 +41,7 @@
                   "slotValues": {
                     "file": {
                       "kind": "text",
-                      "value": "libflight.so"
+                      "value": "libA-4.so"
                     }
                   },
                   "children": {
@@ -166,7 +166,7 @@
                   "slotValues": {
                     "fileName": {
                       "kind": "text",
-                      "value": "./src/poc/built-in_mixr_1/data/messages/mission.jsonl"
+                      "value": "./tests/fixtures/built-in_mixr_1/data/messages/mission.jsonl"
                     },
                     "flushEvery": {
                       "kind": "unit",
@@ -342,7 +342,7 @@
                             },
                             "fileName": {
                               "kind": "text",
-                              "value": "./src/poc/built-in_mixr_1/data/recordings/mission.acmi"
+                              "value": "./tests/fixtures/built-in_mixr_1/data/recordings/mission.acmi"
                             }
                           },
                           "children": {
@@ -831,7 +831,7 @@
                           "slotValues": {
                             "rootDir": {
                               "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/jsbsim/"
+                              "value": "./dist/share/mixr-plugins/A-4/jsbsim/"
                             },
                             "model": {
                               "kind": "text",
@@ -3246,7 +3246,7 @@
                                   "slotValues": {
                                     "treeFile": {
                                       "kind": "text",
-                                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                                      "value": "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                                     },
                                     "patrolHeading": {
                                       "kind": "unit",
@@ -3471,7 +3471,7 @@
                           "slotValues": {
                             "rootDir": {
                               "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/jsbsim/"
+                              "value": "./dist/share/mixr-plugins/A-4/jsbsim/"
                             },
                             "model": {
                               "kind": "text",
@@ -3848,7 +3848,7 @@
                                   "slotValues": {
                                     "treeFile": {
                                       "kind": "text",
-                                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                                      "value": "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                                     },
                                     "patrolHeading": {
                                       "kind": "unit",
@@ -4073,7 +4073,7 @@
                           "slotValues": {
                             "rootDir": {
                               "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/jsbsim/"
+                              "value": "./dist/share/mixr-plugins/A-4/jsbsim/"
                             },
                             "model": {
                               "kind": "text",
@@ -4450,7 +4450,7 @@
                                   "slotValues": {
                                     "treeFile": {
                                       "kind": "text",
-                                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                                      "value": "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                                     },
                                     "patrolHeading": {
                                       "kind": "unit",
@@ -4675,7 +4675,7 @@
                           "slotValues": {
                             "rootDir": {
                               "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/jsbsim/"
+                              "value": "./dist/share/mixr-plugins/A-4/jsbsim/"
                             },
                             "model": {
                               "kind": "text",
@@ -5052,7 +5052,7 @@
                                   "slotValues": {
                                     "treeFile": {
                                       "kind": "text",
-                                      "value": "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                                      "value": "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                                     },
                                     "patrolHeading": {
                                       "kind": "unit",
@@ -5277,7 +5277,7 @@
                           "slotValues": {
                             "rootDir": {
                               "kind": "text",
-                              "value": "./dist/share/mixr-plugins/flight/jsbsim/"
+                              "value": "./dist/share/mixr-plugins/A-4/jsbsim/"
                             },
                             "model": {
                               "kind": "text",

@@ -20,8 +20,8 @@ paths:
 - `falcon1..4` dos cenários de produção compartilham o MESMO esqueleto de slots (guarda:
   `tests/guard/check_falcons_estrutura.sh`) — uma mudança de slot em um precisa entrar nos outros
   três também, a menos que seja um cenário deliberadamente assimétrico (ex:
-  `src/poc/built-in_mixr_1/configs/scenario_max_player.edl.in`, que por isso não se chama
-  `scenario.edl.in`, fora do glob que a guarda varre).
+  `tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in`, que por isso não se chama
+  `scenario.edl.in` nem mora mais sob `src/poc/`, fora do glob que a guarda varre).
 - Antes de considerar uma edição de `.edl`/`.edl.in` terminada: `python3 src/ui/scripts/edl_lint.py
   <arquivo>` (lint leve; o hook `check-edl-lint.sh` já roda isso automaticamente) e, quando
   possível, o binário `edlcheck <arquivo>` (`dist/bin/edlcheck` ou `build/app/src/edlcheck` — o

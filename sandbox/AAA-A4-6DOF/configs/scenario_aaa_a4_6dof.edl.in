@@ -18,7 +18,7 @@
 //   aaa_site -- ( AaaSite ), estacionaria (sem dynamicsModel,
 //      initVelocity:0.0). Radar de aquisicao PROPRIO (mesma cadeia
 //      Gimbal+Antenna+SensorMgr(Tws)+OnboardComputer(AirTrkMgr), so' que
-//      nomeado "aaaTrkMgr" -- ver models/players/aaa/docs/ARCHITECTURE.md),
+//      nomeado "aaaTrkMgr" -- ver models/players/AAA/docs/ARCHITECTURE.md),
 //      StoresMgr com UM ( GuidedMissile ), agent: ( UbfAgent ) NATIVO (sem
 //      subclasse de AgentTC -- decide a taxa de FUNDO, 10 Hz, de sobra pra
 //      um alvo a ~130 m/s). minLaunchRange/maxLaunchRange (slots nativos de
@@ -72,7 +72,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -82,7 +82,7 @@
                provides: { GuidedMissile }
             )
             ( PluginModule
-               file:     "libaaa.so"
+               file:     "libAAA.so"
                provides: { AaaSite AaaState AaaBehavior AaaAction }
             )
          }
@@ -218,12 +218,12 @@
                // O AGENTE -- UbfAgent NATIVO (nao AgentTC), decidindo a
                // taxa de FUNDO (updateData(), ~10 Hz): de sobra pra "alvo
                // a ~130 m/s entra no domo, dispara". Ver
-               // models/players/aaa/docs/ARCHITECTURE.md para o porque de
+               // models/players/AAA/docs/ARCHITECTURE.md para o porque de
                // nao existir nenhuma subclasse propria de AgentTC aqui.
                agent: ( UbfAgent
                   state: ( AaaState )
                   behavior: ( AaaBehavior
-                     treeFile: "./dist/share/mixr-plugins/aaa/aaa_tree.xml"
+                     treeFile: "./dist/share/mixr-plugins/AAA/aaa_tree.xml"
                   )
                )
             }
@@ -252,7 +252,7 @@
             components: {
 
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
                   model:   "A4"
                   debugLevel: 0
                )
@@ -327,7 +327,7 @@
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
-                     treeFile: "./dist/share/mixr-plugins/flight/flight_tree_rwr_evade_demo.xml"
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_rwr_evade_demo.xml"
                      patrolHeading:  ( Degrees 90 )
                      legTime:        ( Seconds 120 )
                      legTurn:        ( Degrees 90 )

@@ -3,7 +3,7 @@
   A arvore de comportamento DESTE modelo.
 
   Forma: um Fallback (o "primeiro que der SUCCESS vence") com as prioridades
-  de cima para baixo -- LANDED primeiro (estagio terminal), depois CANOPY,
+  de cima para baixo - LANDED primeiro (estagio terminal), depois CANOPY,
   com FREEFALL como ramo de degradacao incondicional no fim:
 
     1) ja pousado          -> rotulo LANDED
@@ -12,7 +12,7 @@
 
   O AVANCO do estagio (domain::next(), FREEFALL->CANOPY->LANDED) acontece
   UMA vez por ciclo, dentro de ubf::ParatrooperBtBehavior::genAction(), ANTES
-  deste tick -- os dois nos aqui (IsStage/SetStage) so LEEM o resultado, nunca
+  deste tick - os dois nos aqui (IsStage/SetStage) so LEEM o resultado, nunca
   mutam. Ver include/bt/DecisionContext.hpp para o porque.
 
   ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um

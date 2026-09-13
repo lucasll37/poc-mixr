@@ -5,6 +5,9 @@
 
 #include <algorithm>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 namespace {
@@ -66,7 +69,8 @@ BT::NodeStatus NavigateAction::tick()
    if (!view.hasNavSteering) {
       // ACHADO POR AUDITORIA (nao redescobrir): sem isto, um GAP de
       // guiagem invalida (ex.: a arvore troca pra EVADE e depois volta pra
-      // NAV, full-systems-nav e' o unico consumidor hoje) deixava
+      // NAV, o cenario full-systems-nav em tests/fixtures/ e' o unico
+      // consumidor hoje) deixava
       // 'commandedHeadingDeg_' CONGELADO no ultimo valor de antes do gap.
       // O proximo tick com guiagem valida caia no ramo de SUAVIZACAO (nao
       // no de "primeiro tick"), tentando corrigir de um rumo antigo pra um
@@ -116,3 +120,6 @@ BT::NodeStatus NavigateAction::tick()
 }
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

@@ -1,12 +1,11 @@
-#ifndef __xnative_factory_H__
-#define __xnative_factory_H__
+#pragma once
 
 #include <string>
 
 namespace mixr {
 namespace base { class Object; class MetaObject; }
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 // Factory das classes MIXR deste MODELO.
 //
@@ -31,8 +30,7 @@ const char* const* factoryNames();
 // perderia justamente o codigo que mais muda.
 const base::MetaObject* const* metaObjects();
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr
 
-#endif

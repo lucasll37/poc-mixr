@@ -2,7 +2,7 @@
 
 Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — todos o mesmo
 player `a4` (os 53 componentes nativos do "player máximo", ver
-`src/poc/built-in_mixr_1`), a mesma porta Tacview (**1234**, de propósito —
+`tests/fixtures/built-in_mixr_1`), a mesma porta Tacview (**1234**, de propósito —
 nenhum dos 5 roda ao mesmo tempo que outro, então reusar a porta padrão evita
 decorar 5 números diferentes). Entre os cinco variam dois eixos: o
 `dynamicsModel:` e quem decide o rumo/altitude/velocidade.
@@ -42,8 +42,9 @@ decorar 5 números diferentes). Entre os cinco variam dois eixos: o
 
 ## O que é
 
-Nasceu como `sandbox/full-systems-nav` (ver `src/poc/full-systems-nav` para a
-poc de referência completa), recolocado nesta família de comparação com nome e
+Nasceu como `sandbox/full-systems-nav` (ver `tests/fixtures/full-systems-nav` para o
+cenário de referência completo, preservado ali depois que a poc foi removida), recolocado nesta
+família de comparação com nome e
 porta consistentes com os outros 4. A **montagem do player** e a **pilha de
 decisão** continuam intocadas — `dynamicsModel:` é `( JSBSimModel )` e o
 `agent:` aponta para o `flight_tree_nav.xml` instalado (`( Navigate )`, um nó
@@ -226,7 +227,7 @@ Os 53 componentes nativos (em **cada uma** das oito aeronaves), as 3 `Action`
 restantes (decoy/SAR/troca de camuflagem, disparando A CADA VOLTA — `wrap: true`,
 em `wp5`/`wp9`/`wp15`), terreno SRTM compartilhado, `provides:` do `PluginModule`
 (as mesmas 9 entradas) — ver `sandbox/full-systems-nav`'s histórico (agora
-removido deste `sandbox/`, mas com a poc de referência intacta em
-`src/poc/full-systems-nav`) e `src/poc/built-in_mixr_1/README.md` para a
+removido deste `sandbox/`, com o `.edl.in` original preservado como fixture em
+`tests/fixtures/full-systems-nav/`) e `tests/fixtures/built-in_mixr_1/README.md` para a
 tabela completa dos 53 componentes e as 8 armadilhas de montagem
 (`Table2`/`LatLon`/`dataLogTime:` etc.).

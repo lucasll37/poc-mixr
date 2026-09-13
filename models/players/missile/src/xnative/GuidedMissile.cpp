@@ -1,5 +1,7 @@
 #include "xnative/GuidedMissile.hpp"
 
+#include "xlog/Log.hpp"
+
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/models/player/Player.hpp"
 
@@ -84,6 +86,34 @@ void GuidedMissile::updateTC(const double dt)
 }
 
 //------------------------------------------------------------------------------
+// atReleaseInit() -- semeia cmdHeadingRad_/cmdPitchRad_/cmdSpeedMps_ com a
+// atitude/velocidade de LANCAMENTO (mesmo padrao de Missile::atReleaseInit()
+// nativo, que semeia cmdPitch/cmdHeading/cmdVelocity -- so' que aqueles sao
+// campos PROPRIOS de Missile, nunca lidos por GuidedMissile::weaponDynamics(),
+// que consome os campos abaixo).
+//
+// Sem este metodo (achado rodando, nao suposto -- ver o comentario de
+// weaponGuidance() sobre isGuidanceEnabled()): os tres campos ficam no
+// inicializador de classe (0.0) ate tof>=tsg, e weaponDynamics() ja roda
+// TODO frame independente do TSG -- o missil guina ativamente para
+// rumo/pitch GEOGRAFICO ZERO (Norte, nivelado) e desacelera em direcao a
+// ZERO m/s durante toda a janela do TSG (aqui, 1.0 s), a taxa/aceleracao
+// maxima (maxG/maxAccel). Medido no cenario sandbox/A4-6DOF-MISSILE: o
+// missil abre mao de ate ~66 graus de rumo e perde velocidade real antes de
+// a navegacao proporcional assumir -- o suficiente, em geometrias menos
+// favoraveis que a testada, para nao convergir dentro de maxBurstRng e
+// "passar do lado" do alvo sem detonar.
+//------------------------------------------------------------------------------
+void GuidedMissile::atReleaseInit()
+{
+   BaseClass::atReleaseInit();
+
+   cmdHeadingRad_ = getHeadingR();
+   cmdPitchRad_ = getPitchR();
+   cmdSpeedMps_ = getVpMax();
+}
+
+//------------------------------------------------------------------------------
 // weaponGuidance() -- le a posicao/velocidade do alvo DIRETO do Player*
 // (mesmo padrao de Missile::calculateVectors() nativo -- nao usa o cache
 // tgtPos/tgtVel de AbstractWeapon, que mistura convencao absoluta com
@@ -123,6 +153,23 @@ void GuidedMissile::weaponGuidance(const double dt)
 
       if (outcome.closestApproachReached) {
          setMode(DETONATED);
+
+         // Unico ponto de observabilidade do desfecho -- nem o Tacview (o
+         // token REID de detonacao fica de fora do enabledList, mesma
+         // armadilha ja documentada pro REID_WEAPON_RELEASED) nem o alvo
+         // (nenhum dano visivel: a4_target/GuidedMissile nao ligam
+         // checkDetonationEffect() a reacao nenhuma da aeronave) mostram
+         // isto sozinhos -- sem esta linha, um acerto e um erro parecem
+         // IDENTICOS na tela: o missil so' desaparece silenciosamente
+         // ~2s depois (kLingerSec).
+         const char* const tgtName = (tgt->getName() != nullptr) ? tgt->getName()->getString() : "?";
+         mixr::xlog::Stream(outcome.hit ? mixr::xlog::Level::INFO : mixr::xlog::Level::WARNING)
+            << "[GuidedMissile] " << (getName() != nullptr ? getName()->getString() : "?")
+            << ": " << (outcome.hit ? "ACERTO" : "FALHA")
+            << " contra " << tgtName
+            << " -- alcance de menor aproximacao " << outcome.rangeAtEventM << " m"
+            << " (burst " << getMaxBurstRng() << " m)";
+
          if (outcome.hit) {
             setDetonationResults(DETONATE_ENTITY_IMPACT);
             checkDetonationEffect();

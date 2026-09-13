@@ -1,9 +1,8 @@
 # Navstar-3-constellation — quatro planos orbitais, o mesmo modelo
 
-Reaproveita o modelo `models/others/Navstar-3` (ver
-[`src/poc/navstar3-orbit`](../../src/poc/navstar3-orbit/README.md) para a demonstração de **um**
-satélite só) com **quatro instâncias**, uma por plano orbital — o que a poc deixou de propósito
-fora de escopo (ver `models/others/Navstar-3/docs/ARCHITECTURE.md`, seção "O que fica de fora":
+Reaproveita o modelo `models/others/Navstar-3` com **quatro instâncias**, uma por plano orbital —
+o cenário de produção do próprio modelo demonstra só **um** satélite (ver
+`models/others/Navstar-3/docs/ARCHITECTURE.md`, seção "O que fica de fora":
 *"o modelo aceita múltiplas instâncias... mas o cenário de produção demonstra só UM satélite"*).
 Este sandbox é exatamente essa extensão — e é **só EDL**: os elementos orbitais
 (`altitude`/`inclination`/`raan`/`argLat0`) já eram slots por instância de `( Navstar3BtBehavior
@@ -20,8 +19,8 @@ Quatro `( SpaceVehicle )`, mesma altitude (~20.180 km)/inclinação (55°)/fase 
 (`argLat0: 0`), espalhados por **`raan`** (ascensão reta do nodo ascendente): `navstar1`=0°,
 `navstar2`=90°, `navstar3`=180°, `navstar4`=270° — quatro planos orbitais diferentes, o mesmo
 padrão de "um satélite por plano" que uma constelação GPS real usa (6 planos reais; 4 aqui, o
-suficiente para ver planos distintos sem inflar o cenário). A mesma direção de Sol fixa de
-`navstar3-orbit` (`sunRightAscension: 180`) — o Sol é um só na vida real, os quatro compartilham
+suficiente para ver planos distintos sem inflar o cenário). A mesma direção de Sol fixa usada pelo
+modelo (`sunRightAscension: 180`) — o Sol é um só na vida real, os quatro compartilham
 a mesma direção.
 
 `initLatitude`/`initLongitude` de cada satélite (0°/90°/180°/-90°) já batem com a posição que o
@@ -38,7 +37,7 @@ calculada.
    (posição real de cada plano em relação à direção fixa do Sol) é diferente. Confirma que
    `domain::sunState()` é avaliado por instância, sem nenhum estado compartilhado entre elas.
 2. **Altitude HAE constante nos quatro** — `alt=20180000.000000000` em toda amostra, todo
-   satélite, mesmo padrão de `navstar3-orbit`.
+   satélite (órbita circular, sem variação de altitude por design).
 3. **Posições avançando de forma independente e coerente com o `raan` de cada um** — a
    coordenada local `e` (leste) diverge claramente entre os quatro desde o primeiro frame
    amostrado (`navstar1 e≈276`, `navstar2 e≈10.001.212`, `navstar3 e≈-20.001.188`,
@@ -65,5 +64,3 @@ calculada.
 
 - [`../../models/others/Navstar-3/docs/ARCHITECTURE.md`](../../models/others/Navstar-3/docs/ARCHITECTURE.md)
   — todas as decisões de design do modelo
-- [`../../src/poc/navstar3-orbit/README.md`](../../src/poc/navstar3-orbit/README.md) — a
-  demonstração canônica de um satélite só, com a maior parte do "medido rodando" detalhado

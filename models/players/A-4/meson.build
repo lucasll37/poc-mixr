@@ -1,5 +1,5 @@
 # ==============================================================================
-# flight — o MODELO de producao, como projeto Meson INDEPENDENTE
+# A-4 — o MODELO de producao, como projeto Meson INDEPENDENTE
 #
 # Este projeto nao sabe nada do host, e o host nao sabe nada dele. A unica
 # coisa entre os dois e o SDK publicado em dist/ pelo projeto principal:
@@ -13,14 +13,16 @@
 #
 # ORDEM (ver o Makefile):  deps -> sdk -> models -> build
 #
-# UM artefato so, libflight.so, com o agente de tempo critico (FlightAgentTC)
+# UM artefato so, libA-4.so, com o agente de tempo critico (FlightAgentTC)
 # sempre compilado e sempre registrado -- nao ha mais variante sem ele. Ate
 # esta troca havia dois artefatos do mesmo fonte (libflight.so sem agente,
 # libflight_tc.so com, via -DFLIGHT_TC_AGENT); o segundo virou o unico porque
 # todo cenario deste repositorio decide via FlightAgentTC agora, nunca mais
-# via ( SimAgent ) nativo na Station.
+# via ( SimAgent ) nativo na Station. O nome do artefato em si (libflight.so)
+# so foi alinhado com o nome da pasta (A-4) depois, numa passada de limpeza --
+# "flight" e "A-4" sempre foram o MESMO modelo.
 # ==============================================================================
-project('flight', 'cpp',
+project('A-4', 'cpp',
     version: '1.0.0',
     license: 'MIT',
     default_options: [
@@ -125,7 +127,7 @@ model_deps = [mixr_dep, behavior_tree_dep, sdk_dep]
 # SDK ficam em dist/lib/.
 model_rpath = mixr_libdir + ':' + sdk_libdir + ':$ORIGIN/..'
 
-shared_module('flight',
+a4_lib = shared_module('A-4',
     model_sources,
     cpp_args              : asan_cpp_args + plugin_version_args,
     link_args             : model_link_args,
@@ -142,31 +144,32 @@ shared_module('flight',
 # o slot 'treeFile:' do ( BtBehavior ) nomeia este XML, e ele e do modelo, nao
 # do cenario.
 install_data('configs/flight_tree.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
-# A arvore de NAVEGACAO (src/poc/full-systems-nav): um no so, ( Navigate ),
-# sem Fallback nenhum por baixo -- so segue o Route/Steerpoint nativo. Vai
-# junto pelo mesmo motivo do flight_tree.xml: e do modelo, nao do cenario.
+# A arvore de NAVEGACAO (tests/fixtures/full-systems-nav, ex-poc): um no so,
+# ( Navigate ), sem Fallback nenhum por baixo -- so segue o Route/Steerpoint
+# nativo. Vai junto pelo mesmo motivo do flight_tree.xml: e do modelo, nao
+# do cenario.
 install_data('configs/flight_tree_nav.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A arvore de ACROBACIA (sandbox/A4-6DOF-RANDOM): ( SlowRoll ) por cima de
 # ( Navigate ) -- de tempos em tempos a aeronave larga a rota, faz um tonneau
 # e volta. Vai junto pelo mesmo motivo das outras: e do MODELO, nao do cenario.
 install_data('configs/flight_tree_random.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A arvore de DEMONSTRACAO de lancamento de missil (sandbox/A4-6DOF-MISSILE):
 # um ramo de disparo (LaunchEnvelope/LaunchMissile) a mais que flight_tree.xml,
 # NAO a arvore de producao. Vai junto pelo mesmo motivo das outras.
 install_data('configs/flight_tree_missile_demo.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A arvore de DEMONSTRACAO de evasao disparada por RWR (sandbox/AAA-A4-6DOF):
 # um ramo (RwrThreatDetected/EvadeRwrThreat) a mais que flight_tree.xml, NAO
 # a arvore de producao. Vai junto pelo mesmo motivo das outras.
 install_data('configs/flight_tree_rwr_evade_demo.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A arvore de DEPLOY da politica de RL e o .onnx que ela aponta. Vao junto
 # pelo mesmo motivo do flight_tree.xml: sao do MODELO, nao do cenario -- a
@@ -178,16 +181,16 @@ install_data('configs/flight_tree_rwr_evade_demo.xml',
 # depender de uma sessao de treino. Uma politica de verdade substitui o
 # arquivo, sem recompilar nada.
 install_data('configs/flight_tree_onnx.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 install_data('configs/policy_example.onnx',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A arvore de PROTOTIPAGEM e o script que ela aponta -- ver
 # libs/xpyembed/PyEmbed.hpp.
 install_data('configs/flight_tree_py.xml',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 install_data('configs/policy_example.py',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # A aeronave TAMBEM vai junto, pelo mesmo motivo: o modelo (domain/ThreatPolicy,
 # BtTuning) e calibrado para o c310 especificamente -- maxClimbRateMps, a folga
@@ -198,7 +201,7 @@ install_data('configs/policy_example.py',
 # ( JSBSimModel model: "c310" ) -- inclusive src/poc/dis/bandit, que nao carrega o
 # plugin mas pilota a mesma aeronave.
 install_subdir('data/jsbsim',
-    install_dir : get_option('datadir') / 'mixr-plugins' / 'flight')
+    install_dir : get_option('datadir') / 'mixr-plugins' / 'A-4')
 
 # As duas variantes de hot-swap, do MESMO fonte, diferindo so no sentido da
 # curva do circuito de patrulha. Consumidas pelo teste 'plugin-hotswap' do

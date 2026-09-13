@@ -73,7 +73,7 @@ BANDIT = """
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true

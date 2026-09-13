@@ -1,46 +1,36 @@
-# CLAUDE.md — models/template
+# CLAUDE.md — diário deste modelo
 
 Complementa o `CLAUDE.md` da raiz e os `.md` deste projeto (`README.md`, `CHANGELOG.md`,
-`docs/ARCHITECTURE.md`, `docs/PRIMEIROS-PASSOS.md`). Só entra aqui o que não está em nenhum dos
-dois.
+`docs/ARCHITECTURE.md`, `docs/PRIMEIROS-PASSOS.md`, se existir). Só entra aqui o que não está em
+nenhum dos dois — e só depois de confirmado **rodando**, nunca por suposição.
 
-## `.vscode/launch.json` e `meson_options.txt` NÃO são tocados por `make new-model`/rename manual
+**O que este arquivo É:** o diário de armadilhas e decisões de arquitetura confirmadas rodando
+**neste modelo específico** — o mesmo papel que o `CLAUDE.md` da raiz cumpre para o repositório
+inteiro, na escala de um projeto de modelo só.
 
-`scripts/models.sh` só reescreve `lib<nome>.so` em `Makefile`/`*.md` (filtro `find -name Makefile
--o -name '*.md'`). `.vscode/launch.json:11-12` (aponta pra um caminho `src/build/Debug/outDebug`
-que nunca existiu — o build real é `dist/lib/mixr-plugins/lib*.so` via Meson/Ninja) e
-`meson_options.txt:1` (descrição ainda diz "deste template") ficam com o texto do template
-original mesmo depois de copiado/renomeado. Não confie no `launch.json` como reflexo do build
-real.
+**O que este arquivo NÃO é:** não é tutorial (isso é `docs/PRIMEIROS-PASSOS.md`, quando este
+projeto tiver um) nem estado atual de features (isso é `README.md`). Um `CLAUDE.md` recém-copiado
+do template, sem nada ainda confirmado rodando no domínio novo, começa **vazio de narrativa
+própria** — esse é o estado inicial correto, não uma lacuna para preencher artificialmente.
 
-## O exemplo lê `getAltitudeM()` porque é o único slot presente em QUALQUER `Player`
+## Duas armadilhas de mecanismo do scaffold, válidas para qualquer modelo copiado do template
 
-`include/ubf/ExampleState.hpp:44-49` — a escolha não é arbitrária: `Player::getAltitudeM()` existe
-mesmo em players que não são veículos aéreos, então o exemplo compila sem depender de subclasse.
+- **`.vscode/launch.json` e `meson_options.txt` não são tocados por `make new-model`/rename
+  manual.** `scripts/models.sh` só reescreve `lib<nome>.so` em `Makefile`/`*.md` — o
+  `launch.json` copiado (que pode apontar para um caminho de build que nunca existiu de verdade
+  neste projeto) e a descrição em `meson_options.txt` (que pode continuar citando o nome do
+  template) ficam com o texto original mesmo depois de copiado/renomeado. Não confiar neles como
+  reflexo do build real; ajustar à mão ao notar a divergência.
+- **Registrar uma classe nova em `xnative/factory.cpp` exige sincronizar 3 listas à mão** — o
+  `if/else` de `factory()`, mais os arrays de nomes e de meta-objetos (`NOMES[]`/`METAS[]` no
+  scaffold original, ou o que este projeto os tiver renomeado para). Nada no **compilador** força
+  essa sincronia; só o registro de plugin em runtime recusa a carga se divergirem.
 
-## Semântica do Schmitt trigger de exemplo: `>=` nos dois limiares, degenera se `onValue == offValue`
+## A suíte de testes gerada não cobre a integração UBF de ponta a ponta
 
-`include/domain/ExampleThreshold.hpp:33-36` / `src/domain/ExampleThreshold.cpp:8-12`:
-`engaged ? value >= offValue : value >= onValue`. Os quatro casos de borda estão cobertos em
-`tests/domain/test_ExampleThreshold.cpp:8-41`. Quem copiar a regra para outro domínio (ex.:
-velocidade, combustível) precisa saber que a convenção deste exemplo é inclusive nos dois lados.
-
-## Sem declarar os slots no `.edl`, o exemplo ENGAJA com quase qualquer leitura
-
-Defaults de `ExampleThreshold` são `onValue=1.0`, `offValue=0.0` (metros) — esquecer de declarar
-`onValue:`/`offValue:` no `.edl` não dá erro, só faz o comportamento parecer sempre "ENGAGED".
-Já existe como comentário no slottable (`include/ubf/ExampleBehavior.hpp:22-24`), mas nenhum `.md`
-avisa disso.
-
-## A suíte de testes NÃO cobre a camada `ubf/` — só `domain/` e a forma do `.so`
-
-`tests/meson.build:19-42` só tem `test-domain` (sobre `ExampleThreshold` puro) e `check_contract.sh`
-(forma do `.so`). Não há teste que instancie `ExampleState`/`ExampleBehavior`/`ExampleAction` e
-confirme que `genAction()` emite o rótulo certo a partir de uma leitura — quem copiar o template
-herda ZERO cobertura na integração percepção→regra→rótulo.
-
-## Registrar uma classe nova em `xnative/factory.cpp` exige sincronizar 3 listas à mão
-
-`src/xnative/factory.cpp:14-19` — o `if/else` de `factory()`, `NOMES[]` e `METAS[]` têm que ficar
-em sincronia; nada no COMPILADOR força isso, só o registro de plugin em runtime (que recusa a
-carga se divergirem).
+A suíte gerada cobre três camadas: as regras puras de `domain/` (sem MIXR), a árvore de
+comportamento em si (contra um contexto falso, sem `Station`) e a FORMA do `.so` publicado
+(contrato de plugin). O que ela **não** cobre é a integração ponta a ponta das classes UBF
+concretas — `State`/`Behavior`/`Action` reais, lendo um ator de verdade e emitindo o rótulo certo a
+partir de uma leitura simulada. Quem copia o template herda essa lacuna de cobertura também;
+fechá-la com um teste próprio é trabalho de quem escreve o modelo, não algo que já vem pronto.

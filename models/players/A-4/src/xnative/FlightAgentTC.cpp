@@ -10,7 +10,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(FlightAgentTC, "FlightAgentTC")
 EMPTY_SLOTTABLE(FlightAgentTC)
@@ -107,6 +107,6 @@ const FlightAgentTC* findFlightAgent(const models::AirVehicle* const air)
    return dynamic_cast<const FlightAgentTC*>(pair->object());
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

@@ -8,7 +8,12 @@
 # projeto e so Python -- nao ha configure/build/install de C++ aqui. O
 # unico pre-requisito e o HOST publicado uma vez, na raiz do repositorio:
 #
-#     cd ../../.. && make configure && make sdk && make build && make install
+#     cd ../../.. && make configure && make sdk && make models && make build && make install
+#
+# 'make models' e obrigatorio no meio -- sem ele, libA-4.so (com
+# RLBridgeBehavior) nunca e compilado nem sincronizado para dist/, e a
+# Station que train.py levanta por baixo do pano falha ao carregar o
+# plugin (ver README.md desta pasta).
 #
 # Depois disso este Makefile nunca mais precisa do Makefile raiz -- so
 # consome dist/python/mixr_gym (o ambiente, ja pronto) e mantem o proprio
@@ -33,7 +38,7 @@ NC    := \033[0m
 check-root: ## Confere que o host ja publicou dist/python/mixr_gym.
 	@test -d $(DIST_PYTHON)/mixr_gym || { \
 		echo "$(RED)faltando $(DIST_PYTHON)/mixr_gym$(NC)"; \
-		echo "  rode 'cd $(ROOT) && make configure && make sdk && make build && make install' primeiro (uma vez)."; \
+		echo "  rode 'cd $(ROOT) && make configure && make sdk && make models && make build && make install' primeiro (uma vez)."; \
 		exit 1; }
 
 venv: ## Cria/atualiza o venv LOCAL de treino (ver requirements.txt).

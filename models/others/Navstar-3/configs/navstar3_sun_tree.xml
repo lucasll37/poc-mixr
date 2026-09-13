@@ -11,7 +11,7 @@
   O estado sol/sombra e' CALCULADO uma vez por ciclo em
   ubf::Navstar3BtBehavior::genAction() (domain::sunState(), sobre a posicao
   inercial do satelite e uma direcao de sol fixa vinda dos slots
-  sunRightAscension/sunDeclination) -- o no IsEclipsed so LE esse resultado,
+  sunRightAscension/sunDeclination) - o no IsEclipsed so LE esse resultado,
   nunca recalcula geometria nenhuma.
 
   ATENCAO ao editar comentarios aqui: hifen duplo e INVALIDO dentro de um

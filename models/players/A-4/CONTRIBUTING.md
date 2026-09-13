@@ -18,7 +18,7 @@ disponíveis (mesmo padrão do Makefile raiz do `poc-mixr`). O ciclo do dia a di
 explícito:
 
 ```bash
-make build      # configura (./build, uma vez, via 'configure') + compila -> libflight.so
+make build      # configura (./build, uma vez, via 'configure') + compila -> libA-4.so
 make test       # domain + tree + native, ~1 s -- nenhuma levanta Station (builda antes, se preciso)
 ```
 
@@ -36,7 +36,7 @@ compilação, sem passo extra.
 |---|---|
 | `make check-root` | só confere o pré-requisito (SDK do host publicado) — feedback verde de OK ou vermelho com o comando exato que falta |
 | `make configure` | `meson setup` isolado neste projeto (depende de `check-root`) |
-| `make build` | compila `libflight.so` (depende de `configure`) |
+| `make build` | compila `libA-4.so` (depende de `configure`) |
 | `make test` | roda a suíte do modelo (depende de `build`) |
 | `make install` | instala em `./dist` — a raiz DESTE projeto (depende de `build`) |
 | `make install-host` | deposita em `../../../plugins/` (depende de `install`) — seção 4 |
@@ -94,9 +94,10 @@ cd ../../.. && make open-groot
 # File > Load... > models/players/A-4/configs/flight_tree.xml
 ```
 
-**Nunca edite o `.xml` de produção como primeiro rascunho.** Copie para `/tmp`, itere na cópia, e
-só substitua o arquivo de produção quando a árvore estiver pronta — `git diff` mostra exatamente o
-resultado, em vez de um histórico de tentativas.
+Pode editar o `.xml` de produção diretamente pelo caminho real — o Groot já abre esse caminho
+acima, sem precisar copiar o arquivo para nenhum outro lugar antes. Se preferir não misturar
+experimentos com o histórico do arquivo versionado, `git diff`/`git checkout -- <arquivo>` revisa
+ou descarta a edição antes de commitar.
 
 ### 3.2 Registrar um nó novo (e manter o Groot sabendo dele)
 
@@ -179,14 +180,14 @@ cd ../../.. && make install     # sincroniza plugins/ -> dist/ -- unico alvo que
 ```
 
 `make install-host` (deste `Makefile`) nunca escreve em `dist/` — só em `../../../plugins/` (lib,
-flat) e `../../../plugins/data/flight/` (a árvore + `data/jsbsim/`), o depósito genérico que
+flat) e `../../../plugins/data/A-4/` (a árvore + `data/jsbsim/`), o depósito genérico que
 qualquer `.so` — próprio ou de terceiro — usa. Só o `make install` da raiz (alvo `sync-plugins`)
 copia dali para `dist/lib/mixr-plugins/`/`dist/share/mixr-plugins/`, que é de onde um binário do
 host de fato `dlopen()`. Rodar só o primeiro comando deixa o `.so` pronto mas invisível a qualquer
 cenário; rodar os dois é o que "publicar o plugin" quer dizer aqui.
 
 **Este passo termina o trabalho deste diretório.** Fazer um cenário carregar o `.so` publicado —
-escrever o bloco `( PluginModule file: "libflight.so" provides: {...} )`, escolher a porta do
+escrever o bloco `( PluginModule file: "libA-4.so" provides: {...} )`, escolher a porta do
 Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste modelo; ver
 `CONTRIBUTING.md` §5 (raiz) para essa parte, se for você quem for fazer os dois.
 
@@ -198,7 +199,7 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
   exercitam este `.so` de fora.
 - **`provides:` é igualdade EXATA de conjunto** entre cada `.edl` que carrega este plugin e o que
   o `.so` exporta. Um nome de fábrica novo obriga atualizar `provides:` em **todo** cenário
-  existente que carrega `libflight.so` — não só o que motivou a mudança.
+  existente que carrega `libA-4.so` — não só o que motivou a mudança.
   `python3 tests/guard/check_colisao_fabrica.py` (na raiz; o hook `check-colisao-fabrica.sh` já
   roda isso sozinho depois de editar `.cpp`/`.hpp` sob `models/`) cobra colisão de nome entre
   plugins carregados juntos no mesmo processo — já aconteceu de verdade (`CLAUDE.md`, "vigésima

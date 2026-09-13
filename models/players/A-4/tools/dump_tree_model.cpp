@@ -107,9 +107,9 @@ int main(int argc, char** argv)
    // construtor (lambda) na factory, nunca instancia um no. Nenhum no e de
    // fato criado -- so' o manifesto (ID + portas) e' lido por
    // writeTreeNodesModelXML(), via factory.manifests().
-   bt_nodes::NodeContext context;
-   bt_nodes::registerNodes(factory, context);
-   bt_nodes::registerSdkNodes(factory, context);
+   mixr::models::xA_4::bt_nodes::NodeContext context;
+   mixr::models::xA_4::bt_nodes::registerNodes(factory, context);
+   mixr::models::xA_4::bt_nodes::registerSdkNodes(factory, context);
 
    std::string model;
    try {

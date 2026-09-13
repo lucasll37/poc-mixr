@@ -4,21 +4,23 @@
 > (`include/app/` + `src/app/` + `mixr_factory`, ~1.500 linhas que eram copiadas byte a byte em
 > cada poc) saiu daqui: quem executa agora é o **`./app`**, o runner único —
 > `./build/app/src/app -folder src/poc -scenario onnx-policy`. O que sobra nesta pasta é o **cenário**
-> (`configs/`), os dados de execução (`data/`) e este README. Trechos abaixo que citam
+> (`configs/`), os dados de execução (`data/`), o treinador versionado (`tools/`) e este README.
+> Trechos abaixo que citam
 > `src/app/…`, `main.cpp` ou `build/src/poc/…` descrevem a estrutura ANTERIOR — a explicação de
 > cada etapa continua valendo, só que os arquivos moram em `app/src/app/`. Ver
 > [src/poc/meson.build](../meson.build) para o porquê e para a prova de neutralidade (os dumps
 > saíram byte-idênticos).
 
 A [flight](../dis/flight/) **inteira**, com **uma** diferença: quem decide não é uma árvore
-de regras — é uma **rede neural**. Um MLP de 6.211 parâmetros, carregado de
+de regras — é uma **rede neural**. Um MLP (multilayer perceptron, rede neural totalmente
+conectada) de 6.211 parâmetros, carregado de
 [`configs/policy_barrier.onnx`](configs/) e inferido **dentro da fase 3 do frame de tempo
 crítico**, sem Python no processo e sem um frame de latência.
 
 ```bash
 make models && make install   # build/models sao DECOPLADOS de proposito -- sem 'make models'
                                # antes, 'install' sincroniza um plugins/ vazio (aviso, sem erro)
-                               # e o PluginLoader nao acha libflight.so
+                               # e o PluginLoader nao acha libA-4.so
 ./build/app/src/app -folder src/poc -scenario onnx-policy           # Tacview Real-Time Telemetry na porta 1238; Ctrl+C encerra
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy         # verifica o determinismo (1, 2 e 4 threads T/C)
 ```
@@ -67,7 +69,7 @@ primeira decisão.
 | a desnormalização da ação (`unscaleCommand`) | [`libs/xrlbridge`](../../../libs/xrlbridge/) |
 | a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
-| o plugin | o **mesmo** `libflight.so` da poc `flight`, byte a byte |
+| o plugin | o **mesmo** `libA-4.so` da poc `flight`, byte a byte |
 
 **É novo** — o que esta pasta acrescenta:
 
@@ -131,7 +133,10 @@ A regra é uma **barreira no paralelo `norte = 0`**, com quebra ao contato:
 
 Arquitetura: `28 → 64 → 64 → 3`, `tanh` em todas as camadas (o `tanh` final é o que mantém a ação
 em `[-1,1]`, a mesma forma que um export do Stable-Baselines3 produz). 6.211 parâmetros, 25 KB de
-`.onnx`, opset 17.
+`.onnx`, opset 17 (a versão do conjunto de operadores ONNX gravada no arquivo — diferente do
+`ir_version`, o formato do contêiner, que é a armadilha 1 da [seção 10](#10-armadilhas-confirmadas-rodando);
+opset 17 já é aceito sem ajuste pelo ONNX Runtime 1.17.3 deste pacote Conan, então não há nenhuma
+correção equivalente a fazer aqui).
 
 Erro contra a regra, no conjunto separado (impresso pelo treinador e gravado no `doc_string` do
 `.onnx`):
@@ -228,14 +233,15 @@ de quebra, **mais rápido** neste tamanho de modelo: 50,1 µs contra 76,0 µs.
 
 **Isto mudou, e é uma regressão de segurança real, não cosmética.** Versões anteriores desta poc
 enrolavam o `( BtBehavior vote: 50 )` num `( UbfArbiter )` junto com um
-`( AltitudeSafetyBehavior vote: 90 )` nativo — um piso anti-CFIT independente, calibrado contra o
-terreno, que sobrepunha qualquer comando de altitude perigoso vindo da árvore, voto contra voto,
+`( AltitudeSafetyBehavior vote: 90 )` nativo — um piso anti-CFIT (Controlled Flight Into Terrain,
+voo controlado contra o terreno) independente, calibrado contra o terreno, que sobrepunha
+qualquer comando de altitude perigoso vindo da árvore, voto contra voto,
 sem que a rede precisasse saber disso. `src/poc/onnx-policy/configs/scenario.edl.in` **não faz mais
 isso**: `behavior:` do `( FlightAgentTC )` aponta direto para o `( BtBehavior )`, sem `( UbfArbiter
 )`/`( AltitudeSafetyBehavior )` no meio (ver o bloco de comentário "SEM ARBITRO" no topo do
 arquivo).
 
-`AltitudeSafetyBehavior`/`UbfArbiter` continuam existindo como classes — o `libflight.so` ainda
+`AltitudeSafetyBehavior`/`UbfArbiter` continuam existindo como classes — o `libA-4.so` ainda
 as exporta e `provides:` deste cenário ainda as lista — só que **este** cenário não instancia mais
 nenhuma das duas. `src/rl`/`src/poc/rl-training` continuam usando o árbitro de propósito (não
 mudaram); a mudança é só aqui.
@@ -295,12 +301,27 @@ ambiente em si não precisa conhecer):
 # ativos por padrao -- so acrescente ali se o SEU algoritmo precisar de outra coisa
 make venv-rl-training
 # treinar (ver models/players/A-4/docs/POLITICAS.md, seção 2)
+```
+
+**`-o` para `configs/policy_barrier.onnx` SOBRESCREVE o artefato versionado** — a rede de 6.211
+parâmetros treinada por clonagem de comportamento da regra de barreira, cujo comportamento (erro
+medido, convergência em 160 s, `|norte| ≤ 11,1 m`...) as seções [3](#3-o-que-a-rede-aprendeu) e
+[11](#11-o-que-foi-medido-rodando) descrevem em detalhe. `train.py` de `src/poc/rl-training` treina
+com o `default_reward()` genérico de `MixrFlightEnv`, sem nenhum *shaping* de domínio (ver
+[`src/poc/rl-training/README.md`](../rl-training/README.md)) — uma política PPO exportada por esse
+caminho não tem motivo nenhum para reproduzir o comportamento de "seguir a barreira" que o resto
+deste README mede. Por padrão, exporte para um arquivo **novo** e aponte o atributo `model` da
+árvore para ele, mantendo os dois:
+
+```bash
 PYTHONPATH=./dist/python src/poc/rl-training/.venv/bin/python3 src/poc/rl-training/tools/export_onnx.py \
-    --sb3 runs/ppo_falcon.zip -o src/poc/onnx-policy/configs/policy_barrier.onnx
+    --sb3 src/poc/rl-training/runs/ppo_falcon1.zip -o src/poc/onnx-policy/configs/policy_ppo.onnx
+# edite configs/flight_tree_onnx.xml: model="./src/poc/onnx-policy/configs/policy_ppo.onnx"
 ./build/app/src/app -folder src/poc -scenario onnx-policy
 ```
 
-Ou aponte o atributo `model` da árvore para outro arquivo e mantenha os dois. Em nenhum dos casos
+Só sobrescreva `policy_barrier.onnx` de propósito — isso descarta o artefato medido e invalida os
+números das seções 3/11 até re-treinar/reexportar a rede de barreira. Em nenhum dos dois casos
 algo é recompilado.
 
 Para reproduzir a rede versionada (semente fixa, mesmos pesos) — o treinador desta poc só precisa
@@ -321,16 +342,19 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
    `onnx` 1.22 grava 13 por padrão.** O sintoma não é um erro de exportação — é a poc voando com
    `bt=PATROL`, porque a recusa acontece em tempo de execução, dentro de `xinfer::open()`. O
    treinador fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx` já versionado em
-   `models/players/A-4`). **Vale para qualquer `.onnx` gerado hoje** — inclusive o
-   `src/poc/rl-training/tools/export_onnx.py --random`, que não fixa a versão e produz um arquivo que este ORT
-   recusa se o `onnx` instalado for recente.
+   `models/players/A-4`). **Vale para qualquer `.onnx` gerado hoje** — inclusive
+   `src/poc/rl-training/tools/export_onnx.py` (nos dois modos, `--random`/`--sb3`), que também
+   fixa `ir_version = 8` por causa desta mesma armadilha; um gerador novo que não fizesse essa
+   fixação produziria um arquivo que este ORT recusa se o `onnx` instalado for recente.
 2. **A política é dado do CENÁRIO, não do modelo.** Por isso `.onnx` e árvore moram em `configs/`
-   desta poc, lidos por caminho relativo, e não em `dist/share/mixr-plugins/flight/` (que é onde
+   desta poc, lidos por caminho relativo, e não em `dist/share/mixr-plugins/A-4/` (que é onde
    `models/players/A-4` instala os **dele**). As duas coisas convivem: o teste `scenario-policy-onnx`
    continua rodando a árvore do modelo com pesos aleatórios sobre a poc `flight`.
-3. **Portas próprias, senão as pocs brigam.** Tacview **1238** e DIS `localPort` **3005** (1234
-   flight, 1235 bandit, 1236 app, 1237 python-flight; DIS 3001/3002/3004). Todo
-   mundo escuta DIS em 3000 e ignora a própria porta de origem.
+3. **Portas próprias, senão as pocs brigam.** Tacview **1238** e DIS `localPort` **3005** (Tacview:
+   1234 flight, 1235 bandit, 1237 python-flight; DIS: 3001 bandit, 3002 flight, 3004
+   python-flight). O `./app` não tem mais cenário nem porta própria (`app/configs/` foi removido —
+   ver a seção "`./app`" do `CLAUDE.md`). Todo mundo escuta DIS em 3000 e ignora a própria porta de
+   origem.
 4. **Comentário de XML não aceita `--`.** A mesma classe de armadilha do parser EDL com acento: o
    traço duplo dentro de um comentário faz o parser recusar o arquivo. `xmllint --noout` no `.xml`
    antes de rodar economiza o ciclo.
@@ -356,7 +380,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
 ## 12. Como verificar tudo
 
 ```bash
-make test                    # inclui os três testes desta poc
+make test                    # inclui os dois testes desta poc
 ./tests/determinism/check_determinism.sh ./build/app/src/app onnx-policy 2000 onnx-policy       # determinismo com 1, 2 e 4 threads, em cenário hermético
 ```
 

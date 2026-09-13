@@ -7,7 +7,7 @@
 
 namespace mixr {
 namespace models {
-namespace xnative {
+namespace xA_4 {
 
 IMPLEMENT_SUBCLASS(ThreadTagProbe, "ThreadTagProbe")
 EMPTY_SLOTTABLE(ThreadTagProbe)
@@ -38,6 +38,6 @@ void ThreadTagProbe::updateTC(const double dt)
    xboard::setThreadTag(player->getID(), xboard::threadTag());
 }
 
-} // namespace xnative
+} // namespace xA_4
 } // namespace models
 } // namespace mixr

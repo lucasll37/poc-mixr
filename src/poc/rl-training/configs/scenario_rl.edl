@@ -3,7 +3,7 @@
 //
 // Derivado de src/poc/dis/flight/configs/scenario.edl.in (mesma pilha
 // 100% nativa: Aircraft/JSBSimModel/Autopilot/radar/AlertDatalink/
-// FlightAgentTC, o mesmo plugin libflight.so), com o delta:
+// FlightAgentTC, o mesmo plugin libA-4.so), com o delta:
 //
 //   1) falcon1 troca ( BtBehavior ... ) por ( RLBridgeBehavior vote: 50 )
 //      dentro do MESMO UbfArbiter -- o piso de seguranca nativo
@@ -40,7 +40,7 @@
          }
          modules: {
             ( PluginModule
-               file:     "libflight.so"
+               file:     "libA-4.so"
                provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
                            FlightState BtBehavior AltitudeSafetyBehavior
                            RLBridgeBehavior FlightAction }
@@ -100,7 +100,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -170,7 +170,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -215,7 +215,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                            patrolHeading: ( Degrees 180 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 1850 )
                            patrolSpeed: 350.0  rtbAltitude: ( Meters 2100 )  rtbSpeed: 380.0
@@ -245,7 +245,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -290,7 +290,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                            patrolHeading: ( Degrees 270 )  legTime: ( Seconds 45 )
                            legTurn: ( Degrees 120 )  patrolAltitude: ( Meters 2050 )
                            patrolSpeed: 360.0  rtbAltitude: ( Meters 2150 )  rtbSpeed: 380.0
@@ -320,7 +320,7 @@
             interpolateTerrain: true
             components: {
                dynamicsModel: ( JSBSimModel
-                  rootDir: "./dist/share/mixr-plugins/flight/jsbsim/"  model: "A4"  debugLevel: 0
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"  model: "A4"  debugLevel: 0
                )
                pilot: ( Autopilot
                   navMode: false  headingHoldMode: true  altitudeHoldMode: true
@@ -365,7 +365,7 @@
                            minClearance: ( Meters 400 )  recoverClearance: ( Meters 800 )
                         )
                         ( BtBehavior vote: 50
-                           treeFile: "./dist/share/mixr-plugins/flight/flight_tree.xml"
+                           treeFile: "./dist/share/mixr-plugins/A-4/flight_tree.xml"
                            patrolHeading: ( Degrees 0 )  legTime: ( Seconds 60 )
                            legTurn: ( Degrees 90 )  patrolAltitude: ( Meters 2100 )
                            patrolSpeed: 350.0  rtbAltitude: ( Meters 2200 )  rtbSpeed: 380.0

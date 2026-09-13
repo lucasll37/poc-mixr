@@ -6,6 +6,9 @@
 
 #include <string>
 
+namespace mixr {
+namespace models {
+namespace xA_4 {
 namespace bt_nodes {
 
 // Comanda a aeronave com a saida de um script PYTHON -- a peca de
@@ -64,3 +67,6 @@ private:
 };
 
 } // namespace bt_nodes
+} // namespace xA_4
+} // namespace models
+} // namespace mixr

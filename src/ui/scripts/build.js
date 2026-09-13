@@ -18,8 +18,8 @@
 // "Desatualizado" deixa de ser um estado possivel.
 //
 // A ferramenta abre com a arvore VAZIA por padrao -- `preset.json` (o
-// cenario "player maximo" de built-in_mixr_1, o mais rico do repositorio)
-// fica disponivel so' sob demanda, pelo botao "Carregar preset" da UI (ver
+// cenario "player maximo" em tests/fixtures/built-in_mixr_1, o mais rico do
+// repositorio) fica disponivel so' sob demanda, pelo botao "Carregar preset" da UI (ver
 // `loadPresetTree()` em edl_builder.jsx). Ainda assim e' gerado aqui, sempre:
 // e' o mesmo cenario que o passo 4 usa pra se autotestar (round-trip .edl.in
 // -> projeto -> .edl), e carregar-sob-demanda so' funciona se o arquivo
@@ -46,7 +46,7 @@ const ROOT = path.resolve(UI_DIR, "..", "..");
 const CATALOG_PATH = path.join(UI_DIR, "edl_catalog.generated.json");
 const PRESET_PATH = path.join(UI_DIR, "preset.json");
 const PRESET_SOURCE = path.join(
-  ROOT, "src", "poc", "built-in_mixr_1", "configs", "scenario_max_player.edl.in"
+  ROOT, "tests", "fixtures", "built-in_mixr_1", "configs", "scenario_max_player.edl.in"
 );
 
 const GREEN = "\x1b[0;32m";
