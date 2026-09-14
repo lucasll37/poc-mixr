@@ -3,9 +3,9 @@
 # Os .so DE PRODUCAO instalados sao mais novos que o fonte deles?
 #
 # Existe por causa de um efeito colateral da separacao, e ele e silencioso: o
-# meson do host NAO tem aresta de dependencia ate o plugin (ele vem pronto de
+# meson do core NAO tem aresta de dependencia ate o plugin (ele vem pronto de
 # dist/, construido por 'make models', noutro projeto). Sem esta guarda, a
-# suite inteira do host passa contra um plugin VELHO, e uma regressao no
+# suite inteira do core passa contra um plugin VELHO, e uma regressao no
 # modelo fica invisivel -- as assercoes de cenario sao semanticas e grossas.
 #
 # Conferir mtime nao e conhecer o fonte: e conhecer um CAMINHO, exatamente
@@ -26,7 +26,7 @@
 #
 # CORRIGIDO (nao redescobrir o contrario): este comentario chegou a excluir
 # 'template/' daqui, com a justificativa de que ele "nunca e instalado em
-# dist/lib/mixr-plugins/ do host". Medido no disco e no Makefile raiz: e
+# dist/lib/mixr-plugins/ do core". Medido no disco e no Makefile raiz: e
 # falso -- 'make models' builda o template EXPLICITAMENTE (alvo 'models',
 # linha separada da dos modelos de producao) e deposita libtemplate.so/
 # libtemplate_mirror.so em plugins/ igual a qualquer modelo real; 'make
@@ -42,7 +42,7 @@
 # CLAUDE.md) -- exclui-la aqui so escondia que o find nunca a acharia mesmo.
 #
 # Os basenames de .so a checar de CADA modelo vem do PROPRIO './dist' local
-# dele (populado por 'make build'/'make install-host' daquele projeto) -- nao
+# dele (populado por 'make build'/'make install-core' daquele projeto) -- nao
 # de uma lista escrita a mao, que envelheceria em silencio (um modelo futuro
 # pode produzir mais de um artefato, como o template faz hoje com
 # libtemplate.so + libtemplate_mirror.so).
@@ -75,26 +75,26 @@ while IFS= read -r modelo; do
 
    for so_local in "$locais"/*.so; do
       base="$(basename "$so_local")"
-      so_host="dist/lib/mixr-plugins/$base"
+      so_core="dist/lib/mixr-plugins/$base"
       checados=$((checados + 1))
 
-      if [ ! -f "$so_host" ]; then
-         echo "  FALHA $so_host nao existe -- rode 'make install'"
+      if [ ! -f "$so_core" ]; then
+         echo "  FALHA $so_core nao existe -- rode 'make install'"
          fail=1
          continue
       fi
 
-      novo="$(find "$modelo/src" "$modelo/include" "$modelo/configs" -type f -newer "$so_host" 2>/dev/null | head -5)"
+      novo="$(find "$modelo/src" "$modelo/include" "$modelo/configs" -type f -newer "$so_core" 2>/dev/null | head -5)"
       if [ -n "$novo" ]; then
-         echo "  FALHA fonte de $modelo mais novo que $so_host:"
+         echo "  FALHA fonte de $modelo mais novo que $so_core:"
          echo "$novo" | sed 's/^/        /'
-         echo "        rode 'make models' antes de testar o host"
+         echo "        rode 'make models' antes de testar o core"
          fail=1
       fi
    done
 
    # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): os .so de VARIANTE de
-   # teste do host (ex.: libmodel_leak.so/libmodel_variant_{a,b}.so de A-4,
+   # teste do core (ex.: libmodel_leak.so/libmodel_variant_{a,b}.so de A-4,
    # atras da opcao 'variants' -- ver models/players/A-4/meson.build,
    # consumidos por 'memory-controle-negativo'/'plugin-hotswap' em
    # tests/meson.build) NUNCA sao instalados -- so existem direto em
@@ -134,7 +134,7 @@ while IFS= read -r modelo; do
          if [ -n "$novo" ]; then
             echo "  FALHA fonte de $modelo mais novo que $so_build (variante de teste, nunca instalada):"
             echo "$novo" | sed 's/^/        /'
-            echo "        rode 'make -C $modelo build VARIANTS=true' antes de testar o host"
+            echo "        rode 'make -C $modelo build VARIANTS=true' antes de testar o core"
             fail=1
          fi
       done

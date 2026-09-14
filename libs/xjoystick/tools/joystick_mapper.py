@@ -25,7 +25,7 @@ se move -- esse numero e o 'channel:' do eixo. Aperte cada botao para achar
 o 'channel:' dos DIs. Ctrl+C sai.
 
 WSL2: o dispositivo so aparece em /dev/input/jsX depois de anexado com
-usbipd-win (`usbipd attach --wsl --busid <id>` no host Windows) -- ver a
+usbipd-win (`usbipd attach --wsl --busid <id>` no core Windows) -- ver a
 secao 'libs/xjoystick' do CLAUDE.md.
 """
 
@@ -89,7 +89,7 @@ def find_device(index: int) -> str:
         f"nenhum joystick em /dev/js{index} nem /dev/input/js{index}.\n"
         "  Linux nativo: confira `lsmod | grep joydev` e `ls /dev/input/js*`.\n"
         "  WSL2: o USB nao passa por padrao -- anexe com usbipd-win antes\n"
-        "  (`usbipd attach --wsl --busid <id>` no host Windows; ver a secao\n"
+        "  (`usbipd attach --wsl --busid <id>` no core Windows; ver a secao\n"
         "  'libs/xjoystick' do CLAUDE.md)."
     )
 

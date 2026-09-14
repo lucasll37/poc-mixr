@@ -10,7 +10,7 @@ Reaproveita o MIRROR DE CONTRATO do template (models/template,
 libtemplate_mirror.so) fazendo o papel do "terceiro": e um modelo ja
 pronto, compilado, e ja provado suficiente para rodar o cenario de
 producao (ver plugin-modelo-estranho) -- sem ser nenhum dos plugins que o
-host normalmente consome direto de dist_plugins/. Isso isola exatamente a
+core normalmente consome direto de dist_plugins/. Isso isola exatamente a
 variavel que importa aqui: o CAMINHO pelo qual o .so chegou (deposito ->
 copia), nao se o modelo em si e valido (isso quem ja prova e
 plugin-modelo-estranho).

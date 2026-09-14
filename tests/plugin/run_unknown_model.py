@@ -114,7 +114,7 @@ def main():
     # A varredura de radar so passa pelo caminho de TEMPO REAL -- o
     # '-deterministic' nao chama o RealTimeRun. Sem esta parte, a obrigacao de
     # publicar a varredura (CONTRATO.md) ficaria sem verificacao nenhuma para
-    # um modelo estranho: o host degrada em silencio quando ninguem publica.
+    # um modelo estranho: o core degrada em silencio quando ninguem publica.
     acmi = RAIZ / "build" / "tests-recordings" / f"{args.poc}-unknown.acmi"
     fixture_rt = out / f"{args.poc}-unknown-rt.edl.in"
     fixture_rt.write_text(re.sub(r'fileName:\s*"[^"]*\.acmi"',

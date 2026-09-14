@@ -31,7 +31,7 @@ void ExampleAction::copyData(const ExampleAction& org, const bool)
 //------------------------------------------------------------------------------
 // execute() -- as DUAS chamadas obrigatorias estao aqui embaixo. Ver
 // CONTRATO.md secao 3 e o cabecalho deste arquivo. 'xboard' e a UNICA coisa
-// que o modelo e o host compartilham: o modelo escreve, o host (a tela de
+// que o modelo e o core compartilham: o modelo escreve, o core (a tela de
 // status, o dump '-deterministic') so le. Sem elas, o dump sai com
 // 'bt=--'/'dec=0' -- sem erro nenhum, confirmado no proprio
 // models/players/fixtures/stub deste repositorio.

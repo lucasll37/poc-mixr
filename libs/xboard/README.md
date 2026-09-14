@@ -1,13 +1,13 @@
-# `libs/xboard` — o quadro de leitura entre host e modelo
+# `libs/xboard` — o quadro de leitura entre core e modelo
 
 Um mapa `playerId → Readout` (rótulo de comportamento, contagem de decisões, thread do pool de
 tempo crítico (T/C), alerta tático, contadores de datalink, varredura de radar) — a **única**
-coisa que o host executável e o modelo carregado por `dlopen` compartilham.
+coisa que o core executável e o modelo carregado por `dlopen` compartilham.
 
 ## Como se usar
 
 Não há slot de EDL: `xboard` não é uma classe MIXR, é uma API C++ livre, escrita pelo modelo e
-lida pelo host. O que o cenário precisa é só carregar um plugin que a use — o `flight`, por
+lida pelo core. O que o cenário precisa é só carregar um plugin que a use — o `flight`, por
 exemplo, via `PluginModule` (a carga dinâmica em si — o que `PluginLoader`/`PluginModule` fazem —
 é o assunto de [`libs/xplugin/README.md`](../xplugin/README.md); aqui o que importa é só que o
 plugin carregado passa a escrever no quadro):
@@ -45,7 +45,7 @@ xboard::bumpDecisionCount(player->getID());         // conta DECISAO, nao candid
 xboard::setThreadTag(player->getID(), xboard::threadTag());
 ```
 
-**Lado que lê — no host**, para compor `bt=`/`dec=` no dump determinístico
+**Lado que lê — no core**, para compor `bt=`/`dec=` no dump determinístico
 (`app/src/app/DeterministicDump.cpp`) ou o quadro ao vivo da TUI
 (`app/src/app/DashboardState.cpp`). Aqui o `mixr::` é obrigatório: esses arquivos vivem em
 `namespace app { ... }`, fora de `mixr`, então o caminho tem de ser escrito por inteiro:
@@ -64,9 +64,9 @@ Um playerId sem nenhuma escrita ainda devolve `Readout{}` (`label="--"`, `decisi
 
 Outras libs "leves" de `libs/` (`xtacview`, `xclock`, `xjoystick`, `xmsg`, `xplugin`) são
 `static_library()`. `xboard` não pode ser, e o motivo é estrutural, não de gosto: quem **escreve**
-aqui é o modelo, que mora num `.so` carregado com `dlopen`; quem **lê** é o host, que é o
+aqui é o modelo, que mora num `.so` carregado com `dlopen`; quem **lê** é o core, que é o
 executável. Com uma lib estática cada lado ganharia sua **própria cópia** dos mapas — o modelo
-escreveria num, o host leria do outro, e o dump sairia com `bt=--`/`dec=0` para sempre. **Sem erro
+escreveria num, o core leria do outro, e o dump sairia com `bt=--`/`dec=0` para sempre. **Sem erro
 de link, sem crash, sem aviso** — só o número errado, silenciosamente, pra sempre. É a mesma
 armadilha documentada no cabeçalho de `libs/xplugin/PluginAbi.hpp`, e a saída que
 `libs/xplugin/README.md` já registra como a honesta quando um plugin precisa de código
@@ -83,7 +83,7 @@ procura bibliotecas compartilhadas) `$ORIGIN/../lib` dos alvos que a consomem es
 
 Escrita acontece nas threads de tempo crítico — a atuação do UBF roda lá, uma vez por aeronave por
 frame, e com `FlightAgentTC` isso é **N threads do pool escrevendo ao mesmo tempo**. Leitura
-acontece no laço de background do host (o dump/TUI amostra a ~10 Hz). Os seis setters e o `get()`
+acontece no laço de background do core (o dump/TUI amostra a ~10 Hz). Os seis setters e o `get()`
 passam todos pelo MESMO `std::mutex` (o quadro `playerId → Readout`); o mapa em si é minúsculo (4
 entradas na produção — uma por falcon), então a contenção não é o problema que a serialização
 resolve — é a corrupção de `std::string`/campos compostos sob escrita concorrente.
@@ -101,7 +101,7 @@ míssil processados lado a lado no mesmo frame. Com uma única `libxboard.so` co
 
 ## Testes
 
-`tests/domain/test_xboard_concurrency.cpp` (suíte `domain` do **host** — `tests/meson.build`,
+`tests/domain/test_xboard_concurrency.cpp` (suíte `domain` do **core** — `tests/meson.build`,
 `make test`; não confundir com a suíte `domain` do MODELO, dentro de `make test-models`, ver
 [`tests/README.md`](../../tests/README.md)) — nunca tinha teste direto antes
 dele: só validação indireta pelos números `dec=`/`bt=`/`thread=` nos dumps end-to-end. Cobre

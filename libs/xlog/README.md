@@ -6,7 +6,7 @@ precisar de `Station` nem de `.edl`. Não é o `mixr::recorder` — ver o porqu�
 ## Como se usar
 
 Pura API C++, sem factory e sem slot: nenhum cenário declara `libs/xlog`. Um `main.cpp` chama
-`init()` uma vez, cedo, e daí em diante qualquer arquivo do processo — host **ou** plugin
+`init()` uma vez, cedo, e daí em diante qualquer arquivo do processo — core **ou** plugin
 carregado por `dlopen` — só inclui o header e usa a macro:
 
 ```cpp
@@ -72,9 +72,9 @@ alcançaria o lado do plugin, e o modo comparável passaria a emitir linhas com 
 
 Efeito colateral, e é o motivo estrutural do buffer em memória (abaixo): como há **uma** cópia só
 no processo, o `LOG(...)` emitido de dentro do `.so` do modelo cai no **mesmo** buffer que o do
-host. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
+core. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
 `flight_tree.xml` do lugar: as 4 linhas `LOG(ERROR)` de `BtBehavior` (uma por falcon, de dentro de
-`libA-4.so`) aparecem na aba sem código nenhum do lado do host.
+`libA-4.so`) aparecem na aba sem código nenhum do lado do core.
 
 ## O buffer em memória
 
@@ -119,7 +119,7 @@ alinhar o carimbo em coluna própria.
 
 ## Testes
 
-`app/tests/test_log_panel.cpp` (alvo `app-log`, suíte `domain` do **host** — `tests/meson.build`,
+`app/tests/test_log_panel.cpp` (alvo `app-log`, suíte `domain` do **core** — `tests/meson.build`,
 `make test`; não confundir com a suíte `domain` do MODELO, dentro de `make test-models`, ver
 [`tests/README.md`](../../tests/README.md)): ordem do buffer (mais antigo →
 mais novo), `seq` monotônico, descarte do mais antigo passada a capacidade, o desligamento não

@@ -17,7 +17,7 @@ base::Object* factory(const std::string& name);
 // Os nomes de fabrica que este modelo responde, terminado em nullptr.
 //
 // O registro de plugins usa isto ANTES de construir qualquer coisa: para
-// recusar a carga se um nome ja existir na cadeia do host, e para conferir o
+// recusar a carga se um nome ja existir na cadeia do core, e para conferir o
 // 'provides:' declarado no .edl.
 const char* const* factoryNames();
 

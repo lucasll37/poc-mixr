@@ -5,7 +5,7 @@ MIXR — é o arquivo de texto declarativo que descreve um cenário (*players*, 
 sem recompilar nada (ver glossário no [`README.md`](../../README.md) raiz). Esta é uma ferramenta
 gráfica (React, no navegador, sem servidor) para montar um cenário `.edl` do zero ou
 **carregar um `.edl`/`.edl.in` REAL já existente**: arrastar classes de uma paleta completa (todas
-as factories do host, `libs/x*` e os plugins deste repositório), preencher campos e exportar `.edl`
+as factories do core, `libs/x*` e os plugins deste repositório), preencher campos e exportar `.edl`
 válido — sem ler C++ nem decorar a gramática do `edl_parser`.
 
 ## Como se usar

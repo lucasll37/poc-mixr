@@ -3,7 +3,7 @@
 # E' 'include'do, nunca chamado direto.
 #
 # AQUI: as variaveis comuns + clean/check-root/configure/check-organization/help.
-# NO MAKEFILE-FILHO: build/test/install/install-host/uninstall-host (a lista de
+# NO MAKEFILE-FILHO: build/test/install/install-core/uninstall-core (a lista de
 # .so publicada e o diretorio de dados sao por-modelo) e create-bt/update-bt/
 # open-groot (dependem de tools/dump-tree-model, que so existe num modelo que de
 # fato tenha uma arvore de comportamento). O filho os declara DEPOIS do include.
@@ -50,19 +50,19 @@ NC    := \033[0m
 EXTRA_MESON_OPTS ?=
 EXTRA_STALE_KEY  ?=
 
-clean: ## Remove ./build e ./dist LOCAIS -- nao mexe no dist/ do host.
+clean: ## Remove ./build e ./dist LOCAIS -- nao mexe no dist/ do core.
 	rm -rf $(BUILD_DIR) $(DEST_DIR)
 
-check-root: ## Confere que o host ja publicou o SDK (pre-requisito, uma vez).
+check-root: ## Confere que o core ja publicou o SDK (pre-requisito, uma vez).
 	@test -f $(ROOT)/build/conan_meson_native.ini || { \
 		echo "$(RED)faltando $(ROOT)/build/conan_meson_native.ini$(NC)"; \
 		echo "  rode 'cd $(ROOT) && make configure' primeiro (uma vez)."; exit 1; }
 	@test -f $(ROOT)/dist/lib/pkgconfig/poc-mixr-sdk.pc || { \
 		echo "$(RED)faltando o SDK de plugin em $(ROOT)/dist$(NC)"; \
 		echo "  rode 'cd $(ROOT) && make sdk' primeiro (uma vez)."; exit 1; }
-	@echo "$(GREEN)check-root: OK$(NC) -> SDK do host publicado em $(ROOT)/dist"
+	@echo "$(GREEN)check-root: OK$(NC) -> SDK do core publicado em $(ROOT)/dist"
 
-configure: check-root ## meson setup isolado em ./build, consumindo o SDK do host.
+configure: check-root ## meson setup isolado em ./build, consumindo o SDK do core.
 	@mkdir -p $(BUILD_DIR)
 	@# Reconfigurar e caro (~1-2s, reavalia TODAS as dependencias), entao so
 	@# roda se build.ninja ainda nao existe, se BUILD_TYPE/TESTS/EXTRA_STALE_KEY

@@ -77,7 +77,7 @@ std::vector<ClassStat> sampleMetaObjects(const std::vector<ClassStat>& previous)
 {
    std::vector<ClassStat> out;
 
-   // Termometro do host -- mesmas duas classes que app/MetaObjectReport.cpp
+   // Termometro do core -- mesmas duas classes que app/MetaObjectReport.cpp
    // ja usa como sinal geral do parser/EDL.
    appendStat(out, previous, mixr::base::Pair::getMetaObject(), false);
    appendStat(out, previous, mixr::base::String::getMetaObject(), false);

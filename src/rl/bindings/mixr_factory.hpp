@@ -5,7 +5,7 @@
 #include <string>
 
 //------------------------------------------------------------------------------
-// Factory de objetos MIXR deste host -- mesmo padrao de duas funcoes que
+// Factory de objetos MIXR deste core -- mesmo padrao de duas funcoes que
 // app/include/mixr_factory.hpp.
 //
 // mixrFactoryBuiltin()  a cadeia SEM plugin. Devolve nullptr para nome
@@ -18,7 +18,7 @@
 //                       para o porque -- devolver nullptr aqui termina em
 //                       SIGSEGV dentro do edl_parser deste fork).
 //
-// MAIS ENXUTA que a do app/flight de proposito: este host nao usa
+// MAIS ENXUTA que a do app/flight de proposito: este core nao usa
 // ( ClockStation ) (a simulacao e passo-fixo, comandada por
 // NativeSimulation::step(), nunca em tempo real), nem joystick, nem
 // libs/xmsg, nem rede DIS (o cenario de RL e hermetico, mesmo motivo de

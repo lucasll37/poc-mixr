@@ -2,7 +2,7 @@
 //
 // Regra pura: sem MIXR, sem BehaviorTree.CPP, sem Station. A semente entra
 // pronta (a hierarquia de derivacao que a produz e' de BtBehavior::
-// configurePlans(), testada a parte em tests/domain/test_xrandom.cpp do host).
+// configurePlans(), testada a parte em tests/domain/test_xrandom.cpp do core).
 
 #include "domain/AerobaticPlan.hpp"
 

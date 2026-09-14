@@ -83,7 +83,7 @@ protected:
 
 // --- o descritor -------------------------------------------------------------
 
-TEST_F(Modelo, DescritorBateComOHost)
+TEST_F(Modelo, DescritorBateComOCore)
 {
    EXPECT_EQ(desc->abi, mixr::xplugin::PLUGIN_ABI);
    EXPECT_EQ(desc->struct_size, sizeof(PluginDescV1));

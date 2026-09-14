@@ -1,7 +1,7 @@
 # Consulta ao radar NATIVO -- qual e o contato hostil mais proximo.
 #
 # Promovida a shared_library() e a PARTE DO SDK porque e a unica peca disputada
-# pelos dois lados da fronteira: o HOST precisa dela para o 'track='/'trackRange='
+# pelos dois lados da fronteira: o CORE precisa dela para o 'track='/'trackRange='
 # do dump, e o MODELO precisa dela para a percepcao (ubf/FlightState).
 #
 # A alternativa seria compilar o mesmo .cpp dos dois lados. Funciona (as funcoes

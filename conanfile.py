@@ -14,8 +14,8 @@ class MixrHelloConan(ConanFile):
 
     # A BehaviorTree.CPP tem de ser ESTATICA: o plugin do modelo a linka com
     # -Wl,--exclude-libs,ALL para esconder os simbolos dela do .dynsym (ver
-    # models/players/A-4/meson.build); o host nunca a linka, pra nao
-    # duplicar o contador estatico BT::getUID() entre host e plugin.
+    # models/players/A-4/meson.build); o core nunca a linka, pra nao
+    # duplicar o contador estatico BT::getUID() entre core e plugin.
     #
     # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este comentario
     # afirmava que a receita da behaviortree.cpp.asa tem
@@ -89,7 +89,7 @@ class MixrHelloConan(ConanFile):
         para o menos dependente -- a ordem que a linkagem de .a exige -- e e o
         mesmo agregado que os outros geradores do Conan usam."""
         try:
-            dep = self.dependencies.host[name]
+            dep = self.dependencies.core[name]
         except KeyError:
             return
         pc_path = os.path.join(self.generators_folder, f"{name}.pc")

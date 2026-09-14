@@ -25,7 +25,7 @@ Prova de conceito para desenvolver **novos modelos de simulação** sobre o fram
 desenvolvimento — é dependência binária.
 
 > **Se você chegou aqui para escrever um MODELO novo** (a política de decisão de uma aeronave,
-> helicóptero, satélite etc. — não para mexer no host `app/`/`src/`/`libs/`), este arquivo é
+> helicóptero, satélite etc. — não para mexer no core `app/`/`src/`/`libs/`), este arquivo é
 > referência de arquitetura, não o ponto de partida. Comece por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md), que costura, na ordem certa: o gerador de scaffold
 > (`make new-model NAME=... CATEGORY=player|system|others`), o único ponto de partida copiável
@@ -97,21 +97,21 @@ Telemetry** (`libs/xtacview`).
 Toolchain: **Conan 2.x** → **Meson/Ninja** → **Makefile** (orquestra).
 
 **São TRÊS projetos Meson, em três diretórios de build, e a ordem é obrigatória.** O modelo
-(`domain/`, `bt/`, `ubf/`, `xnative/`) não é mais um alvo do host: é um plugin construído numa
-etapa **anterior**, e o host só consome o `.so` instalado.
+(`domain/`, `bt/`, `ubf/`, `xnative/`) não é mais um alvo do core: é um plugin construído numa
+etapa **anterior**, e o core só consome o `.so` instalado.
 
-**`build`/`models` são DECOPLADOS de propósito** — compilar o host não presume nada sobre onde
+**`build`/`models` são DECOPLADOS de propósito** — compilar o core não presume nada sobre onde
 os modelos guardam os artefatos deles, e vice-versa:
 
 ```bash
-make configure   # conan install (Debug) + meson setup do HOST -> build/
+make configure   # conan install (Debug) + meson setup do CORE -> build/
 make sdk         # publica o SDK em dist/{include,lib,lib/pkgconfig}
 make models      # flight (producao) + template (mirror de contrato), autocontidos -> plugins/ (NUNCA dist/)
-make build       # so o HOST (depende so de sdk) -> build/ -- NAO precisa dos modelos pra compilar
-make install     # 'sync-plugins' (plugins/ -> dist/lib+share/mixr-plugins/) + meson install do host -> dist/
+make build       # so o CORE (depende so de sdk) -> build/ -- NAO precisa dos modelos pra compilar
+make install     # 'sync-plugins' (plugins/ -> dist/lib+share/mixr-plugins/) + meson install do core -> dist/
 make test-models # SO a suite do modelo (domain + tree + native) -- delega pro Makefile de cada modelo
-make test        # SO a suite do host (depende de 'install' -- builda/sincroniza o modelo, nao testa ele)
-make clean       # remove os três build/dist locais + dist/ do host + o deposito que 'models' gerou
+make test        # SO a suite do core (depende de 'install' -- builda/sincroniza o modelo, nao testa ele)
+make clean       # remove os três build/dist locais + dist/ do core + o deposito que 'models' gerou
 make help        # lista os alvos (comentários ## do Makefile)
 ```
 
@@ -128,11 +128,11 @@ explicitamente) — **`build`/`install` não puxam `models`** (as duas são deco
 ver "Desacoplando `models` de `dist/`" abaixo); sem `make models` antes, `install` sincroniza um
 `plugins/` vazio (com aviso, sem erro) e nenhum cenário carrega nada. `make configure && make
 test` também precisa de `make models` no meio — `test` encadeia `install`, mas não `models` —,
-roda só a suíte do HOST; a do modelo é `make test-models`, separada; ver "Testes automatizados"
-mais abaixo. `make models` sozinho é o alvo pra mexer só no modelo, sem tocar o host.
+roda só a suíte do CORE; a do modelo é `make test-models`, separada; ver "Testes automatizados"
+mais abaixo. `make models` sozinho é o alvo pra mexer só no modelo, sem tocar o core.
 
 **Armadilha do `--reconfigure`, confirmada rodando — o primeiro `configure` depois de um
-`clean`.** Os dois alvos `configure` deste repositório (o do host, `Makefile`, e o de cada
+`clean`.** Os dois alvos `configure` deste repositório (o do core, `Makefile`, e o de cada
 modelo, `models/common.mk`) chamavam `meson setup --reconfigure` **incondicionalmente** — e essa
 flag **exige** um build tree do Meson já existente: `msetup.py` testa
 `<build>/meson-private/coredata.dat` e, sem o arquivo, aborta com *"Directory does not contain a
@@ -163,7 +163,7 @@ documenta — o guard é correto nas duas versões de qualquer forma.
 próprio, só cenário: `app -folder src/poc -scenario <nome>` (ou `-folder src/poc/dis` para o
 grupo DIS) ou `app -f <arquivo>` apontando direto pro caminho. Não há mais alvo `run-<chave>` por
 poc no Makefile (removido — ver "Estado atual" mais abaixo). `app/src/meson.build` também
-declara dois binários satélite enxutos que reaproveitam o mesmo `mixr_factory.cpp` do host —
+declara dois binários satélite enxutos que reaproveitam o mesmo `mixr_factory.cpp` do core —
 `edlcheck <arquivo>` (valida um `.edl` sem levantar frota/terreno) e `plugininfo` (introspecção
 de um `.so` de plugin, sem `Station` nenhuma) — e `./src/node` (seção própria mais abaixo) é um
 QUARTO binário, peer de `./app` mas deliberadamente independente dele, sem TUI.
@@ -184,7 +184,7 @@ nenhum é erro fatal, não mais um convite a uma tela de seleção implícita; m
 há mais catálogo estático de cenários embutido no binário — toda poc sob `src/poc/**` é alcançada
 por `-folder`.
 
-**A suíte de testes do HOST vive em `tests/`** (`make test`; a do modelo é `make test-models`,
+**A suíte de testes do CORE vive em `tests/`** (`make test`; a do modelo é `make test-models`,
 separada — ver a seção própria mais abaixo). Além dela,
 a verificação de **determinismo** é feita por `tests/determinism/check_determinism.sh <binário>
 <rótulo> [frames] [poc]` (não há mais alvo `make check-<chave>` por poc — removido junto com os
@@ -193,7 +193,7 @@ dumps `frame=` — todos devem ser idênticos. Vale para as **três** pocs que d
 `( FlightAgentTC )` no pool de tempo crítico (`flight`/`python-flight`/`onnx-policy`). O mesmo
 script serve de modelo para validar qualquer poc nova que use multithread.
 
-**AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan no host
+**AddressSanitizer**: `meson configure build -Dasan=true && make build` — liga ASan no core
 (`./app`) e no modelo `flight` (`models/players/A-4`) — os únicos alvos que consomem
 `asan_cpp_args`/`asan_link_args`.
 
@@ -214,7 +214,7 @@ para as outras quatro não é "menos importante", é estrutural — `mixr`/`beha
 alternativa de build a partir do fonte); o Groot **não tem pacote em remoto nenhum** — a única
 forma de tê-lo é `scripts/deps.sh` buildando `deps/groot/conanfile.py`, e é por isso que ele
 entra ali incondicionalmente (sem flag pra pular). Tecnicamente ele não é dependência de **build**
-do host/modelo (nenhum `requires()` do `conanfile.py` da raiz o cita, e o host nunca linka contra
+do core/modelo (nenhum `requires()` do `conanfile.py` da raiz o cita, e o core nunca linka contra
 ele — é um app Qt standalone) — por isso builda só uma vez em Release, fora do laço de
 Debug/Release das outras quatro, não porque seja dispensável. Qt5/ZeroMQ/libdw são pré-requisito
 de **sistema** (`apt install qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev` —
@@ -224,7 +224,7 @@ virou pacote à parte; sem ele o build do Groot quebra em `sidepanel_monitor.cpp
 §5), não `requires()` do Conan — buildar Qt5 do fonte via Conan levaria horas, sem precedente
 aqui.
 
-**Outros alvos do Makefile, fora do fluxo host/modelo acima**: `make open-docs` (a
+**Outros alvos do Makefile, fora do fluxo core/modelo acima**: `make open-docs` (a
 visualização em `docs/`, ver a seção própria) e a família `edl-*`/`new-model` (o editor visual de
 cenário em `src/ui/` e o scaffold de modelo novo, ambos com seção própria mais abaixo).
 
@@ -273,10 +273,17 @@ ou que pareça contraditória:**
 verdade": ler o `.cpp` do framework, não adivinhar pelo header. Ex.: as armadilhas do recorder
 (seção do xtacview) saem de `contexts/src/mixr/src/recorder/DataRecorder.cpp`.
 
-**Atenção:** `contexts/src/` inteiro é **git-ignored** — são cópias locais das árvores de
-fonte, não vêm num clone limpo. Se a pasta não existir, caia nos headers instalados pelo Conan:
-`~/.conan2/p/b/mixr*/p/include/mixr/...`, `~/.conan2/p/b/mixr*/p/include/DataRecord.pb.h` (o
-`.pb.h` gerado fica na **raiz** do include, não em `mixr/recorder/`) e
+**Atenção (corrigido — achado por auditoria, revisão completa do repositório):** `contexts/src/`
+inteiro **é versionado** no próprio repositório — não é git-ignored, ao contrário do que este
+parágrafo afirmava antes (`.gitignore` não tem entrada nenhuma para `contexts`; `git ls-files
+contexts/` lista 975 arquivos rastreados). `CONTRIBUTING.md` já descrevia isso corretamente
+("vendorizado e versionado no próprio repositório"). Por estar sempre presente num clone comum,
+os geradores de `docs/manual/` (`tools/generate_manual_catalog.py`, `extract_class_diagram.py`,
+`extract_execution_chain.py`) leem esse caminho **direto, sem nenhum fallback** para os headers
+do Conan — o "se a pasta não existir, caia nos headers instalados pelo Conan" abaixo é a
+orientação para uma pessoa investigando manualmente, não um caminho que o código de fato
+implementa: `~/.conan2/p/b/mixr*/p/include/mixr/...`, `~/.conan2/p/b/mixr*/p/include/
+DataRecord.pb.h` (o `.pb.h` gerado fica na **raiz** do include, não em `mixr/recorder/`) e
 `<prefix>/include/behaviortree_cpp_v3/`. Em caso de divergência entre a árvore de `contexts/src/`
 e o pacote Conan, **quem vale é o pacote** — é ele que está linkado.
 
@@ -333,8 +340,8 @@ dos binários próprios que existiam antes (600 frames, `-threads 2`).
 
 > **O MODELO não está aqui.** `domain/`, `bt/`, `ubf/` e `xnative/` moram em
 > `models/players/A-4/`, um projeto Meson independente construído numa etapa **anterior**
-> (`make models`) e carregado com `dlopen`. O host só consome o `.so` — ver, mais abaixo, a seção
-> "O MODELO é um plugin, construído numa etapa PRÉVIA". A guarda `tests/guard/check_host_opaco.sh`
+> (`make models`) e carregado com `dlopen`. O core só consome o `.so` — ver, mais abaixo, a seção
+> "O MODELO é um plugin, construído numa etapa PRÉVIA". A guarda `tests/guard/check_core_opaco.sh`
 > trava esse invariante.
 
 Regra geral: "o que fazer" mora em `domain/`; "como conectar" mora nas factories/adaptadores;
@@ -419,12 +426,12 @@ no WSL2 o loopback depende de localhost forwarding — se falhar, use `hostname 
 das configs (`flight`/`bandit`) declara o slot `host:`, então o `TacviewOutput` já sobe no default `"0.0.0.0"`:
 o servidor já escuta em qualquer interface, o que falta é só o caminho de rede até a porta.
 
-- **Linux nativo:** `hostname -I`/`ip addr show` no host dá o IP da LAN de verdade (não o
+- **Linux nativo:** `hostname -I`/`ip addr show` no core dá o IP da LAN de verdade (não o
   interno de VM nenhuma); libere a porta no firewall se houver um ativo (`ufw allow 1234/tcp` ou
   equivalente da distro); a outra máquina conecta em `<IP-da-LAN>:1234`.
 - **Binário dentro do WSL2 — tem um salto a mais.** `hostname -I` **dentro** do WSL2 devolve o IP
   interno da rede NAT da VM (tipicamente `172.x.x.x`) — **não alcançável** de outra máquina da
-  LAN, mesmo com o Windows nela. É preciso encaminhar a porta no **Windows host**, como
+  LAN, mesmo com o Windows nela. É preciso encaminhar a porta no **Windows core**, como
   Administrador:
   ```powershell
   netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=1234 connectaddress=<IP-WSL2> connectport=1234
@@ -568,7 +575,7 @@ não erro fatal, mesmo raciocínio do `clockStationOf`).
    (achado por auditoria, `gain: -1.0` desde então; não verificado com joystick físico depois da
    troca — conferir a sensação do manete antes de confiar cegamente).
 5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
-   operacional: em WSL2 é preciso `usbipd-win` no host Windows
+   operacional: em WSL2 é preciso `usbipd-win` no core Windows
    (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da
    VM. Em Linux nativo basta o módulo de kernel `joydev` carregado (a maioria das distros já
    carrega ao conectar o dispositivo).
@@ -673,7 +680,7 @@ colorir por nível e alinhar o carimbo em coluna própria.
 - **O motivo estrutural, e o que ele dá de graça:** `xlog` é `shared_library()` (a razão original
   está acima: `setLoggingEnabled(false)` tem de alcançar o lado do plugin), então há **uma cópia
   só no processo** — o `LOG(...)` do MODELO, que mora num `.so` aberto por `dlopen`, cai no MESMO
-  buffer que o do host. **Confirmado rodando**: com `flight_tree.xml` removido do lugar, as 4
+  buffer que o do core. **Confirmado rodando**: com `flight_tree.xml` removido do lugar, as 4
   linhas `LOG(ERROR) "[BtBehavior] falha ao carregar a arvore"` (uma por falcon, de dentro de
   `libflight.so`) aparecem na aba Log do `app` sem nenhuma ponte extra.
 - **`setConsoleEnabled(bool)` é novo e separado de `setLoggingEnabled(bool)`**: desliga só a cópia
@@ -694,7 +701,7 @@ compilado no pacote Conan `mixr/1.0.5` — não existe neste clone.
 
 **Header-only, ao contrário das seis `shared_library()` de `libs/`** (`xboard`/`xlog`/
 `xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) **e de `events/`** (a sétima, dentro de `models/` — ver
-`models/events/README.md` para o porquê de não estar em `libs/`). Essas sete existem porque host e
+`models/events/README.md` para o porquê de não estar em `libs/`). Essas sete existem porque core e
 plugin precisam compartilhar UMA cópia de estado mutável em tempo de execução através do `dlopen`
 (ex.: `xlog::setLoggingEnabled()` tem que alcançar o `.so` do modelo). Derivação de semente não tem esse
 requisito — `seed` entra, número sai, sem estado global nenhum — então vira só mais um
@@ -881,7 +888,7 @@ recompilar. Portas próprias (Tacview **1237**, DIS **3004**), então roda ao la
 (o interpretador embarcado) e `bt/nodes/PyDecideAction` (o nó `( PyDecide )`) já existiam; o que
 faltava era uma poc **completa** em cima deles. O que havia antes era um `flight_tree_py.xml` de
 exemplo no `models/players/A-4`, com um nó e um script de dez linhas, exercitado só pelo teste
-`scenario-policy-python` — não havia como *rodar* e olhar no Tacview. O host desta pasta é cópia
+`scenario-policy-python` — não havia como *rodar* e olhar no Tacview. O core desta pasta é cópia
 do da `flight` com caminhos e banner trocados.
 
 **A divisão é deliberada: CONDIÇÃO em C++, AÇÃO em Python.** `configs/flight_tree_python.xml` tem a
@@ -981,9 +988,9 @@ lado das outras três.
 `unscaleCommand()` de `libs/xrlbridge` já existiam; o que faltava era uma poc **completa** em
 cima deles. O que havia era um `flight_tree_onnx.xml` de exemplo no `models/players/A-4`, apontando para
 um `.onnx` de **pesos aleatórios**, exercitado só pelo teste `scenario-policy-onnx`: dava para
-provar que a cadeia funciona, não para voar com ela. O host é cópia do da `flight` com
+provar que a cadeia funciona, não para voar com ela. O core é cópia do da `flight` com
 caminhos e banner trocados (na época, com a guarda `check_duplication.sh` cobrando a igualdade byte
-a byte; hoje não há host por poc — ver "Estrutura de um subprojeto").
+a byte; hoje não há core por poc — ver "Estrutura de um subprojeto").
 
 **Uma folha só, e não quatro como na `python-flight` — a diferença é conceitual.** Um script é uma
 regra que você escreve por ramo, então preservar a forma da árvore de produção faz sentido; uma
@@ -1052,7 +1059,7 @@ threads T/C, com as quatro aeronaves inferindo em paralelo sobre **uma** sessão
 medido em `libs/xinfer` para este mesmo MLP).
 
 **Duas guardas foram generalizadas** ao acrescentar esta poc, pelo mesmo motivo já registrado em
-`check_host_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` — desde então
+`check_core_opaco.sh` (lista fixa envelhece em silêncio): `check_duplication.sh` — desde então
 aposentada, ver "Estrutura de um subprojeto" — descobria as gêmeas
 por `find` (toda pasta de `src/poc/` com `src/app/Fleet.cpp` — o critério exclui a `bandit`
 sozinha, que não tem frota) e `check_falcons_estrutura.sh` varre `src/poc/*/configs/scenario.edl.in`
@@ -1152,14 +1159,14 @@ aeronave nunca alcançaria: o dump sai idêntico ao do controle negativo.
 
 ## Testes automatizados (`tests/`)
 
-`make test` roda a suíte do HOST (`meson test -C build`); exige `configure` com `-Dtests=true`.
+`make test` roda a suíte do CORE (`meson test -C build`); exige `configure` com `-Dtests=true`.
 Builda e sincroniza o(s) modelo(s) antes (via `install` — os testes que rodam binário precisam do
 `.so` em `dist/`), mas não roda a suíte deles — essa é `make test-models`, um alvo separado que
 delega para o Makefile autocontido de cada modelo (`domain`/`tree`/`native`). CI
 (`.gitlab-ci.yml`, job `test`) roda os dois. O framework
 é o **GTest**, declarado como `test_requires` no `conanfile.py` — nenhum binario da aplicacao
 linka gtest. Oito camadas, da mais isolada para a mais integrada — as três primeiras (`domain`/
-`tree`/`native`) são do MODELO, rodadas por `make test-models`; as cinco seguintes são do HOST,
+`tree`/`native`) são do MODELO, rodadas por `make test-models`; as cinco seguintes são do CORE,
 rodadas por `make test`:
 
 | suite | o que prova | custo |
@@ -1171,7 +1178,7 @@ rodadas por `make test`:
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads (mais uma repeticao de 4, prova de reprodutibilidade na MESMA configuracao) — todo agente decide via `( FlightAgentTC )`, inclusive com a politica em Python | 4 execucoes por poc |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`plugins/`) | 6 testes, ~3 s |
-| `guard` | invariantes estruturais: o host **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 4 testes, instantaneo |
+| `guard` | invariantes estruturais: o core **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 4 testes, instantaneo |
 
 > A guarda **`duplicacao`** foi aposentada quando o `./app` virou o runner unico: ela travava a
 > igualdade byte a byte da camada de aplicacao entre as pocs gemeas, e essa camada nao existe mais
@@ -1348,17 +1355,17 @@ discretos "no instante exato" — o que se alcança é o que se deriva por amost
 
 ### O MODELO é um plugin, construído numa etapa PRÉVIA
 
-**`src/poc/<poc>/` é só o host.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
-em `models/players/A-4/`, que é um **projeto Meson independente**, construído antes do host
-(`make models`). O host só consome o `.so` instalado em `dist/lib/mixr-plugins/` — mas
+**`src/poc/<poc>/` é só o core.** `domain/`, `bt/`, `ubf/` e `xnative/` **não estão em `src/`** — moram
+em `models/players/A-4/`, que é um **projeto Meson independente**, construído antes do core
+(`make models`). O core só consome o `.so` instalado em `dist/lib/mixr-plugins/` — mas
 `make models`, sozinho, **não escreve ali**: deposita em `plugins/` (decoplado de
 propósito de `dist/`), e é `make install` quem sincroniza os dois. Ver "Desacoplando `models` de
 `dist/`" logo abaixo.
 
 Isso não é arrumação: é o que torna **verificável** o cenário de um terceiro entregar só o binário.
-Enquanto o modelo era um alvo do host, o `files()` dele listava os 24 `.cpp` e o `meson setup` do
-host exigia o fonte — o oposto do que se queria provar. A guarda
-`tests/guard/check_host_opaco.sh` trava o invariante.
+Enquanto o modelo era um alvo do core, o `files()` dele listava os 24 `.cpp` e o `meson setup` do
+core exigia o fonte — o oposto do que se queria provar. A guarda
+`tests/guard/check_core_opaco.sh` trava o invariante.
 
 ```
 models/
@@ -1415,7 +1422,7 @@ models/
 > → `'A-4'`, `libflight.so` → `libA-4.so`, `plugins/data/flight/`/`mixr-plugins/flight/` →
 > `.../A-4/`, `MIXR_PLUGIN_DEFINE("flight", ...)` → `"A-4"` — em todo cenário de produção e sandbox
 > que carrega esse plugin, docs operacionais (`README.md`, `CONTRIBUTING.md`, os do próprio
-> modelo) e nos testes do host que afirmavam sobre o nome antigo (`tests/plugin/test_plugin_load.cpp`,
+> modelo) e nos testes do core que afirmavam sobre o nome antigo (`tests/plugin/test_plugin_load.cpp`,
 > os demais já usavam o nome do **poc** `flight`, que é outra coisa — ver abaixo — e não mudou).
 > Na mesma passada, `A-4` ganhou o teste de "contrato" (`tests/check_contract.sh`, suíte
 > `contract`) que `models/template/` e todo modelo gerado depois dele já tinham — faltava aqui pela
@@ -1491,8 +1498,8 @@ do `meson.build` daquele modelo (o descritor de plugin nao carrega versao nenhum
 COMMIT, nunca da mensagem** -- todo commit deste repositorio se chama "up". O `Makefile` de cada
 um é **autocontido**: `cd models/<nome> && make` configura, compila e instala em `./dist` -- a
 raiz DAQUELE projeto, nao a raiz do `poc-mixr` -- sem chamar o Makefile raiz. O unico
-pre-requisito e o SDK que o host publica uma vez (`make configure && make sdk`, na raiz); dai em
-diante cada modelo se basta, e `make install-host` (o unico alvo que escreve fora do `./dist`
+pre-requisito e o SDK que o core publica uma vez (`make configure && make sdk`, na raiz); dai em
+diante cada modelo se basta, e `make install-core` (o unico alvo que escreve fora do `./dist`
 local) deposita em `plugins/` da raiz -- **nao** em `dist/`, ver o "porque" logo abaixo. O
 fluxo orquestrado da raiz (`make models`, usado por CI e pelo dia a dia) continua sendo a forma
 canonica de construir os dois de uma vez (flight + template) -- o Makefile por projeto e para
@@ -1505,7 +1512,7 @@ carrega o que é **genuinamente idêntico** entre `models/players/A-4/Makefile` 
 `models/template/Makefile`: o bloco de variáveis e os alvos `check-root`/`configure`/
 `clean`/`help` — ~90 linhas que já tinham começado a divergir em REDAÇÃO (não em lógica) entre
 os dois antes da extração, o sintoma exato que uma fonte única evita. `build`/`test`/`install`/
-`install-host`/`uninstall-host` (a lista de `.so` publicada e o diretório de dados são
+`install-core`/`uninstall-core` (a lista de `.so` publicada e o diretório de dados são
 por-modelo de propósito) e `create-bt`/`update-bt`/`open-groot` continuam no Makefile de cada um,
 declarados **depois** do `include $(ROOT)/models/common.mk`. Esses três **já foram exclusivos do
 A-4**; hoje o `template` também os declara, com o mesmo texto — então todo modelo gerado por
@@ -1534,7 +1541,7 @@ string `"C130FlightAgentTC"`, para não colidir com o nome de fábrica que `A-4`
 obrigação de escrever no `xboard` (seção 3 do CONTRATO, "a obrigação que falha em silêncio"), a
 versão do `CHANGELOG.md` batendo com `version:` do `project()`, as cinco peças, `plugin.cpp` como
 fronteira fina, cada camada com a suíte de teste correspondente, e todo `.cpp` de `src/`
-referenciado em algum `meson.build`. Ao contrário de `build`/`test`/`install-host`, o script em si
+referenciado em algum `meson.build`. Ao contrário de `build`/`test`/`install-core`, o script em si
 **não** fica no Makefile-filho: é uma cópia byte a byte de `tools/check_organization.py` em cada
 projeto de modelo (nasce assim em `models/template/`, propagado por `make new-model`), auto-descrita
 no próprio cabeçalho como agnóstica ao nome do modelo — deriva o namespace/artefato esperado de
@@ -1626,7 +1633,7 @@ prosa nos mesmos lugares da passada anterior.
 `A-4`) e o `template` (mirror de contrato) -- e, na pratica, qualquer projeto de modelo sob
 `models/`, ja que o alvo `models` da raiz descobre por `find` (ver "O MODELO é um plugin,
 construído numa etapa PRÉVIA" mais acima) -- via o
-`install-host` de cada um, depositam SO em `plugins/` (lib, flat) e
+`install-core` de cada um, depositam SO em `plugins/` (lib, flat) e
 `plugins/data/<nome>/` (ex.: `plugins/data/A-4/`, a arvore + a aeronave, unica excecao ao
 deposito flat) -- o MESMO
 lugar que um `.so` de terceiro ja usava (ver a secao `plugins/` mais abaixo). Dali em
@@ -1635,12 +1642,12 @@ so viram visiveis a um cenario quando `make install` roda o alvo `sync-plugins`,
 `plugins/*.so` -> `dist/lib/mixr-plugins/` e `plugins/data/` ->
 `dist/share/mixr-plugins/`.
 
-**Por que**: compilar um modelo nunca precisou saber onde o HOST guarda os artefatos dele --
+**Por que**: compilar um modelo nunca precisou saber onde o CORE guarda os artefatos dele --
 `dlopen()` so acontece em tempo de EXECUCAO, nunca em tempo de compilacao. Escrever direto em
 `dist/` (o design anterior) acoplava as duas coisas sem necessidade: um `make models` sozinho ja
-"contaminava" o estado de instalacao do host, mesmo que ninguem fosse rodar nada. Com o deposito
-intermediario, `make build` (so compila o host) nunca precisa dos modelos, e `make models` (so
-compila os modelos) nunca precisa saber que o host existe -- so `make install` (e os alvos que
+"contaminava" o estado de instalacao do core, mesmo que ninguem fosse rodar nada. Com o deposito
+intermediario, `make build` (so compila o core) nunca precisa dos modelos, e `make models` (so
+compila os modelos) nunca precisa saber que o core existe -- so `make install` (e os alvos que
 dependem dele: `test`, `run-*`, `check-*`) une os dois, no unico momento em que a uniao importa
 de verdade: alguem vai RODAR algo.
 
@@ -1652,7 +1659,7 @@ deposito FRESCO antes de sincronizar exige as DUAS chamadas, em sequencia, sempr
 mudou (`test-asan` e o exemplo vivo: `make models ASAN=true` builda o modelo instrumentado, so
 depois `make sync-plugins ASAN=true` copia pra `dist/` -- chamar so a segunda copiaria o `.so`
 JA existente e daria "asan: OK" sem instrumentacao nenhuma). `ASAN=true`/`ASAN=false` por linha
-de comando tem de propagar corretamente ate o `install-host` de `models/players/A-4` nos dois
+de comando tem de propagar corretamente ate o `install-core` de `models/players/A-4` nos dois
 casos -- confirmado funcionando.
 
 **A duplicação entre as gêmeas foi dissolvida por construção, e depois foi além disso.** O modelo
@@ -1670,7 +1677,7 @@ próprio `domain/`/`bt/` deste modelo é calibrado **para o A-4 Skyhawk** especi
 anti-CFIT (~330 m por engajamento, ver a seção "Terreno" abaixo), os limiares de combustível —
 trocar de aeronave sem recalibrar o modelo já não faria sentido. `install_subdir()` publica
 `data/jsbsim/` em `plugins/data/A-4/jsbsim/` junto com `flight_tree.xml` (via
-`install-host` de `models/players/A-4/`) e dali para `dist/share/mixr-plugins/A-4/jsbsim/` (via
+`install-core` de `models/players/A-4/`) e dali para `dist/share/mixr-plugins/A-4/jsbsim/` (via
 `sync-plugins`, parte de `make install`), e **todo** `rootDir:` de `( JSBSimModel )` nos dois
 cenários — inclusive o de `src/poc/dis/bandit`, que não carrega o plugin nenhum, mas pilota a mesma
 aeronave — aponta para lá. `make install` encadeia `build` → `sync-plugins`, mas **não** `models`
@@ -1695,11 +1702,11 @@ silêncio — não antes de compilar, que não precisa dele.
 
 ### O SDK de plugin
 
-Publicado pelo projeto do host em `dist/`: o contrato (`xplugin/PluginAbi.hpp`, header-only) e as
+Publicado pelo projeto do core em `dist/`: o contrato (`xplugin/PluginAbi.hpp`, header-only) e as
 **seis `.so` que atravessam a fronteira** — `libxboard` (o quadro de leitura), `libxlog`,
 `libxtrack` (o `TrackQuery` — o **contato detectado**, disputado pelo `track=` do dump e pela
 percepção do modelo; não confundir com o `RadarScan`, que é o **apontamento da antena** e é do
-modelo), `libxrlbridge` (o comando/observação entre o host de RL — `src/rl/bindings/` — e
+modelo), `libxrlbridge` (o comando/observação entre o core de RL — `src/rl/bindings/` — e
 `ubf::RLBridgeBehavior`, ver a seção `src/rl` mais abaixo), e as duas mais recentes,
 `libxinfer`/`libxpyembed` (decisão por ONNX/Python dentro do frame — ver a seção própria mais
 abaixo). Mais um `poc-mixr-sdk.pc`, que é como o projeto do modelo o consome.
@@ -1716,7 +1723,7 @@ espalhado e não escrito: os 9 nomes de fábrica **e os slots deles**, as classe
 e — a mais fácil de esquecer — o dever de **escrever no `xboard`**.
 
 O cenário de falha que motivou o conserto: um terceiro entrega um `.so` que responde pelos 9 nomes,
-deriva das bases certas, mas nunca chama o `xboard`. O host sobe, o cenário parseia, os aviões voam
+deriva das bases certas, mas nunca chama o `xboard`. O core sobe, o cenário parseia, os aviões voam
 pelo `Autopilot` nativo — e o dump sai com `bt=--` e `dec=0` **com todos os outros testes verdes**.
 
 Duas peças fecham isso:
@@ -1736,7 +1743,7 @@ Duas peças fecham isso:
 
 **Armadilhas confirmadas rodando — não redescobrir:**
 
-1. **A BehaviorTree.CPP é ESTÁTICA** (`.a`, 35 MB, 447 símbolos `T` globais). O host largou
+1. **A BehaviorTree.CPP é ESTÁTICA** (`.a`, 35 MB, 447 símbolos `T` globais). O core largou
    `behavior_tree_dep` (linkada dos dois lados duplicaria o contador de `BT::getUID()`), e o alvo
    do plugin **precisa de `-Wl,--exclude-libs,ALL`** — `gnu_symbol_visibility: 'hidden'` **não se
    aplica a objetos vindos de um `.a`**. Medido: com a flag, o `.so` de 11 MB exporta **um** símbolo.
@@ -1749,7 +1756,7 @@ Duas peças fecham isso:
    `false`. Com duas suítes em dois diretórios de build, perder uma seria um verde silencioso — por
    isso `make test`/`make test-models` conferem a contagem com `meson introspect --tests` antes de
    rodar. Medido nos dois lados: `meson test` rc=0 com 0 testes, e a guarda pega.
-5. **O host não tem aresta Meson até o `.so`** (ele vem de `dist/`, de outro projeto), então o
+5. **O core não tem aresta Meson até o `.so`** (ele vem de `dist/`, de outro projeto), então o
    frescor é afirmado à mão por `tests/guard/check_modelo_fresco.sh`. Sem isso a suíte inteira passa
    contra um plugin velho.
 6. **`app/MetaObjectReport` é estruturalmente cego para classe de plugin** — `reportClass<T>()` é
@@ -1767,10 +1774,10 @@ de `flight` saiu **byte-idêntico** ao de antes de existir plugin nenhum.
 executável não fora tocado. A propriedade de runtime que ele media já é afirmada por
 `plugin-hotswap` (suíte `plugin`, dentro de `make test`), com a **mesma** fixture e a mesma
 comparação de `hdg=` do falcon1; e o "rebuildar só o `.so` não toca o executável" é verdadeiro por
-**construção**, não uma propriedade que possa regredir em silêncio — host e modelo são projetos
+**construção**, não uma propriedade que possa regredir em silêncio — core e modelo são projetos
 Meson separados, em árvores de build separadas (`build/` × `models/players/A-4/build/`), sem aresta
 possível entre eles, e o invariante estrutural por trás disso já é cobrado por
-`check_host_opaco.sh`. Em troca, o alvo editava fonte **versionado** com `sed -i` (restaurado só
+`check_core_opaco.sh`. Em troca, o alvo editava fonte **versionado** com `sed -i` (restaurado só
 por um `trap EXIT` — um `Ctrl+C` na hora errada deixava o sentido invertido no working tree),
 sobrescrevia `dist/lib/mixr-plugins/libflight.so` à mão com três passos de restauração terminados
 em `|| true`, e escrevia em `/tmp` (contra a armadilha 9 de "Testes automatizados"). O
@@ -1792,7 +1799,7 @@ subprojeto" acima, "Uma poc não tem código"). Reescrita para o regime atual:**
    não há `meson.build` de grupo para editar (`src/poc/dis/` não tem um).
 2. No `.edl.in`, o bloco `( PluginLoader )`/`( PluginModule )` de sempre, como primeira entrada de
    `components:` — `mixr::xplugin::factory`/`mixr::xplugin::loadedFactory` já estão encadeadas no
-   **único** `mixr_factory.cpp` do host (`app/src/mixr_factory.cpp`); nenhuma poc precisa da
+   **único** `mixr_factory.cpp` do core (`app/src/mixr_factory.cpp`); nenhuma poc precisa da
    própria factory. Mesmo vale para Tacview: `dataRecorder:`/`dataLogTime:` são config do `.edl`,
    não C++ — `mixr::xtacview::factory`/`mixr::recorder::factory` já estão na mesma cadeia.
 3. Nada a registrar — não há mais catálogo estático de cenários no `./app` (ver `CONTRIBUTING.md`
@@ -1919,7 +1926,7 @@ percorria. Travado por `scenario-app-quit-dis`.
 
 **Duas decisões de arquitetura, e o "porquê" de cada uma:**
 
-- **FTXUI é a primeira dependência nova do HOST** nesta série de mudanças (as anteriores só
+- **FTXUI é a primeira dependência nova do CORE** nesta série de mudanças (as anteriores só
   acrescentaram plugins). `conanfile.py` pede só `self.requires("ftxui/7.0.3")` — o `.pc` do
   Conan (`build/ftxui.pc`) encadeia os três componentes da lib (`screen`/`dom`/`component`) via
   `Requires:`, então `dependency('ftxui', method: 'pkg-config')` sozinho já resolve tudo (conferido
@@ -2415,7 +2422,7 @@ tamanho fixo — não pula mais de layout ao navegar entre as opções.**
   nunca chama `FlightAction::execute()`) continua em `-`, também honesto: ele não decide nada
   localmente. Redundante mas inofensivo pra `FlightAgentTC` (que já escrevia o mesmo valor um
   passo antes) — não foi removido de lá pra não arriscar `lastThreadTag`/testes que já lêem esse
-  membro. Precisou rebuildar o PLUGIN (`make models`), não o host — o campo é do modelo.
+  membro. Precisou rebuildar o PLUGIN (`make models`), não o core — o campo é do modelo.
 - **`app/src/app/DashboardLoop.cpp`**: o badge do cabeçalho principal, `text(" dashboard ")`,
   virou `text(" app ")` — o nome público do binário/pasta desde a quinta passada, nunca
   atualizado na PRÓPRIA interface até agora. **`app/src/app/ScenarioPickerScreen.cpp`**: o título
@@ -2711,7 +2718,7 @@ flutuando longe do limite inferior da janela).**
   compilado fora deste repositório (outra equipe, outro fornecedor), entra na pasta e
   `make models` só COPIA pra `dist/lib/mixr-plugins/`, o mesmo lugar onde `libflight.so`/
   `libmissile.so`/`libstub.so` são instalados. Dali em diante, um cenário carrega esse `.so`
-  pelo MESMO mecanismo `( PluginModule file: "..." provides: {...} )` — nenhuma mudança no host
+  pelo MESMO mecanismo `( PluginModule file: "..." provides: {...} )` — nenhuma mudança no core
   pra reconhecer um plugin de terceiro, porque `PluginModule`/`dlopen` já eram agnósticos a quem
   compilou o `.so`, só o CONTRATO (`libs/xplugin/PluginAbi.hpp`) importa.
   - `README.md` da pasta aponta pro mesmo `models/players/fixtures/stub/docs/CONTRATO.md` que já
@@ -2733,7 +2740,7 @@ flutuando longe do limite inferior da janela).**
   - **ATUALIZAÇÃO (passada posterior, ver "Desacoplando `models` de `dist/`" em "O MODELO é um
     plugin, construído numa etapa PRÉVIA")**: `make models` **não copia mais direto pra
     `dist/lib/mixr-plugins/`** — flight/missile/stub passaram a depositar NESTA MESMA pasta
-    (`models/plugins/`, via `install-host` de cada um), e é `make install` (alvo `sync-plugins`)
+    (`models/plugins/`, via `install-core` de cada um), e é `make install` (alvo `sync-plugins`)
     quem copia `models/plugins/*.so` pra `dist/`. O mecanismo de depósito de terceiro descrito
     acima continua **idêntico** — só ganhou companhia: um `.so` de terceiro e um compilado por
     este repositório são indistinguíveis a partir do momento em que os dois estão em
@@ -2799,7 +2806,7 @@ chega em disco.**
   `tests/meson.build`, suíte `plugin`)** — reusa o STUB (`models/players/fixtures/stub`) fazendo o papel
   do "terceiro": já é um modelo pronto, compilado, e já provado suficiente pra rodar o cenário
   de produção (é o mesmo `.so` que `plugin-modelo-estranho` já usa) — sem ser nenhum dos plugins
-  que o host normalmente consome direto de `dist/lib/mixr-plugins/`. Isso isola exatamente a
+  que o core normalmente consome direto de `dist/lib/mixr-plugins/`. Isso isola exatamente a
   variável que importava provar: o CAMINHO pelo qual o `.so` chegou (depósito → cópia), não se o
   modelo em si é válido (isso quem já prova é `plugin-modelo-estranho`).
 - **Copia o `.so` pra `models/plugins/` com um nome DISTINTO de qualquer plugin real**
@@ -3455,7 +3462,7 @@ numeração de thread não podia continuar PRIVADA de cada `.so`.**
   qual plugin veio o player.
 - **O teste que existia para `xnative::threadTag()`** (`ThreadTag.EstavelNaMesmaThreadEDistintoEntreThreads`,
   na suíte `native` do flight) **mudou de casa** para `tests/domain/test_xboard_concurrency.cpp`
-  (suíte `domain`, nível host) — não porque o teste tenha mudado de forma, mas porque a
+  (suíte `domain`, nível core) — não porque o teste tenha mudado de forma, mas porque a
   função testada não é mais propriedade do flight; é da SDK, e o teste correto mora perto
   de onde `xboard` já tem sua bateria de concorrência.
 - **Testado**: `test-xboard-concurrency` (9/9, incluindo o teste movido) e `test-native` do
@@ -3668,10 +3675,18 @@ manter os dois era redundância, não flexibilidade.
   `-folder src/poc`, ou `-folder ./sandbox` nas cópias de `sandbox/`), mais `app/README.md` (reescrita
   das seções 3 e 5), `README.md`/`CONTRIBUTING.md`/`models/README.md` (§4.1 deixou de ser "registrar
   no catálogo" e virou "nada a registrar"), `models/template/docs/PRIMEIROS-PASSOS.md`,
-  `.claude/rules/{host-app-src,models-plugin}.md`, `scripts/models.sh` e comentários do `Makefile`/
-  `src/poc/meson.build`. **Não tocado, de propósito**: `docs/presentation/index.html` — slide deck
-  órfão (nenhum alvo `make` o gera nem o abre), e as passadas anteriores desta seção, que são
-  diário e descrevem o que era verdade NA ÉPOCA, não o estado atual.
+  `.claude/rules/{core-app-src,models-plugin}.md`, `scripts/models.sh` e comentários do `Makefile`/
+  `src/poc/meson.build`. **Não tocado, de propósito**: `docs/presentation/index.html` — NA ÉPOCA
+  desta passada, slide deck órfão, sem alvo `make` que o gerasse ou abrisse (ver a correção
+  abaixo) —, e as passadas anteriores desta seção, que são diário e descrevem o que era verdade
+  NA ÉPOCA, não o estado atual.
+
+  > **Correção (achado por auditoria de documentação, não uma nova passada de trabalho):** o
+  > Makefile já tem `open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide
+  > deck).` — o deck deixou de ser inteiramente órfão. O alvo só **abre**, não regenera
+  > (`index.html` continua escrito à mão e versionado, ao contrário do de `docs/manual/`), e o
+  > próprio comentário do alvo já marca a situação como temporária ("remover quando a
+  > apresentação saída de uso").
 - **Verificado rodando** (não só compilando): `app-scenario-folder`, `scenario-folder`,
   `scenario-bad-args`, `scenario-app-quit` e `scenario-app-quit-dis` — as cinco verdes depois da
   migração para `-folder`. A suíte completa foi disparada em paralelo à escrita desta passada;
@@ -3799,7 +3814,7 @@ eram os 3 placeholders `@<>@`.
 
 ## `src/node` — runner headless e independente de um cenário
 
-Quarto binário do host (depois de `app`, `edlcheck`, `plugininfo`), mas de natureza diferente dos
+Quarto binário do core (depois de `app`, `edlcheck`, `plugininfo`), mas de natureza diferente dos
 três: **super enxuto**, roda **uma simulação passada por argumento** (`./dist/bin/node
 <arquivo.edl|.edl.in>`, mesma convenção de `edlcheck <arquivo>`), em tempo real, sem TUI — na
 tela só aparecem linhas de log (`LOG(...)` de `libs/xlog`, já ligado no console por padrão; nada
@@ -3865,13 +3880,13 @@ log criado em `data/logs/` da própria fixture, `SIGTERM` encerra em ~40 ms com 
 ClockStation )` + `networks:` de verdade) — o `dynamic_cast` para `ClockStation` resolve sem
 aviso de fallback, mesmo comportamento de encerramento limpo.
 
-**Nota de transparência**: `.claude/rules/host-app-src.md` cita "`./app` é o runner único das
+**Nota de transparência**: `.claude/rules/core-app-src.md` cita "`./app` é o runner único das
 pocs" como o invariante mais repetido deste repositório — mas essa regra é sobre
 `src/poc/<nome>/` (cada pasta de cenário não ter mais o próprio executável, regime já aposentado
 — ver "Ao adicionar um subprojeto novo" mais abaixo). `src/node/` não é uma dessas pastas: é uma
 ferramenta irmã de `src/poc`/`src/rl`, que recebe QUALQUER cenário por argumento, não dona de
 cenário nenhum. Ainda assim, vale registrar: `node` reintroduz, para um propósito diferente
-(execução não-interativa, só-log, desacoplada da TUI), uma segunda cadeia de fábrica host
+(execução não-interativa, só-log, desacoplada da TUI), uma segunda cadeia de fábrica core
 completa — o preço aceito, por pedido explícito, para manter `node` independente dos internos de
 `app/`.
 
@@ -3892,7 +3907,7 @@ make open-groot                                                            # sem
 deste projeto (`models/players/A-4/configs/flight_tree*.xml`) tinham comentários de cabeçalho em
 prosa livre, com `--` usado como travessão ("...nativo -- ou seja..."). Isso é **inválido** pela
 especificação XML (comentários não podem conter `--` no corpo). `tinyxml2` — o parser que o
-BT.CPP/host usa — é tolerante e ignora a violação; `QDomDocument` — o parser que o **Groot** usa —
+BT.CPP/core usa — é tolerante e ignora a violação; `QDomDocument` — o parser que o **Groot** usa —
 é estrito e recusa o **arquivo inteiro**, sem dizer por quê além de um genérico "erro de sintaxe".
 **É essa a causa mais provável de "o Groot não reconhece a sintaxe."** Confirmado rodando os 4
 `flight_tree*.xml` contra um parser XML estrito: 3 de 4 tinham o problema (só `flight_tree_nav.xml`
@@ -4117,12 +4132,12 @@ usa 3000-3005). Sem a variável de ambiente, nada disso liga — zero custo, zer
 
 **O exemplo era `PLAYER=falcon1`, e `falcon1` não existe em cenário nenhum de `sandbox/`** (lá os
 nomes são `a4`, `a4_1..a4_8`, `c130`) — um alvo que não casa era **100% silencioso**: nenhuma porta
-abria, nada era logado, e o Groot só dizia "Was not able to connect". Hoje o **host** confere isso
+abria, nada era logado, e o Groot só dizia "Was not able to connect". Hoje o **core** confere isso
 logo depois de montar a frota — `app::checkGrootMonitorTarget()`
 (`app/include/app/GrootMonitorCheck.hpp`, com uma duplicata deliberada em `src/node/main.cpp`, pela
 regra de independência de `src/node`) — e emite `LOG(WARNING)` nomeando os players reais do
 cenário. **A checagem não pode morar no modelo**: cada `BtBehavior` só conhece o próprio nome, então
-"não casei" e "ninguém casou" são indistinguíveis de lá; só o host tem a lista inteira.
+"não casei" e "ninguém casou" são indistinguíveis de lá; só o core tem a lista inteira.
 
 **Hoje só o modelo A-4 implementa o hook.** `MIXR_GROOT_MONITOR=c130` nomeia um player legítimo e
 mesmo assim é no-op completo — daí o segundo ramo da checagem, que avisa que, se a linha
@@ -4212,12 +4227,12 @@ agente RL não derruba o avião no terreno, o árbitro nativo sobrepõe sem prec
 
 **`libs/xrlbridge` — quarta `shared_library()` de `libs/`, mesmo motivo estrutural de
 `libs/xboard::Board`.** `RLBridgeBehavior` (`models/players/A-4/include/ubf/RLBridgeBehavior.hpp`)
-mora dentro do `.so` do modelo, aberto por `dlopen`; a ponte pybind11 mora no host, que **não pode**
+mora dentro do `.so` do modelo, aberto por `dlopen`; a ponte pybind11 mora no core, que **não pode**
 incluir headers do modelo nem linkar contra o `.so` dele em tempo de compilação —
-`tests/guard/check_host_opaco.sh` trava esse invariante. `libs/xrlbridge/RLBridge.hpp` define seu
+`tests/guard/check_core_opaco.sh` trava esse invariante. `libs/xrlbridge/RLBridge.hpp` define seu
 próprio `Command`/`Observation` (campo a campo iguais a `domain::FlightCommand`/`WorldView`, mas
 deliberadamente **não** reusando o tipo) e é a ÚNICA coisa que os dois lados linkam de verdade: o
-host escreve `Command`/lê `Observation`, o modelo faz o inverso. **Sem chave por `playerId`** — v1
+core escreve `Command`/lê `Observation`, o modelo faz o inverso. **Sem chave por `playerId`** — v1
 é um único agente RL por processo (`genAction()` não tem como descobrir o ID do player que o
 hospeda sem subir a árvore de componentes por `container()`, caminho já documentado como frágil
 neste framework pra objetos aninhados em slot — ver a armadilha de `TacviewOutput::resolveInfo()`
@@ -4290,7 +4305,7 @@ contrato satisfeito. Pelo mesmo motivo, o mirror de contrato
 
 Build: `pybind11` entra só no `conanfile.py` raiz (comentado como "só `src/rl/bindings` linka
 isto", mesmo padrão do `ftxui` do `./app`); `make sdk` publica `libxrlbridge.so` junto com as outras
-três; `make build` compila `_native*.so` como parte do host; `make install` deposita
+três; `make build` compila `_native*.so` como parte do core; `make install` deposita
 `dist/python/mixr_gym/{__init__.py,env.py,_native*.so}` juntos (rpath `$ORIGIN/../../lib`, dois
 níveis — diferente de `$ORIGIN/../lib` de `dist/bin/`, porque a extensão instala dois níveis abaixo
 de `dist/`). `make venv-rl` cria/atualiza um venv LOCAL em `src/rl/.venv` (gitignorado) com
@@ -4511,6 +4526,52 @@ do ciclo de fases, é extraído do código.
      saem com zero span de highlight enquanto os passos C++ saem com dezenas, e o conteúdo de cada
      snippet novo (losAzRate, closestApproachReached, isReleased, REID_WEAPON_DETONATION,
      DELETE_REQUEST) aparece de fato renderizado na tela.
+
+     **ATUALIZAÇÃO (a trilha cresceu de 35 para 41 passos): o prólogo deixou de começar em
+     `FlightAgentTC::controller()`.** A própria página dizia "Do `tick()` que decide disparar..."
+     no texto de abertura, mas o primeiro passo de código já era `FlightAgentTC::controller()` --
+     rotulado, então, como "o ponto de entrada real de TODA a cadeia desta trilha". Não era: seis
+     chamadas REAIS acontecem antes dele, a cada quadro de tempo crítico, e nenhuma delas é
+     específica de míssil nenhum -- são a mesma descida que a aba Simulação já anima (`Station` →
+     `Simulation` → `Player` → `Component`), só que a trilha do míssil nunca a citava por nome.
+     Seis passos novos, todos stage 0 ("contexto"), inseridos entre `configurePlans()` (que roda
+     uma vez, no `reset()`) e o antigo primeiro passo de frame: `Station::updateTC` (reaproveita o
+     `SNIPPETS` auto-extraído, só troca o `hl` para `sim->tcFrame(dt)`), `Simulation::updateTC` e
+     `Simulation::updateTcPlayerList` (dois `MISSILE_SNIPPETS` NOVOS, curados a mão -- o laço de 4
+     fases e o despacho round-robin por thread ficam FORA da janela de 60 linhas que o extrator
+     captura por método, então o `SNIPPETS["Simulation::updateTC"]` auto-gerado, truncado, não
+     serve), `Player::updateTC` (outro `MISSILE_SNIPPETS` novo, mesmo motivo -- o `case 3: break;`
+     que cai para `BaseClass::updateTC(dt)` fica depois do corte de 60 linhas do extrator; o
+     comentário nativo já entrega a resposta: "our subsystems in the components list ... are
+     updated by our call to BaseClass::updateTC()"), `Component::updateTC` (a recursão GENÉRICA
+     que acha o `agent:` dentro de `components:` -- nunca aparece no `SNIPPETS` automático porque
+     `Component` é classe abstrata, nunca dispatched por fábrica nenhuma) e `AgentTC::updateTC`
+     (framework puro, `Agent.hpp`/`.cpp` -- MESMO gap de concretude do passo anterior).
+
+     **Achado ao preencher o último destes seis: `AgentTC::updateTC` já era referenciado pela aba
+     Comportamento (`traceFlightPatrol`/`Evade`/`Python`/`Onnx`, o primeiro passo de cada uma,
+     rótulo "AgentTC::updateTC(dt) → controller(dt)") sem NENHUM código exibido -- `flightSnip()`
+     caía em `FLIGHT_SNIPPETS[key] || SNIPPETS[key]`, e a chave não existia em nenhum dos dois. O
+     card renderizava só título/corpo, sem o bloco `.mx-code`, um "buraco mudo" que ninguém tinha
+     notado porque nada quebrava -- só faltava conteúdo.** Corrigido na FONTE do problema, não no
+     sintoma: `AgentTC::updateTC` (4 linhas reais, `Agent.cpp:170`, `controller(dt);`) entrou como
+     entrada curada em `FLIGHT_SNIPPETS` -- não em `MISSILE_SNIPPETS`, porque `missileSnip()` já
+     cai em `FLIGHT_SNIPPETS` como segundo degrau da cadeia de fallback (`MISSILE_SNIPPETS[key] ||
+     FLIGHT_SNIPPETS[key] || SNIPPETS[key]`), então uma correção só ali já resolve os DOIS lugares
+     de uma vez -- a aba Comportamento passou a mostrar código real neste passo também, de graça,
+     sem editar `traceFlightPatrol()`/`Evade`/`Python`/`Onnx` nem `FlightDecision()`.
+
+     O texto de abertura da aba ("Do `tick()` que decide disparar...") também mudou, para não
+     mentir sobre onde a trilha realmente começa: agora fala de `Station::updateTC()` primeiro,
+     `tick()` "no meio do caminho". Verificado sob jsdom (mesmo método já usado nesta
+     seção, sem Chromium disponível): 41 passos navegam sem erro de console, contagem por estágio
+     bate (`contexto` 7→13, os outros seis inalterados, soma 41), os quatro passos novos com
+     snippet CUSTOM mostram `kind: "excerto -- ver arquivo completo"` e o `hl` certo (`sim->tcFrame
+     (dt)` em `Station::updateTC`, o laço `for (f<4)` + despacho single-thread em
+     `Simulation::updateTC`, o `if (count==index)` + `ip->tcFrame(dt)` em `updateTcPlayerList`, o
+     `case 3` + `BaseClass::updateTC(dt)` em `Player::updateTC`), e os dois passos que reaproveitam
+     `SNIPPETS`/`FLIGHT_SNIPPETS` sem alteração de dado (`Station::updateTC`, `AgentTC::updateTC`)
+     saem com `kind: "C++"` (não truncado) como esperado.
   4. **Referência** — enciclopédia CURADA de classes built-in (`REF_CLASSES`/`MissileReferencePage`
      em `doc.jsx`), complementar ao Catálogo (item 5): o Catálogo é FLAT e automático (as 225
      classes, sem opinião sobre qual merece mais espaço); Referência é PROFUNDA e manual (poucas
@@ -4728,8 +4789,11 @@ ninguém abre a página sem antes garantir que ela reflete o fonte atual, e ter 
 manuais pra uma operação que sempre acontece em sequência era só fricção. `open-docs` agora
 chama `tools/generate_manual_catalog.py`/`docs/manual/compile.js` (o mesmo par de comandos de
 antes) e só então `scripts/open_browser.sh docs/manual/index.html`. O HTML gerado continua
-versionado (não é hermético — depende de `contexts/src/mixr/`, git-ignored, estar presente; sem
-essa árvore o gerador cai nos headers instalados pelo Conan, como sempre) e `open-docs` continua
+versionado (não é hermético — depende de `contexts/src/mixr/` estar presente; essa árvore **é**
+versionada no próprio repositório, não git-ignored como uma versão anterior deste parágrafo
+dizia, e por isso está sempre presente num clone comum — os três geradores citados acima leem
+esse caminho direto e **não têm** fallback pra headers do Conan, ao contrário do que a nota da
+seção "Onde consultar o framework" chegou a sugerir antes de ser corrigida) e `open-docs` continua
 regenerando incondicionalmente a cada chamada, então "a página abre desatualizada" deixou de ser
 possível por construção.
 
@@ -5623,7 +5687,7 @@ lógica do pipeline.
   `poc/<nome>`** — é só prosa, nenhum caminho depende disso.
 - A documentação de referência continua vivendo no `README.md` da raiz, no de cada
   subprojeto e em `tests/README.md`. `docs/` e `src/ui/` têm seção própria mais acima. Para
-  escrever um MODELO novo (não mexer no host), o ponto de entrada é
+  escrever um MODELO novo (não mexer no core), o ponto de entrada é
   [`CONTRIBUTING.md`](CONTRIBUTING.md) → `models/REGISTRO.md` (quem já está fazendo o quê) — ver o
   quadro logo no início deste arquivo.
 - **`src/node/` deixou de ser placeholder** — é um runner headless e independente de UM cenário
@@ -5631,7 +5695,7 @@ lógica do pipeline.
   própria mais acima (logo depois de `./app`). `TODO.md` continua valendo como próximo passo
   (integração com o **asa-engine** — roadmap externo a este repositório, ainda não implementado
   aqui: o conjunto que transformaria o binário de simulação num serviço de verdade, conectado ao
-  `asa-py`/`webstation`, ver `TODO.md`/`src/node/TODO.md` — é direção futura, não coberta pelo
+  `asapy`/`webstation`, ver `TODO.md`/`src/node/TODO.md` — é direção futura, não coberta pelo
   runner em si).
 - **A extensão dos cenários EDL passou de `.epp` para `.edl`** (`.epp.in`/`.generated.epp` →
   `.edl.in`/`.generated.edl`, e `tacview_recorder.epp.frag` → `.edl.frag`) — alinha o nome do
@@ -5643,8 +5707,10 @@ lógica do pipeline.
   arquivos rastreados via `git mv`. `contexts/MIXR-PATTERN-CONTEXT.md`/`MIXR-CONTEXT.md` (a
   destilação dos exemplos OFICIAIS do framework, um projeto diferente) foram deliberadamente
   poupados desta renomeação — descrevem arquivos de terceiro, não desta aplicação.
-- `build/`, `dist/` e `contexts/src/` não são versionados (`.gitignore`); `build/` já foi
-  destrackeado com `git rm -r --cached`.
+- `build/` e `dist/` não são versionados (`.gitignore`); `build/` já foi destrackeado com
+  `git rm -r --cached`. **Correção (achado por auditoria):** `contexts/src/` **é** versionado no
+  próprio repositório — este item afirmava o contrário; ver a correção na seção "Onde consultar o
+  framework" acima.
 - Limitação conhecida do `libs/xtacview` (chaff/flare — hoje exercitado pelos cenários
   `sandbox/A4-*DOF*`, não mais por uma poc numerada "poc/09" da numeração `01-flying-aircraft` …
   `12-jsbsim-ubf` de antes da renomeação `poc/` → `src/poc/`): saem no Tacview como `Misc`/`Grey`

@@ -108,4 +108,4 @@ própria —, porque detectar uma **transição** exige comparar dois instantes,
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa
   etapa PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o build orquestrado
 - [`../../template/docs/CONTRATO.md`](../../template/docs/CONTRATO.md) — a lista completa e
-  autoritativa do que qualquer modelo precisa fazer para o host carregá-lo
+  autoritativa do que qualquer modelo precisa fazer para o core carregá-lo

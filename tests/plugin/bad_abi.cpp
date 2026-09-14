@@ -3,9 +3,9 @@
 //
 // Descritor montado A MAO (a macro nao serve: ela grava o PLUGIN_ABI certo)
 // com a versao do contrato deslocada. Simula um plugin compilado contra um SDK
-// mais antigo ou mais novo do que o host.
+// mais antigo ou mais novo do que o core.
 //
-// O host tem de recusar imprimindo OS DOIS numeros -- e nao carregar e torcer.
+// O core tem de recusar imprimindo OS DOIS numeros -- e nao carregar e torcer.
 //
 #include "xplugin/PluginAbi.hpp"
 #include "mixr/base/Object.hpp"

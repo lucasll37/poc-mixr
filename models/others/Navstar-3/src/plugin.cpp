@@ -37,7 +37,7 @@ mixr::base::Object* fabrica(const char* const name)
 } // namespace
 
 // O primeiro argumento vai para o descritor binario do plugin e aparece em
-// mensagens de erro do host quando algo da errado no carregamento -- ver
+// mensagens de erro do core quando algo da errado no carregamento -- ver
 // PluginDescV1 em libs/xplugin/PluginAbi.hpp. Combina com o nome do
 // project() em meson.build e do shared_module().
 MIXR_PLUGIN_DEFINE("Navstar-3",

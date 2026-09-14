@@ -7,7 +7,7 @@ namespace mixr {
 namespace xboard {
 
 //------------------------------------------------------------------------------
-// O QUADRO DE LEITURA -- a unica coisa que o host e o modelo compartilham.
+// O QUADRO DE LEITURA -- a unica coisa que o core e o modelo compartilham.
 //
 // Uma unica questao: o que o dump e a linha de status precisam saber do modelo,
 // por id de player. O player e o models::Aircraft NATIVO, que nao tem campo
@@ -21,10 +21,10 @@ namespace xboard {
 // static_library(). Esta NAO pode ser, e o motivo e estrutural:
 //
 //    quem ESCREVE aqui e o modelo, que mora num .so carregado com dlopen;
-//    quem LE e o host, que e o executavel.
+//    quem LE e o core, que e o executavel.
 //
 // Com uma lib estatica, cada lado ganharia a SUA PROPRIA copia dos mapas: o
-// modelo escreveria num, o host leria do outro, e o dump sairia com 'bt=--' e
+// modelo escreveria num, o core leria do outro, e o dump sairia com 'bt=--' e
 // 'dec=0' para sempre -- sem erro de link, sem aviso, sem sintoma alem do
 // numero errado. E a armadilha registrada em
 // contexts/BTCPP-CONTEXT.md:7262-7270 e no cabecalho de
@@ -57,9 +57,9 @@ struct Readout
    // Tacview (RadarAzimuth/RadarElevation/...), que e caminho de TEMPO REAL --
    // nao entra no dump deterministico.
    //
-   // Quem le o Gimbal e o MODELO, nao o host: e ele que sabe o que a aeronave
+   // Quem le o Gimbal e o MODELO, nao o core: e ele que sabe o que a aeronave
    // esta enxergando. 'radarValid' fica false se o modelo nunca publicar, e ai
-   // o host simplesmente nao empurra varredura nenhuma -- degrada em silencio,
+   // o core simplesmente nao empurra varredura nenhuma -- degrada em silencio,
    // de proposito: um modelo sem radar e legitimo.
    bool radarValid{};
    double radarAzDeg{};
@@ -88,7 +88,7 @@ void setDatalinkCounters(int playerId, long sent, long received);
 void setRadarScan(int playerId, bool valid, double azDeg, double elDeg,
                   double rangeM, double hBeamDeg, double vBeamDeg);
 
-//--- leitura: SO o host chama -------------------------------------------------
+//--- leitura: SO o core chama -------------------------------------------------
 
 Readout get(int playerId);
 

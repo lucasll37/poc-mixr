@@ -68,7 +68,7 @@ shared/data/terrain/srtm/*.hgt.gz
 !shared/data/terrain/srtm/S22W044.hgt.gz
 
 # deposito COMPARTILHADO de plugins (locais -- flight/template, via o
-# 'install-host' de cada um -- E de terceiros, externos a este repositorio)
+# 'install-core' de cada um -- E de terceiros, externos a este repositorio)
 # -- ver plugins/README.md. 'make install' (alvo 'sync-plugins')
 # copia daqui pra dist/lib(share)/mixr-plugins/; 'make models' so ESCREVE
 # aqui, nunca em dist/. 'data/' e a excecao ao deposito flat (hoje, so os
@@ -88,6 +88,17 @@ src/poc/**/data/recordings/*.acmi
 src/poc/**/data/logs/*.log*
 app/data/recordings/*.acmi
 app/data/logs/*.log*
+
+# artefato de RUNTIME antigo: versoes anteriores do binario escreviam o .edl
+# expandido dentro do proprio 'configs/' de cada poc ('scenario.generated.edl');
+# hoje isso vai para build/generated-scenarios/ (ja cobreto por 'build*/'
+# acima), decoplado de qualquer configs/ rastreado. Achado por auditoria
+# (revisao completa do repositorio): 3 desses relictos ainda estavam
+# RASTREADOS no git (flight/python-flight/onnx-policy, conteudo desatualizado
+# -- nomenclatura "multi-thread"/'( SimAgent )' que a arquitetura atual nao
+# usa mais) e foram removidos com 'git rm -f'; esta entrada impede que 'git
+# add -A' volte a rastrear um homonimo por engano.
+src/poc/**/configs/*.generated.edl
 
 # tests/fixtures/: as duas ex-pocs relocadas (built-in_mixr_1/full-systems-nav,
 # ver tests/fixtures/README.md) continuam tendo data/{recordings,logs,messages}/

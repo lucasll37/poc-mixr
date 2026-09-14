@@ -136,7 +136,7 @@ bool garantirInterpretador()
    if (!ok) return false;
 
    if (g_api.IsInitialized() == 0) {
-      g_api.InitializeEx(0);      // 0 = sem handlers de sinal: o Ctrl+C e do host
+      g_api.InitializeEx(0);      // 0 = sem handlers de sinal: o Ctrl+C e do core
       // Py_InitializeEx SEGURA o GIL. Sem soltar aqui, a primeira
       // PyGILState_Ensure() de outra thread trava para sempre.
       g_api.EvalSaveThread();

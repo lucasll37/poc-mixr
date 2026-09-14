@@ -7,7 +7,7 @@
 
 // libs/xboard e a UNICA shared_library() de libs/ (as outras cinco sao
 // estaticas) -- precisamente porque e escrita pelo MODELO (num .so aberto
-// com dlopen, ate N threads do pool T/C) e lida pelo HOST (thread de
+// com dlopen, ate N threads do pool T/C) e lida pelo CORE (thread de
 // background). Ver o "porque" completo em xboard/Board.hpp. Esta e a
 // UNICA responsabilidade do modulo -- "ser um mapa seguro sob N
 // escritores concorrentes e 1 leitor" -- nunca tinha teste direto: so
@@ -180,7 +180,7 @@ TEST(XBoardConcurrency, EscritaConcorrenteDeTodosOsSettersNoMesmoPlayerNaoCorrom
 // o numero mostrado na aba Players deixaria de significar "esta e a MESMA
 // thread" entre um aviao e um missil no mesmo frame. Uma unica libxboard.so
 // compartilhada por dlopen resolve isso do mesmo jeito que ja resolve
-// bt=/dec= entre host e modelo.
+// bt=/dec= entre core e modelo.
 //------------------------------------------------------------------------------
 TEST(XBoardConcurrency, ThreadTagEstavelNaMesmaThreadEDistintoEntreThreads)
 {

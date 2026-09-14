@@ -75,10 +75,10 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
   `make new-model` nascia com 15 links quebrados, porque o destino (`models/<categoria>/<nome>/`)
   está um nível mais fundo que o template. (2026-09-10)
 
-- **`install`/`install-host` deixaram de nomear o diretório de dados.** `make new-model` renomeia
+- **`install`/`install-core` deixaram de nomear o diretório de dados.** `make new-model` renomeia
   o literal `'template'` dentro do `meson.build` (então o `install_data` passa a escrever em
   `share/mixr-plugins/<seu-modelo>/`) mas não toca no `Makefile` — um caminho com `template`
-  cravado ali quebrava o primeiro `install-host` do scaffold copiado com *"cp: cannot stat"*
+  cravado ali quebrava o primeiro `install-core` do scaffold copiado com *"cp: cannot stat"*
   (reproduzido). Os dois alvos passaram a copiar o diretório inteiro, sem nome nenhum escrito.
 
 - **O diretório pai passou de `models/player/` para `models/players/`** — este projeto passou a
@@ -107,7 +107,7 @@ quer nascer já separado em camadas.
   para crescer até uma árvore do BehaviorTree.CPP quando uma regra só deixar de bastar.
 - **`docs/PRIMEIROS-PASSOS.md`** — o roteiro mecânico completo: copiar, renomear (projeto, módulo,
   namespace — os quatro lugares que têm que concordar), substituir a decisão de exemplo pela do
-  usuário, publicar via `install-host`, e um checklist antes do primeiro commit.
+  usuário, publicar via `install-core`, e um checklist antes do primeiro commit.
 - **`tests/domain/test_ExampleThreshold.cpp`** (4 casos, sem MIXR) e
   **`tests/check_contract.sh`** (a forma do `.so` — 1 símbolo `T`, deps resolvidas; cópia literal
   do de `fixtures/stub`, que já era genérico).

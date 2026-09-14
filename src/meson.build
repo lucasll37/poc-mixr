@@ -21,4 +21,4 @@ subdir('./node')
 # categoria de "mora sob src/ mas nao e Meson" que src/poc/rl-training/ ja e --
 # ver o comentario daquele em src/poc/meson.build. `make open-edl`
 # (Makefile raiz, unico alvo make deste editor) e quem builda, sem passar
-# pelo grafo do host.
+# pelo grafo do core.

@@ -28,7 +28,7 @@ if (track.found) {
 const xtrack::TrackInfo rwr{xtrack::nearestHostileTrack(air, "rwrTrkMgr")};
 ```
 
-**Do lado do host** (`app/src/app/DeterministicDump.cpp`, o dump `frame=` que os `check-*`
+**Do lado do core** (`app/src/app/DeterministicDump.cpp`, o dump `frame=` que os `check-*`
 comparam):
 
 ```cpp
@@ -96,7 +96,7 @@ detectado* — é a pista.
 ## Por que é `shared_library()`, e não estática
 
 Mesmo argumento de [`xboard`](../xboard/README.md) (ver `Board.hpp`): é a única peça disputada
-pelos dois lados da fronteira de `dlopen`. O host precisa dela para o `track=`/`trackRange=` do dump (e do painel do
+pelos dois lados da fronteira de `dlopen`. O core precisa dela para o `track=`/`trackRange=` do dump (e do painel do
 `./app`); o modelo precisa dela para a percepção (`ubf::FlightState`). A alternativa seria
 compilar o mesmo `.cpp` dos dois lados — funciona (as funções não têm estado), mas depois que o
 fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do arquivo em duas
@@ -120,7 +120,7 @@ fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do 
 
 ## Testes
 
-`tests/domain/test_track_selection.cpp` (alvo registrado na suíte `domain` do **host** —
+`tests/domain/test_track_selection.cpp` (alvo registrado na suíte `domain` do **core** —
 `tests/meson.build`, `make test`; não confundir com a suíte `domain` do MODELO, dentro de
 `make test-models`, ver [`tests/README.md`](../../tests/README.md))
 cobre `selectNearestHostileIndex()` isolada — sem `Station`, sem `Player`/`Track` ao vivo: lista

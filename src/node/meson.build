@@ -1,7 +1,7 @@
 # Runner headless e independente de UM cenario passado por argumento --
 # peer enxuto de ./app, mas SEM nenhuma dependencia do codigo de app/:
 # fabrica, construcao de Station e encerramento proprios, escritos do zero
-# seguindo a MESMA receita que src/rl/bindings/ ja demonstra para um host
+# seguindo a MESMA receita que src/rl/bindings/ ja demonstra para um core
 # independente (ver README.md desta pasta para o "porque").
 node_sources = files('main.cpp', 'Run.cpp', 'factory.cpp')
 

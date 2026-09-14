@@ -174,7 +174,7 @@ xboard::bumpDecisionCount(player->getID());
 xboard::setThreadTag(player->getID(), xboard::threadTag());
 ```
 
-Não é exigido pelo compilador nem pelo carregador de plugin — sem essas chamadas, o host sobe, o
+Não é exigido pelo compilador nem pelo carregador de plugin — sem essas chamadas, o core sobe, o
 cenário parseia, tudo passa, e a tela de status/o dump `-deterministic` mostram `bt=--`/`dec=0`
 para sempre, sem erro em lugar nenhum. Ver `../template/docs/CONTRATO.md` §3.
 

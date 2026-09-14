@@ -13,7 +13,7 @@
 //   2) falcon2..4 continuam com BtBehavior nativo -- trafego/companheiros
 //      de cenario, nao controlados pelo agente RL (ver "Escopo" do plano
 //      de implementacao: v1 e single-agent).
-//   3) ( Station ) no lugar de ( ClockStation ) -- este host nunca roda em
+//   3) ( Station ) no lugar de ( ClockStation ) -- este core nunca roda em
 //      tempo real, NativeSimulation::step() chama tcFrame()/updateData()
 //      direto, sem pool de tempo critico com pacing nem teclado.
 //   4) SEM 'networks:' -- hermetico, mesmo motivo de

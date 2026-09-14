@@ -165,10 +165,10 @@ frame, para junto — porque `tcFrame()` simplesmente não roda enquanto pausado
 `xclock` só fala com a `Station`/`Simulation` nativas — nunca cruza a fronteira `dlopen` de plugin
 (nenhum modelo em `models/players/` inclui este header). Por isso fica estática, como
 `xtacview`/`xjoystick`/`xmsg`/`xplugin`: as seis libs que viram `shared_library()`
-(`xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) só existem porque host e plugin
+(`xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) só existem porque core e plugin
 precisam compartilhar uma cópia só de estado mutável através do `dlopen`. `xclock` não tem esse
 requisito — promovê-la a `shared_library()` daria a um plugin uma cópia própria do estado, sem
-benefício nenhum (ver `.claude/rules/host-app-src.md`).
+benefício nenhum (ver `.claude/rules/core-app-src.md`).
 
 ## Testes
 

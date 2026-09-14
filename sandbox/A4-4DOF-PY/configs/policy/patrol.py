@@ -1,7 +1,7 @@
 """PY-PATROL -- a patrulha, quando nada mais esta acontecendo.
 
 Folha do ramo 4 de configs/flight_tree_python.xml. Editar este arquivo muda o
-voo da proxima execucao: nao ha compilacao, nem no host nem no plugin.
+voo da proxima execucao: nao ha compilacao, nem no core nem no plugin.
 
 CONTRATO (o mesmo dos quatro scripts desta pasta)
 

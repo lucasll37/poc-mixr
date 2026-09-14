@@ -37,14 +37,14 @@ std::string renderToText(const ftxui::Element& element)
 //------------------------------------------------------------------------------
 // classRowText() -- fallback de texto plano.
 //------------------------------------------------------------------------------
-TEST(ClassRowText, MostraPrefixoDeOrigemPorPluginOuHost)
+TEST(ClassRowText, MostraPrefixoDeOrigemPorPluginOuCore)
 {
    app::ClassStat s{makeStat()};
    s.fromPlugin = true;
    EXPECT_NE(app::classRowText(s).find("[plugin]"), std::string::npos);
 
    s.fromPlugin = false;
-   EXPECT_NE(app::classRowText(s).find("[host]"), std::string::npos);
+   EXPECT_NE(app::classRowText(s).find("[core]"), std::string::npos);
 }
 
 TEST(ClassRowText, MostraOsTresContadores)

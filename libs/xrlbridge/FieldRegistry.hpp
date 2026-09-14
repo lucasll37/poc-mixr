@@ -11,7 +11,7 @@ namespace xrlbridge {
 
 //------------------------------------------------------------------------------
 // FieldRegistry<State> -- "quais campos numericos/booleanos este tipo de
-// estado (domain::WorldView de um modelo, xrlbridge::Observation do host...)
+// estado (domain::WorldView de um modelo, xrlbridge::Observation do core...)
 // PODE expor, e como ler cada um pelo NOME".
 //
 // Existe para dar, em runtime, o que a X-macro de ObservationFields.hpp ja

@@ -1,12 +1,12 @@
 # ==============================================================================
 # A suite do MODELO -- as duas camadas que testam regra de negocio.
 #
-# Vieram de tests/ do host quando os fontes saíram para ca: elas compilam
+# Vieram de tests/ do core quando os fontes saíram para ca: elas compilam
 # domain/ e bt/ DIRETO, entao so fazem sentido onde esses fontes moram.
 #
 # ARMADILHA MEDIDA: 'meson test' devolve rc=0 para suite VAZIA ("No tests
 # defined."), e o default de -Dtests e false. Sem uma contagem minima, perder
-# estas duas camadas seria um verde silencioso -- o Makefile do host confere o
+# estas duas camadas seria um verde silencioso -- o Makefile do core confere o
 # numero com 'meson introspect --tests' (ver o alvo test-models).
 # ==============================================================================
 gtest_dep = dependency('gtest', method: 'pkg-config')

@@ -10,7 +10,7 @@ cd ../.. && make configure && make sdk
 ```
 
 Sem isso, `check-root` (dependência de `configure`/`build`/`test`/`install` — não de `clean`,
-`help` nem `uninstall-host`) falha com uma mensagem dizendo exatamente o que rodar.
+`help` nem `uninstall-core`) falha com uma mensagem dizendo exatamente o que rodar.
 
 ## Passo 0 — confirme que o template, do jeito que está, funciona
 
@@ -140,7 +140,7 @@ lógica de camadas de `docs/ARCHITECTURE.md`:
 ## Passo 6 — publique para um cenário conseguir carregar
 
 ```bash
-make install-host   # copia ./dist -> ../../plugins/ (o depósito compartilhado com terceiros)
+make install-core   # copia ./dist -> ../../plugins/ (o depósito compartilhado com terceiros)
 cd ../..
 make install         # sincroniza plugins/ -> dist/ -- SÓ ISSO deixa um cenário enxergar o .so
 ```
@@ -162,9 +162,9 @@ completa de "nome de fábrica → classe-base exigida → onde entra".
 
 `template` nunca entra na lista `MODELOS_PRODUCAO` (a descoberta automática por `find`, em
 [`../../../Makefile`](../../../Makefile)) — mas isso não significa que `template/` fique de fora
-do alvo `models:` como um todo: a receita do alvo chama `$(MAKE) -C models/template install-host
+do alvo `models:` como um todo: a receita do alvo chama `$(MAKE) -C models/template install-core
 ...` **à parte**, depois do laço sobre `MODELOS_PRODUCAO`, porque o segundo artefato do template
-(`libtemplate_mirror.so`, o mirror de contrato) é usado pelos próprios testes de plugin do host
+(`libtemplate_mirror.so`, o mirror de contrato) é usado pelos próprios testes de plugin do core
 (`tests/meson.build` referencia `libtemplate_mirror.so` diretamente, em mais de um teste). O que
 importa para o SEU modelo é só a parte da lista automática: uma vez copiado para fora de
 `template/` (Passo 1), ele **entra sozinho** em `MODELOS_PRODUCAO` e portanto em `make

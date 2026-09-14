@@ -1,4 +1,4 @@
-.PHONY: build test install install-host uninstall-host
+.PHONY: build test install install-core uninstall-core
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -9,9 +9,9 @@
 # constroi este diretorio por descoberta (MODELOS_PRODUCAO acha qualquer
 # subpasta de models/ com project() no proprio meson.build).
 #
-# Pre-requisito, publicado pelo HOST uma vez:  cd ../../.. && make configure && make sdk
+# Pre-requisito, publicado pelo CORE uma vez:  cd ../../.. && make configure && make sdk
 #
-# 'install-host' e o unico alvo que escreve fora de ./dist -- e so ate
+# 'install-core' e o unico alvo que escreve fora de ./dist -- e so ate
 # ../../../plugins/, o deposito compartilhado com terceiros (ver
 # ../../../plugins/README.md). NUNCA escreve em ../../../dist/: quem sincroniza e
 # o 'make install' da raiz (alvo 'sync-plugins'). Sem os dois passos o .so
@@ -52,13 +52,13 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
 
-install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
+install-core: install ## Deposita em ../../../plugins/ -- nao toca dist/ do core.
 	@mkdir -p $(ROOT)/plugins
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/"
+	@echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
-uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
+uninstall-core: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
 	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 	      [ -e "$$so" ] || continue; \

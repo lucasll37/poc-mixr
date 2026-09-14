@@ -14,7 +14,7 @@
 # ambos os lados, do contrario cada plugin enxergaria seu proprio type_info
 # para o "mesmo" tipo. Ver o cabecalho de payloads/EID_ALERT/TacticalAlert.hpp.
 #
-# Instalada, porque qualquer plugin de modelo (e o host, se algum dia
+# Instalada, porque qualquer plugin de modelo (e o core, se algum dia
 # precisar) precisa acha-la em dist/lib/ -- mesmo raciocinio de xboard.
 
 events_inc_dir = include_directories('..')

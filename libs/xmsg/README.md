@@ -160,12 +160,12 @@ evento sob saturação) é travado.
 
 ## Por que é `static_library()`, não `shared_library()`
 
-`xmsg` só fala com a `Station`/`Player` nativos, do lado do HOST — nenhum modelo em
+`xmsg` só fala com a `Station`/`Player` nativos, do lado do CORE — nenhum modelo em
 `models/players/*` inclui `MsgFeed`/`MsgReport`/as regras de `rules/`, e o `.edl` de produção
 declara `msgFeed:` como mais um componente da `Station`, nunca dentro do plugin. Como nunca
-cruza a fronteira `dlopen` host↔plugin, fica estática, no mesmo padrão de `xtacview`/`xclock`/
+cruza a fronteira `dlopen` core↔plugin, fica estática, no mesmo padrão de `xtacview`/`xclock`/
 `xjoystick`/`xplugin`: as seis libs que viram `shared_library()` (`xboard`/`xlog`/`xtrack`/
-`xrlbridge`/`xinfer`/`xpyembed`) só existem porque host e plugin precisam compartilhar uma cópia
+`xrlbridge`/`xinfer`/`xpyembed`) só existem porque core e plugin precisam compartilhar uma cópia
 só de algum estado através do `dlopen` — `xmsg` não tem esse requisito, e um plugin que a
 linkasse (proibido pela regra 2 de `libs/xplugin/README.md`) ganharia cópia própria dos
 estáticos dela, quebrando exatamente o compartilhamento que justifica as seis serem `.so`.

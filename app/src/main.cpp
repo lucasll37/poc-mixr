@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
                               : app::collectFleet(worldModel, cenario.fleet)};
    app::applyCruiseThrottle(fleet, cruiseThrottle);
 
-   // Aqui, e nao dentro do modelo: so' o host tem a lista inteira de players,
+   // Aqui, e nao dentro do modelo: so' o core tem a lista inteira de players,
    // entao so' ele consegue afirmar "MIXR_GROOT_MONITOR nao casa com ninguem"
    // (ver app/GrootMonitorCheck.hpp). Sem a variavel definida, e' no-op.
    app::checkGrootMonitorTarget(worldModel);

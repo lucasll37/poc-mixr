@@ -112,7 +112,7 @@ correlação** entre si, não só sementes numericamente distintas.
 
 ## Por que é header-only, ao contrário de xboard/xlog/xtrack/xrlbridge/xinfer/xpyembed
 
-As outras seis `libs/x*` viram `shared_library()` porque host e plugin precisam compartilhar UMA
+As outras seis `libs/x*` viram `shared_library()` porque core e plugin precisam compartilhar UMA
 cópia de estado mutável em tempo de execução através do `dlopen` (ex.: `xlog::setLoggingEnabled()`
 tem que alcançar o `.so` do modelo). Derivação de semente não tem esse requisito — `seed` entra,
 número sai, sem estado global nenhum — então vira só mais um `install_headers()` no `meson.build`

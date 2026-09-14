@@ -2,11 +2,11 @@
 # template -- o PONTO DE PARTIDA para um modelo novo, como projeto Meson
 # INDEPENDENTE.
 #
-# Este projeto nao sabe nada do host, e o host nao sabe nada dele -- a unica
+# Este projeto nao sabe nada do core, e o core nao sabe nada dele -- a unica
 # coisa entre os dois e o SDK publicado em dist/ pelo projeto principal: o
 # contrato (xplugin/PluginAbi.hpp) e as .so de fronteira (libxboard, libxlog,
 # libxtrack, ...). E POR ISSO que ele e um project() proprio e nao um
-# subdir(): o `meson setup` do host tem que conseguir rodar SEM os fontes
+# subdir(): o `meson setup` do core tem que conseguir rodar SEM os fontes
 # daqui existirem -- mesma razao documentada em models/players/A-4/meson.build.
 #
 # NAO e um projeto de PRODUCAO -- ele nunca entra no `models:` do Makefile
@@ -43,7 +43,7 @@ cpp = meson.get_compiler('cpp')
 # '--tags sdk' sem o ',devel', que instala as .so e ESQUECE os headers).
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelo mesmo .pc que o host usa.
+# Do Conan, pelo mesmo .pc que o core usa.
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 
 # A arvore de comportamento (BehaviorTree.CPP v3.5.6 -- nada aqui vale para a
@@ -108,7 +108,7 @@ model_sources = domain_sources + bt_sources + files(
 # num link_with:, duplicando o MetaObject das suas classes no processo.
 #
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
-# transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
+# transforma "chamei algo que o core nao exporta" em erro de LINK, nao de
 # dlopen. Nenhum dos dois e opcional -- ver
 # models/players/fixtures/stub/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']

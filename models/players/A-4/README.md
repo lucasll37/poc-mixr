@@ -6,7 +6,7 @@ classes MIXR próprias que um cenário pode nomear. Compila para um `.so`, carre
 não precisa saber) qual cenário vai usá-lo; isso é decidido depois, no `.edl` de quem consome o
 plugin.
 
-Assume o ambiente já configurado — Conan, Meson, o SDK do host publicado. `make check-root` confere
+Assume o ambiente já configurado — Conan, Meson, o SDK do core publicado. `make check-root` confere
 isoladamente esse pré-requisito (mensagem verde de OK, ou vermelha com o comando exato que falta).
 Se faltar, comece pela raiz do repositório (`README.md`, `INSTALL.md`).
 
@@ -40,7 +40,7 @@ make build           # -> ./build/ (compila libA-4.so)
 make test            # domain + tree + native (~1 s, nenhuma levanta Station)
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
 make install         # -> ./dist/lib/mixr-plugins/*.so + ./dist/share/mixr-plugins/A-4/ (arvore + aeronave)
-make install-host    # -> ../../../plugins/ -- ainda não é dist/ do HOST, ver CONTRIBUTING.md
+make install-core    # -> ../../../plugins/ -- ainda não é dist/ do CORE, ver CONTRIBUTING.md
 ```
 
 Um artefato só, `libA-4.so` — `FlightAgentTC` (o agente que decide na fase 3 do frame de tempo
@@ -62,7 +62,7 @@ Três camadas, nenhuma levanta `Station`:
 
 O que essa suíte **não** alcança — `RadarScan`, `FlightState::updateState`, `FlightAction::execute`
 e os `genAction()` — precisa de um player vivo (`Player::reset()` aborta sem uma `Simulation`).
-Coberto pelas suítes `scenario`/`determinism` do host, fora deste diretório.
+Coberto pelas suítes `scenario`/`determinism` do core, fora deste diretório.
 
 ## Ler também
 

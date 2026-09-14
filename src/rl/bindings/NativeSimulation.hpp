@@ -32,8 +32,8 @@ namespace rl {
 // termino que nao correspondia a aeronave de verdade sendo controlada.
 // reset() agora falha alto (std::runtime_error) se o player nao existir no
 // cenario; nao ha como validar daqui que e o MESMO player com
-// RLBridgeBehavior -- esse tipo mora no plugin do modelo, que este host
-// nao pode conhecer (tests/guard/check_host_opaco.sh).
+// RLBridgeBehavior -- esse tipo mora no plugin do modelo, que este core
+// nao pode conhecer (tests/guard/check_core_opaco.sh).
 //
 // SO PODE EXISTIR UMA Station POR PROCESSO -- CONFIRMADO, nao e mais um
 // risco hipotetico. libs/xplugin sela o registro de plugins depois do

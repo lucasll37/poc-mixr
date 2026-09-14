@@ -11,7 +11,7 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 
 ## Os dois jeitos de algo chegar aqui
 
-1. **Compilado por este repositório** — `make models` (na raiz) chama `install-host` de cada
+1. **Compilado por este repositório** — `make models` (na raiz) chama `install-core` de cada
    projeto de modelo (`models/players/A-4/`, `models/template/`, este último instalado
    incondicionalmente à parte por causa do mirror de contrato — ver o Makefile raiz), e cada um
    copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
@@ -38,7 +38,7 @@ simulada.
   que sobrevive num clone limpo.
 - **`make clean` só remove o que ESTE repositório publicou, por NOME** — nunca por glob nem por
   lista escrita à mão. Os nomes saem do `./dist` local de cada modelo (é dele que o
-  `uninstall-host` de cada um deriva o que remover, sem literal cravado no Makefile), então um
+  `uninstall-core` de cada um deriva o que remover, sem literal cravado no Makefile), então um
   `.so` de terceiro com outro nome, ou um `data/<subpasta>` de terceiro, nunca é apagado por
   engano. O `data/` só é recolhido se tiver ficado **vazio** (`rmdir`, que falha sozinho e sem
   estrago se houver qualquer coisa dentro).

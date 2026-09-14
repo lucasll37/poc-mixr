@@ -329,7 +329,7 @@ Seis coisas que valem entender nessa árvore:
   outro para resolver a equação do radar. Sem ela, o avião é invisível — não importa quantos
   radares existam.
 - **`terrain:` é slot do `WorldModel`, e a factory dele não vem de graça.** `mixr::models::factory`
-  **não** encadeia a de terreno; sem `mixr::terrain::factory` na cadeia do host (ver
+  **não** encadeia a de terreno; sem `mixr::terrain::factory` na cadeia do core (ver
   [§5.2](#52-factory-encadeada-por-nome--hoje-duas-cadeias-separadas)), o `( SrtmHgtFile )` não constrói nada e o mundo fica sem
   chão, em silêncio.
 
@@ -377,7 +377,7 @@ Todo exemplo tem uma função `factory(const std::string&)` que tenta as suas cl
 do framework. **A primeira que retorna não-nulo vence.** Antes de o modelo virar plugin, as classes
 próprias entravam nessa mesma lista; hoje há duas cadeias, resolvidas em momentos diferentes:
 
-- **A do HOST** (`app/src/mixr_factory.cpp`, compartilhada por **todas** as pocs deste
+- **A do CORE** (`app/src/mixr_factory.cpp`, compartilhada por **todas** as pocs deste
   repositório):
   ```
   xplugin → xtacview → xclock → xjoystick → xmsg → simulation → models → terrain → dis → linkage → recorder → base
@@ -686,7 +686,7 @@ inteira — que não é MIXR nem BT, e é justamente por isso que ela é a parte
 ## 7. Dissecação: o repositório em ordem de dependência
 
 Esta seção percorre os arquivos do **modelo** — `models/players/A-4/` — na ordem em que se pode
-lê-los sem precisar saltar para frente: cada camada só depende das anteriores. A aplicação host
+lê-los sem precisar saltar para frente: cada camada só depende das anteriores. A aplicação core
 (`./app`, compartilhada por todas as pocs) não entra aqui — tem seção própria em
 [`app/README.md`](../../../../app/README.md).
 
@@ -1084,7 +1084,7 @@ factory.registerBuilder<NodeType>(id, builder);
 ### 7.6 Camada 6 — `xnative/factory.cpp`
 
 Uma cadeia de `else if` sobre `getFactoryName()`, registrando as **nove** classes próprias listadas
-na [seção 1](#1-o-que-vem-do-framework-e-o-que-é-nosso). Consumida não pela cadeia do host (ver
+na [seção 1](#1-o-que-vem-do-framework-e-o-que-é-nosso). Consumida não pela cadeia do core (ver
 [§5.2](#52-factory-encadeada-por-nome--hoje-duas-cadeias-separadas)), mas por `libs/xplugin`, dentro
 do `isValid()` do `( PluginLoader )` — antes de qualquer coisa escrita depois dele no `.edl`.
 
@@ -1433,7 +1433,7 @@ tinha o slot `terrain`, e o `Player` já tinha `getTerrainElevationM()`/`getAlti
 
 | # | o quê | onde |
 |---|---|---|
-| 1 | **a factory** — `models::factory` não encadeia a de terreno | `app/src/mixr_factory.cpp` (host, compartilhado por todas as pocs) |
+| 1 | **a factory** — `models::factory` não encadeia a de terreno | `app/src/mixr_factory.cpp` (core, compartilhado por todas as pocs) |
 | 2 | **o dado** — tile SRTM1 `S23W043` da Serra do Mar, descomprimido e conferido | `app/TerrainData` + `shared/data/terrain/srtm/` |
 | 3 | **a ponte até a decisão** — campos no `WorldView`, uma regra pura, um consumidor | `FlightState`, `domain/TerrainFloor` |
 
@@ -1630,7 +1630,7 @@ com **1, 2 e 4 threads T/C** (mais uma repetição de 4) e compara os dumps.
   físico) já é garantida pela fase 3, não pelo pacing de relógio de parede.
 - **Não prova**, e esta é a lacuna maior: que o modelo decide **certo**. Reprodutibilidade não é
   correção — um modelo que erra sempre igual passa aqui sem reclamar. É o que as camadas `domain`,
-  `tree` (do modelo) e `scenario` (do host) fecham — ver [`tests/README.md`](../../../../tests/README.md).
+  `tree` (do modelo) e `scenario` (do core) fecham — ver [`tests/README.md`](../../../../tests/README.md).
 
 ### 12.5 Os contadores de instância não são atômicos
 
@@ -1799,7 +1799,7 @@ intacta até a política.
 # dist/lib/mixr-plugins/.
 make configure && make models && make install && ./dist/bin/app -f src/poc/dis/flight/configs/scenario.edl.in
 
-# as DUAS suítes (a do modelo e a do host)
+# as DUAS suítes (a do modelo e a do core)
 meson configure build -Dtests=true && make build && make test-models && make test
 
 # determinismo isolado: 1, 2 e 4 threads produzem o mesmo estado (fixture hermética, derivada)

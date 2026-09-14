@@ -42,7 +42,7 @@ $EDITOR src/poc/python-flight/configs/policy/patrol.py
 ./build/app/src/app -folder src/poc -scenario python-flight                       # veja o voo mudado
 ```
 
-Não há compilação entre as duas execuções. Nem do host, nem do plugin — o `.py` é lido do disco
+Não há compilação entre as duas execuções. Nem do core, nem do plugin — o `.py` é lido do disco
 na primeira decisão de cada aeronave.
 
 ---
@@ -88,7 +88,7 @@ na primeira decisão de cada aeronave.
 * políticas que **fazem o trabalho inteiro** — patrulha, evasão, apoio e retorno à base — e não um
   exemplo de "vira para longe e acelera".
 
-**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da poc `flight` com
+**Nenhuma linha de C++ foi escrita para isto.** O core é uma cópia do da poc `flight` com
 caminhos e banner trocados; o modelo não mudou. Isso é o resultado a observar, não uma economia:
 a extensibilidade que o `( PluginModule )` (o bloco que carrega o `.so` do modelo num cenário —
 ver [`CONTRIBUTING.md` §8.8](../../../CONTRIBUTING.md#88-carregando-o-modelo-num-cenário-o-bloco-pluginmodule-real))
@@ -339,7 +339,7 @@ mais quem o corrija.
 | precisão da órbita geométrica | raio mantido a **menos de 1 m** dos 5 NM nominais, sem deriva |
 | degradação com o script removido | `bt=PATROL` (o nó nativo); a aeronave não cai nem congela |
 | custo do Python no frame | **~42 µs por decisão** → **~168 µs por frame** (4 aeronaves) → ~0,8% de um frame de 20 ms (ver abaixo) |
-| linhas de C++ escritas para tudo isto | **zero** (o host é cópia; o modelo não mudou) |
+| linhas de C++ escritas para tudo isto | **zero** (o core é cópia; o modelo não mudou) |
 
 **O custo, medido.** Os dois binários rodando a **mesma** fixture com intruso, 4000 frames de
 passo fixo, 4 threads T/C, três repetições cada:

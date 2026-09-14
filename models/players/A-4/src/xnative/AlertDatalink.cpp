@@ -187,7 +187,7 @@ void AlertDatalink::receive(const double dt)
    // e segurar os dois ao mesmo tempo criaria uma ordem de travamento para
    // ninguem manter.
    //
-   // Aqui, na fronteira de fase, e nao nos getters: o host nao alcanca mais
+   // Aqui, na fronteira de fase, e nao nos getters: o core nao alcanca mais
    // esta classe (ela mora no plugin), e publicar uma vez por frame mantem a
    // latencia fixa que o comentario acima descreve.
    const models::Player* const owner{static_cast<const models::Player*>(findContainerByType(typeid(models::Player)))};

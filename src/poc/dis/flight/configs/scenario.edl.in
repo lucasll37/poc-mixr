@@ -75,7 +75,7 @@
       //
       // domain/, bt/, ubf/ e xnative/ NAO estao dentro do executavel: sao um
       // shared_module compilado a parte, contra o contrato de
-      // libs/xplugin/PluginAbi.hpp. O executavel e so o host -- o laco, o
+      // libs/xplugin/PluginAbi.hpp. O executavel e so o core -- o laco, o
       // cenario, a Station, a exportacao e o dump.
       //
       // Depois desta linha, os nomes de fabrica que a .so responde

@@ -11,7 +11,7 @@
 # partir do fonte), o Groot nao tem pacote em remoto nenhum: rodar este
 # script e' a UNICA forma de te-lo. Ele builda so uma vez (Release), fora do
 # laco de Debug/Release abaixo, so porque nao e' dependencia de BUILD do
-# host/modelo (e' um app Qt standalone que o usuario roda a parte, ver
+# core/modelo (e' um app Qt standalone que o usuario roda a parte, ver
 # deps/groot/conanfile.py) -- ver INSTALL.md secao 4 para os pacotes de
 # sistema (Qt5/ZeroMQ/libdw) que a maquina precisa ter ANTES de rodar isto.
 #

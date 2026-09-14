@@ -66,7 +66,7 @@ tempo. **Toda tecla tem um botão equivalente** (clicável, com a dica do atalho
 | **Mapa** | canvas navegável, duas perspectivas | arrastar/setas move; `[`/`]`/roda zoom; `v` perspectiva; `f` segue a selecionada; `t` rastro; `e` terreno; `,`/`.` gira; `c` centraliza |
 | **Memória** | contadores de instância do MIXR, ao vivo | `↑`/`↓` navega |
 | **Tempo Não-Crítico** | o que roda na thread de background (10 Hz) | só leitura |
-| **Log** | buffer de [`libs/xlog`](../libs/xlog/README.md) — host e modelo | `f` cicla o filtro por nível; `a` liga/desliga "acompanhar" |
+| **Log** | buffer de [`libs/xlog`](../libs/xlog/README.md) — core e modelo | `f` cicla o filtro por nível; `a` liga/desliga "acompanhar" |
 | **Componentes** | árvore real de componentes da `Station` | setas navega; `Enter` abre/fecha; `o`/`f` abre/fecha tudo; `n` passo manual; `v` velocidade da animação |
 | **EDL** | editor em memória do cenário carregado | `F8` valida; `F9` roda a versão editada; `F10` reverte |
 
@@ -104,7 +104,7 @@ continuam todas acessíveis pelas teclas.
 
 ![Aba Mapa](images/f2.png)
 
-**Memória.** `count=`/`pico=`/`criados=` por classe carregada (do host e do(s) plugin(s)). O
+**Memória.** `count=`/`pico=`/`criados=` por classe carregada (do core e do(s) plugin(s)). O
 selo `CRESCENDO` aparece quando `count` nunca caiu numa janela de ~3 s e termina maior que
 começou — sinal de possível vazamento, sem esperar o processo terminar.
 
@@ -121,7 +121,7 @@ processo.
 ![Aba Tempo Não-Crítico](images/f4.png)
 
 **Log.** Como `xlog` é `shared_library()` — uma cópia só no processo — o que o **modelo** loga de
-dentro do `.so` aberto por `dlopen` cai no mesmo buffer que o do host; quem produz o conteúdo é
+dentro do `.so` aberto por `dlopen` cai no mesmo buffer que o do core; quem produz o conteúdo é
 sempre o modelo, o `app` só exibe. `f` cicla o filtro por nível mínimo (DEBUG→INFO→WARNING→ERROR);
 `a` gruda a seleção na linha mais recente — qualquer `↑` desliga sozinho, voltar ao fim religa.
 
@@ -246,5 +246,5 @@ decisão de design — e as armadilhas encontradas rodando — está na seção 
 | [CLAUDE.md](../CLAUDE.md), seção `./app` | toda decisão de design e armadilha, rodada por rodada |
 | [README.md](../README.md) (raiz) | pré-requisitos, build, como o repositório se organiza |
 | [libs/README.md](../libs/README.md) | as bibliotecas que este app consome (`xboard`, `xtrack`, `xlog`...) |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) (raiz) | como um modelo vira plugin, como escrever um novo (não cobre contribuição ao host/`./app`) |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) (raiz) | como um modelo vira plugin, como escrever um novo (não cobre contribuição ao core/`./app`) |
 | [tests/README.md](../tests/README.md) | a suíte automatizada, inclusive `scenario/run_app_stress_test.py` (`scenario-app-quit`/`scenario-app-quit-dis` estão documentados em `CLAUDE.md`, não lá) |

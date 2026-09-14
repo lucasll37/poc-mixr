@@ -5,7 +5,7 @@
 # que o /usr/bin/python3 do Ubuntu tem a libpython ESTATICA, entao um
 # DT_NEEDED daria um SEGUNDO runtime no processo do src/rl.
 #
-# O efeito colateral bom: nenhum meson.build nem main.cpp de host precisou
+# O efeito colateral bom: nenhum meson.build nem main.cpp de core precisou
 # mudar, e o Python virou dependencia OPCIONAL de runtime.
 
 xpyembed_inc_dir = include_directories('..')

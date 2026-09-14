@@ -16,7 +16,7 @@
 //
 // O buffer e estado GLOBAL do processo (uma copia so, de proposito -- e o
 // que faz o LOG(...) do plugin do modelo cair no mesmo lugar que o do
-// host). Por isso cada teste ancora no seq corrente em vez de supor que
+// core). Por isso cada teste ancora no seq corrente em vez de supor que
 // comeca vazio: rodar em qualquer ordem tem de dar o mesmo resultado.
 
 using mixr::xlog::Level;

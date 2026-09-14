@@ -31,7 +31,7 @@ namespace xAAA {
 //
 // O que execute() NAO PODE deixar de fazer, em QUALQUER modelo, e' escrever
 // no xboard -- ver models/template/docs/CONTRATO.md secao 3. E' a UNICA
-// obrigacao que falha em SILENCIO: sem ela, o host sobe, o cenario parseia,
+// obrigacao que falha em SILENCIO: sem ela, o core sobe, o cenario parseia,
 // tudo passa, e a tela de status/o dump '-deterministic' mostram
 // 'bt=--'/'dec=0' para sempre, sem erro nenhum em lugar nenhum.
 //------------------------------------------------------------------------------

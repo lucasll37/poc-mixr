@@ -89,7 +89,7 @@ void FlightAgentTC::controller(const double dt)
    lastThreadTag.store(tag, std::memory_order_relaxed);
 
    // Publica no quadro de leitura: e por ele que a linha de status mostra em
-   // que thread do pool T/C este aviao decidiu. O host nao alcanca mais esta
+   // que thread do pool T/C este aviao decidiu. O core nao alcanca mais esta
    // classe -- ela mora no plugin do modelo.
    xboard::setThreadTag(player->getID(), tag);
 

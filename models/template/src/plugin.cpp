@@ -40,7 +40,7 @@ mixr::base::Object* fabrica(const char* const name)
 // PRIMEIRO PASSO AO TRANSFORMAR ESTE TEMPLATE NO SEU MODELO: troque o nome
 // "template" abaixo pelo nome do seu modelo (ex.: "radar", "ground_vehicle",
 // "meu_modelo"). E o primeiro argumento de MIXR_PLUGIN_DEFINE, ele vai para
-// o descritor binario do plugin e aparece em mensagens de erro do host
+// o descritor binario do plugin e aparece em mensagens de erro do core
 // quando algo da errado no carregamento -- ver PluginDescV1 em
 // libs/xplugin/PluginAbi.hpp. Combine com o nome do project() em
 // meson.build e do shared_module() (ver docs/PRIMEIROS-PASSOS.md, passo 1).

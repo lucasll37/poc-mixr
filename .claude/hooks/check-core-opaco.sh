@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PostToolUse (Edit|Write): depois de editar algo sob app/, src/, libs/ ou
-# qualquer meson.build, reconfirma que o build do HOST continua sem
+# qualquer meson.build, reconfirma que o build do CORE continua sem
 # referenciar fonte de MODELO (domain/bt/ubf/xnative moram so em
-# models/players/<nome>/). Delega para tests/guard/check_host_opaco.sh, que
+# models/players/<nome>/). Delega para tests/guard/check_core_opaco.sh, que
 # ja e o script canonico dessa checagem (rodado tambem por 'make test').
 #
 # Fail-safe: sai 0 em silencio se faltar python3/bash/o proprio script, ou
@@ -28,7 +28,7 @@ case "$FILE_PATH" in
 esac
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-GUARD="$ROOT/tests/guard/check_host_opaco.sh"
+GUARD="$ROOT/tests/guard/check_core_opaco.sh"
 [ -f "$GUARD" ] || exit 0
 
 OUTPUT="$(bash "$GUARD" 2>&1)"
@@ -36,7 +36,7 @@ STATUS=$?
 
 if [ "$STATUS" -ne 0 ]; then
     {
-        echo "check_host_opaco.sh FALHOU apos esta edicao -- o build do host (app/src/libs) nao pode"
+        echo "check_core_opaco.sh FALHOU apos esta edicao -- o build do core (app/src/libs) nao pode"
         echo "referenciar fonte de MODELO (domain/bt/ubf/xnative moram so em models/players/<nome>/)."
         echo "Corrija antes de continuar:"
         echo "$OUTPUT"

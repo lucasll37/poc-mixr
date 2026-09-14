@@ -50,9 +50,9 @@ simulação, em que linguagem a lógica de decisão é escrita...).
 
 O MIXR **nunca é modificado** — entra como dependência binária, resolvida pelo Conan. Os
 **modelos** (a lógica de decisão de cada aeronave) são carregados pelo executável em tempo de
-execução como plugins (`dlopen`: o `.so` do modelo é aberto em *runtime* pelo **host** — o
+execução como plugins (`dlopen`: o `.so` do modelo é aberto em *runtime* pelo **core** — o
 executável `./app` deste repositório, detalhado na seção "Build" abaixo — nunca linkado em tempo
-de compilação; o host nunca vê o código-fonte do modelo); o MIXR empacotado é
+de compilação; o core nunca vê o código-fonte do modelo); o MIXR empacotado é
 **headless** (sem interface gráfica própria — não abre janela nenhuma), e toda visualização é
 feita via **Tacview Real-Time Telemetry**
 ([Tacview](https://www.tacview.net/) — visualizador 3D de voo de terceiros; a simulação roda
@@ -66,11 +66,11 @@ normalmente sem ele, ele só recebe telemetria ao vivo por *socket*, ver "Pré-r
 | ferramenta | versão | por quê |
 |---|---|---|
 | Conan | ≥ 2.0 | **gerenciador de pacotes/dependências para C++** — baixa pacotes binários de um *remote* (um repositório de pacotes Conan; o ConanCenter público é um exemplo); resolve MIXR (ver acima), BehaviorTree.CPP, e três libs de papel específico — `ftxui` (biblioteca de **TUI** — *Text User Interface*, interface de texto interativa em terminal —, usada só no `./app`), `pybind11` (gera os *bindings* Python↔C++, usado só em `src/rl/bindings`), `onnxruntime` (motor de inferência de redes neurais no formato **ONNX** — *Open Neural Network Exchange* —, usado só em `libs/xinfer` para políticas `.onnx`) — mais `gtest` (framework de testes unitários, usado na suíte de testes) |
-| Meson | ≥ 1.0 | sistema de build (como o CMake — gera os arquivos que o Ninja de fato executa; host e modelo são dois projetos Meson separados, ver "Build" abaixo) |
+| Meson | ≥ 1.0 | sistema de build (como o CMake — gera os arquivos que o Ninja de fato executa; core e modelo são dois projetos Meson separados, ver "Build" abaixo) |
 | Ninja | qualquer | *backend* do Meson |
 | GCC ≥ 7 | — | o projeto compila em C++17 — único compilador de fato exercitado (INSTALL.md, CI e as receitas de `deps/` só instalam/testam GCC; Clang deve funcionar em teoria por ser C++17 padrão, mas nunca foi verificado por nenhum processo automatizado deste repositório) |
 | pkg-config | qualquer | resolve as libs via `dependency(method: 'pkg-config')` |
-| Python 3 + `python3-dev` | 3.x | `src/rl/bindings` (parte do host) linka `pybind11`/`Python.h` |
+| Python 3 + `python3-dev` | 3.x | `src/rl/bindings` (parte do core) linka `pybind11`/`Python.h` |
 | gzip | qualquer | descomprime os tiles SRTM na 1ª execução (SRTM = dados públicos de elevação de terreno, NASA) |
 | Qt5 + ZeroMQ + CMake (dev) | Qt5 sem versão mínima documentada, CMake ≥ 3.2, ZeroMQ sem versão mínima documentada | Qt5 (framework/biblioteca de interface gráfica em C++) e ZeroMQ (biblioteca de mensageria assíncrona — aqui, a camada de transporte do modo Monitor do Groot) sustentam o Groot 1.0 (`deps/groot/`) — editor/monitor visual das árvores de comportamento; exigido por `./scripts/deps.sh` (o caminho sem credencial de remote privado, ver logo abaixo), que builda o Groot incondicionalmente mesmo para quem nunca for abri-lo; dispensável só se o seu Conan já resolve `mixr`/`behaviortree.cpp.asa` prontos de um remote privado; pacotes `apt` exatos em [`INSTALL.md`](INSTALL.md) §4 (ver "Leia mais") |
 | Tacview (opcional) | Advanced | visualizador 3D de terceiros, [tacview.net](https://www.tacview.net/) — a **Real-Time Telemetry** que este projeto usa (parágrafo de abertura acima) é recurso exclusivo da edição **Advanced** (paga); a edição Standard (gratuita) não recebe conexão ao vivo, só abre um `.acmi` (**ACMI**, *Air Combat Maneuvering Instrumentation* — o formato de gravação/streaming nativo do Tacview) já gravado depois. Sem o Tacview a simulação roda normalmente, só sem visualização 3D ao vivo |
@@ -104,39 +104,39 @@ instalação Ubuntu 24.04 do zero testada em container → [`INSTALL.md`](INSTAL
 Um **modelo** é a lógica de decisão de um *player* (a entidade simulada dentro do MIXR — uma
 aeronave, por exemplo) (`domain`/`bt`/`ubf`/`xnative` de `models/<categoria>/<nome>/` — caminhos
 exatos na árvore abaixo), compilada à parte e carregada em *runtime* via `dlopen` — nunca
-linkada no host. O **host** é o executável `./app` — mais três binários satélite: `edlcheck
+linkada no core. O **core** é o executável `./app` — mais três binários satélite: `edlcheck
 <arquivo>` (valida um `.edl` sem levantar simulação), `plugininfo <arquivo.so>` (introspecciona um
 plugin sem `Station` nenhuma) e `node <arquivo.edl>` (runner headless, sem TUI, ver
 [`src/node/README.md`](src/node/README.md); **nome ambíguo, não confundir com o Node.js da tabela
 de Pré-requisitos acima** — é um binário C++ próprio deste repositório, nada a ver com JavaScript) —
-compilado em `app/`+`src/`+`libs/`. **Host e modelo são dois projetos Meson separados**,
+compilado em `app/`+`src/`+`libs/`. **Core e modelo são dois projetos Meson separados**,
 orquestrados pelo
-`Makefile` — o host nunca vê o código-fonte de um modelo, só o `.so` já compilado. Etapas, em
+`Makefile` — o core nunca vê o código-fonte de um modelo, só o `.so` já compilado. Etapas, em
 ordem:
 
 ```bash
-make configure   # 1. conan install + meson setup do host                    -> build/
+make configure   # 1. conan install + meson setup do core                    -> build/
 make sdk         # 2. publica o SDK (Software Development Kit) de plugin em dist/: o
                  #    ABI (a interface binaria que um .so de modelo tem que
                  #    respeitar, libs/xplugin/PluginAbi.hpp) + as .so compartilhadas
-                 #    host<->modelo (libs/x<nome>, ex.: xboard,
+                 #    core<->modelo (libs/x<nome>, ex.: xboard,
                  #    xlog -- ver "Como o projeto se organiza" abaixo)       -> dist/
 make models      # 3. compila o(s) modelo(s) (nao mexe em dist/)             -> plugins/
-make build       # 4. compila o host (nao depende dos modelos)               -> build/
-make install     # 5. compila o host se preciso (depende de 'build') + sincroniza
-                 #    plugins/ -> dist/ e instala o host                    -> dist/
+make build       # 4. compila o core (nao depende dos modelos)               -> build/
+make install     # 5. compila o core se preciso (depende de 'build') + sincroniza
+                 #    plugins/ -> dist/ e instala o core                    -> dist/
 ```
 
 `build`/`install`/`models` puxam `sdk` sozinhos (o `Makefile` declara `models: sdk` também — um
 `make models` isolado já garante o SDK publicado, sem precisar rodar `make sdk` à parte antes),
 mas `build`/`install` **não** puxam `models` — as duas são DECOPLADAS de
-propósito (compilar o host nunca precisou saber onde os modelos guardam os artefatos deles, ver
+propósito (compilar o core nunca precisou saber onde os modelos guardam os artefatos deles, ver
 [`CLAUDE.md`](CLAUDE.md) — apesar do nome, é referência de arquitetura para humanos também, não
 só config de IA; ver a tabela "Leia mais" no fim — seção "Desacoplando `models` de `dist/`"). No
 dia a dia, rode as três etapas seguintes: `make configure
 && make models && make install` (ou `make configure && make build && make models && make
 install`, se quiser separar explicitamente o passo 4); as etapas do bloco acima existem para
-rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho não toca no host).
+rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho não toca no core).
 
 > **Armadilha:** `make install` sem um `make models` anterior sincroniza um `plugins/` vazio, sem
 > erro fatal — só um aviso — e nenhum **cenário** (a instância de `.edl` que descreve *players*,
@@ -144,7 +144,7 @@ rodar isoladamente (ex.: mexeu só no modelo, `make models` sozinho não toca no
 > && make install` de novo resolve; não precisa de `make clean`.
 
 ```bash
-make clean   # remove build/ e dist/ (host e modelos) e o deposito que 'models' gerou
+make clean   # remove build/ e dist/ (core e modelos) e o deposito que 'models' gerou
 make help    # lista TODOS os alvos do Makefile, com descricao
 ```
 
@@ -153,36 +153,36 @@ make help    # lista TODOS os alvos do Makefile, com descricao
 ```bash
 meson configure build -Dtests=true   # roda uma vez, depois do 'make configure' -- a suite fica atras desta opcao
 make test-models                     # so a suite do(s) MODELO(s): domain + tree + native
-make test                            # so a suite do HOST: scenario/determinism/plugin/memory/guard/...
+make test                            # so a suite do CORE: scenario/determinism/plugin/memory/guard/...
 make test-asan                       # AddressSanitizer/LeakSanitizer (ASan/LSan -- sanitizadores de memoria do compilador GCC/Clang, detectam acesso invalido e vazamento de heap, respectivamente; build separado, lento)
 ```
 
-`make test` depende só de `install` (compila o host e sincroniza `plugins/ -> dist/` — ver a
+`make test` depende só de `install` (compila o core e sincroniza `plugins/ -> dist/` — ver a
 Armadilha da seção "Build" acima), **não** de `make models`: os testes que `dlopen()` um modelo
 (ex. `scenario`/`plugin`) esperam achar o `.so` já em `dist/`, e isso só acontece se um `make
 models` já tiver rodado antes (na sequência recomendada da seção "Build", ou como o job `build` do
 CI já faz — ver "CI" abaixo). Rodar só `meson configure -Dtests=true && make test-models && make
 test` a partir de um estado limpo, sem `make models` no meio, reproduz a mesma Armadilha (`plugins/`
-vazio sincronizado em silêncio). `make test` roda só a suíte do host; a suíte do próprio modelo
+vazio sincronizado em silêncio). `make test` roda só a suíte do core; a suíte do próprio modelo
 (`domain`/`tree`/`native`, sem `Station`) é `make test-models`, que delega para o `Makefile`
 autocontido de cada projeto de modelo. As duas juntas, precedidas de `make models`, são o que o CI
 roda (`.gitlab-ci.yml`, job `test`, que depende do job `build` já ter rodado `make models` antes).
 
-> **Nome ambíguo, não redescobrir:** a suíte do HOST também tem um alvo `--suite domain`
+> **Nome ambíguo, não redescobrir:** a suíte do CORE também tem um alvo `--suite domain`
 > (`tests/meson.build`, dentro de `make test`) — mesmo nome da camada `domain` do MODELO acima,
 > mas coisa diferente (hoje cobre lógica pura do `./app` mais uma unidade por `libs/x*`, ex.
 > `xboard`/`xlog`/`xtrack`). Detalhe em [`tests/README.md`](tests/README.md).
 
 ### `make test-asan`
 
-Fora de `make test` de propósito — reconfigura e recompila host **e** modelo duas vezes (uma vez
+Fora de `make test` de propósito — reconfigura e recompila core **e** modelo duas vezes (uma vez
 com o sanitizador, outra revertendo), então é lento. Passo a passo:
 
 1. **Recompila os DOIS lados com `-fsanitize=address`**: o modelo (`make models ASAN=true`, que
    hoje instrumenta só `models/players/A-4` — é o único projeto de modelo com uma opção `asan` no
    próprio `meson_options.txt`; `template` não tem essa opção e a ignora) e o
-   host (`meson configure build -Dasan=true` + `meson compile`, que instrumenta `./app` e
-   `src/rl/bindings`). Os dois são necessários — instrumentar só o host deixaria o `.so` do plugin
+   core (`meson configure build -Dasan=true` + `meson compile`, que instrumenta `./app` e
+   `src/rl/bindings`). Os dois são necessários — instrumentar só o core deixaria o `.so` do plugin
    sem *redzone* de pilha (a área extra que o ASan reserva ao redor de cada variável na pilha,
    para detectar um acesso além dos limites dela) e sem símbolos no relatório do LeakSanitizer.
 2. Gera uma fixture **hermética** (sem `networks:` — não abre porta DIS nenhuma, ver "Rodar" abaixo)
@@ -258,8 +258,11 @@ make test-ci
 
 Por baixo é [`gitlab-ci-local`](https://github.com/firecow/gitlab-ci-local): lê
 `stages:`/`needs:`/`image:` direto do `.gitlab-ci.yml` e executa cada job em Docker, isolado da
-árvore de trabalho (copia só o que o `git` rastreia e não ignora — `build/`/`dist/`/
-`contexts/src/` ficam de fora, então não há como o teste "trapacear" reaproveitando cache local).
+árvore de trabalho (copia só o que o `git` rastreia e não ignora — `build/`/`dist/` ficam de
+fora, então não há como o teste "trapacear" reaproveitando cache local; `contexts/src/` **é**
+rastreado pelo git — ao contrário do que uma versão anterior deste parágrafo dizia — então ele
+entra normalmente nessa cópia, o que é esperado: os geradores de `docs/manual/` dependem dele sem
+nenhum fallback).
 Exige Docker + Node — chamar `npx gitlab-ci-local` direto (sem o `make test-ci`) dá mais controle:
 
 ```bash
@@ -270,7 +273,7 @@ npx gitlab-ci-local --list-all  # mostra TODOS os jobs definidos, mesmo os fora 
 ## Rodar
 
 Um único executável cobre todas as pocs, `app` — cada prova de conceito é um **cenário**, não um
-binário próprio (os outros três binários do host — `edlcheck`/`plugininfo`/`node`, seção "Build"
+binário próprio (os outros três binários do core — `edlcheck`/`plugininfo`/`node`, seção "Build"
 acima — têm papéis diferentes, nenhum deles roda uma poc).
 `./build/app/src/app` (o binário recém-compilado) e `./dist/bin/app` (a cópia que `make install`
 publica) são o **mesmo binário**, um antes e outro depois do install — os exemplos abaixo usam o
@@ -384,16 +387,16 @@ poc-mixr/
 │                 por sandbox/Navstar-3-constellation/ -- e "systems" continua vazia, so convencao
 │                 pro futuro; models/events/ e' uma QUARTA pasta, fora dessa taxonomia -- nao e'
 │                 <categoria>/<nome>, e' o projeto Meson unico do eixo de eventos deste projeto,
-│                 tambem shared_library() cruzando a fronteira dlopen host<->modelo como as libs/
+│                 tambem shared_library() cruzando a fronteira dlopen core<->modelo como as libs/
 │                 x<nome> descritas abaixo, ver models/events/README.md)
 ├── plugins/      deposito flat dos .so compilados (proprios OU de terceiro) -> dist/ via 'make install'
 ├── libs/         bibliotecas x<nome> (ex.: xboard, xlog -- as que cruzam a fronteira dlopen
-│                 host<->modelo; outras, como xtacview, ficam estaticas) -- cada uma com
+│                 core<->modelo; outras, como xtacview, ficam estaticas) -- cada uma com
 │                 README.md, ver libs/README.md
 ├── shared/       dados vendorizados do CENARIO -- terreno SRTM (elevacao publica, NASA) e
 │                 aeronaves JSBSim (motor de dinamica de voo open-source), em shared/data/
 ├── sandbox/      cenarios soltos de experimentacao (ver 'make run-app')
-├── tests/        suite do host (a de cada modelo vive dentro do proprio models/players/<nome>/)
+├── tests/        suite do core (a de cada modelo vive dentro do proprio models/players/<nome>/)
 ├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP -- destilado + fonte vendorizado
 ├── docs/         docs/manual/ e' documentacao visual GERADA do fonte real (manual interativo) --
 │                 docs/presentation/ (slides orfaos, nenhum alvo os gera) e docs/books/ (os dois
@@ -425,13 +428,13 @@ Três regras valem para todo subprojeto e todo modelo:
 | documento | quando ler |
 |---|---|
 | [`TOUR.md`](TOUR.md) | chegou agora? comece por aqui — passeio guiado, em ordem, por todo o repositório |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | escrever um MODELO novo (não mexer no host) |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | escrever um MODELO novo (não mexer no core) |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`models/REGISTRO.md`](models/REGISTRO.md) | como um modelo vira plugin; quem já está trabalhando em qual |
-| [`libs/README.md`](libs/README.md) | as 12 bibliotecas de suporte host/modelo (6 compartilhadas via `dlopen`, as demais estáticas ou header-only), uma por pasta |
+| [`libs/README.md`](libs/README.md) | as 12 bibliotecas de suporte core/modelo (6 compartilhadas via `dlopen`, as demais estáticas ou header-only), uma por pasta |
 | [`tests/README.md`](tests/README.md) | as suítes de teste, o que cada uma prova |
 | [`docs/estudos/snapshot-restore.md`](docs/estudos/snapshot-restore.md) | é possível salvar uma simulação no meio e retomá-la byte-idêntica? estudo de viabilidade — a resposta é sim, por reexecução, não por captura de estado, e só entre execuções em `-deterministic` (não numa sessão interativa em tempo real) |
 | [`contexts/`](contexts/) | MIXR e BehaviorTree.CPP por dentro (destilado + fonte vendorizado) |
-| [`docs/manual/`](docs/manual/) | manual interativo com seis visões sobre o framework — ciclo de execução, cadeia de decisão, catálogo de classes, entre outras (`make open-docs` — requer navegador na mesma máquina) |
+| [`docs/manual/`](docs/manual/) | manual interativo com cinco visões sobre o framework — ciclo de execução, cadeia de decisão, catálogo de classes, entre outras (`make open-docs` — requer navegador na mesma máquina) |
 | [`src/ui/`](src/ui/) | editor gráfico de cenário `.edl` (`make open-edl` — requer navegador na mesma máquina) |
 | Groot (`deps/groot/`, ver `INSTALL.md` §4) | editor/monitor ao vivo de árvores de comportamento (`make open-groot` — requer display X11/Wayland na mesma máquina); diferente do `src/ui`, que edita o `.edl` inteiro, não só a árvore |
 | [`src/rl/`](src/rl/) | o ambiente Gymnasium (reset/step/observação) contra o qual se treina uma política de RL — quem treina de fato é `src/poc/rl-training/`, próxima linha |

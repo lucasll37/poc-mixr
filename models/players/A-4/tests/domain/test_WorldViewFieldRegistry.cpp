@@ -100,7 +100,7 @@ TEST(WorldViewFieldRegistry, FindDeNomeInexistenteDevolveNulo)
 // bind()/pack() contra o registro REAL, com um schema ad-hoc que so pede
 // os campos de RWR -- prova que a selecao por nome funciona ponta a ponta
 // contra domain::WorldView, nao so contra o FakeState de
-// tests/domain/test_field_registry.cpp (no host).
+// tests/domain/test_field_registry.cpp (no core).
 TEST(WorldViewFieldRegistry, BindEPackContraUmSchemaAdHocDeCamposDeRwr)
 {
    WorldView s;

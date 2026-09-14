@@ -6,7 +6,7 @@
 #
 # Ao contrario de models/*/Makefile (que compilam um .so via Meson), este
 # projeto e so Python -- nao ha configure/build/install de C++ aqui. O
-# unico pre-requisito e o HOST publicado uma vez, na raiz do repositorio:
+# unico pre-requisito e o CORE publicado uma vez, na raiz do repositorio:
 #
 #     cd ../../.. && make configure && make sdk && make models && make build && make install
 #
@@ -35,7 +35,7 @@ RED   := \033[0;31m
 GREEN := \033[0;32m
 NC    := \033[0m
 
-check-root: ## Confere que o host ja publicou dist/python/mixr_gym.
+check-root: ## Confere que o core ja publicou dist/python/mixr_gym.
 	@test -d $(DIST_PYTHON)/mixr_gym || { \
 		echo "$(RED)faltando $(DIST_PYTHON)/mixr_gym$(NC)"; \
 		echo "  rode 'cd $(ROOT) && make configure && make sdk && make models && make build && make install' primeiro (uma vez)."; \

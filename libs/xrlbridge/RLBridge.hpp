@@ -11,11 +11,11 @@ namespace mixr {
 namespace xrlbridge {
 
 //------------------------------------------------------------------------------
-// A ponte de comando/observacao entre um host de RL (src/rl/bindings, um modulo
+// A ponte de comando/observacao entre um core de RL (src/rl/bindings, um modulo
 // de extensao Python) e o comportamento UBF que decide por fora do processo
 // MIXR (models/players/A-4/include/ubf/RLBridgeBehavior.hpp).
 //
-// Uma unica questao: o comando que o host quer aplicar, e a observacao que o
+// Uma unica questao: o comando que o core quer aplicar, e a observacao que o
 // modelo capturou no ultimo ciclo de decisao -- os dois lados de uma troca
 // sincrona (ver src/rl/README.md para o protocolo completo: NativeSimulation::
 // step() escreve o comando, chama station->tcFrame()/updateData(), depois LE
@@ -34,18 +34,18 @@ namespace xrlbridge {
 //
 // MESMO MOTIVO ESTRUTURAL de libs/xboard/Board.hpp para ser a UNICA
 // shared_library() desta dupla (as outras libs de libs/ sao estaticas):
-// quem ESCREVE o comando e LE a observacao e o host (executavel); quem LE o
+// quem ESCREVE o comando e LE a observacao e o core (executavel); quem LE o
 // comando e ESCREVE a observacao e o modelo (um .so carregado com dlopen).
-// Uma lib estatica daria a cada lado a SUA PROPRIA copia do mapa -- o host
+// Uma lib estatica daria a cada lado a SUA PROPRIA copia do mapa -- o core
 // nunca veria o comando chegar no modelo, e vice-versa.
 //
 // Os campos de Observation espelham domain::WorldView (models/players/A-4/include/
 // domain/WorldView.hpp) CAMPO A CAMPO, mas deliberadamente NAO reusam o tipo:
 // esta lib nao pode incluir headers do modelo (ver
-// tests/guard/check_host_opaco.sh -- o host nao pode conhecer o fonte do
+// tests/guard/check_core_opaco.sh -- o core nao pode conhecer o fonte do
 // modelo), entao ela define a sua PROPRIA copia da forma. O modelo converte
 // domain::WorldView -> Observation campo a campo em
-// RLBridgeBehavior::genAction(); nao ha conversao nenhuma do lado do host,
+// RLBridgeBehavior::genAction(); nao ha conversao nenhuma do lado do core,
 // que so ve Observation.
 //------------------------------------------------------------------------------
 // CONCORRENCIA: mesmo padrao de Board.hpp -- um mutex so, mapa minusculo (um
@@ -55,8 +55,8 @@ namespace xrlbridge {
 struct Command
 {
    // ACHADO POR AUDITORIA (nao redescobrir): sem este flag,
-   // RLBridgeBehavior::genAction() nao tinha como distinguir "o host ainda
-   // nao publicou nenhuma acao" de "o host publicou heading=0/altitude=0/
+   // RLBridgeBehavior::genAction() nao tinha como distinguir "o core ainda
+   // nao publicou nenhuma acao" de "o core publicou heading=0/altitude=0/
    // speed=0 de proposito" -- os dois pareciam identicos (Command
    // default-construido). Na primeira decisao de cada episodio (o frame de
    // priming que NativeSimulation::reset() dispara via primeStation(),
@@ -128,7 +128,7 @@ struct Observation
    bool hasNavCmdSpeed{};
 };
 
-//--- escrita: SO o host (src/rl/bindings/NativeSimulation.cpp) chama -------------
+//--- escrita: SO o core (src/rl/bindings/NativeSimulation.cpp) chama -------------
 void setPendingCommand(const Command& cmd);
 
 //--- leitura: SO o modelo (RLBridgeBehavior::genAction()) chama --------------
@@ -137,7 +137,7 @@ Command getPendingCommand();
 //--- escrita: SO o modelo (RLBridgeBehavior::genAction()) chama --------------
 void setObservation(const Observation& obs);
 
-//--- leitura: SO o host chama -------------------------------------------------
+//--- leitura: SO o core chama -------------------------------------------------
 Observation getObservation();
 
 //------------------------------------------------------------------------------

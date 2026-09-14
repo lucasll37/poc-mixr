@@ -183,7 +183,7 @@ classe C++ nova precisou ser escrita para o corpo do satelite. So' quatro classe
 | `Navstar3Action` | `base::ubf::AbstractAction` | atuacao -- aplica `setGeocPosition`/`setGeocVelocity` + xboard |
 | `Navstar3AgentTC` | `base::ubf::AgentTC` | o agente, fase 3 do frame T/C |
 
-`provides:` no `.edl` e' exatamente esses 4 nomes (`SpaceVehicle` vem da factory nativa do host,
+`provides:` no `.edl` e' exatamente esses 4 nomes (`SpaceVehicle` vem da factory nativa do core,
 nao deste `.so`). Prefixo `Navstar3` em todos, de proposito -- nomes de fabrica sao GLOBAIS ao
 processo, nao por-plugin; `python3 tests/guard/check_colisao_fabrica.py` confirma zero colisao
 contra A-4 (`Flight*`)/C-130 (`C130*`)/paratrooper (`Paratrooper*`)/template (`Example*`).

@@ -9,7 +9,7 @@
 #include "mixr/config.hpp"
 
 //------------------------------------------------------------------------------
-// O CONTRATO entre a aplicacao (host) e um modelo carregado em tempo de
+// O CONTRATO entre a aplicacao (core) e um modelo carregado em tempo de
 // execucao (dlopen).
 //
 // Este e o UNICO arquivo que o autor de um plugin inclui do lado da
@@ -52,12 +52,12 @@ namespace xplugin {
 //
 // Suba A MAO quando PluginDescV1 mudar de forma incompativel ou quando a
 // semantica de um campo mudar. Acrescentar campo NO FIM nao exige subir: o
-// host compara struct_size e simplesmente nao le o que nao conhece.
+// core compara struct_size e simplesmente nao le o que nao conhece.
 //------------------------------------------------------------------------------
 constexpr std::uint32_t PLUGIN_ABI{1};
 
 // Sentinela para 'cxx11_abi' quando a toolchain nao define
-// _GLIBCXX_USE_CXX11_ABI (libc++, por exemplo). O host trata como AVISO,
+// _GLIBCXX_USE_CXX11_ABI (libc++, por exemplo). O core trata como AVISO,
 // nao como recusa -- nao da para conferir o que nao foi reportado.
 constexpr std::uint32_t CXX11_ABI_DESCONHECIDA{255};
 
@@ -80,7 +80,7 @@ using factory_fn = ::mixr::base::Object* (*)(const char* name);
 //------------------------------------------------------------------------------
 // O descritor. POD, com struct_size na frente.
 //
-// 'struct_size' e o que torna campo aditivo seguro: um host novo lendo um
+// 'struct_size' e o que torna campo aditivo seguro: um core novo lendo um
 // plugin velho ve um numero menor e nao toca no que veio depois.
 //------------------------------------------------------------------------------
 struct PluginDescV1
@@ -123,7 +123,7 @@ struct PluginDescV1
 // O '_v1' NO NOME e redundante com o campo 'abi' DE PROPOSITO -- sao dois
 // tipos diferentes de mudanca:
 //   * campo novo no fim (ADITIVA)   -> coberto por struct_size + abi;
-//   * mudanca DESTRUTIVA            -> coberta pelo nome: o host novo procura
+//   * mudanca DESTRUTIVA            -> coberta pelo nome: o core novo procura
 //     mixr_plugin_v2, o plugin velho so exporta mixr_plugin_v1, e o dlsym
 //     falha com "simbolo ausente" em vez de reinterpretar bytes.
 //------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 #endif
 
 // Injetados pelo meson (xplugin_abi_dep). Os defaults existem para que um
-// plugin compilado a mao ainda compile -- e o host avisa que nao sabe contra
+// plugin compilado a mao ainda compile -- e o core avisa que nao sabe contra
 // o que ele foi feito.
 #ifndef MIXR_PLUGIN_PKG_VERSION
    #define MIXR_PLUGIN_PKG_VERSION "?"
@@ -208,7 +208,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
                            sizeof(::mixr::models::Player))
 
 // Para plugin que NAO deriva de models::Player (um OutputHandler, um
-// Behavior do UBF...). Desliga o canario; o host avisa que a checagem mais
+// Behavior do UBF...). Desliga o canario; o core avisa que a checagem mais
 // util de layout esta desligada.
 #define MIXR_PLUGIN_DEFINE_NOCANARY(NAME, FACTORY_FN, NAMES, METAS)             \
    MIXR_PLUGIN_DEFINE_IMPL(NAME, FACTORY_FN, NAMES, METAS, 0)

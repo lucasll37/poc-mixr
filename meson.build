@@ -44,7 +44,7 @@ mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 # NENHUM alvo deste projeto linka BehaviorTree.CPP ou JSBSim. Quem precisa
 # delas e o modelo, e ele declara as suas.
 #
-# Se um subprojeto novo do HOST algum dia precisar de uma das duas, e sinal de
+# Se um subprojeto novo do CORE algum dia precisar de uma das duas, e sinal de
 # que ele esta fazendo trabalho de modelo -- reconsidere antes de acrescentar
 # a linha de volta.
 
@@ -91,12 +91,12 @@ subdir('./libs/xclock')
 # subprojetos, que consomem xjoystick_dep.
 subdir('./libs/xjoystick')
 
-# O quadro de leitura entre o host e o modelo. E a UNICA peca que o executavel
+# O quadro de leitura entre o core e o modelo. E a UNICA peca que o executavel
 # e o plugin de modelo compartilham -- por isso e shared_library() de verdade,
 # e nao static como as demais de libs/ (ver libs/xboard/Board.hpp).
 subdir('./libs/xboard')
 
-# Consulta ao radar nativo -- disputada pelo host (dump) e pelo modelo
+# Consulta ao radar nativo -- disputada pelo core (dump) e pelo modelo
 # (percepcao), por isso .so e por isso no SDK.
 subdir('./libs/xtrack')
 
@@ -109,7 +109,7 @@ subdir('./libs/xmsg')
 # usado pelos executaveis). Precisa vir ANTES de src/.
 subdir('./libs/xplugin')
 
-# A ponte de comando/observacao entre o host de RL (./rl) e RLBridgeBehavior
+# A ponte de comando/observacao entre o core de RL (./rl) e RLBridgeBehavior
 # (models/players/A-4). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
 # precisa existir antes de pkg.generate() listar as libs do SDK.
 subdir('./libs/xrlbridge')

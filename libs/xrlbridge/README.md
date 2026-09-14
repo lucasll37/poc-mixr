@@ -1,6 +1,6 @@
 # `libs/xrlbridge` — a ponte de comando/observação entre RL e o modelo
 
-Uma troca síncrona de dois structs, `Command`/`Observation`, entre um host de RL em Python
+Uma troca síncrona de dois structs, `Command`/`Observation`, entre um core de RL em Python
 (`src/rl/bindings/`, pybind11) e o comportamento UBF que decide por fora do processo MIXR
 (`RLBridgeBehavior`, em `models/players/A-4`). Mais o contrato de dados que dá ordem aos 38 floats
 que viram entrada de rede — `ObservationFields.hpp` — reusado por quatro consumidores diferentes
@@ -30,7 +30,7 @@ agent: ( FlightAgentTC
 ```
 
 Do lado do **modelo** (`models/players/A-4/src/ubf/RLBridgeBehavior.cpp`), `genAction()` não decide
-nada — só publica o `WorldView` deste frame e devolve o `Command` que o host deixou pendente:
+nada — só publica o `WorldView` deste frame e devolve o `Command` que o core deixou pendente:
 
 ```cpp
 #include "xrlbridge/RLBridge.hpp"
@@ -55,7 +55,7 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
 }
 ```
 
-Do lado do **host** (`src/rl/bindings/NativeSimulation.cpp`), `step()` faz o inverso — publica o
+Do lado do **core** (`src/rl/bindings/NativeSimulation.cpp`), `step()` faz o inverso — publica o
 comando, avança um frame, lê a observação que acabou de ser cacheada:
 
 ```cpp
@@ -87,18 +87,18 @@ a campo pela mesma X-macro — nenhuma lista de campos é reescrita ali. `observ
 ## Por que `Command`/`Observation` não reusam `domain::FlightCommand`/`domain::WorldView`
 
 Os campos de `Observation` espelham `domain::WorldView` **campo a campo**, mas deliberadamente não
-reusam o tipo: esta lib não pode incluir headers do modelo (`tests/guard/check_host_opaco.sh` — o
-host não pode conhecer o fonte do modelo), então define sua própria cópia da forma. A conversão
+reusam o tipo: esta lib não pode incluir headers do modelo (`tests/guard/check_core_opaco.sh` — o
+core não pode conhecer o fonte do modelo), então define sua própria cópia da forma. A conversão
 `WorldView` → `Observation` é feita uma única vez, do lado do modelo
-(`RLBridgeBehavior.cpp::toObservation()`); o host nunca vê `WorldView`, só `Observation`.
+(`RLBridgeBehavior.cpp::toObservation()`); o core nunca vê `WorldView`, só `Observation`.
 
 ## Por que `shared_library()`, e não estática
 
 Mesmo motivo estrutural de `libs/xboard::Board` (ver o cabeçalho de `RLBridge.hpp`): quem
-**escreve** o comando e **lê** a observação é o host (executável); quem **lê** o comando e
+**escreve** o comando e **lê** a observação é o core (executável); quem **lê** o comando e
 **escreve** a observação é o modelo (um `.so` aberto com `dlopen`). Uma lib estática daria a cada
 lado a sua própria cópia dos dois globais (`g_command`/`g_observation` em `RLBridge.cpp`) — o
-host nunca veria o comando chegar no modelo, e vice-versa. Instalada pelo mesmo motivo de `xboard`:
+core nunca veria o comando chegar no modelo, e vice-versa. Instalada pelo mesmo motivo de `xboard`:
 o consumidor em `dist/bin/`/`dist/python/` precisa achá-la em `dist/lib/`.
 
 Concorrência é o mesmo padrão de `Board.hpp`: um mutex só, protegendo um mapa minúsculo — aqui, os
@@ -173,7 +173,7 @@ completos) ou uma lista ad-hoc separada por espaço — sem precisar recompilar 
 campos entram na observação efetiva. Ver `models/players/A-4/docs/POLITICAS.md` para o guia de uso,
 e `models/players/A-4/include/bt/ObservationSchema.hpp` para a resolução da porta em si.
 
-**O host (`env.py`/`PyBindings.cpp`) não usa este mecanismo** — o dict que `toDict()` devolve já
+**O core (`env.py`/`PyBindings.cpp`) não usa este mecanismo** — o dict que `toDict()` devolve já
 tem as 38 chaves sempre; escolher um subconjunto do lado Python é feito filtrando esse dict
 (`MixrFlightEnv(fields=...)`), não com `FieldRegistry`/`Schema`. O mecanismo genérico existe para
 onde a flexibilidade de dict do Python não existe — dentro do frame, nos nós de árvore.

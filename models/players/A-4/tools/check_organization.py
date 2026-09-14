@@ -368,7 +368,7 @@ def check_xboard(findings):
     why = (
         "Nada no compilador nem no carregador de plugin obriga isto -- um "
         "modelo que nunca chame essas funcoes compila, carrega, satisfaz "
-        "provides:, e o host sobe e roda, so que a tela de status mostra "
+        "provides:, e o core sobe e roda, so que a tela de status mostra "
         "bt=-- e dec=0 para sempre, sem nenhum erro em lugar nenhum. "
         "docs/CONTRATO.md secao 3."
     )
@@ -589,7 +589,7 @@ def check_nome_plugin(findings):
     why = (
         "src/plugin.cpp ja documenta isto no proprio comentario: o primeiro "
         "argumento de MIXR_PLUGIN_DEFINE vai para o descritor binario e "
-        "aparece em mensagens de erro do host quando algo da errado no "
+        "aparece em mensagens de erro do core quando algo da errado no "
         "carregamento -- 'combine com o nome do project() em meson.build e "
         "do shared_module()' (docs/PRIMEIROS-PASSOS.md, passo 1)."
     )
@@ -711,7 +711,7 @@ def check_plugin_packaging(findings):
         "artefato linkavel poderia acabar num link_with: de outra coisa, "
         "duplicando estado interno do MIXR no processo), "
         "gnu_symbol_visibility:'hidden' (esconde tudo por padrao) e "
-        "-Wl,--no-undefined (transforma 'chamei algo que o host nao exporta' "
+        "-Wl,--no-undefined (transforma 'chamei algo que o core nao exporta' "
         "em erro de LINK, nao de dlopen em runtime). Se o modelo linkar "
         "alguma biblioteca ESTATICA (aqui, so BehaviorTree.CPP, quando ha "
         "bt/), tambem -Wl,--exclude-libs,ALL -- senao os simbolos dela vazam "

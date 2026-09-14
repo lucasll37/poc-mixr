@@ -190,7 +190,7 @@ window.PRESENTATION_SLIDES = [
     <li><b>Contrato forte de modelo</b> — <code>docs/</code>, <code>CHANGELOG.md</code></li>
     <li><b>Ferramentas de assistência</b> — CLI rico em detalhes, manual iterativo, editor visual de .edl minimalista</li>
     <li><b>Ambiente padronizado</b> — extensão VSCode para <code>.edl</code></li>
-    <li><b>Roadmap</b> — integração respeitando interfaces pré-existentes (asa-engine, Flight Gear)</li>
+    <li><b>Roadmap</b> — integração respeitando interfaces pré-existentes (asa-engine, Flight Gear, config.json)</li>
   </ul>
 `
   },
@@ -239,11 +239,11 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">II · A proposta</p>
   <h2 class="headline">Uma esteira de CI forte</h2>
   <figure class="diagram">
-    <svg viewBox="0 0 980 210" role="img" aria-label="Um espectro de oito camadas de teste, da mais isolada (domain) a mais integrada (guard) -- tres do modelo, cinco do host">
+    <svg viewBox="0 0 980 210" role="img" aria-label="Um espectro de oito camadas de teste, da mais isolada (domain) a mais integrada (guard) -- tres do modelo, cinco do core">
       <circle cx="40" cy="22" r="5" fill="currentColor" class="svg-teal"/>
       <text x="52" y="27" text-anchor="start" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal">modelo</text>
       <circle cx="150" cy="22" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="162" y="27" text-anchor="start" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent">host</text>
+      <text x="162" y="27" text-anchor="start" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent">core</text>
 
       <line x1="40" y1="140" x2="930" y2="140" stroke="currentColor" stroke-width="2" class="svg-ink" opacity=".5" marker-end="url(#arrow)"/>
 
@@ -441,7 +441,7 @@ window.PRESENTATION_SLIDES = [
   </div>
   <h2 class="headline">Olhando para frente: integração com o asa-engine</h2>
   <figure class="diagram">
-    <svg viewBox="0 0 880 300" role="img" aria-label="poc-mixr hoje se conecta ao asa-engine, que se conecta a asa-py, webstation e, como exploracao futura ainda mais adiante, ao FlightGear">
+    <svg viewBox="0 0 880 300" role="img" aria-label="poc-mixr hoje se conecta ao asa-engine, que se conecta a asapy, webstation e, como exploracao futura ainda mais adiante, ao FlightGear">
       <rect x="20" y="90" width="170" height="70" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-ink"/>
       <text x="105" y="122" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-ink">poc-mixr</text>
       <text x="105" y="140" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".7">hoje</text>
@@ -452,7 +452,7 @@ window.PRESENTATION_SLIDES = [
       <text x="375" y="148" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">handler</text>
 
       <rect x="610" y="10" width="220" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="720" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">asa-py</text>
+      <text x="720" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">asapy</text>
 
       <rect x="610" y="118" width="220" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 4" class="svg-ink" opacity=".7"/>
       <text x="720" y="145" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-ink">FlightGear</text>

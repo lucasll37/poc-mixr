@@ -79,16 +79,16 @@ cd models/players/Beacon
 make build              # -> ./dist/lib/mixr-plugins/libBeacon.so (bare `make` so mostra `make help`)
 make test               # native (Beacon de verdade, sem Station) + forma do .so
 make check-organization # opcional -- linter de organizacao interna
-make install-host       # copia o .so para ../../../plugins/ -- ver a proxima secao
+make install-core       # copia o .so para ../../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos. `./build` e `./dist` nascem e ficam dentro **deste**
-diretório — nada aqui escreve fora dele, exceto `make install-host`.
+diretório — nada aqui escreve fora dele, exceto `make install-core`.
 
-## Por que existe um passo separado para "publicar no host"
+## Por que existe um passo separado para "publicar no core"
 
 Um cenário só encontra um `.so` de modelo dentro de uma pasta específica, relativa à raiz do
-repositório inteiro (não à raiz deste diretório). `make install-host` copia para
+repositório inteiro (não à raiz deste diretório). `make install-core` copia para
 `../../../plugins/` (o depósito compartilhado com terceiro); quem sincroniza dali para `dist/`,
 onde um cenário de fato procura, é o `make install` do projeto raiz.
 
@@ -110,7 +110,7 @@ construa um por nome; ver o cabeçalho de `src/plugin.cpp`.)
   exercita (o que é um evento aqui, as duas formas de despacho, por que o payload mora numa
   `shared_library()`)
 - [`../../template/docs/CONTRATO.md`](../../template/docs/CONTRATO.md) — a lista completa e
-  autoritativa do que QUALQUER modelo precisa fazer para o host carregá-lo e rodar com ele
+  autoritativa do que QUALQUER modelo precisa fazer para o core carregá-lo e rodar com ele
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
   Makefile da raiz

@@ -7,7 +7,7 @@ ftxui_dep = dependency('ftxui', method: 'pkg-config', required: true)
 
 local_inc_dir = include_directories('../include')
 
-host_sources = files(
+core_sources = files(
     'main.cpp', 'mixr_factory.cpp',
     'app/Options.cpp', 'app/TerrainData.cpp', 'app/ScenarioTemplate.cpp',
     'app/StationBuilder.cpp', 'app/Fleet.cpp', 'app/DeterministicDump.cpp',
@@ -28,7 +28,7 @@ host_sources = files(
 # nao encadeia mixr::xjoystick::factory()/mixr::xmsg::factory() (nenhum
 # cenario de configs/ declara ioHandler:/msgFeed:).
 app = executable('app',
-    host_sources,
+    core_sources,
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
     include_directories : local_inc_dir,

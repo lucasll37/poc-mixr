@@ -1,4 +1,4 @@
-.PHONY: build test install install-host uninstall-host create-bt update-bt open-groot
+.PHONY: build test install install-core uninstall-core create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -9,9 +9,9 @@
 # (libA-4.so) + os dados (flight_tree.xml, data/jsbsim/) saem em ./dist -- a
 # raiz DESTE projeto, nao a do poc-mixr. Nao chama o Makefile raiz.
 #
-# Pre-requisito, publicado pelo HOST uma vez:  cd ../../.. && make configure && make sdk
+# Pre-requisito, publicado pelo CORE uma vez:  cd ../../.. && make configure && make sdk
 #
-# 'install-host' e o unico alvo que toca o projeto raiz -- e so ate
+# 'install-core' e o unico alvo que toca o projeto raiz -- e so ate
 # ../../../plugins/ (lib, flat) e ../../../plugins/data/A-4/, o MESMO deposito
 # que um .so de terceiro usaria (ver plugins/README.md). NUNCA escreve em
 # ../../../dist/: quem sincroniza plugins/ -> dist/ e o 'make install' da raiz
@@ -56,7 +56,7 @@ install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/A-4
 	done
 	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/A-4/"
 
-install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host.
+install-core: install ## Deposita em ../../../plugins/ -- nao toca dist/ do core.
 	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
 	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
 	@# Copia o diretorio de dados INTEIRO, sem nome cravado: outro modelo pode
@@ -66,10 +66,10 @@ install-host: install ## Deposita em ../../../plugins/ -- nao toca dist/ do host
 	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
 	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
 	 fi
-	@echo "$(GREEN)install-host: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
+	@echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
 	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
 
-uninstall-host: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
+uninstall-core: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
 	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
 	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
 	      [ -e "$$so" ] || continue; \

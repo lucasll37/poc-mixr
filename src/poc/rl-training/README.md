@@ -52,7 +52,7 @@ copia byte-identica de `src/rl/configs/scenario_rl.edl`, mas `train.py`/
 (`DEFAULT_SCENARIO`, em `mixr_gym/env.py`) e sempre o de `src/rl/configs/`.
 Editar o arquivo desta pasta esperando afetar `make train` nao tem efeito
 nenhum; ela existe so para entrar na varredura de corpus de `.edl` que os
-testes do host rodam (ver `src/rl/README.md`, secao "Rodando", para o
+testes do core rodam (ver `src/rl/README.md`, secao "Rodando", para o
 detalhe completo).
 
 `train.py` e um caso de uso completo, nao um trecho solto: PPO de verdade

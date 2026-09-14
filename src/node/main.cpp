@@ -73,6 +73,30 @@ std::string deriveScenarioKey(const std::string& path)
    return pocName.empty() ? stem : (pocName + "-" + stem);
 }
 
+// Os dois unicos tamanhos que o SrtmHgtFile::determineSrtmInfo() reconhece
+// (mesmas constantes de app/src/app/TerrainData.cpp -- replicadas aqui, nao
+// importadas, pelo mesmo motivo de independencia ja documentado no resto
+// deste arquivo: 'node' nao reaproveita NADA de app/). Achado por auditoria
+// (revisao completa do repositorio): sem esta checagem de TAMANHO, so a
+// existencia do arquivo era conferida -- um .hgt truncado (gunzip
+// interrompido por um kill anterior, disco cheio) passava em silencio e so
+// falhava bem mais tarde, dentro do parser nativo do MIXR, com a mensagem
+// sem contexto que este antidoto evita.
+constexpr std::streamoff kSrtm3Bytes{2884802};    // 3 arc-sec (~90 m)
+constexpr std::streamoff kSrtm1Bytes{25934402};   // 1 arc-sec (~30 m)
+
+std::streamoff fileSizeOf(const std::string& path)
+{
+   std::ifstream in(path, std::ios::binary | std::ios::ate);
+   if (!in.good()) return -1;
+   return in.tellg();
+}
+
+bool isValidSrtmSize(const std::streamoff size)
+{
+   return (size == kSrtm3Bytes || size == kSrtm1Bytes);
+}
+
 // Mesmo tile fixo que o resto do repositorio ja vendoriza
 // (shared/data/terrain/srtm/), incondicional para qualquer cenario --
 // harmless se o cenario nao usar terreno nenhum, e evita a armadilha
@@ -81,7 +105,7 @@ std::string deriveScenarioKey(const std::string& path)
 void ensureTerrainTile(const std::string& dir, const std::string& baseName)
 {
    const std::string hgt{dir + baseName + ".hgt"};
-   if (mixr::base::doesFileExist(hgt.c_str())) return;
+   if (isValidSrtmSize(fileSizeOf(hgt))) return;   // ja descomprimido e integro
 
    const std::string gz{hgt + ".gz"};
    if (!mixr::base::doesFileExist(gz.c_str())) {
@@ -92,8 +116,10 @@ void ensureTerrainTile(const std::string& dir, const std::string& baseName)
    const std::string cmd{"gunzip -kf \"" + gz + "\""};
    std::system(cmd.c_str());
 
-   if (!mixr::base::doesFileExist(hgt.c_str())) {
-      std::cerr << "node: falha ao descomprimir " << gz << "\n";
+   const std::streamoff size{fileSizeOf(hgt)};
+   if (!isValidSrtmSize(size)) {
+      std::cerr << "node: " << hgt << " tem " << size << " bytes; o SrtmHgtFile so aceita "
+                << kSrtm3Bytes << " (SRTM3) ou " << kSrtm1Bytes << " (SRTM1)\n";
       std::exit(EXIT_FAILURE);
    }
 }
@@ -188,7 +214,7 @@ void primeStation(mixr::simulation::Station* const station)
 //
 // A checagem nao pode morar no modelo: cada BtBehavior so' conhece o proprio
 // nome, entao "nao casei" e "ninguem casou" sao indistinguiveis de la. So' o
-// host tem a lista inteira.
+// core tem a lista inteira.
 //------------------------------------------------------------------------------
 void checkGrootMonitorTarget(mixr::simulation::Station* const station)
 {
@@ -247,7 +273,14 @@ int main(int argc, char* argv[])
    const std::string key{deriveScenarioKey(scenarioPath)};
 
    fs::path scenarioDir{fs::path(scenarioPath).parent_path().parent_path()};
-   if (scenarioDir.empty()) scenarioDir = "./src/node";
+   // Mesmo guard que app/src/main.cpp ganhou depois de um bug medido em
+   // stress-sweep (achado por auditoria: faltava aqui): um caminho com menos
+   // de dois niveis de diretorio acima (ou um absoluto raso) faz os dois
+   // parent_path() encalharem na RAIZ do sistema de arquivos, nao em "" --
+   // so '.empty()' nao pega esse caso, e 'node' tentaria abrir
+   // '/data/logs/...' (falha muda de xlog: PrintHandler::openFile() nao
+   // cria diretorio, so nao escreve nada).
+   if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./src/node";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (key + "_" + runId + ".log")).string());
 
    ensureTerrainTile("./shared/data/terrain/srtm/", "S23W043");

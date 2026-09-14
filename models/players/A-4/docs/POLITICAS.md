@@ -215,7 +215,7 @@ silêncio:
 ```
 
 Um `.onnx` exportado antes dessa metadata existir simplesmente não a tem — cai só na checagem de
-contagem, como sempre. O teste `xinfer-degradacao` (host) trava a contagem contra o arquivo
+contagem, como sempre. O teste `xinfer-degradacao` (core) trava a contagem contra o arquivo
 instalado de verdade; `native` (suíte do modelo) trava os dois casos, incluindo a metadata
 divergente (`test_onnx_nodes.cpp`).
 

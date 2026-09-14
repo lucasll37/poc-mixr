@@ -44,7 +44,7 @@ class Recipe(ConanFile):
         #     (na tag eles sao 'final'), que sao o motivo do fork;
         #   * a branch 'main' ja divergiu: acrescenta '-static-libstdc++
         #     -static-libgcc' ao link de cada lib do mixr, o que mudaria o que
-        #     este projeto (host + plugins abertos com dlopen, trocando objetos
+        #     este projeto (core + plugins abertos com dlopen, trocando objetos
         #     C++ pela fronteira) linka em runtime.
         #
         # Este commit e exatamente a arvore de contexts/src/mixr e e o que

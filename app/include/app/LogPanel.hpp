@@ -15,7 +15,7 @@
 // MEMORIA" em libs/xlog/Log.hpp), nao um tail do arquivo. Como 'xlog' e
 // uma shared_library() -- ha UMA copia no processo --, o que o MODELO
 // registra de dentro do .so aberto por dlopen cai no mesmo buffer que o do
-// host e aparece aqui sem nenhuma ponte extra.
+// core e aparece aqui sem nenhuma ponte extra.
 //
 // E o MODELO que produz este conteudo, nao o app: quem escreve e
 // models/players/A-4/src/ubf/FlightAction.cpp (transicao de comportamento,

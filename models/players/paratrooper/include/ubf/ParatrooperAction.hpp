@@ -28,7 +28,7 @@ namespace xparatrooper {
 // contra uma classe de OUTRO modelo).
 //
 // O que execute() NAO PODE deixar de fazer, em QUALQUER modelo, e escrever
-// no xboard -- e' a UNICA obrigacao que falha em SILENCIO: sem ela, o host
+// no xboard -- e' a UNICA obrigacao que falha em SILENCIO: sem ela, o core
 // sobe, o cenario parseia, tudo passa, e a tela de status/o dump
 // '-deterministic' mostram 'bt=--'/'dec=0' para sempre, sem erro nenhum.
 // Por isso as duas chamadas rodam mesmo que o dynamic_cast para

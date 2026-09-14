@@ -86,7 +86,7 @@ Fora de ordem, o parser chega na classe do plugin sem ninguém que responda por 
 construtor/destrutor customizado nem métodos virtuais, com layout de memória previsível) com
 `struct_size` na frente, devolvido por um símbolo `extern "C"` de nome fixo. **Dois mecanismos de versão, para dois tipos de mudança:**
 `struct_size` + `abi` cobrem mudança *aditiva* (campo novo no fim); o `_v1` **no nome do símbolo**
-cobre mudança *destrutiva* — um host novo procura `mixr_plugin_v2` e um plugin velho falha com
+cobre mudança *destrutiva* — um core novo procura `mixr_plugin_v2` e um plugin velho falha com
 "símbolo ausente" em vez de ter os bytes reinterpretados.
 
 | campo | ação na divergência |
@@ -95,14 +95,14 @@ cobre mudança *destrutiva* — um host novo procura `mixr_plugin_v2` e um plugi
 | `mixr_version`, `mixr_pkg_version`, `build_id` | **aviso** |
 | `cxx_standard` | só diagnóstico, nunca compara |
 
-**Por que `cxx_standard` nunca é comparado por igualdade:** o host compila `gnu++17`
+**Por que `cxx_standard` nunca é comparado por igualdade:** o core compila `gnu++17`
 (`__cplusplus == 201703`) e `libmixr_*.so` foi compilada `c++11` (`201103`) — e os dois
 interoperam hoje, em produção. Uma checagem de igualdade rejeitaria todo plugin correto.
 
 **Por que a contagem de slots não é usada como guarda:** `BEGIN_SLOT_MAP` lê
 `BaseClass::getSlotTable().n()` em **runtime**, via **PLT** (`Procedure Linkage Table` — o
 mecanismo de ligação dinâmica do ELF que resolve a chamada para o símbolo de verdade em tempo de
-execução, `macros.hpp:305`), e `SlotTable::n()` percorre a cadeia viva. Medido: o plugin vê os 45 slots acumulados do host e põe os seus em 46 e
+execução, `macros.hpp:305`), e `SlotTable::n()` percorre a cadeia viva. Medido: o plugin vê os 45 slots acumulados do core e põe os seus em 46 e
 47. Drift de contagem na base **não desalinha** o plugin — recusar por isso mataria plugins que
 funcionam.
 
@@ -176,7 +176,7 @@ Esta pasta tem dois papéis, e só um deles cruza a fronteira `dlopen`. O **cont
 (`PluginAbi.hpp`, `xplugin_abi_dep`) é header-only — sem uma linha de código, só declarações,
 macros e constantes — e é isso que um PLUGIN enxerga. O **registro** (`PluginRegistry`/
 `PluginLoader`/`PluginModule`, os `.cpp` que este README documenta, `xplugin_dep`) só é
-consumido pelo HOST: os executáveis que decidem qual `.so` carregar (`./app`, `./src/node`,
+consumido pelo CORE: os executáveis que decidem qual `.so` carregar (`./app`, `./src/node`,
 `edlcheck`, `plugininfo`, os bindings de `src/rl`). Um plugin **nunca** linka `xplugin_dep` — a
 regra 2 desta página proíbe exatamente isso — então o registro nunca precisa existir dos dois
 lados do `dlopen` ao mesmo tempo, e fica `static_library()`, no mesmo padrão de `xtacview`/
@@ -200,8 +200,8 @@ a um estado como `bt=`/`dec=`.
 | `plugin-negativos` | 7 modos de falha, **cada um afirmando `rc != 139`** |
 | `plugin-hotswap` | mesmo binário + `.so` diferente = voo diferente (o sentido da curva de patrulha) |
 
-Não há teste rebuildando o modelo para conferir que o executável do host não foi relinkado — e não
-precisa haver: host e modelo são **projetos Meson independentes, em árvores de build separadas**
+Não há teste rebuildando o modelo para conferir que o executável do core não foi relinkado — e não
+precisa haver: core e modelo são **projetos Meson independentes, em árvores de build separadas**
 (`build/` × `models/players/A-4/build/`), então um `meson compile` no diretório do modelo não tem
 caminho até `build/app/src/app`. O invariante estrutural por trás disso é cobrado por
-`tests/guard/check_host_opaco.sh`.
+`tests/guard/check_core_opaco.sh`.

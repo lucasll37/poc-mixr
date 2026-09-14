@@ -70,14 +70,14 @@ cd models/players/paratrooper
 make build            # compila -> ./dist/lib/mixr-plugins/libparatrooper.so
 make test             # domain (a FSM) + tree + native + a forma do .so -- 5 testes
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
+make install-core     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos.
 
-## Por que existe um passo separado para "publicar no host"
+## Por que existe um passo separado para "publicar no core"
 
-`make install-host` só copia até `../../../plugins/`, o depósito compartilhado com terceiros —
+`make install-core` só copia até `../../../plugins/`, o depósito compartilhado com terceiros —
 quem sincroniza dali para `dist/`, onde um cenário de fato procura, é `make install` do projeto
 raiz. O fluxo do dia a dia na raiz é `make configure && make models && make install`.
 

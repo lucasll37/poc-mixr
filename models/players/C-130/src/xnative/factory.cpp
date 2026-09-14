@@ -51,7 +51,7 @@ base::Object* factory(const std::string& name)
 }
 
 //------------------------------------------------------------------------------
-// O que este modelo PUBLICA para o host, atraves do descritor do plugin.
+// O que este modelo PUBLICA para o core, atraves do descritor do plugin.
 //
 // As duas listas tem de acompanhar o if/else acima -- o registro confere: se
 // a fabrica devolver nulo para um nome declarado aqui, a carga e recusada

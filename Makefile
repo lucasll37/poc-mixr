@@ -9,7 +9,7 @@ DEST_DIR := $(PWD)/dist
 
 # Deposito COMPARTILHADO: os modelos deste repositorio E qualquer .so de terceiro
 # (ver plugins/README.md). 'make models' so escreve ATE aqui; dist/ e populado
-# so por 'make install' (alvo 'sync-plugins'), do HOST.
+# so por 'make install' (alvo 'sync-plugins'), do CORE.
 PLUGINS_DIR := $(PWD)/plugins
 
 # Number of parallel jobs for Ninja (all available cores)
@@ -67,17 +67,17 @@ NC := \033[0m # No Color
 # C++ Build Targets
 # ============================================
 
-clean: ## Remove build/, dist/ e plugins/ (host + todos os modelos).
+clean: ## Remove build/, dist/ e plugins/ (core + todos os modelos).
 	rm -rf $(BUILD_DIR)/
 	rm -rf $(DEST_DIR)/
 	rm -rf ./subprojects/packagecache
 	@# Todo modelo descoberto (MODELOS_PRODUCAO, ver 'models:') + template/, que
-	@# nunca entra ali mas pode ter sido construido a mao. 'uninstall-host' roda
+	@# nunca entra ali mas pode ter sido construido a mao. 'uninstall-core' roda
 	@# ANTES do 'clean' de cada um: ele precisa do ./dist LOCAL intacto para saber
 	@# quais basenames remover de plugins/. '|| true' porque um clean antes do
 	@# primeiro 'make models' nao tem o que limpar.
 	@for d in $(MODELOS_PRODUCAO) models/template; do \
-	   $(MAKE) -C $$d uninstall-host 2>/dev/null || true; \
+	   $(MAKE) -C $$d uninstall-core 2>/dev/null || true; \
 	   $(MAKE) -C $$d clean 2>/dev/null || true; \
 	 done
 	@# Nunca um 'rm -rf' do namespace de dados inteiro: o laco acima ja removeu,
@@ -138,7 +138,7 @@ sdk: ## Publica o SDK de plugin em dist/ -- etapa PREVIA ao build do modelo.
 # Delega pro Makefile de cada um em vez de reimplementar o setup aqui. O template
 # fica fora de MODELOS_PRODUCAO (nunca e producao), mas o SEGUNDO artefato dele
 # (libtemplate_mirror.so) e instalado a parte logo abaixo -- os testes de plugin
-# do host o carregam. O resultado pousa em plugins/, o MESMO deposito que um
+# do core o carregam. O resultado pousa em plugins/, o MESMO deposito que um
 # terceiro usaria; este alvo NUNCA escreve em dist/.
 #
 # 'sync-plugins' e a UNICA ponte para dist/ -- copia plugins/*.so para
@@ -149,7 +149,7 @@ sdk: ## Publica o SDK de plugin em dist/ -- etapa PREVIA ao build do modelo.
 # MESMA descoberta de tests/guard/check_modelo_estrutura.sh: todo diretorio sob
 # models/ com um project() na raiz do proprio meson.build. Esse filtro ja exclui
 # sozinho o que nao e modelo -- um meson.build de subdiretorio (tests/, tools/) so
-# tem subdir(), e models/events/ e contrato/SDK consumido por subdir() do host.
+# tem subdir(), e models/events/ e contrato/SDK consumido por subdir() do core.
 # A unica exclusao por PATH, alem de build/dist/subprojects, e template/: ele TEM
 # project() (compila e testa sozinho) mas nunca e producao.
 #
@@ -164,12 +164,12 @@ MODELOS_PRODUCAO := $(shell find models -mindepth 2 -name meson.build \
 
 models: sdk ## Compila os modelos e deposita em plugins/ -- nao toca dist/ (ver 'install').
 	@for d in $(MODELOS_PRODUCAO); do \
-	   $(MAKE) -C $$d install-host TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
+	   $(MAKE) -C $$d install-core TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
 	 done
 	@# template/ nunca e producao, mas o SEGUNDO artefato dele
 	@# (libtemplate_mirror.so) precisa estar em plugins/ para os testes de plugin
-	@# do host (plugin-modelo-estranho/plugin-deposito-terceiro).
-	@$(MAKE) -C models/template install-host TESTS=true ASAN=$(ASAN) || exit 1
+	@# do core (plugin-modelo-estranho/plugin-deposito-terceiro).
+	@$(MAKE) -C models/template install-core TESTS=true ASAN=$(ASAN) || exit 1
 	@echo "$(GREEN)models: OK$(NC) -> $(PLUGINS_DIR)/ ($(words $(MODELOS_PRODUCAO)) projeto(s) de producao: $(notdir $(MODELOS_PRODUCAO)); + template/; rode 'make install' para sincronizar com dist/)"
 
 sync-plugins: ## Copia plugins/ -> dist/ -- so aqui um cenario enxerga o modelo.
@@ -260,13 +260,13 @@ rm-model: ## Remove um modelo. Uso: NAME= CATEGORY= | SO=libX.so [DATA=dir] [FOR
 	   $${FORCE:+--force} $${DRY_RUN:+--dry-run}
 
 # ============================================
-# Build / Install / Package do HOST
+# Build / Install / Package do CORE
 # ============================================
 
-build: sdk ## Compila os executaveis do HOST -- nao precisa dos modelos.
+build: sdk ## Compila os executaveis do CORE -- nao precisa dos modelos.
 	meson compile -C $(BUILD_DIR) -j$(NINJA_JOBS)
 
-install: build sync-plugins ## Instala o host em dist/bin/ e sincroniza plugins/ -> dist/.
+install: build sync-plugins ## Instala o core em dist/bin/ e sincroniza plugins/ -> dist/.
 	@# '--only-changed' -- mesmo "porque" do alvo 'sdk' acima: evita mtime
 	@# novo em dist/bin/ sem necessidade a cada chamada.
 	meson install -C $(BUILD_DIR) --only-changed
@@ -287,7 +287,7 @@ package: ## Gera o pacote Conan deste projeto.
 #
 # 'check-plugin-hotswap' saiu e NAO deve voltar: a propriedade de runtime que ele
 # media ja e afirmada por 'plugin-hotswap' (suite 'plugin'), e "rebuildar so o .so
-# nao toca o executavel" e verdadeiro por CONSTRUCAO (host e modelo sao projetos
+# nao toca o executavel" e verdadeiro por CONSTRUCAO (core e modelo sao projetos
 # meson separados). Em troca, ele editava fonte VERSIONADO com 'sed -i'.
 
 run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
@@ -299,7 +299,7 @@ run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
 #
 # SCENARIO= evita o PICKER: com o default '-folder ./sandbox' da' pra escolher,
 # na tela, um cenario que nao tem aquele player -- e a variavel de ambiente vira
-# no-op silencioso. A validacao de PLAYER de verdade e' feita pelo HOST, em
+# no-op silencioso. A validacao de PLAYER de verdade e' feita pelo CORE, em
 # runtime (app::checkGrootMonitorTarget), que e' quem tem a lista real de
 # players; um grep no .edl aqui duplicaria esse conhecimento e envelheceria
 # sozinho.
@@ -383,8 +383,8 @@ test-models: ## Roda a suite de CADA projeto de modelo descoberto.
 	 done
 	@echo "$(GREEN)test-models: OK$(NC) -> $(words $(MODELOS_PRODUCAO)) de producao ($(notdir $(MODELOS_PRODUCAO))) + template/"
 
-test: install ## Roda SO a suite do HOST (requer -Dtests=true; modelo: 'test-models').
-	@# Duas suites do host (memory-controle-negativo, plugin-hotswap) linkam DIRETO
+test: install ## Roda SO a suite do CORE (requer -Dtests=true; modelo: 'test-models').
+	@# Duas suites do core (memory-controle-negativo, plugin-hotswap) linkam DIRETO
 	@# em models/players/A-4/build/ -- libmodel_leak.so/libmodel_variant_{a,b}.so,
 	@# nunca instalados, so existem com '-Dvariants=true'. 'install' nao garante
 	@# isso ('sync-plugins' so copia .so, sem tocar o build do modelo), e um
@@ -393,11 +393,11 @@ test: install ## Roda SO a suite do HOST (requer -Dtests=true; modelo: 'test-mod
 	@# guard STALE de models/common.mk so reconfigura quando algo de fato mudou.
 	@$(MAKE) --no-print-directory -C models/players/A-4 build VARIANTS=true ASAN=$(ASAN)
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
-	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do host vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
+	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do core vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
 
 test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, lento).
-	@# Os DOIS lados: instrumentar so o host deixaria o .so sem redzone de pilha e
+	@# Os DOIS lados: instrumentar so o core deixaria o .so sem redzone de pilha e
 	@# sem simbolos no relatorio do LSan.
 	@echo "  reconfigurando os DOIS projetos com ASan ..."
 	@# 'make models ASAN=true' e nao 'meson configure -Dasan=true': o 'meson

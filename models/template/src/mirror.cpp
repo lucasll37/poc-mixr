@@ -96,7 +96,7 @@ EMPTY_COPYDATA(FlightState)
 // Atuacao -- comanda voo reto e nivelado E ESCREVE NO QUADRO.
 //
 // A escrita no xboard e a obrigacao mais facil de esquecer, e a unica que
-// falha em SILENCIO: sem ela o host imprime 'bt=--' e 'dec=0' em todas as
+// falha em SILENCIO: sem ela o core imprime 'bt=--' e 'dec=0' em todas as
 // linhas, sem erro de carga, sem aviso, e todos os outros testes ficam verdes.
 //------------------------------------------------------------------------------
 class FlightAction final : public base::ubf::AbstractAction
@@ -138,7 +138,7 @@ bool FlightAction::execute(base::Component* const actor)
 
 //------------------------------------------------------------------------------
 // Decisao -- o cenario declara todos os slots abaixo. Um slot que o modelo
-// nao conheca faz o parser somar erro e o host abortar, entao a tabela tem
+// nao conheca faz o parser somar erro e o core abortar, entao a tabela tem
 // de cobrir o cenario inteiro.
 //------------------------------------------------------------------------------
 class BtBehavior final : public base::ubf::AbstractBehavior

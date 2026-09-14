@@ -47,8 +47,8 @@ domain::FlightCommand toFlightCommand(const xrlbridge::Command& cmd)
 //------------------------------------------------------------------------------
 // genAction() -- chamado pelo Agent (fase 3), depois de updateState(). Nao
 // decide nada: publica o WorldView deste frame em libs/xrlbridge (para o
-// host ler depois que o tcFrame() atual terminar) e devolve o comando que o
-// host deixou pendente na chamada anterior.
+// core ler depois que o tcFrame() atual terminar) e devolve o comando que o
+// core deixou pendente na chamada anterior.
 //------------------------------------------------------------------------------
 base::ubf::AbstractAction* RLBridgeBehavior::genAction(
    const base::ubf::AbstractState* const state, const double)
@@ -61,7 +61,7 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
    if (!snap.valid) return nullptr;
 
    // ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
-   // xrlbridge::Command): sem o host ter publicado uma acao valida ainda
+   // xrlbridge::Command): sem o core ter publicado uma acao valida ainda
    // (frame de priming do reset(), ou o Command generico ficou obsoleto de
    // um episodio anterior), nao ha recomendacao nenhuma -- devolver nullptr
    // e deixar o UbfArbiter (AltitudeSafetyBehavior continua no candidato

@@ -23,7 +23,7 @@ namespace xA_4 {
 // classe mora num .so aberto com dlopen (o plugin do modelo); a ponte
 // pybind11 mora no EXECUTAVEL (src/rl/bindings), que NAO pode incluir headers
 // deste modelo nem linkar contra o .so dele em tempo de compilacao -- e o
-// invariante que tests/guard/check_host_opaco.sh trava ("o host nao pode
+// invariante que tests/guard/check_core_opaco.sh trava ("o core nao pode
 // conhecer o fonte do modelo"). libs/xrlbridge e uma shared_library() de
 // verdade, do mesmo jeito e pelo mesmo motivo que libs/xboard::Board:
 // escrita/leitura cruzam essa fronteira, e uma lib estatica daria a cada

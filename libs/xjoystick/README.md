@@ -41,7 +41,7 @@ parte da `mixr_dep`) mais um `( JoystickIoHandler )` desta lib, no slot `ioHandl
   [`tools/joystick_mapper.py`](tools/joystick_mapper.py) (caminho relativo a esta pasta, não à
   raiz do repositório).
 
-Nenhuma classe/factory própria precisa ser encadeada por quem escreve o cenário — o host já
+Nenhuma classe/factory própria precisa ser encadeada por quem escreve o cenário — o core já
 encadeia `mixr::linkage::factory` e a [`factory()`](factory.hpp) desta lib antes dela.
 
 Do lado C++, quem quiser consultar o handler (não é o caso comum — o `.edl` acima já basta)
@@ -86,7 +86,7 @@ chamadas pelo laço de background do runner (`app`/pocs) na mesma cadência do r
    alcançava `[0,1]` (nunca saía de MIL); achado por auditoria, sem verificação com joystick
    físico depois da troca.
 5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
-   operacional — em WSL2 é preciso `usbipd-win` no host Windows
+   operacional — em WSL2 é preciso `usbipd-win` no core Windows
    (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da
    VM. Em Linux nativo basta o módulo de kernel `joydev` carregado.
 
@@ -95,7 +95,7 @@ chamadas pelo laço de background do runner (`app`/pocs) na mesma cadência do r
 Só fala com `mixr::linkage` (já parte da `mixr_dep`) e com `Station`/`Simulation`/`AirVehicle`
 nativos — nenhuma dependência nova (nem SDL, nem evdev): o `UsbJoystick` nativo lê
 `/dev/input/jsX` com `ioctl` cru. Nada aqui cruza a fronteira `dlopen` de plugin (ver
-`.claude/rules/host-app-src.md`), então não há razão para pagar o preço de uma `.so` — um plugin
+`.claude/rules/core-app-src.md`), então não há razão para pagar o preço de uma `.so` — um plugin
 que a linkasse ganharia cópia própria do estado estático, quebrando o compartilhamento que
 justifica `xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed` serem `shared_library()`.
 

@@ -75,7 +75,7 @@ class Recipe(ConanFile):
         # deps/behaviortree/conanfile.py ja clona para o resto deste
         # repositorio -- e ela bate com a API que o Groot 1.0.0 quer (mesma
         # assinatura de VerifyXML, testado). Bonus: o Groot construido fica
-        # falando o mesmo dialeto de XML que o host deste projeto de fato usa.
+        # falando o mesmo dialeto de XML que o core deste projeto de fato usa.
         # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): fixava a TAG
         # 'v3.5.6' -- mesma razao do mesmo fix em
         # deps/behaviortree/conanfile.py: fork mantido pela PROPRIA equipe
@@ -272,7 +272,7 @@ class Recipe(ConanFile):
         # nem 'lib/libbehavior_tree_editor.so' em runtime -- Groot 1.0.0 nunca
         # setou RPATH nenhum (roda sempre de dentro da propria build tree,
         # onde os .so ja estao ao lado). Mesma classe de gotcha ja documentada
-        # em CLAUDE.md para o host deste projeto (rpath dist/ vs build/).
+        # em CLAUDE.md para o core deste projeto (rpath dist/ vs build/).
         tc.variables["CMAKE_INSTALL_RPATH"] = "$ORIGIN/../lib"
         tc.generate()
 

@@ -5,7 +5,7 @@
 # aqui explica as decisoes especificas deste modelo).
 #
 # Projeto Meson INDEPENDENTE, pelo mesmo motivo do template de origem: o
-# host nao sabe nada deste diretorio, e o `meson setup` dele tem que
+# core nao sabe nada deste diretorio, e o `meson setup` dele tem que
 # conseguir rodar SEM este fonte existir -- mesma razao documentada em
 # models/players/A-4/meson.build.
 #
@@ -30,7 +30,7 @@ cpp = meson.get_compiler('cpp')
 # '--tags sdk' sem o ',devel', que instala as .so e ESQUECE os headers).
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelo mesmo .pc que o host usa. NENHUMA dependencia de
+# Do Conan, pelo mesmo .pc que o core usa. NENHUMA dependencia de
 # BehaviorTree.CPP aqui -- guiagem por navegacao proporcional e controle
 # CONTINUO, nao decisao discreta (ver docs/ARCHITECTURE.md).
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
@@ -72,7 +72,7 @@ model_sources = domain_sources + files(
 # num link_with:, duplicando o MetaObject das suas classes no processo.
 #
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
-# transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
+# transforma "chamei algo que o core nao exporta" em erro de LINK, nao de
 # dlopen. Nenhum dos dois e opcional -- ver
 # models/players/fixtures/stub/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined']

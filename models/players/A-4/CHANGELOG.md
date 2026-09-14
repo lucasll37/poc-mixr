@@ -81,10 +81,10 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 - **`RLBridgeBehavior::toObservation()` copiava `domain::WorldView` → `xrlbridge::Observation`
   campo a campo À MÃO — o único dos cinco pontos de contato do contrato sem a garantia de
   compilação "nome que diverge não compila"; um campo esquecido aqui simplesmente não aparecia na
-  observação do host, em silêncio.** Extraída para `ubf/ObservationBridge.hpp`/`.cpp` (novo par de
+  observação do core, em silêncio.** Extraída para `ubf/ObservationBridge.hpp`/`.cpp` (novo par de
   arquivos, testável isoladamente — ver `tests/native/test_observation_bridge.cpp`) e reescrita
   para expandir a mesma `XRLBRIDGE_OBSERVATION_FIELDS`, no mesmo padrão que os três nós de árvore
-  já usavam. De brinde, os 10 campos novos passam a atravessar para o host sem nenhuma linha
+  já usavam. De brinde, os 10 campos novos passam a atravessar para o core sem nenhuma linha
   adicional.
 
 - **Namespace deixou de estar solto no escopo global — aninhado sob `mixr::models::xA_4`, como
@@ -404,7 +404,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   errada ou falha de inferência devolvem `FAILURE` sem comandar, e o `Fallback` da árvore cai no
   ramo escrito à mão — uma política que não carrega não tira a aeronave do ar. (2026-09-03)
 - **`RLBridgeBehavior`** (`ubf/RLBridgeBehavior`) — o comportamento UBF que troca comando e
-  observação com o host de RL por `libs/xrlbridge`. Mora aqui, e não num plugin à parte como o
+  observação com o core de RL por `libs/xrlbridge`. Mora aqui, e não num plugin à parte como o
   `missile`, porque `genAction()` precisa de `dynamic_cast<const xnative::FlightState*>` e de
   construir um `xnative::FlightAction` — tipos CONCRETOS deste modelo, e RTTI com visibilidade
   oculta não é confiável atravessando dois `.so`. **Preço, e é mecânico:** virou o 7º nome de
@@ -477,8 +477,8 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   comportamento, mas o `all` sobrando deixava a intenção ambígua. `make` sem argumento agora só
   lista os alvos disponíveis, nunca compila por acidente. Os alvos foram reordenados no arquivo
   para seguir a sequência canônica (`clean` → `check-root` → `configure` → `build` → `test` →
-  `install` → `install-host` → `uninstall-host` → `help`), e `make check-root` ganhou feedback
-  positivo (`check-root: OK -> SDK do host publicado em <ROOT>/dist`, em verde) além do negativo
+  `install` → `install-core` → `uninstall-core` → `help`), e `make check-root` ganhou feedback
+  positivo (`check-root: OK -> SDK do core publicado em <ROOT>/dist`, em verde) além do negativo
   que já existia — antes, rodar `make check-root` com o pré-requisito satisfeito não imprimia
   nada, silêncio que não distingue "passou" de "não rodou". `README.md`/`CONTRIBUTING.md` deste
   modelo foram revisados junto, e o `INSTALL.md` (redundante com o `README.md`/`CONTRIBUTING.md`
@@ -513,10 +513,10 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   raiz, `tests/meson.build`, `tests/guard/check_modelo_fresco.sh` e
   `tests/plugin/check_hotswap_rebuild.sh` tinham o caminho antigo hardcoded e foram atualizados.
   (2026-09-05)
-- **`make install-host` deposita em `models/plugins/`, nunca mais em `dist/`** — o mesmo depósito
+- **`make install-core` deposita em `models/plugins/`, nunca mais em `dist/`** — o mesmo depósito
   que um `.so` de terceiro usa. Quem sincroniza `models/plugins/` → `dist/lib(share)/mixr-plugins/`
   é o alvo `sync-plugins` do `make install` da raiz. Compilar este modelo deixou de presumir onde
-  o host guarda os artefatos dele: `dlopen()` só acontece em tempo de execução, então só RODAR
+  o core guarda os artefatos dele: `dlopen()` só acontece em tempo de execução, então só RODAR
   algo precisa da união. (2026-09-03)
 
 ### Corrigido
@@ -566,7 +566,7 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
   aquecimento), que já chama `genAction()` — antes de qualquer `step()`/`setPendingCommand()` do
   lado Python. `xrlbridge::getPendingCommand()` nesse momento devolvia um `Command{}` default (a
   primeira vez) ou o ÚLTIMO comando do episódio ANTERIOR (resets seguintes, mesmo processo) — os
-  dois indistinguíveis de "o host publicou isto de propósito". Medido: `falcon1: -- -> RL
+  dois indistinguíveis de "o core publicou isto de propósito". Medido: `falcon1: -- -> RL
   (hdg=0deg alt=0m vel=0kt)` como primeira decisão de todo episódio. `xrlbridge::Command` ganhou
   um flag `valid` (só `PyBindings.cpp::step()` o liga); `reset()` invalida o comando pendente
   ANTES de qualquer `primeStation()`; `genAction()` devolve `nullptr` quando o comando pendente
@@ -592,10 +592,10 @@ O estado com que o modelo passou a existir como projeto próprio. Extraído em *
 ### Adicionado
 
 - **O modelo virou um projeto Meson INDEPENDENTE, carregado por `dlopen`** — deixou de ser alvo
-  do host. Não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o
-  binário. Enquanto o modelo era alvo do host, o `files()` dele listava os `.cpp` daqui e o
-  `meson setup` do host exigia este fonte — o oposto do que se queria provar. A guarda
-  `tests/guard/check_host_opaco.sh` trava o invariante.
+  do core. Não é arrumação: é o que torna verificável o cenário de um terceiro entregar só o
+  binário. Enquanto o modelo era alvo do core, o `files()` dele listava os `.cpp` daqui e o
+  `meson setup` do core exigia este fonte — o oposto do que se queria provar. A guarda
+  `tests/guard/check_core_opaco.sh` trava o invariante.
 - **UMA árvore, DOIS artefatos**: `libflight.so` e `libflight_tc.so`, este com
   `-DFLIGHT_TC_AGENT`, que é o que liga o `FlightAgentTC` (o agente do pool de tempo crítico da
   poc `multi-thread`). Dissolveu por construção ~3.100 linhas duplicadas entre as duas pocs

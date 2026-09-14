@@ -129,7 +129,7 @@ bash tests/determinism/check_determinism.sh ./build/app/src/app c130-6dof-regres
 ```
 
 Os dois passaram (um terceiro, contra a poc `c130-airdrop` que existia na epoca, tambem passou --
-essa poc foi removida do repositorio desde entao). `meson test -C build` (suite completa do HOST)
+essa poc foi removida do repositorio desde entao). `meson test -C build` (suite completa do CORE)
 tambem passou -- 68/68, sem nenhuma regressao nas suites `scenario`/`memory`/`determinism`/
 `plugin`/`guard` existentes. As duas suites do MODELO (`cd models/players/C-130 && make test`,
 `cd models/players/paratrooper && make test`) passam 5/5 cada.

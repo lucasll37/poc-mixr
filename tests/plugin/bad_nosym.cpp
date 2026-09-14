@@ -7,7 +7,7 @@
 // exatamente o que acontece com quem escreve a assinatura a mao em vez de usar
 // a macro MIXR_PLUGIN_DEFINE.
 //
-// O host tem de recusar isto com uma mensagem nomeando o simbolo, e nao
+// O core tem de recusar isto com uma mensagem nomeando o simbolo, e nao
 // estourar depois.
 //
 #include "xplugin/PluginAbi.hpp"

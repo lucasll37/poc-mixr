@@ -36,7 +36,7 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e 
 ./build/app/src/app -folder src/poc -scenario onnx-policy                                                              # veja o voo mudado
 ```
 
-Nada é recompilado entre as duas execuções — nem o host, nem o plugin. O `.onnx` é lido do disco na
+Nada é recompilado entre as duas execuções — nem o core, nem o plugin. O `.onnx` é lido do disco na
 primeira decisão.
 
 ---
@@ -84,7 +84,7 @@ primeira decisão.
   binário no repositório ser reprodutível e para o que ele aprendeu estar escrito em código, e não
   só nos pesos.
 
-**Nenhuma linha de C++ foi escrita para isto.** O host é uma cópia do da poc `flight` com caminhos
+**Nenhuma linha de C++ foi escrita para isto.** O core é uma cópia do da poc `flight` com caminhos
 e banner trocados — e o modelo não mudou. Trocar as regras pela rede foi trocar um caminho de arquivo no `.edl`.
 
 ---

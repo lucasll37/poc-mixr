@@ -7,7 +7,7 @@
 #
 # Gerado a partir de models/template/ por scripts/models.sh
 # (make new-model NAME=paratrooper CATEGORY=player). Projeto Meson
-# INDEPENDENTE: nao sabe nada do host, e o host nao sabe nada dele -- a unica
+# INDEPENDENTE: nao sabe nada do core, e o core nao sabe nada dele -- a unica
 # coisa entre os dois e o SDK publicado em dist/ pelo projeto principal.
 # ==============================================================================
 project('paratrooper', 'cpp',
@@ -26,7 +26,7 @@ cpp = meson.get_compiler('cpp')
 # '--tags sdk' sem o ',devel', que instala as .so e ESQUECE os headers).
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelo mesmo .pc que o host usa.
+# Do Conan, pelo mesmo .pc que o core usa.
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 
 # A arvore de comportamento (BehaviorTree.CPP v3.5.6 -- nada aqui vale para a
@@ -93,7 +93,7 @@ model_sources = domain_sources + bt_sources + files(
 # num link_with:, duplicando o MetaObject das suas classes no processo.
 #
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
-# transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
+# transforma "chamei algo que o core nao exporta" em erro de LINK, nao de
 # dlopen. Nenhum dos dois e opcional -- ver
 # models/template/docs/CONTRATO.md secao 1.
 model_link_args = rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']

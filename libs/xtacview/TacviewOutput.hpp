@@ -81,7 +81,7 @@ public:
 
    //---------------------------------------------------------------------
    // Identidade REAL de cada player (tipo/lado/major type), empurrada pelo
-   // HOST -- mesma porta de servico de updateRadarScan(), e pelo mesmo
+   // CORE -- mesma porta de servico de updateRadarScan(), e pelo mesmo
    // motivo: o pipeline do recorder nao entrega o dado, e quem o tem em
    // maos e quem roda o laco de background.
    //

@@ -66,7 +66,7 @@ void setConsoleEnabled(bool enabled);
 // serializa os escritores; e (c) -- o motivo estrutural -- 'xlog' e uma
 // shared_library() (ver o comentario em libs/xlog/meson.build), entao ha
 // UMA copia so no processo: o LOG(...) do MODELO, que mora num .so aberto
-// por dlopen, cai no MESMO buffer que o do host. A aba mostra os dois sem
+// por dlopen, cai no MESMO buffer que o do core. A aba mostra os dois sem
 // nenhuma ponte extra.
 //------------------------------------------------------------------------------
 

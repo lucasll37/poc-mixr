@@ -10,8 +10,8 @@
 # sem BehaviorTree.CPP -- so' UMA classe MIXR, direto em src/plugin.cpp (o
 # mesmo desenho "1-2 classes -> factory inline" que
 # models/template/src/mirror.cpp ja demonstra, aqui para um modelo de
-# PRODUCAO de verdade). Projeto Meson INDEPENDENTE: nao sabe nada do host, e
-# o host nao sabe nada dele -- a unica coisa entre os dois e' o SDK
+# PRODUCAO de verdade). Projeto Meson INDEPENDENTE: nao sabe nada do core, e
+# o core nao sabe nada dele -- a unica coisa entre os dois e' o SDK
 # publicado em dist/ pelo projeto principal.
 # ==============================================================================
 project('Beacon', 'cpp',
@@ -35,7 +35,7 @@ cpp = meson.get_compiler('cpp')
 # extra precisou ser declarada so' para o payload.
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelo mesmo .pc que o host usa. SEM behaviortree.cpp.asa -- este
+# Do Conan, pelo mesmo .pc que o core usa. SEM behaviortree.cpp.asa -- este
 # modelo nao tem arvore de comportamento nenhuma.
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 
@@ -71,7 +71,7 @@ model_sources = files(
 # num link_with:, duplicando o MetaObject das suas classes no processo.
 #
 # gnu_symbol_visibility:'hidden' esconde tudo por padrao; -Wl,--no-undefined
-# transforma "chamei algo que o host nao exporta" em erro de LINK, nao de
+# transforma "chamei algo que o core nao exporta" em erro de LINK, nao de
 # dlopen. Nenhum dos dois e opcional -- ver models/template/docs/CONTRATO.md
 # secao 1. SEM '-Wl,--exclude-libs,ALL': este modelo nao linka nenhuma .a
 # estatica (a BehaviorTree.CPP, a unica deste repositorio, nao entra aqui).

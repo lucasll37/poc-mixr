@@ -35,7 +35,7 @@ xplugin_abi_dep = declare_dependency(
     dependencies        : [mixr_dep],
 )
 
-# Para o HOST.
+# Para o CORE.
 xplugin_lib = static_library('xplugin',
     files(
         'PluginRegistry.cpp',

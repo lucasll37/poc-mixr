@@ -2,7 +2,7 @@
 
 ## O que é isto
 
-Modelo de produção (plugin `libC-130.so`, `dlopen`'d em tempo de execução pelo host) para uma
+Modelo de produção (plugin `libC-130.so`, `dlopen`'d em tempo de execução pelo core) para uma
 aeronave C-130 Hercules (dados JSBSim vendorizados em `shared/data/jsbsim/aircraft/C130/`, curados
 para este modelo em `data/jsbsim/`). Duas capacidades:
 
@@ -76,10 +76,10 @@ cd models/players/C-130
 make build            # -> ./dist/lib/mixr-plugins/libC-130.so
 make test             # domain + tree + native + forma do .so
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia pra ../../../plugins/ (deposito compartilhado)
+make install-core     # copia pra ../../../plugins/ (deposito compartilhado)
 ```
 
-`make help` lista todos os alvos. Depois de `install-host`, `cd ../../.. && make install` publica
+`make help` lista todos os alvos. Depois de `install-core`, `cd ../../.. && make install` publica
 em `dist/`, onde um cenário de fato procura.
 
 ## Nomes de fábrica com prefixo `C130`
@@ -99,4 +99,4 @@ na hora. O EDL de qualquer cenário que carregue este modelo precisa usar os nom
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado
 - [`../template/docs/CONTRATO.md`](../template/docs/CONTRATO.md) — a lista completa e autoritativa
-  do que qualquer modelo precisa fazer para o host carregá-lo e rodar com ele
+  do que qualquer modelo precisa fazer para o core carregá-lo e rodar com ele

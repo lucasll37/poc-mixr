@@ -1301,7 +1301,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       return renderBackgroundPanel(displayedBackground) | frame | flex;
    })};
 
-   // ---- aba "Log": as ultimas linhas de libs/xlog, do host E do plugin
+   // ---- aba "Log": as ultimas linhas de libs/xlog, do core E do plugin
    // do modelo (uma copia so de libxlog.so no processo -- ver o cabecalho
    // de app/LogPanel.hpp). Mesmo padrao de lista rolavel das abas
    // Players/Memoria: ftxui::Menu dentro de frame()/vscroll_indicator(). ----

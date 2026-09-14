@@ -57,7 +57,7 @@ repetida durante o desenvolvimento da árvore.
 ## O log do modelo (`LOG(...)` em `ubf/FlightAction.cpp`)
 
 `libs/xlog` é uma `shared_library()`, então há **uma cópia no processo** e o `LOG(...)` emitido
-de dentro deste `.so` (aberto por `dlopen`) cai no mesmo buffer/arquivo do host — é o que faz a aba
+de dentro deste `.so` (aberto por `dlopen`) cai no mesmo buffer/arquivo do core — é o que faz a aba
 "Log" (F5) do `./app` mostrar o que o modelo registra, sem nenhuma ponte. Nas outras pocs
 (`flight`, `bandit`, `python-flight`, `onnx-policy`...), que não têm aba, as mesmas linhas saem no
 console e no `data/logs/*.log`. Sob `-deterministic` o `main.cpp` chama `setLoggingEnabled(false)`

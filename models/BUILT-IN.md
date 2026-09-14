@@ -238,7 +238,7 @@ for procurar e não encontrar.
 ## `mixr::terrain`
 
 Não é encadeada por nenhuma outra factory nativa — sem `mixr::terrain::factory(name)` no
-`mixr_factory.cpp` do host, `( SrtmHgtFile ... )` do `.edl` não constrói nada, em silêncio (ver
+`mixr_factory.cpp` do core, `( SrtmHgtFile ... )` do `.edl` não constrói nada, em silêncio (ver
 CLAUDE.md, seção "Terreno").
 
 | Classe | Fábrica | Observação |
@@ -251,7 +251,7 @@ CLAUDE.md, seção "Terreno").
 ## `mixr::dis` (`interop::dis`)
 
 Namespace real é `mixr::dis`, apesar do caminho do header ser `mixr/interop/dis/`. Só esta árvore
-é encadeada pelo host — `interop::common`, `interop::hla` e `interop::rprfom` não entram (nomes
+é encadeada pelo core — `interop::common`, `interop::hla` e `interop::rprfom` não entram (nomes
 colidentes com classes reais, ex. `Aircraft`/`NetIO`/`Ntm` próprios).
 
 | Classe | Fábrica | Observação |
@@ -483,7 +483,7 @@ O schema `DataRecord.proto` por trás é fechado (sem campo de texto livre) — 
 
 | Classe | Fábrica | Observação |
 |---|---|---|
-| [`TcpClient`](../contexts/src/mixr/include/mixr/base/network/TcpClient.hpp) | `TcpClient` | Handler de rede: lado cliente de uma única conexão TCP/IP, conecta a um host/porta de destino. |
+| [`TcpClient`](../contexts/src/mixr/include/mixr/base/network/TcpClient.hpp) | `TcpClient` | Handler de rede: lado cliente de uma única conexão TCP/IP, conecta a um core/porta de destino. |
 | [`TcpServerSingle`](../contexts/src/mixr/include/mixr/base/network/TcpServerSingle.hpp) | `TcpServerSingle` | Handler de rede: lado servidor de uma única conexão TCP/IP (aceita apenas uma conexão). |
 | [`TcpServerMultiple`](../contexts/src/mixr/include/mixr/base/network/TcpServerMultiple.hpp) | `TcpServerMultiple` | Handler de rede: lado servidor TCP/IP que aceita múltiplas conexões, devolvendo um `TcpHandler` por conexão. |
 | [`UdpBroadcastHandler`](../contexts/src/mixr/include/mixr/base/network/UdpBroadcastHandler.hpp) | `UdpBroadcastHandler` | Handler de rede: envio/recebimento de pacotes UDP em modo broadcast. |

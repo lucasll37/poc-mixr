@@ -282,7 +282,7 @@ journal — `getExecCounter()`, o contador de fases de tempo real desde a partid
 
 Esboço, para dimensionar — não é especificação. **Nenhuma linha do MIXR é tocada, e nenhum nome de
 fábrica novo do modelo é criado**, então `provides:` não muda em cenário nenhum e
-`models/template/src/mirror.cpp` não precisa de ajuste. Todo o código novo é do host.
+`models/template/src/mirror.cpp` não precisa de ajuste. Todo o código novo é do core.
 
 **Fase 1 — hermético, que é o recorte pedido.**
 
@@ -384,7 +384,7 @@ o LSB do timestamp dentro do replay, e aí o journal deixa de ser fiel ao fio.
 
 ### 5.4 O save vale enquanto o binário valer
 
-Recompilar o host, recompilar um `.so` de modelo, trocar o tile SRTM ou editar o `.edl.in` invalida
+Recompilar o core, recompilar um `.so` de modelo, trocar o tile SRTM ou editar o `.edl.in` invalida
 o save. Isso não é defeito: é a natureza de um mecanismo que reconstrói por reexecução.
 
 O que importa é que **`-resume` recuse em vez de rodar e mentir**. Daí os hashes no manifesto. O
@@ -585,7 +585,7 @@ fork — vale registrar, para não ficarem como fantasmas:
 
 **O que o fork ensina, e vale guardar:** ele é o único mecanismo do repositório que contorna o
 latch `sealed_` do `PluginRegistry` sem `exec()` — o filho herda a `Station` já construída, sem
-passar pelo parser. Se algum dia houver necessidade de duas `Station` vivas no mesmo host, é por
+passar pelo parser. Se algum dia houver necessidade de duas `Station` vivas no mesmo core, é por
 aí, não por reconstrução.
 
 ### 8.3 Híbrido: replay como fonte de verdade, retrato como oráculo
@@ -883,7 +883,7 @@ ordem documentada
 | §2.6 `reset()` incompleto | bug específico de `JSBSimModel::reset()` (não chama `ResetToInitialConditions()`) | **depende do modelo** — `RacModel`/`LaeroModel` têm bugs análogos e menores, também corrigíveis |
 | §2.7 "31 campos duplicados" | na verdade é `Player::velVecN1`/`positionUpdate()` — específico do `Player`, a classe BASE do MIXR | **sim, mas só se a posição for escrita totalmente "slaved"** todo frame — independe do `DynamicsModel`; é um padrão de USO da API do `Player`, alcançável até sem trocar de física (§9.3) |
 | §2.3 `execTime`/`simTime` sem setter | `Simulation` (MIXR), não o modelo | **não** — mas o impacto real, para o A-4, é só cosmético (timestamp de Tacview/log/DIS), nunca a trajetória |
-| §2.4 `sealed_` | `xplugin::PluginRegistry` (host) | **não** — processo novo continua obrigatório, com ou sem JSBSim |
+| §2.4 `sealed_` | `xplugin::PluginRegistry` (core) | **não** — processo novo continua obrigatório, com ou sem JSBSim |
 | §2.5 estado do interpretador Python | escolha de MECANISMO DE DECISÃO, não de dinâmica | **não** — ortogonal; evitável só evitando `xpyembed` |
 | §5.1 tempo real contra passo fixo | cadência do laço de fundo (10 Hz) contra a thread de tempo crítico (50 Hz) | **não** — ortogonal, o mesmo problema existe com qualquer física |
 
@@ -898,7 +898,7 @@ depois — não, porque esse caso está em §5.1, que nenhuma troca de dinâmica
 
 ## Apêndice — método e limites deste estudo
 
-**Como foi feito.** Levantamento do estado mutável do host, das libs `libs/x*` e do plugin `A-4`;
+**Como foi feito.** Levantamento do estado mutável do core, das libs `libs/x*` e do plugin `A-4`;
 consulta ao fonte vendorizado do MIXR e ao fonte do JSBSim no cache Conan; e avaliação das cinco
 arquiteturas acima. As afirmações decisivas foram reconferidas na implementação, não só no header —
 o que já pagou: um dos levantamentos concluiu, lendo `FGPropagate.h`, que `Get/SetVState` dava um

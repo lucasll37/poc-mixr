@@ -37,15 +37,15 @@ a partir de headers anotados -- `src/rl/bindings/`, compila para
 dona do laco de frames e do gravador; a lista de players e o terreno ficam num `WorldModel`
 intermediario que a Station hospeda -- ver `CLAUDE.md`, secao "O modelo MIXR
 em uma tela", para a hierarquia completa `Station` -> `WorldModel` -> players) viva no MESMO processo Python -- sem
-round-trip de rede por passo. A troca de comando/observacao entre o host
+round-trip de rede por passo. A troca de comando/observacao entre o core
 (este modulo) e o modelo (`models/players/A-4`, um `.so` carregado por `dlopen`
 -- a chamada de sistema que carrega uma biblioteca compartilhada em tempo de
-execucao, sem o host precisar conhecer o modelo em tempo de compilacao)
+execucao, sem o core precisar conhecer o modelo em tempo de compilacao)
 passa por `libs/xrlbridge` -- uma shared_library pequena, dedicada,
 mesmo motivo estrutural de `libs/xboard::Board` (ver o cabecalho de
-`libs/xrlbridge/RLBridge.hpp`): o host **nao pode** incluir headers do
+`libs/xrlbridge/RLBridge.hpp`): o core **nao pode** incluir headers do
 modelo nem linkar contra o `.so` dele em tempo de compilacao
-(`tests/guard/check_host_opaco.sh` trava esse invariante), entao a troca
+(`tests/guard/check_core_opaco.sh` trava esse invariante), entao a troca
 so pode passar por uma peca que os dois lados linkam de verdade.
 
 `models/players/A-4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior`
@@ -64,7 +64,7 @@ sobrepoe.
 make configure   # inclui pybind11 (conanfile.py) alem das dependencias de sempre
 make sdk         # publica libxboard/libxlog/libxtrack/libxrlbridge + headers em dist/
 make models      # compila libA-4.so (com RLBridgeBehavior) -> plugins/
-make build       # compila o host, incluindo o modulo _native (src/rl/bindings/)
+make build       # compila o core, incluindo o modulo _native (src/rl/bindings/)
 make install     # dist/python/mixr_gym/{__init__.py, env.py, _native*.so}
 ```
 
@@ -218,8 +218,8 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   Command/Observation reais. `NativeSimulation::reset()` agora falha com um
   erro claro se o player pedido nao existir no cenario; nao ha como validar
   daqui que e o MESMO player com `RLBridgeBehavior` -- esse tipo mora no
-  plugin do modelo, que este host nao pode conhecer
-  (`tests/guard/check_host_opaco.sh`).
+  plugin do modelo, que este core nao pode conhecer
+  (`tests/guard/check_core_opaco.sh`).
 - **SO PODE EXISTIR UMA `Station` POR PROCESSO -- confirmado, nao e mais
   hipotese.** `libs/xplugin` sela o registro de plugins depois do
   primeiro `edl_parser()`; um SEGUNDO `MixrFlightEnv()` no mesmo processo

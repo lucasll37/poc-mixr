@@ -10,7 +10,7 @@ paths:
   `tests/guard/check_modelo_estrutura.sh`, que descobre por `find` sob QUALQUER subpasta de
   `models/`, não só `players/`). `cd models/<categoria>/<nome> && make` configura/builda/instala
   sozinho — só precisa do SDK publicado uma vez pela raiz (`make configure && make sdk`).
-- **Nunca escreva direto em `dist/` a partir de um modelo.** `make install-host` de cada modelo
+- **Nunca escreva direto em `dist/` a partir de um modelo.** `make install-core` de cada modelo
   deposita em `./plugins/` (raiz do repo, flat, não versionado); é `make install` (alvo
   `sync-plugins`) na raiz quem sincroniza `plugins/` → `dist/`. `dist/` e `build/` são gerados —
   nunca edite ou crie arquivo neles à mão.

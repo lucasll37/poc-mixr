@@ -17,7 +17,7 @@
 #     cobrem isso.
 #
 # Descoberta por 'find', nunca lista fixa -- cenario novo ja nasce coberto,
-# mesma licao registrada no cabecalho de check_host_opaco.sh.
+# mesma licao registrada no cabecalho de check_core_opaco.sh.
 #
 # *.generated.edl fica de fora de proposito: e' artefato de RUNTIME
 # (app::generateScenario()), gitignorado e regenerado sozinho a cada

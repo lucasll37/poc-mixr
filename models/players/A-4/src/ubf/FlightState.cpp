@@ -188,10 +188,10 @@ void FlightState::updateState(const base::Component* const actor)
    snap = s;
 
    // Para onde a antena esta apontando AGORA -- publicado no quadro de leitura
-   // para o host empurrar ao Tacview.
+   // para o core empurrar ao Tacview.
    //
-   // Isto e do MODELO e nao do host: quem sabe o que a aeronave esta
-   // enxergando e quem percebe. O host so relaia o que o quadro disser, e se
+   // Isto e do MODELO e nao do core: quem sabe o que a aeronave esta
+   // enxergando e quem percebe. O core so relaia o que o quadro disser, e se
    // um modelo nunca publicar, ele simplesmente nao desenha varredura -- um
    // modelo sem radar e legitimo.
    //

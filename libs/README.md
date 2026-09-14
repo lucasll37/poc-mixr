@@ -1,20 +1,20 @@
-# `libs/` — bibliotecas de suporte entre host e modelo
+# `libs/` — bibliotecas de suporte entre core e modelo
 
 Nem todas cruzam a fronteira `dlopen` como `shared_library()`: hoje só seis (`xboard`/`xlog`/
 `xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) precisam de uma cópia única em runtime, compartilhada
-entre host e plugin — as demais ficam estáticas/header-only (ver `CLAUDE.md`, seção "O SDK de
+entre core e plugin — as demais ficam estáticas/header-only (ver `CLAUDE.md`, seção "O SDK de
 plugin", para o porquê de cada caso).
 
 Uma biblioteca por pasta, no padrão `libs/x<nome>` — herdado do "x" = *eXample* das bibliotecas
 de exemplo dos tutoriais oficiais do MIXR (`contexts/MIXR-PATTERN-CONTEXT.md` §1.5); aqui a letra
 é reaproveitada, sem trocar o "x" só porque o papel de cada lib deste repositório é de suporte
-host↔plugin, não de exemplo pedagógico. Cada uma tem o próprio `README.md`: o que
+core↔plugin, não de exemplo pedagógico. Cada uma tem o próprio `README.md`: o que
 resolve, como usar (com exemplo real — trecho de `.edl`/`.xml` ou chamada C++) e por que é
 `shared_library()`, `static_library()` ou header-only.
 
 | lib | o que resolve |
 |---|---|
-| [`xboard`](xboard/README.md) | quadro de leitura host↔modelo (`bt=`/`dec=`/`thread=`) |
+| [`xboard`](xboard/README.md) | quadro de leitura core↔modelo (`bt=`/`dec=`/`thread=`) |
 | [`xclock`](xclock/README.md) | acelerar/frear/pausar o tempo simulado |
 | [`xinfer`](xinfer/README.md) | inferência ONNX dentro do frame |
 | [`xjoystick`](xjoystick/README.md) | controle do ownship (a aeronave controlada) por joystick físico |
@@ -28,10 +28,10 @@ resolve, como usar (com exemplo real — trecho de `.edl`/`.xml` ou chamada C++)
 | [`xtrack`](xtrack/README.md) | contato hostil mais próximo (radar nativo) |
 
 **Por que seis são `shared_library()` e as outras não.** `xboard`, `xlog`, `xtrack`, `xrlbridge`,
-`xinfer` e `xpyembed` cruzam a fronteira `dlopen` host↔plugin — host e modelo precisam enxergar a
+`xinfer` e `xpyembed` cruzam a fronteira `dlopen` core↔plugin — core e modelo precisam enxergar a
 **mesma** cópia de algum estado ou API em tempo de execução, e uma lib estática daria a cada lado a
 sua própria cópia, silenciosamente. `xtacview`, `xclock`, `xjoystick`, `xmsg` e `xplugin` nunca
 cruzam essa fronteira (nenhum modelo as inclui) e ficam `static_library()` — um plugin que linkasse
 uma delas ganharia esse mesmo problema ao contrário. `xrandom` é a única header-only: função pura,
 sem estado nenhum para sincronizar. Cada README explica o "por quê" do próprio caso; o `.claude/
-rules/host-app-src.md` trava a regra geral, e `CLAUDE.md` tem o histórico completo.
+rules/core-app-src.md` trava a regra geral, e `CLAUDE.md` tem o histórico completo.

@@ -114,7 +114,7 @@ fi
 # O PROBLEMA que este modo resolve, e por que a ORDEM importa mais que o
 # comando: a informacao de propriedade de um modelo (quais .so e quais
 # diretorios de dados ele publicou em plugins/) mora DENTRO da pasta dele --
-# 'uninstall-host' itera o ./dist LOCAL do proprio modelo. Apagar a pasta
+# 'uninstall-core' itera o ./dist LOCAL do proprio modelo. Apagar a pasta
 # primeiro destroi a unica fonte, e ela NAO e recuperavel depois: o
 # meson.build exige a pasta; nao ha manifesto; 'plugininfo' nem devolve
 # plugin_name (a saida e' so {"classes":[...]}); e nada impede um modelo
@@ -124,7 +124,7 @@ fi
 #
 # Dai a ordem abaixo, escolhida para que TODO PREFIXO seja um estado
 # consistente (um Ctrl+C no meio e' retomavel e nunca destroi a fonte):
-#   1. descobrir   2. recusar se algum cenario referencia   3. uninstall-host
+#   1. descobrir   2. recusar se algum cenario referencia   3. uninstall-core
 #   4. podar dist/   5. apagar a pasta (irreversivel, por ultimo)   6. checklist
 #
 # O QUE ESTE MODO NAO FAZ, de proposito:
@@ -162,11 +162,11 @@ if [ "$REMOVER" = "1" ]; then
     # -----------------------------------------------------------------------
     # artefatos_publicados DIR -- basenames dos .so que ESTE modelo publica.
     #
-    # Fonte primaria: o ./dist local (a mesma que 'uninstall-host' usa). O
+    # Fonte primaria: o ./dist local (a mesma que 'uninstall-core' usa). O
     # FALLBACK pelo meson.build existe para o segundo caminho de orfao, que
     # e' o mais dificil de perceber: sem ./dist local (modelo nunca
     # construido, ou 'make -C <dir> clean' ja rodado) o laco de
-    # 'uninstall-host' itera VAZIO e nao remove nada, EM SILENCIO.
+    # 'uninstall-core' itera VAZIO e nao remove nada, EM SILENCIO.
     # -----------------------------------------------------------------------
     artefatos_publicados() {
         local dir="$1" achou=0 so
@@ -312,7 +312,7 @@ EOF
         esac
 
         # template/ nunca e removivel: publica libtemplate_mirror.so, que os
-        # testes de plugin do HOST carregam (plugin-modelo-estranho e
+        # testes de plugin do CORE carregam (plugin-modelo-estranho e
         # plugin-deposito-terceiro trocam so' o 'file:' do cenario de
         # producao por ele). Remover isto quebraria a suite sem nenhum aviso
         # que aponte para ca.
@@ -320,7 +320,7 @@ EOF
             */models/template)
                 echo "models/template nao e removivel: o segundo artefato dele" >&2
                 echo "  (libtemplate_mirror.so) e' o mirror de contrato que os testes de plugin" >&2
-                echo "  do host usam -- ver tests/meson.build, plugin-modelo-estranho." >&2
+                echo "  do core usam -- ver tests/meson.build, plugin-modelo-estranho." >&2
                 exit 1
                 ;;
         esac
@@ -399,9 +399,9 @@ EOF
 
     # --- 3. tirar de plugins/ (pela via oficial, enquanto a pasta existe) ---
     if [ -n "$DEST_ABS" ] && [ "$DRY_RUN" != "1" ]; then
-        echo "3. make -C ${DEST_ABS#"$REPO_ROOT"/} uninstall-host"
-        if ! make -C "$DEST_ABS" uninstall-host >/dev/null 2>&1; then
-            echo "  aviso: uninstall-host falhou -- caindo na remocao direta pelos nomes ja descobertos" >&2
+        echo "3. make -C ${DEST_ABS#"$REPO_ROOT"/} uninstall-core"
+        if ! make -C "$DEST_ABS" uninstall-core >/dev/null 2>&1; then
+            echo "  aviso: uninstall-core falhou -- caindo na remocao direta pelos nomes ja descobertos" >&2
         fi
     fi
     echo "3. plugins/"
@@ -688,7 +688,7 @@ if [ -n "$ARQUIVOS_NS" ]; then
     done <<< "$ARQUIVOS_NS"
 fi
 
-# 5. MIXR_PLUGIN_DEFINE -- o primeiro argumento e a string que o host usa
+# 5. MIXR_PLUGIN_DEFINE -- o primeiro argumento e a string que o core usa
 #    para identificar o plugin no descritor; tem que bater com o novo nome.
 PLUGIN_CPP="$DEST_ABS/src/plugin.cpp"
 substituir "$PLUGIN_CPP" "MIXR_PLUGIN_DEFINE(\"$ORIGEM_NOME\"" "MIXR_PLUGIN_DEFINE(\"$NAME\""

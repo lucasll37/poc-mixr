@@ -2,9 +2,9 @@
 
 ## O que é isto
 
-A aplicação principal deste repositório (o "host") não decide nada sozinha: ela carrega a lógica
+A aplicação principal deste repositório (o "core") não decide nada sozinha: ela carrega a lógica
 de simulação — percepção, decisão, ação — de uma biblioteca compartilhada (`.so`) compilada à
-parte e aberta em tempo de execução, sem que o host precise conhecer o código-fonte dela. Essa
+parte e aberta em tempo de execução, sem que o core precise conhecer o código-fonte dela. Essa
 biblioteca é o que este repositório chama de **modelo** (ver [`../../CLAUDE.md`](../../CLAUDE.md),
 seção "O MODELO é um plugin, construído numa etapa PRÉVIA", para a visão geral de como isso se
 encaixa no resto do repositório).
@@ -82,27 +82,27 @@ cd models/template
 make build            # compila -> ./dist/lib/mixr-plugins/{libtemplate.so,libtemplate_mirror.so} (bare `make` so mostra `make help`)
 make test             # domain/ (o Schmitt trigger) + a arvore + a forma dos DOIS .so
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia os dois .so para ../../plugins/ -- ver a proxima secao
+make install-core     # copia os dois .so para ../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos. `./build` e `./dist` nascem e ficam dentro **deste**
-diretório — nada aqui escreve fora dele, exceto `make install-host`.
+diretório — nada aqui escreve fora dele, exceto `make install-core`.
 
 **Este template nunca é construído pelo `make models` da raiz** (que descobre projetos de
 produção por `find`, e exclui `template/` de propósito) — mas o alvo `models:` do Makefile raiz
 instala o artefato `template_mirror` à parte, incondicionalmente, porque os testes de plugin do
-host dependem dele (ver a seção anterior). O artefato `template` (o scaffold em si) não é
+core dependem dele (ver a seção anterior). O artefato `template` (o scaffold em si) não é
 instalado por nenhum alvo automático — nenhum cenário existente aponta para ele. Depois de copiado
 e renomeado (ver `docs/PRIMEIROS-PASSOS.md`), o modelo resultante pode (e provavelmente deveria)
 entrar no fluxo orquestrado, do mesmo jeito que `A-4` já entra.
 
-## Por que existe um passo separado para "publicar no host"
+## Por que existe um passo separado para "publicar no core"
 
 Um cenário só encontra um `.so` de modelo dentro de uma pasta específica, relativa à raiz do
 repositório inteiro (não à raiz deste diretório). Compilar aqui dentro (`make build`/`make test`) já é
 suficiente para editar o código e conferir que ele continua válido; para que um cenário de
 verdade consiga carregar o resultado, o `.so` também precisa existir naquela pasta da raiz — e
-`make install-host` é o único alvo deste `Makefile` que copia algo para lá (e mesmo assim só até
+`make install-core` é o único alvo deste `Makefile` que copia algo para lá (e mesmo assim só até
 `plugins/`, o depósito compartilhado com terceiros — quem sincroniza dali para `dist/`, onde um
 cenário de fato procura, é o `make install` do projeto raiz).
 
@@ -117,7 +117,7 @@ exemplo pela sua decisão de verdade.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — as camadas, o porquê de cada uma, e quando
   crescer para uma árvore de comportamento
 - [`docs/CONTRATO.md`](docs/CONTRATO.md) — a lista completa e autoritativa do que QUALQUER modelo
-  precisa fazer para o host carregá-lo e rodar com ele
+  precisa fazer para o core carregá-lo e rodar com ele
 - [`../../CLAUDE.md`](../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
   PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
   Makefile da raiz

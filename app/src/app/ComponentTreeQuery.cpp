@@ -11,8 +11,8 @@
 
 // Os headers abaixo existem SO por captureLiveState() -- o estado VIVO que o
 // card de detalhe da aba F6 mostra. Sao todos classes do proprio MIXR (o
-// host pode incluir o que quiser do framework; a opacidade que
-// tests/guard/check_host_opaco.sh cobra e em relacao ao fonte do MODELO,
+// core pode incluir o que quiser do framework; a opacidade que
+// tests/guard/check_core_opaco.sh cobra e em relacao ao fonte do MODELO,
 // que continua alcancado so por RTTI/nome, nunca por header).
 #include "mixr/models/dynamics/DynamicsModel.hpp"
 #include "mixr/models/system/Autopilot.hpp"

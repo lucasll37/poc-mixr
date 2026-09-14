@@ -35,13 +35,13 @@ Declarado dentro da cadeia nativa do slot `dataRecorder:` da `Station`, como mai
    )
 ```
 
-`( ExposedDataRecorder )` no lugar de `( DataRecorder )` é o que deixa o host achar o
+`( ExposedDataRecorder )` no lugar de `( DataRecorder )` é o que deixa o core achar o
 `TacviewOutput` de fora da cadeia do recorder — ver a seção própria abaixo. E **todo player que
 deve aparecer no Tacview precisa de `dataLogTime:` declarado** (`falconN: ( Aircraft ...
 dataLogTime: ( Seconds 0.1 ) ... )`); sem isso ele nunca emite `REID_PLAYER_DATA` e simplesmente
 não aparece — ver a primeira armadilha abaixo.
 
-Do lado do host, o `main.cpp`/`app/StationBuilder.cpp` acham o objeto assim (o slot
+Do lado do core, o `main.cpp`/`app/StationBuilder.cpp` acham o objeto assim (o slot
 `outputHandler` não é alcançável por `container()` — por isso a busca desce pela árvore, nunca
 sobe):
 
@@ -99,7 +99,7 @@ essa cadeia **não chega lá** — o `DataRecorder` nativo não chama `container
 próprio slot `outputHandler`. Sobra casar por nome nos mapas do EDL, o que não cobre objetos
 criados em runtime (um míssil liberado ganha nome automático `"W%05d"`).
 
-`publishIdentities()` fecha essa lacuna pelo caminho que o host já tem: varre
+`publishIdentities()` fecha essa lacuna pelo caminho que o core já tem: varre
 `Simulation::getPlayers()` e grava a identidade real de cada um (nome, `type:`, `getMajorType()`,
 `getSide()`, e a **classe C++** do `Player`, que é o que distingue chaff de míssil — os dois são
 `majorType == WEAPON`) no cache que `emitState()` consulta depois. Como Name/Type/Color só são
@@ -108,7 +108,7 @@ emitidos na **primeira** aparição de cada objeto no stream, chamar isto **ante
 já esteja no lugar na única vez em que ela é escrita.
 
 `updateRadarScan()` existe pelo mesmo motivo: o pipeline REID não tem schema para varredura de
-radar, então quem já tem o `AirVehicle` nativo em mãos (o laço de tempo real do host) empurra o
+radar, então quem já tem o `AirVehicle` nativo em mãos (o laço de tempo real do core) empurra o
 dado direto — só emite se o objeto já recebeu um `T=` no stream (rastreado em `declared`), senão o
 Tacview receberia `RadarAzimuth=` para um id desconhecido.
 
@@ -148,15 +148,15 @@ Tacview receberia `RadarAzimuth=` para um id desconhecido.
 ## Por que é `static_library()`, não `shared_library()`
 
 Ao contrário de `xboard`/`xlog`/`xtrack`/`xrlbridge`/`xinfer`/`xpyembed` (as seis que cruzam a
-fronteira de plugin `dlopen`), `xtacview` não precisa de estado compartilhado entre host e modelo
-— é consumida só pelo host, direto do slot `dataRecorder:` da `Station`. Por isso um plugin
+fronteira de plugin `dlopen`), `xtacview` não precisa de estado compartilhado entre core e modelo
+— é consumida só pelo core, direto do slot `dataRecorder:` da `Station`. Por isso um plugin
 **não pode** linkar `xtacview_dep`: ganharia cópia própria dos estáticos dela (mesma regra
 documentada em `libs/xplugin/README.md`).
 
 ## `ExposedDataRecorder`
 
 `mixr::recorder::DataRecorder` guarda `getOutputHandler()` como `protected` — sem alcance de fora
-não há como o host achar o `TacviewOutput` para chamar `publishIdentities()`/`updateRadarScan()`.
+não há como o core achar o `TacviewOutput` para chamar `publishIdentities()`/`updateRadarScan()`.
 `ExposedDataRecorder` é o mesmo `DataRecorder` nativo, só republicando esse getter como público
 (`using recorder::DataRecorder::getOutputHandler;`); trocar `( DataRecorder )` por
 `( ExposedDataRecorder )` no `.edl` roda idêntico — mesmo objeto, nenhum slot novo.

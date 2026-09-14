@@ -98,7 +98,7 @@ xboard::bumpDecisionCount(player->getID());
 ```
 
 Isto **não é exigido pelo compilador, nem pelo carregador de plugin** — um modelo que nunca
-chame essas funções compila, carrega, satisfaz `provides:`, e o host sobe e roda. A única
+chame essas funções compila, carrega, satisfaz `provides:`, e o core sobe e roda. A única
 diferença observável é que a tela de status e o dump `-deterministic` mostram `bt=--` e `dec=0`
 **para sempre**, sem nenhum erro em lugar nenhum. É a obrigação mais fácil de esquecer porque é a
 única sem sintoma de falha — leia

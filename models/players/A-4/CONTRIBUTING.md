@@ -9,7 +9,7 @@ monta o cenário, feita depois, em outro lugar (`CONTRIBUTING.md` §5 na raiz,
 
 Para criar um modelo **novo** do zero (não mexer neste), o ponto de entrada é
 [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — este arquivo assume que o modelo já
-existe e o SDK do host já foi publicado (`cd ../../.. && make configure && make sdk`, uma vez).
+existe e o SDK do core já foi publicado (`cd ../../.. && make configure && make sdk`, uma vez).
 
 ## 1. O ciclo de iteração
 
@@ -34,13 +34,13 @@ compilação, sem passo extra.
 
 | alvo | o que faz |
 |---|---|
-| `make check-root` | só confere o pré-requisito (SDK do host publicado) — feedback verde de OK ou vermelho com o comando exato que falta |
+| `make check-root` | só confere o pré-requisito (SDK do core publicado) — feedback verde de OK ou vermelho com o comando exato que falta |
 | `make configure` | `meson setup` isolado neste projeto (depende de `check-root`) |
 | `make build` | compila `libA-4.so` (depende de `configure`) |
 | `make test` | roda a suíte do modelo (depende de `build`) |
 | `make install` | instala em `./dist` — a raiz DESTE projeto (depende de `build`) |
-| `make install-host` | deposita em `../../../plugins/` (depende de `install`) — seção 4 |
-| `make uninstall-host` | reverte só o que este modelo publicou em `../../../plugins/` |
+| `make install-core` | deposita em `../../../plugins/` (depende de `install`) — seção 4 |
+| `make uninstall-core` | reverte só o que este modelo publicou em `../../../plugins/` |
 | `make clean` | remove `./build` e `./dist` locais |
 
 `check-root`/`configure`/`build`/`install` encadeiam por dependência — chamar só `make install`,
@@ -48,7 +48,7 @@ por exemplo, já dispara `build` (e `configure`/`check-root`) se precisar.
 
 **Se a mudança acrescenta uma classe ou um slot que algum cenário de produção passa a usar**, o
 mirror de contrato de [`template`](../template/) (`src/mirror.cpp`) — o "modelo estranho" que os
-testes de plugin do host carregam para provar que o contrato basta — também precisa
+testes de plugin do core carregam para provar que o contrato basta — também precisa
 aceitar/ignorar o mesmo slot. Ver seção 5.
 
 ## 2. Testes
@@ -67,7 +67,7 @@ Três suítes, nenhuma levanta `Station`:
 
 O que fica de fora — `RadarScan`, `FlightState::updateState`, `FlightAction::execute`, os
 `genAction()` — só roda com um player vivo, fora do escopo deste diretório: cobertura fica nas
-suítes `scenario`/`determinism`/`memory` do host (`cd ../../.. && make test`, depois de publicar o
+suítes `scenario`/`determinism`/`memory` do core (`cd ../../.. && make test`, depois de publicar o
 plugin — seção 4).
 
 ## 3. Editando a árvore de comportamento (Groot)
@@ -148,7 +148,7 @@ nome que ela tiver em sincronia dali em diante.
 
 O modelo já tem o hook pronto, opt-in por variável de ambiente — implementação em
 `src/ubf/BtBehavior.cpp` (`startGrootMonitorIfRequested()`). Precisa de **qualquer** binário do
-host que já carregue este plugin e tenha um player com esse nome no cenário — o comando abaixo é
+core que já carregue este plugin e tenha um player com esse nome no cenário — o comando abaixo é
 só um exemplo, troque `-folder`/`-scenario` pelo cenário que você estiver usando para testar:
 
 ```bash
@@ -161,7 +161,7 @@ O alvo abre o Groot junto (`GROOT=0` pula) → aba **Monitor** → conectar em `
 conforme tica. Sem a variável de ambiente, nenhuma porta abre — zero custo por padrão, e só uma
 instância de `BT::PublisherZMQ` pode existir por `.so` carregado.
 
-O `PLAYER` tem de existir no cenário: um nome que não casa era 100% silencioso, e hoje o host
+O `PLAYER` tem de existir no cenário: um nome que não casa era 100% silencioso, e hoje o core
 avisa com `LOG(WARNING)` listando os players reais. A linha de sucesso traz **nº de nós e faixa de
 UID** (`… 1 nos, uid 6..6`) — é o diagnóstico da armadilha nº3 abaixo a um `grep` de distância.
 
@@ -175,15 +175,15 @@ seção "Groot — editor e monitor ao vivo".
 nada que um cenário consiga carregar — publicar é sempre em dois passos, e os dois são necessários:
 
 ```bash
-make install-host              # -> ../../../plugins/ (o mesmo deposito que um .so de terceiro usaria)
+make install-core              # -> ../../../plugins/ (o mesmo deposito que um .so de terceiro usaria)
 cd ../../.. && make install     # sincroniza plugins/ -> dist/ -- unico alvo que toca dist/ pelo modelo
 ```
 
-`make install-host` (deste `Makefile`) nunca escreve em `dist/` — só em `../../../plugins/` (lib,
+`make install-core` (deste `Makefile`) nunca escreve em `dist/` — só em `../../../plugins/` (lib,
 flat) e `../../../plugins/data/A-4/` (a árvore + `data/jsbsim/`), o depósito genérico que
 qualquer `.so` — próprio ou de terceiro — usa. Só o `make install` da raiz (alvo `sync-plugins`)
 copia dali para `dist/lib/mixr-plugins/`/`dist/share/mixr-plugins/`, que é de onde um binário do
-host de fato `dlopen()`. Rodar só o primeiro comando deixa o `.so` pronto mas invisível a qualquer
+core de fato `dlopen()`. Rodar só o primeiro comando deixa o `.so` pronto mas invisível a qualquer
 cenário; rodar os dois é o que "publicar o plugin" quer dizer aqui.
 
 **Este passo termina o trabalho deste diretório.** Fazer um cenário carregar o `.so` publicado —
@@ -195,7 +195,7 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
 
 - `make test` (aqui). Se a mudança mexeu em algo que algum cenário de produção também exercita
   (slot novo, nome de fábrica novo, mudança de comportamento visível no dump `frame=`), publique
-  (seção 4) e rode `cd ../../.. && make test` — as suítes `scenario`/`determinism`/`plugin` do host
+  (seção 4) e rode `cd ../../.. && make test` — as suítes `scenario`/`determinism`/`plugin` do core
   exercitam este `.so` de fora.
 - **`provides:` é igualdade EXATA de conjunto** entre cada `.edl` que carrega este plugin e o que
   o `.so` exporta. Um nome de fábrica novo obriga atualizar `provides:` em **todo** cenário
@@ -209,7 +209,7 @@ Tacview, decidir a frota — é trabalho de quem monta o cenário, não deste mo
   ([`../template/docs/CONTRATO.md`](../template/docs/CONTRATO.md)). Ele roda o mesmo
   cenário de produção trocando só o `file:` do `( PluginModule )`, e existe justamente para
   quebrar quando o contrato muda — um slot/nome que só o `A-4` conhece derruba
-  `plugin-modelo-estranho`/`plugin-deposito-terceiro` no host.
+  `plugin-modelo-estranho`/`plugin-deposito-terceiro` no core.
 - **`CHANGELOG.md`** — uma entrada por mudança que alguém precisaria saber antes de mexer neste
   modelo, não uma por commit. A versão é a do `project()` em `meson.build`; as datas saem da data
   de commit, nunca da mensagem (todo commit deste repositório se chama `up`).

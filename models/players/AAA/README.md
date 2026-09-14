@@ -9,7 +9,7 @@ anterior (`models/players/missile`): reusa o **mesmo** `( GuidedMissile )`, sem 
 disparado agora por um lançador terrestre em vez de um A-4.
 
 `AAA` é um projeto Meson **independente** (mesmo padrão de `models/players/A-4`/`missile`) — a
-aplicação principal (o "host") não sabe nada do fonte deste diretório, só carrega `libAAA.so` em
+aplicação principal (o "core") não sabe nada do fonte deste diretório, só carrega `libAAA.so` em
 tempo de execução via `dlopen`. Ver [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é
 um plugin, construído numa etapa PRÉVIA", para a visão geral.
 
@@ -66,7 +66,7 @@ cd models/players/AAA
 make build            # -> ./dist/lib/mixr-plugins/libAAA.so
 make test             # domain (DomePolicy) + tree (aaa_tree.xml) + tree-model-sync + contract
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia o .so para ../../../plugins/ (make install da raiz sincroniza pra dist/)
+make install-core     # copia o .so para ../../../plugins/ (make install da raiz sincroniza pra dist/)
 ```
 
 `make help` lista todos os alvos.
@@ -82,4 +82,4 @@ make install-host     # copia o .so para ../../../plugins/ (make install da raiz
 - [`../../../sandbox/AAA-A4-6DOF/README.md`](../../../sandbox/AAA-A4-6DOF/README.md) — o cenário
   de demonstração, com as medições de disparo/detecção/evasão.
 - [`models/template/docs/CONTRATO.md`](../../template/docs/CONTRATO.md) — a lista completa e
-  autoritativa do que qualquer modelo precisa fazer para o host carregá-lo e rodar com ele.
+  autoritativa do que qualquer modelo precisa fazer para o core carregá-lo e rodar com ele.

@@ -12,7 +12,7 @@ namespace rl {
 //------------------------------------------------------------------------------
 // Do arquivo EDL a Station de pe -- mesma questao, mesma implementacao de
 // app/include/app/StationBuilder.hpp, so que SEM clockStationOf()/
-// ioHandlerOf()/tacviewOutputOf(): este host nunca precisa alcancar esses
+// ioHandlerOf()/tacviewOutputOf(): este core nunca precisa alcancar esses
 // objetos de volta (nao ha teclado, nao ha joystick, e a exportacao pro
 // Tacview roda sozinha por dentro de station->updateData(), sem nenhum
 // codigo daqui empurrando dado nela).

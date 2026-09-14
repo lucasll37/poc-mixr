@@ -15,7 +15,7 @@
 # Os projetos sao descobertos por 'find' (todo diretorio sob models/ com um
 # meson.build de projeto), NAO por lista fixa -- um modelo novo passa a ser
 # cobrado sem editar este arquivo. E a mesma licao ja registrada no cabecalho
-# de check_host_opaco.sh: glob/lista fixa envelhece em silencio.
+# de check_core_opaco.sh: glob/lista fixa envelhece em silencio.
 #
 # plugins/ fica de fora de proposito: e um DEPOSITO para .so de
 # terceiro (ja compilado fora deste repositorio), nao um projeto -- nao tem

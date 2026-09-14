@@ -71,14 +71,14 @@ cd models/others/Navstar-3
 make build            # compila -> ./dist/lib/mixr-plugins/libNavstar-3.so
 make test             # domain (orbita + sombra) + tree + native + a forma do .so -- 5 testes
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
+make install-core     # copia o .so + a arvore para ../../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos.
 
-## Por que existe um passo separado para "publicar no host"
+## Por que existe um passo separado para "publicar no core"
 
-`make install-host` só copia até `../../../plugins/`, o depósito compartilhado com terceiros —
+`make install-core` só copia até `../../../plugins/`, o depósito compartilhado com terceiros —
 quem sincroniza dali para `dist/`, onde um cenário de fato procura, é `make install` do projeto
 raiz. O fluxo do dia a dia na raiz é `make configure && make models && make install`.
 
@@ -86,7 +86,7 @@ raiz. O fluxo do dia a dia na raiz é `make configure && make models && make ins
 
 `Navstar3State`, `Navstar3BtBehavior`, `Navstar3Action`, `Navstar3AgentTC`. O `.edl` de qualquer
 cenário que carregue este plugin precisa declarar exatamente estes quatro em `provides:` —
-**não** inclui `SpaceVehicle`, que é nativo do host (`mixr::models::factory` já a despacha).
+**não** inclui `SpaceVehicle`, que é nativo do core (`mixr::models::factory` já a despacha).
 
 ## Gotcha mais importante ao escrever um cenário
 

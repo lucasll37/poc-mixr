@@ -8,11 +8,3 @@
 
 convite de integração de outras ferramentas
 asa-control, asa-missile, forge ...
-
-Player
-System
-Dynamics
-Agent
-AgentTC
-UBF
-Navegation

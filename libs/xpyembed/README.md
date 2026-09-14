@@ -80,7 +80,7 @@ Três razões, as três medidas:
 3. **Python vira dependência opcional de runtime.** Sem Python, `isAvailable()` devolve `false` e o
    nó degrada — mesma política do joystick ausente. Com `DT_NEEDED`, o binário não subiria.
 
-O preço é a tabela de ponteiros de função. Vale: **nenhum `main.cpp` de host precisou de uma linha.**
+O preço é a tabela de ponteiros de função. Vale: **nenhum `main.cpp` de core precisou de uma linha.**
 
 ## Números medidos
 

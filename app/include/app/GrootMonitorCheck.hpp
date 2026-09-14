@@ -10,11 +10,11 @@ namespace app {
 // checkGrootMonitorTarget() -- confere se MIXR_GROOT_MONITOR nomeia um player
 // que de fato existe no cenario carregado, e diz o que fazer quando nao.
 //
-// POR QUE ISTO MORA NO HOST, e nao no modelo (a pergunta obvia, ja que quem
+// POR QUE ISTO MORA NO CORE, e nao no modelo (a pergunta obvia, ja que quem
 // liga o monitor e' 'BtBehavior::startGrootMonitorIfRequested()'):
 // nenhum BtBehavior consegue concluir "ninguem casou". Cada um so' sabe o
 // PROPRIO nome, e um outro player pode casar depois -- entao, do lado do
-// modelo, "nao casei" e "ninguem casou" sao indistinguiveis. O host e' o unico
+// modelo, "nao casei" e "ninguem casou" sao indistinguiveis. O core e' o unico
 // que tem a lista inteira de players ja montada.
 //
 // O caso que motivou isto e' real e era 100% SILENCIOSO: o exemplo documentado

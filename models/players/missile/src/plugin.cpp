@@ -37,7 +37,7 @@ mixr::base::Object* fabrica(const char* const name)
 } // namespace
 
 // O primeiro argumento vai para o descritor binario do plugin (PluginDescV1,
-// libs/xplugin/PluginAbi.hpp) e aparece em mensagens de erro do host quando
+// libs/xplugin/PluginAbi.hpp) e aparece em mensagens de erro do core quando
 // algo da errado no carregamento -- combina com o project() de meson.build
 // e o nome do shared_module() logo abaixo.
 MIXR_PLUGIN_DEFINE("missile",

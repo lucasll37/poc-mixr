@@ -5,7 +5,7 @@
 #include "mixr/base/MetaObject.hpp"
 #include "mixr/base/Object.hpp"
 
-// Para o canario de layout: o host compara o proprio sizeof(models::Player)
+// Para o canario de layout: o core compara o proprio sizeof(models::Player)
 // com o que o plugin gravou no descritor.
 #include "mixr/models/player/Player.hpp"
 
@@ -41,7 +41,7 @@
 //                 vez de estourar dentro de uma thread de tempo critico;
 //                 (b) o momento da falha deixa de depender do caminho de
 //                 execucao, o que envenenaria check_determinism.sh; e (c) um
-//                 plugin compilado COM ASan carregado num host SEM ASan vira
+//                 plugin compilado COM ASan carregado num core SEM ASan vira
 //                 "undefined symbol: __asan_report_load8" limpo, na partida.
 //
 //   RTLD_LOCAL    contra o prior art do BehaviorTree.CPP, que usa GLOBAL
@@ -320,7 +320,7 @@ void loadModule(const std::string& file,
       std::cerr << "[plugin] '" << path << "': descritor de " << desc->struct_size
                 << " bytes, mas este binario so entende " << sizeof(PluginDescV1) << "."
                 << std::endl;
-      std::cerr << "[plugin]   o plugin foi compilado contra um SDK MAIS NOVO que o host."
+      std::cerr << "[plugin]   o plugin foi compilado contra um SDK MAIS NOVO que o core."
                 << std::endl;
       die();
    }
@@ -331,13 +331,13 @@ void loadModule(const std::string& file,
       die();
    }
    {
-      const auto hostAbi = static_cast<std::uint32_t>(MIXR_PLUGIN_CXX11_ABI);
-      if (desc->cxx11_abi == CXX11_ABI_DESCONHECIDA || hostAbi == CXX11_ABI_DESCONHECIDA) {
+      const auto coreAbi = static_cast<std::uint32_t>(MIXR_PLUGIN_CXX11_ABI);
+      if (desc->cxx11_abi == CXX11_ABI_DESCONHECIDA || coreAbi == CXX11_ABI_DESCONHECIDA) {
          std::cerr << "[plugin] AVISO: '" << nome << "' nao reporta _GLIBCXX_USE_CXX11_ABI;"
                    << " nao da para conferir o layout de std::string." << std::endl;
-      } else if (desc->cxx11_abi != hostAbi) {
+      } else if (desc->cxx11_abi != coreAbi) {
          std::cerr << "[plugin] '" << path << "': _GLIBCXX_USE_CXX11_ABI " << desc->cxx11_abi
-                   << " != " << hostAbi << " deste binario." << std::endl;
+                   << " != " << coreAbi << " deste binario." << std::endl;
          std::cerr << "[plugin]   std::string tem layout diferente dos dois lados, e os"
                    << " headers do MIXR expoem isso inline" << std::endl;
          std::cerr << "[plugin]   (MetaObject::getClassName() le um std::string MEMBRO)."
@@ -365,10 +365,10 @@ void loadModule(const std::string& file,
    }
    {
       const std::string pkgPlugin{desc->mixr_pkg_version != nullptr ? desc->mixr_pkg_version : "?"};
-      const std::string pkgHost{MIXR_PLUGIN_PKG_VERSION};
-      if (pkgPlugin != pkgHost) {
+      const std::string pkgCore{MIXR_PLUGIN_PKG_VERSION};
+      if (pkgPlugin != pkgCore) {
          std::cerr << "[plugin] AVISO: '" << nome << "' compilado contra mixr " << pkgPlugin
-                   << ", este binario contra " << pkgHost << "." << std::endl;
+                   << ", este binario contra " << pkgCore << "." << std::endl;
          std::cerr << "[plugin]   os SONAME do MIXR nao sao versionados (libmixr_base.so,"
                    << " sem .so.1.0.5), entao o loader" << std::endl;
          std::cerr << "[plugin]   nao detectaria isso sozinho." << std::endl;

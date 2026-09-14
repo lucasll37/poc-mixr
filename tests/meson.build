@@ -1,16 +1,16 @@
 # ==============================================================================
-# Suite do HOST -- so entra no build com -Dtests=true (ver meson_options.txt)
+# Suite do CORE -- so entra no build com -Dtests=true (ver meson_options.txt)
 #
 # As camadas 'domain' e 'tree' NAO estao mais aqui: elas compilam domain/ e bt/
 # direto, e esses fontes sairam para models/players/A-4/. Moraram junto com o que
 # testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
-#   domain-rules  as primitivas de deteccao do libs/xmsg (host, ficaram)
+#   domain-rules  as primitivas de deteccao do libs/xmsg (core, ficaram)
 #   scenario      o binario de verdade, com fixture, asserções sobre 'frame='
 #   memory        vazamento, pelos contadores de instancia do MIXR
 #   determinism   o mesmo estado com 1, 2 e 4 threads
 #   plugin        o contrato de carga dinamica e os modos de falha
-#   guard         invariantes estruturais -- inclusive a OPACIDADE do host
+#   guard         invariantes estruturais -- inclusive a OPACIDADE do core
 #
 # MUDANCA IMPORTANTE: o plugin de modelo nao e mais um alvo deste projeto. Ele
 # vem pronto de dist/lib/mixr-plugins/, construido antes por 'make models'.
@@ -37,7 +37,7 @@ model_build  = raiz / 'models' / 'players' / 'A-4' / 'build'
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do libs/xmsg
 #
-# Sao do HOST (libs/xmsg), nao do modelo, entao ficaram. Tao livres de MIXR
+# Sao do CORE (libs/xmsg), nao do modelo, entao ficaram. Tao livres de MIXR
 # quanto o domain/ que foi embora: regra pura, milissegundos.
 # ------------------------------------------------------------------------------
 xmsg_rules_dir = raiz / 'libs' / 'xmsg'
@@ -161,7 +161,7 @@ test('app-map-follow', test_app_map_follow, suite: 'domain', timeout: 60)
 # as duas regras puras do painel (filtro por nivel minimo e o ciclo dele).
 # O buffer e estado GLOBAL do processo de proposito: e o que faz o LOG(...)
 # do plugin do modelo (um .so aberto por dlopen) cair no MESMO lugar que o
-# do host, sem nenhuma ponte extra.
+# do core, sem nenhuma ponte extra.
 test_app_log = executable('test-app-log',
     files('../app/tests/test_log_panel.cpp') + files(
         '../app/src/app/LogPanel.cpp',
@@ -613,11 +613,25 @@ endforeach
 # propriedade (ex.: a derivacao de semente voltar a depender de ordem)
 # passaria despercebida indefinidamente. Registrado so' para 'flight' -- a
 # propriedade testada (domain::PatrolPlan) mora inteira no MODELO
-# compartilhado (nao e' especifica de host/arvore), entao testar uma vez
+# compartilhado (nao e' especifica de core/arvore), entao testar uma vez
 # basta, sem dobrar o tempo desta suite ja lenta.
 patrol_seed_sh = files('determinism/check_patrol_seed.sh')
 test('patrol-seed-determinism', bash,
      args: patrol_seed_sh + [app.full_path(), 'flight', 'flight', '300'],
+     depends: app, workdir: raiz, suite: 'determinism',
+     timeout: 1800, is_parallel: false)
+
+# ACHADO POR AUDITORIA (revisao completa do repositorio), MESMA LACUNA JA
+# CORRIGIDA UMA VEZ ACIMA: este script prova a mesma propriedade do RNG de
+# acrobacia (libs/xrandom + domain::AerobaticPlan, sandbox/A4-6DOF-RANDOM)
+# que patrol-seed-determinism ja prova para domain::PatrolPlan/'flight' --
+# sempre existiu, rodava e passava (confirmado manualmente), mas nunca era
+# exercitado por 'make test'/CI -- ficava ORFAO, exatamente o modo de falha
+# que patrol-seed-determinism ja tinha sofrido antes de ser wireado aqui.
+random_seed_sh = files('determinism/check_random_seed_scenario.sh')
+test('random-seed-determinism', bash,
+     args: random_seed_sh + [app.full_path(), 'a4-6dof-random',
+                              raiz + '/sandbox/A4-6DOF-RANDOM/configs/scenario_a4_6dof_random.edl.in'],
      depends: app, workdir: raiz, suite: 'determinism',
      timeout: 1800, is_parallel: false)
 
@@ -958,8 +972,8 @@ test('edl-check', py,
      args: files('tools/test_edlcheck.py') + ['--binario', edlcheck.full_path()],
      depends: edlcheck, workdir: raiz, suite: 'tools', timeout: 60)
 
-# O host nao pode voltar a conhecer o fonte do modelo.
-test('host-opaco', bash, args: files('guard/check_host_opaco.sh'),
+# O core nao pode voltar a conhecer o fonte do modelo.
+test('core-opaco', bash, args: files('guard/check_core_opaco.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
 # A thread de DESENHO do ./app nao pode tocar o grafo VIVO do MIXR: enquanto o
@@ -979,7 +993,7 @@ test('ui-thread-sem-mixr', bash, args: files('guard/check_ui_thread_sem_mixr.sh'
 test('modelo-estrutura', bash, args: files('guard/check_modelo_estrutura.sh'),
      workdir: raiz, suite: 'guard', timeout: 60)
 
-# O meson do host nao tem aresta ate o .so do modelo (ele vem de dist/), entao
+# O meson do core nao tem aresta ate o .so do modelo (ele vem de dist/), entao
 # o frescor tem de ser afirmado a mao -- senao a suite passa contra um plugin
 # velho e a regressao no modelo fica invisivel.
 test('modelo-fresco', bash, args: files('guard/check_modelo_fresco.sh'),

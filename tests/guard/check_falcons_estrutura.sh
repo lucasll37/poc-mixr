@@ -21,7 +21,20 @@ fail=0
 # Por 'find', nao por glob de um nivel: agrupar as pocs de DIS em
 # src/poc/dis/<poc>/ empurrou tres cenarios um nivel para baixo, e o glob
 # 'src/poc/*/configs/...' deixaria de ve-los -- guarda verde cobrindo menos.
-for arquivo in $(find src/poc -type f -path '*/configs/scenario.edl.in' | sort); do
+# Achado por auditoria (revisao completa do repositorio): sem esta checagem,
+# um 'find' que voltasse vazio (renomeacao de pasta, cenarios movidos pra
+# fora de configs/scenario.edl.in) faria o loop abaixo simplesmente nao
+# rodar, 'fail' continuar 0 e o script imprimir "OK" -- a mesma passagem
+# vacua que motivou a aposentadoria de check_duplication.sh. Mesmo padrao ja
+# usado em check_modelo_estrutura.sh.
+arquivos="$(find src/poc -type f -path '*/configs/scenario.edl.in' | sort)"
+
+if [ -z "$arquivos" ]; then
+   echo "  FALHA nenhum scenario.edl.in encontrado sob src/poc -- o find quebrou?"
+   exit 1
+fi
+
+for arquivo in $arquivos; do
    if python3 tests/guard/skeleton_diff.py "$arquivo" falcon1 falcon2 falcon3 falcon4; then
       echo "  OK   $arquivo"
    else

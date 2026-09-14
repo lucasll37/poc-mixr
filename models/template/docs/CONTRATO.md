@@ -2,10 +2,10 @@
 
 ## Contexto, para quem está chegando agora
 
-A aplicação deste repositório (o "host") não decide nada sozinha: ela carrega a lógica de
+A aplicação deste repositório (o "core") não decide nada sozinha: ela carrega a lógica de
 percepção/decisão/ação de uma biblioteca compilada à parte (um "modelo", também chamado de
 "plugin"), aberta em tempo de execução via `dlopen`. Um cenário (arquivo `.edl`, o formato
-declarativo do MIXR) diz qual arquivo `.so` carregar e quais classes esperar dele; o host nunca
+declarativo do MIXR) diz qual arquivo `.so` carregar e quais classes esperar dele; o core nunca
 viu o código-fonte desse `.so`.
 
 Esse mecanismo de carga (o formato do descritor binário, a macro de registro, as flags de link)
@@ -29,7 +29,7 @@ que mostra a separação em camadas em vez do atalho achatado que `mirror.cpp` u
 - Exporte o ponto de entrada **só** pela macro `MIXR_PLUGIN_DEFINE` (nunca escrevendo a assinatura
   `extern "C"` à mão): em um alvo com símbolos escondidos por padrão, uma assinatura manual vira
   invisível para quem carrega o `.so` em runtime, e o sintoma some longe do lugar do erro.
-- Linke com `-Wl,--no-undefined` (o executável do host não exporta nada para um plugin chamar) e,
+- Linke com `-Wl,--no-undefined` (o executável do core não exporta nada para um plugin chamar) e,
   se o seu modelo linkar alguma biblioteca **estática**, também `-Wl,--exclude-libs,ALL` (senão os
   símbolos dela vazam para fora do seu `.so`).
 
@@ -107,10 +107,10 @@ nenhum — o mesmo padrão "compila e roda, mas decide errado" que motivou desta
 
 ## 3. Publicar o que o modelo decidiu — a obrigação que falha em silêncio
 
-O host precisa mostrar, na tela e nos arquivos que exporta, o que cada player está fazendo
-**agora** — mas quem sabe isso é só o modelo (o host não entende o vocabulário de decisão dele).
+O core precisa mostrar, na tela e nos arquivos que exporta, o que cada player está fazendo
+**agora** — mas quem sabe isso é só o modelo (o core não entende o vocabulário de decisão dele).
 A ponte é uma estrutura compartilhada e protegida por mutex, `mixr::xboard::Readout`, indexada por
-id de player: o modelo escreve nela no momento em que decide/atua, o host só lê.
+id de player: o modelo escreve nela no momento em que decide/atua, o core só lê.
 
 `playerId` vem de `player->getID()` — o `mixr::models::Player` que hospeda o agente, o mesmo
 ponteiro que já chega pronto no contexto de decisão (`genAction()`/`execute()`); ver
@@ -130,12 +130,12 @@ xboard::setRadarScan(playerId, achou, az, el, alcance, feixeH, feixeV);  // perc
 ```
 
 **Nada no empacotamento obriga isso.** Um modelo que nunca chame essas funções compila, carrega,
-satisfaz `provides:`, e o host sobe e roda — só que a tela de status mostra `bt=--`, a contagem de
+satisfaz `provides:`, e o core sobe e roda — só que a tela de status mostra `bt=--`, a contagem de
 decisões fica em `0`, e nenhum alerta aparece, para sempre, sem nenhum erro em lugar nenhum. É a
 única obrigação desta lista que não tem sintoma de falha visível — por isso vale destacar aqui, e
 não só nos comentários do header.
 
-O radar é o caso mais claro de "isto é do modelo, não do host": só quem decide para onde apontar o
+O radar é o caso mais claro de "isto é do modelo, não do core": só quem decide para onde apontar o
 sensor sabe o que ele está enxergando. Um modelo sem sensor nenhum é legítimo — nesse caso,
 simplesmente não chame `setRadarScan`, e o campo correspondente fica marcado como inválido em vez
 de mostrar um valor inventado.
@@ -202,7 +202,7 @@ pegar o problema depois.
   (seção 1), a escrita no `xboard` (seção 3), o dado próprio publicado (seção 4) e o namespace
   aninhado (seção 6), entre outras verificações de organização interna que não correspondem a uma
   seção deste documento — mas é um linter opcional, por busca textual, não uma prova
-  formal; a confirmação de ponta a ponta continua sendo rodar o modelo dentro do host de verdade.
+  formal; a confirmação de ponta a ponta continua sendo rodar o modelo dentro do core de verdade.
   Uma interface abstrata em C++ resolveria isso, mas traria de volta o acoplamento binário
   (vtable) que este mecanismo de plugin existe justamente para evitar.
 
@@ -218,4 +218,4 @@ pegar o problema depois.
 - [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — como registrar um modelo novo
   num cenário
 - [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído
-  numa etapa PRÉVIA" — visão geral de como os modelos deste repositório se encaixam no host
+  numa etapa PRÉVIA" — visão geral de como os modelos deste repositório se encaixam no core

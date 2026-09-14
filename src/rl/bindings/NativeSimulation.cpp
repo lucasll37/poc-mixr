@@ -56,8 +56,8 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
       //
       // So confere EXISTENCIA do player -- nao da para confirmar daqui que e
       // o MESMO player com RLBridgeBehavior: esse tipo mora no plugin do
-      // modelo (models/players/A-4), que este host nao pode conhecer
-      // (tests/guard/check_host_opaco.sh). 'player_name' tem de bater com o
+      // modelo (models/players/A-4), que este core nao pode conhecer
+      // (tests/guard/check_core_opaco.sh). 'player_name' tem de bater com o
       // player que o .edl configurou com RLBridgeBehavior -- ver
       // src/rl/README.md.
       const auto player = worldModelOf(station_)->findPlayerByName(playerName_.c_str());

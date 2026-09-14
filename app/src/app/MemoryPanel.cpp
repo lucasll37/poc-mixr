@@ -67,7 +67,7 @@ Element renderMemoryBar(const ClassStat& s)
 std::string classRowText(const ClassStat& s)
 {
    std::ostringstream oss;
-   oss << (s.fromPlugin ? "[plugin] " : "[host]   ") << std::left << std::setw(kColFactory) << s.factoryName
+   oss << (s.fromPlugin ? "[plugin] " : "[core]   ") << std::left << std::setw(kColFactory) << s.factoryName
        << " count=" << s.count << " mc=" << s.mc << " tc=" << s.tc
        << (s.racyCounter ? "  RACA (contador MIXR nao-atomico)" : (s.suspectedLeak ? "  CRESCENDO" : ""));
    return oss.str();

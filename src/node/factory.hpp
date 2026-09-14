@@ -5,7 +5,7 @@
 #include <string>
 
 //------------------------------------------------------------------------------
-// Factory de objetos MIXR deste host -- mesmo padrao de duas funcoes que
+// Factory de objetos MIXR deste core -- mesmo padrao de duas funcoes que
 // app/include/mixr_factory.hpp e src/rl/bindings/mixr_factory.hpp, mas com a
 // cadeia COMPLETA (ao contrario da de src/rl/bindings, enxuta para UM cenario
 // hermetico conhecido): node roda qualquer cenario de src/poc/**, que pode

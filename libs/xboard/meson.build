@@ -1,4 +1,4 @@
-# O quadro de leitura entre o host e o modelo.
+# O quadro de leitura entre o core e o modelo.
 #
 # Uma das seis shared_library() de libs/ (xboard/xlog/xtrack/xrlbridge/xinfer/
 # xpyembed -- ver libs/README.md); as demais ficam static_library()/header-only.

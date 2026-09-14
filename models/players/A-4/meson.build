@@ -1,15 +1,15 @@
 # ==============================================================================
 # A-4 — o MODELO de producao, como projeto Meson INDEPENDENTE
 #
-# Este projeto nao sabe nada do host, e o host nao sabe nada dele. A unica
+# Este projeto nao sabe nada do core, e o core nao sabe nada dele. A unica
 # coisa entre os dois e o SDK publicado em dist/ pelo projeto principal:
 # o contrato (xplugin/PluginAbi.hpp) e as tres .so de fronteira
 # (libxboard, libxlog, libxtrack).
 #
 # E POR ISSO que ele e um project() proprio e nao um subdir: o `meson setup`
-# do host tem de conseguir rodar SEM os fontes daqui existirem. Enquanto o
-# modelo era um alvo do host, o files() dele listava os 24 .cpp e o build do
-# host exigia o fonte -- o oposto do cenario que se quer verificar.
+# do core tem de conseguir rodar SEM os fontes daqui existirem. Enquanto o
+# modelo era um alvo do core, o files() dele listava os 24 .cpp e o build do
+# core exigia o fonte -- o oposto do cenario que se quer verificar.
 #
 # ORDEM (ver o Makefile):  deps -> sdk -> models -> build
 #
@@ -38,8 +38,8 @@ cpp = meson.get_compiler('cpp')
 # '--tags sdk' sem o ',devel', que instala as .so e ESQUECE os headers).
 sdk_dep = dependency('poc-mixr-sdk', method: 'pkg-config', required: true)
 
-# Do Conan, pelos mesmos .pc que o host usa. O modelo linka a
-# BehaviorTree.CPP; o host NAO (ela e estatica -- linkada dos dois lados,
+# Do Conan, pelos mesmos .pc que o core usa. O modelo linka a
+# BehaviorTree.CPP; o core NAO (ela e estatica -- linkada dos dois lados,
 # duplicaria os estaticos dela no processo).
 mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
@@ -122,7 +122,7 @@ model_sources = files(
 # -Wl,--exclude-libs,ALL e OBRIGATORIO: a BehaviorTree.CPP e um .a com 447
 # simbolos T globais, e gnu_symbol_visibility:'hidden' NAO se aplica a objetos
 # vindos de arquivo estatico. Sem a flag eles vazariam para o .dynsym e a
-# guarda de simbolo do host ficaria vermelha -- com razao.
+# guarda de simbolo do core ficaria vermelha -- com razao.
 model_link_args = asan_link_args + rpath_link_args + ['-Wl,--no-undefined', '-Wl,--exclude-libs,ALL']
 model_deps = [mixr_dep, behavior_tree_dep, sdk_dep]
 
@@ -208,7 +208,7 @@ install_subdir('data/jsbsim',
 
 # As duas variantes de hot-swap, do MESMO fonte, diferindo so no sentido da
 # curva do circuito de patrulha. Consumidas pelo teste 'plugin-hotswap' do
-# host. Atras de uma opcao para nao poluir um build comum.
+# core. Atras de uma opcao para nao poluir um build comum.
 if get_option('variants')
     foreach v : [['model_variant_a', '1.0'], ['model_variant_b', '-1.0']]
         shared_module(v[0],
@@ -224,7 +224,7 @@ if get_option('variants')
     endforeach
 
     # UMA TERCEIRA variante, mesma familia (mesmo fonte, so pra teste do
-    # HOST, nunca instalada): 'model_leak' acrescenta um UNICO ref() extra
+    # CORE, nunca instalada): 'model_leak' acrescenta um UNICO ref() extra
     # em BtBehavior::genAction(), logo apos 'new FlightAction()' -- nunca
     # balanceado por um unref() (ver o #ifdef
     # POC_LEAK_ONE_REF_PER_DECISION em src/ubf/BtBehavior.cpp). Reproduz de

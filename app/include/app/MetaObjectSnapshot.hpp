@@ -31,7 +31,7 @@ const int kHistoryWindow{30};   // ~3s a 10 Hz -- ver sampleMetaObjects()
 struct ClassStat
 {
    std::string factoryName;
-   bool fromPlugin{};      // false = classe do HOST (termometro do parser/EDL)
+   bool fromPlugin{};      // false = classe do CORE (termometro do parser/EDL)
    int count{};             // instancias vivas AGORA
    int mc{};                 // pico historico (o proprio MetaObject ja acumula)
    long tc{};                // total ja criado (idem)
@@ -58,7 +58,7 @@ struct ClassStat
 
 // 'previous' e o resultado da amostra anterior (para herdar o historico);
 // vazio na primeira chamada. Le mixr::xplugin::pluginMetaObjects() mais duas
-// classes fixas do HOST (mixr::base::Pair, mixr::base::String -- as mesmas
+// classes fixas do CORE (mixr::base::Pair, mixr::base::String -- as mesmas
 // que MetaObjectReport ja usa como termometro do parser/EDL).
 std::vector<ClassStat> sampleMetaObjects(const std::vector<ClassStat>& previous);
 

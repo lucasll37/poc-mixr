@@ -48,7 +48,7 @@ namespace xpyembed {
 //      simplesmente nao subiria.
 //
 // O preco e a tabela de ponteiros de funcao no .cpp. Vale: nenhum main.cpp de
-// host precisou de uma linha.
+// core precisou de uma linha.
 //
 //------------------------------------------------------------------------------
 // CONCORRENCIA E DETERMINISMO

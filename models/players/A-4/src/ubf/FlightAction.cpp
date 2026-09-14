@@ -30,7 +30,7 @@ namespace {
 //
 // Nada disso e ponte: libs/xlog e uma shared_library(), entao ha UMA copia
 // no processo e o LOG(...) emitido de dentro deste .so (aberto por dlopen)
-// cai no mesmo buffer em memoria que o host le -- ver o cabecalho de
+// cai no mesmo buffer em memoria que o core le -- ver o cabecalho de
 // app/LogPanel.hpp e a secao libs/xlog do CLAUDE.md. O log tambem vai pro
 // console e pro arquivo das outras pocs (flight, bandit, ...), que nao tem
 // aba nenhuma; sob '-deterministic' o main.cpp desliga tudo
@@ -219,7 +219,7 @@ bool FlightAction::execute(base::Component* actor)
    }
 
    // O quadro de leitura (libs/xboard) e a UNICA coisa que este modelo e o
-   // host compartilham: escrevemos aqui, o dump e a linha de status leem la.
+   // core compartilham: escrevemos aqui, o dump e a linha de status leem la.
    // Ele mora numa .so de verdade justamente porque este codigo passou a rodar
    // dentro de um plugin -- ver o cabecalho de libs/xboard/Board.hpp.
    //

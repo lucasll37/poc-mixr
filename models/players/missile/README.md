@@ -58,14 +58,14 @@ cd ../../.. && make configure && make sdk
 make build            # -> ./dist/lib/mixr-plugins/libmissile.so
 make test             # domain/ (a lei de PN + a espoleta) + a forma do .so
 make check-organization # opcional -- linter de organizacao interna, ver tools/check_organization.py
-make install-host     # copia pra ../../../plugins/ -- ver a proxima secao
+make install-core     # copia pra ../../../plugins/ -- ver a proxima secao
 ```
 
 `make help` lista todos os alvos.
 
 ## Publicar para um cenário de verdade carregar
 
-Mesmo fluxo de qualquer modelo deste repositório: `make install-host` (aqui) deposita em
+Mesmo fluxo de qualquer modelo deste repositório: `make install-core` (aqui) deposita em
 `../../../plugins/`; `cd ../../.. && make install` sincroniza `plugins/` → `dist/`, onde um
 cenário de fato procura. Ou, do dia a dia, só `make models && make install` na raiz do
 repositório (que já descobre este diretório junto com `A-4`).

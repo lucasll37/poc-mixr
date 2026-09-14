@@ -1,5 +1,5 @@
 //
-// libs/xrlbridge -- a ponte de comando/observacao entre o host de RL e o
+// libs/xrlbridge -- a ponte de comando/observacao entre o core de RL e o
 // modelo, na camada mais isolada possivel: sem Station, sem plugin, sem
 // pybind11. So a lib.
 //
@@ -264,7 +264,7 @@ TEST(XRLBridge, CommandEObservationFazemRoundtrip)
    EXPECT_EQ(lida.contactName, "bandit1");
 }
 
-// Escritor unico (o host) e leitor unico (o modelo) de cada lado, mas os
+// Escritor unico (o core) e leitor unico (o modelo) de cada lado, mas os
 // DOIS lados leem/escrevem em threads diferentes -- o mutex tem de bastar
 // para nao entregar um struct parcialmente escrito (um northM de uma escrita
 // com o eastM de outra).

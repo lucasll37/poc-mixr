@@ -3,7 +3,7 @@
 Este arquivo não repete o que já está escrito em outro lugar — ele COSTURA, na ordem certa, os
 documentos que já são autoridade sobre cada assunto. Cada passo abaixo aponta para o documento
 certo; leia-o antes de seguir para o próximo passo. Este roteiro é sobre escrever um **modelo**
-novo — para mudar o *host* (`app/`, `src/`, `libs/`) não há roteiro equivalente. O mais próximo é
+novo — para mudar o *core* (`app/`, `src/`, `libs/`) não há roteiro equivalente. O mais próximo é
 consultar, pontualmente, a seção de `CLAUDE.md` que cobre a parte específica que você for mexer
 (ex.: "`./app` — TUI (*Text User Interface*, interface de texto interativa em terminal) de
 controle/monitoramento" para o painel, "`src/rl`" para o wrapper de RL, ou
@@ -22,7 +22,7 @@ fundo, ver a ressalva do próprio [`TOUR.md`](TOUR.md), seção "Antes de começ
 ## Sumário
 
 - [0. O que você vai construir](#0-o-que-você-vai-construir)
-- [1. Pré-requisitos e SDK do host](#1-pré-requisitos-e-sdk-do-host-uma-vez-por-máquina)
+- [1. Pré-requisitos e SDK do core](#1-pré-requisitos-e-sdk-do-core-uma-vez-por-máquina)
 - [2. Escolha o ponto de partida](#2-escolha-o-ponto-de-partida)
 - [3. O contrato: o que TODO modelo tem que fazer](#3-o-contrato-o-que-todo-modelo-tem-que-fazer)
 - [4. Escreva a lógica](#4-escreva-a-lógica)
@@ -50,8 +50,8 @@ fundo, ver a ressalva do próprio [`TOUR.md`](TOUR.md), seção "Antes de começ
 ## 0. O que você vai construir
 
 Um **modelo** é uma biblioteca (`.so`) compilada à parte, aberta em tempo de execução via
-`dlopen` (o `.so` é aberto em *runtime* pelo host, nunca linkado em tempo de compilação) — o host
-nunca vê seu código-fonte. Esse é o mecanismo em si; a garantia complementar — que o host nem
+`dlopen` (o `.so` é aberto em *runtime* pelo core, nunca linkado em tempo de compilação) — o core
+nunca vê seu código-fonte. Esse é o mecanismo em si; a garantia complementar — que o core nem
 sequer precisa do FONTE do modelo para **compilar**, porque os dois são projetos Meson (o sistema
 de build usado por este repositório) separados em etapas de build distintas — é o que a seção de
 `CLAUDE.md` abaixo detalha. Se algo disso é
@@ -101,14 +101,14 @@ o próximo que for checar a tabela não duplicar o seu trabalho.
 Para entender o **framework** por baixo dos modelos (MIXR/BehaviorTree.CPP) além do necessário
 para este roteiro → seção 7, "Onde consultar durante o trabalho".
 
-## 1. Pré-requisitos e SDK do host (uma vez por máquina)
+## 1. Pré-requisitos e SDK do core (uma vez por máquina)
 
 → [`README.md`](README.md), seções "Pré-requisitos" e "Build" ([`INSTALL.md`](INSTALL.md) tem o
 passo a passo comentado, se faltar algo). Para escrever um modelo, pare na etapa `make sdk` — o
 alvo que publica em `dist/` o contrato de ABI (*Application Binary Interface* — o formato binário
-que um `.so` de modelo tem que respeitar para o host conseguir carregá-lo,
-`libs/xplugin/PluginAbi.hpp`) mais as bibliotecas compartilhadas host↔modelo (`libs/x<nome>`;
-lista completa em [`CLAUDE.md`](CLAUDE.md), seção "O SDK de plugin") — não precisa compilar o host
+que um `.so` de modelo tem que respeitar para o core conseguir carregá-lo,
+`libs/xplugin/PluginAbi.hpp`) mais as bibliotecas compartilhadas core↔modelo (`libs/x<nome>`;
+lista completa em [`CLAUDE.md`](CLAUDE.md), seção "O SDK de plugin") — não precisa compilar o core
 inteiro (`make build`/`make install`) ainda.
 
 Sem isso, todo `Makefile` autocontido de modelo (o seu vai ter um) falha em `check-root` dizendo
@@ -157,7 +157,7 @@ inteiro. Três obrigações merecem destaque:
   aborta na inicialização mostrando as duas listas lado a lado ("cenário declarou" / "a .so
   entrega"); não é silencioso, mas é a causa mais comum de "meu cenário não sobe".
 - **escrever no `xboard`** (seção 3) — a única obrigação que falha em **silêncio**: sem isso, o
-  host sobe, roda, e a tela de status mostra `bt=--`/`dec=0` para sempre, sem erro em lugar
+  core sobe, roda, e a tela de status mostra `bt=--`/`dec=0` para sempre, sem erro em lugar
   nenhum.
 - **namespace aninhado sob `mixr::models::x<nome>`** (seção 6) — sem isso, dois `.so` carregados
   juntos no mesmo processo podem colidir em RTTI (*Run-Time Type Information*, o mecanismo de C++
@@ -206,7 +206,7 @@ São o exemplo de referência para o que sua própria árvore precisa ter.
    `models/players/<seu-modelo>/configs/<sua-arvore>.xml`. Não é preciso copiar o arquivo para
    nenhum outro lugar antes: o Groot navega até qualquer diretório do disco.
 2. **Verifique se o comentário de cabeçalho tem `--` (hífen duplo)** — o parser XML do Groot
-   (`QDomDocument`, estrito) recusa o arquivo **inteiro** se tiver; o parser que o host usa
+   (`QDomDocument`, estrito) recusa o arquivo **inteiro** se tiver; o parser que o core usa
    (`tinyxml2`) é tolerante e deixa passar, então esse problema só aparece no Groot, nunca ao
    rodar a simulação de verdade. Sintoma: Groot recusa o arquivo com um erro genérico de sintaxe,
    sem apontar a causa real.
@@ -296,7 +296,7 @@ tempo real conforme tica. `run-app-monitor` faz o mesmo com o TUI — mas o TUI 
 console, então para **diagnosticar** prefira o `node`, que loga no terminal.
 
 > **O `PLAYER` tem de existir no cenário.** O exemplo aqui já foi `falcon1`, nome que não existe em
-> cenário nenhum de `sandbox/` — e um alvo que não casa era 100% silencioso. Hoje o host avisa
+> cenário nenhum de `sandbox/` — e um alvo que não casa era 100% silencioso. Hoje o core avisa
 > (`LOG(WARNING)`) nomeando os players reais. E **hoje só o modelo A-4 tem o hook**: um player de
 > outro modelo é aceito pela checagem e mesmo assim não liga porta nenhuma.
 
@@ -435,7 +435,7 @@ A poc já roda sem nenhuma linha em `tests/meson.build`. Decida se vale a pena p
 → [`README.md`](README.md), seção "Testes", para o `-Dtests=true`/`make test` gerais, e
 [`tests/README.md`](tests/README.md) para as camadas e o que cada uma prova.
 
-Específico de modelo: `make test-models` roda só a suíte do(s) modelo(s) (pula a do host); de
+Específico de modelo: `make test-models` roda só a suíte do(s) modelo(s) (pula a do core); de
 dentro do seu próprio `models/players/<nome>/`, `make test` roda sozinho, sem tocar no resto do
 repositório.
 
@@ -459,7 +459,7 @@ false, ...)` no seu `meson_options.txt`; (2) `asan_cpp_args`/`asan_link_args` de
 `shared_library()`; (3) uma fixture/cenário próprio para exercitar o `.so` — o alvo da raiz não
 sabe do seu modelo, então rodar sob ASan continua sendo manual: `meson configure
 models/players/<seu-modelo>/build -Dasan=true && meson compile -C models/players/<seu-modelo>/build`
-e então o binário do host apontando pro seu cenário, com `LSAN_OPTIONS=suppressions=<seu
+e então o binário do core apontando pro seu cenário, com `LSAN_OPTIONS=suppressions=<seu
 arquivo de supressões>` (comece copiando [`tests/memory/asan.supp`](tests/memory/asan.supp) — as
 supressões de lá são do framework MIXR em si, não deste repositório, então valem para qualquer
 modelo).
@@ -498,8 +498,8 @@ despejar C++ de terceiro na conversa.
 - `.claude/rules/*.md` carregam contexto extra sozinhas quando você edita um caminho que casa com
   o glob delas (`app/`+`src/`+`libs/`, `models/`, arquivos `.edl`/`.edl.in`/`.edl.frag`) — não
   precisam ser lidas à mão, mas valem uma olhada se quiser entender por que um hook bloqueou algo.
-- `.claude/hooks/*.sh` rodam automaticamente depois de editar os arquivos correspondentes: host
-  opaco (`check-host-opaco.sh`), colisão de nome de fábrica (`check-colisao-fabrica.sh`) e lint de
+- `.claude/hooks/*.sh` rodam automaticamente depois de editar os arquivos correspondentes: core
+  opaco (`check-core-opaco.sh`), colisão de nome de fábrica (`check-colisao-fabrica.sh`) e lint de
   EDL (`check-edl-lint.sh`) — a mesma checagem que `make test` (suíte `tools`) ou
   `python3 src/ui/scripts/edl_lint.py <arquivo>` direto fariam, só que sem esperar o próximo build.
 - `.claude/skills/README.md` e `.claude/mcp/README.md` documentam por que não há nenhum dos dois
@@ -1055,14 +1055,14 @@ barata para validar que um nó novo, colado numa `Sequence` nova, muda a priorid
 Mesmo padrão já usado na seção 5.1, nomeado para o A-4:
 
 ```bash
-make -C models/players/A-4 build test install-host   # so este modelo, autocontido
+make -C models/players/A-4 build test install-core   # so este modelo, autocontido
 cd ../../..   # de volta a raiz do repositorio, se necessario
 make install                                          # sync-plugins: plugins/ -> dist/
 nm -D --defined-only dist/lib/mixr-plugins/libA-4.so | grep ' T '   # 1 linha
 ldd dist/lib/mixr-plugins/libA-4.so | grep 'not found'              # vazio
 ```
 
-`make -C models/players/A-4 install-host` deposita em `plugins/` (a raiz do repositório) — só o
+`make -C models/players/A-4 install-core` deposita em `plugins/` (a raiz do repositório) — só o
 `make install` seguinte, na raiz, sincroniza `plugins/` → `dist/`, o lugar onde um cenário de
 verdade procura (ver a seção "Desacoplando `models` de `dist/`" em `CLAUDE.md`).
 
@@ -1201,5 +1201,5 @@ com 1, 2 e 4 threads de tempo crítico.
 
 Recapitulando o ciclo inteiro, do C++ ao sandbox: **escrever o `.hpp`/`.cpp` do nó (8.1–8.2) →
 registrar na fábrica (8.4) → colar a tag no XML e `make update-bt` (8.5) → testar sem simulação
-(8.6) → `make ... install-host` + `make install` (8.7) → conferir `provides:`/`agent:` no `.edl`
+(8.6) → `make ... install-core` + `make install` (8.7) → conferir `provides:`/`agent:` no `.edl`
 — já satisfeito se o nó é só de árvore (8.8) → `-folder ./sandbox -scenario <nome>` (8.9)**.

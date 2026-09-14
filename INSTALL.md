@@ -51,7 +51,7 @@ Por que cada um:
 - **`python3`**, **`python3-venv`**, **`pipx`** — para instalar o Conan (não há pacote `conan` no
   `apt`; ver §2) e para os scripts de teste em `tests/`.
 - **`python3-dev`** — cabeçalhos do Python (`Python.h`). `src/rl/bindings/` compila sempre como
-  parte do host e linka `pybind11`, que inclui esse header — sem o pacote, `make build` falha com
+  parte do core e linka `pybind11`, que inclui esse header — sem o pacote, `make build` falha com
   *"Python.h: No such file or directory"*.
 - **`gzip`** — descomprime os tiles SRTM (`shared/data/terrain/srtm/*.hgt.gz`) na primeira
   execução de qualquer cenário.
@@ -96,7 +96,7 @@ HLA (*High Level Architecture*, padrão IEEE 1516) que o MIXR declara mas
 este fork não compila (a interoperabilidade usada aqui é DIS), e `groot` é o editor/monitor visual
 das árvores de comportamento; `./scripts/deps.sh` builda as cinco, na ordem certa — as quatro
 primeiras (jsbsim/openrti/mixr/behaviortree.cpp.asa) em Debug e Release, o Groot só uma vez, em
-Release (não é dependência de build do host/modelo, é um app Qt standalone à parte).
+Release (não é dependência de build do core/modelo, é um app Qt standalone à parte).
 
 Antes de rodar o script, instale os pacotes de sistema que só o Groot precisa (as outras quatro
 receitas não usam nada disto):
@@ -160,7 +160,7 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 ## 5. Node.js
 
 **Pré-requisito do projeto, não opcional** — mesma natureza do Groot (§4): não é dependência de
-**build** (o `meson`/`ninja` do host e dos modelos nunca o invocam, e `make configure`/`build`/
+**build** (o `meson`/`ninja` do core e dos modelos nunca o invocam, e `make configure`/`build`/
 `models`/`install`/`test` rodam sem ele), mas é o que faz funcionar o ferramental documentado do
 repositório. Três alvos o exigem:
 
@@ -168,7 +168,7 @@ repositório. Três alvos o exigem:
 |---|---|
 | `make open-docs` | regenera `docs/manual/index.html` a partir de `doc.jsx` e abre no navegador — mesmo padrão de `make open-edl`, sem alvo `docs` separado |
 | `make open-edl` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
-| `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina host** (é lá que o `npx` roda) e **também dentro do container**, onde o pipeline o instala do zero seguindo exatamente esta seção — é assim que este §5 fica coberto por processo automatizado. Também precisa de Docker (ver [`README.md`](README.md)) |
+| `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina core** (é lá que o `npx` roda) e **também dentro do container**, onde o pipeline o instala do zero seguindo exatamente esta seção — é assim que este §5 fica coberto por processo automatizado. Também precisa de Docker (ver [`README.md`](README.md)) |
 
 **Versão mínima: 18** — e o pacote da distro pode não servir. Medido nesta base de código: o `apt`
 do Ubuntu 22.04 oferece `nodejs 12.22.9`, bem abaixo do mínimo. Confira antes de assumir que o
@@ -273,7 +273,7 @@ que ela declara, então o highlight aparece assim que a extensão for reconhecid
 # Linux nativo
 ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode/extensions/edl-mixr-local
 
-# VS Code Remote (WSL2/SSH) -- o host de extensoes fica do lado remoto/Linux
+# VS Code Remote (WSL2/SSH) -- o core de extensoes fica do lado remoto/Linux
 ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode-server/extensions/edl-mixr-local
 ```
 
