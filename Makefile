@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci open-docs open-presentation open-edl open-groot new-model rm-model
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci open-docs open-presentation open-edl open-groot new-model rm-model loc
 
 .DEFAULT_GOAL := help
 
@@ -360,6 +360,7 @@ test-rl: install venv-rl ## Roda os testes Python do wrapper Gymnasium, no venv 
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_smoke.py
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_contract.py
 	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_bad_player.py
+	PYTHONPATH=$(DEST_DIR)/python src/rl/.venv/bin/python3 src/rl/tests/test_fields_param.py
 
 venv-rl-training: ## Cria/atualiza o venv de treino de src/poc/rl-training (separado do venv-rl).
 	$(MAKE) -C src/poc/rl-training venv
@@ -509,5 +510,30 @@ open-groot: ## Abre o Groot (editor/monitor BT.CPP). Log em build/groot.log; FG=
 # ============================================
 # Misc Targets
 # ============================================
+
+# Diretorios podados da contagem abaixo -- nenhum e' "codigo desenvolvido":
+# ./contexts e' fonte vendorizado de TERCEIRO (o fork do MIXR/BT.CPP, ver a
+# secao "Onde consultar o framework" do CLAUDE.md); build/dist sao artefato
+# GERADO, e por nome -- nao so os da raiz, ha um par por projeto de modelo
+# (models/players/*/build,dist, ver "Desacoplando 'models' de 'dist/'"); .venv
+# e node_modules sao dependencia instalada (Python/JS), nao escrita aqui; e
+# .git/.claude/worktrees sao metadado de VCS e a copia de trabalho de um
+# agente em segundo plano -- esta ultima e' literalmente uma segunda copia do
+# repositorio inteiro, que duplicaria toda contagem se entrasse.
+LOC_PRUNE := \( -path ./contexts -o -name build -o -name dist -o -name .venv -o -name node_modules -o -name .git -o -path ./.claude/worktrees \) -prune
+
+loc: ## Conta linhas de codigo desenvolvido: .hpp/.cpp/.py/.md, e o total.
+	@hpp=$$(find . $(LOC_PRUNE) -o -type f -name '*.hpp' -print0 | xargs -0 -r cat | wc -l); \
+	cpp=$$(find . $(LOC_PRUNE) -o -type f -name '*.cpp' -print0 | xargs -0 -r cat | wc -l); \
+	py=$$(find . $(LOC_PRUNE) -o -type f -name '*.py' -print0 | xargs -0 -r cat | wc -l); \
+	md=$$(find . $(LOC_PRUNE) -o -type f -name '*.md' ! -name 'CLAUDE.md' -print0 | xargs -0 -r cat | wc -l); \
+	total=$$((hpp + cpp + py + md)); \
+	echo "$(YELLOW)loc:$(NC) linhas por extensao (exclui contexts/, build/, dist/, .venv/, node_modules/; .md exclui CLAUDE.md)"; \
+	printf "  %-8s %10d linhas\n" ".hpp" "$$hpp"; \
+	printf "  %-8s %10d linhas\n" ".cpp" "$$cpp"; \
+	printf "  %-8s %10d linhas\n" ".py" "$$py"; \
+	printf "  %-8s %10d linhas\n" ".md" "$$md"; \
+	printf "  %-8s %10d linhas\n" "total" "$$total"
+
 help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'

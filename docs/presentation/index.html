@@ -64,78 +64,111 @@ button{font:inherit; color:inherit;}
 .tick--br{bottom:66px; right:14px; border-bottom:2px solid; border-right:2px solid;}
 
 .slide{
-  position:absolute; inset:0; z-index:1; display:flex; flex-direction:column;
-  /* gap/padding-top reagem a vmin (o menor entre largura e altura) e padding-bottom a vh --
-     numa janela baixa (nao so estreita) isso libera espaco vertical de verdade, em vez de so
-     depender de vw como antes (que ignorava altura por completo). O ajuste FINO fica por conta
-     do --fit-scale abaixo (calculado em JS, ver fitAllSlides() no script de navegacao): quando o
-     conteudo natural de uma slide (scrollHeight) ainda nao cabe na altura disponivel
-     (clientHeight) mesmo com esse clamp, a slide inteira encolhe (como um zoom-out, nao so a
-     fonte) ate' caber. overflow-y fica HIDDEN por padrao de proposito -- um transform:scale()
-     NAO muda scrollHeight/clientHeight (e' so' pintura, nao afeta layout), entao um
-     overflow-y:auto full-time deixaria a slide "tecnicamente" scrollavel mesmo depois de encolhida
-     visualmente ate' caber, e um scroll do mouse ficaria preso rolando um resquicio invisivel
-     antes de trocar de slide. So' quando o encolhimento bate no PISO (FIT_MIN_SCALE) e ainda
-     sobra conteudo de verdade e' que a slide ganha a classe ".is-overflowing" (JS) e volta a
-     ser scrollavel de verdade -- ver a regra logo abaixo e o handler de wheel no script de
-     navegacao, que só considera esse scroll interno quando essa classe esta presente. */
-  gap:clamp(12px,2.2vmin,22px); padding:clamp(16px,4vmin,72px) clamp(24px,7vw,108px);
-  padding-bottom:clamp(64px,13vh,96px);
+  position:absolute; inset:0; z-index:1;
+  /* SO' recorte + opacidade moram aqui -- nenhum transform de escala. Motivo (confirmado
+     rodando, nao suposto): overflow-y:hidden recorta em cima das dimensoes PROPRIAS e
+     PRE-transform da caixa -- o corte acontece no espaco local, e SO' DEPOIS disso o
+     transform:scale() reescala o que sobrou. Ter --fit-scale (o "encolhe pra caber") no
+     MESMO elemento que corta em overflow-y:hidden nao encolhe o conteudo pra caber: ele
+     recorta o excedente (alem da altura propria, sem escala nenhuma) e so' DEPOIS encolhe o
+     que sobrou -- ou seja, o rodape de toda slide cujo conteudo passa da altura disponivel
+     desaparece, nao importa quao pequeno --fit-scale fique. Medido: numa tela 1920x1080
+     comum, a slide "Um contrato forte para todo modelo" tinha o ultimo bloco (o video de
+     demonstracao) inteiro fora da tela -- o encolhimento calculado (scrollHeight, que TAMBEM
+     subestima pela metade quando justify-content:center transborda simetrico pra cima e pra
+     baixo) mal chegava a reduzir a escala. A correcao: quem recorta (.slide, este elemento,
+     overflow-y:hidden/auto, SEM transform nenhum) e quem encolhe (.slide-fit, o filho unico
+     logo abaixo, com o transform:scale(var(--fit-scale)) e overflow visivel) sao elementos
+     DIFERENTES -- so' assim o conteudo inteiro (inclusive o que hoje transborda) sobrevive
+     ate' o passo de escala, e so' entao fica do tamanho exato da area disponivel. */
   overflow-y:hidden;
   --fit-scale:1;
+  /* Troca de slide: crossfade puro (sem escala) -- so' opacidade, e o deslocamento vertical
+     (pra cima ao avancar, pra baixo ao voltar, [data-dir] no .deck) mora no FILHO (.slide-fit),
+     que e' quem carrega o transform inteiro (translate + --fit-scale). Nao usa "visibility"
+     pra esconder (visibility nao interpola, so troca de uma vez): pointer-events cobre a parte
+     de "nao e' clicavel enquanto invisivel", e opacity 0 ja basta pra sumir visualmente sem
+     cortar a transicao de saida no meio. */
+  opacity:0; pointer-events:none;
+  transition:opacity .5s cubic-bezier(.16,1,.3,1);
+}
+.slide.is-active{ opacity:1; pointer-events:auto; z-index:2; }
+.slide.is-leaving{ opacity:0; z-index:1; pointer-events:none; }
+/* excecao rara: --fit-scale ja bateu no piso (FIT_MIN_SCALE) e mesmo assim sobra conteudo de
+   verdade -- unico caso em que a slide volta a ser scrollavel (ver o comentario grande acima e
+   fitAllSlides() no script de navegacao). O conteudo scaled (a caixa .slide-fit, ja do tamanho
+   exato que --fit-scale permite) ainda conta pra area rolavel do ancestral com overflow:auto --
+   e' comportamento padrao de "scrollable overflow" com elemento transformado, nao precisa de
+   nada especial aqui. */
+.slide.is-overflowing{ overflow-y:auto; }
+
+/* O UNICO filho de .slide -- carrega TODO o layout de conteudo (padding/gap/coluna/centralizacao)
+   que antes morava direto em .slide, MAIS o transform inteiro (deslocamento de entrada/saida +
+   --fit-scale). overflow permanece VISIVEL (default) de proposito: nada aqui pode recortar antes
+   do transform -- e' o pai (.slide, acima) quem recorta, sempre depois da escala ja aplicada. */
+.slide-fit{
+  height:100%; display:flex; flex-direction:column;
+  /* gap/padding-top reagem a vmin (o menor entre largura e altura) e padding-bottom a vh --
+     numa janela baixa (nao so estreita) isso libera espaco vertical de verdade, em vez de so
+     depender de vw como antes (que ignorava altura por completo). */
+  gap:clamp(12px,2.2vmin,22px); padding:clamp(16px,4vmin,72px) clamp(24px,7vw,108px);
+  padding-bottom:clamp(64px,13vh,96px);
   /* centraliza verticalmente por padrao -- numa tela bem maior que o conteudo (4K, por
      exemplo) o excedente de altura fica distribuido em vez de empurrado todo pra baixo do
      conteudo, que parecia vazio/quebrado. Slides cujo conteudo ja preenche o espaco (flex:1
      em algum filho, como os de demonstracao em video) nao mudam de aparencia -- justify-content
-     so tem efeito quando sobra espaco livre pra distribuir. */
+     so tem efeito quando sobra espaco livre pra distribuir. Quando o conteudo EXCEDE a altura
+     disponivel, essa mesma centralizacao faz transbordar simetrico pra cima e pra baixo -- sem
+     problema aqui, porque .slide-fit nao recorta (overflow visivel) e o transform-origin
+     centralizado abaixo encolhe ao redor do MESMO centro, preenchendo de novo a area do pai
+     exatamente -- ver fitAllSlides() no script de navegacao pra' a conta. */
   justify-content:center;
-  /* Troca de slide: crossfade + leve deslocamento vertical, com sentido (pra cima ao avancar,
-     pra baixo ao voltar) dado por [data-dir] no .deck -- ver o script de navegacao. Nao usa
-     "visibility" pra esconder (visibility nao interpola, so troca de uma vez): pointer-events
-     cobre a parte de "nao e' clicavel enquanto invisivel", e opacity 0 + transform ja bastam
-     pra sumir visualmente sem cortar a transicao de saida no meio. O scale() de cada estado e'
-     multiplicado por --fit-scale (1 quando o conteudo ja cabe) -- e' a MESMA transform que ja
-     fazia a transicao de entrada/saida, so' com o fator de ajuste de tela embutido, entao o
-     "encolher pra caber" tambem anima suave junto com o crossfade em vez de saltar.  */
-  opacity:0; transform:translate3d(0,3.4vh,0) scale(calc(.985 * var(--fit-scale))); pointer-events:none;
-  transition:opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
+  transform-origin:50% 50%;
+  transform:translate3d(0,3.4vh,0) scale(calc(.985 * var(--fit-scale)));
+  transition:transform .5s cubic-bezier(.16,1,.3,1);
 }
-.deck[data-dir="back"] .slide{ transform:translate3d(0,-3.4vh,0) scale(calc(.985 * var(--fit-scale))); }
-.slide.is-active{ opacity:1; transform:translate3d(0,0,0) scale(var(--fit-scale)); pointer-events:auto; z-index:2; }
+.deck[data-dir="back"] .slide-fit{ transform:translate3d(0,-3.4vh,0) scale(calc(.985 * var(--fit-scale))); }
+.slide.is-active .slide-fit{ transform:translate3d(0,0,0) scale(var(--fit-scale)); }
 /* slide que acabou de perder o foco: continua visivel um instante, saindo pelo lado OPOSTO de
    onde a proxima slide esta entrando -- e' o que da a sensacao de "passar a pagina" em vez de um
    corte seco. Some da lista de is-leaving por JS depois que a transicao termina (ver TRANSITION_MS). */
-.slide.is-leaving{ opacity:0; transform:translate3d(0,-2.2vh,0) scale(calc(.99 * var(--fit-scale))); z-index:1; pointer-events:none; }
-.deck[data-dir="back"] .slide.is-leaving{ transform:translate3d(0,2.2vh,0) scale(calc(.99 * var(--fit-scale))); }
-/* excecao rara: --fit-scale ja bateu no piso (FIT_MIN_SCALE) e mesmo assim sobra conteudo de
-   verdade -- unico caso em que a slide volta a ser scrollavel (ver o comentario grande em .slide
-   acima e fitAllSlides() no script de navegacao). */
-.slide.is-overflowing{ overflow-y:auto; }
+.slide.is-leaving .slide-fit{ transform:translate3d(0,-2.2vh,0) scale(calc(.99 * var(--fit-scale))); }
+.deck[data-dir="back"] .slide.is-leaving .slide-fit{ transform:translate3d(0,2.2vh,0) scale(calc(.99 * var(--fit-scale))); }
+/* estado transitorio usado so' por fitAllSlides() (script de navegacao) pra medir a distancia
+   NATURAL entre o topo do 1o filho e o fundo do ultimo, sem ter que descontar escala nenhuma --
+   remove o transform (e a transicao que o animaria) na hora, sem depender de saber que escala
+   estava em vigor um instante atras. !important vence qualquer combinacao de is-active/
+   is-leaving/[data-dir] acima. */
+.slide-fit--measuring{ transition:none !important; transform:none !important; }
 /* revelacao em cascata dos blocos de 1o nivel de cada slide (eyebrow, headline, listas,
    diagrama...) -- cada um nasce um pouco abaixo e desfocado de opacidade, chegando com um
    atraso pequeno e crescente. So dispara na slide ATIVA; nas outras os filhos ficam parados em
    opacity:0 -- invisivel de qualquer forma, porque a propria slide ja esta em opacity:0. */
-.slide > *{ opacity:0; transform:translateY(10px); }
+.slide-fit > *{ opacity:0; transform:translateY(10px); }
 /* slide que esta SAINDO (is-leaving, sem is-active) precisa dos filhos JA visiveis -- senao eles
    voltariam pro estado de partida (opacity:0) na hora, e a propria slide sumiria de golpe antes
-   da transicao de opacity/transform dela (acima) terminar de rodar. Quem anima a saida e' a
-   slide inteira, nao os filhos individualmente. */
-.slide.is-leaving > *{ opacity:1; transform:none; animation:none; }
-.slide.is-active > *{ animation:slideChildIn .6s cubic-bezier(.16,1,.3,1) both; }
-.slide.is-active > *:nth-child(1){ animation-delay:.05s; }
-.slide.is-active > *:nth-child(2){ animation-delay:.11s; }
-.slide.is-active > *:nth-child(3){ animation-delay:.17s; }
-.slide.is-active > *:nth-child(4){ animation-delay:.23s; }
-.slide.is-active > *:nth-child(5){ animation-delay:.29s; }
-.slide.is-active > *:nth-child(6){ animation-delay:.35s; }
-.slide.is-active > *:nth-child(n+7){ animation-delay:.4s; }
+   da transicao de opacity dela (acima) terminar de rodar. Quem anima a saida e' a slide inteira,
+   nao os filhos individualmente. */
+.slide.is-leaving .slide-fit > *{ opacity:1; transform:none; animation:none; }
+.slide.is-active .slide-fit > *{ animation:slideChildIn .6s cubic-bezier(.16,1,.3,1) both; }
+.slide.is-active .slide-fit > *:nth-child(1){ animation-delay:.05s; }
+.slide.is-active .slide-fit > *:nth-child(2){ animation-delay:.11s; }
+.slide.is-active .slide-fit > *:nth-child(3){ animation-delay:.17s; }
+.slide.is-active .slide-fit > *:nth-child(4){ animation-delay:.23s; }
+.slide.is-active .slide-fit > *:nth-child(5){ animation-delay:.29s; }
+.slide.is-active .slide-fit > *:nth-child(6){ animation-delay:.35s; }
+.slide.is-active .slide-fit > *:nth-child(n+7){ animation-delay:.4s; }
 @keyframes slideChildIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion:reduce){
-  .slide, .slide.is-leaving, .deck[data-dir="back"] .slide, .deck[data-dir="back"] .slide.is-leaving{
-    transition:opacity .28s ease; transform:none;
+  .slide{ transition:opacity .28s ease; }
+  /* mesmo com movimento reduzido, --fit-scale continua sendo o que evita conteudo cortado --
+     so' o deslocamento de entrada/saida (decorativo) e' removido, nunca a escala. */
+  .slide-fit, .deck[data-dir="back"] .slide-fit,
+  .slide.is-active .slide-fit, .slide.is-leaving .slide-fit, .deck[data-dir="back"] .slide.is-leaving .slide-fit{
+    transition:none; transform:scale(var(--fit-scale));
   }
-  .slide > *{ opacity:1; transform:none; animation:none; }
-  .slide.is-active > *{ animation:none; }
+  .slide-fit > *{ opacity:1; transform:none; animation:none; }
+  .slide.is-active .slide-fit > *{ animation:none; }
 }
 
 .eyebrow{
@@ -155,7 +188,7 @@ button{font:inherit; color:inherit;}
 .body-copy{ max-width:70ch; }
 .body-copy p + p{ margin-top:12px; }
 
-.slide--title{ justify-content:center; gap:26px; }
+.slide--title .slide-fit{ justify-content:center; gap:26px; }
 .slide--title .eyebrow{ font-size:.82rem; }
 .slide--title h1{
   font-family:var(--font-display); font-weight:900; letter-spacing:.01em;
@@ -182,7 +215,7 @@ button{font:inherit; color:inherit;}
 }
 .feat-badge b{ font-weight:600; }
 
-.slide--statement{ justify-content:center; align-items:flex-start; gap:14px; }
+.slide--statement .slide-fit{ justify-content:center; align-items:flex-start; gap:14px; }
 .statement{
   font-family:var(--font-display); font-weight:800;
   /* min() com termo em vh evita estourar a altura da viewport em telas mais baixas (ex.:
@@ -206,6 +239,15 @@ button{font:inherit; color:inherit;}
 .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:stretch; }
 .grid-2 > .media-placeholder{ height:100%; }
 .media-placeholder.media-placeholder--fill{ min-height:clamp(220px,42vh,460px); }
+/* variante que faz a mídia ocupar a LATERAL INTEIRA do slide (nao so' uma caixa do tamanho do
+   texto ao lado). Sem isso, um grid-2 (filho de .slide, que e' flex-column) so' cresce ate' a
+   altura do conteudo -- o lado da midia ficava do tamanho da coluna de texto/min-height do
+   --fill, sobrando espaco vazio abaixo dele ate' o rodape do slide. flex:1 faz o PROPRIO
+   grid-2 crescer pra preencher o que sobrar de altura no slide; grid-template-rows:minmax(0,1fr)
+   faz a UNICA linha do grid (que por padrao seria "auto", do tamanho do conteudo) esticar
+   ate' essa altura toda -- so' aí o align-items:stretch ja existente tem uma altura de verdade
+   pra esticar os dois lados. */
+.grid-2--fill{ flex:1; min-height:0; grid-template-rows:minmax(0,1fr); }
 
 ul.list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:clamp(6px,1.6vh,14px); max-width:64ch; }
 ul.list li{ position:relative; padding-left:22px; font-size:clamp(.85rem,min(1.6vw,2.3vh),1.4rem); line-height:1.45; }
@@ -264,8 +306,7 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   opacity:.75; word-break:break-all;
 }
 /* o mesmo bloco DEPOIS que o arquivo esperado foi encontrado em demos/: deixa de ser
-   placeholder (borda tracejada, texto) e vira a propria midia -- borda solida, sem padding,
-   fundo escuro pra letterbox de imagem/video nao brigar com o tema claro. */
+   placeholder (borda tracejada, texto) e vira a propria midia. */
 .media-empty{ display:flex; flex-direction:column; align-items:center; gap:8px; }
 /* OBRIGATORIO, e nao redundante com o atributo: [hidden]{display:none} vem da folha do
    USER-AGENT, entao o display:flex declarado logo acima (regra de autor) ganha dele e o
@@ -274,27 +315,44 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
    vazios e pra midia criada em runtime. */
 .media-empty[hidden], .demo-empty[hidden], .media-placeholder.is-filled img[hidden],
 .media-placeholder.is-filled video[hidden]{ display:none; }
-.media-placeholder.is-filled{
-  border:1px solid var(--line); background:#050708; padding:0; overflow:hidden; gap:0;
+/* A BORDA/FUNDO SAI DO CONTAINER E VAI PRO PROPRIO <img>/<video> (ver tambem
+   .demo-stage.is-filled mais abaixo, mesma razao). Antes a borda solida ficava no
+   container -- do tamanho inteiro da celula do grid --, enquanto a midia (max-width/
+   max-height:100%, preservando proporcao) quase nunca enchia essa celula exatamente:
+   sobrava espaco morto DENTRO da borda sempre que a proporcao da midia divergia da
+   proporcao da celula (medido: um screenshot mais largo que alto dentro de uma celula
+   quase quadrada, ou um video 16:9 numa celula mais estreita). Com a borda no elemento
+   em si, ela abraca exatamente os pixels renderizados -- o container so' centraliza,
+   sem moldura propria. */
+.media-placeholder.is-filled{ border:none; background:none; padding:0; overflow:visible; gap:0; }
+.media-placeholder.is-filled img,
+.media-placeholder.is-filled video{
+  max-width:100%; max-height:100%; display:block; border:1px solid var(--line); border-radius:8px;
+  background:#050708;
 }
-/* max-* (nao width/height 100%) de proposito pra IMAGEM: screenshot pequeno esticado ate' a
-   caixa fica borrado -- assim ele fica no tamanho natural, centrado pelo flex do container, e
-   so' encolhe quando nao couber. Video usa contain porque a fonte e' sempre grande. */
-.media-placeholder.is-filled img{ max-width:100%; max-height:100%; display:block; }
-.media-placeholder.is-filled video{ width:100%; height:100%; object-fit:contain; display:block; background:#000; }
+.media-placeholder.is-filled video{ background:#000; }
 .media-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
 
 /* slides de demonstracao em video -- UM video por tela (navegacao pelo proprio deck, igual a
-   qualquer outro slide), nao um player+menu dentro de um slide so. .demo-stage dedica o MAXIMO
-   de espaco disponivel ao video (flex:1 preenche tudo que sobra na coluna do slide), com o
-   cabecalho reduzido de proposito pra sobrar mais altura. */
-.slide--demo{ gap:12px; }
+   qualquer outro slide), nao um player+menu dentro de um slide so. .demo-stage reserva o MAXIMO
+   de espaco disponivel pro video (flex:1 preenche tudo que sobra na coluna do slide), com o
+   cabecalho reduzido de proposito pra sobrar mais altura -- mas o video em si so' cresce ate'
+   onde a PROPRIA proporcao permitir (ver .demo-stage.is-filled logo abaixo), nunca esticado. */
+.slide--demo .slide-fit{ gap:12px; }
 .slide--demo .headline{ font-size:1.3rem; max-width:none; }
 .demo-stage{
   flex:1; min-height:0; position:relative; background:#050708; border:1px solid var(--line);
   border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;
 }
-.demo-stage video{ width:100%; height:100%; object-fit:contain; display:block; background:#000; }
+/* Preenchida (mesma logica do .media-placeholder.is-filled acima): a moldura sai da CELULA
+   inteira e vai pro PROPRIO video -- container so' centraliza, sem borda/fundo proprios --
+   pra ela abracar o tamanho real do video (que preserva proporcao via max-width/max-height,
+   nao mais esticado a width/height:100%) em vez de sobrar barra morta dentro da borda quando
+   a proporcao do arquivo diverge da celula. Enquanto NAO preenchida (aguardando o arquivo),
+   o container mantem border/background -- e' o quadro escuro que anuncia o nome esperado. */
+.demo-stage.is-filled{ background:none; border:none; overflow:visible; }
+.demo-stage video{ max-width:100%; max-height:100%; display:block; background:#000; }
+.demo-stage.is-filled video{ border:1px solid var(--line); border-radius:8px; }
 .demo-stage video[hidden]{ display:none; }
 .demo-empty{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:30px; text-align:center; }
 .demo-empty svg{ opacity:.5; color:var(--muted); }
@@ -432,6 +490,12 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   // dos dois scripts abaixo (navegacao, video), que continuam so fazendo
   // document.querySelectorAll('.slide') como sempre fizeram -- nenhuma mudanca neles
   // foi necessaria so por causa desta indirecao.
+  //
+  // O conteudo de cada slide vai dentro de um wrapper ".slide-fit" -- nao direto em
+  // ".slide" -- ver o comentario grande de ".slide"/".slide-fit" no <style>: quem recorta
+  // (.slide) e quem escala pra caber (.slide-fit) precisam ser elementos DIFERENTES, senao
+  // o corte acontece antes da escala e o rodape de slide longa some, nao importa quao
+  // pequeno --fit-scale fique.
   var deck = document.getElementById('deck');
   var defs = window.PRESENTATION_SLIDES || [];
   var frag = document.createDocumentFragment();
@@ -439,7 +503,10 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     var section = document.createElement('section');
     section.className = def.extraClass ? 'slide ' + def.extraClass : 'slide';
     section.setAttribute('data-title', def.title);
-    section.innerHTML = def.html;
+    var fit = document.createElement('div');
+    fit.className = 'slide-fit';
+    fit.innerHTML = def.html;
+    section.appendChild(fit);
     frag.appendChild(section);
   });
   deck.appendChild(frag);
@@ -491,20 +558,57 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
   // Ajuste automatico de escala -- "ajuste correto ao tamanho da tela" nao e' so o clamp(vmin/vw/vh)
   // dos tamanhos de fonte (que ja reage a tela, mas so ate' o piso de cada clamp): quando o
   // conteudo natural de uma slide ainda estoura a altura disponivel (janela baixa, fonte do
-  // sistema maior que o normal, zoom do navegador, etc.), a slide inteira ganha uma escala < 1
-  // via a variavel CSS --fit-scale (ver <style>), do jeito que um visualizador de PDF encolhe a
-  // pagina pra caber -- nunca precisa de scroll interno pra ver o resto do slide. Todo .slide e'
-  // position:absolute;inset:0 e fica sempre no layout (so' opacity:0 quando inativo), entao dá
-  // pra medir TODAS de uma vez, sem esperar cada uma virar ativa.
+  // sistema maior que o normal, zoom do navegador, etc.), o conteudo (.slide-fit) ganha uma
+  // escala < 1 via a variavel CSS --fit-scale (ver <style>), do jeito que um visualizador de PDF
+  // encolhe a pagina pra caber -- nunca precisa de scroll interno pra ver o resto do slide. Todo
+  // .slide e' position:absolute;inset:0 e fica sempre no layout (so' opacity:0 quando inativo),
+  // entao dá pra medir TODAS de uma vez, sem esperar cada uma virar ativa.
+  //
+  // A altura "natural" (sem escala) do conteudo NAO pode vir de .slide-fit.scrollHeight --
+  // confirmado rodando: com justify-content:center, um conteudo que transborda a caixa
+  // transborda SIMETRICO pra cima e pra baixo, e scrollHeight so' enxerga a METADE de baixo
+  // (a de cima, antes do topo da caixa, e' invisivel pra essa propriedade em qualquer
+  // navegador testado) -- subestimando o quanto precisa encolher pela metade do excesso.
+  // Medido: numa tela 1920x1080, isso fazia --fit-scale ficar em ~0.97 quando o valor
+  // correto era ~0.78, cortando o ultimo bloco da slide inteiro pra fora da tela. Em vez
+  // disso, mede-se a distancia de verdade entre o topo do PRIMEIRO filho e o fundo do
+  // ULTIMO (cobre qualquer disposicao, simetrica ou nao), desfazendo a escala JA aplicada
+  // numa passada anterior (getBoundingClientRect reflete o transform atual; dividir pelo
+  // --fit-scale corrente recupera a distancia sem escala nenhuma, sem precisar resetar o
+  // transform antes de medir).
   var FIT_MIN_SCALE = 0.55;
+  // Tres passadas em lote (nunca leitura/escrita entrelacadas slide a slide, que seria layout
+  // thrashing com ~30 slides): (1) neutraliza o transform de TODAS de uma vez (classe abaixo,
+  // ver <style> -- so' assim medir a distancia natural entre o topo do 1o filho e o fundo do
+  // ultimo NAO depende de saber que escala estava em vigor no instante da medida; sem isso, medir
+  // e' dividir a distancia NA TELA pela escala vigente pra "desfazer" o encolhimento -- e'
+  // impreciso bem no meio de uma transicao de --fit-scale ainda animando (o valor da variavel
+  // CSS ja mudou pro alvo novo, mas a matriz PINTADA ainda esta no meio do caminho, mudando a
+  // cada quadro; dividir pelo alvo errado deu, medido, uma diferenca de ~2% na escala aplicada
+  // depois do document.fonts.ready reagir aos poucos milissegundos de troca de fonte). Trocar o
+  // transform por "none" nao precisa de nenhum truque de "forcar reflow": getBoundingClientRect()
+  // ja teria que resolver qualquer alteracao de estilo pendente antes de responder; (2) le TODAS
+  // as distancias (com o layout ja sem escala nenhuma, entao a distancia bruta E' a distancia
+  // natural, sem conta de dividir por nada); (3) escreve TODAS -- remove a neutralizacao e aplica
+  // a escala de verdade.
   function fitAllSlides(){
-    // duas passadas -- le TODAS as alturas primeiro, so' depois escreve -- pra nao entrelacar
-    // leitura (forca layout) e escrita (invalida layout) slide a slide, que seria layout
-    // thrashing com ~30 slides.
-    var measurements = slides.map(function(s){
-      return { slide: s, contentH: s.scrollHeight, availH: s.clientHeight };
+    var fits = slides.map(function(s){ return s.querySelector(':scope > .slide-fit') || s; });
+    fits.forEach(function(fit){ fit.classList.add('slide-fit--measuring'); });
+    var measurements = slides.map(function(s, idx){
+      var fit = fits[idx];
+      var kids = fit.children;
+      var availH = s.clientHeight;
+      if (!kids.length) return { slide: s, fit: fit, contentH: 0, availH: availH };
+      var cs = getComputedStyle(fit);
+      var firstRect = kids[0].getBoundingClientRect();
+      var lastRect = kids[kids.length - 1].getBoundingClientRect();
+      var spanNatural = Math.max(0, lastRect.bottom - firstRect.top);
+      var padTop = parseFloat(cs.paddingTop) || 0;
+      var padBottom = parseFloat(cs.paddingBottom) || 0;
+      return { slide: s, fit: fit, contentH: padTop + padBottom + spanNatural, availH: availH };
     });
     measurements.forEach(function(m){
+      m.fit.classList.remove('slide-fit--measuring');
       var needsShrink = m.availH > 0 && m.contentH > m.availH;
       var rawScale = needsShrink ? m.availH / m.contentH : 1;
       var scale = needsShrink ? Math.max(FIT_MIN_SCALE, rawScale) : 1;
@@ -595,21 +699,27 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
     return eb ? eb.textContent.trim() : '';
   }
 
-  // play automatico ao ENTRAR num slide com video (demo-stage), pausa ao sair -- so' se aplica
-  // quando o <video> ja tem "src" (atributo refletido tanto de src="..." no HTML quanto de um
-  // video.src = "..." atribuido pelo script de probing abaixo); um <video hidden> sem fonte
-  // ainda (placeholder ainda de pe) nao tem o que tocar. Reinicia do zero a cada entrada -- e'
-  // o que "automatico ao entrar" pede, nao "continua de onde parou".
+  // play automatico ao ENTRAR num slide com video (demo-stage OU media-placeholder), pausa ao
+  // sair -- TODOS os videos do slide, nao so' o primeiro (querySelectorAll, nao querySelector):
+  // um slide pode ter mais de um video lado a lado (ex.: a comparacao single/multi-thread), e
+  // os dois tem que comecar juntos -- so' se aplica a quem ja tem "src" (atributo refletido
+  // tanto de src="..." no HTML quanto de um video.src = "..." atribuido pelo script de probing
+  // abaixo); um <video hidden> sem fonte ainda (placeholder ainda de pe) nao tem o que tocar.
+  // Reinicia do zero a cada entrada -- e' o que "automatico ao entrar" pede, nao "continua de
+  // onde parou" -- e cada <video> ja carrega o atributo loop (ver content.js/mostra() abaixo),
+  // entao ao acabar ele reinicia sozinho, sem precisar de um handler de "ended" aqui.
   function playSlideVideo(slide){
-    var v = slide && slide.querySelector('video');
-    if (!v || !v.getAttribute('src')) return;
-    try { v.currentTime = 0; } catch (e) {}
-    var p = v.play();
-    if (p && typeof p.catch === 'function') p.catch(function(){});
+    if (!slide) return;
+    Array.prototype.forEach.call(slide.querySelectorAll('video'), function(v){
+      if (!v.getAttribute('src')) return;
+      try { v.currentTime = 0; } catch (e) {}
+      var p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(function(){});
+    });
   }
   function pauseSlideVideo(slide){
-    var v = slide && slide.querySelector('video');
-    if (v) v.pause();
+    if (!slide) return;
+    Array.prototype.forEach.call(slide.querySelectorAll('video'), function(v){ v.pause(); });
   }
 
   function render(prevIndex, dir){
@@ -844,10 +954,23 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
       var el = stage.querySelector(kind === 'video' ? 'video' : 'img');
       if (!el){
         el = document.createElement(kind === 'video' ? 'video' : 'img');
-        if (kind === 'video'){ el.controls = true; el.playsInline = true; }
+        if (kind === 'video'){ el.controls = true; el.playsInline = true; el.loop = true; }
         else { el.alt = ''; }
         stage.appendChild(el);
       }
+      // A midia real (video/imagem) quase sempre tem uma altura BEM diferente do placeholder
+      // tracejado que ela substitui -- e fitAllSlides() (script de navegacao) ja rodou pelo
+      // menos uma vez ANTES desta troca terminar (essa sondagem e' assincrona: mesmo um
+      // arquivo local leva um instante pra disparar onload/onloadedmetadata). Sem recalcular
+      // de novo DEPOIS que a midia de verdade estiver no lugar (e com o TAMANHO dela ja
+      // conhecido -- so' 'load'/'loadedmetadata' garantem isso), a slide fica com uma
+      // --fit-scale baseada no placeholder pequeno, e o conteudo de verdade (maior) volta a
+      // transbordar sem que nada avise -- reproduz, por outro caminho, o mesmo sintoma que
+      // motivou a separacao .slide/.slide-fit acima. Reaproveita o handler de "resize" que ja
+      // existe (debounced) em vez de expor uma segunda API so' pra isto.
+      var refit = function(){ window.dispatchEvent(new Event('resize')); };
+      if (kind === 'video') el.addEventListener('loadedmetadata', refit, { once: true });
+      else el.addEventListener('load', refit, { once: true });
       el.hidden = false;
       el.src = src;
       if (kind === 'video'){

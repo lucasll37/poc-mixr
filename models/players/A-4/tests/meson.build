@@ -40,6 +40,7 @@ test_domain = executable('test-domain',
         'domain/test_RtbPlan.cpp',
         'domain/test_AerobaticPlan.cpp',
         'domain/test_EvasionReactionPlan.cpp',
+        'domain/test_WorldViewFieldRegistry.cpp',
     ) + domain_sources,
     include_directories : model_inc,
     dependencies        : [gtest_dep, gtest_main_dep, sdk_headers_dep],
@@ -79,6 +80,15 @@ flight_tree_rwr_evade_demo_xml = meson.current_source_dir() / '../configs/flight
 # certa -- 28 entradas -> 3 saidas -- pesos irrelevantes pros testes de
 # test_onnx_nodes.cpp, que so afirmam sobre forma/portas/rotulo).
 policy_example_onnx = meson.current_source_dir() / '../configs/policy_example.onnx'
+
+# Fixtures NOVAS desta passada (schema variavel) -- geradas por
+# 'export_onnx.py --random', nunca instaladas (moram em tests/native/fixtures/,
+# nao em configs/): existem so para provar o caminho de schema != "classic28"
+# e a checagem de identidade via metadata ponta a ponta. Ver o README da
+# pasta para o comando exato de regeneracao.
+policy_all38_onnx = meson.current_source_dir() / 'native/fixtures/policy_all38.onnx'
+policy_3fields_onnx = meson.current_source_dir() / 'native/fixtures/policy_3fields.onnx'
+policy_classic28_metadata_divergente_onnx = meson.current_source_dir() / 'native/fixtures/policy_classic28_metadata_divergente.onnx'
 
 # 'dump_tree_model' vem de tools/meson.build (subdir() chamado ANTES deste,
 # incondicional, no meson.build do projeto) -- o executavel em si nao e
@@ -138,13 +148,19 @@ native_sources = files(
     '../src/ubf/BtBehaviorSlots.cpp',
     '../src/ubf/AltitudeSafetyBehavior.cpp',
     '../src/ubf/RLBridgeBehavior.cpp',
+    '../src/ubf/ObservationBridge.cpp',
 )
 
 test_native = executable('test-native',
     files('native/test_xnative.cpp', 'native/test_rl_bridge_behavior.cpp',
-          'native/test_flight_state_action.cpp', 'native/test_onnx_nodes.cpp')
+          'native/test_flight_state_action.cpp', 'native/test_onnx_nodes.cpp',
+          'native/test_observation_bridge.cpp')
         + native_sources + bt_sources + bt_sdk_sources + domain_sources,
-    cpp_args            : ['-DPOLICY_EXAMPLE_ONNX="' + policy_example_onnx + '"'],
+    cpp_args            : ['-DPOLICY_EXAMPLE_ONNX="' + policy_example_onnx + '"',
+                           '-DPOLICY_ALL38_ONNX="' + policy_all38_onnx + '"',
+                           '-DPOLICY_3FIELDS_ONNX="' + policy_3fields_onnx + '"',
+                           '-DPOLICY_CLASSIC28_METADATA_DIVERGENTE_ONNX="' +
+                              policy_classic28_metadata_divergente_onnx + '"'],
     link_args           : ['-Wl,--disable-new-dtags'],
     include_directories : model_inc,
     dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, behavior_tree_dep, sdk_dep],

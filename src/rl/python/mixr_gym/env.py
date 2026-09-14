@@ -12,7 +12,7 @@ Gymnasium.
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
 import gymnasium as gym
@@ -62,6 +62,17 @@ _BOUNDS: dict[str, tuple[float, float]] = {
     "alertEastM": (-200_000.0, 200_000.0),
     "alertAltitudeM": (-1_000.0, 15_000.0),
     "alertRangeM": (0.0, 200_000.0),
+    # RWR + navegacao nativa -- acrescentados nesta mesma passada (existiam em
+    # domain::WorldView havia tempo, mas a macro canonica so passou a
+    # lista-los agora -- ver libs/xrlbridge/ObservationFields.hpp). Nao entram
+    # no schema "classic28" (o default de MixrFlightEnv) -- so ficam visiveis
+    # com fields="all" ou uma lista explicita que os inclua.
+    "rwrThreatRangeM": (0.0, 200_000.0),
+    "rwrThreatRelBearingDeg": (-180.0, 180.0),
+    "rwrThreatDeltaAltM": (-15_000.0, 15_000.0),
+    "navTrueBrgDeg": (-180.0, 180.0),
+    "navCmdAltM": (-1_000.0, 15_000.0),
+    "navCmdSpeedKts": (0.0, 600.0),
 }
 
 
@@ -88,24 +99,60 @@ def _build_field_lists() -> tuple[list[tuple[str, float, float]], list[str]]:
 # Campos de TEXTO do WorldView (contactName/alertSender/alertContactName)
 # ficam de fora do observation_space de proposito -- nao sao RL-friendly.
 # Continuam disponiveis em info["raw_state"] para debug/log.
+#
+# Este e' o CATALOGO COMPLETO (todos os 38 campos numericos/booleanos que o
+# C++ publica) -- nao o observation_space de nenhum MixrFlightEnv em
+# particular. Qual SUBCONJUNTO entra no observation_space de UMA instancia e'
+# decidido pelo parametro 'fields' do construtor (ver _resolve_fields()
+# abaixo) -- por default, so os 28 historicos ("classic28"), para nao mudar o
+# formato de ninguem que ja usa MixrFlightEnv sem pedir os campos novos.
 _FLOAT_FIELDS, _BOOL_FIELDS = _build_field_lists()
+_BOUNDS_BY_NAME: dict[str, tuple[float, float]] = {n: (lo, hi) for n, lo, hi in _FLOAT_FIELDS}
+_BOOL_FIELD_SET: set[str] = set(_BOOL_FIELDS)
 
 
-def _build_observation_space() -> spaces.Dict:
+def _resolve_fields(fields: Union[str, Sequence[str]]) -> list[str]:
+    """Traduz o parametro 'fields' do construtor numa lista de nomes.
+
+    "classic28" (default) e' o schema historico, hardcoded do lado C++
+    (xrlbridge::classicSchema28()) -- nunca deriva da ordem atual de
+    observation_field_names(), pelo mesmo motivo que o C++ documenta: um
+    .onnx/checkpoint ja treinado nao pode ter a forma da entrada mudada por
+    baixo dele so' porque a lista canonica cresceu.
+    """
+    if fields == "classic28":
+        return list(_native.classic_schema_28())
+    if fields == "all":
+        return list(_native.observation_field_names())
+
+    nomes = list(fields)
+    desconhecidos = [n for n in nomes if n not in _BOUNDS_BY_NAME and n not in _BOOL_FIELD_SET]
+    if desconhecidos:
+        raise ValueError(
+            f"fields contem nome(s) desconhecido(s): {desconhecidos}\n"
+            f"  campos validos: {sorted(_BOUNDS_BY_NAME) + sorted(_BOOL_FIELD_SET)}"
+        )
+    return nomes
+
+
+def _build_observation_space(field_names: list[str]) -> spaces.Dict:
     fields: dict[str, spaces.Space] = {}
-    for name, low, high in _FLOAT_FIELDS:
-        fields[name] = spaces.Box(low=low, high=high, shape=(1,), dtype=np.float32)
-    for name in _BOOL_FIELDS:
-        fields[name] = spaces.Discrete(2)
+    for name in field_names:
+        if name in _BOOL_FIELD_SET:
+            fields[name] = spaces.Discrete(2)
+        else:
+            low, high = _BOUNDS_BY_NAME[name]
+            fields[name] = spaces.Box(low=low, high=high, shape=(1,), dtype=np.float32)
     return spaces.Dict(fields)
 
 
-def _to_obs(raw: dict[str, Any]) -> dict[str, Any]:
+def _to_obs(raw: dict[str, Any], field_names: list[str]) -> dict[str, Any]:
     obs: dict[str, Any] = {}
-    for name, _low, _high in _FLOAT_FIELDS:
-        obs[name] = np.array([raw[name]], dtype=np.float32)
-    for name in _BOOL_FIELDS:
-        obs[name] = int(bool(raw[name]))
+    for name in field_names:
+        if name in _BOOL_FIELD_SET:
+            obs[name] = int(bool(raw[name]))
+        else:
+            obs[name] = np.array([raw[name]], dtype=np.float32)
     return obs
 
 
@@ -141,8 +188,18 @@ class MixrFlightEnv(gym.Env):
         altitude_range_m: tuple[float, float] = (0.0, 8_000.0),
         speed_range_kts: tuple[float, float] = (0.0, 400.0),
         reward_fn: Optional[Callable[[dict, Optional[dict], bool], float]] = None,
+        fields: Union[str, Sequence[str]] = "classic28",
     ) -> None:
+        """'fields' escolhe quais campos entram no observation_space, e em que
+        ordem (dentro do Dict -- ordem so' importa de verdade para quem
+        depois achata o dict, ver src/poc/rl-training/flatten_obs.py):
+        "classic28" (default -- os 28 historicos, o observation_space de
+        sempre), "all" (os 38 completos, incluindo RWR/navegacao) ou uma
+        lista explicita de nomes (ver mixr_gym._native.observation_field_names()
+        para o catalogo completo).
+        """
         super().__init__()
+        self._field_names = _resolve_fields(fields)
 
         # 'isfile', nao 'exists': um DIRETORIO passado por engano tambem
         # satisfaz 'exists', e o unico ponto de checagem do lado Python era
@@ -165,7 +222,7 @@ class MixrFlightEnv(gym.Env):
         self._step_count = 0
         self._prev_raw: Optional[dict[str, Any]] = None
 
-        self.observation_space = _build_observation_space()
+        self.observation_space = _build_observation_space(self._field_names)
         low = np.array([heading_range[0], altitude_range_m[0], speed_range_kts[0]], dtype=np.float32)
         high = np.array([heading_range[1], altitude_range_m[1], speed_range_kts[1]], dtype=np.float32)
         self.action_space = spaces.Box(low=low, high=high, dtype=np.float32)
@@ -175,7 +232,7 @@ class MixrFlightEnv(gym.Env):
         raw = self._sim.reset()
         self._step_count = 0
         self._prev_raw = raw
-        return _to_obs(raw), {"raw_state": raw}
+        return _to_obs(raw, self._field_names), {"raw_state": raw}
 
     def step(self, action: np.ndarray):
         heading_deg, altitude_m, speed_kts = (float(a) for a in action)
@@ -187,7 +244,7 @@ class MixrFlightEnv(gym.Env):
         reward = self._reward_fn(raw, self._prev_raw, terminated)
         self._prev_raw = raw
 
-        obs = _to_obs(raw)
+        obs = _to_obs(raw, self._field_names)
         info = {"raw_state": raw}
         return obs, reward, terminated, truncated, info
 

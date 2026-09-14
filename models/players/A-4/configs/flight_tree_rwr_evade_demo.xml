@@ -62,15 +62,17 @@
   </BehaviorTree>
   <TreeNodesModel>
         <Action ID="OnnxPolicy">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
             <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
             <input_port name="normalized" type="bool" default="1">true: saida em [-1,1], desnormalizada aqui (export do SB3)</input_port>
             <input_port name="model" type="std::string">caminho do .onnx da politica</input_port>
         </Action>
         <Condition ID="OnnxScore">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
             <input_port name="above" type="bool" default="1">true: SUCCESS se saida &gt; limiar; false: se saida &lt; limiar</input_port>
             <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
             <input_port name="threshold" type="double" default="0.500000">limiar de comparacao</input_port>
-            <input_port name="model" type="std::string">caminho do .onnx (entrada float32[1,28], ver ObservationFields.hpp)</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx (entrada = tamanho do schema resolvido)</input_port>
         </Condition>
         <Action ID="SlowRoll">
             <input_port name="label" type="std::string" default="ROLL">rotulo no dump e no quadro durante a manobra</input_port>
@@ -84,6 +86,7 @@
         <Condition ID="LaunchEnvelope"/>
         <Action ID="ReturnToBase"/>
         <Action ID="PyDecide">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
             <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
             <input_port name="script" type="std::string">caminho do .py que define decide(obs)</input_port>
         </Action>

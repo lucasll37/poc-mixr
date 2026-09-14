@@ -7,15 +7,20 @@ critico, sem Python nenhum.
 
 O CONTRATO, e por que ele nao esta escrito aqui:
 
-    entrada  float32[1, 28]   a observacao, na ORDEM CANONICA
-    saida    float32[1, 3]    [heading, altitude, speed], normalizados em [-1,1]
+    entrada  float32[1, N]   a observacao, nos campos e na ORDEM que --fields
+                             resolver (default: os 28 historicos, "classic28")
+    saida    float32[1, 3]   [heading, altitude, speed], normalizados em [-1,1]
 
-A ordem dos 28 campos NAO e uma lista neste arquivo -- ela vem de
-`mixr_gym._native.observation_field_names()`, que por sua vez expande a
-X-macro de `libs/xrlbridge/ObservationFields.hpp`. E a mesma macro que o
-C++ expande contra `domain::WorldView` na hora de inferir. Uma lista escrita
-aqui poderia divergir em silencio, e o sintoma seria uma politica que voa
-errado -- nao um erro.
+Os nomes NAO sao uma lista neste arquivo -- por default vem de
+`mixr_gym._native.classic_schema_28()` (os 28 nomes historicos, hardcoded do
+lado C++ em `xrlbridge::classicSchema28()`); com `--fields all` ou uma lista
+explicita, de `observation_field_names()` (os 38 campos completos, incluindo
+RWR/navegacao). As duas expandem a MESMA X-macro de
+`libs/xrlbridge/ObservationFields.hpp` que o C++ expande contra
+`domain::WorldView` na hora de inferir. O .onnx exportado grava a lista
+exata usada como metadata (`xrlbridge.fields`) -- e' o que permite
+`libs/xinfer::fields()` validar por IDENTIDADE, nao so contagem, do lado C++
+(ver `bt/nodes/OnnxPolicyAction`/`OnnxScoreCondition`).
 
 USO
 
@@ -24,6 +29,10 @@ USO
 
     # exporta uma politica treinada com Stable-Baselines3
     python3 src/poc/rl-training/tools/export_onnx.py --sb3 src/poc/rl-training/runs/ppo_falcon1.zip -o politica.onnx
+
+    # exporta so um subconjunto de campos, para um no OnnxPolicy com
+    # schema="northM eastM altitudeM" no XML da arvore
+    python3 src/poc/rl-training/tools/export_onnx.py --random --fields "northM eastM altitudeM" -o politica.onnx
 
 Rode com cwd na raiz do repositorio e PYTHONPATH=./dist/python -- a mesma
 convencao de src/rl/tests/test_smoke.py.
@@ -67,13 +76,53 @@ def carregar_native():
 
 
 def ordem_canonica() -> list[str]:
-    """Os 28 nomes, na ordem, vindos do C++ -- nunca de uma lista local."""
+    """Os 38 nomes completos, na ordem, vindos do C++ -- nunca de uma lista
+    local. Inclui RWR/navegacao (ver libs/xrlbridge/ObservationFields.hpp) --
+    campos que os NOS de arvore (OnnxPolicyAction/OnnxScoreCondition) ja
+    conseguem resolver via schema, mas que este exportador so usa se
+    --fields pedir 'all' ou uma lista explicita que os inclua."""
     try:
         return list(carregar_native().observation_field_names())
     except SystemExit:
         raise
     except Exception as exc:  # noqa: BLE001
         sys.exit(f"nao consegui ler a ordem canonica do C++: {exc}")
+
+
+def classic_schema_28() -> list[str]:
+    """Os 28 nomes historicos, na ordem historica -- o DEFAULT deste
+    exportador (ver xrlbridge::classicSchema28() em libs/xrlbridge/RLBridge.hpp:
+    hardcoded do lado C++, nunca derivado do tamanho atual da macro
+    canonica, para nao invalidar um .onnx ja treinado se a macro crescer de
+    novo)."""
+    try:
+        return list(carregar_native().classic_schema_28())
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        sys.exit(f"nao consegui ler o schema 'classic28' do C++: {exc}")
+
+
+def resolver_campos(valor: str | None) -> list[str]:
+    """Traduz --fields: omitido -> 'classic28' (os 28 historicos, o default
+    de sempre); 'all' -> os 38 completos; qualquer outro valor -> lista
+    ad-hoc, nomes separados por espaco (ex.: 'northM eastM altitudeM')."""
+    if valor is None or valor == "classic28":
+        return classic_schema_28()
+    if valor == "all":
+        return ordem_canonica()
+    return valor.split()
+
+
+def gravar_metadata_campos(modelo, nomes: list[str]) -> None:
+    """Grava a lista exata de campos, NA ORDEM, como metadata do proprio
+    .onnx -- e' o que permite libs/xinfer::fields() validar por IDENTIDADE
+    (nao so contagem) contra o schema que um consumidor C++ resolveu. Risco
+    que so passou a existir com schema variavel: dois .onnx do MESMO tamanho
+    podem esperar campos DIFERENTES, ou na ordem errada, e a checagem de
+    contagem sozinha nao pegaria isso."""
+    from onnx import helper
+    helper.set_model_props(modelo, {"xrlbridge.fields": ",".join(nomes)})
 
 
 def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int) -> None:
@@ -135,6 +184,7 @@ def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int
     modelo.doc_string = (
         "PESOS ALEATORIOS, nao treinados. Ordem de entrada: " + ",".join(nomes)
     )
+    gravar_metadata_campos(modelo, nomes)
     onnx.checker.check_model(modelo)
     onnx.save(modelo, caminho)
     print(f"escrito {caminho}: float32[1,{n_in}] -> float32[1,{n_out}], opset 17")
@@ -225,6 +275,7 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
     import onnx
     modelo_onnx = onnx.load(saida)
     modelo_onnx.ir_version = 8
+    gravar_metadata_campos(modelo_onnx, nomes)
     onnx.checker.check_model(modelo_onnx)
     onnx.save(modelo_onnx, saida)
 
@@ -240,13 +291,19 @@ def main() -> None:
     grupo.add_argument("--sb3", metavar="ZIP",
                        help="exporta uma politica treinada do Stable-Baselines3")
     grupo.add_argument("--campos", action="store_true",
-                       help="so imprime a ordem canonica dos campos e sai")
+                       help="so imprime os campos resolvidos (--fields, ou 'classic28' "
+                            "por default) e sai")
     ap.add_argument("-o", "--out", help="arquivo .onnx de saida (nao usado com --campos)")
     ap.add_argument("--hidden", type=int, default=64, help="tamanho da camada oculta (--random)")
     ap.add_argument("--seed", type=int, default=0, help="semente (--random)")
+    ap.add_argument("--fields", metavar="LISTA", default=None,
+                    help="quais campos entram, e em que ordem: omitido = 'classic28' "
+                         "(os 28 historicos, o default de sempre); 'all' = os 38 "
+                         "completos (RWR + navegacao); ou uma lista separada por "
+                         "espaco entre aspas (ex.: 'northM eastM altitudeM')")
     args = ap.parse_args()
 
-    nomes = ordem_canonica()
+    nomes = resolver_campos(args.fields)
 
     if args.campos:
         for i, nome in enumerate(nomes):
@@ -256,7 +313,7 @@ def main() -> None:
     if not args.out:
         ap.error("-o/--out e obrigatorio para exportar")
 
-    print(f"ordem canonica ({len(nomes)} campos), lida do C++")
+    print(f"campos resolvidos ({len(nomes)}), lidos do C++")
 
     if args.random:
         exportar_aleatorio(args.out, nomes, args.hidden, args.seed)

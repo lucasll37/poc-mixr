@@ -471,9 +471,15 @@ test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60
 # contra uma copia provaria que a copia esta certa, o que nao interessa.
 policy_onnx = raiz / 'models' / 'players' / 'A-4' / 'configs' / 'policy_example.onnx'
 
+# Fixture COM metadata 'xrlbridge.fields' (ver o README ao lado dela) -- so
+# para o round-trip de xinfer::fields(), abaixo. policy_onnx (acima) e' o
+# contraste: exportado ANTES desta funcionalidade existir, sem metadata.
+policy_all38_onnx = raiz / 'models' / 'players' / 'A-4' / 'tests' / 'native' / 'fixtures' / 'policy_all38.onnx'
+
 test_xinfer = executable('test-xinfer',
     files('domain/test_xinfer.cpp'),
-    cpp_args            : ['-DPOLICY_ONNX="' + policy_onnx + '"'],
+    cpp_args            : ['-DPOLICY_ONNX="' + policy_onnx + '"',
+                           '-DPOLICY_ALL38_ONNX="' + policy_all38_onnx + '"'],
     link_args           : rpath_link_args,
     dependencies        : [gtest_dep, gtest_main_dep, xinfer_dep, xrlbridge_dep, thread_dep],
     install             : false,
@@ -505,6 +511,18 @@ test_xrlbridge = executable('test-xrlbridge',
     install             : false,
 )
 test('xrlbridge-contrato', test_xrlbridge, suite: 'domain', timeout: 60)
+
+# libs/xrlbridge/FieldRegistry.hpp + Schema.hpp -- o mecanismo GENERICO de
+# schema nomeado (a peca nova desta passada), isolado com um State FAKE, sem
+# nenhum WorldView de verdade. Header-only: so precisa dos HEADERS do SDK,
+# nao de link contra libxrlbridge.so -- por isso xrlbridge_dep sozinho basta
+# (ele ja expoe os headers via include_directories).
+test_field_registry = executable('test-field-registry',
+    files('domain/test_field_registry.cpp'),
+    dependencies        : [gtest_dep, gtest_main_dep, xrlbridge_dep],
+    install             : false,
+)
+test('field-registry', test_field_registry, suite: 'domain', timeout: 60)
 
 # libs/xjoystick -- so o que da para isolar sem Station/Simulation/
 # AirVehicle/hardware de verdade: os setters de slot e o caminho de

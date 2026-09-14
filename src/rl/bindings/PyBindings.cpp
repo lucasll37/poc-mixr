@@ -94,4 +94,14 @@ PYBIND11_MODULE(_native, m)
          "(a mesma que o .onnx espera na entrada).");
    m.def("observation_bool_fields", &mixr::xrlbridge::observationBoolFields,
          "Quais desses nomes sao booleanos.");
+
+   // O preset "classic28" -- os 28 nomes historicos, na ordem historica.
+   // flatten_obs.py/export_onnx.py usam isto como default EXPLICITO em vez
+   // de observation_field_names() (que agora devolve 38): a lista canonica
+   // cresceu para expor RWR/navegacao aos nos de arvore, mas o vetor que
+   // alimenta uma rede ja treinada nao pode mudar de forma sem ninguem pedir.
+   m.def("classic_schema_28", [] { return mixr::xrlbridge::classicSchema28().fieldNames; },
+         "Os 28 nomes historicos, na ordem historica -- o schema 'classic28' do lado C++ "
+         "(ver libs/xrlbridge/RLBridge.hpp). Default de todo consumidor Python que precisa "
+         "de um vetor de tamanho fixo (flatten_obs.py, export_onnx.py).");
 }

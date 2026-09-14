@@ -2,6 +2,7 @@
 #define __xinfer_Infer_H__
 
 #include <string>
+#include <vector>
 
 namespace mixr {
 namespace xinfer {
@@ -81,6 +82,15 @@ XINFER_API bool shape(ModelId id, int& nIn, int& nOut);
 // Roda uma inferencia. Devolve quantos floats foram escritos em 'out'
 // (positivo), ou um valor NEGATIVO em falha. Nao lanca.
 XINFER_API int run(ModelId id, const float* in, int nIn, float* out, int nOut);
+
+// Le a metadata "xrlbridge.fields" do .onnx (uma string com os nomes de
+// campo de entrada, separados por virgula, na ORDEM exata que o exportador
+// usou -- ver src/poc/rl-training/tools/export_onnx.py). 'false' se o id nao
+// existe OU se o .onnx nao tem essa metadata -- o caso de TODO .onnx
+// exportado antes desta funcionalidade existir. O chamador tem de tratar
+// isso como "sem checagem de identidade disponivel", nunca como erro: a
+// checagem por CONTAGEM (shape(), acima) continua sendo o minimo garantido.
+XINFER_API bool fields(ModelId id, std::vector<std::string>& outNames);
 
 } // namespace xinfer
 } // namespace mixr

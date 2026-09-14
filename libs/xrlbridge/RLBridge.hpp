@@ -2,6 +2,7 @@
 #define __xrlbridge_RLBridge_H__
 
 #include "xrlbridge/ObservationFields.hpp"
+#include "xrlbridge/Schema.hpp"
 
 #include <string>
 #include <vector>
@@ -110,6 +111,21 @@ struct Observation
    double alertRangeM{};
 
    bool weaponReady{};
+
+   // RWR + navegacao nativa -- acrescentados nesta mesma passada (ver o
+   // comentario de ObservationFields.hpp: existiam em domain::WorldView, mas
+   // ninguem tinha atualizado a macro para inclui-los). Espelham
+   // domain::WorldView campo a campo, mesma regra do resto da struct.
+   double rwrThreatRangeM{};
+   double rwrThreatRelBearingDeg{};
+   double rwrThreatDeltaAltM{};
+   bool hasRwrThreat{};
+   double navTrueBrgDeg{};
+   double navCmdAltM{};
+   double navCmdSpeedKts{};
+   bool hasNavSteering{};
+   bool hasNavCmdAlt{};
+   bool hasNavCmdSpeed{};
 };
 
 //--- escrita: SO o host (src/rl/bindings/NativeSimulation.cpp) chama -------------
@@ -148,6 +164,21 @@ void packObservation(const Observation& obs, float* out);
 // unidades fisicas que o Autopilot espera. Fora de [-1,1] e recortado: a
 // politica nao pode comandar 40 mil pes so porque a rede saiu de escala.
 Command unscaleCommand(const float* normalized3);
+
+//------------------------------------------------------------------------------
+// classicSchema28() -- os 28 nomes historicos, NESTA ordem, como um Schema
+// nomeado ("classic28"). Usado como default de todo consumidor que ganhou
+// selecao de schema nesta passada (os tres nos de arvore de
+// models/players/A-4/src/bt/nodes/, e o lado Python via
+// mixr_gym._native.classic_schema_28()) -- preserva byte a byte o
+// comportamento de antes desta macro crescer para 38 campos.
+//
+// HARDCODED de proposito, e NAO derivado de "os primeiros 28 nomes da macro
+// atual": mesmo que XRLBRIDGE_OBSERVATION_FIELDS seja reordenada ou cresca de
+// novo no futuro, este preset continua exatamente estes 28 nomes, nesta
+// ordem -- e' o que protege qualquer .onnx ja treinado contra ele.
+//------------------------------------------------------------------------------
+Schema classicSchema28();
 
 } // namespace xrlbridge
 } // namespace mixr

@@ -71,7 +71,7 @@ na primeira decisão de cada aeronave.
 |---|---|
 | o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`libs/xpyembed`](../../../libs/xpyembed/) |
 | o nó de árvore `( PyDecide )` | `models/players/A-4/src/bt/nodes/PyDecideAction.cpp` |
-| a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
+| a lista completa de campos (38; esta poc usa os 28 default, `schema="classic28"`) | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` (o adaptador MIXR para o **JSBSim**, motor de dinâmica de voo de código aberto que integra as equações de movimento da aeronave a cada frame) + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
 | o plugin | o **mesmo** `libA-4.so` da poc `flight`, byte a byte |
 
@@ -175,6 +175,18 @@ recorte que ela não conhece (ver
 técnica de pré-processador C/C++ que declara a lista de campos **uma vez**, em
 `ObservationFields.hpp`, e a reexpande em cada lugar que precisa dela, sem repetir a lista à mão —
 e não como detalhe: o consumidor do outro lado pode ser uma folha isolada ou a árvore inteira.
+
+**ARMADILHA — não trocar a porta `schema` de `( PyDecide )` para `"all"` sem reescrever os quatro
+scripts.** `ObservationFields.hpp` cresceu para 38 campos (RWR + navegação nativa, acrescentados
+numa passada posterior) e `( PyDecide )` ganhou uma porta `schema` para escolher quais entram —
+mas `rtb.py`/`evade.py`/`patrol.py`/`support.py` indexam `obs` **por posição numérica fixa**
+(`NORTH_M = 0`, ..., `TERRAIN_VALID = 24`, ver §3), sem nenhuma checagem de nome do lado do
+intérprete embutido. `flight_tree_python.xml` **não declara `schema:`** de propósito — o default
+(`"classic28"`) já reproduz exatamente os 28 nomes/ordem que os índices acima assumem. Ligar
+`schema="all"` (os 38 completos) muda a lista/ordem por baixo dos quatro scripts sem nenhum erro
+visível — cada `NOME = N` passaria a apontar para um campo diferente do que o nome sugere. Usar os
+campos novos aqui exige reescrever os índices dos quatro arquivos para a nova ordem, não só trocar
+a porta.
 
 **A SAÍDA dos dois nós, porém, não é igual — só a entrada.** `( PyDecide )` espera de volta
 unidades físicas diretas (`heading_deg, altitude_m, speed_kts`, como acima); `( OnnxPolicy )`, por

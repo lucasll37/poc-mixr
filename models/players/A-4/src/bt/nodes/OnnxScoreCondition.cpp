@@ -1,12 +1,13 @@
 #include "bt/nodes/OnnxScoreCondition.hpp"
 
 #include "bt/DecisionContext.hpp"
+#include "bt/ObservationSchema.hpp"
 
 #include "xinfer/Infer.hpp"
 #include "xlog/Log.hpp"
-#include "xrlbridge/ObservationFields.hpp"
 
 #include <array>
+#include <vector>
 
 namespace mixr {
 namespace models {
@@ -23,10 +24,13 @@ BT::PortsList OnnxScoreCondition::providedPorts()
 {
    return {
       BT::InputPort<std::string>("model", "",
-                                 "caminho do .onnx (entrada float32[1,28], ver ObservationFields.hpp)"),
+                                 "caminho do .onnx (entrada = tamanho do schema resolvido)"),
       BT::InputPort<double>("threshold", 0.5, "limiar de comparacao"),
       BT::InputPort<int>("index", 0, "qual saida do modelo comparar"),
       BT::InputPort<bool>("above", true, "true: SUCCESS se saida > limiar; false: se saida < limiar"),
+      BT::InputPort<std::string>("schema", "classic28",
+                                 "campos da observacao, e ordem: 'classic28' (default), "
+                                 "'all', ou lista ad-hoc separada por espaco"),
    };
 }
 
@@ -39,6 +43,17 @@ BT::NodeStatus OnnxScoreCondition::tick()
    // reabrir o arquivo 50 vezes por segundo.
    if (!tentouAbrir_) {
       tentouAbrir_ = true;
+
+      std::string schemaValor{"classic28"};
+      if (const BT::Optional<std::string> in{getInput<std::string>("schema")}) schemaValor = in.value();
+      try {
+         bound_ = xrlbridge::bind<domain::WorldView>(resolveObservationSchema(schemaValor),
+                                                      domain::worldViewFieldRegistry());
+      } catch (const xrlbridge::SchemaError& ex) {
+         LOG(ERROR) << "[OnnxScore] " << ex.what();
+         return BT::NodeStatus::FAILURE;
+      }
+
       const BT::Optional<std::string> caminho{getInput<std::string>("model")};
       if (!caminho || caminho.value().empty()) {
          LOG(ERROR) << "[OnnxScore] porta 'model' ausente ou vazia no XML da arvore";
@@ -46,31 +61,39 @@ BT::NodeStatus OnnxScoreCondition::tick()
          modelId_ = mixr::xinfer::open(caminho.value());
          if (modelId_ != 0) {
             int nIn{}, nOut{};
-            if (mixr::xinfer::shape(modelId_, nIn, nOut) && nIn != XRLBRIDGE_OBSERVATION_SIZE) {
+            const int nEsperado{static_cast<int>(bound_.resolved.size())};
+            if (mixr::xinfer::shape(modelId_, nIn, nOut) && nIn != nEsperado) {
                LOG(ERROR) << "[OnnxScore] '" << caminho.value() << "' espera " << nIn
-                          << " entradas, mas a observacao canonica tem "
-                          << XRLBRIDGE_OBSERVATION_SIZE;
+                          << " entradas, mas o schema '" << bound_.schema.name << "' tem "
+                          << nEsperado;
                modelId_ = 0;
+            } else if (modelId_ != 0) {
+               // Contagem batendo nao basta: dois .onnx do mesmo tamanho
+               // podem esperar campos DIFERENTES -- checado por IDENTIDADE
+               // quando o .onnx traz a metadata (xinfer::fields()); sem ela,
+               // so a checagem de contagem acima vale, como sempre.
+               std::vector<std::string> declarados;
+               if (mixr::xinfer::fields(modelId_, declarados)) {
+                  std::vector<std::string> esperados;
+                  esperados.reserve(bound_.resolved.size());
+                  for (const auto* const decl : bound_.resolved) esperados.push_back(decl->name);
+                  if (declarados != esperados) {
+                     LOG(ERROR) << "[OnnxScore] '" << caminho.value()
+                                << "' foi exportado para outros campos (ou outra ordem) que o "
+                                << "schema '" << bound_.schema.name
+                                << "' resolveu -- reexporte ou corrija a porta 'schema'";
+                     modelId_ = 0;
+                  }
+               }
             }
          }
       }
    }
    if (modelId_ == 0) return BT::NodeStatus::FAILURE;
 
-   // A observacao, na ORDEM CANONICA -- a mesma macro que o treino usa. Note
-   // que ela e expandida aqui contra domain::WorldView, e em
-   // libs/xrlbridge/RLBridge.cpp contra xrlbridge::Observation: um nome que
-   // divergir entre as duas structs nao compila.
    const domain::WorldView& snap{context_.behavior->snapshot()};
-   std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};
-   {
-      int i{};
-#define XRLBRIDGE_F(nome) entrada[i++] = static_cast<float>(snap.nome);
-#define XRLBRIDGE_B(nome) entrada[i++] = snap.nome ? 1.0F : 0.0F;
-      XRLBRIDGE_OBSERVATION_FIELDS
-#undef XRLBRIDGE_F
-#undef XRLBRIDGE_B
-   }
+   std::vector<float> entrada(bound_.resolved.size());
+   xrlbridge::pack(bound_, snap, entrada.data());
 
    std::array<float, 16> saida{};
    const int escritos{mixr::xinfer::run(modelId_, entrada.data(),

@@ -143,6 +143,24 @@ TEST(OnnxScoreCondition, ModeloValidoComIndiceValidoNaoLancaEDecideAlgo)
    EXPECT_TRUE(status == BT::NodeStatus::SUCCESS || status == BT::NodeStatus::FAILURE);
 }
 
+TEST(OnnxScoreCondition, SchemaAllFuncionaContraUmOnnxDe38Entradas)
+{
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxScore(
+      "model=\"" POLICY_ALL38_ONNX "\" schema=\"all\" index=\"0\"")};
+   BT::NodeStatus status{};
+   EXPECT_NO_THROW({ status = arvore.tick(); });
+   EXPECT_TRUE(status == BT::NodeStatus::SUCCESS || status == BT::NodeStatus::FAILURE);
+}
+
+TEST(OnnxScoreCondition, SchemaComNomeDesconhecidoFalhaSemLancar)
+{
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxScore(
+      "model=\"" POLICY_EXAMPLE_ONNX "\" schema=\"northM campoInventado\"")};
+   EXPECT_NO_THROW({ EXPECT_EQ(arvore.tick(), BT::NodeStatus::FAILURE); });
+}
+
 TEST(OnnxScoreCondition, SegundoTickReusaAAberturaSemReabrirOArquivo)
 {
    // 'tentouAbrir_' e' UMA tentativa so' (mesmo molde de BtBehavior::
@@ -176,8 +194,8 @@ TEST(OnnxPolicyAction, CaminhoInexistenteFalhaSemLancar)
 
 TEST(OnnxPolicyAction, ModeloComFormaCertaDecideEUsaORotuloDaPorta)
 {
-   // Forma 28->3 bate com o contrato (XRLBRIDGE_OBSERVATION_SIZE/
-   // XRLBRIDGE_ACTION_SIZE) mesmo com pesos aleatorios -- SUCCESS e'
+   // Sem porta 'schema', o DEFAULT e' "classic28" (28 entradas) -- a mesma
+   // forma de POLICY_EXAMPLE_ONNX, mesmo com pesos aleatorios. SUCCESS e'
    // alcancavel, e o rotulo da PORTA (nao o default "ONNX") tem que
    // aparecer na decisao.
    FakeDecisionContext ctx{contextoValido()};
@@ -186,6 +204,66 @@ TEST(OnnxPolicyAction, ModeloComFormaCertaDecideEUsaORotuloDaPorta)
    ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
    EXPECT_TRUE(ctx.dec.taken);
    EXPECT_EQ(ctx.dec.label, "ONNX-TESTE");
+}
+
+//------------------------------------------------------------------------------
+// OnnxPolicyAction -- a porta 'schema' (peca nova desta passada: observacao
+// configuravel por schema nomeado, ver bt/ObservationSchema.hpp).
+//------------------------------------------------------------------------------
+
+TEST(OnnxPolicyAction, SchemaAllDecideContraUmOnnxDe38Entradas)
+{
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxPolicy(
+      "model=\"" POLICY_ALL38_ONNX "\" schema=\"all\"")};
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   EXPECT_TRUE(ctx.dec.taken);
+}
+
+TEST(OnnxPolicyAction, SchemaAdHocDecideContraUmOnnxDeTresCampos)
+{
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxPolicy(
+      "model=\"" POLICY_3FIELDS_ONNX "\" schema=\"northM eastM altitudeM\"")};
+   ASSERT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   EXPECT_TRUE(ctx.dec.taken);
+}
+
+TEST(OnnxPolicyAction, SchemaComNomeDesconhecidoFalhaSemLancarENaoDecide)
+{
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxPolicy(
+      "model=\"" POLICY_EXAMPLE_ONNX "\" schema=\"northM campoInventado\"")};
+   EXPECT_NO_THROW({ EXPECT_EQ(arvore.tick(), BT::NodeStatus::FAILURE); });
+   EXPECT_FALSE(ctx.dec.taken);
+}
+
+TEST(OnnxPolicyAction, SchemaClassicDefaultRejeitaOnnxComMetadataDeCamposDivergente)
+{
+   // Mesma CONTAGEM (28) que 'classic28' resolve, mas a metadata
+   // 'xrlbridge.fields' do proprio .onnx foi gravada com os dois primeiros
+   // nomes TROCADOS (ver tests/native/fixtures/README.md) -- exatamente o
+   // risco que so passou a existir com schema variavel: dois .onnx do mesmo
+   // tamanho esperando campos (ou ordem) diferentes. A checagem de
+   // CONTAGEM sozinha deixaria passar; a de IDENTIDADE (xinfer::fields())
+   // tem que pegar.
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxPolicy(
+      "model=\"" POLICY_CLASSIC28_METADATA_DIVERGENTE_ONNX "\"")};
+   EXPECT_NO_THROW({ EXPECT_EQ(arvore.tick(), BT::NodeStatus::FAILURE); });
+   EXPECT_FALSE(ctx.dec.taken);
+}
+
+TEST(OnnxPolicyAction, OnnxSemMetadataDeCamposAbreNormalmenteViaContagem)
+{
+   // POLICY_EXAMPLE_ONNX foi exportado ANTES desta funcionalidade existir --
+   // sem metadata 'xrlbridge.fields'. So a checagem de CONTAGEM vale, como
+   // sempre valeu -- nao pode virar FAILURE so por faltar um dado que nao
+   // existia quando o arquivo foi gerado.
+   FakeDecisionContext ctx{contextoValido()};
+   ArvoreDeUmNo arvore{ctx, arvoreOnnxPolicy("model=\"" POLICY_EXAMPLE_ONNX "\"")};
+   EXPECT_EQ(arvore.tick(), BT::NodeStatus::SUCCESS);
+   EXPECT_TRUE(ctx.dec.taken);
 }
 
 TEST(OnnxPolicyAction, SaidaNaoNormalizadaUsaOsTresValoresCruDoModeloDireto)

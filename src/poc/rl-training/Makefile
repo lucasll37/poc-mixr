@@ -1,4 +1,4 @@
-.PHONY: venv train export clean check-root help
+.PHONY: venv train export test clean check-root help
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -58,6 +58,9 @@ train: check-root venv ## Treina PPO contra MixrFlightEnv, checkpoint em ./runs/
 	@# cwd), mas passar aqui deixa o Makefile a fonte de verdade do
 	@# caminho, sem depender de dois lugares concordarem por coincidencia.
 	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/train.py --out-dir $(RUNS_DIR) $(ARGS)
+
+test: check-root venv ## Roda os testes deste consumidor (achatamento default = classic28).
+	cd $(ROOT) && PYTHONPATH=$(DIST_PYTHON) $(PY) $(PWD)/tests/test_flatten_obs.py
 
 export: check-root venv ## Exporta um checkpoint treinado para .onnx (ARGS=...).
 	@# SEM 'cd $(ROOT)' aqui, ao contrario de 'train' -- export_onnx.py nao

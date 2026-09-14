@@ -21,6 +21,7 @@
 //
 #include "xinfer/Infer.hpp"
 #include "xrlbridge/ObservationFields.hpp"
+#include "xrlbridge/RLBridge.hpp"
 
 #include <gtest/gtest.h>
 
@@ -125,6 +126,12 @@ TEST(XInfer, RunComPonteiroNuloOuTamanhoZeroDevolveNegativo)
 // valerem: eles quebram se o contrato derivar -- se alguem acrescentar um
 // campo em ObservationFields.hpp sem reexportar o modelo, a forma deixa de
 // bater e o teste acusa, em vez de a aeronave voar errado em silencio.
+//
+// A forma esperada e' a de xrlbridge::classicSchema28() (28), NAO de
+// XRLBRIDGE_OBSERVATION_SIZE (38 desde que a macro canonica cresceu para
+// expor RWR/navegacao aos nos de arvore): POLICY_ONNX foi exportado contra o
+// schema "classic28" (o default de export_onnx.py), nunca contra a lista
+// completa.
 //------------------------------------------------------------------------------
 
 TEST(XInfer, PoliticaInstaladaTemAFormaDoContrato)
@@ -132,11 +139,13 @@ TEST(XInfer, PoliticaInstaladaTemAFormaDoContrato)
    const xinfer::ModelId id{xinfer::open(POLICY_ONNX)};
    ASSERT_NE(id, 0) << "nao abriu " << POLICY_ONNX;
 
+   const int nEsperado{static_cast<int>(xrlbridge::classicSchema28().fieldNames.size())};
+
    int nIn{}, nOut{};
    ASSERT_TRUE(xinfer::shape(id, nIn, nOut));
-   EXPECT_EQ(nIn, XRLBRIDGE_OBSERVATION_SIZE)
-      << "a politica espera " << nIn << " entradas, mas a observacao canonica tem "
-      << XRLBRIDGE_OBSERVATION_SIZE << " -- reexporte com src/rl/tools/export_onnx.py";
+   EXPECT_EQ(nIn, nEsperado)
+      << "a politica espera " << nIn << " entradas, mas o schema 'classic28' tem "
+      << nEsperado << " -- reexporte com src/poc/rl-training/tools/export_onnx.py";
    EXPECT_EQ(nOut, XRLBRIDGE_ACTION_SIZE);
 }
 
@@ -153,7 +162,10 @@ TEST(XInfer, InferenciaEhDeterministicaEmMilRepeticoes)
    const xinfer::ModelId id{xinfer::open(POLICY_ONNX)};
    ASSERT_NE(id, 0);
 
-   std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};
+   // POLICY_ONNX espera o tamanho de classicSchema28() (28), nao o da lista
+   // canonica completa (38) -- ver o comentario acima de
+   // PoliticaInstaladaTemAFormaDoContrato.
+   std::vector<float> entrada(xrlbridge::classicSchema28().fieldNames.size());
    for (std::size_t i = 0; i < entrada.size(); ++i) {
       entrada[i] = 0.1F * static_cast<float>(i);
    }
@@ -186,7 +198,9 @@ TEST(XInfer, QuatroThreadsNaMesmaSessaoDaoOMesmoResultado)
    const xinfer::ModelId id{xinfer::open(POLICY_ONNX)};
    ASSERT_NE(id, 0);
 
-   std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};
+   // POLICY_ONNX espera o tamanho de classicSchema28() (28) -- ver o
+   // comentario de PoliticaInstaladaTemAFormaDoContrato, acima.
+   std::vector<float> entrada(xrlbridge::classicSchema28().fieldNames.size());
    for (std::size_t i = 0; i < entrada.size(); ++i) {
       entrada[i] = 0.1F * static_cast<float>(i);
    }
@@ -220,6 +234,45 @@ TEST(XInfer, QuatroThreadsNaMesmaSessaoDaoOMesmoResultado)
    for (auto& th : threads) th.join();
    EXPECT_EQ(divergencias.load(), 0)
       << "a mesma entrada deu saidas diferentes entre threads";
+}
+
+//------------------------------------------------------------------------------
+// fields() -- a metadata 'xrlbridge.fields' (peca nova desta passada: fecha
+// o risco que schema variavel introduz -- dois .onnx do MESMO tamanho podem
+// esperar campos DIFERENTES, e so a checagem de contagem nao pegaria isso).
+//------------------------------------------------------------------------------
+
+TEST(XInfer, FieldsDeIdInvalidoDevolveFalso)
+{
+   std::vector<std::string> nomes;
+   EXPECT_FALSE(xinfer::fields(0, nomes));
+   EXPECT_FALSE(xinfer::fields(-1, nomes));
+   EXPECT_FALSE(xinfer::fields(9999, nomes));
+}
+
+// POLICY_ONNX foi exportado ANTES desta funcionalidade existir -- sem a
+// metadata. O contrato e' devolver 'false', nao um vetor vazio-mas-'true'
+// (que o chamador confundiria com "0 campos", nao "sem info disponivel").
+TEST(XInfer, FieldsDeOnnxSemMetadataDevolveFalso)
+{
+   const xinfer::ModelId id{xinfer::open(POLICY_ONNX)};
+   ASSERT_NE(id, 0);
+   std::vector<std::string> nomes;
+   EXPECT_FALSE(xinfer::fields(id, nomes));
+}
+
+// POLICY_ALL38_ONNX foi exportado com --fields all -- a metadata tem que
+// devolver os 38 nomes, NA ORDEM exata (identidade, nao so contagem).
+TEST(XInfer, FieldsDeOnnxComMetadataDevolveOsNomesNaOrdemExata)
+{
+   const xinfer::ModelId id{xinfer::open(POLICY_ALL38_ONNX)};
+   ASSERT_NE(id, 0);
+
+   std::vector<std::string> nomes;
+   ASSERT_TRUE(xinfer::fields(id, nomes));
+
+   const auto esperado = mixr::xrlbridge::observationFieldNames();
+   EXPECT_EQ(nomes, esperado);
 }
 
 } // namespace

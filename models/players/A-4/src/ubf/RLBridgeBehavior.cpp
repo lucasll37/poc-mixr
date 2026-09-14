@@ -4,6 +4,7 @@
 #include "domain/WorldView.hpp"
 #include "ubf/FlightAction.hpp"
 #include "ubf/FlightState.hpp"
+#include "ubf/ObservationBridge.hpp"
 
 #include "xrlbridge/RLBridge.hpp"
 
@@ -27,45 +28,10 @@ void RLBridgeBehavior::copyData(const RLBridgeBehavior& org, const bool)
 
 namespace {
 
-// domain::WorldView -> xrlbridge::Observation, campo a campo. E a UNICA
-// traducao entre o tipo do modelo e o tipo da ponte -- ver o "porque" no
-// cabecalho de libs/xrlbridge/RLBridge.hpp.
-xrlbridge::Observation toObservation(const domain::WorldView& snap)
-{
-   xrlbridge::Observation obs;
-   obs.valid = snap.valid;
-   obs.northM = snap.northM;
-   obs.eastM = snap.eastM;
-   obs.altitudeM = snap.altitudeM;
-   obs.headingDeg = snap.headingDeg;
-   obs.speedKts = snap.speedKts;
-   obs.rollDeg = snap.rollDeg;
-   obs.pitchDeg = snap.pitchDeg;
-   obs.fuelFraction = snap.fuelFraction;
-   obs.mach = snap.mach;
-   obs.gLoad = snap.gLoad;
-   obs.alphaDeg = snap.alphaDeg;
-   obs.terrainValid = snap.terrainValid;
-   obs.terrainElevM = snap.terrainElevM;
-   obs.altitudeAglM = snap.altitudeAglM;
-   obs.hasContact = snap.hasContact;
-   obs.contactName = snap.contactName;
-   obs.contactRangeM = snap.contactRangeM;
-   obs.contactRelBearingDeg = snap.contactRelBearingDeg;
-   obs.contactDeltaAltM = snap.contactDeltaAltM;
-   obs.contactNorthM = snap.contactNorthM;
-   obs.contactEastM = snap.contactEastM;
-   obs.contactAltitudeM = snap.contactAltitudeM;
-   obs.hasAlert = snap.hasAlert;
-   obs.alertSender = snap.alertSender;
-   obs.alertContactName = snap.alertContactName;
-   obs.alertNorthM = snap.alertNorthM;
-   obs.alertEastM = snap.alertEastM;
-   obs.alertAltitudeM = snap.alertAltitudeM;
-   obs.alertRangeM = snap.alertRangeM;
-   obs.weaponReady = snap.weaponReady;
-   return obs;
-}
+// toObservation() mora em ubf/ObservationBridge.hpp -- extraida daqui nesta
+// mesma passada (era uma copia campo a campo A MAO, sem a garantia de
+// compilacao que a macro da) para ficar testavel isoladamente. Ver
+// tests/native/test_observation_bridge.cpp.
 
 domain::FlightCommand toFlightCommand(const xrlbridge::Command& cmd)
 {

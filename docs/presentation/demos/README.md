@@ -14,15 +14,21 @@ por um print, ou o contrário, em qualquer slot, não exige tocar em código nen
 |---|---|---|---|---|
 | 08 | Um repositório, não vários | imagem | `repo-org` | O repositório integrado — um histórico de git, uma árvore de pastas, sem asa-models/asa-libs/asa-models-r espalhados |
 | 10 | Um contrato forte para todo modelo | imagem | `modelo-estrutura` | Pasta de um modelo real — `tests/`, `docs/`, `README.md`, `CHANGELOG.md`, `Makefile` |
+| 10 | Um contrato forte para todo modelo | vídeo | `check-organization` | `make check-organization` rodando, tudo verde — o diagnóstico automático de que a organização do modelo está correta |
 | 12 | 1. `./app` — painel de controle | vídeo | `01-app` | Funcionamento do `./app`, mostrando as telas possíveis |
 | 13 | 2. Documentação iterativa | vídeo | `02-documentacao-iterativa` | O manual interativo |
 | 14 | 3. Editor visual de cenários | vídeo | `03-editor-edl` | O EDL-builder montando um cenário |
 | 15 | 4. Code highlight para `.edl` | imagem | `04-edl-highlight` | Um erro de slot apontado direto no editor, antes de rodar qualquer coisa |
 | 18 | O primeiro entregável | imagem | `tacview-a4` | Tacview mostrando a A-4 Skyhawk em voo, com os falcons e o intruso |
-| 19 | A árvore de comportamento é um contrato | vídeo | `arvore-comportamento` | A mesma árvore com folha C++, depois Python, depois política ONNX — sem recompilar |
-| 23 | Comece pelo TOUR.md | vídeo | `tour` | Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview |
-| 24 | Estresse o metaprojeto | imagem | `livros-capas` | Capas dos dois livros — manual do MIXR e do BehaviorTree.CPP |
-| 27 | Encerramento | imagem | `encerramento` | Logo da ASA ou imagem de encerramento do time |
+| 19 | RL — o mesmo ambiente, controlado por um agente treinado | vídeo | `rl` | O ambiente `MixrFlightEnv` (Gymnasium) em uso — reset/step contra a simulação de verdade |
+| 20 | Do treino (PPO) ao ONNX de produção | imagem | `rl-script` | Script de treino: `MixrFlightEnv` + PPO (stable-baselines3) |
+| 21 | A árvore de comportamento é um contrato | vídeo | `arvore-comportamento` | A mesma árvore com folha C++, depois Python, depois política ONNX — sem recompilar |
+| 22 | Groot — editar e monitorar a árvore ao vivo | vídeo | `groot` | Editando a árvore no Groot e acompanhando o monitor ao vivo durante uma simulação rodando |
+| 25 | Single-thread vs multi-thread, lado a lado | vídeo | `Single-thread` | `SimAgent`, decidindo em `updateData()`, thread de fundo, ~10 Hz |
+| 25 | Single-thread vs multi-thread, lado a lado | vídeo | `Multi-thread` | `AgentTC`, decidindo em `updateTC()`, pool de tempo crítico, até 50 Hz |
+| 27 | Comece pelo TOUR.md | vídeo | `tour` | Walkthrough: subir o ambiente, rodar um cenário, ver no Tacview |
+| 28 | Estresse o metaprojeto | imagem | `livros-capas` | Capas dos dois livros — manual do MIXR e do BehaviorTree.CPP |
+| 31 | Encerramento | imagem | `encerramento` | Logo da ASA ou imagem de encerramento do time |
 
 A coluna `#` é a posição do slide no deck (a mesma que o HUD mostra), não uma numeração de
 arquivo — só os quatro slides da seção "Demonstrações" carregam número no próprio nome do
@@ -34,12 +40,11 @@ Exemplo: para o slot 14, salve como `docs/presentation/demos/03-editor-edl.mp4` 
 ## Arquivos órfãos
 
 Qualquer outro arquivo aqui é ignorado — fica em disco sem efeito nenhum na apresentação. Hoje
-é o caso de `04-esteira-build.mp4`, `07-catalogo-modelos.mp4`, `app.mp4`, `pipeline.mp4`,
-`Behavior.mp4`, `Single-thread.mp4`, `Multi-thread.mp4`, `2026-09-08 22-24-24.mp4` e
-`Screenshot from 2026-09-08 17-11-33.png`: sobraram de uma numeração anterior (com mais slides
-de demonstração) ou de gravações ainda sem slot no roteiro atual (`SLIDE.md`). Para aproveitar
-um deles, basta renomeá-lo para o nome da tabela acima — ex.: `Behavior.mp4` →
-`arvore-comportamento.mp4`.
+é o caso de `04-esteira-build.mp4`, `07-catalogo-modelos.mp4` e `pipeline.mp4`: sobraram de uma
+numeração anterior (com mais slides de demonstração) ou de gravações ainda sem slot no roteiro
+atual (`SLIDE.md`). `Behavior.mp4` também é órfão — é uma gravação duplicada do que já está em
+`arvore-comportamento.mp4` (slot 21), então fica sem efeito de propósito. Para aproveitar um
+órfão, basta renomeá-lo para o nome da tabela acima.
 
 ## Se a lista mudar
 

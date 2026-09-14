@@ -79,6 +79,7 @@ model_sources = files(
     'src/domain/RtbPlan.cpp',
     'src/domain/TerrainFloor.cpp',
     'src/domain/ThreatPolicy.cpp',
+    'src/domain/WorldViewFieldRegistry.cpp',
 
     # classes MIXR proprias
     'src/xnative/AlertDatalink.cpp',
@@ -94,10 +95,12 @@ model_sources = files(
     'src/ubf/BtBehaviorSlots.cpp',
     'src/ubf/AltitudeSafetyBehavior.cpp',
     'src/ubf/RLBridgeBehavior.cpp',
+    'src/ubf/ObservationBridge.cpp',
 
     # nos/factory da arvore de comportamento
     'src/bt/bt_factory.cpp',
     'src/bt/bt_factory_sdk.cpp',
+    'src/bt/ObservationSchema.cpp',
     'src/bt/nodes/AlertReceivedCondition.cpp',
     'src/bt/nodes/ContactDetectedCondition.cpp',
     'src/bt/nodes/EvadeRwrThreatAction.cpp',
@@ -257,6 +260,7 @@ domain_sources = files(
     'src/domain/RtbPlan.cpp',
     'src/domain/TerrainFloor.cpp',
     'src/domain/ThreatPolicy.cpp',
+    'src/domain/WorldViewFieldRegistry.cpp',
 )
 
 bt_sources = files(
@@ -279,8 +283,12 @@ bt_sources = files(
 # Os nos que dependem do SDK ficam FORA de bt_sources, de proposito -- ver o
 # comentario de bt_sdk_sources em tests/meson.build (test-tree nao pode linkar
 # MIXR, e essa propriedade se perderia em silencio se eles entrassem ali).
+# ObservationSchema.cpp entra aqui, e nao em domain_sources, pelo MESMO
+# motivo: chama xrlbridge::classicSchema28(), um simbolo de libxrlbridge.so,
+# nao header-only (ver o comentario do proprio arquivo).
 bt_sdk_sources = files(
     'src/bt/bt_factory_sdk.cpp',
+    'src/bt/ObservationSchema.cpp',
     'src/bt/nodes/OnnxScoreCondition.cpp',
     'src/bt/nodes/OnnxPolicyAction.cpp',
     'src/bt/nodes/PyDecideAction.cpp',

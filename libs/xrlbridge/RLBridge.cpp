@@ -100,6 +100,21 @@ void packObservation(const Observation& obs, float* const out)
 #undef XRLBRIDGE_B
 }
 
+Schema classicSchema28()
+{
+   // Os 28 nomes historicos, digitados uma vez -- NAO derivados da macro
+   // atual (ver o comentario em RLBridge.hpp). Mesma ordem de sempre: 23
+   // floats, depois os 5 bools.
+   return Schema{"classic28", {
+      "northM", "eastM", "altitudeM", "headingDeg", "speedKts", "rollDeg",
+      "pitchDeg", "fuelFraction", "mach", "gLoad", "alphaDeg", "terrainElevM",
+      "altitudeAglM", "contactRangeM", "contactRelBearingDeg", "contactDeltaAltM",
+      "contactNorthM", "contactEastM", "contactAltitudeM", "alertNorthM",
+      "alertEastM", "alertAltitudeM", "alertRangeM",
+      "valid", "terrainValid", "hasContact", "hasAlert", "weaponReady",
+   }};
+}
+
 Command unscaleCommand(const float* const normalized3)
 {
    Command cmd;

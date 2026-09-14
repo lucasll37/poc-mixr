@@ -67,7 +67,7 @@ primeira decisão.
 | o motor de inferência (`open`/`shape`/`run`, sessão cacheada por caminho) | [`libs/xinfer`](../../../libs/xinfer/) |
 | o nó de árvore `( OnnxPolicy )` | `models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
 | a desnormalização da ação (`unscaleCommand`) | [`libs/xrlbridge`](../../../libs/xrlbridge/) |
-| a ordem canônica dos 28 campos | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
+| a lista completa de campos (38; esta poc usa os 28 default, `schema="classic28"`, o mesmo em que `policy_barrier.onnx` foi treinado) | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
 | o plugin | o **mesmo** `libA-4.so` da poc `flight`, byte a byte |
 

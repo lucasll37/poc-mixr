@@ -2,8 +2,11 @@
 
 Uma troca síncrona de dois structs, `Command`/`Observation`, entre um host de RL em Python
 (`src/rl/bindings/`, pybind11) e o comportamento UBF que decide por fora do processo MIXR
-(`RLBridgeBehavior`, em `models/players/A-4`). Mais o contrato de dados que dá ordem aos 28 floats
-que viram entrada de rede — `ObservationFields.hpp` — reusado por três consumidores diferentes.
+(`RLBridgeBehavior`, em `models/players/A-4`). Mais o contrato de dados que dá ordem aos 38 floats
+que viram entrada de rede — `ObservationFields.hpp` — reusado por quatro consumidores diferentes
+(`RLBridge.cpp`, e os três nós de árvore do modelo), e o mecanismo de **schema nomeado**
+(`FieldRegistry.hpp`/`Schema.hpp`, novos) que permite escolher, em runtime e por nome, QUAIS desses
+38 campos entram no vetor efetivo — ver "Schema nomeado" mais abaixo.
 
 ## Como se usar
 
@@ -40,8 +43,8 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
 
    const FlightState::Snapshot& snap{flightState->snapshot()};
 
-   xrlbridge::setObservation(toObservation(snap));   // campo a campo, WorldView -> Observation
-   if (!snap.valid) return nullptr;
+   xrlbridge::setObservation(toObservation(snap));   // ver ubf/ObservationBridge.hpp -- expande a
+   if (!snap.valid) return nullptr;                  // mesma macro que RLBridge.cpp, nunca a mao
 
    const domain::FlightCommand cmd{toFlightCommand(xrlbridge::getPendingCommand())};
    const auto action = new FlightAction();
@@ -127,24 +130,53 @@ já leu o `WorldView` (via `FlightState::updateState()`, chamado antes de `genAc
 pela dinâmica que rodou na fase 0 — ou seja, pelo comando aplicado no frame **anterior**. É
 comportamento padrão de qualquer malha de controle fechada, não um bug.
 
-## `ObservationFields.hpp` — a ordem canônica, num lugar só
+## `ObservationFields.hpp` — a lista completa, num lugar só
 
 A forma da observação era mantida à mão em cinco lugares (`domain::WorldView`,
 `xrlbridge::Observation`, a conversão campo a campo de `RLBridgeBehavior`, o `toDict()` dos
 bindings e as listas de `env.py`). Enquanto a política era um processo Python do outro lado de uma
 caixa de correio, divergir dava `KeyError` — alto e na hora. Com um `.onnx` (`OnnxPolicy`,
-`libs/xinfer`), divergir não dá erro nenhum: o modelo recebe 28 floats na ordem errada e voa
+`libs/xinfer`), divergir não dá erro nenhum: o modelo recebe floats na ordem errada e voa
 errado, em silêncio. Por isso a ordem virou uma X-macro (`XRLBRIDGE_OBSERVATION_FIELDS`), expandida
-contra `domain::WorldView` no modelo e contra `xrlbridge::Observation` aqui — **um nome de campo
-que divergir entre as duas structs não compila**. `tools/train_policy.py`-style exporters e
-`env.py` derivam a lista de `observationFieldNames()`/`observationBoolFields()` em vez de repeti-la.
+contra `domain::WorldView` (direto em `RLBridgeBehavior`/os três nós de árvore, e via
+`domain::worldViewFieldRegistry()` para quem precisa resolver por nome — ver "Schema nomeado"
+abaixo) e contra `xrlbridge::Observation` aqui — **um nome de campo que divergir entre as duas
+structs não compila**.
 
-A ordem é 23 floats numéricos, depois os 5 booleanos (`valid`, `terrainValid`, `hasContact`,
-`hasAlert`, `weaponReady`) — a ordem de `env.py`, não a de declaração de `WorldView` (que intercala
-os dois). **Mudar essa ordem invalida todo `.onnx` já treinado**: é quebra de contrato, não
-refactor. Os três campos de texto (`contactName`, `alertSender`, `alertContactName`) ficam de fora
-da macro de propósito — não são número, não entram em tensor — mas continuam em `Observation` para
-log/depuração (`toDict()` os inclui à parte, em `info["raw_state"]`).
+A macro tem **38 campos**: os 28 históricos (23 floats, depois os 5 booleanos `valid`,
+`terrainValid`, `hasContact`, `hasAlert`, `weaponReady` — a ordem de `env.py`, não a de declaração
+de `WorldView`, que intercala os dois) mais 10 de RWR/navegação nativa, acrescentados **no fim**
+numa passada posterior (existiam em `WorldView` havia tempo, só não estavam listados aqui — achado
+de auditoria). **Mudar a ordem/conteúdo dos 28 primeiros invalida todo `.onnx` já treinado contra
+eles** — por isso `xrlbridge::classicSchema28()` fixa esses 28 nomes/ordem numa lista PRÓPRIA,
+hardcoded, independente do tamanho atual desta macro. Os campos de texto (`contactName`,
+`alertSender`, `alertContactName`, `rwrThreatName`) ficam de fora da macro de propósito — não são
+número, não entram em tensor — mas continuam em `Observation`/`WorldView` para log/depuração
+(`toDict()` inclui os três primeiros à parte, em `info["raw_state"]`).
+
+## Schema nomeado — `FieldRegistry.hpp` + `Schema.hpp`
+
+Duas peças novas, genéricas, header-only (nenhuma das duas é compilada em lugar nenhum — só
+incluída): `FieldRegistry<State>` é o CATÁLOGO ("quais campos este tipo de estado expõe, e como ler
+cada um pelo nome" — `FieldDecl<State>{name, kind, read}`, montado expandindo a mesma X-macro contra
+lambdas em vez de escrever direto num vetor, preservando a garantia de compilação); `Schema` é a
+ESCOLHA (um nome + uma lista ordenada de nomes de campo — dado puro, sem tipo C++ nenhum, o que
+permite declarar isso como uma STRING numa porta de nó de árvore). `bind(schema, registry)` resolve
+os nomes contra o registro (lança `SchemaError`, coletando TODOS os nomes desconhecidos de uma vez,
+se algum não existir) e `pack(bound, state, out)` escreve os valores na ordem do schema, templado
+também no tipo de saída (`float` para os nós que falam com ONNX, `double` para o que fala com Python
+embutido).
+
+Isso é o que dá aos três nós de árvore do modelo (`OnnxPolicyAction`/`OnnxScoreCondition`/
+`PyDecideAction`) uma porta `schema` — `"classic28"` (default, os 28 de sempre), `"all"` (os 38
+completos) ou uma lista ad-hoc separada por espaço — sem precisar recompilar para trocar QUAIS
+campos entram na observação efetiva. Ver `models/players/A-4/docs/POLITICAS.md` para o guia de uso,
+e `models/players/A-4/include/bt/ObservationSchema.hpp` para a resolução da porta em si.
+
+**O host (`env.py`/`PyBindings.cpp`) não usa este mecanismo** — o dict que `toDict()` devolve já
+tem as 38 chaves sempre; escolher um subconjunto do lado Python é feito filtrando esse dict
+(`MixrFlightEnv(fields=...)`), não com `FieldRegistry`/`Schema`. O mecanismo genérico existe para
+onde a flexibilidade de dict do Python não existe — dentro do frame, nos nós de árvore.
 
 `unscaleCommand()` faz o caminho inverso para a ação: `[-1,1]` normalizado (o que um `.onnx`
 exportado do SB3 emite, com `Tanh` final) → unidades físicas (`headingDeg` em `[0,360]`,
@@ -163,12 +195,26 @@ fisicamente absurdo.
 3. **`packObservation`/`unscaleCommand` degradam com ponteiro nulo, nunca abortam** — a mesma
    política de `libs/xinfer`/`libs/xjoystick` quando a dependência degrada: devolvem estrutura
    zerada em vez de derrubar o processo.
+4. **Schema variável introduz um risco que não existia com um único tamanho fixo**: dois `.onnx`
+   do MESMO tamanho podem esperar campos DIFERENTES (ou na ordem errada) — a checagem de contagem
+   sozinha não pegaria isso. Fechado com metadata self-describing: `export_onnx.py` grava
+   `xrlbridge.fields` no próprio `.onnx` (`onnx.helper.set_model_props()`), e `libs/xinfer::fields()`
+   lê de volta para os nós compararem por identidade. Um `.onnx` sem essa metadata (todo `.onnx`
+   exportado antes desta funcionalidade existir) cai só na checagem de contagem, como sempre.
 
 ## Testes
 
 `tests/domain/test_xrlbridge.cpp` — a camada mais isolada possível: sem `Station`, sem plugin, sem
-pybind11, só a lib. Cobre a contagem/ordem/duplicata dos 28 campos, `packObservation()` campo a
+pybind11, só a lib. Cobre a contagem/ordem/duplicata dos 38 campos, `packObservation()` campo a
 campo (não só a contagem — um campo fora de ordem aqui não quebra compilação, só faz o `.onnx`
-voar errado em silêncio), `unscaleCommand()` nos extremos/centro/saturação, e o round-trip de
-`Command`/`Observation` sob escrita concorrente real (`std::thread` escrevendo enquanto a thread de
-teste lê, verificando que nenhum struct parcialmente escrito escapa do mutex).
+voar errado em silêncio), `classicSchema28()` (os 28 nomes/ordem históricos, hardcoded), 
+`unscaleCommand()` nos extremos/centro/saturação, e o round-trip de `Command`/`Observation` sob
+escrita concorrente real (`std::thread` escrevendo enquanto a thread de teste lê, verificando que
+nenhum struct parcialmente escrito escapa do mutex).
+
+`tests/domain/test_field_registry.cpp` — o mecanismo GENÉRICO de `FieldRegistry`/`Schema`/`bind`/
+`pack`, isolado com um `State` fake (sem nenhum `WorldView`/`Observation` de verdade): ordem
+preservada do schema (não do registro), nome desconhecido coletado em `SchemaError`, `pack()` com
+saída em `float` e em `double`. A resolução contra o registro REAL do A-4
+(`domain::worldViewFieldRegistry()`) é testada em `models/players/A-4/tests/domain/
+test_WorldViewFieldRegistry.cpp`.

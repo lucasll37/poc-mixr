@@ -1,13 +1,14 @@
 #include "bt/nodes/OnnxPolicyAction.hpp"
 
 #include "bt/DecisionContext.hpp"
+#include "bt/ObservationSchema.hpp"
 
 #include "xinfer/Infer.hpp"
 #include "xlog/Log.hpp"
-#include "xrlbridge/ObservationFields.hpp"
 #include "xrlbridge/RLBridge.hpp"
 
 #include <array>
+#include <vector>
 
 namespace mixr {
 namespace models {
@@ -27,6 +28,9 @@ BT::PortsList OnnxPolicyAction::providedPorts()
       BT::InputPort<bool>("normalized", true,
                           "true: saida em [-1,1], desnormalizada aqui (export do SB3)"),
       BT::InputPort<std::string>("label", "ONNX", "rotulo no dump e no quadro"),
+      BT::InputPort<std::string>("schema", "classic28",
+                                 "campos da observacao, e ordem: 'classic28' (default), "
+                                 "'all', ou lista ad-hoc separada por espaco"),
    };
 }
 
@@ -36,6 +40,17 @@ BT::NodeStatus OnnxPolicyAction::tick()
 
    if (!tentouAbrir_) {
       tentouAbrir_ = true;
+
+      std::string schemaValor{"classic28"};
+      if (const BT::Optional<std::string> in{getInput<std::string>("schema")}) schemaValor = in.value();
+      try {
+         bound_ = xrlbridge::bind<domain::WorldView>(resolveObservationSchema(schemaValor),
+                                                      domain::worldViewFieldRegistry());
+      } catch (const xrlbridge::SchemaError& ex) {
+         LOG(ERROR) << "[OnnxPolicy] " << ex.what();
+         return BT::NodeStatus::FAILURE;
+      }
+
       const BT::Optional<std::string> caminho{getInput<std::string>("model")};
       if (!caminho || caminho.value().empty()) {
          LOG(ERROR) << "[OnnxPolicy] porta 'model' ausente ou vazia no XML da arvore";
@@ -43,17 +58,36 @@ BT::NodeStatus OnnxPolicyAction::tick()
          modelId_ = mixr::xinfer::open(caminho.value());
          if (modelId_ != 0) {
             int nIn{}, nOut{};
-            if (mixr::xinfer::shape(modelId_, nIn, nOut)) {
-               // A forma e contrato, nao sugestao: 28 entrada, 3 saida. Um
-               // .onnx com outra forma foi treinado contra outra observacao
-               // ou outra acao, e comandar com ele seria pior que nao
-               // comandar.
-               if (nIn != XRLBRIDGE_OBSERVATION_SIZE || nOut != XRLBRIDGE_ACTION_SIZE) {
-                  LOG(ERROR) << "[OnnxPolicy] '" << caminho.value() << "' tem forma "
-                             << nIn << "->" << nOut << ", mas o contrato e "
-                             << XRLBRIDGE_OBSERVATION_SIZE << "->" << XRLBRIDGE_ACTION_SIZE
-                             << " (ver xrlbridge/ObservationFields.hpp)";
-                  modelId_ = 0;
+            const int nEsperado{static_cast<int>(bound_.resolved.size())};
+            // A forma e contrato, nao sugestao. Um .onnx com outra CONTAGEM
+            // foi treinado contra outro schema, e comandar com ele seria
+            // pior que nao comandar.
+            if (mixr::xinfer::shape(modelId_, nIn, nOut) &&
+                (nIn != nEsperado || nOut != XRLBRIDGE_ACTION_SIZE)) {
+               LOG(ERROR) << "[OnnxPolicy] '" << caminho.value() << "' tem forma "
+                          << nIn << "->" << nOut << ", mas o schema '" << bound_.schema.name
+                          << "' espera " << nEsperado << "->" << XRLBRIDGE_ACTION_SIZE;
+               modelId_ = 0;
+            } else if (modelId_ != 0) {
+               // A contagem bater nao basta: dois .onnx do MESMO tamanho
+               // podem esperar campos DIFERENTES, ou na ordem errada -- risco
+               // que so passou a existir com o schema variavel (antes, so
+               // havia UM tamanho possivel). Checado por IDENTIDADE quando o
+               // .onnx traz a metadata (ver xinfer::fields()); sem ela --
+               // todo .onnx exportado antes desta funcionalidade -- so a
+               // checagem de contagem acima vale, como sempre.
+               std::vector<std::string> declarados;
+               if (mixr::xinfer::fields(modelId_, declarados)) {
+                  std::vector<std::string> esperados;
+                  esperados.reserve(bound_.resolved.size());
+                  for (const auto* const decl : bound_.resolved) esperados.push_back(decl->name);
+                  if (declarados != esperados) {
+                     LOG(ERROR) << "[OnnxPolicy] '" << caminho.value()
+                                << "' foi exportado para outros campos (ou outra ordem) que o "
+                                << "schema '" << bound_.schema.name
+                                << "' resolveu -- reexporte ou corrija a porta 'schema'";
+                     modelId_ = 0;
+                  }
                }
             }
          }
@@ -61,17 +95,9 @@ BT::NodeStatus OnnxPolicyAction::tick()
    }
    if (modelId_ == 0) return BT::NodeStatus::FAILURE;
 
-   // A observacao na ordem canonica -- a MESMA macro do treino.
    const domain::WorldView& snap{context_.behavior->snapshot()};
-   std::array<float, XRLBRIDGE_OBSERVATION_SIZE> entrada{};
-   {
-      int i{};
-#define XRLBRIDGE_F(nome) entrada[i++] = static_cast<float>(snap.nome);
-#define XRLBRIDGE_B(nome) entrada[i++] = snap.nome ? 1.0F : 0.0F;
-      XRLBRIDGE_OBSERVATION_FIELDS
-#undef XRLBRIDGE_F
-#undef XRLBRIDGE_B
-   }
+   std::vector<float> entrada(bound_.resolved.size());
+   xrlbridge::pack(bound_, snap, entrada.data());
 
    std::array<float, XRLBRIDGE_ACTION_SIZE> saida{};
    const int escritos{mixr::xinfer::run(modelId_, entrada.data(),

@@ -150,5 +150,37 @@ int run(const ModelId id, const float* const in, const int nIn, float* const out
    }
 }
 
+bool fields(const ModelId id, std::vector<std::string>& outNames)
+{
+   std::lock_guard<std::mutex> lock(g_mutex);
+   if (id <= 0 || static_cast<std::size_t>(id) >= g_byId.size()) return false;
+   const auto& modelo = g_byId[static_cast<std::size_t>(id)];
+   if (!modelo) return false;
+
+   try {
+      Ort::AllocatorWithDefaultOptions alocador;
+      const Ort::ModelMetadata meta{modelo->session->GetModelMetadata()};
+      const auto valor = meta.LookupCustomMetadataMapAllocated("xrlbridge.fields", alocador);
+      if (!valor) return false;   // .onnx sem esta metadata -- exportado antes desta funcionalidade
+
+      outNames.clear();
+      std::string atual;
+      for (const char* p = valor.get(); *p != '\0'; ++p) {
+         if (*p == ',') {
+            outNames.push_back(atual);
+            atual.clear();
+         } else {
+            atual += *p;
+         }
+      }
+      outNames.push_back(atual);
+      return true;
+
+   } catch (const std::exception& ex) {
+      LOG(ERROR) << "[xinfer] falha ao ler metadata de campos: " << ex.what();
+      return false;
+   }
+}
+
 } // namespace xinfer
 } // namespace mixr

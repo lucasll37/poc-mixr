@@ -63,7 +63,8 @@ def decide(obs):
     return (heading_deg, altitude_m, speed_kts)
 ```
 
-`obs` é uma lista de 28 floats na ordem canônica. Para descobrir os índices sem contar na mão:
+`obs` é uma lista de floats na ordem que a porta `schema` do nó `PyDecide` resolver — **default
+`"classic28"`**, os 28 históricos abaixo. Para descobrir os índices sem contar na mão:
 
 ```bash
 python3 src/poc/rl-training/tools/export_onnx.py --campos
@@ -79,7 +80,22 @@ python3 src/poc/rl-training/tools/export_onnx.py --campos
  6 pitchDeg     13 contactRangeM  20 alertEastM             27 weaponReady
 ```
 
-A lista sai do C++, não de uma cópia em Python — é a mesma que o `.onnx` recebe na entrada.
+A lista sai do C++, não de uma cópia em Python — é a mesma que o `.onnx`/script recebe na entrada.
+
+**A observação completa tem 38 campos** — os 28 acima mais 10 de RWR/navegação nativa
+(`rwrThreatRangeM`/`rwrThreatRelBearingDeg`/`rwrThreatDeltaAltM`/`hasRwrThreat`/`navTrueBrgDeg`/
+`navCmdAltM`/`navCmdSpeedKts`/`hasNavSteering`/`hasNavCmdAlt`/`hasNavCmdSpeed`), invisíveis por
+padrão para não mudar a forma de nenhum script/`.onnx` já existente. Para usá-los, mude a porta
+`schema` do nó (`OnnxPolicy`/`OnnxScore`/`PyDecide`, todos com a mesma convenção):
+
+```xml
+<PyDecide script="..." schema="all"/>                          <!-- os 38 completos -->
+<PyDecide script="..." schema="northM eastM hasRwrThreat"/>     <!-- lista ad-hoc, so' o que voce precisa -->
+```
+
+`--campos --fields all`/`--campos --fields "northM eastM hasRwrThreat"` mostram os índices para
+cada caso; um nome desconhecido no `schema` faz o nó falhar (`FAILURE`, cai no `Fallback`) com uma
+mensagem listando o nome errado e os nomes válidos — não silenciosamente.
 
 ### 1.2 O laço rápido
 
@@ -180,13 +196,28 @@ processo de simulação**.
 
 ### 2.4 O que confere sozinho
 
-Se a forma do `.onnx` não bater com o contrato (28 entradas → 3 saídas), o nó **recusa** e loga:
+Se a forma do `.onnx` não bater com o que a porta `schema` resolveu (default: 28 entradas → 3
+saídas), o nó **recusa** e loga:
 
 ```
-[OnnxPolicy] 'policy.onnx' tem forma 24->3, mas o contrato e 28->3
+[OnnxPolicy] 'policy.onnx' tem forma 24->3, mas o schema 'classic28' espera 28->3
 ```
 
-e a `Patrol` assume. O teste `xinfer-degradacao` trava isso contra o arquivo instalado de verdade.
+e a `Patrol` assume. Além da CONTAGEM, se o `.onnx` foi exportado por
+`src/poc/rl-training/tools/export_onnx.py` (que grava a lista exata de campos usada como metadata
+do próprio arquivo), o nó também confere IDENTIDADE — dois `.onnx` do mesmo tamanho mas com
+campos (ou ordem) diferentes são rejeitados igual, em vez de rodar com semântica errada em
+silêncio:
+
+```
+[OnnxPolicy] 'policy.onnx' foi exportado para outros campos (ou outra ordem) que o schema
+'classic28' resolveu -- reexporte ou corrija a porta 'schema'
+```
+
+Um `.onnx` exportado antes dessa metadata existir simplesmente não a tem — cai só na checagem de
+contagem, como sempre. O teste `xinfer-degradacao` (host) trava a contagem contra o arquivo
+instalado de verdade; `native` (suíte do modelo) trava os dois casos, incluindo a metadata
+divergente (`test_onnx_nodes.cpp`).
 
 **Custo:** ~50 µs por inferência, 0,25% do frame. A sessão é cacheada por caminho — as quatro
 aeronaves compartilham uma, porque criar uma custa 9 ms e quatro não caberiam em 20 ms.
@@ -213,7 +244,8 @@ treinar a escrever.
 </Fallback>
 ```
 
-A entrada é a mesma observação de 28 campos; a saída é lida num buffer fixo de até 16 valores
+A entrada é a mesma observação que a porta `schema` do nó resolver (default: os 28 campos
+históricos); a saída é lida num buffer fixo de até 16 valores
 (`std::array<float, 16>` em `OnnxScoreCondition.cpp` — um `.onnx` com mais de 16 saídas perde as
 extras em silêncio), e `index` escolhe qual comparar. Falha de qualquer tipo → `FAILURE`, e o
 `Fallback` segue para o próximo ramo.
@@ -263,6 +295,9 @@ semente **quebra aqui** — que é onde você quer descobrir isso.
 | a política de exemplo | `models/players/A-4/configs/policy_example.onnx` (**pesos aleatórios**) |
 | as árvores | `models/players/A-4/configs/flight_tree_{py,onnx}.xml` |
 | o exportador | `src/poc/rl-training/tools/export_onnx.py` |
-| a ordem canônica dos campos | `libs/xrlbridge/ObservationFields.hpp` |
+| a lista completa de campos (38) | `libs/xrlbridge/ObservationFields.hpp` |
+| o schema "classic28" (os 28 históricos) | `xrlbridge::classicSchema28()` em `libs/xrlbridge/RLBridge.hpp` |
+| a porta `schema` dos nós / resolução `"classic28"`\|`"all"`\|ad-hoc | `models/players/A-4/include/bt/ObservationSchema.hpp` |
+| o registro de campos do A-4 (nome → como ler) | `models/players/A-4/include/domain/WorldViewFieldRegistry.hpp` |
 | o motor de inferência | `libs/xinfer/README.md` |
 | o interpretador embarcado | `libs/xpyembed/README.md` |

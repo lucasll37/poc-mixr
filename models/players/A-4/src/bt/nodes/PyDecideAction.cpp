@@ -1,6 +1,7 @@
 #include "bt/nodes/PyDecideAction.hpp"
 
 #include "bt/DecisionContext.hpp"
+#include "bt/ObservationSchema.hpp"
 
 #include "xlog/Log.hpp"
 #include "xpyembed/PyEmbed.hpp"
@@ -8,6 +9,7 @@
 
 #include <array>
 #include <atomic>
+#include <vector>
 
 namespace mixr {
 namespace models {
@@ -33,6 +35,9 @@ BT::PortsList PyDecideAction::providedPorts()
    return {
       BT::InputPort<std::string>("script", "", "caminho do .py que define decide(obs)"),
       BT::InputPort<std::string>("label", "PY", "rotulo no dump e no quadro"),
+      BT::InputPort<std::string>("schema", "classic28",
+                                 "campos da observacao, e ordem: 'classic28' (default), "
+                                 "'all', ou lista ad-hoc separada por espaco"),
    };
 }
 
@@ -42,6 +47,17 @@ BT::NodeStatus PyDecideAction::tick()
 
    if (!tentouCarregar_) {
       tentouCarregar_ = true;
+
+      std::string schemaValor{"classic28"};
+      if (const BT::Optional<std::string> in{getInput<std::string>("schema")}) schemaValor = in.value();
+      try {
+         bound_ = xrlbridge::bind<domain::WorldView>(resolveObservationSchema(schemaValor),
+                                                      domain::worldViewFieldRegistry());
+      } catch (const xrlbridge::SchemaError& ex) {
+         LOG(ERROR) << "[PyDecide] " << ex.what();
+         return BT::NodeStatus::FAILURE;
+      }
+
       const BT::Optional<std::string> caminho{getInput<std::string>("script")};
       if (!caminho || caminho.value().empty()) {
          LOG(ERROR) << "[PyDecide] porta 'script' ausente ou vazia no XML da arvore";
@@ -53,17 +69,9 @@ BT::NodeStatus PyDecideAction::tick()
    }
    if (scriptId_ == 0) return BT::NodeStatus::FAILURE;
 
-   // A observacao na ordem canonica -- a MESMA macro do .onnx e do treino.
    const domain::WorldView& snap{context_.behavior->snapshot()};
-   std::array<double, XRLBRIDGE_OBSERVATION_SIZE> entrada{};
-   {
-      int i{};
-#define XRLBRIDGE_F(nome) entrada[i++] = static_cast<double>(snap.nome);
-#define XRLBRIDGE_B(nome) entrada[i++] = snap.nome ? 1.0 : 0.0;
-      XRLBRIDGE_OBSERVATION_FIELDS
-#undef XRLBRIDGE_F
-#undef XRLBRIDGE_B
-   }
+   std::vector<double> entrada(bound_.resolved.size());
+   xrlbridge::pack(bound_, snap, entrada.data());
 
    std::array<double, XRLBRIDGE_ACTION_SIZE> saida{};
    if (!mixr::xpyembed::decide(scriptId_, instanciaId_,

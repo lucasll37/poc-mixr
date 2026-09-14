@@ -150,17 +150,41 @@ com venv proprio (`make venv-rl-training`) e as dependencias de treino
 ## Contrato de dados
 
 **Observacao** (`spaces.Dict`): um item por campo numerico/booleano de
-`domain::WorldView` -- numerico vira `spaces.Box`, booleano vira
-`spaces.Discrete(2)`. Cinco campos sao booleanos (`valid`, a observacao
-deste frame e utilizavel; `terrainValid`; `hasContact`; `hasAlert`;
-`weaponReady`); o resto e numerico: posicao
-(`northM`/`eastM`/`altitudeM`), atitude
+`domain::WorldView` que o parametro `fields` de `MixrFlightEnv` selecionar --
+numerico vira `spaces.Box`, booleano vira `spaces.Discrete(2)`. **Default:
+`fields="classic28"`** -- os 28 campos historicos, o `observation_space` de
+sempre: cinco booleanos (`valid`, a observacao deste frame e utilizavel;
+`terrainValid`; `hasContact`; `hasAlert`; `weaponReady`) e o resto numerico --
+posicao (`northM`/`eastM`/`altitudeM`), atitude
 (`headingDeg`/`rollDeg`/`pitchDeg`), `speedKts`/`fuelFraction`/`mach`/
 `gLoad`/`alphaDeg`, terreno (`terrainElevM`/`altitudeAglM`),
 contato de radar (`contactRangeM`/`contactRelBearingDeg`/...)
-e alerta tatico (`alertRangeM`/...). Campos
-de texto (`contactName`, `alertSender`, `alertContactName`) ficam de fora do
-espaco de observacao -- disponiveis em `info["raw_state"]` para debug/log.
+e alerta tatico (`alertRangeM`/...).
+
+`fields="all"` expoe os 38 campos completos, incluindo RWR
+(`rwrThreatRangeM`/`rwrThreatRelBearingDeg`/`rwrThreatDeltaAltM`/
+`hasRwrThreat`) e navegacao nativa (`navTrueBrgDeg`/`navCmdAltM`/
+`navCmdSpeedKts`/`hasNavSteering`/`hasNavCmdAlt`/`hasNavCmdSpeed`) -- ou passe
+uma lista explicita (`fields=["northM", "eastM", "hasContact"]`) para um
+subconjunto qualquer; um nome desconhecido levanta `ValueError` na hora,
+listando os nomes validos. O CATALOGO completo (os 38 nomes/tipos) vem sempre
+do C++ (`_native.observation_field_names()`/`observation_bool_fields()`) --
+nunca reescrito a mao aqui; so os LIMITES de cada `spaces.Box` (`_BOUNDS`,
+generosos, nao fisicos) sao mantidos a mao em `env.py`, e crescem junto
+quando um campo novo aparece do lado C++ (a importacao do modulo levanta
+`RuntimeError` se os dois lados nao baterem).
+
+Escolher `fields` muda o FORMATO de `observation_space` -- combine com o
+mesmo valor no achatamento/exportacao do lado de treino
+(`src/poc/rl-training/flatten_obs.py`/`tools/export_onnx.py --fields`, que
+tambem default para `"classic28"`) para o `.onnx` final continuar batendo
+com o que o ambiente produziu.
+
+Campos de texto (`contactName`, `alertSender`, `alertContactName`) ficam de
+fora do espaco de observacao em qualquer `fields` -- disponiveis em
+`info["raw_state"]` para debug/log (esse dict sempre tem as 38 chaves
+numericas/booleanas MAIS os tres de texto, independente do `fields` pedido --
+so o espaco/dict TRADUZIDO por `_to_obs()` e' filtrado).
 
 **Acao** (`spaces.Box(3,)`): `[headingDeg, altitudeM, speedKts]` -- os tres
 campos de `domain::FlightCommand`, os unicos que `FlightAction::execute()`

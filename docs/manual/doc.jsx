@@ -1094,6 +1094,8 @@ html, body { margin:0; padding:0; }
   --seg-phase-0:#9AA79F; --seg-phase-1:#8FA0A8; --seg-phase-2:#A8A08F; --seg-phase-3:#9E93A8;
   --edl-bg:#F0F2EC; --edl-muted:#A3ADA4; --edl-hl:#E2DBCE;
   --code-muted:#5E7280; --code-hl:#2E4250;
+  --card-shadow: 0 1px 2px rgba(22,35,46,0.05), 0 4px 14px rgba(22,35,46,0.045);
+  --warn-bg: rgba(140,47,61,0.07);
   /* Cores de sintaxe C++ (mx-cpp-*) -- FIXAS, não redefinidas no tema escuro:
    * o fundo do bloco de código (--code) já é escuro nos DOIS temas (só muda
    * de tom, #1B2730 claro / #12171B escuro), então uma paleta calibrada pra
@@ -1130,6 +1132,8 @@ html, body { margin:0; padding:0; }
   --seg-phase-0:#4B534C; --seg-phase-1:#445158; --seg-phase-2:#565040; --seg-phase-3:#524A5C;
   --edl-bg:#20251F; --edl-muted:#647169; --edl-hl:#39331F;
   --code-muted:#7C8A93; --code-hl:#293C49;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.28), 0 4px 14px rgba(0,0,0,0.22);
+  --warn-bg: rgba(224,128,143,0.10);
   color-scheme: dark; }
 .mx *:focus-visible { outline:2px solid var(--hot); outline-offset:2px; }
 .mx-bar { position:sticky; top:0; z-index:5; background:var(--paper);
@@ -1189,7 +1193,8 @@ html, body { margin:0; padding:0; }
 .mx-nodepopup-link:hover { border-color:var(--ink); }
 
 .mx-pane { min-width:0; display:flex; flex-direction:column; }
-.mx-card { background:var(--panel); padding:11px 13px; border-radius:2px; }
+.mx-card { background:var(--panel); padding:14px 17px; border-radius:6px;
+  border:1px solid var(--rule); box-shadow:var(--card-shadow); }
 .mx-lbl { font-size:11.5px; color:var(--muted); margin-bottom:5px; display:flex;
   justify-content:space-between; gap:8px; align-items:baseline; }
 .mx-mono { font-family:var(--mono); }
@@ -1234,7 +1239,8 @@ html, body { margin:0; padding:0; }
 .mx-stat-value { font-family:var(--mono); font-size:13.5px; font-weight:700; color:var(--ink); white-space:nowrap; }
 .mx-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:11px;
   font-size:11px; font-weight:600; font-family:var(--mono); }
-.mx-refhero { border:1px solid var(--rule); border-radius:3px; background:var(--panel); padding:14px 16px; }
+.mx-refhero { border:1px solid var(--rule); border-radius:7px; background:var(--panel); padding:16px 19px;
+  box-shadow:var(--card-shadow); }
 .mx-node { cursor:pointer; }
 .mx-node rect { transition:fill 130ms, stroke 130ms, opacity 220ms, stroke-width 130ms; }
 .mx-node[data-pop="1"] { animation:mx-popin 320ms cubic-bezier(.2,.9,.3,1.3); }
@@ -1283,8 +1289,14 @@ html, body { margin:0; padding:0; }
 .mx-cls[data-reg="0"] { opacity:0.55; }
 .mx-wrap { display:flex; flex-wrap:wrap; gap:4px; }
 .mx-mod { border-top:1px solid var(--rule); padding-top:12px; margin-top:16px; }
-.mx-warn { margin:8px 0 0; padding-left:8px; border-left:2px solid var(--rf);
-  font-size:12px; line-height:1.45; color:var(--rf); }
+.mx-warn { margin:8px 0 0; padding:9px 12px; border-left:3px solid var(--rf);
+  border-radius:0 4px 4px 0; background:var(--warn-bg);
+  font-size:12px; line-height:1.5; color:var(--ink); }
+/* O rotulo inicial ("Achado:", "Bug confirmado, nao redescobrir:") vem como
+ * <b> logo no comeco do paragrafo em toda ocorrencia -- vira uma pilula
+ * visual so com CSS, sem tocar as ~20 chamadas que ja escrevem esse padrao. */
+.mx-warn > b:first-child { display:inline-block; color:var(--rf); font-size:10.5px;
+  font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-right:2px; }
 .mx-leg { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted);
   border-top:1px solid var(--rule); padding:6px 10px; background:var(--paper); align-items:center; }
 .mx-leg-toggle { font:inherit; font-size:11.5px; font-weight:600; color:var(--ink); background:var(--panel);
@@ -1295,13 +1307,37 @@ html, body { margin:0; padding:0; }
 .mx-stats { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--muted);
   margin-bottom:10px; }
 .mx-stats b { color:var(--ink); font-family:var(--mono); font-weight:600; }
-.mx-slot { display:flex; gap:8px; font-family:var(--mono); font-size:11px; padding:1px 0; }
-.mx-slot span:first-child { min-width:132px; color:var(--ink); }
-.mx-slot span:last-child { color:var(--muted); }
+.mx-slot { display:flex; gap:9px; font-family:var(--mono); font-size:11px; padding:3px 4px;
+  border-radius:3px; }
+.mx-slot span:first-child { min-width:112px; flex:0 0 auto; color:var(--ink); font-weight:600;
+  overflow-wrap:anywhere; }
+/* min-width:0 é a correção do bug: um item flex, por padrão, recusa encolher
+ * abaixo do seu min-content -- e o min-content de um identificador SEM espaço
+ * (um valor de enum, um tipo "PairStream<Vec2d>") é a palavra inteira. Sem
+ * isto, .mx-slot exigia mais largura que a coluna de columns:Npx tem, e como
+ * layout multi-coluna não recorta overflow horizontal, o texto vazava por
+ * cima da coluna vizinha -- o bug de sobreposição confirmado rodando (Missile
+ * e Gimbal, achado com screenshot real). overflow-wrap:anywhere garante que
+ * ATE um token sem espaço nenhum quebre, em vez de forçar a largura mínima. */
+.mx-slot span:last-child { color:var(--muted); flex:1 1 auto; min-width:0;
+  overflow-wrap:anywhere; }
+.mx-slot:hover { background:var(--band-bg); }
 /* Grade de colunas em vez de lista alta com scroll: uma cadeia com 40+ slots
  * ainda cabe sem caixa de rolagem, so ficando mais larga que alta. */
-.mx-slotgrid { columns:230px; column-gap:18px; }
+.mx-slotgrid { columns:260px; column-gap:22px; column-rule:1px solid var(--rule); }
 .mx-slotgrid .mx-slot { break-inside:avoid; }
+/* Linha de enum: NOME+valor costuma ser mais comprido que qualquer nome de
+ * slot ("DETONATE_GROUND_PROXIMATE_DETONATION =4") -- lado a lado com a
+ * descricao na mesma linha do .mx-slot comum, o par nunca cabe na coluna e
+ * os dois espremem para uma fatia minuscula (o MESMO bug do overlap, so que
+ * virando quebra caractere-a-caractere em vez de vazamento). Empilhado (nome
+ * em cima, descricao embaixo, cada um usando a largura INTEIRA da coluna)
+ * nao tem essa disputa -- e le melhor como enum de qualquer forma. */
+.mx-enumrow { font-family:var(--mono); font-size:11px; padding:3px 4px; border-radius:3px; }
+.mx-enumrow:hover { background:var(--band-bg); }
+.mx-enumrow-name { color:var(--ink); font-weight:600; overflow-wrap:anywhere; }
+.mx-enumrow-desc { color:var(--muted); margin-top:2px; overflow-wrap:anywhere; }
+.mx-slotgrid .mx-enumrow { break-inside:avoid; }
 
 @media (prefers-reduced-motion:reduce) { .mx * { transition:none !important; animation:none !important; } }
 `;
@@ -6102,6 +6138,10 @@ const REF_CLASSES = [
   { key: "Autopilot", label: "Autopilot", sub: "piloto automático nativo -- navMode e os limites que não limitam" },
   { key: "Player", label: "Player", sub: "base de todo player -- despacho de fase, os 10 papéis, local vs. rede" },
   { key: "System", label: "System", sub: "base de todo subsistema anexado a um player -- ownship e o freeze em cascata" },
+  { key: "Gimbal", label: "Gimbal / Antenna", sub: "apontamento -- Gimbal, ScanGimbal, StabilizingGimbal, Antenna" },
+  { key: "RfSensor", label: "RfSensor / Radar / Rwr / Sar / Jammer", sub: "detecção RF -- RfSystem, RfSensor e as 5 subclasses" },
+  { key: "TrackManager", label: "TrackManager", sub: "o que acontece com uma detecção -- 6 gerenciadores de pista + Track" },
+  { key: "RfSignature", label: "RfSignature", sub: "assinatura de RCS -- 7 formas + o ciclo Emission completo" },
 ];
 
 const REF_MISSILE_CONST = {
@@ -6556,7 +6596,10 @@ function MissileReferencePage({ onOpenCatalog }) {
               </p>
               <div className="mx-slotgrid">
                 {REF_DETONATION_ENUM.map(([k, v, d]) => (
-                  <div className="mx-slot" key={k}><span>{k} <span style={{ color: "var(--muted)" }}>={v}</span></span><span>{d}</span></div>
+                  <div className="mx-enumrow" key={k}>
+                    <div className="mx-enumrow-name">{k} <span style={{ color: "var(--muted)", fontWeight: 400 }}>={v}</span></div>
+                    <div className="mx-enumrow-desc">{d}</div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -7780,7 +7823,7 @@ function AutopilotReferencePage({ onOpenCatalog }) {
             </div>
             <div className="mx-card" style={{ marginBottom: 12 }}>
               <div className="mx-lbl"><span className="mx-mono">RacModel::setCommandedHeadingD() / JSBSimModel::setCommandedHeadingD() -- onde eles ENTRAM</span><span>C++</span></div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                 <div style={{ flex: "1 1 220px" }}>{renderNavSnippet("RacModel::setCommandedHeadingD (native)")}</div>
                 <div style={{ flex: "1 1 260px" }}>{renderNavSnippet("JSBSimModel::setCommandedHeadingD (native)")}</div>
               </div>
@@ -8605,7 +8648,10 @@ function SystemReferencePage({ onOpenCatalog }) {
               </p>
               <div className="mx-slotgrid">
                 {REF_SYSTEM_POWER_ENUM.map(([k, v, d]) => (
-                  <div className="mx-slot" key={k}><span>{k} <span style={{ color: "var(--muted)" }}>={v}</span></span><span>{d}</span></div>
+                  <div className="mx-enumrow" key={k}>
+                    <div className="mx-enumrow-name">{k} <span style={{ color: "var(--muted)", fontWeight: 400 }}>={v}</span></div>
+                    <div className="mx-enumrow-desc">{d}</div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -8637,7 +8683,7 @@ function SystemReferencePage({ onOpenCatalog }) {
               <div className="mx-lbl"><span className="mx-mono">System::isFrozen() / reset() / updateData() -- o guarda "sem ownship" repetido</span><span>C++</span></div>
               {renderSystemSnippet("System::isFrozen+reset+updateData (o mesmo guarda, tres vezes)")}
             </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
               <div className="mx-card" style={{ flex: "1 1 260px" }}>
                 <div className="mx-lbl"><span className="mx-mono">System::getOwnship()</span><span>C++</span></div>
                 {renderSystemSnippet("System::getOwnship (lazy)")}
@@ -8658,6 +8704,2483 @@ function SystemReferencePage({ onOpenCatalog }) {
             <div className="mx-card">
               <div className="mx-lbl"><span className="mx-mono">System::dynamics() / transmit() / receive() / process() -- default no-op</span><span>C++</span></div>
               {renderSystemSnippet("System::dynamics/transmit/receive/process (no-op default)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ====================== Referência -- Gimbal / ScanGimbal / StabilizingGimbal / Antenna =========
+ * Quarta leva da enciclopédia -- a primeira de QUATRO cobrindo a cadeia de radiofrequência
+ * inteira (apontamento -> detecção -> pista -> assinatura). Mesmo padrão sem laboratório:
+ * hero + Visão geral + Slots + Código-fonte. Duas ramificações de herança, não uma só --
+ * Gimbal -> ScanGimbal -> Antenna é o lado mecânico+RF; StabilizingGimbal é irmã de
+ * ScanGimbal, compensa a atitude do OWNSHIP (não a própria). Uma classe de RfSensor (a
+ * próxima entrada da Referência) aponta pra Antenna por NOME (antennaName), o oposto de
+ * como Player resolve seus "10 papéis" (por TIPO) -- contraste citado na própria página.
+ * ==================================================================================== */
+
+const GIMBAL_SNIPPETS = {
+  "Gimbal::servoController (POSITION_SERVO vs RATE_SERVO)": {
+    file: "contexts/src/mixr/src/models/system/Gimbal.cpp",
+    line: 287,
+    trunc: true,
+    lines: [
+      "void Gimbal::servoController(const double dt)",
+      "{",
+      "   // Only if we're not frozen ...",
+      "   if (servoMode != FREEZE_SERVO) {",
+      "",
+      "      // ---",
+      "      // Compute rate",
+      "      // ---",
+      "      base::Vec3d rate1( 0.0f, 0.0f, 0.0f );",
+      "      if (servoMode == POSITION_SERVO) {",
+      "",
+      "         // position servo: drive the gimbal toward the commanded position",
+      "         rate1 = cmdPos - pos;",
+      "         rate1[AZ_IDX]   = base::angle::aepcdRad(rate1[AZ_IDX]);",
+      "         rate1[ELEV_IDX] = base::angle::aepcdRad(rate1[ELEV_IDX]);",
+      "         rate1[ROLL_IDX] = base::angle::aepcdRad(rate1[ROLL_IDX]);",
+      "",
+      "         // ---",
+      "         // rate1 is radians per frame (step)",
+      "         // Limit rate1:",
+      "         //   Mechanical, fast-slew: rate is limited to maximum mechanical rate",
+      "         //   Electronic, fast-slew: rate is unlimited!",
+      "         //   Mechanical, slow-slew: rate is commanded rate limited to max mechanical rate",
+      "         //   Electronic, slow-slew: rate is commanded rate (unlimited)",
+      "         // ---",
+      "         if (isFastSlewMode() && type == MECHANICAL) {",
+      "               base::Vec3d step = maxRate * dt;",
+      "               limitVec(rate1, step);",
+      "         } else if (isSlowSlewMode()) {",
+      "               base::Vec3d cmdRate1 = cmdRate;",
+      "               if (type == MECHANICAL) {",
+      "                  limitVec(cmdRate1, maxRate);",
+      "               }",
+      "               base::Vec3d step = cmdRate1 * dt;",
+      "               limitVec(rate1, step);",
+      "         }",
+      "",
+      "         if (dt != 0.0) rate = rate1 * (1.0f/dt);",
+      "         else rate.set(0.0,0.0,0.0);",
+      "      }",
+      "",
+      "      else if (servoMode == RATE_SERVO) {",
+      "         // rate servo: follow commanded rate",
+      "         rate1 = cmdRate;",
+      "",
+      "         // set servo rate to limited rate",
+      "         if (type == MECHANICAL) limitVec(rate1, maxRate);",
+      "",
+      "         rate = rate1;",
+      "      }",
+    ],
+  },
+  "Gimbal::setSlotPlayerTypes (o comentario diz 0, o default real e 0xFFFF)": {
+    file: "contexts/src/mixr/src/models/system/Gimbal.cpp",
+    line: 1113,
+    trunc: false,
+    lines: [
+      "",
+      "// Player of interest types (default: 0 )",
+      "bool Gimbal::setSlotPlayerTypes(const base::PairStream* const msg)",
+      "{",
+      "   bool ok{};",
+      "   if (msg != nullptr) {",
+      "      unsigned int mask{};",
+      "      const base::List::Item* item{msg->getFirstItem()};",
+      "      while (item != nullptr) {",
+      "         const auto pair = static_cast<const base::Pair*>(item->getValue());",
+      "         const auto type = dynamic_cast<const base::String*>( pair->object() );",
+      "         if (type != nullptr) {",
+      "            if ( utStrcasecmp(*type,\"air\") == 0 ) {",
+      "               mask = (mask | Player::AIR_VEHICLE);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"ground\") == 0 ) {",
+      "               mask = (mask | Player::GROUND_VEHICLE);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"weapon\") == 0 ) {",
+      "               mask = (mask | Player::WEAPON);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"ship\") == 0 ) {",
+      "               mask = (mask | Player::SHIP);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"building\") == 0 ) {",
+      "               mask = (mask | Player::BUILDING);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"lifeform\") == 0 ) {",
+      "               mask = (mask | Player::LIFE_FORM);",
+      "            }",
+      "            else if ( utStrcasecmp(*type,\"space\") == 0 ) {",
+      "               mask = (mask | Player::SPACE_VEHICLE);",
+      "            }",
+      "         }",
+      "         item = item->getNext();",
+      "      }",
+      "      ok = setPlayerOfInterestTypes(mask);",
+      "   }",
+      "   return ok;",
+      "}",
+      "",
+      "// Max number of players of interest (default: 0)",
+    ],
+  },
+  "ScanGimbal::pseudoRandomScanController -- estado 0, preso para sempre": {
+    file: "contexts/src/mixr/src/models/system/ScanGimbal.cpp",
+    line: 415,
+    trunc: false,
+    lines: [
+      "{",
+      "    static base::Integer iBar(1);",
+      "",
+      "    // Depending on our scan state, we will either start or stop the bar",
+      "    switch(getScanState()) {",
+      "        // reset state, must be in electronic mode or we will not operate",
+      "        case 0: {",
+      "            if (prScanVertices != nullptr) {",
+      "                if ( isGimbalType(ELECTRONIC) ) {",
+      "                    setServoMode(POSITION_SERVO);",
+      "                    setFastSlewMode(true);",
+      "                    setScanState(1);",
+      "                }",
+      "                else setScanMode(MANUAL_SCAN);",
+      "            }",
+      "        }",
+      "            break;",
+    ],
+  },
+  "ScanGimbal::setSlotPRVertices -- escreve atraves do ponteiro nulo": {
+    file: "contexts/src/mixr/src/models/system/ScanGimbal.cpp",
+    line: 957,
+    trunc: false,
+    lines: [
+      "// setSlotPRVertices() -- gets a pairstream and puts the vertices into an array",
+      "// example --",
+      "//     vertices: { [ 1 2 ]  [ 3 4 ] [ 5 6 ] }",
+      "bool ScanGimbal::setSlotPRVertices(const base::PairStream* const prObj)",
+      "{",
+      "   bool ok{true};",
+      "",
+      "   if (prObj != nullptr) {",
+      "        // find how many vertices we have",
+      "        const unsigned int n{prObj->entries()};",
+      "        // Get the vertices from the pair stream",
+      "        nprv = 0;",
+      "        const base::List::Item* item{prObj->getFirstItem()};",
+      "        // holds our array values",
+      "        base::Vec2d tempVerts(0.0, 0.0);",
+      "",
+      "        while (item != nullptr && nprv < n) {",
+      "            const auto p = dynamic_cast<const base::Pair*>(item->getValue());",
+      "            if (p != nullptr) {",
+      "                const base::Object* obj2{p->object()};",
+      "                const auto msg2 = dynamic_cast<const base::List*>(obj2);",
+      "                if (msg2 != nullptr) {",
+      "                    double values[2]{};",
+      "                    const unsigned int nl{msg2->getNumberList(values, 2)};",
+      "",
+      "                    if (nl == 2) {",
+      "                        // set our values in our vector array",
+      "                        prScanVertices[nprv].set(values[0],values[1]);",
+      "                        nprv++;",
+      "                    }",
+      "                    else ok = false;",
+      "                }",
+      "            }",
+      "            item = item->getNext();",
+      "        }",
+      "    }",
+      "    return ok;",
+      "}",
+    ],
+  },
+  "StabilizingGimbal::roll/elevationStabilizingController": {
+    file: "contexts/src/mixr/src/models/system/StabilizingGimbal.cpp",
+    line: 79,
+    trunc: false,
+    lines: [
+      "void StabilizingGimbal::rollStabilizingController(const double)",
+      "{",
+      "    if (getOwnship() == nullptr) return;",
+      "",
+      "    base::Vec3d tpos{getCmdPosition()};",
+      "    if (mountPosition == NOSE){",
+      "        tpos[ROLL_IDX] = static_cast<double>(-getOwnship()->getRoll());",
+      "    }",
+      "    else if (mountPosition == TAIL){",
+      "        tpos[ROLL_IDX] = static_cast<double>(getOwnship()->getRoll());",
+      "    }",
+      "    else if (mountPosition == RIGHT_WING){",
+      "        tpos[ELEV_IDX] = static_cast<double>(-getOwnship()->getPitch());",
+      "    }",
+      "    else if (mountPosition == LEFT_WING){",
+      "        tpos[ELEV_IDX] = static_cast<double>(getOwnship()->getPitch());",
+      "    }",
+      "    setCmdPos( tpos );",
+      "}",
+    ],
+  },
+  "StabilizingGimbal::setSlotMountPosition -- comentado, o slot nao existe": {
+    file: "contexts/src/mixr/src/models/system/StabilizingGimbal.cpp",
+    line: 156,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// setSlotMountPosition() -- calls setMountPosition()",
+      "//------------------------------------------------------------------------------",
+      "/*",
+      "bool StabilizingGimbal::setSlotMountPosition(base::String* const msg)",
+      "{",
+      "    // set our scan mode",
+      "    bool ok = true;",
+      "    if (msg != nullptr) {",
+      "        if (*msg == \"nose\") ok = setMountPosition(NOSE);",
+      "        else if (*msg == \"tail\") ok = setMountPosition(TAIL);",
+      "        else if (*msg == \"left\") ok = setMountPosition(LEFT_WING);",
+      "        else if (*msg == \"right\") ok = setMountPosition(RIGHT_WING);",
+      "        else ok = false;",
+      "    }",
+      "    return ok;",
+      "}",
+      "*/",
+    ],
+  },
+  "Antenna::rfTransmit -- fallback de ganho, ERP e o gate de threshold": {
+    file: "contexts/src/mixr/src/models/system/Antenna.cpp",
+    line: 458,
+    trunc: true,
+    lines: [
+      "      if (!haveGainTgt) {",
+      "         // ---",
+      "         // No antenna pattern table",
+      "         // ---",
+      "         for (unsigned int i = 0; i < ntgts; i++) {",
+      "            gainTgt[i] = 1.0;",
+      "         }",
+      "      }",
+      "",
+      "      // Compute antenna effective gain",
+      "      double aeGain[MAX_PLAYERS]{};",
+      "      base::multArrayConst(gainTgt, getGain(), aeGain, ntgts);",
+      "",
+      "      // Compute Effective Radiated Power (watts) (Equation 2-1)",
+      "      double erp[MAX_PLAYERS]{};",
+      "      base::multArrayConst(aeGain, xmit->getPower(), erp, ntgts);",
+      "",
+      "      // Fetch the required data arrays from the TargetDataBlock",
+      "      const double* ranges{tdb->getTargetRanges()};",
+      "      const double* rngRates{tdb->getTargetRangeRates()};",
+      "      const base::Vec3d* losO2T{tdb->getLosVectors()};",
+      "      const base::Vec3d* losT2O{tdb->getTargetLosVectors()};",
+      "      Player** targets{tdb->getTargets()};",
+      "",
+      "      // ---",
+      "      // Send emission packets to the targets",
+      "      // ---",
+      "      for (unsigned int i = 0; i < ntgts; i++) {",
+      "",
+      "         // Only of power exceeds an optional threshold",
+      "         if (erp[i] > threshold) {",
+      "",
+      "            // Get a free emission packet",
+      "            Emission* em{};",
+      "            if (recycle) {",
+      "               base::lock(freeEmLock);",
+      "               em = freeEmStack.pop();",
+      "               base::unlock(freeEmLock);",
+      "            }",
+      "",
+      "            bool cloned{};",
+      "            if (em == nullptr) {",
+    ],
+  },
+  "RfSystem::reset -- resolve a Antenna por NOME (nao por tipo)": {
+    file: "contexts/src/mixr/src/models/system/RfSystem.cpp",
+    line: 126,
+    trunc: false,
+    lines: [
+      "void RfSystem::reset()",
+      "{",
+      "   BaseClass::reset();",
+      "",
+      "   // ---",
+      "   // Do we need to find the antenna?",
+      "   // ---",
+      "   if (getAntenna() == nullptr && getAntennaName() != nullptr && getOwnship() != nullptr) {",
+      "      // We have a name of the antenna, but not the antenna itself",
+      "      const char* name{*getAntennaName()};",
+      "",
+      "      // Get the named antenna from the player's list of gimbals, antennas and optics",
+      "      const auto p = dynamic_cast<Antenna*>( getOwnship()->getGimbalByName(name) );",
+      "      if (p != nullptr) {",
+      "         setAntenna( p );",
+      "         getAntenna()->setSystem(this);",
+      "      }",
+      "",
+      "      if (getAntenna() == nullptr) {",
+      "         // The assigned antenna was not found!",
+      "         std::cerr << \"RfSystem::reset() ERROR -- antenna: \" << name << \", was not found!\" << std::endl;",
+      "         setSlotAntennaName(nullptr);",
+      "      }",
+      "   }",
+      "",
+      "   // ---",
+      "   // Initialize players of interest",
+      "   // ---",
+      "   processPlayersOfInterest();",
+      "",
+      "}",
+    ],
+  },
+};
+
+const gimbalSnip = (key) => (key ? GIMBAL_SNIPPETS[key] || null : null);
+
+function renderGimbalSnippet(key) {
+  const snip = gimbalSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_GIMBAL_SLOT_DOCS = {
+  type: ["String", "\"mechanical\"/\"electronic\" -- default ELECTRONIC"],
+  location: ["List", "[ x y z ] metros -- posição do gimbal no container, default 0,0,0"],
+  initPosition: ["List", "[ az el roll ] rad -- posição inicial"],
+  initPosAzimuth: ["Angle", "componente isolado da posição inicial"],
+  initPosElevation: ["Angle", "idem, elevação"],
+  initPosRoll: ["Angle", "idem, roll"],
+  azimuthLimits: ["List", "[ left right ] rad -- fora de [-π,π] = sem limite"],
+  azimuthLimitLeft: ["Angle", "componente isolado"],
+  azimuthLimitRight: ["Angle", "componente isolado"],
+  elevationLimits: ["List", "[ lower upper ] rad"],
+  elevationLimitLower: ["Angle", "componente isolado"],
+  elevationLimitUpper: ["Angle", "componente isolado"],
+  rollLimits: ["List", "[ lower upper ] -- o header chama de Angle, mas o slot registrado é List"],
+  rollLimitLower: ["Angle", "componente isolado"],
+  rollLimitUpper: ["Angle", "componente isolado"],
+  maxRates: ["List", "[ az el roll ] rad/s -- taxa mecânica máxima, default 120°/s cada"],
+  maxRateAzimuth: ["Angle", "componente isolado"],
+  maxRateElevation: ["Angle", "componente isolado"],
+  maxRateRoll: ["Angle", "componente isolado"],
+  commandPosition: ["List", "[ az el roll ] rad -- arma POSITION_SERVO"],
+  commandPosAzimuth: ["Angle", "componente isolado, arma POSITION_SERVO"],
+  commandPosElevation: ["Angle", "componente isolado"],
+  commandPosRoll: ["Angle", "componente isolado"],
+  commandRates: ["List", "[ az el roll ] rad/s -- arma RATE_SERVO"],
+  commandRateAzimuth: ["Angle", "componente isolado, arma RATE_SERVO"],
+  commandRateElevation: ["Angle", "componente isolado"],
+  commandRateRoll: ["Angle", "componente isolado"],
+  terrainOcculting: ["Number(bool)", "default false"],
+  checkHorizon: ["Number(bool)", "default true"],
+  playerOfInterestTypes: ["PairStream", "nomes → bitmask (air/ground/weapon/ship/building/lifeform/space) -- default REAL 0xFFFF (todos), apesar do comentário do .cpp dizer \"(default: 0)\""],
+  maxPlayersOfInterest: ["Number", "default 200"],
+  maxRange2PlayersOfInterest: ["Distance", "default 0 = sem limite"],
+  maxAngle2PlayersOfInterest: ["Angle", "default 0 = sem limite"],
+  localPlayersOfInterestOnly: ["Number(bool)", "default false"],
+  useWorldCoordinates: ["Number(bool)", "default true -- usa ECEF do alvo"],
+  ownHeadingOnly: ["Number(bool)", "default true"],
+};
+
+const REF_SCANGIMBAL_SLOT_DOCS = {
+  scanMode: ["String", "manual/horizontal/vertical/conical/circular/pseudorandom/spiral -- default MANUAL_SCAN"],
+  leftToRightScan: ["Boolean", "sentido do scan de barra -- default true"],
+  scanWidth: ["Number", "largura do volume de busca, rad -- default 0"],
+  searchVolume: ["List", "[ width height ] rad -- também arma HORIZONTAL_BAR_SCAN e deriva numBars/barSpacing"],
+  reference: ["List", "[ az el ] rad -- centro do volume de busca, default 0,0"],
+  barSpacing: ["Number", "largura entre barras, rad -- default 0"],
+  numBars: ["Integer", "número de barras -- default 1"],
+  revolutionsPerSec: ["Number", "Hz -- scan cônico/circular/espiral, default 5"],
+  scanRadius: ["Number|Angle", "raio do scan cônico/espiral -- default 2°"],
+  pseudoRandomPattern: ["PairStream", "vértices [ az el ] -- ver achado: o array-alvo nunca é alocado"],
+  maxRevolutions: ["Number", "máx. voltas do scan espiral -- default 1.0"],
+};
+
+const REF_STABILIZINGGIMBAL_SLOT_DOCS = {
+  stabilizingMode: ["String", "\"elevation\"/\"roll\"/\"horizon\" -- default HORIZON"],
+};
+
+const REF_ANTENNA_SLOT_DOCS = {
+  polarization: ["String", "none/vertical/horizontal/slant/RHC/LHC -- default NONE"],
+  threshold: ["Power", "limiar de ERP para enviar emissão -- default 0.0 W"],
+  gain: ["Number", "ganho escalar, adimensional -- default 1.0"],
+  gainPattern: ["Func1|Func2", "padrão de ganho off-boresight, em dB -- default 0"],
+  gainPatternDeg: ["Boolean", "padrão em graus (true) ou radianos (false, default)"],
+  recycle: ["Boolean", "reciclar objetos Emission -- default true"],
+  beamWidth: ["Angle|Number", "largura de feixe -- default 3.5°, deve ser > 0"],
+};
+
+function GimbalReferencePage({ onOpenCatalog }) {
+  const entry = MODEL["Antenna"];
+  const gEntry = MODEL["Gimbal"];
+  const sgEntry = MODEL["ScanGimbal"];
+  const stgEntry = MODEL["StabilizingGimbal"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>Gimbal / Antenna</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "Gimbal"</span>
+          <span className="mx-chip">+ ScanGimbal → Antenna</span>
+          <span className="mx-chip">+ StabilizingGimbal (irmã)</span>
+          {entry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("Antenna")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          Duas ramificações de herança, não uma cadeia só. <code className="mx-mono">Gimbal</code> (base
+          mecânica: posição/taxa/limite, servo de posição OU taxa) → <code className="mx-mono">ScanGimbal</code>{" "}
+          (acrescenta padrões de varredura) → <code className="mx-mono">Antenna</code> (acrescenta a física de
+          RF -- ganho, polarização, ERP). <code className="mx-mono">StabilizingGimbal</code> é IRMÃ de{" "}
+          <code className="mx-mono">ScanGimbal</code> -- deriva direto de <code className="mx-mono">Gimbal</code>{" "}
+          e compensa a ATITUDE DO OWNSHIP, nunca a própria. Um <code className="mx-mono">RfSensor</code> (aba
+          seguinte) não HERDA nada disto -- ele aponta para uma <code className="mx-mono">Antenna</code> por{" "}
+          NOME (slot <code className="mx-mono">antennaName</code>, resolvido em <code className="mx-mono">reset()</code>) --
+          o oposto de como <code className="mx-mono">Player</code> resolve seus 10 papéis, por TIPO (ver a aba Player).
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {entry ? entry.ch.join(" → ") : "Antenna → ScanGimbal → Gimbal → System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de Gimbal/Antenna" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>servoController() -- posição OU taxa, nunca os dois</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">enum ServoMode {"{"}FREEZE_SERVO, RATE_SERVO, POSITION_SERVO{"}"}</code>{" "}
+                escolhe UM caminho por frame. Em <code className="mx-mono">POSITION_SERVO</code>, o erro
+                angular (<code className="mx-mono">cmdPos - pos</code>) vira a taxa do frame. Em gimbal{" "}
+                <b>eletrônico</b> com <code className="mx-mono">fastSlewMode</code> ligado, NENHUM dos dois
+                ramos de limitação executa (só <code className="mx-mono">MECHANICAL &amp;&amp; fastSlew</code> ou{" "}
+                <code className="mx-mono">slowSlew</code>) -- o comentário nativo já avisa: "Electronic,
+                fast-slew: rate is unlimited!". Não é "rápido", é INSTANTÂNEO: o gimbal salta pra posição
+                comandada em UM frame só, qualquer que seja <code className="mx-mono">dt</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Bar scan -- 1, 2, 3 E 4 barras (não só "1, 2 e 4")</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                O header de <code className="mx-mono">ScanGimbal</code> documenta "1, 2 e 4 bar scans" -- mas{" "}
+                <code className="mx-mono">computeNewBarPos()</code> tem QUATRO tabelas de lookup
+                (1/2/3/4 barras); números ímpares alternam sentido a cada ciclo via{" "}
+                <code className="mx-mono">isReverseScan()</code>. <code className="mx-mono">setSearchVolume()</code>{" "}
+                deriva <code className="mx-mono">numBars</code> automaticamente por faixa de altura quando o
+                valor pedido não é 1/2/3/4 (&lt;1°→1, &lt;5°→2, &lt;10°→3, senão 4) -- e chamar{" "}
+                <code className="mx-mono">setBarSpacing()</code>/<code className="mx-mono">setNumBars()</code>{" "}
+                depois RECALCULA <code className="mx-mono">scanHeight</code> como efeito colateral (o próprio
+                header já avisa "se misturar os dois, resultado inesperado").
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Bug confirmado, não redescobrir:</b> <code className="mx-mono">ScanGimbal::prScanVertices</code>{" "}
+                (<code className="mx-mono">base::Vec2d*</code>, `ScanGimbal.hpp:234`) nasce{" "}
+                <code className="mx-mono">nullptr</code> e NUNCA é alocado -- nenhum{" "}
+                <code className="mx-mono">new base::Vec2d[...]</code> existe em{" "}
+                <code className="mx-mono">ScanGimbal.cpp</code> inteiro (confirmado por busca no fonte
+                vendorizado e no pacote Conan instalado). <code className="mx-mono">setSlotPRVertices()</code>{" "}
+                escreve incondicionalmente em <code className="mx-mono">prScanVertices[nprv]</code> assim que o
+                slot <code className="mx-mono">pseudoRandomPattern</code> recebe QUALQUER vértice de verdade --
+                escrita através de ponteiro nulo. E mesmo que essa escrita não derrube o processo,{" "}
+                <code className="mx-mono">pseudoRandomScanController()</code> testa{" "}
+                <code className="mx-mono">if (prScanVertices != nullptr)</code> no estado 0 -- que é SEMPRE
+                falso -- então o modo <code className="mx-mono">PSEUDO_RANDOM_SCAN</code> fica PRESO no estado 0
+                para sempre: nunca degrada pra <code className="mx-mono">MANUAL_SCAN</code> (esse branch está
+                aninhado DENTRO do teste de nulo, também inalcançável), nunca escaneia, sem aviso nenhum.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>StabilizingGimbal -- compensa o OWNSHIP, não a si mesma</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Lê <code className="mx-mono">getOwnship()-&gt;getRoll()</code>/<code className="mx-mono">getPitch()</code>{" "}
+                -- se <code className="mx-mono">getOwnship()==nullptr</code>, os dois controllers retornam sem
+                fazer nada. <code className="mx-mono">stabilizingMode: horizon</code> (default) chama OS DOIS
+                controllers (roll e elevação) no mesmo frame; <code className="mx-mono">roll</code>/{" "}
+                <code className="mx-mono">elevation</code> chamam só um. Para montagem <code className="mx-mono">NOSE</code>,{" "}
+                contra-rola o berço (<code className="mx-mono">-getRoll()</code>); para <code className="mx-mono">TAIL</code>,
+                o sinal inverte.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado:</b> <code className="mx-mono">MountPosition</code>{" "}
+                (<code className="mx-mono">TAIL</code>/<code className="mx-mono">LEFT_WING</code>/{" "}
+                <code className="mx-mono">RIGHT_WING</code>) é INALCANÇÁVEL via EDL -- o corpo de{" "}
+                <code className="mx-mono">setSlotMountPosition()</code> está inteiro dentro de um comentário de
+                bloco <code className="mx-mono">{"/* ... */"}</code> (`StabilizingGimbal.cpp:159-173`) e a slot
+                table declara SÓ <code className="mx-mono">stabilizingMode</code> -- nenhum{" "}
+                <code className="mx-mono">.edl</code> pode mudar a montagem, que fica travada em{" "}
+                <code className="mx-mono">NOSE</code> (o default) para sempre. Os ramos{" "}
+                <code className="mx-mono">TAIL</code>/<code className="mx-mono">*_WING</code> dos dois
+                controllers são código morto em qualquer cenário configurado só por EDL.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Antenna -- a física de RF por cima do apontamento geométrico</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                <code className="mx-mono">rfTransmit(Emission*)</code> (saída): ganho off-boresight via a{" "}
+                <code className="mx-mono">Tdb</code> (Target Data Block) + padrão de ganho{" "}
+                (<code className="mx-mono">Func1</code>/<code className="mx-mono">Func2</code>, dB→linear) --
+                sem padrão configurado, cai num fallback SILENCIOSO de ganho 1.0 (sem aviso). Calcula ERP =
+                ganho efetivo × potência do transmissor, e só envia se <code className="mx-mono">erp &gt; threshold</code>.{" "}
+                <code className="mx-mono">onRfEmissionEvent(Emission*)</code> (entrada): ganho de recepção pelo
+                MESMO padrão (agora off-boresight do transmissor) × área efetiva × ganho de polarização (tabela
+                fixa 6×6 -- combinações cruzadas VERTICAL×HORIZONTAL dão 0.0; qualquer coisa com{" "}
+                <code className="mx-mono">NONE</code> dá 1.0, nunca penalizada).
+              </p>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>
+                <code className="mx-mono">RfSystem::reset()</code> resolve <code className="mx-mono">antennaName</code>{" "}
+                por <code className="mx-mono">getOwnship()-&gt;getGimbalByName(name)</code> + `dynamic_cast`{" "}
+                UMA vez (nunca em <code className="mx-mono">updateData()</code>/`process()`) e grava o back-pointer{" "}
+                (<code className="mx-mono">Antenna::setSystem(this)</code>) -- um cenário de produção deste
+                repositório já documenta em comentário o corolário: "uma antena por sensor -- compartilhar
+                antena entre dois sensores faz o último a dar reset() vencer, sem aviso" (`tests/fixtures/
+                built-in_mixr_1/configs/scenario_max_player.edl.in`).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 460px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Gimbal</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{gEntry ? gEntry.own : 36} slots próprios -- a maior slot table desta Referência.</p>
+              <div className="mx-slotgrid">
+                {(gEntry ? gEntry.sl : Object.keys(REF_GIMBAL_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_GIMBAL_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_GIMBAL_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 340 }}>{REF_GIMBAL_SLOT_DOCS[s] ? REF_GIMBAL_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de ScanGimbal</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{sgEntry ? sgEntry.own : 11} slots próprios.</p>
+              <div className="mx-slotgrid">
+                {(sgEntry ? sgEntry.sl : Object.keys(REF_SCANGIMBAL_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SCANGIMBAL_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SCANGIMBAL_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_SCANGIMBAL_SLOT_DOCS[s] ? REF_SCANGIMBAL_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 260px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de StabilizingGimbal</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{stgEntry ? stgEntry.own : 1} slot próprio -- `mountPosition` não tem slot (ver achado).</p>
+              <div className="mx-slotgrid">
+                {(stgEntry ? stgEntry.sl : Object.keys(REF_STABILIZINGGIMBAL_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_STABILIZINGGIMBAL_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_STABILIZINGGIMBAL_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_STABILIZINGGIMBAL_SLOT_DOCS[s] ? REF_STABILIZINGGIMBAL_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de Antenna</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{entry ? entry.own : 7} slots próprios -- mais os herdados de ScanGimbal/Gimbal.</p>
+              <div className="mx-slotgrid">
+                {(entry ? entry.sl : Object.keys(REF_ANTENNA_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_ANTENNA_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_ANTENNA_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_ANTENNA_SLOT_DOCS[s] ? REF_ANTENNA_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Gimbal::servoController() -- POSITION_SERVO vs. RATE_SERVO</span><span>C++</span></div>
+              {renderGimbalSnippet("Gimbal::servoController (POSITION_SERVO vs RATE_SERVO)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Gimbal::setSlotPlayerTypes() -- e o comentário "(default: 0)" logo acima</span><span>C++</span></div>
+              {renderGimbalSnippet("Gimbal::setSlotPlayerTypes (o comentario diz 0, o default real e 0xFFFF)")}
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
+              <div className="mx-card" style={{ flex: "1 1 320px" }}>
+                <div className="mx-lbl"><span className="mx-mono">ScanGimbal -- estado 0 do pseudo-random (preso pra sempre)</span><span>C++</span></div>
+                {renderGimbalSnippet("ScanGimbal::pseudoRandomScanController -- estado 0, preso para sempre")}
+              </div>
+              <div className="mx-card" style={{ flex: "1 1 320px" }}>
+                <div className="mx-lbl"><span className="mx-mono">ScanGimbal::setSlotPRVertices() -- escrita através de ponteiro nulo</span><span>C++</span></div>
+                {renderGimbalSnippet("ScanGimbal::setSlotPRVertices -- escreve atraves do ponteiro nulo")}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
+              <div className="mx-card" style={{ flex: "1 1 260px" }}>
+                <div className="mx-lbl"><span className="mx-mono">StabilizingGimbal::rollStabilizingController()</span><span>C++</span></div>
+                {renderGimbalSnippet("StabilizingGimbal::roll/elevationStabilizingController")}
+              </div>
+              <div className="mx-card" style={{ flex: "1 1 280px" }}>
+                <div className="mx-lbl"><span className="mx-mono">setSlotMountPosition() -- corpo inteiro comentado</span><span>C++</span></div>
+                {renderGimbalSnippet("StabilizingGimbal::setSlotMountPosition -- comentado, o slot nao existe")}
+              </div>
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Antenna::rfTransmit() -- fallback de ganho, ERP e o gate de threshold</span><span>C++</span></div>
+              {renderGimbalSnippet("Antenna::rfTransmit -- fallback de ganho, ERP e o gate de threshold")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">RfSystem::reset() -- resolve a Antenna por NOME</span><span>C++</span></div>
+              {renderGimbalSnippet("RfSystem::reset -- resolve a Antenna por NOME (nao por tipo)")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ====================== Referência -- RfSystem / RfSensor / Radar / Sar / Rwr / Jammer / SensorMgr
+ * Segunda das quatro entradas de RF. RfSystem é a base comum (antena por NOME, fila de
+ * emissão, jamSignal); RfSensor acrescenta o TrackManager (também por nome) e o modo/faixa;
+ * Radar/Sar/Rwr/Jammer/SensorMgr são as cinco folhas concretas -- cada uma estruturalmente
+ * só-transmissora, só-receptora, ou nem uma coisa nem outra (SensorMgr).
+ * ==================================================================================== */
+
+const RFSENSOR_SNIPPETS = {
+  "RfSystem::rfReceivedEmission -- fila de emissao + acumulo de jamSignal": {
+    file: "contexts/src/mixr/src/models/system/RfSystem.cpp",
+    line: 205,
+    trunc: false,
+    lines: [
+      "// rfReceivedEmission() -- process returned RF Emission",
+      "//------------------------------------------------------------------------------",
+      "void RfSystem::rfReceivedEmission(Emission* const em, Antenna* const, double raGain)",
+      "{",
+      "   // Queue up emissions for receive() to process",
+      "   if (em != nullptr && isReceiverEnabled()) {",
+      "",
+      "      // Test to make sure the received emission is in-band before proceeding",
+      "      if (affectsRfSystem(em)) {",
+      "",
+      "         // Pulses this radar frame (from emission)",
+      "         //double pulses = static_cast<double>( em->getPulses() );",
+      "         //if (pulses <= 0) pulses = 1.0f;",
+      "",
+      "         // Compute signal losses",
+      "         //    Basically, we're simulating Hannen's S/I equation from page 356 of his notes.",
+      "         //    Where I is N + J. J is noise from jamming.",
+      "         //    Receiver Loss affects the total I, so we have to wait until J is added to N in Radar.",
+      "         double losses{getRfSignalProcessLoss() * em->getAtmosphericAttenuationLoss() * em->getTransmitLoss()};",
+      "         if (losses < 1.0) losses = 1.0;",
+      "",
+      "         // Range loss",
+      "         const double rl{em->getRangeLoss()};",
+      "",
+      "         // Signal Equation (one way signal)",
+      "         // Signal Equation (Part of equation 2-7)",
+      "         // Signal (equation 3-3)",
+      "         const double signal{em->getPower() * rl * raGain / losses};",
+      "",
+      "         // Noise Jammer -- add this signal to the total interference signal (noise)",
+      "         if ( em->isECMType(Emission::ECM_NOISE) ) {",
+      "            // CGB part of the noise jamming equation says we're only affected by the ratio of the",
+      "            // transmitter and receiver bandwidths.",
+      "            // It's possible that we'll want to account for this in the signal calculation above.",
+      "            // But, for now, it is sufficient right here.",
+      "            jamSignal += (signal * getBandwidth() / em->getBandwidth());",
+      "         }",
+      "",
+      "         // Save packet and signal for receive()",
+      "         base::lock(packetLock);",
+      "         if (np < MAX_EMISSIONS) {",
+      "            em->ref();",
+      "            packets[np] = em;",
+      "            signals[np] = signal;",
+      "            np++;",
+      "         }",
+      "         base::unlock(packetLock);",
+      "",
+      "      }",
+      "   }",
+      "}",
+    ],
+  },
+  "Radar::transmit -- pulses cai para 1 quando PRF*dt arredonda a zero": {
+    file: "contexts/src/mixr/src/models/system/Radar.cpp",
+    line: 153,
+    trunc: false,
+    lines: [
+      "void Radar::transmit(const double dt)",
+      "{",
+      "   BaseClass::transmit(dt);",
+      "",
+      "   // Transmitting, scanning and have an antenna?",
+      "   if ( !areEmissionsDisabled() && isTransmitting() ) {",
+      "      // Send the emission to the other player",
+      "      const auto em = new Emission();",
+      "      em->setFrequency(getFrequency());",
+      "      em->setBandwidth(getBandwidth());",
+      "      const double prf1{getPRF()};",
+      "      em->setPRF(prf1);",
+      "      int pulses{static_cast<int>(prf1 * dt + 0.5)};",
+      "      if (pulses == 0) pulses = 1; // at least one",
+      "      em->setPulses(pulses);",
+      "      const double p{getPeakPower()};",
+      "      em->setPower(p);",
+      "      em->setMaxRangeNM(getRange());",
+      "      em->setPulseWidth(getPulseWidth());",
+      "      em->setTransmitLoss(getRfTransmitLoss());",
+      "      em->setReturnRequest( isReceiverEnabled() );",
+      "      em->setTransmitter(this);",
+      "      getAntenna()->rfTransmit(em);",
+      "      em->unref();",
+      "   }",
+      "",
+      "}",
+    ],
+  },
+  "Radar::receive -- inicio (fila, interferencia, filtro de eco proprio/ECM)": {
+    file: "contexts/src/mixr/src/models/system/Radar.cpp",
+    line: 184,
+    trunc: true,
+    lines: [
+      "void Radar::receive(const double dt)",
+      "{",
+      "   BaseClass::receive(dt);",
+      "",
+      "   // Can't do anything without an antenna",
+      "   if (getAntenna() == nullptr) return;",
+      "",
+      "   // Clear the next sweep",
+      "   csweep = computeSweepIndex( static_cast<double>(base::angle::R2DCC * getAntenna()->getAzimuth()) );",
+      "   clearSweep(csweep);",
+      "",
+      "   // Compute noise level",
+      "   // CGB moved here from RfSystem",
+      "   // Basically, we're simulation Hannen's S/I equation from page 356 of his notes.",
+      "   // Where I is N + J. J is noise from jamming.",
+      "   // Receiver Loss affects the total I, so we have to wait until this point to account for it.",
+      "   const double interference{(getRfRecvNoise() + jamSignal) * getRfReceiveLoss()};",
+      "   const double noise{getRfRecvNoise() * getRfReceiveLoss()};",
+      "   currentJamSignal = jamSignal * getRfReceiveLoss();",
+      "   int countNumJammedEm{};",
+      "",
+      "   // ---",
+      "   // Process Returned Emissions",
+      "   // ---",
+      "",
+      "   Emission* em{};",
+      "   double signal{};",
+      "",
+      "   // Get an emission from the queue",
+      "   base::lock(packetLock);",
+      "   if (np > 0) {",
+      "      np--; // Decrement 'np', now the array index",
+      "      em = packets[np];",
+      "      signal = signals[np];",
+      "   }",
+      "   base::unlock(packetLock);",
+      "",
+      "   while (em != nullptr) {",
+      "",
+      "      // exclude noise jammers (accounted for already in RfSystem::rfReceivedEmission)",
+      "      if (em->getTransmitter() == this || (em->isECM() && !em->isECMType(Emission::ECM_NOISE)) ) {",
+      "",
+      "         // compute the return trip loss ...",
+    ],
+  },
+  "Radar::receive -- o gate de S/I a 125% do alcance, e o reset de jamSignal": {
+    file: "contexts/src/mixr/src/models/system/Radar.cpp",
+    line: 251,
+    trunc: false,
+    lines: [
+      "         if (signal > 0.0) {",
+      "",
+      "            // Signal/Noise  (Equation 2-9)",
+      "            const double signalToInterferenceRatio{signal / interference};",
+      "            const double signalToInterferenceRatioDbl{10.0f * std::log10(signalToInterferenceRatio)};",
+      "            const double signalToNoiseRatio{signal / noise};",
+      "            const double signalToNoiseRatioDbl{10.0f * std::log10(signalToNoiseRatio)};",
+      "",
+      "            // Is S/N above receiver threshold and within 125% of max range?",
+      "            // CGB, if \"signal <= 0.0\", then \"signalToInterferenceRatioDbl\" is probably invalid",
+      "            // we should probably do something smart with \"signalToInterferenceRatioDbl\" above as well.",
+      "            base::lock(myLock);",
+      "            if (signalToInterferenceRatioDbl >= getRfThreshold() && em->getRange() <= (maxRng*1.25) && rptQueue.isNotFull()) {",
+      "",
+      "               // send the report to the track manager",
+      "               em->ref();",
+      "               rptQueue.put(em);",
+      "               rptSnQueue.put(signalToInterferenceRatioDbl);",
+      "",
+      "               // Save signal for real-beam display",
+      "               const int iaz{csweep};",
+      "               const unsigned int irng{computeRangeIndex( em->getRange() )};",
+      "               sweeps[iaz][irng] += (signalToInterferenceRatioDbl/100.0f);",
+      "               vclos[iaz][irng] = em->getRangeRate();",
+      "",
+      "            } else if (signalToInterferenceRatioDbl < getRfThreshold() && signalToNoiseRatioDbl >= getRfThreshold()) {",
+      "               countNumJammedEm++;",
+      "            }",
+      "            base::unlock(myLock);",
+      "         }",
+      "      }",
+      "",
+      "      em->unref();   // this unref() undoes the ref() done by RfSystem::rfReceivedEmission",
+      "      em = nullptr;",
+      "",
+      "      // Get another emission from the queue",
+      "      base::lock(packetLock);",
+      "      if (np > 0) {",
+      "         np--;",
+      "         em = packets[np];",
+      "         signal = signals[np];",
+      "      }",
+      "      base::unlock(packetLock);",
+      "   }",
+      "",
+      "   numberOfJammedEmissions = countNumJammedEm;",
+      "",
+      "   // Set interference signal back to zero",
+      "   jamSignal = 0;",
+      "}",
+    ],
+  },
+  "Rwr::receive -- rejeita ECM, nunca le/zera jamSignal, entrega na fase 2": {
+    file: "contexts/src/mixr/src/models/system/Rwr.cpp",
+    line: 74,
+    trunc: true,
+    lines: [
+      "void Rwr::receive(const double dt)",
+      "{",
+      "   BaseClass::receive(dt);",
+      "",
+      "   // clear the back buffer",
+      "   clearRays(0);",
+      "",
+      "   // Receiver losses",
+      "#if 0",
+      "   const double noise{getRfRecvNoise()};",
+      "#else",
+      "   const double noise{getRfRecvNoise() * getRfReceiveLoss()};",
+      "#endif",
+      "",
+      "   // Process received emissions",
+      "   TrackManager* tm{getTrackManager()};",
+      "   Emission* em{};",
+      "   double signal{};",
+      "",
+      "   // Get an emission from the queue",
+      "   base::lock(packetLock);",
+      "   if (np > 0) {",
+      "      np--; // Decrement 'np', now the array index",
+      "      em = packets[np];",
+      "      signal = signals[np];",
+      "   }",
+      "   base::unlock(packetLock);",
+      "",
+      "   while (em != nullptr) {",
+      "",
+      "      // CGB, if \"signal <= 0.0\", then \"snDbl\" is probably invalid",
+      "      if (signal > 0.0 && dt != 0.0) {",
+      "",
+      "         // Signal over noise (equation 3-5)",
+      "         const double sn{signal / noise};",
+      "         const double snDbl{10.0 * std::log10(sn)};",
+      "",
+      "         // Is S/N above receiver threshold  ## dpg -- for now, don't include ECM emissions",
+      "         if (snDbl > getRfThreshold() && !em->isECM() && rptQueue.isNotFull()) {",
+      "            // Send report to the track manager",
+      "            if (tm != nullptr) {",
+      "               tm->newReport(em, snDbl);",
+      "            }",
+      "",
+      "            // Get Angle Of Arrival",
+      "            const double aoa{em->getAzimuthAoi()};",
+    ],
+  },
+  "Jammer::transmit -- ECM_NOISE e o UNICO sinal de \"isto e um jammer\"": {
+    file: "contexts/src/mixr/src/models/system/Jammer.cpp",
+    line: 21,
+    trunc: false,
+    lines: [
+      "Jammer::Jammer()",
+      "{",
+      "    STANDARD_CONSTRUCTOR()",
+      "    setTransmitterEnableFlag(true);",
+      "    setReceiverEnabledFlag(false);",
+      "    setTypeId(\"JAMMER\");",
+      "}",
+      "",
+      "void Jammer::copyData(const Jammer& org, const bool)",
+      "{",
+      "    BaseClass::copyData(org);",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// transmit() -- send jam emissions",
+      "//------------------------------------------------------------------------------",
+      "void Jammer::transmit(const double)",
+      "{",
+      "    // Send the emission to the other player",
+      "    if ( !areEmissionsDisabled() && isTransmitting() ) {",
+      "        const auto em = new Emission();",
+      "        em->setFrequency(getFrequency());",
+      "        const double p{getPeakPower()};",
+      "        em->setPower(p);",
+      "        em->setTransmitLoss(getRfTransmitLoss());",
+      "        em->setMaxRangeNM(getRange());",
+      "        em->setBandwidth(getBandwidth());",
+      "        em->setTransmitter(this);",
+      "        em->setReturnRequest(false);",
+      "        em->setECM(Emission::ECM_NOISE);",
+      "        getAntenna()->rfTransmit(em);",
+      "        em->unref();",
+      "    }",
+      "}",
+    ],
+  },
+  "Sar::requestImage/cancel -- 'ok' nunca vira true, mesmo com sucesso": {
+    file: "contexts/src/mixr/src/models/system/Sar.cpp",
+    line: 157,
+    trunc: false,
+    lines: [
+      "bool Sar::requestImage(",
+      "        const unsigned int w,           // Image width (pixels)",
+      "        const unsigned int h,           // Image height (pixels)",
+      "        const double r)                 // Image Resolution (meters/pixel)",
+      "{",
+      "   bool ok{};",
+      "   if ( isSystemReady() ) {",
+      "      if (isMessageEnabled(MSG_INFO)) {",
+      "         std::cout << \"starting new SAR (\" << w << \",\" << h << \") at \" << r << std::endl;",
+      "      }",
+      "      width = w;",
+      "      height = h;",
+      "      resolution = r;",
+      "      timer = DEFAULT_SAR_TIME;",
+      "      setTransmitterEnableFlag(true);",
+      "   }",
+      "   return ok;",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// cancel() -- Cancel the current SAR imaging",
+      "//------------------------------------------------------------------------------",
+      "void Sar::cancel()",
+      "{",
+      "   setTransmitterEnableFlag(false);",
+      "   timer = 0;",
+      "}",
+    ],
+  },
+  "SensorMgr -- o arquivo inteiro. 'gerenciar' e so herdar a arvore de components:": {
+    file: "contexts/src/mixr/src/models/system/SensorMgr.cpp",
+    line: 1,
+    trunc: false,
+    lines: [
+      "",
+      "#include \"mixr/models/system/SensorMgr.hpp\"",
+      "",
+      "namespace mixr {",
+      "namespace models {",
+      "",
+      "IMPLEMENT_SUBCLASS(SensorMgr, \"SensorMgr\")",
+      "EMPTY_SLOTTABLE(SensorMgr)",
+      "EMPTY_COPYDATA(SensorMgr)",
+      "EMPTY_DELETEDATA(SensorMgr)",
+      "",
+      "SensorMgr::SensorMgr()",
+      "{",
+      "    STANDARD_CONSTRUCTOR()",
+      "}",
+      "",
+      "}",
+      "}",
+    ],
+  },
+};
+
+const rfSensorSnip = (key) => (key ? RFSENSOR_SNIPPETS[key] || null : null);
+
+function renderRfSensorSnippet(key) {
+  const snip = rfSensorSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_RFSYSTEM_SLOT_DOCS = {
+  antennaName: ["String", "nome da Antenna a resolver em reset() -- mesmo padrão \"por nome\" do TrackManager em RfSensor"],
+  frequency: ["Frequency|Number", "Hz -- default 0"],
+  bandwidth: ["Frequency|Number", "Hz -- default 1.0, deve ser ≥ 1"],
+  powerPeak: ["Number(Power)", "Watts -- default 0"],
+  threshold: ["Decibel", "limiar do receptor acima do ruído, dB"],
+  noiseFigure: ["Number", "adimensional, ≥ 1 -- default 1.0"],
+  systemTemperature: ["Number", "Kelvin -- default 290.0"],
+  lossXmit: ["Number|Decibel", "perda de transmissão, ≥ 1 -- default 1.0"],
+  lossRecv: ["Number|Decibel", "perda de recepção, ≥ 1 -- default 1.0"],
+  lossSignalProcess: ["Number|Decibel", "perda de processamento de sinal, ≥ 1 -- default 1.0"],
+  disableEmissions: ["Number(bool)", "desliga o envio de pacotes de emissão -- default false"],
+  bandwidthNoise: ["Frequency|Number", "Hz -- se ausente, cai para bandwidth (getBandwidthNoise())"],
+};
+
+const REF_RFSENSOR_SLOT_DOCS = {
+  trackManagerName: ["String", "nome do TrackManager a resolver em reset()"],
+  modes: ["PairStream|RfSensor", "lista de submodos -- cada item vira dynamic_cast<RfSensor*>, senão erro"],
+  ranges: ["List", "vetor de alcances, NM"],
+  initRangeIdx: ["Number", "índice inicial [1..nRanges] -- default 1"],
+  PRF: ["Frequency|Number", "Hz -- \"must be greater than zero\", mas default é 0.0 (### NES no próprio header)"],
+  pulseWidth: ["Time|Number", "segundos -- mesma inconsistência de PRF"],
+  beamWidth: ["Angle|Number", "(Deprecated: moved to Antenna) radianos -- default D2RCC*3.5"],
+  typeId: ["String", "ID de tipo R/F, para PDU de emissão eletromagnética DIS -- default '\\0'"],
+  syncXmitWithScan: ["Number(bool)", "sincroniza transmissor com a varredura da antena -- default false"],
+};
+
+const REF_RADAR_SLOT_DOCS = {
+  igain: ["Number|Decibel", "ganho do integrador, ≥ 1.0 -- default 1.0"],
+};
+
+const REF_SAR_SLOT_DOCS = {
+  chipSize: ["Number", "pixels -- ver achado: lido/escrito, NUNCA consultado na geração da imagem"],
+};
+
+function RfSensorReferencePage({ onOpenCatalog }) {
+  const rfsEntry = MODEL["RfSystem"];
+  const rfsrEntry = MODEL["RfSensor"];
+  const radarEntry = MODEL["Radar"];
+  const sarEntry = MODEL["Sar"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>RfSensor / Radar / Rwr / Sar / Jammer</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "RfSystem" → "RfSensor"</span>
+          <span className="mx-chip">+ Radar → Sar, Rwr, Jammer, SensorMgr</span>
+          {rfsrEntry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("RfSensor")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          A cadeia de DETECÇÃO -- separada da de APONTAMENTO (aba Gimbal/Antenna) por composição, não
+          herança: <code className="mx-mono">RfSystem</code> só tem um <code className="mx-mono">Antenna*</code>{" "}
+          resolvido por NOME. Cinco folhas concretas, cada uma estruturalmente enviesada: {" "}
+          <code className="mx-mono">Radar</code> transmite E recebe; <code className="mx-mono">Rwr</code> só{" "}
+          RECEBE (nunca sobrescreve <code className="mx-mono">transmit()</code>); <code className="mx-mono">Jammer</code>{" "}
+          só TRANSMITE (receptor desligado no construtor); <code className="mx-mono">Sar</code> nasce com os dois
+          desligados, ligando o transmissor só durante a "exposição"; <code className="mx-mono">SensorMgr</code>{" "}
+          não faz NADA sozinho -- é um nó de <code className="mx-mono">components:</code> que hospeda outros
+          sensores, sem fan-out manual nenhum.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {radarEntry ? radarEntry.ch.join(" → ") : "Radar → RfSensor → RfSystem → System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de RfSensor" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>RfSystem::rfReceivedEmission() -- o ÚNICO ponto de entrada</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Toda emissão recebida por QUALQUER antena passa por aqui: filtro de banda
+                (<code className="mx-mono">affectsRfSystem()</code>), cálculo do sinal de uma perna
+                (<code className="mx-mono">power × rangeLoss × antGain / losses</code>), e -- só se a emissão for{" "}
+                <code className="mx-mono">ECM_NOISE</code> -- soma direto em <code className="mx-mono">jamSignal</code>{" "}
+                (aqui, não em <code className="mx-mono">receive()</code>, porque a perda de recepção só é aplicada
+                depois). O resto vira dois arrays paralelos (<code className="mx-mono">packets[]</code>/{" "}
+                <code className="mx-mono">signals[]</code>) que <code className="mx-mono">receive()</code>{" "}
+                (fase 2, de cada subclasse) drena depois -- fila cheia (<code className="mx-mono">MAX_EMISSIONS</code>)
+                descarta em silêncio.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado -- o próprio header já registra a inconsistência (não é leitura nova):</b>{" "}
+                <code className="mx-mono">RfSensor.hpp</code> documenta{" "}
+                <code className="mx-mono">PRF</code>/<code className="mx-mono">pulseWidth</code> como "must be
+                greater than zero" mas com "(default: 0.0)" -- e o comentário literal ao lado diz{" "}
+                <code className="mx-mono">### NES: Initial value not greater than 0)</code>. Na prática, um{" "}
+                <code className="mx-mono">RfSensor</code> sem <code className="mx-mono">PRF</code> no{" "}
+                <code className="mx-mono">.edl</code> nasce com o campo zerado -- e{" "}
+                <code className="mx-mono">Radar::transmit()</code> calcula{" "}
+                <code className="mx-mono">pulses = round(PRF·dt+0.5)</code>, que com <code className="mx-mono">PRF=0</code>{" "}
+                dá <code className="mx-mono">pulses=0</code>, corrigido na hora por{" "}
+                <code className="mx-mono">if (pulses==0) pulses=1</code> -- o sensor "funciona" com um pulso
+                fictício em vez de falhar visivelmente.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Radar -- o único que fecha o ciclo E limpa jamSignal</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">receive()</code> só aceita eco PRÓPRIO
+                (<code className="mx-mono">em-&gt;getTransmitter()==this</code>) ou ECM NÃO-ruído -- jamming de
+                ruído já foi contabilizado em <code className="mx-mono">jamSignal</code>, não é reprocessado como
+                retorno individual. Um relatório só entra na fila se{" "}
+                <code className="mx-mono">S/I ≥ threshold</code> <b>E</b> alcance ≤ 125% do{" "}
+                <code className="mx-mono">maxRange</code> configurado; sem isso mas com{" "}
+                <code className="mx-mono">S/N ≥ threshold</code>, conta como "emissão jammed". Ao final de{" "}
+                <code className="mx-mono">receive()</code>, <code className="mx-mono">jamSignal = 0</code> -- é a
+                ÚNICA das cinco folhas que de fato drena esse acumulador.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Rwr -- estruturalmente só-receptor, e rejeita ECM</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                O construtor só liga o receptor -- <code className="mx-mono">Rwr</code> nunca sobrescreve{" "}
+                <code className="mx-mono">transmit()</code> (herda o vazio de <code className="mx-mono">System</code>):
+                um RWR neste framework nunca emite nada próprio. Ao contrário de{" "}
+                <code className="mx-mono">Radar</code>, <code className="mx-mono">receive()</code>{" "}
+                REJEITA qualquer emissão marcada ECM (<code className="mx-mono">!em-&gt;isECM()</code> no gate) e
+                entrega o relatório IMEDIATAMENTE ao <code className="mx-mono">TrackManager</code> dentro da
+                própria fase 2 -- <code className="mx-mono">Radar</code> só entrega no fim de varredura, fase 3.{" "}
+                <code className="mx-mono">Rwr</code> também nunca lê nem zera <code className="mx-mono">jamSignal</code>{" "}
+                (herdado de <code className="mx-mono">RfSystem</code>) -- um jammer de ruído continuamente
+                iluminando um RWR acumula esse campo sem limite, sem efeito nenhum porque ninguém o consulta ali.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Jammer -- um flag no Emission é toda a diferença</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Construtor liga transmissor, desliga receptor, seta <code className="mx-mono">typeId="JAMMER"</code>.{" "}
+                <code className="mx-mono">transmit()</code> é o ÚNICO método sobrescrito: monta um{" "}
+                <code className="mx-mono">Emission</code> comum e faz{" "}
+                <code className="mx-mono">em-&gt;setECM(Emission::ECM_NOISE)</code> -- não há tipo C++ nem flag no{" "}
+                <code className="mx-mono">RfSystem</code> receptor que marque "isto é jamming"; é só esse campo de
+                dado no próprio <code className="mx-mono">Emission</code>, checado em três lugares diferentes
+                (<code className="mx-mono">RfSystem::rfReceivedEmission</code>, <code className="mx-mono">
+                Radar::receive</code>, o gate de exclusão de <code className="mx-mono">Rwr::receive</code>).
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado, Sar:</b> <code className="mx-mono">requestImage()</code>/<code className="mx-mono">addImage()</code>{" "}
+                declaram <code className="mx-mono">bool ok{"{}"}</code> e NUNCA fazem{" "}
+                <code className="mx-mono">ok = true</code> em nenhum ramo -- o valor de retorno é sistematicamente{" "}
+                <code className="mx-mono">false</code>, mesmo quando a exposição é armada com sucesso. Além disso:{" "}
+                <code className="mx-mono">chipSize</code> é lido/escrito e participa de{" "}
+                <code className="mx-mono">copyData()</code>, mas NENHUM ponto do arquivo o consulta ao gerar a
+                imagem de teste (<code className="mx-mono">testImage()</code> usa só{" "}
+                <code className="mx-mono">width</code>/<code className="mx-mono">height</code>); e{" "}
+                <code className="mx-mono">busy</code> nunca recebe <code className="mx-mono">true</code> em lugar
+                nenhum -- <code className="mx-mono">isImagingInProgress()</code> depende só de{" "}
+                <code className="mx-mono">timer &gt; 0</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>SensorMgr -- "gerenciar uma lista" é herdar a recursão de Component, nada escrito à mão</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Não sobrescreve <code className="mx-mono">process()</code>/<code className="mx-mono">receive()</code>/{" "}
+                <code className="mx-mono">transmit()</code>/<code className="mx-mono">updateData()</code>/{" "}
+                <code className="mx-mono">reset()</code> -- zero. Cada sensor dentro do seu{" "}
+                <code className="mx-mono">components:</code> (<code className="mx-mono">Tws</code>,{" "}
+                <code className="mx-mono">Stt</code>, <code className="mx-mono">Gmti</code>...) é ele próprio um{" "}
+                <code className="mx-mono">System</code> completo, computando a PRÓPRIA fase através da mesma
+                recursão genérica de <code className="mx-mono">Component::updateTC()</code> já documentada na aba
+                System -- <code className="mx-mono">SensorMgr</code> só existe como o nó intermediário que permite
+                um `Player` apontar pra UM container só onde vários sensores convivem. O arquivo inteiro (ver
+                Código-fonte) tem 19 linhas.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 380px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de RfSystem</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{rfsEntry ? rfsEntry.own : 12} slots próprios.</p>
+              <div className="mx-slotgrid">
+                {(rfsEntry ? rfsEntry.sl : Object.keys(REF_RFSYSTEM_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_RFSYSTEM_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_RFSYSTEM_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_RFSYSTEM_SLOT_DOCS[s] ? REF_RFSYSTEM_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 380px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de RfSensor</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{rfsrEntry ? rfsrEntry.own : 9} slots próprios.</p>
+              <div className="mx-slotgrid">
+                {(rfsrEntry ? rfsrEntry.sl : Object.keys(REF_RFSENSOR_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_RFSENSOR_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_RFSENSOR_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_RFSENSOR_SLOT_DOCS[s] ? REF_RFSENSOR_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 220px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Radar</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{radarEntry ? radarEntry.own : 1} slot próprio.</p>
+              <div className="mx-slotgrid">
+                {(radarEntry ? radarEntry.sl : Object.keys(REF_RADAR_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_RADAR_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_RADAR_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 260 }}>{REF_RADAR_SLOT_DOCS[s] ? REF_RADAR_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 220px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Sar</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{sarEntry ? sarEntry.own : 1} slot próprio.</p>
+              <div className="mx-slotgrid">
+                {(sarEntry ? sarEntry.sl : Object.keys(REF_SAR_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SAR_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SAR_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 260 }}>{REF_SAR_SLOT_DOCS[s] ? REF_SAR_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>
+                <code className="mx-mono">Rwr</code>, <code className="mx-mono">Jammer</code> e{" "}
+                <code className="mx-mono">SensorMgr</code> declaram <code className="mx-mono">EMPTY_SLOTTABLE</code> --
+                zero slots próprios; herdam os 9+12 de <code className="mx-mono">RfSensor</code>/<code className="mx-mono">RfSystem</code>.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">RfSystem::rfReceivedEmission() -- na íntegra</span><span>C++</span></div>
+              {renderRfSensorSnippet("RfSystem::rfReceivedEmission -- fila de emissao + acumulo de jamSignal")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Radar::transmit() -- na íntegra</span><span>C++</span></div>
+              {renderRfSensorSnippet("Radar::transmit -- pulses cai para 1 quando PRF*dt arredonda a zero")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Radar::receive() -- início (fila, interferência, filtro de eco próprio/ECM)</span><span>C++</span></div>
+              {renderRfSensorSnippet("Radar::receive -- inicio (fila, interferencia, filtro de eco proprio/ECM)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Radar::receive() -- o gate de S/I a 125% do alcance, e o reset de jamSignal</span><span>C++</span></div>
+              {renderRfSensorSnippet("Radar::receive -- o gate de S/I a 125% do alcance, e o reset de jamSignal")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Rwr::receive() -- rejeita ECM, nunca lê/zera jamSignal, entrega na fase 2</span><span>C++</span></div>
+              {renderRfSensorSnippet("Rwr::receive -- rejeita ECM, nunca le/zera jamSignal, entrega na fase 2")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Jammer -- construtor + transmit(), na íntegra</span><span>C++</span></div>
+              {renderRfSensorSnippet("Jammer::transmit -- ECM_NOISE e o UNICO sinal de \"isto e um jammer\"")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Sar::requestImage()/cancel() -- 'ok' nunca vira true</span><span>C++</span></div>
+              {renderRfSensorSnippet("Sar::requestImage/cancel -- 'ok' nunca vira true, mesmo com sucesso")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">SensorMgr.cpp -- o arquivo inteiro</span><span>C++</span></div>
+              {renderRfSensorSnippet("SensorMgr -- o arquivo inteiro. 'gerenciar' e so herdar a arvore de components:")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ====================== Referência -- TrackManager e a família de pistas =========================
+ * Terceira das quatro entradas de RF. TrackManager é a base (fila de emissão, lista de
+ * pistas) -- mas ela e a irmã AngleOnlyTrackManager NUNCA são construíveis via EDL, apesar
+ * do nome de fábrica bater com o header (o mesmo tipo de trap já achado em Player). Quatro
+ * folhas concretas (AirTrkMgr/GmtiTrkMgr/RwrTrkMgr/AirAngleOnlyTrkMgr) e uma QUINTA,
+ * AirAngleOnlyTrkMgrPT, que é totalmente concreta em C++ mas AINDA ASSIM inalcançável --
+ * o achado mais nítido desta página, já batido por este próprio repositório.
+ * ==================================================================================== */
+
+const TRACKMGR_SNIPPETS = {
+  "TrackManager::newReport -- a fila que toda folha concreta alimenta": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/TrackManager.cpp",
+    line: 301,
+    trunc: false,
+    lines: [
+      "//------------------------------------------------------------------------------",
+      "// newReport() -- Accept a new emission report",
+      "//------------------------------------------------------------------------------",
+      "void TrackManager::newReport(Emission* em, double sn)",
+      "{",
+      "   // Queue up emissions reports",
+      "   if (em != nullptr) {",
+      "      base::lock(queueLock);",
+      "      if (emQueue.isNotFull()) {",
+      "      em->ref();",
+      "      emQueue.put(em);",
+      "      snQueue.put(sn);",
+      "      }",
+      "      base::unlock(queueLock);",
+      "   }",
+      "}",
+    ],
+  },
+  "models::factory.cpp -- so 4 das 7 classes tem despacho (o smoking gun)": {
+    file: "contexts/src/mixr/src/models/factory.cpp",
+    line: 434,
+    trunc: false,
+    lines: [
+      "   // Tracks",
+      "   else if ( name == Track::getFactoryName() ) {",
+      "      obj = new Track();",
+      "   }",
+      "",
+      "   // Track Managers",
+      "   else if ( name == GmtiTrkMgr::getFactoryName() ) {",
+      "      obj = new GmtiTrkMgr();",
+      "   }",
+      "   else if ( name == AirTrkMgr::getFactoryName() ) {",
+      "      obj = new AirTrkMgr();",
+      "   }",
+      "   else if ( name == RwrTrkMgr::getFactoryName() ) {",
+      "      obj = new RwrTrkMgr();",
+      "   }",
+      "   else if ( name == AirAngleOnlyTrkMgr::getFactoryName() ) {",
+      "      obj = new AirAngleOnlyTrkMgr();",
+      "   }",
+    ],
+  },
+  "AirTrkMgr -- correlacao por IGUALDADE DE PONTEIRO (ground truth), nao geometria": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/AirTrkMgr.cpp",
+    line: 182,
+    trunc: false,
+    lines: [
+      "   // ---",
+      "   // 3) Match current tracks to new reports (observations)",
+      "   // ---",
+      "   base::lock(trkListLock);",
+      "   for (unsigned int it = 0; it < nTrks; it++) {",
+      "      trackNumMatches[it] = 0;",
+      "      const RfTrack* const trk{static_cast<const RfTrack*>(tracks[it])};  // we produce only RfTracks",
+      "      const Player* const tgt{trk->getLastEmission()->getTarget()};",
+      "      for (unsigned int ir = 0; ir < nReports; ir++) {",
+      "         if (emissions[ir]->getTarget() == tgt) {",
+      "            // We have a new report for the same target as this track ...",
+      "            report2TrackMatch[ir][it] = true;",
+      "            trackNumMatches[it]++;",
+      "            reportNumMatches[ir]++;",
+      "         }",
+      "         else report2TrackMatch[ir][it] = false;",
+      "      }",
+      "   }",
+    ],
+  },
+  "AirTrkMgr -- gamma comentado (morto) e o gate de salto grande": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/AirTrkMgr.cpp",
+    line: 258,
+    trunc: false,
+    lines: [
+      "      if (haveU[i]) {",
+      "         // Have Input vector U, use ...",
+      "         // where B is ...",
+      "         double b0{alpha};",
+      "         double b1{};",
+      "         if (age[i] != 0) b1 = beta / age[i];",
+      "         double b2{};",
+      "         //double b2 = gamma * 2.0f / (age[i]*age[i]);",
+      "         if (u[i].length2() > d2) {",
+      "            // Large position change: just set position",
+      "            b0 = 1.0;",
+      "            b1 = 0.0;",
+      "         }",
+      "",
+      "         // X(k+1) = A*X(k) + B*U(k)",
+      "         tracks[i]->setPosition(     (tpos*A[0][0] + tvel*A[0][1] + tacc*A[0][2]) + (u[i]*b0) );",
+      "         tracks[i]->setVelocity(     (tpos*A[1][0] + tvel*A[1][1] + tacc*A[1][2]) + (u[i]*b1) );",
+    ],
+  },
+  "AirTrkMgr::setSlotRangeGate -- 'ok = true' no ramo de erro": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/AirTrkMgr.cpp",
+    line: 393,
+    trunc: false,
+    lines: [
+      "bool AirTrkMgr::setSlotRangeGate(const base::Number* const num)",
+      "{",
+      "   double value{};",
+      "   const auto p = dynamic_cast<const base::Distance*>(num);",
+      "   if (p != nullptr) {",
+      "      // We have a distance and we want it in meters ...",
+      "      base::Meters meters;",
+      "      value = meters.convert(*p);",
+      "   }",
+      "   else if (num != nullptr) {",
+      "      // We have only a number, assume it's in meters ...",
+      "      value = num->getReal();",
+      "   }",
+      "",
+      "   // Set the value if it's valid",
+      "   bool ok{true};",
+      "   if (value > 0.0) {",
+      "      rngGate = value;",
+      "   }",
+      "   else {",
+      "      std::cerr << \"TrackManager::setRangeGate: invalid gate, must be greater than zero.\" << std::endl;",
+      "      ok = true;",
+      "   }",
+      "   return ok;",
+      "}",
+    ],
+  },
+  "RwrTrkMgr -- \"a ownship da emissao E o nosso alvo\"": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/RwrTrkMgr.cpp",
+    line: 125,
+    trunc: false,
+    lines: [
+      "   double newSignal[MAX_REPORTS]{};",
+      "   double newRdot[MAX_REPORTS]{};",
+      "   base::Vec3d tgtPos[MAX_REPORTS];",
+      "   double tmp{};",
+      "   for (Emission* em = getReport(&tmp); em != nullptr; em = getReport(&tmp)) {",
+      "      if (nReports < MAX_REPORTS) {",
+      "         // save the report",
+      "         Player* tgt{em->getOwnship()};  // The emissions ownship is our target!",
+      "         emissions[nReports] = em;",
+      "         newSignal[nReports] = tmp;",
+      "         newRdot[nReports] = emissions[nReports]->getRangeRate();",
+      "         reportNumMatches[nReports] = 0;",
+      "         tgtPos[nReports] = tgt->getPosition() - ownship->getPosition();",
+      "         nReports++;",
+      "      } else {",
+      "         // ignore -- too many reports",
+      "         em->unref();",
+      "      }",
+      "   }",
+      "",
+      "   // ---",
+      "   // 3) Match current tracks to new reports (observations)",
+      "   // ---",
+      "   base::lock(trkListLock);",
+      "   for (unsigned int it = 0; it < nTrks; it++) {",
+      "      trackNumMatches[it] = 0;",
+      "      const RfTrack* const trk{static_cast<const RfTrack*>(tracks[it])};        // we produce only RfTracks",
+      "      const Player* const tgt{trk->getLastEmission()->getOwnship()};            // The emissions ownship is our target!",
+      "      for (unsigned int ir = 0; ir < nReports; ir++) {",
+      "         if (emissions[ir]->getOwnship() == tgt) {  // The emissions ownship is our target!",
+      "            // We have a new report for the same target as this track ...",
+      "            report2TrackMatch[ir][it] = true;",
+      "            trackNumMatches[it]++;",
+      "            reportNumMatches[ir]++;",
+      "         }",
+      "         else report2TrackMatch[ir][it] = false;",
+      "      }",
+      "   }",
+    ],
+  },
+  "AirAngleOnlyTrkMgrPT -- o UNICO gate geometrico de verdade da familia": {
+    file: "contexts/src/mixr/src/models/system/trackmanager/AirAngleOnlyTrkMgrPT.cpp",
+    line: 169,
+    trunc: false,
+    lines: [
+      "            // ---",
+      "            // 3) Match new reports (observations) to all potential track matches",
+      "            // ---",
+      "            base::lock(trkListLock);",
+      "            for (unsigned int it = 0; it < nTrks; it++) {",
+      "                trackNumMatches[it] = 0;",
+      "                const IrTrack* const trk{static_cast<const IrTrack*>(tracks[it])};  // we produce only IrTracks",
+      "                for (unsigned int ir = 0; ir < nReports; ir++) {",
+      "                    double azDiff{queryMessages[ir]->getRelativeAzimuth() - trk->getPredictedAzimuth()};",
+      "                    if (azDiff < 0.0f) azDiff = 0.0f - azDiff;",
+      "                    double elDiff{queryMessages[ir]->getRelativeElevation() - trk->getPredictedElevation()};",
+      "                    if (elDiff < 0.0f) elDiff = 0.0f - elDiff;",
+      "                    if ((azDiff < azimuthBin) && (elDiff < elevationBin)) {",
+      "                        // We have a new report for the same target as this track ...",
+      "                        report2TrackMatch[ir][it] = 1;",
+      "                        trackNumMatches[it]++;",
+      "                        reportNumMatches[ir]++;",
+      "                    } else",
+      "                        report2TrackMatch[ir][it] = 0;",
+      "                }",
+      "            }",
+    ],
+  },
+  "Track::setPosition -- alcance/marcacao/LOS derivados automaticamente": {
+    file: "contexts/src/mixr/src/models/Track.cpp",
+    line: 249,
+    trunc: false,
+    lines: [
+      "// setPosition() -- set track's position vector",
+      "bool Track::setPosition(const base::Vec3d& p)",
+      "{",
+      "   // set position vector",
+      "   pos = p;",
+      "",
+      "   // compute ranges",
+      "   const double gndRng2{pos.x()*pos.x() + pos.y()*pos.y()};",
+      "   gndRng = std::sqrt(gndRng2);",
+      "   rng = std::sqrt(gndRng2 +  pos.z()*pos.z());",
+      "",
+      "   // compute angles",
+      "   taz = std::atan2(pos.y(),pos.x());",
+      "   raz[0] = base::angle::aepcdRad(taz - osGndTrk);",
+      "   rel[0] = std::atan2(-pos.z(), gndRng);",
+      "",
+      "   // Set LOS unit vector",
+      "   if (rng > 0) los.set( pos.x()/rng, pos.y()/rng, pos.z()/rng );",
+      "   else los.set(0,0,0);",
+      "",
+      "   return true;",
+      "}",
+    ],
+  },
+};
+
+const trackMgrSnip = (key) => (key ? TRACKMGR_SNIPPETS[key] || null : null);
+
+function renderTrackMgrSnippet(key) {
+  const snip = trackMgrSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_TRACKMANAGER_SLOT_DOCS = {
+  maxTracks: ["Number", "default 200 (MAX_TRKS)"],
+  maxTrackAge: ["Time|Number", "segundos -- default 3.0"],
+  firstTrackId: ["Number", "default 1000"],
+  alpha: ["Number", "ganho de posição do filtro α-β-γ -- default 1.0"],
+  beta: ["Number", "ganho de velocidade -- default 0.0"],
+  gamma: ["Number", "ganho de aceleração -- ver achado: MORTO em toda subclasse concreta"],
+  logTrackUpdates: ["Number(bool)", "default true"],
+};
+
+const REF_AIRTRKMGR_SLOT_DOCS = {
+  positionGate: ["Number|Distance", "metros -- default 2·NM2M (~3704 m); único gate REALMENTE lido"],
+  rangeGate: ["Number|Distance", "metros -- default 500.0; slot MORTO, nunca consultado em processTrackList()"],
+  velocityGate: ["Number", "m/s -- default 10.0; slot MORTO, mesmo caso de rangeGate"],
+};
+
+const REF_ANGLEONLY_SLOT_DOCS = {
+  azimuthBin: ["Number|Angle", "rad -- default π (180°)"],
+  elevationBin: ["Number|Angle", "rad -- default π"],
+};
+
+function TrackManagerReferencePage({ onOpenCatalog }) {
+  const tmEntry = MODEL["TrackManager"];
+  const airEntry = MODEL["AirTrkMgr"];
+  const aoEntry = MODEL["AngleOnlyTrackManager"];
+  const trackEntry = MODEL["Track"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>TrackManager</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "TrackManager" -- não construível</span>
+          <span className="mx-chip">4 folhas construíveis + 1 fantasma (PT)</span>
+          {tmEntry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("TrackManager")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          O que acontece com uma detecção depois que um <code className="mx-mono">RfSensor</code> a entrega
+          (aba anterior): vira um <code className="mx-mono">Track</code>. <code className="mx-mono">TrackManager</code>{" "}
+          é a base -- lista de até <code className="mx-mono">maxTracks</code>, fila de{" "}
+          <code className="mx-mono">Emission</code>/<code className="mx-mono">IrQueryMsg</code>, um filtro
+          α-β-γ genérico -- mas <code className="mx-mono">processTrackList()</code> é puro virtual: CADA
+          subclasse decide sozinha o que conta como "a mesma pista". Quatro folhas concretas resolvem isso
+          por IGUALDADE DE PONTEIRO (ground truth, não geometria); só a quinta, citada abaixo, usa um gate
+          angular de verdade.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {airEntry ? airEntry.ch.join(" → ") : "AirTrkMgr → TrackManager → System → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de TrackManager" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado central desta página -- já batido pelo próprio repositório, não hipotético:</b>{" "}
+                <code className="mx-mono">TrackManager</code>/<code className="mx-mono">AngleOnlyTrackManager</code>{" "}
+                usam <code className="mx-mono">IMPLEMENT_PARTIAL_SUBCLASS</code> com nome de fábrica que BATE
+                com o header, mas <code className="mx-mono">models::factory.cpp</code> só tem branch de despacho
+                para 4 classes (<code className="mx-mono">GmtiTrkMgr</code>/<code className="mx-mono">AirTrkMgr</code>/{" "}
+                <code className="mx-mono">RwrTrkMgr</code>/<code className="mx-mono">AirAngleOnlyTrkMgr</code>) --
+                as duas bases ficam <code className="mx-mono">clone()</code>-nulas, de fato abstratas. Mas o caso
+                mais nítido é a QUINTA classe, <code className="mx-mono">AirAngleOnlyTrkMgrPT</code>: ela é{" "}
+                <b>totalmente concreta</b> em C++ (<code className="mx-mono">IMPLEMENT_SUBCLASS</code> de
+                verdade, <code className="mx-mono">clone()</code> funcional) -- mas SEM branch em{" "}
+                <code className="mx-mono">factory.cpp</code> mesmo assim. Este próprio repositório já bateu nisso:
+                um comentário em <code className="mx-mono">tests/fixtures/built-in_mixr_1/configs/
+                scenario_max_player.edl.in</code> registra que <code className="mx-mono">MergingIrSensor::reset()</code>{" "}
+                EXIGE um <code className="mx-mono">( AirAngleOnlyTrkMgrPT )</code> e avisa em toda partida quando
+                não acha um -- e essa classe simplesmente não tem como ser criada via EDL neste fork.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Correlação é por PONTEIRO do alvo (ground truth), não por geometria</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">AirTrkMgr</code>/<code className="mx-mono">GmtiTrkMgr</code> casam
+                relatório↔pista comparando <code className="mx-mono">emissions[ir]-&gt;getTarget() == tgt</code> --
+                o ponteiro C++ do <code className="mx-mono">Player</code> real, não uma janela de
+                posição/velocidade. Não há nearest-neighbor gating na associação em si;{" "}
+                <code className="mx-mono">positionGate</code> só entra DEPOIS, como "gate de salto grande" -- se
+                a correção excede o gate, descarta a suavização e trava direto na posição observada.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>gamma é slot morto em TODAS as quatro folhas concretas</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                O termo que <code className="mx-mono">gamma</code> multiplicaria (<code className="mx-mono">b2</code>)
+                é sempre <code className="mx-mono">double b2{"{}"}</code> (zero), com a fórmula real COMENTADA --{" "}
+                <code className="mx-mono">//double b2 = gamma * 2.0f / (age[i]*age[i]);</code> -- idêntica em{" "}
+                <code className="mx-mono">AirTrkMgr</code> e <code className="mx-mono">GmtiTrkMgr</code>;{" "}
+                em <code className="mx-mono">RwrTrkMgr</code> nem o comentário sobrevive. Configurável no{" "}
+                <code className="mx-mono">.edl</code>, aceito sem erro, nunca influencia nada.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Bug confirmado:</b> <code className="mx-mono">AirTrkMgr::setSlotRangeGate()</code> (e os
+                irmãos <code className="mx-mono">setSlotVelocityGate()</code>) declaram{" "}
+                <code className="mx-mono">bool ok{"{true}"}</code> e reatribuem{" "}
+                <code className="mx-mono">ok = true</code> no PRÓPRIO ramo de erro (deveria ser{" "}
+                <code className="mx-mono">false</code>) -- um valor inválido é logado em{" "}
+                <code className="mx-mono">stderr</code> mas o parser EDL recebe sucesso, e o valor
+                antigo/default fica mantido em silêncio. A mensagem de erro também nomeia a classe errada:{" "}
+                "TrackManager::setRangeGate", não <code className="mx-mono">AirTrkMgr::setSlotRangeGate</code> --
+                a mesma classe de descuido já achada em <code className="mx-mono">Radar::setSlotIGain()</code>{" "}
+                (aba anterior). E, à parte do bug: <code className="mx-mono">rangeGate</code>/{" "}
+                <code className="mx-mono">velocityGate</code> são slots MORTOS -- nenhuma ocorrência de{" "}
+                <code className="mx-mono">rngGate</code>/<code className="mx-mono">velGate</code> dentro de{" "}
+                <code className="mx-mono">processTrackList()</code> além do próprio setter/getter.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>RwrTrkMgr -- "a ownship da emissão É o nosso alvo"</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Para um RWR, o <code className="mx-mono">Emission</code> chega de um radar INIMIGO iluminando o
+                ownship -- o "alvo" da pista RWR é o EMISSOR, não quem foi irradiado (comentário literal repetido
+                4× no arquivo: "The emissions ownship is our target!"). Apesar do nome,{" "}
+                <code className="mx-mono">RwrTrkMgr</code> NÃO é angle-only -- guarda posição relativa 3D
+                completa (<code className="mx-mono">tgt-&gt;getPosition() - ownship-&gt;getPosition()</code>)
+                porque a simulação conhece a posição verdadeira do emissor. A família angle-only DE VERDADE é a
+                separada <code className="mx-mono">AngleOnlyTrackManager</code>/<code className="mx-mono">
+                AirAngleOnlyTrkMgr*</code>, usada por sensores IR.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>AirAngleOnlyTrkMgrPT -- o único gate geométrico de verdade</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Reimplementa <code className="mx-mono">processTrackList()</code> do zero, com um algoritmo
+                escrito à mão para lidar com "merged tracks" de um <code className="mx-mono">MergingIrSensor</code>{" "}
+                (vários alvos colapsados num único retorno IR): casa relatório↔pista por{" "}
+                <b>diferença de ângulo</b> (<code className="mx-mono">|az-azPredito| &lt; azimuthBin</code>{" "}
+                <b>E</b> o mesmo em elevação) -- os ÚNICOS dois slots de{" "}
+                <code className="mx-mono">AngleOnlyTrackManager</code> que alguma subclasse de fato lê. A
+                irmã <code className="mx-mono">AirAngleOnlyTrkMgr</code> (sem "PT") HERDA{" "}
+                <code className="mx-mono">azimuthBin</code>/<code className="mx-mono">elevationBin</code> mas
+                correlaciona por ponteiro, igual às outras três -- os slots ficam mortos lá.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>Track -- geometria derivada automaticamente, qualidade nunca escrita</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">setPosition()</code> recalcula alcance/marcação/LOS toda vez que a
+                posição muda -- ninguém precisa lembrar de atualizar os três separadamente.{" "}
+                <code className="mx-mono">IrTrack::setPosition()</code> SOBRESCREVE para NÃO recalcular az/el
+                (comentário "but do not set rel az or el") -- faz sentido: numa pista angle-only, az/el vêm
+                direto do sensor, não são derivados de uma posição 3D confiável.{" "}
+                <code className="mx-mono">quality</code>/<code className="mx-mono">setQuality()</code> nunca é
+                escrito por NENHUM <code className="mx-mono">TrackManager</code> desta família -- fica para
+                sempre em <code className="mx-mono">0.0</code>; não existe decaimento de qualidade nesta família,
+                apesar do slot table sugerir um conceito de "qualidade de pista" ativo.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 380px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de TrackManager</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{tmEntry ? tmEntry.own : 7} slots próprios -- herdados por todas as subclasses.</p>
+              <div className="mx-slotgrid">
+                {(tmEntry ? tmEntry.sl : Object.keys(REF_TRACKMANAGER_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_TRACKMANAGER_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_TRACKMANAGER_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 320 }}>{REF_TRACKMANAGER_SLOT_DOCS[s] ? REF_TRACKMANAGER_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de AirTrkMgr</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{airEntry ? airEntry.own : 3} slots próprios -- 2 deles mortos.</p>
+              <div className="mx-slotgrid">
+                {(airEntry ? airEntry.sl : Object.keys(REF_AIRTRKMGR_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_AIRTRKMGR_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_AIRTRKMGR_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 300 }}>{REF_AIRTRKMGR_SLOT_DOCS[s] ? REF_AIRTRKMGR_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 280px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>Slots próprios de AngleOnlyTrackManager</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{aoEntry ? aoEntry.own : 2} slots próprios -- só PT de fato os lê.</p>
+              <div className="mx-slotgrid">
+                {(aoEntry ? aoEntry.sl : Object.keys(REF_ANGLEONLY_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_ANGLEONLY_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_ANGLEONLY_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 280 }}>{REF_ANGLEONLY_SLOT_DOCS[s] ? REF_ANGLEONLY_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>
+                <code className="mx-mono">GmtiTrkMgr</code>, <code className="mx-mono">RwrTrkMgr</code>,{" "}
+                <code className="mx-mono">AirAngleOnlyTrkMgr</code> e <code className="mx-mono">AirAngleOnlyTrkMgrPT</code>{" "}
+                declaram <code className="mx-mono">EMPTY_SLOTTABLE</code> -- zero slots próprios; herdam da base
+                mais próxima. <code className="mx-mono">Track</code>/<code className="mx-mono">RfTrack</code>/{" "}
+                <code className="mx-mono">IrTrack</code> também não têm slot algum -- nunca são criados via
+                EDL, só por <code className="mx-mono">new</code> direto dentro de um{" "}
+                <code className="mx-mono">TrackManager</code>.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">TrackManager::newReport() -- na íntegra</span><span>C++</span></div>
+              {renderTrackMgrSnippet("TrackManager::newReport -- a fila que toda folha concreta alimenta")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">models::factory.cpp -- só 4 das 7 classes desta família têm despacho</span><span>C++</span></div>
+              {renderTrackMgrSnippet("models::factory.cpp -- so 4 das 7 classes tem despacho (o smoking gun)")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">AirTrkMgr -- correlação por ponteiro do alvo (passo 3)</span><span>C++</span></div>
+              {renderTrackMgrSnippet("AirTrkMgr -- correlacao por IGUALDADE DE PONTEIRO (ground truth), nao geometria")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">AirTrkMgr -- gamma comentado (morto) + gate de salto grande</span><span>C++</span></div>
+              {renderTrackMgrSnippet("AirTrkMgr -- gamma comentado (morto) e o gate de salto grande")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">AirTrkMgr::setSlotRangeGate() -- 'ok = true' no ramo de erro</span><span>C++</span></div>
+              {renderTrackMgrSnippet("AirTrkMgr::setSlotRangeGate -- 'ok = true' no ramo de erro")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">RwrTrkMgr -- "the emissions ownship is our target!"</span><span>C++</span></div>
+              {renderTrackMgrSnippet("RwrTrkMgr -- \"a ownship da emissao E o nosso alvo\"")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">AirAngleOnlyTrkMgrPT -- o gate por diferença de ângulo (passo 3)</span><span>C++</span></div>
+              {renderTrackMgrSnippet("AirAngleOnlyTrkMgrPT -- o UNICO gate geometrico de verdade da familia")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Track::setPosition() -- na íntegra</span><span>C++</span></div>
+              {renderTrackMgrSnippet("Track::setPosition -- alcance/marcacao/LOS derivados automaticamente")}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ====================== Referência -- RfSignature (7 formas de RCS) + Emission ==================
+ * Quarta e última entrada de RF. RfSignature é a interface mais enxuta desta Referência
+ * inteira -- UM método puro virtual, getRCS(Emission*) -- e as sete formas concretas variam
+ * de "constante" a "tabela 2D interpolada". Emission é o objeto que atravessa o ciclo inteiro
+ * (Antenna -> Player alvo -> de volta) SEM ser clonado -- o mesmo ponteiro carrega ida e
+ * volta, e o termo 1/R^4 da equação de radar emerge como produto de duas contas de 1/(4piR^2)
+ * independentes, feitas em pontos diferentes do pipeline, nunca escrito como R^4 em lugar nenhum.
+ * ==================================================================================== */
+
+const RFSIGNATURE_SNIPPETS = {
+  "RfSignature -- interface + o nome de fabrica real e 'Signature'": {
+    file: "contexts/src/mixr/include/mixr/models/Signatures.hpp",
+    line: 20,
+    trunc: false,
+    lines: [
+      "class RfSignature : public base::Component",
+      "{",
+      "    DECLARE_SUBCLASS(RfSignature, base::Component)",
+      "public:",
+      "    RfSignature();",
+      "    virtual double getRCS(const Emission* const em)=0;",
+      "};",
+      "",
+      "// -- src/models/Signatures.cpp:",
+      "// IMPLEMENT_ABSTRACT_SUBCLASS(RfSignature, \"Signature\")   <- nao \"RfSignature\"",
+    ],
+  },
+  "SigConstant::getRCS/setRCS -- ignora o Emission, aceita Number OU Decibel": {
+    file: "contexts/src/mixr/src/models/Signatures.cpp",
+    line: 77,
+    trunc: false,
+    lines: [
+      "double SigConstant::getRCS(const Emission* const)",
+      "{",
+      "    return rcs;",
+      "}",
+      "",
+      "bool SigConstant::setRCS(const base::Number* const num)",
+      "{",
+      "    bool ok{};",
+      "    double r{-1.0};",
+      "",
+      "    const auto d = dynamic_cast<const base::Area*>(num);",
+      "    if (d != nullptr) {",
+      "        // Has area units and we need square meters",
+      "        base::SquareMeters m2;",
+      "        r = m2.convert(*d);",
+      "    } else if (num != nullptr) {",
+      "        // square meters (Number or Decibel)",
+      "        r = num->getReal();",
+      "    }",
+      "",
+      "    if (r >= 0.0) { rcs = r; ok = true; }",
+      "    else { std::cerr << \"SigConstant::setRCS: invalid rcs; must be greater than or equal to zero!\" << std::endl; }",
+      "    return ok;",
+      "}",
+    ],
+  },
+  "SigSphere::getRCS -- pi*r^2, calculado uma vez em setRadius()": {
+    file: "contexts/src/mixr/src/models/Signatures.cpp",
+    line: 137,
+    trunc: false,
+    lines: [
+      "double SigSphere::getRCS(const Emission* const)",
+      "{",
+      "    return rcs;",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// setRadiusFromSlot() -- Set the radius from Slot table",
+      "//------------------------------------------------------------------------------",
+      "bool SigSphere::setSlotRadius(base::Number* const num)",
+      "{",
+      "    bool ok{};",
+      "    double r{-1.0};",
+      "",
+      "    const auto d = dynamic_cast<base::Distance*>(num);",
+      "    if (d != nullptr) {",
+      "        // Has distance units and we need meters",
+      "        base::Meters meters;",
+      "        r = meters.convert(*d);",
+      "    } else if (num != nullptr) {",
+      "        // Just a Number",
+      "        r = num->getReal();",
+      "    }",
+      "",
+      "    if (r >= 0.0) { setRadius(r); ok = true; }",
+      "    else { std::cerr << \"SigSphere::setRadius: invalid radius; must be greater than or equal to zero!\" << std::endl; }",
+      "    return ok;",
+      "}",
+    ],
+  },
+  "SigPlate / SigDihedralCR / SigTrihedralCR -- tres formulas lado a lado": {
+    file: "contexts/src/mixr/src/models/Signatures.cpp",
+    line: 206,
+    trunc: true,
+    lines: [
+      "double SigPlate::getRCS(const Emission* const em)",
+      "{",
+      "    double rcs{};",
+      "    if (em != nullptr) {",
+      "        double lambda{em->getWavelength()};",
+      "        double area{a * b};",
+      "        if (lambda > 0.0 && area > 0.0) {",
+      "            // If we have lambda and the area of the plate, compute the RCS",
+      "            rcs = (4.0 * base::PI * area * area) / (lambda * lambda);",
+      "        }",
+      "    }",
+      "    return static_cast<double>(rcs);",
+      "}",
+      "",
+      "// ... setA()/setB() omitidos ...",
+      "",
+      "//==============================================================================",
+      "// Class: SigDihedralCR",
+      "//==============================================================================",
+      "IMPLEMENT_SUBCLASS(SigDihedralCR, \"SigDihedralCR\")",
+      "EMPTY_SLOTTABLE(SigDihedralCR)",
+      "",
+      "SigDihedralCR::SigDihedralCR()",
+      "{",
+      "    STANDARD_CONSTRUCTOR()",
+      "    length = 0.0;   // <- nunca mais lido em lugar nenhum do arquivo (campo morto)",
+      "}",
+      "",
+      "double SigDihedralCR::getRCS(const Emission* const em)",
+      "{",
+      "    double rcs{};",
+      "    if (em != nullptr) {",
+      "        const double lambda{em->getWavelength()};",
+      "        if (lambda > 0.0) {",
+      "            const double a{getA()};   // <- herdado de SigPlate; 'length' NAO e usado aqui",
+      "            rcs = (8.0 * base::PI * a*a*a*a) / (lambda*lambda);",
+      "        }",
+      "    }",
+      "    return static_cast<double>(rcs);",
+      "}",
+      "",
+      "//==============================================================================",
+      "// Class: SigTrihedralCR",
+      "//==============================================================================",
+      "double SigTrihedralCR::getRCS(const Emission* const em)",
+      "{",
+      "    double rcs{};",
+      "    if (em != nullptr) {",
+      "        const double lambda{em->getWavelength()};",
+      "        if (lambda > 0.0) {",
+      "            const double a{getA()};",
+      "            rcs = (12.0 * base::PI * a*a*a*a) / (lambda*lambda);   // <- NAO delega a SigDihedralCR",
+      "        }",
+      "    }",
+      "    return static_cast<double>(rcs);",
+      "}",
+    ],
+  },
+  "SigSwitch::getRCS -- camouflageType+1 como indice 1-based em components:": {
+    file: "contexts/src/mixr/src/models/Signatures.cpp",
+    line: 362,
+    trunc: false,
+    lines: [
+      "double SigSwitch::getRCS(const Emission* const em)",
+      "{",
+      "   double rcs{};",
+      "",
+      "   // Find our ownship player ...",
+      "   const Player* ownship{static_cast<const Player*>(findContainerByType(typeid(Player)))};",
+      "   if (ownship != nullptr) {",
+      "",
+      "      // get our ownship's camouflage type",
+      "      unsigned int camouflage{ownship->getCamouflageType()};",
+      "      camouflage++; // our components are one based",
+      "",
+      "      // find a RfSignature with this index",
+      "      base::Pair* pair{findByIndex(camouflage)};",
+      "      if (pair != nullptr) {",
+      "         const auto sig = dynamic_cast<RfSignature*>( pair->object() );",
+      "         if (sig != nullptr) {",
+      "",
+      "            // OK -- we've found the correct RfSignature subcomponent",
+      "            // now let it do all of the work",
+      "            rcs = sig->getRCS(em);",
+      "",
+      "         }",
+      "      }",
+      "   }",
+      "   return rcs;",
+      "}",
+    ],
+  },
+  "SigAzEl::getRCS -- interpolacao bilinear + conversao dB->linear explicita": {
+    file: "contexts/src/mixr/src/models/Signatures.cpp",
+    line: 449,
+    trunc: false,
+    lines: [
+      "double SigAzEl::getRCS(const Emission* const em)",
+      "{",
+      "   double rcs{};",
+      "   if (em != nullptr && tbl != nullptr) {",
+      "",
+      "      // angle of arrival (radians)",
+      "      double iv1{em->getAzimuthAoi()};",
+      "      double iv2{em->getElevationAoi()};",
+      "",
+      "      // If the table's independent variable's order is swapped: (El, Az)",
+      "      if (isOrderSwapped()) {",
+      "         iv1 = em->getElevationAoi();",
+      "         iv2 = em->getAzimuthAoi();",
+      "      }",
+      "",
+      "      // If the table's independent variables are in degrees ..",
+      "      if (isInDegrees()) {",
+      "         iv1 *= static_cast<double>(base::angle::R2DCC);",
+      "         iv2 *= static_cast<double>(base::angle::R2DCC);",
+      "      }",
+      "",
+      "      rcs = tbl->lfi(iv1,iv2);",
+      "",
+      "      // If the dependent data is in decibels ...",
+      "      if (isDecibel()) {",
+      "         rcs = std::pow(static_cast<double>(10.0), static_cast<double>(rcs / 10.0));",
+      "      }",
+      "   }",
+      "   return rcs;",
+      "}",
+    ],
+  },
+  "Emission.cpp -- o arquivo inteiro, com o termo 1/(4*pi*r^2)": {
+    file: "contexts/src/mixr/src/models/Emission.cpp",
+    line: 1,
+    trunc: false,
+    lines: [
+      "",
+      "#include \"mixr/models/Emission.hpp\"",
+      "",
+      "#include \"mixr/models/system/RfSystem.hpp\"",
+      "",
+      "namespace mixr {",
+      "namespace models {",
+      "",
+      "IMPLEMENT_SUBCLASS(Emission, \"Emission\")",
+      "EMPTY_SLOTTABLE(Emission)",
+      "",
+      "Emission::Emission()",
+      "{",
+      "    STANDARD_CONSTRUCTOR()",
+      "}",
+      "",
+      "void Emission::copyData(const Emission& org, const bool)",
+      "{",
+      "    BaseClass::copyData(org);",
+      "",
+      "    // Copy the data",
+      "    freq = org.freq;",
+      "    lambda = org.lambda;",
+      "    pw = org.pw;",
+      "    power = org.power;",
+      "    polar = org.polar;",
+      "    bw = org.bw;",
+      "    gain = org.gain;",
+      "    prf = org.prf;",
+      "    pulses = org.pulses;",
+      "    lossRng = org.lossRng;",
+      "    lossAtmos = org.lossAtmos;",
+      "    lossXmit = org.lossXmit;",
+      "    rcs = org.rcs;",
+      "",
+      "    const RfSystem* mm = org.transmitter;",
+      "    setTransmitter( const_cast<RfSystem*>(static_cast<const RfSystem*>(mm)) );",
+      "",
+      "    ecmFlag = org.ecmFlag;",
+      "}",
+      "",
+      "void Emission::deleteData()",
+      "{",
+      "   clear();",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// clear() -- clears out the emissions",
+      "//------------------------------------------------------------------------------",
+      "void Emission::clear()",
+      "{",
+      "   BaseClass::clear();",
+      "   setTransmitter(nullptr);",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// Sets the range to the target",
+      "//------------------------------------------------------------------------------",
+      "void Emission::setRange(const double r)",
+      "{",
+      "   BaseClass::setRange(r);",
+      "",
+      "   if (r > 1.0) lossRng = static_cast<double>(1.0/(4.0 * base::PI * r * r));",
+      "   else lossRng = 1.0;",
+      "}",
+      "",
+      "//------------------------------------------------------------------------------",
+      "// setTransmitter() -- Sets the pointer to the source",
+      "//------------------------------------------------------------------------------",
+      "void Emission::setTransmitter(RfSystem* const t)",
+      "{",
+      "   //if (transmitter != nullptr) {",
+      "   //   transmitter->unref();",
+      "   //}",
+      "   transmitter = t;",
+      "   //if (transmitter != nullptr) {",
+      "   //   transmitter->ref();",
+      "   //}",
+      "}",
+      "",
+      "}",
+      "}",
+    ],
+  },
+  "Player::onRfEmissionEventPlayer -- o ciclo completo em uma funcao so": {
+    file: "contexts/src/mixr/src/models/player/Player.cpp",
+    line: 2556,
+    trunc: false,
+    lines: [
+      "bool Player::onRfEmissionEventPlayer(Emission* const em)",
+      "{",
+      "   // Player must be active ...",
+      "   if (isNotMode(ACTIVE)) return false;",
+      "",
+      "   // ---",
+      "   //  1) Compute the Line-Of-Sight vectors back to the transmitter (los0)",
+      "   // ---",
+      "   base::Vec3d xlos{em->getTgtLosVec()};",
+      "   base::Vec4d los0( xlos.x(), xlos.y(), xlos.z(), 0.0 );",
+      "",
+      "   // 2) Transform the LOS vector to our player coordinates to get",
+      "   // the Angle Of Incidence (AOI) vector",
+      "   base::Vec4d aoi{rm * los0};",
+      "   em->setAoiVector(aoi);",
+      "",
+      "   // 3) Compute the azimuth and elevation angles of incidence (AOI)",
+      "   {",
+      "      // 3-a) Get the aoi vector values & compute range squared",
+      "      const double xa{aoi.x()};",
+      "      const double ya{aoi.y()};",
+      "      const double za{-aoi.z()};",
+      "",
+      "      // 3-b) Compute azimuth: az = atan2(ya, xa)",
+      "      double aazr{std::atan2(ya, xa)};",
+      "      em->setAzimuthAoi(aazr);",
+      "",
+      "      // 3-c) Compute elevation: el = atan2(za, ra), where 'ra' is sqrt of xa*xa & ya*ya",
+      "      double ra{std::sqrt(xa*xa + ya*ya)};",
+      "      double aelr{std::atan2(za,ra)};",
+      "      em->setElevationAoi(aelr);",
+      "   }",
+      "",
+      "   // 4) Compute and return the RCS",
+      "   if (em->isReturnRequested()) {",
+      "",
+      "      if (signature != nullptr) {",
+      "         double rcs{signature->getRCS(em)};",
+      "         em->setRCS(rcs);",
+      "      } else {",
+      "         em->setRCS(0);",
+      "      }",
+      "",
+      "      // Send reflected emissions back to the transmitter",
+      "      em->getGimbal()->event(RF_EMISSION_RETURN,em);",
+      "   }",
+      "",
+      "   // 6) Pass the emission to our antennas",
+      "   {",
+      "      Gimbal* g{getGimbal()};",
+      "      if (g != nullptr && g->getPowerSwitch() != System::PWR_OFF) {",
+      "         g->event(RF_EMISSION,em);",
+      "      }",
+      "   }",
+      "",
+      "   // 7) Pass the emission to anyone requesting reflected emissions",
+      "   //    (we're doing do calculations here, this is only meaningful to",
+      "   //     the receiving player)",
+      "   for (unsigned int i = 0; i < MAX_RF_REFLECTIONS; i++) {",
+      "      if (rfReflect[i] != nullptr) rfReflect[i]->event(RF_REFLECTED_EMISSION,em);",
+      "   }",
+      "",
+      "   return true;",
+      "}",
+    ],
+  },
+};
+
+const rfSignatureSnip = (key) => (key ? RFSIGNATURE_SNIPPETS[key] || null : null);
+
+function renderRfSignatureSnippet(key) {
+  const snip = rfSignatureSnip(key);
+  if (!snip) return null;
+  const toks = cppTokenizeLines(snip.lines);
+  return (
+    <div className="mx-code">
+      {snip.lines.map((ln, k) => (
+        <div key={k} className="mx-cl"><span className="mx-num">{snip.line + k}</span><span className="mx-src">{renderCppSrc(toks[k], ln)}</span></div>
+      ))}
+    </div>
+  );
+}
+
+const REF_SIGCONSTANT_SLOT_DOCS = { rcs: ["Number|Area", "m² (ou Decibel) -- default 0.0"] };
+const REF_SIGSPHERE_SLOT_DOCS = { radius: ["Number|Distance", "metros -- default 0"] };
+const REF_SIGPLATE_SLOT_DOCS = {
+  a: ["Number|Distance", "comprimento, metros -- default 0"],
+  b: ["Number|Distance", "largura, metros -- default 0"],
+};
+const REF_SIGAZEL_SLOT_DOCS = {
+  table: ["Table2", "RCS(az,el) 2D -- clamp nas bordas, salvo `extrapolate` ligado na própria Table2"],
+  swapOrder: ["Number(bool)", "se true, a 1ª variável independente é elevação, não azimute -- default false"],
+  inDegrees: ["Number(bool)", "variáveis independentes em graus, não radianos -- default false"],
+  inDecibel: ["Number(bool)", "dado dependente em dBsm -- default false"],
+};
+
+function RfSignatureReferencePage({ onOpenCatalog }) {
+  const swEntry = MODEL["SigSwitch"];
+  const azEntry = MODEL["SigAzEl"];
+  const plateEntry = MODEL["SigPlate"];
+  const sphereEntry = MODEL["SigSphere"];
+  const constEntry = MODEL["SigConstant"];
+  const [tab, setTab] = useState("overview");
+
+  return (
+    <div className="mx-body" style={{ paddingBottom: 40 }}>
+      <div className="mx-refhero">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span className="mx-mono" style={{ fontSize: 18, fontWeight: 700 }}>RfSignature</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>mixr::models</span>
+          <span className="mx-chip">factory: "Signature" (a base) → 7 formas</span>
+          <span className="mx-chip">+ Emission (o objeto que atravessa o ciclo)</span>
+          {constEntry && onOpenCatalog && (
+            <button className="mx-btn" style={{ fontSize: 11, marginLeft: "auto" }} onClick={() => onOpenCatalog("SigConstant")}>Ver no Catálogo →</button>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 880, margin: "8px 0 0" }}>
+          A interface mais enxuta desta Referência inteira: <code className="mx-mono">RfSignature</code> tem
+          UM método puro virtual, <code className="mx-mono">getRCS(Emission*)</code>. As sete formas concretas
+          vão de "constante" (<code className="mx-mono">SigConstant</code>) a "tabela 2D interpolada"
+          (<code className="mx-mono">SigAzEl</code>), passando por geometrias ópticas clássicas de handbook
+          (esfera, placa, diedro, triedro). <code className="mx-mono">Emission</code> é o objeto que atravessa
+          o ciclo INTEIRO -- não é clonado no retorno, é o MESMO ponteiro, e o termo{" "}
+          <code className="mx-mono">1/R⁴</code> da equação de radar emerge do PRODUTO de duas contas
+          independentes de <code className="mx-mono">1/(4πR²)</code>, nunca escrito como{" "}
+          <code className="mx-mono">R⁴</code> em lugar nenhum do fonte.
+        </p>
+        <div className="mx-mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10 }}>
+          {constEntry ? constEntry.ch.join(" → ") : "SigConstant → RfSignature → Component → Object"}
+        </div>
+      </div>
+
+      <div className="mx-dtabs" role="tablist" aria-label="Seções de RfSignature" style={{ marginTop: 14 }}>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "overview"} data-on={tab === "overview" ? 1 : 0} onClick={() => setTab("overview")}>Visão geral</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "slots"} data-on={tab === "slots" ? 1 : 0} onClick={() => setTab("slots")}>Slots</button>
+        <button className="mx-dtab" role="tab" aria-selected={tab === "code"} data-on={tab === "code" ? 1 : 0} onClick={() => setTab("code")}>Código-fonte</button>
+      </div>
+
+      <div className="mx-detailbody" key={tab}>
+        {tab === "overview" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>SigConstant / SigSphere -- ignoram o Emission por completo</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">SigConstant::getRCS()</code> devolve um número fixo, aceitando o slot{" "}
+                <code className="mx-mono">rcs</code> como <code className="mx-mono">Number</code> OU{" "}
+                <code className="mx-mono">Area</code> -- a conversão dB→linear acontece IMPLICITAMENTE via{" "}
+                <code className="mx-mono">Number::getReal()</code> polimórfico (um <code className="mx-mono">
+                Decibel</code> já devolve o valor linear). <code className="mx-mono">SigSphere</code> pré-computa{" "}
+                σ = πr² (óptica geométrica, r≫λ) uma vez em <code className="mx-mono">setRadius()</code> -- a
+                única classe cujo <code className="mx-mono">getRCS()</code> nem olha o parâmetro, correto por
+                definição (esfera não tem aspecto), mas sem checagem nenhuma da hipótese r≫λ.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p className="mx-warn" style={{ margin: 0 }}>
+                <b>Achado -- confirma literalmente a simplificação já registrada em `models/BUILT-IN.md`:</b>{" "}
+                <code className="mx-mono">SigPlate::getRCS()</code> usa σ = 4πA²/λ² (óptica física, incidência
+                NORMAL) e NUNCA chama <code className="mx-mono">em-&gt;getAzimuthAoi()</code>/{" "}
+                <code className="mx-mono">getElevationAoi()</code> -- o `Emission` só é lido para{" "}
+                <code className="mx-mono">getWavelength()</code>. "Sempre normal ao transmissor" não é
+                aproximação de projeto: é a ÚNICA geometria que o código sabe calcular. Qualquer aspecto fora do
+                broadside continua produzindo o RCS de incidência normal, o máximo possível.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>SigDihedralCR / SigTrihedralCR -- duas fórmulas de verdade, um campo morto</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                σ = 8πa⁴/λ² (diedro) e σ = 12πa⁴/λ² (triedro) -- constantes DIFERENTES, nenhuma delega para a
+                outra (cada <code className="mx-mono">getRCS()</code> reescreve o mesmo esqueleto do zero). As
+                duas usam <code className="mx-mono">getA()</code> HERDADO de <code className="mx-mono">SigPlate</code>{" "}
+                -- o membro próprio <code className="mx-mono">double length{"{}"}</code> é inicializado em ambos
+                os construtores de <code className="mx-mono">SigDihedralCR</code> mas NUNCA lido em lugar nenhum
+                do arquivo -- vestígio morto. O slot <code className="mx-mono">b</code> (herdado de{" "}
+                <code className="mx-mono">SigPlate</code>, aceito silenciosamente no `.edl`) também é ignorado
+                pela fórmula, que só usa <code className="mx-mono">a</code>.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>SigSwitch -- camouflageType como índice 1-based em components:</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <code className="mx-mono">findContainerByType(typeid(Player))</code> -- o MESMO mecanismo já
+                documentado como frágil em outras partes deste projeto (AlertDatalink, o monitor do Groot) --
+                acha o ownship, lê <code className="mx-mono">getCamouflageType()</code>, soma 1 (componentes de
+                EDL são 1-based) e busca por ÍNDICE POSICIONAL em <code className="mx-mono">components:</code>{" "}
+                (<code className="mx-mono">findByIndex()</code>, não por chave nomeada). Sem `Player` ancestral,
+                sem item naquele índice, ou item que não é `RfSignature`: degrada para{" "}
+                <code className="mx-mono">rcs=0.0</code> em silêncio, sem log nenhum.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 420px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>SigAzEl -- a única que lê o AOI de verdade, e converte dB→linear corretamente</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                Lê <code className="mx-mono">getAzimuthAoi()</code>/<code className="mx-mono">getElevationAoi()</code>{" "}
+                (já pré-calculados por <code className="mx-mono">Player</code>, ver o ciclo completo abaixo),
+                interpola BILINEAR na <code className="mx-mono">Table2</code> (<code className="mx-mono">lfi()</code>{" "}
+                -- clamp nas bordas por padrão, extrapolação só se a própria tabela ligar isso). Ao contrário de{" "}
+                <code className="mx-mono">SigConstant</code>, o dado bruto da tabela é <code className="mx-mono">
+                double</code> cru -- a conversão <code className="mx-mono">pow(10, rcs/10)</code> quando{" "}
+                <code className="mx-mono">inDecibel</code> está ligado é EXPLÍCITA e está presente, evitando o
+                erro clássico de misturar dBsm com m² linear.
+              </p>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>O ciclo completo -- um Emission só, ida e volta, nunca clonado</div>
+              <p style={{ fontSize: 12, lineHeight: 1.6, margin: "0 0 8px" }}>
+                (1) <code className="mx-mono">Antenna::rfTransmit()</code> clona um <code className="mx-mono">
+                Emission</code> por alvo e despacha <code className="mx-mono">target-&gt;event(RF_EMISSION, em)</code>.
+                (2) <code className="mx-mono">Player::onRfEmissionEventPlayer()</code> (ver Código-fonte) calcula
+                o vetor de incidência no referencial do ALVO, grava AOI no PRÓPRIO <code className="mx-mono">em</code>,
+                consulta <code className="mx-mono">signature-&gt;getRCS(em)</code> (ou grava{" "}
+                <code className="mx-mono">0</code> sem assinatura) e devolve o MESMO objeto via{" "}
+                <code className="mx-mono">em-&gt;getGimbal()-&gt;event(RF_EMISSION_RETURN, em)</code>.
+                (3) <code className="mx-mono">Antenna::onRfEmissionReturnEventAntenna()</code>, do lado do
+                transmissor original, calcula a área efetiva e chama{" "}
+                <code className="mx-mono">sys-&gt;rfReceivedEmission(em, this, gain)</code> -- a MESMA rota que
+                uma emissão de OUTRO player usaria. (4) <code className="mx-mono">RfSystem::rfReceivedEmission()</code>{" "}
+                aplica a PRIMEIRA perna de <code className="mx-mono">1/(4πR²)</code> (via{" "}
+                <code className="mx-mono">Emission::setRange()</code>). (5) <code className="mx-mono">Radar::receive()</code>{" "}
+                lê <code className="mx-mono">em-&gt;getRCS()</code> e aplica a SEGUNDA perna do MESMO{" "}
+                <code className="mx-mono">rangeLoss</code> -- como é a mesma distância nas duas contas, o produto
+                reproduz <code className="mx-mono">1/(16π²R⁴)</code>, sem nenhum código explícito de "elevar R⁴".
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "slots" && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="mx-card" style={{ flex: "1 1 220px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>SigConstant</div>
+              <div className="mx-slotgrid">
+                {(constEntry ? constEntry.sl : Object.keys(REF_SIGCONSTANT_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SIGCONSTANT_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SIGCONSTANT_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 260 }}>{REF_SIGCONSTANT_SLOT_DOCS[s] ? REF_SIGCONSTANT_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 220px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>SigSphere</div>
+              <div className="mx-slotgrid">
+                {(sphereEntry ? sphereEntry.sl : Object.keys(REF_SIGSPHERE_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SIGSPHERE_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SIGSPHERE_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 260 }}>{REF_SIGSPHERE_SLOT_DOCS[s] ? REF_SIGSPHERE_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 260px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>SigPlate</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>Herdados por SigDihedralCR/SigTrihedralCR (EMPTY_SLOTTABLE nos dois).</p>
+              <div className="mx-slotgrid">
+                {(plateEntry ? plateEntry.sl : Object.keys(REF_SIGPLATE_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SIGPLATE_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SIGPLATE_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 260 }}>{REF_SIGPLATE_SLOT_DOCS[s] ? REF_SIGPLATE_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 340px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>SigAzEl</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 10px" }}>{azEntry ? azEntry.own : 4} slots próprios.</p>
+              <div className="mx-slotgrid">
+                {(azEntry ? azEntry.sl : Object.keys(REF_SIGAZEL_SLOT_DOCS)).map((s) => (
+                  <div className="mx-slot" key={s}>
+                    <span>{s}{REF_SIGAZEL_SLOT_DOCS[s] ? <span style={{ color: "var(--muted)" }}> {"<"}{REF_SIGAZEL_SLOT_DOCS[s][0]}{">"}</span> : ""}</span>
+                    <span style={{ maxWidth: 300 }}>{REF_SIGAZEL_SLOT_DOCS[s] ? REF_SIGAZEL_SLOT_DOCS[s][1] : ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-card" style={{ flex: "1 1 100%" }}>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>
+                <code className="mx-mono">SigDihedralCR</code>, <code className="mx-mono">SigTrihedralCR</code> e{" "}
+                <code className="mx-mono">SigSwitch</code> declaram <code className="mx-mono">EMPTY_SLOTTABLE</code>{" "}
+                -- zero slots próprios (os dois primeiros herdam <code className="mx-mono">a</code>/<code className="mx-mono">b</code>{" "}
+                de <code className="mx-mono">SigPlate</code>; <code className="mx-mono">SigSwitch</code> se
+                configura inteiramente por <code className="mx-mono">components:</code>). <code className="mx-mono">
+                Emission</code> também é <code className="mx-mono">EMPTY_SLOTTABLE</code> -- nunca é declarada
+                num `.edl`, só criada em C++ por `Antenna`/`RfSystem`.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "code" && (
+          <>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">RfSignature -- a interface inteira, e o nome de fábrica real</span><span>C++</span></div>
+              {renderRfSignatureSnippet("RfSignature -- interface + o nome de fabrica real e 'Signature'")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">SigConstant::getRCS()/setRCS()</span><span>C++</span></div>
+              {renderRfSignatureSnippet("SigConstant::getRCS/setRCS -- ignora o Emission, aceita Number OU Decibel")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">SigSphere::getRCS()/setSlotRadius()</span><span>C++</span></div>
+              {renderRfSignatureSnippet("SigSphere::getRCS -- pi*r^2, calculado uma vez em setRadius()")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">SigPlate / SigDihedralCR / SigTrihedralCR -- as três fórmulas lado a lado</span><span>C++</span></div>
+              {renderRfSignatureSnippet("SigPlate / SigDihedralCR / SigTrihedralCR -- tres formulas lado a lado")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">SigSwitch::getRCS()</span><span>C++</span></div>
+              {renderRfSignatureSnippet("SigSwitch::getRCS -- camouflageType+1 como indice 1-based em components:")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">SigAzEl::getRCS()</span><span>C++</span></div>
+              {renderRfSignatureSnippet("SigAzEl::getRCS -- interpolacao bilinear + conversao dB->linear explicita")}
+            </div>
+            <div className="mx-card" style={{ marginBottom: 12 }}>
+              <div className="mx-lbl"><span className="mx-mono">Emission.cpp -- o arquivo inteiro</span><span>C++</span></div>
+              {renderRfSignatureSnippet("Emission.cpp -- o arquivo inteiro, com o termo 1/(4*pi*r^2)")}
+            </div>
+            <div className="mx-card">
+              <div className="mx-lbl"><span className="mx-mono">Player::onRfEmissionEventPlayer() -- o ciclo completo, na íntegra</span><span>C++</span></div>
+              {renderRfSignatureSnippet("Player::onRfEmissionEventPlayer -- o ciclo completo em uma funcao so")}
             </div>
           </>
         )}
@@ -8695,6 +11218,10 @@ function Reference({ onOpenCatalog }) {
         {selected === "Autopilot" && <AutopilotReferencePage onOpenCatalog={onOpenCatalog} />}
         {selected === "Player" && <PlayerReferencePage onOpenCatalog={onOpenCatalog} />}
         {selected === "System" && <SystemReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "Gimbal" && <GimbalReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "RfSensor" && <RfSensorReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "TrackManager" && <TrackManagerReferencePage onOpenCatalog={onOpenCatalog} />}
+        {selected === "RfSignature" && <RfSignatureReferencePage onOpenCatalog={onOpenCatalog} />}
       </div>
     </div>
   );

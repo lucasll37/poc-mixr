@@ -1,6 +1,9 @@
 #pragma once
 
 #include "bt/NodeContext.hpp"
+#include "domain/WorldViewFieldRegistry.hpp"
+
+#include "xrlbridge/Schema.hpp"
 
 #include "behaviortree_cpp_v3/action_node.h"
 
@@ -20,9 +23,12 @@ namespace bt_nodes {
 // politica, exportada para .onnx, DENTRO do genAction() -- sem Python, sem
 // latencia de um frame: le o WorldView deste frame e comanda neste frame.
 //
-// A ordem dos 28 campos de entrada e a ordem canonica de
-// xrlbridge/ObservationFields.hpp -- a MESMA que o exportador
-// (src/rl/tools/export_onnx.py) usa para montar o modelo. Nao ha duas listas.
+// Os campos de entrada sao os que a porta 'schema' resolver -- ver
+// bt/ObservationSchema.hpp. O DEFAULT ("classic28") e' a mesma ordem
+// historica de xrlbridge/ObservationFields.hpp que o exportador
+// (src/rl/tools/export_onnx.py) usa por padrao. Nao ha duas listas: quem
+// muda o schema aqui muda tambem, do lado do treino, o --fields do
+// exportador (ou aceita o default nos dois lados).
 //
 // PORTS:
 //   model       caminho do .onnx (obrigatorio)
@@ -31,11 +37,16 @@ namespace bt_nodes {
 //               que um export do Stable-Baselines3 produz (o Tanh final).
 //               false: a saida ja vem em graus/metros/nos.
 //   label       rotulo que aparece no dump e no quadro (default "ONNX")
+//   schema      quais campos da observacao entram, e em que ordem:
+//               "classic28" (default, os 28 historicos), "all" (os 38
+//               completos) ou uma lista ad-hoc separada por espaco (ex.:
+//               "northM eastM altitudeM hasContact").
 //
-// DEGRADACAO: modelo ausente, forma errada ou falha de inferencia devolvem
-// FAILURE sem comandar nada -- o Fallback da arvore cai no ramo seguinte
-// (tipicamente a patrulha escrita a mao). Uma politica que nao carrega nao
-// pode tirar a aeronave do ar.
+// DEGRADACAO: modelo ausente, forma errada (contagem OU identidade dos
+// campos -- ver xinfer::fields()), nome de campo desconhecido no schema, ou
+// falha de inferencia devolvem FAILURE sem comandar nada -- o Fallback da
+// arvore cai no ramo seguinte (tipicamente a patrulha escrita a mao). Uma
+// politica que nao carrega nao pode tirar a aeronave do ar.
 class OnnxPolicyAction final : public BT::SyncActionNode
 {
 public:
@@ -54,6 +65,10 @@ private:
    // ubf/BtBehavior. O cache por caminho mora em libs/xinfer.
    int modelId_{};
    bool tentouAbrir_{};
+
+   // O schema resolvido na PRIMEIRA tentativa -- nunca reavaliado depois
+   // (a porta 'schema' e' lida uma vez, junto com 'model').
+   xrlbridge::BoundSchema<domain::WorldView> bound_;
 };
 
 } // namespace bt_nodes

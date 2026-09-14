@@ -17,7 +17,6 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
 #include <atomic>
 #include <set>
@@ -49,25 +48,26 @@ TEST(XRLBridge, ObservationFieldNamesNaoTemDuplicata)
       << " para o mesmo significado, em silencio";
 }
 
-// Os 5 booleanos sao SEMPRE os ultimos 5 -- e o que RLBridgeBehavior/
-// OnnxPolicyAction/o env.py assumem ao fatiar a lista.
-TEST(XRLBridge, BoolFieldsSaoOsUltimosCincoDaListaCompleta)
-{
-   const auto nomes = observationFieldNames();
-   const auto bools = observationBoolFields();
-   ASSERT_EQ(bools.size(), 5U);
-   ASSERT_GE(nomes.size(), bools.size());
-
-   const auto inicioDosBool = nomes.end() - static_cast<long>(bools.size());
-   EXPECT_TRUE(std::equal(inicioDosBool, nomes.end(), bools.begin()))
-      << "os campos booleanos deixaram de ser os ultimos da lista canonica";
-}
-
+// ATUALIZADO NESTA PASSADA (nao redescobrir): ate a lista canonica crescer de
+// 28 para 38 campos (RWR + navegacao, ver ObservationFields.hpp), os 5
+// booleanos originais eram tambem os ultimos 5 da lista completa -- coincidencia
+// de como a macro foi escrita, nunca um invariante que algum consumidor real
+// dependesse (conferido: nem RLBridgeBehavior::toObservation() nem
+// OnnxPolicyAction/OnnxScoreCondition/PyDecideAction fatiam a lista por
+// posicao -- todos expandem a macro inteira, ou resolvem por NOME via
+// xrlbridge::bind()). Os 10 campos novos foram acrescentados no FIM da
+// macro, na ordem de declaracao de domain::WorldView (RWR, depois
+// navegacao), que intercala float e bool -- entao a partir desta passada os
+// booleanos NAO estao mais agrupados no fim. O teste que restou
+// (BoolFieldsSaoOsNomesDocumentados, abaixo) e' estritamente mais forte:
+// verifica o CONJUNTO e a ORDEM exatos, o que ja implicava a contagem que o
+// teste removido checava.
 TEST(XRLBridge, BoolFieldsSaoOsNomesDocumentados)
 {
    const auto bools = observationBoolFields();
    const std::vector<std::string> esperado{
-      "valid", "terrainValid", "hasContact", "hasAlert", "weaponReady"};
+      "valid", "terrainValid", "hasContact", "hasAlert", "weaponReady",
+      "hasRwrThreat", "hasNavSteering", "hasNavCmdAlt", "hasNavCmdSpeed"};
    EXPECT_EQ(bools, esperado);
 }
 
@@ -110,20 +110,68 @@ TEST(XRLBridge, PackObservationRespeitaAOrdemCanonica)
    obs.hasAlert = false;
    obs.weaponReady = true;
 
+   // Os 10 campos acrescentados NO FIM da macro nesta passada (RWR +
+   // navegacao) -- ver o comentario de ObservationFields.hpp. Continuam
+   // sequenciais a partir de 24.0 para os floats, travando que foram
+   // ACRESCENTADOS, nao inseridos no meio dos 28 originais (que continuam
+   // exatamente como antes, testado acima).
+   obs.rwrThreatRangeM = 24.0;
+   obs.rwrThreatRelBearingDeg = 25.0;
+   obs.rwrThreatDeltaAltM = 26.0;
+   obs.hasRwrThreat = true;
+   obs.navTrueBrgDeg = 27.0;
+   obs.navCmdAltM = 28.0;
+   obs.navCmdSpeedKts = 29.0;
+   obs.hasNavSteering = false;
+   obs.hasNavCmdAlt = true;
+   obs.hasNavCmdSpeed = false;
+
    std::array<float, XRLBRIDGE_OBSERVATION_SIZE> saida{};
    packObservation(obs, saida.data());
 
-   // Os 23 floats na ordem em que ObservationFields.hpp os lista.
+   // Os 23 floats originais, na ordem em que ObservationFields.hpp os lista
+   // -- inalterados pela extensao desta passada.
    for (int i = 0; i < 23; ++i) {
       EXPECT_FLOAT_EQ(saida[static_cast<std::size_t>(i)], static_cast<float>(i + 1))
          << "campo numerico na posicao " << i << " nao bate com a ordem canonica";
    }
-   // Os 5 bools, na ordem: valid, terrainValid, hasContact, hasAlert, weaponReady.
+   // Os 5 bools originais, na mesma ordem de sempre: valid, terrainValid,
+   // hasContact, hasAlert, weaponReady.
    EXPECT_FLOAT_EQ(saida[23], 1.0F);
    EXPECT_FLOAT_EQ(saida[24], 0.0F);
    EXPECT_FLOAT_EQ(saida[25], 1.0F);
    EXPECT_FLOAT_EQ(saida[26], 0.0F);
    EXPECT_FLOAT_EQ(saida[27], 1.0F);
+
+   // Os 10 campos novos, na ordem de declaracao de domain::WorldView (RWR,
+   // depois navegacao) -- posicoes 28..37.
+   EXPECT_FLOAT_EQ(saida[28], 24.0F);
+   EXPECT_FLOAT_EQ(saida[29], 25.0F);
+   EXPECT_FLOAT_EQ(saida[30], 26.0F);
+   EXPECT_FLOAT_EQ(saida[31], 1.0F);
+   EXPECT_FLOAT_EQ(saida[32], 27.0F);
+   EXPECT_FLOAT_EQ(saida[33], 28.0F);
+   EXPECT_FLOAT_EQ(saida[34], 29.0F);
+   EXPECT_FLOAT_EQ(saida[35], 0.0F);
+   EXPECT_FLOAT_EQ(saida[36], 1.0F);
+   EXPECT_FLOAT_EQ(saida[37], 0.0F);
+}
+
+// classicSchema28() e' HARDCODED (nao derivado da macro atual) -- ver o
+// comentario em RLBridge.hpp. Trava os 28 nomes/ordem historicos mesmo que
+// XRLBRIDGE_OBSERVATION_FIELDS cresca/reordene de novo no futuro.
+TEST(XRLBridge, ClassicSchema28TemOsNomesHistoricosNaOrdemHistorica)
+{
+   const auto schema = classicSchema28();
+   EXPECT_EQ(schema.name, "classic28");
+   const std::vector<std::string> esperado{
+      "northM", "eastM", "altitudeM", "headingDeg", "speedKts", "rollDeg",
+      "pitchDeg", "fuelFraction", "mach", "gLoad", "alphaDeg", "terrainElevM",
+      "altitudeAglM", "contactRangeM", "contactRelBearingDeg", "contactDeltaAltM",
+      "contactNorthM", "contactEastM", "contactAltitudeM", "alertNorthM",
+      "alertEastM", "alertAltitudeM", "alertRangeM",
+      "valid", "terrainValid", "hasContact", "hasAlert", "weaponReady"};
+   EXPECT_EQ(schema.fieldNames, esperado);
 }
 
 TEST(XRLBridge, PackObservationComPonteiroNuloNaoAborta)

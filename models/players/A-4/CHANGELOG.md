@@ -22,7 +22,70 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ## [Não versionado]
 
+### Adicionado
+
+- **Observação de RL/ONNX passou a ser configurável por SCHEMA nomeado, em vez de um vetor fixo
+  de 28 campos único e global** — pedido do usuário: "a interface do que é recebido como estado
+  [deveria poder mudar], a depender do modelo que se quer treinar". Duas peças novas, genéricas,
+  em `libs/xrlbridge/` (header-only, publicadas pelo SDK): `FieldRegistry<State>` (o catálogo —
+  nome, tipo, como ler um campo pelo nome, contra qualquer struct de estado) e `Schema`/`bind()`/
+  `pack()` (a escolha — uma lista NOMEADA e ORDENADA de campos, resolvida em runtime contra um
+  registro, com erro claro e imediato se algum nome não existir — coleta TODOS os nomes
+  desconhecidos de uma vez, não só o primeiro). `domain::worldViewFieldRegistry()`
+  (`include/domain/WorldViewFieldRegistry.hpp`, novo) instancia isso contra `domain::WorldView`,
+  expandindo a MESMA macro `XRLBRIDGE_OBSERVATION_FIELDS` que `libs/xrlbridge/RLBridge.cpp` já
+  expandia contra `xrlbridge::Observation` — preserva a garantia de compilação de sempre (nome
+  que diverge não compila) e ainda dá, pela primeira vez, um jeito de perguntar em runtime "quais
+  campos existem, como ler cada um pelo nome".
+  - Os três nós de árvore (`OnnxPolicyAction`/`OnnxScoreCondition`/`PyDecideAction`) ganharam uma
+    porta nova, `schema` (default `"classic28"` — os 28 campos históricos, na ordem histórica,
+    byte-idêntico ao comportamento de antes desta passada; `"all"` — os 38 campos completos;
+    ou uma lista ad-hoc separada por espaço, ex. `"northM eastM altitudeM"`). Resolvida uma vez,
+    no mesmo ponto de configuração onde a porta `model`/`script` já era lida.
+  - **Fecha um risco novo que schema variável introduz**: antes, só havia UM tamanho possível
+    (28), então "contagem bate" já implicava "campos batem" com confiança razoável; com schema
+    variável, dois `.onnx` do MESMO tamanho podem esperar campos DIFERENTES (ou na ordem errada),
+    e a checagem de contagem sozinha não pegaria isso. `libs/xinfer` ganhou `fields(ModelId,
+    vector<string>&)`, lendo a metadata `xrlbridge.fields` (nomes separados por vírgula, na
+    ordem) que `src/poc/rl-training/tools/export_onnx.py` agora grava em todo `.onnx` exportado
+    (via `onnx.helper.set_model_props()`) — os nós comparam essa lista contra o schema resolvido,
+    por IDENTIDADE e ORDEM, não só contagem. `.onnx` exportado antes desta funcionalidade (sem a
+    metadata) continua abrindo normalmente, só com a checagem de contagem de sempre —
+    `xinfer::fields()` devolve `false`, nunca erro, quando a metadata não existe.
+  - Lado Python: `mixr_gym.MixrFlightEnv` ganhou o parâmetro `fields` (default `"classic28"` —
+    mesmo `observation_space` de 28 chaves de sempre; `"all"`; ou uma lista explícita, validada
+    contra o catálogo com `ValueError` claro se algum nome não existir). O dict que
+    `PyBindings.cpp::toDict()` devolve sempre tem as 38 chaves agora (a cópia é incondicional);
+    a filtragem pro subconjunto pedido acontece em `env.py`, nunca em C++.
+    `src/poc/rl-training/flatten_obs.py`/`tools/export_onnx.py` passaram a usar
+    `mixr_gym._native.classic_schema_28()` como default EXPLÍCITO (em vez de
+    `observation_field_names()`, que agora devolve 38) — evita que o vetor de entrada de uma
+    política já treinada mude de forma silenciosamente só porque a lista canônica cresceu.
+- `libs/xrlbridge/ObservationFields.hpp`/`RLBridge.hpp` — `XRLBRIDGE_OBSERVATION_FIELDS`/
+  `Observation` cresceram de 28 para **38 campos**, acrescentando no FIM da lista (nunca no meio)
+  os 10 campos de RWR (`rwrThreatRangeM`/`rwrThreatRelBearingDeg`/`rwrThreatDeltaAltM`/
+  `hasRwrThreat`) e navegação nativa (`navTrueBrgDeg`/`navCmdAltM`/`navCmdSpeedKts`/
+  `hasNavSteering`/`hasNavCmdAlt`/`hasNavCmdSpeed`) — ver "Corrigido" abaixo para o porquê.
+  `xrlbridge::classicSchema28()` (novo, `RLBridge.hpp`/`.cpp`) fixa os 28 nomes/ordem históricos
+  numa lista HARDCODED, independente do tamanho atual da macro — protege qualquer `.onnx`/
+  checkpoint já treinado mesmo que a macro cresça/reordene de novo no futuro.
+
 ### Corrigido
+
+- **`domain::WorldView` já tinha campos de RWR e navegação havia tempo, mas
+  `XRLBRIDGE_OBSERVATION_FIELDS` nunca foi atualizada para incluí-los — ficavam invisíveis para
+  qualquer política de RL/ONNX, mesmo já existindo no sensor da aeronave (achado de auditoria,
+  não redescobrir).** Corrigido junto com a peça de schema acima: os 10 campos agora entram na
+  macro (no fim, ver "Adicionado"), e ficam acessíveis via `schema="all"` ou uma lista ad-hoc que
+  os inclua — sem afetar ninguém que não pediu explicitamente por eles.
+- **`RLBridgeBehavior::toObservation()` copiava `domain::WorldView` → `xrlbridge::Observation`
+  campo a campo À MÃO — o único dos cinco pontos de contato do contrato sem a garantia de
+  compilação "nome que diverge não compila"; um campo esquecido aqui simplesmente não aparecia na
+  observação do host, em silêncio.** Extraída para `ubf/ObservationBridge.hpp`/`.cpp` (novo par de
+  arquivos, testável isoladamente — ver `tests/native/test_observation_bridge.cpp`) e reescrita
+  para expandir a mesma `XRLBRIDGE_OBSERVATION_FIELDS`, no mesmo padrão que os três nós de árvore
+  já usavam. De brinde, os 10 campos novos passam a atravessar para o host sem nenhuma linha
+  adicional.
 
 - **Namespace deixou de estar solto no escopo global — aninhado sob `mixr::models::xA_4`, como
   todo outro modelo.** Era a exceção histórica registrada em `docs/CONTRATO.md` seção 6 (o modelo

@@ -216,16 +216,18 @@ window.PRESENTATION_SLIDES = [
     html: `
   <p class="eyebrow">II · A proposta</p>
   <h2 class="headline">Um repositório, não vários</h2>
-  <p class="lede muted"><code>asa-models</code>, <code>asa-libs</code>, <code>asa-models-r</code>
-  e o próprio MIXR — cada um com seu ciclo, sua forma de versionar, sua distância dos outros.
-  Hoje, tudo em um repositório integrado: a diferença entre ter o contexto da aplicação em mente, ou não.</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;" data-media="demos/repo-org" data-media-kind="image">
-    <div class="media-empty">
-      <svg width="36" height="36"><use href="#i-image"></use></svg>
-      <span class="tag">Imagem sugerida</span>
-      <p class="caption">Screenshot: o repositório poc-mixr integrado — um único histórico de
-      git, uma única árvore de pastas, sem asa-models/asa-libs/asa-models-r espalhados</p>
-      <p class="hint">demos/repo-org.png</p>
+  <div class="grid-2 grid-2--fill">
+    <p class="lede muted"><code>asa-models</code>, <code>asa-libs</code>, <code>asa-models-r</code>
+    e o próprio MIXR — cada um com seu ciclo, sua forma de versionar, sua distância dos outros.
+    Hoje, tudo em um repositório integrado: a diferença entre ter o contexto da aplicação em mente, ou não.</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/repo-org" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="36" height="36"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Screenshot: o repositório poc-mixr integrado — um único histórico de
+        git, uma única árvore de pastas, sem asa-models/asa-libs/asa-models-r espalhados</p>
+        <p class="hint">demos/repo-org.png</p>
+      </div>
     </div>
   </div>
 `
@@ -319,6 +321,21 @@ window.PRESENTATION_SLIDES = [
       </div>
     </div>
   </div>
+  <div class="callout">
+    <span class="k">Diagnóstico pragmático, não promessa</span>
+    <p><code>make check-organization</code> confere isso na prática — as cinco peças do
+    contrato, namespace por-modelo, slots documentados, cada camada com a suíte de teste
+    correspondente — e reporta o que falha (ou marca como exceção conhecida, sem esconder do
+    relatório).</p>
+  </div>
+  <div class="media-placeholder" style="width:100%" data-media="demos/check-organization" data-media-kind="video">
+    <div class="media-empty">
+      <svg width="26" height="26"><use href="#i-video"></use></svg>
+      <span class="tag">Vídeo sugerido</span>
+      <p class="caption">make check-organization rodando, tudo verde</p>
+      <p class="hint">demos/check-organization.mp4</p>
+    </div>
+  </div>
 `
   },
   {
@@ -344,7 +361,7 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">1. ./app — painel de controle e observação em tempo real</h2>
   <div class="demo-stage" data-media="demos/01-app" data-media-kind="video">
-    <video controls playsinline hidden></video>
+    <video controls playsinline loop hidden></video>
     <div class="demo-empty" hidden>
       <svg width="42" height="42"><use href="#i-video"></use></svg>
       <span class="tag">Vídeo</span>
@@ -361,7 +378,7 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">2. Documentação iterativa — o manual interativo</h2>
   <div class="demo-stage" data-media="demos/02-documentacao-iterativa" data-media-kind="video">
-    <video controls playsinline hidden></video>
+    <video controls playsinline loop hidden></video>
     <div class="demo-empty" hidden>
       <svg width="42" height="42"><use href="#i-video"></use></svg>
       <span class="tag">Vídeo</span>
@@ -378,7 +395,7 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">Demonstrações em vídeo</p>
   <h2 class="headline">3. Editor visual de cenários — EDL-builder</h2>
   <div class="demo-stage" data-media="demos/03-editor-edl" data-media-kind="video">
-    <video controls playsinline hidden></video>
+    <video controls playsinline loop hidden></video>
     <div class="demo-empty">
       <svg width="34" height="34"><use href="#i-video"></use></svg>
       <span class="tag">Vídeo ainda não adicionado</span>
@@ -505,20 +522,110 @@ window.PRESENTATION_SLIDES = [
   },
   {
     extraClass: '',
+    title: 'RL — o mesmo ambiente, controlado por um agente treinado',
+    html: `
+  <p class="eyebrow">III · Onde estamos</p>
+  <h2 class="headline">RL — o mesmo ambiente, controlado por um agente treinado</h2>
+  <div class="grid-2">
+    <ul class="list">
+      <li><code>src/rl</code> expõe um <code>gymnasium.Env</code> (<code>MixrFlightEnv</code>) sobre
+      bindings <b>pybind11</b> que mantêm a <code>Station</code> viva no mesmo processo Python —
+      sem round-trip de rede a cada passo.</li>
+      <li>O agente de RL controla <code>falcon1</code>; <code>falcon2..4</code> continuam decidindo
+      pela árvore de comportamento nativa — o mesmo cenário, dois modos de decisão lado a lado.</li>
+      <li>Estado e ação são os <b>mesmos tipos</b> que o UBF nativo já usa — observação a partir de
+      <code>domain::WorldView</code>, comando como <code>domain::FlightCommand</code>. Nenhum
+      contrato novo, só mais uma forma de decidir.</li>
+    </ul>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/rl" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">O ambiente MixrFlightEnv em uso — reset/step contra a simulação de
+        verdade</p>
+        <p class="hint">demos/rl.mp4</p>
+      </div>
+    </div>
+  </div>
+`
+  },
+  {
+    extraClass: '',
+    title: 'Do treino (PPO) ao ONNX de produção',
+    html: `
+  <p class="eyebrow">III · Onde estamos</p>
+  <h2 class="headline">Do treino (PPO) ao ONNX de produção</h2>
+  <div class="grid-2">
+    <ul class="list">
+      <li><code>src/rl</code> é só o <b>ambiente</b> — quem treina de fato é
+      <code>src/poc/rl-training</code>, com as dependências de RL (stable-baselines3, PPO)
+      isoladas ali, fora do ambiente em si.</li>
+      <li>O script cria o <code>MixrFlightEnv</code>, achata a observação, treina uma
+      política <code>PPO("MlpPolicy", ...)</code> por <code>total_timesteps</code> passos e
+      salva o checkpoint.</li>
+      <li><code>tools/export_onnx.py</code> converte esse checkpoint no <code>.onnx</code> que a
+      poc <code>onnx-policy</code> carrega em produção — o mesmo MLP 28→64→64→3 já citado.</li>
+    </ul>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/rl-script" data-media-kind="image">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-image"></use></svg>
+        <span class="tag">Imagem sugerida</span>
+        <p class="caption">Script de treino: MixrFlightEnv + PPO (stable-baselines3)</p>
+        <p class="hint">demos/rl-script.png</p>
+      </div>
+    </div>
+  </div>
+  <div class="stat-row">
+    <span class="stat-chip">PPO · stable-baselines3</span>
+    <span class="stat-chip">MLP 28→64→64→3, 6.211 parâmetros</span>
+  </div>
+`
+  },
+  {
+    extraClass: '',
     title: 'A árvore de comportamento é um contrato inegociável',
     html: `
   <p class="eyebrow">III · Onde estamos</p>
   <h2 class="headline">A árvore de comportamento é um contrato inegociável</h2>
-  <p class="lede muted">A estrutura de decisão é sempre a mesma — o que varia é o que cada
-  folha pode ser: um nó em C++, um script Python interpretado no frame, ou uma política ONNX
-  treinada, como folha única.</p>
-  <div class="media-placeholder" style="width:100%; flex:1; min-height:0;" data-media="demos/arvore-comportamento" data-media-kind="video">
-    <div class="media-empty">
-      <svg width="36" height="36"><use href="#i-video"></use></svg>
-      <span class="tag">Vídeo sugerido</span>
-      <p class="caption">A mesma árvore rodando com uma folha C++, depois trocando para Python,
-      depois para uma política ONNX — sem recompilar nada</p>
-      <p class="hint">demos/arvore-comportamento.mp4</p>
+  <div class="grid-2 grid-2--fill">
+    <p class="lede muted">A estrutura de decisão é sempre a mesma — o que varia é o que cada
+    folha pode ser: um nó em C++, um script Python interpretado no frame, ou uma política ONNX
+    treinada, como folha única.</p>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/arvore-comportamento" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="36" height="36"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">A mesma árvore rodando com uma folha C++, depois trocando para Python,
+        depois para uma política ONNX — sem recompilar nada</p>
+        <p class="hint">demos/arvore-comportamento.mp4</p>
+      </div>
+    </div>
+  </div>
+`
+  },
+  {
+    extraClass: '',
+    title: 'Groot — editar e monitorar a árvore ao vivo',
+    html: `
+  <p class="eyebrow">III · Onde estamos</p>
+  <h2 class="headline">Groot — editar e monitorar a árvore ao vivo</h2>
+  <div class="grid-2 grid-2--fill">
+    <ul class="list tight">
+      <li><b>Editor</b>: arrasta/solta nós, validados contra o catálogo real do modelo — o bloco
+      <code>TreeNodesModel</code> do XML, gerado automaticamente por <code>dump-tree-model</code>.
+      Os XMLs de produção já abrem prontos, sem edição manual.</li>
+      <li><b>Monitor ao vivo</b> (<code>MIXR_GROOT_MONITOR=nome-do-player</code>): a árvore acende,
+      nó a nó, a cada decisão real da simulação rodando — nenhuma instrumentação manual, nenhuma
+      recompilação.</li>
+    </ul>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/groot" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="36" height="36"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">Editando a árvore no Groot e acompanhando o monitor ao vivo durante uma
+        simulação rodando</p>
+        <p class="hint">demos/groot.mp4</p>
+      </div>
     </div>
   </div>
 `
@@ -597,6 +704,38 @@ window.PRESENTATION_SLIDES = [
     <figcaption>Hoje o mesmo ciclo decide em <code>updateTC()</code>, fase 3, até 50 Hz — junto
     com o resto da lógica de decisão da simulação, na mesma cadência da física.</figcaption>
   </figure>
+`
+  },
+  {
+    extraClass: '',
+    title: 'Single-thread vs multi-thread, lado a lado',
+    html: `
+  <p class="eyebrow">III · Onde estamos</p>
+  <h2 class="headline">Single-thread vs multi-thread, lado a lado</h2>
+  <p class="lede muted">Registro da comparação que motivou a troca: a mesma simulação, decidindo
+  primeiro em <code>SimAgent</code> — thread de fundo, <code>updateData()</code>, ~10 Hz — depois
+  em <code>AgentTC</code> — pool de tempo crítico, <code>updateTC()</code>, até 50 Hz, uma thread
+  por aeronave. Produção usa só a segunda hoje; os vídeos documentam a diferença que a troca fez.</p>
+  <div class="grid-2">
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/Single-thread" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">Single-thread — SimAgent, decidindo em updateData(), thread de
+        fundo</p>
+        <p class="hint">demos/Single-thread.mp4</p>
+      </div>
+    </div>
+    <div class="media-placeholder media-placeholder--fill" data-media="demos/Multi-thread" data-media-kind="video">
+      <div class="media-empty">
+        <svg width="30" height="30"><use href="#i-video"></use></svg>
+        <span class="tag">Vídeo sugerido</span>
+        <p class="caption">Multi-thread — AgentTC, decidindo em updateTC(), pool de tempo
+        crítico</p>
+        <p class="hint">demos/Multi-thread.mp4</p>
+      </div>
+    </div>
+  </div>
 `
   },
   {

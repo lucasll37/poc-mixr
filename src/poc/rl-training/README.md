@@ -38,6 +38,12 @@ dependencias minimas do proprio ambiente -- `gymnasium`+`numpy`, ver
 algoritmo alguem vai treinar contra ele, entao as dependencias de treino
 ficam so aqui, nunca em `src/rl/requirements.txt`.
 
+`make test` roda `tests/test_flatten_obs.py` -- confirma que o achatamento
+DEFAULT de `FlattenedObservation` (sem `fields` explicito) continua
+produzindo o `Box(28,)` de sempre, na mesma ordem, mesmo com a lista canonica
+do C++ tendo crescido para 38 campos (ver "Achatar para um vetor plano",
+abaixo).
+
 ## Treinar
 
 **Armadilha de nome nesta propria pasta**: `configs/scenario_rl.edl` aqui e uma
@@ -87,8 +93,16 @@ achatada num vetor (`Box`); `MultiInputPolicy` aceita um `Dict` de entradas
 separadas, uma por chave, processadas por um `CombinedExtractor` proprio do
 SB3 -- dai a diferenca de shape discutida abaixo. Por isso
 [`flatten_obs.py`](flatten_obs.py) tem um `FlattenedObservation` que embrulha
-`MixrFlightEnv` e achata o `Dict`/`Discrete` dela num `Box(28,)` plano, na
-ordem canonica do C++.
+`MixrFlightEnv` e achata o `Dict`/`Discrete` dela num `Box(N,)` plano, por
+default na ordem dos 28 campos historicos
+(`mixr_gym._native.classic_schema_28()`) -- **default EXPLICITO, nao a lista
+canonica completa**: esta cresceu para 38 campos (RWR + navegacao, ver
+`libs/xrlbridge/ObservationFields.hpp`) para servir os NOS de arvore do
+modelo, e usar `observation_field_names()` (as 38) aqui mudaria a forma de
+entrada de qualquer rede ja treinada sem ninguem pedir. Passe
+`FlattenedObservation(env, fields=[...])` para achatar um subconjunto
+diferente -- combine com `--fields` no exportador, abaixo, para o `.onnx`
+final bater com o que foi treinado.
 MEDIDO QUEBRANDO ao escrever isto: uma `MultiInputPolicy` treinada direto
 sobre o `Dict` nao exporta para o contrato `.onnx` de producao
 (`float32[1,28] -> float32[1,3]`) -- o `CombinedExtractor` do SB3 exige um
@@ -104,7 +118,13 @@ MESMO `flatten_obs.py` -- nao ha duplicata dessa logica.
 `tools/export_onnx.py` converte um checkpoint treinado em `.onnx`, no
 contrato que `bt/nodes/OnnxPolicyAction` (`models/players/A-4`) espera -- ver o
 cabecalho do proprio arquivo para o contrato de entrada/saida e por que a
-ordem dos 28 campos nunca e escrita a mao aqui.
+ordem dos campos nunca e escrita a mao aqui. Por default exporta os 28
+campos historicos (`--fields` omitido = `"classic28"`); `--fields all` usa
+os 38 completos, ou `--fields "northM eastM altitudeM"` uma lista ad-hoc --
+o `.onnx` resultante grava essa lista exata como metadata
+(`xrlbridge.fields`), que `libs/xinfer::fields()` le de volta para o no de
+arvore conferir por IDENTIDADE (nao so contagem) contra a porta `schema` que
+ele resolveu.
 
 ```bash
 make export ARGS="--sb3 runs/ppo_falcon1.zip -o meu_policy.onnx"
