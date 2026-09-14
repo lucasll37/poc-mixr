@@ -1,6 +1,8 @@
 #ifndef __xpyembed_PyEmbed_H__
 #define __xpyembed_PyEmbed_H__
 
+#include "xplugin/Visibility.hpp"
+
 #include <string>
 
 namespace mixr {
@@ -8,9 +10,10 @@ namespace xpyembed {
 
 // O alvo compila com gnu_symbol_visibility:'hidden'. Sem esta marca a PROPRIA
 // API fica invisivel e o consumidor falha no link -- 'nm -D' devolve ZERO
-// simbolos fortes. Mesma armadilha de libs/xinfer/Infer.hpp; ela pega duas
-// vezes porque o sintoma ('nm -D' vazio) so aparece se alguem for olhar.
-#define XPYEMBED_API __attribute__((visibility("default")))
+// simbolos fortes. Mesma armadilha de libs/xinfer/Infer.hpp -- ver o
+// comentario completo em libs/xplugin/Visibility.hpp (a mesma macro, so que
+// consolidada -- este era um dos tres lugares que a duplicavam byte a byte).
+#define XPYEMBED_API MIXR_DEFAULT_VISIBILITY
 
 //------------------------------------------------------------------------------
 // PYTHON EMBARCADO -- rodar um script de decisao de dentro do frame.

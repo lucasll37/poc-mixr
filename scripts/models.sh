@@ -466,6 +466,12 @@ fi
 # secao 6 documenta o namespace aninhado por modelo como a defesa contra
 # type_info colidindo por strcmp quando dois .so RTLD_LOCAL vivem no mesmo
 # processo; essa colisao e silenciosa e cara, entao e recusada aqui.
+# ACHADO POR AUDITORIA: esta formula e' a MESMA de expected_namespace() em
+# cada tools/check_organization.py (copiado em todo projeto de modelo) --
+# duplicada em bash e Python, sem fonte unica possivel entre as duas
+# linguagens. Se esta formula mudar aqui, atualize expected_namespace() nas
+# 8 copias tambem (7 modelos + models/template/, o master de onde
+# 'make new-model' copia).
 NS_NOVO="x${NAME//-/_}"
 COLISAO="$(grep -rlE "^[[:space:]]*namespace[[:space:]]+${NS_NOVO}[[:space:]]*\{" \
     "$REPO_ROOT/models" 2>/dev/null || true)"
@@ -777,7 +783,7 @@ mensagem de commit em uso.
 
 ## [$VERSAO] — $DATA_HOJE
 
-Gerado a partir de \`models/players/$ORIGEM_NOME\` por \`scripts/models.sh\`.
+Gerado a partir de \`$ORIGEM_REL\` por \`scripts/models.sh\`.
 Substitua esta entrada pela primeira decisão real deste modelo antes do primeiro commit.
 EOF
 

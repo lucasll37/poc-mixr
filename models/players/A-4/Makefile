@@ -1,4 +1,4 @@
-.PHONY: build test install install-core uninstall-core create-bt update-bt open-groot
+.PHONY: build test create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -18,7 +18,8 @@
 # (alvo 'sync-plugins'). Sem os dois passos o .so compila mas nao roda em cenario
 # nenhum.
 #
-# check-root/configure/clean/help sao COMPARTILHADOS -- moram em ../../common.mk.
+# check-root/configure/clean/help/install/install-core/uninstall-core sao
+# COMPARTILHADOS -- moram em ../../common.mk.
 # ==============================================================================
 
 ROOT      := $(abspath ../../..)
@@ -41,49 +42,6 @@ test: build ## Roda a suite do modelo (domain + tree + native + contract).
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 5 ] || { echo "$(RED)suite incompleta ($$N de 5) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
-
-install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/A-4/).
-	@# '--only-changed': sem isto o 'meson install' recopia com mtime NOVO mesmo
-	@# com conteudo identico, e um destino mais novo que um input ja linkado (ex.:
-	@# dist/lib/libxtrack.so, do SDK) faz o ninja RELINKAR na proxima chamada.
-	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
-	@# Varre todo .so que de fato existe -- nenhum nome cravado: 'ldd' contra um
-	@# caminho inexistente nao contem "not found" e o '|| true' viraria um no-op.
-	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-		[ -e "$$so" ] || continue; \
-		ldd "$$so" | grep -q 'not found' && \
-			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
-	done
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/A-4/"
-
-install-core: install ## Deposita em ../../../plugins/ -- nao toca dist/ do core.
-	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
-	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@# Copia o diretorio de dados INTEIRO, sem nome cravado: outro modelo pode
-	@# publicar dados num nome diferente do da propria pasta, e um literal aqui
-	@# tornaria a remocao daquele modelo impossivel de automatizar. Mesmo que
-	@# 'sync-plugins' faz.
-	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
-	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
-	 fi
-	@echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
-	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
-
-uninstall-core: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
-	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
-	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-	      [ -e "$$so" ] || continue; \
-	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
-	   done; \
-	 fi
-	@# Os nomes saem do PROPRIO ./dist local -- so o que ESTE modelo publicou e
-	@# removido, nunca o de um terceiro que divida o deposito.
-	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
-	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
-	      [ -d "$$d" ] || continue; \
-	      rm -rf "$(ROOT)/plugins/data/$$(basename $$d)"; \
-	   done; \
-	 fi
 
 create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Groot.
 	@test ! -e configs/bt.xml || { \

@@ -1,4 +1,4 @@
-.PHONY: build test install install-core uninstall-core
+.PHONY: build test
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -17,7 +17,8 @@
 # o 'make install' da raiz (alvo 'sync-plugins'). Sem os dois passos o .so
 # compila e testa aqui, mas nao roda em cenario nenhum.
 #
-# check-root/configure/clean/help/lint sao COMPARTILHADOS -- moram em ../../common.mk.
+# check-root/configure/clean/help/install/install-core/uninstall-core sao
+# COMPARTILHADOS -- moram em ../../common.mk.
 #
 # SEM create-bt/update-bt/open-groot: este modelo nao tem arvore de
 # comportamento nenhuma (ver o cabecalho de src/plugin.cpp) -- os tres
@@ -29,6 +30,8 @@
 ROOT      := $(abspath ../../..)
 BUILD_TYPE ?= Debug
 TESTS     ?= true
+
+PUBLISH_DATA := false  # este modelo nao publica configs:/data: (ver models/common.mk)
 
 include $(ROOT)/models/common.mk
 
@@ -42,28 +45,3 @@ test: build ## Roda a suite deste modelo (native + forma do .so).
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 2 ] || { echo "$(RED)suite incompleta ($$N de 2) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
-
-install: build ## Instala em ./dist deste projeto (lib/mixr-plugins/).
-	@# '--only-changed' -- ver o "porque" no Makefile de models/players/A-4.
-	@# Varre todo .so que de fato existe, sem nome cravado.
-	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
-	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-		[ -e "$$so" ] || continue; \
-		ldd "$$so" | grep -q 'not found' && \
-			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
-	done
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"
-
-install-core: install ## Deposita em ../../../plugins/ -- nao toca dist/ do core.
-	@mkdir -p $(ROOT)/plugins
-	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/"
-	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
-
-uninstall-core: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
-	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
-	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-	      [ -e "$$so" ] || continue; \
-	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
-	   done; \
-	 fi

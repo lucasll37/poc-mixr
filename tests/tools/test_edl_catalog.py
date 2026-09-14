@@ -65,16 +65,8 @@ sys.path.insert(0, str(REPO_ROOT / "src" / "ui" / "scripts"))
 
 import generate_edl_catalog as ext  # noqa: E402
 
-REAL_SCENARIOS = [
-    "src/poc/dis/flight/configs/scenario.edl.in",
-    "tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in",
-    "tests/fixtures/full-systems-nav/configs/scenario_full_nav.edl.in",
-    "src/poc/onnx-policy/configs/scenario.edl.in",
-    "src/poc/python-flight/configs/scenario.edl.in",
-    "src/poc/dis/bandit/configs/scenario.edl",
-    "src/poc/rl-training/configs/scenario_rl.edl",
-    "src/rl/configs/scenario_rl.edl",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from real_scenarios import REAL_SCENARIOS  # noqa: E402
 
 STRING_RE = re.compile(r'"[^"]*"')
 TOKEN_RE = re.compile(r"\(\s*([A-Z]\w+)\b")

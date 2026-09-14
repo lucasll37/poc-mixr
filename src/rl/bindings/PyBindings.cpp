@@ -5,6 +5,9 @@
 
 #include "xrlbridge/ObservationFields.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 namespace py = pybind11;
 
 namespace {
@@ -26,11 +29,14 @@ py::dict toDict(const mixr::xrlbridge::Observation& obs)
    XRLBRIDGE_OBSERVATION_FIELDS
 #undef XRLBRIDGE_F
 #undef XRLBRIDGE_B
-   // Os tres de TEXTO ficam fora da macro (nao entram num tensor), mas
+   // Os campos de TEXTO ficam fora da macro (nao entram num tensor), mas
    // continuam no dict, para info["raw_state"].
    d["contactName"] = obs.contactName;
    d["alertSender"] = obs.alertSender;
    d["alertContactName"] = obs.alertContactName;
+   // Achado por auditoria: de quem e' esta observacao -- ver o comentario de
+   // Observation::ownerName em libs/xrlbridge/RLBridge.hpp.
+   d["ownerName"] = obs.ownerName;
    return d;
 }
 
@@ -51,11 +57,36 @@ public:
 
    py::tuple step(const double headingDeg, const double altitudeM, const double speedKts)
    {
+      // ACHADO POR AUDITORIA (revisao completa do repositorio): nada nesta
+      // fronteira validava o comando antes de escreve-lo em libs/xrlbridge
+      // -- ao contrario do caminho ONNX irmao (OnnxPolicyAction ->
+      // xrlbridge::unscaleCommand(), que recorta [-1,1] explicitamente
+      // antes de escalar), uma chamada manual ou uma politica em TREINO
+      // instavel que emitisse NaN/Inf chegava direto no Autopilot::
+      // setCommandedHeadingD/setCommandedAltitudeFt/setCommandedVelocityKts
+      // sem rede de seguranca nenhuma -- e nenhum DynamicsModel nativo
+      // deste fork aplica os limites de manobra do Autopilot por conta
+      // propria (ver docs/manual, aba Referencia/Autopilot: os slots de
+      // limite chegam como parametro SEM NOME em RacModel/JSBSimModel,
+      // descartados em tempo de compilacao). Nao-finito vira 0 (o mesmo
+      // "nunca trava a simulacao, degrada" ja usado no resto do
+      // repositorio -- ver libs/xmsg, "condicao sobre campo invalido nao
+      // avalia"); heading e' periodico (fmod + wrap pra [0,360)); altitude/
+      // velocidade sao recortadas pra uma faixa fisicamente plausivel --
+      // generosa o bastante para nao brigar com heading_range/
+      // altitude_range_m/speed_range_kts configuraveis de env.py (cujos
+      // DEFAULTS sao mais estreitos: 0-360/0-8000 m/0-400 kt), so existe
+      // pra barrar NaN/Inf/absurdo, nao pra reimpor a faixa do lado Python.
+      const double headingFinite{std::isfinite(headingDeg) ? std::fmod(headingDeg, 360.0) : 0.0};
+      const double headingWrapped{headingFinite < 0.0 ? headingFinite + 360.0 : headingFinite};
+      const double altitude{std::isfinite(altitudeM) ? std::clamp(altitudeM, 0.0, 20000.0) : 0.0};
+      const double speed{std::isfinite(speedKts) ? std::clamp(speedKts, 0.0, 800.0) : 0.0};
+
       mixr::xrlbridge::Command cmd;
       cmd.valid = true;   // so' este ponto publica uma acao de VERDADE -- ver xrlbridge::Command
-      cmd.headingDeg = headingDeg;
-      cmd.altitudeM = altitudeM;
-      cmd.speedKts = speedKts;
+      cmd.headingDeg = headingWrapped;
+      cmd.altitudeM = altitude;
+      cmd.speedKts = speed;
 
       const auto [obs, terminated] = sim_.step(cmd);
       return py::make_tuple(toDict(obs), terminated);

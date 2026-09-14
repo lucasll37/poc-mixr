@@ -1,2 +1,8 @@
-gymnasium>=0.29
-numpy>=1.24
+# Achado por auditoria: sem teto de versao, um 'make venv-rl' futuro pode
+# puxar uma major nunca testada aqui e quebrar silenciosamente (mudanca de
+# API do gymnasium.Env, por exemplo). Teto = a major SEGUINTE a que ja roda
+# neste venv hoje (gymnasium 1.3.0, numpy 2.5.2) -- nao trava a versao
+# exata (isto nao e' um lockfile, e' so um limite de major), mas impede o
+# salto silencioso pra uma major desconhecida.
+gymnasium>=0.29,<2
+numpy>=1.24,<3

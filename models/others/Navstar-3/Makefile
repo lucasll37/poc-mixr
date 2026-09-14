@@ -1,4 +1,4 @@
-.PHONY: build test install install-core uninstall-core create-bt update-bt open-groot
+.PHONY: build test create-bt update-bt open-groot
 .DEFAULT_GOAL := help
 
 # ==============================================================================
@@ -19,7 +19,8 @@
 # o 'make install' da raiz (alvo 'sync-plugins'). Sem os dois passos o .so
 # compila e testa aqui, mas nao roda em cenario nenhum.
 #
-# check-root/configure/clean/help sao COMPARTILHADOS -- moram em ../../common.mk.
+# check-root/configure/clean/help/install/install-core/uninstall-core sao
+# COMPARTILHADOS -- moram em ../../common.mk.
 # ==============================================================================
 
 ROOT      := $(abspath ../../..)
@@ -37,50 +38,6 @@ test: build ## Roda a suite do Navstar-3 (domain + tree + native + forma do .so)
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 5 ] || { echo "$(RED)suite incompleta ($$N de 5) -- confira TESTS=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
-
-install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/).
-	@# '--only-changed' -- ver o "porque" no Makefile de models/players/A-4.
-	@# Varre todo .so que de fato existe, sem nome cravado: depois de renomear o
-	@# projeto ele deixa de se chamar libNavstar-3.so, e um 'ldd' contra um caminho
-	@# inexistente nao contem "not found" -- o '|| true' absorveria o erro e a linha
-	@# seguinte imprimiria "install: OK" apontando pra nada.
-	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
-	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-		[ -e "$$so" ] || continue; \
-		ldd "$$so" | grep -q 'not found' && \
-			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
-	done
-	@echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"
-
-install-core: install ## Deposita em ../../../plugins/ -- nao toca dist/ do core.
-	@mkdir -p $(ROOT)/plugins $(ROOT)/plugins/data
-	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
-	@# A arvore vai JUNTO: o 'treeFile:' do ( Navstar3BtBehavior ) aponta pra ca, e
-	@# os nos que ela referencia so existem dentro deste .so.
-	@#
-	@# Copia o diretorio INTEIRO, sem nome cravado -- o install_data do meson.build
-	@# escreve em share/mixr-plugins/<nome-do-projeto>/, que este Makefile nao sabe.
-	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
-	   cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
-	 fi
-	@echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"
-	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
-
-uninstall-core: ## Remove de ../../../plugins/ o que ESTE modelo publicou.
-	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
-	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
-	      [ -e "$$so" ] || continue; \
-	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
-	   done; \
-	 fi
-	@# Os nomes saem do PROPRIO ./dist local -- so o que ESTE modelo publicou e
-	@# removido, nunca o de um terceiro que divida o deposito.
-	@if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
-	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
-	      [ -d "$$d" ] || continue; \
-	      rm -rf "$(ROOT)/plugins/data/$$(basename $$d)"; \
-	   done; \
-	 fi
 
 create-bt: build ## Cria configs/bt.xml (arvore vazia + <TreeNodesModel>) pro Groot.
 	@test ! -e configs/bt.xml || { \

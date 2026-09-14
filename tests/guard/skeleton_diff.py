@@ -113,7 +113,15 @@ def compare_skeletons(path: str, block_names: list):
 
     skeletons = {}
     for name in block_names:
-        block = extract_balanced_block(text, f"{name}: (")
+        marker = f"{name}: ("
+        # ACHADO POR AUDITORIA: extract_balanced_block() usa text.index(marker)
+        # sem tratar ausencia -- um bloco renomeado/removido (ou um nome digitado
+        # errado na chamada) derrubava o script inteiro com um traceback cru do
+        # Python em vez de uma mensagem clara apontando QUAL nome faltou.
+        if marker not in text:
+            print(f"ERRO: bloco '{marker}...' nao encontrado em '{path}'")
+            return False
+        block = extract_balanced_block(text, marker)
         toks = skeleton(block)
         # o proprio nome do bloco ("falcon1", "falcon2", ...) e o UNICO
         # identificador que sempre difere de proposito -- normaliza para

@@ -2,11 +2,19 @@
 # Logica compartilhada entre os Makefiles dos modelos (models/<categoria>/<nome>/).
 # E' 'include'do, nunca chamado direto.
 #
-# AQUI: as variaveis comuns + clean/check-root/configure/check-organization/help.
-# NO MAKEFILE-FILHO: build/test/install/install-core/uninstall-core (a lista de
-# .so publicada e o diretorio de dados sao por-modelo) e create-bt/update-bt/
-# open-groot (dependem de tools/dump-tree-model, que so existe num modelo que de
-# fato tenha uma arvore de comportamento). O filho os declara DEPOIS do include.
+# AQUI: as variaveis comuns + clean/check-root/configure/check-organization/help
+# + install/install-core/uninstall-core (ver PUBLISH_DATA abaixo).
+# NO MAKEFILE-FILHO: build/test (dependem do meson.build de cada projeto) e
+# create-bt/update-bt/open-groot (dependem de tools/dump-tree-model, que so
+# existe num modelo que de fato tenha uma arvore de comportamento). O filho os
+# declara DEPOIS do include.
+#
+# ACHADO POR AUDITORIA (extraido depois de medir, nao por suspeita):
+# install/install-core/uninstall-core eram identicos byte a byte entre os 8
+# projetos de modelo, exceto por UM detalhe -- 6 deles publicam
+# share/mixr-plugins/ (arvore de comportamento + dado), 2 (missile, Beacon) nao
+# tem nada em configs:/data: pra publicar. Por isso o unico grau de liberdade
+# vira uma variavel, PUBLISH_DATA (default true) -- nao um segundo copy-paste.
 #
 # 'check-organization' fica AQUI (nao no filho) porque tools/check_organization.py
 # e a MESMA copia, byte a byte, em todo modelo (ver o cabecalho do proprio
@@ -29,12 +37,16 @@
 #                     '-Dvariants=$(VARIANTS) -Dasan=$(ASAN)').
 #   EXTRA_STALE_KEY   opcional -- entra na chave de cache de reconfiguracao, para
 #                     uma mudanca em EXTRA_MESON_OPTS disparar reconfigure.
+#   PUBLISH_DATA ?=   default 'true'. 'false' so' para um modelo sem nada em
+#                     configs:/data: pra publicar (missile, Beacon hoje) --
+#                     desliga a copia/remocao de share/mixr-plugins/ em
+#                     install-core/uninstall-core.
 #
 # 'help' do filho continua funcionando: o GNU Make ACUMULA $(MAKEFILE_LIST), e o
 # grep abaixo varre a lista inteira, nao so este arquivo.
 # ==============================================================================
 
-.PHONY: clean check-root configure check-organization help
+.PHONY: clean check-root configure check-organization help install install-core uninstall-core
 .DEFAULT_GOAL := help
 
 PWD        := $(shell pwd)
@@ -49,6 +61,7 @@ NC    := \033[0m
 
 EXTRA_MESON_OPTS ?=
 EXTRA_STALE_KEY  ?=
+PUBLISH_DATA     ?= true
 
 clean: ## Remove ./build e ./dist LOCAIS -- nao mexe no dist/ do core.
 	rm -rf $(BUILD_DIR) $(DEST_DIR)
@@ -120,6 +133,61 @@ check-organization: ## Linter OPCIONAL de organizacao interna (tools/check_organ
 		echo "$(RED)faltando tools/check_organization.py$(NC)"; \
 		echo "  copie de models/template/tools/check_organization.py (ver o cabecalho do proprio arquivo)."; exit 1; }
 	@python3 tools/check_organization.py
+
+install: build ## Instala em ./dist deste projeto (lib/ + share/mixr-plugins/, se PUBLISH_DATA).
+	@# '--only-changed': sem isto o 'meson install' recopia com mtime NOVO mesmo
+	@# com conteudo identico, e um destino mais novo que um input ja linkado (ex.:
+	@# dist/lib/libxtrack.so, do SDK) faz o ninja RELINKAR na proxima chamada.
+	meson install -C $(BUILD_DIR) --no-rebuild --only-changed
+	@# Varre todo .so que de fato existe, sem nome cravado: depois de renomear o
+	@# projeto o .so deixa de se chamar lib<nome-antigo>.so, e um 'ldd' contra um
+	@# caminho inexistente nao contem "not found" -- o '|| true' absorveria o
+	@# erro e a linha seguinte imprimiria "install: OK" apontando pra nada.
+	@for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+		[ -e "$$so" ] || continue; \
+		ldd "$$so" | grep -q 'not found' && \
+			{ echo "$(RED)install: dependencia nao resolvida em $$so$(NC)"; exit 1; } || true; \
+	done
+	@if [ "$(PUBLISH_DATA)" = "true" ]; then \
+	   echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/, $(DEST_DIR)/share/mixr-plugins/"; \
+	 else \
+	   echo "$(GREEN)install: OK$(NC) -> $(DEST_DIR)/lib/mixr-plugins/"; \
+	 fi
+
+install-core: install ## Deposita em $(ROOT)/plugins/ -- nao toca dist/ do core.
+	@mkdir -p $(ROOT)/plugins
+	@cp -a $(DEST_DIR)/lib/mixr-plugins/. $(ROOT)/plugins/
+	@# A arvore vai JUNTO quando o modelo publica dado (PUBLISH_DATA=true): o
+	@# 'treeFile:' do behavior deste modelo, quando existe, aponta pra ca, e os
+	@# nos que ela referencia so existem dentro deste .so. Copia o diretorio
+	@# INTEIRO, sem nome cravado -- o install_data do meson.build escreve em
+	@# share/mixr-plugins/<nome-do-projeto>/, que este Makefile nao precisa saber.
+	@if [ "$(PUBLISH_DATA)" = "true" ]; then \
+	   mkdir -p $(ROOT)/plugins/data; \
+	   if [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	      cp -a $(DEST_DIR)/share/mixr-plugins/. $(ROOT)/plugins/data/; \
+	   fi; \
+	   echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/, $(ROOT)/plugins/data/"; \
+	 else \
+	   echo "$(GREEN)install-core: OK$(NC) -> $(ROOT)/plugins/"; \
+	 fi
+	@echo "  (dist/ so e populado por 'cd $(ROOT) && make install')"
+
+uninstall-core: ## Remove de $(ROOT)/plugins/ o que ESTE modelo publicou.
+	@if [ -d $(DEST_DIR)/lib/mixr-plugins ]; then \
+	   for so in $(DEST_DIR)/lib/mixr-plugins/*.so; do \
+	      [ -e "$$so" ] || continue; \
+	      rm -f "$(ROOT)/plugins/$$(basename $$so)"; \
+	   done; \
+	 fi
+	@# Os nomes saem do PROPRIO ./dist local -- so o que ESTE modelo publicou e
+	@# removido, nunca o de um terceiro que divida o deposito.
+	@if [ "$(PUBLISH_DATA)" = "true" ] && [ -d $(DEST_DIR)/share/mixr-plugins ]; then \
+	   for d in $(DEST_DIR)/share/mixr-plugins/*/; do \
+	      [ -d "$$d" ] || continue; \
+	      rm -rf "$(ROOT)/plugins/data/$$(basename $$d)"; \
+	   done; \
+	 fi
 
 help: ## Lista os alvos deste Makefile (e' o que 'make' sem alvo roda).
 	@# 'grep -h': $(MAKEFILE_LIST) tem mais de um arquivo (o Makefile-filho +

@@ -229,6 +229,14 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
             "  instale no venv de src/poc/rl-training (ver 'make venv-rl-training')."
         )
 
+    # ACHADO POR AUDITORIA: PPO.load() desserializa o checkpoint via
+    # pickle/torch.load por baixo (formato .zip do SB3) -- um vetor
+    # conhecido de execucao de codigo arbitrario se o arquivo vier de
+    # origem nao controlada (ao contrario do caminho .onnx irmao, tratado
+    # com cuidado explicito: shape + identidade de campo validados antes de
+    # usar). --sb3 so deve apontar para um checkpoint gerado pelo PROPRIO
+    # pipeline de treino deste projeto (train.py), nunca para um .zip
+    # baixado ou recebido de terceiro sem auditoria.
     modelo = PPO.load(caminho_zip, device="cpu")
 
     baixo = modelo.action_space.low.tolist()
@@ -289,7 +297,10 @@ def main() -> None:
     grupo.add_argument("--random", action="store_true",
                        help="gera um .onnx de pesos aleatorios com a forma certa")
     grupo.add_argument("--sb3", metavar="ZIP",
-                       help="exporta uma politica treinada do Stable-Baselines3")
+                       help="exporta uma politica treinada do Stable-Baselines3 -- so aponte "
+                            "para um checkpoint do SEU PROPRIO train.py: PPO.load() desserializa "
+                            "via pickle/torch.load, execucao de codigo arbitrario se o .zip vier "
+                            "de terceiro")
     grupo.add_argument("--campos", action="store_true",
                        help="so imprime os campos resolvidos (--fields, ou 'classic28' "
                             "por default) e sai")

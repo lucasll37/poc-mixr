@@ -461,6 +461,36 @@ test_xboard_concurrency = executable('test-xboard-concurrency',
 )
 test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60)
 
+# Achado por auditoria: app/src/mixr_factory.cpp e src/node/factory.cpp encadeiam as mesmas
+# ~10 factories nativas a mao, em dois arquivos, por decisao deliberada de independencia entre
+# ./app e src/node (ver CLAUDE.md, secao "src/node"). Nada travava as duas continuarem batendo --
+# uma lib nova esquecida de um dos dois lados faria um bloco do .edl parar de construir objeto
+# nenhum, em SILENCIO, so num dos dois binarios. Recompila as duas fontes direto (mesmo padrao
+# ja usado pelo alvo 'edlcheck' em app/src/meson.build), sem levantar Station nenhuma.
+test_factory_parity = executable('test-factory-parity',
+    files('domain/test_factory_parity.cpp', '../app/src/mixr_factory.cpp', '../src/node/factory.cpp'),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include', '../src/node'),
+    dependencies        : [gtest_dep, gtest_main_dep, thread_dep, mixr_dep, xtacview_dep,
+                           xclock_dep, xjoystick_dep, xplugin_dep, xmsg_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('factory-parity', test_factory_parity, suite: 'domain', timeout: 60)
+
+# libs/xclock::ClockStation -- setTimeScale()/getTimeScale()/pausa, construivel
+# sem EDL/Station de verdade por tras (mesmo espirito de test_xboard_concurrency
+# acima). Nunca tinha teste direto antes desta suite -- so validacao indireta via
+# ./app (as teclas +/-/espaco) e os dumps end-to-end.
+test_clock_station = executable('test-clock-station',
+    files('domain/test_clock_station.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, xclock_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('clock-station', test_clock_station, suite: 'domain', timeout: 60)
+
 # libs/xinfer -- a DEGRADACAO do motor de inferencia: modelo ausente,
 # arquivo que nao e .onnx, id invalido. Nenhuma dessas entradas pode derrubar
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
@@ -947,6 +977,25 @@ test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
 test('class-diagram', py, args: files('tools/test_extract_class_diagram.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
+# Achado por auditoria: o teste acima so cobre o EXTRATOR isolado, nunca
+# compara a saida atual dele contra o blob de fato commitado dentro de
+# doc.jsx ('const CLASS_DIAGRAM = {...};', colado a mao -- sem passo de
+# 'make open-docs' que regenere isso sozinho). Mesmo padrao ja usado para as
+# arvores BT.CPP (models/players/A-4, alvo 'tree-model-sync') -- replicado
+# aqui pela primeira vez para esta segunda ocorrencia do mesmo problema.
+test('class-diagram-sync', py, args: files('tools/test_class_diagram_sync.py'),
+     workdir: raiz, suite: 'tools', timeout: 120)
+
+# Achado por auditoria: scripts/models.sh (o gerador/removedor de modelo por
+# tras de 'make new-model'/'make rm-model', ~850 linhas) nao tinha NENHUMA
+# cobertura automatizada, apesar de ja ter tido um bug real encontrado so
+# por auditoria manual (colisao de namespace 'auto_pilot'/'autopilot').
+# Cria e remove um scaffold de verdade sob models/others/ (--no-build, pula
+# o build de fumaca) -- 'is_parallel: false' porque mexe na arvore REAL de
+# models/, que outras guardas desta suite tambem varrem.
+test('models-sh-scaffold', py, args: files('tools/test_models_sh_scaffold.py'),
+     workdir: raiz, suite: 'tools', timeout: 120, is_parallel: false)
+
 # O catalogo da aba "Catalogo" de docs/manual/doc.jsx
 # (tools/generate_manual_catalog.py): a soma das 7 factories nativas bate com
 # os 225 que models/BUILT-IN.md documenta, 'plugin:A-4' tem exatamente as 9
@@ -971,6 +1020,13 @@ test('edl-lint', py, args: files('tools/test_edl_lint.py'),
 test('edl-check', py,
      args: files('tools/test_edlcheck.py') + ['--binario', edlcheck.full_path()],
      depends: edlcheck, workdir: raiz, suite: 'tools', timeout: 60)
+
+# src/rl/configs/scenario_rl.edl e src/poc/rl-training/configs/scenario_rl.edl
+# sao copias deliberadas (src/rl e so o AMBIENTE, src/poc/rl-training e quem
+# TREINA -- ver CLAUDE.md, secao "src/rl") e tem que continuar byte a byte
+# identicas -- ver o cabecalho de tools/test_scenario_rl_sync.py.
+test('scenario-rl-sync', py, args: files('tools/test_scenario_rl_sync.py'),
+     workdir: raiz, suite: 'tools', timeout: 30)
 
 # O core nao pode voltar a conhecer o fonte do modelo.
 test('core-opaco', bash, args: files('guard/check_core_opaco.sh'),

@@ -108,6 +108,12 @@ def project_name() -> "str | None":
 
 
 def expected_namespace(name: str) -> str:
+    # ACHADO POR AUDITORIA: esta formula e' a MESMA de NS_NOVO em
+    # scripts/models.sh (raiz do repositorio) -- duplicada em bash e Python
+    # porque as duas rodam em momentos/linguagens diferentes (models.sh cria
+    # o scaffold; este script so' valida o que ja existe). Sem fonte unica
+    # possivel entre as duas linguagens -- se um dia a formula mudar (novo
+    # caractere proibido, prefixo diferente), atualize os DOIS lugares.
     return "x" + name.replace("-", "_")
 
 

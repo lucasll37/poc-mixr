@@ -7,6 +7,7 @@
 #include "mixr/base/Component.hpp"
 #include "mixr/base/util/system_utils.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -67,6 +68,30 @@ bool quiesceTimeCritical(mixr::simulation::Station* const station,
    return false;
 }
 
+// Teto da espera pela saida da thread T/C ao soltar a referencia da Station
+// (ver o comentario grande de shutdownStation() abaixo). Ela acorda a cada
+// 1/tcRate (20 ms a 50 Hz), entao isto e folga largissima para maquina
+// carregada -- nao uma expectativa. Fica ABAIXO do watchdog de proposito: o
+// caminho de degradacao correto e o LOG(WARNING) aqui, nao o _Exit() do
+// watchdog.
+const double kTimeoutTcSaidaSec{3.0};
+
+// Espera o contador de referencias da Station cair ate 'alvo'. 'true' se
+// caiu, 'false' se o teto venceu (nunca trava o chamador). Mesma logica de
+// app/src/app/Shutdown.cpp -- duplicada aqui de proposito (node nao
+// reaproveita NADA de app/).
+bool esperaRefCount(const mixr::simulation::Station* const station, const int alvo,
+                    const double timeoutSec)
+{
+   const int stepMs{2};
+   const int tries{std::max(1, static_cast<int>((timeoutSec * 1000.0) / stepMs))};
+   for (int i = 0; i < tries; i++) {
+      if (station->getRefCount() <= alvo) return true;
+      mixr::base::msleep(stepMs);
+   }
+   return station->getRefCount() <= alvo;
+}
+
 }
 
 namespace node {
@@ -102,6 +127,38 @@ void shutdownStation(mixr::simulation::Station* const station, const double watc
 {
    if (station == nullptr) return;
 
+   // A THREAD T/C NATIVA E DONA DE UMA REFERENCIA DA STATION -- ACHADO POR
+   // AUDITORIA (revisao completa do repositorio): esta funcao fazia so
+   // 'station->event(SHUTDOWN_EVENT); station->unref();', sem a correcao que
+   // app/src/app/Shutdown.cpp ja tem desde 2026-09-10 (esta funcao foi criada
+   // antes, copiando o padrao velho, e nunca foi atualizada -- CLAUDE.md
+   // chegou a afirmar que as duas eram "a MESMA logica", o que nao era mais
+   // verdade so para shutdownStation()).
+   //
+   // ARMADILHA MEDIDA (no ./app, mesma causa vale aqui -- node sempre cria a
+   // thread T/C, nunca tem '-deterministic'): Station::
+   // createTimeCriticalProcess() cria 'new StationTcPeriodicThread(this,
+   // ...)' passando a PROPRIA Station como parent, e a funcao de partida da
+   // thread faz 'parent->ref()'. Logo a Station chega aqui com refCount 2, e
+   // 'station->unref()' sozinho so leva 2 -> 1 e retorna em microssegundos.
+   // Quem de fato executa ~Station e a thread T/C, ate um periodo T/C depois
+   // (20 ms a 50 Hz), quando o laco 'while (!getParent()->isShutdown())' enfim
+   // ve a marcacao do SHUTDOWN_EVENT, sai, e chama 'parent->unref()'.
+   //
+   // Isso poe a destruicao do grafo INTEIRO (players, JSBSimModel,
+   // DataRecorder/TacviewOutput fechando o .acmi, e os objetos do PLUGIN) em
+   // paralelo com o que a main faz em seguida: o 'return 0' de main() e os
+   // destrutores estaticos de todo .so carregado -- mixr::xlog, o 'static
+   // Ort::Env' de libs/xinfer, o _IO_cleanup() da glibc liberando os FILE*
+   // enquanto o gravador ainda escreve.
+   //
+   // A saida e tomar uma referencia EXTRA aqui: com ela, o unref() da thread
+   // T/C nunca pode chegar a zero, e a destruicao acontece
+   // deterministicamente NESTA thread, abaixo, com a thread T/C ja fora do
+   // laco.
+   const bool haviaTcThread{station->doWeHaveTheTcThread()};
+   if (haviaTcThread) station->ref();
+
    // Watchdog: plano B se o teardown nativo travar (bug documentado --
    // spinlock nativo sem yield + fila do gravador sem teto). std::fputs em
    // stderr, nunca LOG(), de proposito: o mutex global do log pode ser
@@ -120,8 +177,33 @@ void shutdownStation(mixr::simulation::Station* const station, const double watc
    });
    watchdog.detach();
 
+   // Marca isShutdown() -- o que faz o laco da thread T/C terminar -- e ja
+   // drena o gravador e fecha o .acmi. Todo o trabalho OBSERVAVEL do
+   // encerramento acontece aqui; o unref() abaixo e so liberacao de memoria.
    station->event(mixr::base::Component::SHUTDOWN_EVENT);
-   station->unref();
+
+   if (haviaTcThread) {
+      // PROVA DIRETA de que a thread T/C soltou a referencia dela, em vez de
+      // um sleep esperancoso: esperamos exatamente UMA liberacao a partir da
+      // contagem de agora (a nossa extra + a da aplicacao + a dela).
+      const int alvo{station->getRefCount() - 1};
+      const bool saiu{esperaRefCount(station, alvo, kTimeoutTcSaidaSec)};
+
+      if (!saiu) {
+         // NAO destruir e estritamente mais seguro do que destruir sob
+         // corrida: o processo esta encerrando e o SHUTDOWN_EVENT acima ja
+         // fez todo o trabalho observavel. Deixamos a Station viva de
+         // proposito (as duas referencias ficam) e saimos.
+         LOG(WARNING) << "encerramento: a thread de tempo critico nao soltou a "
+                         "referencia da Station em " << kTimeoutTcSaidaSec
+                      << "s -- nao destruindo o grafo para nao correr com o exit()";
+         terminou->store(true);
+         return;
+      }
+      station->unref();   // solta a EXTRA; sobra so a da aplicacao
+   }
+
+   station->unref();      // ultima referencia -> ~Station aqui, na thread main
 
    terminou->store(true);
 }

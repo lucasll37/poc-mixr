@@ -173,6 +173,19 @@ carregado por `-folder` em vez de `-f`, que descobre a frota em runtime.
 tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. Só funciona quando
 `configs/` tem exatamente **um** `.edl`/`.edl.in`.
 
+**Fronteira de confiança (achado por auditoria, nunca documentado antes deste parágrafo):**
+carregar um cenário por `-f`/`-folder` — inclusive `-folder ./sandbox`, o fluxo de primeira classe
+para experimentação — é **executar código com os privilégios deste processo**, não só "ler dado".
+Um `.edl`/`.edl.in` pode apontar: (1) `( PyDecide script: "..." )` — `libs/xpyembed` roda o
+`decide()` desse `.py` dentro do frame, Python irrestrito, sem sandbox nenhuma (ver
+`src/poc/python-flight`); (2) `( OnnxPolicy model: "..." )`/`( OnnxScore model: "..." )` —
+`libs/xinfer` carrega e infere o `.onnx` apontado via ONNX Runtime; (3) `( PluginModule file:
+"..." )` — carrega um `.so` arbitrário por `dlopen`, código nativo completo, sem sandbox nenhuma
+(o mecanismo que este próprio projeto usa para plugins de terceiro, ver `plugins/`). Um cenário
+vindo de fonte não confiável (baixado, recebido de terceiro, um `sandbox/<nome>/` que você não
+escreveu) deve ser tratado como executável, não como dado — a mesma cautela que se teria antes de
+rodar um script `.sh`/`.py` desconhecido.
+
 **Outras opções de linha de comando:**
 
 | opção | efeito |

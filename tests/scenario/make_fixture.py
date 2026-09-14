@@ -40,6 +40,24 @@ TODAS as ocorrencias de 'patrolMasterSeed:' no cenario (mesmo literal
 repetido nos 4 falcons, ver CLAUDE.md secao libs/xrandom) por um numero
 escolhido na hora -- para comparar duas fixtures com sementes diferentes sem
 duplicar o .edl.in inteiro.
+
+INVESTIGADO POR AUDITORIA (achado, nao corrigido -- conclusao registrada
+para nao redescobrir): sete scripts de teste chamam este arquivo como
+SUBPROCESSO cada um (check_leak_detector_controle_negativo.py,
+run_leak_test.py, run_unknown_model.py, run_scenario_test.py,
+run_plugin_hotswap.py, run_plugin_negatives.py, run_policy_test.py) --
+"setup redundante" a primeira vista. Nao e' o mesmo caso de check_patrol_seed.sh/
+check_random_seed_scenario.sh (aqueles SIM duplicam trabalho identico). Aqui
+cada chamador grava a fixture num ARQUIVO PROPRIO (ex.: '{poc}-hotswap-base.
+edl.in' vs '{poc}-plugin-base.edl.in' vs '{poc}-intruder.edl.in') e depois
+MUTILA essa copia de um jeito diferente e especifico do proprio teste --
+copias independentes sao o requisito, nao um acidente. E o custo de gerar
+cada uma e' puro texto (leitura + regex, sem compilar nada, sem subir
+binario) -- medido isoladamente, uma chamada completa em bem menos de um
+segundo. Compartilhar uma unica fixture-base entre os sete exigiria
+introduzir um cache com invalidacao e seguranca entre processos que podem
+rodar em paralelo, por um ganho que nao chega a aparecer no tempo total da
+suite. Considerado e descartado.
 """
 
 import argparse

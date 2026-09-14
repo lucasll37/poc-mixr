@@ -53,6 +53,9 @@ PASTA_POR_CENARIO = {
 }
 
 
+FTXUI_ALT_SCREEN_ENTER = b"\x1b[?1049h"
+
+
 def sobe_app(binario, cenario):
     """Sobe o app num pty de verdade -- o FTXUI exige TTY para o modo bruto."""
     mestre, escravo = pty.openpty()
@@ -66,18 +69,38 @@ def sobe_app(binario, cenario):
         close_fds=True, start_new_session=True)
     os.close(escravo)
 
-    # Drenar o pty numa thread e obrigatorio: com o buffer cheio o app bloqueia
-    # no proprio write() e o teste mediria a coisa errada.
+    # ACHADO POR AUDITORIA: 'pronto' substitui o antigo sleep(ESPERA_TUI) fixo
+    # por polling, mesmo espirito de espera_rede_pronta() em
+    # run_dis_malformed_pdu_test.py (deadline + marcador observado), so que
+    # aqui o "log" e o proprio fluxo de bytes do pty em vez de uma linha de
+    # texto: FTXUI emite a sequencia de entrada no alternate screen buffer
+    # (\x1b[?1049h) assim que ScreenInteractive::Fullscreen() comeca -- e o
+    # sinal mais cedo e mais confiavel de "a TUI esta de pe e pronta pra
+    # tecla" que existe sem trazer um emulador de terminal pra dentro deste
+    # teste (que so precisa saber QUANDO, nao o que esta desenhado).
+    #
+    # Drenar o pty numa thread e obrigatorio de qualquer forma: com o buffer
+    # cheio o app bloqueia no proprio write() e o teste mediria a coisa errada.
+    pronto = threading.Event()
+
     def drena():
+        visto = b""
         while True:
             try:
-                if not os.read(mestre, 65536):
-                    return
+                dado = os.read(mestre, 65536)
             except OSError:
                 return
+            if not dado:
+                return
+            if not pronto.is_set():
+                visto += dado
+                if FTXUI_ALT_SCREEN_ENTER in visto:
+                    pronto.set()
+                elif len(visto) > 4096:
+                    visto = visto[-len(FTXUI_ALT_SCREEN_ENTER):]  # nao crescer pra sempre
 
     threading.Thread(target=drena, daemon=True).start()
-    return proc, mestre
+    return proc, mestre, pronto
 
 
 def mata(proc):
@@ -88,10 +111,14 @@ def mata(proc):
 
 
 def roda(binario, cenario, porta_tacview, rotulo):
-    proc, mestre = sobe_app(binario, cenario)
+    proc, mestre, pronto = sobe_app(binario, cenario)
     cliente = None
     try:
-        time.sleep(ESPERA_TUI)
+        # ESPERA_TUI vira TETO, nao mais espera fixa -- 'pronto' desperta assim
+        # que o marcador aparece (tipico bem abaixo do teto); se o teto vencer
+        # sem o marcador, segue mesmo assim (proc.poll() logo abaixo pega o
+        # caso do processo ja ter morrido).
+        pronto.wait(timeout=ESPERA_TUI)
         if proc.poll() is not None:
             print(f"FALHA [{rotulo}]: o app morreu antes do 'q' (rc={proc.returncode})")
             return False

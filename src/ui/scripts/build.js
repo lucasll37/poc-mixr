@@ -31,6 +31,9 @@
 //   3) roda os testes PUROS de edl_builder_core.js (gate de regressao) -- edl_builder.test.js
 //   4) self-check: lint leve do .edl que o preset exportaria          -- edl_lint.py
 //   5) compila edl_builder.jsx -> edl-builder.html                  -- compile.js
+//   6) suite PERMANENTE no DOM (jsdom), contra o .html recem-compilado
+//      -- edl_builder_dom.test.js (cliques, foco, destaque na previa,
+//      exportar; ate aqui so existiam scripts DESCARTAVEIS de sessao)
 //
 // Uso: node src/ui/scripts/build.js   (ou `make open-edl`, que ja
 // chama isto antes de abrir o navegador).
@@ -77,7 +80,7 @@ function run(cmd, args, opts) {
 }
 
 function generateCatalog() {
-  step("1/5 gerando catalogo (generate_edl_catalog.py)", () => {});
+  step("1/6 gerando catalogo (generate_edl_catalog.py)", () => {});
   let out;
   try {
     out = run("python3", [path.join(SCRIPTS_DIR, "generate_edl_catalog.py")]);
@@ -86,11 +89,11 @@ function generateCatalog() {
   }
   fs.writeFileSync(CATALOG_PATH, out);
   const count = JSON.parse(out).length;
-  ok(`1/5 catalogo (${count} classes catalogadas)`);
+  ok(`1/6 catalogo (${count} classes catalogadas)`);
 }
 
 function generatePreset() {
-  step("2/5 convertendo cenario de referencia p/ preset (edl_to_ui_project.js)", () => {});
+  step("2/6 convertendo cenario de referencia p/ preset (edl_to_ui_project.js)", () => {});
   let out;
   try {
     out = run("node", [path.join(SCRIPTS_DIR, "edl_to_ui_project.js"), PRESET_SOURCE]);
@@ -98,11 +101,11 @@ function generatePreset() {
     fail("gerar preset", err);
   }
   fs.writeFileSync(PRESET_PATH, out);
-  ok("2/5 preset");
+  ok("2/6 preset");
 }
 
 function runUnitTests() {
-  step("3/5 rodando testes puros (edl_builder_core.js + edl_parser_core.js)", () => {});
+  step("3/6 rodando testes puros (edl_builder_core.js + edl_parser_core.js)", () => {});
   for (const file of ["edl_builder.test.js", "edl_parser_core.test.js"]) {
     try {
       const out = run("node", [path.join(UI_DIR, file)]);
@@ -112,7 +115,7 @@ function runUnitTests() {
       fail(`testes de ${file} -- build interrompido antes de compilar`, err);
     }
   }
-  ok("3/5 testes");
+  ok("3/6 testes");
 }
 
 // Self-check: lint leve sobre o .edl que o PRESET recem-convertido
@@ -121,7 +124,7 @@ function runUnitTests() {
 // nem abrir o navegador. So' aborta em ERRO (edl_lint.py so' bloqueia por
 // erro, nao por aviso -- ver o cabecalho dele).
 function selfLintPreset() {
-  step("4/5 self-check: lint do .edl round-tripado do preset", () => {});
+  step("4/6 self-check: lint do .edl round-tripado do preset", () => {});
   const core = require(path.join(UI_DIR, "edl_builder_core.js"));
   const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8"));
   const tree = JSON.parse(fs.readFileSync(PRESET_PATH, "utf8"));
@@ -140,11 +143,11 @@ function selfLintPreset() {
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
-  ok("4/5 self-check");
+  ok("4/6 self-check");
 }
 
 function compile() {
-  step("5/5 compilando edl-builder.html (compile.js)", () => {});
+  step("5/6 compilando edl-builder.html (compile.js)", () => {});
   try {
     const out = run("node", [path.join(SCRIPTS_DIR, "compile.js")]);
     process.stdout.write(out);
@@ -152,7 +155,26 @@ function compile() {
     process.stderr.write(String(err.stdout || "") + String(err.stderr || ""));
     fail("compilar edl-builder.html", err);
   }
-  ok("5/5 edl-builder.html");
+  ok("5/6 edl-builder.html");
+}
+
+// Suite PERMANENTE no DOM (jsdom) contra o .html RECEM-compilado pelo passo
+// anterior -- ate esta suite existir, toda verificacao no DOM real deste
+// editor era um script descartavel de sessao (nunca commitado, nunca
+// reexecutado sozinho). Instala jsdom sob demanda (rede, uma vez, mesmo
+// padrao de 'ensureBabelStandalone()' em compile.js) -- por isso e o
+// UNICO passo deste pipeline que pode precisar de rede numa maquina que ja
+// tinha tudo o mais cacheado.
+function runDomTests() {
+  step("6/6 suite no DOM (jsdom, edl_builder_dom.test.js)", () => {});
+  try {
+    const out = run("node", [path.join(UI_DIR, "edl_builder_dom.test.js")]);
+    process.stdout.write(out);
+  } catch (err) {
+    process.stderr.write(String(err.stdout || "") + String(err.stderr || ""));
+    fail("suite no DOM (edl_builder_dom.test.js)", err);
+  }
+  ok("6/6 suite no DOM");
 }
 
 function main() {
@@ -161,6 +183,7 @@ function main() {
   runUnitTests();
   selfLintPreset();
   compile();
+  runDomTests();
   process.stdout.write(`${GREEN}open-edl:${NC} pipeline completo -- src/ui/edl-builder.html pronto\n`);
 }
 

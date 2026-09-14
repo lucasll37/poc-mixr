@@ -17,6 +17,7 @@ xrlbridge::Observation toObservation(const domain::WorldView& snap)
    obs.contactName = snap.contactName;
    obs.alertSender = snap.alertSender;
    obs.alertContactName = snap.alertContactName;
+   obs.ownerName = snap.ownerName;
    return obs;
 }
 

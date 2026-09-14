@@ -34,6 +34,7 @@ cache:
   # GitLab) -- 'conanfile.py' cobre as versoes fixadas (mixr/1.0.5,
   # behaviortree.cpp.asa/3.5.6 inclusive); 'deps/mixr/conanfile.py' cobre o
   # caso de a receita do fork mudar (commit fixado) sem bump de versao ali.
+  #
   # 'when: always' (nao o 'on_success' default) -- medido: uma falha de REDE
   # transitoria (DNS do conancenter indisponivel por um instante, alcancavel
   # 6x antes na MESMA execucao) no meio de './scripts/deps.sh' jogava fora
@@ -43,6 +44,20 @@ cache:
   # antes da falha -- 'conan create --build=missing' so reconstroi o que
   # ainda nao esta no cache, entao um cache parcial nunca deixa nada
   # inconsistente pra tras, so poupa trabalho.
+  #
+  # Achado por auditoria, INVESTIGADO E ESCLARECIDO (nao um bug): das 5
+  # receitas de deps/ (mixr, behaviortree, jsbsim, openrti, groot), so as
+  # duas acima entram nesta CHAVE -- mas isso nao deixa as outras tres
+  # desprotegidas. O cache do GitLab aqui guarda ~/.conan2 (CONAN_HOME), que
+  # e' o cache de PACOTES do proprio Conan, indexado por HASH da receita --
+  # nao pelo conteudo desta chave do GitLab. Se deps/jsbsim/conanfile.py
+  # mudar sem a chave mudar, o GitLab restaura o MESMO slot de cache de
+  # antes (correto: ele ainda tem os pacotes mixr/behaviortree/openrti/groot
+  # validos), e 'conan create --build=missing' sobre a receita do jsbsim
+  # MUDADA calcula um hash novo, nao acha correspondencia no cache
+  # restaurado, e builda do zero SO o jsbsim -- sem exigir mudanca de chave
+  # nenhuma. A chave aqui so precisa cobrir o que decide TROCAR de slot
+  # inteiro (as duas fontes de versao fixada), nao cada receita individual.
   - key:
       files:
         - conanfile.py
@@ -177,6 +192,27 @@ test:
     - meson configure build -Dtests=true
     - make test-models
     - make test
+    # Achado por auditoria: Node.js ja e' instalado em '.ambiente' (INSTALL.md
+    # SS5) mas nunca era de fato CHAMADO por job nenhum -- a suite JS pura de
+    # src/ui/ (edl_builder.test.js/edl_parser_core.test.js + self-lint) e a
+    # geracao de docs/manual/ nunca rodavam em CI. 'node src/ui/scripts/
+    # build.js' ja encadeia os dois arquivos de teste puros + self-lint +
+    # geracao do edl-builder.html; o par de comandos de docs/manual/ e o
+    # mesmo que 'make open-docs' roda, so sem o 'scripts/open_browser.sh'
+    # final (nao ha navegador neste container).
+    - node src/ui/scripts/build.js
+    - python3 tools/generate_manual_catalog.py > docs/manual/catalog.generated.js
+    - node docs/manual/compile.js
+    # Achado por auditoria: 'make check-organization' (o linter de
+    # organizacao interna de cada modelo, tools/check_organization.py) nunca
+    # rodava em CI -- so manualmente. Descoberta por 'find', mesmo padrao ja
+    # usado por check_modelo_estrutura.sh: modelo novo entra sozinho, sem
+    # editar este arquivo.
+    - |
+      for meson_file in $(find models -mindepth 2 -name meson.build -not -path '*/build/*' -not -path '*/subprojects/*'); do
+        grep -q '^project(' "$meson_file" || continue
+        make -C "$(dirname "$meson_file")" check-organization
+      done
   artifacts:
     when: always
     expire_in: 1 week
@@ -187,3 +223,36 @@ test:
     paths:
       - build/meson-logs/
       - models/players/A-4/build/meson-logs/
+
+# Achado por auditoria: o caminho -Dasan=true (README.md/CLAUDE.md, "AddressSanitizer") nunca era
+# exercitado em CI, so manualmente. 'allow_failure' porque este job e' deliberadamente
+# COMPLEMENTAR (mesmo enquadramento que 'make test-asan' ja tem no Makefile: "fica fora da
+# suite") -- um alarme falso de instrumentacao nao deve travar o pipeline principal, mas a
+# cobertura passa a existir e a ficar visivel.
+test-asan:
+  stage: test
+  extends: .ambiente
+  timeout: 3h
+  needs:
+    - build
+  allow_failure: true
+  script:
+    - set -euo pipefail
+    - make test-asan
+
+# Achado por auditoria: test-rl/test-rl-training (src/rl, src/poc/rl-training) nunca rodavam em
+# CI -- sao os UNICOS testes que exercitam PyBindings.cpp/NativeSimulation.cpp/RLBridge.cpp
+# contra uma Station de verdade. 'allow_failure' pelo custo do venv com torch (download pesado,
+# pode faltar rede/tempo num runner compartilhado) -- mesmo raciocinio ja aplicado a
+# 'make test-models' rodar separado de 'make test'.
+test-rl:
+  stage: test
+  extends: .ambiente
+  timeout: 2h
+  needs:
+    - build
+  allow_failure: true
+  script:
+    - set -euo pipefail
+    - make test-rl
+    - make -C src/poc/rl-training test

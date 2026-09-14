@@ -165,6 +165,7 @@ subdir('./models/events')
 # O .pc expoe 'mixr_pkg_version' como VARIAVEL, para conferencia cruzada.
 # ==============================================================================
 install_headers('libs/xplugin/PluginAbi.hpp',     subdir: 'xplugin')
+install_headers('libs/xplugin/Visibility.hpp',    subdir: 'xplugin')
 install_headers('libs/xboard/Board.hpp',          subdir: 'xboard')
 install_headers('libs/xlog/Log.hpp',              subdir: 'xlog')
 install_headers('libs/xtrack/TrackQuery.hpp',     subdir: 'xtrack')

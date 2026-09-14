@@ -229,16 +229,28 @@ gerar uma fixture hermética com intruso. O que cada suíte prova e quanto custa
 
 ## CI (GitLab)
 
-[`.gitlab-ci.yml`](.gitlab-ci.yml) tem dois jobs de verdade, `build` e `test`, seguindo a MESMA
-sequência desta seção README + [`INSTALL.md`](INSTALL.md), do zero, **num container Docker sem
-nada pré-instalado**. Os dois jobs sobem o ambiente inteiro do roteiro de instalação — pacotes de
-sistema (§1) → Conan via `pipx` (§2) → perfil default (§3) → Node.js pelo NodeSource (§5) → a
-checagem final dos sete comandos (§6) —; o `build` acrescenta os pacotes do Groot e
-`./scripts/deps.sh` (§4) e então `configure` → `sdk` → `models` → `build` → `install`, e o `test`
-roda `meson configure -Dtests=true` + `make test-models` + `make test`. O Node não é usado por
-alvo nenhum do pipeline: ele está lá porque `INSTALL.md` §5 o declara pré-requisito do projeto, e
-sem isso aquele passo (repositório de terceiro, linha LTS, `npm@latest`) não teria cobertura
-automatizada nenhuma. As dependências privadas (`mixr/1.0.5`,
+[`.gitlab-ci.yml`](.gitlab-ci.yml) tem quatro jobs, seguindo a MESMA sequência desta seção README +
+[`INSTALL.md`](INSTALL.md), do zero, **num container Docker sem nada pré-instalado**. Todos sobem o
+ambiente inteiro do roteiro de instalação — pacotes de sistema (§1) → Conan via `pipx` (§2) →
+perfil default (§3) → Node.js pelo NodeSource (§5) → a checagem final dos sete comandos (§6) —;
+o `build` acrescenta os pacotes do Groot e `./scripts/deps.sh` (§4) e então `configure` → `sdk` →
+`models` → `build` → `install`.
+
+- **`test`** (obrigatório, bloqueia o pipeline) — `meson configure -Dtests=true` + `make
+  test-models` + `make test`, mais três passos que fecham lacunas de cobertura achadas por
+  auditoria: `node src/ui/scripts/build.js` (a suíte JS pura de `src/ui/` — testes +
+  self-lint — e a geração do `edl-builder.html`), a mesma geração de `docs/manual/` que `make
+  open-docs` roda (sem o passo de abrir navegador), e `make -C <projeto> check-organization` para
+  todo modelo descoberto por `find` (mesmo padrão de `check_modelo_estrutura.sh`). É por isso que
+  o Node instalado no roteiro (`INSTALL.md` §5) agora é de fato usado por este job — antes só
+  existia porque `INSTALL.md` o declara pré-requisito, sem alvo nenhum do pipeline chamando-o.
+- **`test-asan`** (`allow_failure: true`) — `make test-asan`, o caminho AddressSanitizer/
+  LeakSanitizer, antes só rodado manualmente.
+- **`test-rl`** (`allow_failure: true`) — `make test-rl` + `make -C src/poc/rl-training test`, os
+  únicos testes que exercitam `PyBindings.cpp`/`NativeSimulation.cpp`/`RLBridge.cpp` contra uma
+  `Station` de verdade; `allow_failure` pelo custo do venv com torch (download pesado).
+
+As dependências privadas (`mixr/1.0.5`,
 `behaviortree.cpp.asa/3.5.6`) vêm por padrão de um remote Conan privado, mas **este pipeline nunca
 usa esse remote** — de propósito, sem exceção nem variável de CI/CD para religar isso: o job
 `build` sempre compila `mixr`/`behaviortree.cpp.asa`/`jsbsim`/`openrti`/**Groot** do fonte

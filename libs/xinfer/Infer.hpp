@@ -1,6 +1,8 @@
 #ifndef __xinfer_Infer_H__
 #define __xinfer_Infer_H__
 
+#include "xplugin/Visibility.hpp"
+
 #include <string>
 #include <vector>
 
@@ -11,8 +13,10 @@ namespace xinfer {
 // os simbolos que vem dos .a do ONNX Runtime. Mas 'hidden' nao distingue: sem
 // esta marca explicita, a PROPRIA API desta lib fica invisivel tambem, e o
 // consumidor falha no link. Confirmado quebrando: 'nm -D' na .so devolvia
-// ZERO simbolos fortes.
-#define XINFER_API __attribute__((visibility("default")))
+// ZERO simbolos fortes. Ver o comentario completo em
+// libs/xplugin/Visibility.hpp (a mesma macro, so que consolidada -- este era
+// um dos tres lugares que a duplicavam byte a byte).
+#define XINFER_API MIXR_DEFAULT_VISIBILITY
 
 //------------------------------------------------------------------------------
 // INFERENCIA -- rodar um modelo .onnx de dentro da decisao, no frame.

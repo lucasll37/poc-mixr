@@ -135,6 +135,23 @@ def build_factories():
         classes = sorted({cls for cls in factory_map.values() if cls in reachable})
         factories[label] = {"file": str(fcpp.relative_to(REPO_ROOT)), "classes": classes}
 
+    # ACHADO POR AUDITORIA: find_dispatch_reachable_classes() e' tolerante de
+    # proposito a caminho inexistente (ver o proprio docstring dela, em
+    # tools/mixr_source_scan.py) -- conveniente para um chamador que monta a
+    # lista via glob, mas um risco aqui: PLUGIN_FACTORY_CPP e' um caminho
+    # HARDCODED pra UM modelo so'. Uma renomeacao/remocao futura de
+    # models/players/A-4 faria esta checagem ficar muda e o catalogo do
+    # plugin sair silenciosamente VAZIO (nao um erro -- um JSON valido com
+    # "classes": []), em vez de falhar no proprio gerador. Falhar alto aqui,
+    # explicitamente, em vez de deixar a tolerancia generica da funcao
+    # mascarar o problema.
+    if not PLUGIN_FACTORY_CPP.is_file():
+        sys.exit(
+            f"generate_manual_catalog.py: {PLUGIN_FACTORY_CPP.relative_to(REPO_ROOT)} nao existe "
+            "-- o modelo de producao mudou de nome/lugar? atualize PLUGIN_LABEL/"
+            "PLUGIN_FACTORY_CPP no topo deste arquivo."
+        )
+
     factory_map = scan.build_factory_map([MODELS_DIR])
     reachable = scan.find_dispatch_reachable_classes([PLUGIN_FACTORY_CPP])
     classes = sorted({cls for cls in factory_map.values() if cls in reachable})

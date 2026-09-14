@@ -1627,6 +1627,22 @@ continuam em português, a mesma convenção de sempre para prosa. Mecânico de 
 arquivo nas 7 cópias, `.PHONY`/nome do alvo/texto do alvo em `models/common.mk`, e toda menção em
 prosa nos mesmos lugares da passada anterior.
 
+**Passada seguinte (achado por auditoria, extraído depois de medir): `install`/`install-core`/
+`uninstall-core` saíram dos 8 Makefiles de modelo e viraram um SEXTO alvo compartilhado em
+`common.mk`.** Os três eram idênticos byte a byte entre todos os projetos de modelo, com uma única
+diferença real: 6 deles publicam `share/mixr-plugins/` (árvore de comportamento + dado do modelo)
+e 2 (`missile`, `Beacon`) não têm nada em `configs:`/`data:` para publicar. Virou uma variável,
+`PUBLISH_DATA` (default `true`, definida como `false` nos dois Makefiles-filho ANTES do
+`include`, mesmo contrato de `BUILD_TYPE`/`TESTS`) — nunca uma segunda cópia do script. Os três
+alvos continuam com a MESMA saída/comportamento observável (`ldd` contra dependência não
+resolvida, cópia de `share/mixr-plugins/` só quando `PUBLISH_DATA=true`); a única mudança
+cosmética é a mensagem de sucesso do `A-4`, que dizia `.../share/mixr-plugins/A-4/` (nome do
+projeto cravado) e passou a dizer `.../share/mixr-plugins/` genérico, igual aos outros 5 — o
+diretório de verdade (`A-4/` dentro dele) continua existindo, só a MENSAGEM deixou de nomeá-lo.
+Testado rodando (não só `make -n`): `install-core` de verdade em `paratrooper` (`PUBLISH_DATA=true`
+implícito) e em `missile`/`Beacon` (`PUBLISH_DATA=false`) — os três terminaram com a mensagem e o
+efeito em `plugins/`/`plugins/data/` esperados para o próprio caso.
+
 ### Desacoplando `models` de `dist/` -- `plugins/` e o unico deposito
 
 **`make models` nao escreve em `dist/lib/mixr-plugins/` -- nunca.** O modelo de producao (hoje
@@ -5679,6 +5695,60 @@ em qualquer arquivo) e `make -n open-edl` (resolve pro mesmo recipe de sempre); 
 src/ui/scripts/build.js` rerrodado depois da mudança produz o MESMO `edl-builder.html`
 (2729488 bytes, idêntico ao de antes) — confirma que só os RÓTULOS de progresso mudaram, nenhuma
 lógica do pipeline.
+
+**Passada seguinte (achado por auditoria: dívida técnica conhecida, finalmente paga) —
+`src/ui/edl_builder_dom.test.js`, a PRIMEIRA suíte permanente e commitada no DOM de verdade deste
+editor.** Até aqui, toda verificação "monta a página de verdade e clica nela" era um script
+DESCARTÁVEL de sessão (jsdom + Puppeteer indisponível neste ambiente) — dezenas deles ao longo das
+passadas acima, nunca commitados, nunca reexecutados fora da sessão que os escreveu. Isso deixava
+o comportamento de runtime do editor (cliques, foco, destaque na prévia `.edl`, exportar) sem rede
+de segurança nenhuma — só `edl_builder.test.js`/`edl_parser_core.test.js` (lógica PURA) e o
+self-check de lint do `build.js` corriam de novo a cada mudança.
+
+- **Wired em `node src/ui/scripts/build.js` como o passo NOVO, 6/6** — depois de `compile.js` (o
+  passo 5/6, que já gera o `edl-builder.html` que esta suíte carrega) e antes do
+  `"pipeline completo"`. `make open-edl` já cobre isto sempre, sem passo manual extra.
+- **jsdom não é dependência do resto do projeto** — instalado sob demanda, mesmo padrão pinado/
+  self-healing de `ensureBabelStandalone()` em `compile.js`, mas num prefixo PRÓPRIO,
+  `src/ui/.cache-dom/` (nunca dentro de `src/ui/.cache/`, que já hospeda o `@babel/standalone`).
+  **Achado rodando, não hipotético**: a primeira versão usava o MESMO `src/ui/.cache/` para os
+  dois — `npm install <pkg> --prefix DIR --no-save` reconcilia o `node_modules` INTEIRO daquele
+  prefixo contra um manifesto efêmero de UM pacote só, então a segunda chamada (jsdom) PODAVA as
+  dependências da primeira (babel-standalone) como "extraneous", e vice-versa na chamada seguinte —
+  cada `node src/ui/scripts/build.js` reinstalava os DOIS pacotes do zero, sempre, o oposto do que
+  "cacheado" promete e silenciosamente dependente de rede toda vez. Corrigido com prefixos
+  separados; confirmado rodando o pipeline duas vezes seguidas sem nenhum "instalando" na segunda.
+- **Achado rodando, não hipotético, sobre o PRÓPRIO React**: ler `document` logo depois de `new
+  JSDOM(html, {runScripts:"dangerously", ...})` — ou mesmo depois do evento `load` da janela —
+  pega a página ANTES do primeiro commit do React. Os `<script>` (inclusive
+  `ReactDOM.createRoot(...).render(...)`) executam sincronamente durante o parse, mas o Scheduler
+  que o React 18 usa por baixo do `createRoot` agenda o commit numa macrotask PRÓPRIA
+  (`MessageChannel`, ou `setTimeout` se o ambiente não tiver `MessageChannel`) — sem ordem
+  garantida contra o evento `load`, e medido aqui `load` vence. A mesma lacuna vale para o efeito
+  de um CLIQUE (a atualização de estado que ele agenda também passa pelo Scheduler). A suíte
+  resolve isso com um `waitFor(predicate)` que POLLA a condição esperada (até 15s) em vez de
+  assumir leitura síncrona depois de qualquer interação — nunca um `sleep` fixo.
+- **Achado rodando, não hipotético, sobre o PRÓPRIO editor**: "Recolher tudo" (`handleCollapseAll`)
+  zera `expandedIds` (`new Set()`), mas a RAIZ é sempre expandida por `isRoot` — então os filhos
+  DIRETOS da raiz continuam aparecendo como cartão depois de recolher tudo (só os NETOS somem). A
+  primeira versão do teste assumia "recolher tudo deixa 1 cartão só" (a contagem citada em prosa
+  numa passada anterior desta seção) e falhava sempre — corrigido para afirmar a propriedade
+  CERTA ("menos profundidade que o default, sempre menos cartões que expandir tudo"), não um
+  número fixo que envelheceria a cada classe nova no catálogo.
+- **Sete casos, cada um contra o `edl-builder.html` de PRODUÇÃO (não uma reimplementação)**: a
+  página monta sem erro de console com a árvore vazia por padrão; "Carregar preset" popula a
+  árvore e a aba Abertos reflete o formato certo (`✓` ou `(N)`); "Expandir tudo"/"Recolher tudo"
+  mudam a contagem de cartões na direção certa; selecionar um nó destaca a região correspondente
+  na prévia `.edl` (o mecanismo de `spans`, o ponto mais intrincado do editor); focar um campo
+  ESTREITA o destaque pro campo (não o nó inteiro); editar um campo reflete na prévia ao vivo;
+  "Exportar .edl" completa sem exceção (jsdom não tem File System Access API, então sempre cai no
+  caminho de download — `window.open` mockado só pra confirmar o fallback, sem navegar de verdade).
+  `scrollIntoView` (inexistente no jsdom, que não faz layout de verdade) é stubado antes do mount.
+- **Cada teste monta uma janela jsdom NOVA e fecha as anteriores** (`window.close()`, no `finally`
+  do wrapper `test()`) — sem isso, os testes mais adiante na lista ficam MAIS LENTOS (timers de
+  janelas anteriores competindo pelo laço de eventos do mesmo processo Node), embora nenhum teste
+  tenha de fato estourado o timeout por essa causa sozinha depois da correção do bug de "Recolher
+  tudo" acima.
 
 ## Estado atual / pendências conhecidas
 

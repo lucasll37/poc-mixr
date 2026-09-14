@@ -1,6 +1,8 @@
 #ifndef __xplugin_PluginAbi_H__
 #define __xplugin_PluginAbi_H__
 
+#include "Visibility.hpp"
+
 #include <cstdint>
 
 // Unico include de MIXR neste header: traz MIXR_VERSION, que viaja no
@@ -132,12 +134,14 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 //------------------------------------------------------------------------------
 // visibility("default") porque o alvo do plugin compila com
 // gnu_symbol_visibility:'hidden' -- sem isto o unico simbolo que importa some
-// junto com os outros, e o sintoma seria "simbolo ausente" no dlsym.
+// junto com os outros, e o sintoma seria "simbolo ausente" no dlsym. Mesma
+// macro de Visibility.hpp (consolidada ali -- este era um dos tres lugares
+// que a duplicavam byte a byte), com 'used' por cima:
 //
 // 'used' impede que um build futuro com LTO ou --gc-sections descarte a
 // funcao (hoje b_lto=false, mas isso e um default, nao uma garantia).
 //------------------------------------------------------------------------------
-#define MIXR_PLUGIN_EXPORT __attribute__((visibility("default"), used))
+#define MIXR_PLUGIN_EXPORT MIXR_DEFAULT_VISIBILITY __attribute__((used))
 
 #if defined(_GLIBCXX_USE_CXX11_ABI)
    #define MIXR_PLUGIN_CXX11_ABI (_GLIBCXX_USE_CXX11_ABI)

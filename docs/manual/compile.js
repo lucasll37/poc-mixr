@@ -51,12 +51,25 @@ function ensureCached(relPath, url) {
   return dest;
 }
 
+// PINADO (achado por auditoria: instalar sem versao ja causou a regressao de
+// "tela branca" documentada abaixo -- o Babel 8 mudou um default por baixo
+// dos pes de quem so pedia "@babel/standalone"). 7.29.8 e a mesma versao ja
+// cacheada e testada aqui; atualizar isto e' uma decisao deliberada, nunca
+// um efeito colateral de rodar 'npm install' de novo.
+const BABEL_STANDALONE_VERSION = "7.29.8";
+
 function ensureBabelStandalone() {
   const modPath = path.join(CACHE, "node_modules", "@babel", "standalone");
-  if (fs.existsSync(modPath)) return modPath;
-  console.log("instalando @babel/standalone em docs/manual/.cache/ (uma vez)...");
+  const pkgPath = path.join(modPath, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    const installed = JSON.parse(fs.readFileSync(pkgPath, "utf8")).version;
+    if (installed === BABEL_STANDALONE_VERSION) return modPath;
+    console.log(`docs/manual/.cache tinha @babel/standalone ${installed} -- reinstalando ${BABEL_STANDALONE_VERSION} (pinado)...`);
+    fs.rmSync(path.join(CACHE, "node_modules"), { recursive: true, force: true });
+  }
+  console.log(`instalando @babel/standalone@${BABEL_STANDALONE_VERSION} em docs/manual/.cache/ (uma vez)...`);
   fs.mkdirSync(CACHE, { recursive: true });
-  execFileSync("npm", ["install", "--no-save", "--prefix", CACHE, "@babel/standalone"], { stdio: "inherit" });
+  execFileSync("npm", ["install", "--no-save", "--prefix", CACHE, `@babel/standalone@${BABEL_STANDALONE_VERSION}`], { stdio: "inherit" });
   return modPath;
 }
 
@@ -104,6 +117,28 @@ function main() {
   // com @babel/standalone 8.0.4. Com "classic" o JSX volta a virar
   // React.createElement, que e' o que casa com o React UMD embutido acima.
   const { code } = Babel.transform(src, { presets: [["react", { runtime: "classic" }]], filename: "doc.jsx", comments: true });
+
+  // Smoke-check pos-transpile (achado por auditoria): pega a MESMA classe de
+  // regressao do "runtime: automatic" acima de forma AUTOMATIZADA, nao so
+  // por comentario -- se um futuro default do Babel voltar a emitir
+  // import/export no codigo transpilado, isso quebra a pagina em SILENCIO
+  // (tela branca, sem erro visivel na tela), exatamente como ja aconteceu
+  // uma vez. Sem este check, so um pin de versao nao pegaria uma regressao
+  // equivalente causada por outra mudanca de default numa versao futura.
+  if (/^\s*(import|export)\s/m.test(code)) {
+    throw new Error(
+      "doc.jsx transpilado ainda contem 'import'/'export' -- o Babel voltou a emitir codigo de " +
+      "modulo ES (mesmo sintoma do bug de tela branca ja documentado acima). Confira o preset " +
+      "'react' (precisa de runtime:'classic' explicito). NAO escrevendo index.html."
+    );
+  }
+  const createElementCount = (code.match(/React\.createElement/g) || []).length;
+  if (createElementCount < 10) {
+    throw new Error(
+      `doc.jsx transpilado tem so ${createElementCount} ocorrencia(s) de React.createElement -- ` +
+      "sinal de que a transpilacao nao rodou de verdade (esperado: centenas). NAO escrevendo index.html."
+    );
+  }
 
   const reactSrc = fs.readFileSync(reactPath, "utf8");
   const reactDomSrc = fs.readFileSync(reactDomPath, "utf8");

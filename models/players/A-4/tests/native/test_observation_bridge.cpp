@@ -105,17 +105,22 @@ TEST(ObservationBridge, ToObservationCopiaTodosOsCamposNumericosEBooleanos)
    EXPECT_FALSE(obs.hasNavCmdSpeed);
 }
 
-TEST(ObservationBridge, ToObservationCopiaOsTresCamposDeTexto)
+TEST(ObservationBridge, ToObservationCopiaOsCamposDeTexto)
 {
    domain::WorldView snap;
    snap.contactName = "bandit1";
    snap.alertSender = "falcon2";
    snap.alertContactName = "bandit1";
+   snap.ownerName = "falcon1";
 
    const auto obs = toObservation(snap);
    EXPECT_EQ(obs.contactName, "bandit1");
    EXPECT_EQ(obs.alertSender, "falcon2");
    EXPECT_EQ(obs.alertContactName, "bandit1");
+   // Achado por auditoria: ownerName e' o que fecha a lacuna de "de qual
+   // player veio esta observacao" -- ver o comentario em
+   // libs/xrlbridge/RLBridge.hpp::Observation::ownerName.
+   EXPECT_EQ(obs.ownerName, "falcon1");
 }
 
 } // namespace

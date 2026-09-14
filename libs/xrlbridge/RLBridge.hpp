@@ -24,13 +24,17 @@ namespace xrlbridge {
 //
 // SEM CHAVE POR PLAYER ID, de proposito -- v1 e um UNICO agente RL por
 // processo (ver o "Escopo" do plano de implementacao e o mesmo limite ja
-// documentado em RLBridgeBehavior.hpp). genAction() nao tem como descobrir o
-// ID do player que o hospeda sem subir a arvore de componentes por
-// container() -- caminho ja documentado como fragil neste framework para
-// objetos aninhados em slot (ver a armadilha de TacviewOutput::resolveInfo()
-// no CLAUDE.md raiz). Generalizar para varios agentes RL trocaria estas duas
-// funcoes por um mapa por playerId, no mesmo espirito de xboard::Board --
-// nao feito aqui porque nao ha cenario que precise disso ainda.
+// documentado em RLBridgeBehavior.hpp). CORRIGIDO (achado por auditoria):
+// este paragrafo dizia que genAction() "nao tem como descobrir o ID do
+// player que o hospeda sem subir a arvore de componentes por container()"
+// -- isso nao e mais verdade: domain::WorldView::ownerName ja resolve esse
+// nome (acrescentado numa passada POSTERIOR, para o monitor do Groot) e
+// Observation.ownerName (abaixo) ja o propaga. O que falta pra multi-agente
+// de verdade e so a ARMAZENAGEM -- setObservation()/getObservation()/
+// setPendingCommand()/getPendingCommand() continuam um UNICO par global, nao
+// um mapa por playerId (mesmo espirito de xboard::Board). Generalizar e
+// trocar essas quatro funcoes por um mapa sob o MESMO mutex -- nao feito
+// aqui porque nao ha cenario que precise disso ainda.
 //
 // MESMO MOTIVO ESTRUTURAL de libs/xboard/Board.hpp para ser a UNICA
 // shared_library() desta dupla (as outras libs de libs/ sao estaticas):
@@ -76,6 +80,20 @@ struct Command
 struct Observation
 {
    bool valid{};
+
+   // ACHADO POR AUDITORIA (revisao completa do repositorio): o comentario
+   // "SEM CHAVE POR PLAYER ID" acima dizia que genAction() nao tinha como
+   // descobrir o nome do player que o hospeda -- isso ficou desatualizado
+   // quando domain::WorldView::ownerName foi acrescentado numa passada
+   // POSTERIOR (para o monitor do Groot, ver CLAUDE.md/BtBehavior.cpp) e
+   // ja' vinha disponivel dentro de RLBridgeBehavior::genAction() sem ser
+   // propagado ate aqui. Preenchido em toObservation() a partir de
+   // snap.ownerName -- ainda NAO habilita multi-agente por si so (a
+   // armazenagem abaixo, setObservation()/getObservation(), continua um
+   // UNICO par global, nao um mapa por playerId), mas remove a lacuna real
+   // ("nao ha como saber de quem e a observacao") e e o primeiro passo pra
+   // quem um dia trocar o par global por um mapa.
+   std::string ownerName;
 
    double northM{};
    double eastM{};

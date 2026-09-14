@@ -35,6 +35,13 @@ docs/manual/.cache/
 # -- ver src/ui/README.md ("Por que src/ui/ e nao docs/").
 src/ui/.cache/
 
+# cache do jsdom usado por edl_builder_dom.test.js -- prefixo PROPRIO, nunca
+# dentro de src/ui/.cache/ (achado rodando: 'npm install --prefix' reconcilia
+# o node_modules inteiro daquele prefixo contra um manifesto de UM pacote so;
+# compartilhar o prefixo com @babel/standalone fazia CADA execucao do
+# pipeline reinstalar os dois pacotes do zero, sempre).
+src/ui/.cache-dom/
+
 # presets PROPRIOS do usuario, baixados pela secao "Meus presets" do editor
 # grafico (botao "Salvar como preset", src/ui/edl_builder.jsx) e movidos
 # pra ca' manualmente -- cada preset_<nome>.edl(.in) e' trabalho local de
@@ -148,7 +155,15 @@ src/poc/rl-training/tools/__pycache__/
 src/poc/rl-training/runs/
 src/poc/rl-training/notebooks/.ipynb_checkpoints/
 tools/__pycache__/
+tests/tools/__pycache__/
+tests/scenario/__pycache__/
 models/players/A-4/tools/__pycache__/
+models/players/AAA/tools/__pycache__/
+models/players/Beacon/tools/__pycache__/
+models/players/C-130/tools/__pycache__/
+models/players/missile/tools/__pycache__/
+models/players/paratrooper/tools/__pycache__/
+models/others/Navstar-3/tools/__pycache__/
 models/template/tools/__pycache__/
 
 # Saida de 'make create-bt' -- uma arvore VAZIA gerada pelo dump-tree-model,
