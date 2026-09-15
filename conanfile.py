@@ -89,7 +89,7 @@ class MixrHelloConan(ConanFile):
         para o menos dependente -- a ordem que a linkagem de .a exige -- e e o
         mesmo agregado que os outros geradores do Conan usam."""
         try:
-            dep = self.dependencies.core[name]
+            dep = self.dependencies.host[name]
         except KeyError:
             return
         pc_path = os.path.join(self.generators_folder, f"{name}.pc")
