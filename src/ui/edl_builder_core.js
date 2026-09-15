@@ -338,11 +338,11 @@ const BARE_IDENT_RE = /^[a-zA-Z0-9~!@#$%^&*\-_+=<>?/]+$/;
 // que nao faz sentido nem pra um valor de texto solto nem pro vetor
 // Table2/Table3.data abaixo. Duplicada (nao referenciada) porque este
 // arquivo carrega ANTES de edl_parser_core.js no bundle concatenado (ver
-// compile.js) e roda sozinho em teste. ACHADO POR AUDITORIA (nao
-// redescobrir): a forma antiga, so' '\d+(\.\d+)?', nao reconhecia notacao
-// cientifica nem '.5'/'5.' -- um valor assim caia no fallback de
-// JSON.stringify() e virava base::String na reexportacao, silenciosamente
-// trocando o tipo do lado MIXR (Number esperado, String entregue).
+// compile.js) e roda sozinho em teste. A forma antiga, so' '\d+(\.\d+)?',
+// nao reconhecia notacao cientifica nem '.5'/'5.' -- um valor assim caia no
+// fallback de JSON.stringify() e virava base::String na reexportacao,
+// silenciosamente trocando o tipo do lado MIXR (Number esperado, String
+// entregue).
 const RAW_NUMBER_SRC = "[+-]?(?:\\d*\\.\\d+(?:[eE][+-]?\\d+)?|\\d+\\.\\d*(?:[eE][+-]?\\d+)?|\\d+(?:[eE][+-]?\\d+)?)";
 
 // Um valor puramente numerico tokeniza como NUMERO no scanner, não como
@@ -369,21 +369,20 @@ function serializeTextLiteral(value) {
   const v = String(value);
   if (RAW_VECTOR_RE.test(v.trim())) return v.trim();
   if (v && BARE_IDENT_RE.test(v) && !LOOKS_LIKE_NUMBER_RE.test(v)) return v;
-  // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o tokenizer real
-  // (edl_scanner.l, replicado em tokenizeEdlText()/edl_parser_core.js deste
-  // projeto -- ver o teste "tokenize: string entre aspas NAO interpreta
-  // escape") NUNCA interpreta \X como escape -- \ + qualquer caractere e
-  // copiado LITERAL, byte a byte, na volta. JSON.stringify() sozinho ESCAPA
-  // barra invertida (\ -> \\), e como o tokenizer nunca desfaz isso na
-  // leitura, um ciclo carregar+exportar DOBRAVA a contagem de barras de um
-  // valor com \ literal (ex.: um caminho estilo Windows,
-  // "C:\data\mission.acmi" virava "C:\\data\\mission.acmi" so de reexportar
-  // SEM editar nada -- confirmado reproduzindo, nao-idempotente: 1->3->7->15
-  // barras em ciclos repetidos). Corrigido desfazendo SO esse escapamento
-  // especifico (a sequencia de DUAS barras que o JSON produz para CADA barra
-  // original vira UMA de volta) -- o resto do que JSON.stringify faz (aspa
-  // embutida, caracteres de controle) continua intacto, porque nao era o que
-  // estava quebrado.
+  // O tokenizer real (edl_scanner.l, replicado em
+  // tokenizeEdlText()/edl_parser_core.js deste projeto -- ver o teste
+  // "tokenize: string entre aspas NAO interpreta escape") NUNCA interpreta
+  // \X como escape -- \ + qualquer caractere e copiado LITERAL, byte a
+  // byte, na volta. JSON.stringify() sozinho ESCAPA barra invertida
+  // (\ -> \\), e como o tokenizer nunca desfaz isso na leitura, um ciclo
+  // carregar+exportar DOBRAVA a contagem de barras de um valor com \
+  // literal (ex.: um caminho estilo Windows, "C:\data\mission.acmi" virava
+  // "C:\\data\\mission.acmi" so de reexportar SEM editar nada -- nao-
+  // idempotente: 1->3->7->15 barras em ciclos repetidos). Corrigido
+  // desfazendo SO esse escapamento especifico (a sequencia de DUAS barras
+  // que o JSON produz para CADA barra original vira UMA de volta) -- o
+  // resto do que JSON.stringify faz (aspa embutida, caracteres de
+  // controle) continua intacto, porque nao era o que estava quebrado.
   return JSON.stringify(v).replace(/\\\\/g, "\\");
 }
 

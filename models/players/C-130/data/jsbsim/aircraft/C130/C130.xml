@@ -112,8 +112,7 @@
     </ground_reactions>
     <propulsion>
         <!--
-          ACHADO CONFIRMADO RODANDO, CORRIGIDO (nao redescobrir): o par
-          motor/thruster original (t56.xml, <turbine_engine> - calcula
+          O par motor/thruster original (t56.xml, <turbine_engine> - calcula
           empuxo direto - + t56_prop.xml, um <propeller>, que espera
           POTENCIA/HP) e um descompasso de tipo do dado JSBSim vendorizado.
           Sintoma medido: combustivel consumia normalmente (throttle chegava
@@ -122,7 +121,7 @@
           sustentacao (roll divergindo sem limite, AGL caindo ate quase
           encostar no terreno - src/poc/c130-airdrop, ~160s simulados).
 
-          CORRIGIDO trocando o thruster para 'direct' - MESMO padrao ja
+          Corrigido trocando o thruster para 'direct' - MESMO padrao ja
           comprovado neste repositorio para models/players/A-4/data/jsbsim/
           aircraft/A4/A4.xml (J52, tambem <turbine_engine>, tambem pareado
           com <thruster file="direct">): o empuxo que o motor ja calcula

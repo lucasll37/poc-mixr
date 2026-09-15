@@ -66,7 +66,7 @@ como este é declarado DENTRO de `components:` da `AaaSite`, o ator já é a pr�
 precisar subir a cadeia de containers (diferente do `FlightAgentTC` do A-4, que também não
 precisou sobrescrever `initActor()` pelo mesmo motivo — ver o comentário daquela classe).
 
-## Armadilha confirmada, não redescobrir: `SamVehicle`/`Sam` não são o mesmo que `Missile`
+## Armadilha: `SamVehicle`/`Sam` não são o mesmo que `Missile`
 
 `xnative::AaaSite` é subclasse de `mixr::models::SamVehicle` **só** para herdar os slots nativos
 `minLaunchRange`/`maxLaunchRange` (o "domo" de alcance, já nativo do MIXR — não foi preciso

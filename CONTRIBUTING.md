@@ -801,14 +801,13 @@ public:
    virtual double getFuelReserve() const = 0;
    virtual double getSupportSpeedKts() const = 0;
 
-   // O piso anti-CFIT (domain/TerrainFloor.hpp) -- ACHADO POR AUDITORIA
-   // (nao redescobrir): so domain::ThreatPolicy::breakCommand() aplicava
-   // este piso; RTB e SUPPORT comandavam altitude (rtbAltitude fixo do
-   // EDL, ou a altitude ABSOLUTA de um contato reportado por outro player)
-   // sem NENHUMA validacao contra o terreno em runtime. Cada no que
-   // comanda altitude fora do ramo de evasao deve passar por aqui antes
-   // de decision().take() -- ver ReturnToBaseAction/SupportAlertAction/
-   // PatrolAction.
+   // O piso anti-CFIT (domain/TerrainFloor.hpp) -- so domain::ThreatPolicy::
+   // breakCommand() aplicava este piso; RTB e SUPPORT comandavam altitude
+   // (rtbAltitude fixo do EDL, ou a altitude ABSOLUTA de um contato
+   // reportado por outro player) sem NENHUMA validacao contra o terreno em
+   // runtime. Cada no que comanda altitude fora do ramo de evasao deve
+   // passar por aqui antes de decision().take() -- ver
+   // ReturnToBaseAction/SupportAlertAction/PatrolAction.
    virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
 
    // ha altitude de sobra para COMECAR uma acrobacia agora? -- so a borda

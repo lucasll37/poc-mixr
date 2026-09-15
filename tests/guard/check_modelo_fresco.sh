@@ -16,30 +16,20 @@
 # raiz: um modelo novo em models/systems/ ou models/others/ ja entra na
 # checagem, sem editar este arquivo).
 #
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este script tinha
-# `for modelo in models/players/*/` -- so um nivel sob players/, apesar do
-# comentario acima ja prometer "mesma filosofia" de check_modelo_estrutura.sh
-# (que descobre em QUALQUER subpasta de models/). Falso-negativo latente: um
-# modelo real nascido em models/systems/<nome>/ ou models/others/<nome>/
-# (o destino real de 'make new-model CATEGORY=system|others') passaria por
-# esta guarda sem checagem de frescor nenhuma.
+# A descoberta é por 'find' sob QUALQUER subpasta de models/ (mesma filosofia
+# de check_modelo_estrutura.sh) — um glob restrito a um nível fixo (ex.: só
+# models/players/*/) ficaria cego a um modelo nascido em models/systems/ ou
+# models/others/ (o destino real de 'make new-model CATEGORY=system|others').
 #
-# CORRIGIDO (nao redescobrir o contrario): este comentario chegou a excluir
-# 'template/' daqui, com a justificativa de que ele "nunca e instalado em
-# dist/lib/mixr-plugins/ do core". Medido no disco e no Makefile raiz: e
-# falso -- 'make models' builda o template EXPLICITAMENTE (alvo 'models',
-# linha separada da dos modelos de producao) e deposita libtemplate.so/
-# libtemplate_mirror.so em plugins/ igual a qualquer modelo real; 'make
-# install' (sync-plugins) copia os dois para a RAIZ dist/lib/mixr-plugins/
-# junto com libA-4.so -- confirmado com 'ls dist/lib/mixr-plugins/'. E
-# libtemplate_mirror.so nao e decorativo: e o que os testes
-# 'plugin-modelo-estranho'/'plugin-deposito-terceiro' carregam para provar
-# que o CONTRATO (nao o fonte do modelo de producao) basta. Excluir
-# 'template/' daqui era exatamente o buraco que esta guarda existe para
-# fechar -- editar mirror.cpp sem rebuildar deixava aqueles dois testes
-# passando contra um .so requentado, em silencio. 'fixtures/' tambem saiu
-# da exclusao: a pasta nao existe mais neste repositorio (removida, ver
-# CLAUDE.md) -- exclui-la aqui so escondia que o find nunca a acharia mesmo.
+# 'template/' entra nesta checagem como qualquer modelo real, sem exceção:
+# 'make models' builda o template explicitamente e deposita libtemplate.so/
+# libtemplate_mirror.so em plugins/ igual a qualquer modelo de produção;
+# 'make install' (sync-plugins) copia os dois para dist/lib/mixr-plugins/
+# junto com libA-4.so. libtemplate_mirror.so não é decorativo: é o que os
+# testes 'plugin-modelo-estranho'/'plugin-deposito-terceiro' carregam para
+# provar que o CONTRATO (não o fonte do modelo de produção) basta — sem
+# checar o frescor dele, editar mirror.cpp sem rebuildar deixaria aqueles
+# dois testes passando contra um .so requentado, em silêncio.
 #
 # Os basenames de .so a checar de CADA modelo vem do PROPRIO './dist' local
 # dele (populado por 'make build'/'make install-core' daquele projeto) -- nao
@@ -93,35 +83,24 @@ while IFS= read -r modelo; do
       fi
    done
 
-   # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): os .so de VARIANTE de
-   # teste do core (ex.: libmodel_leak.so/libmodel_variant_{a,b}.so de A-4,
-   # atras da opcao 'variants' -- ver models/players/A-4/meson.build,
-   # consumidos por 'memory-controle-negativo'/'plugin-hotswap' em
-   # tests/meson.build) NUNCA sao instalados -- so existem direto em
-   # "$modelo/build/". O loop acima (que so varre "$modelo/dist/...") nunca
-   # os alcancava: editar a fonte que eles exercitam (ex.:
-   # domain/PatrolPlan.cpp) sem reconfigurar/recompilar o modelo com
-   # '-Dvariants=true' rodava esses dois testes contra um .so desatualizado
-   # (ou ausente, que ao menos falha alto) sem NENHUM aviso de frescor.
-   # Cobre qualquer '.so' que fique direto em build/ (nao hardcoda nome —
-   # um modelo futuro pode ter variantes proprias com outros nomes).
+   # Os .so de VARIANTE de teste do core (ex.: libmodel_leak.so/
+   # libmodel_variant_{a,b}.so de A-4, atrás da opção 'variants' — ver
+   # models/players/A-4/meson.build, consumidos por
+   # 'memory-controle-negativo'/'plugin-hotswap' em tests/meson.build) nunca
+   # são instalados — só existem direto em "$modelo/build/", fora do alcance
+   # do loop acima (que só varre "$modelo/dist/..."). Cobre qualquer '.so'
+   # que fique direto em build/ sem hardcodar nome — um modelo futuro pode
+   # ter variantes próprias com outros nomes.
    #
-   # SO' o que NAO tem par instalado em "$locais" -- ACHADO RODANDO, NA
-   # PROPRIA VALIDACAO DESTE FIX (nao redescobrir): checar TAMBEM os .so ja
-   # cobertos pelo loop acima (ex.: libtemplate.so) parecia "redundante e
-   # inofensivo", mas nao e -- os dois loops comparam contra a MESMA arvore
-   # inteira de fonte (src/include/configs), coarse, nao por-alvo. Um
-   # projeto com DOIS artefatos que compartilham a mesma pasta de fonte mas
-   # tem sources DISJUNTOS (template: libtemplate.so vem de
-   # domain/ubf/xnative/plugin.cpp; libtemplate_mirror.so vem SO de
-   # mirror.cpp) faz esse loop acusar libtemplate.so de "desatualizado"
-   # so' porque mirror.cpp mudou -- falso positivo, reproduzido editando
-   # mirror.cpp e rodando esta guarda sem tocar em mais nada. Restringir
-   # este loop a .so's SEM par instalado (o caso que de fato motivou esta
-   # secao -- variantes de teste como libmodel_leak.so, que NUNCA chegam a
-   # "$locais") evita o falso positivo sem tentar resolver dependencia
-   # por-alvo em bash (isso e' o que 'meson introspect --targets' faria de
-   # verdade, fora de escopo aqui).
+   # Só o que NÃO tem par instalado em "$locais": os dois loops comparam
+   # contra a MESMA árvore inteira de fonte (src/include/configs), não
+   # por-alvo — um projeto com dois artefatos de sources DISJUNTOS (template:
+   # libtemplate.so vem de domain/ubf/xnative/plugin.cpp; libtemplate_mirror.so
+   # vem só de mirror.cpp) faria este segundo loop acusar libtemplate.so de
+   # "desatualizado" só porque mirror.cpp mudou, se checasse também os .so já
+   # cobertos pelo loop acima. Restringir a .so's sem par instalado evita esse
+   # falso positivo sem resolver dependência por-alvo em bash (isso é o que
+   # 'meson introspect --targets' faria de verdade, fora de escopo aqui).
    build_dir="$modelo/build"
    if [ -d "$build_dir" ]; then
       for so_build in "$build_dir"/*.so; do

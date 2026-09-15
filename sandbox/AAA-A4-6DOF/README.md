@@ -59,7 +59,7 @@ Geometria: `a4_intruder` começa na origem, patrulhando rumo 090 (LESTE) a ~250 
 virada para OESTE (rumo 270). Sem terreno (`simulation:` não declara `terrain:` — o ponto
 desta poc é o mecanismo de detecção/disparo/evasão, não navegação sobre relevo).
 
-## Armadilha confirmada rodando — não redescobrir: polarização cruzada zera o RWR por completo
+## Armadilha: polarização cruzada zera o RWR por completo
 
 O primeiro cenário funcional tinha `ant_rwr` (a antena do RWR do A-4) com
 `polarization: vertical`, enquanto o radar de aquisição da `aaa_site` transmite

@@ -88,15 +88,15 @@ function tokenize(text) {
     if (c === "/" && text[i + 1] === "/") { while (i < n && text[i] !== "\n") i++; continue; }
     if ("(){}[]:".includes(c)) { tokens.push({ t: c, line }); i++; continue; }
     if (c === '"') {
-      // ACHADO POR AUDITORIA (nao redescobrir): a gramatica real
-      // (edl_scanner.l:223-232) NAO interpreta escape nenhum -- o padrao
-      // '\"(\\.|[^\\"])*\"' so' existe pra o lexer nao terminar a string
-      // cedo demais num '\"' embutido; a acao copia o conteudo entre aspas
-      // BYTE A BYTE ('utStrcpy(yylval.cvalp, slen, yytext+1)', sem tocar
-      // backslash nenhum). '\X' na fonte vira DOIS caracteres no valor
-      // final ('\' seguido de X), nunca um so'. A forma antiga aqui
-      // ('buf += text[j+1]') descartava o backslash -- 'a\"b' virava 'a"b'
-      // em vez de 'a\"b', trocando o CONTEUDO real do valor carregado.
+      // a gramatica real (edl_scanner.l:223-232) NAO interpreta escape
+      // nenhum -- o padrao '\"(\\.|[^\\"])*\"' so' existe pra o lexer nao
+      // terminar a string cedo demais num '\"' embutido; a acao copia o
+      // conteudo entre aspas BYTE A BYTE ('utStrcpy(yylval.cvalp, slen,
+      // yytext+1)', sem tocar backslash nenhum). '\X' na fonte vira DOIS
+      // caracteres no valor final ('\' seguido de X), nunca um so'. A forma
+      // antiga aqui ('buf += text[j+1]') descartava o backslash -- 'a\"b'
+      // virava 'a"b' em vez de 'a\"b', trocando o CONTEUDO real do valor
+      // carregado.
       let j = i + 1, buf = "";
       while (j < n && text[j] !== '"') {
         if (text[j] === "\\" && j + 1 < n) { buf += text[j] + text[j + 1]; j += 2; continue; }
@@ -230,15 +230,15 @@ function scalarToSlotValue(value, slotDef) {
   if (!slotDef) {
     return { kind: "raw", raw: value.quoted ? value.raw : value.text };
   }
-  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l tem regras
-  // SEPARADAS para 'true'/'TRUE'/'false'/'FALSE' (tudo minusculo OU tudo
-  // maiusculo -- 'True'/'False' em caixa mista NAO e' booleano na gramatica
-  // real, vira IDENT solto; ja' coberto por EDL_TOKEN_RE do destaque de
-  // sintaxe, so' faltava aqui). Sem as duas formas maiusculas, carregar um
-  // '.edl' que usa 'TRUE'/'FALSE' fazia o valor cair no ramo "text" (vira
-  // 'kind: "text"', nao 'kind: "boolean"') -- a UI mostraria um campo de
-  // texto em vez do toggle, e a reexportacao trocaria de volta pra
-  // minusculo, sem quebrar o cenario mas divergindo do byte original.
+  // edl_scanner.l tem regras SEPARADAS para 'true'/'TRUE'/'false'/'FALSE'
+  // (tudo minusculo OU tudo maiusculo -- 'True'/'False' em caixa mista NAO
+  // e' booleano na gramatica real, vira IDENT solto; ja' coberto por
+  // EDL_TOKEN_RE do destaque de sintaxe, so' faltava aqui). Sem as duas
+  // formas maiusculas, carregar um '.edl' que usa 'TRUE'/'FALSE' fazia o
+  // valor cair no ramo "text" (vira 'kind: "text"', nao 'kind: "boolean"')
+  // -- a UI mostraria um campo de texto em vez do toggle, e a reexportacao
+  // trocaria de volta pra minusculo, sem quebrar o cenario mas divergindo
+  // do byte original.
   if (!value.quoted && (value.text === "true" || value.text === "TRUE"
       || value.text === "false" || value.text === "FALSE") && slotDef.acceptsBoolean) {
     return { kind: "boolean", value: value.text === "true" || value.text === "TRUE" };

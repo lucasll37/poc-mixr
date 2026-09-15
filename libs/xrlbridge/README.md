@@ -92,23 +92,6 @@ core não pode conhecer o fonte do modelo), então define sua própria cópia da
 `WorldView` → `Observation` é feita uma única vez, do lado do modelo
 (`RLBridgeBehavior.cpp::toObservation()`); o core nunca vê `WorldView`, só `Observation`.
 
-## Por que `shared_library()`, e não estática
-
-Mesmo motivo estrutural de `libs/xboard::Board` (ver o cabeçalho de `RLBridge.hpp`): quem
-**escreve** o comando e **lê** a observação é o core (executável); quem **lê** o comando e
-**escreve** a observação é o modelo (um `.so` aberto com `dlopen`). Uma lib estática daria a cada
-lado a sua própria cópia dos dois globais (`g_command`/`g_observation` em `RLBridge.cpp`) — o
-core nunca veria o comando chegar no modelo, e vice-versa. Instalada pelo mesmo motivo de `xboard`:
-o consumidor em `dist/bin/`/`dist/python/` precisa achá-la em `dist/lib/`.
-
-Concorrência é o mesmo padrão de `Board.hpp`: um mutex só, protegendo um mapa minúsculo — aqui, os
-dois structs globais, sem chave por player id. **V1 é um único agente RL por processo**:
-`genAction()` não tem como descobrir o ID do player que o hospeda sem subir a árvore de
-componentes por `container()`, caminho já documentado como frágil neste framework para objetos
-aninhados em slot (a mesma armadilha de `TacviewOutput::resolveInfo()`). Generalizar para vários
-agentes trocaria `setPendingCommand`/`getObservation` por um mapa por `playerId` — não feito
-porque nenhum cenário precisa disso ainda.
-
 ## Por que `RLBridgeBehavior` mora DENTRO de `models/players/A-4`, e não num plugin próprio
 
 Um plugin separado (no molde do que o modelo de demo `missile` fazia antes de ser removido — não o
@@ -201,6 +184,23 @@ fisicamente absurdo.
    `xrlbridge.fields` no próprio `.onnx` (`onnx.helper.set_model_props()`), e `libs/xinfer::fields()`
    lê de volta para os nós compararem por identidade. Um `.onnx` sem essa metadata (todo `.onnx`
    exportado antes desta funcionalidade existir) cai só na checagem de contagem, como sempre.
+
+## Por que `shared_library()`, e não estática
+
+Mesmo motivo estrutural de `libs/xboard::Board` (ver o cabeçalho de `RLBridge.hpp`): quem
+**escreve** o comando e **lê** a observação é o core (executável); quem **lê** o comando e
+**escreve** a observação é o modelo (um `.so` aberto com `dlopen`). Uma lib estática daria a cada
+lado a sua própria cópia dos dois globais (`g_command`/`g_observation` em `RLBridge.cpp`) — o
+core nunca veria o comando chegar no modelo, e vice-versa. Instalada pelo mesmo motivo de `xboard`:
+o consumidor em `dist/bin/`/`dist/python/` precisa achá-la em `dist/lib/`.
+
+Concorrência é o mesmo padrão de `Board.hpp`: um mutex só, protegendo um mapa minúsculo — aqui, os
+dois structs globais, sem chave por player id. **V1 é um único agente RL por processo**:
+`genAction()` não tem como descobrir o ID do player que o hospeda sem subir a árvore de
+componentes por `container()`, caminho já documentado como frágil neste framework para objetos
+aninhados em slot (a mesma armadilha de `TacviewOutput::resolveInfo()`). Generalizar para vários
+agentes trocaria `setPendingCommand`/`getObservation` por um mapa por `playerId` — não feito
+porque nenhum cenário precisa disso ainda.
 
 ## Testes
 

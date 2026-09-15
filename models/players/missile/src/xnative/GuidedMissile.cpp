@@ -92,17 +92,15 @@ void GuidedMissile::updateTC(const double dt)
 // campos PROPRIOS de Missile, nunca lidos por GuidedMissile::weaponDynamics(),
 // que consome os campos abaixo).
 //
-// Sem este metodo (achado rodando, nao suposto -- ver o comentario de
-// weaponGuidance() sobre isGuidanceEnabled()): os tres campos ficam no
-// inicializador de classe (0.0) ate tof>=tsg, e weaponDynamics() ja roda
-// TODO frame independente do TSG -- o missil guina ativamente para
-// rumo/pitch GEOGRAFICO ZERO (Norte, nivelado) e desacelera em direcao a
-// ZERO m/s durante toda a janela do TSG (aqui, 1.0 s), a taxa/aceleracao
-// maxima (maxG/maxAccel). Medido no cenario sandbox/A4-6DOF-MISSILE: o
-// missil abre mao de ate ~66 graus de rumo e perde velocidade real antes de
-// a navegacao proporcional assumir -- o suficiente, em geometrias menos
-// favoraveis que a testada, para nao convergir dentro de maxBurstRng e
-// "passar do lado" do alvo sem detonar.
+// Sem este metodo (ver o comentario de weaponGuidance() sobre
+// isGuidanceEnabled()): os tres campos ficam no inicializador de classe
+// (0.0) ate tof>=tsg, e weaponDynamics() ja roda todo frame independente do
+// TSG -- o missil guinaria ativamente para rumo/pitch geografico zero
+// (Norte, nivelado) e desaceleraria em direcao a zero m/s durante toda a
+// janela do TSG (aqui, 1.0 s), na taxa/aceleracao maxima (maxG/maxAccel):
+// perda real de rumo/velocidade antes de a navegacao proporcional assumir,
+// o suficiente em geometrias desfavoraveis para nao convergir dentro de
+// maxBurstRng e "passar do lado" do alvo sem detonar.
 //------------------------------------------------------------------------------
 void GuidedMissile::atReleaseInit()
 {

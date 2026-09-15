@@ -44,10 +44,10 @@ simulada.
   engano. O `data/` só é recolhido se tiver ficado **vazio** (`rmdir`, que falha sozinho e sem
   estrago se houver qualquer coisa dentro).
 
-  > **Correção registrada (não redescobrir):** esta promessa já foi **falsa** na metade `data/`.
-  > O alvo `clean` tinha um `rm -rf plugins/data` **incondicional** — o namespace inteiro, sem
-  > filtro de nome —, então o dado de um terceiro ia junto. A metade `.so` sempre foi verdadeira;
-  > a de `data/` passou a ser em conjunto com o alvo `rm-model`.
+  > **Correção:** esta promessa já foi falsa na metade `data/`. O alvo `clean` tinha um
+  > `rm -rf plugins/data` **incondicional** — o namespace inteiro, sem filtro de nome —, então o
+  > dado de um terceiro ia junto. A metade `.so` sempre foi verdadeira; a de `data/` passou a ser
+  > em conjunto com o alvo `rm-model`.
 
 - **Remover um modelo tem comando próprio: `make rm-model`** (`scripts/models.sh --remove`). Ele
   descobre os artefatos **antes** de apagar a pasta — a informação de quem publicou o quê mora

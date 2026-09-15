@@ -60,25 +60,6 @@ out << " bt=" << board.label << " dec=" << board.decisions;
 Um playerId sem nenhuma escrita ainda devolve `Readout{}` (`label="--"`, `decisions=0`,
 `threadTag=-1`) — é o valor com que toda aeronave nasce no dump, não um erro.
 
-## Por que esta é uma `shared_library()` de `libs/`, e não `static_library()`
-
-Outras libs "leves" de `libs/` (`xtacview`, `xclock`, `xjoystick`, `xmsg`, `xplugin`) são
-`static_library()`. `xboard` não pode ser, e o motivo é estrutural, não de gosto: quem **escreve**
-aqui é o modelo, que mora num `.so` carregado com `dlopen`; quem **lê** é o core, que é o
-executável. Com uma lib estática cada lado ganharia sua **própria cópia** dos mapas — o modelo
-escreveria num, o core leria do outro, e o dump sairia com `bt=--`/`dec=0` para sempre. **Sem erro
-de link, sem crash, sem aviso** — só o número errado, silenciosamente, pra sempre. É a mesma
-armadilha documentada no cabeçalho de `libs/xplugin/PluginAbi.hpp`, e a saída que
-`libs/xplugin/README.md` já registra como a honesta quando um plugin precisa de código
-compartilhado: promover a peça a `shared_library()` com **SONAME** (`Shared Object Name` — o nome
-interno gravado no `.so`, usado pelo *loader* para identificar a biblioteca em tempo de execução)
-em vez de relaxar a regra de que um plugin só depende de `mixr_dep` + `xplugin_abi_dep`.
-
-`meson.build` instala a lib (`install_dir: get_option('libdir')`, `install_tag: 'sdk'`) pelo mesmo
-motivo: o executável em `dist/bin/` precisa achá-la em `dist/lib/`, e é isso que o **rpath**
-(`run-time search path` — a lista de diretórios, gravada no próprio binário, onde o *loader*
-procura bibliotecas compartilhadas) `$ORIGIN/../lib` dos alvos que a consomem espera.
-
 ## Concorrência
 
 Escrita acontece nas threads de tempo crítico — a atuação do UBF roda lá, uma vez por aeronave por
@@ -98,6 +79,25 @@ o míssil guiado, por exemplo), cada `.so` veria sua própria primeira chamada c
 número mostrado na aba Players deixaria de significar "esta é a MESMA thread" entre um avião e um
 míssil processados lado a lado no mesmo frame. Com uma única `libxboard.so` compartilhada por
 `dlopen`, o contador é o mesmo para qualquer chamador, em qualquer plugin.
+
+## Por que esta é uma `shared_library()` de `libs/`, e não `static_library()`
+
+Outras libs "leves" de `libs/` (`xtacview`, `xclock`, `xjoystick`, `xmsg`, `xplugin`) são
+`static_library()`. `xboard` não pode ser, e o motivo é estrutural, não de gosto: quem **escreve**
+aqui é o modelo, que mora num `.so` carregado com `dlopen`; quem **lê** é o core, que é o
+executável. Com uma lib estática cada lado ganharia sua **própria cópia** dos mapas — o modelo
+escreveria num, o core leria do outro, e o dump sairia com `bt=--`/`dec=0` para sempre. **Sem erro
+de link, sem crash, sem aviso** — só o número errado, silenciosamente, pra sempre. É a mesma
+armadilha documentada no cabeçalho de `libs/xplugin/PluginAbi.hpp`, e a saída que
+`libs/xplugin/README.md` já registra como a honesta quando um plugin precisa de código
+compartilhado: promover a peça a `shared_library()` com **SONAME** (`Shared Object Name` — o nome
+interno gravado no `.so`, usado pelo *loader* para identificar a biblioteca em tempo de execução)
+em vez de relaxar a regra de que um plugin só depende de `mixr_dep` + `xplugin_abi_dep`.
+
+`meson.build` instala a lib (`install_dir: get_option('libdir')`, `install_tag: 'sdk'`) pelo mesmo
+motivo: o executável em `dist/bin/` precisa achá-la em `dist/lib/`, e é isso que o **rpath**
+(`run-time search path` — a lista de diretórios, gravada no próprio binário, onde o *loader*
+procura bibliotecas compartilhadas) `$ORIGIN/../lib` dos alvos que a consomem espera.
 
 ## Testes
 

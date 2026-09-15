@@ -82,9 +82,8 @@ chamadas pelo laço de background do runner (`app`/pocs) na mesma cadência do r
    sem transformação nenhuma). É por isso que só o `ai: 4` leva `offset: 1.0 gain: -1.0`: o
    `AnalogInput` calcula `t = (raw - offset) * gain`, e essa combinação inverte e reescala de
    `[-1,1]` para `[0,2]` no mesmo passo (`raw=-1 → t=2.0`; `raw=+1 → t=0.0`).
-   **CORRIGIDO (não redescobrir):** o `gain` já foi `-0.5` — a conta batia sozinha, mas só
-   alcançava `[0,1]` (nunca saía de MIL); achado por auditoria, sem verificação com joystick
-   físico depois da troca.
+   O `gain` já foi `-0.5` — a conta batia sozinha, mas só alcançava `[0,1]` (nunca saía de MIL);
+   corrigido para `-1.0` sem verificação com joystick físico depois da troca.
 5. **WSL2 não repassa USB por padrão.** O binário é o mesmo nos dois ambientes; o que muda é
    operacional — em WSL2 é preciso `usbipd-win` no core Windows
    (`usbipd attach --wsl --busid <id>`) para o joystick aparecer em `/dev/input/js*` dentro da

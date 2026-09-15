@@ -42,15 +42,13 @@ int resolveTcThreadCount(const int threadsOverride, unsigned int* const hwThread
 
 std::string readFileOrDie(const std::string& path)
 {
-   // Achado rodando (stress-sweep desta sessao), dois sintomas da MESMA
-   // causa: 'in.rdbuf()' le ate o EOF sem checar QUE TIPO de arquivo e' --
-   // um caractere-dispositivo de leitura infinita ('-f /dev/zero') nunca
-   // da EOF e o buffer cresce ate o processo morrer com std::bad_alloc
-   // (SIGABRT, core dump -- nao um EXIT_FAILURE limpo); um FIFO sem
-   // escritor ('-f <pipe-nomeado>') trava o proprio std::ifstream(path) NO
-   // OPEN, antes mesmo de chegar no rdbuf() -- sem timeout interno, so kill
-   // externo resolve. is_regular_file() rejeita os dois ANTES de abrir,
-   // com a mesma mensagem clara ja usada para "arquivo nao existe".
+   // 'in.rdbuf()' lê até o EOF sem checar que TIPO de arquivo é — um
+   // caractere-dispositivo de leitura infinita ('-f /dev/zero') nunca dá
+   // EOF e o buffer cresce até o processo morrer com std::bad_alloc; um
+   // FIFO sem escritor ('-f <pipe-nomeado>') trava o próprio
+   // std::ifstream(path) no OPEN, antes mesmo de chegar no rdbuf(), sem
+   // timeout interno. is_regular_file() rejeita os dois antes de abrir,
+   // com a mesma mensagem clara já usada para "arquivo não existe".
    std::error_code ec;
    if (!std::filesystem::is_regular_file(path, ec)) {
       std::cerr << "[main] nao consegui ler " << path
@@ -93,15 +91,12 @@ std::string expandIncludes(std::string text, const std::string& fragmentsDir)
    std::size_t pos{};
    while ((pos = text.find(marker, pos)) != std::string::npos) {
       const std::size_t nameStart{pos + marker.size()};
-      // O '@' de fechamento tem que estar na MESMA linha -- EDL e' linha a
+      // O '@' de fechamento tem que estar na MESMA linha -- EDL é linha a
       // linha, e sem este limite um '@include:' com o '@' de fechamento
-      // ESQUECIDO "vaza" ate o proximo '@' de QUALQUER token seguinte no
-      // arquivo. Achado rodando (stress-sweep desta sessao): isso funde
-      // dois marcadores, produz um nome de fragmento com quebra de linha
-      // embutida (mensagem de erro ilegivel) e engole o segundo include
-      // inteiro sem processa-lo -- o antigo fallback "deixa como esta" so
-      // disparava quando NAO SOBRAVA nenhum outro '@' no resto do arquivo,
-      // o que e raro em EDL real.
+      // esquecido "vaza" até o próximo '@' de qualquer token seguinte no
+      // arquivo, fundindo dois marcadores e produzindo um nome de
+      // fragmento com quebra de linha embutida (mensagem de erro
+      // ilegível), engolindo o segundo include inteiro sem processá-lo.
       const std::size_t lineEnd{text.find('\n', nameStart)};
       const std::size_t nameEnd{text.find('@', nameStart)};
       if (nameEnd == std::string::npos || (lineEnd != std::string::npos && nameEnd > lineEnd)) {

@@ -60,22 +60,6 @@ gravador nativo, ex. `REID_PLAYER_DATA`)/protobuf. `Log.cpp` instancia um
 transitiva de `mixr_dep` (`mixr-recorder` no `Requires:` do `mixr.pc`, a mesma lib que
 `libs/xtacview` linka) — nenhuma dependência nova.
 
-## Por que é `shared_library()`, não estática
-
-Ao contrário de metade de `libs/x*` (6 das 12 libs ficam estáticas/header-only, ver `libs/
-README.md`), `xlog` cruza a fronteira de plugin: o modelo
-(`models/players/A-4`, `.so` aberto por `dlopen`) chama `LOG(...)` ao carregar a árvore de
-comportamento (`ubf/BtBehavior.cpp`) e a cada decisão atuada (`ubf/FlightAction.cpp`). Com duas
-cópias da lib, o `setLoggingEnabled(false)` que `main.cpp` chama sob `-deterministic` não
-alcançaria o lado do plugin, e o modo comparável passaria a emitir linhas com timestamp de parede
-— quebrando exatamente o que o modo existe para garantir.
-
-Efeito colateral, e é o motivo estrutural do buffer em memória (abaixo): como há **uma** cópia só
-no processo, o `LOG(...)` emitido de dentro do `.so` do modelo cai no **mesmo** buffer que o do
-core. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
-`flight_tree.xml` do lugar: as 4 linhas `LOG(ERROR)` de `BtBehavior` (uma por falcon, de dentro de
-`libA-4.so`) aparecem na aba sem código nenhum do lado do core.
-
 ## O buffer em memória
 
 Além de console e arquivo, toda linha entra num buffer circular (`std::deque<Entry>`) das últimas
@@ -116,6 +100,22 @@ alinhar o carimbo em coluna própria.
 5. **`Level` é `enum class`, não `#define`s soltos** — evita colisão com macros de sistema
    (`ERROR`/`DEBUG` são armadilhas clássicas em outros contextos, como `wingdi.h` no Windows).
    Irrelevante neste projeto (Linux-only, sem `-DDEBUG`), mas o desenho já nasce sem a pegadinha.
+
+## Por que é `shared_library()`, não estática
+
+Ao contrário de metade de `libs/x*` (6 das 12 libs ficam estáticas/header-only, ver `libs/
+README.md`), `xlog` cruza a fronteira de plugin: o modelo
+(`models/players/A-4`, `.so` aberto por `dlopen`) chama `LOG(...)` ao carregar a árvore de
+comportamento (`ubf/BtBehavior.cpp`) e a cada decisão atuada (`ubf/FlightAction.cpp`). Com duas
+cópias da lib, o `setLoggingEnabled(false)` que `main.cpp` chama sob `-deterministic` não
+alcançaria o lado do plugin, e o modo comparável passaria a emitir linhas com timestamp de parede
+— quebrando exatamente o que o modo existe para garantir.
+
+Efeito colateral, e é o motivo estrutural do buffer em memória (acima): como há **uma** cópia só
+no processo, o `LOG(...)` emitido de dentro do `.so` do modelo cai no **mesmo** buffer que o do
+core. A aba "Log" do `./app` mostra os dois sem nenhuma ponte extra — confirmado removendo
+`flight_tree.xml` do lugar: as 4 linhas `LOG(ERROR)` de `BtBehavior` (uma por falcon, de dentro de
+`libA-4.so`) aparecem na aba sem código nenhum do lado do core.
 
 ## Testes
 

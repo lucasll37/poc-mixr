@@ -117,16 +117,15 @@ TEST_F(XlogBuffer, PassadaACapacidadeDescartaOMaisAntigo)
    EXPECT_EQ(entries.back().text, "linha " + std::to_string(mixr::xlog::kMemoryCapacity + extra - 1));
 }
 
-// Bug real encontrado nesta bateria (Log.cpp, ~linha 118 antes do fix):
-// mixr::recorder::PrintHandler::printToOutput() tem o proprio fallback
-// nativo -- quando o arquivo NAO esta aberto (setFilename() apontou para
-// um diretorio que nao existe, a mesma armadilha 1 ja documentada em
+// mixr::recorder::PrintHandler::printToOutput() tem o próprio fallback
+// nativo -- quando o arquivo não está aberto (setFilename() apontou para
+// um diretório que não existe, a mesma armadilha já documentada em
 // Log.hpp: "data/logs/ precisa existir no disco antes do init()"), ele
-// escreve em std::cout por conta propria, por FORA de 'g_consoleEnabled'.
-// Sem a guarda 'g_sink->isOpen()' em Stream::~Stream(), isso quebrava
-// exatamente o que setConsoleEnabled(false) existe para garantir -- o
-// ./app desliga o console para o FTXUI nao ter a tela suja por baixo, e
-// aqui a linha vazava do mesmo jeito.
+// escreve em std::cout por conta própria, por fora de 'g_consoleEnabled'.
+// A guarda 'g_sink->isOpen()' em Stream::~Stream() garante o que
+// setConsoleEnabled(false) promete -- o ./app desliga o console para o
+// FTXUI não ter a tela suja por baixo, e sem essa guarda a linha vazaria
+// do mesmo jeito.
 TEST_F(XlogBuffer, ConsoleDesligadoNaoVazaPeloSinkQuandoArquivoFalhaAoAbrir)
 {
    const DiretorioTemporario dir;

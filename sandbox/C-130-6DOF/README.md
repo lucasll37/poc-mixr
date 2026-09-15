@@ -61,10 +61,10 @@ contra o banco de dados público do próprio Tacview
 para o modelo genérico do Hercules (não há entrada H/J/E separada no banco — só `KC-130`, a
 variante-tanque, é quebrada à parte).
 
-## Achado corrigido — motor não produzia empuxo efetivo (histórico, não redescobrir)
+## Motor não produzia empuxo efetivo — corrigido
 
-Numa rodada anterior, a velocidade decaía continuamente (e a aeronave chegou a **colidir com o
-solo** — o par motor/thruster vendorizado originalmente copiado para `data/jsbsim/engine/` deste
+A velocidade decaía continuamente (e a aeronave chegou a **colidir com o solo**) — o par
+motor/thruster vendorizado originalmente copiado para `data/jsbsim/engine/` deste
 modelo, `t56.xml` `<turbine_engine>` + `t56_prop.xml` `<propeller>`, era um descompasso de tipo do
 dado JSBSim vendorizado: o motor "rodava" (combustível consumido normalmente) mas o empuxo efetivo
 que chegava na célula ficava perto de zero. **Corrigido** trocando o thruster para `direct` (mesmo

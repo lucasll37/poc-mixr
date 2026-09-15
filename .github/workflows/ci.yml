@@ -31,42 +31,6 @@
 # para GitHub Actions neste repositorio -- a ferramenta mais proxima e
 # https://github.com/nektos/act (roda os jobs num container Docker local a
 # partir deste mesmo arquivo).
-#
-# ---------------------------------------------------------------------------
-# CORRECOES APLICADAS (em relacao a primeira versao deste arquivo)
-# ---------------------------------------------------------------------------
-# (a) 'defaults.run.shell: bash'. Sem isto, um step 'run:' que nao declara
-#     'shell:' pode cair no fallback 'sh -e {0}' do runner -- e o /bin/sh do
-#     Ubuntu e' o dash, que nao implementa 'pipefail'. Sintoma exato:
-#       "set: Illegal option -o pipefail" + "exit code 2".
-#     A action composta ./.github/actions/setup-ambiente nao era afetada
-#     porque step de composite action e' OBRIGADO a declarar 'shell:' (e la
-#     ja estava 'bash') -- foi justamente isso que provou que o bash existe
-#     na imagem.
-#
-# (b) CONAN_HOME nao pode usar '${{ github.workspace }}'. Essa expressao e'
-#     resolvida com o caminho do HOST (/home/runner/work/<repo>/<repo>),
-#     que NAO existe dentro do container (la o workspace e'
-#     /__w/<repo>/<repo>). O Conan acabava escrevendo fora da arvore
-#     cacheada e o cache de pacotes Conan nunca dava hit. Agora e' resolvido
-#     em runtime, via $PWD, num step apos o checkout de cada job.
-#
-# (c) 'git' instalado ANTES do actions/checkout. Sem git na imagem, o
-#     checkout cai no download do tarball pela API REST: funciona, mas o
-#     diretorio .git nao e' criado -- o que quebra 'git clone'/submodules em
-#     ./scripts/deps.sh e qualquer 'vcs_tag()'/'git describe' no Meson.
-#
-# (d) O estado do build vai como TAR, nao como arvore solta.
-#     upload-artifact/download-artifact nao preservam bit de execucao nem
-#     symlink: 'dist/bin/' voltava sem +x nos tres jobs de teste e os
-#     symlinks das arvores Meson/Ninja voltavam como copias. Empacotar
-#     tambem troca dezenas de milhares de objetos por um arquivo so (upload
-#     e download muito mais rapidos).
-#
-# (e) 'sudo' removido das chamadas apt. O job roda como root no container;
-#     'sudo' so adiciona uma dependencia a mais. E 'apt' trocado por
-#     'apt-get' (o 'apt' avisa que nao tem CLI estavel para scripts) com
-#     --no-install-recommends, consistente com o resto do roteiro.
 # ---------------------------------------------------------------------------
 
 name: CI

@@ -7,6 +7,12 @@ ftxui_dep = dependency('ftxui', method: 'pkg-config', required: true)
 
 local_inc_dir = include_directories('../include')
 
+# So app/BannerImage.cpp inclui isto (stb_image.h, vendorizado -- ver
+# app/thirdparty/README.md). Diretorio proprio, separado de local_inc_dir,
+# porque o header e' incluido "flat" (#include "stb_image.h"), nao sob
+# "app/" como o resto.
+thirdparty_inc_dir = include_directories('../thirdparty')
+
 core_sources = files(
     'main.cpp', 'mixr_factory.cpp',
     'app/Options.cpp', 'app/TerrainData.cpp', 'app/ScenarioTemplate.cpp',
@@ -22,7 +28,10 @@ core_sources = files(
     'app/ComponentFlowState.cpp', 'app/FrameCallChain.cpp',
     'app/EdlEditorState.cpp', 'app/EdlSyntaxHighlight.cpp', 'app/ScenarioFolder.cpp',
     'app/EdlHighlightRender.cpp', 'app/GrootMonitorCheck.cpp',
-    'app/PickerGeometry.cpp',
+    'app/PickerGeometry.cpp', 'app/BannerImage.cpp',
+    'app/DashboardFleetTab.cpp', 'app/DashboardMapTab.cpp', 'app/DashboardMemoryTab.cpp',
+    'app/DashboardBackgroundTab.cpp', 'app/DashboardLogTab.cpp',
+    'app/DashboardComponentsTab.cpp', 'app/DashboardEdlTab.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc
@@ -32,7 +41,7 @@ app = executable('app',
     core_sources,
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
-    include_directories : local_inc_dir,
+    include_directories : [local_inc_dir, thirdparty_inc_dir],
     # xmsg_dep/xjoystick_dep entraram quando o ./app virou o runner unico das
     # pocs: os cenarios delas declaram ( MsgFeed ) e ( JoystickIoHandler ).
     dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,

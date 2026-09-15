@@ -219,10 +219,10 @@ if [ "$REMOVER" = "1" ]; then
     # duas copias dessa regra divergiriam -- uma recusaria a remocao por um
     # arquivo que a outra nem olha. Uma implementacao, dois consumidores.
     #
-    # ACHADO RODANDO, nao redescobrir: sem podar '.gitlab-ci-local' a
-    # varredura devolvia CADA cenario DUAS vezes -- uma na fonte e uma em
-    # .gitlab-ci-local/builds/.docker/..., a copia que 'make test-ci' deixa do
-    # repositorio inteiro. A poda vive na guarda, nao aqui.
+    # Sem podar '.gitlab-ci-local' a varredura devolvia CADA cenario DUAS
+    # vezes -- uma na fonte e uma em .gitlab-ci-local/builds/.docker/...,
+    # a copia que 'make test-ci' deixa do repositorio inteiro. A poda vive
+    # na guarda, nao aqui.
     # -----------------------------------------------------------------------
     referenciadores() {
         local padrao="$1"
@@ -466,8 +466,8 @@ fi
 # secao 6 documenta o namespace aninhado por modelo como a defesa contra
 # type_info colidindo por strcmp quando dois .so RTLD_LOCAL vivem no mesmo
 # processo; essa colisao e silenciosa e cara, entao e recusada aqui.
-# ACHADO POR AUDITORIA: esta formula e' a MESMA de expected_namespace() em
-# cada tools/check_organization.py (copiado em todo projeto de modelo) --
+# Esta formula e' a MESMA de expected_namespace() em cada
+# tools/check_organization.py (copiado em todo projeto de modelo) --
 # duplicada em bash e Python, sem fonte unica possivel entre as duas
 # linguagens. Se esta formula mudar aqui, atualize expected_namespace() nas
 # 8 copias tambem (7 modelos + models/template/, o master de onde
@@ -664,29 +664,27 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 #    docs/PRIMEIROS-PASSOS.md passo 2, "grep -rl | xargs sed"). Roda DEPOIS
 #    do passo 1 (mirror.cpp ja apagado), entao 'xtemplate_mirror' nunca
 #    entra nesta lista.
-# 'tools' entra na lista junto com include/src/tests (ACHADO RODANDO, nao
-# redescobrir): tools/dump_tree_model.cpp nomeia o namespace do modelo
-# (mixr::models::x<nome>::bt) para montar a factory, entao um scaffold com
-# 'tools/' fora desta varredura sai com 'xtemplate' cravado la e NAO COMPILA
-# -- reproduzido com 'make new-model NAME=probe-bt CATEGORY=others'. O
-# models/players/A-4 nao expunha isso porque os nos dele vivem num
-# 'bt_nodes' solto no escopo global (a excecao historica que
-# models/template/docs/CONTRATO.md secao 6 manda NAO copiar).
+# 'tools' entra na lista junto com include/src/tests: tools/dump_tree_model.cpp
+# nomeia o namespace do modelo (mixr::models::x<nome>::bt) para montar a
+# factory, entao um scaffold com 'tools/' fora desta varredura sai com
+# 'xtemplate' cravado la e NAO COMPILA -- reproduzido com 'make new-model
+# NAME=probe-bt CATEGORY=others'. O models/players/A-4 nao expunha isso
+# porque os nos dele vivem num 'bt_nodes' solto no escopo global (a excecao
+# historica que models/template/docs/CONTRATO.md secao 6 manda NAO copiar).
 ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests tools)"
 
 # 4. namespace aninhado -- CONTRATO.md secao 6: 'xtemplate' -> 'x<nome>'.
 #    $NS_NOVO ja foi derivado (e ja teve a colisao checada) logo apos a
 #    validacao de --name, mais acima neste script.
 #
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): a derivacao era
-# 'x$(printf %s "$NAME" | tr -cd 'a-z0-9_')', e esse 'tr -cd' removia o
-# underscore junto com o resto da pontuacao -- '--name auto_pilot' e
-# '--name autopilot' geravam o MESMO namespace 'xautopilot' (reproduzido).
-# Hoje a traducao e' so hifen -> underscore, com caixa preservada, e o
-# unico modo de duas entradas coincidirem ('F-5' e 'F_5') e recusado na
-# checagem de colisao la de cima. O resto do script usa $NAME LITERAL
-# (lib$NAME.so, MIXR_PLUGIN_DEFINE("$NAME")) -- so o namespace precisa ser
-# um identificador C++ valido.
+# A derivacao era 'x$(printf %s "$NAME" | tr -cd 'a-z0-9_')', e esse
+# 'tr -cd' removia o underscore junto com o resto da pontuacao --
+# '--name auto_pilot' e '--name autopilot' geravam o MESMO namespace
+# 'xautopilot' (reproduzido). Hoje a traducao e' so hifen -> underscore,
+# com caixa preservada, e o unico modo de duas entradas coincidirem ('F-5'
+# e 'F_5') e recusado na checagem de colisao la de cima. O resto do script
+# usa $NAME LITERAL (lib$NAME.so, MIXR_PLUGIN_DEFINE("$NAME")) -- so o
+# namespace precisa ser um identificador C++ valido.
 NS_VELHO="x$ORIGEM_NOME"
 if [ -n "$ARQUIVOS_NS" ]; then
     while IFS= read -r f; do
@@ -825,12 +823,12 @@ sobrou, ou confira se 'make configure && make sdk' ja rodou na raiz." >&2
     exit 1
 fi
 
-#   CORRIGIDO (nao redescobrir): as tres checagens abaixo so' imprimiam
-# "aviso: ..." e seguiam em frente -- nenhuma setava codigo de saida
-# diferente de zero. Um scaffold com o .so VAZANDO simbolos (quebrando o
-# isolamento RTLD_LOCAL entre plugins, ver a "armadilha 3" do SDK de plugin
-# no CLAUDE.md raiz) ou com dependencia de linkedicao quebrada saia
-# reportado como "pronto e verde", igual a um scaffold perfeito.
+# As tres checagens abaixo so' imprimiam "aviso: ..." e seguiam em frente --
+# nenhuma setava codigo de saida diferente de zero. Um scaffold com o .so
+# VAZANDO simbolos (quebrando o isolamento RTLD_LOCAL entre plugins, ver a
+# "armadilha 3" do SDK de plugin no CLAUDE.md raiz) ou com dependencia de
+# linkedicao quebrada saia reportado como "pronto e verde", igual a um
+# scaffold perfeito.
 QUEBRADO=0
 SO="$DEST_ABS/dist/lib/mixr-plugins/lib$NAME.so"
 if [ ! -f "$SO" ]; then

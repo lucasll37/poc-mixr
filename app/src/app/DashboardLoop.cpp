@@ -2,20 +2,12 @@
 
 #include "mixr/linkage/IoHandler.hpp"
 
-#include "app/BackgroundPanel.hpp"
-#include "app/BehaviorTreeView.hpp"
-#include "app/BreakpointController.hpp"
-#include "app/ComponentTreePanel.hpp"
-#include "app/DashboardState.hpp"
-#include "app/EdlEditorState.hpp"
-#include "app/EdlHighlightRender.hpp"
+#include "app/DashboardWiring.hpp"
 #include "app/Fleet.hpp"
 #include "app/FleetPanel.hpp"
 #include "app/LogPanel.hpp"
-#include "app/MapPanel.hpp"
 #include "app/MemoryPanel.hpp"
 #include "app/Shutdown.hpp"
-#include "app/SpeedLadder.hpp"
 
 #include "xboard/Board.hpp"
 #include "xclock/ClockStation.hpp"
@@ -50,6 +42,17 @@
 // app/MemoryPanel.cpp -- uma aba cada, "um arquivo uma questao") --
 // app/DashboardState.hpp so carrega numeros, sem nenhum tipo do FTXUI, para
 // poder ser testado/mexido sem levantar tela nenhuma.
+//
+// FASE 7 (2026-09): a construcao de CADA aba (Players/Mapa/Memoria/Tempo
+// Nao-Critico/Log/Componentes/EDL) foi extraida para
+// app/Dashboard{Fleet,Map,Memory,Background,Log,Components,Edl}Tab.cpp, uma
+// funcao 'buildXTab(DashboardWiring&)' por arquivo -- ver app/DashboardWiring.hpp
+// para o que agrega e o que DELIBERADAMENTE fica so' aqui (o CatchEvent
+// unico, a barra de ferramentas, o dialogo de confirmacao, as duas threads).
+// Este arquivo ficou com: montagem do DashboardWiring, 'simThread', a
+// chamada aos sete 'buildXTab()' (ORDEM importa: Fleet antes de Map, ver o
+// comentario em DashboardWiring.hpp), a barra de ferramentas/'contentTab'/
+// 'withKeys'/'appRoot', e o Loop() final do FTXUI.
 //
 // POR QUE NAO libs/xclock::TimeControls/ConsoleKeyboard: os dois mexem em
 // termios (modo bruto do terminal) por fora do FTXUI, que ja e dono do
@@ -106,12 +109,6 @@ std::string pendingActionLabel(const PendingAction a)
    }
 }
 
-// Breakpoint de arvore de comportamento e escada de velocidade -- a
-// DECISAO de cada um mora em app/BreakpointController.hpp e
-// app/SpeedLadder.hpp (sem FTXUI/MIXR, testada em tests/app/), separada
-// do wiring com mutex/ClockStation que continua aqui. Ver o "porque" nos
-// dois headers.
-
 Color speedToneColor(const SpeedTone tone)
 {
    switch (tone) {
@@ -159,29 +156,6 @@ Element renderHeader(const DashboardState& st)
           | border;
 }
 
-// Uma linha da arvore de BT (ja achatada por app::flattenBehaviorTree) --
-// 'isActiveLeaf' e a folha vencedora AGORA (o mesmo destaque que existia
-// antes, quando a arvore era so um Element estatico); 'isSelected' e a
-// escolha do USUARIO na lista (pra virar alvo de breakpoint -- ver
-// 'doArmBreakpoint' em runDashboard()); 'isBreakpoint' marca o no que ESTA
-// armado.
-Element renderBtLine(const BtTreeLine& line, const bool isActiveLeaf, const bool isSelected,
-                     const bool isBreakpoint)
-{
-   Element e{text(line.display)};
-   if (!line.leaf) e = e | dim;
-   if (isActiveLeaf) e = e | bgcolor(Color::Blue) | color(Color::White) | bold;
-   if (isBreakpoint) e = hbox({e, text(" [BP]") | color(Color::Red) | bold});
-   if (isSelected) e = e | inverted;
-   return e;
-}
-
-// Destaque de sintaxe .edl da aba "EDL" (F7, ver mais abaixo) -- extraido
-// para app/EdlHighlightRender.hpp/.cpp (tokenizador puro em
-// app/EdlSyntaxHighlight.hpp) pra ficar testavel sem levantar a TUI
-// inteira; ver o comentario la' sobre o bug de UTF-8 que essa extracao
-// consertou.
-
 }
 
 DashboardExit runDashboard(mixr::simulation::Station* const station,
@@ -192,15 +166,33 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                            const int numTcThreads, const std::string& scenarioLabel,
                            const BtNode& behaviorTree, const std::string& generatedEdlPath)
 {
+   // Todo o estado que antes era local a esta funcao mora agora em 'w' (ver
+   // app/DashboardWiring.hpp) -- 'w' e' uma variavel local DESTA funcao,
+   // entao vive exatamente pelo tempo que os Component/lambda construidos a
+   // partir dela precisam (ate' o Loop() do FTXUI retornar, mais adiante).
+   DashboardWiring w;
+   w.station = station;
+   w.worldModel = worldModel;
+   w.clockStation = clockStation;
+   w.tacviewOutput = tacviewOutput;
+   w.ioHandler = ioHandler;
+   w.numTcThreads = numTcThreads;
+   w.scenarioLabel = scenarioLabel;
+   w.generatedEdlPath = generatedEdlPath;
+
    // Amostrador de terreno da aba Mapa -- construido UMA vez, aqui, e nao a
    // cada redesenho. makeTerrainSampler() le worldModel->getRefLatitude()/
-   // getRefLongitude() na construcao e captura os dois por VALOR
-   // (app/src/app/TerrainQuery.cpp); o corpo do amostrador so consulta o cache
-   // proprio de tiles, sob mutex, sem tocar o WorldModel. Reconstrui-lo dentro
-   // do Renderer era a ultima leitura de objeto MIXR vivo feita pela thread de
-   // desenho -- e a referencia geografica do cenario nao muda depois do
-   // RESET_EVENT, entao nao havia o que reamostrar.
-   const TerrainSampler terrainSampler{makeTerrainSampler(worldModel)};
+   // getRefLongitude() na construcao e captura os dois por VALOR; o corpo do
+   // amostrador so consulta o cache proprio de tiles, sob mutex, sem tocar o
+   // WorldModel.
+   w.terrainSampler = makeTerrainSampler(worldModel);
+
+   // A arvore de BT achatada NAO muda (o arquivo e lido uma vez, no
+   // startup -- ver main.cpp).
+   w.treeLines = flattenBehaviorTree(behaviorTree);
+   for (const auto& line : w.treeLines) w.treeLineLabels.push_back(line.display);
+
+   w.ladder.seedFromScale(clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
 
    std::mutex stateMutex;
    DashboardState latest;
@@ -208,36 +200,24 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    // A aba F6 esta em cena? Escrito pela thread de DESENHO, lido por
    // 'simThread', que so entao percorre o grafo vivo do MIXR para montar a
-   // arvore de componentes (ver DashboardState::componentTree). O gate
-   // preserva a otimizacao ja existente de nao pagar a travessia nas outras
-   // seis abas -- o que mudou foi QUEM a executa, nao QUANDO.
+   // arvore de componentes (ver DashboardState::componentTree).
    std::atomic<bool> wantComponentTree{false};
-
-   // Estado do breakpoint (ver app/BreakpointController.hpp) --
-   // 'fastRunToBreakpoint' e atomico A PARTE (lido a cada iteracao do laco
-   // de 'simThread', sem tomar 'bpMutex' so pra isso) porque decide se a
-   // iteracao PULA o msleep() de pacing -- caminho quente, sem alocacao.
-   std::mutex bpMutex;
-   BreakpointController bp;
-   std::atomic<bool> fastRunToBreakpoint{false};
 
    // A partir daqui o FTXUI e dono do terminal (alternate screen buffer,
    // modo bruto) -- uma linha de log escrita direto em std::cout suja o
-   // desenho, e o FTXUI nao sabe que alguem escreveu por baixo dele pra
+   // desenho, e o FTXUI nao sabe que alguem escreveu por baixo dele para
    // redesenhar aquela regiao. Desliga SO o console: arquivo
    // (./app/data/logs/app.log) e buffer em memoria continuam, e e do
-   // buffer que a aba Log le. Religado no fim desta funcao, antes de
-   // devolver o controle ao main.cpp (que pode reexecutar o processo ou
-   // imprimir no terminal ja restaurado).
+   // buffer que a aba Log le. Religado no fim desta funcao.
    mixr::xlog::setConsoleEnabled(false);
 
    auto screen = ScreenInteractive::Fullscreen();
+   w.screen = &screen;
 
    // Liga a medicao de duracao do frame de tempo critico (aba F4). Uma vez
    // so, antes do laco. NUNCA setPrintTimingStats(true): esse flag faz
    // Component::printTimingStats() escrever direto em std::cout, e o FTXUI e
-   // dono do terminal -- exatamente o motivo de runDashboard() ja ter
-   // desligado o console do xlog logo acima.
+   // dono do terminal.
    station->setTimingStatsEnabled(true);
 
    std::thread simThread([&] {
@@ -250,36 +230,22 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       long frameCount{};
 
       // Referencia de PAREDE de verdade para "t=" no cabecalho -- NUNCA
-      // resetada (ao contrario de 'startTime', que reancora a cada troca
-      // fast<->normal so para o pacing). 'frameCount * dt' parecia
-      // equivalente enquanto o pacing mantinha uma iteracao por 'dt' de
-      // parede, mas no modo rapido ('fastRunToBreakpoint') o laco pula o
-      // msleep() e gira muito mais que 1/dt vezes por segundo -- contando
-      // iteracoes * dt, "t=" (rotulado "tempo real" no cabecalho) acelerava
-      // junto com a simulacao, o que nao faz sentido: o relogio de PAREDE
-      // nao pode correr mais rapido so porque a simulacao esta em MAX.
-      // Medindo o tempo de parede de verdade, "t=" sempre anda a 1x, rodando
-      // ou em MAX -- e continua sendo a base contra a qual "sim=" se compara.
+      // resetada. Ver o comentario grande na versao anterior deste arquivo
+      // (diario, CLAUDE.md): o modo rapido pula o msleep() e giraria muito
+      // mais que 1/dt vezes por segundo, e "t=" nao pode acelerar so porque
+      // a simulacao esta em MAX.
       const double realWallClockStart{mixr::base::getComputerTime()};
       std::vector<ClassStat> classHistory;
       bool wasFast{};
 
       // Velocidade FACTUAL (medida) -- tempo simulado / tempo de PAREDE de
-      // verdade, numa janela deslizante de ~0.5s. Ao contrario de
-      // 'timeScale' (o valor NOMINAL da escada de xclock), isto continua
-      // significando alguma coisa durante um breakpoint em velocidade
-      // maxima, onde o laco ignora o pacing por completo -- ver o pedido
-      // "o valor da aceleracao no cabecalho deve refletir o factual da
-      // simulacao".
+      // verdade, numa janela deslizante de ~0.5s.
       double speedMarkRealTime{mixr::base::getComputerTime()};
       double speedMarkSimSec{0.0};
       double measuredActualTimeScale{1.0};
 
       // Ver o comentario grande de app::BackgroundInfo (DashboardState.hpp):
-      // este laco INTEIRO e a "thread de tempo nao critico" da aba Tempo Nao-Critico --
-      // 'bgRateMark*' mede a taxa REAL de iteracao (janela de ~0.5s, mesmo
-      // desenho de 'speedMark*' acima), separada da taxa SIMULADA que
-      // 'measuredActualTimeScale' ja cobre.
+      // este laco INTEIRO e a "thread de tempo nao critico" da aba Tempo Nao-Critico.
       double bgRateMarkRealTime{mixr::base::getComputerTime()};
       long bgRateMarkCount{};
       double measuredBgHz{static_cast<double>(bgRate)};
@@ -291,18 +257,13 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // Identidade real de cada player (tipo/lado/major type) ANTES de
          // drenar o gravador -- e o updateData() abaixo que DECLARA cada
          // objeto no stream ACMI, e Name/Type/Color so vao na primeira
-         // aparicao de cada id. Sem isto, o que nasce em runtime (o missil
-         // liberado, cujo nome automatico "W10001" nao esta em mapa
-         // nenhum) ia pro Tacview como "Misc"/"Grey". Ver o cabecalho de
-         // TacviewOutput::publishIdentities().
+         // aparicao de cada id.
          if (tacviewOutput != nullptr) tacviewOutput->publishIdentities(worldModel);
 
          // Joystick (so o cenario 'bandit' declara um 'ioHandler:'): mesma
          // taxa e mesmo lugar do laco de tempo real que as pocs usavam
          // antes de o ./app virar o runner unico delas -- 10 Hz, fora do
-         // frame de tempo critico. Sem hardware conectado o
-         // JoystickIoHandler nao toca em nada e o Autopilot segue no
-         // controle (ver a armadilha 7 de libs/xjoystick no CLAUDE.md).
+         // frame de tempo critico.
          if (ioHandler != nullptr) ioHandler->inputDevices(dt);
 
          station->updateData(dt);
@@ -361,34 +322,30 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // Roda toda amostra, mesmo fora do modo rapido: "a velocidade que
          // eu decidir" tambem tem de parar sozinha quando o no e atingido.
          {
-            const std::lock_guard<std::mutex> lock(bpMutex);
+            const std::lock_guard<std::mutex> lock(w.bpMutex);
             std::vector<BreakpointEntity> bpEntities;
             bpEntities.reserve(next.entities.size());
             for (const auto& e : next.entities) bpEntities.push_back({e.id, e.behaviorLabel});
 
-            const BreakpointTickResult result{bp.tick(bpEntities, matchesLabel, next.simSec)};
+            const BreakpointTickResult result{w.bp.tick(bpEntities, matchesLabel, next.simSec)};
             if (result.outcome != BreakpointOutcome::None) {
                if (clockStation != nullptr) {
-                  if (result.shouldRestoreScale) clockStation->setTimeScale(bp.restoreTimeScale());
+                  if (result.shouldRestoreScale) clockStation->setTimeScale(w.bp.restoreTimeScale());
                   if (result.shouldPause) clockStation->setPaused(true);
                }
-               fastRunToBreakpoint = false;
+               w.fastRunToBreakpoint = false;
             }
 
             // Publica pro DashboardState -- ver o "porque" no cabecalho de
-            // BreakpointController.hpp e o pedido explicito de deixar o
-            // travamento de velocidade (armado, QUALQUER modo) e o "informe"
-            // de hit obvios na UI, nao so dentro do card da arvore. status()
-            // com (false,false,"") le so armed_/hit_ -- os
-            // parametros de selecao de arvore nao entram nesses ramos.
-            next.breakpointArmed = bp.isArmed();
-            const BreakpointStatus globalBpStatus{bp.status(false, false, "")};
+            // BreakpointController.hpp.
+            next.breakpointArmed = w.bp.isArmed();
+            const BreakpointStatus globalBpStatus{w.bp.status(false, false, "")};
             next.breakpointHit = (globalBpStatus.branch == BreakpointStatusBranch::Hit);
             next.breakpointHitMessage = globalBpStatus.text;
          }
 
          next.actualTimeScale = measuredActualTimeScale;
-         next.fastBreakpointRun = fastRunToBreakpoint.load();
+         next.fastBreakpointRun = w.fastRunToBreakpoint.load();
 
          {
             const std::lock_guard<std::mutex> lock(stateMutex);
@@ -399,10 +356,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          // Modo rapido: pula o msleep() de pacing, deixa o laco girar o
          // mais rapido que a CPU permitir. Ao SAIR do modo (breakpoint
          // atingido, cancelado ou nunca ligado), resincroniza a referencia
-         // de parede -- senao 'wallTimeElapsed' fica adiantado (ele so
-         // cresce, mesmo sem dormir) e o pacing tentaria "recuperar o
-         // atraso" dormindo um tempao de uma vez so, travando a tela.
-         const bool fastNow{fastRunToBreakpoint.load()};
+         // de parede.
+         const bool fastNow{w.fastRunToBreakpoint.load()};
          if (wasFast && !fastNow) {
             wallTimeElapsed = 0.0;
             startTime = mixr::base::getComputerTime();
@@ -418,181 +373,49 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       }
    });
 
-   DashboardExit action{DashboardExit::Quit};
-   SpeedLadder ladder;
-   ladder.seedFromScale(clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
-
    // Camada de confirmacao -- 'uiDepth' 0 = UI normal, 1 = dialogo de
    // confirmacao por cima. E o MESMO padrao do exemplo oficial
-   // modal_dialog_custom.cpp do FTXUI: um Container::Tab so pra ROTEAR
-   // evento (so o filho ativo recebe -- ver TabContainer::OnEvent em
-   // container.cpp), com a composicao visual (dbox + clear_under) feita a
-   // mao no Renderer mais externo, nao no OnRender() do Tab.
+   // modal_dialog_custom.cpp do FTXUI.
    int uiDepth{};
    PendingAction pendingAction{PendingAction::None};
 
    int activeTab{};
-   int selectedEntityIndex{};
-   int selectedClassIndex{};
 
-   // ---- aba "Log" ----
-   // 'logMinLevel' e o filtro por nivel MINIMO (tecla/botao [f]);
-   // 'logFollowTail' faz a selecao grudar na linha mais recente enquanto o
-   // usuario nao rolar pra cima -- e o comportamento que se espera de um
-   // painel de log ao vivo (tipo 'tail -f'), e qualquer ArrowUp desliga.
-   // 'lastLogSeq' evita copiar as (ate 500) linhas do buffer a cada
-   // redesenho: so recopia quando xlog::lastSeq() muda, ou quando o filtro
-   // muda (ai o conteudo exibido muda sem linha nova nenhuma).
-   int selectedLogIndex{};
-   bool logFollowTail{true};
-   mixr::xlog::Level logMinLevel{mixr::xlog::Level::DEBUG};
-   mixr::xlog::Level lastLogFilter{mixr::xlog::Level::DEBUG};
-   std::uint64_t lastLogSeq{};
-   MapViewState mapView;
-   // Caixa de tela do canvas do mapa apos o ultimo desenho (ftxui::reflect,
-   // dentro de renderMap()) -- usada pelo CatchEvent mais externo pra saber
-   // se um clique caiu DENTRO do mapa antes de tratar como arrasto/selecao
-   // (ver o comentario grande na secao do mapa, mais abaixo).
-   Box mapCanvasBox{};
+   // Rastro do Mapa -- so acrescenta amostra nova (ver o Renderer mais
+   // externo, mais abaixo); -1.0 garante que a PRIMEIRA amostra (simSec
+   // tipicamente 0.0) sempre conte como "nova".
    double lastTrailSimSec{-1.0};
 
-   // ---- aba "Componentes" (F6) -- ver app/ComponentTreePanel.hpp/
-   // app/ComponentTreeQuery.hpp. 'componentsLayout' e recalculado a cada
-   // redesenho dentro do Renderer mais externo (mesmo lugar que ja
-   // atualiza 'displayedEntities'/'displayedClasses'), barato o bastante
-   // (dezenas de nos) pra nao precisar de cache -- um missil liberado ou um
-   // fantasma DIS aparecem/somem sozinhos, sem invalidacao manual.
-   ComponentTreeViewState componentsView;
-   // A arvore DESCOBERTA (nao a posicionada) fica guardada porque
-   // "retrair/expandir tudo" varre a estrutura inteira -- inclusive os
-   // galhos que estao retraidos e portanto nem entram no layout.
-   ComponentTreeNode componentsRoot;
-   ComponentTreeLayout componentsLayout;
-   // Chaves dos galhos retraidos -- ver app/ComponentTreePanel.hpp. Guardado
-   // por CHAVE (e nao por indice) porque a arvore e redescoberta a cada
-   // redesenho e o indice de um no muda quando algo nasce/some nela.
-   CollapsedNodes componentsCollapsed;
-   Box componentsCanvasBox{};
-   bool componentsAutoFitted{};
-   // Pedido de reenquadramento: "expandir/retrair tudo" muda a extensao da
-   // arvore em ordem de grandeza, e manter o pan/zoom de antes deixaria a
-   // vista num canto vazio. Um clique/tecla apenas ARMA o pedido; quem
-   // reenquadra e o Renderer da aba, que e onde o canvas ja tem tamanho.
-   bool componentsRefit{};
-
-   // SEGUNDA METADE da feature (ver app/ComponentFlowState.hpp): o "pulso"
-   // que percorre as fases do ciclo conceitual. Avancado por
-   // tickComponentFlowAnimation() a cada redesenho (ver o Renderer mais
-   // externo, mais abaixo) -- MODELO CONCEITUAL, nao medicao ao vivo.
-   ComponentFlowState componentsFlow;
-
-   // Os numeros VIVOS que entram nos argumentos da cadeia de chamadas (ver
-   // app/FrameCallChain.hpp) -- recalculados a cada redesenho no Renderer
-   // mais externo, junto com o resto. Nao sao constantes: 'fastForwardRate'
-   // muda com [+]/[-], e 'paused' e o que faz a cadeia mostrar dt0 = 0.
-   FrameCallParams frameCallParams;
-
-   // Largura do card de detalhe -- recalculada a cada redesenho (o
-   // terminal pode ser redimensionado em qualquer frame), "ocupando por
-   // referencia ate onde o mapa acaba": reserva 'kMapCanvasWidthCells' pro
-   // canvas do Mapa mais uma folga pras bordas/separador, e da o RESTO da
-   // largura do terminal pro card -- clampado pra nunca ficar
-   // absurdamente estreito nem largo.
-   int detailPanelWidth{kDetailPanelMinWidth};
-
-   // Copias reconstruidas a cada redesenho -- lidas pelos 'transform' dos
-   // Menu abaixo (que precisam de referencia estavel enquanto o componente
-   // vive, ao contrario do DashboardState publicado sob mutex).
-   std::vector<EntityState> displayedEntities;
-   std::vector<std::string> entityLabels;
-   std::vector<ClassStat> displayedClasses;
-   std::vector<std::string> classLabels;
-   std::vector<mixr::xlog::Entry> displayedLogs;
-   std::vector<std::string> logLabels;
-   BackgroundInfo displayedBackground;
-
-   // Copia "pra desenho" de DashboardState::breakpoint* -- ver o cabecalho
-   // desses campos em DashboardState.hpp. Usada so pelos 'transform' dos
-   // botoes (podem atrasar um quadro sem problema -- e so estetica); a
-   // trava DE VERDADE dos comandos manuais le 'bp.isArmed()' direto, sob
-   // 'bpMutex' (ver isBreakpointArmedNow(), acima).
-   bool displayedBreakpointArmed{};
-   bool displayedBreakpointHit{};
-   std::string displayedBreakpointHitMessage;
-
-   // A arvore de BT achatada NAO muda (o arquivo e lido uma vez, no
-   // startup -- ver main.cpp) -- calculada aqui, fora de qualquer Renderer.
-   // 'selectedBtLineIndex' e a escolha do usuario (clique na "caixa da
-   // arvore" -- pedido explicito), compartilhada pelas DUAS instancias de
-   // Menu (Frota e Mapa, ver mais abaixo) e pela logica de breakpoint.
-   const std::vector<BtTreeLine> treeLines{flattenBehaviorTree(behaviorTree)};
-   std::vector<std::string> treeLineLabels;
-   for (const auto& line : treeLines) treeLineLabels.push_back(line.display);
-   int selectedBtLineIndex{};
-
-   // ---- aba "EDL" (F7) -- editor de .edl EM MEMORIA (ver
-   // app/EdlEditorState.hpp para o "sem persistir no arquivo real"). O
-   // texto ORIGINAL e o que este processo carregou (lido uma vez, fora de
-   // qualquer Renderer -- igual a 'treeLines' acima); 'editedEdlText' e o
-   // buffer mutavel que o ftxui::Input escreve direto (bind por ponteiro,
-   // ver 'edlInput' mais abaixo) -- nunca escrito de volta em
-   // 'generatedEdlPath'. 'edlHasStatus'/'edlStatusOk'/'edlStatusMessage' sao
-   // o resultado da ULTIMA chamada a "Validar"/"Rodar" (ver
-   // app::runEdlCheck()), mostrados no rodape da aba.
-   const std::string originalEdlText{readEdlFileOrEmpty(generatedEdlPath)};
-   std::string editedEdlText{originalEdlText};
-   bool edlHasStatus{};
-   bool edlStatusOk{};
-   std::string edlStatusMessage;
-   // Armazenamento PROPRIO da posicao do cursor do 'edlInput' -- ligado por
-   // ponteiro em 'edlInputOpt.cursor_position' (mais abaixo), pelo mesmo
-   // motivo de 'editedEdlText' acima: a previa colorida (ver
-   // renderHighlightedEdlText()) precisa ler a posicao de FORA da classe
-   // Input pra saber onde marcar o glifo do cursor.
-   int edlCursorPos{};
-
-   // ---- acoes nomeadas: cada una e usada por TECLA e por BOTAO ----
+   // ---- acoes nomeadas: cada uma e usada por TECLA e por BOTAO ----
    //
    // Acelerar/frear/voltar-a-tempo-real MANUAIS ficam BLOQUEADOS enquanto
    // HOUVER um breakpoint armado -- pedido explicito, e vale nos DOIS modos
-   // ('g': velocidade atual; 'G': velocidade maxima), nao so no rapido: a
-   // ideia e "a velocidade fica travada no que estava/na maxima ate o BP
-   // ser atingido", nao so "nao adianta acelerar durante o modo rapido".
-   // 'doRealTime' entra na mesma trava por mudar a escada pra 1x (e
-   // despausar) -- deixa-lo passar destrancaria a velocidade so apertando
-   // '1'.
-   //
-   // Le 'bp.isArmed()' sob 'bpMutex' -- chamado so por tecla/clique do
-   // usuario (nao no laco quente de 'simThread'), entao tomar o lock aqui
-   // e barato e mantem a checagem sempre CORRETA (ao contrario de uma
-   // copia "so pra exibir" que pode atrasar um quadro -- ver
-   // 'displayedBreakpointArmed', usado so pelo desenho dos botoes).
+   // ('g': velocidade atual; 'G': velocidade maxima), nao so no rapido.
    const auto isBreakpointArmedNow = [&] {
-      const std::lock_guard<std::mutex> lock(bpMutex);
-      return bp.isArmed();
+      const std::lock_guard<std::mutex> lock(w.bpMutex);
+      return w.bp.isArmed();
    };
    // Nenhuma destas acoes chama LOG(...): o app e LEITOR do log, nao
-   // produtor. Quem escreve e o MODELO (models/players/A-4) -- ver o cabecalho
-   // de app/LogPanel.hpp.
+   // produtor.
    const auto doAccelerate = [&] {
       if (clockStation == nullptr || isBreakpointArmedNow()) return;
-      if (ladder.accelerate()) clockStation->setTimeScale(ladder.scale());
+      if (w.ladder.accelerate()) clockStation->setTimeScale(w.ladder.scale());
    };
    const auto doDecelerate = [&] {
       if (clockStation == nullptr || isBreakpointArmedNow()) return;
-      if (ladder.decelerate()) clockStation->setTimeScale(ladder.scale());
+      if (w.ladder.decelerate()) clockStation->setTimeScale(w.ladder.scale());
    };
    const auto doTogglePause = [&] { if (clockStation != nullptr) clockStation->togglePaused(); };
    const auto doRealTime = [&] {
       if (clockStation == nullptr || isBreakpointArmedNow()) return;
-      ladder.toRealTime();
+      w.ladder.toRealTime();
       clockStation->setPaused(false);
-      clockStation->setTimeScale(ladder.scale());
+      clockStation->setTimeScale(w.ladder.scale());
    };
    // As duas versoes de VERDADE (o que 'r'/'q' faziam direto antes) -- agora
    // so rodam depois de confirmadas (ver 'confirmDialog' mais abaixo).
-   const auto doRestartConfirmed = [&] { action = DashboardExit::Restart; screen.Exit(); };
-   const auto doQuitConfirmed = [&] { action = DashboardExit::Quit; screen.Exit(); };
+   const auto doRestartConfirmed = [&] { w.action = DashboardExit::Restart; screen.Exit(); };
+   const auto doQuitConfirmed = [&] { w.action = DashboardExit::Quit; screen.Exit(); };
 
    const auto runPendingAction = [&] {
       switch (pendingAction) {
@@ -603,14 +426,11 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const auto cancelPendingAction = [&] { pendingAction = PendingAction::None; uiDepth = 0; };
 
-   // 'dragging' so era desarmado dentro do bloco 'activeTab==1/5', quando
-   // um 'Mouse::Released' chegava com a aba ainda ativa. Trocar de aba ou
-   // armar o dialogo de confirmacao nunca passa por ali, entao um arrasto
-   // em andamento ficava 'dragging=true' permanentemente -- ao voltar a
-   // aba, qualquer clique era interpretado como continuacao do arrasto.
-   // Chamado nos dois pontos de saida de um arrasto: trocar de aba e armar
-   // o dialogo.
-   const auto cancelAnyDrag = [&] { mapView.dragging = false; componentsView.dragging = false; };
+   // 'dragging' so era desarmado dentro do bloco 'activeTab==1/5', quando um
+   // 'Mouse::Released' chegava com a aba ainda ativa. Trocar de aba ou armar
+   // o dialogo de confirmacao nunca passa por ali, entao um arrasto em
+   // andamento ficava 'dragging=true' permanentemente.
+   const auto cancelAnyDrag = [&] { w.mapView.dragging = false; w.componentsView.dragging = false; };
 
    // As duas que TECLA/BOTAO chamam de verdade -- so ARMAM o dialogo,
    // pedido explicito de confirmacao pras duas acoes disruptivas.
@@ -618,831 +438,21 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const auto doQuit = [&] { cancelAnyDrag(); pendingAction = PendingAction::Quit; uiDepth = 1; };
    const auto gotoTab = [&](const int index) { cancelAnyDrag(); activeTab = index; };
 
-   // ---- acoes da aba "EDL" (F7) -- ver app/EdlEditorState.hpp. As tres
-   // escrevem SEMPRE em editedScenarioPath(), nunca em 'generatedEdlPath'
-   // (o arquivo que este processo carregou) nem no '.edl.in' de origem --
-   // "sem persistir no arquivo real" e a premissa da aba inteira. ----
-   const auto doEdlRevert = [&] {
-      editedEdlText = originalEdlText;
-      edlHasStatus = false;
-      edlStatusMessage.clear();
-   };
-   const auto doEdlValidate = [&] {
-      writeEdlFile(editedScenarioPath(), editedEdlText);
-      const EdlValidationResult r{runEdlCheck(edlcheckSiblingPath(), editedScenarioPath())};
-      edlHasStatus = true;
-      edlStatusOk = r.ok;
-      edlStatusMessage = r.message;
-   };
-   // "Rodar" reaproveita a MESMA validacao de 'doEdlValidate' antes de sair
-   // do laco -- nunca reexecuta com um '.edl' que o oraculo ja rejeitou (um
-   // erro de parse so apareceria depois do reexec, como um processo que
-   // morre sem TUI nenhuma pra explicar o motivo).
-   const auto doEdlRun = [&] {
-      writeEdlFile(editedScenarioPath(), editedEdlText);
-      const EdlValidationResult r{runEdlCheck(edlcheckSiblingPath(), editedScenarioPath())};
-      edlHasStatus = true;
-      edlStatusOk = r.ok;
-      edlStatusMessage = r.message;
-      if (!r.ok) return;
-      action = DashboardExit::RunEdited;
-      screen.Exit();
-   };
-
-   // Fabrica de Button comum a TODAS as barras (principal e a do mapa) --
-   // precisa vir antes de qualquer barra que a use.
-   const auto makeButton = [&](const std::string& label, const std::function<void()>& onClick) {
-      ButtonOption opt{ButtonOption::Ascii()};
-      opt.label = label;
-      opt.on_click = onClick;
-      return Button(opt);
-   };
-
-   // ---- acoes do MAPA -- mesma regra: uma lambda, usada por tecla E por
-   // botao (ver a barra de botoes da aba, mais abaixo) ----
-   const auto doMapZoomIn = [&] { zoomMap(mapView, true); };
-   const auto doMapZoomOut = [&] { zoomMap(mapView, false); };
-   const auto doMapRotateLeft = [&] { rotateMap(mapView, false); };
-   const auto doMapRotateRight = [&] { rotateMap(mapView, true); };
-   const auto doMapToggleTrails = [&] { mapView.showTrails = !mapView.showTrails; };
-
-   // Reancora o nivel do terreno perto do limite inferior da janela
-   // (ver MapPanel.hpp::snapPanToGroundLevel) -- so tem efeito na
-   // perspectiva Lateral com terreno ligado; um sampler novo aqui e
-   // barato (mesmo raciocinio do que 'mapCanvasArea' ja reconstroi a cada
-   // redesenho, ver mais abaixo).
-   const auto doMapSnapGroundIfApplicable = [&] {
-      if (!mapView.showTerrain) return;
-      // Com o "seguir" ligado o follow VENCE: os dois escrevem em 'panAltM'
-      // (o snap ancora o CHAO perto do fundo da janela; o follow ancora a
-      // ENTIDADE no meio dela) e o pedido e a entidade centralizada nas duas
-      // perspectivas. Sem esta guarda o snap escreveria panAltM aqui e o
-      // proximo redesenho o sobrescreveria de qualquer forma -- um piscar
-      // sem nenhum efeito util. Com o follow desligado, nada muda: o snap
-      // continua exatamente como era.
-      if (mapView.followSelected) return;
-      snapPanToGroundLevel(mapView, terrainSampler);
-   };
-   // "Seguir" a entidade selecionada -- o pan passa a ser recolocado sobre
-   // ela a cada redesenho da aba (ver applyMapFollow(), chamada no Renderer
-   // de 'mapCanvasArea'), nas duas perspectivas. Ligar ja reenquadra no
-   // quadro seguinte; DESligar congela a vista exatamente onde ela estava.
-   // O zoom continua do usuario -- follow nunca toca 'metersPerCell'.
-   //
-   // Nao chama 'doMapSnapGroundIfApplicable()' ao desligar: a guarda do
-   // snap so bloqueia o caso de LIGAR; ao desligar, o snap reescreveria
-   // 'panAltM' na hora, tirando do canvas a aeronave que se acabou de
-   // "congelar" na vista (perspectiva Lateral, terreno ligado, zoom
-   // apertado). Reancorar o chao continua acontecendo nos tres gestos que
-   // sempre o fizeram ([e]/[v]/[c]).
-   const auto doMapToggleFollow = [&] {
-      mapView.followSelected = !mapView.followSelected;
-   };
-   const auto doMapToggleTerrain = [&] {
-      mapView.showTerrain = !mapView.showTerrain;
-      doMapSnapGroundIfApplicable();
-   };
-   const auto doMapTogglePerspective = [&] {
-      mapView.perspective = (mapView.perspective == Perspective::TopDown)
-         ? Perspective::Lateral : Perspective::TopDown;
-      doMapSnapGroundIfApplicable();
-   };
-   const auto doMapCenterOnSelected = [&] {
-      if (displayedEntities.empty()) return;
-      const std::size_t idx{static_cast<std::size_t>(
-         std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
-      centerMapOn(mapView, displayedEntities[idx]);
-      doMapSnapGroundIfApplicable();
-   };
-
-   // ---- acoes da aba "Componentes" (F6) -- mesma regra de sempre: uma
-   // lambda, usada por tecla E por botao ----
-   const auto doCompZoomIn = [&] { zoomComponentTree(componentsView, true); };
-   const auto doCompZoomOut = [&] { zoomComponentTree(componentsView, false); };
-   const auto doCompCenterOnSelected = [&] {
-      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
-      if (idx < 0) return;
-      centerComponentTreeOn(componentsView, componentsLayout.nodes[static_cast<std::size_t>(idx)]);
-   };
-
-   // ---- retrair/expandir (o galho selecionado, ou a arvore toda) ----
-   const auto doCompToggleCollapse = [&] {
-      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
-      if (idx < 0) return;
-      toggleComponentNodeCollapsed(componentsCollapsed,
-                                   componentsLayout.nodes[static_cast<std::size_t>(idx)]);
-   };
-   const auto doCompExpandAll = [&] {
-      componentsCollapsed.clear();
-      componentsRefit = true;
-   };
-   const auto doCompCollapseAll = [&] {
-      componentsCollapsed.clear();
-      collapseAllComponentNodes(componentsRoot, componentsCollapsed);
-      componentsRefit = true;
-   };
-
-   // Navegacao por teclado entre os nos -- e o que torna retrair/expandir
-   // usavel sem mouse (antes a selecao so existia por clique). Reenquadra
-   // SO quando o no escolhido saiu do canvas, pra vista nao "pular" a cada
-   // seta (ver ensureComponentNodeVisible()).
-   const auto doCompNavigate = [&](const TreeNavigation dir) {
-      if (!navigateComponentTree(componentsLayout, componentsView, dir, componentsCollapsed)) return;
-      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
-      if (idx >= 0) ensureComponentNodeVisible(componentsView,
-                                               componentsLayout.nodes[static_cast<std::size_t>(idx)]);
-   };
-
-   // ---- animacao de fluxo da aba "Componentes" (SEGUNDA METADE, ver
-   // app/ComponentFlowState.hpp) -- mesma regra de sempre: uma lambda, usada
-   // por tecla E por botao ----
-   // [Espaco] na aba F6 pausa a SIMULACAO de verdade -- o mesmo caminho do
-   // botao/tecla global, nao um relogio paralelo. A animacao do fluxo virou
-   // ESCRAVA desse estado (ver 'setComponentFlowPlaying' no Renderer mais
-   // externo): pausou a simulacao, o pulso para junto, e o cabecalho
-   // (t=/sim=/thr=) passa a refletir o que foi comandado aqui -- que era
-   // exatamente o que nao acontecia antes.
-   const auto doCompTogglePlay = doTogglePause;
-
-   // [n] = UM Station::tcFrame(dt) de verdade. Pausa antes, se estiver
-   // rodando (o mesmo gesto de qualquer depurador: dar um passo implica
-   // parar). O ponteiro de fase avanca junto, pra toques seguidos percorrerem
-   // a explicacao da cadeia de chamadas.
-   //
-   // O passo NAO e executado aqui nem na 'simThread': so acumula um pedido em
-   // ClockStation, que a PROPRIA thread de tempo critico drena dentro de
-   // processTimeCriticalTasks(). Ver o comentario longo de
-   // ClockStation::requestStep() -- executar tcFrame() de outra thread depois
-   // de conferir isPaused() e TOCTOU, e foi reproduzido sob ASan como leitura
-   // de ponteiro de lixo num worker do pool de tempo critico.
-   const auto doCompStep = [&] {
-      if (clockStation == nullptr) return;
-      if (!clockStation->isPaused()) clockStation->setPaused(true);
-      clockStation->requestStep();
-      advanceComponentFlowStep(componentsFlow);
-   };
-   const auto doCompCycleSpeed = [&] { cycleComponentFlowSpeed(componentsFlow); };
-
-
-   // ---- breakpoint de arvore de BT -- "marcar um estado da bt de um dado
-   // elemento e rodar a simulacao ate que aquele no seja atingido,
-   // devolvendo a simulacao pausada" ----
-   //
-   // 'fast' escolhe a velocidade: false = "a velocidade que eu decidir" (so
-   // arma o observador -- 'simThread' ja checa a condicao toda amostra,
-   // rodando ou pausada, em qualquer escala de tempo; so garante que NAO
-   // esta pausada, senao nunca chegaria a lugar nenhum); true = "maxima
-   // possivel" (liga 'fastRunToBreakpoint', que faz 'simThread' pular o
-   // pacing de parede -- ver o laco la em cima).
-   //
-   // So arma sobre uma FOLHA (control node -- Fallback/Sequence -- nao tem
-   // 'matchesLabel()' fazendo sentido nenhum contra um rotulo de xboard);
-   // se a linha selecionada nao e folha, nao faz nada -- 'buildBreakpointStatus()'
-   // explica o motivo lendo o mesmo 'selectedBtLineIndex', sem precisar de
-   // um campo de erro a parte.
-   const auto doArmBreakpoint = [&](const bool fast) {
-      if (displayedEntities.empty()) return;
-      if (selectedBtLineIndex < 0 || selectedBtLineIndex >= static_cast<int>(treeLines.size())) return;
-      const BtTreeLine& line{treeLines[static_cast<std::size_t>(selectedBtLineIndex)]};
-      if (!line.leaf) return;
-
-      const std::size_t idx{static_cast<std::size_t>(
-         std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
-      const EntityState& target{displayedEntities[idx]};
-
-      {
-         const std::lock_guard<std::mutex> lock(bpMutex);
-         bp.arm(target.id, target.name, line.tag, fast,
-               clockStation != nullptr ? clockStation->getTimeScale() : 1.0);
-         if (fast && clockStation != nullptr) {
-            // Crava o pool de tempo critico no topo da escada -- ver o
-            // comentario grande sobre 'restoreTimeScale()' em
-            // app/BreakpointController.hpp sobre por que pular o msleep()
-            // do dashboard nao bastava sozinho.
-            clockStation->setTimeScale(ladder.maxScale());
-         }
-      }
-      fastRunToBreakpoint = fast;
-      if (clockStation != nullptr) clockStation->setPaused(false);
-   };
-   const auto doCancelBreakpoint = [&] {
-      const std::lock_guard<std::mutex> lock(bpMutex);
-      const bool shouldRestoreScale{bp.cancel()};
-      if (shouldRestoreScale && clockStation != nullptr) clockStation->setTimeScale(bp.restoreTimeScale());
-      fastRunToBreakpoint = false;
-   };
-   // Rotulo dos dois botoes ja e a LEGENDA do efeito (pedido explicito de
-   // deixar g/G intuitivos sem precisar abrir outro lugar pra entender):
-   // "trava" e a palavra que tambem aparece no cabecalho ([BP]) e no status
-   // do card da arvore (ver BreakpointController::status()) -- vocabulario
-   // consistente nos tres lugares.
-   const Component btnRunToBreakpoint{
-      makeButton("[g] Rodar (trava veloc. atual)", [&] { doArmBreakpoint(false); })};
-   const Component btnRunToBreakpointMax{
-      makeButton("[G] Rodar (trava em veloc. MAXIMA)", [&] { doArmBreakpoint(true); })};
-   const Component btnCancelBreakpoint{makeButton("[x] Cancelar breakpoint", doCancelBreakpoint)};
-
    // "Ver no mapa" -- so faz sentido no card da Frota (no Mapa voce ja esta
-   // la). Como Frota e Mapa ja COMPARTILHAM 'selectedEntityIndex' (a mesma
-   // variavel), trocar de aba e o suficiente: a entidade certa ja aparece
-   // selecionada do outro lado, sem precisar re-selecionar nada.
+   // la). Como Frota e Mapa ja COMPARTILHAM 'w.selectedEntityIndex', trocar
+   // de aba e o suficiente.
    const auto doViewOnMap = [&] { gotoTab(1); };
    const Component btnViewOnMap{makeButton("[m] Ver no mapa", doViewOnMap)};
 
-   // A "caixa onde aparece a bt" -- pedido explicito: clicavel, pra
-   // selecionar a folha de interesse (breakpoint). PRECISA de DUAS
-   // instancias (uma pra aba Frota, outra pra aba Mapa): um Container::Tab
-   // so entrega evento pro filho ATIVO (a razao de existir do proprio
-   // 'contentTab' logo abaixo), entao um Menu dentro da Frota nunca
-   // receberia clique nenhum enquanto a aba Mapa estivesse em cena. As DUAS
-   // apontam pro MESMO 'selectedBtLineIndex'/'treeLineLabels' (o
-   // MenuOption e copiado, nao move -- os ponteiros dentro dele continuam
-   // os mesmos), entao selecionar numa aba reflete na outra.
-   MenuOption btTreeMenuOpt;
-   btTreeMenuOpt.entries = &treeLineLabels;
-   btTreeMenuOpt.selected = &selectedBtLineIndex;
-   btTreeMenuOpt.entries_option.transform = [&](const EntryState& es) -> Element {
-      if (es.index < 0 || es.index >= static_cast<int>(treeLines.size())) return text(es.label);
-      const BtTreeLine& line{treeLines[static_cast<std::size_t>(es.index)]};
-
-      std::string activeLabel{"--"};
-      if (!displayedEntities.empty()) {
-         const std::size_t idx{static_cast<std::size_t>(
-            std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
-         activeLabel = displayedEntities[idx].behaviorLabel;
-      }
-      const bool isActiveLeaf{line.leaf && matchesLabel(line.tag, activeLabel)};
-
-      bool isBreakpoint{};
-      {
-         const std::lock_guard<std::mutex> lock(bpMutex);
-         isBreakpoint = bp.isArmedOn(line.tag);
-      }
-
-      return renderBtLine(line, isActiveLeaf, es.active, isBreakpoint);
-   };
-   const Component treeMenuFleet{Menu(btTreeMenuOpt)};
-   const Component treeMenuMap{Menu(btTreeMenuOpt)};
-
-   // Status do breakpoint + as acoes que dependem dele -- pedido explicito:
-   // "devem ficar no quadro da propria arvore" (nao mais uma linha GLOBAL
-   // separada). Por isso mora dentro de 'buildDetailPanel', logo abaixo do
-   // Menu da arvore -- so chamada de la, dentro do 'if (!treeLines.empty())'
-   // (por isso nao precisa mais checar isso aqui). Le 'bp' sob 'bpMutex' e
-   // 'selectedBtLineIndex'/'treeLines' direto (mutacao so pelo clique do
-   // proprio usuario, sem concorrencia de thread).
-   const auto buildBreakpointStatus = [&]() -> Element {
-      const bool hasSelection{selectedBtLineIndex >= 0
-                              && selectedBtLineIndex < static_cast<int>(treeLines.size())};
-      const bool selectionIsLeaf{hasSelection
-         && treeLines[static_cast<std::size_t>(selectedBtLineIndex)].leaf};
-      const std::string selectedLeafTag{hasSelection
-         ? treeLines[static_cast<std::size_t>(selectedBtLineIndex)].tag : std::string{}};
-
-      BreakpointStatus snap;
-      {
-         const std::lock_guard<std::mutex> lock(bpMutex);
-         snap = bp.status(hasSelection, selectionIsLeaf, selectedLeafTag);
-      }
-
-      // 'paragraphAlignLeft' quebra linha sozinho na largura disponivel --
-      // pedido explicito: texto extenso vazava o quadro da arvore. Botao(es)
-      // vao numa linha PROPRIA, embaixo do texto, nunca no mesmo hbox (um
-      // hbox nao quebra linha, so estoura pra fora do card).
-      switch (snap.branch) {
-         case BreakpointStatusBranch::Armed:
-            return vbox({paragraphAlignLeft(snap.text) | color(Color::Yellow) | bold,
-                         btnCancelBreakpoint->Render()});
-         case BreakpointStatusBranch::Hit:
-            return paragraphAlignLeft(snap.text) | color(Color::Green) | bold;
-         case BreakpointStatusBranch::LeafSelected:
-            return vbox({paragraphAlignLeft(snap.text),
-                         hbox({btnRunToBreakpoint->Render(), text(" "), btnRunToBreakpointMax->Render()})});
-         case BreakpointStatusBranch::NonLeafSelected:
-         case BreakpointStatusBranch::NoTreeSelection:
-         default:
-            return paragraphAlignLeft(snap.text) | dim;
-      }
-   };
-
-   // O card de detalhe INTEIRO (campos + arvore de BT + os controles de
-   // breakpoint, se houver arvore) -- usado pelas DUAS abas (Frota e Mapa),
-   // sempre com o MESMO tamanho ('detailPanelWidth'/'kDetailPanelHeight',
-   // de app/FleetPanel.hpp -- pedido explicito: "deve ter tamanho fixo ao
-   // se navegar entre players e entre abas"). A arvore (e os controles de
-   // breakpoint junto dela, tambem pedido explicito: "devem ficar no
-   // quadro da propria arvore") so aparece quando a entidade TEM
-   // comportamento publicado (behaviorLabel != "--") E o cenario declarou
-   // 'treeFile:' que deu pra carregar -- ver app/BehaviorTreeView.hpp.
-   // 'treeMenu' e qual das duas instancias (Frota/Mapa) usar.
-   const auto buildDetailPanel = [&](const EntityState& e, const Component& treeMenu) -> Element {
-      Elements parts{renderEntityDetail(e)};
-      if (e.behaviorLabel != "--" && !treeLines.empty()) {
-         // Subquadro PROPRIO, com barra de titulo -- pedido explicito:
-         // "tal como no subquadro acima do player" (o card de detalhe
-         // usa a mesma receita: uma linha de titulo, um separador, o
-         // conteudo, tudo dentro do MESMO 'border').
-         const Element treeBox{vbox({
-            text(" Arvore de Comportamento ") | bold | bgcolor(Color::Blue) | color(Color::White),
-            separator(),
-            treeMenu->Render() | vscroll_indicator | frame | size(HEIGHT, LESS_THAN, 14),
-            separator(),
-            buildBreakpointStatus(),
-         }) | border};
-         parts.push_back(separator());
-         parts.push_back(treeBox);
-      }
-      return vbox(std::move(parts)) | size(WIDTH, EQUAL, detailPanelWidth)
-            | size(HEIGHT, EQUAL, kDetailPanelHeight);
-   };
-
-   // ---- aba "Frota": lista rolavel + detalhe da entidade selecionada ----
-   MenuOption entityMenuOpt;
-   entityMenuOpt.entries = &entityLabels;
-   entityMenuOpt.selected = &selectedEntityIndex;
-   entityMenuOpt.entries_option.transform = [&](const EntryState& es) -> Element {
-      if (es.index >= 0 && es.index < static_cast<int>(displayedEntities.size()))
-         return renderEntityRow(displayedEntities[static_cast<std::size_t>(es.index)], es.active);
-      return text(es.label);
-   };
-   const Component entityMenu{Menu(entityMenuOpt)};
-
-   // 'treeMenuFleet' entra como FILHO deste Renderer (nao Renderer solto) --
-   // e o que faz o clique nele chegar de verdade (o broadcast de mouse
-   // desce por TODOS os filhos de um Container, mas so alcanca quem esta
-   // de fato na arvore de componentes).
-   const Component entityDetail{Renderer(treeMenuFleet, [&]() -> Element {
-      if (displayedEntities.empty()) {
-         return text("(sem entidades no cenario)") | dim | center
-               | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight);
-      }
-      const std::size_t idx{static_cast<std::size_t>(
-         std::clamp(selectedEntityIndex, 0, static_cast<int>(displayedEntities.size()) - 1))};
-      return buildDetailPanel(displayedEntities[idx], treeMenuFleet);
-   })};
-
-   const Component fleetBody{Container::Horizontal({entityMenu, entityDetail})};
-   const Component fleetTab{Renderer(fleetBody, [&]() -> Element {
-      return hbox({
-                // O LIMITE tem de caber a soma de TODAS as colunas
-                // (badge+nome+tipo+bt+thread+altitude+vel+combust, ver
-                // app/FleetPanel.hpp) -- com "60" (herdado de antes da
-                // coluna de thread) a soma passava do limite e o FTXUI
-                // apertava as ultimas colunas em silencio (o cabecalho
-                // "vel(kt)"/"combust." e quem expos isso: sem gap nenhum
-                // antes da coluna seguinte, mesmo com kCol* de sobra).
-                vbox({
-                   renderEntityListHeader(),
-                   separator(),
-                   entityMenu->Render() | vscroll_indicator | frame | flex,
-                }) | size(WIDTH, LESS_THAN, kColBadge + kColName + kColType + kColBehavior
-                                            + kColThread + kColAlt + kColSpd + kColFuel + 4) | flex,
-                separator(),
-                entityDetail->Render(),
-             })
-             | flex;
-   })};
-
-   // ---- aba "Mapa": navegavel (arrastar/setas move, zoom por [ ]/roda,
-   // girar por ,/., trocar perspectiva/rastro por botao ou tecla) + painel
-   // de detalhe lateral (o MESMO buildDetailPanel() da aba Frota -- clicar
-   // numa entidade no mapa muda 'selectedEntityIndex', a mesma variavel que
-   // a aba Frota usa, entao as duas abas sempre concordam sobre "quem esta
-   // selecionada") ----
-   const Component mapCanvasArea{Renderer(treeMenuMap, [&]() -> Element {
-      int focusedId{-1};
-      // Indice JA limitado a faixa valida -- o mesmo para o card de detalhe,
-      // para o realce no canvas e para o "seguir", pra os tres nunca
-      // discordarem sobre quem e a entidade selecionada.
-      int focusedIndex{-1};
-      Element detail{text("(clique numa entidade no mapa, ou selecione nos Players)")
-                     | dim | center
-                     | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
-      if (!displayedEntities.empty()) {
-         focusedIndex = std::clamp(selectedEntityIndex, 0,
-                                   static_cast<int>(displayedEntities.size()) - 1);
-         const std::size_t idx{static_cast<std::size_t>(focusedIndex)};
-         focusedId = displayedEntities[idx].id;
-         detail = buildDetailPanel(displayedEntities[idx], treeMenuMap);
-      }
-      // Reconstruido a cada redesenho (barato: dois getters + um ponteiro
-      // capturado, ver app/TerrainQuery.hpp) -- so e CHAMADO de verdade por
-      // renderMap() quando 'mapView.showTerrain' esta ligado.
-
-
-      // O canvas acompanha a area que o layout DE FATO reservou pro mapa,
-      // em vez de um tamanho fixo que sobrava (terminal grande: mapa
-      // desenhado so num pedaco do quadro) ou faltava (terminal pequeno:
-      // desenho cortado). 'mapCanvasBox' e do quadro ANTERIOR -- e a unica
-      // hora em que a caixa existe, ver fitMapCanvasToBox() em
-      // app/MapPanel.hpp.
-      fitMapCanvasToBox(mapView, mapCanvasBox);
-
-      // "Seguir" a entidade selecionada -- ANTES de renderMap(), pra ESTE
-      // quadro ja sair centralizado (e nao um quadro atrasado). Roda a cada
-      // redesenho DESTA aba (Container::Tab so renderiza o filho ativo,
-      // entao nao ha custo nenhum com outra aba em cena) e dispensa a guarda
-      // de "amostra nova" que updateTrails() precisa: e atribuicao pura,
-      // idempotente -- e e justamente rodar todo quadro que mantem a
-      // entidade colada no centro enquanto voa, e que reenquadra sozinho
-      // depois de um zoom/giro/troca de perspectiva.
-      //
-      // NAO se reancora o terreno perto do fundo (Lateral) depois disto, de
-      // proposito: o snap disputaria o mesmo 'panAltM' que o follow acabou
-      // de escrever -- ver a guarda em 'doMapSnapGroundIfApplicable'.
-      applyMapFollow(mapView, displayedEntities, focusedIndex);
-
-      return hbox({
-                renderMap(displayedEntities, mapView, focusedId, mapCanvasBox, terrainSampler) | flex,
-                separator(),
-                detail,
-             })
-             | flex;
-   })};
-
-   const Component btnMapZoomOut{makeButton("[[] Zoom-", doMapZoomOut)};
-   const Component btnMapZoomIn{makeButton("[]] Zoom+", doMapZoomIn)};
-   const Component btnMapRotL{makeButton("[,] Girar<", doMapRotateLeft)};
-   const Component btnMapRotR{makeButton("[.] Girar>", doMapRotateRight)};
-   const Component btnMapCenter{makeButton("[c] Centralizar", doMapCenterOnSelected)};
-
-   // Os quatro de alternancia (seguir/rastro/terreno/perspectiva) precisam
-   // de um rotulo que MUDA com o estado (ON/OFF, Cima/Lado) -- 'transform'
-   // roda a cada redesenho (nao so no clique), entao basta ler 'mapView'
-   // direto nele.
-   ButtonOption trailsOpt;
-   trailsOpt.label = "[t] Rastro";
-   trailsOpt.on_click = doMapToggleTrails;
-   trailsOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [t] Rastro: ") + (mapView.showTrails ? "ON" : "OFF") + " ")
-         | (mapView.showTrails ? (bgcolor(Color::Blue) | bold) : dim);
-   };
-   const Component btnMapTrails{Button(trailsOpt)};
-
-   ButtonOption terrainOpt;
-   terrainOpt.label = "[e] Terreno";
-   terrainOpt.on_click = doMapToggleTerrain;
-   terrainOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [e] Terreno: ") + (mapView.showTerrain ? "ON" : "OFF") + " ")
-         | (mapView.showTerrain ? (bgcolor(Color::Blue) | bold) : dim);
-   };
-   const Component btnMapTerrain{Button(terrainOpt)};
-
-   ButtonOption followOpt;
-   followOpt.label = "[f] Seguir";
-   followOpt.on_click = doMapToggleFollow;
-   followOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [f] Seguir: ") + (mapView.followSelected ? "ON" : "OFF") + " ")
-         | (mapView.followSelected ? (bgcolor(Color::Blue) | bold) : dim);
-   };
-   const Component btnMapFollow{Button(followOpt)};
-
-   ButtonOption perspectiveOpt;
-   perspectiveOpt.label = "[v] Vista";
-   perspectiveOpt.on_click = doMapTogglePerspective;
-   perspectiveOpt.transform = [&](const EntryState&) {
-      const bool lateral{mapView.perspective == Perspective::Lateral};
-      return text(std::string(" [v] Vista: ") + (lateral ? "Lado" : "Cima") + " ")
-         | (lateral ? (bgcolor(Color::Blue) | bold) : dim);
-   };
-   const Component btnMapPerspective{Button(perspectiveOpt)};
-
-   const Component mapButtons{Container::Horizontal({
-      btnMapZoomOut, btnMapZoomIn, btnMapRotL, btnMapRotR,
-      btnMapCenter, btnMapFollow, btnMapTrails, btnMapTerrain, btnMapPerspective,
-   })};
-
-   const Component mapBody{Container::Vertical({mapCanvasArea, mapButtons})};
-   const Component mapTab{Renderer(mapBody, [&]() -> Element {
-      return vbox({
-         mapCanvasArea->Render() | flex,
-         text("[setas/arraste] mover (desliga o seguir)  [clique] selecionar entidade") | dim,
-         mapButtons->Render(),
-      });
-   })};
-   // O tratamento de tecla/mouse do mapa NAO fica num CatchEvent local aqui
-   // -- ver o comentario grande sobre 'withKeys' mais abaixo: Container::
-   // Vertical so encaminha TECLADO para o filho FOCADO (ContainerBase::
-   // OnEvent checa Focused() antes de descer), e 'root' tem dois filhos
-   // (toolbar/contentTab) competindo pelo foco. Um CatchEvent aninhado
-   // dentro de 'contentTab' ficaria refem de qual dos dois esta focado NO
-   // MOMENTO. A solucao robusta e tratar tudo no CatchEvent MAIS EXTERNO
-   // (roda incondicionalmente antes de qualquer roteamento por foco), igual
-   // +/-/espaco/etc ja fazem -- e gatear por 'mapCanvasBox.Contain(x,y)'
-   // pros eventos de MOUSE, que e o que faltava antes (ver a armadilha 7
-   // desta secao no CLAUDE.md: sem o gate, QUALQUER clique na tela --
-   // inclusive nos botoes [F1]/[F3] -- era engolido como "comecar a
-   // arrastar o mapa" e nunca chegava ao botao, travando a troca de aba).
-
-   // ---- aba "Componentes" (F6): arvore de componentes REAL da Station,
-   // navegavel -- mesma receita de pan/zoom/clique/canvas-responsivo da aba
-   // Mapa (ver app/ComponentTreePanel.hpp/.cpp), PRIMEIRA METADE da feature:
-   // so a estrutura estatica (sem animacao de fluxo entre fases nem
-   // play/pause/step -- fica pra proxima iteracao). ----
-   const Component componentsCanvasArea{Renderer([&]() -> Element {
-      // MESMO tamanho do card de detalhe das abas F1/F2 (pedido explicito):
-      // 'detailPanelWidth' e recalculado uma vez por redesenho no Renderer
-      // mais externo, e 'kDetailPanelHeight' e a constante que as outras
-      // duas abas ja usam -- nao ha mais largura propria escrita aqui.
-      Element detail{text("(clique num no da arvore, ou navegue com as setas)")
-                     | dim | center
-                     | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight)};
-      const int selected{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
-      if (selected >= 0) {
-         detail = renderComponentDetail(componentsLayout.nodes[static_cast<std::size_t>(selected)],
-                                        componentsFlow, frameCallParams)
-                  | size(WIDTH, EQUAL, detailPanelWidth) | size(HEIGHT, EQUAL, kDetailPanelHeight);
-      }
-      // Mesma tecnica de fitMapCanvasToBox() (ver o comentario grande em
-      // app/MapPanel.hpp e a "decima sexta passada" do CLAUDE.md) --
-      // 'componentsCanvasBox' e a caixa do quadro ANTERIOR.
-      fitComponentTreeCanvasToBox(componentsView, componentsCanvasBox);
-
-      // Uma vez so, assim que ha arvore E canvas de tamanho de verdade --
-      // ver o comentario grande de app::fitComponentTreeToContent(): sem
-      // isto, o pan/zoom DEFAULT deixa quase toda a arvore fora do canvas
-      // (a raiz nasce na linha MEDIA de toda a arvore). Depois desta
-      // primeira vez, pan/zoom manual do usuario nao e mais sobrescrito.
-      if ((!componentsAutoFitted || componentsRefit) && !componentsLayout.nodes.empty()) {
-         fitComponentTreeToContent(componentsView, componentsLayout);
-         componentsAutoFitted = true;
-         componentsRefit = false;
-      }
-      return hbox({
-                renderComponentTree(componentsLayout, componentsView, componentsCanvasBox,
-                                    componentsFlow) | flex,
-                separator(),
-                detail,
-             })
-             | flex;
-   })};
-
-   const Component btnCompZoomOut{makeButton("[[] Zoom-", doCompZoomOut)};
-   const Component btnCompZoomIn{makeButton("[]] Zoom+", doCompZoomIn)};
-   const Component btnCompCenter{makeButton("[c] Centralizar", doCompCenterOnSelected)};
-
-   // Play/pause com rotulo dinamico -- mesmo padrao de 'btnLogFollow'/
-   // 'logFilterOpt' acima (transform le estado vivo, nao so o clique). O
-   // rotulo diz SIMULACAO de proposito: e a simulacao que para, nao um
-   // relogio de animacao a parte.
-   ButtonOption compPlayOpt;
-   compPlayOpt.on_click = doCompTogglePlay;
-   compPlayOpt.transform = [&](const EntryState&) {
-      const bool running{!frameCallParams.paused};
-      return text(std::string(" [Espaco] ") + (running ? "Pausar" : "Rodar") + " ")
-         | (running ? (bgcolor(Color::Green) | color(Color::Black) | bold)
-                     : (bgcolor(Color::Yellow) | color(Color::Black) | bold));
-   };
-   const Component btnCompPlay{Button(compPlayOpt)};
-
-   // O rotulo carrega o dt de verdade -- e a resposta curta pra "quanto vale
-   // um passo", sem ter de ler o painel inteiro.
-   ButtonOption compStepOpt;
-   compStepOpt.on_click = doCompStep;
-   compStepOpt.transform = [&](const EntryState&) {
-      std::ostringstream os;
-      os << " [n] Passo " << std::fixed << std::setprecision(4)
-         << frameStepSeconds(frameCallParams) << "s ";
-      return text(os.str()) | bgcolor(Color::Blue) | color(Color::White) | bold;
-   };
-   const Component btnCompStep{Button(compStepOpt)};
-
-   // Retrair/expandir -- tecla E botao, a regra de sempre. O rotulo do
-   // primeiro muda com o estado do no selecionado (transform roda a cada
-   // redesenho), pra dizer o que a tecla vai FAZER e nao so que existe.
-   ButtonOption compToggleOpt;
-   compToggleOpt.on_click = doCompToggleCollapse;
-   compToggleOpt.transform = [&](const EntryState&) {
-      const int idx{findComponentNodeIndex(componentsLayout, componentsView.selectedKey)};
-      const bool canToggle{idx >= 0
-         && componentsLayout.nodes[static_cast<std::size_t>(idx)].childCount > 0};
-      const bool isCollapsed{canToggle
-         && componentsLayout.nodes[static_cast<std::size_t>(idx)].collapsed};
-      if (!canToggle) return text(" [Enter] Retrair ") | dim;
-      return text(std::string(" [Enter] ") + (isCollapsed ? "Expandir" : "Retrair") + " ")
-         | bgcolor(Color::Blue) | bold;
-   };
-   const Component btnCompToggle{Button(compToggleOpt)};
-
-   const Component btnCompExpandAll{makeButton("[o] Abrir tudo", doCompExpandAll)};
-   const Component btnCompCollapseAll{makeButton("[f] Fechar tudo", doCompCollapseAll)};
-
-   ButtonOption compSpeedOpt;
-   compSpeedOpt.on_click = doCompCycleSpeed;
-   compSpeedOpt.transform = [&](const EntryState&) {
-      return text(" [v] " + std::to_string(componentsFlow.stepsPerSecond) + "x/s ")
-         | bgcolor(Color::Blue) | bold;
-   };
-   const Component btnCompSpeed{Button(compSpeedOpt)};
-
-   const Component componentsButtons{Container::Horizontal(
-      {btnCompPlay, btnCompStep, btnCompSpeed,
-       btnCompToggle, btnCompExpandAll, btnCompCollapseAll,
-       btnCompZoomOut, btnCompZoomIn, btnCompCenter})};
-
-   const Component componentsBody{Container::Vertical({componentsCanvasArea, componentsButtons})};
-   const Component componentsTab{Renderer(componentsBody, [&]() -> Element {
-      // MESMA altura da versao anterior a esta feature: uma linha em cima
-      // (era um texto dim, hoje e a faixa de fases -- o mesmo espaco), o
-      // canvas com todo o resto, e o rodape de sempre. A explicacao do passo
-      // NAO mora mais num painel de texto que roubava ~19 linhas do desenho:
-      // ela foi PARA DENTRO do desenho (rotulo de chamada em cada no, o
-      // caminho da recursao aceso, a onda descendo) e para o card de
-      // detalhe, que ja tinha espaco sobrando.
-      return vbox({
-         renderFramePhaseStrip(componentsFlow, frameCallParams),
-         componentsCanvasArea->Render() | flex,
-         separator(),
-         renderComponentFlowStatus(componentsFlow, frameCallParams),
-         renderComponentFlowLegend(),
-         componentsButtons->Render(),
-      });
-   })};
-   // O tratamento de tecla/mouse desta aba, pelo MESMO motivo ja documentado
-   // no comentario grande sobre 'mapTab'/'withKeys' logo acima, NAO fica num
-   // CatchEvent local aqui -- fica no CatchEvent mais externo (ver
-   // 'activeTab == 5' la embaixo).
-
-   // ---- aba "Memoria": contadores de instancia AO VIVO, ver
-   // app/MetaObjectSnapshot.hpp para o criterio de "CRESCENDO" ----
-   MenuOption classMenuOpt;
-   classMenuOpt.entries = &classLabels;
-   classMenuOpt.selected = &selectedClassIndex;
-   classMenuOpt.entries_option.transform = [&](const EntryState& es) -> Element {
-      if (es.index >= 0 && es.index < static_cast<int>(displayedClasses.size()))
-         return renderClassRow(displayedClasses[static_cast<std::size_t>(es.index)], es.active);
-      return text(es.label);
-   };
-   const Component classMenu{Menu(classMenuOpt)};
-   const Component memoryTab{Renderer(classMenu, [&]() -> Element {
-      return vbox({
-         text("classes observadas: " + std::to_string(displayedClasses.size())) | dim,
-         classMenu->Render() | vscroll_indicator | frame | flex,
-      });
-   })};
-
-   // ---- aba "Tempo Nao-Critico": o que roda na thread de tempo NAO critico -- painel
-   // estatico, sem lista (ver app/BackgroundPanel.hpp). 'displayedBackground'
-   // e alimentado pelo MESMO Renderer externo que ja alimenta
-   // 'displayedEntities'/'displayedClasses' (ver 'withRenderer' abaixo) --
-   // nao ha necessidade de tomar 'stateMutex' de novo aqui. ----
-   const Component backgroundTab{Renderer([&]() -> Element {
-      return renderBackgroundPanel(displayedBackground) | frame | flex;
-   })};
-
-   // ---- aba "Log": as ultimas linhas de libs/xlog, do core E do plugin
-   // do modelo (uma copia so de libxlog.so no processo -- ver o cabecalho
-   // de app/LogPanel.hpp). Mesmo padrao de lista rolavel das abas
-   // Players/Memoria: ftxui::Menu dentro de frame()/vscroll_indicator(). ----
-   MenuOption logMenuOpt;
-   logMenuOpt.entries = &logLabels;
-   logMenuOpt.selected = &selectedLogIndex;
-   logMenuOpt.entries_option.transform = [&](const EntryState& es) -> Element {
-      if (es.index >= 0 && es.index < static_cast<int>(displayedLogs.size()))
-         return renderLogRow(displayedLogs[static_cast<std::size_t>(es.index)], es.active);
-      return text(es.label);
-   };
-   const Component logMenu{Menu(logMenuOpt)};
-
-   const auto doCycleLogFilter = [&] {
-      logMinLevel = nextLevelFilter(logMinLevel);
-      logFollowTail = true;
-   };
-   const auto doToggleLogFollow = [&] { logFollowTail = !logFollowTail; };
-
-   ButtonOption logFilterOpt;
-   logFilterOpt.on_click = doCycleLogFilter;
-   logFilterOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [f] Nivel min: ") + mixr::xlog::levelName(logMinLevel) + " ")
-         | bgcolor(Color::Blue) | bold;
-   };
-   const Component btnLogFilter{Button(logFilterOpt)};
-
-   ButtonOption logFollowOpt;
-   logFollowOpt.on_click = doToggleLogFollow;
-   logFollowOpt.transform = [&](const EntryState&) {
-      return text(std::string(" [a] Acompanhar: ") + (logFollowTail ? "ON" : "OFF") + " ")
-         | (logFollowTail ? (bgcolor(Color::Blue) | bold) : dim);
-   };
-   const Component btnLogFollow{Button(logFollowOpt)};
-
-   const Component logButtons{Container::Horizontal({btnLogFilter, btnLogFollow})};
-   const Component logBody{Container::Vertical({logMenu, logButtons})};
-   const Component logTab{Renderer(logBody, [&]() -> Element {
-      return vbox({
-         hbox({
-            text("linhas: " + std::to_string(displayedLogs.size())) | dim,
-            text("  (buffer de " + std::to_string(mixr::xlog::kMemoryCapacity) + ", o mais antigo sai)") | dim,
-            filler(),
-            text("total emitido: " + std::to_string(lastLogSeq)) | dim,
-         }),
-         separator(),
-         renderLogListHeader(),
-         separator(),
-         logMenu->Render() | vscroll_indicator | frame | flex,
-         separator(),
-         logButtons->Render(),
-      });
-   })};
-
-   // ---- aba "EDL" (F7): editor de .edl EM MEMORIA -- ver
-   // app/EdlEditorState.hpp e o comentario grande sobre 'edlInput->
-   // TakeFocus()' mais abaixo (a UNICA aba que precisa de foco de teclado
-   // de verdade, porque o ftxui::Input multilinha ja trata sozinho toda
-   // tecla de edicao -- cursor, insercao, backspace, Enter/nova linha --
-   // que este arquivo nao teria motivo nenhum para reimplementar). ----
-   InputOption edlInputOpt;
-   edlInputOpt.multiline = true;
-   edlInputOpt.placeholder = "(cenario vazio -- " + generatedEdlPath + " nao pode ser lido)";
-   // 'cursor_position' precisa de armazenamento PROPRIO (em vez do default,
-   // interno ao Input) porque o 'transform' abaixo -- fora da classe --
-   // precisa ler a posicao atual pra saber ONDE marcar o glifo do cursor na
-   // previa colorida (ver renderHighlightedEdlText(), acima).
-   edlInputOpt.cursor_position = &edlCursorPos;
-   // Destaque de sintaxe (renderHighlightedEdlText(), acima) SEMPRE que ha'
-   // texto -- nao so' "fora de edicao": 'edlInput->TakeFocus()' (mais
-   // abaixo, no comentario grande sobre 'appRoot') roda a CADA redesenho
-   // enquanto esta aba esta em cena, entao 'state.focused' aqui e'
-   // efetivamente PERMANENTE (confirmado rodando: a UNICA vez que aparece
-   // sem foco e' um instante antes do primeiro redesenho) -- gatear a cor
-   // por 'state.focused' deixaria a previa colorida como codigo morto.
-   //
-   // 'InputState::element' que o ftxui::Input entrega aqui ja' vem MONTADO
-   // (uma unica 'text(linha)' por linha, sem token nenhum) -- nao ha' API
-   // publica pra reler o texto cru dali e recolorir por token sem tambem
-   // jogar fora a caixa PRIVADA que o proprio Input usa pra posicionar o
-   // cursor no CLIQUE do mouse (cursor_box_, so' atualizada quando a
-   // arvore que ELE construiu chega a ser desenhada -- ver input.cpp,
-   // InputBase::HandleMouse()/OnRender()). Reconstruir essa arvore do
-   // zero, aqui, e' o unico jeito de colorir por token -- o preco e'
-   // precisao de CLIQUE do mouse em algum ponto do meio do texto (o clique
-   // continua funcionando para focar/rolar, so' pode nao acertar o
-   // caractere exato). Movimento de cursor por TECLADO (setas/Home/End/
-   // backspace/...) e' preservado 100% -- 'cursor_position()' e' calculado
-   // e mutado por 'InputBase' ANTES deste 'transform' rodar, nunca depende
-   // do que ele devolve -- e 'renderHighlightedEdlText()' remarca o glifo
-   // do cursor com 'focus'/'focusCursorBarBlinking' pra 'frame()' (por
-   // fora, no editorBox de edlTab) continuar rolando ate' ele, exatamente
-   // como o Input nativo ja fazia.
-   edlInputOpt.transform = [&](InputState state) -> Element {
-      if (state.is_placeholder) return InputOption::Default().transform(state);
-      return renderHighlightedEdlText(editedEdlText, edlCursorPos, state.focused, state.hovered);
-   };
-   const Component edlInput{Input(&editedEdlText, edlInputOpt)};
-
-   const Component btnEdlValidate{makeButton("[F8] Validar", doEdlValidate)};
-   const Component btnEdlRun{makeButton("[F9] Rodar versao editada", doEdlRun)};
-   const Component btnEdlRevert{makeButton("[F10] Reverter", doEdlRevert)};
-   const Component edlButtons{Container::Horizontal({btnEdlValidate, btnEdlRun, btnEdlRevert})};
-
-   const Component edlBody{Container::Vertical({edlInput, edlButtons})};
-   const Component edlTab{Renderer(edlBody, [&]() -> Element {
-      const bool dirty{editedEdlText != originalEdlText};
-
-      // Indicador de foco DESENHADO PELO APP -- alem do cursor nativo do
-      // terminal (que o ftxui::Input ja pede via DECTCEM/DECSCUSR quando
-      // 'Focused()' e verdadeiro; confirmado emitido byte a byte com um
-      // clique sintetico), porque nem todo terminal/multiplexador honra a
-      // troca de estilo de cursor -- um badge proprio nao depende disso.
-      // 'Focused()' aqui reflete 'edlInput->TakeFocus()', chamado a cada
-      // redesenho enquanto esta aba esta ativa (ver o comentario grande no
-      // Renderer mais externo).
-      const bool edlFocused{edlInput->Focused()};
-
-      Element statusLine{text("(ainda nao validado nesta sessao)") | dim};
-      if (edlHasStatus) {
-         statusLine = paragraphAlignLeft((edlStatusOk ? "OK -- " : "INVALIDO -- ") + edlStatusMessage)
-                     | color(edlStatusOk ? Color::Green : Color::Red) | bold;
-      }
-
-      Element editorBox{edlInput->Render() | vscroll_indicator | frame | flex | border};
-      if (edlFocused) editorBox = editorBox | color(Color::Blue);
-
-      return vbox({
-         hbox({
-            text(" carregado de " + generatedEdlPath + " ") | dim,
-            filler(),
-            text(edlFocused ? " EDITANDO -- cursor ativo " : " clique no texto para editar ")
-               | (edlFocused ? (bgcolor(Color::Blue) | color(Color::White) | bold) : dim),
-            text(dirty ? " editado, em memoria " : " sem alteracoes ")
-               | (dirty ? (bgcolor(Color::Yellow) | color(Color::Black) | bold) : dim),
-         }),
-         separator(),
-         editorBox,
-         separator(),
-         statusLine,
-         text("as alteracoes ficam SO em memoria: nunca sao escritas no cenario original. "
-              "[F8]/[Validar] roda o oraculo 'edlcheck'; [F9]/[Rodar versao editada] "
-              "reexecuta o app com o texto atual (via -f, o mesmo caminho de uma fixture de "
-              "teste), sem tocar em nenhum '.edl'/'.edl.in' de origem; "
-              "[F10]/[Reverter] descarta a edicao. Roda do mouse rola o texto. "
-              "O texto aparece colorido por sintaxe (mesma paleta do editor grafico web, "
-              "src/ui/edl-builder.html); clique no meio do texto foca/rola normalmente, "
-              "so' pode nao acertar o caractere exato -- use as setas para posicionar o "
-              "cursor com precisao.") | dim,
-         edlButtons->Render(),
-      });
-   })};
+   // ---- monta as sete abas -- ORDEM IMPORTA: Fleet antes de Map (ver o
+   // comentario em app/DashboardWiring.hpp) ----
+   const Component fleetTab{buildFleetTab(w)};
+   const Component mapTab{buildMapTab(w)};
+   const Component memoryTab{buildMemoryTab(w)};
+   const Component backgroundTab{buildBackgroundTab(w)};
+   const Component logTab{buildLogTab(w)};
+   const Component componentsTab{buildComponentsTab(w)};
+   const Component edlTab{buildEdlTab(w)};
 
    const Component contentTab{Container::Tab(
       {fleetTab, mapTab, memoryTab, backgroundTab, logTab, componentsTab, edlTab}, &activeTab)};
@@ -1459,17 +469,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    const Component btnEdl{makeButton("[F7] EDL", [&] { gotoTab(6); })};
 
    // Acelerar/Frear/Tempo-real ficam visualmente apagados enquanto
-   // bloqueados -- QUALQUER breakpoint armado ('g' OU 'G', ver
-   // 'doAccelerate'/'doDecelerate'/'doRealTime' acima), nao so o modo
-   // rapido. 'transform' roda a cada redesenho, entao basta ler
-   // 'displayedBreakpointArmed' direto nele (a copia "pra desenho",
-   // atualizada por 'withRenderer' -- ver o comentario onde ela e
-   // declarada).
+   // bloqueados -- QUALQUER breakpoint armado, nao so o modo rapido.
    ButtonOption accelOpt;
    accelOpt.label = "[+] Acelerar";
    accelOpt.on_click = doAccelerate;
    accelOpt.transform = [&](const EntryState&) {
-      return text(" [+] Acelerar ") | (displayedBreakpointArmed ? dim : nothing);
+      return text(" [+] Acelerar ") | (w.displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnAccel{Button(accelOpt)};
 
@@ -1477,7 +482,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    decelOpt.label = "[-] Frear";
    decelOpt.on_click = doDecelerate;
    decelOpt.transform = [&](const EntryState&) {
-      return text(" [-] Frear ") | (displayedBreakpointArmed ? dim : nothing);
+      return text(" [-] Frear ") | (w.displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnDecel{Button(decelOpt)};
 
@@ -1487,7 +492,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    realOpt.label = "[1] Tempo real";
    realOpt.on_click = doRealTime;
    realOpt.transform = [&](const EntryState&) {
-      return text(" [1] Tempo real ") | (displayedBreakpointArmed ? dim : nothing);
+      return text(" [1] Tempo real ") | (w.displayedBreakpointArmed ? dim : nothing);
    };
    const Component btnReal{Button(realOpt)};
    const Component btnRestart{makeButton("[r] Reiniciar", doRestart)};
@@ -1500,7 +505,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    const Component breakpointBar{Container::Horizontal({
-      btnRunToBreakpoint, btnRunToBreakpointMax, btnCancelBreakpoint,
+      w.btnRunToBreakpoint, w.btnRunToBreakpointMax, w.btnCancelBreakpoint,
    })};
 
    const Component root{Container::Vertical({toolbar, breakpointBar, contentTab})};
@@ -1512,135 +517,94 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          snap = latest;
       }
 
-      displayedEntities = snap.entities;
-      displayedClasses = snap.classStats;
-      displayedBackground = snap.background;
-      displayedBreakpointArmed = snap.breakpointArmed;
-      displayedBreakpointHit = snap.breakpointHit;
-      displayedBreakpointHitMessage = snap.breakpointHitMessage;
+      w.displayedEntities = snap.entities;
+      w.displayedClasses = snap.classStats;
+      w.displayedBackground = snap.background;
+      w.displayedBreakpointArmed = snap.breakpointArmed;
+      w.displayedBreakpointHit = snap.breakpointHit;
+      w.displayedBreakpointHitMessage = snap.breakpointHitMessage;
 
       // So acrescenta ao rastro quando a amostra e REALMENTE nova -- este
       // Renderer roda a cada redesenho, nao so a cada captura nova (uma
-      // tecla ou um resize tambem disparam render), e sem essa guarda o
-      // rastro ganharia pontos duplicados sobrepostos.
+      // tecla ou um resize tambem disparam render).
       if (snap.simSec != lastTrailSimSec) {
-         updateTrails(mapView, displayedEntities);
+         updateTrails(w.mapView, w.displayedEntities);
          lastTrailSimSec = snap.simSec;
       }
 
-      entityLabels.clear();
-      for (const auto& e : displayedEntities) entityLabels.push_back(entityRowText(e));
-      classLabels.clear();
-      for (const auto& c : displayedClasses) classLabels.push_back(classRowText(c));
+      w.entityLabels.clear();
+      for (const auto& e : w.displayedEntities) w.entityLabels.push_back(entityRowText(e));
+      w.classLabels.clear();
+      for (const auto& c : w.displayedClasses) w.classLabels.push_back(classRowText(c));
 
-      if (!displayedEntities.empty()) {
-         selectedEntityIndex = std::clamp(selectedEntityIndex, 0,
-            static_cast<int>(displayedEntities.size()) - 1);
+      if (!w.displayedEntities.empty()) {
+         w.selectedEntityIndex = std::clamp(w.selectedEntityIndex, 0,
+            static_cast<int>(w.displayedEntities.size()) - 1);
       }
-      if (!displayedClasses.empty()) {
-         selectedClassIndex = std::clamp(selectedClassIndex, 0,
-            static_cast<int>(displayedClasses.size()) - 1);
+      if (!w.displayedClasses.empty()) {
+         w.selectedClassIndex = std::clamp(w.selectedClassIndex, 0,
+            static_cast<int>(w.displayedClasses.size()) - 1);
       }
 
       // Aba Log -- so recopia do buffer quando ha linha nova (lastSeq
-      // mudou) ou quando o filtro mudou; 'snapshot()' copia ate 500
-      // entradas e este Renderer roda a cada redesenho, nao so a cada
-      // amostra nova (tecla, resize e mouse tambem redesenham).
+      // mudou) ou quando o filtro mudou.
       {
          const std::uint64_t seqNow{mixr::xlog::lastSeq()};
-         if (seqNow != lastLogSeq || logMinLevel != lastLogFilter) {
-            lastLogSeq = seqNow;
-            lastLogFilter = logMinLevel;
-            displayedLogs.clear();
-            logLabels.clear();
+         if (seqNow != w.lastLogSeq || w.logMinLevel != w.lastLogFilter) {
+            w.lastLogSeq = seqNow;
+            w.lastLogFilter = w.logMinLevel;
+            w.displayedLogs.clear();
+            w.logLabels.clear();
             for (const auto& e : mixr::xlog::snapshot()) {
-               if (!passesLevelFilter(e.level, logMinLevel)) continue;
-               displayedLogs.push_back(e);
-               logLabels.push_back(logRowText(e));
+               if (!passesLevelFilter(e.level, w.logMinLevel)) continue;
+               w.displayedLogs.push_back(e);
+               w.logLabels.push_back(logRowText(e));
             }
-            if (logFollowTail && !displayedLogs.empty()) {
-               selectedLogIndex = static_cast<int>(displayedLogs.size()) - 1;
+            if (w.logFollowTail && !w.displayedLogs.empty()) {
+               w.selectedLogIndex = static_cast<int>(w.displayedLogs.size()) - 1;
             }
          }
       }
-      selectedLogIndex = displayedLogs.empty()
+      w.selectedLogIndex = w.displayedLogs.empty()
          ? 0
-         : std::clamp(selectedLogIndex, 0, static_cast<int>(displayedLogs.size()) - 1);
-      if (!treeLines.empty()) {
-         selectedBtLineIndex = std::clamp(selectedBtLineIndex, 0,
-            static_cast<int>(treeLines.size()) - 1);
+         : std::clamp(w.selectedLogIndex, 0, static_cast<int>(w.displayedLogs.size()) - 1);
+      if (!w.treeLines.empty()) {
+         w.selectedBtLineIndex = std::clamp(w.selectedBtLineIndex, 0,
+            static_cast<int>(w.treeLines.size()) - 1);
       }
 
-      // Aba Componentes -- a arvore e recapturada a cada amostra (10 Hz), o
-      // que continua fresco o bastante para um missil liberado ou um fantasma
-      // DIS que chegou pela rede aparecerem sozinhos -- mas a captura mudou de
-      // THREAD: hoje ela acontece em captureState(), na 'simThread', e aqui so
-      // se le a copia por valor que veio no DashboardState. Ver o comentario de
-      // DashboardState::componentTree para o defeito que isso corrige.
-      //
-      // Gateado por 'activeTab==5': todo consumo de 'componentsLayout'/
-      // 'componentsRoot' no CatchEvent externo ja e gateado da mesma forma,
-      // e 'Container::Tab' so desenha o filho ativo -- nada consome a
-      // arvore com outra aba em cena. Recalcular a cada redesenho custaria
-      // 'abi::__cxa_demangle()' (aloca) e varios 'dynamic_cast' por no
-      // (~150 nos em producao) a toa nas outras seis abas.
-      // Pede a arvore a 'simThread' (ver 'wantComponentTree' la em cima) e
-      // consome a que ela ja capturou. NADA de MIXR vivo e tocado aqui: ao
-      // trocar para a F6 a arvore chega na amostra seguinte (~100 ms), e ate
-      // la 'snap.componentTree' vem vazia -- o que os dois usos abaixo ja
-      // tratam (o auto-fit testa 'children.empty()' e o layout de uma arvore
-      // vazia e vazio).
+      // Aba Componentes -- a arvore e recapturada a cada amostra (10 Hz).
+      // Gateado por 'activeTab==5'.
       wantComponentTree.store(activeTab == 5, std::memory_order_relaxed);
       if (activeTab == 5) {
-         componentsRoot = snap.componentTree;
+         w.componentsRoot = snap.componentTree;
 
-         // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth: na
-         // vertical cada FOLHA custa a largura do proprio rotulo (no
-         // layout horizontal antigo custava so uma LINHA), entao uma
-         // arvore de producao inteira aberta seria dezenas de vezes mais
-         // larga que o terminal. Uma vez so -- depois disso quem manda e o
-         // usuario, e reabrir tudo e [o].
-         if (!componentsAutoFitted && !componentsRoot.children.empty()) {
-            collapseDeeperThan(componentsRoot, kTreeInitialExpandDepth, componentsCollapsed);
+         // A arvore nasce EXPANDIDA so ate kTreeInitialExpandDepth. Uma vez
+         // so -- depois disso quem manda e o usuario, e reabrir tudo e [o].
+         if (!w.componentsAutoFitted && !w.componentsRoot.children.empty()) {
+            collapseDeeperThan(w.componentsRoot, kTreeInitialExpandDepth, w.componentsCollapsed);
          }
 
-         componentsLayout = layoutComponentTree(componentsRoot, componentsCollapsed);
+         w.componentsLayout = layoutComponentTree(w.componentsRoot, w.componentsCollapsed);
       }
 
       // Relogio da animacao de fluxo (SEGUNDA METADE) -- avanca aqui, no
-      // MESMO Renderer mais externo que ja roda a cada redesenho
-      // (screen.PostEvent(Event::Custom), ~10 Hz, disparado por
-      // 'simThread' -- ver o comentario grande no topo deste arquivo),
-      // reaproveitando esse pulso como relogio em vez de medir tempo de
-      // parede. Roda mesmo com outra aba ativa, pelo mesmo motivo de
-      // 'componentsLayout' ser recalculado incondicionalmente aqui.
-      // A animacao e ESCRAVA da simulacao (pedido explicito: o controle da
-      // aba F6 tem de mexer na simulacao de verdade). Pausou -> o pulso
-      // para; voltou a rodar -> volta a andar. Feito aqui, e nao na acao de
-      // tecla, pra tambem valer quando a pausa vem de outro lugar (o botao
-      // [espaco] da barra principal, a tecla 'p', um breakpoint de BT
-      // atingido).
-      setComponentFlowPlaying(componentsFlow, !snap.paused);
-      tickComponentFlowAnimation(componentsFlow);
+      // MESMO Renderer mais externo que ja roda a cada redesenho. A
+      // animacao e ESCRAVA da simulacao.
+      setComponentFlowPlaying(w.componentsFlow, !snap.paused);
+      tickComponentFlowAnimation(w.componentsFlow);
 
       // De 'snap', nao de 'station->': a thread de desenho nao le mais nada
-      // do grafo vivo do MIXR (ver DashboardState::componentTree). Os dois
-      // campos ja vem de captureState(), na simThread.
-      frameCallParams.tcRateHz = snap.background.stationTcRateHz;
-      frameCallParams.fastForwardRate = snap.background.fastForwardRate;
-      frameCallParams.numTcThreads = snap.numTcThreads;
-      frameCallParams.paused = snap.paused;
-
-      // A selecao NAO precisa de clamp: e uma CHAVE, nao um indice. Se o no
-      // sumiu da arvore (retraido junto com o pai, missil que detonou,
-      // fantasma DIS que saiu da rede), findComponentNodeIndex() devolve -1
-      // e o card mostra o texto de "nenhum selecionado" -- e se ele voltar,
-      // a selecao volta com ele.
+      // do grafo vivo do MIXR.
+      w.frameCallParams.tcRateHz = snap.background.stationTcRateHz;
+      w.frameCallParams.fastForwardRate = snap.background.fastForwardRate;
+      w.frameCallParams.numTcThreads = snap.numTcThreads;
+      w.frameCallParams.paused = snap.paused;
 
       // Recalculado a cada redesenho -- o terminal pode ser redimensionado
       // em qualquer frame. "+6" cobre a borda do canvas (2) + separador (1)
       // + borda do proprio card (2) + uma folga de 1.
-      detailPanelWidth = std::clamp(Terminal::Size().dimx - (kMapCanvasWidthCells + 6),
+      w.detailPanelWidth = std::clamp(Terminal::Size().dimx - (kMapCanvasWidthCells + 6),
                                     kDetailPanelMinWidth, kDetailPanelMaxWidth);
 
       const auto tabBadge = [&](const Component& btn, const int index) -> Element {
@@ -1649,24 +613,17 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          return e | dim;
       };
 
-      // "[m] Ver no mapa" -- pedido explicito: posicao mais visivel, igual
-      // aos demais botoes principais, so aparece na aba Players (F1) COM
-      // uma entidade selecionada -- nas outras abas (Mapa, Memoria, Tempo Nao-Critico)
-      // nao faz sentido ("ver no mapa" a partir de onde voce ja esta, ou
-      // de uma lista que nao e de players).
+      // "[m] Ver no mapa" -- so aparece na aba Players (F1) COM uma
+      // entidade selecionada.
       Elements primaryButtons{btnAccel->Render(), btnDecel->Render(), btnPause->Render(),
                               btnReal->Render()};
-      if (activeTab == 0 && !displayedEntities.empty()) primaryButtons.push_back(btnViewOnMap->Render());
+      if (activeTab == 0 && !w.displayedEntities.empty()) primaryButtons.push_back(btnViewOnMap->Render());
 
-      // "Informe" de BP atingido, pedido explicito -- fica visivel ate o
-      // usuario armar um NOVO breakpoint (ver o comentario de
-      // DashboardState::breakpointHit), nao so no instante do hit; e uma
-      // LINHA PROPRIA, logo abaixo do cabecalho, pra nao depender de
-      // ninguem estar olhando o card da arvore (que ja mostra a mesma
-      // mensagem, ver buildBreakpointStatus()) pra perceber.
+      // "Informe" de BP atingido -- fica visivel ate o usuario armar um
+      // NOVO breakpoint.
       Elements rows{renderHeader(snap)};
-      if (displayedBreakpointHit) {
-         rows.push_back(text(" BP ATINGIDO -- " + displayedBreakpointHitMessage + " ")
+      if (w.displayedBreakpointHit) {
+         rows.push_back(text(" BP ATINGIDO -- " + w.displayedBreakpointHitMessage + " ")
                          | bold | bgcolor(Color::Blue) | color(Color::White) | center);
       }
       rows.push_back(hbox({tabBadge(btnFleet, 0), tabBadge(btnMap, 1), tabBadge(btnMemory, 2),
@@ -1685,12 +642,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    const Component withKeys{CatchEvent(withRenderer, [&](Event event) -> bool {
-      // Troca de aba (F1..F7) vem PRIMEIRO de tudo, incondicional -- movida
-      // pra cima do bloco de 'activeTab == 5' (que ja rodava antes das
-      // teclas "globais" de baixo) porque a aba "EDL" (F7, logo abaixo)
-      // precisa devolver 'false' pra QUALQUER outra tecla, e só pode fazer
-      // isso depois de F1..F7 já terem sido tratadas -- senão nunca daria
-      // pra trocar de aba a partir de dentro do editor.
+      // Troca de aba (F1..F7) vem PRIMEIRO de tudo, incondicional.
       if (event == Event::F1) { gotoTab(0); return true; }
       if (event == Event::F2) { gotoTab(1); return true; }
       if (event == Event::F3) { gotoTab(2); return true; }
@@ -1700,78 +652,43 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::F7) { gotoTab(6); return true; }
 
       // A aba "EDL" precisa de TODA tecla que nao seja troca de aba -- o
-      // ftxui::Input multilinha (edlInput) e quem trata cursor/insercao/
-      // backspace/Enter, e qualquer atalho global capturado aqui (mesmo
-      // 'espaco'/'+'/'-'/'q'/'g'...) tornaria impossivel digitar EDL de
-      // verdade (que usa exatamente esses caracteres). 'return false' deixa
-      // o evento cair pro roteamento normal de foco -- que so alcanca
-      // 'edlInput' porque o Renderer mais externo chama
-      // 'edlInput->TakeFocus()' sempre que esta aba esta ativa (ver o
-      // comentario grande la, no motivo do "porque" disso ser necessario:
-      // sem ele, 'root' nunca tira o foco de 'toolbar' sozinho).
-      //
-      // As tres acoes da aba (Validar/Rodar/Reverter) so tem BOTAO E uma
-      // tecla de FUNCAO -- nunca Ctrl+<letra>. Ctrl+Z pareceria seguro (o
-      // terminal manda um Event::CtrlZ distinto de Event::Character('z'),
-      // que o Input nem reconhece), mas medido QUEBRANDO: em pelo menos um
-      // terminal real ele ainda chega como o SUSP de job control (SIGTSTP)
-      // e mata/suspende o processo antes de qualquer CatchEvent nosso ver o
-      // evento -- FTXUI desliga ISIG no MODO BRUTO dele, mas isso nao cobre
-      // toda combinacao de terminal/multiplexador possivel. F8/F9/F10 nunca
-      // tiveram esse tipo de significado de sistema em terminal nenhum
-      // (mesma familia seguranca de F1..F7, ja comprovados aqui).
+      // ftxui::Input multilinha (w.edlInput) e quem trata cursor/insercao/
+      // backspace/Enter.
       if (activeTab == 6) {
-         if (event == Event::F8) { doEdlValidate(); return true; }
-         if (event == Event::F9) { doEdlRun(); return true; }
-         if (event == Event::F10) { doEdlRevert(); return true; }
+         if (event == Event::F8) { w.doEdlValidate(); return true; }
+         if (event == Event::F9) { w.doEdlRun(); return true; }
+         if (event == Event::F10) { w.doEdlRevert(); return true; }
 
          // Rolagem de mouse rola o TEXTO -- o ftxui::Input nao trata roda
-         // nenhuma sozinho (HandleMouse() so reage a Mouse::Left+Pressed,
-         // confirmado lendo o fonte da lib), entao sem isto a roda nao
-         // fazia NADA aqui, ao contrario de toda lista deste app (Players/
-         // Memoria/Log ja rolam por 'ContainerBase::OnMouseEvent' mover a
-         // selecao e o 'frame' seguir ela). Mesma receita: traduzir a roda
-         // em teclas de seta de verdade, entregues DIRETO ao componente
-         // (Component::OnEvent chamado a mao, sem depender de roteamento
-         // por foco) -- o 'frame' que ja envolve 'edlInput' acompanha a
-         // NOVA posicao do cursor sozinho, sem estado de rolagem proprio.
+         // nenhuma sozinho.
          if (event.is_mouse() && event.mouse().button == Mouse::WheelDown) {
-            for (int i = 0; i < 3; i++) edlInput->OnEvent(Event::ArrowDown);
+            for (int i = 0; i < 3; i++) w.edlInput->OnEvent(Event::ArrowDown);
             return true;
          }
          if (event.is_mouse() && event.mouse().button == Mouse::WheelUp) {
-            for (int i = 0; i < 3; i++) edlInput->OnEvent(Event::ArrowUp);
+            for (int i = 0; i < 3; i++) w.edlInput->OnEvent(Event::ArrowUp);
             return true;
          }
          return false;
       }
 
       // Espaco/[n] da aba "Componentes" (F6) tem de ser tratado ANTES do
-      // espaco GLOBAL (pausa a simulacao, logo abaixo) -- dentro desta aba,
-      // Espaco controla o PLAY/PAUSE da animacao de fluxo (relogio proprio,
-      // ver app/ComponentFlowState.hpp), nao o relogio da simulacao. O
-      // botao [espaco] Pausar da barra principal continua acessivel por
-      // clique em qualquer aba; so a TECLA espaco muda de sentido aqui.
+      // espaco GLOBAL (pausa a simulacao, logo abaixo).
       if (activeTab == 5) {
-         if (event == Event::Character(' ')) { doCompTogglePlay(); return true; }
-         if (event == Event::Character('n') || event == Event::Character('N')) { doCompStep(); return true; }
-         if (event == Event::Character('v') || event == Event::Character('V')) { doCompCycleSpeed(); return true; }
+         if (event == Event::Character(' ')) { w.doCompTogglePlay(); return true; }
+         if (event == Event::Character('n') || event == Event::Character('N')) { w.doCompStep(); return true; }
+         if (event == Event::Character('v') || event == Event::Character('V')) { w.doCompCycleSpeed(); return true; }
 
-         // Retrair/expandir. Ficam AQUI, no bloco que roda ANTES das teclas
-         // globais, pelo mesmo motivo do Espaco logo acima: 'f' ja significa
-         // outra coisa na aba Log e 'o' e livre hoje, mas depender disso
-         // seria uma armadilha esperando a proxima tecla global nascer.
-         if (event == Event::Return) { doCompToggleCollapse(); return true; }
-         if (event == Event::Character('o') || event == Event::Character('O')) { doCompExpandAll(); return true; }
-         if (event == Event::Character('f') || event == Event::Character('F')) { doCompCollapseAll(); return true; }
+         // Retrair/expandir.
+         if (event == Event::Return) { w.doCompToggleCollapse(); return true; }
+         if (event == Event::Character('o') || event == Event::Character('O')) { w.doCompExpandAll(); return true; }
+         if (event == Event::Character('f') || event == Event::Character('F')) { w.doCompCollapseAll(); return true; }
 
-         // Setas NAVEGAM entre os nos (antes moviam o pan). E o que permite
-         // escolher um galho sem mouse -- e sem escolher nao ha o que
-         // retrair. O pan continua acessivel por arrasto e por [c].
-         if (event == Event::ArrowUp)    { doCompNavigate(TreeNavigation::Parent); return true; }
-         if (event == Event::ArrowDown)  { doCompNavigate(TreeNavigation::FirstChild); return true; }
-         if (event == Event::ArrowLeft)  { doCompNavigate(TreeNavigation::PrevSibling); return true; }
-         if (event == Event::ArrowRight) { doCompNavigate(TreeNavigation::NextSibling); return true; }
+         // Setas NAVEGAM entre os nos (antes moviam o pan).
+         if (event == Event::ArrowUp)    { w.doCompNavigate(TreeNavigation::Parent); return true; }
+         if (event == Event::ArrowDown)  { w.doCompNavigate(TreeNavigation::FirstChild); return true; }
+         if (event == Event::ArrowLeft)  { w.doCompNavigate(TreeNavigation::PrevSibling); return true; }
+         if (event == Event::ArrowRight) { w.doCompNavigate(TreeNavigation::NextSibling); return true; }
       }
       if (event == Event::Character('+') || event == Event::Character('=')) { doAccelerate(); return true; }
       if (event == Event::Character('-') || event == Event::Character('_')) { doDecelerate(); return true; }
@@ -1779,59 +696,47 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
           event == Event::Character('P')) { doTogglePause(); return true; }
       if (event == Event::Character('1')) { doRealTime(); return true; }
 
-      // Navegacao por seta das listas (Frota/Memoria) -- tratada AQUI, no
-      // CatchEvent mais externo, e nao deixada para o ftxui::Menu receber
-      // via o roteamento normal por foco: 'root' e um Container::Vertical
-      // de dois filhos (toolbar/contentTab) e so encaminha teclado para o
-      // filho FOCADO (ContainerBase::OnEvent checa Focused() antes de
-      // descer) -- por padrao esse filho e 'toolbar', entao a seta nunca
-      // alcancaria o Menu sem o usuario navegar o foco ate la primeiro.
-      // Mexer direto em 'selectedEntityIndex'/'selectedClassIndex' tem o
-      // MESMO efeito da navegacao interna do Menu (o campo 'selected' dele
-      // e um ponteiro pra esta mesma variavel), sem depender da cadeia de
-      // foco.
-      if (activeTab == 0 && !displayedEntities.empty()) {
-         const int last{static_cast<int>(displayedEntities.size()) - 1};
-         if (event == Event::ArrowDown) { selectedEntityIndex = std::min(selectedEntityIndex + 1, last); return true; }
-         if (event == Event::ArrowUp)   { selectedEntityIndex = std::max(selectedEntityIndex - 1, 0); return true; }
+      // Navegacao por seta das listas (Players/Memoria) -- tratada AQUI, no
+      // CatchEvent mais externo.
+      if (activeTab == 0 && !w.displayedEntities.empty()) {
+         const int last{static_cast<int>(w.displayedEntities.size()) - 1};
+         if (event == Event::ArrowDown) { w.selectedEntityIndex = std::min(w.selectedEntityIndex + 1, last); return true; }
+         if (event == Event::ArrowUp)   { w.selectedEntityIndex = std::max(w.selectedEntityIndex - 1, 0); return true; }
          if (event == Event::Character('m') || event == Event::Character('M')) { doViewOnMap(); return true; }
       }
-      if (activeTab == 2 && !displayedClasses.empty()) {
-         const int last{static_cast<int>(displayedClasses.size()) - 1};
-         if (event == Event::ArrowDown) { selectedClassIndex = std::min(selectedClassIndex + 1, last); return true; }
-         if (event == Event::ArrowUp)   { selectedClassIndex = std::max(selectedClassIndex - 1, 0); return true; }
+      if (activeTab == 2 && !w.displayedClasses.empty()) {
+         const int last{static_cast<int>(w.displayedClasses.size()) - 1};
+         if (event == Event::ArrowDown) { w.selectedClassIndex = std::min(w.selectedClassIndex + 1, last); return true; }
+         if (event == Event::ArrowUp)   { w.selectedClassIndex = std::max(w.selectedClassIndex - 1, 0); return true; }
       }
       if (activeTab == 4) {
-         // Rolar pra CIMA desliga o "acompanhar" (senao a proxima linha
-         // nova arrastaria a selecao de volta pro fim e seria impossivel
-         // ler o historico com a simulacao rodando); chegar de volta no fim
-         // religa, que e o gesto natural de "voltar a acompanhar".
+         // Rolar pra CIMA desliga o "acompanhar"; chegar de volta no fim
+         // religa.
          if (event == Event::ArrowUp) {
-            logFollowTail = false;
-            selectedLogIndex = std::max(selectedLogIndex - 1, 0);
+            w.logFollowTail = false;
+            w.selectedLogIndex = std::max(w.selectedLogIndex - 1, 0);
             return true;
          }
          if (event == Event::ArrowDown) {
-            const int last{std::max(0, static_cast<int>(displayedLogs.size()) - 1)};
-            selectedLogIndex = std::min(selectedLogIndex + 1, last);
-            if (selectedLogIndex == last) logFollowTail = true;
+            const int last{std::max(0, static_cast<int>(w.displayedLogs.size()) - 1)};
+            w.selectedLogIndex = std::min(w.selectedLogIndex + 1, last);
+            if (w.selectedLogIndex == last) w.logFollowTail = true;
             return true;
          }
          if (event == Event::Character('f') || event == Event::Character('F')) {
-            doCycleLogFilter();
+            w.doCycleLogFilter();
             return true;
          }
          if (event == Event::Character('a') || event == Event::Character('A')) {
-            doToggleLogFollow();
+            w.doToggleLogFollow();
             return true;
          }
       }
 
-      // Breakpoint de BT -- GLOBAL (nao depende de aba), mesmo raciocinio
-      // do status em 'buildBreakpointStatus()'.
-      if (event == Event::Character('g')) { doArmBreakpoint(false); return true; }
-      if (event == Event::Character('G')) { doArmBreakpoint(true); return true; }
-      if (event == Event::Character('x') || event == Event::Character('X')) { doCancelBreakpoint(); return true; }
+      // Breakpoint de BT -- GLOBAL (nao depende de aba).
+      if (event == Event::Character('g')) { w.doArmBreakpoint(false); return true; }
+      if (event == Event::Character('G')) { w.doArmBreakpoint(true); return true; }
+      if (event == Event::Character('x') || event == Event::Character('X')) { w.doCancelBreakpoint(); return true; }
 
       // As duas pedem CONFIRMACAO agora (ver 'confirmDialog' mais abaixo) --
       // 'Escape' saiu daqui de proposito: dentro do dialogo ele significa
@@ -1842,38 +747,29 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       if (event == Event::Character('q') || event == Event::Character('Q')) { doQuit(); return true; }
 
       // Interacao do MAPA -- so quando a aba esta ativa, tratada aqui (nao
-      // num CatchEvent aninhado em 'mapTab') pelo motivo explicado no
-      // comentario de 'mapTab' acima: o CatchEvent mais externo roda
-      // incondicionalmente, sem depender de qual filho de 'root' esta
-      // focado no momento.
+      // num CatchEvent aninhado em 'mapTab').
       if (activeTab == 1) {
          if (event.is_mouse()) {
             const Mouse& m{event.mouse()};
-            const bool insideCanvas{mapCanvasBox.Contain(m.x, m.y)};
+            const bool insideCanvas{w.mapCanvasBox.Contain(m.x, m.y)};
 
             // Um arrasto EM ANDAMENTO processa ate soltar, mesmo que o
             // mouse escape do canvas por um instante (movimento rapido) --
             // so o COMECO (Pressed) e a roda exigem estar dentro do canvas.
-            // Sem esse gate, QUALQUER clique na tela (inclusive nos botoes
-            // de troca de aba) era engolido como "comecar a arrastar o
-            // mapa" e nunca chegava ao componente por baixo -- a causa da
-            // aba Mapa "prender" a navegacao (ver CLAUDE.md).
-            if (mapView.dragging) {
+            if (w.mapView.dragging) {
                if (m.motion == Mouse::Released) {
-                  mapView.dragging = false;
-                  const int totalMove{std::abs(m.x - mapView.pressX) + std::abs(m.y - mapView.pressY)};
+                  w.mapView.dragging = false;
+                  const int totalMove{std::abs(m.x - w.mapView.pressX) + std::abs(m.y - w.mapView.pressY)};
                   if (totalMove <= 1) {
                      // Deslocamento minimo entre Pressed e Released: e um
-                     // CLIQUE, nao um arrasto -- seleciona a entidade sob o
-                     // cursor (se houver) pro painel lateral e pra aba
-                     // Frota (mesma 'selectedEntityIndex' das duas abas).
-                     const int cellX{m.x - mapCanvasBox.x_min};
-                     const int cellY{m.y - mapCanvasBox.y_min};
-                     const int hitId{hitTestEntity(displayedEntities, mapView, cellX, cellY)};
+                     // CLIQUE, nao um arrasto.
+                     const int cellX{m.x - w.mapCanvasBox.x_min};
+                     const int cellY{m.y - w.mapCanvasBox.y_min};
+                     const int hitId{hitTestEntity(w.displayedEntities, w.mapView, cellX, cellY)};
                      if (hitId >= 0) {
-                        for (std::size_t i = 0; i < displayedEntities.size(); i++) {
-                           if (displayedEntities[i].id == hitId) {
-                              selectedEntityIndex = static_cast<int>(i);
+                        for (std::size_t i = 0; i < w.displayedEntities.size(); i++) {
+                           if (w.displayedEntities[i].id == hitId) {
+                              w.selectedEntityIndex = static_cast<int>(i);
                               break;
                            }
                         }
@@ -1882,117 +778,104 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                   return true;
                }
                if (m.motion == Mouse::Moved) {
-                  const int dx{m.x - mapView.dragLastX};
-                  const int dy{m.y - mapView.dragLastY};
-                  mapView.dragLastX = m.x;
-                  mapView.dragLastY = m.y;
+                  const int dx{m.x - w.mapView.dragLastX};
+                  const int dy{m.y - w.mapView.dragLastY};
+                  w.mapView.dragLastX = m.x;
+                  w.mapView.dragLastY = m.y;
                   // Arrastar pra direita/cima deve fazer o CONTEUDO seguir o
-                  // cursor -- ver o "porque" do sinal em panMap()
-                  // (MapPanel.cpp): a tela e 2 px de canvas por celula na
-                  // horizontal, 4 na vertical, e o eixo Y do terminal cresce
-                  // pra baixo.
-                  panMap(mapView, -dx * mapView.metersPerCell * 2.0, dy * mapView.metersPerCell * 4.0);
+                  // cursor.
+                  panMap(w.mapView, -dx * w.mapView.metersPerCell * 2.0, dy * w.mapView.metersPerCell * 4.0);
                   return true;
                }
                return true;
             }
 
             if (!insideCanvas) return false;
-            if (m.button == Mouse::WheelUp) { doMapZoomIn(); return true; }
-            if (m.button == Mouse::WheelDown) { doMapZoomOut(); return true; }
+            if (m.button == Mouse::WheelUp) { w.doMapZoomIn(); return true; }
+            if (m.button == Mouse::WheelDown) { w.doMapZoomOut(); return true; }
             if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
-               mapView.dragging = true;
-               mapView.pressX = m.x;
-               mapView.pressY = m.y;
-               mapView.dragLastX = m.x;
-               mapView.dragLastY = m.y;
+               w.mapView.dragging = true;
+               w.mapView.pressX = m.x;
+               w.mapView.pressY = m.y;
+               w.mapView.dragLastX = m.x;
+               w.mapView.dragLastY = m.y;
                return true;
             }
             return false;
          }
 
-         if (event == Event::ArrowLeft)  { panMap(mapView, -mapView.metersPerCell * 4.0, 0.0); return true; }
-         if (event == Event::ArrowRight) { panMap(mapView,  mapView.metersPerCell * 4.0, 0.0); return true; }
-         if (event == Event::ArrowUp)    { panMap(mapView, 0.0,  mapView.metersPerCell * 4.0); return true; }
-         if (event == Event::ArrowDown)  { panMap(mapView, 0.0, -mapView.metersPerCell * 4.0); return true; }
-         if (event == Event::Character('[')) { doMapZoomOut(); return true; }
-         if (event == Event::Character(']')) { doMapZoomIn(); return true; }
-         if (event == Event::Character(',')) { doMapRotateLeft(); return true; }
-         if (event == Event::Character('.')) { doMapRotateRight(); return true; }
-         if (event == Event::Character('t') || event == Event::Character('T')) { doMapToggleTrails(); return true; }
-         if (event == Event::Character('e') || event == Event::Character('E')) { doMapToggleTerrain(); return true; }
-         if (event == Event::Character('v') || event == Event::Character('V')) { doMapTogglePerspective(); return true; }
-         if (event == Event::Character('c') || event == Event::Character('C')) { doMapCenterOnSelected(); return true; }
-         // 'f' de "follow" -- mesmo padrao de 't' (trail) e 'e' (elevation):
-         // mnemonico em ingles, rotulo em portugues. Livre aqui: os dois
-         // outros handlers de 'f' sao gateados por aba (filtro de nivel na
-         // Log, recolher-tudo na Componentes) e nao ha 'f' global. Fica no
-         // MESMO bloco de 't'/'e'/'v'/'c' -- que roda DEPOIS das teclas
-         // globais e portanto carrega a exposicao ja documentada no bloco de
-         // 'activeTab == 5': uma tecla global futura com esta letra roubaria
-         // a do mapa em silencio. Separar so esta das quatro irmas trocaria
-         // um risco hipotetico por uma inconsistencia real de leitura.
-         if (event == Event::Character('f') || event == Event::Character('F')) { doMapToggleFollow(); return true; }
+         if (event == Event::ArrowLeft)  { panMap(w.mapView, -w.mapView.metersPerCell * 4.0, 0.0); return true; }
+         if (event == Event::ArrowRight) { panMap(w.mapView,  w.mapView.metersPerCell * 4.0, 0.0); return true; }
+         if (event == Event::ArrowUp)    { panMap(w.mapView, 0.0,  w.mapView.metersPerCell * 4.0); return true; }
+         if (event == Event::ArrowDown)  { panMap(w.mapView, 0.0, -w.mapView.metersPerCell * 4.0); return true; }
+         if (event == Event::Character('[')) { w.doMapZoomOut(); return true; }
+         if (event == Event::Character(']')) { w.doMapZoomIn(); return true; }
+         if (event == Event::Character(',')) { w.doMapRotateLeft(); return true; }
+         if (event == Event::Character('.')) { w.doMapRotateRight(); return true; }
+         if (event == Event::Character('t') || event == Event::Character('T')) { w.doMapToggleTrails(); return true; }
+         if (event == Event::Character('e') || event == Event::Character('E')) { w.doMapToggleTerrain(); return true; }
+         if (event == Event::Character('v') || event == Event::Character('V')) { w.doMapTogglePerspective(); return true; }
+         if (event == Event::Character('c') || event == Event::Character('C')) { w.doMapCenterOnSelected(); return true; }
+         // 'f' de "follow" -- mesmo padrao de 't' (trail) e 'e' (elevation).
+         if (event == Event::Character('f') || event == Event::Character('F')) { w.doMapToggleFollow(); return true; }
       }
 
       // Interacao da aba "Componentes" -- MESMO raciocinio/estrutura do
-      // bloco do Mapa logo acima (CatchEvent mais externo, gate por
-      // 'componentsCanvasBox.Contain()' pro mouse, clique-vs-arrasto pelo
-      // deslocamento total entre Pressed e Released).
+      // bloco do Mapa logo acima.
       if (activeTab == 5) {
          if (event.is_mouse()) {
             const Mouse& m{event.mouse()};
-            const bool insideCanvas{componentsCanvasBox.Contain(m.x, m.y)};
+            const bool insideCanvas{w.componentsCanvasBox.Contain(m.x, m.y)};
 
-            if (componentsView.dragging) {
+            if (w.componentsView.dragging) {
                if (m.motion == Mouse::Released) {
-                  componentsView.dragging = false;
-                  const int totalMove{std::abs(m.x - componentsView.pressX)
-                                      + std::abs(m.y - componentsView.pressY)};
+                  w.componentsView.dragging = false;
+                  const int totalMove{std::abs(m.x - w.componentsView.pressX)
+                                      + std::abs(m.y - w.componentsView.pressY)};
                   if (totalMove <= 1) {
-                     const int cellX{m.x - componentsCanvasBox.x_min};
-                     const int cellY{m.y - componentsCanvasBox.y_min};
-                     const int hitIndex{hitTestComponentTreeNode(componentsLayout, componentsView,
+                     const int cellX{m.x - w.componentsCanvasBox.x_min};
+                     const int cellY{m.y - w.componentsCanvasBox.y_min};
+                     const int hitIndex{hitTestComponentTreeNode(w.componentsLayout, w.componentsView,
                                                                  cellX, cellY)};
                      if (hitIndex >= 0) {
-                        componentsView.selectedKey =
-                           componentsLayout.nodes[static_cast<std::size_t>(hitIndex)].nodeKey;
+                        w.componentsView.selectedKey =
+                           w.componentsLayout.nodes[static_cast<std::size_t>(hitIndex)].nodeKey;
                      }
                   }
                   return true;
                }
                if (m.motion == Mouse::Moved) {
-                  const int dx{m.x - componentsView.dragLastX};
-                  const int dy{m.y - componentsView.dragLastY};
-                  componentsView.dragLastX = m.x;
-                  componentsView.dragLastY = m.y;
-                  panComponentTree(componentsView, dx * 2.0, dy * 4.0);
+                  const int dx{m.x - w.componentsView.dragLastX};
+                  const int dy{m.y - w.componentsView.dragLastY};
+                  w.componentsView.dragLastX = m.x;
+                  w.componentsView.dragLastY = m.y;
+                  panComponentTree(w.componentsView, dx * 2.0, dy * 4.0);
                   return true;
                }
                return true;
             }
 
             if (!insideCanvas) return false;
-            if (m.button == Mouse::WheelUp) { doCompZoomIn(); return true; }
-            if (m.button == Mouse::WheelDown) { doCompZoomOut(); return true; }
+            if (m.button == Mouse::WheelUp) { w.doCompZoomIn(); return true; }
+            if (m.button == Mouse::WheelDown) { w.doCompZoomOut(); return true; }
             if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
-               componentsView.dragging = true;
-               componentsView.pressX = m.x;
-               componentsView.pressY = m.y;
-               componentsView.dragLastX = m.x;
-               componentsView.dragLastY = m.y;
+               w.componentsView.dragging = true;
+               w.componentsView.pressX = m.x;
+               w.componentsView.pressY = m.y;
+               w.componentsView.dragLastX = m.x;
+               w.componentsView.dragLastY = m.y;
                return true;
             }
             return false;
          }
 
-         // As setas nao chegam aqui -- sao tratadas no bloco de 'activeTab == 5'
-         // la em cima, onde passaram a NAVEGAR entre os nos em vez de mover
-         // o pan (o pan continua no arrasto e em [c] Centralizar).
-         if (event == Event::Character('[')) { doCompZoomOut(); return true; }
-         if (event == Event::Character(']')) { doCompZoomIn(); return true; }
+         // As setas nao chegam aqui -- sao tratadas no bloco de
+         // 'activeTab == 5' la em cima, onde passaram a NAVEGAR entre os
+         // nos em vez de mover o pan.
+         if (event == Event::Character('[')) { w.doCompZoomOut(); return true; }
+         if (event == Event::Character(']')) { w.doCompZoomIn(); return true; }
          if (event == Event::Character('c') || event == Event::Character('C')) {
-            doCompCenterOnSelected(); return true;
+            w.doCompCenterOnSelected(); return true;
          }
       }
 
@@ -2000,12 +883,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    // ---- dialogo de confirmacao (reiniciar/sair) --
-   // MESMO padrao do exemplo oficial modal_dialog_custom.cpp do FTXUI:
-   // Container::Tab so pra ROTEAR evento (so o filho ATIVO recebe -- ver
-   // TabContainer::OnEvent, container.cpp) e a composicao visual (dbox +
-   // clear_under, por cima do resto congelado) feita a mao no Renderer mais
-   // externo. Enquanto 'uiDepth==1', 'withKeys' nao recebe evento NENHUM --
-   // e o que bloqueia interacao com o resto da UI ate confirmar/cancelar.
+   // MESMO padrao do exemplo oficial modal_dialog_custom.cpp do FTXUI.
    const Component btnConfirmYes{makeButton("[Enter] Confirmar", runPendingAction)};
    const Component btnConfirmNo{makeButton("[Esc] Cancelar", cancelPendingAction)};
    const Component confirmButtons{Container::Horizontal({btnConfirmYes, btnConfirmNo})};
@@ -2027,29 +905,9 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
 
    const Component appLayers{Container::Tab({withKeys, confirmDialog}, &uiDepth)};
    const Component appRoot{Renderer(appLayers, [&]() -> Element {
-      // ForCa o foco de TECLADO em 'edlInput' toda vez que a aba "EDL" esta
-      // em cena, com o dialogo de confirmacao FECHADO. Sem isto, o Input
-      // nunca receberia uma tecla sequer por roteamento normal: 'root'
-      // (Container::Vertical{toolbar, breakpointBar, contentTab}) usa um
-      // seletor PROPRIO, nunca alterado em lugar nenhum -- por isso todas
-      // as OUTRAS abas leem/escrevem o estado delas direto no CatchEvent
-      // mais externo (ArrowUp/Down em 'selectedEntityIndex' etc.), em vez
-      // de confiar no foco. O ftxui::Input, ao contrario de um Menu, nao
-      // tem como ser operado assim -- cursor/insercao/selecao sao dele por
-      // dentro -- entao aqui a rota e a INVERSA: usar TakeFocus() (que sobe
-      // a cadeia de pais chamando SetActiveChild em cada nivel, incluindo
-      // 'root') pra fazer o roteamento de verdade funcionar, so nesta aba.
-      // Chamado a cada redesenho (idempotente, barato -- ~9 niveis de
-      // ponteiro) em vez de so na troca de aba: um clique num botao desta
-      // MESMA aba (ex.: "[Validar]") tambem chama TakeFocus() nele mesmo
-      // (comportamento nativo do ftxui::Button ao ser clicado), e sem
-      // reafirmar o foco aqui o proximo caractere digitado se perderia. A
-      // guarda 'uiDepth == 0' e o que impede isto de fechar o dialogo de
-      // confirmacao sozinho: TakeFocus() tambem reajusta 'appLayers' (o
-      // Container::Tab que seleciona 'withKeys' vs. 'confirmDialog' por
-      // 'uiDepth'), e sem a guarda o dialogo nunca conseguiria aparecer
-      // enquanto a aba EDL estivesse ativa.
-      if (activeTab == 6 && uiDepth == 0) edlInput->TakeFocus();
+      // ForCa o foco de TECLADO em 'w.edlInput' toda vez que a aba "EDL"
+      // esta em cena, com o dialogo de confirmacao FECHADO.
+      if (activeTab == 6 && uiDepth == 0) w.edlInput->TakeFocus();
 
       Element doc{withKeys->Render()};
       if (uiDepth == 1) {
@@ -2059,61 +917,52 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    })};
 
    // Ctrl+C: o FTXUI ja instala o proprio handler e sai do Loop() sozinho
-   // (App::ForceHandleCtrlC(true) e o default) -- 'action' fica em Quit, que
-   // e exatamente o que se quer.
+   // (App::ForceHandleCtrlC(true) e o default) -- 'w.action' fica em Quit,
+   // que e exatamente o que se quer.
    //
    // BARREIRA DE EXCECAO -- por que 'catch (...)' e nao 'catch (std::exception&)':
    // o MIXR sinaliza erro de contagem de referencia lancando um PONTEIRO que
-   // NAO deriva de std::exception -- 'if (++(refCount) <= 1) throw new
-   // ExpInvalidRefCount();' (Referenced.hpp:79-81). Um catch tipado nao pegaria
-   // nada. E sem catch nenhum (o estado anterior: nao ha 'try' aqui nem em
-   // main.cpp) qualquer throw vindo do laco da interface vira std::terminate ->
-   // SIGABRT, "core dumped" sem uma linha de explicacao -- pior ainda porque
-   // ftxui::Loop::~Loop() restaura o terminal durante o unwinding, entao o
-   // usuario ve um terminal limpo e nenhuma pista de que a culpa foi da TUI.
+   // NAO deriva de std::exception. Sem catch nenhum qualquer throw vindo do
+   // laco da interface vira std::terminate -> SIGABRT, "core dumped" sem
+   // uma linha de explicacao.
    //
    // NAO se tenta retomar o Loop(): o throw de ref() acontece ANTES do
-   // unlock(semaphore) (o unlock so existe no ramo 'else' da mesma linha),
-   // deixando o spin lock daquele objeto travado para sempre. Depois disto o
-   // processo so pode encerrar -- mas encerrar LIMPO, pelo mesmo caminho do
-   // 'q', que e o que as linhas abaixo fazem.
+   // unlock(semaphore), deixando o spin lock daquele objeto travado para
+   // sempre. Depois disto o processo so pode encerrar -- mas encerrar
+   // LIMPO, pelo mesmo caminho do 'q'.
    //
-   // std::fputs em stderr, nao LOG(): o log toma um mutex global que pode ser
-   // justamente o que ficou preso (mesmo raciocinio do watchdog de
-   // app/Shutdown.cpp).
+   // std::fputs em stderr, nao LOG(): o log toma um mutex global que pode
+   // ser justamente o que ficou preso.
    try {
       screen.Loop(appRoot);
    } catch (...) {
       std::fputs("[app] excecao escapou do laco da interface -- encerrando de "
                  "forma limpa (ver a barreira em app/DashboardLoop.cpp)\n", stderr);
-      action = DashboardExit::Quit;
+      w.action = DashboardExit::Quit;
    }
 
    // ---- ENCERRAMENTO, e a ORDEM aqui e o conserto (ver app/Shutdown.hpp) ----
    //
    // 1) Cala a PRODUTORA primeiro. A thread T/C nativa criada la em cima nao
    //    morre com o fim do Loop() -- ela sobrevive a esta funcao inteira e ao
-   //    SHUTDOWN_EVENT do main.cpp. Enquanto ela roda, segue enfileirando
-   //    registros na fila SEM TETO do gravador; e e a corrida dela contra o
-   //    teardown que produz o auto-deadlock documentado em
-   //    xclock/ClockStation.hpp.
+   //    SHUTDOWN_EVENT do main.cpp.
    quiesceTimeCritical(station, clockStation);
 
-   // 2) So agora para a CONSUMIDORA. Nesta ordem 'simThread' nao pode mais ser
-   //    surpreendida por trabalho novo entrando na fila.
+   // 2) So agora para a CONSUMIDORA. Nesta ordem 'simThread' nao pode mais
+   //    ser surpreendida por trabalho novo entrando na fila.
    running = false;
    simThread.join();
 
-   // 3) Ultima drenagem, com a producao ja parada -- fecha a fila numa passada
-   //    e deixa o DataRecorder::shutdownNotification() do SHUTDOWN_EVENT (que
-   //    tambem drena, mas na thread main) com quase nada para fazer.
+   // 3) Ultima drenagem, com a producao ja parada -- fecha a fila numa
+   //    passada e deixa o DataRecorder::shutdownNotification() do
+   //    SHUTDOWN_EVENT com quase nada para fazer.
    station->updateData(1.0 / static_cast<double>(bgRate));
 
-   // Terminal de volta pro dono anterior -- ver setConsoleEnabled(false)
-   // no inicio desta funcao.
+   // Terminal de volta pro dono anterior -- ver setConsoleEnabled(false) no
+   // inicio desta funcao.
    mixr::xlog::setConsoleEnabled(true);
 
-   return action;
+   return w.action;
 }
 
 } // namespace app

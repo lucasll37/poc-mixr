@@ -43,12 +43,12 @@ long parseLongOrDie(const std::string& flag, const std::string& token)
    } catch (const std::exception&) {
       dieNaoNumero(flag, token);
    }
-   // std::stol para no primeiro caractere que nao e' digito -- NAO lanca
-   // excecao para '3.5'/'7xyz' (converte so o prefixo numerico e ignora o
-   // resto, comportamento documentado da funcao). Achado rodando
-   // (stress-sweep desta sessao): '-threads 3.5' virava '3' sem nenhum
-   // aviso do '.5' descartado -- exatamente o tipo de entrada que este
-   // arquivo promete recusar com mensagem clara (ver o comentario acima).
+   // std::stol para no primeiro caractere que não é dígito -- não lança
+   // exceção para '3.5'/'7xyz' (converte só o prefixo numérico e ignora o
+   // resto, comportamento documentado da função). Sem esta checagem,
+   // '-threads 3.5' viraria '3' sem nenhum aviso do '.5' descartado --
+   // exatamente o tipo de entrada que este arquivo promete recusar com
+   // mensagem clara.
    if (consumido != token.size()) dieNaoNumero(flag, token);
    return valor;
 }

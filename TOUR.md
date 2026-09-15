@@ -98,6 +98,9 @@ no `README.md`, parágrafo de abertura) do zero arrastando classes de uma paleta
 validar o resultado.
 **Onde procurar:** `src/ui/README.md`; `make open-edl`.
 **Critério de sucesso:** exportar um `.edl` que passa sem erro em `./dist/bin/edlcheck <arquivo>`.
+Atalho para ver algo funcionando rápido: botão "Carregar preset" — mas esse cenário de exemplo tem
+um placeholder `@NUM_TC_THREADS@` não resolvido (ver a aba "Abertos" antes de exportar), então
+exportar direto sem preenchê-lo falha no `edlcheck` de propósito, não é bug do preset.
 
 ### 6. Editar/monitorar uma árvore de comportamento com o Groot
 

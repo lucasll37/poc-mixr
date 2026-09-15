@@ -82,12 +82,12 @@ test("tokenize: string alternativa '<...>' vira STR -- faltava inteiramente no c
 });
 
 test("tokenize: string entre aspas NAO interpreta escape -- '\\X' vira DOIS caracteres, gramatica real nao processa nenhum", () => {
-  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l:223-232 so' copia
-  // o conteudo entre aspas byte a byte (utStrcpy sobre yytext+1); o '\\.' no
-  // PADRAO existe so' pra o lexer nao terminar a string cedo demais num '\"'
-  // embutido -- a ACAO nao descarta o backslash. Um valor como '"a\\"b"' na
-  // fonte tem de carregar como os 4 caracteres 'a', '\\', '"', 'b', nao 'a"b'
-  // (3 caracteres, escape estilo C que este scanner nao tem).
+  // edl_scanner.l:223-232 so' copia o conteudo entre aspas byte a byte
+  // (utStrcpy sobre yytext+1); o '\\.' no PADRAO existe so' pra o lexer nao
+  // terminar a string cedo demais num '\"' embutido -- a ACAO nao descarta
+  // o backslash. Um valor como '"a\\"b"' na fonte tem de carregar como os 4
+  // caracteres 'a', '\\', '"', 'b', nao 'a"b' (3 caracteres, escape estilo C
+  // que este scanner nao tem).
   const toks = parser.tokenize('caminho: "C:\\\\data"');
   const strTok = toks.find((t) => t.t === "STR");
   assert.strictEqual(strTok.v, "C:\\\\data", "os DOIS backslashes da fonte tem que sobreviver, nao virar um so'");
@@ -98,11 +98,11 @@ test("tokenize: string entre aspas NAO interpreta escape -- '\\X' vira DOIS cara
 });
 
 test("scalarToSlotValue (via parseEdlDocument): 'TRUE'/'FALSE' maiusculo tambem vira booleano -- gramatica real tem as duas regras", () => {
-  // ACHADO POR AUDITORIA (nao redescobrir): edl_scanner.l:119-140 declara
-  // 'true'/'TRUE'/'false'/'FALSE' como quatro regras distintas -- so'
-  // 'true'/'false' eram reconhecidas aqui. Sem a forma maiuscula, o valor
-  // caia no ramo "text" (campo de texto na UI, nao o toggle) e reexportava
-  // sempre em minusculo, divergindo do '.edl' carregado.
+  // edl_scanner.l:119-140 declara 'true'/'TRUE'/'false'/'FALSE' como quatro
+  // regras distintas -- so' 'true'/'false' eram reconhecidas aqui. Sem a
+  // forma maiuscula, o valor caia no ramo "text" (campo de texto na UI, nao
+  // o toggle) e reexportava sempre em minusculo, divergindo do '.edl'
+  // carregado.
   const { tree: t1 } = parser.parseEdlDocument("( Aircraft navMode: TRUE )", BY_FACTORY);
   assert.deepStrictEqual(t1.slotValues.navMode, { kind: "boolean", value: true });
   const { tree: t2 } = parser.parseEdlDocument("( Aircraft navMode: FALSE )", BY_FACTORY);

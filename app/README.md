@@ -175,6 +175,18 @@ carregado por `-folder` em vez de `-f`, que descobre a frota em runtime.
 tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. Só funciona quando
 `configs/` tem exatamente **um** `.edl`/`.edl.in`.
 
+**A tela de navegação tem uma imagem de fundo, por trás do quadro** — `app/assets/banner.png` (ou
+`.jpg`/`.jpeg`, nessa ordem de preferência), decodificada em **tempo de execução** (nunca embutida
+no binário): trocar o arquivo e rodar `./app` de novo já mostra a imagem nova, sem rebuild. Sem
+nenhum dos três arquivos, a tela abre igual a antes desta funcionalidade existir — degradação
+silenciosa, mesmo padrão de terreno/joystick ausentes. Desenhada célula a célula com o glifo de
+meio-bloco (`▀`, cor de primeiro plano/fundo independentes por metade de célula — a mesma técnica
+de qualquer visualizador de imagem em terminal), reamostrada em modo "cover" (preenche o terminal
+inteiro, preserva a proporção original, corta o excedente) sempre que o terminal muda de tamanho.
+A cor real só aparece com um terminal que anuncie suporte a 24 bits (`$COLORTERM=truecolor`); sem
+isso, o próprio FTXUI degrada para a paleta de 16 cores mais próxima — nada específico desta
+funcionalidade, o resto do `./app` já dependia da mesma detecção. Ver `app/BannerImage.hpp`.
+
 **Fronteira de confiança (achado por auditoria, nunca documentado antes deste parágrafo):**
 carregar um cenário por `-f`/`-folder` — inclusive `-folder ./sandbox`, o fluxo de primeira classe
 para experimentação — é **executar código com os privilégios deste processo**, não só "ler dado".
@@ -234,10 +246,16 @@ descobrir cenários, então não são confundidos com um `.edl.in` de origem.)
 
 `main.cpp` só orquestra (tela → expande `.edl.in` → monta `Station` → `DashboardLoop` ou
 `DeterministicRun` → desliga → reexecuta se for o caso); `DashboardLoop.cpp` roda duas threads
-(simulação a 10 Hz publicando estado sob mutex; a principal só desenha/lê entrada), e cada aba é
-um par `.hpp`/`.cpp` **sem FTXUI nem MIXR direto**, testável isolado. O histórico completo de cada
-decisão de design — e as armadilhas encontradas rodando — está na seção `./app` do
-[CLAUDE.md](../CLAUDE.md); este README não repete o que já está lá.
+(simulação a 10 Hz publicando estado sob mutex; a principal só desenha/lê entrada). Cada aba tem o
+próprio `app/DashboardXTab.cpp` (`DashboardFleetTab.cpp`, `DashboardMapTab.cpp`, ...), uma função
+`buildXTab(DashboardWiring&)` que monta o `ftxui::Component` daquela aba — as sete declaradas
+juntas em `app/include/app/DashboardWiring.hpp`, o header comum que também define o struct
+`DashboardWiring` (o estado que antes vivia todo local a `runDashboard()`, hoje agregado por
+valor). Diferente das camadas mais internas que cada aba consome (`FleetPanel`, `MapPanel`,
+`BackgroundPanel`...), essas funções de "fiação" usam FTXUI diretamente — são o ponto onde o
+estado vira componente de tela — e uma delas (`DashboardLogTab.cpp`) também usa MIXR direto. O
+histórico completo de cada decisão de design — e as armadilhas encontradas rodando — está na
+seção `./app` do [CLAUDE.md](../CLAUDE.md); este README não repete o que já está lá.
 
 ## 8. Limitações conhecidas
 

@@ -32,10 +32,10 @@ echo "${PKG_PATH}/bin/Groot"
 # 'make open-groot' como o CAMINHO do executavel -- qualquer outra linha ali
 # quebraria o alvo.
 #
-# ACHADO RODANDO (nao redescobrir): o marcador NAO esta em bin/Groot --
-# 'sidepanel_monitor.cpp' compila em lib/libbehavior_tree_editor.so, a .so
-# intermediaria entre o QtNodeEditor e o executavel. Procurar so' no binario
-# dava falso alarme mesmo com a FIX 6 aplicada; dai os dois caminhos abaixo.
+# O marcador NAO esta em bin/Groot -- 'sidepanel_monitor.cpp' compila em
+# lib/libbehavior_tree_editor.so, a .so intermediaria entre o QtNodeEditor e
+# o executavel. Procurar so' no binario dava falso alarme mesmo com a FIX 6
+# aplicada; dai os dois caminhos abaixo.
 if command -v strings >/dev/null 2>&1; then
   if ! strings "${PKG_PATH}/bin/Groot" "${PKG_PATH}/lib/libbehavior_tree_editor.so" 2>/dev/null \
        | grep -q 'POC-MIXR-FIX6'; then

@@ -25,17 +25,27 @@
 # UI comecam. A busca e por texto de proposito -- e barata, roda em toda
 # execucao da suite, e o modo de falha que ela impede (alguem acrescentar um
 # 'station->' novo dentro do Renderer) e exatamente textual.
+#
+# FASE 7 (2026-09): a construcao de cada aba saiu de DashboardLoop.cpp para
+# app/Dashboard{Fleet,Map,Memory,Background,Log,Components,Edl}Tab.cpp -- a
+# guarda ficaria CEGA a um 'station->' novo introduzido num desses sete
+# arquivos se so continuasse olhando DashboardLoop.cpp. Por isso o padrao
+# proibido roda sobre o CONTEUDO INTEIRO de cada um deles (sao, por
+# construcao, so' codigo de thread de desenho -- nenhum roda em 'simThread'),
+# alem da regiao de UI de DashboardLoop.cpp de sempre.
 set -u
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ALVO="$RAIZ/app/src/app/DashboardLoop.cpp"
+ABAS="$RAIZ"/app/src/app/Dashboard*Tab.cpp
 
 if [ ! -f "$ALVO" ]; then
    echo "check_ui_thread_sem_mixr: nao achei $ALVO" >&2
    exit 1
 fi
 
-# A regiao de UI vai do primeiro Renderer/CatchEvent ate o 'screen.Loop()'.
+# A regiao de UI de DashboardLoop.cpp vai do primeiro Renderer/CatchEvent ate
+# o Loop() do FTXUI.
 #   * Antes do inicio: declaracoes e o corpo de 'simThread' -- ela PODE (e deve)
 #     tocar o MIXR, e o trabalho dela.
 #   * Depois do Loop(): o encerramento, que roda depois de 'simThread.join()' e
@@ -45,8 +55,8 @@ fi
 INICIO="$(grep -n 'Renderer(\|CatchEvent(' "$ALVO" | head -1 | cut -d: -f1)"
 FIM="$(grep -n 'screen\.Loop(' "$ALVO" | head -1 | cut -d: -f1)"
 if [ -z "$INICIO" ] || [ -z "$FIM" ] || [ "$FIM" -le "$INICIO" ]; then
-   echo "check_ui_thread_sem_mixr: nao achei a regiao de UI (Renderer/CatchEvent .. screen.Loop)" >&2
-   echo "  -- o arquivo mudou de forma; reveja esta guarda em vez de desliga-la." >&2
+   echo "check_ui_thread_sem_mixr: nao achei a regiao de UI (Renderer/CatchEvent .. screen.Loop) em" >&2
+   echo "  $ALVO -- o arquivo mudou de forma; reveja esta guarda em vez de desliga-la." >&2
    exit 1
 fi
 
@@ -55,15 +65,20 @@ fi
 # requestTcStop/waitForTcQuiesced). O proibido e o grafo do FRAMEWORK.
 PADRAO='station->|worldModel->|discoverComponentTree|makeTerrainSampler|->getPlayers\(|->getComponents\(|->getNetworks\('
 
-ACHADOS="$(sed -n "${INICIO},${FIM}p" "$ALVO" \
-   | grep -nE "$PADRAO" \
-   | grep -v 'clockStation->' \
-   | grep -vE '^[0-9]+:[[:space:]]*//' || true)"
+ACHADOS="$( { sed -n "${INICIO},${FIM}p" "$ALVO" \
+      | grep -nE "$PADRAO" \
+      | grep -v 'clockStation->' \
+      | grep -vE '^[0-9]+:[[:space:]]*//' \
+      | sed "s#^#$ALVO (regiao de UI, a partir da linha $INICIO): #";
+   for aba in $ABAS; do
+      grep -nE "$PADRAO" "$aba" \
+         | grep -v 'clockStation->' \
+         | grep -vE '^[0-9]+:[[:space:]]*//' \
+         | sed "s#^#$aba: #"
+   done; } || true)"
 
 if [ -n "$ACHADOS" ]; then
    echo "FALHA: a thread de DESENHO voltou a tocar o grafo vivo do MIXR." >&2
-   echo "  (numeracao relativa ao inicio da regiao de UI, linha $INICIO de" >&2
-   echo "   app/src/app/DashboardLoop.cpp; a regiao termina no screen.Loop() da $FIM)" >&2
    echo "$ACHADOS" | sed 's/^/    /' >&2
    echo >&2
    echo "  Leia o cabecalho deste script. O caminho certo e capturar o dado em" >&2

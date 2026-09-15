@@ -59,18 +59,7 @@ if (escritos != 3) { /* falha -- o no devolve FAILURE, o Fallback decide */ }
 
 `xinfer` não sabe o que os números significam — quem monta `entrada[]` na ordem
 certa e interpreta `saida[]` como rumo/altitude/velocidade é o próprio
-`OnnxPolicyAction::tick()`. Teste: `tests/domain/test_xinfer.cpp`
-(suíte `domain`) — degradação (arquivo vazio/inexistente/inválido nunca aborta,
-falha não entra no cache) e o caminho feliz contra o `.onnx` de verdade que o
-modelo instala (forma do contrato, mesmo id por caminho, determinismo bit a bit
-em 1000 repetições e entre 4 threads concorrentes).
-
-## Por que é uma `shared_library()` do SDK
-
-O mesmo argumento de [`xboard`](../xboard/Board.hpp) e [`xrlbridge`](../xrlbridge/RLBridge.hpp),
-mais uma razão própria: o ONNX Runtime em Debug pesa **576 MB** depois de linkado, e
-`models/players/A-4/meson.build` gera **quatro** artefatos do mesmo `model_sources`. Dentro do plugin
-seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui é uma.
+`OnnxPolicyAction::tick()`.
 
 ## Números medidos
 
@@ -98,3 +87,17 @@ seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui
    concorrente; segurar o mutex serializaria as quatro aeronaves sem necessidade.
 5. **Falha nunca aborta.** `open()` devolve `0` e loga; o consumidor degrada — mesma política do
    joystick ausente (`libs/xjoystick`) e da árvore que não carrega (`ubf/BtBehavior`).
+
+## Por que é uma `shared_library()` do SDK
+
+O mesmo argumento de [`xboard`](../xboard/Board.hpp) e [`xrlbridge`](../xrlbridge/RLBridge.hpp),
+mais uma razão própria: o ONNX Runtime em Debug pesa **576 MB** depois de linkado, e
+`models/players/A-4/meson.build` gera **quatro** artefatos do mesmo `model_sources`. Dentro do plugin
+seriam quatro cópias, recopiadas por `sync-plugins` a cada `make install`. Aqui é uma.
+
+## Testes
+
+`tests/domain/test_xinfer.cpp` (suíte `domain`) — degradação (arquivo vazio/inexistente/inválido
+nunca aborta, falha não entra no cache) e o caminho feliz contra o `.onnx` de verdade que o modelo
+instala (forma do contrato, mesmo id por caminho, determinismo bit a bit em 1000 repetições e
+entre 4 threads concorrentes).

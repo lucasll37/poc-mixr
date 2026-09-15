@@ -9,14 +9,6 @@ depois — se ela se provar — reescrever em C++. É a tensão registrada em `T
 python para migrar para mixr/cpp facilita a prototipagem mas abre margem para desafios de
 integração") com os desafios de integração resolvidos.
 
-## Por que é uma `shared_library()` do SDK
-
-O mesmo argumento de [`xboard`](../xboard/Board.hpp) e [`xinfer`](../xinfer/README.md), mais uma
-razão própria: o `-Wl,--no-undefined` de um plugin proíbe chamar a API C do CPython sem linkar
-`libpython`, e as extensões C do Python só importam com `libpython` no escopo global — dois
-motivos que, sozinhos, já tirariam essa lógica de dentro do `.so` do modelo. Contida aqui, o
-plugin continua com 12 MB e um símbolo forte só.
-
 ## Como se usar
 
 Ninguém declara `libs/xpyembed` num `.edl` — quem chama a API é um nó de BehaviorTree.CPP dentro
@@ -134,3 +126,11 @@ um subinterpretador por aeronave, e o pybind11 desta versão não os suporta.
    `std::deque<Script>`: inserção no fim nunca invalida referência a elemento existente (só
    iteradores). Travado por
    `tests/domain/test_xpyembed.cpp::CarregarScriptsNovosNaoCorrompeDecideEmAndamento`.
+
+## Por que é uma `shared_library()` do SDK
+
+O mesmo argumento de [`xboard`](../xboard/Board.hpp) e [`xinfer`](../xinfer/README.md), mais uma
+razão própria: o `-Wl,--no-undefined` de um plugin proíbe chamar a API C do CPython sem linkar
+`libpython`, e as extensões C do Python só importam com `libpython` no escopo global — dois
+motivos que, sozinhos, já tirariam essa lógica de dentro do `.so` do modelo. Contida aqui, o
+plugin continua com 12 MB e um símbolo forte só.

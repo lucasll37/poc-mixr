@@ -246,6 +246,22 @@ test_app_picker_geometry = executable('test-app-picker-geometry',
 )
 test('app-picker-geometry', test_app_picker_geometry, suite: 'domain', timeout: 60)
 
+# A reamostragem PURA por tras do fundo da tela de selecao de cenario
+# (app/BannerImage.hpp/.cpp -- ver app/ScenarioPickerScreen.cpp) mais a
+# degradacao graciosa de decodeBannerFile()/firstExistingPath() quando o
+# arquivo nao existe. Sem FTXUI/MIXR -- so std::filesystem e o proprio
+# stb_image (vendorizado em app/thirdparty/, ver o README daquela pasta),
+# tao enxuto quanto app-scenario-folder/app-picker-geometry acima.
+test_app_banner_image = executable('test-app-banner-image',
+    files('../app/tests/test_banner_image.cpp') + files(
+        '../app/src/app/BannerImage.cpp',
+    ),
+    include_directories : [include_directories('../app/include'), include_directories('../app/thirdparty')],
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-banner-image', test_app_banner_image, suite: 'domain', timeout: 60)
+
 # A logica pura por tras da animacao de fluxo da aba "Componentes" (F6) --
 # app/ComponentFlowState.hpp/.cpp: ordem do ciclo de fases, avanco (com
 # volta), e o relogio de animacao por CONTAGEM DE REDESENHOS (nao tempo de

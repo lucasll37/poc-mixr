@@ -93,15 +93,6 @@ desta lib): `RadarScan` lê para onde a antena está *apontando agora* (`Gimbal:
 etc.), para alimentar a varredura no Tacview — é o *apontamento*. `TrackQuery` lê o *contato já
 detectado* — é a pista.
 
-## Por que é `shared_library()`, e não estática
-
-Mesmo argumento de [`xboard`](../xboard/README.md) (ver `Board.hpp`): é a única peça disputada
-pelos dois lados da fronteira de `dlopen`. O core precisa dela para o `track=`/`trackRange=` do dump (e do painel do
-`./app`); o modelo precisa dela para a percepção (`ubf::FlightState`). A alternativa seria
-compilar o mesmo `.cpp` dos dois lados — funciona (as funções não têm estado), mas depois que o
-fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do arquivo em duas
-árvores**, que divergem em silêncio. Uma `.so` a mais no SDK é mais barata que essa divergência.
-
 ## Armadilhas confirmadas
 
 1. **`getTrackManagerByName()` não é `const` no framework**, embora a consulta seja de leitura —
@@ -117,6 +108,15 @@ fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do 
    ACIMA do ownship chega com valor NEGATIVO ali — o sinal já sai invertido no `.cpp` para que
    "positivo" em `deltaAltM` signifique "contato acima", que é a convenção que o resto da
    aplicação espera.
+
+## Por que é `shared_library()`, e não estática
+
+Mesmo argumento de [`xboard`](../xboard/README.md) (ver `Board.hpp`): é a única peça disputada
+pelos dois lados da fronteira de `dlopen`. O core precisa dela para o `track=`/`trackRange=` do dump (e do painel do
+`./app`); o modelo precisa dela para a percepção (`ubf::FlightState`). A alternativa seria
+compilar o mesmo `.cpp` dos dois lados — funciona (as funções não têm estado), mas depois que o
+fonte do modelo saiu para `models/players/A-4/`, isso viraria **duas cópias do arquivo em duas
+árvores**, que divergem em silêncio. Uma `.so` a mais no SDK é mais barata que essa divergência.
 
 ## Testes
 

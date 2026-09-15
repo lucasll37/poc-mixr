@@ -128,18 +128,15 @@ function main() {
   // script (ver o comentario de 'core' no topo de edl_parser_core.js).
   const coreSrc = fs.readFileSync(CORE, "utf8") + "\n" + fs.readFileSync(PARSER_CORE, "utf8") + "\n";
 
-  // ARMADILHA MEDIDA (nao redescobrir): o preset "react" TEM de levar
-  // runtime: "classic" EXPLICITO. O default mudou no Babel 8 (instalado aqui
-  // sem pin, por 'npm install @babel/standalone') de "classic" para
-  // "automatic" -- e o automatic emite
-  // 'import { jsx as _jsx } from "react/jsx-runtime"' no topo do codigo
-  // gerado. Como esse codigo e' concatenado num <script> CLASSICO (nao
-  // type="module", e nao ha bundler nenhum aqui), o navegador aborta o bloco
-  // inteiro com "Uncaught SyntaxError: Cannot use import statement outside a
-  // module" -- a pagina abre, o <title> aparece, e o <div id="root"> fica
-  // VAZIO: tela branca, sem nenhum erro visivel na tela. Medido no Chrome
-  // com @babel/standalone 8.0.4. Com "classic" o JSX volta a virar
-  // React.createElement, que e' o que casa com o React UMD embutido acima.
+  // O preset "react" precisa de runtime: "classic" explícito. O default do
+  // Babel 8 (instalado aqui sem pin, por 'npm install @babel/standalone') é
+  // "automatic", que emite 'import { jsx as _jsx } from "react/jsx-runtime"'
+  // no topo do código gerado -- inválido num <script> CLÁSSICO (não
+  // type="module", sem bundler nenhum aqui): o navegador aborta o bloco
+  // inteiro com "Cannot use import statement outside a module", e a página
+  // fica com o <div id="root"> vazio (tela branca, sem erro visível na
+  // tela). Com "classic" o JSX vira React.createElement, que casa com o
+  // React UMD embutido acima.
   const { code } = Babel.transform(src, { presets: [["react", { runtime: "classic" }]], filename: "edl_builder.jsx", comments: true });
 
   // Smoke-check pos-transpile (achado por auditoria): pega a MESMA classe de

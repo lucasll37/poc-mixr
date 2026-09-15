@@ -210,18 +210,17 @@ por passo, penalidade grande se `terminated`), substituivel pelo parametro
   cenario misturaria os comandos/observacoes dos dois.
 - **`player_name` TEM DE bater com o player que o `.edl` configurou com
   `( RLBridgeBehavior )`** (default: `falcon1`, em
-  `src/rl/configs/scenario_rl.edl`) -- BUG CONFIRMADO E CORRIGIDO: como a
-  ponte nao tem chave por player id (item acima), `step()`/`reset()` sempre
-  trocam Command/Observation com o player que o `.edl` escolheu, nunca com o
-  `player_name` passado ao construtor. Antes da correcao, pedir um
-  `player_name` diferente (typo, ou um player que existe mas nao e o
-  configurado com `RLBridgeBehavior` -- ex.: `falcon2..4`) fazia
+  `src/rl/configs/scenario_rl.edl`): como a ponte não tem chave por player id
+  (item acima), `step()`/`reset()` sempre trocam Command/Observation com o
+  player que o `.edl` escolheu, nunca com o `player_name` passado ao
+  construtor. Um `player_name` diferente (typo, ou um player que existe mas
+  não é o configurado com `RLBridgeBehavior` — ex.: `falcon2..4`) faria
   `terminated` ficar preso em `False` para sempre, silenciosamente: a
-  checagem de `isCrashed()` olhava um player sem nenhuma relacao com o
-  Command/Observation reais. `NativeSimulation::reset()` agora falha com um
-  erro claro se o player pedido nao existir no cenario; nao ha como validar
-  daqui que e o MESMO player com `RLBridgeBehavior` -- esse tipo mora no
-  plugin do modelo, que este core nao pode conhecer
+  checagem de `isCrashed()` olharia um player sem nenhuma relação com o
+  Command/Observation reais. `NativeSimulation::reset()` falha com um erro
+  claro se o player pedido não existir no cenário; não há como validar
+  daqui que é o MESMO player com `RLBridgeBehavior` — esse tipo mora no
+  plugin do modelo, que este core não pode conhecer
   (`tests/guard/check_core_opaco.sh`).
 - **SO PODE EXISTIR UMA `Station` POR PROCESSO -- confirmado, nao e mais
   hipotese.** `libs/xplugin` sela o registro de plugins depois do

@@ -39,7 +39,7 @@ namespace xC_130 {
 //              nativo de AbstractWeapon::dynamics() em PRE_RELEASE aplica
 //              offset ZERO, e o placeholder nasce colado na posicao exata do
 //              C-130 -- no Tacview, o instante da liberacao parece uma
-//              colisao com a aeronave (achado rodando sandbox/C-130_paratrooper-6DOF).
+//              colisao com a aeronave.
 //              15 m atras / 10 m abaixo, fixos aqui sem slot (esta classe e
 //              so um placeholder provisorio) -- os mesmos defaults do modelo
 //              real.

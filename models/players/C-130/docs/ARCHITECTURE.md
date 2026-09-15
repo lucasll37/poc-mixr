@@ -141,8 +141,7 @@ Nome de fábrica `"C130ParatrooperPlaceholder"` — **não** `"Paratrooper"` —
 esse nome colidiria com `check_colisao_fabrica.py` assim que os dois `.so` carregassem juntos no
 mesmo processo (como já acontece hoje nos dois cenários citados acima).
 
-**Uma sobrescrita, não zero — `dynamics()`, o offset de liberação (achado rodando
-`sandbox/C-130-6DOF`, corrigido, não redescobrir).** Sem ela, `AbstractWeapon::dynamics()` em
+**Uma sobrescrita, não zero — `dynamics()`, o offset de liberação.** Sem ela, `AbstractWeapon::dynamics()` em
 `PRE_RELEASE` aplica um deslocamento zero (`initXPos`/`initYPos`/`initAlt` nunca declarados no
 EDL da estação) e o placeholder nasce **exatamente** na posição do C-130 — no Tacview, o instante
 da largada parecia o paraquedista colidindo com a aeronave, e ele aparecia como um bloco genérico

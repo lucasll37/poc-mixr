@@ -30,7 +30,7 @@ Trocar de aeronave sem recalibrar pelo menos as velocidades comandadas (`patrolS
 `JSBSimModel` exige para os modos de hold funcionarem — ver `JSBSimModel.cpp`) não faria sentido —
 por isso a aeronave viaja **com** o modelo, não com o cenário.
 
-**Limite conhecido, medido rodando na troca c310 -> A-4 (não redescobrir):** os dados aerodinâmicos
+**Limite conhecido, medido rodando na troca c310 -> A-4:** os dados aerodinâmicos
 do A-4 em `shared/data/jsbsim/aircraft/A4/A4.xml` (Aeromatic, `shared/data/jsbsim/README`-adjacent)
 têm um modo látero-direcional levemente instável em espiral (`Clb·Cnr < Clr·Cnb` com os
 coeficientes do próprio arquivo — `Clb=-0.1 Cnr=-0.15 Clr=0.15 Cnb=0.12`), e o `JSBSimModel::

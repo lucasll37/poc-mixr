@@ -20,7 +20,7 @@
 // repositorio precisa de DOM simulado) -- instalado sob demanda, mesmo
 // padrao (pinado, self-healing) que compile.js ja usa para
 // @babel/standalone, mas num PREFIXO PROPRIO (.cache-dom/), nunca dentro de
-// src/ui/.cache/. ACHADO RODANDO, nao suposto: 'npm install <pkg> --prefix
+// src/ui/.cache/. 'npm install <pkg> --prefix
 // DIR --no-save' reconcilia o node_modules INTEIRO daquele prefixo contra
 // um manifesto efemero de UM pacote so -- rodar isso duas vezes com pacotes
 // DIFERENTES no MESMO prefixo faz a segunda chamada PODAR as dependencias

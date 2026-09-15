@@ -26,10 +26,9 @@
 # abriu em vez de terminar verde. Imprimir a URL e' rede de seguranca, nao
 # sucesso.
 #
-# ARMADILHA CONFIRMADA -- nao redescobrir: 'explorer.exe' devolve codigo de
-# saida 1 mesmo quando abre a pagina com sucesso (comportamento conhecido do
-# proprio Windows, nao um erro deste script). Por isso o degrau 4 nao pode ser
-# julgado por "codigo != 0".
+# 'explorer.exe' devolve codigo de saida 1 mesmo quando abre a pagina com
+# sucesso (comportamento conhecido do proprio Windows, nao um erro deste
+# script). Por isso o degrau 4 nao pode ser julgado por "codigo != 0".
 #
 # SEGUNDA ARMADILHA, MEDIDA DEPOIS -- e a razao de o teste nao ser mais um
 # '|| true' cru: ignorar o codigo INTEIRO tambem engole o 126 ("cannot execute

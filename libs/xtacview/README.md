@@ -112,6 +112,14 @@ radar, então quem já tem o `AirVehicle` nativo em mãos (o laço de tempo real
 dado direto — só emite se o objeto já recebeu um `T=` no stream (rastreado em `declared`), senão o
 Tacview receberia `RadarAzimuth=` para um id desconhecido.
 
+## `ExposedDataRecorder`
+
+`mixr::recorder::DataRecorder` guarda `getOutputHandler()` como `protected` — sem alcance de fora
+não há como o core achar o `TacviewOutput` para chamar `publishIdentities()`/`updateRadarScan()`.
+`ExposedDataRecorder` é o mesmo `DataRecorder` nativo, só republicando esse getter como público
+(`using recorder::DataRecorder::getOutputHandler;`); trocar `( DataRecorder )` por
+`( ExposedDataRecorder )` no `.edl` roda idêntico — mesmo objeto, nenhum slot novo.
+
 ## Armadilhas confirmadas
 
 1. **`dataLogTime` nasce zero.** É slot do `Player`, não deste handler — sem
@@ -152,14 +160,6 @@ fronteira de plugin `dlopen`), `xtacview` não precisa de estado compartilhado e
 — é consumida só pelo core, direto do slot `dataRecorder:` da `Station`. Por isso um plugin
 **não pode** linkar `xtacview_dep`: ganharia cópia própria dos estáticos dela (mesma regra
 documentada em `libs/xplugin/README.md`).
-
-## `ExposedDataRecorder`
-
-`mixr::recorder::DataRecorder` guarda `getOutputHandler()` como `protected` — sem alcance de fora
-não há como o core achar o `TacviewOutput` para chamar `publishIdentities()`/`updateRadarScan()`.
-`ExposedDataRecorder` é o mesmo `DataRecorder` nativo, só republicando esse getter como público
-(`using recorder::DataRecorder::getOutputHandler;`); trocar `( DataRecorder )` por
-`( ExposedDataRecorder )` no `.edl` roda idêntico — mesmo objeto, nenhum slot novo.
 
 ## Testes
 

@@ -61,10 +61,9 @@
   'gear/unit/WOW' so importam em solo, e nenhum cenario desta PoC-mixr
   pousa - o ramo "no ar" (WOW == 0) e o unico exercitado.
 
-  ACHADO CONFIRMADO RODANDO, CORRIGIDO (historico - nao redescobrir; o
-  "como" da correcao esta no proprio C130.xml curado, no comentario do
-  bloco <propulsion>): este canal chegou a NAO SUSTENTAR velocidade
-  nenhuma - medido em src/poc/c130-airdrop, a aeronave desacelerava
+  Historico (o "como" da correcao esta no proprio C130.xml curado, no
+  comentario do bloco <propulsion>): este canal chegou a NAO SUSTENTAR
+  velocidade nenhuma - medido em src/poc/c130-airdrop, a aeronave desacelerava
   continuamente (170 -> 88 kt em 60s simulados) independente do bias/ganho
   do PID (testado com bias 0.60/0.85/5.0-clipado-a-1.0: resultado de
   velocidade PRATICAMENTE IDENTICO nos tres, embora o consumo de
