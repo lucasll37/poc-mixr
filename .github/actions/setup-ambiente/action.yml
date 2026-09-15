@@ -1,3 +1,16 @@
+# SALVAR COMO: .github/actions/setup-ambiente/action.yml
+#
+# Correcoes em relacao a primeira versao:
+#  - 'sudo' removido de todas as chamadas: o job roda como root dentro do
+#    container, entao 'sudo' so acrescenta uma dependencia (e falharia com
+#    "sudo: not found" caso a linha do NodeSource fosse executada antes do
+#    SS1, que e' quem instala o pacote).
+#  - 'apt install' -> 'apt-get install': o 'apt' emite
+#    "WARNING: apt does not have a stable CLI interface" em script.
+#  - 'shell: bash' ja estava correto em cada step (obrigatorio em composite
+#    action) -- e' o que fazia esta action passar enquanto o step solto do
+#    workflow caia no 'sh -e {0}' e morria em "Illegal option -o pipefail".
+
 name: "Ambiente (INSTALL.md)"
 description: >-
   Sobe o ambiente do zero dentro do container ubuntu:24.04, replicando o
@@ -25,9 +38,13 @@ runs:
 
         # -- SS1: pacotes de sistema -----------------------------------
         # Mesma lista testada no roteiro (Ubuntu 24.04 do zero), sem os
-        # recomendados.
+        # recomendados. 'git' e 'ca-certificates' ja costumam estar
+        # presentes (o workflow os instala antes do checkout), mas ficam na
+        # lista para esta action continuar autossuficiente se usada solta.
         apt-get update
-        apt-get install -y --no-install-recommends build-essential ninja-build meson pkg-config git curl perl patch zlib1g-dev python3 python3-venv python3-dev pipx gzip sudo ca-certificates
+        apt-get install -y --no-install-recommends \
+          build-essential ninja-build meson pkg-config git curl perl patch \
+          zlib1g-dev python3 python3-venv python3-dev pipx gzip ca-certificates
         rm -rf /var/lib/apt/lists/*
 
         # -- SS2: Conan via pipx, nao pip --------------------------------
@@ -45,6 +62,12 @@ runs:
         # -- SS3: perfil default ----------------------------------------
         # Sem isto o primeiro 'make configure' morre com "The default build
         # profile doesn't exist".
+        #
+        # Registra no log onde o Conan esta de fato guardando os pacotes --
+        # util para confirmar que CONAN_HOME aponta para dentro da arvore do
+        # workspace (e portanto cai no cache), e nao para um caminho do HOST
+        # que nao existe neste container.
+        echo "CONAN_HOME=${CONAN_HOME:-<nao definido>}"
         conan profile detect --force
         # SEM remote privado nenhum -- ver o comentario do topo do
         # .gitlab-ci.yml original. Isto so registra no log que o unico
@@ -54,13 +77,19 @@ runs:
         # -- SS5: Node.js pelo NodeSource --------------------------------
         # 'setup_<N>.x' roda o PROPRIO apt-get update e instala sozinho os
         # pre-requisitos que a imagem nao tem (gnupg, apt-transport-https).
-        curl -fsSL "https://deb.nodesource.com/setup_${{ inputs.node-major }}.x" | sudo -E bash -
-        sudo apt install -y nodejs
-        sudo npm install -g npm@latest
+        curl -fsSL "https://deb.nodesource.com/setup_${{ inputs.node-major }}.x" | bash -
+        apt-get install -y --no-install-recommends nodejs
+        npm install -g npm@latest
         rm -rf /var/lib/apt/lists/*
 
         # -- SS6: checagem final ------------------------------------------
-        gcc --version && meson --version && ninja --version && pkg-config --version && conan --version && node --version && npm --version
+        gcc --version
+        meson --version
+        ninja --version
+        pkg-config --version
+        conan --version
+        node --version
+        npm --version
 
         # Disponibiliza o Conan (instalado via pipx em $HOME/.local/bin)
         # para os passos SEGUINTES deste job (make configure/sdk/... chamam

@@ -31,6 +31,43 @@
 # para GitHub Actions neste repositorio -- a ferramenta mais proxima e
 # https://github.com/nektos/act (roda os jobs num container Docker local a
 # partir deste mesmo arquivo).
+#
+# ---------------------------------------------------------------------------
+# CORRECOES APLICADAS (em relacao a primeira versao deste arquivo)
+# ---------------------------------------------------------------------------
+# (a) 'defaults.run.shell: bash'. Sem isto, um step 'run:' que nao declara
+#     'shell:' pode cair no fallback 'sh -e {0}' do runner -- e o /bin/sh do
+#     Ubuntu e' o dash, que nao implementa 'pipefail'. Sintoma exato:
+#       "set: Illegal option -o pipefail" + "exit code 2".
+#     A action composta ./.github/actions/setup-ambiente nao era afetada
+#     porque step de composite action e' OBRIGADO a declarar 'shell:' (e la
+#     ja estava 'bash') -- foi justamente isso que provou que o bash existe
+#     na imagem.
+#
+# (b) CONAN_HOME nao pode usar '${{ github.workspace }}'. Essa expressao e'
+#     resolvida com o caminho do HOST (/home/runner/work/<repo>/<repo>),
+#     que NAO existe dentro do container (la o workspace e'
+#     /__w/<repo>/<repo>). O Conan acabava escrevendo fora da arvore
+#     cacheada e o cache de pacotes Conan nunca dava hit. Agora e' resolvido
+#     em runtime, via $PWD, num step apos o checkout de cada job.
+#
+# (c) 'git' instalado ANTES do actions/checkout. Sem git na imagem, o
+#     checkout cai no download do tarball pela API REST: funciona, mas o
+#     diretorio .git nao e' criado -- o que quebra 'git clone'/submodules em
+#     ./scripts/deps.sh e qualquer 'vcs_tag()'/'git describe' no Meson.
+#
+# (d) O estado do build vai como TAR, nao como arvore solta.
+#     upload-artifact/download-artifact nao preservam bit de execucao nem
+#     symlink: 'dist/bin/' voltava sem +x nos tres jobs de teste e os
+#     symlinks das arvores Meson/Ninja voltavam como copias. Empacotar
+#     tambem troca dezenas de milhares de objetos por um arquivo so (upload
+#     e download muito mais rapidos).
+#
+# (e) 'sudo' removido das chamadas apt. O job roda como root no container;
+#     'sudo' so adiciona uma dependencia a mais. E 'apt' trocado por
+#     'apt-get' (o 'apt' avisa que nao tem CLI estavel para scripts) com
+#     --no-install-recommends, consistente com o resto do roteiro.
+# ---------------------------------------------------------------------------
 
 name: CI
 
@@ -42,12 +79,20 @@ on:
 permissions:
   contents: read
 
+# Correcao (a): shell explicito para TODO step 'run:' de TODO job deste
+# arquivo. Nao afeta a action composta (composite ignora 'defaults' e ja
+# declara 'shell: bash' em cada step).
+defaults:
+  run:
+    shell: bash
+
 env:
   DEBIAN_FRONTEND: noninteractive
   # Linha do Node que INSTALL.md SS5 fixa ("24 Krypton", a LTS ativa).
   NODE_MAJOR: "24"
-  # Fora do HOME do container efemero, para caber no cache do Conan abaixo.
-  CONAN_HOME: ${{ github.workspace }}/.conan2-cache
+  # NOTA: CONAN_HOME saiu daqui de proposito -- ver correcao (b) no topo.
+  # Cada job define a variavel em runtime, logo apos o checkout.
+  #
   # Container efemero (descartado ao fim do job) entao nao ha risco de
   # __pycache__ vazar pro repositorio daqui -- mas os Makefiles ja exportam
   # isto para toda invocacao local de 'conan'/'python3'/'pytest' (ver
@@ -64,7 +109,18 @@ jobs:
     container: ubuntu:24.04
     timeout-minutes: 360 # 6h, igual ao 'timeout: 6h' do job 'build' original
     steps:
+      # Correcao (c): precisa vir ANTES do checkout.
+      - name: "Pre-checkout: git + CA certificates"
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
+
+      # Correcao (b): caminho real DENTRO do container, resolvido em runtime.
+      - name: "CONAN_HOME (caminho dentro do container)"
+        run: echo "CONAN_HOME=$PWD/.conan2-cache" >> "$GITHUB_ENV"
 
       # Cache 1 do .gitlab-ci.yml: pacotes Conan, chaveado pelo CONTEUDO das
       # receitas (so muda quando uma versao de dependencia pinada muda, nao
@@ -107,12 +163,13 @@ jobs:
       # So este job precisa deles (o 'test' nunca toca 'deps/groot'). O
       # 'apt-get update' NAO e redundante: a action de ambiente termina
       # removendo /var/lib/apt/lists/*, entao o indice de pacotes precisa
-      # ser refeito antes deste 'apt install'.
+      # ser refeito antes deste 'apt-get install'.
       - name: "INSTALL.md SS4: pacotes do Groot"
         run: |
           set -euo pipefail
           apt-get update
-          sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
+          apt-get install -y --no-install-recommends \
+            cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
           rm -rf /var/lib/apt/lists/*
 
       - name: "./scripts/deps.sh (mixr/behaviortree/jsbsim/openrti/Groot do fonte)"
@@ -154,23 +211,41 @@ jobs:
             dist/bin/
             plugins/
 
+      # Correcao (d): empacotar preserva permissao de execucao e symlink --
+      # coisas que o par upload/download-artifact PERDE. Sem isto, 'dist/bin/'
+      # chega nos jobs de teste sem +x.
+      - name: "Empacotar estado do build (preserva +x e symlinks)"
+        if: always()
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          paths=()
+          for d in build dist plugins models/*/*/build models/*/*/dist; do
+            if [ -e "$d" ]; then paths+=("$d"); fi
+          done
+          if [ "${#paths[@]}" -eq 0 ]; then
+            echo "Nada construido -- nenhum estado de build a publicar." >&2
+            exit 0
+          fi
+          tar -czf build-state.tar.gz "${paths[@]}"
+          ls -lh build-state.tar.gz
+
       # Entrega o estado COMPLETO do build para 'test'/'test-asan'/'test-rl'
       # nesta MESMA execucao -- o equivalente funcional do 'needs: [build]'
       # + cache de branch do GitLab (ver nota (1) no topo deste arquivo).
       # Retencao curta: e' so um artefato de passagem interno ao pipeline.
+      #
+      # 'if-no-files-found: warn' (e nao 'error'): num build que falhou antes
+      # de produzir qualquer coisa, um erro aqui so mascararia a causa raiz
+      # no log. Os jobs de teste tem 'needs: build' e nem chegam a rodar.
       - name: "Artefatos: estado do build (para os jobs de teste)"
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-state
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 1
-          path: |
-            build/
-            dist/
-            plugins/
-            models/**/build/
-            models/**/dist/
+          path: build-state.tar.gz
 
   test:
     needs: build
@@ -178,7 +253,16 @@ jobs:
     container: ubuntu:24.04
     timeout-minutes: 120 # 2h, igual ao original
     steps:
+      - name: "Pre-checkout: git + CA certificates"
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
+
+      - name: "CONAN_HOME (caminho dentro do container)"
+        run: echo "CONAN_HOME=$PWD/.conan2-cache" >> "$GITHUB_ENV"
 
       - name: "Cache: pacotes Conan"
         uses: actions/cache@v4
@@ -186,11 +270,19 @@ jobs:
           path: .conan2-cache
           key: conan-${{ hashFiles('conanfile.py', 'deps/mixr/conanfile.py') }}
 
+      # Depois do checkout de proposito: 'actions/checkout' roda
+      # 'git clean -ffdx' e apagaria o que fosse baixado antes dele.
       - name: "Baixar estado do build"
         uses: actions/download-artifact@v4
         with:
           name: build-state
           path: .
+
+      - name: "Restaurar estado do build"
+        run: |
+          set -euo pipefail
+          tar -xzf build-state.tar.gz
+          rm -f build-state.tar.gz
 
       - name: "Ambiente (INSTALL.md SS1-SS3, SS5-SS6)"
         uses: ./.github/actions/setup-ambiente
@@ -216,13 +308,20 @@ jobs:
       # 'make check-organization' (o linter de organizacao interna de cada
       # modelo) para todo modelo descoberto por 'find' -- modelo novo entra
       # sozinho, sem editar este arquivo.
+      #
+      # 'find ... | while read' em vez de '$(find ...)' sem aspas: assim
+      # caminho com espaco nao e' quebrado em dois. O 'while' roda em
+      # subshell por causa do pipe, entao o status do 'make' e' propagado
+      # explicitamente com o 'exit 1'.
       - name: "make check-organization (todo projeto de modelo)"
         run: |
           set -euo pipefail
-          for meson_file in $(find models -mindepth 2 -name meson.build -not -path '*/build/*' -not -path '*/subprojects/*'); do
-            grep -q '^project(' "$meson_file" || continue
-            make -C "$(dirname "$meson_file")" check-organization
-          done
+          find models -mindepth 2 -name meson.build \
+            -not -path '*/build/*' -not -path '*/subprojects/*' -print0 \
+          | while IFS= read -r -d '' meson_file; do
+              grep -q '^project(' "$meson_file" || continue
+              make -C "$(dirname "$meson_file")" check-organization || exit 1
+            done
 
       - name: "Artefatos: relatorios de teste"
         if: always()
@@ -247,7 +346,16 @@ jobs:
     timeout-minutes: 180 # 3h, igual ao original
     continue-on-error: true
     steps:
+      - name: "Pre-checkout: git + CA certificates"
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
+
+      - name: "CONAN_HOME (caminho dentro do container)"
+        run: echo "CONAN_HOME=$PWD/.conan2-cache" >> "$GITHUB_ENV"
 
       - name: "Cache: pacotes Conan"
         uses: actions/cache@v4
@@ -260,6 +368,12 @@ jobs:
         with:
           name: build-state
           path: .
+
+      - name: "Restaurar estado do build"
+        run: |
+          set -euo pipefail
+          tar -xzf build-state.tar.gz
+          rm -f build-state.tar.gz
 
       - name: "Ambiente (INSTALL.md SS1-SS3, SS5-SS6)"
         uses: ./.github/actions/setup-ambiente
@@ -280,7 +394,16 @@ jobs:
     timeout-minutes: 120 # 2h, igual ao original
     continue-on-error: true
     steps:
+      - name: "Pre-checkout: git + CA certificates"
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
+
+      - name: "CONAN_HOME (caminho dentro do container)"
+        run: echo "CONAN_HOME=$PWD/.conan2-cache" >> "$GITHUB_ENV"
 
       - name: "Cache: pacotes Conan"
         uses: actions/cache@v4
@@ -293,6 +416,12 @@ jobs:
         with:
           name: build-state
           path: .
+
+      - name: "Restaurar estado do build"
+        run: |
+          set -euo pipefail
+          tar -xzf build-state.tar.gz
+          rm -f build-state.tar.gz
 
       - name: "Ambiente (INSTALL.md SS1-SS3, SS5-SS6)"
         uses: ./.github/actions/setup-ambiente
