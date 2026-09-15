@@ -603,20 +603,13 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    };
    const auto cancelPendingAction = [&] { pendingAction = PendingAction::None; uiDepth = 0; };
 
-   // ACHADO POR AUDITORIA (nao redescobrir): 'mapView.dragging'/
-   // 'componentsView.dragging' so' eram desarmados dentro do bloco
-   // 'if (activeTab == 1/5)' mais abaixo, quando um 'Mouse::Released' chega
-   // com aquela aba ainda ATIVA. Trocar de aba por tecla F1..F7/botao (ou
-   // armar o dialogo de confirmacao com 'r'/'q') NUNCA passa por ali -- os
-   // dois sao tratados incondicionalmente, ANTES de qualquer checagem de
-   // 'activeTab', e o dialogo ainda ROTEIA os proximos eventos pra
-   // 'confirmDialog' (uiDepth==1), nunca mais pra este CatchEvent. Um
-   // arrasto em andamento (botao ainda pressionado fisicamente) largado
-   // assim ficava 'dragging=true' PRA SEMPRE -- ao voltar pra aba
-   // Mapa/Componentes, todo evento de mouse novo (inclusive um CLIQUE
-   // simples) caia direto no ramo "arrasto em andamento" e a aba parava de
-   // responder a mouse. Chamado nos DOIS pontos de saida de um arrasto:
-   // trocar de aba e armar o dialogo disruptivo.
+   // 'dragging' so era desarmado dentro do bloco 'activeTab==1/5', quando
+   // um 'Mouse::Released' chegava com a aba ainda ativa. Trocar de aba ou
+   // armar o dialogo de confirmacao nunca passa por ali, entao um arrasto
+   // em andamento ficava 'dragging=true' permanentemente -- ao voltar a
+   // aba, qualquer clique era interpretado como continuacao do arrasto.
+   // Chamado nos dois pontos de saida de um arrasto: trocar de aba e armar
+   // o dialogo.
    const auto cancelAnyDrag = [&] { mapView.dragging = false; componentsView.dragging = false; };
 
    // As duas que TECLA/BOTAO chamam de verdade -- so ARMAM o dialogo,
@@ -696,16 +689,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    // quadro seguinte; DESligar congela a vista exatamente onde ela estava.
    // O zoom continua do usuario -- follow nunca toca 'metersPerCell'.
    //
-   // NAO chama 'doMapSnapGroundIfApplicable()'. A primeira versao chamava,
-   // com o raciocinio de que desligar "devolvia" a ancoragem do chao ao
-   // cenario -- e isso era um BUG MEDIDO: a guarda de dentro do snap so
-   // barra o caso de LIGAR (ali o flag ja e true); ao DESLIGAR o flag ja
-   // virou false, o snap rodava e reescrevia 'panAltM' na hora. Com
-   // Lateral + terreno ligado e zoom apertado (2 m/cel), a aeronave que se
-   // estava olhando SAIA do canvas no exato gesto de "congelar a vista
-   // nela" -- medido: py=60/onCanvas=1 antes, py=-321/onCanvas=0 depois.
-   // Reancorar o chao continua acontecendo nos tres gestos que sempre o
-   // fizeram ([e] terreno, [v] perspectiva, [c] centralizar).
+   // Nao chama 'doMapSnapGroundIfApplicable()' ao desligar: a guarda do
+   // snap so bloqueia o caso de LIGAR; ao desligar, o snap reescreveria
+   // 'panAltM' na hora, tirando do canvas a aeronave que se acabou de
+   // "congelar" na vista (perspectiva Lateral, terreno ligado, zoom
+   // apertado). Reancorar o chao continua acontecendo nos tres gestos que
+   // sempre o fizeram ([e]/[v]/[c]).
    const auto doMapToggleFollow = [&] {
       mapView.followSelected = !mapView.followSelected;
    };
@@ -1589,21 +1578,12 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
       // se le a copia por valor que veio no DashboardState. Ver o comentario de
       // DashboardState::componentTree para o defeito que isso corrige.
       //
-      // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): isto rodava
-      // INCONDICIONALMENTE, com a justificativa de que "o CatchEvent
-      // (hit-test/pan) precisa de 'componentsLayout' fresco independente de
-      // qual aba esta ativa no momento do clique" -- falso: TODO consumo de
-      // 'componentsLayout'/'componentsRoot' no CatchEvent mais externo (as
-      // duas ocorrencias de 'if (activeTab == 5) { ... }' logo abaixo neste
-      // arquivo) ja esta gateado por 'activeTab == 5', e o Render() em si
-      // (Container::Tab) so desenha o filho ATIVO por construcao do proprio
-      // FTXUI -- nada consome esta arvore com outra aba em cena. Recalcular
-      // a cada redesenho (~10Hz) custava abi::__cxa_demangle() (aloca
-      // memoria) + multiplos dynamic_cast por no, ~150 nos no cenario de
-      // producao, a toa em 6/7 das configuracoes de uso comum (usuario
-      // olhando Players/Mapa/Memoria/Log/EDL/Fundo). Gateado, converge no
-      // mesmo estado fresco assim que a aba fica ativa (o proprio redesenho
-      // do switch de aba ja roda com 'activeTab' atualizado).
+      // Gateado por 'activeTab==5': todo consumo de 'componentsLayout'/
+      // 'componentsRoot' no CatchEvent externo ja e gateado da mesma forma,
+      // e 'Container::Tab' so desenha o filho ativo -- nada consome a
+      // arvore com outra aba em cena. Recalcular a cada redesenho custaria
+      // 'abi::__cxa_demangle()' (aloca) e varios 'dynamic_cast' por no
+      // (~150 nos em producao) a toa nas outras seis abas.
       // Pede a arvore a 'simThread' (ver 'wantComponentTree' la em cima) e
       // consome a que ela ja capturou. NADA de MIXR vivo e tocado aqui: ao
       // trocar para a F6 a arvore chega na amostra seguinte (~100 ms), e ate

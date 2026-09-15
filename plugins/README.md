@@ -30,9 +30,10 @@ simulada.
 ## O que pousa aqui, e o que não
 
 - **Flat**: os `.so` vão direto na raiz desta pasta, sem subpasta por modelo.
-- **`data/`** é a única exceção ao depósito flat — hoje só `data/flight/` (a árvore de
-  comportamento + a aeronave JSBSim, publicadas por `models/players/A-4/`, porque são dado do
-  MODELO, não do cenário).
+- **`data/`** é a única exceção ao depósito flat — uma subpasta por modelo que publica dado
+  próprio (ex.: `data/A-4/`, a árvore de comportamento + a aeronave JSBSim de
+  `models/players/A-4/`), porque é dado do MODELO, não do cenário. Nem todo modelo publica algo
+  aqui — um modelo sem `configs:`/`data:` (ex.: `missile`) não ganha subpasta.
 - **`.so` de terceiro não é versionado** (`.gitignore`: `plugins/*.so`, `plugins/data/`) — é
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o
   que sobrevive num clone limpo.

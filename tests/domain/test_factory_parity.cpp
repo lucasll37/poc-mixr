@@ -1,10 +1,9 @@
-// Achado por auditoria (revisao completa do repositorio): app/src/mixr_factory.cpp e
-// src/node/factory.cpp encadeiam, a MAO, as mesmas ~10 factories nativas na MESMA ordem --
-// decisao deliberada de independencia (src/node nao reaproveita NADA de app/, ver CLAUDE.md,
-// secao "src/node"). Nada, porem, garantia que as duas cadeias continuassem batendo: uma lib
-// nova esquecida de um dos dois lados faz um bloco do .edl parar de construir objeto nenhum, em
-// SILENCIO, so num dos dois binarios -- exatamente a classe de armadilha que o proprio comentario
-// de cada factory.cpp ja descreve para terrain::/dis::/linkage:: nao encadeadas.
+// app/src/mixr_factory.cpp e src/node/factory.cpp encadeiam manualmente as mesmas ~10 factories
+// nativas na mesma ordem -- decisao deliberada de independencia entre ./app e src/node (ver
+// CLAUDE.md, secao "src/node"). Nada garante que as duas cadeias continuem batendo: uma lib nova
+// esquecida de um dos dois lados faz um bloco do .edl parar de construir objeto nenhum, em
+// silencio, so num dos dois binarios -- a mesma classe de armadilha ja documentada para
+// terrain::/dis::/linkage:: nao encadeadas.
 //
 // Este teste nao levanta Station nenhuma: chama as duas funcoes builtin (a fatia SEM plugin, que
 // e onde a divergencia importaria) com um nome sentinela por elo da cadeia e confere que as duas

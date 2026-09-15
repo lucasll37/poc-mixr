@@ -1,5 +1,9 @@
 # A4-6DOF — oito players máximos empilhados, dinâmica JSBSim (6-DOF), voando uma figura-de-oito
 
+Ver o índice dos 11 cenários deste `sandbox/` (e por onde começar) em
+[`sandbox/README.md`](../README.md) — **este é a base/referência da família `A4-*DOF`**, não uma
+variante dela.
+
 Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — todos o mesmo
 player `a4` (os 53 componentes nativos do "player máximo", ver
 `tests/fixtures/built-in_mixr_1`), a mesma porta Tacview (**1234**, de propósito —
@@ -169,31 +173,19 @@ de passagem (*fly-by*), não de sobrevoo.
 
 ## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
 
-Os `Steerpoint` da rota carregam três slots nativos que `mixr::models::Steerpoint`
-já aceita (`Steerpoint.hpp`) e que a rota original não usava: `sca` (Safe Clearance
-Altitude, pés), `magvar` (declinação magnética, graus) e `pta` (Planned Time of
-Arrival, segundos). Os três são recalculados **todo frame** por
-`Steerpoint::compute()` — mas **nenhum consumidor deste repositório**
-(`FlightState.cpp`/`NavigateAction.cpp`/`libs/xmsg`) lê o resultado
-(`isWarnSCA()`/`getMagBrgDeg()`/`getELT()`). A adição é por completude do
-vocabulário EDL, não por efeito medido no voo — comentário detalhado no
-`.edl.in`, junto de cada `wp*:`.
-
-`stptType` agora cobre **6 dos 7** valores nativos (`Steerpoint.hpp`:
-`enum StptType { DEST, MARK, FIX, OAP, IP, TGT, TGT_GRP }`), repetidos ao longo
-dos 20 pontos. O sétimo, **`TGT_GRP`, não é alcançável por
-EDL**: existe no enum, mas `Steerpoint::setSlotStptType()`
-(`Steerpoint.cpp:325-340`) só reconhece as seis strings acima e recusa qualquer
-outra com *"invalid steerpoint type"* — escrever `TGT_GRP` no `.edl` derruba o
-slot, não seleciona o tipo. (A versão anterior deste README dizia que os três
-não usados tinham ficado de fora "de propósito"; um deles simplesmente não é
-construível.)
+Os `Steerpoint` da rota carregam três slots nativos ociosos, explicados por completo em
+[`sandbox/README.md`](../README.md#vocabulário-extra-do-steerpoint-sca-magvar-pta) — incluindo o
+`stptType` (6 dos 7 valores nativos alcançáveis; `TGT_GRP` não é construível via EDL). Comentário
+detalhado também no próprio `.edl.in`, junto de cada `wp*:`.
 
 ## Verificação manual
 
+Receita genérica (lint, edlcheck, dump `bt=`, determinismo):
+[`sandbox/README.md`](../README.md#como-verificar-qualquer-cenário-deste-sandbox) — inclui a
+armadilha do `edlcheck` recusando o `.edl.in` cru por causa de `@NUM_TC_THREADS@`
+([nota central](../README.md#edlcheck-e-o-token-num_tc_threads)). Específico deste cenário:
+
 ```bash
-python3 src/ui/scripts/edl_lint.py sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in
-dist/bin/edlcheck sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in   # ver nota abaixo sobre @NUM_TC_THREADS@
 ./build/app/src/app -folder ./sandbox -scenario A4-6DOF -deterministic 200 > /tmp/a4-6dof.log 2>&1
 grep -o 'bt=[A-Za-z_-]*' /tmp/a4-6dof.log | sort -u   # esperado: so bt=NAV
 grep -o 'player=a4_[0-9]' /tmp/a4-6dof.log | sort -u  # esperado: as 8 aeronaves
@@ -214,12 +206,6 @@ done
 ./tests/determinism/check_determinism.sh ./build/app/src/app A4-6DOF 2000 '' \
     sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in    # determinismo com 1, 2 e 4 threads T/C
 ```
-
-`edlcheck` recusa o `.edl.in` cru com `error while setting slot name:
-numTcThreads` — o token `@NUM_TC_THREADS@` só é expandido em runtime por
-`app::generateScenario()` (`ScenarioTemplate`), nunca pelo `edlcheck`. Mesmo
-comportamento do `full-systems-nav` original; para validar via `edlcheck`
-direto, resolva o token manualmente antes (`sed 's/@NUM_TC_THREADS@/2/'`).
 
 ## O que herda sem mudança
 

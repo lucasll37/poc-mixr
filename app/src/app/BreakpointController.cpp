@@ -8,18 +8,12 @@ namespace app {
 void BreakpointController::arm(const int entityId, std::string entityName, std::string nodeTag,
                                const bool fastMode, const double currentTimeScale)
 {
-   // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): re-armar um
-   // breakpoint SEM cancelar o anterior primeiro sobrescrevia
-   // 'restoreTimeScale_' com a escala JA ELEVADA (ex.: 64x, se o primeiro
-   // arm() ja tinha entrado em modo rapido) em vez da escala ORIGINAL (a
-   // que valia antes do PRIMEIRO arm()). As teclas g/G sao globais e
-   // incondicionais -- nada impedia apertar 'G' duas vezes seguidas.
-   // Confirmado rodando: nesse caso a simulacao ficava travada em 64x para
-   // sempre, mesmo apos o hit, porque a segunda chamada capturava a propria
-   // aceleracao do primeiro arm() como se fosse o "normal" a restaurar. So
-   // recaptura 'currentTimeScale' quando NAO ha breakpoint armado ainda --
-   // um re-arm muda o ALVO (entidade/no/modo) mas preserva o PONTO DE
-   // RESTAURACAO original.
+   // Recaptura 'restoreTimeScale_' apenas quando nao ha breakpoint armado:
+   // re-armar sem cancelar o anterior usaria a escala ja elevada (ex.: 64x)
+   // do primeiro arm() como ponto de restauracao, em vez da escala original --
+   // travando a simulacao em velocidade maxima mesmo apos o hit. Um re-arm
+   // muda o ALVO (entidade/no/modo) mas preserva o PONTO DE RESTAURACAO
+   // original.
    if (!armed_) {
       restoreTimeScale_ = currentTimeScale;
    }

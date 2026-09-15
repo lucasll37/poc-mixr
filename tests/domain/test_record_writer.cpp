@@ -1,13 +1,12 @@
 // mixr::xmsg::RecordWriter -- monta NDJSON num buffer fixo, sem alocar.
 // Sem MIXR, sem Station -- so a classe e um arquivo em disco.
 //
-// Achado por auditoria (workflow de investigacao desta sessao, dimensao
-// 'libs-individual'): addLabel() concatenava 'value' CRU dentro das aspas
-// JSON, sem escapar. 'value' pode vir do nome de um player recebido por DIS
-// (EntityMarking::marking -- 11 bytes crus controlados por quem envia o PDU
-// na rede local), entao um nome malicioso injetava um campo JSON inteiro na
-// linha gravada. Este arquivo prova o escape, e que ele nao muda o caso
-// feliz (nome comum, sem caractere especial).
+// addLabel() concatenava 'value' CRU dentro das aspas JSON, sem escapar.
+// 'value' pode vir do nome de um player recebido por DIS (EntityMarking::marking
+// -- 11 bytes crus controlados por quem envia o PDU na rede local), entao um
+// nome malicioso injetava um campo JSON inteiro na linha gravada. Este
+// arquivo prova o escape, e que ele nao muda o caso feliz (nome comum, sem
+// caractere especial).
 #include "xmsg/RecordWriter.hpp"
 
 #include <gtest/gtest.h>
@@ -78,12 +77,11 @@ TEST(RecordWriter, CaractereDeControleViraEscapeUnicode)
    EXPECT_NE(json.find(R"(a\u0001b)"), std::string::npos) << json;
 }
 
-// ACHADO POR AUDITORIA (autorevisao desta sessao, nao redescobrir): o
-// primeiro fix so escapava < 0x20 -- byte >= 0x80 passava cru, e um valor
-// vindo de EntityMarking::marking (PDU DIS, sem garantia de charset) podia
-// produzir UTF-8 invalido. Os dois testes abaixo cobrem os dois lados:
-// UTF-8 LEGITIMO (acento, convencao pt-BR do projeto) continua saindo cru,
-// e uma sequencia MALFORMADA (o caso adversarial) sai toda escapada.
+// O escape original cobria so bytes < 0x20; byte >= 0x80 passava cru, e um
+// valor vindo de EntityMarking::marking (PDU DIS, sem garantia de charset)
+// pode produzir UTF-8 invalido. Os dois testes abaixo cobrem os dois lados:
+// UTF-8 legitimo (acento) continua saindo cru, e uma sequencia malformada
+// sai toda escapada.
 
 TEST(RecordWriter, AcentoUtf8ValidoPassaCru)
 {

@@ -43,14 +43,13 @@ namespace xAAA {
 // container() do Agent, que e' esta classe quando 'agent:' e' declarado
 // dentro de components: dela.
 //
-// ARMADILHA CONFIRMADA, NAO REDESCOBRIR (ver ubf/AaaState.hpp/.cpp):
-// SamVehicle::updateData() conta municao via dynamic_cast<const Sam*> --
-// xmissile::GuidedMissile (models/players/missile) e' IRMA de
-// mixr::models::Sam (as duas derivam de Missile diretamente, nao uma da
-// outra), entao SamVehicle::getNumberOfMissiles()/isLauncherReady() ficam
-// SEMPRE falso/zero com um ( GuidedMissile ) no stores:, em silencio.
+// SamVehicle::updateData() conta municao via dynamic_cast<const Sam*>;
+// xmissile::GuidedMissile e' irma de mixr::models::Sam (as duas derivam de
+// Missile diretamente, nao uma da outra), entao
+// SamVehicle::getNumberOfMissiles()/isLauncherReady() ficam sempre
+// falso/zero com um ( GuidedMissile ) no stores:, em silencio.
 // ubf::AaaState usa StoresMgr::available() > 0 diretamente, nunca
-// isLauncherReady().
+// isLauncherReady() (ver ubf/AaaState.hpp/.cpp).
 //
 // ESTACIONARIA POR CONFIGURACAO DE .edl, nao por codigo: sem
 // dynamicsModel: e com initVelocity:0.0 a aeronave/veiculo fica parado --

@@ -1,5 +1,7 @@
 # AAA-A4-6DOF — uma antiaérea com domo dispara contra um A-4, que evade pelo RWR
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 Exercício (ver `TODO.md`, raiz do repositório, segundo da série que começa com
 `sandbox/A4-6DOF-MISSILE`): "implementar uma antiaérea com domo que dispara o mesmo míssil ...
 que entra no seu raio de atuação. Depois, crie o cenário ... onde uma aeronave A-4 adentra no

@@ -30,12 +30,11 @@ tem duas colunas de identificação: **Classe** (o nome C++, linkado para o `.hp
 `contexts/src/mixr/`) e **Fábrica** (a string usada no `.edl`, sempre mostrada mesmo quando igual à
 classe — quando difere, é a primeira pista de que algo não é óbvio).
 
-**Os links de `.hpp` só resolvem localmente.** `contexts/src/mixr/` inteiro é git-ignored (ver
-CLAUDE.md, "Onde consultar o framework") — não vem num clone limpo, é cópia local da árvore de
-fonte. Os links funcionam para quem já tem essa pasta populada (o caso normal de trabalho neste
-repositório) e aparecem quebrados em qualquer visualização do repositório sem ela — GitHub
-incluído. Se a pasta não existir, os headers instalados pelo Conan
-(`~/.conan2/p/b/mixr*/p/include/mixr/...`) têm a mesma estrutura interna, só sem link direto daqui.
+**Os links de `.hpp` apontam para `contexts/src/mixr/`**, a árvore completa do fork vendorizada e
+**versionada** neste repositório (não é git-ignored — está sempre presente num clone comum). Os
+links funcionam normalmente em qualquer clone, GitHub incluído. Se por algum motivo essa pasta não
+estiver presente, os headers instalados pelo Conan (`~/.conan2/p/b/mixr*/p/include/mixr/...`) têm a
+mesma estrutura interna, só sem link direto daqui.
 
 ## Índice
 

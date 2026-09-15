@@ -59,12 +59,12 @@ BT::NodeStatus NavigateAction::tick()
 
    const auto& view = context_.behavior->snapshot();
    if (!view.hasNavSteering) {
-      // Sem isto, um GAP de guiagem invalida deixaria 'commandedHeadingDeg_'
-      // CONGELADO no ultimo valor de antes do gap -- o proximo tick com
-      // guiagem valida cairia no ramo de SUAVIZACAO (nao no de "primeiro
-      // tick"), tentando corrigir de um rumo antigo pra um possivelmente
-      // muito diferente pela taxa limitada. Ver o mesmo achado por auditoria
-      // em models/players/A-4/src/bt/nodes/NavigateAction.cpp.
+      // Sem isto, um gap de guiagem invalida deixaria 'commandedHeadingDeg_'
+      // congelado no ultimo valor anterior ao gap -- o proximo tick com
+      // guiagem valida cairia no ramo de suavizacao em vez de reiniciar,
+      // tentando corrigir de um rumo antigo para um possivelmente muito
+      // diferente pela taxa limitada. Mesmo comportamento em
+      // models/players/A-4/src/bt/nodes/NavigateAction.cpp.
       hasCommandedHeading_ = false;
       return BT::NodeStatus::FAILURE;
    }

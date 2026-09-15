@@ -14,27 +14,22 @@ Cobre:
      reconstruir NativeSimulation por episodio (subprocess por reset), sem
      mudar a API de MixrFlightEnv.
 
-ARMADILHA CONFIRMADA (nao redescobrir): so pode existir UMA Station por
-PROCESSO -- libs/xplugin sela o registro de plugins depois do PRIMEIRO
-edl_parser() (ver mixr::xplugin::seal(), chamado dentro de
-rl::buildStation()); um SEGUNDO MixrFlightEnv() no mesmo processo, ao chamar
-reset() pela primeira vez, cai em rl::buildStation() -> edl_parser() de novo
-e o registro recusa com "loadModule(...) depois do parse". Por isso o teste
-de reset() repetido reusa o MESMO 'env' (chamando reset() de novo nele, que
-cai no ramo 'else' de NativeSimulation::reset() -- so RESET_EVENT, sem
-buildStation() de novo) -- nao cria um 'env2'.
+So pode existir uma Station por processo -- libs/xplugin sela o registro de
+plugins depois do primeiro edl_parser() (ver mixr::xplugin::seal(), chamado
+dentro de rl::buildStation()); um segundo MixrFlightEnv() no mesmo
+processo, ao chamar reset() pela primeira vez, cai em rl::buildStation() ->
+edl_parser() de novo e o registro recusa com "loadModule(...) depois do
+parse". Por isso o teste de reset() repetido reusa o mesmo 'env' (chamando
+reset() de novo nele, que cai no ramo 'else' de NativeSimulation::reset()
+-- so RESET_EVENT, sem buildStation() de novo) -- nao cria um 'env2'.
 
 Precisa rodar com cwd na RAIZ do repositorio (mesma convencao de todo
 binario deste projeto) e PYTHONPATH incluindo dist/python (ver
 src/rl/README.md).
 
-ARMADILHA CONFIRMADA (nao redescobrir, ver mixr_gym/__init__.py): 'mixr_gym'
-TEM DE ser importado antes de 'numpy'/'gymnasium' neste processo -- importar
-numpy primeiro e so DEPOIS 'mixr_gym' causa SEGFAULT dentro de libstdc++
-(estouro do excedente de TLS estatico do glibc, ao que tudo indica -- ver o
-cabecalho de mixr_gym/__init__.py para os dois experimentos que isolaram a
-causa). E por isso que o import de mixr_gym vem ANTES do de numpy aqui,
-fora de ordem alfabetica/PEP8 -- de proposito.
+'mixr_gym' precisa ser importado antes de 'numpy'/'gymnasium' neste
+processo (ver mixr_gym/__init__.py) -- por isso o import de mixr_gym vem
+antes do de numpy aqui, fora de ordem alfabetica/PEP8.
 """
 
 import os

@@ -117,14 +117,10 @@ TEST(BreakpointController, RearmarLimpaHitAnterior)
    EXPECT_EQ(bp.status(true, true, "Evade").branch, BreakpointStatusBranch::Armed);
 }
 
-// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): re-armar SEM cancelar
-// o breakpoint anterior sobrescrevia restoreTimeScale_ com a escala JA
-// elevada do primeiro arm() (ex.: 64x), em vez de preservar a escala
-// ORIGINAL (a que valia antes do primeiro arm()). Sintoma medido antes da
-// correcao: apertar 'G' (breakpoint em modo rapido) duas vezes seguidas,
-// sem cancelar entre as duas, travava a simulacao em 64x para sempre --
-// mesmo apos o hit, porque o 'hit' subsequente restaurava para o valor
-// (ja errado) capturado no segundo arm().
+// Testa a correcao de um bug de re-armamento: re-armar sem cancelar o
+// breakpoint anterior sobrescrevia restoreTimeScale_ com a escala ja
+// elevada do primeiro arm(), em vez de preservar a escala original --
+// travando a simulacao em velocidade maxima mesmo apos o hit.
 TEST(BreakpointController, RearmarSemCancelarPreservaEscalaOriginal)
 {
    BreakpointController bp;

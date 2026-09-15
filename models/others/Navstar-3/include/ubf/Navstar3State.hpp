@@ -25,17 +25,14 @@ namespace xNavstar_3 {
 // de pedir a acao ao comportamento vencedor. Note a assinatura: o ator chega
 // como 'const Component*' -- percepcao LE, nao atua.
 //
-// ARMADILHA DO FRAMEWORK, ja documentada em varios modelos deste
-// repositorio: um Agent NAO propaga updateTC()/updateData() para os filhos,
-// e o 'state' e filho do agente -- este objeto NUNCA recebe o ciclo normal
-// de componentes. Tudo o que ele precisa fazer tem que estar dentro de
-// updateState().
+// Um Agent nao propaga updateTC()/updateData() para os filhos, e 'state' e
+// filho do agente -- este objeto nunca recebe o ciclo normal de
+// componentes; toda a logica precisa estar dentro de updateState().
 //
-// NAO chamar de 'isValid()' -- mixr::base::Object ja declara essa virtual
-// (usada pelo parser de EDL logo apos construir o objeto); um metodo com a
-// MESMA assinatura aqui a sobrescreveria em silencio e faria todo
-// ( Navstar3State ) do .edl falhar com "invalid object" (achado ja medido
-// no modelo paratrooper deste repositorio -- nao redescobrir).
+// Nao nomear de 'isValid()': mixr::base::Object ja declara essa virtual,
+// usada pelo parser de EDL logo apos construir o objeto. Um metodo com a
+// mesma assinatura aqui a sobrescreveria em silencio e faria todo
+// ( Navstar3State ) do .edl falhar com "invalid object".
 //------------------------------------------------------------------------------
 class Navstar3State final : public base::ubf::AbstractState
 {

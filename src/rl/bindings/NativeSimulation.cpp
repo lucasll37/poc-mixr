@@ -29,37 +29,27 @@ NativeSimulation::~NativeSimulation()
 
 mixr::xrlbridge::Observation NativeSimulation::reset()
 {
-   // ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
-   // xrlbridge::Command): invalida o comando pendente ANTES do frame de
-   // priming que primeStation() dispara (RESET_EVENT + tcFrame() de
-   // aquecimento, que ja chama RLBridgeBehavior::genAction() antes de
-   // qualquer step()/setPendingCommand() deste episodio) -- sem isto, o
-   // ULTIMO comando do episodio ANTERIOR vazava pro priming do proximo (ou,
-   // no primeiro reset() do processo, um Command{} default aplicava
-   // heading=0/altitude=0/speed=0 como se fosse uma decisao de verdade).
+   // O comando pendente e invalidado antes do frame de priming que
+   // primeStation() dispara (RESET_EVENT + tcFrame() de aquecimento, que ja
+   // chama RLBridgeBehavior::genAction()) -- senao o ultimo comando do
+   // episodio anterior vazaria para o priming do proximo, ou, no primeiro
+   // reset() do processo, um Command{} default aplicaria
+   // heading=0/altitude=0/speed=0 como se fosse uma decisao de verdade.
    mixr::xrlbridge::setPendingCommand(mixr::xrlbridge::Command{});
 
    if (!built_) {
       station_ = buildStation(scenarioPath_);
       primeStation(station_);
 
-      // BUG CONFIRMADO E CORRIGIDO AQUI -- sem esta checagem, um 'playerName_'
-      // com typo (ou apontando pra um player que existe mas nao e o mesmo
-      // configurado com '( RLBridgeBehavior )' no .edl -- ex.: falcon2..4
-      // neste cenario) fazia step() rodar para sempre com 'terminated' preso
-      // em false, silenciosamente: findPlayerByName() abaixo devolvia nullptr
-      // (nome inexistente) e o Command/Observation continuavam fluindo
-      // normalmente pelo UNICO agente RL do processo (falcon1, fixo no
-      // .edl) -- ninguem percebia que o 'player_name' pedido nao tinha nada
-      // a ver com o que estava de fato sendo controlado/observado. Falha
-      // rapido e alto em vez de treinar contra um sinal errado.
-      //
-      // So confere EXISTENCIA do player -- nao da para confirmar daqui que e
-      // o MESMO player com RLBridgeBehavior: esse tipo mora no plugin do
-      // modelo (models/players/A-4), que este core nao pode conhecer
-      // (tests/guard/check_core_opaco.sh). 'player_name' tem de bater com o
-      // player que o .edl configurou com RLBridgeBehavior -- ver
-      // src/rl/README.md.
+      // Sem esta checagem, um 'playerName_' com typo (ou apontando para um
+      // player que existe mas nao e o configurado com '( RLBridgeBehavior )'
+      // no .edl) faz step() rodar indefinidamente com 'terminated' preso em
+      // false: findPlayerByName() devolve nullptr, mas Command/Observation
+      // continuam fluindo normalmente pelo unico agente RL do processo. A
+      // checagem so confirma a existencia do player -- nao e possivel
+      // confirmar daqui que e o mesmo player com RLBridgeBehavior, tipo que
+      // mora no plugin do modelo e este core nao pode conhecer
+      // (tests/guard/check_core_opaco.sh).
       const auto player = worldModelOf(station_)->findPlayerByName(playerName_.c_str());
       if (player == nullptr) {
          throw std::runtime_error(
@@ -70,9 +60,9 @@ mixr::xrlbridge::Observation NativeSimulation::reset()
 
       built_ = true;
    } else {
-      // reset() repetido na MESMA Station, via RESET_EVENT -- CONFIRMADO
-      // seguro (ver o cabecalho .hpp): pequena deriva numerica de
-      // integracao, nao um erro de reset.
+      // reset() repetido na mesma Station, via RESET_EVENT, e seguro: produz
+      // apenas uma pequena deriva numerica de integracao, nao um erro de
+      // reset (ver o cabecalho .hpp).
       primeStation(station_);
    }
 

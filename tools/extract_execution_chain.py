@@ -59,12 +59,11 @@ import mixr_source_scan as scan  # noqa: E402
 
 MIXR_INCLUDE = REPO_ROOT / scan.MIXR_INCLUDE_REL
 MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
-# 'models/' -- deliberadamente a pasta INTEIRA, nao 'models/players/A-4/include' como um
-# primeiro corte deste script supunha. models/ esteve em reorganizacao (confirmado
-# rodando: AlertDatalink.hpp saiu de models/A4/include/xnative/ para
-# models/players/A-4/include/xnative/ ENQUANTO este script era escrito, por uma
-# sessao concorrente) -- qualquer subcaminho fixo aqui ficaria errado no proximo commit.
-# rglob() sobre a pasta toda e imune a esse tipo de mudanca de endereco.
+# 'models/' -- deliberadamente a pasta inteira, nao um subcaminho fixo como
+# models/players/A-4/include: a arvore de models/ pode se reorganizar
+# (headers mudam de lugar entre reestruturacoes), e qualquer subcaminho
+# fixo aqui ficaria errado no commit seguinte. rglob() sobre a pasta toda e
+# imune a esse tipo de mudanca de endereco.
 MODELS_DIR = REPO_ROOT / scan.MODELS_REL
 LIBS_DIR = REPO_ROOT / scan.LIBS_REL
 DEFAULT_SCENARIO = REPO_ROOT / "tests/fixtures/built-in_mixr_1/configs/scenario_max_player.edl.in"
@@ -108,18 +107,17 @@ def find_overrides(cpp_roots, methods=None, capture_body=False):
     contiguo real, marcado como truncado quando e so um prefixo -- a mesma
     regra de ouro de sempre, so automatizada.
 
-    PRIMEIRO achado vence por (classe, metodo) -- nao sobrescreve -- pelo
-    MESMO motivo de extract_slots() (em mixr_source_scan.py): varrer
-    models/ inteiro (incluindo models/template/src/mirror.cpp, que
-    deliberadamente reimplementa FlightAction::execute/etc. com o MESMO
-    nome, so para testar contrato de carga de plugin) faz duas definicoes
-    REAIS do mesmo (Classe, metodo) aparecerem em arquivos diferentes.
-    Confirmado rodando: sem a guarda, 'FlightAction::execute' saia
-    apontando pra mirror.cpp (varrido depois de A-4 na ordem alfabetica),
-    nao para a implementacao de producao. A guarda e por (classe, metodo),
-    NAO por classe inteira -- uma classe real legitimamente tem metodos
-    DIFERENTES definidos em arquivos DIFERENTES (isso nao e colisao
-    nenhuma, e so precisa dos DOIS registrados)."""
+    Primeiro achado vence por (classe, metodo) -- sem a guarda,
+    FlightAction::execute apontaria para mirror.cpp (varrido depois de A-4
+    na ordem alfabetica) em vez da implementacao de producao. Mesmo motivo
+    de extract_slots() (em mixr_source_scan.py): varrer models/ inteiro
+    (incluindo models/template/src/mirror.cpp, que deliberadamente
+    reimplementa FlightAction::execute/etc. com o MESMO nome, so para
+    testar contrato de carga de plugin) faz duas definicoes REAIS do mesmo
+    (Classe, metodo) aparecerem em arquivos diferentes. A guarda e por
+    (classe, metodo), NAO por classe inteira -- uma classe real
+    legitimamente tem metodos DIFERENTES definidos em arquivos DIFERENTES
+    (isso nao e colisao nenhuma, e so precisa dos DOIS registrados)."""
     methods = methods or TARGET_METHODS
     overrides: dict[str, dict[str, dict]] = {}
     pattern = re.compile(r"\b(\w+)::(" + "|".join(methods) + r")\s*\(")

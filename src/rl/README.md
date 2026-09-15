@@ -84,14 +84,17 @@ Forma recomendada -- alvos do Makefile raiz, com venv proprio
 # (a sequencia completa esta na secao "Build" acima -- 'test-rl' encadeia
 # 'install'/'venv-rl' sozinho, mas NAO 'models')
 make venv-rl   # cria/atualiza src/rl/.venv com src/rl/requirements.txt
-make test-rl   # roda test_smoke.py + test_contract.py + test_bad_player.py no venv acima
+make test-rl   # roda test_smoke.py + test_contract.py + test_bad_player.py + test_fields_param.py
 ```
 
 `test_contract.py` cobre o contrato de `gymnasium.Env` alem do que
 `test_smoke.py` ja cobre (shape/dtype/limites da observacao,
 `truncated`/`close()`); `test_bad_player.py` e a regressao do bug de
 `player_name` descrito em "Limites conhecidos" mais abaixo, isolada num
-processo proprio pelo mesmo motivo (uma unica `Station` por processo).
+processo proprio pelo mesmo motivo (uma unica `Station` por processo);
+`test_fields_param.py` confere que os nomes/ordem dos campos que `_native`
+expoe batem com `ObservationFields.hpp` (o mesmo contrato que
+`env.py` valida na importacao).
 
 Ou manualmente, sem os alvos de Makefile:
 

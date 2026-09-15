@@ -233,14 +233,13 @@ void loadModule(const std::string& file,
    // --- 2) idempotencia ---------------------------------------------------
    // isValid() pode ser chamado mais de uma vez para o mesmo objeto
    // (Pair::isValid() repassa), entao carregar de novo nao pode duplicar.
-   // Mas um SEGUNDO ( PluginModule ), objeto DIFERENTE, que por coincidencia
-   // (ou copy-paste de fragmento) resolve ao MESMO caminho canonico tambem
-   // cai aqui -- e o 'provides:' DELE e uma assercao igual a de qualquer
-   // primeira carga (etapa 8, abaixo). Sem esta checagem, o curto-circuito
-   // aceitava QUALQUER 'provides:' no segundo bloco, inclusive inventado,
-   // porque nunca chegava na etapa 8 -- confirmado rodando (achado do
-   // stress-sweep desta sessao): um segundo bloco com nomes que a .so nunca
-   // exportou passava calado, sem aviso nenhum.
+   // Um segundo ( PluginModule ) -- objeto diferente que, por coincidencia
+   // ou copia de fragmento, resolve ao mesmo caminho canonico -- tambem cai
+   // neste curto-circuito de idempotencia, e o 'provides:' dele e uma
+   // assercao igual a de qualquer primeira carga (etapa 8). Sem esta
+   // checagem, o curto-circuito aceitaria qualquer 'provides:' no segundo
+   // bloco, inclusive inventado, porque a validacao da etapa 8 nunca seria
+   // alcancada para ele.
    for (const Loaded& l : loaded()) {
       if (l.resolvedPath != path) continue;
       if (!provides.empty()) {

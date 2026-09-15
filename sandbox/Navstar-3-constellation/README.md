@@ -1,5 +1,7 @@
 # Navstar-3-constellation — quatro planos orbitais, o mesmo modelo
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 Reaproveita o modelo `models/others/Navstar-3` com **quatro instâncias**, uma por plano orbital —
 o cenário de produção do próprio modelo demonstra só **um** satélite (ver
 `models/others/Navstar-3/docs/ARCHITECTURE.md`, seção "O que fica de fora":

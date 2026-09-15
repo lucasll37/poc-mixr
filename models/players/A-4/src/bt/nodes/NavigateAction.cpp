@@ -12,11 +12,10 @@ namespace bt_nodes {
 
 namespace {
 
-// Taxa maxima do RUMO COMANDADO, deliberadamente mais apertada que o
-// maxRateOfTurnDps do Autopilot (6 deg/s nos cenarios desta poc): o limite
-// da AERONAVE nao e o que causa o problema (medido rodando: a divergencia
-// aparecia girando a ~1.6 deg/s, bem abaixo do teto da aeronave) -- o
-// limite tem de estar no COMANDO em si. Ver o comentario de tick().
+// Taxa maxima do rumo comandado, deliberadamente mais apertada que o
+// maxRateOfTurnDps do Autopilot: o limite fisico da aeronave nao evita a
+// divergencia de perseguicao pura (observada girando bem abaixo do teto de
+// guinada) -- o limite precisa estar no comando, nao na planta.
 constexpr double kMaxHeadingRateDegPerSec{3.0};
 
 } // namespace
@@ -28,35 +27,18 @@ NavigateAction::NavigateAction(const std::string& name, const BT::NodeConfigurat
 }
 
 //------------------------------------------------------------------------------
-// tick() -- traduz a guiagem que o Route/Steerpoint NATIVO ja calculou (ver
-// FlightState::updateState()) num FlightCommand.
+// tick() -- traduz a guiagem que Route/Steerpoint ja calcularam em um
+// FlightCommand.
 //
-// mixr::models::Navigation::getTrueBrgDeg() e a marcacao "direto-ao-ponto"
-// RECALCULADA A CADA FRAME a partir da posicao atual (Steerpoint::compute(),
-// Route.cpp/Steerpoint.cpp) -- e o MESMO dado que
-// Autopilot::processModeNavigation() consultaria com navMode ligado
-// (Navigation::updateNavSteering() faz exatamente
-// setTrueBrgDeg(to->getTrueBrgDeg())). Comandar ISSO direto como rumo, a
-// cada tick, e perseguicao pura (pure pursuit) sem termo de avanco -- e
-// diverge perto do alvo pelo MESMO motivo ja documentado na secao "Demo:
-// missil guiado" deste repositorio para domain::pursuit(): um controlador
-// SO proporcional (aqui, rumo = marcacao, ganho infinito/instantaneo via
-// headingHoldMode) fica instavel quando o angulo de marcacao passa a mudar
-// rapido demais para a taxa de guinada disponivel -- perto de um ponto
-// PARADO, isso acontece justamente quando o avantajado se aproxima, ainda
-// que dentro do limite fisico de guinada da aeronave (medido rodando SEM
-// o limitador abaixo: velocidade e altitude caindo continuamente por
-// ~200 s simulados ate a aeronave entrar em espiral e colidir com o
-// terreno -- nenhum erro de parse, nenhum "was not found", so a fisica
-// da perseguicao pura degradando).
-//
-// O limitador de taxa abaixo NAO e uma regra de negocio nova: e a MESMA
-// tecnica que qualquer guiador por perseguicao pura precisa -- rumo
-// comandado nunca pula mais que kMaxHeadingRateDegPerSec por segundo,
-// convertendo o comando bruto de marcacao instantanea num comando que se
-// aproxima suavemente, com avanco implicito. Route/Steerpoint continuam
-// sendo a UNICA fonte do alvo (marcacao, altitude, velocidade); nada aqui
-// reimplementa navegacao -- so amortece o COMANDO.
+// getTrueBrgDeg() e a marcacao direto-ao-ponto recalculada a cada frame;
+// comanda-la crua como rumo e perseguicao pura (pure pursuit) sem termo de
+// avanco, que diverge quando o angulo de marcacao muda mais rapido que a
+// taxa de guinada disponivel -- tipicamente perto do ponto de destino. Sem
+// limitador de taxa, a aeronave perde velocidade/altitude continuamente ate
+// entrar em espiral e colidir com o terreno (falha silenciosa de fisica,
+// sem erro de parse). O limitador abaixo amortece o comando para se
+// aproximar suavemente, com avanco implicito; Route/Steerpoint continuam
+// sendo a unica fonte do alvo.
 //
 // Sem fallback de proposito, igual antes: se a rota nao tiver guiagem
 // valida, o no falha e nao ha decisao naquele tick.
@@ -67,17 +49,13 @@ BT::NodeStatus NavigateAction::tick()
 
    const auto& view = context_.behavior->snapshot();
    if (!view.hasNavSteering) {
-      // ACHADO POR AUDITORIA (nao redescobrir): sem isto, um GAP de
-      // guiagem invalida (ex.: a arvore troca pra EVADE e depois volta pra
-      // NAV, o cenario full-systems-nav em tests/fixtures/ e' o unico
-      // consumidor hoje) deixava
-      // 'commandedHeadingDeg_' CONGELADO no ultimo valor de antes do gap.
-      // O proximo tick com guiagem valida caia no ramo de SUAVIZACAO (nao
-      // no de "primeiro tick"), tentando corrigir de um rumo antigo pra um
-      // possivelmente muito diferente pela taxa limitada -- o oposto do
-      // que "recomecar do zero" deveria fazer, e o mesmo tipo de
-      // instabilidade que o limitador existe pra evitar em primeiro lugar,
-      // so que na RECONEXAO em vez da perseguicao continua.
+      // Sem resetar hasCommandedHeading_, um gap de guiagem invalida (ex.:
+      // a arvore troca para EVADE e volta para NAV) deixaria
+      // commandedHeadingDeg_ congelado no ultimo valor antes do gap; o
+      // proximo tick valido cairia no ramo de suavizacao, tentando corrigir
+      // de um rumo antigo para um possivelmente muito diferente pela taxa
+      // limitada -- reintroduzindo a mesma instabilidade que o limitador
+      // existe para evitar, agora na reconexao.
       hasCommandedHeading_ = false;
       return BT::NodeStatus::FAILURE;
    }
@@ -98,19 +76,12 @@ BT::NodeStatus NavigateAction::tick()
 
    domain::FlightCommand cmd;
    cmd.headingDeg = commandedHeadingDeg_;
-   // ACHADO POR AUDITORIA (nao redescobrir): faltava aqui o MESMO piso
-   // anti-CFIT que Patrol/RTB/Support/SlowRoll ja aplicam (ver o comentario
-   // grande de bt_nodes::DecisionContext::clampAltitudeToTerrain()) -- a
-   // altitude do Steerpoint e' um numero ESTATICO do .edl, escolhido pelo
-   // autor do cenario para o PERFIL pretendido da rota, sem visibilidade do
-   // banco de elevacao real. Sem o piso, uma rota cujo relevo real e' mais
-   // alto do que o autor assumiu faz o Navigate manter a aeronave voando
-   // reto e nivelado direto para dentro do terreno -- medido rodando em
-   // sandbox/A4-6DOF-RANDOM: depois de um giro (que custa altitude, ver
-   // domain/AerobaticPlan.hpp), a arvore volta para NAV a uma altitude
-   // baixa o bastante para colidir com uma serra que o perfil da rota nao
-   // previa, em voo reto e nivelado, sem giro nenhum acontecendo no
-   // instante do impacto.
+   // A altitude do Steerpoint e um valor estatico do .edl, sem visibilidade
+   // do banco de elevacao real. Sem o mesmo piso anti-CFIT que Patrol/RTB/
+   // Support/SlowRoll ja aplicam, uma rota cujo relevo real e mais alto que
+   // o assumido pelo autor faz o Navigate manter voo reto e nivelado direto
+   // para dentro do terreno -- situacao observada apos um giro que reduz
+   // altitude e a arvore retorna a NAV abaixo do necessario.
    cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(
       view.hasNavCmdAlt ? view.navCmdAltM : view.altitudeM);
    cmd.speedKts = view.hasNavCmdSpeed ? view.navCmdSpeedKts : view.speedKts;

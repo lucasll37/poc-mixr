@@ -9,7 +9,7 @@ namespace models {
 namespace xA_4 {
 namespace bt_nodes {
 
-// SUCCESS quando o AlertRadio tem um alerta valido de OUTRO aviao.
+// SUCCESS quando o AlertDatalink tem um alerta valido de OUTRO aviao.
 class AlertReceivedCondition final : public BT::ConditionNode
 {
 public:

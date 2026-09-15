@@ -130,18 +130,13 @@ void ClockStation::processTimeCriticalTasks(const double dt)
 {
    // PAUSA: nao avanca frame nenhum.
    //
-   // So marcar o freeze NAO bastaria, e o motivo e uma ordem infeliz dentro
-   // de Simulation::updateTC(): 'execTime += dt' acontece na linha 462, ANTES
-   // do 'if (isFrozen()) dt0 = 0.0' da linha 498 -- e usa o dt cru, nao o
-   // dt0. Ou seja, com a simulacao congelada o mundo para, mas
-   // getExecTimeSec() continua correndo. Isso vazaria para o Tacview, que
-   // data cada linha ACMI justamente com exec_time (TacviewOutput.cpp:373):
-   // o replay avancaria com as aeronaves paradas. Medido rodando antes desta
-   // correcao: com a simulacao congelada, 'sim=' ainda subia.
-   //
-   // Nao chamar tcFrame() resolve os dois de uma vez -- o relogio de execucao
-   // para junto com o mundo, e ainda deixa de queimar CPU integrando um
-   // estado que nao muda.
+   // Marcar o freeze sozinho nao basta: Simulation::updateTC() faz
+   // 'execTime += dt' antes do teste 'if (isFrozen()) dt0 = 0.0', usando o
+   // dt cru -- com a simulacao congelada o mundo para, mas getExecTimeSec()
+   // continua avancando, o que vazaria para o Tacview (que data cada linha
+   // ACMI com exec_time): o replay avancaria com as aeronaves paradas. Nao
+   // chamar tcFrame() resolve os dois problemas -- o relogio de execucao
+   // para junto com o mundo, e evita integrar um estado que nao muda.
    //
    // O flag de freeze CONTINUA valendo (setPaused o mantem): ele e o que
    // congela o outro caminho, o de background -- Simulation::updateData()

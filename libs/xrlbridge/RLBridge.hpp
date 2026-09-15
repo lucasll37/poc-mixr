@@ -22,19 +22,13 @@ namespace xrlbridge {
 // a observacao que RLBridgeBehavior::genAction() cacheou durante esse mesmo
 // frame).
 //
-// SEM CHAVE POR PLAYER ID, de proposito -- v1 e um UNICO agente RL por
-// processo (ver o "Escopo" do plano de implementacao e o mesmo limite ja
-// documentado em RLBridgeBehavior.hpp). CORRIGIDO (achado por auditoria):
-// este paragrafo dizia que genAction() "nao tem como descobrir o ID do
-// player que o hospeda sem subir a arvore de componentes por container()"
-// -- isso nao e mais verdade: domain::WorldView::ownerName ja resolve esse
-// nome (acrescentado numa passada POSTERIOR, para o monitor do Groot) e
-// Observation.ownerName (abaixo) ja o propaga. O que falta pra multi-agente
-// de verdade e so a ARMAZENAGEM -- setObservation()/getObservation()/
-// setPendingCommand()/getPendingCommand() continuam um UNICO par global, nao
-// um mapa por playerId (mesmo espirito de xboard::Board). Generalizar e
-// trocar essas quatro funcoes por um mapa sob o MESMO mutex -- nao feito
-// aqui porque nao ha cenario que precise disso ainda.
+// Sem chave por player ID, de proposito -- v1 e um unico agente RL por
+// processo. domain::WorldView::ownerName ja resolve o nome do player
+// hospedeiro, e Observation.ownerName ja o propaga; o que falta para
+// multi-agente de verdade e a armazenagem -- setObservation()/
+// getObservation()/setPendingCommand()/getPendingCommand() continuam um
+// unico par global (mesmo espirito de xboard::Board), nao um mapa por
+// playerId.
 //
 // MESMO MOTIVO ESTRUTURAL de libs/xboard/Board.hpp para ser a UNICA
 // shared_library() desta dupla (as outras libs de libs/ sao estaticas):
@@ -58,18 +52,14 @@ namespace xrlbridge {
 
 struct Command
 {
-   // ACHADO POR AUDITORIA (nao redescobrir): sem este flag,
-   // RLBridgeBehavior::genAction() nao tinha como distinguir "o core ainda
-   // nao publicou nenhuma acao" de "o core publicou heading=0/altitude=0/
-   // speed=0 de proposito" -- os dois pareciam identicos (Command
-   // default-construido). Na primeira decisao de cada episodio (o frame de
-   // priming que NativeSimulation::reset() dispara via primeStation(),
-   // ANTES do primeiro step()/setPendingCommand() do lado Python) isso
-   // mandava a aeronave pro nivel do mar, parada -- medido rodando
-   // 'make test-rl': 'falcon1: -- -> RL (hdg=0deg alt=0m vel=0kt)'. Em
-   // resets SEGUINTES (mesmo processo, sem reconstruir a Station), o
-   // comando aplicado no priming era o ULTIMO comando do episodio ANTERIOR,
-   // vazando entre episodios.
+   // Sem este flag, RLBridgeBehavior::genAction() nao tem como distinguir "o
+   // core ainda nao publicou nenhuma acao" de "o core publicou
+   // heading=0/altitude=0/speed=0 de proposito" num Command
+   // default-construido. Sem ele, o frame de priming que
+   // NativeSimulation::reset() dispara mandaria a aeronave para o nivel do
+   // mar, parada; em resets seguintes no mesmo processo, o comando aplicado
+   // no priming seria o ultimo do episodio anterior, vazando entre
+   // episodios.
    bool valid{};
 
    double headingDeg{};
@@ -81,18 +71,11 @@ struct Observation
 {
    bool valid{};
 
-   // ACHADO POR AUDITORIA (revisao completa do repositorio): o comentario
-   // "SEM CHAVE POR PLAYER ID" acima dizia que genAction() nao tinha como
-   // descobrir o nome do player que o hospeda -- isso ficou desatualizado
-   // quando domain::WorldView::ownerName foi acrescentado numa passada
-   // POSTERIOR (para o monitor do Groot, ver CLAUDE.md/BtBehavior.cpp) e
-   // ja' vinha disponivel dentro de RLBridgeBehavior::genAction() sem ser
-   // propagado ate aqui. Preenchido em toObservation() a partir de
-   // snap.ownerName -- ainda NAO habilita multi-agente por si so (a
-   // armazenagem abaixo, setObservation()/getObservation(), continua um
-   // UNICO par global, nao um mapa por playerId), mas remove a lacuna real
-   // ("nao ha como saber de quem e a observacao") e e o primeiro passo pra
-   // quem um dia trocar o par global por um mapa.
+   // ownerName e preenchido em toObservation() a partir de snap.ownerName
+   // (domain::WorldView::ownerName). Ainda nao habilita multi-agente por si
+   // so -- a armazenagem abaixo continua um unico par global -- mas resolve
+   // a lacuna de "nao ha como saber de quem e a observacao", primeiro passo
+   // para quem trocar o par global por um mapa.
    std::string ownerName;
 
    double northM{};
@@ -130,10 +113,9 @@ struct Observation
 
    bool weaponReady{};
 
-   // RWR + navegacao nativa -- acrescentados nesta mesma passada (ver o
-   // comentario de ObservationFields.hpp: existiam em domain::WorldView, mas
-   // ninguem tinha atualizado a macro para inclui-los). Espelham
-   // domain::WorldView campo a campo, mesma regra do resto da struct.
+   // RWR + navegacao nativa espelham domain::WorldView campo a campo, mesma
+   // regra do resto da struct (ver ObservationFields.hpp para a ordem/motivo
+   // de terem sido acrescentados no fim da macro).
    double rwrThreatRangeM{};
    double rwrThreatRelBearingDeg{};
    double rwrThreatDeltaAltM{};

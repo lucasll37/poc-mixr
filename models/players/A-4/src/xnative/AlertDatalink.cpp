@@ -11,6 +11,9 @@
 #include "mixr/base/Pair.hpp"
 #include "mixr/base/PairStream.hpp"
 #include "mixr/base/units/Times.hpp"
+#include "mixr/base/units/distance_utils.hpp"
+
+#include <cmath>
 
 namespace mixr {
 namespace models {
@@ -80,6 +83,15 @@ void AlertDatalink::broadcastAlert(const std::string& contactName,
    msg->setPosition(northM, eastM, altM);
    msg->setRangeM(rangeM);
 
+   // Posicao/lado do PROPRIO emissor, no instante da transmissao -- e o que
+   // permite o receptor filtrar por alcance/lado sem voltar a consultar o
+   // WorldModel (ver o "porque" no cabecalho da classe).
+   if (own != nullptr) {
+      const base::Vec3d& ownPos{own->getPosition()};
+      msg->setSenderPosition(ownPos[models::Player::INORTH], ownPos[models::Player::IEAST], own->getAltitudeM());
+      msg->setSenderSide(static_cast<unsigned int>(own->getSide()));
+   }
+
    // Caminho (a) -- sendMessage() e do framework: a varredura da lista de
    // players, a entrega local por event(DATALINK_MESSAGE) e a fila de rede
    // saem prontas daqui. ALCANCE NAO -- sem 'radioName' o envio e broadcast
@@ -130,20 +142,43 @@ bool AlertDatalink::onDatalinkMessageEvent(base::Object* const msg)
 {
    const auto alertMsg = dynamic_cast<const events::TacticalAlert*>(msg);
    if (alertMsg != nullptr) {
-      std::lock_guard<std::mutex> lock(alertMutex);
-      receivedCount += 1;
+      // FILTRO DE LADO E ALCANCE -- ver o "porque" no cabecalho da classe.
+      // Sem 'own' (nenhum Player container -- caso dos testes isolados
+      // desta classe, que constroem um AlertDatalink solto) o filtro fica
+      // DESLIGADO: aceita como sempre aceitou, sem mudar o comportamento
+      // observavel de quem nunca amarrou esta classe a um Player de
+      // verdade.
+      bool aceitar{true};
+      const models::Player* const own{getOwnship()};
+      if (own != nullptr) {
+         if (alertMsg->getSenderSide() != static_cast<unsigned int>(own->getSide())) {
+            aceitar = false;
+         } else {
+            const base::Vec3d& ownPos{own->getPosition()};
+            const double dNorth{alertMsg->getSenderNorthM() - ownPos[models::Player::INORTH]};
+            const double dEast{alertMsg->getSenderEastM() - ownPos[models::Player::IEAST]};
+            const double dAlt{alertMsg->getSenderAltitudeM() - own->getAltitudeM()};
+            const double rangeM{std::sqrt((dNorth * dNorth) + (dEast * dEast) + (dAlt * dAlt))};
+            if (rangeM > getMaxRange() * base::distance::NM2M) aceitar = false;
+         }
+      }
 
-      if (!staged.valid
-          || alertMsg->getRangeM() < staged.rangeM
-          || (alertMsg->getRangeM() == staged.rangeM && alertMsg->getSenderId() < staged.senderId)) {
-         staged.valid = true;
-         staged.senderId = alertMsg->getSenderId();
-         staged.senderName = alertMsg->getSenderName();
-         staged.contactName = alertMsg->getContactName();
-         staged.northM = alertMsg->getNorthM();
-         staged.eastM = alertMsg->getEastM();
-         staged.altitudeM = alertMsg->getAltitudeM();
-         staged.rangeM = alertMsg->getRangeM();
+      if (aceitar) {
+         std::lock_guard<std::mutex> lock(alertMutex);
+         receivedCount += 1;
+
+         if (!staged.valid
+             || alertMsg->getRangeM() < staged.rangeM
+             || (alertMsg->getRangeM() == staged.rangeM && alertMsg->getSenderId() < staged.senderId)) {
+            staged.valid = true;
+            staged.senderId = alertMsg->getSenderId();
+            staged.senderName = alertMsg->getSenderName();
+            staged.contactName = alertMsg->getContactName();
+            staged.northM = alertMsg->getNorthM();
+            staged.eastM = alertMsg->getEastM();
+            staged.altitudeM = alertMsg->getAltitudeM();
+            staged.rangeM = alertMsg->getRangeM();
+         }
       }
    }
 

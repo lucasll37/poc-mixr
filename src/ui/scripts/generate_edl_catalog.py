@@ -92,9 +92,9 @@ role_name_from_base_class = scan.role_name_from_base_class
 # comentario da secao "src/poc/dis/bandit" no CLAUDE.md). Isso nao e so escopo:
 # interop/hla e interop/rprfom tem classes com o MESMO NOME BARRA (sem
 # namespace) de classes DIFERENTES e de fato usadas -- Aircraft, GroundVehicle,
-# NetIO, Nib, Ntm -- confirmado rodando: build_inheritance()/extract_slots()
-# indexam por nome de classe SEM namespace (build_inheritance() so guarda "o
-# ultimo segmento"), entao "Aircraft" (mixr::models, 45 slots reais) e
+# NetIO, Nib, Ntm -- build_inheritance()/extract_slots() indexam por nome de
+# classe SEM namespace (build_inheritance() so guarda "o ultimo segmento"),
+# entao "Aircraft" (mixr::models, 45 slots reais) e
 # "Aircraft" (mixr::rprfom::RprFom.cpp, um NIB sem relacao nenhuma) colidem na
 # mesma chave, e quem "ganha" depende so da ordem alfabetica de arquivo -- um
 # risco real de corromper a entrada MAIS importante do catalogo (Aircraft)
@@ -104,18 +104,12 @@ role_name_from_base_class = scan.role_name_from_base_class
 # tambem tira do catalogo fabricas que o parser deste repositorio nunca
 # alcancaria de qualquer forma (HlaNetIO, RprFomNetIO, ...).
 #
-# Limitacao conhecida, restante mesmo com este recorte -- nao redescobrir:
-# base::FileReader (fabrica "FileReader") e recorder::FileReader (fabrica
-# "RecorderFileReader") sao DUAS classes diferentes com o MESMO nome barra
-# "FileReader", uma em base/ e outra em recorder/ -- as duas ficam no
-# catalogo (nenhuma fabrica e perdida, confirmado rodando), mas ambas mostram
-# a cadeia/slots de qualquer uma que a varredura processar por ultimo
-# (build_inheritance()/extract_slots() indexam por classe, sem namespace).
-# Caso raro (so este par, dos 16 nomes colidentes originais, sobrevive a
-# exclusao de interop/hla e interop/rprfom) e de baixo impacto (nenhum
-# cenario real deste repositorio usa FileReader/RecorderFileReader) --
-# resolver de verdade exigiria chave qualificada por namespace em
-# build_inheritance()/extract_slots(), fora do escopo desta extensao.
+# Limitacao conhecida, mantida mesmo com este recorte: base::FileReader
+# (fabrica FileReader) e recorder::FileReader (fabrica RecorderFileReader)
+# sao duas classes diferentes com o mesmo nome sem namespace -- as duas
+# ficam no catalogo, mas ambas herdam a cadeia/slots de qualquer uma que a
+# varredura processar por ultimo (caso raro, sem impacto em cenario real
+# deste repositorio).
 EDL_CATALOG_MIXR_MODULES = [
     "base", "models", "terrain", "interop/dis", "linkage", "recorder", "simulation",
 ]
@@ -143,7 +137,6 @@ def extract_slot_types(cpp_roots):
     SEMPRE roda sobre texto MASCARADO -- sem isso, ON_SLOT comentado (ex.:
     IrSensor.cpp:54-56, dois slots do indice 7 desativados no fonte real)
     vira falso positivo e o indice 7 pareceria aceitar 3 tipos em vez de 1.
-    Confirmado rodando sem o mascaramento antes de escrever esta versao.
 
     PRIMEIRO achado vence, por classe inteira (mesmo motivo/mesma ordem de
     varredura de extract_slots() em mixr_source_scan.py -- 'models/players/A-4'
@@ -219,16 +212,11 @@ def origin_of(impl_file):
     models/<qualquer-coisa>/ ja aparece rotulado na hora, sem precisar
     editar este arquivo.
 
-    Confirmado rodando, duas vezes: (1) antes da generalizacao original,
-    TacticalAlert (o payload real do evento de alerta tatico, implementado
-    em models/events/payloads/EID_ALERT/TacticalAlert.cpp -- nao um
-    'models/players/<nome>/') caia no 'return "builtin"' por engano, como
-    se fosse uma classe nativa do MIXR; (2) antes do ajuste de
-    MODEL_CATEGORY_DIRS, uma classe de Navstar-3 (o primeiro modelo real
-    fora de models/players/) saia rotulada 'plugin:others' -- a CATEGORIA,
-    nao o modelo -- porque o codigo so' tratava 'models/players/' como
-    especial e caia no ramo generico para qualquer outra coisa sob
-    models/."""
+    Trata dois casos historicamente propensos a erro: uma classe em
+    models/events/... (ex.: TacticalAlert) nao pode cair no ramo generico
+    "builtin"; e uma classe em models/<categoria>/<nome>/... fora de
+    players/ deve rotular pelo NOME do modelo (rest[1]), nao pela categoria
+    (rest[0])."""
     if impl_file is None:
         return "unknown"
     if impl_file.startswith("models/"):
@@ -266,13 +254,11 @@ def load_edl_catalog_overrides():
 # 'base::PairStream' generico (ON_SLOT sem um segundo tipo de objeto unico) --
 # o dynamic_cast/isClassType() de verdade mora DENTRO do corpo do setter, que
 # nenhuma regex sobre a ASSINATURA alcanca (ver o comentario de isCompatible()
-# em edl_builder_core.js). Investigado lendo o .cpp de cada um (nao adivinhado)
-# antes de escrever esta tabela -- 36 casos no total nesta versao do fork
-# (23 em LIST_SLOT_TYPE_OVERRIDES + 13 em TEXT_ONLY_LIST_SLOTS -- achado por
-# auditoria, corrigido: o comentario dizia 35, nao redescobrir),
-# nenhum sobrando (conferido: 'python3 -c' sobre o catalogo gerado, filtrando
-# acceptsChildList=true e objectTypes vazio, some da lista depois deste
-# override ser aplicado). Duas categorias:
+# em edl_builder_core.js). Tabela curada a partir da leitura do .cpp de cada
+# setter (36 casos: 23 em LIST_SLOT_TYPE_OVERRIDES + 13 em
+# TEXT_ONLY_LIST_SLOTS). Nenhum slot-lista com objectTypes vazio deveria
+# sobrar fora destas duas tabelas -- conferivel filtrando acceptsChildList=true
+# e objectTypes=[] no catalogo gerado. Duas categorias:
 #
 # 'listSlotTypes' -- o setter FAZ dynamic_cast/isClassType() pra um tipo real
 # (ex.: Station::setSlotNetworks() -> dynamic_cast<AbstractNetIO*>,

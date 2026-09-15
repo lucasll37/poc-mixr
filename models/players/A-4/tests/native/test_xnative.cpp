@@ -290,17 +290,16 @@ TEST(AlertDatalink, MaisProximoVenceOEmpate)
    longe->unref(); perto->unref(); dl->unref();
 }
 
-// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o teste acima
-// ("MaisProximoVenceOEmpate") nunca exercitava um EMPATE de verdade --
-// 'longe'/'perto' tem rangeM sempre DIFERENTE (30000 vs 9000). O terceiro
-// termo do OR em AlertDatalink.cpp (desempate por senderId em EMPATE EXATO
-// de rangeM) nunca era testado por nenhum teste do repositorio -- trocar
-// '<' por '<='/'>' ali, ou remover o termo (reintroduzindo dependencia de
-// ordem de chegada entre threads, exatamente o defeito que este codigo
-// existe para evitar, ver AlertDatalink.hpp:59-66), nao quebrava
-// 'make test'. Mesmo padrao ja usado em tests/domain/test_track_selection.cpp
+// O teste acima ("MaisProximoVenceOEmpate") nunca exercita um empate de
+// verdade -- 'longe'/'perto' tem rangeM sempre diferente (30000 vs 9000).
+// O terceiro termo do OR em AlertDatalink.cpp (desempate por senderId em
+// empate exato de rangeM) precisa de cobertura propria: trocar '<' por
+// '<='/'>' ali, ou remover o termo (reintroduzindo dependencia de ordem de
+// chegada entre threads, o defeito que este codigo existe para evitar, ver
+// AlertDatalink.hpp:59-66), nao quebraria 'make test' sem este teste.
+// Mesmo padrao ja usado em tests/domain/test_track_selection.cpp
 // (EmpateDeAlcanceVenceOMenorIdDePista/DesempateEIndependenteDaOrdemDaLista)
-// para a regra identica, so' nao tinha sido replicado pra AlertDatalink.
+// para a regra identica, replicado aqui para AlertDatalink.
 TEST(AlertDatalink, EmpateExatoDeAlcanceVenceOMenorSenderId)
 {
    auto* const dl = new SondaDatalink();
@@ -358,35 +357,29 @@ TEST(AlertDatalink, EmpateExatoDeAlcanceEIndependenteDaOrdemDeChegada)
 // Station: os dois testes exercitam a MESMA BT::BehaviorTreeFactory que
 // buildTree() usa, sem precisar do resto da maquina.
 //
-// DEBITO DE TESTE RECONHECIDO (mesmo espirito do de test_rl_bridge_
-// behavior.cpp, nao redescobrir): os dois testes abaixo provam o
-// MECANISMO (registrar duas vezes sem resetar lanca; reatribuir a factory
-// evita) contra uma 'BT::BehaviorTreeFactory' LOCAL, nao contra o membro
+// Debito de teste reconhecido: os dois testes abaixo provam o mecanismo
+// (registrar duas vezes sem resetar lanca; reatribuir a factory evita)
+// contra uma 'BT::BehaviorTreeFactory' local, nao contra o membro
 // 'btFactory' de um 'BtBehavior' de verdade -- reverter o fix em
-// 'BtBehavior::buildTree()' NAO faz estes dois testes falharem (foi
-// verificado rodando: reverter e rodar so' pega os dois testes locais
-// intactos). Fechar essa lacuna de verdade exigiria o mesmo Bench pesado
+// 'BtBehavior::buildTree()' nao faz estes dois testes falharem. Fechar
+// essa lacuna de verdade exigiria o mesmo Bench pesado
 // (WorldModel+AirVehicle+reset()) que test_flight_state_action.cpp usa,
-// aplicado a um SEGUNDO ciclo reset()+genAction().
+// aplicado a um segundo ciclo reset()+genAction().
 //
-// INVESTIGADO E NAO REPRODUZIDO hoje (verificado rodando, nao so' lido):
-// 'src/rl/tests/test_smoke.py' chama env.reset() varias vezes no MESMO
-// processo, e um repro isolado (reset -> step x3 -> reset -> step) TAMBEM
-// nao lanca -- 'BtBehavior::reset()' parece nunca ser chamado uma segunda
-// vez pelo cascade de reset() do 'UbfArbiter' nativo (a mesma incerteza ja
-// registrada no comentario de 'genAction()', motivo do 'plansReady'
-// preguicoso). O fix e' cautela defensiva -- mesma classe de garantia que
-// 'tree = BT::Tree();' ja da' pra 'tree' em reset() -- nao a correcao de
+// Nao reproduzido hoje: 'src/rl/tests/test_smoke.py' chama env.reset()
+// varias vezes no mesmo processo, e um repro isolado (reset -> step x3 ->
+// reset -> step) tambem nao lanca -- 'BtBehavior::reset()' parece nunca
+// ser chamado uma segunda vez pelo cascade de reset() do 'UbfArbiter'
+// nativo. O fix e cautela defensiva -- mesma classe de garantia que
+// 'tree = BT::Tree();' ja da para 'tree' em reset() -- nao a correcao de
 // um crash observado em producao.
 //------------------------------------------------------------------------------
 
-// ACHADO POR AUDITORIA (nao redescobrir): BT::BehaviorTreeFactory::
-// registerBuilder() lanca BehaviorTreeException("ID [...] already
-// registered") pra qualquer ID ja presente (bt_factory.cpp:92, BT.CPP). Um
-// SEGUNDO 'buildTree()' na MESMA instancia de BtBehavior (se algum dia
-// 'treeBuilt' voltar a 'false' antes de outra decisao) chamaria
-// registerNodes()/registerSdkNodes() de novo sobre a MESMA factory, nunca
-// resetada. Este teste prova o MECANISMO:
+// BT::BehaviorTreeFactory::registerBuilder() lanca BehaviorTreeException
+// para qualquer ID ja presente. Um segundo 'buildTree()' na mesma
+// instancia de BtBehavior (se algum dia 'treeBuilt' voltar a 'false' antes
+// de outra decisao) chamaria registerNodes()/registerSdkNodes() de novo
+// sobre a mesma factory, nunca resetada. Este teste prova o mecanismo:
 // registrar duas vezes sem reatribuir a factory lanca.
 TEST(BtFactoryRegistration, RegistrarDuasVezesNaMesmaFactorySemResetarLanca)
 {

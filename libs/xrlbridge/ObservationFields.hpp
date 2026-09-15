@@ -41,19 +41,13 @@
 // RLBridge.hpp) fixa esses 28 nomes/ordem numa lista PROPRIA, independente
 // desta macro, para nunca ser afetada se esta lista for reordenada de novo.
 //
-// OS 10 CAMPOS NO FIM (RWR + navegacao) foram ACRESCENTADOS numa passada
-// posterior -- domain::WorldView (models/players/A-4) ja os tinha havia tempo
-// (RWR e navegacao nativa), mas ninguem tinha atualizado esta macro; ficavam
-// invisiveis para qualquer politica de RL/ONNX, mesmo ja existindo no sensor
-// da aeronave (achado de auditoria). Acrescentados NO FIM, na ordem de
-// declaracao de WorldView (RWR primeiro, depois navegacao) -- nunca inseridos
-// no meio -- para nao perturbar posicao nenhuma dos 28 originais. Isso e
-// seguro porque NENHUM consumidor real depende da posicao ABSOLUTA de um
-// campo dentro desta lista: os quatro pontos que hoje leem 'a lista inteira,
-// nesta ordem' (RLBridge.cpp, os tres nos de arvore de models/players/A-4)
-// continuam expandindo a macro do mesmo jeito de sempre; e o schema nomeado
-// (xrlbridge::Schema/bind(), ver FieldRegistry.hpp/Schema.hpp) resolve por
-// NOME, nunca por posicao.
+// Os 10 campos finais (RWR + navegacao) ja existiam em domain::WorldView,
+// mas a macro nunca tinha sido atualizada para inclui-los -- ficavam
+// invisiveis para qualquer politica de RL/ONNX mesmo ja existindo no sensor
+// da aeronave. Foram acrescentados no fim, na ordem de declaracao de
+// WorldView, nunca inseridos no meio, para nao perturbar a posicao dos 28
+// campos originais -- seguro porque nenhum consumidor depende de posicao
+// absoluta alem deles (protegidos a parte por classicSchema28()).
 //------------------------------------------------------------------------------
 
 #define XRLBRIDGE_OBSERVATION_FIELDS \
@@ -105,18 +99,13 @@
 // A ACAO -- os tres campos de domain::FlightCommand, com a faixa fisica de
 // cada um.
 //
-// A faixa importa porque um .onnx exportado precisa emitir acao NORMALIZADA
-// em [-1,1] (o que `unscaleCommand()` abaixo espera) -- mas isso NAO e
-// automatico: o SB3 padrao (PPO/MlpPolicy, sem squash_output+use_sde) NAO
-// aplica Tanh nenhum no forward da policy (achado por auditoria -- o
-// comentario aqui antes afirmava o contrario). Quem faz a normalizacao e o
-// EXPORTADOR (`src/poc/rl-training/tools/export_onnx.py::exportar_sb3()`),
-// escalando a saida fisica crua da policy para [-1,1] com estes MESMOS
-// limites antes de gravar o .onnx. A desnormalizacao (abaixo) e a
-// exportacao tem de usar EXATAMENTE os mesmos limites dos dois lados -- sao
-// estes, e sao os defaults que MixrFlightEnv.__init__ ja usava (o script de
-// exportacao le os limites REAIS de `modelo.action_space`, nao um valor
-// fixo -- o construtor aceita faixas customizadas).
+// A normalizacao para [-1,1] nao e automatica: o SB3 padrao (PPO/MlpPolicy,
+// sem squash_output+use_sde) nao aplica Tanh no forward da policy. Quem
+// normaliza e o exportador (export_onnx.py::exportar_sb3()), escalando a
+// saida fisica crua da policy para [-1,1] com os mesmos limites usados em
+// unscaleCommand() -- os dois lados tem de usar exatamente os mesmos
+// limites, os defaults de MixrFlightEnv.__init__ (o exportador le os
+// limites reais de modelo.action_space, nao um valor fixo).
 //------------------------------------------------------------------------------
 #define XRLBRIDGE_ACTION_FIELDS                    \
    XRLBRIDGE_A(headingDeg,   0.0,   360.0)         \

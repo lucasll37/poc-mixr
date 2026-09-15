@@ -15,6 +15,17 @@ PLUGINS_DIR := $(PWD)/plugins
 # Number of parallel jobs for Ninja (all available cores)
 NINJA_JOBS := $(shell nproc)
 
+# Desliga o cache de bytecode do CPython (__pycache__/*.pyc) para TODO
+# subprocesso desta receita -- inclusive 'conan' (que IMPORTA conanfile.py
+# como modulo Python para instanciar a receita, nunca roda como script) e
+# qualquer 'python3'/'pytest' chamado por um alvo deste Makefile. 'export'
+# torna a variavel visivel tambem para os '$(MAKE) -C <dir>' que este
+# Makefile dispara (models/, src/poc/rl-training/) -- o processo filho
+# HERDA o ambiente do pai, com ou sem 'export' equivalente no Makefile
+# filho. Achado por auditoria: sem isto, um __pycache__/conanfile.*.pyc
+# aparecia na RAIZ do repositorio a cada 'make configure'.
+export PYTHONDONTWRITEBYTECODE := 1
+
 # Build configuration
 BUILD_TYPE := Debug
 # ASAN=true reconfigura o projeto do modelo com o sanitizador (ver test-asan).
@@ -304,22 +315,13 @@ run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
 # players; um grep no .edl aqui duplicaria esse conhecimento e envelheceria
 # sozinho.
 #
-# ACHADO POR AUTOREVISAO, CORRIGIDO (nao redescobrir): SCENARIO= entrava por
-# '-f <arquivo>', e '-f' ASSUME a frota falcon1..4 -- 'app::adHocScenario()'
-# devolve 'falconFleet()' incondicionalmente, e o proprio comentario dela manda
-# usar '-folder' para qualquer frota diferente. Como NENHUM cenario de sandbox/
-# tem falcon* (sao a4, a4_1..a4_8, c130), 'make run-app-monitor PLAYER=a4_1
-# SCENARIO=sandbox/...' -- a forma que este mesmo help anuncia -- abria o Groot
-# e morria em seguida com "player 'falcon1' nao encontrado!", em
-# 'app::collectFleet()', ANTES de a checagem nova rodar. Hoje, quando o arquivo
-# esta no layout padrao '<raiz>/<cenario>/configs/<arquivo>', o alvo traduz para
-# '-folder <raiz> -scenario <cenario>', que descobre a frota em runtime
-# (app::discoverFleet()); fora desse layout cai em '-f' e AVISA sobre a
-# suposicao de frota, em vez de falhar sem explicacao.
-#
-# O exemplo destes alvos era 'PLAYER=falcon1' -- nome que NAO existe em cenario
-# nenhum de sandbox/ (os reais sao a4, a4_1..a4_8, c130). Corrigido: e' o texto
-# que 'make help' imprime.
+# SCENARIO= nao pode entrar por '-f <arquivo>' porque '-f' assume sempre a
+# frota falcon1..4 (app::adHocScenario()/falconFleet()), e nenhum cenario de
+# sandbox/ usa esses nomes (sao a4, a4_1..a4_8, c130). Por isso, quando o
+# arquivo esta no layout padrao '<raiz>/<cenario>/configs/<arquivo>', o alvo
+# traduz para '-folder <raiz> -scenario <cenario>' (frota descoberta em
+# runtime via app::discoverFleet()); fora desse layout, cai em '-f' e avisa
+# sobre a suposicao de frota em vez de falhar sem explicacao.
 run-app-monitor: install ## App + Monitor do Groot. Uso: PLAYER=a4_1 [SCENARIO=<arquivo>] [ARGS=...] [GROOT=0].
 	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player> [SCENARIO=<arquivo.edl|.edl.in>]$(NC)"; exit 1; }
 	@if [ -n "$$SCENARIO" ] && [ ! -f "$$SCENARIO" ]; then echo "$(RED)run-app-monitor: cenario nao encontrado: $$SCENARIO$(NC)"; exit 1; fi
@@ -477,18 +479,13 @@ open-edl: ## Regenera e abre src/ui/edl-builder.html (editor visual de cenario).
 	node src/ui/scripts/build.js
 	@scripts/open_browser.sh src/ui/edl-builder.html
 
-# ACHADO INVESTIGANDO "o Groot fecha sozinho" (armadilha no 3 da secao "Groot"
-# do CLAUDE.md): este alvo mandava stdout E stderr do Groot para /dev/null, e
-# com eles a UNICA pista do bug -- a linha "Qt has caught an exception thrown
-# from an event handler" que o Qt imprime enquanto desempilha, mais o abort.
-# Sem isso, a janela simplesmente sumia e nao havia onde olhar. Note tambem que
-# o 'find_groot.sh 2>/dev/null' de antes engolia o aviso de "Groot em cache
-# anterior a FIX 6" que o proprio script agora emite.
-#
-# Append (nao truncate) de proposito: o sintoma e' intermitente, entao o
-# historico das execucoes anteriores e' justamente o que se quer comparar --
-# dai o cabecalho com timestamp a cada abertura. build/ ja e' gitignored,
-# mesma convencao de build/tests-determinism e build/generated-scenarios.
+# stdout e stderr do Groot precisam ser capturados (nao redirecionados para
+# /dev/null): e em stderr que aparece a unica pista de um crash ("Qt has
+# caught an exception thrown from an event handler", ver armadilha no 3 da
+# secao "Groot" do CLAUDE.md), e find_groot.sh tambem emite ali o aviso de
+# pacote Groot anterior a FIX 6. O log usa append (nao truncate) porque o
+# crash e intermitente e o historico de execucoes ajuda a comparar; grava em
+# build/ (gitignored).
 GROOT_LOG := $(BUILD_DIR)/groot.log
 
 open-groot: ## Abre o Groot (editor/monitor BT.CPP). Log em build/groot.log; FG=1 roda no terminal.
@@ -522,16 +519,18 @@ open-groot: ## Abre o Groot (editor/monitor BT.CPP). Log em build/groot.log; FG=
 # repositorio inteiro, que duplicaria toda contagem se entrasse.
 LOC_PRUNE := \( -path ./contexts -o -name build -o -name dist -o -name .venv -o -name node_modules -o -name .git -o -path ./.claude/worktrees \) -prune
 
-loc: ## Conta linhas de codigo desenvolvido: .hpp/.cpp/.py/.md, e o total.
+loc: ## Conta linhas de codigo desenvolvido: .hpp/.cpp/.py/.js/.jsx/.md, e o total.
 	@hpp=$$(find . $(LOC_PRUNE) -o -type f -name '*.hpp' -print0 | xargs -0 -r cat | wc -l); \
 	cpp=$$(find . $(LOC_PRUNE) -o -type f -name '*.cpp' -print0 | xargs -0 -r cat | wc -l); \
 	py=$$(find . $(LOC_PRUNE) -o -type f -name '*.py' -print0 | xargs -0 -r cat | wc -l); \
+	js=$$(find . $(LOC_PRUNE) -o -type f \( -name '*.js' -o -name '*.jsx' \) -print0 | xargs -0 -r cat | wc -l); \
 	md=$$(find . $(LOC_PRUNE) -o -type f -name '*.md' ! -name 'CLAUDE.md' -print0 | xargs -0 -r cat | wc -l); \
-	total=$$((hpp + cpp + py + md)); \
+	total=$$((hpp + cpp + py + js + md)); \
 	echo "$(YELLOW)loc:$(NC) linhas por extensao (exclui contexts/, build/, dist/, .venv/, node_modules/; .md exclui CLAUDE.md)"; \
 	printf "  %-8s %10d linhas\n" ".hpp" "$$hpp"; \
 	printf "  %-8s %10d linhas\n" ".cpp" "$$cpp"; \
 	printf "  %-8s %10d linhas\n" ".py" "$$py"; \
+	printf "  %-8s %10d linhas\n" ".js/.jsx" "$$js"; \
 	printf "  %-8s %10d linhas\n" ".md" "$$md"; \
 	printf "  %-8s %10d linhas\n" "total" "$$total"
 

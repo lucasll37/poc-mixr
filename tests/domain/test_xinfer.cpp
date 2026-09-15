@@ -12,12 +12,8 @@
 // A SEGUNDA METADE (a partir de PoliticaInstaladaTemAFormaDoContrato, mais
 // abaixo neste mesmo arquivo) e o caminho FELIZ -- inferencia de verdade
 // contra POLICY_ONNX (um .onnx real, ver a definicao de compilacao em
-// tests/meson.build) e determinismo com 1/2/4 threads sobre a MESMA sessao.
-// CORRIGIDO (nao redescobrir): este comentario dizia que o caminho feliz
-// morava num alvo separado, 'xinfer-determinismo' -- esse alvo nunca
-// existiu (ou foi fundido aqui antes de ganhar nome proprio); os dois lados
-// sempre compilaram e rodaram juntos, sob o unico alvo 'xinfer-degradacao'
-// registrado em tests/meson.build.
+// tests/meson.build) e determinismo com 1/2/4 threads sobre a MESMA sessao,
+// sob o unico alvo 'xinfer-degradacao' registrado em tests/meson.build.
 //
 #include "xinfer/Infer.hpp"
 #include "xrlbridge/ObservationFields.hpp"

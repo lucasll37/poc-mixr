@@ -1,0 +1,70 @@
+name: "Ambiente (INSTALL.md)"
+description: >-
+  Sobe o ambiente do zero dentro do container ubuntu:24.04, replicando o
+  ".ambiente"/before_script do .gitlab-ci.yml: pacotes de sistema (SS1) ->
+  Conan via pipx (SS2) -> perfil default (SS3) -> Node.js pelo NodeSource
+  (SS5) -> checagem final (SS6). SS4 (Groot + deps de fonte) fica FORA daqui
+  de proposito -- so o job 'build' precisa, mesma razao do .gitlab-ci.yml.
+inputs:
+  node-major:
+    description: "Linha major do Node.js (INSTALL.md SS5)"
+    required: false
+    default: "24"
+runs:
+  using: "composite"
+  steps:
+    # Tudo num script SO -- mesma semantica do before_script do GitLab, onde
+    # todas as linhas rodam na MESMA sessao de shell (por isso o 'export
+    # PATH' do meio continua valendo para os comandos seguintes deste
+    # bloco). Em Actions cada STEP novo perde variavel exportada em shell
+    # anterior; concentrar num unico 'run:' evita reexportar em cada passo.
+    - name: "INSTALL.md SS1-SS3, SS5-SS6"
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # -- SS1: pacotes de sistema -----------------------------------
+        # Mesma lista testada no roteiro (Ubuntu 24.04 do zero), sem os
+        # recomendados.
+        apt-get update
+        apt-get install -y --no-install-recommends build-essential ninja-build meson pkg-config git curl perl patch zlib1g-dev python3 python3-venv python3-dev pipx gzip sudo ca-certificates
+        rm -rf /var/lib/apt/lists/*
+
+        # -- SS2: Conan via pipx, nao pip --------------------------------
+        # Ubuntu 24.04 recusa 'pip install' fora de venv (PEP 668) e nao ha
+        # pacote 'conan' no apt.
+        pipx install conan
+        pipx ensurepath
+        # HOME num job de container do GitHub Actions NAO e '/root' por
+        # padrao (costuma ser '/github/home') -- ao contrario do runner do
+        # GitLab. Usar $HOME em vez de fixar '/root/.local/bin' evita
+        # depender desse detalhe de implementacao.
+        export PATH="${HOME}/.local/bin:${PATH}"
+        conan --version
+
+        # -- SS3: perfil default ----------------------------------------
+        # Sem isto o primeiro 'make configure' morre com "The default build
+        # profile doesn't exist".
+        conan profile detect --force
+        # SEM remote privado nenhum -- ver o comentario do topo do
+        # .gitlab-ci.yml original. Isto so registra no log que o unico
+        # remote presente e o conancenter de fabrica.
+        conan remote list
+
+        # -- SS5: Node.js pelo NodeSource --------------------------------
+        # 'setup_<N>.x' roda o PROPRIO apt-get update e instala sozinho os
+        # pre-requisitos que a imagem nao tem (gnupg, apt-transport-https).
+        curl -fsSL "https://deb.nodesource.com/setup_${{ inputs.node-major }}.x" | sudo -E bash -
+        sudo apt install -y nodejs
+        sudo npm install -g npm@latest
+        rm -rf /var/lib/apt/lists/*
+
+        # -- SS6: checagem final ------------------------------------------
+        gcc --version && meson --version && ninja --version && pkg-config --version && conan --version && node --version && npm --version
+
+        # Disponibiliza o Conan (instalado via pipx em $HOME/.local/bin)
+        # para os passos SEGUINTES deste job (make configure/sdk/... chamam
+        # 'conan' direto) -- GITHUB_PATH so tem efeito a partir do PROXIMO
+        # step, por isso o 'export PATH' explicito acima cobre este mesmo
+        # script e esta linha cobre o resto do job.
+        echo "${HOME}/.local/bin" >> "$GITHUB_PATH"

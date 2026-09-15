@@ -2,17 +2,13 @@
 """Prova que DOIS processos './app' competindo pela MESMA porta Tacview, ao
 mesmo tempo, nao derrubam um ao outro.
 
-Achado por auditoria (workflow de investigacao desta sessao, dimensao
-'testes-adversariais'): o codigo ja tem degradacao graciosa DE PROPOSITO
-para porta ocupada --
+O codigo ja tem degradacao graciosa de proposito para porta ocupada:
 RealtimeTelemetryServer::start() (libs/xtacview/RealtimeTelemetryServer.cpp)
 so loga e devolve 'false' se o bind() falhar (EADDRINUSE), e
-TacviewOutput::initIfNeeded() trata isso separado da gravacao em .acmi local
-(a propria funcao documenta a correcao de um bug antigo: porta ocupada
-tambem matava o arquivo local). Mas nenhum teste subia dois processos DE
-VERDADE competindo pela mesma porta ao mesmo tempo -- toda a suite roda com
-'is_parallel: false' (nunca dois testes de poc ao mesmo tempo), entao esse
-caminho nunca era exercitado.
+TacviewOutput::initIfNeeded() trata isso separado da gravacao .acmi local.
+Mas nenhum teste subia dois processos de verdade competindo pela mesma
+porta ao mesmo tempo -- toda a suite roda com 'is_parallel: false', entao
+esse caminho nunca era exercitado.
 
 Duas copias do MESMO cenario real (tests/fixtures/full-systems-nav, ex-poc, 1
 player, porta Tacview propria) sao derivadas para pastas de sandbox com nomes DIFERENTES

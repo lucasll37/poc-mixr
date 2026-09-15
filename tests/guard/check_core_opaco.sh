@@ -4,28 +4,20 @@
 #
 # Esta e a guarda do invariante que a separacao existe para criar. Ela nao
 # afirma que o binario nao contem o modelo (isso ja era verdade antes da
-# separacao -- medido: 'nm -C' no executavel dava 0 simbolos do modelo mesmo
-# quando o .cpp dele era compilado junto). Ela afirma a coisa que a separacao
-# de fato mudou: que o BUILD do core nao referencia, nao inclui e nao compila
+# separacao: o modelo nunca aparecia nos simbolos do executavel mesmo quando
+# o .cpp dele era compilado junto). Ela afirma a coisa que a separacao de
+# fato muda: que o BUILD do core nao referencia, nao inclui e nao compila
 # uma linha do modelo.
 #
 # E o que torna verificavel o cenario pedido: um terceiro entrega so o .so.
 #
-# ARMADILHA CONFIRMADA (nao redescobrir): os globs originais ('src/*/src',
-# 'src/*/include') so alcancavam UM nivel abaixo de src/ -- cobriam
-# src/server/{src,include}, mas nao src/poc/<poc>/{src,include} (dois niveis,
-# desde a renomeacao poc/ -> src/poc/) nem src/rl/bindings (nem 'src/' nem
-# 'include/' como nome de pasta). O check 3, por sua vez, testava caminhos
-# 'src/$p' que nunca existiram (sempre foi 'src/poc/$p') -- vacuamente
-# verdadeiro. Os tres achados por 'find', nao por glob fixo, para sobreviver
-# a proximo subprojeto novo sem precisar editar este arquivo.
-#
-# ARMADILHA 2 CONFIRMADA (nao redescobrir): o check 2 ainda buscava por NOME
-# de diretorio pai ('src'/'include'/'bindings'), a mesma classe de erro do
-# paragrafo acima -- src/node/ (o runner headless) tem .cpp/.hpp DIRETO na
-# propria pasta, sem subpasta nenhuma com esses nomes, e ficava invisivel
-# (reproduzido plantando um '#include "domain/..."' ali, nao detectado).
-# Trocado pra buscar por EXTENSAO de arquivo, o mesmo criterio do check 3.
+# Os tres checks abaixo descobrem caminhos por 'find' (extensao de arquivo
+# ou nome de pasta do MODELO), nunca por glob/lista fixa de subprojeto —
+# um glob de profundidade fixa ('src/*/src') ou uma lista nomeada
+# ('single-thread multi-thread') fica cega a qualquer subprojeto que não
+# siga exatamente esse layout (ex.: src/node/ tem .cpp/.hpp direto na
+# própria pasta, sem subpasta 'src'/'include'), e um caminho novo nasce
+# desprotegido até alguém notar.
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ" || exit 1
@@ -33,16 +25,12 @@ fail=0
 
 # 1) nenhum arquivo de build do core cita fonte do modelo
 #
-# NAO estender pra 'tests/' aqui (achado E REVERTIDO na mesma autorevisao
-# que motivou a checagem 2 abaixo): tests/meson.build referencia os
-# proprios arquivos da suite do core por convencao 'domain/test_*.cpp'
-# (a pasta tests/domain/, nao o domain/ do modelo) -- o MESMO regex que
-# funciona por CONTEUDO de #include na checagem 2 vira falso positivo
-# aqui, porque aqui o alvo e um CAMINHO DE ARQUIVO em files(), e
-# 'domain/test_xmsg_rules.cpp' bate no regex sem ter nada a ver com o
-# modelo. Confirmado quebrando: estender pra tests/ fazia esta checagem
-# falhar contra o proprio tests/meson.build de producao, sem violacao
-# nenhuma de verdade.
+# NAO estender pra 'tests/' aqui: tests/meson.build referencia os proprios
+# arquivos da suite do core por convencao 'domain/test_*.cpp' (a pasta
+# tests/domain/, nao o domain/ do modelo) — o mesmo regex que funciona por
+# CONTEUDO de #include na checagem 2 vira falso positivo aqui, porque aqui
+# o alvo e um CAMINHO DE ARQUIVO em files(), e 'domain/test_xmsg_rules.cpp'
+# bate no regex sem ter nada a ver com o modelo.
 mbs="$(find src app -name meson.build 2>/dev/null)
 meson.build"
 achados_mb=""
@@ -65,19 +53,13 @@ fi
 #    (xtrack/, xboard/, xlog/ e xrlbridge/ sao do SDK, nao do modelo -- por
 #    isso o regex abaixo, restrito aos 4 prefixos do modelo, nao os pega)
 #
-# CORRIGIDO (nao redescobrir): esta checagem buscava por NOME de diretorio
-# pai ('src'/'include'/'bindings'), nao por arquivo -- src/node/ (o runner
-# headless, "peer enxuto de ./app") tem seus .cpp/.hpp DIRETO em src/node/,
-# sem nenhuma subpasta com esses nomes, entao ficava INVISIVEL pra esta
-# checagem (reproduzido: um '#include "domain/Foo.hpp"' plantado em
-# src/node/main.cpp nao era detectado). Trocado pra buscar por EXTENSAO de
-# arquivo (.cpp/.hpp) direto sob src/, app/ E tests/ (achado por
-# autorevisao: tests/ e' parte legitima do build do CORE e ficava de fora
-# -- reproduzido plantando o mesmo tipo de #include sob tests/domain/,
-# nao detectado, corrigido, replantado, agora detectado), o mesmo criterio
-# ja usado na checagem 3 abaixo -- cobre qualquer subprojeto core futuro,
-# com qualquer nome de pasta. Checagem 3 (por NOME de pasta, nao conteudo)
-# continua so' sob src/app -- estende-la pra tests/ criaria falso positivo
+# Busca por EXTENSAO de arquivo (.cpp/.hpp) direto sob src/, app/ e tests/ —
+# nao por NOME de diretorio pai ('src'/'include'/'bindings'): src/node/ (o
+# runner headless, "peer enxuto de ./app") tem seus .cpp/.hpp direto na
+# propria pasta, sem nenhuma subpasta com esses nomes, entao ficaria
+# invisivel para uma busca por nome de pasta. tests/ entra tambem: e parte
+# legitima do build do CORE. Checagem 3 (por NOME de pasta, nao conteudo)
+# continua so sob src/app — estende-la pra tests/ criaria falso positivo
 # contra a propria pasta tests/domain/ (nome de suite do core, coincidencia
 # textual com o nome do modelo).
 achados="$(find src app tests -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type f \( -name '*.cpp' -o -name '*.hpp' \) -print 2>/dev/null \
@@ -92,13 +74,8 @@ fi
 
 # 3) as arvores do modelo nao existem mais dentro das pocs
 #
-# ARMADILHA CONFIRMADA (nao redescobrir): esta checagem chegou a usar uma
-# lista fixa ('for p in single-thread multi-thread'), o mesmo erro ja
-# registrado no cabecalho para os checks 1/2 -- e ela nao pegava
-# python-flight/onnx-policy/app (pocs mais novas que a lista). Achado
-# reproduzindo: uma pasta 'src/domain/' plantada em python-flight passava
-# batido. Trocado por 'find' sob src/ e app/ inteiros, sem depender de nome
-# de poc nenhum.
+# 'find' sob src/ e app/ inteiros, sem depender de lista de poc nenhuma —
+# uma lista fixa de nomes de poc fica cega a qualquer poc nova.
 achados_arvore="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type d \( -name domain -o -name bt -o -name ubf -o -name xnative \) -print 2>/dev/null)"
 if [ -n "$achados_arvore" ]; then
    echo "  FALHA arvore do modelo encontrada sob src/ ou app/ -- o modelo mora em models/players/A-4:"

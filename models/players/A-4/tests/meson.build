@@ -63,11 +63,10 @@ test('domain', test_domain, suite: 'domain', timeout: 60)
 # Estes nos sao exercitados pelo test_native, que ja linka o SDK --
 # native/test_onnx_nodes.cpp cobre OnnxScoreCondition/OnnxPolicyAction
 # diretamente (porta 'model' ausente, caminho inexistente, indice fora da
-# faixa; achado por auditoria: ate essa suite existir, a cobertura real era
-# so' scenario-policy-onnx, o binario completo, que prova o caminho feliz
-# mas nao os casos de borda). A arvore de PRODUCAO (flight_tree.xml) nao os
-# usa, entao test_tree continua cobrindo
-# tudo o que ela contem.
+# faixa) -- antes dessa suite, a cobertura vinha so de scenario-policy-onnx,
+# que prova o caminho feliz mas nao os casos de borda. A arvore de PRODUCAO
+# (flight_tree.xml) nao os usa, entao test_tree continua cobrindo tudo o
+# que ela contem.
 
 # O XML de PRODUCAO, por caminho -- nao uma copia.
 flight_tree_xml = meson.current_source_dir() / '../configs/flight_tree.xml'
@@ -81,11 +80,11 @@ flight_tree_rwr_evade_demo_xml = meson.current_source_dir() / '../configs/flight
 # test_onnx_nodes.cpp, que so afirmam sobre forma/portas/rotulo).
 policy_example_onnx = meson.current_source_dir() / '../configs/policy_example.onnx'
 
-# Fixtures NOVAS desta passada (schema variavel) -- geradas por
-# 'export_onnx.py --random', nunca instaladas (moram em tests/native/fixtures/,
-# nao em configs/): existem so para provar o caminho de schema != "classic28"
-# e a checagem de identidade via metadata ponta a ponta. Ver o README da
-# pasta para o comando exato de regeneracao.
+# Fixtures de schema variavel, geradas por 'export_onnx.py --random', nunca
+# instaladas (moram em tests/native/fixtures/, nao em configs/): existem
+# para provar o caminho de schema != "classic28" e a checagem de identidade
+# via metadata ponta a ponta. Ver o README da pasta para o comando de
+# regeneracao.
 policy_all38_onnx = meson.current_source_dir() / 'native/fixtures/policy_all38.onnx'
 policy_3fields_onnx = meson.current_source_dir() / 'native/fixtures/policy_3fields.onnx'
 policy_classic28_metadata_divergente_onnx = meson.current_source_dir() / 'native/fixtures/policy_classic28_metadata_divergente.onnx'

@@ -251,11 +251,9 @@ def mask_string_contents(masked):
     tamanho/quebra de linha, mesma tecnica de mask_source), sem apagar as
     aspas em si. mask_source() por si so preserva string INTACTA de
     proposito (IMPLEMENT_RE precisa ler nome de fabrica de dentro dela) --
-    mas isso faz um valor como '"...(RCS)..."' (uma descricao de texto
-    livre, sem relacao nenhuma com sintaxe) confundir o varredor estrutural
-    com um '(' de verdade. Confirmado rodando: scenario_max_player.edl.in
-    tem exatamente essa string, e sem esta mascara o lint acusava
-    'fabrica desconhecida RCS'."""
+    mas isso faz um valor de texto livre contendo parenteses (ex.: uma
+    descricao com "(RCS)") confundir o varredor estrutural com um '('
+    de verdade."""
     out = list(masked)
     in_string = False
     for i, c in enumerate(masked):

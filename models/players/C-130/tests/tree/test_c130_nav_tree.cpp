@@ -99,9 +99,8 @@ TEST(C130NavTree, SemGuiagemValidaNaoDecideNada)
    EXPECT_FALSE(ctx.dec.taken) << "esta arvore nao tem Patrol/RTB/Evade por baixo";
 }
 
-// ACHADO POR AUDITORIA na A-4 (nao redescobrir aqui): um GAP de guiagem
-// invalida tem que "recomecar do zero" no rumo comandado, nao retomar
-// suavizando a partir do valor congelado de ANTES do gap.
+// Um gap de guiagem invalida tem que reiniciar do zero o rumo comandado,
+// nao retomar suavizando a partir do valor congelado de antes do gap.
 TEST(C130NavTree, GapDeGuiagemInvalidaReiniciaASuavizacaoNaProximaBearing)
 {
    FakeDecisionContext ctx{contextoComRotaValida()};

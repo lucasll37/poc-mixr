@@ -51,13 +51,13 @@ if [ -n "$POC" ]; then
       --out "$CENARIO" || exit 1
    args=(-f "$CENARIO")
 elif [ -n "$ARQUIVO" ]; then
-   # ARMADILHA CONFIRMADA (nao redescobrir): isto passava por '-f "$ARQUIVO"',
-   # e '-f' SEMPRE assume a frota falcon1..4 (app::adHocScenario()) -- para
-   # qualquer cenario hermetico com uma frota diferente (ex.: a familia
-   # sandbox/A4-*DOF, frota so 'a4'), o binario morria com "player 'falcon1'
-   # nao encontrado!" antes de rodar um frame sequer, e este script reportava
-   # isso como "FALHA execucao com N threads" -- lido a primeira vista como
-   # no-determinismo, quando na verdade era so a invocacao errada.
+   # '-f "$ARQUIVO"' sempre assumiria a frota falcon1..4 (app::adHocScenario()),
+   # o que falha para qualquer cenario hermetico com frota diferente (ex.: a
+   # familia sandbox/A4-*DOF, frota so 'a4') com "player 'falcon1' nao
+   # encontrado!" antes de rodar um frame sequer -- reportado por este script
+   # como "FALHA execucao com N threads", indistinguivel de nao-determinismo
+   # de verdade. Por isso o caminho abaixo usa '-folder'/'-scenario' em vez de
+   # '-f' direto.
    #
    # Todo cenario hermetico alcancavel por este parametro segue o MESMO
    # layout que '-folder <pasta> -scenario <nome>' ja exige --
@@ -75,15 +75,11 @@ fi
 
 # ONDE OS DUMPS DESTA EXECUCAO FICAM.
 #
-# ARMADILHA JA PAGA (nao redescobrir): isto era aritmetica de caminho sobre o
-# BINARIO -- '$(dirname "$BIN")/../../../<rotulo>-{sufixo}' --, o que so dava
-# num lugar sensato enquanto o binario estava a exatamente tres niveis de
-# profundidade ('build/src/poc/<poc>/src/<poc>'). Quando o ./app virou o runner
-# unico ('build/app/src/app', um nivel a menos), os tres '..' passaram a
-# aterrissar na RAIZ DO REPOSITORIO e cada execucao largava uma pasta de lixo
-# la -- nao versionada, mas suja e facil de commitar por engano.
-#
-# Agora sai de RAIZ, explicitamente, e vai para 'build/' junto com os outros
+# A saida NAO pode ser aritmetica de caminho sobre o BINARIO (ex.:
+# '$(dirname "$BIN")/../../../<rotulo>-{sufixo}') -- esse calculo so acerta um
+# lugar sensato enquanto o binario mora a uma profundidade fixa especifica, e
+# quebra em silencio (aterrissando na raiz do repositorio) se essa profundidade
+# mudar. Sai de RAIZ, explicitamente, e vai para 'build/' junto com os outros
 # artefatos de teste (build/tests-fixtures, tests-recordings, tests-messages):
 # um lugar so, ja gitignorado, e que nao depende de onde o binario mora.
 OUT="$RAIZ/build/tests-determinism/${ROTULO}"
@@ -92,13 +88,11 @@ mkdir -p "$OUT" || exit 1
 MSGDIR="$RAIZ/build/tests-messages"
 
 roda() {   # roda <n-threads> <arquivo-de-saida>
-   # ARMADILHA CONFIRMADA (nao redescobrir): '$BIN | grep > arquivo' devolve o
-   # rc do GREP, nao do binario -- um crash do $BIN (sinal, abort) que ainda
-   # tenha impresso ALGUMA linha 'frame=' antes de morrer passava batido
-   # aqui, e o 'roda ... || exit 1' do chamador nunca disparava. Reproduzido
-   # com um binario fake que imprime uma linha e sai com rc=137: a funcao
-   # devolvia 0. Por isso o binario roda para um arquivo bruto e o rc dele e
-   # checado A PARTE, antes de filtrar.
+   # '$BIN | grep > arquivo' devolveria o rc do GREP, nao do binario -- um
+   # crash do $BIN (sinal, abort) que ainda tenha impresso alguma linha
+   # 'frame=' antes de morrer passaria despercebido, e o 'roda ... || exit 1'
+   # do chamador nunca dispararia. Por isso o binario roda para um arquivo
+   # bruto e o rc dele e checado A PARTE, antes de filtrar.
    local raw errf rc
    raw="$(mktemp)"
    errf="$(mktemp)"
@@ -108,11 +102,10 @@ roda() {   # roda <n-threads> <arquivo-de-saida>
    rm -f "$raw"
    if [ "$rc" -ne 0 ]; then
       echo "  FALHA $BIN saiu com codigo $rc (threads=$1)"
-      # ARMADILHA CONFIRMADA (nao redescobrir): stderr era jogado fora
-      # (2>/dev/null) e a unica pista que sobrava do motivo real da falha era
-      # o codigo de saida -- justamente no caso em que mais se precisa dela
-      # (depuracao de CI). Guardado ao lado do dump para nao se perder e
-      # ecoado aqui, ja que e a informacao que mais importa nesse instante.
+      # stderr precisa ser preservado (nao 2>/dev/null): e a unica pista do
+      # motivo real da falha alem do codigo de saida, justamente no caso em
+      # que mais se precisa dela (depuracao de CI). Guardado ao lado do dump
+      # e ecoado aqui, ja que e a informacao que mais importa nesse instante.
       if [ -s "$errf" ]; then
          echo "  ultimas linhas do stderr:"
          tail -5 "$errf" | sed 's/^/        /'

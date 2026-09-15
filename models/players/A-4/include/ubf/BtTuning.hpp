@@ -86,21 +86,16 @@ struct BtTuning
    double slowRollMaxIntervalSec{180.0};   // teto; <= ao piso vira intervalo FIXO
    double slowRollStick{0.0};              // aileron -1..1; 0 = desligado
    double slowRollTimeoutSec{20.0};        // aborta a manobra que nao fecha
-   // Folga minima sobre o piso anti-CFIT (terrainClearanceM) para COMECAR
+   // Folga minima sobre o piso anti-CFIT (terrainClearanceM) para comecar
    // uma acrobacia -- ver bt_nodes::DecisionContext::
-   // hasAerobaticAltitudeMargin(). Giros sucessivos perto do pior caso, sem
-   // esta borda, catam altitude ate colidir com o terreno -- medido rodando.
-   // O default (1500 m) fica bem acima do custo MEDIO de um giro isolado
-   // (~530 m, README de sandbox/A4-6DOF-RANDOM) de proposito: medido
-   // rodando 6000 s com 900 m, uma aeronave ainda colidia -- a saida de um
-   // giro pode deixar a aeronave numa recuperacao lenta e OSCILANTE (o
-   // fenomeno de fugoide de qualquer aeronave de asa fixa: velocidade e
-   // altitude trocando de energia entre si), nao um retorno monotonico ao
-   // comandado, e o pior desses vales pode chegar perto de 900 m sozinho, em
-   // cima do custo do proprio giro. NEGATIVO desliga a borda por completo
-   // (inclusive abaixo do proprio piso anti-CFIT); zero exige estar no
-   // MINIMO no piso, sem folga extra. So' importa quando slowRollStick != 0;
-   // nao muda nenhum cenario que nao ligue a acrobacia.
+   // hasAerobaticAltitudeMargin(). Sem essa borda, giros sucessivos perto do
+   // pior caso acumulam perda de altitude ate colidir com o terreno. O
+   // default (1500 m) fica bem acima do custo medio de um giro isolado
+   // (~530 m, README de sandbox/A4-6DOF-RANDOM) de proposito: com 900 m
+   // ainda houve colisao em testes de longa duracao -- a saida de um giro
+   // pode entrar numa recuperacao oscilante (fugoide), cujo vale pode se
+   // aproximar de 900 m por conta propria, somado ao custo do proprio giro.
+   // Negativo desliga a borda; zero exige estar no minimo no piso.
    double slowRollMinMarginM{1500.0};
 };
 

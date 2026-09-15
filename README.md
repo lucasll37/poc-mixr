@@ -224,7 +224,10 @@ dividido em 4 fases; a decisão do UBF roda na fase 3) tem script próprio, fora
 `<rotulo>` é só um nome livre para a pasta de saída (`build/tests-determinism/<rotulo>`);
 `frames` é quantos passos de simulação rodar (2000 é um valor razoável para conferir); `<poc>`
 (opcional, default vazio = cenário de produção como está) é a poc de `src/poc/dis/` usada para
-gerar uma fixture hermética com intruso. O que cada suíte prova e quanto custa →
+gerar uma fixture hermética com intruso. Um quinto parâmetro opcional, `[arquivo]`, aponta direto
+para um `.edl`/`.edl.in` fora de `src/poc/dis/` (ex.: um cenário de `sandbox/`) — o script deriva
+`-folder`/`-scenario` do próprio caminho, então funciona com qualquer frota, não só
+`falcon1..4`; use `<poc>` OU `[arquivo]`, nunca os dois. O que cada suíte prova e quanto custa →
 [`tests/README.md`](tests/README.md).
 
 ## CI (GitLab)
@@ -311,7 +314,7 @@ abaixo.
 | poc | o que demonstra | comando | porta Tacview | porta DIS (emissão local)¹ |
 |---|---|---|---|---|
 | `flight` | cadeia completa de decisão (evade → alerta → apoio), trocando DIS de verdade com `bandit` — precisa de `bandit` rodando em outro terminal para ver a evasão de verdade, ver abaixo | `-folder src/poc/dis -scenario flight` | 1234 | 3002 |
-| `bandit` | o intruso: pilotado por joystick ou por piloto automático de reserva (script fixo, não é o nó "Fallback" de árvore de comportamento citado acima); sem joystick detectado (`/dev/input/js<N>`), cai sozinho no `Autopilot` de reserva, sem travar — ver [`libs/xjoystick/README.md`](libs/xjoystick/README.md) | `-folder src/poc/dis -scenario bandit` | 1235 | 3001 |
+| `bandit` | o intruso: pilotado por joystick ou por piloto automático de reserva (script fixo, sem árvore de comportamento nenhuma); sem joystick detectado (`/dev/input/js<N>`), cai sozinho no `Autopilot` de reserva, sem travar — ver [`libs/xjoystick/README.md`](libs/xjoystick/README.md) | `-folder src/poc/dis -scenario bandit` | 1235 | 3001 |
 | `python-flight` | as folhas de ação da árvore de decisão escritas em Python, editáveis sem recompilar | `-folder src/poc -scenario python-flight` | 1237 | 3004 |
 | `onnx-policy` | a decisão inteira (não só folhas) feita por uma rede neural treinada, sem árvore de comportamento | `-folder src/poc -scenario onnx-policy` | 1238 | 3005 |
 
@@ -411,7 +414,8 @@ poc-mixr/
 ├── tests/        suite do core (a de cada modelo vive dentro do proprio models/players/<nome>/)
 ├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP -- destilado + fonte vendorizado
 ├── docs/         docs/manual/ e' documentacao visual GERADA do fonte real (manual interativo) --
-│                 docs/presentation/ (slides orfaos, nenhum alvo os gera) e docs/books/ (os dois
+│                 docs/presentation/ (slides estaticos, `make open-presentation` so abre, nenhum
+│                 alvo os gera) e docs/books/ (os dois
 │                 manuais tecnicos completos, PDF vendorizado de terceiro) sao estaticos, nao
 │                 gerados; docs/estudos/ e' estudo de viabilidade escrito a mao, sem nada gerado
 │                 nem visual ali (ver "Leia mais" abaixo)

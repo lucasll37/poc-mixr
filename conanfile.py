@@ -17,16 +17,12 @@ class MixrHelloConan(ConanFile):
     # models/players/A-4/meson.build); o core nunca a linka, pra nao
     # duplicar o contador estatico BT::getUID() entre core e plugin.
     #
-    # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este comentario
-    # afirmava que a receita da behaviortree.cpp.asa tem
-    # default_options={"shared": True} -- a receita LOCAL (deps/behaviortree/
-    # conanfile.py, usada por scripts/deps.sh) ja declara default_options=
-    # {"shared": False}, o oposto. Nao verificavel daqui se o pacote do
-    # remote privado da ASA (o caminho que 'make configure' de fato usa,
-    # ver README.md SS2.4) foi construido com opcoes diferentes da receita
-    # local -- mas o override abaixo e' seguro/idempotente nos dois casos
-    # (redundante se o default ja for False, essencial se nao for), entao
-    # fica mantido como defesa em profundidade independente da resposta.
+    # O override abaixo e' seguro/idempotente independentemente de o pacote
+    # remoto da behaviortree.cpp.asa ter sido construido com shared=True ou
+    # False (a receita local em deps/behaviortree/conanfile.py declara
+    # shared=False, mas o remoto privado da ASA pode divergir e nao e'
+    # verificavel daqui) -- redundante num caso, essencial no outro; por isso
+    # fica como defesa em profundidade.
     default_options = {
         "behaviortree.cpp.asa/*:shared": False,
         "behaviortree.cpp.asa/*:fPIC": True,
@@ -71,14 +67,12 @@ class MixrHelloConan(ConanFile):
         pc = PkgConfigDeps(self)
         pc.generate()
 
-        # O abseil.pc que o PkgConfigDeps gera e um "guarda-chuva": nao tem lib
-        # nenhuma, so 'Requires:' dos ~200 componentes, que se requerem entre
-        # si em diamante. O pkgconf 1.8.1 (Ubuntu 24.04) percorre esse grafo
-        # caminho a caminho, sem memoizar: medido, 7 s por consulta ao abseil.pc
-        # e ~15 s ao onnxruntime.pc (que chega nele duas vezes, direto e via
-        # re2) -- e o Meson faz 4 consultas por dependencia (--modversion,
-        # --cflags, --libs duas vezes), ~50 s do 'make configure' so nisso.
-        # Achatado, com as mesmas flags, a consulta cai para milissegundos.
+        # O abseil.pc que o PkgConfigDeps gera e' um "guarda-chuva" sem lib
+        # propria, so' 'Requires:' de ~200 componentes em diamante. O pkgconf
+        # 1.8.1 percorre esse grafo sem memoizar e o Meson consulta cada
+        # dependencia 4 vezes, custando segundos por consulta (mais ainda ao
+        # onnxruntime.pc, que o referencia duas vezes). _flatten_umbrella_pc()
+        # achata isso para um .pc sem 'Requires:', com as mesmas flags.
         self._flatten_umbrella_pc("abseil")
 
     def _flatten_umbrella_pc(self, name):

@@ -91,31 +91,18 @@ public:
    // PASSO MANUAL de um frame, com a simulacao pausada (o "[n]" da aba F6 do
    // ./app).
    //
-   // ARMADILHA MEDIDA -- NAO REDESCOBRIR: o passo TEM de ser executado pela
-   // PROPRIA thread de tempo critico, nunca por quem pede. A versao anterior
-   // chamava Station::tcFrame() do laco de background do ./app depois de
-   // conferir isPaused(), e isso e TOCTOU, nao handshake: isPaused() e um bool
-   // comum de base::Component (Component.hpp), e esta classe so o testa na
-   // ENTRADA de processTimeCriticalTasks(). Uma chamada JA EM CURSO nao e
-   // interrompida pelo freeze -- e no topo da escada de velocidade ela roda um
-   // lote de ate 64 tcFrame() de uma vez ('for (jj=0; jj < getFastForwardRate();
-   // jj++)', Station.cpp:506-511), ficando dezenas ou centenas de ms la dentro.
-   // Resultado: DUAS threads dentro de Simulation::updateTC(), as duas dirigindo
-   // o MESMO pool de SyncThread via start0() -- que escreve pl0/dt0/idx0/n0,
-   // membros CRUS sem lock e sem ref() -- e com signalStart() destravando duas
-   // vezes um pthread_mutex_t usado como semaforo binario, o que faz
-   // waitForAllCompleted() retornar com worker ainda trabalhando.
-   //
-   // Reproduzido sob AddressSanitizer no estresse interativo
-   // (tests/scenario/run_app_stress_test.py): "BUS on unknown address ... in
-   // mixr::base::Component::tcFrame()" dentro de
-   // Simulation::updateTcPlayerList(), num worker do pool percorrendo a lista de
-   // players por um ponteiro de lixo.
-   //
-   // Com o pedido acumulado aqui e consumido dentro de
-   // processTimeCriticalTasks(), passa a existir por CONSTRUCAO exatamente UMA
-   // thread entrando em tcFrame() -- pausado ou nao -- e despausar no meio do
-   // passo deixa de ser sequer representavel.
+   // O passo manual tem de ser executado pela propria thread de tempo
+   // critico, nunca por quem pede: chamar Station::tcFrame() do laco de
+   // background apos checar isPaused() e TOCTOU -- isPaused() so e testado
+   // na entrada de processTimeCriticalTasks(), entao uma chamada ja em curso
+   // (que pode rodar ate 64 tcFrame() em lote) nao e interrompida pelo
+   // freeze. O resultado seria duas threads dentro de Simulation::updateTC(),
+   // dirigindo o mesmo pool de SyncThread via start0() (membros crus, sem
+   // lock/ref()) e destravando o mesmo mutex usado como semaforo binario duas
+   // vezes -- sob ASan, isso se manifesta como acesso a memoria invalida em
+   // Simulation::updateTcPlayerList(). Acumular o pedido em requestStep() e
+   // consumi-lo dentro de processTimeCriticalTasks() garante, por
+   // construcao, exatamente uma thread entrando em tcFrame().
    //---------------------------------------------------------------------------
 
    // Acumula N passos. Seguro de qualquer thread; so tem efeito enquanto

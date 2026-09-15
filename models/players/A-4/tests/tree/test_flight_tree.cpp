@@ -175,15 +175,12 @@ TEST(FlightTree, CombustivelBaixoLevaAoRetorno)
 }
 
 //------------------------------------------------------------------------------
-// Piso anti-CFIT em RTB/SUPPORT -- ACHADO POR AUDITORIA (ver o comentario
-// grande em bt/DecisionContext.hpp): antes desta rodada, so' o ramo EVADE
-// respeitava domain/TerrainFloor.hpp. Os dois testes acima
-// (CombustivelBaixoLevaAoRetorno/AlertaSozinhoLevaAoApoio) NUNCA exercitavam
-// o clamp -- o terreno configurado la (800 m) mais a folga (800 m) da um
-// piso de 1600 m, abaixo dos 2050/2000 m que os dois ja comandam sem
-// precisar de ajuda. Aqui o terreno e' deliberadamente mais alto que a
-// altitude configurada, para provar que o piso de fato ENTRA em acao, nao
-// so' que ele nao atrapalha o caso feliz.
+// Piso anti-CFIT em RTB/SUPPORT: antes, so o ramo EVADE respeitava
+// domain/TerrainFloor.hpp. Os testes CombustivelBaixoLevaAoRetorno/
+// AlertaSozinhoLevaAoApoio nao exercitavam o clamp (o terreno configurado
+// ali, 800 m + folga de 800 m, da piso de 1600 m -- abaixo das altitudes ja
+// comandadas). Aqui o terreno e deliberadamente mais alto que a altitude
+// configurada, para provar que o piso entra em acao.
 //------------------------------------------------------------------------------
 
 TEST(FlightTree, RetornoABaseRespeitaOPisoDeTerrenoQuandoOCaminhoCruzaRelevoAlto)

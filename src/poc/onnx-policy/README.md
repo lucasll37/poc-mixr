@@ -39,6 +39,14 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py   # treina e 
 Nada é recompilado entre as duas execuções — nem o core, nem o plugin. O `.onnx` é lido do disco na
 primeira decisão.
 
+**Este é o caminho RÁPIDO (clonagem de comportamento), não o único.** `tools/train_policy.py`
+treina imitando uma regra já escrita (numpy puro, minutos) — é o que o resto deste README mede e
+descreve. Existe um segundo caminho, mais pesado e com resultado qualitativamente diferente:
+treinar via PPO/RL de verdade contra `src/rl` (ver [`src/poc/rl-training/README.md`](../rl-training/README.md)
+e a seção 9 abaixo) — sem *reward shaping*, essa política aprende a MAXIMIZAR a recompensa, não a
+reproduzir a barreira medida nas seções seguintes; "carrega sem erro" não implica "voa como
+descrito aqui".
+
 ---
 
 ## Índice

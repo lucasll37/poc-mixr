@@ -23,12 +23,11 @@ BT::NodeStatus ReturnToBaseAction::tick()
    domain::FlightCommand cmd{plan.command(snap.northM, snap.eastM, snap.headingDeg)};
    const bool home{plan.arrived(snap.northM, snap.eastM)};
 
-   // ACHADO POR AUDITORIA (nao redescobrir, ver bt/DecisionContext.hpp):
-   // RtbPlan e' geometria pura, sem nocao de terreno -- rtbAltitude e' um
-   // valor FIXO do EDL, calibrado contra o pico do PROPRIO circuito de cada
-   // falcon, nao contra o caminho de volta ate a base (que pode cruzar
-   // relevo bem diferente). Sem este clamp, nada impedia a aeronave de
-   // voar reto para dentro de uma montanha no meio do trajeto de RTB.
+   // RtbPlan e geometria pura, sem nocao de terreno: rtbAltitude e um
+   // valor fixo do EDL, calibrado contra o pico do proprio circuito de
+   // cada falcon, nao contra o caminho de volta ate a base (que pode
+   // cruzar relevo diferente). Sem este clamp, nada impede voo reto para
+   // dentro de uma montanha no meio do trajeto de RTB.
    cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(cmd.altitudeM);
 
    context_.behavior->decision().take(cmd, home ? "HOME" : "RTB");

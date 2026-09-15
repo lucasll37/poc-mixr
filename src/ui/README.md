@@ -38,7 +38,9 @@ correspondente **destacada** (fundo âmbar sobre o texto, com scroll automático
 canto quando colapsada) — devolve a largura pro trio árvore/propriedades/prévia quando o catálogo
 não é o que importa no momento; a preferência fica salva entre sessões. O botão "Carregar preset"
 troca a árvore vazia pelo cenário de mais componentes do repositório (`built-in_mixr_1`, hoje em
-`tests/fixtures/built-in_mixr_1/`), como ponto de partida.
+`tests/fixtures/built-in_mixr_1/`), como ponto de partida — esse `.edl.in` tem um placeholder
+(`@NUM_TC_THREADS@`) ainda não resolvido, então exportar sem antes preenchê-lo (aba **Abertos**)
+falha no `edlcheck`; é esperado, não um bug do preset.
 
 "Exportar .edl" grava **direto** em `sandbox/<nome>/configs/scenario.edl`, quando o navegador
 permite. Em Chrome/Edge (File System Access API — `"showDirectoryPicker" in window`), o botão

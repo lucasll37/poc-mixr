@@ -143,14 +143,11 @@ namespace events {
 constexpr int EID_ALERT{base::Component::USER_EVENTS + 1};
 constexpr int EID_PING{base::Component::USER_EVENTS + 2};
 
-// ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): o "ledger unico" acima
-// dependia inteiramente de disciplina MANUAL para evitar colisao -- nada
-// impedia um evento novo (ex.: o EID_EXPLOSION que o comentario do topo ja
-// antecipa como "caso futuro conhecido") de repetir USER_EVENTS+1 por
-// copy-paste do primeiro bloco. Sem efeito hoje (so ha 1 token, entao nada
-// para colidir) -- mas a infraestrutura fica pronta: todo token novo entra
-// em 'kAllTokens' junto com EID_ALERT, e o static_assert falha a
-// COMPILACAO (nao em runtime, nem so' em teste) se dois coincidirem.
+// O "ledger unico" acima, por si so, depende de disciplina manual para
+// evitar colisao de numero -- nada impede um evento novo de repetir
+// USER_EVENTS+1 por copia do primeiro bloco. kAllTokens/allTokensDistinct()
+// fecham essa lacuna: todo token novo entra em kAllTokens, e o static_assert
+// falha a compilacao (nao em runtime) se dois coincidirem.
 namespace detail {
 
 constexpr int kAllTokens[]{ EID_ALERT, EID_PING };

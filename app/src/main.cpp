@@ -99,13 +99,11 @@ const std::string terrainTile{"S23W043"};
 // para nao disparar esse versionamento nativo a cada respawn (ver o
 // comentario dentro de xlog::init()).
 //
-// O PID entra alem do timestamp -- achado rodando (stress-sweep desta
-// sessao): so o segundo NAO basta. Duas instancias do MESMO cenario de
-// sandbox lancadas com menos de 1s de diferenca caiam no MESMO RUN_ID e
-// escreviam no MESMO inode (confirmado com lsof: dois PIDs, um fd cada,
-// mesmo NODE) -- perda silenciosa de dado de uma das duas gravacoes. Dois
-// processos SEMPRE tem PIDs diferentes, entao isto fecha a classe inteira
-// de colisao por concorrencia, nao so o caso raro do mesmo segundo.
+// O PID entra alem do timestamp porque o segundo sozinho nao basta: duas
+// instancias do mesmo cenario de sandbox lancadas com menos de 1s de
+// diferenca colidiriam no mesmo RUN_ID e escreveriam no mesmo arquivo,
+// perdendo uma das duas gravacoes em silencio. Dois processos sempre tem
+// PIDs diferentes, fechando toda a classe de colisao por concorrencia.
 std::string runIdNow()
 {
    const std::time_t t{std::time(nullptr)};
@@ -163,8 +161,8 @@ int main(int argc, char* argv[])
       // Frota VAZIA -- sinal para main.cpp descobrir os players em runtime
       // (app::discoverFleet(), mais abaixo) em vez de assumir falcon1..4:
       // um cenario de sandbox pode ter qualquer nome de player. Ver o
-      // comentario de app::discoverFleet() (app/Fleet.hpp) para o porque
-      // isto NAO reabre o problema ja corrigido/revertido em adHocScenario().
+      // comentario de app::discoverFleet() (app/Fleet.hpp) para o porque,
+      // sem reabrir o caso ja tratado a parte em adHocScenario().
       chosen = app::ScenarioEntry{it->name, it->name, "cenario de pasta: " + opts.scenarioFolder,
                                  it->edlPath, "", "", "", "", {}};
 
@@ -191,14 +189,12 @@ int main(int argc, char* argv[])
    // cenario veio.
    std::filesystem::path scenarioDir{
       std::filesystem::path(cenario.templatePath).parent_path().parent_path()};
-   // Achado rodando (stress-sweep desta sessao): um '-f' apontando pra um
-   // arquivo com MENOS de dois niveis de diretorio acima (ex.: '-f
-   // ./x.edl' na propria raiz, ou um caminho absoluto de um componente so)
-   // faz os dois 'parent_path()' encalharem em "" ou na RAIZ do sistema de
-   // arquivos -- e o log tentaria abrir '/data/logs/...'. Nenhum cenario de
-   // poc/sandbox cai aqui (todos tem a forma '<pasta>/configs/<arquivo>');
-   // so um '-f' avulso foge do padrao. Fallback: o mesmo lugar que TODO log
-   // deste app usava antes desta mudanca.
+   // Um '-f' apontando para um arquivo com menos de dois niveis de
+   // diretorio acima (ex.: '-f ./x.edl' na raiz) faz os dois
+   // 'parent_path()' encalharem em "" ou na raiz do sistema de arquivos, e
+   // o log tentaria abrir '/data/logs/...'. Nenhum cenario de poc/sandbox
+   // cai nisso (todos tem a forma '<pasta>/configs/<arquivo>'); so um '-f'
+   // avulso foge do padrao -- dai o fallback para './app'.
    if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./app";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (cenario.key + "_" + runId + ".log")).string());
 
@@ -212,17 +208,11 @@ int main(int argc, char* argv[])
    // do Mapa (ver app/TerrainQuery.hpp); nenhum cenario depende deles.
    app::ensureAllTerrainTiles(terrainDir);
 
-   // O '.generated.edl' e artefato de RUNTIME, nunca fonte -- vai para
-   // 'build/', decoplado de proposito de QUALQUER 'configs/' rastreado no
-   // git (o de 'app/' inclusive), mesmo raciocinio ja aplicado a
-   // 'build/tests-fixtures'/'build/tests-determinism' (ver a armadilha 9 da
-   // secao "Testes automatizados" do CLAUDE.md). Antes disto, TODO cenario
-   // rodado por este binario -- os proprios ou os de qualquer poc/fixture
-   // passados por '-f'/'-folder' -- escrevia em './app/configs/<key>.
-   // generated.edl', poluindo a pasta de configuracao do app com o gerado de
-   // pocs inteiramente alheias. Chave-por-'cenario.key' e mantida (nao um
-   // nome fixo) para nao reabrir a colisao entre cenarios concorrentes que
-   // a chave ja evitava.
+   // O '.generated.edl' e artefato de runtime, nunca fonte -- vai para
+   // 'build/', desacoplado de qualquer 'configs/' rastreado no git, para
+   // que o gerado de qualquer poc/fixture rodada por este binario nao
+   // polua a pasta de configuracao do proprio ./app. A chave por
+   // 'cenario.key' evita colisao entre cenarios concorrentes.
    const std::filesystem::path generatedDir{"./build/generated-scenarios"};
    std::error_code ecGeneratedDir;
    std::filesystem::create_directories(generatedDir, ecGeneratedDir);

@@ -7,8 +7,8 @@ sem a thread de tempo critico nativa (esse modo chama tcFrame() direto). O
 caminho INTERATIVO de saida nunca era exercitado por teste nenhum, e era
 justamente ele que travava.
 
-O caso 'cliente-travado' abaixo e a reproducao do defeito real, medida antes da
-correcao: um cliente que CONECTA na porta do Tacview e para de ler enche o
+O caso 'cliente-travado' abaixo e o defeito real: um cliente que CONECTA na
+porta do Tacview e para de ler enche o
 buffer do socket; sem SO_SNDTIMEO o ::send() de RealtimeTelemetryServer::
 sendRaw() bloqueia PARA SEMPRE, e ele roda dentro de station->updateData(), ou
 seja dentro do laco de background do app. Resultado medido: a thread do laco
@@ -69,15 +69,12 @@ def sobe_app(binario, cenario):
         close_fds=True, start_new_session=True)
     os.close(escravo)
 
-    # ACHADO POR AUDITORIA: 'pronto' substitui o antigo sleep(ESPERA_TUI) fixo
-    # por polling, mesmo espirito de espera_rede_pronta() em
-    # run_dis_malformed_pdu_test.py (deadline + marcador observado), so que
-    # aqui o "log" e o proprio fluxo de bytes do pty em vez de uma linha de
-    # texto: FTXUI emite a sequencia de entrada no alternate screen buffer
-    # (\x1b[?1049h) assim que ScreenInteractive::Fullscreen() comeca -- e o
-    # sinal mais cedo e mais confiavel de "a TUI esta de pe e pronta pra
-    # tecla" que existe sem trazer um emulador de terminal pra dentro deste
-    # teste (que so precisa saber QUANDO, nao o que esta desenhado).
+    # 'pronto' substitui o antigo sleep(ESPERA_TUI) fixo por polling (mesmo
+    # padrao de espera_rede_pronta() em run_dis_malformed_pdu_test.py):
+    # FTXUI emite a sequencia de entrada no alternate screen buffer
+    # (\x1b[?1049h) assim que ScreenInteractive::Fullscreen() comeca -- o
+    # sinal mais cedo e confiavel de que a TUI esta pronta para receber
+    # tecla.
     #
     # Drenar o pty numa thread e obrigatorio de qualquer forma: com o buffer
     # cheio o app bloqueia no proprio write() e o teste mediria a coisa errada.

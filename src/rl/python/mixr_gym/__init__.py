@@ -1,37 +1,34 @@
 import os
 import sys
 
-# ARMADILHA CONFIRMADA (nao redescobrir): sem isto, a PRIMEIRA chamada a
-# NativeSimulation.reset() -- que carrega libA-4.so via dlopen() por
-# dentro de libs/xplugin/PluginRegistry.cpp -- SEGFAULTA dentro de
-# std::cout (libstdc++, num codecvt de PluginRegistry::loadModule()), so
-# quando roda embutido em Python E depois de 'numpy' ja ter sido importado.
-# Fora do Python (executando ./build/app/src/app etc.) ou importando
-# ._native ANTES de numpy, o MESMO cenario/plugin carrega perfeitamente --
-# confirmado nos dois sentidos.
+# 'mixr_gym' precisa ser importado antes de 'numpy'/'gymnasium' neste
+# processo. Sem isso, a primeira chamada a NativeSimulation.reset() -- que
+# carrega libA-4.so via dlopen() dentro de libs/xplugin/PluginRegistry.cpp
+# -- segfauta dentro de std::cout (libstdc++), quando roda embutido em
+# Python e numpy ja foi importado antes.
 #
-# Causa (as duas pontas confirmadas isoladamente, uma por vez):
-#   1. O CPython importa extensoes C (._native, aqui) com RTLD_LOCAL por
-#      padrao (sys.getdlopenflags()) -- diferente de um executavel comum,
-#      onde o dynamic linker sempre poe as dependencias DIRETAS do binario
-#      (libmixr_base.so incluida) em escopo GLOBAL. Sem RTLD_GLOBAL,
-#      libmixr_base.so fica fora do escopo global do processo, e o dlopen()
-#      INTERNO que o PluginRegistry faz depois (pra libA-4.so, tambem
-#      RTLD_LOCAL -- ver o cabecalho de PluginRegistry.cpp) nao resolve
-#      direito o estado global de iostream/locale de libmixr_base.so.
-#   2. SEPARADAMENTE, a ORDEM importa: se 'numpy' (ou qualquer outra
-#      extensao C que carregue sua PROPRIA copia/versao de simbolos de
-#      libstdc++) for importado ANTES de ._native, os simbolos que ela
-#      trouxe ficam na frente na varredura de resolucao do linker dinamico
-#      -- mesmo com ._native depois marcado RTLD_GLOBAL -- e uma chamada
-#      de iostream dentro de libmixr_base.so pode acabar caindo numa versao
-#      incompativel de um simbolo (ex.: template de codecvt) vinda de numpy
-#      em vez da propria. Por isso ._native e importado AQUI, no topo deste
-#      __init__.py, ANTES de env.py ter a chance de importar numpy/gymnasium.
+# Duas causas: (1) o CPython importa extensoes C com RTLD_LOCAL por padrao,
+# deixando libmixr_base.so fora do escopo global do processo, o que impede
+# o dlopen() interno para libA-4.so de resolver corretamente o estado
+# global de iostream/locale; (2) se numpy (ou outra extensao C que carregue
+# copia propria de simbolos de libstdc++) for importado antes de ._native,
+# seus simbolos ficam a frente na resolucao do linker dinamico, podendo
+# causar incompatibilidade de simbolo dentro de libmixr_base.so.
 #
-# Os dois efeitos foram confirmados isoladamente (RTLD_GLOBAL sozinho nao
-# bastou com numpy importado antes; import antes de numpy sozinho tambem
-# resolveu) -- os dois juntos, nesta ordem, sao o fix.
+# Corrigido carregando ._native sob RTLD_GLOBAL logo no topo do modulo,
+# antes de env.py poder importar numpy/gymnasium; se esses modulos ja
+# estiverem carregados quando mixr_gym e importado, um erro claro e
+# levantado em vez de deixar o processo segfaultar mais adiante.
+_ja_carregado = [m for m in ("numpy", "gymnasium") if m in sys.modules]
+if _ja_carregado:
+    raise RuntimeError(
+        "mixr_gym precisa ser importado ANTES de " + ", ".join(_ja_carregado) + " "
+        "(ja carregado(s) neste processo) -- ver o comentario no topo de "
+        "mixr_gym/__init__.py: importar fora desta ordem corrompe simbolos "
+        "de libstdc++ e costuma terminar em segfault dentro do dlopen() do "
+        "plugin do modelo, nao aqui."
+    )
+
 _prev_dlopenflags = sys.getdlopenflags()
 sys.setdlopenflags(_prev_dlopenflags | os.RTLD_GLOBAL)
 try:

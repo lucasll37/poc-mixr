@@ -1,5 +1,7 @@
 # C-130_paratrooper-6DOF — a integração de verdade: C-130 largando 30 paraquedistas reais
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 A integração entre `models/players/C-130` e `models/players/paratrooper`: **um C-130**
 (dinâmica JSBSim 6-DOF) que, no **segundo ponto de navegação**,
 libera **30 paraquedistas de verdade** (a classe `Paratrooper` real — queda livre, paraquedas,
@@ -101,12 +103,15 @@ nasceu depois do início. Ver o `mission_*.jsonl` em `data/messages/` para os 30
 
 ## Verificação manual
 
+Receita genérica (lint, edlcheck, dump `bt=`, determinismo):
+[`sandbox/README.md`](../README.md#como-verificar-qualquer-cenário-deste-sandbox) — inclui a
+armadilha do `edlcheck` recusando o `.edl.in` cru por causa de `@NUM_TC_THREADS@`
+([nota central](../README.md#edlcheck-e-o-token-num_tc_threads)). Específico deste cenário:
+
 ```bash
 python3 src/ui/scripts/edl_lint.py sandbox/C-130_paratrooper-6DOF/configs/scenario_c130_paratrooper_6dof.edl.in
 # fábrica desconhecida C130*/Paratrooper* e esperado -- catalogo estatico do lint nunca viu estas
-# classes antes de "node src/ui/scripts/build.js" regenerar; edlcheck e a autoridade real:
-sed 's/@NUM_TC_THREADS@/1/; s/@RUN_ID@/x/g' sandbox/C-130_paratrooper-6DOF/configs/scenario_c130_paratrooper_6dof.edl.in \
-   > /tmp/c130_para_6dof_check.edl && dist/bin/edlcheck /tmp/c130_para_6dof_check.edl
+# classes antes de "node src/ui/scripts/build.js" regenerar; edlcheck e a autoridade real.
 
 ./build/app/src/app -folder ./sandbox -scenario C-130_paratrooper-6DOF -deterministic 25000
 # esperado: bt=NAV no c130, dec= avancando, elev= nunca exatamente 0.000000000

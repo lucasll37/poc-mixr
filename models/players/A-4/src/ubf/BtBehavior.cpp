@@ -184,27 +184,17 @@ void BtBehavior::buildTree()
    context.behavior = this;
 
    std::lock_guard<std::mutex> lock(g_treeBuildMutex);
-   // ACHADO POR AUDITORIA (nao redescobrir): 'reset()' zera 'treeBuilt'
-   // (permitindo um SEGUNDO 'buildTree()' na mesma instancia), mas nunca
-   // zerava 'btFactory'. 'BT::BehaviorTreeFactory::registerBuilder()' lanca
-   // 'BehaviorTreeException("ID [...] already registered")' pra qualquer ID
-   // ja presente (bt_factory.cpp:92) -- um segundo 'registerNodes()'/
-   // 'registerSdkNodes()' sobre a MESMA factory lancaria no PRIMEIRO no
-   // registrado, fora do try/catch abaixo (que so cobre
-   // 'createTreeFromFile()'), propagando sem tratamento. Reatribuir uma
-   // factory NOVA a cada chamada torna 'buildTree()' idempotente -- mesmo
-   // padrao ja usado em 'reset()' pra 'tree' ('tree = BT::Tree();').
-   // Mecanismo confirmado por teste direto (tests/native/test_xnative.cpp,
-   // 'BtFactoryRegistration'): registrar duas vezes na MESMA factory lanca;
-   // reatribuir antes evita. NAO reproduzido hoje via reset()+step()
-   // repetidos em 'src/rl' (verificado rodando): 'BtBehavior::reset()'
-   // parece nunca ser chamado uma segunda vez pelo cascade de reset() do
-   // 'UbfArbiter' nativo -- 'treeBuilt' nunca volta a 'false' na pratica
-   // observada. E' o mesmo tipo de incerteza sobre o cascade de reset() do
-   // Arbiter ja registrado no comentario de 'genAction()' (o motivo do
-   // 'plansReady' preguicoso ali) -- o fix aqui e' a MESMA cautela
-   // defensiva aplicada a 'btFactory', nao a correcao de um crash
-   // observado em producao.
+   // 'reset()' zera 'treeBuilt' (permitindo um segundo 'buildTree()' na
+   // mesma instancia) mas nao zerava 'btFactory'.
+   // 'BT::BehaviorTreeFactory::registerBuilder()' lanca para qualquer ID ja
+   // registrado -- um segundo 'registerNodes()'/'registerSdkNodes()' sobre
+   // a mesma factory lancaria fora do try/catch, que so cobre
+   // 'createTreeFromFile()'. Reatribuir uma factory nova a cada chamada
+   // torna 'buildTree()' idempotente (mesmo padrao de 'tree = BT::Tree();'
+   // em 'reset()'). Nao ha evidencia de que 'BtBehavior::reset()' seja
+   // chamado uma segunda vez pelo cascade do 'UbfArbiter' nativo em
+   // 'src/rl' hoje -- o fix e cautela defensiva, nao correcao de um crash
+   // observado.
    btFactory = BT::BehaviorTreeFactory();
    bt_nodes::registerNodes(btFactory, context);
    bt_nodes::registerSdkNodes(btFactory, context);
@@ -227,12 +217,11 @@ void BtBehavior::buildTree()
 // custo, nenhuma porta aberta.
 //
 // O nome vem de 'snap.ownerName' (preenchido em FlightState::updateState(),
-// que recebe o ator direto do Agent nativo) -- NAO de
-// 'findContainerByType(Player)' a partir daqui. Medido rodando: essa busca
-// funciona aqui (BtBehavior aninhado no proprio player, via FlightAgentTC)
-// mas devolveria vazio se BtBehavior morasse dentro de um ( SimAgent )
-// nativo, componente da Station -- a ligacao com o player seria por NOME
-// via 'actorPlayerName:', nunca por container().
+// a partir do ator recebido do Agent nativo), nao de
+// 'findContainerByType(Player)' -- essa busca so funciona quando BtBehavior
+// esta aninhado no proprio player (caso FlightAgentTC); devolveria vazio se
+// BtBehavior estivesse dentro de um ( SimAgent ) da Station, onde a ligacao
+// com o player e por nome (actorPlayerName:).
 //
 // So' um player por PROCESSO: o proprio PublisherZMQ lanca LogicError numa
 // segunda instancia (so' faz sentido de qualquer forma -- cada player tem a
@@ -249,16 +238,13 @@ void BtBehavior::startGrootMonitorIfRequested()
    try {
       treePublisher_ = std::make_unique<BT::PublisherZMQ>(tree);
 
-      // A faixa de UID vai no log de proposito: ela e' o diagnostico da
-      // armadilha no 3 da secao "Groot" do CLAUDE.md. O contador de UID do
-      // BT.CPP (tree_node.cpp) e' um 'static uint16_t uid = 1' por .so que
-      // NUNCA zera, entao 'uid 1..N' significa "esta e' a primeira arvore
-      // construida neste plugin" e qualquer outra faixa significa "nao e'".
-      // O Groot ANTERIOR a FIX 6 de deps/groot/conanfile.py usa o UID como
-      // INDICE do proprio deque e MORRE (SIGABRT, sem dialogo) fora de 1..N;
-      // com a FIX 6 qualquer faixa funciona. De um jeito ou de outro, esta
-      // linha responde "por que aquele player funcionou e este nao" a um
-      // grep de distancia, em vez de exigir um depurador.
+      // A faixa de UID entra no log de proposito: o contador de UID do
+      // BT.CPP (tree_node.cpp) e 'static uint16_t uid = 1' por .so, nunca
+      // reiniciado -- 'uid 1..N' indica que esta e a primeira arvore
+      // construida naquele plugin; qualquer outra faixa indica o
+      // contrario. Relevante para diagnosticar o SIGABRT do Groot 1.0.0
+      // sem patch (ver secao Groot no CLAUDE.md raiz), que trata UID como
+      // indice de deque.
       std::uint16_t minUid{0xFFFF};
       std::uint16_t maxUid{0};
       for (const auto& n : tree.nodes) {
@@ -334,12 +320,11 @@ void BtBehavior::feedRwrEvasion(const double dt)
 }
 
 //------------------------------------------------------------------------------
-// clampAltitudeToTerrain() -- ACHADO POR AUDITORIA (nao redescobrir, ver o
-// comentario grande em bt/DecisionContext.hpp): so' domain::ThreatPolicy
-// aplicava domain/TerrainFloor.hpp; RTB/SUPPORT/PATROL comandavam altitude
-// sem nenhum piso. Mesma traducao Snapshot->GroundReference de
-// feedThreatPolicy(), reaproveitada aqui para os nos que NAO passam pela
-// ThreatPolicy.
+// clampAltitudeToTerrain() -- antes, so domain::ThreatPolicy aplicava o
+// piso anti-CFIT de domain/TerrainFloor.hpp; RTB/SUPPORT/PATROL comandavam
+// altitude sem nenhuma protecao. Reaproveita a mesma traducao
+// Snapshot->GroundReference de feedThreatPolicy() para os nos que nao
+// passam pela ThreatPolicy.
 //------------------------------------------------------------------------------
 double BtBehavior::clampAltitudeToTerrain(const double altitudeM) const
 {
@@ -408,13 +393,13 @@ base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState*
    // do UBF: "returns a pre-ref'd Action".
    const auto action = new FlightAction();
 #ifdef POC_LEAK_ONE_REF_PER_DECISION
-   // CONTROLE NEGATIVO do detector de vazamento (tests/memory/
-   // check_leak_detector_controle_negativo.py) -- NUNCA entra no build de
-   // producao (so em 'model_leak', atras da opcao 'variants' em
-   // models/players/A-4/meson.build). Um ref() a mais aqui, nunca balanceado
-   // por um unref(), e o MESMO defeito ja provado manualmente uma vez (ver
-   // tests/README.md, "ref() a mais na FlightAction") -- agora permanente,
-   // pra provar que a suite 'memory' pegaria um vazamento de verdade.
+   // Controle negativo do detector de vazamento (tests/memory/
+   // check_leak_detector_controle_negativo.py) -- nunca entra no build de
+   // producao, so em 'model_leak' sob a opcao 'variants'. Um ref() extra
+   // aqui, nunca balanceado por 'unref()', reproduz de forma permanente o
+   // defeito documentado em tests/README.md ("ref() a mais na
+   // FlightAction"), garantindo que a suite 'memory' de fato detecta
+   // vazamento.
    action->ref();
 #endif
    action->setCommand(currentDecision.command);

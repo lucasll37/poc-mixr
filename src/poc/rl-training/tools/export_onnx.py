@@ -173,12 +173,10 @@ def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int
     )
     modelo = helper.make_model(grafo, opset_imports=[helper.make_opsetid("", 17)])
 
-    # ARMADILHA MEDIDA (ver src/poc/onnx-policy): o ONNX Runtime deste pacote
-    # Conan aceita IR ate 9, e o pacote Python 'onnx' >= 1.19 grava 13 por
-    # padrao. O sintoma nao aparece aqui -- aparece EM VOO, com xinfer::open()
-    # recusando o arquivo ("Unsupported model IR version: 13, max supported
-    # IR version: 9") e a arvore caindo no Fallback. IR 8 e o do
-    # policy_example.onnx ja versionado.
+    # Mesma limitacao de IR version do ONNX Runtime (aceita ate 9): o pacote
+    # Python 'onnx' >= 1.19 grava IR 13 por padrao, o que nao falha na
+    # exportacao, mas faz xinfer::open() recusar o modelo em voo e a arvore
+    # cair no Fallback. IR 8 e o do policy_example.onnx ja versionado.
     modelo.ir_version = 8
 
     modelo.doc_string = (
@@ -194,31 +192,17 @@ def exportar_aleatorio(caminho: str, nomes: list[str], oculta: int, semente: int
 def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
     """Exporta uma politica do Stable-Baselines3.
 
-    Segue a receita oficial (docs do SB3, 'Exporting models'): um wrapper que
-    chama a policy com deterministic=True. ACHADO POR AUDITORIA, CORRIGIDO
-    (nao redescobrir): ao contrario do que o comentario desta funcao dizia
-    antes, o SB3 padrao (PPO/MlpPolicy, sem squash_output+use_sde -- o que
-    train.py usa) NAO aplica Tanh nenhum no forward -- `ActorCriticPolicy.
+    Segue a receita oficial do SB3 ('Exporting models'): um wrapper que chama
+    a policy com deterministic=True. O SB3 padrao (PPO/MlpPolicy, sem
+    squash_output+use_sde) nao aplica Tanh no forward -- `ActorCriticPolicy.
     forward()` devolve a media crua de uma `DiagGaussianDistribution` sobre
-    `action_net` (uma Linear comum), e squash_output so e permitido com
-    use_sde=True (common/policies.py, SB3 2.9.0). A acao sai em UNIDADES
-    FISICAS -- a MESMA escala de `action_space` (Box(0..360, 0..8000,
-    0..400), os defaults de MixrFlightEnv) -- nunca em [-1,1]. Confirmado
-    lendo o fonte do SB3 e inspecionando o grafo ONNX exportado da forma
-    antiga (saida = Gemm cru, sem Tanh final).
-
-    Sem correcao, uma politica DE FATO treinada (que converge pra valores
-    fisicos tipo heading~90) satura no extremo do intervalo fisico ao passar
-    por `xrlbridge::unscaleCommand()` (que faz clamp([-1,1]) antes de
-    reescalar) -- silencioso, sem erro, so a aeronave voando errado. A
-    correcao fecha o contrato desta funcao (ver o docstring do modulo:
-    "saida ... normalizados em [-1,1]") de verdade: o grafo exportado agora
-    aplica a MESMA equacao de `unscaleCommand()`, na direcao OPOSTA (fisico
-    -> [-1,1] aqui; unscaleCommand faz [-1,1] -> fisico no C++), usando os
-    limites REAIS de `modelo.action_space` (nao um valor fixo -- MixrFlightEnv
-    aceita heading_range/altitude_range_m/speed_range_kts customizados no
-    construtor, e o .onnx exportado tem de refletir o que ESTE modelo
-    realmente aprendeu, nao os defaults).
+    uma Linear comum (squash_output so e permitido com use_sde=True). A acao
+    sai em unidades fisicas, na escala de `action_space`, nunca em [-1,1].
+    Por isso o grafo exportado aplica a equacao inversa de
+    `xrlbridge::unscaleCommand()` (fisico -> [-1,1]), usando os limites reais
+    de `modelo.action_space` -- sem essa normalizacao, uma politica de fato
+    treinada satura no extremo do intervalo fisico ao passar pelo
+    clamp([-1,1]) de `unscaleCommand()`, silenciosamente, sem erro.
     """
     try:
         import torch
@@ -229,14 +213,12 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
             "  instale no venv de src/poc/rl-training (ver 'make venv-rl-training')."
         )
 
-    # ACHADO POR AUDITORIA: PPO.load() desserializa o checkpoint via
-    # pickle/torch.load por baixo (formato .zip do SB3) -- um vetor
-    # conhecido de execucao de codigo arbitrario se o arquivo vier de
-    # origem nao controlada (ao contrario do caminho .onnx irmao, tratado
-    # com cuidado explicito: shape + identidade de campo validados antes de
-    # usar). --sb3 so deve apontar para um checkpoint gerado pelo PROPRIO
-    # pipeline de treino deste projeto (train.py), nunca para um .zip
-    # baixado ou recebido de terceiro sem auditoria.
+    # PPO.load() desserializa o checkpoint via pickle/torch.load (formato
+    # .zip do SB3) -- vetor de execucao de codigo arbitrario se o arquivo
+    # vier de origem nao controlada, ao contrario do caminho .onnx, cuja
+    # forma e identidade de campo sao validadas antes de usar. --sb3 deve
+    # apontar so para um checkpoint gerado pelo proprio train.py deste
+    # projeto, nunca para um .zip de terceiro sem auditoria.
     modelo = PPO.load(caminho_zip, device="cpu")
 
     baixo = modelo.action_space.low.tolist()
@@ -274,12 +256,11 @@ def exportar_sb3(caminho_zip: str, saida: str, nomes: list[str]) -> None:
         opset_version=17, dynamo=False,
     )
 
-    # Mesma armadilha (e mesma correcao) de exportar_aleatorio()/
-    # train_policy.py: o exportador legado (dynamo=False) grava ir_version=8
-    # por padrao HOJE, mas isso e um efeito colateral da tabela interna do
-    # torch, nunca verificado por asercao nenhuma -- fixado aqui explicitamente
-    # pra nao depender desse acidente de implementacao se uma versao futura do
-    # torch mudar de exportador padrao (o proprio torch ja avisa disso).
+    # O exportador legado do torch (dynamo=False) grava ir_version=8 por
+    # padrao hoje, mas isso e efeito colateral da tabela interna do torch,
+    # nao uma garantia -- fixado aqui explicitamente para nao depender desse
+    # comportamento implicito se uma versao futura do torch mudar de
+    # exportador padrao.
     import onnx
     modelo_onnx = onnx.load(saida)
     modelo_onnx.ir_version = 8

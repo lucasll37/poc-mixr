@@ -135,14 +135,10 @@ def build_factories():
         classes = sorted({cls for cls in factory_map.values() if cls in reachable})
         factories[label] = {"file": str(fcpp.relative_to(REPO_ROOT)), "classes": classes}
 
-    # ACHADO POR AUDITORIA: find_dispatch_reachable_classes() e' tolerante de
-    # proposito a caminho inexistente (ver o proprio docstring dela, em
-    # tools/mixr_source_scan.py) -- conveniente para um chamador que monta a
-    # lista via glob, mas um risco aqui: PLUGIN_FACTORY_CPP e' um caminho
-    # HARDCODED pra UM modelo so'. Uma renomeacao/remocao futura de
-    # models/players/A-4 faria esta checagem ficar muda e o catalogo do
-    # plugin sair silenciosamente VAZIO (nao um erro -- um JSON valido com
-    # "classes": []), em vez de falhar no proprio gerador. Falhar alto aqui,
+    # find_dispatch_reachable_classes() e' tolerante de proposito a caminho
+    # inexistente, mas PLUGIN_FACTORY_CPP e' hardcoded para um modelo so --
+    # uma renomeacao/remocao futura de models/players/A-4 faria o catalogo
+    # do plugin sair silenciosamente vazio. Por isso falha alto aqui,
     # explicitamente, em vez de deixar a tolerancia generica da funcao
     # mascarar o problema.
     if not PLUGIN_FACTORY_CPP.is_file():
@@ -217,16 +213,15 @@ def build_model(factories):
     for module_label, entry in factories.items():
         for cls in entry["classes"]:
             if cls in model:
-                # Caso raro, confirmado rodando -- so' um par: base::FileReader
-                # (fabrica "FileReader") e recorder::FileReader (fabrica
-                # "RecorderFileReader") sao DUAS classes C++ diferentes com o
-                # MESMO nome barra. Primeiro modulo processado vence (a ordem
-                # de NATIVE_MODULES -- "base" antes de "recorder"), entao a
-                # entrada mostrada e' sempre a de base::FileReader; a fabrica
-                # "RecorderFileReader" continua listada em
-                # FACTORIES["recorder"].classes (o total por modulo nao muda),
-                # so' nao ganha uma entrada PROPRIA em MODEL. Mesma ambiguidade
-                # ja documentada em src/ui/scripts/generate_edl_catalog.py.
+                # Caso raro (um unico par): base::FileReader (fabrica
+                # FileReader) e recorder::FileReader (fabrica
+                # RecorderFileReader) sao duas classes C++ diferentes com o
+                # mesmo nome sem namespace. O primeiro modulo processado
+                # (ordem de NATIVE_MODULES) vence; a fabrica
+                # RecorderFileReader continua listada em
+                # FACTORIES['recorder'].classes, so nao ganha entrada
+                # propria em MODEL. Mesma ambiguidade documentada em
+                # src/ui/scripts/generate_edl_catalog.py.
                 continue
             raw_chain = scan.resolve_chain(cls, inheritance)
             chain_list = [_clean(lvl) for lvl in raw_chain]

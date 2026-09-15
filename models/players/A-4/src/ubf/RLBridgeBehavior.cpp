@@ -28,9 +28,9 @@ void RLBridgeBehavior::copyData(const RLBridgeBehavior& org, const bool)
 
 namespace {
 
-// toObservation() mora em ubf/ObservationBridge.hpp -- extraida daqui nesta
-// mesma passada (era uma copia campo a campo A MAO, sem a garantia de
-// compilacao que a macro da) para ficar testavel isoladamente. Ver
+// toObservation() mora em ubf/ObservationBridge.hpp, extraida deste arquivo
+// para ficar testavel isoladamente (era copia campo a campo a mao, sem a
+// garantia de compilacao de uma macro). Ver
 // tests/native/test_observation_bridge.cpp.
 
 domain::FlightCommand toFlightCommand(const xrlbridge::Command& cmd)
@@ -60,14 +60,11 @@ base::ubf::AbstractAction* RLBridgeBehavior::genAction(
    xrlbridge::setObservation(toObservation(snap));
    if (!snap.valid) return nullptr;
 
-   // ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
-   // xrlbridge::Command): sem o core ter publicado uma acao valida ainda
-   // (frame de priming do reset(), ou o Command generico ficou obsoleto de
-   // um episodio anterior), nao ha recomendacao nenhuma -- devolver nullptr
-   // e deixar o UbfArbiter (AltitudeSafetyBehavior continua no candidato
-   // vote:90 do MESMO arbitro, ver scenario_rl.edl) decidir sem este voto,
-   // em vez de atuar heading=0/altitude=0/speed=0 como se fosse uma
-   // decisao de verdade.
+   // Sem o core ter publicado uma acao valida ainda (frame de priming do
+   // reset(), ou comando obsoleto de um episodio anterior), nao ha
+   // recomendacao -- devolve nullptr e deixa o UbfArbiter/
+   // AltitudeSafetyBehavior decidir sem este voto, em vez de atuar
+   // heading=0/altitude=0/speed=0 como decisao real.
    const xrlbridge::Command pending{xrlbridge::getPendingCommand()};
    if (!pending.valid) return nullptr;
 

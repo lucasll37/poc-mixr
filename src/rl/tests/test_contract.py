@@ -20,15 +20,15 @@ Cobre, na ORDEM em que aparecem (a ordem importa -- ver a armadilha
      (testado com max_episode_steps=5, pequeno de proposito).
   5. close() pode ser chamado mais de uma vez sem levantar.
 
-ARMADILHA CONFIRMADA (nao redescobrir, mesma de test_smoke.py): so pode
-existir UMA Station por PROCESSO. Por isso os passos 2-5 reusam o MESMO
-'env' (uma unica MixrFlightEnv, construida uma vez) -- nenhum teste aqui cria
-um segundo Env/NativeSimulation. O teste de 'player_name incorreto' (que
-exigiria construir uma SEGUNDA Station neste mesmo processo para comparar)
-mora em processo PROPRIO -- ver src/rl/tests/test_bad_player.py.
+So pode existir uma Station por processo -- por isso os passos 2-5 reusam o
+mesmo 'env' (uma unica MixrFlightEnv, construida uma vez); nenhum teste
+aqui cria um segundo Env/NativeSimulation. O teste de 'player_name
+incorreto' (que exigiria construir uma segunda Station neste mesmo
+processo para comparar) mora em processo proprio -- ver
+src/rl/tests/test_bad_player.py.
 
-ARMADILHA CONFIRMADA (ver mixr_gym/__init__.py): 'mixr_gym' TEM DE ser
-importado antes de 'numpy'/'gymnasium' neste processo.
+'mixr_gym' precisa ser importado antes de 'numpy'/'gymnasium' neste
+processo (ver mixr_gym/__init__.py).
 """
 
 import os

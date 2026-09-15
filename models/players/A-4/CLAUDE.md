@@ -4,16 +4,6 @@ Complementa o `CLAUDE.md` da raiz (sempre carregado) e os `.md` deste projeto (`
 `CHANGELOG.md`, `docs/ARCHITECTURE.md`, `docs/POLITICAS.md`). Só entra aqui o que não está em
 nenhum dos dois — não duplique o que já está lá.
 
-## Nomes obsoletos em comentários (a classe/arquivo não existe mais com esse nome)
-
-Comentários de produção citam nomes renomeados e nunca atualizados — procurar por eles no código
-é perda de tempo:
-
-- `AlertRadio` / `FlightDirector` → as classes reais são `xnative::AlertDatalink` e
-  `mixr::models::Autopilot` (`include/ubf/FlightAction.hpp:23-24,44`).
-- `xnative/BehaviorBoard.hpp` → o arquivo real é `libs/xboard/Board.hpp`
-  (`src/ubf/FlightAction.cpp:127`).
-
 ## Gotcha de unidade isolado: `Autopilot::setCommandedAltitudeFt()` é a ÚNICA chamada em pés
 
 Todo o resto do modelo (`domain::FlightCommand`, `ubf::BtTuning`, `domain::WorldView`) trabalha em

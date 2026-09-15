@@ -72,14 +72,15 @@ do `README.md`). O rótulo textual desse comportamento
 texto interativa em terminal)
 
 **Objetivo:** navegar pelas abas do painel enquanto uma simulação roda (Players, Mapa, Memória,
-Tempo Não-Crítico, Log, Componentes, EDL — ver item 5 para a sigla).
+Tempo Não-Crítico, Log, Componentes, EDL — sigla já definida no parágrafo de abertura do
+`README.md`, item 1).
 **Onde procurar:** `app/README.md`.
 **Critério de sucesso:** identificar em qual thread cada player está decidindo, pausar/acelerar o
 tempo, e abrir o card de detalhe de uma entidade.
 
 ### 4. Abrir o manual interativo
 
-**Objetivo:** usar o manual interativo — seis visões sobre o framework, entre elas o ciclo de
+**Objetivo:** usar o manual interativo — cinco visões sobre o framework, entre elas o ciclo de
 execução do MIXR, a cadeia de decisão e o catálogo de classes.
 **Onde procurar:** seção "Leia mais" do `README.md`, linha `docs/manual/`; `make open-docs`.
 **Critério de sucesso:** localizar, na aba de comportamento, a cadeia de decisão real de produção
@@ -103,7 +104,9 @@ validar o resultado.
 **Objetivo:** abrir uma árvore de comportamento de produção (`models/players/A-4/configs/flight_tree.xml`) no **Groot**
 (editor/monitor visual de árvores de comportamento do BehaviorTree.CPP, aplicativo de terceiro —
 não vem com o repositório).
-**Onde procurar:** `CONTRIBUTING.md` (a instalação do Groot em si é `INSTALL.md` §4).
+**Onde procurar:** `CONTRIBUTING.md`, seção "Editando e depurando a árvore com o Groot" (dentro
+do passo 4 do roteiro de modelo novo — role até lá, ou busque pelo título; a instalação do Groot
+em si é `INSTALL.md` §4).
 **Critério de sucesso:** a árvore abre sem erro de "modelo não registrado" e dá para editar/salvar.
 
 ### 7. Rodar a poc com decisão em Python
@@ -127,7 +130,13 @@ o **Stable-Baselines3** — biblioteca Python de algoritmos de RL — implementa
 Network Exchange* — para redes treinadas).
 **Onde procurar:** `src/poc/rl-training/README.md`; para rodar o `.onnx` gerado na poc de verdade
 (portas, armadilhas confirmadas), `src/poc/onnx-policy/README.md`.
-**Critério de sucesso:** um `.onnx` novo gerado, carregável pela poc `onnx-policy`.
+**Critério de sucesso:** um `.onnx` novo gerado, carregável pela poc `onnx-policy` — carregar sem
+erro é o critério aqui, não voar de forma equivalente ao `.onnx` de referência já versionado (sem
+*reward shaping*, o treino PPO deste item aprende a maximizar recompensa, não a reproduzir
+nenhuma regra específica; ver `src/poc/onnx-policy/README.md` para o contraste com o caminho
+rápido de clonagem de comportamento). Sem exceção de time-box própria como o item 1 — o treino
+PPO (200 mil passos, física via JSBSim) pode facilmente estourar os 45 min sugeridos; se isso
+acontecer, deixe rodando em background e anote o bloqueio, mesma orientação do item 1.
 
 ### 10. Criar um modelo novo como plugin
 

@@ -51,10 +51,10 @@ mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 # nunca no mirror de contrato: e' uma .a de 35 MB, e o mirror nao tica arvore
 # nenhuma.
 #
-# ARMADILHA JA MEDIDA (nao redescobrir): a lib e' ESTATICA e exporta 447
-# simbolos globais 'T'. Sem '-Wl,--exclude-libs,ALL' no link do .so eles
-# vazam, porque 'gnu_symbol_visibility: hidden' NAO se aplica a objetos
-# vindos de um .a. A flag ja esta em 'model_link_args' abaixo -- nao remova.
+# A biblioteca do BehaviorTree.CPP e' estatica e exporta 447 simbolos
+# globais 'T'; sem '-Wl,--exclude-libs,ALL' no link do .so eles vazam,
+# porque 'gnu_symbol_visibility: hidden' nao se aplica a objetos vindos de
+# um .a. A flag ja esta em 'model_link_args' abaixo -- nao remova.
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')

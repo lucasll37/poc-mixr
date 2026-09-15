@@ -53,13 +53,11 @@
 
 namespace {
 
-// MetaObject::getClassName() devolve o nome cru de 'type_info' (o proprio
-// header documenta isso -- "class name from 'type_info'"), que no
-// GCC/Linux e' o nome MANGLED (ex.: "N4mixr6models5xstub13AlertDatalinkE"),
-// nao "AlertDatalink" -- confirmado rodando ANTES deste demangle existir.
-// abi::__cxa_demangle() e' a mesma API que 'c++filt'/'nm -C' usam por
-// baixo. Sem ela, o catalogo mostraria lixo ilegivel no lugar do nome da
-// classe. Mantem so' o ULTIMO segmento apos '::' -- mesma convencao de
+// MetaObject::getClassName() devolve o nome cru de 'type_info', que no
+// GCC/Linux e' mangled (ex.: "N4mixr6models5xstub13AlertDatalinkE"), nao
+// "AlertDatalink". abi::__cxa_demangle() e' a mesma API que 'c++filt'/
+// 'nm -C' usam por baixo; sem ela o catalogo mostraria o nome ilegivel.
+// Mantem so' o ULTIMO segmento apos '::' -- mesma convencao de
 // build_inheritance() em tools/mixr_source_scan.py (guarda so' o ultimo
 // segmento do namespace, por isso "mixr::models::xstub::AlertDatalink"
 // vira so' "AlertDatalink").

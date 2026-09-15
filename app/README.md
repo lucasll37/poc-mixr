@@ -62,7 +62,7 @@ tempo. **Toda tecla tem um botão equivalente** (clicável, com a dica do atalho
 
 | aba | mostra | controles próprios |
 |---|---|---|
-| **Players** | lista de entidades (qualquer tipo, não só aviões) + card de detalhe | `↑`/`↓` navega; `m` abre a mesma entidade no Mapa |
+| **Players** | lista de entidades (qualquer tipo, não só aviões), com coluna de thread do pool de tempo crítico, + card de detalhe | `↑`/`↓` navega; `m` abre a mesma entidade no Mapa |
 | **Mapa** | canvas navegável, duas perspectivas | arrastar/setas move; `[`/`]`/roda zoom; `v` perspectiva; `f` segue a selecionada; `t` rastro; `e` terreno; `,`/`.` gira; `c` centraliza |
 | **Memória** | contadores de instância do MIXR, ao vivo | `↑`/`↓` navega |
 | **Tempo Não-Crítico** | o que roda na thread de background (10 Hz) | só leitura |
@@ -72,7 +72,9 @@ tempo. **Toda tecla tem um botão equivalente** (clicável, com a dica do atalho
 
 ## 2. As abas, uma a uma
 
-**Players.** O card de detalhe traz posição/atitude/velocidade/Mach/G/empuxo (quando fazem
+**Players.** A lista mostra qual thread do pool de tempo crítico decidiu por cada entidade
+(`-` quando ela não decide nada localmente — caso de um intruso recebido só por rede DIS). O card
+de detalhe traz posição/atitude/velocidade/Mach/G/empuxo (quando fazem
 sentido pro tipo), combustível, pista de radar mais próxima, alerta tático e — se a entidade tem
 árvore de comportamento — a árvore inteira ([§4](#4-árvore-de-comportamento-e-breakpoints)).
 

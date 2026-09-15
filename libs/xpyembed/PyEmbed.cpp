@@ -302,14 +302,12 @@ bool decide(const ScriptId id, const int playerId,
             }
          }
       } else if (lista != nullptr) {
-         // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'lista' era
-         // criada INCONDICIONALMENTE (linha acima), mas so liberada dentro
-         // do bloco 'if (fn != nullptr && lista != nullptr)'. Quando 'fn'
-         // e' nullptr (o dicionario de globais nao tem mais 'decide' --
-         // ex.: um script que se automodifica com 'del decide' entre ticks)
-         // e 'lista' != nullptr, o objeto vazava: refcount 1, ninguem mais
-         // soltava. 'PyObj' e' 'void*' cru (linha 28) -- sem RAII nenhum,
-         // o DecRef tem de ser explicito.
+         // 'lista' e criada incondicionalmente, mas so era liberada dentro
+         // de 'if (fn != nullptr && lista != nullptr)'. Quando 'fn' e nulo
+         // (dicionario de globais sem 'decide' -- ex.: script que faz 'del
+         // decide' entre ticks) e 'lista' nao e nula, o objeto vazava: PyObj
+         // e void* cru, sem RAII, entao o DecRef precisa ser explicito
+         // tambem neste ramo.
          g_api.DecRef(lista);
       }
    }

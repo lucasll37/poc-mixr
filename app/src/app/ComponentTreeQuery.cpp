@@ -200,15 +200,11 @@ int countAndRelease(mixr::base::PairStream* const stream)
    return n;
 }
 
-// ARMADILHA MEDIDA (nao redescobrir): Station::getNetworks() NAO e pre-ref()'d.
-// Ao contrario de getPlayers(), que o cabecalho marca como "pre-ref()'d", ele
-// devolve o membro cru (Station.cpp:639-642 -- 'return networks;'). Dar
-// unref() nele solta uma referencia que nunca se tomou: o contador cai a cada
-// redesenho da aba e, poucos segundos depois, o PairStream e destruido embaixo
-// do proprio laco que o percorre -- SIGSEGV em List::Item::getValue() com um
-// ponteiro de lixo. So aparece em cenario que declara 'networks:' (as pocs de
-// DIS), e por isso ficou latente enquanto o ./app so rodava os cenarios
-// hermeticos dele.
+// Station::getNetworks() nao e pre-ref()'d, ao contrario de getPlayers() --
+// devolve o membro cru (Station.cpp:639-642). Um unref() aqui solta uma
+// referencia nunca tomada, levando o contador a zero e destruindo o
+// PairStream sob o laco que o percorre (SIGSEGV em List::Item::getValue()).
+// So afeta cenarios com 'networks:' declarado.
 int countBorrowed(const mixr::base::PairStream* const stream)
 {
    return (stream != nullptr) ? static_cast<int>(stream->entries()) : 0;
@@ -330,11 +326,10 @@ std::vector<ComponentStateField> captureLiveState(mixr::base::Object* const obj)
       addField(out, "inicializada", yesNo(net->isNetworkInitialized()));
       addField(out, "entrada", onOff(net->isInputEnabled()));
       addField(out, "saida", onOff(net->isOutputEnabled()));
-      // NAO ha contagem de NIBs aqui: getInputListSize()/getOutputListSize()
-      // sao PROTECTED em interop::NetIO (confirmado tentando -- erro de
-      // compilacao, nao suposicao). Mesma regra ja registrada para o
-      // outputHandler do DataRecorder: o MIXR e dependencia binaria, e um
-      // getter sem acessor publico simplesmente nao aparece nesta aba.
+      // getInputListSize()/getOutputListSize() de interop::NetIO sao
+      // 'protected' -- nao ha contagem de NIBs nesta aba. Mesma regra do
+      // outputHandler do DataRecorder: sem acessor publico, o dado nao
+      // aparece (MIXR e dependencia binaria).
    }
 
    // ---- Generico: vale para QUALQUER Component, inclusive um de um modelo
@@ -522,18 +517,12 @@ void addChild(ComponentTreeNode& parent, mixr::base::Object* const obj, const st
       if (auto* const station = dynamic_cast<mixr::simulation::Station*>(obj)) {
          appendStationExtras(node, station, depth + 1, nodeCount);
       }
-      // NAO ha uma quarta checagem aqui para 'mixr::recorder::DataRecorder::
-      // getOutputHandler()' -- os dois overloads sao 'protected' no header
-      // instalado pelo Conan (confirmado tentando: erro de compilacao, nao
-      // suposicao). Diferente de 'players'/'simulation'/'dataRecorder'/
-      // 'ioHandler'/'networks' (todos getters PUBLICOS de Station/
-      // Simulation), o outputHandler do gravador simplesmente NAO tem
-      // acessor publico -- e o MIXR e dependencia binaria, sem remendar
-      // header nenhum (mesma regra ja aplicada a libs/xlog/libs/xmsg).
-      // Por isso o no 'dataRecorder' aparece na arvore SEM filhos: e honesto
-      // (nao inventa uma cadeia que este app nao consegue alcancar), nao um
-      // bug -- registrado tambem no relatorio desta tarefa como limite
-      // conhecido da PRIMEIRA METADE da feature.
+      // Nao ha checagem para 'mixr::recorder::DataRecorder::
+      // getOutputHandler()': os dois overloads sao 'protected' no header
+      // instalado pelo Conan. Ao contrario de 'players'/'simulation'/
+      // 'dataRecorder'/'ioHandler'/'networks' (getters publicos), o
+      // outputHandler do gravador nao tem acessor publico -- por isso o no
+      // 'dataRecorder' aparece na arvore sem filhos, nao por bug.
    }
 
    node.ownPhaseMask = ownPhaseMaskFor(node.phase);

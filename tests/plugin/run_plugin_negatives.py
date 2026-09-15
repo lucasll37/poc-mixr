@@ -144,15 +144,12 @@ def main():
 
     print(f"--- controles negativos ({args.poc}) ---")
 
-    # Sem o bloco, a PRIMEIRA classe do modelo que o parser encontra e a
-    # ( AlertDatalink ) do slot 'datalink:' de falcon1 -- as formas irmas
-    # reduzem na ordem do texto, e 'datalink:' vem antes de 'agent:' (o
-    # agente e o ULTIMO componente do player, para ver as pistas frescas da
-    # fase 3 -- ver o cenario). Confirmado rodando: com o agente amarrado
-    # por nome numa Station ( SimAgent ), como nas pocs de single-thread ja
-    # removidas, o primeiro nome seria FlightState -- a fixture de hoje
-    # (poc 'flight', agente aninhado no player) muda qual classe aparece
-    # primeiro no texto, nao SE o parser recusa.
+    # Sem o bloco, a primeira classe do modelo que o parser encontra e
+    # ( AlertDatalink ) do slot 'datalink:' de falcon1 (o 'agent:' e o
+    # ultimo componente do player). Isso depende de como o cenario esta
+    # estruturado (com FlightAgentTC aninhado no player, e nao SimAgent
+    # amarrado por nome na Station) -- muda apenas QUAL classe aparece
+    # primeiro no texto, nao se o parser recusa.
     caso("cenario usa o modelo mas o bloco de plugin sumiu",
          variante("sem-loader", sem_bloco), args.binario,
          [r"nome de fabrica desconhecido", r"AlertDatalink", r"PluginLoader"])
@@ -175,10 +172,10 @@ def main():
          variante("abi", troca_file(args.bad_abi)), args.binario,
          [r"ABI do contrato", r"recompile o plugin"])
 
-    # O 'provides:' tem de acompanhar, senao a assercao dele dispara ANTES e o
-    # teste nunca chega na sonda de colisao (medido: era isso que acontecia).
-    # A ordem do PluginRegistry esta certa -- provides e a checagem mais forte
-    # e vem primeiro; quem estava errado era este caso de teste.
+    # provides: tem de acompanhar a troca de .so, senao a assercao dele
+    # dispara antes e o teste nunca chega na sonda de colisao. A ordem do
+    # PluginRegistry esta correta -- provides e a checagem mais forte e vem
+    # primeiro.
     caso("plugin sombreia um nome do framework",
          variante("collide",
                   lambda t: troca_provides("Aircraft")(troca_file(args.bad_collide)(t))),

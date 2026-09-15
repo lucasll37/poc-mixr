@@ -1178,7 +1178,7 @@ rodadas por `make test`:
 | `memory` | vazamento, pelos contadores de instancia do proprio MIXR | 2 execucoes por poc |
 | `determinism` | mesmo estado com 1, 2 e 4 threads (mais uma repeticao de 4, prova de reprodutibilidade na MESMA configuracao) — todo agente decide via `( FlightAgentTC )`, inclusive com a politica em Python | 4 execucoes por poc |
 | `plugin` | o contrato de carga dinamica, os 7 modos de falha, a prova de hot-swap, **o cenario de producao rodando com um modelo DESCONHECIDO**, e o mesmo cenario rodando com um `.so` que chegou pelo DEPOSITO de terceiro (`plugins/`) | 6 testes, ~3 s |
-| `guard` | invariantes estruturais: o core **opaco** ao fonte do modelo, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, e falcon1..4 com o mesmo esqueleto de slots nos cenarios | 4 testes, instantaneo |
+| `guard` | invariantes estruturais: o core **opaco** ao fonte do modelo, a thread de desenho do `./app` nunca tocando o grafo vivo do MIXR, todo projeto de modelo com as cinco pecas (`tests/`/`docs/`/`README`/`CHANGELOG`/`Makefile`), o `.so` instalado mais novo que o fonte, falcon1..4 com o mesmo esqueleto de slots nos cenarios, nenhum par de modelos publicando o mesmo nome de fabrica, e todo `file:` de `( PluginModule )` apontando pra um `.so` que existe | 7 testes, instantaneo |
 
 > A guarda **`duplicacao`** foi aposentada quando o `./app` virou o runner unico: ela travava a
 > igualdade byte a byte da camada de aplicacao entre as pocs gemeas, e essa camada nao existe mais
@@ -4437,9 +4437,14 @@ do ciclo de fases, é extraído do código.
   os dois se fundiram, mesmo padrão de `make open-edl`; fonte em `docs/manual/doc.jsx` +
   `docs/manual/compile.js` — a página gerada, o fonte JSX e o build script moram juntos em
   `docs/manual/`, ao lado de `docs/presentation/` e `docs/books/`, em vez de soltos direto sob
-  `docs/`) tem **seis abas** — os rótulos reais na UI são **"Simulação"**/**"Comportamento"**/
-  **"step-by-step"**/**"Diagrama de Classes"**/**"Referência"**/**"Catálogo"** (`docs/manual/doc.jsx`);
-  os nomes abaixo descrevem o conteúdo de cada uma:
+  `docs/`) tinha **seis abas** nesta passada — os rótulos então eram **"Simulação"**/
+  **"Comportamento"**/**"step-by-step"**/**"Diagrama de Classes"**/**"Referência"**/**"Catálogo"**.
+  **Correção (achado por auditoria):** a aba "Referência" não existe mais em `doc.jsx` hoje —
+  confirmado por grep dos botões de aba (`mx-tabs`, linha ~1367): são **cinco**, sem
+  "Referência". A narrativa de "Referência" abaixo (Missile/Steerpoint/Navigation/Autopilot)
+  descreve trabalho de uma passada específica, não o estado atual da página — README.md e
+  `docs/manual/README.md` já refletem as cinco abas de hoje.
+  Os nomes abaixo descrevem o conteúdo de cada uma:
   1. **Simulação** ("Execução" no conteúdo) — o ciclo de fases do frame MIXR
      (dynamics/transmit/receive/process/background) animado sobre a árvore de componentes de um
      `( Aircraft )` só com peças **built-in** (~72 nós), com pan/zoom, tema claro/escuro, "seguir

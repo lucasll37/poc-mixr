@@ -57,9 +57,11 @@ sed -i "s/'template'/'meu-modelo'/g" meson.build
 #    em TODOS os arquivos de uma vez)
 grep -rl 'xtemplate' include src tests | xargs sed -i 's/xtemplate/xmeumodelo/g'
 
-# 3) o primeiro argumento de MIXR_PLUGIN_DEFINE em src/plugin.cpp -- o sed
-#    do passo 1 já pegou isto, porque é a MESMA string 'template'. Confira:
-grep -n 'MIXR_PLUGIN_DEFINE' src/plugin.cpp
+# 3) o primeiro argumento de MIXR_PLUGIN_DEFINE em src/plugin.cpp -- arquivo e
+#    aspas DIFERENTES do passo 1 (aqui e' aspas duplas, C++), o sed de la nao
+#    toca este arquivo. Precisa de uma substituicao propria:
+sed -i 's/MIXR_PLUGIN_DEFINE("template"/MIXR_PLUGIN_DEFINE("meu-modelo"/' src/plugin.cpp
+grep -n 'MIXR_PLUGIN_DEFINE' src/plugin.cpp   # confira o nome novo
 
 # 4) a linha ROOT do Makefile -- SÓ SE você mudou a profundidade em relação
 #    à raiz do repositório. O template mora em models/template/ (dois níveis).

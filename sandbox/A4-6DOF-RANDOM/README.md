@@ -1,5 +1,7 @@
 # A4-6DOF-RANDOM — as oito aeronaves de `A4-6DOF`, cada uma fazendo um *slow roll* de tempos em tempos
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 Mesmo cenário de [`A4-6DOF`](../A4-6DOF/) — oito `a4_1..a4_8` empilhadas com 1.000 ft de
 separação, voando a figura-de-oito de 20 steerpoints com dinâmica JSBSim 6-DOF — com **duas**
 diferenças:
@@ -101,12 +103,8 @@ o nivelador de asas não gateado. Com ele, esse defeito vira um sintoma observá
 3. **O banco lido vive em (-180, 180]** — `attitude/phi-rad` é um `atan2` sem wrap. O
    acumulador de giro integra a **diferença** entre ticks passada por `wrap180`; comparar o
    ângulo absoluto contra 360 nunca dispararia.
-4. **`edlcheck` recusa o `.edl.in` cru** (`@NUM_TC_THREADS@` só é expandido em runtime).
-   Para validar à mão:
-   ```bash
-   sed 's/@NUM_TC_THREADS@/2/' sandbox/A4-6DOF-RANDOM/configs/scenario_a4_6dof_random.edl.in > /tmp/a4rnd.edl
-   ./dist/bin/edlcheck /tmp/a4rnd.edl
-   ```
+4. **`edlcheck` recusa o `.edl.in` cru** (`@NUM_TC_THREADS@` só é expandido em runtime) — ver
+   [`sandbox/README.md`](../README.md#edlcheck-e-o-token-num_tc_threads).
 
 ## O que foi medido rodando
 

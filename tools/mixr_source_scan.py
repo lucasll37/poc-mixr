@@ -67,10 +67,9 @@ def mask_source(text):
     precisa ler o nome de fabrica de dentro das aspas). Sem isso, uma linha de
     PROSA como '// Player::updateData() chama obj->updateData(dt) direto' (o
     proprio codigo deste repo cita a API do framework em comentario, ver
-    Component.cpp) e confundida com uma definicao de verdade -- medido
-    acontecendo antes deste mascaramento existir. O rastreio de string serve so
-    para NAO interpretar um '//' ou '/*' que apareca dentro de uma string como
-    inicio de comentario."""
+    Component.cpp) e confundida com uma definicao de verdade. O rastreio de
+    string serve so para NAO interpretar um '//' ou '/*' que apareca dentro
+    de uma string como inicio de comentario."""
     out = list(text)
     i, n = 0, len(text)
     in_string = None
@@ -214,9 +213,9 @@ def extract_slots(cpp_roots):
     modelo minimo so pra testar o CONTRATO de carga de plugin) declaram as
     MESMAS classes (BtBehavior, AlertDatalink, ...) com o MESMO nome barra,
     e 'A-4' < 'template' alfabeticamente -- sem 'first wins', o mirror
-    (varrido depois, deliberadamente mais simples) sobrescrevia os slots
-    REAIS de producao, confirmado rodando: BtBehavior saia com 5 slots em
-    vez dos ~19 de verdade. O modo tabela de tools/extract_execution_chain.py
+    (varrido depois, deliberadamente mais simples) sobrescreveria os slots
+    reais de producao: BtBehavior sairia com 5 slots em vez dos ~19 de
+    verdade. O modo tabela de tools/extract_execution_chain.py
     (restrito a contexts/src/mixr/src/models/) nunca tinha essa colisao para
     comecar -- esse universo nem inclui models/players/."""
     slots: dict[str, list[dict]] = {}

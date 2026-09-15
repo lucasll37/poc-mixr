@@ -7,6 +7,11 @@ ligado no console por padrão). É um peer de `./app` (a TUI de controle/monitor
 
 ## Uso
 
+Pré-requisito, uma vez: `make configure && make models && make install` (seção "Build" do
+[`README.md`](../../README.md) raiz) — `dist/bin/node` só existe depois do `make install`, e um
+`.edl` que carregue um modelo via `( PluginModule )` precisa do `.so` já sincronizado para
+`dist/lib/mixr-plugins/` (`make models` antes do `install`), do mesmo jeito que `./app` precisa.
+
 ```bash
 ./dist/bin/node <arquivo.edl|.edl.in>
 ```

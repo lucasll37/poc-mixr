@@ -23,6 +23,10 @@ void TacticalAlert::copyData(const TacticalAlert& org, const bool)
    eastM = org.eastM;
    altitudeM = org.altitudeM;
    rangeM = org.rangeM;
+   senderNorthM = org.senderNorthM;
+   senderEastM = org.senderEastM;
+   senderAltitudeM = org.senderAltitudeM;
+   senderSide = org.senderSide;
 }
 
 } // namespace events

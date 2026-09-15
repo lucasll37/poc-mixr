@@ -1,10 +1,10 @@
 //
-// ubf/ObservationBridge.hpp -- toObservation(), extraida nesta passada do
-// anonimo de RLBridgeBehavior.cpp (era copia campo a campo A MAO, sem a
-// garantia de compilacao que a macro da -- o "elo mais fraco" do contrato,
-// ver o CHANGELOG.md deste modelo). Este teste e' o que fecha a lacuna: sem
-// ele, um campo esquecido em toObservation() compilava e passava
-// silenciosamente antes desta passada.
+// ubf/ObservationBridge.hpp -- toObservation(), extraida do anonimo de
+// RLBridgeBehavior.cpp para ficar testavel isoladamente (era copia campo a
+// campo a mao, sem a garantia de compilacao que uma macro daria -- o "elo
+// mais fraco" do contrato, ver o CHANGELOG.md deste modelo). Este teste e
+// o que fecha a lacuna: sem ele, um campo esquecido em toObservation()
+// compila e passa em silencio.
 //
 #include "ubf/ObservationBridge.hpp"
 
@@ -48,9 +48,8 @@ TEST(ObservationBridge, ToObservationCopiaTodosOsCamposNumericosEBooleanos)
    snap.hasContact = true;
    snap.hasAlert = false;
    snap.weaponReady = true;
-   // Os 10 campos que ObservationBridge::toObservation() so passou a copiar
-   // NESTA passada (achado de auditoria: existiam em WorldView havia tempo,
-   // mas a copia manual antiga nunca os levava para xrlbridge::Observation).
+   // Os 10 campos abaixo ja existiam em WorldView, mas a copia manual
+   // antiga nunca os levava para xrlbridge::Observation.
    snap.rwrThreatRangeM = 24.0;
    snap.rwrThreatRelBearingDeg = 25.0;
    snap.rwrThreatDeltaAltM = 26.0;
@@ -117,9 +116,8 @@ TEST(ObservationBridge, ToObservationCopiaOsCamposDeTexto)
    EXPECT_EQ(obs.contactName, "bandit1");
    EXPECT_EQ(obs.alertSender, "falcon2");
    EXPECT_EQ(obs.alertContactName, "bandit1");
-   // Achado por auditoria: ownerName e' o que fecha a lacuna de "de qual
-   // player veio esta observacao" -- ver o comentario em
-   // libs/xrlbridge/RLBridge.hpp::Observation::ownerName.
+   // ownerName identifica de qual player veio a observacao -- ver o
+   // comentario em libs/xrlbridge/RLBridge.hpp::Observation::ownerName.
    EXPECT_EQ(obs.ownerName, "falcon1");
 }
 

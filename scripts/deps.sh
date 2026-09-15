@@ -22,6 +22,13 @@
 set -x
 set -e
 
+# Desliga o cache de bytecode do CPython -- 'conan create' abaixo IMPORTA
+# cada deps/<nome>/conanfile.py como modulo Python (nunca roda como
+# script), e sem isto sobraria um deps/<nome>/__pycache__/*.pyc por
+# dependencia. Escape hatch chamado standalone (nao via 'make'), entao nao
+# herda o 'export PYTHONDONTWRITEBYTECODE' do Makefile raiz.
+export PYTHONDONTWRITEBYTECODE=1
+
 # Roda a partir da RAIZ do repositorio, independente de onde foi chamado --
 # os caminhos './deps/...' abaixo dependem disso.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."

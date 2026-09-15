@@ -15,14 +15,12 @@ a tela de navegacao. Isso exercita, de ponta a ponta:
   3. app::discoverFleet() -- a frota GENERICA (nao falcon1..4) que
      'ScenarioEntry::fleet' vazio aciona em main.cpp para cenarios de
      '-folder' (ver o comentario em app/Fleet.hpp);
-  4. a DEGRADACAO GRACIOSA com zero players -- caso ja robusto no codigo
-     (Fleet vazia, printDeterministicDump() nunca entra no laco) mas sem
-     nenhuma regressao automatizada ate este teste (achado por auditoria:
-     'BURACO: cenario com ZERO players', workflow de investigacao desta
-     sessao). '-f' bare NAO serve para provar isso -- ele sempre assume a
-     frota falcon1..4 fixa (app::adHocScenario()) e abortaria antes de
-     rodar um frame sequer; só '-folder' (descoberta em runtime) alcança
-     o caminho zero-players de verdade.
+  4. a degradacao graciosa com zero players -- o codigo ja e robusto
+     (Fleet vazia, printDeterministicDump() nunca entra no laco), mas nao
+     havia regressao automatizada cobrindo esse caso. '-f' bare nao serve
+     para provar isso -- ele sempre assume a frota falcon1..4 fixa e
+     abortaria antes de rodar um frame sequer; so '-folder' (descoberta em
+     runtime) alcanca o caminho zero-players de verdade.
 
 A subpasta malformada prova que uma pasta 'irma' invalida nao impede a
 pasta valida de ser encontrada (aviso em stderr, sem abortar o processo

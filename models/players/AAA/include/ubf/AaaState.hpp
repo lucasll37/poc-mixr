@@ -35,18 +35,16 @@ namespace xAAA {
 // subclasse de Agent/initActor() proprio, ao contrario de
 // models/players/A-4/include/xnative/FlightAgentTC.hpp).
 //
-// ARMADILHA DO FRAMEWORK, ja medida em producao (mesmo comentario em
-// models/players/A-4/include/ubf/FlightState.hpp): um Agent NAO propaga
-// updateTC()/updateData() para os filhos, e 'state' e' filho do agente --
-// este objeto NUNCA recebe o ciclo normal de componentes. Tudo o que ele
-// precisa fazer tem que estar dentro de updateState().
+// Um Agent nao propaga updateTC()/updateData() para os filhos, e 'state' e
+// filho do agente -- este objeto nunca recebe o ciclo normal de
+// componentes; toda a logica precisa estar dentro de updateState() (mesmo
+// comentario em models/players/A-4/include/ubf/FlightState.hpp).
 //
-// ARMADILHA CONFIRMADA (nao redescobrir, ver
-// include/xnative/AaaSite.hpp): a checagem de municao usa
-// StoresMgr::available() > 0 diretamente, NUNCA
-// SamVehicle::isLauncherReady()/getNumberOfMissiles() -- os dois nativos
-// contam via dynamic_cast<const Sam*>, e xmissile::GuidedMissile e' IRMA de
-// Sam (nao filha), entao ficariam sempre falso/zero em silencio.
+// A checagem de municao usa StoresMgr::available() > 0 diretamente, nunca
+// SamVehicle::isLauncherReady()/getNumberOfMissiles() (ver
+// include/xnative/AaaSite.hpp): os dois nativos contam via
+// dynamic_cast<const Sam*>, e xmissile::GuidedMissile e' irma de Sam (nao
+// filha), entao ficariam sempre falso/zero em silencio.
 //------------------------------------------------------------------------------
 class AaaState final : public base::ubf::AbstractState
 {

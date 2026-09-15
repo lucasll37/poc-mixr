@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 """Staleness do CLASS_DIAGRAM embutido em docs/manual/doc.jsx.
 
-Achado por auditoria (revisao completa do repositorio): a aba "Estrutura" de
-docs/manual/doc.jsx cola o JSON que tools/extract_class_diagram.py imprime
-direto como `const CLASS_DIAGRAM = {...};` (linha unica, colada a mao -- nao
-ha passo de 'make open-docs' que regenere isso sozinho; docs/manual/README.md
-ja documenta essa lacuna). tests/tools/test_extract_class_diagram.py testa so
-o EXTRATOR isolado (varios fatos sobre a arvore de header), nunca compara a
-saida ATUAL do extrator contra o blob de fato commitado dentro de doc.jsx --
-entao um header do MIXR mudar sem que alguem rode o extrator e cole o
-resultado de volta nunca era pego por 'make test'. Mesmo padrao ja usado
-para as arvores de comportamento BT.CPP
-(models/players/A-4/tools/update_bt_models.py --check, suite 'tree',
-alvo 'tree-model-sync') -- replicado aqui pela primeira vez para esta
-segunda ocorrencia do mesmo problema.
+A aba "Estrutura" de docs/manual/doc.jsx cola o JSON que
+tools/extract_class_diagram.py imprime direto como
+`const CLASS_DIAGRAM = {...};` (linha unica, colada a mao -- nao ha passo
+de 'make open-docs' que regenere isso sozinho). Sem este teste, um header
+do MIXR mudar sem que alguem rode o extrator e cole o resultado de volta
+nunca e pego por 'make test'. Mesmo padrao ja usado para as arvores BT.CPP
+(update_bt_models.py --check, alvo 'tree-model-sync').
 
 Sem framework nenhum, mesmo estilo de test_extract_class_diagram.py: um
 'main()' com exit code, sem asserts espalhados.

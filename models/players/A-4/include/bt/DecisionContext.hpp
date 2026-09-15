@@ -25,8 +25,8 @@ namespace bt_nodes {
 //
 // Esta interface e aquele conjunto de getters (hoje treze). BtBehavior a
 // implementa sem escrever um metodo novo: as assinaturas ja eram estas
-// (exceto clampAltitudeToTerrain(), acrescentado para fechar um buraco
-// achado por auditoria -- ver o comentario dela mais abaixo).
+// (exceto clampAltitudeToTerrain(), adicionado depois para cobrir um caso
+// que os demais getters nao cobriam -- ver comentario abaixo).
 //
 // O que isso compra: bt/nodes/*.cpp e bt/bt_factory.cpp passam a compilar
 // contra BehaviorTree.CPP + domain/ apenas. Um teste monta um
@@ -80,33 +80,26 @@ public:
    virtual double getFuelReserve() const = 0;
    virtual double getSupportSpeedKts() const = 0;
 
-   // O piso anti-CFIT (domain/TerrainFloor.hpp) -- ACHADO POR AUDITORIA
-   // (nao redescobrir): so domain::ThreatPolicy::breakCommand() aplicava
-   // este piso; RTB e SUPPORT comandavam altitude (rtbAltitude fixo do
-   // EDL, ou a altitude ABSOLUTA de um contato reportado por outro player)
-   // sem NENHUMA validacao contra o terreno em runtime. Com o cenario de
-   // producao "SEM ARBITRO" (nenhum AltitudeSafetyBehavior por cima),
-   // ThreatPolicy tinha virado a UNICA camada de protecao ativa -- os
-   // outros ramos so estavam seguros porque o rtbAltitude de cada falcon
-   // foi calibrado a mao contra o pico do PROPRIO circuito, nao contra o
-   // caminho de volta de verdade. Cada no que comanda altitude fora do
-   // ramo de evasao deve passar por aqui antes de decision().take() --
-   // ver ReturnToBaseAction/SupportAlertAction/PatrolAction.
+   // O piso anti-CFIT (domain/TerrainFloor.hpp) so era aplicado por
+   // ThreatPolicy::breakCommand(); RTB e SUPPORT comandavam altitude (o
+   // rtbAltitude fixo do EDL, ou a altitude absoluta de um contato
+   // reportado por outro player) sem validacao contra o terreno em
+   // runtime. Com o cenario de producao sem arbitro por cima, ThreatPolicy
+   // era a unica camada de protecao ativa de fato -- os demais ramos
+   // ficavam seguros so porque a altitude de cada falcon fora calibrada
+   // contra o pico do proprio circuito. Todo no que comanda altitude fora
+   // do ramo de evasao deve passar por aqui antes de decision().take().
    virtual double clampAltitudeToTerrain(double altitudeM) const = 0;
 
-   // Ha altitude de sobra para COMECAR uma acrobacia (domain::AerobaticPlan)
-   // agora? -- ACHADO investigando uma colisao real: um giro de aileron
-   // puro, sem compensacao de profundor, custa bem mais que a media
-   // documentada quando o banco passa por invertido (o altitude hold
-   // comanda profundor no sentido CONTRARIO nessa faixa -- ver o README de
-   // sandbox/A4-6DOF-RANDOM). Sem esta borda, giros sucessivos catam
-   // altitude, um perto do pior caso apos o outro, ate colidir com o
-   // terreno -- medido rodando: as 8 aeronaves daquele cenario colidem entre
-   // t=680s e t=1142s sem este piso, nenhuma com ele em 4000s (ver
-   // ubf/BtTuning.hpp::slowRollMinMarginM). So' a BORDA Idle->Rolling de
-   // AerobaticPlan::update() consulta isto -- uma vez em curso, a manobra
-   // sempre completa os 360 graus ou estoura por timeout, nunca aborta no
-   // meio (ver o comentario de AerobaticPlan::update()).
+   // Verifica se ha altitude suficiente para comecar uma acrobacia
+   // (domain::AerobaticPlan). Um giro de aileron puro, sem compensacao de
+   // profundor, custa mais altitude que a media quando o banco passa por
+   // invertido (o altitude hold comanda profundor no sentido contrario
+   // nessa faixa -- ver README de sandbox/A4-6DOF-RANDOM). Sem essa
+   // margem, giros sucessivos acumulam perda de altitude ate colidir com
+   // o terreno. So a borda Idle->Rolling de AerobaticPlan::update()
+   // consulta isto; uma vez em curso, a manobra sempre completa os 360
+   // graus ou estoura por timeout.
    virtual bool hasAerobaticAltitudeMargin() const = 0;
 };
 

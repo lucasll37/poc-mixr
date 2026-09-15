@@ -1,9 +1,9 @@
 # A4-4DOF — oito players máximos empilhados, dinâmica LaeroModel (4-DOF), voando uma figura-de-oito
 
-Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — ver
-`sandbox/A4-6DOF/README.md` para a tabela completa da família e a porta
-Tacview compartilhada (**1234**, de propósito). Esta variante troca **só** o
-`dynamicsModel:` em relação a `A4-6DOF`.
+Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — ver o índice em
+[`sandbox/README.md`](../README.md) (por onde começar, tabela dos 11 cenários) e
+`sandbox/A4-6DOF/README.md` para a tabela da família e a porta Tacview compartilhada (**1234**,
+de propósito). Esta variante troca **só** o `dynamicsModel:` em relação a `A4-6DOF`.
 
 ```bash
 ./build/app/src/app -folder ./sandbox -scenario A4-4DOF        # tempo real, Tacview 1234
@@ -96,18 +96,8 @@ cenários da família: parte da diferença vem daqui, não do modelo em si.
 
 ## Achado medindo: telemetria de combustível/Mach lê zero, e está certo
 
-O dump mostra `fuel=0.000000000` e `mach=0.000000000` o tempo todo — **não é
-um defeito desta variante**. O campo `fuel=` (`app/src/app/
-DeterministicDump.cpp`) lê `AirVehicle::getFuelWt()` direto, que só é
-populado por um `DynamicsModel` que simula tanque de combustível de verdade
-(`JSBSimModel`, via os dados de `data/jsbsim/`); `LaeroModel` não modela
-isso, então o valor cru fica em 0. **Isso não afeta a decisão do UBF**:
-`domain::WorldView::fuelFraction` (usado pela condição `FuelLow` nas árvores
-que a têm) é calculado em `FlightState.cpp` com uma guarda explícita —
-`(fuelMax > 0.0) ? (getFuelWt()/fuelMax) : 1.0` — então sem tanque simulado
-ele cai para `1.0` (tanque cheio, nunca baixo), não para `0.0`. Mach segue o
-mesmo padrão (campo específico do FDM do JSBSim, sem equivalente em
-`LaeroModel`).
+O dump mostra `fuel=0.000000000` e `mach=0.000000000` o tempo todo — **não é um defeito desta
+variante**. Explicação central: [`sandbox/README.md`](../README.md#por-que-o-combustível-aparece-zerado-no-dump).
 
 ## Medido rodando
 
@@ -126,26 +116,15 @@ dumps byte-idênticos, mais a repetição de 4 threads.
 
 ## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
 
-Ver `sandbox/A4-6DOF/README.md` — os 20 `Steerpoint` desta rota (idêntica à
-de `A4-6DOF`) carregam os mesmos três slots nativos ociosos, recalculados
-todo frame por `Steerpoint::compute()` mas sem consumidor neste repositório.
+Os 20 `Steerpoint` desta rota (idêntica à de `A4-6DOF`) carregam os mesmos três slots nativos
+ociosos. Ver [`sandbox/README.md`](../README.md#vocabulário-extra-do-steerpoint-sca-magvar-pta).
 
 ## Verificação manual
 
-```bash
-python3 src/ui/scripts/edl_lint.py sandbox/A4-4DOF/configs/scenario_a4_4dof.edl.in
-
-# edlcheck recusa o .edl.in cru por causa de @NUM_TC_THREADS@ -- resolva o token antes
-sed 's/@NUM_TC_THREADS@/2/; s/@RUN_ID@/x/g' sandbox/A4-4DOF/configs/scenario_a4_4dof.edl.in > /tmp/a4-4.edl
-./build/app/src/edlcheck /tmp/a4-4.edl
-
-./build/app/src/app -folder ./sandbox -scenario A4-4DOF -deterministic 600 > /tmp/a4-4dof.log 2>&1
-grep -o 'bt=[A-Za-z_-]*' /tmp/a4-4dof.log | sort -u    # esperado: so bt=NAV
-grep -o 'player=a4_[0-9]' /tmp/a4-4dof.log | sort -u   # esperado: as 8 aeronaves
-
-./tests/determinism/check_determinism.sh ./build/app/src/app A4-4DOF 2000 '' \
-    sandbox/A4-4DOF/configs/scenario_a4_4dof.edl.in
-```
+Receita genérica (lint, edlcheck, dump `bt=`, determinismo):
+[`sandbox/README.md`](../README.md#como-verificar-qualquer-cenário-deste-sandbox). Específico
+deste cenário: `bt=NAV` em 100% das linhas, e as 8 aeronaves (`player=a4_[0-9]`) presentes no
+dump.
 
 ## O que herda sem mudança
 

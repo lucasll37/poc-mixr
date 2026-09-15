@@ -19,8 +19,8 @@ namespace xA_4 {
 //
 // E o UNICO ponto desta poc que escreve nos subsistemas a partir da
 // decisao: a arvore de comportamento nao toca em objeto MIXR nenhum, ela
-// so preenche o comando que vai daqui para o FlightDirector (e, quando for
-// o caso, o pedido de transmissao para o AlertRadio).
+// so preenche o comando que vai daqui para o Autopilot (e, quando for
+// o caso, o pedido de transmissao para o AlertDatalink).
 //
 // Repare na assinatura de execute(): o ator chega como PARAMETRO. A acao
 // nao guarda ponteiro para o ator, nao o conhece na construcao e pode ser
@@ -40,7 +40,7 @@ public:
    void setLabel(const std::string& text)              { label = text; }
 
    // Pedido de transmissao do alerta tatico (a transmissao em si acontece
-   // na fase 1 do frame seguinte -- ver xA_4::AlertRadio).
+   // na fase 1 do frame seguinte -- ver xA_4::AlertDatalink).
    void setAlertBroadcast(const std::string& contactName,
                           const double northM, const double eastM,
                           const double altitudeM, const double rangeM);

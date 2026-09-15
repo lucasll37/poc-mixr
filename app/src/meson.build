@@ -22,6 +22,7 @@ core_sources = files(
     'app/ComponentFlowState.cpp', 'app/FrameCallChain.cpp',
     'app/EdlEditorState.cpp', 'app/EdlSyntaxHighlight.cpp', 'app/ScenarioFolder.cpp',
     'app/EdlHighlightRender.cpp', 'app/GrootMonitorCheck.cpp',
+    'app/PickerGeometry.cpp',
 )
 
 # sem xjoystick_dep/xmsg_dep, de proposito -- ver mixr_factory.cpp: este poc

@@ -9,12 +9,11 @@
 # existe num modelo que de fato tenha uma arvore de comportamento). O filho os
 # declara DEPOIS do include.
 #
-# ACHADO POR AUDITORIA (extraido depois de medir, nao por suspeita):
-# install/install-core/uninstall-core eram identicos byte a byte entre os 8
-# projetos de modelo, exceto por UM detalhe -- 6 deles publicam
-# share/mixr-plugins/ (arvore de comportamento + dado), 2 (missile, Beacon) nao
-# tem nada em configs:/data: pra publicar. Por isso o unico grau de liberdade
-# vira uma variavel, PUBLISH_DATA (default true) -- nao um segundo copy-paste.
+# install/install-core/uninstall-core sao identicos entre os projetos de
+# modelo, exceto por um detalhe: modelos com dado em configs:/data: publicam
+# share/mixr-plugins/, modelos sem dado (missile, Beacon) nao tem nada a
+# publicar. Esse grau de liberdade vira a variavel PUBLISH_DATA (default
+# true), evitando duplicar o alvo por modelo.
 #
 # 'check-organization' fica AQUI (nao no filho) porque tools/check_organization.py
 # e a MESMA copia, byte a byte, em todo modelo (ver o cabecalho do proprio
@@ -54,6 +53,14 @@ BUILD_DIR  := ./build
 DEST_DIR   := $(PWD)/dist
 PKG_PATH   := $(ROOT)/dist/lib/pkgconfig,$(ROOT)/build
 NINJA_JOBS := $(shell nproc)
+
+# Desliga o cache de bytecode do CPython (__pycache__/*.pyc) para os
+# 'python3 tools/check_organization.py'/'conan'/etc. que os alvos deste
+# arquivo (e do Makefile-filho) disparam. Repetido aqui, e nao so na raiz,
+# porque cada projeto de modelo e' AUTOCONTIDO por design -- 'cd
+# models/<nome> && make' roda sem o Makefile raiz no meio (ver o cabecalho
+# deste arquivo), entao o 'export' de la nunca chega aqui nesse caminho.
+export PYTHONDONTWRITEBYTECODE := 1
 
 RED   := \033[0;31m
 GREEN := \033[0;32m

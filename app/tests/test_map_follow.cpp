@@ -305,15 +305,12 @@ TEST(MapFollow, TrocarDeSelecaoTrocaQuemESeguido)
 
 namespace {
 
-// ARMADILHA MEDIDA, nao suposta: procurar o texto do cabecalho direto no
-// Screen::ToString() FALHA no meio da palavra. As linhas de grade sao
-// desenhadas ANTES do cabecalho e pintam suas celulas de cinza/dim; o
-// Canvas::DrawText de 3 argumentos usa uma funcao de estilo VAZIA (nao
-// reseta cor nenhuma), entao o glifo do cabecalho que cai em cima de uma
-// coluna de grade mantem a cor dela -- e o ToString() emite a sequencia
-// ANSI no MEIO da string. Medido: "rumo=0deg  seguind<ESC>[2m[90mo<ESC>
-// [22m[39m=falcon2". O caractere desenhado esta certo; e a serializacao que
-// intercala escapes. Por isso o teste compara o texto SEM atributos.
+// Procurar o texto do cabecalho direto no Screen::ToString() falha no meio
+// da palavra: as linhas de grade sao desenhadas antes do cabecalho e
+// pintam suas celulas; Canvas::DrawText de 3 argumentos nao reseta cor,
+// entao um glifo do cabecalho sobre uma coluna de grade herda o estilo
+// dela e o ToString() intercala escapes ANSI no meio da string. O teste
+// compara o texto sem atributos.
 std::string stripAnsi(const std::string& in)
 {
    std::string out;
@@ -373,18 +370,16 @@ std::string renderComFollow(const std::vector<EntityState>& entities, MapViewSta
 
 } // namespace
 
-// Achado MEDIDO rodando o ./app num terminal de 100 colunas, nao suposto: a
-// nota "seguindo=<nome>" invadia a legenda de eixo do canto direito e saia
-// "seguindo=falcon1y (NM)" (o "x/" comido). O cabecalho e desenhado DEPOIS
-// da legenda, entao ele sobrescreve -- e nome de player e string LIVRE do
-// cenario, entao "cabe" nunca foi garantia. Mesma familia da armadilha ja
-// documentada pro rotulo "y: alt(ft)".
+// A afirmacao e diferencial (ligar o seguir nao pode estragar o que estava
+// intacto sem ele): em terminal estreito a nota "seguindo=<nome>" pode
+// invadir a legenda de eixo do canto direito, pois o cabecalho e desenhado
+// depois dela, na mesma linha, e nome de player e string livre do
+// cenario.
 //
-// A afirmacao e DIFERENCIAL de proposito: "ligar o seguir nao pode estragar
-// nada que estivesse intacto com ele desligado". Exigir a legenda presente
-// em qualquer largura seria exigir demais -- num canvas suficientemente
-// estreito o cabecalho BASE (escala + perspectiva + rumo) ja a cobre
-// sozinho, o que e anterior a esta feature e nao e o que se esta testando.
+// Exigir a legenda presente em qualquer largura seria exigir demais -- num
+// canvas suficientemente estreito o cabecalho BASE (escala + perspectiva +
+// rumo) ja a cobre sozinho, o que e anterior a esta feature e nao e o que
+// se esta testando.
 TEST(MapFollow, LigarOSeguirNaoEstragaALegendaDeEixoEmNenhumaLargura)
 {
    std::vector<EntityState> entities;
@@ -447,11 +442,10 @@ TEST(MapFollow, NomeCompridoEAbreviadoNoCabecalhoEmVezDeCortadoEmSilencio)
    EXPECT_NE(cab.find("x/y (NM)"), std::string::npos) << "legenda comida: [" << cab << "]";
 }
 
-// ACHADO DA REVISAO, medido: nome de player com acento so chega por um
-// caminho -- o fantasma DIS, cujo nome e copiado CRU dos 11 bytes de marking
-// do PDU. Cortar por BYTE deixava um lead byte solto (UTF-8 invalido), que o
-// FTXUI descarta em silencio: o nome exibido virava outro nome. Mesma classe
-// da armadilha ja corrigida no editor EDL (utf8GlyphBytes).
+// Nome de player com acento so chega por um caminho: o fantasma DIS, cujo
+// nome e copiado cru dos 11 bytes de marking do PDU. Cortar por byte
+// deixaria um lead byte solto (UTF-8 invalido), descartado em silencio
+// pelo FTXUI -- mesma classe de bug corrigida em utf8GlyphBytes().
 TEST(MapFollow, AbreviacaoRespeitaFronteiraDeGlifoUTF8)
 {
    std::vector<EntityState> entities;
@@ -493,10 +487,9 @@ TEST(MapFollow, AbreviacaoRespeitaFronteiraDeGlifoUTF8)
    }
 }
 
-// ACHADO DA REVISAO, medido: applyMapFollow persegue por INDICE e o
-// cabecalho procurava o nome por ID. simulation::AbstractPlayer::id nasce 0,
-// entao dois players sem 'id:' no .edl colidem -- e a nota nomeava a
-// entidade ERRADA justamente no caso que ela existe pra esclarecer. Hoje o
+// applyMapFollow persegue por indice, mas o cabecalho antes procurava o
+// nome por ID -- como AbstractPlayer::id nasce em 0, dois players sem
+// 'id:' no .edl colidem e o cabecalho nomearia a entidade errada. Hoje o
 // nome vem de MapViewState::followLabel, escrito pelo proprio follow.
 TEST(MapFollow, ComIdsDUPLICADOSONomeNoCabecalhoEODeQuemEDeFatoSeguido)
 {
@@ -523,10 +516,9 @@ TEST(MapFollow, ComIdsDUPLICADOSONomeNoCabecalhoEODeQuemEDeFatoSeguido)
    EXPECT_EQ(cab.find("seguindo=bandit1"), std::string::npos) << "nomeou o errado: [" << cab << "]";
 }
 
-// ACHADO DA REVISAO: posicao nao-finita (JSBSim divergindo) entrava no pan e
-// nao havia volta pela interface -- panMap soma sobre NaN, zoom/giro nao
-// tocam o pan. Como o follow roda a cada quadro sem gesto nenhum do usuario,
-// um unico quadro ruim envenenaria a vista permanentemente.
+// Posicao nao-finita (ex.: JSBSim divergindo) nao pode entrar no pan:
+// applyMapFollow roda a cada quadro sem gesto do usuario, e um unico
+// quadro ruim envenenaria a vista permanentemente sem essa protecao.
 TEST(MapFollow, PosicaoNaoFinitaNaoEnvenenaOPan)
 {
    const double nan{std::numeric_limits<double>::quiet_NaN()};

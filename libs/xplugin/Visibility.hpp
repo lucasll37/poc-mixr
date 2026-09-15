@@ -11,11 +11,10 @@
 // entrada de libs/xplugin (MIXR_PLUGIN_EXPORT, que acrescenta 'used' por
 // cima, ver o comentario dela em PluginAbi.hpp).
 //
-// ACHADO POR AUDITORIA (revisao completa do repositorio): esta macro e o
-// comentario acima estavam escritos, byte a byte quase identicos, TRES vezes
-// separadas (uma por lib) antes desta extracao -- consolidados aqui porque
-// libs/ ja esta no include_directories('..') das tres (mesmo padrao,
-// confirmado nos tres meson.build), entao nenhum dos tres precisa de
-// dependencia nova pra alcancar este header.
+// Esta macro e o comentario acima existiam duplicados, quase identicos, em
+// tres libs diferentes (libs/xinfer, libs/xpyembed, libs/xplugin) antes de
+// serem consolidados aqui -- as tres ja tem libs/ em
+// include_directories('..'), entao nenhuma precisa de dependencia nova para
+// alcancar este header.
 //------------------------------------------------------------------------------
 #define MIXR_DEFAULT_VISIBILITY __attribute__((visibility("default")))

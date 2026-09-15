@@ -17,22 +17,15 @@ namespace rl {
 
 namespace {
 
-// O registro de plugins do MIXR (libs/xplugin::PluginRegistry) e de escopo
-// de PROCESSO INTEIRO -- RTLD_NODELETE, "nunca dlclose" (todo objeto MIXR
-// vivo guarda ponteiro pro .data do plugin). Uma vez que este processo
-// TENTOU montar uma Station por aqui -- com sucesso OU NAO --, uma segunda
-// tentativa nunca e segura: varios caminhos por baixo de edl_parser()/
-// xplugin::loadModule() chamam std::exit()/exit() DIRETO (nome de fabrica
-// desconhecido, '.so' ausente, o proprio 'loadModule(...) depois do
-// parse.' quando xplugin::seal() ja rodou) -- nenhum try/catch deste
-// binding alcanca esses caminhos, e eles matam o interprete Python inteiro
-// sem excecao nenhuma. CONFIRMADO RODANDO: uma segunda tentativa, mesmo
-// depois da PRIMEIRA ter falhado de forma limpa (RuntimeError capturavel,
-// ex.: nome de player errado), mata o processo -- um padrao de retry
-// perfeitamente razoavel em codigo de treino de RL ("except: corrige e
-// tenta de novo") e uma armadilha fatal sem aviso nenhum antes desta
-// guarda. Fecha isso NUM SO LUGAR, antes de alcancar edl_parser() uma
-// segunda vez -- nao tenta adivinhar quais retentativas seriam "seguras".
+// O registro de plugins do MIXR tem escopo de processo inteiro
+// (RTLD_NODELETE -- nunca dlclose; todo objeto MIXR vivo guarda ponteiro
+// para o .data do plugin). Uma vez que o processo tentou montar uma Station
+// -- com sucesso ou nao --, uma segunda tentativa nunca e segura: varios
+// caminhos dentro de edl_parser()/xplugin::loadModule() chamam std::exit()
+// direto (nome de fabrica desconhecido, .so ausente, parse ja selado),
+// fora do alcance de qualquer try/catch deste binding, matando o
+// interprete Python sem excecao nenhuma. A segunda tentativa e barrada num
+// so lugar, antes de alcancar edl_parser() de novo.
 bool g_attemptedBuild{false};
 
 } // namespace

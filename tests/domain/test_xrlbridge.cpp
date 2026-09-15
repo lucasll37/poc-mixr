@@ -48,20 +48,13 @@ TEST(XRLBridge, ObservationFieldNamesNaoTemDuplicata)
       << " para o mesmo significado, em silencio";
 }
 
-// ATUALIZADO NESTA PASSADA (nao redescobrir): ate a lista canonica crescer de
-// 28 para 38 campos (RWR + navegacao, ver ObservationFields.hpp), os 5
-// booleanos originais eram tambem os ultimos 5 da lista completa -- coincidencia
-// de como a macro foi escrita, nunca um invariante que algum consumidor real
-// dependesse (conferido: nem RLBridgeBehavior::toObservation() nem
-// OnnxPolicyAction/OnnxScoreCondition/PyDecideAction fatiam a lista por
-// posicao -- todos expandem a macro inteira, ou resolvem por NOME via
-// xrlbridge::bind()). Os 10 campos novos foram acrescentados no FIM da
-// macro, na ordem de declaracao de domain::WorldView (RWR, depois
-// navegacao), que intercala float e bool -- entao a partir desta passada os
-// booleanos NAO estao mais agrupados no fim. O teste que restou
-// (BoolFieldsSaoOsNomesDocumentados, abaixo) e' estritamente mais forte:
-// verifica o CONJUNTO e a ORDEM exatos, o que ja implicava a contagem que o
-// teste removido checava.
+// Desde que a lista canonica cresceu de 28 para 38 campos (RWR + navegacao),
+// os 5 booleanos originais deixaram de ser os ultimos 5 da lista completa --
+// isso nunca foi um invariante do qual algum consumidor real dependesse
+// (RLBridgeBehavior::toObservation(), OnnxPolicyAction, OnnxScoreCondition e
+// PyDecideAction sempre expandem a macro inteira ou resolvem por nome via
+// xrlbridge::bind()). O teste BoolFieldsSaoOsNomesDocumentados cobre o
+// conjunto e a ordem exatos, o que ja implica a contagem.
 TEST(XRLBridge, BoolFieldsSaoOsNomesDocumentados)
 {
    const auto bools = observationBoolFields();
@@ -110,11 +103,10 @@ TEST(XRLBridge, PackObservationRespeitaAOrdemCanonica)
    obs.hasAlert = false;
    obs.weaponReady = true;
 
-   // Os 10 campos acrescentados NO FIM da macro nesta passada (RWR +
-   // navegacao) -- ver o comentario de ObservationFields.hpp. Continuam
-   // sequenciais a partir de 24.0 para os floats, travando que foram
-   // ACRESCENTADOS, nao inseridos no meio dos 28 originais (que continuam
-   // exatamente como antes, testado acima).
+   // Os 10 campos de RWR/navegacao foram acrescentados no FIM da macro (ver
+   // ObservationFields.hpp), nunca inseridos no meio dos 28 originais -- o
+   // teste trava essa propriedade continuando os floats sequenciais a
+   // partir de 24.0.
    obs.rwrThreatRangeM = 24.0;
    obs.rwrThreatRelBearingDeg = 25.0;
    obs.rwrThreatDeltaAltM = 26.0;

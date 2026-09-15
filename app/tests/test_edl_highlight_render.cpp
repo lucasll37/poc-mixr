@@ -8,13 +8,11 @@
 #include <string>
 
 // app/EdlHighlightRender.cpp -- a parte COM FTXUI do destaque de sintaxe da
-// aba "EDL" (F7). Cobre em especial o bug de UTF-8 achado por auditoria:
-// 'renderEdlLine()' cortava o glifo sob o cursor com 'substr(local, 1)' --
-// sempre 1 BYTE -- fazendo qualquer caractere acentuado (comum em comentario
-// pt-BR, a convencao deste repositorio) sumir da tela quando o cursor caia
-// sobre ele. Renderiza de verdade (Screen::Create + Render + ToString(), o
-// mesmo padrao de app/tests/test_memory_panel.cpp) para provar que o glifo
-// sobrevive no PIXEL final, nao so' que o codigo nao lanca excecao.
+// aba "EDL" (F7). Cobre o bug de renderEdlLine(): cortar o glifo sob o
+// cursor com 'substr(local, 1)' (sempre 1 byte) fazia caracteres
+// acentuados sumirem da tela quando o cursor caia sobre eles. Renderiza de
+// verdade (Screen::Create + Render + ToString()) para provar que o glifo
+// sobrevive no pixel final, nao so' que o codigo nao lanca excecao.
 
 namespace {
 

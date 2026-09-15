@@ -1,19 +1,11 @@
-// OnnxScoreCondition/OnnxPolicyAction (bt/nodes/) -- nesta camada (native),
-// nao em tree/, porque os dois arrastam libs/xinfer -> sdk_dep
-// (Requires: mixr no .pc), fora de bt_sources de proposito (ver o
-// comentario grande em tests/meson.build). Registrados por
-// bt_nodes::registerSdkNodes(), nunca por registerNodes().
-//
-// DEBITO DE COBERTURA FECHADO AQUI (achado por auditoria, nao redescobrir):
-// o comentario de tests/meson.build ja afirmava "estes nos sao exercitados
-// pelo test_native" -- mas nenhum teste, em lugar nenhum do repositorio,
-// de fato construia/tickava OnnxScoreCondition/OnnxPolicyAction ate agora.
-// A cobertura real vinha so de scenario-policy-onnx (o binario completo,
-// caminho feliz com um .onnx de pesos aleatorios) -- que prova a cadeia
-// inteira funciona, mas nao isola os tres casos de borda abaixo (porta
-// 'model' ausente, caminho inexistente, indice fora da faixa). Reusa
-// exatamente o mesmo '.onnx' de pesos aleatorios que scenario-policy-onnx
-// ja usa (models/players/A-4/configs/policy_example.onnx) -- forma certa
+// OnnxScoreCondition/OnnxPolicyAction (bt/nodes/) testados nesta camada
+// (nao em tree/) porque arrastam libs/xinfer -> sdk_dep (Requires: mixr),
+// fora de bt_sources de proposito. Registrados por
+// bt_nodes::registerSdkNodes(). Cobre os casos de borda (porta 'model'
+// ausente, caminho inexistente, indice fora da faixa) que
+// scenario-policy-onnx nao isola. Reusa o mesmo '.onnx' de pesos
+// aleatorios que scenario-policy-onnx ja usa
+// (models/players/A-4/configs/policy_example.onnx) -- forma certa
 // (28 entradas -> 3 saidas), pesos irrelevantes pros casos testados aqui.
 
 #include "bt/nodes/OnnxPolicyAction.hpp"
@@ -117,12 +109,12 @@ TEST(OnnxScoreCondition, ModeloValidoComIndiceForaDaFaixaFalha)
    // test-asan). 15 fica DENTRO do array (zero-inicializado, nunca escrito
    // pelas 3 saidas reais) -- seguro de ler, mas ainda >= escritos.
    //
-   // 'above="false"' (SUCCESS se valor < limiar) e' o que faz este teste
-   // PROVAR o bounds-check especificamente, nao so' "deu FAILURE por
-   // acaso": sem o bounds-check, ler saida[15]==0.0 (zero-inicializado)
-   // contra o limiar default 0.5 com above=false DARIA SUCCESS (0.0 < 0.5)
-   // -- confirmado revertendo o bounds-check e rodando este teste, que
-   // FALHA nesse cenario (rc=SUCCESS em vez do FAILURE esperado).
+   // 'saida' e' um std::array<float, 16> interno ao no -- indice 15 fica
+   // dentro do array (zero-inicializado, nunca escrito pelas 3 saidas
+   // reais), seguro de ler mas ainda >= numero de saidas escritas.
+   // 'above="false"' prova que o teste exercita o bounds-check
+   // especificamente: sem ele, ler saida[15]==0.0 contra o limiar default
+   // 0.5 daria SUCCESS por acidente.
    FakeDecisionContext ctx{contextoValido()};
    ArvoreDeUmNo arvore{ctx, arvoreOnnxScore(
       "model=\"" POLICY_EXAMPLE_ONNX "\" index=\"15\" above=\"false\" threshold=\"0.5\"")};

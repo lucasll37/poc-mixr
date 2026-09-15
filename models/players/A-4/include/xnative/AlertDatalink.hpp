@@ -41,18 +41,30 @@ namespace xA_4 {
 // -- ex.: um flyout de arma, que nao tem (nem precisa ter) um subsistema
 // de radio para reagir a um alerta tatico.
 //
-// O QUE NAO VEM -- dois enganos faceis, ambos conferidos no fonte:
+// O QUE NAO VEM DE GRACA -- um engano facil, conferido no fonte:
 //
-//   1) ALCANCE E LADO NAO SAO FILTRADOS neste caminho. O slot 'maxRange'
-//      existe e o setter grava em noRadioMaxRange, mas sendMessage() NUNCA
-//      le essa variavel: sem 'radioName', a entrega e broadcast global para
-//      todo player local ativo. O TacticalAlert chega ate no bandit1, que e
-//      'red' -- morre la so porque o intruso nao declara nenhum 'datalink:'
-//      (Player::onDatalinkMessageEventPlayer so repassa se getDatalink()
-//      nao for nulo). Dar um datalink ao inimigo bastaria para ele escutar
-//      a esquadrilha inteira.
-//   2) A FILA DE ENTRADA NAO PARTICIPA da entrega local -- ver o comentario
-//      de onDatalinkMessageEvent() la embaixo, com os numeros medidos.
+//   * A TRANSMISSAO em si (sendMessage() sem 'radioName') e broadcast
+//     global: o slot 'maxRange' existe e o setter grava em noRadioMaxRange,
+//     mas Datalink::sendMessage() NUNCA le essa variavel -- todo player
+//     local ativo recebe o evento DATALINK_MESSAGE, sem filtro nenhum. Nao
+//     ha como filtrar isso do lado do EMISSOR sem reescrever o transporte
+//     nativo (mexer em codigo vendorizado do MIXR esta fora de escopo).
+//
+//   POR ISSO O FILTRO E NO RECEPTOR: onDatalinkMessageEvent() (ver o
+//   comentario dela mais abaixo) so ACEITA um TacticalAlert cujo emissor
+//   esteja no MESMO lado e dentro de getMaxRange() (convertido de NM pra
+//   metros) da posicao ATUAL deste receptor -- os dois dados (lado e
+//   posicao do emissor no instante da transmissao) vem no proprio payload
+//   (TacticalAlert::senderSide/senderNorthM/senderEastM/senderAltitudeM),
+//   entao o receptor decide sem voltar a consultar o WorldModel. Um
+//   'bandit1' que um dia ganhe 'datalink:' NAO fica mais escutando a
+//   esquadrilha inteira so por estar fora de alcance/lado -- mas o
+//   PRIMEIRO gate continua sendo so ter Datalink nenhum, como documentado
+//   acima.
+//
+//   A fila de entrada nativa (inQueue) NAO PARTICIPA da entrega local --
+//   ver o comentario de onDatalinkMessageEvent() la embaixo, com os
+//   numeros medidos.
 //
 // O QUE CONTINUA SENDO PROPRIO: nao ha fila no caminho local, e ainda que
 // houvesse ela resolveria a CORRIDA, nao a ORDEM. Se dois avioes avisam no
@@ -99,7 +111,10 @@ protected:
    // FASE 2 -- promove o alerta encenado e envelhece o corrente
    void receive(const double dt) override;
 
-   // Ponto de ENTRADA da mensagem, na thread do EMISSOR.
+   // Ponto de ENTRADA da mensagem, na thread do EMISSOR -- e onde o FILTRO
+   // de lado/alcance acontece (ver o "porque" no cabecalho da classe):
+   // mensagem de lado diferente ou alem de getMaxRange() e descartada antes
+   // de disputar o 'staged', sem contar como recebida.
    //
    // Nem receiveMessage() (drenar a fila na fase 2) nem sobrescrever
    // queueIncomingMessage() funcionam para capturar isto: nenhum dos dois e

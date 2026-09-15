@@ -36,14 +36,12 @@ class Recipe(ConanFile):
         git.clone(url="https://github.com/BehaviorTree/Groot", target=".")
         git.checkout("1.0.0")
 
-        # FIX 1: QtNodeEditor (submodulo desta tag) declara a propria
-        # especializacao de std::hash<QString> -- Qt >= 5.14 (Ubuntu 24.04
-        # traz 5.15.13) ja fornece a MESMA especializacao em
-        # QtCore/qhashfunctions.h, sem guarda de versao nenhuma la, entao as
-        # duas colidem com "redefinition of struct std::hash<QString>".
-        # Groot 1.0.0 e' de ~2020, anterior a essa mudanca do Qt; restringe a
-        # especializacao propria so' a Qt < 5.14, onde ela ainda faz falta.
-        # Confirmado rodando: sem isto, o build morre em ~1% (QtNodeEditor).
+        # FIX 1: QtNodeEditor (submodulo desta tag) declara sua propria
+        # especializacao de std::hash<QString>; Qt >= 5.14 (Ubuntu 24.04 traz
+        # 5.15.13) ja fornece a mesma especializacao em
+        # QtCore/qhashfunctions.h sem guarda de versao, colidindo com
+        # "redefinition of struct std::hash<QString>". A especializacao
+        # propria fica restrita a Qt < 5.14.
         qstring_hash = os.path.join(
             "QtNodeEditor", "include", "nodes", "internal", "QStringStdHash.hpp")
         replace_in_file(
@@ -57,31 +55,15 @@ class Recipe(ConanFile):
             "  {\n    return qHash(s);\n  }\n};\n}\n#endif",
         )
 
-        # FIX 2: o .gitmodules desta tag aponta o submodulo depend/BehaviorTree.CPP
-        # pra uma branch que nao existe mais no remoto oficial (`ver_3`,
-        # renomeada para `v3.8` faz tempo) -- git resolve entao para o ULTIMO
-        # commit gravado no arvore de git do Groot (73e10fb8, "3.8.0-1-g...")
-        # em vez de acompanhar a branch de verdade, e esse commit tem DUAS
-        # quebras de API reais contra o proprio codigo do Groot (nao e' so o
-        # layout de include -- ver FIX 3): 'behaviortree_cpp_v3/' continua
-        # sendo o nome do diretorio (o codigo do Groot usa 'behaviortree_cpp/'
-        # sem sufixo) e 'BT::VerifyXML()' ja mudou de assinatura
-        # ('std::unordered_map<string,NodeType>' em vez do
-        # 'std::set<string>' que XML_utilities.cpp ainda espera).
-        #
-        # Em vez de perseguir um commit de BT.CPP que bata com tudo que o
-        # Groot 1.0.0 espera (o proprio submodulo fica claramente sem manter
-        # havia anos), usa-se aqui a MESMA v3.5.6 (fork ASA) que
-        # deps/behaviortree/conanfile.py ja clona para o resto deste
-        # repositorio -- e ela bate com a API que o Groot 1.0.0 quer (mesma
-        # assinatura de VerifyXML, testado). Bonus: o Groot construido fica
-        # falando o mesmo dialeto de XML que o core deste projeto de fato usa.
-        # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): fixava a TAG
-        # 'v3.5.6' -- mesma razao do mesmo fix em
-        # deps/behaviortree/conanfile.py: fork mantido pela PROPRIA equipe
-        # (ASA-Simulation), tag mais suscetivel a mover por engano do que a
-        # de projeto de terceiro estabelecido. MESMO commit usado la
-        # (confirmado apontar pro mesmo lugar que 'v3.5.6' hoje).
+        # FIX 2: o .gitmodules desta tag aponta depend/BehaviorTree.CPP para
+        # uma branch que nao existe mais no remoto oficial ('ver_3',
+        # renomeada para 'v3.8') -- o git resolve para o ultimo commit
+        # gravado na arvore do Groot, que tem duas quebras de API reais (nome
+        # do diretorio de include, assinatura de BT::VerifyXML()). Em vez de
+        # perseguir um commit compativel, usa-se a mesma v3.5.6 (fork ASA,
+        # commit fixo -- tag de fork interno e' mais suscetivel a mover por
+        # engano) ja usada pelo resto do repositorio, que bate com a API que
+        # o Groot 1.0.0 espera.
         shutil.rmtree(os.path.join("depend", "BehaviorTree.CPP"), ignore_errors=True)
         bt_git = Git(self, folder=os.path.join("depend", "BehaviorTree.CPP"))
         bt_git.clone(url="https://github.com/ASA-Simulation/BehaviorTree.CPP", target=".")
@@ -139,43 +121,31 @@ class Recipe(ConanFile):
             "INSTALL(TARGETS behavior_tree_editor LIBRARY DESTINATION ${GROOT_LIB_DESTINATION} )",
         )
 
-        # FIX 6: o modo MONITOR do Groot FECHA SOZINHO, sem dialogo e sem
-        # mensagem, poucos milissegundos depois de conectar. Causa raiz, lida no
-        # fonte dos dois lados (ver CLAUDE.md, secao "Groot", armadilha no 3):
+        # FIX 6: o modo Monitor do Groot fecha sem dialogo nem mensagem pouco
+        # depois de conectar. Causa raiz (ver CLAUDE.md, secao "Groot",
+        # armadilha no 3): PublisherZMQ::createStatusBuffer() publica, por
+        # no, o UID do TreeNode; SidepanelMonitor::on_timer() usa esse valor
+        # diretamente como indice em '_loaded_tree.node(index)' (um '.at()'
+        # sobre std::deque), lancando std::out_of_range quando UID e indice
+        # divergem -- o mapa correto (_uid_to_index) existe e e' usado no
+        # laco de transicoes logo abaixo, mas o laco de status o ignora. Como
+        # o unico catch em escopo e' 'zmq::error_t&', a excecao vira
+        # std::terminate()/SIGABRT.
         #
-        #   - 'PublisherZMQ::createStatusBuffer()' publica, 3 bytes por no, o
-        #     UID do TreeNode (bt_zmq_publisher.cpp: WriteScalar(..., node->UID())).
-        #   - 'SidepanelMonitor::on_timer()' le esse campo e o passa DIRETO como
-        #     INDICE para '_loaded_tree.node(index)' -- que e' '&_nodes.at(index)'
-        #     sobre um std::deque (bt_editor_base.h) e portanto LANCA
-        #     std::out_of_range. O mapa certo (_uid_to_index) existe, e' montado
-        #     corretamente no Connect e ate' usado duas linhas abaixo, no laco de
-        #     TRANSICOES -- so' o laco de STATUS o ignora.
-        #   - o unico 'catch' em escopo e' 'catch(zmq::error_t&)', que nao pega
-        #     std::out_of_range. Como 'on_timer' e' slot de um QTimer de 20 ms e o
-        #     main.cpp do Groot e' um 'return app.exec();' puro (sem try/catch,
-        #     sem override de QApplication::notify(), sem set_terminate), a
-        #     excecao escapa do laco de eventos -> std::terminate() -> SIGABRT.
+        # E' intermitente porque o contador de UID do BT.CPP e' estatico por
+        # .so de plugin e so' produz UIDs 1..N na primeira arvore construida
+        # naquele .so; com varias aeronaves construindo a arvore em paralelo,
+        # a ordem de quem constroi primeiro varia.
         #
-        # Por que isso e' intermitente ("por vezes"): o contador de UID do BT.CPP
-        # e' um 'static uint16_t uid = 1' que NUNCA zera (tree_node.cpp), com
-        # escopo por .so de plugin (medido: 'nm -C libA-4.so' mostra
-        # 'BT::getUID()::uid' como simbolo LOCAL). Logo, so' a PRIMEIRA arvore
-        # construida naquele .so tem UIDs 1..N -- que e' o unico caso em que a
-        # confusao UID/indice passa despercebida. Com 8 aeronaves construindo a
-        # arvore preguicosamente, em paralelo, sob 'g_treeBuildMutex', quem fica
-        # em primeiro e' corrida de thread.
+        # O patch troca os indices por consultas a _uid_to_index nos dois
+        # lacos, acrescenta catch(const std::exception&) nos caminhos
+        # afetados, e valida por pos-condicao que a correcao foi aplicada. O
+        # marcador 'POC-MIXR-FIX6' sobrevive como literal no binario, usado
+        # por scripts/find_groot.sh para detectar um pacote Groot anterior a
+        # esta correcao.
         #
-        # A prova de que e' descuido pontual, e nao invariante de desenho: o
-        # MESMO campo do fio e' lido corretamente em sidepanel_replay.cpp, via
-        # 'uid_to_index.at(uid)'.
-        #
-        # O marcador 'POC-MIXR-FIX6' aparece nas mensagens de qDebug de 6c/6d --
-        # ou seja, sobrevive como literal no binario. E' isso que
-        # scripts/find_groot.sh usa para avisar quando o Groot em cache e'
-        # anterior a esta correcao (um pacote velho reintroduz o bug em
-        # silencio). Todos os replace_in_file abaixo sao strict (default): se a
-        # tag 1.0.0 mudar, o build FALHA em vez de aplicar meio patch.
+        # Todos os replace_in_file abaixo sao strict (default): se a tag
+        # 1.0.0 mudar, o build falha em vez de aplicar meio patch.
         monitor = os.path.join("bt_editor", "sidepanel_monitor.cpp")
 
         # 6a -- o laco de STATUS, a causa direta.

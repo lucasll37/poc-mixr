@@ -26,13 +26,11 @@ esse 'cd' por voce.
 
 from __future__ import annotations
 
-# ARMADILHA CONFIRMADA (nao redescobrir -- ver mixr_gym/__init__.py e
-# src/rl/README.md, secao "Limites conhecidos"): 'mixr_gym' TEM DE ser
-# importado antes de 'numpy'/'gymnasium'/'stable_baselines3' (que traz os
-# dois) neste processo, senao a primeira chamada a reset() segfauta dentro
-# de libstdc++. E por isso que este import vem primeiro, fora de ordem
-# alfabetica/PEP8 -- de proposito, e por isso que todo import daqui pra
-# baixo (inclusive stable_baselines3) so acontece DEPOIS dele.
+# 'mixr_gym' precisa ser importado antes de 'numpy'/'gymnasium'/
+# 'stable_baselines3' neste processo -- caso contrario a primeira chamada a
+# reset() segfauta dentro de libstdc++. Por isso o import vem primeiro, fora
+# da ordem alfabetica/PEP8 (ver mixr_gym/__init__.py e src/rl/README.md,
+# secao "Limites conhecidos").
 from mixr_gym import MixrFlightEnv
 from mixr_gym.env import DEFAULT_PLAYER, DEFAULT_SCENARIO
 from flatten_obs import FlattenedObservation
@@ -46,12 +44,10 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 
-# Ancorado no proprio arquivo, NUNCA relativo a cwd -- train.py roda com
-# cwd na RAIZ do repositorio (o Makefile faz 'cd' pra la, pra
-# MixrFlightEnv resolver 'scenario_path'), e uma string relativa tipo
-# "./runs" acabaria escrevendo em <raiz-do-repo>/runs/, fora do
-# .gitignore desta pasta -- MEDIDO acontecendo (a mesma armadilha bateu
-# via notebooks/train.ipynb, que tambem muda cwd pra raiz).
+# Ancorado no proprio arquivo, nunca relativo a cwd: train.py roda com cwd
+# na raiz do repositorio (o Makefile faz 'cd' para la, para MixrFlightEnv
+# resolver 'scenario_path'), e um caminho relativo como "./runs" escreveria
+# em <raiz-do-repo>/runs/, fora do .gitignore desta pasta.
 DEFAULT_OUT_DIR = pathlib.Path(__file__).resolve().parent / "runs"
 
 

@@ -23,6 +23,9 @@ gtest_main_dep = dependency('gtest_main', method: 'pkg-config')
 
 py = find_program('python3')
 bash = find_program('bash')
+# 'required: false': maquina sem Node continua rodando 'make test' normalmente,
+# so sem a suite 'ui' (ver o teste 'ui-suite' mais abaixo).
+node = find_program('node', required: false)
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
@@ -55,8 +58,8 @@ test_domain_rules = executable('test-domain-rules',
 test('domain-rules', test_domain_rules, suite: 'domain', timeout: 60)
 
 # RecordWriter (libs/xmsg) -- monta NDJSON num buffer fixo, sem alocar.
-# Achado por auditoria: addLabel() nao escapava o valor, permitindo injecao
-# de JSON via nome de player recebido por DIS (ver o cabecalho do teste).
+# addLabel() nao escapava o valor, permitindo injecao de JSON via nome de
+# player recebido por DIS (ver o cabecalho do teste).
 test_record_writer = executable('test-record-writer',
     files('domain/test_record_writer.cpp') + files(
         xmsg_rules_dir / 'RecordWriter.cpp',
@@ -93,6 +96,46 @@ test_app_meta = executable('test-app-meta',
     build_rpath         : mixr_libdir,
 )
 test('app-meta-object-snapshot', test_app_meta, suite: 'domain', timeout: 60)
+
+# app/Fleet.hpp -- achar player por nome, montar a Fleet nomeada (fatal se
+# faltar um), descobrir TODOS os players do cenario (qualquer tipo) e o
+# empurrao inicial de manete. Ate agora so' era exercitado TRANSITIVAMENTE
+# pelos testes de cenario/scenario (nunca por uma chamada direta e isolada) --
+# uma regressao aqui (ex.: dynamic_cast<AirVehicle*> segfaultando com um
+# Player generico) so apareceria la, de forma indireta. Precisa de mixr_dep
+# de verdade (WorldModel/Player/AirVehicle reais, registrados via
+# setSlotByName("players", ...) -- o mesmo caminho que o parser EDL usa).
+test_app_fleet = executable('test-app-fleet',
+    files('../app/tests/test_fleet.cpp') + files(
+        '../app/src/app/Fleet.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xplugin_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-fleet', test_app_fleet, suite: 'domain', timeout: 60)
+
+# app/GrootMonitorCheck.hpp -- o header documenta o caso real que motivou
+# escrever isto: MIXR_GROOT_MONITOR apontando pra um nome que nao existe no
+# cenario era 100% SILENCIOSO (nenhuma porta abria, nada era logado, so' um
+# "Was not able to connect" generico do lado do Groot). Zero teste ate
+# agora -- o de maior valor de regressao do lote, por isso primeiro. Ancora
+# no lastSeq() do buffer de libs/xlog (estado GLOBAL do processo), mesma
+# tecnica de test_log_panel.cpp.
+test_app_groot_monitor_check = executable('test-app-groot-monitor-check',
+    files('../app/tests/test_groot_monitor_check.cpp') + files(
+        '../app/src/app/GrootMonitorCheck.cpp',
+        '../app/src/app/Fleet.cpp',
+    ),
+    link_args           : rpath_link_args,
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, xlog_dep, xplugin_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('app-groot-monitor-check', test_app_groot_monitor_check, suite: 'domain', timeout: 60)
 
 # A geometria pura da aba Mapa (projecao mundo->tela e sua inversa, escolha
 # de intervalo de curva de nivel) -- promovida de um namespace anonimo
@@ -187,6 +230,21 @@ test_app_scenario_folder = executable('test-app-scenario-folder',
     install             : false,
 )
 test('app-scenario-folder', test_app_scenario_folder, suite: 'domain', timeout: 60)
+
+# O clamp puro por tras da tela generica de selecao
+# (app/ScenarioPickerScreen.cpp) -- promovido pro mesmo motivo de
+# MapGeometry.hpp: sem isto extraido, testar a decisao de piso/teto exigiria
+# simular um screen.Loop() interativo de verdade. So <algorithm>, sem
+# MIXR/FTXUI -- tao enxuto quanto app-scenario-folder acima.
+test_app_picker_geometry = executable('test-app-picker-geometry',
+    files('../app/tests/test_picker_geometry.cpp') + files(
+        '../app/src/app/PickerGeometry.cpp',
+    ),
+    include_directories : include_directories('../app/include'),
+    dependencies        : [gtest_dep, gtest_main_dep],
+    install             : false,
+)
+test('app-picker-geometry', test_app_picker_geometry, suite: 'domain', timeout: 60)
 
 # A logica pura por tras da animacao de fluxo da aba "Componentes" (F6) --
 # app/ComponentFlowState.hpp/.cpp: ordem do ciclo de fases, avanco (com
@@ -461,12 +519,12 @@ test_xboard_concurrency = executable('test-xboard-concurrency',
 )
 test('xboard-concurrency', test_xboard_concurrency, suite: 'domain', timeout: 60)
 
-# Achado por auditoria: app/src/mixr_factory.cpp e src/node/factory.cpp encadeiam as mesmas
-# ~10 factories nativas a mao, em dois arquivos, por decisao deliberada de independencia entre
-# ./app e src/node (ver CLAUDE.md, secao "src/node"). Nada travava as duas continuarem batendo --
-# uma lib nova esquecida de um dos dois lados faria um bloco do .edl parar de construir objeto
-# nenhum, em SILENCIO, so num dos dois binarios. Recompila as duas fontes direto (mesmo padrao
-# ja usado pelo alvo 'edlcheck' em app/src/meson.build), sem levantar Station nenhuma.
+# app/src/mixr_factory.cpp e src/node/factory.cpp encadeiam as mesmas ~10 factories nativas a
+# mao, em dois arquivos, por decisao deliberada de independencia entre ./app e src/node (ver
+# CLAUDE.md, secao "src/node"). Nada trava as duas continuarem batendo -- uma lib nova esquecida
+# de um dos dois lados faz um bloco do .edl parar de construir objeto nenhum, em silencio, so num
+# dos dois binarios. Recompila as duas fontes direto (mesmo padrao ja usado pelo alvo 'edlcheck'
+# em app/src/meson.build), sem levantar Station nenhuma.
 test_factory_parity = executable('test-factory-parity',
     files('domain/test_factory_parity.cpp', '../app/src/mixr_factory.cpp', '../src/node/factory.cpp'),
     link_args           : rpath_link_args,
@@ -635,29 +693,24 @@ foreach poc : pocs
          timeout: 1800, is_parallel: false)
 endforeach
 
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): este script (prova que a
-# sub-semente de jitter da patrulha deriva do NOME do player e nao da ordem
-# de descoberta entre threads T/C -- ver libs/xrandom no CLAUDE.md) sempre
-# existiu, rodava e passava (confirmado manualmente), mas nunca era
-# exercitado por 'make test'/CI -- ficava ORFAO. Uma regressao nessa
-# propriedade (ex.: a derivacao de semente voltar a depender de ordem)
-# passaria despercebida indefinidamente. Registrado so' para 'flight' -- a
-# propriedade testada (domain::PatrolPlan) mora inteira no MODELO
-# compartilhado (nao e' especifica de core/arvore), entao testar uma vez
-# basta, sem dobrar o tempo desta suite ja lenta.
+# Este script prova que a sub-semente de jitter da patrulha deriva do NOME
+# do player e nao da ordem de descoberta entre threads T/C (ver libs/xrandom
+# no CLAUDE.md). Existia e passava, mas nao era exercitado por 'make test'/CI
+# -- uma regressao nessa propriedade (ex.: a derivacao de semente voltar a
+# depender de ordem) passaria despercebida indefinidamente. Registrado so'
+# para 'flight' -- a propriedade testada (domain::PatrolPlan) mora inteira no
+# MODELO compartilhado (nao e' especifica de core/arvore), entao testar uma
+# vez basta, sem dobrar o tempo desta suite ja lenta.
 patrol_seed_sh = files('determinism/check_patrol_seed.sh')
 test('patrol-seed-determinism', bash,
      args: patrol_seed_sh + [app.full_path(), 'flight', 'flight', '300'],
      depends: app, workdir: raiz, suite: 'determinism',
      timeout: 1800, is_parallel: false)
 
-# ACHADO POR AUDITORIA (revisao completa do repositorio), MESMA LACUNA JA
-# CORRIGIDA UMA VEZ ACIMA: este script prova a mesma propriedade do RNG de
-# acrobacia (libs/xrandom + domain::AerobaticPlan, sandbox/A4-6DOF-RANDOM)
+# Mesma lacuna do teste acima: este script prova a mesma propriedade do RNG
+# de acrobacia (libs/xrandom + domain::AerobaticPlan, sandbox/A4-6DOF-RANDOM)
 # que patrol-seed-determinism ja prova para domain::PatrolPlan/'flight' --
-# sempre existiu, rodava e passava (confirmado manualmente), mas nunca era
-# exercitado por 'make test'/CI -- ficava ORFAO, exatamente o modo de falha
-# que patrol-seed-determinism ja tinha sofrido antes de ser wireado aqui.
+# existia e passava, mas nao era exercitado por 'make test'/CI.
 random_seed_sh = files('determinism/check_random_seed_scenario.sh')
 test('random-seed-determinism', bash,
      args: random_seed_sh + [app.full_path(), 'a4-6dof-random',
@@ -688,12 +741,11 @@ test('scenario-folder', py,
      timeout: 300, is_parallel: false)
 
 # DOIS processos './app' competindo pela MESMA porta Tacview ao mesmo tempo --
-# achado por auditoria como buraco de cobertura: o codigo ja degrada
-# graciosamente (RealtimeTelemetryServer::start() so loga e devolve false se
-# o bind() falhar), mas nenhum teste subia dois processos DE VERDADE
-# competindo por ela (toda a suite roda 'is_parallel: false', nunca dois
-# testes de poc ao mesmo tempo). Este teste sobe os dois DENTRO de si mesmo,
-# de proposito. Ver o cabecalho do script.
+# o codigo ja degrada graciosamente (RealtimeTelemetryServer::start() so loga
+# e devolve false se o bind() falhar), mas nenhum teste subia dois processos
+# de verdade competindo por ela (toda a suite roda 'is_parallel: false',
+# nunca dois testes de poc ao mesmo tempo). Este teste sobe os dois DENTRO de
+# si mesmo, de proposito. Ver o cabecalho do script.
 test('dual-tacview-port', py,
      args: files('scenario/run_dual_tacview_port_test.py') + [
          '--binario', app.full_path(), '--frames', '100'],
@@ -977,22 +1029,21 @@ test('edl-catalog', py, args: files('tools/test_edl_catalog.py'),
 test('class-diagram', py, args: files('tools/test_extract_class_diagram.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
-# Achado por auditoria: o teste acima so cobre o EXTRATOR isolado, nunca
-# compara a saida atual dele contra o blob de fato commitado dentro de
-# doc.jsx ('const CLASS_DIAGRAM = {...};', colado a mao -- sem passo de
+# O teste acima so cobre o EXTRATOR isolado, nunca compara a saida atual
+# dele contra o blob de fato commitado dentro de doc.jsx
+# ('const CLASS_DIAGRAM = {...};', colado a mao -- sem passo de
 # 'make open-docs' que regenere isso sozinho). Mesmo padrao ja usado para as
-# arvores BT.CPP (models/players/A-4, alvo 'tree-model-sync') -- replicado
-# aqui pela primeira vez para esta segunda ocorrencia do mesmo problema.
+# arvores BT.CPP (models/players/A-4, alvo 'tree-model-sync').
 test('class-diagram-sync', py, args: files('tools/test_class_diagram_sync.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
-# Achado por auditoria: scripts/models.sh (o gerador/removedor de modelo por
-# tras de 'make new-model'/'make rm-model', ~850 linhas) nao tinha NENHUMA
-# cobertura automatizada, apesar de ja ter tido um bug real encontrado so
-# por auditoria manual (colisao de namespace 'auto_pilot'/'autopilot').
-# Cria e remove um scaffold de verdade sob models/others/ (--no-build, pula
-# o build de fumaca) -- 'is_parallel: false' porque mexe na arvore REAL de
-# models/, que outras guardas desta suite tambem varrem.
+# scripts/models.sh (o gerador/removedor de modelo por tras de
+# 'make new-model'/'make rm-model', ~850 linhas) nao tinha cobertura
+# automatizada, apesar de ja ter tido um bug real (colisao de namespace
+# 'auto_pilot'/'autopilot'). Cria e remove um scaffold de verdade sob
+# models/others/ (--no-build, pula o build de fumaca) -- 'is_parallel: false'
+# porque mexe na arvore REAL de models/, que outras guardas desta suite
+# tambem varrem.
 test('models-sh-scaffold', py, args: files('tools/test_models_sh_scaffold.py'),
      workdir: raiz, suite: 'tools', timeout: 120, is_parallel: false)
 
@@ -1027,6 +1078,20 @@ test('edl-check', py,
 # identicas -- ver o cabecalho de tools/test_scenario_rl_sync.py.
 test('scenario-rl-sync', py, args: files('tools/test_scenario_rl_sync.py'),
      workdir: raiz, suite: 'tools', timeout: 30)
+
+# O editor EDL (src/ui/) tem 3 suites de teste PERMANENTES
+# (edl_parser_core.test.js, edl_builder.test.js, edl_builder_dom.test.js),
+# ja encadeadas por src/ui/scripts/build.js e ja rodadas no CI
+# (.gitlab-ci.yml) -- mas nenhuma delas era conhecida por 'meson test': uma
+# regressao no editor so aparecia rodando 'make open-edl' a mao ou esperando
+# o CI, nunca num 'make test' de rotina. Roda o MESMO comando que o CI ja
+# usa (o pipeline completo: gera catalogo/preset, roda os 3 arquivos de
+# teste, self-check de lint, compila edl-builder.html) -- suite propria
+# ('ui', nao 'tools') porque e' JS/Node, nao Python.
+if node.found()
+    test('ui-suite', node, args: [files('../src/ui/scripts/build.js')],
+         workdir: raiz, suite: 'ui', timeout: 180)
+endif
 
 # O core nao pode voltar a conhecer o fonte do modelo.
 test('core-opaco', bash, args: files('guard/check_core_opaco.sh'),

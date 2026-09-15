@@ -1,5 +1,7 @@
 # C-130-6DOF — um C-130, dinâmica JSBSim (6-DOF), a mesma figura-de-oito de A4-6DOF
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 Reaproveita a **geometria de rota** de `sandbox/A4-6DOF` (a figura-de-oito fechada de 20
 steerpoints, mesmo perfil de altitude 4.000–15.000 ft, mesmo ponto de entrada) com o modelo
 **C-130** (`models/players/C-130`) no lugar do "player máximo" A-4 — ver
@@ -82,12 +84,15 @@ a base de `C130ActionParatrooperRelease`) já está provado funcionando ponta a 
 
 ## Verificação manual
 
+Receita genérica (lint, edlcheck, dump `bt=`, determinismo):
+[`sandbox/README.md`](../README.md#como-verificar-qualquer-cenário-deste-sandbox) — inclui a
+armadilha do `edlcheck` recusando o `.edl.in` cru por causa de `@NUM_TC_THREADS@`
+([nota central](../README.md#edlcheck-e-o-token-num_tc_threads)). Específico deste cenário:
+
 ```bash
 python3 src/ui/scripts/edl_lint.py sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in
 # fábrica desconhecida C130* é esperado -- catálogo estático do lint nunca viu estas
-# classes (mesmo caso já documentado para outros cenários deste modelo). edlcheck é a autoridade real:
-sed 's/@NUM_TC_THREADS@/1/; s/@RUN_ID@/x/g' sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in \
-   > /tmp/c130_6dof_check.edl && dist/bin/edlcheck /tmp/c130_6dof_check.edl
+# classes (mesmo caso já documentado para outros cenários deste modelo). edlcheck é a autoridade real.
 
 ./build/app/src/app -folder ./sandbox -scenario C-130-6DOF -deterministic 500
 # esperado: bt=NAV, dec= avancando, altitude proxima de 11000 ft (3352 m)
@@ -95,7 +100,3 @@ sed 's/@NUM_TC_THREADS@/1/; s/@RUN_ID@/x/g' sandbox/C-130-6DOF/configs/scenario_
 ./tests/determinism/check_determinism.sh ./build/app/src/app C-130-6DOF 2000 '' \
     sandbox/C-130-6DOF/configs/scenario_c130_6dof.edl.in    # determinismo com 1, 2 e 4 threads T/C
 ```
-
-`edlcheck` recusa o `.edl.in` cru com `error while setting slot name: numTcThreads` —
-`@NUM_TC_THREADS@`/`@RUN_ID@` só são expandidos em runtime por `app::generateScenario()`, nunca
-por `edlcheck` direto — mesmo comportamento de `A4-6DOF`.

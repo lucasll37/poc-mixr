@@ -27,12 +27,11 @@ BT::NodeStatus SupportAlertAction::tick()
    domain::FlightCommand cmd;
    cmd.headingDeg = domain::headingToDeg(snap.northM, snap.eastM,
                                          snap.alertNorthM, snap.alertEastM);
-   // ACHADO POR AUDITORIA (nao redescobrir, ver bt/DecisionContext.hpp):
-   // snap.alertAltitudeM e' a altitude ABSOLUTA do CONTATO reportado por
-   // OUTRO player via datalink -- vem de fora da propria aeronave, entao
-   // e' ainda menos garantido que respeite terreno nenhum (se o intruso
-   // reportado estiver voando baixo, o suporte recebia ordem de descer
-   // ate' a MESMA altitude sem validacao nenhuma).
+   // snap.alertAltitudeM e a altitude absoluta do contato reportado por
+   // outro player via datalink -- vem de fora da propria aeronave, sem
+   // garantia nenhuma de respeitar o terreno; sem o clamp, um intruso
+   // reportado voando baixo faria o suporte descer ate a mesma altitude
+   // sem validacao.
    cmd.altitudeM = context_.behavior->clampAltitudeToTerrain(snap.alertAltitudeM);
    cmd.speedKts = context_.behavior->getSupportSpeedKts();
 

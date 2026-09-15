@@ -17,8 +17,9 @@ No cenário, como **primeira entrada de `components:`** da Station:
          searchPaths: { "./dist/lib/mixr-plugins/" }
          modules: {
             ( PluginModule  file: "libA-4.so"
-               provides: { AlertDatalink TacticalAlert FlightState
-                           BtBehavior AltitudeSafetyBehavior FlightAction } )
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction } )
          }
       )
       ...

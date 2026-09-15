@@ -104,12 +104,10 @@ TEST(FlightTreeNav, SemAltitudeOuVelocidadeComandadaMantemOAtual)
 }
 
 //------------------------------------------------------------------------------
-// ACHADO POR AUDITORIA (nao redescobrir): a altitude do Steerpoint e' um
-// numero ESTATICO do .edl -- sem passar por clampAltitudeToTerrain() (como
-// Patrol/RTB/Support/SlowRoll ja fazem), uma rota cujo relevo real e' mais
-// alto do que o autor do cenario assumiu leva a aeronave, em voo reto e
-// nivelado, para dentro do terreno. Medido rodando: sandbox/A4-6DOF (sem
-// nenhuma acrobacia) colide com uma serra que o perfil da rota nao previa.
+// A altitude do Steerpoint e um valor estatico do .edl. Sem passar por
+// clampAltitudeToTerrain() (como Patrol/RTB/Support/SlowRoll ja fazem),
+// uma rota cujo relevo real e mais alto do que o assumido pelo autor do
+// cenario leva a aeronave, em voo reto e nivelado, para dentro do terreno.
 //------------------------------------------------------------------------------
 TEST(FlightTreeNav, AltitudeComandadaRespeitaOPisoDeTerrenoQuandoORelevoEMaisAltoQueARota)
 {
@@ -140,14 +138,13 @@ TEST(FlightTreeNav, SemGuiagemValidaNaoDecideNada)
 }
 
 //------------------------------------------------------------------------------
-// ACHADO POR AUDITORIA (nao redescobrir): um GAP de guiagem invalida no meio
-// da vida da MESMA arvore (ex.: NAV -> EVADE -> NAV, o caso real do
-// cenario full-systems-nav em tests/fixtures/) tem que "recomecar do zero"
-// no rumo comandado, nao
-// retomar suavizando a partir do valor congelado de ANTES do gap -- senao o
+// Um gap de guiagem invalida no meio da vida da mesma arvore (ex.: NAV ->
+// EVADE -> NAV, caso real do cenario full-systems-nav em
+// tests/fixtures/) tem que recomecar do zero no rumo comandado, nao
+// retomar suavizando a partir do valor congelado antes do gap -- senao o
 // primeiro tick apos reconectar fica sujeito ao limitador de taxa como se
-// fosse uma correcao continua, quando na verdade e uma bearing nova sem
-// relacao com a anterior.
+// fosse correcao continua, quando e uma bearing nova sem relacao com a
+// anterior.
 //------------------------------------------------------------------------------
 
 TEST(FlightTreeNav, GapDeGuiagemInvalidaReiniciaASuavizacaoNaProximaBearing)

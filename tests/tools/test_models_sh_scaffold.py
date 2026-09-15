@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Teste de integracao leve de scripts/models.sh (--name/--category/--no-build/--remove).
 
-Achado por auditoria (revisao completa do repositorio): este script (~850 linhas, o proprio
-gerador/removedor de modelo por tras de 'make new-model'/'make rm-model') nao tinha NENHUMA
-cobertura automatizada -- nem em tests/, nem em .gitlab-ci.yml. A logica que ele executa nao e
-trivial (deteccao de colisao de namespace C++, reescrita de profundidade de caminhos relativos,
-um modo --remove de varios passos pensado pra ser seguro a Ctrl+C no meio) e ja teve um bug REAL
-encontrado so por auditoria manual, nunca por teste: a derivacao de namespace via 'tr -cd'
-colidia 'auto_pilot' e 'autopilot' no mesmo namespace 'xautopilot' (corrigido; ver o comentario
-de NS_NOVO no proprio scripts/models.sh).
+scripts/models.sh (~850 linhas, o gerador/removedor de modelo por tras de
+'make new-model'/'make rm-model') nao tinha cobertura automatizada, apesar
+de a logica nao ser trivial (deteccao de colisao de namespace C++,
+reescrita de profundidade de caminhos relativos, um modo --remove seguro
+a Ctrl+C no meio) e ja ter tido um bug real: a derivacao de namespace via
+'tr -cd' colidia 'auto_pilot' e 'autopilot' no mesmo namespace
+'xautopilot' (ver o comentario de NS_NOVO em scripts/models.sh).
 
 Sem framework nenhum (subprocess + asserts + exit code), mesmo estilo dos irmaos em tests/tools/.
 Usa --no-build (pula o build de fumaca -- so' interessa aqui a logica de texto/caminho, nao
@@ -74,8 +73,9 @@ def test_criar_estrutura_namespace_remover():
             check((dest / peca).is_file(), f"falta {peca} em {NOME_TESTE}")
 
         # -- namespace derivado corretamente (hifen -> underscore, prefixo 'x') --------
-        # Mesma classe de bug ja encontrada por auditoria (auto_pilot/autopilot
-        # colidindo) -- travando o valor CERTO, nao so' "existe algum namespace".
+        # Trava o valor certo do namespace derivado (nao so 'existe algum
+        # namespace') -- mesma classe de bug ja vista com auto_pilot/autopilot
+        # colidindo no mesmo namespace.
         achou_namespace = any(
             NAMESPACE_ESPERADO in p.read_text(encoding="utf-8", errors="ignore")
             for p in dest.rglob("*.cpp")

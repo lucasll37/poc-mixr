@@ -86,15 +86,12 @@ bool RealtimeTelemetryServer::start(const std::string& host, const int port, con
    addr.sin_port = htons(static_cast<std::uint16_t>(port));
    if (::inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1) {
       LOG(ERROR) << "[tacview] invalid host: " << host;
-      // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): os tres
-      // 'return false' abaixo (aqui, bind(), listen()) nunca fechavam/
-      // resetavam 'listenFd_' -- isListening() (== listenFd_ >= 0) ficava
-      // "true" PARA SEMPRE a partir dai, mesmo o socket nunca tendo entrado
-      // em modo de escuta. Isso alimenta diretamente a aba "Fundo" do
-      // ./app (tacviewListening), que existe justamente para reportar o
-      // estado REAL do transporte -- mentia exatamente no cenario (colisao
-      // de porta entre 2 processos) que ela deveria diagnosticar. Fechar
-      // aqui reproduz o mesmo padrao que stop() ja usa.
+      // Os tres 'return false' (aqui, bind(), listen()) precisam fechar e
+      // resetar 'listenFd_' -- sem isso isListening() ficaria true para
+      // sempre mesmo sem o socket ter entrado em modo de escuta. Isso
+      // alimenta a aba "Fundo" do ./app (tacviewListening), que reporta o
+      // estado real do transporte, e mentiria exatamente no cenario (colisao
+      // de porta entre dois processos) que deveria diagnosticar.
       ::close(listenFd_);
       listenFd_ = -1;
       return false;
@@ -153,17 +150,14 @@ void RealtimeTelemetryServer::acceptIfNeeded()
    // Os DOIS timeouts vao aqui, ANTES do primeiro sendRaw() -- o de escrita
    // inclusive, e ele nao e decorativo.
    //
-   // ARMADILHA MEDIDA (nao redescobrir): sem SO_SNDTIMEO, um cliente que
-   // CONECTA e para de ler (Tacview minimizado, maquina do cliente
-   // engasgada, link caido sem FIN) enche o buffer do socket e o ::send() de
-   // sendRaw() bloqueia PARA SEMPRE. Esse send roda dentro de
-   // OutputHandler::processQueue(), alcancado por station->updateData() --
-   // ou seja, dentro do laco de background da aplicacao. Reproduzido no
-   // ./app com um cliente de teste que so conecta: a thread do laco travou
-   // no send, a main travou no join() dela, o terminal nunca voltou, e a
-   // thread de tempo critico seguiu enfileirando registros numa fila que e
-   // uma base::List SEM TETO (RSS subindo ~1,9 MB/s). Um teto de escrita
-   // transforma isso em "cliente morto, fecha e segue".
+   // Os dois timeouts (SO_SNDTIMEO/SO_RCVTIMEO) precisam ser configurados
+   // antes do primeiro sendRaw(), incluindo o de escrita: sem SO_SNDTIMEO,
+   // um cliente que conecta e para de ler enche o buffer do socket e
+   // ::send() bloqueia indefinidamente dentro de
+   // OutputHandler::processQueue(), alcancado pelo laco de background --
+   // travando a thread principal enquanto a de tempo critico segue
+   // enfileirando registros numa fila sem teto (RSS crescendo sem limite).
+   // O timeout transforma isso em "cliente morto, fecha e segue".
    timeval sendTimeout{1, 0};
    ::setsockopt(clientFd_, SOL_SOCKET, SO_SNDTIMEO, &sendTimeout, sizeof(sendTimeout));
 

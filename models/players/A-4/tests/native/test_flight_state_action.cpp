@@ -25,7 +25,10 @@
 #include "ubf/AltitudeSafetyBehavior.hpp"
 #include "ubf/FlightAction.hpp"
 #include "ubf/FlightState.hpp"
+#include "xnative/AlertDatalink.hpp"
 #include "xnative/RadarScan.hpp"
+
+#include "events/payloads/EID_ALERT/TacticalAlert.hpp"
 
 #include "domain/FlightCommand.hpp"
 
@@ -299,6 +302,110 @@ TEST(RadarScan, AirSemGimbalChamadoRadarNaoEncontraNada)
    Bench bench(9007);
    const xA_4::RadarScanInfo info{xA_4::radarScanOf(bench.air)};
    EXPECT_FALSE(info.found);
+}
+
+//------------------------------------------------------------------------------
+// AlertDatalink -- filtro de lado/alcance na RECEPCAO.
+//
+// test_xnative.cpp cobre a fusao comutativa/latencia de fase com uma
+// AlertDatalink SOLTA (sem Player container) -- ali o filtro fica desligado
+// de proposito (getOwnship() devolve nulo, ver o comentario da classe).
+// Aqui ele fica LIGADO: precisa de um Player de verdade, dai morar neste
+// arquivo (o que 'Bench' ja existe pra resolver) e nao em test_xnative.cpp.
+//------------------------------------------------------------------------------
+class SondaAlertDatalink : public xA_4::AlertDatalink
+{
+public:
+   using AlertDatalink::onDatalinkMessageEvent;
+   using AlertDatalink::receive;
+};
+
+// Mesma ideia do 'Bench' acima, com uma AlertDatalink de verdade acoplada --
+// side/posicao sao os dois dados que o filtro novo le via getOwnship().
+struct AlertBench
+{
+   models::WorldModel* const world;
+   models::AirVehicle* const air;
+   SondaAlertDatalink* const datalink;
+
+   AlertBench(const models::Player::Side side, const double northM, const double eastM, const double altM)
+      : world(new models::WorldModel()), air(new models::AirVehicle()), datalink(new SondaAlertDatalink())
+   {
+      air->container(world);
+      air->setSide(side);
+
+      const auto pair = new base::Pair("datalink", datalink);
+      datalink->unref();   // Pair::Pair() ja deu ref() -- devolve a nossa
+      air->addComponent(pair);
+      pair->unref();        // addComponent() ja deu ref() -- devolve a nossa
+
+      air->reset();   // useCoordSys CS_NONE -> CS_LOCAL (ver Bench acima)
+      air->setPosition(northM, eastM);
+      air->setAltitude(altM);
+   }
+
+   ~AlertBench()
+   {
+      air->unref();
+      world->unref();
+   }
+};
+
+events::TacticalAlert* makeAlert(const unsigned int senderSide, const double senderNorthM,
+                                  const double senderEastM, const double senderAltM)
+{
+   const auto alert = new events::TacticalAlert();
+   alert->setSender(99, "intruso");
+   alert->setContactName("bandit1");
+   alert->setRangeM(5000.0);
+   alert->setSenderSide(senderSide);
+   alert->setSenderPosition(senderNorthM, senderEastM, senderAltM);
+   return alert;
+}
+
+TEST(AlertDatalink, RejeitaAlertaDeLadoDiferente)
+{
+   AlertBench bench(models::Player::BLUE, 0.0, 0.0, 2000.0);
+
+   auto* const alerta = makeAlert(models::Player::RED, 100.0, 0.0, 2000.0);
+   bench.datalink->onDatalinkMessageEvent(alerta);
+   bench.datalink->receive(0.02);
+
+   EXPECT_FALSE(bench.datalink->hasAlert()) << "aceitou alerta de lado diferente";
+   EXPECT_EQ(bench.datalink->getReceivedCount(), 0) << "contou como recebido mesmo rejeitado";
+
+   alerta->unref();
+}
+
+TEST(AlertDatalink, RejeitaAlertaAlemDoAlcance)
+{
+   AlertBench bench(models::Player::BLUE, 0.0, 0.0, 2000.0);
+   ASSERT_TRUE(bench.datalink->setMaxRange(5.0));   // 5 NM ~ 9260 m
+
+   // 20 km ao norte -- muito alem dos 5 NM configurados.
+   auto* const alerta = makeAlert(models::Player::BLUE, 20000.0, 0.0, 2000.0);
+   bench.datalink->onDatalinkMessageEvent(alerta);
+   bench.datalink->receive(0.02);
+
+   EXPECT_FALSE(bench.datalink->hasAlert()) << "aceitou alerta alem do alcance do datalink";
+
+   alerta->unref();
+}
+
+TEST(AlertDatalink, AceitaAlertaDoMesmoLadoDentroDoAlcance)
+{
+   AlertBench bench(models::Player::BLUE, 0.0, 0.0, 2000.0);
+   ASSERT_TRUE(bench.datalink->setMaxRange(50.0));   // 50 NM ~ 92600 m
+
+   // 9260 m ao leste -- dentro dos 50 NM configurados.
+   auto* const alerta = makeAlert(models::Player::BLUE, 0.0, 9260.0, 2000.0);
+   bench.datalink->onDatalinkMessageEvent(alerta);
+   bench.datalink->receive(0.02);
+
+   ASSERT_TRUE(bench.datalink->hasAlert()) << "rejeitou alerta legitimo, do mesmo lado e dentro do alcance";
+   EXPECT_EQ(bench.datalink->getReceivedCount(), 1);
+
+   alerta->unref();
 }
 
 } // namespace

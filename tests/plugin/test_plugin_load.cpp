@@ -42,12 +42,10 @@ namespace {
 using mixr::xplugin::PluginDescV1;
 
 // As classes que o cenario de producao nomeia (provides: de
-// src/poc/dis/flight/configs/scenario.edl.in) -- CORRIGIDO (nao redescobrir):
-// esta lista tinha ficado para tras em 7 nomes, sem ThreadTagProbe (vigesima
-// segunda passada do CLAUDE.md) nem RLBridgeBehavior (secao src/rl); as duas
-// classes continuavam sendo exercitadas de qualquer forma por
-// ConstroiTudoQueDeclaraENadaAlem (que itera TODO desc->factory_names, nao so
-// ESPERADAS), so sem a asserção nomeada desta suite.
+// src/poc/dis/flight/configs/scenario.edl.in). Deve ser mantida em
+// sincronia com o provides: real do plugin -- um nome ausente aqui nao
+// quebra ConstroiTudoQueDeclaraENadaAlem (que itera desc->factory_names
+// inteiro), so perde a asserção nomeada por essa classe.
 const char* const ESPERADAS[] = {
    "AlertDatalink", "TacticalAlert", "ThreadTagProbe", "FlightState",
    "FlightAgentTC", "BtBehavior", "AltitudeSafetyBehavior",

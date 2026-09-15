@@ -18,13 +18,11 @@ que ordem, dentro de que fabrica), ignorando todo numero/string.
 
 O parser EDL despacha cada 'chave: valor' por NOME (SlotTable::index() ->
 setSlotByIndex(), ver contexts/MIXR-CONTEXT.md), nao por posicao -- entao
-uma divergencia de ORDEM entre os blocos e inocua em runtime, mas ainda
-assim um sinal de que a duplicacao comentada-vs-terse entre falcon1 e os
-demais ja divergiu uma vez (foi o caso encontrado e corrigido em
-src/poc/dis/flight/configs/scenario.edl.in -- a ordem de
-evadeSpeed/supportSpeed/evadeHold/terrainClearance no BtBehavior de
-falcon1 nao batia com falcon2/3/4). Este guard existe para essa
-divergencia nao voltar a acontecer em silencio.
+uma divergencia de ORDEM entre os blocos e inocua em runtime, mas a
+duplicacao comentada-vs-terse entre falcon1 e os demais ja divergiu uma
+vez (a ordem de evadeSpeed/supportSpeed/evadeHold/terrainClearance no
+BtBehavior de falcon1 nao batia com falcon2/3/4). Este guard existe para
+essa classe de divergencia nao passar despercebida.
 
 Uso:
     python3 skeleton_diff.py <arquivo.edl.in> falcon1 falcon2 falcon3 falcon4
@@ -44,13 +42,11 @@ def extract_balanced_block(text: str, marker: str) -> str:
     migracao citado na "nona passada" da secao "./app" do CLAUDE.md: ignora
     '//' e "..." ao contar profundidade, nao regex ingenuo.
 
-    ARMADILHA CONFIRMADA (nao redescobrir): uma primeira versao contava
-    parenteses char a char SEM pular comentario/string -- ao contrario do
-    que o proprio docstring ja dizia fazer. Um unico parentese
-    desbalanceado dentro de um comentario '//' (o tipo de coisa que se
-    escreve sem pensar em prosa) fazia a extracao NUNCA fechar no lugar
-    certo e engolir o bloco seguinte inteiro, comparando lixo com lixo.
-    Reproduzido com um comentario de teste antes de corrigir.
+    Importante: a contagem de parenteses ignora comentarios // e strings
+    "...". Sem isso, um unico parentese desbalanceado dentro de um
+    comentario de linha (comum em prosa livre) faz a extracao nunca fechar
+    no lugar certo e engolir o bloco seguinte inteiro, comparando lixo com
+    lixo.
     """
     start = text.index(marker)
     i = text.index("(", start)
@@ -114,10 +110,10 @@ def compare_skeletons(path: str, block_names: list):
     skeletons = {}
     for name in block_names:
         marker = f"{name}: ("
-        # ACHADO POR AUDITORIA: extract_balanced_block() usa text.index(marker)
-        # sem tratar ausencia -- um bloco renomeado/removido (ou um nome digitado
-        # errado na chamada) derrubava o script inteiro com um traceback cru do
-        # Python em vez de uma mensagem clara apontando QUAL nome faltou.
+        # extract_balanced_block() usa text.index(marker), que lancaria um
+        # traceback cru se o bloco nao existir (nome digitado errado, bloco
+        # renomeado/removido) -- a checagem abaixo devolve uma mensagem
+        # apontando qual nome faltou, em vez de um ValueError sem contexto.
         if marker not in text:
             print(f"ERRO: bloco '{marker}...' nao encontrado em '{path}'")
             return False

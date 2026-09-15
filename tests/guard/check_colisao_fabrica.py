@@ -4,12 +4,10 @@ publicar o MESMO nome de fabrica.
 
 Por que isso e fatal, nao so feio: libs/xplugin/PluginRegistry.cpp,
 loadModule(), passo "colisao" -- se dois .so carregados no MESMO processo
-tentam registrar o mesmo nome, o segundo chama die() (std::exit) na hora.
-Ja aconteceu de verdade uma vez (ThreadTagProbe, A-4 vs missile -- o
-extinto modelo de demo -- ver CLAUDE.md, "vigesima terceira passada") e
-foi corrigido renomeando o lado que nao e producao. Esta guarda existe
-para essa classe de erro nao precisar ser descoberta rodando de novo da
-proxima vez.
+tentam registrar o mesmo nome, o segundo chama die() na hora. Ja
+aconteceu (ThreadTagProbe, A-4 vs. o extinto modelo missile), corrigido
+renomeando o lado que nao e producao. Esta guarda existe para essa classe
+de erro nao voltar a ocorrer em silencio.
 
 Descobre os modelos por find sob models/players/ (mesma filosofia de
 check_modelo_estrutura.sh/check_falcons_estrutura.sh: um modelo novo ja
@@ -44,20 +42,11 @@ import extract_execution_chain as ext  # noqa: E402
 
 MODELS_DIR = REPO_ROOT / "models"
 
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): esta varredura era
-# 'MODELS_PLAYER = REPO_ROOT/"models"/"players"' + 'MODELS_PLAYER.iterdir()',
-# e por isso a guarda era ESTRUTURALMENTE CEGA a models/others/ e
-# models/systems/ -- exatamente as duas subpastas onde
-# 'make new-model CATEGORY=others|system' deposita um modelo novo. Nao era
-# precaucao teorica: um modelo real chegou a viver em models/others/
-# exportando ExampleState/ExampleBehavior/ExampleAction (os nomes que TODO
-# scaffold nasce exportando) sem esta guarda enxergar -- um falso-negativo
-# ATIVO, na classe de erro que ela existe para pegar (dois .so no mesmo
-# processo registrando o mesmo nome fazem o segundo chamar die()).
-#
-# A descoberta agora e' sob QUALQUER subpasta de models/, mesma filosofia de
-# find de check_modelo_estrutura.sh/check_modelo_fresco.sh: modelo novo ja
-# nasce coberto, em qualquer categoria, sem editar este arquivo.
+# A descoberta varre qualquer subpasta de models/ (nao so models/players/),
+# porque a checagem existe justamente para pegar colisao de nome de fabrica
+# entre modelos em categorias diferentes (players/, others/, systems/) --
+# restringir a players/ deixaria a guarda cega a um modelo real vivendo em
+# models/others/.
 NAO_PRODUCAO = {"template"}
 
 # models/events/ nao e' uma pasta de projetos-modelo (e' UM projeto so', a lib

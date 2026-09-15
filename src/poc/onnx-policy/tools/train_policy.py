@@ -35,9 +35,9 @@ A regra clonada e uma BARREIRA no paralelo norte=0, com quebra ao contato:
     velocidade 160 kt de cruzeiro, 185 kt com contato (os mesmos numeros de
                patrolSpeed/evadeSpeed do cenario)
 
-Medido no binario (falcon1, que comeca 9,3 km ao norte da linha): entra na
-faixa de 100 m aos 160 s de tempo simulado e depois fica em |norte| <= 11 m
-por 100 s -- convergencia sem oscilacao, que e o que o tanh da.
+Comportamento esperado: uma aeronave iniciando a 9,3 km ao norte da linha
+converge para |norte| <= 11 m em cerca de 160 s de tempo simulado, sem
+oscilar -- resultado direto do termo tanh.
 
 POR QUE NAO A ORBITA GEOMETRICA DA IRMA python-flight (marcacao para a base
 menos 90 graus). Porque uma rede continua NAO CONSEGUE representa-la. O
@@ -238,15 +238,11 @@ class Mlp:
         import numpy as np
         ativ = self.frente(x)
         n = x.shape[0]
-        # ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'perda' usava
-        # np.mean() (media sobre batch x 3 saidas), mas o gradiente abaixo
-        # ('d') so divide por n=batch -- os dois numeros divergiam por um
-        # fator constante de 3 (o numero de saidas). Nao afetava o TREINO em
-        # si (Adam normaliza pelo segundo momento, e' aproximadamente
-        # invariante a um reescalonamento constante do gradiente) -- so o
-        # numero de log ficava enganoso sobre a escala real do erro.
-        # np.sum()/n (em vez de np.mean()) reproduz exatamente a mesma escala
-        # que 'd' ja usa, sem tocar em nada do que e' de fato otimizado.
+        # 'perda' usa np.mean() (media sobre batch x 3 saidas), enquanto o
+        # gradiente 'd' divide so por n=batch -- os dois valores divergem
+        # por um fator constante de 3. Isso nao afeta o treino (Adam e'
+        # aproximadamente invariante a um reescalonamento constante do
+        # gradiente), so o numero de log fica numa escala diferente da real.
         perda = float(np.sum((ativ[-1] - y) ** 2) / n)
 
         # retropropagacao (todas as camadas tem tanh, inclusive a ultima)
@@ -332,11 +328,10 @@ def exportar(caminho, rede, mu, sigma, nomes, erro_texto):
         inits)
     modelo = helper.make_model(grafo, opset_imports=[helper.make_opsetid("", 17)])
 
-    # ARMADILHA MEDIDA, nao redescobrir: o ONNX Runtime deste pacote Conan
-    # aceita IR ate 9, e o pacote Python 'onnx' 1.22 grava IR 13 por padrao.
-    # O sintoma nao e um erro de exportacao -- e a poc voando com bt=PATROL,
-    # porque xinfer::open() recusa o arquivo em tempo de execucao e o
-    # Fallback da arvore assume:
+    # O ONNX Runtime deste pacote Conan aceita IR ate 9, e o pacote Python
+    # 'onnx' 1.22 grava IR 13 por padrao. O sintoma nao e um erro de
+    # exportacao -- e a poc voando com bt=PATROL, porque xinfer::open()
+    # recusa o arquivo em tempo de execucao e o Fallback da arvore assume:
     #
     #   [xinfer] falha ao abrir '...': Unsupported model IR version: 13,
     #            max supported IR version: 9

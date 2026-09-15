@@ -12,8 +12,15 @@ tmp/
 # __pycache__ que o Conan gera ao IMPORTAR cada deps/<nome>/conanfile.py
 # como modulo Python (achado por auditoria rodando: sobrava sem isto, e as
 # outras entradas __pycache__/ deste arquivo sao todas de caminho especifico,
-# nenhuma cobre deps/).
+# nenhuma cobre deps/). O conanfile.py da PROPRIA raiz sofre do mesmo -- 'conan
+# install ./'/'make configure' o importa do mesmo jeito -- e ficou de fora
+# desta entrada ate ser achado rodando. Os Makefiles (raiz, models/common.mk,
+# src/poc/rl-training/) e scripts/deps.sh ja exportam
+# PYTHONDONTWRITEBYTECODE=1 para o processo do Conan/Python nao escrever isto
+# em primeiro lugar -- as entradas abaixo sao so a rede de seguranca para
+# quem chamar 'conan'/'python3'/'pytest' direto, fora desses caminhos.
 deps/*/__pycache__/
+/__pycache__/
 
 # estado do 'gitlab-ci-local' ('make test-ci'/README.md, secao "CI
 # (GitLab)"): copia rsync da arvore de trabalho que ele builda dentro do
@@ -157,6 +164,14 @@ src/poc/rl-training/notebooks/.ipynb_checkpoints/
 tools/__pycache__/
 tests/tools/__pycache__/
 tests/scenario/__pycache__/
+
+# train_policy.py (o treinador desta poc, ver CLAUDE.md secao
+# "src/poc/onnx-policy") e as suites de teste de src/rl/ e
+# src/poc/rl-training/tests/ -- mesmo fenomeno das entradas acima, achado
+# rodando (git status acusava as tres, sem cobertura ainda).
+src/poc/onnx-policy/tools/__pycache__/
+src/poc/rl-training/tests/__pycache__/
+src/rl/tests/__pycache__/
 models/players/A-4/tools/__pycache__/
 models/players/AAA/tools/__pycache__/
 models/players/Beacon/tools/__pycache__/

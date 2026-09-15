@@ -2,12 +2,12 @@
 // elevacao SRTM ANTES do parse do cenario (app/TerrainData.hpp). Sem MIXR,
 // sem Station -- so filesystem e um std::system("gzip"/"gunzip") de verdade.
 //
-// Achado por auditoria (workflow de investigacao desta sessao, dimensao
-// 'testes-adversariais'): a validacao de tamanho ja e robusta no CODIGO
-// (isValidSrtmSize() so aceita os dois tamanhos exatos que SrtmHgtFile
-// reconhece; ensureTerrainData() morre com mensagem clara citando o tamanho
-// achado e os dois esperados; ensureAllTerrainTiles() e deliberadamente
-// TOLERANTE, so avisa e segue) -- mas nenhum teste protegia isso ate aqui.
+// A validacao de tamanho ja e robusta no codigo (isValidSrtmSize() so
+// aceita os tamanhos exatos que SrtmHgtFile reconhece; ensureTerrainData()
+// aborta com mensagem clara; ensureAllTerrainTiles() e deliberadamente
+// tolerante), mas nenhum teste protegia esse comportamento ate esta suite
+// -- que cobre os casos adversariais (arquivo ausente, tamanho corrompido,
+// tile opcional corrompido, caminho feliz).
 //
 // EXPECT_EXIT roda a expressao num processo FILHO (fork) e verifica o exit
 // code + um trecho da saida -- o mesmo padrao ja usado em test_options.cpp

@@ -50,10 +50,10 @@ mixr_dep = dependency('mixr', method: 'pkg-config', required: true)
 # A arvore de comportamento (BehaviorTree.CPP v3.5.6 -- nada aqui vale para a
 # v4, ver contexts/BTCPP-CONTEXT.md).
 #
-# ARMADILHA JA MEDIDA (nao redescobrir): a lib e' ESTATICA e exporta 447
-# simbolos globais 'T'. Sem '-Wl,--exclude-libs,ALL' no link do .so eles
-# vazam, porque 'gnu_symbol_visibility: hidden' NAO se aplica a objetos
-# vindos de um .a. A flag ja esta em 'model_link_args' abaixo -- nao remova.
+# A biblioteca do BehaviorTree.CPP e' estatica e exporta 447 simbolos
+# globais 'T'; sem '-Wl,--exclude-libs,ALL' no link do .so eles vazam,
+# porque 'gnu_symbol_visibility: hidden' nao se aplica a objetos vindos de
+# um .a. A flag ja esta em 'model_link_args' abaixo -- nao remova.
 behavior_tree_dep = dependency('behaviortree.cpp.asa', method: 'pkg-config', required: true)
 
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')

@@ -34,8 +34,8 @@ py::dict toDict(const mixr::xrlbridge::Observation& obs)
    d["contactName"] = obs.contactName;
    d["alertSender"] = obs.alertSender;
    d["alertContactName"] = obs.alertContactName;
-   // Achado por auditoria: de quem e' esta observacao -- ver o comentario de
-   // Observation::ownerName em libs/xrlbridge/RLBridge.hpp.
+   // Ver o comentario de Observation::ownerName em libs/xrlbridge/RLBridge.hpp
+   // para a semantica de a quem pertence esta observacao.
    d["ownerName"] = obs.ownerName;
    return d;
 }
@@ -57,26 +57,16 @@ public:
 
    py::tuple step(const double headingDeg, const double altitudeM, const double speedKts)
    {
-      // ACHADO POR AUDITORIA (revisao completa do repositorio): nada nesta
-      // fronteira validava o comando antes de escreve-lo em libs/xrlbridge
-      // -- ao contrario do caminho ONNX irmao (OnnxPolicyAction ->
-      // xrlbridge::unscaleCommand(), que recorta [-1,1] explicitamente
-      // antes de escalar), uma chamada manual ou uma politica em TREINO
-      // instavel que emitisse NaN/Inf chegava direto no Autopilot::
-      // setCommandedHeadingD/setCommandedAltitudeFt/setCommandedVelocityKts
-      // sem rede de seguranca nenhuma -- e nenhum DynamicsModel nativo
-      // deste fork aplica os limites de manobra do Autopilot por conta
-      // propria (ver docs/manual, aba Referencia/Autopilot: os slots de
-      // limite chegam como parametro SEM NOME em RacModel/JSBSimModel,
-      // descartados em tempo de compilacao). Nao-finito vira 0 (o mesmo
-      // "nunca trava a simulacao, degrada" ja usado no resto do
-      // repositorio -- ver libs/xmsg, "condicao sobre campo invalido nao
-      // avalia"); heading e' periodico (fmod + wrap pra [0,360)); altitude/
-      // velocidade sao recortadas pra uma faixa fisicamente plausivel --
-      // generosa o bastante para nao brigar com heading_range/
-      // altitude_range_m/speed_range_kts configuraveis de env.py (cujos
-      // DEFAULTS sao mais estreitos: 0-360/0-8000 m/0-400 kt), so existe
-      // pra barrar NaN/Inf/absurdo, nao pra reimpor a faixa do lado Python.
+      // Esta fronteira valida o comando antes de escreve-lo em
+      // libs/xrlbridge -- ao contrario do caminho ONNX (OnnxPolicyAction ->
+      // xrlbridge::unscaleCommand(), que recorta [-1,1] antes de escalar),
+      // uma chamada manual ou uma politica em treino instavel que emita
+      // NaN/Inf chegaria direto ao Autopilot sem rede de seguranca, ja que
+      // nenhum DynamicsModel nativo deste fork aplica os limites de manobra
+      // do Autopilot por conta propria. Valor nao-finito vira 0; heading e
+      // periodico (fmod + wrap para [0,360)); altitude/velocidade sao
+      // recortadas para uma faixa fisicamente plausivel, generosa o
+      // bastante para nao conflitar com os limites configuraveis de env.py.
       const double headingFinite{std::isfinite(headingDeg) ? std::fmod(headingDeg, 360.0) : 0.0};
       const double headingWrapped{headingFinite < 0.0 ? headingFinite + 360.0 : headingFinite};
       const double altitude{std::isfinite(altitudeM) ? std::clamp(altitudeM, 0.0, 20000.0) : 0.0};

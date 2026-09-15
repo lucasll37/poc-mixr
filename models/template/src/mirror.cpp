@@ -196,23 +196,17 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(16, setSlotIgnoraDistancia, base::Distance)
    ON_SLOT(17, setSlotIgnoraAngulo,    base::Angle)
    ON_SLOT(18, setSlotIgnoraNumero,    base::Number)
-   // ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): 'patrolSeedOverride'
-   // (slot 19 de producao, models/players/A-4/src/ubf/BtBehaviorSlots.cpp)
-   // faltava aqui -- o mirror parava em 18 slots. Confirmado via
-   // 'plugininfo' que essa era a UNICA diferenca entre libA-4.so e
-   // libtemplate_mirror.so. Inofensivo enquanto nenhum .edl de producao usa
-   // esse slot (check_falcons_estrutura.sh exige o MESMO esqueleto nos 4
-   // falcons, entao um slot so num deles ja quebraria essa guarda antes de
-   // chegar aqui) -- mas o dia em que ele entrar em uso, sem este ON_SLOT
+   // 'patrolSeedOverride' (slot 19 de producao) precisa estar aqui -- se um
+   // .edl de producao passar a usa-lo sem este ON_SLOT,
    // 'plugin-modelo-estranho'/'plugin-deposito-terceiro' quebrariam com
-   // "slot not found" contra o mirror.
+   // "slot not found" contra o mirror, ja que check_falcons_estrutura.sh nao
+   // impede um slot usado so num falcon.
    ON_SLOT(19, setSlotIgnoraNumero,    base::Number)
    // Slots 20-23: o slow roll (models/players/A-4/include/ubf/BtBehavior.hpp).
-   // Nenhum cenario de PRODUCAO os declara hoje -- so sandbox/A4-6DOF-RANDOM --
-   // entao os testes de plugin ainda passariam sem eles. Estao aqui pelo mesmo
-   // motivo que 'patrolSeedOverride' teve de ser acrescentado depois, por
-   // auditoria: este arquivo e' o espelho EXATO da tabela de producao, e uma
-   // divergencia so aparece quando alguem promove o slot para producao.
+   // Nenhum cenario de producao os declara hoje (so sandbox/A4-6DOF-RANDOM).
+   // Este arquivo e' o espelho exato da tabela de producao -- uma
+   // divergencia so se manifesta quando algum slot for promovido a producao
+   // sem entrada correspondente aqui.
    ON_SLOT(20, setSlotIgnoraTempo,     base::Time)
    ON_SLOT(21, setSlotIgnoraTempo,     base::Time)
    ON_SLOT(22, setSlotIgnoraNumero,    base::Number)

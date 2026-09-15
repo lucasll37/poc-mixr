@@ -40,17 +40,16 @@ namespace {
 // pode logar por decisao: as duas regras abaixo existem so pra isso.
 //------------------------------------------------------------------------------
 
-// 1) Transformar um estado CONTINUO em evento de BORDA: guarda a ultima
-//    "chave" vista por player e diz se ela mudou agora. Medido antes de
-//    existir: o pedido de broadcast de alerta fica ligado enquanto a
-//    aeronave evade, entao logar direto no 'if (broadcast)' dava ~50
-//    linhas/s por aeronave -- em 20 s de intercepto o buffer de 500
-//    entradas ja tinha girado tres vezes e engolido as transicoes, que sao
-//    justamente o que interessa. Com a borda, sai UMA linha por episodio
-//    de alerta.
+// 1) Transforma um estado continuo em evento de borda: guarda a ultima
+//    chave vista por player e diz se mudou. O pedido de broadcast de
+//    alerta fica ligado durante toda a evasao -- logar diretamente no
+//    'if (broadcast)' geraria ~50 linhas/s por aeronave, esgotando o
+//    buffer circular de 500 entradas em segundos e engolindo justamente as
+//    transicoes relevantes. Com a borda, sai uma linha por episodio de
+//    alerta.
 //
-//    O mapa e estatico e compartilhado entre as threads do pool T/C (os
-//    agentes decidem em paralelo, um por thread), dai o mutex.
+//    O mapa e estatico e compartilhado entre threads do pool T/C, dai o
+//    mutex.
 bool changedFor(std::map<int, std::string>& last, const int playerId, const std::string& key)
 {
    static std::mutex mutex;
@@ -123,19 +122,18 @@ void FlightAction::setLaunchRequest(const std::string& targetName)
 // A conversao acontece aqui, na fronteira.
 //
 // O rotulo do comportamento vai para o quadro de status (ver
-// xnative/BehaviorBoard.hpp): o Aircraft nativo nao tem onde guarda-lo.
+// libs/xboard/Board.hpp): o Aircraft nativo nao tem onde guarda-lo.
 //------------------------------------------------------------------------------
 bool FlightAction::execute(base::Component* actor)
 {
    const auto player = dynamic_cast<models::Player*>(actor);
    if (player == nullptr) return false;
 
-   // ACHADO POR AUDITORIA (nao redescobrir): base::Identifier::getString()
-   // devolve ponteiro CRU, nullptr para um nome nunca atribuido -- mesmo
-   // risco que FlightState::updateState() ja trata (ver o comentario la).
-   // Nenhum player de producao deste repositorio e anonimo hoje (todos
-   // nomeados via EDL), entao isto nunca disparou em voo -- e' defesa
-   // consistente com o padrao ja escrito, nao resposta a um crash real.
+   // base::Identifier::getString() devolve ponteiro cru, nullptr para um
+   // nome nunca atribuido. Nenhum player de producao deste repositorio e
+   // anonimo hoje, entao este caso nunca ocorre em voo -- e defesa
+   // consistente com o padrao ja usado em FlightState::updateState(), nao
+   // resposta a um crash observado.
    const char* const rawName{player->getName()->getString()};
    const std::string playerName{(rawName != nullptr) ? rawName : "?"};
 
@@ -144,10 +142,10 @@ bool FlightAction::execute(base::Component* actor)
                            ? dynamic_cast<models::Autopilot*>(pilotPair->object())
                            : nullptr;
    if (autopilot == nullptr) {
-      // Ate aqui esta falha era MUDA: o comportamento decidia, o arbitro
-      // escolhia, e a atuacao voltava 'false' sem nada em lugar nenhum --
-      // a aeronave simplesmente nao obedecia. Uma vez por player (ver
-      // firstTimeFor()).
+      // Sem Autopilot, a decisao nao pode ser atuada. Loga uma vez por
+      // player (via changedFor()) para nao silenciar o caso: sem essa
+      // checagem, a aeronave simplesmente nao obedeceria, sem nenhum
+      // sinal em lugar nenhum.
       static std::map<int, std::string> reported;
       if (changedFor(reported, player->getID(), "sem-autopilot")) {
          LOG(ERROR) << "[FlightAction] " << playerName

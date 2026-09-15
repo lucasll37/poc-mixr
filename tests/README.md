@@ -94,8 +94,8 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 | `memory` | vaza objeto? | contadores de instância do MIXR + o `states` do `msgHealth` + o **controle negativo** (`model_leak.so`) | 4 execuções |
 | `determinism` | é reprodutível **e com a política escrita em Python**? | 1, 2 e 4 threads T/C, dump `frame=` **e** o `.jsonl` do `xmsg` | 2 execuções |
 | `plugin` | a carga dinâmica cumpre o contrato, falha legivelmente e **funciona com um modelo desconhecido ou de terceiro**? | contrato, guarda de símbolo, 7 modos de falha, *hot-swap*, o **mirror de contrato do template** e o **depósito de terceiro** (`plugins/`) | 6 testes, ~3 s |
-| `tools` | o catálogo/lint/`edlcheck` batem com os cenários REAIS do repositório? | `src/ui/scripts/generate_edl_catalog.py`/`edl_lint.py` e o binário `edlcheck` contra os 8 `.edl`/`.edl.in` de produção | 3 testes |
-| `guard` | falcon1..4 continuam com o mesmo esqueleto de slots, o core continua **opaco** ao modelo, o `.so` está **fresco**, dois modelos não colidem em nome de fábrica e todo modelo tem as cinco peças? | as guardas estruturais | 5 guardas, instantâneo |
+| `tools` | o catálogo/lint/`edlcheck`/manual interativo/gerador de modelo batem com o repositório REAL? | `src/ui/scripts/generate_edl_catalog.py`/`edl_lint.py`, o binário `edlcheck`, `docs/manual/`, `scripts/models.sh` — todos contra o `.edl`/`.edl.in` real (descoberto por `find`, ver `real_scenarios.py`), nunca uma cópia fixada em prosa | 9 testes |
+| `guard` | falcon1..4 continuam com o mesmo esqueleto de slots, o core continua **opaco** ao modelo, o `.so` está **fresco**, dois modelos não colidem em nome de fábrica, todo modelo tem as cinco peças, todo `file:` de plugin aponta pra um `.so` que existe, e a thread de desenho do `./app` nunca toca o grafo vivo do MIXR? | as guardas estruturais | 7 guardas, instantâneo |
 
 > Os números de `custo` são contagem de alvos/execuções `meson test`, não de casos internos —
 > um único alvo GTest pode conter vários `TEST`/`TEST_F`. Confira a contagem viva a qualquer
@@ -301,13 +301,29 @@ estourar em silêncio.
 **derivadas** dele, as camadas 3, 4 e 5 passaram a exercitar o plugin sem uma linha nova nos
 scripts.
 
+## Ferramentas ([tools/](../tests/tools/))
+
+Prova que as ferramentas que **leem** o repositório (não as que rodam simulação) continuam batendo
+com o que existe de fato: o catálogo do editor gráfico (`test_edl_catalog.py`), o lint estrutural
+de `.edl` (`test_edl_lint.py`), o binário `edlcheck` (`test_edlcheck.py`) e o gerador do manual
+interativo/diagrama de classes (`test_manual_catalog.py`/`test_extract_class_diagram.py`/
+`test_class_diagram_sync.py`) contra os `.edl`/`.edl.in` **reais** do repositório
+(`real_scenarios.py` descobre a lista por `find`, não por rol fixo); mais `test_models_sh_scaffold.py`
+(o gerador/removedor de modelo por trás de `make new-model`/`make rm-model`) e
+`test_scenario_rl_sync.py` (as duas cópias de `scenario_rl.edl` continuam idênticas).
+
 ## Guarda ([guard/](guard/))
 
 Invariantes estruturais que não são cobertos por nenhuma camada acima: o core continua **opaco**
 ao fonte do modelo (`check_core_opaco.sh`), o `.so` instalado está mais novo que o fonte
 (`check_modelo_fresco.sh`), `falcon1..4` compartilham o mesmo esqueleto de slots
 (`check_falcons_estrutura.sh`/`skeleton_diff.py`), dois modelos carregados juntos não colidem em
-nome de fábrica (`check_colisao_fabrica.py`), e todo projeto de modelo tem as cinco peças abaixo.
+nome de fábrica (`check_colisao_fabrica.py`), todo `file:` de um `( PluginModule )` aponta para um
+`.so` que de fato existe (`check_cenario_plugin.sh` — o inverso, um `.so` órfão sobrando em
+`plugins/`, é só peso morto; um cenário apontando para um `.so` ausente derruba a simulação ao
+carregar, e só ali), a thread de desenho do `./app` nunca acessa o grafo vivo do MIXR fora da
+thread que já o sincroniza (`check_ui_thread_sem_mixr.sh`), e todo projeto de modelo tem as cinco
+peças abaixo.
 
 ### `modelo-estrutura` — as cinco peças de todo projeto de modelo
 

@@ -52,11 +52,9 @@ const int kHeaderLegendGapPx{4};       // folga minima entre o cabecalho e a leg
 // PDU (interop/dis/NetIO_entity_state.cpp), sem validacao: um peer de
 // terceiro com callsign acentuado basta.
 //
-// Mesma classe de bug ja corrigida no editor EDL desta aplicacao -- ver
-// app::utf8GlyphBytes() em app/EdlHighlightRender.hpp. Nao se reusa aquela
-// funcao aqui de proposito: linkar o modulo do editor de EDL dentro do
-// painel de MAPA acoplaria duas abas que nada compartilham, por seis
-// linhas de primitiva.
+// Mesma tecnica de app::utf8GlyphBytes() (editor EDL) -- nao reusada aqui
+// de proposito, para nao acoplar os dois modulos por seis linhas de
+// primitiva.
 std::size_t glyphCount(const std::string& s)
 {
    std::size_t n{};
@@ -530,12 +528,10 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
                     formatMeters(altFt) + "ft", [](Cell& cell) { cell.foreground_color = Color::GrayDark; });
       }
 
-      // "y: alt(ft)" tem 10 caracteres; Canvas::DrawText anda 2px POR
-      // caractere (canvas.cpp: 'x += 2' por glifo) -- precisa de 20px de
-      // largura. Com 'canvasW - 14' a string estourava 6px alem da borda
-      // direita e saia cortada ("y: alt(", sem o "ft)") -- IsIn() descarta
-      // em silencio os glifos fora do canvas. Corrigido com a mesma folga
-      // (~4px) que "x/y (NM)" ja usa no TopDown.
+      // "y: alt(ft)" tem 10 caracteres; Canvas::DrawText avanca 2px por
+      // caractere, exigindo 20px de largura -- a posicao reserva essa
+      // folga (mesma margem que "x/y (NM)" usa no TopDown) para nao ter
+      // os ultimos caracteres cortados em silencio por IsIn().
       c.DrawText(canvasW - kAxisLegendLateralPx, 2, "y: alt(ft)", Color::GrayDark);
    }
 
@@ -606,14 +602,12 @@ Element renderMap(const std::vector<EntityState>& entities, const MapViewState& 
    // e redescoberto aqui por id; ver o comentario daquele campo em
    // MapPanel.hpp para o porque (id de player nao e unico).
    //
-   // O ORCAMENTO DE LARGURA e obrigatorio, e a razao foi MEDIDA: num
-   // terminal de 100 colunas o nome invadia a legenda de eixo desenhada a
-   // direita ("x/y (NM)"), saindo "seguindo=falcon1y (NM)" -- o cabecalho e
-   // desenhado DEPOIS da legenda, na MESMA linha, entao ele sobrescreve.
-   // Nome de player e string livre do cenario (e o de um fantasma DIS vem
-   // cru dos 11 bytes de marking do PDU), entao "cabe" nunca foi garantia.
-   // Mesma familia da armadilha ja documentada pro rotulo "y: alt(ft)",
-   // descartado em silencio por Canvas::DrawText/IsIn().
+   // O orcamento de largura e obrigatorio: em terminal estreito,
+   // "seguindo=<nome>" pode invadir a legenda de eixo do canto direito,
+   // pois o cabecalho e desenhado depois dela, na mesma linha, e nome de
+   // player e string livre do cenario (ou vem cru do PDU, no caso de
+   // fantasma DIS). Degradacao em tres degraus (nome inteiro -> abreviado
+   // -> marcador curto) evita que a informacao suma de repente.
    //
    // Degradacao em tres degraus, pra a informacao nunca sumir de repente:
    // nome inteiro -> nome abreviado com ".." -> marcador curto "[seg]".

@@ -1,10 +1,9 @@
 """Lista unica dos cenarios .edl/.edl.in REAIS deste repositorio (producao +
 fixtures), usada por test_edlcheck.py/test_edl_lint.py/test_edl_catalog.py.
 
-Achado por auditoria: os tres arquivos mantinham copias byte-identicas desta
-lista, cada uma editada a mao toda vez que um cenario nascia/morria (ex.: a
-"Vigesima sexta passada" do CLAUDE.md, que reduziu os cenarios do ./app de
-tres para um, teve que tocar os tres arquivos). Extraida para ca.
+Os tres arquivos mantinham copias byte-identicas desta lista, cada uma
+editada a mao toda vez que um cenario nascia/morria -- extraida para ca
+para eliminar essa triplicacao.
 
 Deliberadamente NAO virou descoberta por 'find' (o padrao de
 tests/guard/check_cenario_plugin.sh::cenarios_de_fonte()): aquele glob pega

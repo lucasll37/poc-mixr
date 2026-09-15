@@ -1,5 +1,7 @@
 # A4-6DOF-MISSILE — um A-4 detecta outro pelo radar e dispara um míssil
 
+Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
+
 Exercício (ver `TODO.md`, raiz do repositório): "implementar um míssil ... para verificar
 como isso é modelado em termos de uso idiomático do MIXR". Dois `( Aircraft )` A-4, o mínimo
 necessário para observar disparo → guiagem → detonação de ponta a ponta, sem nenhum outro

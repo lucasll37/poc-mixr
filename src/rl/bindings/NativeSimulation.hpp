@@ -19,43 +19,31 @@ namespace rl {
 // mesmo limite em libs/xrlbridge/RLBridge.hpp e
 // models/players/A-4/include/ubf/RLBridgeBehavior.hpp).
 //
-// 'playerName' TEM DE SER O MESMO PLAYER configurado com
-// ( RLBridgeBehavior ) no .edl (default: falcon1) -- BUG CONFIRMADO E
-// CORRIGIDO: como libs/xrlbridge nao tem chave por player id, o
-// Command/Observation trocados por step()/reset() sao SEMPRE os do player
-// que o .edl escolheu, nao os do 'playerName' passado aqui. Um valor
-// diferente (typo, ou um player que existe mas nao e o configurado com
-// RLBridgeBehavior -- ex.: falcon2..4 em src/rl/configs/scenario_rl.edl)
-// so afeta a checagem de 'terminated' (player->isCrashed()) em step(), que
-// passava a olhar um player TOTALMENTE DESLIGADO do Command/Observation
-// reais -- silenciosamente, sem erro nenhum, treinando contra um sinal de
-// termino que nao correspondia a aeronave de verdade sendo controlada.
-// reset() agora falha alto (std::runtime_error) se o player nao existir no
-// cenario; nao ha como validar daqui que e o MESMO player com
-// RLBridgeBehavior -- esse tipo mora no plugin do modelo, que este core
-// nao pode conhecer (tests/guard/check_core_opaco.sh).
+// 'playerName' tem de ser o mesmo player configurado com
+// ( RLBridgeBehavior ) no .edl (default: falcon1): como libs/xrlbridge nao
+// tem chave por player id, o Command/Observation trocados por step()/
+// reset() sao sempre os do player que o .edl escolheu, nao os de
+// 'playerName'. Um valor diferente afeta silenciosamente so a checagem de
+// 'terminated'. reset() falha alto (std::runtime_error) se o player nao
+// existir no cenario; nao e possivel validar daqui que e o mesmo player com
+// RLBridgeBehavior, tipo que mora no plugin do modelo
+// (tests/guard/check_core_opaco.sh).
 //
-// SO PODE EXISTIR UMA Station POR PROCESSO -- CONFIRMADO, nao e mais um
-// risco hipotetico. libs/xplugin sela o registro de plugins depois do
-// PRIMEIRO edl_parser() (mixr::xplugin::seal(), dentro de buildStation());
-// um SEGUNDO NativeSimulation no mesmo processo, ao chamar reset() pela
-// primeira vez, cai em buildStation() -> edl_parser() de novo e o registro
-// recusa com "loadModule(...) depois do parse". Medido rodando: um script
-// Python que cria dois MixrFlightEnv (dois NativeSimulation) no mesmo
-// processo aborta no reset() do segundo. Trocar de cenario/reiniciar do
-// zero exige um processo novo (Python multiprocessing, ou reexec) -- o
-// MESMO raciocinio que ja levou app/Respawn.hpp a usar execv() em vez de
-// reconstruir a Station in-process.
+// So pode existir uma Station por processo: libs/xplugin sela o registro de
+// plugins depois do primeiro edl_parser() (mixr::xplugin::seal(), dentro de
+// buildStation()); um segundo NativeSimulation no mesmo processo, ao chamar
+// reset() pela primeira vez, cai em buildStation() -> edl_parser() de novo
+// e o registro recusa com "loadModule(...) depois do parse". Trocar de
+// cenario ou reiniciar do zero exige um processo novo (multiprocessing ou
+// reexec) -- mesmo raciocinio que leva app/Respawn.hpp a usar execv() em
+// vez de reconstruir a Station in-process.
 //
-// reset() REPETIDO NA MESMA instancia, em contraste, FUNCIONA -- confirmado
-// rodando (rl/tests/test_smoke.py chama reset() 4x seguidas no mesmo
-// NativeSimulation): station->event(RESET_EVENT) restaura northM/eastM/
-// altitudeM/fuelFraction bem proximos do valor inicial, com uma DERIVA
-// numerica pequena (~1e-5 m em eastM, ~1e-6 em fuelFraction por reset) --
-// resíduo de integracao do JSBSim entre uma chamada e outra, nao um erro de
-// reset propriamente dito. Irrelevante para treino de RL (bem abaixo de
-// qualquer ruido de acao/dinamica), mas documentado aqui para quem for
-// depurar "por que o baseline nao bate byte a byte".
+// reset() repetido na mesma instancia funciona: station->event(RESET_EVENT)
+// restaura northM/eastM/altitudeM/fuelFraction proximos do valor inicial,
+// com deriva numerica pequena (~1e-5 m em eastM, ~1e-6 em fuelFraction por
+// reset) -- resíduo de integracao do JSBSim entre chamadas, nao um erro de
+// reset. Irrelevante para treino de RL; documentado para quem investigar
+// por que o baseline nao bate byte a byte.
 //------------------------------------------------------------------------------
 class NativeSimulation
 {

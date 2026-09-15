@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace {
 
@@ -46,16 +47,15 @@ std::string runIdNow()
 
 // "src/poc/dis/flight/configs/scenario.edl.in" -> "scenario" + "flight" (a
 // pasta duas acima de configs/x.edl.in) -> "flight-scenario". A pasta entra
-// na chave porque o nome do ARQUIVO sozinho nao e unico entre pocs --
-// flight/bandit/python-flight/onnx-policy usam todos "scenario.edl[.in]" --
-// e a chave vira o caminho de build/generated-scenarios/<chave>.generated.edl
-// e do arquivo de log, os dois GLOBAIS ao processo (nao aninhados por poc).
-// Sem a pasta, dois processos `node` apontando pra pocs DIFERENTES mas com o
-// MESMO nome de arquivo (o caso canonico do grupo DIS, `flight`+`bandit`
-// rodando juntos) colidem no mesmo cenario gerado -- confirmado rodando os
-// dois ao mesmo tempo antes desta correcao: o processo do `bandit` carregava
-// e executava o cenario inteiro do `flight`, em silencio (so a porta Tacview
-// duplicada acusava algo errado, e por um sintoma indireto).
+// na chave porque o nome do arquivo sozinho nao e unico entre pocs --
+// flight/bandit/python-flight/onnx-policy usam todos "scenario.edl[.in]" --,
+// e a chave nomeia o cenario gerado
+// (build/generated-scenarios/<chave>.generated.edl) e o arquivo de log,
+// ambos globais ao processo. Sem a pasta, dois processos 'node' apontando
+// para pocs diferentes com o mesmo nome de arquivo colidiriam no mesmo
+// cenario gerado -- por exemplo, um processo `bandit` executaria o cenario
+// de `flight` em silencio, so a porta Tacview duplicada denunciando algo
+// errado.
 std::string deriveScenarioKey(const std::string& path)
 {
    const fs::path p{path};
@@ -76,12 +76,11 @@ std::string deriveScenarioKey(const std::string& path)
 // Os dois unicos tamanhos que o SrtmHgtFile::determineSrtmInfo() reconhece
 // (mesmas constantes de app/src/app/TerrainData.cpp -- replicadas aqui, nao
 // importadas, pelo mesmo motivo de independencia ja documentado no resto
-// deste arquivo: 'node' nao reaproveita NADA de app/). Achado por auditoria
-// (revisao completa do repositorio): sem esta checagem de TAMANHO, so a
-// existencia do arquivo era conferida -- um .hgt truncado (gunzip
-// interrompido por um kill anterior, disco cheio) passava em silencio e so
-// falhava bem mais tarde, dentro do parser nativo do MIXR, com a mensagem
-// sem contexto que este antidoto evita.
+// deste arquivo: 'node' nao reaproveita NADA de app/). Checagem de tamanho
+// do .hgt: sem ela, apenas a existencia do arquivo era conferida, e um .hgt
+// truncado (gunzip interrompido, disco cheio) passaria em silencio,
+// falhando so mais tarde dentro do parser nativo do MIXR, com mensagem sem
+// contexto.
 constexpr std::streamoff kSrtm3Bytes{2884802};    // 3 arc-sec (~90 m)
 constexpr std::streamoff kSrtm1Bytes{25934402};   // 1 arc-sec (~30 m)
 
@@ -135,6 +134,92 @@ unsigned int resolveTcThreadCount()
    const unsigned int maxByCpu{(hw > 1) ? (hw - 1) : 1};
    const unsigned int metade{hw / 2};
    return std::max(1u, std::min(metade, maxByCpu));
+}
+
+//------------------------------------------------------------------------------
+// '-folder <pasta> [-scenario <nome>]' -- paridade com './app', duplicada
+// (nao importada de app/ScenarioFolder.hpp, mesmo motivo de independencia
+// documentado no resto deste arquivo). Diferenca deliberada: 'node' nao tem
+// TUI, entao nao ha tela de navegacao -- sem '-scenario', so lista os nomes
+// achados em stderr e sai com erro (em vez de bloquear esperando um Enter
+// que nunca vem).
+//------------------------------------------------------------------------------
+struct FolderScenarioEntry
+{
+   std::string name;      // nome da subpasta -- o valor esperado por '-scenario'
+   std::string edlPath;   // o .edl/.edl.in UNICO achado em '<subpasta>/configs/'
+};
+
+bool endsWith(const std::string& name, const std::string& sufixo)
+{
+   return name.size() >= sufixo.size()
+       && name.compare(name.size() - sufixo.size(), sufixo.size(), sufixo) == 0;
+}
+
+// '.generated.edl' tambem termina em '.edl' -- excluido ANTES do sufixo
+// positivo, ou o artefato de SAIDA do proprio pipeline (generateScenario(),
+// acima) contaria como um segundo candidato numa execucao anterior.
+bool hasEdlSuffix(const std::string& name)
+{
+   if (endsWith(name, ".generated.edl")) return false;
+   return endsWith(name, ".edl.in") || endsWith(name, ".edl");
+}
+
+// Mesma varredura de app::discoverFolderScenarios() (app/ScenarioFolder.cpp):
+// uma subpasta sem 'configs/' e ignorada; 'configs/' com 0 ou mais de 1
+// arquivo .edl/.edl.in gera aviso e e pulada -- precisa ser exatamente 1
+// pra ser inequivoco. Ordenado por nome, pra a lista impressa em erro ser
+// previsivel.
+std::vector<FolderScenarioEntry> discoverFolderScenarios(const std::string& pasta)
+{
+   std::vector<FolderScenarioEntry> encontrados;
+
+   std::error_code ec;
+   if (!fs::exists(pasta, ec) || ec) return encontrados;
+
+   for (const auto& sub : fs::directory_iterator(pasta, ec)) {
+      if (ec) break;
+      if (!sub.is_directory()) continue;
+
+      const fs::path configsDir{sub.path() / "configs"};
+      std::error_code ecConfigs;
+      if (!fs::exists(configsDir, ecConfigs) || ecConfigs) continue;
+
+      std::string achado;
+      int contagem{};
+      std::error_code ecArq;
+      for (const auto& arq : fs::directory_iterator(configsDir, ecArq)) {
+         if (ecArq) break;
+         if (!arq.is_regular_file()) continue;
+         if (hasEdlSuffix(arq.path().filename().string())) {
+            achado = arq.path().string();
+            ++contagem;
+         }
+      }
+
+      if (contagem == 1) {
+         encontrados.push_back(FolderScenarioEntry{sub.path().filename().string(), achado});
+      } else {
+         std::cerr << "node: aviso: '" << configsDir.string() << "' tem " << contagem
+                   << " arquivo(s) .edl/.edl.in -- precisa ser exatamente 1, pulando\n";
+      }
+   }
+
+   std::sort(encontrados.begin(), encontrados.end(),
+             [](const FolderScenarioEntry& a, const FolderScenarioEntry& b) { return a.name < b.name; });
+   return encontrados;
+}
+
+void printFolderNamesAndExit(const std::vector<FolderScenarioEntry>& entradas, const std::string& pasta)
+{
+   std::cerr << "node: -scenario <nome> e obrigatorio com -folder (sem TUI, sem tela de selecao).\n";
+   if (entradas.empty()) {
+      std::cerr << "node: nenhum cenario encontrado em '" << pasta << "'\n";
+   } else {
+      std::cerr << "node: cenarios encontrados em '" << pasta << "':\n";
+      for (const auto& e : entradas) std::cerr << "  " << e.name << "\n";
+   }
+   std::exit(EXIT_FAILURE);
 }
 
 // .edl.in -> .edl. Confirmado por varredura de todo src/poc/**: o UNICO
@@ -251,9 +336,10 @@ void checkGrootMonitorTarget(mixr::simulation::Station* const station)
       return;
    }
 
-   // Medido: esta linha sai DEPOIS da do modelo -- o frame de aquecimento de
-   // primeStation() ja constroi a arvore (e liga o monitor) antes daqui. Dai o
-   // texto falar do LOG inteiro, e nao de "logo abaixo".
+   // Esta linha de log sai depois da linha do modelo porque o frame de
+   // aquecimento de primeStation() ja constroi a arvore (e liga o monitor)
+   // antes daqui -- por isso o texto se refere ao log inteiro, nao a "logo
+   // abaixo".
    LOG(INFO) << "MIXR_GROOT_MONITOR=\"" << target << "\": player encontrado no cenario. Se a linha"
              << " \"[BtBehavior] monitor do Groot ligado\" nao aparecer em lugar nenhum deste log, o MODELO desse"
              << " player nao implementa o hook do monitor (hoje so' o A-4/flight implementa).";
@@ -263,23 +349,41 @@ void checkGrootMonitorTarget(mixr::simulation::Station* const station)
 
 int main(int argc, char* argv[])
 {
-   if (argc != 2) {
-      std::cerr << "uso: node <arquivo.edl|.edl.in>\n";
+   std::string scenarioPath;
+
+   if (argc == 2) {
+      scenarioPath = argv[1];
+   } else if (argc >= 3 && std::string(argv[1]) == "-folder") {
+      const std::string pasta{argv[2]};
+      const auto entradas{discoverFolderScenarios(pasta)};
+
+      const bool temScenario{argc == 5 && std::string(argv[3]) == "-scenario"};
+      if (!temScenario) printFolderNamesAndExit(entradas, pasta);
+
+      const std::string nome{argv[4]};
+      const auto it = std::find_if(entradas.begin(), entradas.end(),
+         [&](const FolderScenarioEntry& e) { return e.name == nome; });
+      if (it == entradas.end()) {
+         std::cerr << "node: '" << nome << "' nao encontrado em '" << pasta << "'\n";
+         printFolderNamesAndExit(entradas, pasta);
+      }
+      scenarioPath = it->edlPath;
+   } else {
+      std::cerr << "uso: node <arquivo.edl|.edl.in>\n"
+                   "  ou: node -folder <pasta> -scenario <nome>\n";
       return EXIT_FAILURE;
    }
 
-   const std::string scenarioPath{argv[1]};
    const std::string runId{runIdNow()};
    const std::string key{deriveScenarioKey(scenarioPath)};
 
    fs::path scenarioDir{fs::path(scenarioPath).parent_path().parent_path()};
-   // Mesmo guard que app/src/main.cpp ganhou depois de um bug medido em
-   // stress-sweep (achado por auditoria: faltava aqui): um caminho com menos
-   // de dois niveis de diretorio acima (ou um absoluto raso) faz os dois
-   // parent_path() encalharem na RAIZ do sistema de arquivos, nao em "" --
-   // so '.empty()' nao pega esse caso, e 'node' tentaria abrir
-   // '/data/logs/...' (falha muda de xlog: PrintHandler::openFile() nao
-   // cria diretorio, so nao escreve nada).
+   // Mesmo guard de app/src/main.cpp: um caminho com menos de dois niveis de
+   // diretorio acima (ou um caminho absoluto raso) faz os dois
+   // parent_path() encalharem na raiz do sistema de arquivos, nao em "";
+   // so '.empty()' nao cobre esse caso, e 'node' tentaria abrir
+   // '/data/logs/...' -- falha muda do xlog, que nao cria diretorio, so nao
+   // escreve nada.
    if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./src/node";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (key + "_" + runId + ".log")).string());
 

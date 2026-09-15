@@ -144,9 +144,12 @@ pela profundidade real) — já apagando sozinho, antes de qualquer renomeação
 artefato `template_mirror`, que NÃO fazem parte do scaffold (ver o aviso no topo do próprio
 arquivo) — e termina imprimindo um checklist do que ainda sobra manual (regra de negócio,
 `xboard`, `xnative/factory.cpp`, prosa do README, `provides:`, `git add`, cenário/`REGISTRO.md`).
-Se preferir fazer à mão, o roteiro completo está em [`template`,
-`docs/PRIMEIROS-PASSOS.md`](models/template/docs/PRIMEIROS-PASSOS.md) — mas o gerador
-cobre exatamente essa receita.
+Se preferir fazer à mão (ou quiser entender o que o gerador faz por dentro), o roteiro completo
+está em [`template`, `docs/PRIMEIROS-PASSOS.md`](models/template/docs/PRIMEIROS-PASSOS.md) — o
+gerador cobre exatamente a receita dos Passos 1-4 (cópia, renome, contrato), mas o Passo 5 dali
+(a ordem de escrever a lógica: domain → ubf/State → bt/nodes+árvore → ubf/Behavior → ubf/Action →
+xnative/factory → plugin.cpp) continua sendo o roteiro certo mesmo tendo usado `make new-model` —
+volte a esse documento na seção 4 abaixo.
 
 ## 3. O contrato: o que TODO modelo tem que fazer
 
@@ -197,7 +200,10 @@ do remote privado). Depois de instalado, `make open-groot` sempre abre a janela.
 **Para experimentar agora, sem esperar seu próprio modelo compilar**: os `models/players/A-4/
 configs/flight_tree*.xml` de produção já têm tudo isso resolvido (comentário sem `--`, bloco
 `<TreeNodesModel>` colado) — abrem direto no Groot, `File > Load...`, sem nenhum passo abaixo.
-São o exemplo de referência para o que sua própria árvore precisa ter.
+São o exemplo de referência para o que sua própria árvore precisa ter. **Esses arquivos são
+rastreados pelo git** — se for só experimentar (arrastar/soltar sem intenção de manter a edição),
+`git diff`/`git checkout -- <arquivo>` revisa ou descarta depois, sem precisar copiar o arquivo
+para uma pasta à parte antes.
 
 **Para a árvore do SEU modelo**, que ainda não tem nada disso:
 
@@ -269,8 +275,8 @@ de **toda** árvore de `configs/` (descobertas por conteúdo, não por nome) de 
 **Se você veio do `template` (seção 2), estes dois alvos já vêm prontos** — o próprio
 `models/template/Makefile` já declara `create-bt`/`update-bt`/`open-groot` (o mesmo texto que
 `models/players/A-4/Makefile` tem), com `tools/dump_tree_model.cpp`/`tools/update_bt_models.py` já
-dentro do scaffold — então todo modelo gerado por `make new-model` já nasce com os mesmos 8 alvos
-que o `A-4` tem, sem copiar nada à mão. Isso só não vale se o seu projeto de modelo **não** partiu
+dentro do scaffold — então todo modelo gerado por `make new-model` já nasce com os mesmos alvos
+que o `A-4` tem (`make help` lista todos), sem copiar nada à mão. Isso só não vale se o seu projeto de modelo **não** partiu
 do `template` (por exemplo, um `.so` de terceiro trazido para dentro do repositório): nesse caso,
 copie `tools/dump_tree_model.cpp` + `tools/update_bt_models.py` do `A-4` ou do `template` — os
 três arquivos não têm nada amarrado ao nome/pastas de origem, então dá pra copiar `tools/` inteiro
@@ -478,7 +484,7 @@ ponta pensada para quem nunca viu o framework.
 PDFs — um resumo para consulta pontual enquanto essa leitura está em andamento, ou depois dela —,
 e `contexts/src/` (vendorizado e versionado no próprio repositório) tem o fonte completo das duas
 árvores para quando nem os PDFs nem a destilação bastarem. [`docs/manual/`](docs/manual/) (`make
-open-docs`, página estática) complementa com seis visões interativas: a animação do ciclo de
+open-docs`, página estática) complementa com cinco visões interativas: a animação do ciclo de
 execução do MIXR sobre uma árvore de componentes real, um catálogo buscável das classes do fork
 (fábrica, slots, participação por fase), um ensaio sobre a cadeia de decisão `FlightAgentTC → UBF
 → BehaviorTree`, entre outras.

@@ -20,15 +20,14 @@ namespace app {
 
 // Numero de bytes do glifo UTF-8 que comeca em text[pos] -- mesma logica de
 // EatCodePoint()/GlyphNext() do FTXUI (ftxui/screen/string.cpp), replicada
-// aqui pra nao depender de include privado da lib. ACHADO POR AUDITORIA (nao
-// redescobrir): sem isto, cortar 'o glifo sob o cursor' com
-// 'text.substr(pos, 1)' (sempre 1 BYTE) faz qualquer caractere multibyte
-// (acento -- convencao pt-BR deste projeto, texto livre no editor) sumir da
-// tela quando o cursor cai sobre ele -- os dois pedacos (lead byte isolado +
-// continuation byte isolado) sao UTF-8 invalido, e o pipeline de glifos do
-// FTXUI descarta os dois em silencio. Glifo malformado (lead byte invalido,
-// ou 'pos' caindo num continuation byte) degrada pra 1 byte -- nunca estoura
-// o tamanho da string.
+// aqui pra nao depender de include privado da lib. Necessario porque cortar
+// o glifo sob o cursor com 'text.substr(pos, 1)' (sempre 1 byte) quebra
+// qualquer caractere multibyte (acentos, comuns em comentario pt-BR): os
+// dois pedacos resultantes (lead byte isolado + continuation byte isolado)
+// sao UTF-8 invalido, e o FTXUI descarta os dois em silencio, fazendo o
+// caractere sumir da tela quando o cursor esta sobre ele. Glifo malformado
+// (lead byte invalido, ou 'pos' caindo num continuation byte) degrada pra 1
+// byte -- nunca estoura o tamanho da string.
 std::string::size_type utf8GlyphBytes(const std::string& text, std::string::size_type pos);
 
 // Uma linha da previa colorida -- tokeniza SO' esta linha (comentario/

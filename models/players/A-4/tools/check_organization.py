@@ -62,8 +62,7 @@ NS_OPEN_CLOSE_RE = re.compile(r'^namespace\s+([A-Za-z_]\w*)\s*\{.*\}\s*$')
 # Quantos itens de detalhe cada verificacao mostra por padrao -- o resto fica
 # atras de 'rode com -v'. Existe porque uma verificacao como
 # 'namespace-aninhado' pode ter dezenas de arquivos fora do padrao, e
-# despejar todos sempre torna o relatorio ilegivel (a propria razao desta
-# passada: a saida da excecao do A-4 tinha ~90 linhas por padrao).
+# despejar todos sempre torna o relatorio ilegivel.
 MAX_DETAILS = 6
 
 
@@ -108,12 +107,11 @@ def project_name() -> "str | None":
 
 
 def expected_namespace(name: str) -> str:
-    # ACHADO POR AUDITORIA: esta formula e' a MESMA de NS_NOVO em
-    # scripts/models.sh (raiz do repositorio) -- duplicada em bash e Python
-    # porque as duas rodam em momentos/linguagens diferentes (models.sh cria
-    # o scaffold; este script so' valida o que ja existe). Sem fonte unica
-    # possivel entre as duas linguagens -- se um dia a formula mudar (novo
-    # caractere proibido, prefixo diferente), atualize os DOIS lugares.
+    # Esta formula e a mesma de NS_NOVO em scripts/models.sh (raiz do
+    # repositorio) -- duplicada em bash e Python porque as duas rodam em
+    # momentos/linguagens diferentes (models.sh cria o scaffold; este
+    # script valida o que ja existe). Sem fonte unica possivel entre as
+    # duas linguagens: se a formula mudar, atualizar os dois lugares.
     return "x" + name.replace("-", "_")
 
 

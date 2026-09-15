@@ -1,11 +1,22 @@
 # ==============================================================================
-# Suite deste modelo -- tres camadas: a regra pura (domain), a arvore de
-# comportamento (tree, mais a guarda de sincronia do <TreeNodesModel>) e a
-# FORMA do artefato (contract). models/players/A-4 tem uma quarta, 'native',
-# que levanta as classes MIXR do modelo -- fora de escopo aqui (mesmo
-# raciocinio do template que originou este scaffold: AaaState/AaaBehavior/
-# AaaAction dependem de um Player/WorldModel de verdade para exercitar,
-# fora do alcance de um teste sem Station).
+# Suite deste modelo -- quatro camadas: a regra pura (domain), a classe MIXR
+# propria SEM Station (native, achado por auditoria -- ver abaixo), a
+# arvore de comportamento (tree, mais a guarda de sincronia do
+# <TreeNodesModel>) e a FORMA do artefato (contract).
+#
+# ATUALIZACAO (achado por auditoria, nao redescobrir): este comentario dizia
+# que 'native' ficava fora de escopo porque "AaaState/AaaBehavior/AaaAction
+# dependem de um Player/WorldModel de verdade para exercitar" -- verdade
+# para o COMPORTAMENTO delas (por isso continua sendo o 'tree' acima, com
+# FakeDecisionContext, quem prova isso, nunca precisando de Station). Mas a
+# COERENCIA DA FABRICA (as tres listas de xnative/factory.cpp --
+# factory()/NOMES[]/METAS[] -- ficarem em sincronia) nao depende de Player
+# nenhum: e' so' 'new AaaState()' + unref(), o mesmo padrao das
+# 'Factory.*' de models/players/A-4/tests/native/test_xnative.cpp. Essa
+# checagem so' era feita tarde, na CARGA do plugin (PluginRegistry, teste
+# de integracao) -- 'native' aqui fecha isso na camada rapida, sem
+# pretender testar o COMPORTAMENTO das quatro classes (que continua so' no
+# 'tree'/'domain' acima).
 #
 # 'model_inc' e 'AAA_lib' vem do escopo do meson.build PAI (Meson
 # compartilha o namespace entre um project() e os subdir() dele) -- nao sao
@@ -31,6 +42,22 @@ test_domain = executable('test-domain',
     install             : false,
 )
 test('domain', test_domain, suite: 'domain', timeout: 60)
+
+# Camada nova -- coerencia da fabrica (as tres listas de
+# xnative/factory.cpp em sincronia), SEM Station. Ver o "ATUALIZACAO" acima
+# para o porque isto nao contradiz a decisao de nao testar o COMPORTAMENTO
+# de AaaState/AaaBehavior/AaaAction aqui. Linka 'model_sources' inteiro (o
+# MESMO conjunto que a .so compila) porque factory.cpp referencia as
+# quatro classes por completo, nao so' os headers.
+test_native = executable('test-native',
+    files('native/test_native.cpp') + model_sources,
+    link_args           : rpath_link_args,
+    include_directories : [model_inc, include_directories('.')],
+    dependencies        : [gtest_dep, gtest_main_dep, mixr_dep, sdk_dep, behavior_tree_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('native', test_native, suite: 'native', timeout: 60)
 
 # Camada 2 -- a ARVORE de producao, carregada de verdade contra um contexto
 # falso. Linka BT.CPP e domain/, NAO linka MIXR: e' o que a interface

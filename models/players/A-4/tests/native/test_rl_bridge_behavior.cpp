@@ -15,18 +15,17 @@
 // e' privado, sem setter -- nao ha seam de injecao sem um AirVehicle de
 // verdade nem sem tocar a classe so' pra testabilidade.
 //
-// DEBITO DE TESTE RECONHECIDO (autorevisao desta sessao, nao redescobrir):
-// isso inclui especificamente o comportamento de
-// pending.valid==false -> genAction() devolve nullptr (ver o comentario
-// grande em bt/DecisionContext.hpp/xrlbridge::Command) -- so' foi
-// confirmado MANUALMENTE nesta sessao (make test-rl, lendo a linha de log
-// da primeira decisao antes/depois do fix), nunca por uma asserção
-// automatizada. src/rl/tests/test_smoke.py "exercita" o caminho (roda de
-// verdade contra a Station), mas nao AFIRMA nada sobre os valores da
-// primeira decisao -- uma regressao futura aqui (ex.: inverter a
-// condicao, ou esquecer o setPendingCommand(Command{}) em reset())
-// passaria por make test/make test-rl sem ser detectada. Registrado como
-// divida conhecida, nao "coberto".
+// Debito de teste reconhecido: isso inclui especificamente o
+// comportamento de pending.valid==false -> genAction() devolve nullptr
+// (ver bt/DecisionContext.hpp/xrlbridge::Command) -- confirmado so
+// manualmente (make test-rl, lendo a linha de log da primeira decisao
+// antes/depois do fix), nunca por uma assercao automatizada.
+// src/rl/tests/test_smoke.py exercita o caminho (roda de verdade contra a
+// Station), mas nao afirma nada sobre os valores da primeira decisao --
+// uma regressao futura aqui (ex.: inverter a condicao, ou esquecer o
+// setPendingCommand(Command{}) em reset()) passaria por make test/make
+// test-rl sem ser detectada. Registrado como divida conhecida, nao
+// "coberto".
 //
 #include "ubf/RLBridgeBehavior.hpp"
 
@@ -67,12 +66,10 @@ TEST(RLBridge, ComandoPendenteEDevolvidoPorGetPendingCommand)
    EXPECT_DOUBLE_EQ(got.speedKts, 160.0);
 }
 
-// ACHADO POR AUDITORIA (nao redescobrir, ver o comentario grande em
-// xrlbridge::Command): um Command default-construido (o que
-// getPendingCommand() devolve antes do primeiro setPendingCommand() do
-// episodio) tem de vir com valid=false -- e' o sinal que
-// RLBridgeBehavior::genAction() usa pra devolver nullptr em vez de atuar
-// heading=0/altitude=0/speed=0 como se fosse uma decisao de verdade.
+// Um Command default-construido (o que getPendingCommand() devolve antes
+// do primeiro setPendingCommand() do episodio) precisa ter valid=false --
+// e o sinal que RLBridgeBehavior::genAction() usa para devolver nullptr em
+// vez de atuar heading=0/altitude=0/speed=0 como decisao de verdade.
 TEST(RLBridge, ComandoDefaultConstruidoNaoEValido)
 {
    const xrlbridge::Command cmd;

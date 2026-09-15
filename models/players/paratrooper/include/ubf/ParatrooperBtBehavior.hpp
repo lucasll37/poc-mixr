@@ -44,11 +44,10 @@ namespace xparatrooper {
 // baseada num numero que ainda nao e' AGL de verdade. Desligar (0/false) e'
 // para bancada/teste sem WorldModel/terreno nenhum (ver tests/native/).
 //
-// 'stage_' e' ESTADO PROPRIO deste comportamento, persistido entre chamadas
-// -- cada entidade do cenario tem sua PROPRIA instancia de
+// 'stage_' e' estado proprio deste comportamento, persistido entre chamadas
+// -- cada entidade do cenario tem sua propria instancia de
 // ( ParatrooperBtBehavior ... ), entao este campo nunca e' compartilhado
-// entre paraquedistas (achado confirmado com o escalonamento por altitude de
-// varios paraquedistas no mesmo cenario, ver sandbox/C-130_paratrooper-6DOF).
+// entre paraquedistas.
 //------------------------------------------------------------------------------
 class ParatrooperBtBehavior final : public base::ubf::AbstractBehavior,
                                     public bt::DecisionContext

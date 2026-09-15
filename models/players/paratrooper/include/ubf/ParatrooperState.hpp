@@ -39,12 +39,11 @@ public:
 
    void updateState(const base::Component* const actor) override;
 
-   // NAO chamar de 'isValid()' -- mixr::base::Object ja declara essa
-   // virtual (usada pelo parser de EDL logo apos construir o objeto, antes
-   // de updateState() rodar uma vez sequer); um metodo com a MESMA
-   // assinatura aqui a sobrescreveria (sem precisar de 'override' para
-   // colidir) e faria TODO '( ParatrooperState )' no .edl falhar com
-   // "invalid object" -- ja aconteceu, medido rodando 'edlcheck'.
+   // Nao nomear de 'isValid()': mixr::base::Object ja declara essa virtual,
+   // usada pelo parser de EDL logo apos construir o objeto, antes de
+   // updateState() rodar; um metodo com a mesma assinatura aqui a
+   // sobrescreveria (mesmo sem 'override' para colidir) e faria todo
+   // '( ParatrooperState )' do .edl falhar com "invalid object".
    bool hasReading() const        { return valid; }
    double getAglM() const         { return aglM; }
    double getAltitudeM() const    { return altitudeM; }

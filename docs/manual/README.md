@@ -7,7 +7,7 @@ registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm 
 `tools/extract_execution_chain.py` como módulos) escaneando o fonte de verdade
 (`contexts/src/mixr/` e `models/players/A-4/`) — nada digitado à mão.
 
-Todo bloco de código C++ das cinco abas (Execução, Comportamento, step-by-step, Catálogo) passa
+Todo bloco de código C++ das cinco abas (Execução, Comportamento, step-by-step, Estrutura, Catálogo) passa
 por `cppTokenizeLines()`/`renderCppSrc()` (`doc.jsx`) — um highlight de sintaxe LEVE, por
 heurística (não um lexer C++ de verdade), com sete cores fixas (`--cpp-*`, não redefinidas por
 tema, calibradas para o fundo escuro do bloco de código, que não muda de tom entre claro/escuro):

@@ -19,21 +19,13 @@ void RecordWriter::put(const char* const s)
 
 namespace {
 
-// ACHADO POR AUDITORIA (nao redescobrir): o escape original de addLabel()
-// so cobria aspas/barra/controles ASCII (<0x20) -- qualquer byte >= 0x80
-// passava cru. 'value' pode ser EntityMarking::marking (11 bytes CRUS de
-// um PDU DIS, sem garantia NENHUMA de charset -- ver o comentario de
-// addLabel() abaixo), entao um byte alto isolado ou uma sequencia
-// malformada produzia uma linha .jsonl que nao e UTF-8 valido -- QUALQUER
-// leitor padrao (inclusive tests/scenario/run_scenario_test.py, JA
-// existente neste repositorio, que abre o .jsonl com
-// encoding="utf-8") quebra com UnicodeDecodeError antes mesmo de tentar
-// json.loads(). Validacao MINIMA (forma da sequencia: lead byte + N bytes
-// de continuacao 10xxxxxx -- nao valida overlong encoding nem faixa de
-// codepoint, so' o suficiente pra decidir se e' seguro deixar os bytes
-// crus) -- roda uma vez por chamada, nao por char, pra nao mudar o
-// comportamento de texto pt-BR legitimo (acento e' UTF-8 multi-byte
-// valido e continua saindo cru).
+// O escape de addLabel() cobre aspas, barra e controles ASCII (<0x20), mas
+// 'value' pode conter bytes >= 0x80 sem garantia de charset (ex.:
+// EntityMarking::marking, bytes crus de um PDU DIS) -- sem validacao, isso
+// produz uma linha .jsonl que nao e UTF-8 valido. isValidUtf8() faz
+// validacao minima de forma (lead byte + bytes de continuacao 10xxxxxx)
+// para decidir se e' seguro deixar os bytes crus, preservando texto pt-BR
+// legitimo (acentos sao UTF-8 multi-byte valido).
 bool isValidUtf8(const char* const s)
 {
    auto* p{reinterpret_cast<const unsigned char*>(s)};
@@ -93,16 +85,11 @@ void RecordWriter::addLabel(const char* const key, const char* const value)
    if (value == nullptr || value[0] == '\0') return;
    putKey(key);
    put("\"");
-   // ACHADO POR AUDITORIA (nao redescobrir): 'value' pode vir do NOME de um
-   // player recebido por DIS -- EntityMarking::marking, 11 bytes CRUS
-   // controlados por quem envia o PDU na rede (ver
-   // contexts/src/mixr/src/interop/dis/NetIO_entity_state.cpp), copiado sem
-   // filtragem ate aqui (SnapshotSource::copyName() so trunca por tamanho).
-   // Sem escapar, um nome malicioso tipo 'x","q":1' injeta um campo JSON
-   // inteiro na linha gravada -- confirmado reproduzindo com json.loads().
-   // Escapa char a char, sem alocar (mesma filosofia de buffer fixo desta
-   // classe -- ver o cabecalho do .hpp). 'asciiSafe' decide o tratamento
-   // de byte >= 0x80 -- ver isValidUtf8() acima.
+   // 'value' pode vir do nome de um player recebido por DIS
+   // (EntityMarking::marking, controlado por quem envia o PDU na rede),
+   // copiado sem filtragem ate aqui -- sem escapar, um nome malicioso do
+   // tipo 'x","q":1' injeta um campo JSON inteiro na linha gravada. Escapa
+   // caractere a caractere, sem alocar.
    const bool utf8Ok{isValidUtf8(value)};
    for (const char* p{value}; *p != '\0'; ++p) {
       const unsigned char c{static_cast<unsigned char>(*p)};

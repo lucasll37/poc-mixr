@@ -35,6 +35,12 @@ RED   := \033[0;31m
 GREEN := \033[0;32m
 NC    := \033[0m
 
+# Desliga o cache de bytecode do CPython (__pycache__/*.pyc) para o venv
+# local e os scripts que os alvos abaixo chamam (train.py/export_onnx.py/
+# tests/) -- este Makefile e' autocontido, sem o Makefile raiz no meio, entao
+# precisa da propria copia do 'export' (mesmo raciocinio de models/common.mk).
+export PYTHONDONTWRITEBYTECODE := 1
+
 check-root: ## Confere que o core ja publicou dist/python/mixr_gym.
 	@test -d $(DIST_PYTHON)/mixr_gym || { \
 		echo "$(RED)faltando $(DIST_PYTHON)/mixr_gym$(NC)"; \

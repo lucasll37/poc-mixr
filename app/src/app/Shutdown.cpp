@@ -82,31 +82,19 @@ void shutdownStation(mixr::simulation::Station* const station, const double watc
 {
    if (station == nullptr) return;
 
-   // A THREAD T/C NATIVA E DONA DE UMA REFERENCIA DA STATION -- e e por isso
-   // que o unref() la embaixo, sozinho, nao destroi nada.
+   // A thread T/C nativa e dona de uma referencia da Station:
+   // createTimeCriticalProcess() cria a StationTcPeriodicThread passando a
+   // propria Station como parent, e a partida da thread faz
+   // 'parent->ref()'. Por isso a Station chega aqui com refCount 2, e um
+   // unref() isolado nao destroi nada -- quem de fato executa ~Station e a
+   // thread T/C, ate um periodo depois, quando seu laco ve isShutdown() e
+   // chama 'parent->unref()'.
    //
-   // ARMADILHA MEDIDA, NAO REDESCOBRIR. Station::createTimeCriticalProcess()
-   // cria 'new StationTcPeriodicThread(this, ...)' passando a PROPRIA Station
-   // como parent (Station.cpp:446), e a funcao de partida da thread faz
-   // 'parent->ref()' (AbstractThread_linux.cpp:28). Logo a Station chega aqui
-   // com refCount 2, e 'station->unref()' so leva 2 -> 1 e retorna em
-   // microssegundos. Quem de fato executa ~Station e a thread T/C, ate um
-   // periodo T/C depois (20 ms a 50 Hz), quando o laco
-   // 'while (!getParent()->isShutdown())' (PeriodicThread_linux.cpp:53) enfim
-   // ve a marcacao do SHUTDOWN_EVENT, sai, e chama 'parent->unref()'.
-   //
-   // Isso poe a destruicao do grafo INTEIRO (players, JSBSimModel,
-   // DataRecorder/TacviewOutput fechando o .acmi, e os objetos do PLUGIN) em
-   // paralelo com o que a main faz em seguida: o exit() e os destrutores
-   // estaticos de todo .so carregado -- 'mixr::xlog' (g_mutex/g_sink/
-   // g_entries), o 'static Ort::Env' de libs/xinfer, e o _IO_cleanup() da
-   // glibc liberando os FILE* enquanto o gravador ainda escreve. RTLD_NODELETE
-   // mantem o .so MAPEADO, mas nao impede que os destrutores registrados por
-   // __cxa_atexit dele rodem.
-   //
-   // A saida e tomar uma referencia EXTRA aqui: com ela, o unref() da thread
-   // T/C nunca pode chegar a zero, e a destruicao acontece deterministicamente
-   // NESTA thread, abaixo, com a thread T/C ja fora do laco.
+   // Sem controle, isso colocaria a destruicao do grafo inteiro em
+   // paralelo com o exit()/destrutores estaticos da main. A referencia
+   // extra tomada aqui garante que o unref() da thread T/C nunca chegue a
+   // zero sozinho, forcando a destruicao a acontecer deterministicamente
+   // nesta thread, com a T/C ja fora do laco.
    const bool haviaTcThread{station->doWeHaveTheTcThread()};
    if (haviaTcThread) station->ref();
 

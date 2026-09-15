@@ -1,8 +1,9 @@
 # A4-4DOF-ONNX — o player máximo, dinâmica LaeroModel (4-DOF), decisão por rede ONNX
 
-Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — ver
-`sandbox/A4-6DOF/README.md` para a tabela completa da família e a porta
-Tacview compartilhada (**1234**, de propósito). Duas mudanças em relação a
+Um dos **cinco** cenários da família `A4-*DOF` deste `sandbox/` — ver o índice em
+[`sandbox/README.md`](../README.md) (por onde começar, tabela dos 11 cenários) e
+`sandbox/A4-6DOF/README.md` para a tabela da família e a porta Tacview compartilhada (**1234**,
+de propósito). Duas mudanças em relação a
 `A4-4DOF`: `dynamicsModel:` continua `( LaeroModel )`, mas quem decide o
 rumo/altitude/velocidade deixa de ser o nó nativo `( Navigate )` — vira uma
 rede neural (`( OnnxPolicy )`, 6.211 parâmetros, 25 KB), copiada e adaptada
@@ -65,27 +66,28 @@ a rede tem a última palavra sobre altitude.
 
 ## Achado medindo: `fuel=0.000000000` no dump, sem efeito na árvore
 
-Rodando `-deterministic 200`: `fuel=0.000000000`/`mach=0.000000000` no dump
-(esperado sob `LaeroModel` — ver `A4-4DOF/README.md`), mas irrelevante aqui:
-esta árvore nem tem condição `FuelLow` (só `OnnxPolicy`/`Patrol`), e a rede
-não recebe combustível cru — o campo `fuelFraction` do contrato de 28 floats
-(populado com a mesma guarda `fuelMax > 0.0 ? .. : 1.0` de `FlightState.cpp`)
-é o único caminho, e cai para `1.0` sem tanque JSBSim simulado.
+Rodando `-deterministic 200`: `fuel=0.000000000`/`mach=0.000000000` no dump (esperado sob
+`LaeroModel` — ver [`sandbox/README.md`](../README.md#por-que-o-combustível-aparece-zerado-no-dump)),
+mas irrelevante aqui: esta árvore nem tem condição `FuelLow` (só `OnnxPolicy`/`Patrol`), e a rede
+não recebe combustível cru — o campo `fuelFraction` do contrato de 28 floats (populado com a mesma
+guarda `fuelMax > 0.0 ? .. : 1.0` de `FlightState.cpp`) é o único caminho, e cai para `1.0` sem
+tanque JSBSim simulado.
 
 ## Vocabulário extra do Steerpoint: `sca`/`magvar`/`pta`
 
-Os 4 `Steerpoint` de `nav:`/`Route` (herdados sem mudança, ver acima) ganharam os
-mesmos três slots nativos ociosos que a família `A4-6DOF`/`A4-4DOF`/`A4-3DOF`
-ganhou — `sca`/`magvar`/`pta` (ver `sandbox/A4-6DOF/README.md` para o detalhe
-completo). Como esta rota nunca é alcançada por `( OnnxPolicy )`, os três campos
-continuam tão inertes quanto o resto do `nav:` — mantidos aqui só por
-consistência de vocabulário com o resto da família.
+Os 4 `Steerpoint` de `nav:`/`Route` (herdados sem mudança, ver acima) ganharam os mesmos três
+slots nativos ociosos da família — ver
+[`sandbox/README.md`](../README.md#vocabulário-extra-do-steerpoint-sca-magvar-pta). Como esta
+rota nunca é alcançada por `( OnnxPolicy )`, os três campos continuam tão inertes quanto o resto
+do `nav:`.
 
 ## Verificação manual
 
+Receita genérica (lint, edlcheck, dump `bt=`, determinismo):
+[`sandbox/README.md`](../README.md#como-verificar-qualquer-cenário-deste-sandbox). Específico
+deste cenário:
+
 ```bash
-python3 src/ui/scripts/edl_lint.py sandbox/A4-4DOF-ONNX/configs/scenario_a4_4dof_onnx.edl.in
-dist/bin/edlcheck sandbox/A4-4DOF-ONNX/configs/scenario_a4_4dof_onnx.edl.in   # ver a nota do @NUM_TC_THREADS@ no README de A4-6DOF
 xmllint --noout sandbox/A4-4DOF-ONNX/configs/flight_tree_onnx.xml
 ./build/app/src/app -folder ./sandbox -scenario A4-4DOF-ONNX -deterministic 200 > /tmp/a4-4dof-onnx.log 2>&1
 grep -o 'bt=[A-Za-z_-]*' /tmp/a4-4dof-onnx.log | sort -u   # esperado: so bt=ONNX (nunca bt=PATROL, que indicaria falha ao carregar o .onnx)
@@ -93,11 +95,7 @@ grep -o 'bt=[A-Za-z_-]*' /tmp/a4-4dof-onnx.log | sort -u   # esperado: so bt=ONN
 
 Sem cobertura de determinismo automatizada nesta variante (nenhum cenário
 da família `A4-*DOF` entra em `tests/meson.build` — ver o README de
-`A4-6DOF`), mas o mesmo script serve, se quiser confirmar:
-```bash
-./tests/determinism/check_determinism.sh ./build/app/src/app A4-4DOF-ONNX 2000 '' \
-    sandbox/A4-4DOF-ONNX/configs/scenario_a4_4dof_onnx.edl.in
-```
+`A4-6DOF`), mas o script de determinismo da receita genérica serve, se quiser confirmar.
 
 Se o `.onnx` for regenerado/retreinado: confirmar `ir_version <= 9` antes de
 rodar (`tools/train_policy.py` de `onnx-policy` fixa isso; o pacote Python

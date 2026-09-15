@@ -173,17 +173,13 @@ silenciosamente.
 Por isso, todo modelo NOVO (qualquer coisa além dos dois artefatos deste diretório, que já seguem
 isto — `xtemplate` para o scaffold copiável, `xtemplate_mirror` para o mirror de contrato, nunca
 compartilhando namespace) precisa aninhar TODO o próprio namespace — incluindo um eventual
-`domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto. `models/players/A-4` foi a
-exceção histórica (nasceu antes desta convenção existir, com `domain::`/`bt_nodes::` soltos no
-escopo global e `ubf::`/`xnative::` sob `mixr::models::xnative` em vez de `mixr::models::xA_4`) —
-já corrigido (ver `CHANGELOG.md` daquele modelo); hoje os 7 projetos de modelo deste repositório
-seguem a convenção, sem exceção nenhuma. Em resumo: dois `.so` carregados com `RTLD_LOCAL` no
-mesmo processo fazem o
-toolchain comparar `type_info` por `strcmp` do nome *mangled* — dois tipos `domain::Foo`
-DIFERENTES, um em cada `.so`, colidiriam por terem o mesmo nome qualificado; aninhar sob
-`mixr::models::x<seu-modelo>` torna esse nome único e imune à colisão. O raciocínio completo (por
-que o RTTI degrada, por que aninhar resolve) está em
-[`ARCHITECTURE.md`](ARCHITECTURE.md), seção "Por que `domain::` mora DENTRO de...".
+`domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto: isso torna o nome
+qualificado único e imune à colisão descrita acima. `models/players/A-4` foi a exceção histórica
+(nasceu antes desta convenção existir, com `domain::`/`bt_nodes::` soltos no escopo global e
+`ubf::`/`xnative::` sob `mixr::models::xnative` em vez de `mixr::models::xA_4`) — já corrigido (ver
+`CHANGELOG.md` daquele modelo); hoje os 7 projetos de modelo deste repositório seguem a convenção,
+sem exceção nenhuma. Motivação mais detalhada (por que o RTTI degrada especificamente sob
+`RTLD_LOCAL`) em [`ARCHITECTURE.md`](ARCHITECTURE.md), seção "Por que `domain::` mora DENTRO de...".
 
 A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o namespace C++) é
 prima deste problema e já tem guarda automática —

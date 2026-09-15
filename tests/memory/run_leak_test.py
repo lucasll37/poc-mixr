@@ -77,10 +77,9 @@ def roda(binario, cenario, frames):
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800,
     )
     if proc.returncode != 0:
-        # CORRIGIDO (nao redescobrir): stderr era jogado fora (DEVNULL) e a
-        # unica pista que sobrava era o codigo de saida -- exatamente no caso
-        # em que mais se precisa dela (ex.: erro de parse do EDL, abort do
-        # mixrFactory()). Mesmo tratamento ja usado em
+        # Em caso de falha, imprime as ultimas linhas de stderr (nunca
+        # descarta para DEVNULL) -- e a unica pista disponivel em casos como
+        # erro de parse do EDL ou abort do mixrFactory(). Mesmo tratamento de
         # determinism/check_determinism.sh.
         cauda = "\n".join(proc.stderr.strip().splitlines()[-10:])
         detalhe = f"\n  ultimas linhas do stderr:\n    " + cauda.replace("\n", "\n    ") if cauda else ""

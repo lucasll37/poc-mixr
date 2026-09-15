@@ -82,14 +82,10 @@ Element renderEdlLine(const std::string& line, const bool isCursorLine,
       const std::string::size_type len{tok.text.size()};
       if (!placed && cursorCol >= offset && cursorCol < offset + len) {
          const std::string::size_type local{cursorCol - offset};
-         // ACHADO POR AUDITORIA (nao redescobrir): esta era a linha
-         // 'tok.text.substr(local, 1)' -- sempre 1 BYTE. Um caractere
-         // acentuado (2 bytes em UTF-8) sob o cursor virava um lead byte
-         // isolado ('before') e um continuation byte isolado ('atCursor'),
-         // os dois UTF-8 invalido -- ftxui::Screen descarta os dois em
-         // silencio no proximo redesenho, e o glifo simplesmente some da
-         // tela enquanto o cursor estiver sobre ele. 'utf8GlyphBytes()'
-         // acha a largura certa (ver o comentario dela).
+         // 'utf8GlyphBytes()' evita truncar o glifo sob o cursor num so
+         // byte: um 'substr(local, 1)' ingenuo quebraria qualquer
+         // caractere acentuado em lead byte + continuation byte isolados
+         // (UTF-8 invalido), que o FTXUI descarta em silencio.
          const std::string::size_type glyphLen{utf8GlyphBytes(tok.text, local)};
          const std::string before{tok.text.substr(0, local)};
          const std::string atCursor{tok.text.substr(local, glyphLen)};

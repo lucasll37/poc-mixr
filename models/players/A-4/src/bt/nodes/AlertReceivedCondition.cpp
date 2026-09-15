@@ -18,7 +18,7 @@ BT::NodeStatus AlertReceivedCondition::tick()
 {
    if (context_.behavior == nullptr) return BT::NodeStatus::FAILURE;
 
-   // O alerta so aparece aqui um frame depois de transmitido (o AlertRadio
+   // O alerta so aparece aqui um frame depois de transmitido (o AlertDatalink
    // promove a entrada na fase 2) -- latencia fixa, igual para todos.
    return context_.behavior->snapshot().hasAlert ? BT::NodeStatus::SUCCESS
                                                  : BT::NodeStatus::FAILURE;

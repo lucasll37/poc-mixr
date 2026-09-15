@@ -130,13 +130,12 @@ std::string defaultTypeForMajor(const unsigned int majorType)
 //------------------------------------------------------------------------------
 // Cor ACMI por lado (models::Player::Side, Player.hpp:377-384).
 //
-// ARMADILHA CORRIGIDA AQUI -- "Grey" NAO e uma cor valida do formato: o ACMI
-// aceita Red / Orange / Yellow / Green / Cyan / Blue / Violet, e so. O valor
-// antigo era o default de TUDO que nao fosse BLUE/RED, incluindo o missil
-// liberado em runtime; o Tacview descarta a propriedade e o objeto fica sem
-// cor de lado nenhuma. Os seis valores do enum agora tem cada um a sua, e o
-// default cai em Violet (uma cor real, visivelmente "nao e nem azul nem
-// vermelho") em vez de uma string invalida.
+// "Grey" nao e uma cor valida do formato ACMI -- os valores aceitos sao
+// Red/Orange/Yellow/Green/Cyan/Blue/Violet. O default anterior usava um
+// valor invalido para tudo que nao fosse BLUE/RED, fazendo o Tacview
+// descartar a propriedade Color. Cada valor do enum Side tem hoje uma cor
+// propria, e o default cai em Violet (cor real, visivelmente nem azul nem
+// vermelha).
 //------------------------------------------------------------------------------
 std::string defaultColorForSide(const unsigned int side)
 {
@@ -177,19 +176,13 @@ std::string lookupOr(const std::map<std::string, std::string>& table,
 //------------------------------------------------------------------------------
 // Resolucao de 'Type='/'Color=' ACMI.
 //
-// ARMADILHA CONFIRMADA RODANDO -- REID_PLAYER_DATA traz um PlayerId
-// PARCIAL: so 'id' e 'name'. 'ac_type', 'major_type' e 'side' NAO vem
-// preenchidos, e REID_NEW_PLAYER (que traria o PlayerId completo) nunca e
-// emitido para os players que ja nascem declarados no .edl -- ele so
-// dispara para entidades criadas em runtime (armas liberadas, entidades
-// que chegam pela rede).
-//
-// Por isso a chave dos mapas casa por 'ac_type' QUANDO existe (caso das
-// armas/efeitos, via REID_WEAPON_RELEASED) e cai para o 'name' do player,
-// que e o unico campo sempre disponivel. Os defaults por major_type/side
-// ficam como ultimo recurso. Essa precedencia inteira mora em
-// resolveFrom(), mais abaixo -- e a MESMA usada por publishIdentities(),
-// que e por onde a identidade de verdade chega hoje.
+// REID_PLAYER_DATA traz um PlayerId parcial (so id e name) -- ac_type,
+// major_type e side nao vem preenchidos, e REID_NEW_PLAYER (que traria o
+// PlayerId completo) nunca e emitido para players declarados no .edl. Por
+// isso a chave dos mapas casa por ac_type quando existe (armas/efeitos, via
+// REID_WEAPON_RELEASED) e cai para o name do player; os defaults por
+// major_type/side ficam como ultimo recurso. Essa precedencia mora em
+// resolveFrom() e e a mesma usada por publishIdentities().
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 // Texto do evento de contato de radar, com o que o TrackData nativo oferecer.
@@ -221,17 +214,14 @@ std::string TacviewOutput::trackContactText(const std::string& trackId,
 // O slot 'typeMap'/'colorMap' continua tendo precedencia -- e como se
 // sobrepoe um tipo especifico sem tocar em C++.
 //
-// LIMITACAO CONFIRMADA RODANDO -- esta busca so funciona se a cadeia de
-// containers chegar ate a Station, e ELA NAO CHEGA: o DataRecorder nao
-// chama container() no objeto do seu slot 'outputHandler', entao daqui
-// enxerga-se no maximo o RecorderOutputHandler pai (findContainerByType
-// para Station e para AbstractDataRecorder devolve nullptr).
-//
-// Na pratica, portanto, quem resolve tipo/cor hoje e o fallback por
-// NOME abaixo (typeMap/colorMap do EDL). Objetos criados em runtime --
-// chaff, flare, misseis -- recebem nomes automaticos ("W10001") e caem
-// no default por major_type. O codigo de consulta fica porque passa a
-// funcionar sozinho se o encadeamento for corrigido no framework.
+// resolveInfo() sobe ate a Station pelo encadeamento de containers, mas essa
+// busca so funciona se a cadeia chegar ate la -- o que nao acontece: o
+// DataRecorder nao chama container() no objeto do seu slot
+// 'outputHandler', entao daqui so se enxerga o RecorderOutputHandler pai. Na
+// pratica, quem resolve tipo/cor hoje e o fallback por nome (typeMap/
+// colorMap do EDL); objetos criados em runtime recebem nomes automaticos e
+// caem no default por major_type. O codigo de consulta por container fica
+// pronto para funcionar se o encadeamento for corrigido no framework.
 //------------------------------------------------------------------------------
 TacviewOutput::ResolvedInfo TacviewOutput::resolveFrom(const std::string& name,
                                                        const std::string& type,
@@ -356,18 +346,11 @@ const TacviewOutput::ResolvedInfo& TacviewOutput::resolveInfo(const recorder::pb
 //------------------------------------------------------------------------------
 // initIfNeeded() -- socket e arquivo, INDEPENDENTES um do outro.
 //
-// ARMADILHA CORRIGIDA AQUI (encontrada rodando): a versao anterior fazia
-// 'return' assim que server.start() falhava, e com isso NAO abria o .acmi --
-// uma porta ocupada matava tambem a gravacao local, que nao tem nada a ver
-// com o socket. E acontece de verdade neste repositorio: basta uma segunda
-// poc (ou uma segunda instancia do ./app) ja escutando a mesma porta e a
-// missao inteira era perdida em silencio, com a unica pista num std::cerr
-// que o FTXUI engole.
-//
-// Agora o transporte de rede e a gravacao sao tentados separadamente, e
-// 'initialized' passa a significar "ha ALGUM destino" -- que e exatamente o
-// que server.isActive() ja testava no resto da classe. 'initFailed' fica
-// para o caso de nenhum dos dois subir.
+// O transporte de rede e a gravacao em arquivo sao tentados separadamente:
+// uma porta ocupada (ex.: uma segunda instancia ja escutando) nao pode
+// derrubar tambem a gravacao local, que nao depende do socket. 'initialized'
+// significa "ha algum destino" (mesmo teste que server.isActive() ja
+// fazia); 'initFailed' cobre o caso de nenhum dos dois subir.
 //------------------------------------------------------------------------------
 void TacviewOutput::initIfNeeded()
 {
@@ -421,11 +404,11 @@ void TacviewOutput::emitState(const recorder::pb::PlayerId& id,
    double lat{}, lon{}, alt{};
    base::nav::convertEcef2Geod(p.x(), p.y(), p.z(), &lat, &lon, &alt);
 
-   // ARMADILHA CONFIRMADA RODANDO -- PlayerState.angles sao os Euler
-   // GEOCENTRICOS (body/ECEF), nao os geodeticos (body/NED) que o Tacview
-   // espera. Sem converter, uma aeronave nivelada em lat 37 / lon -116
-   // aparecia com roll=-180, pitch=-53 (=90-37), yaw=64 (=180-116) -- os
-   // angulos estavam medindo a posicao no globo, nao a atitude.
+   // PlayerState.angles sao os Euler geocentricos (body/ECEF), nao os
+   // geodesicos (body/NED) que o Tacview espera -- sem converter, uma
+   // aeronave nivelada em lat 37/lon -116 apareceria com roll=-180,
+   // pitch=-53, yaw=64: os angulos estariam medindo a posicao no globo, nao
+   // a atitude.
    double rollDeg{}, pitchDeg{}, yawDeg{};
    if (state.has_angles()) {
       const auto& a = state.angles();

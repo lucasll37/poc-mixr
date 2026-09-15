@@ -16,14 +16,12 @@ ConsoleKeyboard::ConsoleKeyboard()
    raw.c_cc[VTIME] = 0;
    if (::tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) return;
 
-   // ACHADO POR AUDITORIA (nao redescobrir): F_SETFL muda flags da OPEN FILE
-   // DESCRIPTION, compartilhada entre processos que herdaram o mesmo fd via
-   // fork()+exec() -- o caso normal de rodar um binario interativo a partir
-   // de um shell. Sem salvar e restaurar O_NONBLOCK (so o termios era
-   // restaurado), sair normalmente deixava o shell que invocou o processo
-   // com stdin nao-bloqueante -- reproduzido isolado com fork+fcntl. Salva
-   // ANTES de setar, pra restaurar exatamente o que havia (nao so' "limpar"
-   // O_NONBLOCK, que pode nao ter sido o estado original).
+   // F_SETFL muda flags da open file description, compartilhada entre
+   // processos que herdaram o mesmo fd via fork()+exec() -- o caso normal de
+   // rodar um binario interativo a partir de um shell. Sem salvar e
+   // restaurar O_NONBLOCK, sair normalmente deixava o shell que invocou o
+   // processo com stdin nao-bloqueante. O flag original e salvo antes de
+   // setar, para restaurar exatamente o estado anterior.
    originalFlags = ::fcntl(STDIN_FILENO, F_GETFL);
    if (originalFlags != -1) ::fcntl(STDIN_FILENO, F_SETFL, originalFlags | O_NONBLOCK);
    active = true;

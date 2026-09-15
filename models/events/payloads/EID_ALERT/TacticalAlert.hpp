@@ -55,6 +55,13 @@ namespace events {
 // Os campos sao deliberadamente CRUS (posicao no plano NED do cenario, em
 // metros): quem recebe decide o que fazer, e o alerta nao carrega nenhuma
 // ordem. Isso mantem o emissor ignorante sobre o comportamento do receptor.
+//
+// 'senderNorthM/senderEastM/senderAltitudeM/senderSide' carregam a posicao e
+// o lado do EMISSOR no instante da transmissao -- nao confundir com
+// 'northM/eastM/altitudeM', que sao a posicao do CONTATO relatado. Existem
+// para o receptor filtrar por alcance/lado SEM precisar voltar a consultar o
+// WorldModel (o payload ja chega auto-suficiente, mesma filosofia dos
+// campos de contato) -- ver xnative::AlertDatalink::onDatalinkMessageEvent().
 //------------------------------------------------------------------------------
 class TacticalAlert : public base::Object
 {
@@ -70,6 +77,10 @@ public:
    double getEastM() const              { return eastM; }
    double getAltitudeM() const          { return altitudeM; }
    double getRangeM() const             { return rangeM; }
+   double getSenderNorthM() const       { return senderNorthM; }
+   double getSenderEastM() const        { return senderEastM; }
+   double getSenderAltitudeM() const    { return senderAltitudeM; }
+   unsigned int getSenderSide() const   { return senderSide; }
 
    void setSender(const int id, const std::string& name)   { senderId = id; senderName = name; }
    void setContactName(const std::string& name)            { contactName = name; }
@@ -78,6 +89,11 @@ public:
       northM = n; eastM = e; altitudeM = alt;
    }
    void setRangeM(const double r)       { rangeM = r; }
+   void setSenderPosition(const double n, const double e, const double alt)
+   {
+      senderNorthM = n; senderEastM = e; senderAltitudeM = alt;
+   }
+   void setSenderSide(const unsigned int side)              { senderSide = side; }
 
 private:
    int senderId{};
@@ -87,6 +103,10 @@ private:
    double eastM{};
    double altitudeM{};
    double rangeM{};
+   double senderNorthM{};
+   double senderEastM{};
+   double senderAltitudeM{};
+   unsigned int senderSide{};
 };
 
 } // namespace events

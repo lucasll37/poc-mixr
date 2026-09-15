@@ -42,29 +42,25 @@ MODEL_ROOT = HERE.parent
 CONFIGS = MODEL_ROOT / "configs"
 DEFAULT_BINARY = MODEL_ROOT / "build" / "tools" / "dump-tree-model"
 
-# ACHADO POR AUDITORIA, CORRIGIDO (nao redescobrir): a regex exigia
-# EXATAMENTE dois espacos literais antes de '<TreeNodesModel>' -- uma
-# reindentacao (ex.: o Groot resalvando o arquivo com QDomDocument/
-# QXmlStreamWriter, que tem estilo de indentacao proprio, ou alguem
-# reformatando o XML a mao com TAB) fazia o bloco existente NAO ser
-# detectado. apply_tree_nodes_model() cai entao no caminho de "inserir antes
-# de </root>" -- SEM erro, reportado como "inserido" -- produzindo um
-# arquivo com DOIS blocos <TreeNodesModel>. So' na chamada SEGUINTE (make
-# update-bt/tree-model-sync) e' que os 2 blocos sao detectados e o script
-# aborta com ValueError, sem se autorreparar. '[ \t]*' tolera qualquer
-# indentacao (inclusive nenhuma) antes da tag de abertura.
+# A regex exigia EXATAMENTE dois espacos literais antes de
+# '<TreeNodesModel>' -- uma reindentacao (ex.: o Groot resalvando o arquivo
+# com QDomDocument/QXmlStreamWriter, que tem estilo de indentacao proprio,
+# ou alguem reformatando o XML a mao com TAB) fazia o bloco existente nao
+# ser detectado. apply_tree_nodes_model() cai entao no caminho de "inserir
+# antes de </root>" -- sem erro, reportado como "inserido" -- produzindo um
+# arquivo com DOIS blocos <TreeNodesModel>. So na chamada seguinte (make
+# update-bt/tree-model-sync) os 2 blocos sao detectados e o script aborta
+# com ValueError, sem se autorreparar. '[ \t]*' tolera qualquer indentacao
+# (inclusive nenhuma) antes da tag de abertura.
 BLOCK_RE = re.compile(r"[ \t]*<TreeNodesModel>.*?</TreeNodesModel>\n", re.DOTALL)
 
-# SEGUNDO ACHADO, ESTE RODANDO E DESTRUTIVO (nao redescobrir): a regex acima
-# nao sabe o que e' COMENTARIO. Uma arvore cujo cabecalho MENCIONA a tag --
-# ex.: "o bloco <TreeNodesModel> abaixo e' gerado, nao edite a mao", que e'
-# exatamente o comentario que se quer escrever num arquivo gerado -- casa a
-# partir da MENCAO e, com re.DOTALL, engole tudo ate' o '</TreeNodesModel>'
-# do bloco de verdade: o resto do comentario, o '-->', o '<root>' e a
-# <BehaviorTree> INTEIRA. O sintoma nao e' um erro: o script diz
-# "substituido" e o arquivo fica sem arvore nenhuma (reproduzido, com perda
-# real do arquivo -- recuperado de uma copia). Por isso as mencoes dentro de
-# comentario sao mascaradas ANTES de procurar o bloco.
+# A regex acima nao sabe o que e comentario. Uma arvore cujo cabecalho
+# MENCIONA a tag -- ex.: "o bloco <TreeNodesModel> abaixo e gerado, nao
+# edite a mao" -- casa a partir da mencao e, com re.DOTALL, engole tudo ate
+# o '</TreeNodesModel>' do bloco de verdade: o resto do comentario, o
+# '-->', o '<root>' e a <BehaviorTree> inteira. O sintoma nao e um erro: o
+# script diz "substituido" e o arquivo fica sem arvore nenhuma. Por isso as
+# mencoes dentro de comentario sao mascaradas antes de procurar o bloco.
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
@@ -75,9 +71,9 @@ def _mascarar_comentarios(content: str) -> str:
 
     Mascarar, e nao so' descartar matches que COMECAM dentro de um
     comentario: um match que comeca na mencao e termina no bloco de verdade
-    CONSOME o bloco, e o finditer seguinte nunca mais o enxerga (medido -- a
-    primeira tentativa de correcao filtrava por posicao de inicio e deixava
-    o arquivo com DOIS blocos, com o --check reportando tudo em ordem).
+    CONSOME o bloco, e o finditer seguinte nunca mais o enxerga -- descartar
+    por posicao de inicio deixaria o arquivo com DOIS blocos, com o --check
+    reportando tudo em ordem.
 
     Mesma tecnica de tools/mixr_source_scan.py::mask_source() na raiz deste
     repositorio, pelo mesmo motivo."""
