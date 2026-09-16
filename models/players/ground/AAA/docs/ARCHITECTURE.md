@@ -51,8 +51,9 @@ de FUNDO, `updateData()`) aparece encadeada em `base/factory.cpp`; `AgentTC` nã
 
 Uma antiaérea estacionária não precisa decidir à taxa de tempo crítico (50 Hz) — um alvo a
 ~100 m/s entra no domo e há de sobra a taxa de fundo (10 Hz, ~100 ms de latência) para "alcance
-dentro do domo → dispara". Por isso o `.edl` do cenário declara `( UbfAgent state: (AaaState)
-behavior: (AaaBehavior) )` **direto, nativo, sem nenhum C++ novo**:
+dentro do domo → dispara". Por isso o `.edl` do cenário declarava `( UbfAgent state: (AaaState)
+behavior: (AaaBehavior) )` **direto, nativo, sem nenhum C++ novo** (até a correção descrita logo
+abaixo, "`AaaAgent` — o ciclo de referência com o próprio player"):
 
 ```cpp
 // contexts/src/mixr/src/base/ubf/Agent.cpp
@@ -65,6 +66,47 @@ void Agent::initActor() {
 como este é declarado DENTRO de `components:` da `AaaSite`, o ator já é a própria antiaérea, sem
 precisar subir a cadeia de containers (diferente do `FlightAgentTC` do A-4, que também não
 precisou sobrescrever `initActor()` pelo mesmo motivo — ver o comentário daquela classe).
+
+**Isto continua verdadeiro** — nenhuma taxa de tempo crítico, nenhum `AgentTC`. O que mudou foi
+outra coisa, ortogonal a isto: ver a seção seguinte.
+
+## `AaaAgent` — o ciclo de referência com o próprio player
+
+O mesmo `Agent::initActor()` citado acima — `setActor(container())` — é exatamente o que fecha um
+ciclo de referência clássico: `AaaSite` possui o agente via `components:` (uma referência forte,
+como qualquer `PairStream` de componentes), e o agente possui uma referência de volta a `AaaSite`
+via `myActor` (`base::safe_ptr`, também ref-owning). Nenhum `unref()` externo desfaz um ciclo
+assim sozinho — `Agent::deleteData()` (que zera `myActor`) só roda quando o próprio `Agent` já
+está sendo destruído, o que nunca acontece enquanto o ciclo segura os dois lados acima de zero.
+
+Isto não é hipotético: é o MESMO bug já encontrado e corrigido em `models/players/air/A-4`
+(replicado em `C-130`/`paratrooper`/`Navstar-3`) — medido por `LeakSanitizer` vazando a árvore de
+objetos inteira de um player no modo `-deterministic`, porque o processo sai antes que qualquer
+coisa force o ciclo a se desfazer. A diferença aqui é que, nos outros quatro modelos, a classe de
+agente já existia por outro motivo (`AgentTC`, decisão em tempo crítico) e só precisou ganhar um
+`shutdownNotification()` a mais; aqui não havia NENHUMA classe de agente própria — só o
+`( UbfAgent )` nativo, direto — então a correção precisou nascer uma classe nova,
+`xnative::AaaAgent` (`include/xnative/AaaAgent.hpp`), só para isso:
+
+```cpp
+bool AaaAgent::shutdownNotification()
+{
+   setActor(nullptr);
+   return BaseClass::shutdownNotification();
+}
+```
+
+`AaaAgent` **não muda nenhum comportamento de decisão** — `controller()`/`initActor()`/
+`updateData()` continuam exatamente os de `base::ubf::Agent`, herdados sem override. O `.edl` do
+cenário passou a declarar `( AaaAgent state: (AaaState) behavior: (AaaBehavior) )` no lugar de
+`( UbfAgent ...)`; `provides: { ... AaaAgent }` precisou da entrada nova pelo mesmo motivo de
+sempre (`provides:` é igualdade exata de conjunto contra o que `libAAA.so` exporta).
+
+**Não verificado por `LeakSanitizer` de verdade** (ao contrário do A-4/core, os únicos alvos que
+consomem `asan_cpp_args`/`asan_link_args` hoje) — a prova aqui é por leitura do fonte (o mesmo
+`Agent::initActor()`/`safe_ptr` citados acima) mais build + suíte de testes + execução completa
+do cenário `sandbox/AAA-A4-6DOF` em `-deterministic`, sem crash. Estender ASan a este projeto
+ficaria para quem quiser essa prova instrumentada.
 
 ## Armadilha: `SamVehicle`/`Sam` não são o mesmo que `Missile`
 

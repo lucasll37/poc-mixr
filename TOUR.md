@@ -10,7 +10,7 @@ parada.
 > pra lá.
 > **Tacview é aplicativo de terceiro**, edição Advanced (paga) — sem ela não há telemetria ao vivo.
 
-## Trilha principal
+## Trilha
 
 ### 1. Subir o ambiente
 
@@ -42,8 +42,6 @@ catálogo de classes, entre outras.
 **Onde:** `make open-docs`; seção "Leia mais" do `README.md`.
 **Sucesso:** localizar, na aba de comportamento, a cadeia real de produção `FlightAgentTC →
 Agent::controller → BtBehavior → flight_tree.xml → FlightAction`.
-
-## Trilha de aprofundamento (se sobrar tempo)
 
 ### 5. Editor gráfico de cenário (`edl-builder`)
 

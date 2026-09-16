@@ -16,11 +16,11 @@ make run-app                                                            # atalho
                                                                          # (sem -scenario: abre a tela de selecao)
 ```
 
-Os 11 cenários abaixo **compartilham a porta Tacview 1234** (confirmado nos 11 `.edl.in`) — de
+Os 12 cenários abaixo **compartilham a porta Tacview 1234** (confirmado nos 12 `.edl.in`) — de
 propósito, já que nenhum roda ao mesmo tempo que outro.
 
 **`sandbox/` é gitignored por padrão.** `sandbox/.gitignore` ignora qualquer subpasta nova
-(`/*/`) e reabre, por nome, só as 11 que este repositório já traz como exemplo (`!/A4-6DOF/`
+(`/*/`) e reabre, por nome, só as 12 que este repositório já traz como exemplo (`!/A4-6DOF/`
 etc.) — criar uma pasta nova aqui para testar algo fica automaticamente **fora do git**, sem
 precisar tocar em `.gitignore` nenhum. Para transformar uma experiência sua num exemplo
 versionado, acrescente `!/<nome-da-pasta>/` na lista de `sandbox/.gitignore` e rode `git add
@@ -43,6 +43,7 @@ sandbox/<nome-da-pasta>/`. Independente disso, o **conteúdo gerado em runtime**
 | [C-130-6DOF](C-130-6DOF/README.md) | Reaproveita a **geometria de rota** de A4-6DOF (mesma figura-de-oito de 20 pontos) pilotada por um C-130, não pelo A-4 | `C-130` | reaproveita a **rota** de A4-6DOF (não o `.edl` inteiro — frota e modelo mudam: 1 C-130, não 8 A-4) |
 | [C-130_paratrooper-6DOF](C-130_paratrooper-6DOF/README.md) | Integração real: um C-130 libera **30 paraquedistas de verdade** (`( Paratrooper )`, não um placeholder) em sequência de 1,5 s, numa rota própria mais simples | `C-130` + `paratrooper` | independente — rota nova de 3 steerpoints, não a figura-de-oito |
 | [Navstar-3-constellation](Navstar-3-constellation/README.md) | Quatro satélites `Navstar-3`, mesma classe, quatro planos orbitais distintos (`raan` diferente em cada um) | `Navstar-3` (`models/players/space/Navstar-3`) | independente — único cenário orbital deste `sandbox/`, não pilota aeronave nenhuma |
+| [A4-6DOF-NBA](A4-6DOF-NBA/README.md) | Um único A-4 voando reto (rumo 090) a 300 ft AGL acompanhando terreno **real** por ~288 km, atravessando a fronteira entre dois tiles SRTM — valida o carregamento multi-tile (`MultiTileTerrain`), não combate/frota | A-4 | independente — eixo próprio (validação de terreno), não frota/rota/dinâmica como o resto do índice |
 
 ## Por onde começar
 
@@ -70,6 +71,11 @@ Ordem sugerida:
    (C-130 largando paraquedistas de verdade).
 7. **[Navstar-3-constellation](Navstar-3-constellation/README.md)** — eixo totalmente diferente dos
    dez anteriores: órbita, não voo atmosférico.
+8. **[A4-6DOF-NBA](A4-6DOF-NBA/README.md)** — outro eixo diferente dos onze anteriores: não é
+   sobre frota/dinâmica/combate, é validação de carregamento de terreno (`MultiTileTerrain`) sobre
+   dado SRTM real, voando reto e baixo por um corredor de ~288 km. Achado construindo: um bug real
+   e confirmado (não deste cenário) na decodificação de elevação negativa do MIXR nativo — ver a
+   seção própria no README dele.
 
 ## Vocabulário extra do Steerpoint: sca, magvar, pta
 
@@ -132,7 +138,7 @@ de template; o `s/@RUN_ID@/x/g` acima resolve os dois de uma vez.
 
 ## Como verificar qualquer cenário deste sandbox
 
-A receita abaixo é a mesma nos 11 cenários — troque `<pasta>` e `<arquivo>` pelo nome da subpasta e
+A receita abaixo é a mesma nos 12 cenários — troque `<pasta>` e `<arquivo>` pelo nome da subpasta e
 pelo `.edl.in` que ela usa (ver a tabela do índice, acima). Cada README individual documenta só o
 que diverge disso: rótulos `bt=` esperados, scripts extras de determinismo/semente, etc.
 

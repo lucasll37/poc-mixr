@@ -15,9 +15,12 @@ namespace xAAA {
 //              alcance de engajamento, ja' nativo do MIXR) -- nenhum
 //              comportamento novo aqui. A decisao inteira (percepcao ->
 //              arvore -> disparo) mora em ubf::AaaState/AaaBehavior/
-//              AaaAction, hospedados por um ( UbfAgent ) NATIVO (nao uma
-//              subclasse propria) declarado dentro dos components: desta
-//              classe no .edl do cenario.
+//              AaaAction, hospedados por um ( AaaAgent ) -- subclasse
+//              MINIMA de base::ubf::Agent (xnative/AaaAgent.hpp), que so'
+//              fecha um ciclo de referencia com o proprio player no
+//              shutdown e nao decide nada diferente do ( UbfAgent )
+//              nativo usado antes -- declarado dentro dos components:
+//              desta classe no .edl do cenario.
 //
 // Factory name: AaaSite
 //
@@ -36,12 +39,16 @@ namespace xAAA {
 // precisa decidir a' taxa de tempo critico (50 Hz) -- um alvo a
 // ~100 m/s entra no domo e ha' de sobra a taxa de fundo (10 Hz, ~100 ms de
 // latencia) para "alcance dentro do domo -> dispara". Por isso o .edl deste
-// cenario declara ( UbfAgent state: (AaaState) behavior: (AaaBehavior) )
-// DIRETO, nativo, sem nenhum C++ novo -- e' o que
-// Agent::initActor()/controller() ja fazem sozinhos
-// (contexts/src/mixr/src/base/ubf/Agent.cpp): o ator vira' o proprio
-// container() do Agent, que e' esta classe quando 'agent:' e' declarado
-// dentro de components: dela.
+// cenario declara ( AaaAgent state: (AaaState) behavior: (AaaBehavior) ) --
+// nao ( UbfAgent ) nativo direto (como era antes): Agent::initActor(),
+// nunca sobrescrito, ja faz o ator virar o proprio container() do Agent
+// (contexts/src/mixr/src/base/ubf/Agent.cpp), que e' esta classe quando
+// 'agent:' e' declarado dentro de components: dela -- fechando um ciclo
+// de referencia (esta classe possui o agente via components:, o agente
+// possui uma referencia de volta a ela via myActor) que so' se desfaz se
+// alguem quebrar o ciclo no shutdown. 'AaaAgent' (xnative/AaaAgent.hpp)
+// existe so' para isso -- controller()/initActor() continuam os da base,
+// sem mudanca de comportamento nenhuma.
 //
 // SamVehicle::updateData() conta municao via dynamic_cast<const Sam*>;
 // xmissile::GuidedMissile e' irma de mixr::models::Sam (as duas derivam de

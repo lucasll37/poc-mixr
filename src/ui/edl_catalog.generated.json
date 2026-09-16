@@ -637,6 +637,154 @@
     "primaryComponents": []
   },
   {
+    "class": "AaaAgent",
+    "factory": "AaaAgent",
+    "baseClass": "Agent",
+    "chain": [
+      "AaaAgent",
+      "Agent",
+      "Component",
+      "Object"
+    ],
+    "origin": "plugin:AAA",
+    "concrete": true,
+    "slots": [
+      {
+        "name": "components",
+        "declaredIn": "Component",
+        "comment": "1) Children components                                  (PairStream)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": true,
+        "unitFamilies": [],
+        "objectTypes": [
+          "Component"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "select",
+        "declaredIn": "Component",
+        "comment": "2) Manage only this child component (component idx)     (Number)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableTimingStats",
+        "declaredIn": "Component",
+        "comment": "3) Enable/disable the timing statistics for updateTC()  (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "printTimingStats",
+        "declaredIn": "Component",
+        "comment": "4) Enable/disable the printing of the timing statistics (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "freeze",
+        "declaredIn": "Component",
+        "comment": "5) Freeze flag: true(1), false(0); default: false       (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableMessageType",
+        "declaredIn": "Component",
+        "comment": "6) Enable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "disableMessageType",
+        "declaredIn": "Component",
+        "comment": "7) Disable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "state",
+        "declaredIn": "Agent",
+        "comment": "1) The agent's state object",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [
+          "AbstractState"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "behavior",
+        "declaredIn": "Agent",
+        "comment": "2) behavior",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [
+          "AbstractBehavior"
+        ],
+        "isReference": false,
+        "textOnly": false
+      }
+    ],
+    "primaryComponents": []
+  },
+  {
     "class": "AaaBehavior",
     "factory": "AaaBehavior",
     "baseClass": "AbstractBehavior",

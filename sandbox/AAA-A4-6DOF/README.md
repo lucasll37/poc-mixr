@@ -27,11 +27,13 @@ A resposta tem duas metades, cada uma num subprojeto separado:
   (que já traz os slots nativos `minLaunchRange`/`maxLaunchRange` — o "domo" já é dado nativo,
   não código novo). Pilha completa `domain/bt/ubf/xnative`, com uma árvore de comportamento de
   verdade (`Sequence(TargetInDome, FireMissile)` num `Fallback` com `Watch` de degradação) e
-  decisão via `( UbfAgent )` **nativo** (sem subclasse de `AgentTC` — a antiaérea decide na
-  taxa de FUNDO, ~10 Hz, de sobra para um alvo a ~130 m/s). Ver
+  decisão via `( AaaAgent )` (sem subclasse de `AgentTC` — a antiaérea decide na taxa de FUNDO,
+  ~10 Hz, de sobra para um alvo a ~130 m/s). `AaaAgent` é uma subclasse mínima de
+  `base::ubf::Agent` que só fecha um ciclo de referência com o próprio player no shutdown — não
+  decide nada diferente do `( UbfAgent )` nativo usado antes. Ver
   [`docs/ARCHITECTURE.md`](../../models/players/ground/AAA/docs/ARCHITECTURE.md) para o porquê de não
-  existir nenhum `AgentTC` próprio e para a armadilha do `SamVehicle`/`Sam`-cast (documentada
-  abaixo também).
+  existir nenhum `AgentTC` próprio, para o motivo de `AaaAgent` existir mesmo assim, e para a
+  armadilha do `SamVehicle`/`Sam`-cast (documentada abaixo também).
 - **`models/players/air/A-4`** (estendido) — um segundo par condição/ação de árvore
   (`RwrThreatDetectedCondition`/`EvadeRwrThreatAction`, rótulos `RWR_EVADE`/`RWR_BREAK`), uma
   árvore de **demonstração** (`configs/flight_tree_rwr_evade_demo.xml` — a árvore de produção
@@ -44,7 +46,7 @@ A resposta tem duas metades, cada uma num subprojeto separado:
 - **`aaa_site`** (vermelha) — estacionária (sem `dynamicsModel:`, `initVelocity: 0.0`), com um
   radar de **aquisição** próprio (`Gimbal`+`Antenna`+`SensorMgr(Tws)`+`OnboardComputer
   (AirTrkMgr "aaaTrkMgr")`), um `StoresMgr` com **um** `( GuidedMissile )` no cabide e
-  `agent: ( UbfAgent state:(AaaState) behavior:(AaaBehavior) )`. Domo: `minLaunchRange: 500 m`,
+  `agent: ( AaaAgent state:(AaaState) behavior:(AaaBehavior) )`. Domo: `minLaunchRange: 500 m`,
   `maxLaunchRange: 4500 m`.
 - **`a4_intruder`** (azul) — 6-DOF completo (JSBSim+Autopilot), **sem** radar de busca próprio
   (não há outra aeronave neste cenário para detectar) — só o trio de RWR **passivo**

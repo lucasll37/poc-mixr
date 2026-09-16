@@ -22,8 +22,11 @@ regra única ("alvo hostil no domo + arma disponível → dispara"). A alternati
 classe `xnative` só, decidindo direto em `updateTC()`) teria bastado para a regra em si; a pilha
 completa foi escolhida deliberadamente para espelhar a arquitetura do A-4 e demonstrar o padrão de
 novo num contexto mais simples. Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para o detalhe
-completo, inclusive por que **não** há nenhuma subclasse de `AgentTC` aqui — `( UbfAgent )` nativo
-já basta.
+completo, inclusive por que **não** há nenhuma subclasse de `AgentTC` aqui. Há, porém, uma
+subclasse mínima de `base::ubf::Agent` — `AaaAgent` — que existe só para fechar um ciclo de
+referência com o próprio player no shutdown (o mesmo bug já corrigido no A-4/C-130/paratrooper/
+Navstar-3); ela não decide nada diferente do `( UbfAgent )` nativo que este cenário usava direto
+antes.
 
 ## Estrutura
 

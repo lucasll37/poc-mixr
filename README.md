@@ -125,29 +125,102 @@ Todas escutam DIS na porta `3000`; nenhuma mostra uma evasão de verdade sozinha
 
 ## Como o projeto se organiza
 
+Quatro binários (`./app`, `src/node`, mais os satélites `edlcheck`/`plugininfo`) e nove projetos
+Meson (o core + oito sob `models/`), orquestrados por Conan → Meson/Ninja → Makefile. `build`,
+`models`, `plugins/` e `dist/` são deliberadamente **desacoplados**: compilar o core nunca precisa
+dos modelos, compilar um modelo nunca precisa saber onde o core guarda artefatos — só `make
+install` une as duas coisas, no único momento em que a união importa (alguém vai *rodar* algo).
+
 ```
 poc-mixr/
-├── app/          painel de controle (TUI) -- runner interativo principal
+├── app/                     painel de controle (TUI, FTXUI) -- runner UNICO das pocs, alem de
+│                            dois binarios satelite: edlcheck <arquivo> (valida .edl sem levantar
+│                            Station) e plugininfo (introspeccao de um .so, sem Station nenhuma)
 ├── src/
-│   ├── poc/      as provas de conceito -- cada pasta isola UMA variavel de integracao
-│   ├── rl/       wrapper Gymnasium -- o AMBIENTE de RL contra a mesma simulacao
-│   ├── ui/       editor grafico de cenario .edl (autoria offline)
-│   └── node/     runner headless de um cenario (sem TUI, so log)
-├── models/       os MODELOS -- projetos Meson a parte, carregados como plugin (dlopen)
-├── plugins/      deposito flat dos .so compilados (proprios ou de terceiro) -> dist/
-├── libs/         bibliotecas de suporte core/modelo, uma por pasta
-├── shared/       dados vendorizados do cenario (terreno SRTM, aeronaves JSBSim)
-├── sandbox/      cenarios soltos de experimentacao
-├── tests/        suite do core (a de cada modelo vive em models/<categoria>/<nome>/)
-├── contexts/     material de consulta sobre MIXR e BehaviorTree.CPP
-├── docs/         manual interativo gerado do fonte, slides, estudos de viabilidade
-├── deps/         receitas Conan p/ compilar dependencias a partir do fonte
-├── scripts/      scaffold de modelo novo, build de deps/ do fonte
-├── tools/        extracao de cadeia de execucao/diagrama de classes p/ docs/
-├── build/        gerado por 'make configure'/'make build' -- gitignored
-├── dist/         gerado por 'make install' -- gitignored, e' o que de fato roda
-└── Makefile      orquestra Conan + Meson
+│   ├── poc/                 as pocs -- cada pasta e' SO DADO: configs/ + data/ + README.md,
+│   │   │                    sem .cpp/.hpp proprio (quem executa e' sempre ./app ou src/node)
+│   │   ├── dis/             flight + bandit, o UNICO grupo -- trocam DIS nativo do MIXR entre
+│   │   │                    processos separados (o intruso mora em bandit, chega em flight so'
+│   │   │                    pela rede); rodar uma sozinha e' meia demonstracao
+│   │   ├── python-flight/   mesma flight, folhas de acao da arvore em .py (libs/xpyembed)
+│   │   ├── onnx-policy/     mesma flight, decisao inteira por rede neural (.onnx, libs/xinfer)
+│   │   ├── my-event/        sem BT/UBF -- o modelo Beacon emitindo/tratando um evento proprio
+│   │   ├── rl-training/     pipeline de treino (nao produz executavel C++, so' Python)
+│   │   └── c130-airdrop/, navstar3-orbit/, paratrooper-drop/   removidas como poc (so' `data/`
+│   │                        de execucoes passadas; os modelos que pilotavam seguem em models/,
+│   │                        servidos hoje pelos cenarios equivalentes em sandbox/)
+│   ├── rl/                  wrapper Gymnasium (extensao pybind11) -- o AMBIENTE de RL contra a
+│   │                        MESMA simulacao nativa (nao o pipeline de treino, que e' a poc acima)
+│   ├── ui/                  editor grafico de cenario .edl (autoria offline, sem servidor,
+│   │                        `.html` autocontido gerado por `make open-edl`)
+│   └── node/                runner headless e independente -- roda QUALQUER .edl passado por
+│                            argumento, sem TUI, so' log; cadeia de fabrica/ordem de encerramento
+│                            proprias, deliberadamente sem reaproveitar nada de ./app/
+├── models/                  os MODELOS -- projetos Meson A PARTE (build proprio, nao entra no
+│   │                        grafo do core), compilados ANTES (`make models`) e carregados via
+│   │                        dlopen; taxonomia espelha o namespace mixr::models do fork:
+│   ├── players/
+│   │   ├── air/             AirVehicle-derivado -- A-4 (producao, `libA-4.so`), C-130
+│   │   ├── effect/          Effect-derivado (familia Chaff/Decoy/Flare) -- paratrooper
+│   │   ├── ground/          GroundVehicle-derivado -- AAA (antiaerea, SamVehicle)
+│   │   ├── space/           SpaceVehicle-derivado -- Navstar-3 (satelite de navegacao)
+│   │   └── weapon/          Weapon-derivado (familia Missile/Bomb/Aam) -- missile
+│   ├── systems/trackmanager/, dynamics/, environments/, navegation/, sensors/
+│   │                        as demais subpastas da taxonomia -- hoje so' .gitkeep, sem modelo
+│   ├── others/Beacon/       nao se encaixa em NENHUMA taxonomia de player -- deriva Player
+│   │                        direto (mesmo padrao minimo de mixr::models::Building)
+│   ├── events/              contrato de eventos que atravessam fronteira de plugin (payload +
+│   │                        token) -- NAO e' um modelo, e' consumido por eles e por app/
+│   └── template/            unico ponto de partida COPIAVEL (`make new-model`), com o mirror de
+│                            contrato (`mirror.cpp`) que os testes de plugin do core usam
+├── libs/                    bibliotecas de suporte core<->modelo, uma por pasta (libs/x<nome>);
+│                            so' 6 cruzam a fronteira dlopen como shared_library() (xboard, xlog,
+│                            xtrack, xrlbridge, xinfer, xpyembed) -- as demais (xtacview, xclock,
+│                            xjoystick, xmsg, xterrain, xplugin) sao estaticas/header-only porque
+│                            nenhum modelo as inclui
+├── plugins/                 deposito FLAT dos .so (proprios OU de terceiro) + data/<modelo>/ --
+│                            decoplado de dist/ de proposito; so' `make install` sincroniza os dois
+├── shared/                  dados vendorizados do CENARIO, nao do subprojeto -- terreno SRTM
+│                            (`data/terrain/srtm/`) e a aeronave JSBSim comum a flight/bandit
+├── sandbox/                 cenarios soltos de experimentacao, fora do catalogo de pocs (achados
+│                            por `-folder ./sandbox`, sem precisar registrar em lugar nenhum)
+├── tests/                   suite do CORE -- determinism/, domain/, fixtures/, guard/, memory/,
+│                            plugin/, scenario/, tools/ (a suite de cada MODELO vive junto dele,
+│                            em models/<categoria>/<nome>/tests/, rodada por `make test-models`)
+├── contexts/                material de consulta sobre o MIXR/BehaviorTree.CPP: os `.md`
+│                            destilados (leitura rapida) + `src/` com o FONTE COMPLETO vendorizado
+│                            e versionado (313 .cpp do fork do MIXR, mais o fonte da BT.CPP 3.5.6)
+├── docs/                    manual/ (interativo, gerado do fonte por `make open-docs`),
+│                            presentation/ (slide deck, `make open-presentation`), books/ (os dois
+│                            manuais tecnicos completos em PDF), estudos/ (viabilidade, Markdown)
+├── deps/                    receitas Conan p/ compilar mixr/behaviortree/jsbsim/openrti/groot A
+│                            PARTIR DO FONTE (`scripts/deps.sh`) -- alternativa ao remote privado
+├── scripts/                 deps.sh, fetch_srtm.sh (baixa tiles SRTM reais), models.sh (por tras
+│                            de `make new-model`), open_browser.sh, find_groot.sh
+├── tools/                   scripts Python que alimentam docs/ e src/ui/ com dado extraido do
+│                            fonte real (catalogo EDL, diagrama de classes, cadeia de execucao)
+├── build/                   gerado por 'make configure'/'make build' (SO o core) -- gitignored
+└── dist/                    gerado por 'make install' -- gitignored, e' o que de fato RODA
+    ├── bin/                 app, node, edlcheck, plugininfo
+    ├── lib/mixr-plugins/    os .so sincronizados de plugins/
+    ├── share/mixr-plugins/  arvores de comportamento + dados de cada modelo (ex.: A-4/jsbsim/)
+    └── include/, lib/pkgconfig/   o SDK de plugin publicado por 'make sdk'
 ```
+
+Alguns invariantes que a árvore acima expressa e valem para qualquer subprojeto novo:
+
+- **Uma poc não tem código.** Toda pasta sob `src/poc/` é só `configs/` (o `.edl`/`.edl.in`) +
+  `data/` (gravações/logs, gitignorado) + `README.md`. Quem executa é sempre `./app -folder
+  <pasta> -scenario <nome>` (ou `./app -file <arquivo.edl>`) — nunca um binário próprio da poc.
+- **O modelo é um plugin, nunca o objeto de desenvolvimento do core.** `models/<categoria>/<nome>/`
+  é um projeto Meson independente, com `Makefile`/`tests/`/`docs/`/`README.md`/`CHANGELOG.md`
+  próprios; o core só enxerga o `.so` já instalado, nunca o fonte C++ do modelo.
+- **`Makefile` orquestra, não implementa.** `make models` descobre todo projeto sob `models/` por
+  `find` (qualquer subpasta, qualquer profundidade) — um modelo novo (`make new-model
+  NAME=... CATEGORY=players/air`) entra no build sem editar nada na raiz.
+- **`plugins/` é o único depósito.** Um `.so` compilado por este repositório e um de terceiro
+  entram exatamente pelo mesmo lugar (`plugins/*.so` + `plugins/data/<nome>/`); a partir daí são
+  indistinguíveis para `make install`.
 
 ## Leia mais
 

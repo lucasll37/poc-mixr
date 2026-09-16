@@ -19,10 +19,12 @@
 //      initVelocity:0.0). Radar de aquisicao PROPRIO (mesma cadeia
 //      Gimbal+Antenna+SensorMgr(Tws)+OnboardComputer(AirTrkMgr), so' que
 //      nomeado "aaaTrkMgr" -- ver models/players/ground/AAA/docs/ARCHITECTURE.md),
-//      StoresMgr com UM ( GuidedMissile ), agent: ( UbfAgent ) NATIVO (sem
-//      subclasse de AgentTC -- decide a taxa de FUNDO, 10 Hz, de sobra pra
-//      um alvo a ~130 m/s). minLaunchRange/maxLaunchRange (slots nativos de
-//      SamVehicle) sao o "domo".
+//      StoresMgr com UM ( GuidedMissile ), agent: ( AaaAgent ) -- subclasse
+//      MINIMA de base::ubf::Agent (nao AgentTC -- decide a taxa de FUNDO,
+//      10 Hz, de sobra pra um alvo a ~130 m/s), que existe so' para fechar
+//      o ciclo de referencia com o proprio player no shutdown (ver
+//      models/players/ground/AAA/include/xnative/AaaAgent.hpp). minLaunchRange/
+//      maxLaunchRange (slots nativos de SamVehicle) sao o "domo".
 //
 //   a4_intruder -- 6-DOF completo (JSBSim+Autopilot), SEM radar de busca
 //      proprio (nao ha outra aeronave neste cenario para detectar) -- so'
@@ -83,7 +85,7 @@
             )
             ( PluginModule
                file:     "libAAA.so"
-               provides: { AaaSite AaaState AaaBehavior AaaAction }
+               provides: { AaaSite AaaState AaaBehavior AaaAction AaaAgent }
             )
          }
       )
@@ -119,7 +121,7 @@
 
          // ==============================================================
          // aaa_site -- estacionaria, radar de aquisicao proprio, um so
-         // missil no cabide, decisao via UbfAgent nativo (sem AgentTC)
+         // missil no cabide, decisao via AaaAgent (sem AgentTC)
          // ==============================================================
          aaa_site: ( AaaSite
             id: 201
@@ -216,12 +218,17 @@
                   }
                )
 
-               // O AGENTE -- UbfAgent NATIVO (nao AgentTC), decidindo a
-               // taxa de FUNDO (updateData(), ~10 Hz): de sobra pra "alvo
-               // a ~130 m/s entra no domo, dispara". Ver
-               // models/players/ground/AAA/docs/ARCHITECTURE.md para o porque de
-               // nao existir nenhuma subclasse propria de AgentTC aqui.
-               agent: ( UbfAgent
+               // O AGENTE -- AaaAgent (subclasse minima de base::ubf::Agent,
+               // nao AgentTC), decidindo a taxa de FUNDO (updateData(),
+               // ~10 Hz): de sobra pra "alvo a ~130 m/s entra no domo,
+               // dispara". Ver models/players/ground/AAA/docs/ARCHITECTURE.md
+               // para o porque de nao existir nenhuma subclasse de AgentTC
+               // aqui, e models/players/ground/AAA/include/xnative/AaaAgent.hpp
+               // para o porque de AaaAgent existir mesmo assim (fecha um
+               // ciclo de referencia com o proprio player no shutdown --
+               // o ( UbfAgent ) nativo, usado direto ate aqui, nao tem
+               // como fazer isso).
+               agent: ( AaaAgent
                   state: ( AaaState )
                   behavior: ( AaaBehavior
                      treeFile: "./dist/share/mixr-plugins/AAA/aaa_tree.xml"

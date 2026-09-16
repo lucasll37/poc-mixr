@@ -428,11 +428,21 @@ test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, 
 	@python3 ./tests/scenario/make_fixture.py --poc flight --mode intruder \
 		--out $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in
 	@echo "  rodando 500 frames sob ASan ..."
+	@# '-numBgThreads 1' ao lado de '-numTcThreads 1': sem ele, o default de
+	@# 'numBgThreads' (2, resolvido no .edl.in) cria UMA thread real do pool de
+	@# background da Simulation. Essa thread so solta a referencia que toma da
+	@# Simulation (Component::ref() em AbstractThread::staticThreadFunc()) ao
+	@# ser agendada pelo SO depois do SHUTDOWN_EVENT -- e o processo de
+	@# '-deterministic' sai quase na sequencia, quase sempre perdendo essa
+	@# corrida. Isso deixa a Simulation (e toda a arvore de players por baixo
+	@# dela) sem o unref() final, vazando de verdade sob LeakSanitizer. Mesma
+	@# razao de 'numTcThreads 1' aqui do lado: nenhuma parte da simulacao pode
+	@# rodar em pool de threads separado para este alvo ficar limpo.
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
 		$(BUILD_DIR)/app/src/app \
 		-file $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in \
-		-numTcThreads 1 -deterministic 500 > /dev/null; \
+		-numTcThreads 1 -numBgThreads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
 		echo "  revertendo build/ para nao-ASan ..."; \
 		revert_falhou=0; \

@@ -22,7 +22,10 @@
 # (AskUserQuestion), para espelhar a arquitetura do A-4 mesmo sendo uma
 # regra unica ("alvo no domo + arma disponivel -> dispara"). Ver
 # docs/ARCHITECTURE.md para o "porque" completo, inclusive por que NAO ha
-# nenhuma subclasse de AgentTC aqui (( UbfAgent ) nativo basta).
+# nenhuma subclasse de AgentTC aqui -- so' AaaAgent, subclasse MINIMA de
+# base::ubf::Agent que fecha um ciclo de referencia com o proprio player
+# no shutdown (nao decide nada de diferente do ( UbfAgent ) nativo que
+# este cenario usava antes).
 #
 # Este diretorio nao hospeda mirror de contrato nenhum (ao contrario de
 # models/template/, que hospeda DOIS artefatos) -- 'src/mirror.cpp' NAO faz
@@ -102,6 +105,10 @@ model_sources = domain_sources + bt_sources + files(
 
     # o Player estacionario em si (subclasse de mixr::models::SamVehicle)
     'src/xnative/AaaSite.cpp',
+
+    # subclasse MINIMA de base::ubf::Agent -- so' fecha o ciclo de
+    # referencia com o proprio player no shutdown (ver o .hpp)
+    'src/xnative/AaaAgent.cpp',
 
     # fronteira de registro (o dlsym entra por aqui, ver src/plugin.cpp)
     'src/xnative/factory.cpp',

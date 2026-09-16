@@ -68,6 +68,24 @@ void Navstar3AgentTC::controller(const double dt)
    decisions.fetch_add(1, std::memory_order_relaxed);
 }
 
+//------------------------------------------------------------------------------
+// shutdownNotification() -- quebra o ciclo de referencia com o proprio
+// player antes de delegar para a base (armadilha 4 do .hpp).
+//
+// Agent::myActor e' um safe_ptr (ref-owning) apontando de volta para o
+// player que contem este agente (initActor() sobe container()). O player
+// possui o agente via components:, e o agente possui uma referencia de
+// volta ao player via myActor -- um ciclo que nenhum unref() externo
+// desfaz sozinho. setActor(nullptr) solta essa referencia; a chamada a
+// BaseClass::shutdownNotification() continua propagando o evento para os
+// subcomponentes do proprio agente.
+//------------------------------------------------------------------------------
+bool Navstar3AgentTC::shutdownNotification()
+{
+   setActor(nullptr);
+   return BaseClass::shutdownNotification();
+}
+
 } // namespace xNavstar_3
 } // namespace models
 } // namespace mixr

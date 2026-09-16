@@ -1,0 +1,342 @@
+//
+// A4-6DOF-NBA -- UM player, voo reto a baixa altura (300 ft AGL) acompanhando
+//                o terreno real por ~288 km, atravessando DUAS fronteiras de
+//                tile SRTM
+//
+// NBA = Nap-of-the-earth Baixa Altitude: o proposito INTEIRO deste cenario e
+// validar, rodando, o carregamento correto da elevacao do terreno
+// (MultiTileTerrain, ver a secao "libs/xterrain" do CLAUDE.md da raiz) --
+// nao e sobre combate, frota ou arvore de comportamento nenhuma.
+//
+// Alcancado via '-folder <pasta>' do ./app (nome da subpasta: "A4-6DOF-NBA"):
+//
+//    ./build/app/src/app -folder ./sandbox -scenario A4-6DOF-NBA
+//    ./build/app/src/app -folder ./sandbox -scenario A4-6DOF-NBA -deterministic 30000
+//
+// A IDEIA: um unico A-4 (mesmo modelo/plugin dos outros 11 cenarios deste
+// sandbox) comeca no extremo OESTE de um corredor real de terreno (Serra do
+// Mar, os mesmos tiles SRTM1 reais ja vendorizados em
+// shared/data/terrain/srtm/ -- ver o README daquela pasta) e voa reto para
+// LESTE (rumo 090, sem curva nenhuma) por ~288 km, ate o extremo do
+// corredor. Nao ha patrulha, nao ha evasao, nao ha alerta: a arvore desta
+// aeronave e flight_tree_nav.xml, o MESMO arquivo de UM no so (( Navigate ))
+// que full-systems-nav/A4-6DOF ja usam -- ver o cabecalho dele para o
+// raciocinio completo de por que o pilot continua com navMode:false.
+//
+// A LINHA RETA E' SO UM STEERPOINT, BEM LONGE. Nao ha 20 pontos de rota como
+// A4-6DOF: com autoSequence:false e um UNICO steerpoint (( wp1 )) a ~288 km
+// de distancia, ( Navigate ) so faz Navigation::getTrueBrgDeg() apontar
+// direto para ele -- que, na mesma latitude do ponto de partida, e' sempre
+// rumo 090 exato, do primeiro ao ultimo frame. Nao precisa de dezenas de
+// steerpoints para "seguir uma linha reta"; precisa de UM, distante o
+// suficiente para o rumo nunca precisar recalcular de verdade.
+//
+// COMO A ALTITUDE VIRA "300 FT ACOMPANHANDO O TERRENO" SEM NENHUMA LINHA DE
+// C++ NOVA -- o pulo do gato deste cenario. ( bt_nodes::NavigateAction )
+// (models/players/air/A-4/src/bt/nodes/NavigateAction.cpp) SEMPRE passa a
+// altitude comandada do steerpoint por
+// BtBehavior::clampAltitudeToTerrain(), o mesmo piso anti-CFIT que
+// Patrol/RTB/Support ja usam -- e domain::clampToTerrain() "nunca abaixa
+// nada -- so' levanta" (ver domain/TerrainFloor.hpp). wp1 abaixo comanda
+// ( Meters -2000 ), um valor deliberadamente MUITO abaixo de qualquer
+// terreno real -- entao o clamp SEMPRE vence, e o comando de altitude que
+// chega no Autopilot e', o tempo todo, EXATAMENTE
+// (elevacao real do terreno sob a aeronave, lida ao vivo por
+// Player::updateElevation() -> MultiTileTerrain::getElevation(), a cada
+// frame de fundo) + terrainClearance (300 ft, ajustado abaixo em
+// ( BtBehavior )). Ou seja: o voo de baixa altura acompanhando o terreno E'
+// literalmente o piso anti-CFIT em acao o tempo todo, nao uma rota
+// pre-calculada nem um no novo -- se MultiTileTerrain carregar o tile ERRADO
+// (ou nao carregar nenhum) em algum ponto do corredor, o sintoma aparece na
+// hora: a altitude comandada salta para o piso absoluto (200 m, ver
+// domain::terrainFloorM) ou para um valor incoerente com o relevo real ao
+// redor -- visivel no proprio Tacview e na telemetria (ver 'msgFeed:'
+// abaixo, campo terrainElevM).
+//
+// O CORREDOR E OS TILES REAIS ATRAVESSADOS -- os TRES tiles reais e
+// vendorizados que cobrem esta faixa leste-oeste (shared/data/terrain/srtm/
+// README.md): S23W044 (largada, elevacao ~428 m), S23W043 (miolo do
+// corredor, ~93 km a leste da largada) e S23W042 (trecho final, ~195 km a
+// leste da largada, chegando perto do litoral -- elevacao caindo abaixo do
+// nivel do mar em alguns pontos, o que e' esperado em area de lagoa/baixada
+// costeira no dado SRTM). O destino (wp1, lon -41.1) fica dentro de
+// S23W042, com ~90 km de folga do proximo tile a leste (S23W041), que NAO e'
+// vendorizado neste repositorio -- o corredor inteiro fica sempre dentro dos
+// tres tiles reais que o clone ja traz, sem precisar rodar
+// scripts/fetch_srtm.sh.
+//
+// ARMADILHA CONFIRMADA RODANDO ESTE CENARIO -- um bug do MIXR nativo, NAO
+// deste cenario, NAO do MultiTileTerrain, e NAO corrigivel aqui (MIXR e'
+// dependencia binaria, ver o topo do CLAUDE.md da raiz). Documentado aqui
+// porque este e' o cenario deste repositorio que primeiro o expos, rodando.
+//
+//   O QUE E': terrain::SrtmHgtFile::readValue()
+//   (contexts/src/mixr/src/terrain/srtm/SrtmHgtFile.cpp) decodifica os 2
+//   bytes de cada amostra como SINAL-E-MAGNITUDE (testa o bit alto do
+//   byte alto, zera esse bit, nega a magnitude) -- mas o formato .hgt real
+//   (documentado no PROPRIO cabecalho daquele arquivo) e' COMPLEMENTO DE 2,
+//   o int16 big-endian padrao. As duas codificacoes SO' divergem quando a
+//   elevacao real e' NEGATIVA: qualquer elevacao real negativa R (magnitude
+//   1..~32000) decodifica como (magnitude - 32768) em vez de R -- por
+//   exemplo, uma elevacao real de -70 m sai como -32698, nao -70.
+//
+//   ONDE ISSO APARECE NESTE CORREDOR (medido rodando
+//   '-deterministic 60000', nao suposto): duas vezes. Primeiro, breve, DENTRO
+//   de S23W044 mesmo (~81-86 km da largada -- um pequeno vale/riacho real,
+//   elevacao -3/-4 m, dois trechos de ~1,9 km e ~5 km). Depois, sustentado,
+//   ao entrar na baixada costeira de S23W042 (~196 km da largada em diante --
+//   a mesma area "abaixo do nivel do mar" ja citada acima): dali ate o
+//   destino (wp1) a elevacao real fica negativa o tempo quase todo, entao o
+//   bug fica ATIVO pelo resto do corredor.
+//
+//   POR QUE ISSO NAO E' PERIGOSO PARA A AERONAVE, so' para a TELEMETRIA --
+//   confirmado lendo domain::terrainFloorM() (TerrainFloor.cpp):
+//   'max(absoluteFloorM, ground.elevationM + clearanceM)'. Com
+//   ground.elevationM~=-32700 (o valor decodificado errado), o termo
+//   'terreno+folga' fica MUITO mais negativo que absoluteFloorM (200 m) --
+//   entao quem VENCE o max() e' sempre o piso absoluto de 200 m, nunca o
+//   valor bugado. Medido no dump: durante os trechos acima, 'alt=' fica
+//   travado em ~200,06 m (o piso absoluto, com a mesma folga residual de
+//   sempre) enquanto 'elev='/'agl=' mostram os numeros sem sentido
+//   (elev=-32765, agl=32965...) -- a AERONAVE fica em voo nivelado seguro a
+//   200 m MSL; so' o CAMPO de elevacao/AGL relatado (e portanto o
+//   acompanhamento fino do relevo) fica errado enquanto isso dura. Nenhuma
+//   linha deste cenario contorna isso -- e' o proprio piso absoluto de
+//   domain/TerrainFloor.hpp (a "rede" que a documentacao daquele arquivo ja
+//   promete para "quando se sabe menos sobre o mundo") funcionando como
+//   projetado, mesmo diante de um dado de entrada corrompido por um bug
+//   bem a montante.
+//
+//   O QUE ISSO SIGNIFICA PARA QUEM LER data/messages/mission_*.jsonl: o
+//   campo terrainElevM (e altAglM) e' confiavel do inicio do corredor ate
+//   ~196 km -- e' ali, num trecho positivo e real de ~195 km cruzando a
+//   fronteira S23W044/S23W043, que a validacao de carregamento MULTI-TILE
+//   (o proposito deste cenario) e' de fato demonstrada. Dali em diante os
+//   dois campos refletem o bug acima, nao o carregamento de tile -- um
+//   defeito DIFERENTE (decodificacao de elevacao negativa), ja isolado e
+//   confirmado, nao motivo para reabrir a investigacao do multi-tile.
+//
+// LATITUDE -22.7 (nao -22.25, como full-systems-nav/A4-6DOF) foi ESCOLHIDA
+// por amostragem real do proprio dado, nao arbitraria: e' a faixa mais SUAVE
+// entre as testadas (Serra do Mar tem trechos de escarpamento com mais de
+// 800 m de desnivel em 3 km em outras latitudes do mesmo corredor -- o
+// escarpamento em si e' real, so' nao e' o trecho escolhido aqui). Mesmo
+// assim o pior segmento de 1 km sobe ~270 m -- e' por isso que
+// maxClimbRateMps/maxPitchAngle abaixo saem bem mais agressivos que o
+// default do Autopilot: o objetivo e' a aeronave CONSEGUIR seguir o relevo
+// de perto, nao voar realista.
+//
+// crashOverride:true e' deliberado, nao descuido -- voando a soh 300 ft AGL
+// contra relevo real (as vezes escarpado), um instante de atraso do
+// autopilot atras do comando (o proprio piso subindo mais rapido que a
+// aeronave consegue subir) causa um AGL negativo transitorio, que sem isso
+// dispara CRASH_EVENT e CONGELA a aeronave a meio do corredor
+// (Player::updateElevation()/crashNotification(), ver a secao "Terreno" do
+// CLAUDE.md da raiz). O objetivo deste cenario e' terminar o corredor
+// INTEIRO observando a telemetria real, nao provar que o A-4 nunca
+// raspa o chao -- a telemetria (altAglM) continua honesta mesmo com
+// crashOverride ligado.
+//
+// O QUE NAO HA, DE PROPOSITO (mantem o cenario "muito simples"): sem
+// sensor/radar/IFF/stores/signature (FlightState.cpp degrada tudo isso com
+// gracao quando ausente -- ver o proprio .cpp), sem segundo player, sem
+// networks:, sem bandit. So' DynamicsModel + Pilot + Navigation (Route de UM
+// steerpoint) + o agente UBF de producao.
+//
+
+( ClockStation
+
+   tcPriority: 0.5
+
+   ownship: a4
+
+   components: {
+
+      plugins: ( PluginLoader
+         searchPaths: {
+            "./dist/lib/mixr-plugins/"
+         }
+         modules: {
+            ( PluginModule
+               file:     "libA-4.so"
+               provides: { AlertDatalink TacticalAlert ThreadTagProbe FlightAgentTC
+                           FlightState BtBehavior AltitudeSafetyBehavior
+                           RLBridgeBehavior FlightAction }
+            )
+         }
+      )
+
+      // Telemetria de validacao: e' aqui que "o carregamento da elevacao
+      // esta correto" vira numero, frame a frame, sem precisar abrir o
+      // Tacview. terrainElevM e' a leitura AO VIVO de
+      // Player::getTerrainElevationM() -- se MultiTileTerrain escorregar
+      // de tile na fronteira (lon -43 ou lon -42), este campo e' onde isso
+      // aparece primeiro.
+      msgFeed: ( MsgFeed
+         sinks: {
+            ( MsgFileSink
+               fileName: "./sandbox/A4-6DOF-NBA/data/messages/mission_@RUN_ID@.jsonl"
+               flushEvery: ( Seconds 2 ) )
+         }
+         messages: {
+            ( MsgReport name: telemetria  players: { }
+               labels: { player }
+               fields: { latDeg lonDeg altMslM altAglM terrainElevM hdgDeg speedKts }
+               every: ( Seconds 1.0 ) )
+         }
+      )
+
+   } // components
+
+   dataRecorder: ( ExposedDataRecorder
+      eventName: "A4-6DOF-NBA"
+      enabledList: [ 43 42 ]
+      outputHandler: ( RecorderOutputHandler
+         components: {
+            ( TacviewOutput
+               port: 1234
+               callsign: "poc-mixr/A4-6DOF-NBA"
+               fileName: "./sandbox/A4-6DOF-NBA/data/recordings/mission_@RUN_ID@.acmi"
+               modelMap: { a4: "A-4E" }
+               typeMap:  { a4: "Air+FixedWing" }
+               colorMap: { a4: "Blue" }
+            )
+         }
+      )
+   )
+
+   simulation: ( WorldModel
+
+      numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
+
+      // Extremo OESTE do corredor -- dentro do tile real S23W044, com folga
+      // de sobra da fronteira oeste (nao vendorizada) do proprio S23W044.
+      // O player nasce EXATAMENTE aqui (initXPos/initYPos: 0), entao esta
+      // e' tambem a origem do plano local norte/leste que o resto do
+      // cenario usa.
+      latitude:  -22.7
+      longitude: -43.9
+
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
+      )
+
+      players: {
+
+         // ==============================================================
+         // a4 -- unico player: voo reto para leste, 300 ft AGL o tempo
+         // todo, via o piso anti-CFIT do BtBehavior (ver o cabecalho acima)
+         // ==============================================================
+         a4: ( Aircraft
+            id: 101
+            side: blue
+            type: "A4"
+
+            initXPos:     ( Meters 0 )
+            initYPos:     ( Meters 0 )
+            // ~elevacao real do terreno na largada (428 m, tile S23W044) +
+            // 300 ft (91.44 m) -- so' o ponto de partida; dali em diante
+            // quem comanda a altitude e' o piso anti-CFIT (ver acima), nao
+            // este valor.
+            initAlt:      ( Meters 520 )
+            initHeading:  ( Degrees 90 )
+            // initVelocity e' METROS/SEGUNDO (Player.hpp: "Initial
+            // Velocity: meters/sec"), NAO nos -- ao contrario do 'airspeed:'
+            // do steerpoint mais abaixo, que E' em nos. 180.0 m/s = 350 kt,
+            // a mesma faixa de cruzeiro segura deste JSBSimModel "A4" que
+            // full-systems-nav/A4-6DOF ja usam (medido antes, na producao
+            // daquele cenario: abaixo disso a aeronave nao sustenta altitude
+            // E velocidade ao mesmo tempo em voo nivelado). Medido AQUI:
+            // com 350.0 (interpretado como 350 m/s = mach 0.95, quase o
+            // dobro do pretendido) a aeronave nasce bem mais rapida do que
+            // o Autopilot pede e passa os primeiros segundos desacelerando
+            // de um transiente que nao precisa existir.
+            initVelocity: 180.0
+
+            dataLogTime:       ( Seconds 0.1 )
+            interpolateTerrain: true
+
+            // Ver o paragrafo "crashOverride" no cabecalho deste arquivo --
+            // voar a 300 ft AGL contra relevo real pode gerar um AGL
+            // negativo TRANSITORIO por atraso do autopilot atras do piso;
+            // sem isto, o primeiro desses instantes congelaria a aeronave
+            // a meio do corredor.
+            crashOverride: true
+
+            components: {
+
+               // --- DynamicsModel: 6-DOF de verdade (mesmo A-4 do resto
+               // deste sandbox) -----------------------------------------
+               dynamicsModel: ( JSBSimModel
+                  rootDir: "./dist/share/mixr-plugins/A-4/jsbsim/"
+                  model:   "A4"
+                  debugLevel: 0
+               )
+
+               // --- Pilot: leis de rumo/altitude/velocidade -- os tres
+               // ganhos de manobra saem BEM acima do default (ver o
+               // cabecalho: o pior trecho do corredor real sobe ~270 m em
+               // 1 km) para a aeronave conseguir mesmo seguir o relevo de
+               // perto, nao para ser realista. -----------------------------
+               pilot: ( Autopilot
+                  navMode: false
+                  headingHoldMode:  true
+                  altitudeHoldMode: true
+                  velocityHoldMode: true
+                  maxRateOfTurnDps: 6.0
+                  maxBankAngle:    45.0
+                  maxPitchAngle:   35.0
+                  maxClimbRateMps: 70.0
+                  maxAcceleration:  6.0
+               )
+
+               // --- Navigation: UM steerpoint, bem longe, em linha reta
+               // para leste (ver o cabecalho: "A LINHA RETA E' SO UM
+               // STEERPOINT, BEM LONGE") -----------------------------------
+               nav: ( Ins
+                  route: ( Route
+                     to: 1
+                     autoSequence: false
+                     components: {
+                        wp1: ( Steerpoint
+                           stptType: DEST
+                           // Mesma latitude da largada (-22.7): bearing
+                           // constante 090 do primeiro ao ultimo frame.
+                           // Dentro do tile real S23W042, ~90 km de folga
+                           // do proximo tile a leste (S23W041, nao
+                           // vendorizado neste clone).
+                           latitude:  ( Degrees -22.7 )
+                           longitude: ( Degrees -41.1 )
+                           // Deliberadamente MUITO abaixo de qualquer
+                           // terreno real -- ver "COMO A ALTITUDE VIRA..."
+                           // no cabecalho. O piso anti-CFIT do BtBehavior
+                           // sempre vence este valor.
+                           altitude: ( Meters -2000 )
+                           airspeed: 350.0
+                           description: "extremo leste do corredor -- so fixa o rumo, quem comanda altitude e o piso anti-CFIT"
+                        )
+                     }
+                  )
+               )
+
+               // --- o AGENTE: UBF de producao, arvore de UM no so
+               // (( Navigate )) -- mesmo padrao de full-systems-nav/
+               // A4-6DOF. terrainClearance e' o UNICO ajuste fora do
+               // default (500 m): 300 ft, exatamente o pedido. -----------
+               agent: ( FlightAgentTC
+                  state: ( FlightState )
+                  behavior: ( BtBehavior
+                     treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
+                     terrainClearance: ( Feet 300 )
+                  )
+               )
+
+            } // components
+         )
+
+      } // players
+
+   ) // simulation
+
+) // station

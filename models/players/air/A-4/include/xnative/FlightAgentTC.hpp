@@ -24,7 +24,7 @@ namespace xA_4 {
 //        a busca de slot sobe a hierarquia, entao EMPTY_SLOTTABLE aqui nao
 //        esconde os slots da base.
 //
-// TRES ARMADILHAS DO FRAMEWORK QUE ESTA CLASSE RESOLVE
+// QUATRO ARMADILHAS DO FRAMEWORK QUE ESTA CLASSE RESOLVE
 //
 //  1) 'UbfAgentTC' NAO E CONSTRUIDO POR NENHUMA FACTORY DO MIXR.
 //     base/factory.cpp registra apenas 'UbfAgent' e 'UbfArbiter'. Escrever
@@ -49,6 +49,19 @@ namespace xA_4 {
 //     background (o filtro da armadilha 2 nao pega esse caminho: ao fim do
 //     tcFrame a fase corrente FICA em 3). Por isso updateData() e
 //     sobrescrito aqui como no-op: a decisao pertence ao frame, e so a ele.
+//
+//  4) 'myActor' (privado, em Agent) e' um safe_ptr -- REF-OWNING, nao um
+//     ponteiro cru. initActor() aponta 'myActor' de volta para o PROPRIO
+//     player que hospeda este agente (o container). Isso fecha um ciclo de
+//     referencia: o player possui o agente via components:, e o agente
+//     possui uma referencia de volta ao player via myActor. Sem quebrar
+//     isso, nenhum dos dois lados chega a refcount zero por unref() externo
+//     -- Agent::deleteData() (que zera myActor) so roda quando o proprio
+//     Agent e destruido, o que nunca acontece por causa do ciclo. Por isso
+//     shutdownNotification() abaixo solta a referencia ANTES de delegar
+//     para a base (mesmo ponto do ciclo de vida onde BtBehavior::
+//     shutdownNotification() ja libera outro recurso, o publisher do
+//     Groot).
 //
 // O ator e o player que CONTEM o agente (initActor sobe a cadeia de
 // containers), entao o mesmo bloco EDL serve para qualquer aeronave --
@@ -75,6 +88,7 @@ public:
 protected:
    void controller(const double dt = 0.0) override;
    void initActor() override;
+   bool shutdownNotification() override;
 
 private:
    std::atomic<long> decisions{};
