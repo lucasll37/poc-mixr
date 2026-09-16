@@ -4,7 +4,7 @@ Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../READ
 
 Reaproveita a **geometria de rota** de `sandbox/A4-6DOF` (a figura-de-oito fechada de 20
 steerpoints, mesmo perfil de altitude 4.000–15.000 ft, mesmo ponto de entrada) com o modelo
-**C-130** (`models/players/C-130`) no lugar do "player máximo" A-4 — ver
+**C-130** (`models/players/air/C-130`) no lugar do "player máximo" A-4 — ver
 `sandbox/A4-6DOF/README.md` para a construção completa da rota (decágono, varredura de terreno,
 por que as pernas são de 14 km). Este README só documenta o que **muda**.
 
@@ -34,7 +34,7 @@ desmanchar — isso só faz sentido para formação; aqui não há o que desmanc
 `IrSignature`/`OnboardComputer`-com-4-track-managers/`StoresMgr`-de-11-estações/
 `CollisionDetect` — essa aparelhagem é do A-4 "player máximo" (`tests/fixtures/built-in_mixr_1`),
 não do C-130 (que hoje só tem `JSBSimModel` + `Autopilot` + `Navigation` + `StoresMgr` de
-paraquedista). A montagem do player é a mesma de `models/players/C-130`, voando a rota de
+paraquedista). A montagem do player é a mesma de `models/players/air/C-130`, voando a rota de
 A4-6DOF em vez de um circuito mais simples.
 
 **As três `Action` originais trocam de sentido:**
@@ -68,8 +68,8 @@ motor/thruster vendorizado originalmente copiado para `data/jsbsim/engine/` dest
 modelo, `t56.xml` `<turbine_engine>` + `t56_prop.xml` `<propeller>`, era um descompasso de tipo do
 dado JSBSim vendorizado: o motor "rodava" (combustível consumido normalmente) mas o empuxo efetivo
 que chegava na célula ficava perto de zero. **Corrigido** trocando o thruster para `direct` (mesmo
-padrão já comprovado em `models/players/A-4/data/jsbsim/aircraft/A4/A4.xml`) — ver o cabeçalho de
-`c130ap.xml` (`models/players/C-130/data/jsbsim/aircraft/C130/c130ap.xml`) para o achado completo.
+padrão já comprovado em `models/players/air/A-4/data/jsbsim/aircraft/A4/A4.xml`) — ver o cabeçalho de
+`c130ap.xml` (`models/players/air/C-130/data/jsbsim/aircraft/C130/c130ap.xml`) para o achado completo.
 
 **Medido depois da correção, nesta rota especificamente** (~2000 s por volta, a figura-de-oito
 herdada de A4-6DOF): 600 s simulados (frame 30000) sem crash, `dec=`

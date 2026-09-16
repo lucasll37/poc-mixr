@@ -2,7 +2,7 @@
 // deriveSeed, puras) e o GERADOR (a classe Rng). Nenhuma outra classe deste
 // repositorio instancia um gerador; os consumidores (domain::PatrolPlan,
 // domain::AerobaticPlan) guardam um Rng e sao testados a parte, em
-// models/players/A-4/tests/domain/.
+// models/players/air/A-4/tests/domain/.
 //
 // Este arquivo nao inclui nada do MIXR, de proposito -- mesmo movimento do
 // test_xmsg_rules.cpp ao lado.

@@ -2,7 +2,7 @@
 
 Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
 
-A integração entre `models/players/C-130` e `models/players/paratrooper`: **um C-130**
+A integração entre `models/players/air/C-130` e `models/players/effect/paratrooper`: **um C-130**
 (dinâmica JSBSim 6-DOF) que, no **segundo ponto de navegação**,
 libera **30 paraquedistas de verdade** (a classe `Paratrooper` real — queda livre, paraquedas,
 pouso — não o placeholder `C130ParatrooperPlaceholder`), com **1,5 segundos de intervalo** entre
@@ -15,7 +15,7 @@ uma liberação e a próxima.
 
 ## O mecanismo novo — `C130ActionParatrooperStick`
 
-`models/players/C-130` ganhou uma classe irmã de `C130ActionParatrooperRelease` (que libera **uma**
+`models/players/air/C-130` ganhou uma classe irmã de `C130ActionParatrooperRelease` (que libera **uma**
 estação por cruzamento de steerpoint): `C130ActionParatrooperStick` libera **várias**, espaçadas no
 tempo, a partir de **um único** cruzamento — o termo militar real para o grupo que salta em
 sequência rápida na mesma passagem da aeronave.
@@ -27,13 +27,13 @@ disso, `OnboardComputer::actionManager()` chama `process(dt)` a cada ciclo de **
 em progresso; `process()` acumula tempo simulado e libera mais uma a cada `interval` decorrido, até
 `count` liberações. A busca em si (`releaseNextStoreOfType()`) foi extraída de
 `ActionParatrooperRelease` para as duas compartilharem — ver
-`models/players/C-130/include/xnative/ActionParatrooperStick.hpp` para o detalhe completo.
+`models/players/air/C-130/include/xnative/ActionParatrooperStick.hpp` para o detalhe completo.
 
 **As 30 estações são `( Paratrooper )`, não `( C130ParatrooperPlaceholder )`** — os dois plugins
 (`libC-130.so` e `libparatrooper.so`) carregam juntos no mesmo processo, e a liberação genérica por
 `type:` (`ActionParatrooperStick` nunca faz `dynamic_cast` numa classe concreta, só compara
 `Player::getType()`) alcança a classe real do outro plugin sem nenhuma mudança de C++ em nenhum dos
-dois — exatamente o contrato que `models/players/C-130/docs/ARCHITECTURE.md` já prometia.
+dois — exatamente o contrato que `models/players/air/C-130/docs/ARCHITECTURE.md` já prometia.
 
 ## A rota — nova e simples, por decisão explícita
 
@@ -54,8 +54,8 @@ corrigidos:
 2. **A rota original ultrapassava a borda do único tile SRTM vendorizado.** A borda leste fica a
    ~49,4 km da referência (-22,25, -42,48) — medido a partir do próprio arquivo `.hgt`, não do
    README do tile. Com wp2 a 55 km, a aeronave voava para além da borda e `elev=` caía para
-   exatamente `0.000000000` por dezenas de frames seguidos — o sintoma exato já documentado no
-   `CLAUDE.md` raiz, seção "Terreno" ("fora da célula do tile... não é guarda de cobertura").
+   exatamente `0.000000000` por dezenas de frames seguidos — o mesmo sintoma, já conhecido, de
+   "fora da célula do tile": `getAltitudeAgl()` não é guarda de cobertura de terreno.
 
 **Corrigido**: a aeronave agora começa mais alta (3.200 m, não 1.200 m — encurta a subida
 necessária de 3.372 m para 1.372 m) e a rota inteira fica dentro de 42 km (~7,4 km de folga sobre a
@@ -82,8 +82,8 @@ borda de 49,4 km).
   ciclo nativo de liberação de arma, `AbstractWeapon::dynamics()`) e terminam a corrida com
   `altAglM < 2 m` (dentro do limiar `groundAgl`), `damage=0`, `crashedFlag=0`, `killedFlag=0` nos
   30 — pousaram em segurança, sem nenhum crash genérico disparando a cascata de detonação que
-  `models/players/paratrooper` foi desenhado para evitar (ver
-  `models/players/paratrooper/docs/ARCHITECTURE.md`).
+  `models/players/effect/paratrooper` foi desenhado para evitar (ver
+  `models/players/effect/paratrooper/docs/ARCHITECTURE.md`).
 - **A aeronave completa a curva de retorno** (`wrap:true`) sem sair do tile — banco sustentado de
   ~27-28° durante a curva, medido sem tocar a borda leste (pico em ~46,2 km, ~3,2 km de folga).
 
@@ -136,8 +136,8 @@ bash tests/determinism/check_determinism.sh ./build/app/src/app c130-6dof-regres
 Os dois passaram (um terceiro, contra a poc `c130-airdrop` que existia na epoca, tambem passou --
 essa poc foi removida do repositorio desde entao). `meson test -C build` (suite completa do CORE)
 tambem passou -- 68/68, sem nenhuma regressao nas suites `scenario`/`memory`/`determinism`/
-`plugin`/`guard` existentes. As duas suites do MODELO (`cd models/players/C-130 && make test`,
-`cd models/players/paratrooper && make test`) passam 5/5 cada.
+`plugin`/`guard` existentes. As duas suites do MODELO (`cd models/players/air/C-130 && make test`,
+`cd models/players/effect/paratrooper && make test`) passam 5/5 cada.
 
 **Confirmado nos 30 paraquedistas, nao por amostragem** (rodando um `-deterministic 25000` limpo e
 lendo o `mission_*.jsonl` inteiro): os 30 aparecem (`W10001`..`W10030`), as 29 lacunas entre

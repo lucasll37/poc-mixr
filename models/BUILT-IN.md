@@ -237,8 +237,7 @@ for procurar e não encontrar.
 ## `mixr::terrain`
 
 Não é encadeada por nenhuma outra factory nativa — sem `mixr::terrain::factory(name)` no
-`mixr_factory.cpp` do core, `( SrtmHgtFile ... )` do `.edl` não constrói nada, em silêncio (ver
-CLAUDE.md, seção "Terreno").
+`mixr_factory.cpp` do core, `( SrtmHgtFile ... )` do `.edl` não constrói nada, em silêncio.
 
 | Classe | Fábrica | Observação |
 |---|---|---|
@@ -281,7 +280,7 @@ Não é encadeada por nenhuma outra factory nativa — mesma armadilha do `terra
 ## `mixr::recorder`
 
 O schema `DataRecord.proto` por trás é fechado (sem campo de texto livre) — ver `libs/xlog`/
-`libs/xmsg` no CLAUDE.md para o porquê deste repo não usa `mixr::recorder` para tudo.
+`libs/xmsg` para o porquê deste repo não usa `mixr::recorder` para tudo.
 
 | Classe | Fábrica | Observação |
 |---|---|---|
@@ -499,8 +498,7 @@ O schema `DataRecord.proto` por trás é fechado (sem campo de texto livre) — 
 
 `Player::updateSystemPointers()` resolve por **tipo** (não por nome de slot) os ~10 papéis
 primários de um `Player` — `findByType()` acha o primeiro componente de `components:` cuja cadeia
-de herança bate com o tipo procurado (ver CLAUDE.md, seção "`built-in_mixr_1`/`full-systems-nav` —
-removidas como pocs").
+de herança bate com o tipo procurado.
 
 Sete desses papéis (`Pilot`, `Navigation`, `Datalink`, `Radio`, `Gimbal`, `RfSensor`,
 `OnboardComputer`) já são classes concretas dentro de `mixr::models` (tabelas acima) — usáveis
@@ -567,7 +565,7 @@ o envie com um.
 
 | Token | Valor | Payload | Observação |
 |---|---|---|---|
-| `SHUTDOWN_EVENT` | 1001 | — | Notificação de encerramento. Handler padrão: `Component::shutdownNotification()` propaga o mesmo evento recursivamente a todo subcomponente e marca `shutdown=true`; sobrescrito por ~20 classes (`Station`, `Simulation`, `AbstractPlayer`, `DataRecorder`, `NetIO`/`Nib` do DIS...). Este repositório dispara explicitamente em `app/src/app/Shutdown.cpp`, logo antes do `unref()` da `Station` — ver CLAUDE.md, seção "Décima oitava passada". |
+| `SHUTDOWN_EVENT` | 1001 | — | Notificação de encerramento. Handler padrão: `Component::shutdownNotification()` propaga o mesmo evento recursivamente a todo subcomponente e marca `shutdown=true`; sobrescrito por ~20 classes (`Station`, `Simulation`, `AbstractPlayer`, `DataRecorder`, `NetIO`/`Nib` do DIS...). Este repositório dispara explicitamente em `app/src/app/Shutdown.cpp`, logo antes do `unref()` da `Station`. |
 
 #### Eventos de simulação
 
@@ -619,7 +617,7 @@ Sistema **separado** do de `Component` acima: os tokens `REID_*` são definidos 
 `SAMPLE_n_OBJECT(S)`/`SAMPLE_n_VALUE(S)` do lado de quem emite e `BEGIN_RECORDER_HANDLER_TABLE`/
 `ON_RECORDER_EVENT_ID`/`END_RECORDER_HANDLER_TABLE` do lado do `DataRecorder` que recebe — nenhuma
 relação de macro, header ou função de despacho com `event()`/`ON_EVENT`. Token não tratado vira
-`REID_UNHANDLED_ID_TOKEN` (ver `libs/xlog`/`libs/xmsg` no CLAUDE.md para o porquê deste
+`REID_UNHANDLED_ID_TOKEN` (ver `libs/xlog`/`libs/xmsg` para o porquê deste
 repositório não usa o `mixr::recorder` para tudo — o schema é fechado, sem campo de texto livre).
 
 **Único ponto de contato entre os dois sistemas**: `RESET_EVENT` (o de `Component`, acima) ao
@@ -663,9 +661,6 @@ repositório, se algum dia precisar, devem ocupar).
 
 ## Ler também
 
-- [`../CLAUDE.md`](../CLAUDE.md), seção "O modelo MIXR em uma tela" — como a cadeia de factories
-  nativas se encaixa (`local → xtacview → simulation → models → recorder → base`) e por que a
-  primeira que retorna não-nulo vence
 - [`REGISTRO.md`](REGISTRO.md) — quem já está mexendo em qual modelo deste repositório (os
   próprios, não os nativos catalogados aqui)
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — o roteiro de contribuir com um modelo novo

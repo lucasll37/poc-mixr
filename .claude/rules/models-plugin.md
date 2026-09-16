@@ -5,11 +5,18 @@ paths:
 
 # Modelo é plugin — regras de `models/`
 
-- Cada `models/<players|systems|others>/<nome>/` é um projeto Meson **autocontido**: tem
-  `Makefile`, `meson.build`, `tests/`, `docs/`, `README.md`, `CHANGELOG.md` próprios (guarda:
-  `tests/guard/check_modelo_estrutura.sh`, que descobre por `find` sob QUALQUER subpasta de
-  `models/`, não só `players/`). `cd models/<categoria>/<nome> && make` configura/builda/instala
-  sozinho — só precisa do SDK publicado uma vez pela raiz (`make configure && make sdk`).
+- Cada projeto de modelo é um Meson **autocontido**, em QUALQUER profundidade sob `models/` — a
+  taxonomia hoje espelha `mixr::models` (`players/{air,effect,ground,space,weapon}`,
+  `systems/trackmanager`, `sensors/`, `dynamics/`, `environments/`, `navegation/`, mais `others/`
+  para o que não se encaixa em nenhuma delas — ver CLAUDE.md, "O MODELO é um plugin", o Adendo da
+  reorganização). Tem `Makefile`, `meson.build`, `tests/`, `docs/`, `README.md`, `CHANGELOG.md`
+  próprios (guarda: `tests/guard/check_modelo_estrutura.sh`, que descobre por `find` sob `models/`
+  inteiro, a QUALQUER profundidade, não uma lista de categorias fixa). `cd
+  models/<caminho-do-modelo> && make` configura/builda/instala sozinho — só precisa do SDK
+  publicado uma vez pela raiz (`make configure && make sdk`). Mover um modelo para outra subpasta
+  de `models/` (o usuário pode fazer isso a qualquer momento) não quebra `make models`/`make
+  test`/os guardas — todos descobrem por conteúdo (`project()` no `meson.build`), nunca por
+  posição.
 - **Nunca escreva direto em `dist/` a partir de um modelo.** `make install-core` de cada modelo
   deposita em `./plugins/` (raiz do repo, flat, não versionado); é `make install` (alvo
   `sync-plugins`) na raiz quem sincroniza `plugins/` → `dist/`. `dist/` e `build/` são gerados —
@@ -25,12 +32,14 @@ paths:
 - `provides:` no `.edl` é **igualdade exata de conjunto** contra o que o `.so` exporta. Acrescentar
   um nome novo de fábrica obriga atualizar `provides:` em **todo** cenário que carrega essa `.so`
   (produção e testes) — não só o cenário que motivou a mudança.
-- Modelo novo: `make new-model NAME=<nome> CATEGORY=player|system|others` (`CATEGORY` é
-  obrigatório e decide a subpasta — `player`→`models/players/`, `system`→`models/systems/`,
-  `others`→`models/others/`; não existe `CATEGORY=event`, ver `scripts/models.sh` para o porquê).
-  Não escreve lógica nenhuma, só copia o esqueleto de `models/template/`. Depois, siga
-  `CONTRIBUTING.md` §5 para o cenário (não há catálogo para registrar — basta um `.edl.in` em
-  `configs/`) e anote em `models/REGISTRO.md` (coordenação humana, sem enforcement automático).
+- Modelo novo: `make new-model NAME=<nome> CATEGORY=<subpasta-relativa-a-models/>` (`CATEGORY` é
+  obrigatório e é o caminho onde o scaffold entra — `players/air`, `players/ground`,
+  `systems/trackmanager`, `dynamics`, `others`, ... — QUALQUER subpasta, existente ou nova, nunca
+  um enum fixo de três valores; `scripts/models.sh` recusa `CATEGORY=events`/`CATEGORY=template`
+  explicitamente, ver o script para o porquê). Não escreve lógica nenhuma, só copia o esqueleto de
+  `models/template/`. Depois, siga `CONTRIBUTING.md` §6 para o cenário (não há catálogo para
+  registrar — basta um `.edl.in` em `configs/`) e anote em `models/REGISTRO.md` (coordenação
+  humana, sem enforcement automático).
 - **`make check-organization`** roda `tools/check_organization.py` — linter OPCIONAL (não roda em CI, não bloqueia
   `build`/`test`/`install`) de boas práticas de organização interna: camadas sem MIXR vazando
   (`domain/`, `bt/`), namespace aninhado sob `mixr::models::x<nome>`, as três listas de

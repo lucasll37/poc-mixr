@@ -82,7 +82,7 @@ struct EntityState
    std::string alertContact;
 
    // libs/xtrack::nearestHostileTrack -- a funcao em si aceita qualquer
-   // Player desde a generalizacao para models/players/AAA; aqui continua
+   // Player desde a generalizacao para models/players/ground/AAA; aqui continua
    // amarrada ao bloco exclusivo de AirVehicle do .cpp so por conveniencia
    // (e onde 'air' ja existe), nao por exigencia da funcao. So preenchido
    // quando o cast funciona.
@@ -198,6 +198,7 @@ struct DashboardState
    double timeScale{1.0};
    bool paused{};
    int numTcThreads{};
+   int numBgThreads{};
 
    // Velocidade MEDIDA de verdade (tempo simulado / tempo de parede, numa
    // janela deslizante curta), preenchida por quem chama captureState() --
@@ -263,7 +264,7 @@ DashboardState captureState(mixr::models::WorldModel* worldModel,
                             const mixr::xtacview::TacviewOutput* tacviewOutput,
                             double wallSec, double simSec,
                             const mixr::xclock::ClockStation* clockStation,
-                            int numTcThreads, const std::string& scenarioLabel,
+                            int numTcThreads, int numBgThreads, const std::string& scenarioLabel,
                             const std::vector<ClassStat>& previousClassStats,
                             bool withComponentTree);
 

@@ -21,7 +21,7 @@ referência que este repositório tem hoje:
 |---|---|---|
 | **`template`** (este) | ponto de partida **em camadas**, para decisão nova | a separação `domain/`→`bt/`→`ubf/`→`xnative/`, o `meson.build`, o `Makefile` |
 | `template/src/mirror.cpp` (mesmo diretório) | prova que o contrato de plugin **basta** — nenhuma camada, um arquivo só | a lista de obrigações (`docs/CONTRATO.md`) |
-| [`A-4`](../../players/A-4/) | **um** dos modelos de produção deste repositório (ver [`models/REGISTRO.md`](../../REGISTRO.md) para a lista completa) — o mais ilustrado com código real nos exemplos deste guia por ser o mais antigo e completo (árvore de comportamento completa, terreno, RL, ONNX, Python embarcado), não o único | qualquer coisa além do que as duas referências acima já cobrem |
+| [`A-4`](../../players/air/A-4/) | **um** dos modelos de produção deste repositório (ver [`models/REGISTRO.md`](../../REGISTRO.md) para a lista completa) — o mais ilustrado com código real nos exemplos deste guia por ser o mais antigo e completo (árvore de comportamento completa, terreno, RL, ONNX, Python embarcado), não o único | qualquer coisa além do que as duas referências acima já cobrem |
 
 ## As camadas, e por que a separação existe
 
@@ -69,7 +69,7 @@ configs/   -- a árvore em si (example_tree.xml), que é DADO do modelo, não
 Cada camada é um projeto Meson à parte na sua "testabilidade": `domain/` não linka nada do MIXR
 (nem em produção, nem em teste); `ubf/`+`xnative/` linkam o MIXR e o SDK, mas nunca levantam uma
 `Station` de verdade. Isso não é acidente — é o que faz `make test` deste diretório rodar em
-milissegundos, e é a mesma divisão que `models/players/A-4/docs/ARCHITECTURE.md` explica com muito
+milissegundos, e é a mesma divisão que `models/players/air/A-4/docs/ARCHITECTURE.md` explica com muito
 mais detalhe (a distinção entre a suíte `domain`, a suíte `tree` e a suíte `native` do modelo de
 produção é exatamente esta, escalada).
 
@@ -81,7 +81,7 @@ comentário completo está no próprio header: um cenário PODERIA, em tese, car
 plugin no mesmo processo, e dois tipos com o **mesmo nome qualificado** (`domain::Foo`) em dois
 `.so`s distintos teriam o mesmo símbolo *mangled* — a comparação de `type_info` deste toolchain
 degrada para `strcmp` entre objetos `RTLD_LOCAL`, então dois tipos DIFERENTES com o mesmo nome
-qualificado colidiriam. `models/players/A-4` chegou primeiro e usou `domain::`/`bt_nodes::` soltos
+qualificado colidiriam. `models/players/air/A-4` chegou primeiro e usou `domain::`/`bt_nodes::` soltos
 por um tempo — a exceção histórica, já corrigida (ver `CHANGELOG.md` daquele modelo). Os dois artefatos deste diretório (o scaffold `xtemplate` e o mirror
 de contrato `xtemplate_mirror`, em `../src/mirror.cpp`) já nascem certos, cada um no seu próprio
 namespace. Ao copiar o scaffold, troque `xtemplate` pelo nome do seu modelo em TODA a árvore (ver
@@ -109,19 +109,19 @@ thread de decisão) e quando cada uma se aplica ao SEU modelo.
 ## O que este template NÃO demonstra, de propósito
 
 - **Slots com todas as unidades do MIXR** — `ExampleBehavior` só usa `base::Distance`. Se o seu
-  modelo precisa de ângulos, tempos, velocidades, etc., `models/players/A-4/include/ubf/BtBehavior.hpp`
+  modelo precisa de ângulos, tempos, velocidades, etc., `models/players/air/A-4/include/ubf/BtBehavior.hpp`
   e `../src/mirror.cpp` têm exemplos de cada um.
 - **Comandar um subsistema de verdade** — `ExampleAction::execute()` só escreve no `xboard`, para
   compilar contra qualquer `Player`, não só aeronaves. Substitua o corpo por chamadas a
   `models::Autopilot`/`models::StoresMgr`/o que for relevante para o SEU player — veja
-  `models/players/A-4/src/ubf/FlightAction.cpp` para o padrão completo (incluindo o log de
+  `models/players/air/A-4/src/ubf/FlightAction.cpp` para o padrão completo (incluindo o log de
   transição de estado via `libs/xlog`, que também foi deixado de fora daqui por simplicidade).
 - **Dados próprios do modelo** (uma árvore XML, um `.onnx`, uma aeronave JSBSim) — nenhum
   `install_data()`/`install_subdir()` no `meson.build`. Se o seu modelo precisar de um arquivo
-  próprio, publique-o do mesmo jeito que `models/players/A-4/meson.build` publica `flight_tree.xml` e
+  próprio, publique-o do mesmo jeito que `models/players/air/A-4/meson.build` publica `flight_tree.xml` e
   `data/jsbsim/` — a seção "O `.so` sozinho pode não ser a entrega completa" de
   `CONTRATO.md` cobre o "porquê".
-- **Terreno, RL, ONNX, Python embarcado** — todos existem em `models/players/A-4` como camadas
+- **Terreno, RL, ONNX, Python embarcado** — todos existem em `models/players/air/A-4` como camadas
   adicionais opcionais, nenhuma delas é parte do "mínimo para um modelo funcionar".
 
 ## Quando isto não bastar mais
@@ -144,7 +144,7 @@ passos toca `domain/` (além de acrescentar), `ubf/` ou `xnative/factory.*` — 
 fronteira que a separação em camadas existe para criar.
 
 Para o que ainda **não** está aqui — múltiplas árvores por cenário, política em ONNX ou em Python
-dentro do frame, terreno, ponte de RL — `models/players/A-4` é a referência completa; nenhuma
+dentro do frame, terreno, ponte de RL — `models/players/air/A-4` é a referência completa; nenhuma
 dessas coisas é parte do "mínimo para um modelo funcionar".
 
 Nenhuma dessas mudanças toca `domain/` nem `xnative/factory.*` — é exatamente a fronteira que a

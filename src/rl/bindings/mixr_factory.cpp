@@ -4,6 +4,7 @@
 #include "xplugin/factory.hpp"
 
 #include "xtacview/factory.hpp"
+#include "xterrain/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -32,10 +33,13 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    if (obj == nullptr) obj = mixr::simulation::factory(name);
    if (obj == nullptr) obj = mixr::models::factory(name);
 
-   // 4) banco de elevacao: SrtmHgtFile. models::factory NAO encadeia esta --
-   //    sem a linha abaixo, 'terrain: ( SrtmHgtFile ... )' nao constroi nada,
-   //    em silencio (mesma armadilha documentada nas outras pocs).
+   // 4) banco de elevacao: SrtmHgtFile (um tile) e MultiTileTerrain
+   //    (libs/xterrain, varios tiles do mesmo diretorio). models::factory
+   //    NAO encadeia nenhuma das duas -- sem as linhas abaixo,
+   //    'terrain: ( ... )' nao constroi nada, em silencio (mesma armadilha
+   //    documentada nas outras pocs).
    if (obj == nullptr) obj = mixr::terrain::factory(name);
+   if (obj == nullptr) obj = mixr::xterrain::factory(name);
 
    if (obj == nullptr) obj = mixr::recorder::factory(name);
    if (obj == nullptr) obj = mixr::base::factory(name);

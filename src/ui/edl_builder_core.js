@@ -257,8 +257,8 @@ function makeNode(factory) {
 // (cada entrada é um base::String/Identifier, não uma classe MIXR: ver
 // TacviewOutput::setSlotTypeMap(), que faz dynamic_cast<base::String*> em
 // cada item, não dynamic_cast<Object*>). 'children: {}' aqui é só pra
-// findNode()/updateNode()/removeNode()/maxId() (genéricos, percorrem
-// node.children de QUALQUER nó) não precisarem de um caso especial.
+// findNode()/updateNode()/maxId() (genéricos, percorrem node.children de
+// QUALQUER nó) não precisarem de um caso especial.
 function makeTextLeaf(text) {
   return { id: freshId(), isText: true, text: text || "", children: {} };
 }
@@ -294,17 +294,6 @@ function updateNode(root, id, updater) {
     children[slotName] = newItems;
   }
   return changed ? { ...root, children } : root;
-}
-
-function removeNode(root, id) {
-  if (!root || root.id === id) return null;
-  const children = {};
-  for (const [slotName, items] of Object.entries(root.children)) {
-    children[slotName] = items
-      .filter((it) => it.node.id !== id)
-      .map((it) => ({ ...it, node: removeNode(it.node, id) }));
-  }
-  return { ...root, children };
 }
 
 function maxId(node, acc) {
@@ -874,7 +863,7 @@ if (typeof module !== "undefined" && module.exports) {
     isLeafSlot, isChildSlot, defaultKindFor,
     primaryRolesFor, roleFillStatus, TOKEN_PLACEHOLDER_RE, collectOpenIssues, findAncestorPath,
     countUncataloged,
-    freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
+    freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
     projectToEdlWithSpans,
     tokenizeEdlText, splitTokensIntoLines, computeLineRanges,

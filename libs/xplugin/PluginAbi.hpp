@@ -22,7 +22,7 @@
 // armadilha registrada em contexts/BTCPP-CONTEXT.md:7262-7270. Seis outras
 // (xboard, xlog, xtrack, xrlbridge, xinfer, xpyembed) foram promovidas a
 // shared_library() exatamente para escapar dessa mesma armadilha -- essas
-// SAO permitidas, e um plugin de producao (models/players/A-4) de fato
+// SAO permitidas, e um plugin de producao (models/players/air/A-4) de fato
 // linka varias delas. Detalhe em libs/xplugin/README.md, secao "Regras
 // para escrever um plugin", item 2.
 //
@@ -170,7 +170,7 @@ extern "C" const ::mixr::xplugin::PluginDescV1* mixr_plugin_v1(void);
 // escreve a assinatura, entao nao ha onde enfiar um 'static'.
 //
 // Uso -- o exemplo minimo completo e models/template/src/mirror.cpp, e o de
-// producao e models/players/A-4/src/plugin.cpp:
+// producao e models/players/air/A-4/src/plugin.cpp:
 //
 //    namespace {
 //    const char* const NAMES[] = { "MinhaClasse", nullptr };

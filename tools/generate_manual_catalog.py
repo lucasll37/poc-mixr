@@ -6,7 +6,7 @@ MODEL[cls].wp/.po/.sl/.ch para animar o ciclo de fases) quanto a aba
 
 Universo: as 7 factories NATIVAS que models/BUILT-IN.md ja usa como escopo --
 base, models, simulation, terrain, interop/dis, linkage, recorder -- mais o
-plugin de PRODUÇÃO models/players/A-4 (nunca template/, nunca o mirror de
+plugin de PRODUÇÃO models/players/air/A-4 (nunca template/, nunca o mirror de
 contrato em src/mirror.cpp -- ver .claude/rules/models-plugin.md). Cada
 entrada aqui tem despacho REAL num factory.cpp (um branch
 'name == X::getFactoryName()' alcançável) -- não "toda classe com
@@ -58,14 +58,14 @@ NATIVE_MODULES = [
 ]
 
 # O plugin de PRODUÇÃO -- varrido contra models/ INTEIRO (não só
-# models/players/A-4/), porque uma das 9 classes que o factory.cpp dele
+# models/players/air/A-4/), porque uma das 9 classes que o factory.cpp dele
 # despacha (TacticalAlert) mora fisicamente em models/events/. A mesma
 # disciplina "primeiro achado vence" que extract_slots()/build_inheritance()
 # já usam (mixr_source_scan.py, ordem alfabética de arquivo) garante que
-# models/players/A-4 (alfabeticamente antes de template/) vence sobre
+# models/players/air/A-4 (alfabeticamente antes de template/) vence sobre
 # qualquer classe de MESMO NOME em models/template/.
 PLUGIN_LABEL = "plugin:A-4"
-PLUGIN_FACTORY_CPP = MODELS_DIR / "players" / "A-4" / "src" / "xnative" / "factory.cpp"
+PLUGIN_FACTORY_CPP = MODELS_DIR / "players" / "air" / "A-4" / "src" / "xnative" / "factory.cpp"
 
 # interop::dis::NetIO/Ntm/Nib redeclaram DECLARE_SUBCLASS com o MESMO nome
 # barra da própria classe BASE (DECLARE_SUBCLASS(NetIO, interop::NetIO) --
@@ -137,7 +137,7 @@ def build_factories():
 
     # find_dispatch_reachable_classes() e' tolerante de proposito a caminho
     # inexistente, mas PLUGIN_FACTORY_CPP e' hardcoded para um modelo so --
-    # uma renomeacao/remocao futura de models/players/A-4 faria o catalogo
+    # uma renomeacao/remocao futura de models/players/air/A-4 faria o catalogo
     # do plugin sair silenciosamente vazio. Por isso falha alto aqui,
     # explicitamente, em vez de deixar a tolerancia generica da funcao
     # mascarar o problema.

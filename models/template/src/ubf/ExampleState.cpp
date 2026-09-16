@@ -18,7 +18,7 @@ ExampleState::ExampleState()
 // Copiada campo a campo, nao EMPTY_COPYDATA -- 'value' e estado de verdade
 // (a ultima leitura), nao so cache descartavel; um clone() deste objeto
 // (ex.: ao clonar o Player dono dele) tem de preservar o que ja foi
-// percebido. Mesmo raciocinio de models/players/A-4/src/ubf/FlightState.cpp.
+// percebido. Mesmo raciocinio de models/players/air/A-4/src/ubf/FlightState.cpp.
 void ExampleState::copyData(const ExampleState& org, const bool)
 {
    BaseClass::copyData(org);

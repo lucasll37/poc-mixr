@@ -96,10 +96,10 @@ Readout get(int playerId);
 // Identidade da thread que esta executando -- indice pequeno e ESTAVEL
 // (0,1,2...) para a thread chamadora.
 //
-// PROMOVIDO de models/players/A-4/xnative/ThreadTag para ca -- ver o
+// PROMOVIDO de models/players/air/A-4/xnative/ThreadTag para ca -- ver o
 // "porque" no CLAUDE.md ("o do missil que nao aparece"): com a numeracao
 // como contador PRIVADO de cada .so, dois plugins DIFERENTES no MESMO
-// processo (models/players/A-4 e models/players/missile) numerariam a MESMA
+// processo (models/players/air/A-4 e models/players/weapon/missile) numerariam a MESMA
 // thread fisica do pool T/C com indices DIFERENTES (cada .so ve sua propria
 // primeira chamada como "a primeira") -- o numero mostrado na aba Players
 // deixaria de significar "esta e a MESMA thread" entre um aviao e um missil

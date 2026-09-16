@@ -38,7 +38,6 @@ public:
    // reportaria "mudanca de 1750 m" no primeiro ciclo).
    bool update(double value, bool valid);
 
-   bool hasReference() const  { return has_; }
    double reference() const   { return lastEmitted_; }
 
 private:

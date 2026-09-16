@@ -6,8 +6,6 @@
 #include "mixr/models/WorldModel.hpp"
 #include "mixr/simulation/AbstractPlayer.hpp"
 
-#include "mixr/base/Component.hpp"
-
 #include <stdexcept>
 
 namespace rl {

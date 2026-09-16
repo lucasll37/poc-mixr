@@ -79,9 +79,8 @@
       latitude:  -22.25
       longitude: -42.48
 
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {
@@ -148,7 +147,7 @@
                            recoverClearance: ( Meters 800 )
                         )
                         // Decisao vem de fora (Python), via libs/xrlbridge --
-                        // ver models/players/A-4/include/ubf/RLBridgeBehavior.hpp.
+                        // ver models/players/air/A-4/include/ubf/RLBridgeBehavior.hpp.
                         ( RLBridgeBehavior vote: 50 )
                      }
                   )

@@ -2,10 +2,11 @@
 
 Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
 
-Reaproveita o modelo `models/others/Navstar-3` com **quatro instâncias**, uma por plano orbital —
-o cenário de produção do próprio modelo demonstra só **um** satélite (ver
-`models/others/Navstar-3/docs/ARCHITECTURE.md`, seção "O que fica de fora":
-*"o modelo aceita múltiplas instâncias... mas o cenário de produção demonstra só UM satélite"*).
+Reaproveita o modelo `models/players/space/Navstar-3` com **quatro instâncias**, uma por plano orbital —
+o cenário de produção do próprio modelo demonstra só **um** satélite. O próprio
+`models/players/space/Navstar-3/docs/ARCHITECTURE.md` (seção "O que fica de fora, deliberadamente")
+já registra que o modelo aceita múltiplas instâncias e que ir além dos quatro planos aqui — até os
+6 reais de uma constelação GPS — é só mais EDL, sem mudança de C++.
 Este sandbox é exatamente essa extensão — e é **só EDL**: os elementos orbitais
 (`altitude`/`inclination`/`raan`/`argLat0`) já eram slots por instância de `( Navstar3BtBehavior
 )`, nenhuma linha de C++ precisou mudar.
@@ -51,8 +52,8 @@ calculada.
 5. **Achado esperado, não um bug**: o relatório de metaobjetos do `-deterministic`
    (`meta=Navstar3Action count=...`) sai com um valor **negativo** quando os quatro satélites
    decidem em paralelo em threads diferentes do pool T/C — `mixr::base::MetaObject::count` é
-   `int` cru, não atômico (armadilha já documentada no `CLAUDE.md` raiz, seção "Testes
-   automatizados", para o modelo A-4/`FlightAgentTC`). Não afeta o **estado da simulação** (só a
+   `int` cru, não atômico (a mesma armadilha já conhecida do modelo A-4/`FlightAgentTC`). Não
+   afeta o **estado da simulação** (só a
    estatística de contagem de instâncias do próprio dump) — confirmado pelo item 6 abaixo.
 6. **Determinismo, com os quatro decidindo em paralelo**: `tests/determinism/
    check_determinism.sh` sobre 1200 frames — dumps byte-idênticos com 1, 2 e 4 threads T/C (mais
@@ -64,5 +65,5 @@ calculada.
 
 ## Ler também
 
-- [`../../models/others/Navstar-3/docs/ARCHITECTURE.md`](../../models/others/Navstar-3/docs/ARCHITECTURE.md)
+- [`../../models/players/space/Navstar-3/docs/ARCHITECTURE.md`](../../models/players/space/Navstar-3/docs/ARCHITECTURE.md)
   — todas as decisões de design do modelo

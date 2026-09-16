@@ -117,22 +117,6 @@ test("updateNode e no-op estrutural quando o id nao existe (mesma referencia)", 
   assert.strictEqual(updated, root);
 });
 
-test("removeNode remove um filho profundo sem afetar irmaos", () => {
-  const root = core.makeNode("Aircraft");
-  const a = core.makeNode("JSBSimModel");
-  const b = core.makeNode("Aircraft");
-  root.children.dynamicsModel = [{ key: "1", node: a }];
-  root.children.modes = [{ key: "1", node: b }];
-  const updated = core.removeNode(root, a.id);
-  assert.strictEqual(updated.children.dynamicsModel.length, 0);
-  assert.strictEqual(updated.children.modes.length, 1);
-});
-
-test("removeNode na propria raiz devolve null (chamador trata a parte)", () => {
-  const root = core.makeNode("Aircraft");
-  assert.strictEqual(core.removeNode(root, root.id), null);
-});
-
 /* ------------------------------ compatibilidade --------------------------- */
 
 test("isCompatible aceita a classe exata declarada no slot", () => {
@@ -666,13 +650,11 @@ test("projectToEdl: item de texto numa lista serializa 'chave: valor', nao 'chav
   assert.ok(!text.includes("( A-4E"), "item de texto nao pode virar uma forma ( Classe ... )");
 });
 
-test("findNode/removeNode atravessam um item de texto sem quebrar (children:{} generico)", () => {
+test("findNode atravessa um item de texto sem quebrar (children:{} generico)", () => {
   const root = core.makeNode("Aircraft");
   const leaf = core.makeTextLeaf("A-4E");
   root.children.modes = [{ key: "1", node: leaf }];
   assert.strictEqual(core.findNode(root, leaf.id), leaf);
-  const removed = core.removeNode(root, leaf.id);
-  assert.strictEqual(removed.children.modes.length, 0);
 });
 
 /* ----------------------- integração com o catálogo REAL --------------------- */

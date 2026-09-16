@@ -44,8 +44,10 @@ app = executable('app',
     include_directories : [local_inc_dir, thirdparty_inc_dir],
     # xmsg_dep/xjoystick_dep entraram quando o ./app virou o runner unico das
     # pocs: os cenarios delas declaram ( MsgFeed ) e ( JoystickIoHandler ).
+    # xterrain_dep: MultiTileTerrain, a variante multi-tile de terrain:.
     dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
-                           xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep, ftxui_dep],
+                           xlog_dep, xboard_dep, xtrack_dep, xplugin_dep, xmsg_dep,
+                           xterrain_dep, ftxui_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir + ':' + own_libs_rpath,
@@ -57,16 +59,18 @@ app = executable('app',
 # terreno/frota/WorldModel obrigatorios). Recompila mixr_factory.cpp de
 # proposito (mesmo padrao ja usado por src/rl/bindings/meson.build -- nao
 # ha lib estatica pronta pra isto no repositorio) para reusar a MESMA
-# cadeia de factories de producao, byte a byte. xlog_dep/xboard_dep/
-# xtrack_dep/ftxui_dep ficam de fora -- nenhum e tocado por mixr_factory.cpp
-# nem por edlcheck_main.cpp, so pelo resto do 'app' (TUI).
+# cadeia de factories de producao, byte a byte. xboard_dep/xtrack_dep/
+# ftxui_dep ficam de fora -- nenhum e tocado por mixr_factory.cpp nem por
+# edlcheck_main.cpp, so pelo resto do 'app' (TUI). xlog_dep NAO precisa
+# entrar explicito -- ja chega transitivamente via xterrain_dep (
+# MultiTileTerrain usa LOG(...) para avisos de tile ausente/invalido).
 edlcheck = executable('edlcheck',
     files('edlcheck_main.cpp', 'mixr_factory.cpp'),
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
     include_directories : local_inc_dir,
     dependencies        : [thread_dep, mixr_dep, xtacview_dep, xclock_dep, xjoystick_dep,
-                           xplugin_dep, xmsg_dep],
+                           xplugin_dep, xmsg_dep, xterrain_dep],
     install             : true,
     install_dir         : get_option('bindir'),
     install_rpath       : mixr_libdir + ':' + own_libs_rpath,

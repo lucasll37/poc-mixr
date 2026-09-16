@@ -50,7 +50,7 @@ roda() {   # roda <cenario> <n-threads> <arquivo-saida>
    # arquivo bruto e o rc e checado a parte, antes de filtrar.
    local raw rc
    raw="$(mktemp)"
-   "$BIN" -f "$1" -threads "$2" -deterministic "$FRAMES" > "$raw" 2>/dev/null
+   "$BIN" -file "$1" -numTcThreads "$2" -deterministic "$FRAMES" > "$raw" 2>/dev/null
    rc=$?
    grep '^frame=' "$raw" > "$3"
    rm -f "$raw"

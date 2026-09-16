@@ -7,6 +7,7 @@
 #include "xclock/factory.hpp"
 #include "xjoystick/factory.hpp"
 #include "xmsg/factory.hpp"
+#include "xterrain/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -53,11 +54,14 @@ mixr::base::Object* mixrFactoryBuiltin(const std::string& name)
    if (obj == nullptr) obj = mixr::simulation::factory(name);
    if (obj == nullptr) obj = mixr::models::factory(name);
 
-   // 6) banco de elevacao: SrtmHgtFile / DtedFile / DedFile / QuadMap.
-   //    models::factory NAO encadeia esta -- sem a linha abaixo, o
-   //    'terrain: ( SrtmHgtFile ... )' do .edl nao constroi nada e o
-   //    WorldModel fica sem terreno, em silencio.
+   // 6) banco de elevacao: SrtmHgtFile / DtedFile / DedFile / QuadMap (um
+   //    tile so) e MultiTileTerrain (libs/xterrain -- varios tiles do MESMO
+   //    diretorio, com carga sob demanda; ver libs/xterrain/README.md).
+   //    models::factory NAO encadeia nenhuma das duas -- sem as linhas
+   //    abaixo, 'terrain: ( ... )' do .edl nao constroi nada e o WorldModel
+   //    fica sem terreno, em silencio.
    if (obj == nullptr) obj = mixr::terrain::factory(name);
+   if (obj == nullptr) obj = mixr::xterrain::factory(name);
 
    // 6.5) DIS nativo -- DisNetIO/DisNtm (namespace real e mixr::dis, apesar
    //      do caminho do header ser mixr/interop/dis/). NAO encadeada por

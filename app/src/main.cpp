@@ -5,11 +5,12 @@
 // executavel proprio (ver "Estrutura de um subprojeto" no CLAUDE.md). Um
 // painel FTXUI (estilo btop: cores, navegacao por teclado, redesenho
 // responsivo) capaz de pausar/acelerar/frear, sobre DUAS fontes de cenario
-// possiveis (mutuamente exclusivas, ver app/Options.hpp): '-f <arquivo>'
+// possiveis (mutuamente exclusivas, ver app/Options.hpp): '-file <arquivo>'
 // (fixtures de teste, ou qualquer cenario apontado direto -- assume a frota
-// falcon1..4), '-folder <pasta>' navegando cenarios de sandbox em disco
-// (frota descoberta em runtime -- e o caminho para carregar as pocs de
-// src/poc/**, ex.: '-f src/poc/dis/flight/configs/scenario.edl.in'). Mora
+// falcon1..4, ex.: '-file src/poc/dis/flight/configs/scenario.edl.in'),
+// '-folder <pasta>' navegando cenarios de sandbox em disco (frota descoberta
+// em runtime -- e o caminho recomendado para carregar as pocs de src/poc/**,
+// ex.: '-folder src/poc/dis -scenario flight'). Mora
 // fora de src/ (./app/ na raiz) -- e o UNICO ocupante da pasta, por isso o
 // alvo se chama 'app', nao 'dashboard' (nome interno das classes, que nao
 // mudou).
@@ -19,13 +20,13 @@
 // "porque".
 //
 // Opcoes de linha de comando (lista completa em app/Options.hpp):
-//   -f <arquivo> | -folder <pasta>   (um dos dois)
-//   -threads <N> | -deterministic <N>
+//   -file <arquivo> | -folder <pasta>   (um dos dois)
+//   -numTcThreads <N> | -numBgThreads <N> | -deterministic <N>
 //
 // ESTE ARQUIVO SO ORQUESTRA -- mesma divisao de app/ das outras pocs:
 //
 //    app/Options.hpp             argv -> struct
-//    app/AdHocScenario.hpp       ScenarioEntry, e a entrada de '-f <arquivo>'
+//    app/AdHocScenario.hpp       ScenarioEntry, e a entrada de '-file <arquivo>'
 //    app/ScenarioFolder.hpp      descoberta de '-folder <pasta>' em disco
 //    app/ScenarioPickerScreen    tela de selecao (FTXUI), sem Station nenhuma
 //    app/TerrainData.hpp         .hgt em disco (copia verbatim das pocs)
@@ -53,13 +54,12 @@
 #include "app/Shutdown.hpp"
 #include "app/StationBuilder.hpp"
 #include "app/TerrainData.hpp"
+#include "app/TerrainQuery.hpp"
 
 #include "xlog/Log.hpp"
 #include "xtacview/TacviewOutput.hpp"
 
 #include "mixr/simulation/Station.hpp"
-
-#include "mixr/base/Component.hpp"
 
 #include <algorithm>
 #include <ctime>
@@ -114,6 +114,24 @@ std::string runIdNow()
    return oss.str();
 }
 
+// '-numTcThreads'/'-numBgThreads' sao escolha EXPLICITA do usuario
+// (opts.*ThreadsOverride==0 significa "sem override" -- ver
+// resolveTcThreadCount()/resolveBgThreadCount() em ScenarioTemplate.cpp);
+// sem repassar no reexec, o processo novo recalcularia pelo default (metade
+// dos nucleos / 2, respectivamente), perdendo a escolha original. Extraido
+// porque os dois ramos de reexec (Restart/RunEdited) precisam do mesmo par.
+void appendThreadOverrideArgs(std::vector<std::string>& args, const app::Options& opts)
+{
+   if (opts.tcThreadsOverride > 0) {
+      args.push_back("-numTcThreads");
+      args.push_back(std::to_string(opts.tcThreadsOverride));
+   }
+   if (opts.bgThreadsOverride > 0) {
+      args.push_back("-numBgThreads");
+      args.push_back(std::to_string(opts.bgThreadsOverride));
+   }
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -123,8 +141,8 @@ int main(int argc, char* argv[])
    const app::Options opts{app::parseCommandLine(argc, argv, app::Options{})};
 
    // Dois modos, mutuamente exclusivos ('-folder' tem prioridade sobre
-   // '-f' -- ver app/Options.hpp): '-folder <pasta>' navega uma pasta de
-   // sandbox em disco; '-f <arquivo>' e um .edl/.edl.in qualquer (fixtures
+   // '-file' -- ver app/Options.hpp): '-folder <pasta>' navega uma pasta de
+   // sandbox em disco; '-file <arquivo>' e um .edl/.edl.in qualquer (fixtures
    // de teste inclusive). 'chosen' e preenchido POR VALOR pelo ramo que se
    // aplicar -- mais simples que balancear ponteiros pra storages de
    // lifetimes diferentes (o design anterior).
@@ -173,7 +191,7 @@ int main(int argc, char* argv[])
       // Nenhum dos dois modos foi passado. Uso normal desta aplicacao NUNCA
       // "adivinha" o que abrir: e obrigatorio passar uma das duas opcoes
       // explicitamente.
-      std::cerr << "app: e obrigatorio passar -f <arquivo> ou -folder <pasta>"
+      std::cerr << "app: e obrigatorio passar -file <arquivo> ou -folder <pasta>"
                 << std::endl;
       return EXIT_FAILURE;
    }
@@ -184,16 +202,16 @@ int main(int argc, char* argv[])
    // mesmo lugar onde 'dataRecorder:'/'msgFeed:' do .edl ja escrevem
    // recordings/mensagens (ver o comentario de runIdNow()) -- nunca um
    // caminho global fixo. 'templatePath' e sempre '<pasta-do-cenario>/
-   // configs/<arquivo>' (poc via '-f', ou sandbox de '-folder'); subir dois
+   // configs/<arquivo>' (poc via '-file', ou sandbox de '-folder'); subir dois
    // niveis acha essa pasta sem o chamador ter de saber de qual familia o
    // cenario veio.
    std::filesystem::path scenarioDir{
       std::filesystem::path(cenario.templatePath).parent_path().parent_path()};
-   // Um '-f' apontando para um arquivo com menos de dois niveis de
-   // diretorio acima (ex.: '-f ./x.edl' na raiz) faz os dois
+   // Um '-file' apontando para um arquivo com menos de dois niveis de
+   // diretorio acima (ex.: '-file ./x.edl' na raiz) faz os dois
    // 'parent_path()' encalharem em "" ou na raiz do sistema de arquivos, e
    // o log tentaria abrir '/data/logs/...'. Nenhum cenario de poc/sandbox
-   // cai nisso (todos tem a forma '<pasta>/configs/<arquivo>'); so um '-f'
+   // cai nisso (todos tem a forma '<pasta>/configs/<arquivo>'); so um '-file'
    // avulso foge do padrao -- dai o fallback para './app'.
    if (scenarioDir.empty() || scenarioDir == scenarioDir.root_path()) scenarioDir = "./app";
    mixr::xlog::init((scenarioDir / "data" / "logs" / (cenario.key + "_" + runId + ".log")).string());
@@ -228,8 +246,8 @@ int main(int argc, char* argv[])
       {"COLOR_MAP", cenario.tacviewColorMap},
       {"RUN_ID", runId},
    };
-   const int numTcThreads{
-      app::generateScenario(cenario.templatePath, generatedPath, opts.threadsOverride, scenarioTokens)};
+   const app::ThreadCounts threadCounts{app::generateScenario(
+      cenario.templatePath, generatedPath, opts.tcThreadsOverride, opts.bgThreadsOverride, scenarioTokens)};
 
    mixr::simulation::Station* const station{app::buildStation(generatedPath)};
    mixr::xclock::ClockStation* const clockStation{app::clockStationOf(station)};
@@ -267,8 +285,8 @@ int main(int argc, char* argv[])
       // saber que a tecnologia de BT e o BehaviorTree.CPP.
       const app::BtNode behaviorTree{app::loadTreeForScenario(generatedPath)};
       action = app::runDashboard(station, worldModel, clockStation, tacviewOutput,
-                                 ioHandler, numTcThreads, cenario.label, behaviorTree,
-                                 generatedPath);
+                                 ioHandler, threadCounts.tc, threadCounts.bg, cenario.label,
+                                 behaviorTree, generatedPath);
    }
 
    // Nao e 'event(SHUTDOWN_EVENT) + unref()' cru: ver app/Shutdown.hpp para o
@@ -277,39 +295,38 @@ int main(int argc, char* argv[])
    // runDashboard(); em '-deterministic' nao existe thread T/C nenhuma.
    app::shutdownStation(station);
 
+   // Idem para a thread de carga de terreno em background (app/TerrainQuery
+   // .hpp) -- no-op se ela nunca foi criada ('-deterministic', ou um cenario
+   // sem nenhum tile no diretorio). SEM este join, a thread fica presa num
+   // 'condition_variable::wait()' pra sempre e o exit() normal do processo
+   // trava depois de main() retornar -- medido travando o encerramento por
+   // completo quando a thread era so' detach()'d.
+   app::shutdownTerrainLoader();
+
    if (opts.isDeterministic()) return rc;
 
    switch (action) {
       case app::DashboardExit::Restart: {
          // Cenario de '-folder': 'cenario.key' e o nome da SUBPASTA -- reexec
-         // precisa levar '-folder' junto. Senao, o cenario veio de '-f'
+         // precisa levar '-folder' junto. Senao, o cenario veio de '-file'
          // ('cenario.templatePath' e o mesmo caminho que 'opts.scenarioPath'
          // ja tinha).
          std::vector<std::string> args{!opts.scenarioFolder.empty()
             ? std::vector<std::string>{"-folder", opts.scenarioFolder, "-scenario", cenario.key}
-            : std::vector<std::string>{"-f", cenario.templatePath}};
-         // '-threads' e escolha explicita do usuario (opts.threadsOverride==0
-         // significa "sem override" -- ver resolveTcThreadCount()); sem
-         // repassar, o reexec recalcularia pelo default de hardware.
-         if (opts.threadsOverride > 0) {
-            args.push_back("-threads");
-            args.push_back(std::to_string(opts.threadsOverride));
-         }
+            : std::vector<std::string>{"-file", cenario.templatePath}};
+         appendThreadOverrideArgs(args, opts);
          app::respawnSelf(args);
          break;   // [[noreturn]], nunca chega aqui
       }
       case app::DashboardExit::RunEdited: {
          // O texto ja foi escrito em editedScenarioPath() e validado pelo
          // 'edlcheck' dentro de runDashboard() -- so falta o reexec com
-         // '-f', o MESMO caminho que uma fixture de teste ja usa (ver
+         // '-file', o MESMO caminho que uma fixture de teste ja usa (ver
          // app/Options.hpp). generateScenario() roda de novo sobre ele mais
          // adiante, mas e identidade: um '.edl' ja expandido nao tem mais
-         // '@include:...@'/'@NUM_TC_THREADS@' para substituir.
-         std::vector<std::string> args{"-f", app::editedScenarioPath()};
-         if (opts.threadsOverride > 0) {
-            args.push_back("-threads");
-            args.push_back(std::to_string(opts.threadsOverride));
-         }
+         // '@include:...@'/'@NUM_TC_THREADS@'/'@NUM_BG_THREADS@' para substituir.
+         std::vector<std::string> args{"-file", app::editedScenarioPath()};
+         appendThreadOverrideArgs(args, opts);
          app::respawnSelf(args);
          break;   // [[noreturn]], nunca chega aqui
       }

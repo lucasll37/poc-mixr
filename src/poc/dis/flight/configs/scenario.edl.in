@@ -7,7 +7,7 @@
 //
 // O agente do UBF e um AgentTC proprio (xnative::FlightAgentTC), componente
 // do proprio Player, que decide na FASE 3 do frame de tempo critico -- e o
-// UNICO agente que este modelo tem (ver models/players/A-4/src/xnative/
+// UNICO agente que este modelo tem (ver models/players/air/A-4/src/xnative/
 // FlightAgentTC.{hpp,cpp}). Nao ha mais um caminho alternativo via
 // ( SimAgent ) nativo na Station: ate uma passada anterior deste
 // repositorio havia dois cenarios gemeos (um decidindo assim, outro via
@@ -32,14 +32,14 @@
 // cenario nao a instancia.
 //
 // AERONAVE: A-4 (Douglas A-4 Skyhawk, dados em
-// models/players/A-4/data/jsbsim/aircraft/A4/, originados de
+// models/players/air/A-4/data/jsbsim/aircraft/A4/, originados de
 // shared/data/jsbsim/aircraft/A4/). O motivo do proprio c310 (agora
 // substituido) era concreto e continua valendo aqui: o JSBSimModel nativo
 // comanda a aeronave escrevendo em 'ap/heading_hold', 'ap/altitude_hold' e
 // 'ap/airspeed_hold' (confirmado com `strings libmixr_models.so`),
 // propriedades que so existem se o MODELO JSBSim tiver um autopilot
 // proprio. O A-4 de fabrica (Aeromatic) nao vem com nenhum -- por isso
-// models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
+// models/players/air/A-4/data/jsbsim/aircraft/A4/a4ap.xml foi escrito para
 // esta PoC-mixr, no mesmo papel que c310ap.xml cumpria: com ele, a cadeia
 // Autopilot -> JSBSimModel -> superficies funciona sem uma linha de lei de
 // controle propria.
@@ -280,7 +280,7 @@
                // CallSign/Pilot -- ver libs/xtacview).
                //
                // NOTA: a DINAMICA aqui e a de um A-4 de verdade (ver o
-               // comentario no topo e models/players/A-4/data/jsbsim/
+               // comentario no topo e models/players/air/A-4/data/jsbsim/
                // aircraft/A4/) -- "A-4E" no modelMap ja e a celula que
                // esta voando, nao mais uma escolha de apresentacao por
                // cima de outra dinamica.
@@ -299,27 +299,34 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       // Serra do Mar / regiao de Nova Friburgo (RJ). A referencia esta no
-      // MIOLO da celula S23W043 (lat -23..-22, lon -43..-42): com os players
-      // espalhados +-12 NM, a borda mais proxima do tile fica a 4,8 km. Isso
-      // nao e detalhe -- FORA da celula o Player::updateElevation() nativo
-      // grava elevacao 0.0 com o flag de validade LIGADO (ele ignora o
-      // retorno de getElevation()), e a decisao passa a raciocinar sobre um
-      // mundo ao nivel do mar sem nenhum aviso. Ver CLAUDE.md.
+      // MIOLO da celula S23W043 (lat -23..-22, lon -43..-42) -- com os
+      // players espalhados +-12 NM, a borda mais proxima do tile fica a
+      // 4,8 km. O que acontece fora da cobertura indexada de terreno esta
+      // explicado no comentario do 'terrain:' logo abaixo.
       latitude:  -22.25
       longitude: -42.48
 
-      // Banco de elevacao. Os slots sao 'path' e 'file' -- NAO 'pathname'/
-      // 'filename', que e como se chamam os setters. Nome errado da
-      // "slot not found" e o tile simplesmente nao carrega.
+      // Banco de elevacao -- MultiTileTerrain (libs/xterrain), nao mais o
+      // SrtmHgtFile nativo (um tile so): 'dir' aponta pra uma PASTA, e cada
+      // getElevation() resolve sozinho, por ponto, qual tile dela cobre a
+      // posicao atual -- ver libs/xterrain/README.md para o mecanismo
+      // completo (cache LRU, por que o mutex e obrigatorio com
+      // numBgThreads > 1). O .hgt e artefato gerado: o que fica versionado
+      // e o .hgt.gz, descomprimido sob demanda (o SrtmHgtFile usado
+      // internamente por tile nao le .gz).
       //
-      // O .hgt e artefato gerado: o que fica versionado e o .hgt.gz, que o
-      // app/TerrainData descomprime na primeira execucao (o SrtmHgtFile abre
-      // um ifstream cru, nao entende .gz).
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      // shared/data/terrain/srtm/ hoje tem 5 tiles reais (S23W043 + os 4
+      // vizinhos) cobrindo a regiao ao redor da referencia abaixo com
+      // folga -- mas o mesmo risco de antes persiste FORA de toda a
+      // cobertura indexada: Player::updateElevation() nativo ignora o
+      // retorno de getElevation() e grava elevacao 0.0 com o flag de
+      // validade LIGADO, entao a decisao passaria a raciocinar sobre um
+      // mundo ao nivel do mar sem nenhum aviso. Ver CLAUDE.md.
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {

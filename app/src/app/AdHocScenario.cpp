@@ -14,7 +14,7 @@ ScenarioEntry adHocScenario(const std::string& path)
 {
    // A chave sai do nome do arquivo (sem diretorio nem extensao) so para
    // batizar o '.generated.edl' e o cabecalho da TUI -- nada mais depende
-   // dela quando o cenario vem por '-f'.
+   // dela quando o cenario vem por '-file'.
    //
    // O stem() do C++ tira UMA extensao so, e as fixtures se chamam
    // '<nome>.edl.in' -- sem o corte abaixo a chave sairia '<nome>.edl' e o
@@ -35,9 +35,9 @@ ScenarioEntry adHocScenario(const std::string& path)
    // ver o historico desta funcao) pegaria esse bandit1 tambem, quebrando
    // exatamente a garantia que os testes de intruder dependem. Um cenario
    // custom de verdade, com frota diferente de falcon1..4, deve ser
-   // carregado por '-folder <pasta>' em vez de '-f' -- esse caminho descobre
-   // a frota em runtime (app::discoverFleet()).
-   return ScenarioEntry{key, key, "cenario carregado por -f", path,
+   // carregado por '-folder <pasta>' em vez de '-file' -- esse caminho
+   // descobre a frota em runtime (app::discoverFleet()).
+   return ScenarioEntry{key, key, "cenario carregado por -file", path,
                         "", "", "", "", falconFleet()};
 }
 

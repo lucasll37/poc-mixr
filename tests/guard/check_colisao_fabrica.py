@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Guarda: nenhum PAR de modelos "de verdade" sob models/players/ pode
-publicar o MESMO nome de fabrica.
+"""Guarda: nenhum PAR de projetos de modelo sob models/ pode publicar o
+MESMO nome de fabrica.
 
 Por que isso e fatal, nao so feio: libs/xplugin/PluginRegistry.cpp,
 loadModule(), passo "colisao" -- se dois .so carregados no MESMO processo
@@ -9,28 +9,36 @@ aconteceu (ThreadTagProbe, A-4 vs. o extinto modelo missile), corrigido
 renomeando o lado que nao e producao. Esta guarda existe para essa classe
 de erro nao voltar a ocorrer em silencio.
 
-Descobre os modelos por find sob models/players/ (mesma filosofia de
-check_modelo_estrutura.sh/check_falcons_estrutura.sh: um modelo novo ja
-entra na checagem, sem editar este arquivo) -- EXCETO models/players/
-template/, que existe justamente para IMITAR o contrato de outro modelo
-(docs/CONTRATO.md, via o mirror `src/mirror.cpp`) e nunca e carregado
-JUNTO com o modelo que imita; colisao ali e o proposito, nao um bug.
-Comparar os nomes do mirror (que reusa de proposito os mesmos 9 nomes de
-A-4) OU os nomes de exemplo do scaffold (ExampleState/ExampleBehavior/...)
-contra A-4 seria ruido, nao sinal.
+Descobre os modelos por find sob models/ INTEIRO, a QUALQUER profundidade
+(MESMA descoberta de MODELOS_PRODUCAO no Makefile raiz e de
+check_modelo_estrutura.sh/check_modelo_fresco.sh: todo diretorio com um
+meson.build cujo 'project()' esta na raiz do proprio arquivo) -- nunca por
+posicao fixa (models/<categoria>/<nome>/), que ficaria cega assim que uma
+categoria ganhasse subpastas proprias (foi exatamente o que aconteceu
+quando players/ ganhou air/effect/ground/space/weapon/: a versao anterior
+desta guarda, escrita para "duas iteracoes de profundidade", parou de achar
+QUALQUER modelo de producao em silencio). Um modelo novo ja entra na
+checagem, sem editar este arquivo -- EXCETO models/template/, que existe
+justamente para IMITAR o contrato de outro modelo (docs/CONTRATO.md, via o
+mirror `src/mirror.cpp`) e nunca e carregado JUNTO com o modelo que imita;
+colisao ali e o proposito, nao um bug. Comparar os nomes do mirror (que
+reusa de proposito os mesmos 9 nomes de A-4) OU os nomes de exemplo do
+scaffold (ExampleState/ExampleBehavior/...) contra A-4 seria ruido, nao
+sinal.
 
 Limitacao conhecida, documentada em vez de escondida: so olha o que cada
-models/players/<nome>/src/ implementa DIRETAMENTE. Uma classe compartilhada
-de fora (ex.: models/events/, hoje so consumida por A-4 -- ver
-xnative/factory.cpp, que acrescenta TacticalAlert ao proprio NOMES[]) nao
-entra nesta varredura; se um segundo modelo um dia tambem passar a
-publicar uma classe de models/events/, confira a mao contra o que aquele
-modelo de fato acrescenta ao proprio NOMES[]/plugin.cpp.
+projeto de modelo (models/.../<nome>/) src/ implementa DIRETAMENTE. Uma
+classe compartilhada de fora (ex.: models/events/, hoje so consumida por
+A-4 -- ver xnative/factory.cpp, que acrescenta TacticalAlert ao proprio
+NOMES[]) nao entra nesta varredura; se um segundo modelo um dia tambem
+passar a publicar uma classe de models/events/, confira a mao contra o que
+aquele modelo de fato acrescenta ao proprio NOMES[]/plugin.cpp.
 
 Uso: python3 tests/guard/check_colisao_fabrica.py
 """
 from __future__ import annotations
 
+import re
 import sys
 from itertools import combinations
 from pathlib import Path
@@ -42,38 +50,46 @@ import extract_execution_chain as ext  # noqa: E402
 
 MODELS_DIR = REPO_ROOT / "models"
 
-# A descoberta varre qualquer subpasta de models/ (nao so models/players/),
-# porque a checagem existe justamente para pegar colisao de nome de fabrica
-# entre modelos em categorias diferentes (players/, others/, systems/) --
-# restringir a players/ deixaria a guarda cega a um modelo real vivendo em
-# models/others/.
+# 'template' nunca e' producao (ver o "porque" da exclusao no docstring do
+# modulo). models/events/ nao e' uma pasta de projetos-modelo (e' UM projeto
+# so', a lib 'events', consumida por subdir()) -- seu meson.build nao tem
+# 'project()' na propria raiz, entao ja fica de fora da descoberta abaixo
+# sem precisar de exclusao por nome.
 NAO_PRODUCAO = {"template"}
 
-# models/events/ nao e' uma pasta de projetos-modelo (e' UM projeto so', a lib
-# 'events', consumida por subdir()) -- nao tem src/ de modelo para varrer, e
-# por isso e' filtrada junto com a ausencia de src/ logo abaixo.
+_PROJECT_RE = re.compile(r"^project\b", re.M)
+
+
 def discover_models():
-    """{caminho-relativo: {nomes-de-fabrica}} para cada models/<categoria>/<nome>/
-    que NAO seja template -- ver o "porque" da exclusao no docstring do
-    modulo. A chave e' o caminho relativo (nao so' o nome) porque
-    models/players/X e models/systems/X sao dois modelos DIFERENTES e as duas
-    entradas precisam coexistir no mapa."""
+    """{caminho-relativo: {nomes-de-fabrica}} para cada projeto de modelo sob
+    models/ (a QUALQUER profundidade) que NAO seja template -- ver o
+    "porque" da exclusao no docstring do modulo. A chave e' o caminho
+    relativo completo (nao so' o nome da pasta) porque dois modelos podem,
+    em tese, ter o mesmo NOME em categorias diferentes, e as duas entradas
+    precisam coexistir no mapa."""
     models = {}
-    for categoria in sorted(MODELS_DIR.iterdir()):
-        # 'template' e' entrada de PRIMEIRO nivel (models/template/), nao uma
-        # categoria -- sem este filtro ele seria varrido como se seus src/,
-        # tests/, docs/ fossem modelos. Hoje nenhum deles tem um src/ dentro,
-        # entao nada entraria; o filtro e' explicito para nao depender disso.
-        if not categoria.is_dir() or categoria.name in NAO_PRODUCAO:
+    for meson_build in sorted(MODELS_DIR.glob("**/meson.build")):
+        rel_parts = meson_build.relative_to(MODELS_DIR).parts
+        # poda build/dist/subprojects/tests/tools -- MESMOS '-not -path' que
+        # MODELOS_PRODUCAO (Makefile raiz) usa: um meson.build de
+        # subdiretorio (ex.: tests/meson.build) so' tem subdir(), nunca
+        # project().
+        if any(p in ("build", "dist", "subprojects", "tests", "tools") for p in rel_parts[:-1]):
             continue
-        for d in sorted(categoria.iterdir()):
-            if not d.is_dir() or d.name in NAO_PRODUCAO:
-                continue
-            src = d / "src"
-            if not src.exists():
-                continue
-            factory_map = ext.build_factory_map([src])
-            models[str(d.relative_to(REPO_ROOT))] = set(factory_map.keys())
+        d = meson_build.parent
+        if d.name in NAO_PRODUCAO:
+            continue
+        try:
+            texto = meson_build.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not _PROJECT_RE.search(texto):
+            continue
+        src = d / "src"
+        if not src.exists():
+            continue
+        factory_map = ext.build_factory_map([src])
+        models[str(d.relative_to(REPO_ROOT))] = set(factory_map.keys())
     return models
 
 

@@ -164,5 +164,5 @@ dist/bin/edlcheck <arquivo>                    # o parser MIXR de verdade, apos 
 
 ## Leia mais
 
-[CLAUDE.md](../../CLAUDE.md), seção `src/ui` — toda decisão de design e armadilha confirmada
-rodando.
+Este README documenta o comportamento atual da ferramenta; as decisões de design ao longo do
+tempo não são repetidas aqui.

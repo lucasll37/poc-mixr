@@ -98,7 +98,7 @@ do recorder nativo é só a **forma**: EDL declarativo, cadeia de destinos com f
 
 `Schmitt`, `Deadband`, `RateWindow` e `EmitGate` (`libs/xmsg/rules/`) não incluem nada do
 framework — é a mesma separação que motivou tirar `domain::WorldView` de dentro de uma classe MIXR
-(ver `CLAUDE.md`, seção "Testes automatizados"). Cada uma resolve **uma** questão:
+Cada uma resolve **uma** questão:
 
 | classe | questão | usada por |
 |---|---|---|

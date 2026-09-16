@@ -5,9 +5,7 @@
 A aplicação principal deste repositório (o "core") não decide nada sozinha: ela carrega a lógica
 de simulação — percepção, decisão, ação — de uma biblioteca compartilhada (`.so`) compilada à
 parte e aberta em tempo de execução, sem que o core precise conhecer o código-fonte dela. Essa
-biblioteca é o que este repositório chama de **modelo** (ver [`../../CLAUDE.md`](../../CLAUDE.md),
-seção "O MODELO é um plugin, construído numa etapa PRÉVIA", para a visão geral de como isso se
-encaixa no resto do repositório).
+biblioteca é o que este repositório chama de **modelo**.
 
 Este diretório é o **único** ponto de partida copiável deste repositório, e hospeda DOIS artefatos
 com papéis diferentes:
@@ -118,6 +116,3 @@ exemplo pela sua decisão de verdade.
   crescer para uma árvore de comportamento
 - [`docs/CONTRATO.md`](docs/CONTRATO.md) — a lista completa e autoritativa do que QUALQUER modelo
   precisa fazer para o core carregá-lo e rodar com ele
-- [`../../CLAUDE.md`](../../CLAUDE.md), seção "O MODELO é um plugin, construído numa etapa
-  PRÉVIA" — visão geral de `models/`, o contrato de plugin, e o fluxo de build orquestrado pelo
-  Makefile da raiz

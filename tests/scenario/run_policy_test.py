@@ -37,7 +37,7 @@ def gerar_fixture(destino: pathlib.Path, poc: str, arvore: str | None) -> None:
     Sem '--tree' nao ha troca nenhuma: e o caso de uma poc cujo PROPRIO
     cenario ja aponta para a arvore da politica (src/poc/onnx-policy). Com
     '--tree', o cenario de producao da poc (que aponta para as regras em C++)
-    e desviado para a arvore de deploy que models/players/A-4 instala -- o caso
+    e desviado para a arvore de deploy que models/players/air/A-4 instala -- o caso
     das gemeas, que nao tem cenario proprio de politica.
     """
     subprocess.run(
@@ -54,7 +54,7 @@ def gerar_fixture(destino: pathlib.Path, poc: str, arvore: str | None) -> None:
 
 def rodar(binario: str, fixture: pathlib.Path, threads: int, frames: int) -> list[str]:
     saida = subprocess.run(
-        [binario, "-f", str(fixture), "-threads", str(threads), "-deterministic", str(frames)],
+        [binario, "-file", str(fixture), "-numTcThreads", str(threads), "-deterministic", str(frames)],
         check=True, cwd=RAIZ, capture_output=True, text=True, timeout=600).stdout
     return [l for l in saida.splitlines() if l.startswith("frame=")]
 

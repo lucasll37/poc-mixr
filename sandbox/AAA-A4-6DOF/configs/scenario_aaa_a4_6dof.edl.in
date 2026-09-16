@@ -18,7 +18,7 @@
 //   aaa_site -- ( AaaSite ), estacionaria (sem dynamicsModel,
 //      initVelocity:0.0). Radar de aquisicao PROPRIO (mesma cadeia
 //      Gimbal+Antenna+SensorMgr(Tws)+OnboardComputer(AirTrkMgr), so' que
-//      nomeado "aaaTrkMgr" -- ver models/players/AAA/docs/ARCHITECTURE.md),
+//      nomeado "aaaTrkMgr" -- ver models/players/ground/AAA/docs/ARCHITECTURE.md),
 //      StoresMgr com UM ( GuidedMissile ), agent: ( UbfAgent ) NATIVO (sem
 //      subclasse de AgentTC -- decide a taxa de FUNDO, 10 Hz, de sobra pra
 //      um alvo a ~130 m/s). minLaunchRange/maxLaunchRange (slots nativos de
@@ -30,7 +30,7 @@
 //      provada em src/poc/built-in_mixr_1: antena dedicada 'ant_rwr' com
 //      playerOfInterestTypes incluindo 'ground', disableEmissions:true).
 //      agent: ( FlightAgentTC ) com a arvore de DEMONSTRACAO
-//      (flight_tree_rwr_evade_demo.xml em models/players/A-4 -- NAO a
+//      (flight_tree_rwr_evade_demo.xml em models/players/air/A-4 -- NAO a
 //      arvore de producao, que fica intocada).
 //
 // GEOMETRIA: a4_intruder comeca na origem, patrulhando rumo 090 (LESTE) a
@@ -110,6 +110,7 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       latitude:  -22.25
       longitude: -42.48
@@ -218,7 +219,7 @@
                // O AGENTE -- UbfAgent NATIVO (nao AgentTC), decidindo a
                // taxa de FUNDO (updateData(), ~10 Hz): de sobra pra "alvo
                // a ~130 m/s entra no domo, dispara". Ver
-               // models/players/AAA/docs/ARCHITECTURE.md para o porque de
+               // models/players/ground/AAA/docs/ARCHITECTURE.md para o porque de
                // nao existir nenhuma subclasse propria de AgentTC aqui.
                agent: ( UbfAgent
                   state: ( AaaState )

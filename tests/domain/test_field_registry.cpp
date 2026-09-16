@@ -1,6 +1,6 @@
 //
 // libs/xrlbridge/FieldRegistry.hpp + Schema.hpp -- o mecanismo GENERICO por
-// tras da porta 'schema' dos nos de arvore de models/players/A-4 (ver
+// tras da porta 'schema' dos nos de arvore de models/players/air/A-4 (ver
 // bt/ObservationSchema.hpp la). Testado aqui, isolado de qualquer WorldView
 // de verdade -- so um struct fake, para provar a MECANICA (ordem, deteccao
 // de nome desconhecido, pack) sem depender de nenhum modelo.

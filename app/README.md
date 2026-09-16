@@ -6,12 +6,11 @@ dentro do próprio terminal, sem janela gráfica) construída com
 para **carregar, acompanhar e controlar** uma simulação — em vez de ler uma
 linha de status em texto puro. Este próprio `app` não presume pilha nenhuma fixa: lê qualquer
 player pela base `mixr::models::Player` e descobre entidades em runtime, então funciona com
-**qualquer** modelo carregado, não só o de produção (ver [CLAUDE.md](../CLAUDE.md), seção `./app`,
-trecho "Redesenho: agnóstico a tipo de modelo"). É o **runner interativo único** de todas as provas de
+**qualquer** modelo carregado, não só o de produção. É o **runner interativo único** de todas as provas de
 conceito deste repositório — nenhuma pasta de poc tem executável próprio, todas são carregadas por
 este binário; para automação/CI sem TUI o caminho é [`src/node/`](../src/node/README.md)
 ([§8](#8-limitações-conhecidas)), que roda o mesmo `.edl`/`.edl.in` de forma headless, sem TUI e
-sem reaproveitar nada deste binário (ver [CLAUDE.md](../CLAUDE.md), seção `src/node`). Mora
+sem reaproveitar nada deste binário. Mora
 fora de `src/` — não é "mais uma poc", é a ferramenta de controle das demais — por isso tem pasta
 própria na raiz e o binário se chama `app`, não `dashboard`.
 
@@ -31,11 +30,11 @@ propósito — ver a seção "Build" do `README.md` raiz). Pular `make models` s
 cenário carrega nada.
 
 Ou o binário direto, sempre a partir da **raiz** do repositório (`configs:`/`data:` são caminhos
-relativos). É obrigatório passar exatamente um de `-f`/`-folder` — rodar sem nenhum é erro fatal,
-não abre tela nenhuma:
+relativos). É obrigatório passar exatamente um de `-file`/`-folder` — rodar sem nenhum é erro
+fatal, não abre tela nenhuma:
 
 ```bash
-./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in        # uma poc de src/poc/**, direto -- ver §3
+./build/app/src/app -file src/poc/dis/flight/configs/scenario.edl.in     # uma poc de src/poc/**, direto -- ver §3
 ./build/app/src/app -folder src/poc/dis -scenario bandit                 # idem, quando a frota nao e falcon1..4
 ./build/app/src/app -folder ./sandbox                                    # navega uma pasta de cenarios soltos
 ```
@@ -142,7 +141,7 @@ conceitual**, não uma medição — o MIXR é dependência binária, sem instru
 (para isso, use o editor gráfico web, [`src/ui/`](../src/ui/)). Nunca escreve no `.edl.in` de
 origem nem no `.generated.edl` carregado, só num arquivo de trabalho à parte
 (`app/data/edl_editor/`, gitignored). `F8` valida contra o mesmo oráculo `edlcheck` de `src/ui/`;
-`F9` valida e, se OK, **reexecuta** o processo com `-f` apontando pro texto editado (nunca duas
+`F9` valida e, se OK, **reexecuta** o processo com `-file` apontando pro texto editado (nunca duas
 `Station`s no mesmo processo); `F10` descarta a edição.
 
 ![Aba EDL](images/f7.png)
@@ -150,26 +149,42 @@ origem nem no `.generated.edl` carregado, só num arquivo de trabalho à parte
 ## 3. Cenários
 
 Não há mais catálogo estático embutido no binário — toda poc sob `src/poc/` (nenhuma com
-executável próprio) é alcançável por `-f`/`-folder`:
+executável próprio) é alcançável por `-file`/`-folder`:
 
 ```bash
-./build/app/src/app -f src/poc/dis/flight/configs/scenario.edl.in          # frota falcon1..4
+./build/app/src/app -file src/poc/dis/flight/configs/scenario.edl.in       # frota falcon1..4
 ./build/app/src/app -folder src/poc/dis -scenario bandit                   # frota {bandit1} -- precisa de -folder
 ./build/app/src/app -folder src/poc     -scenario python-flight           # ou onnx-policy
 ./build/app/src/app -folder tests/fixtures -scenario built-in_mixr_1      # ou full-systems-nav (fixtures, nao pocs)
 ```
 
-`-f <arquivo>` aceita tanto um `.edl.in` (o "modelo" versionado, ainda com marcadores como
-`@NUM_TC_THREADS@`) quanto um `.edl` já resolvido — nos dois casos o app roda, antes do parser
-EDL, uma etapa de **expansão**: troca literal de cada marcador `@TOKEN@` pelo valor
-correspondente (ex.: o tamanho do pool de tempo crítico); sobre um `.edl` sem marcador nenhum
-essa etapa é identidade. O resultado sempre vai para
+**As duas opções resolvem a frota de formas diferentes, e é isso que decide qual usar — não o
+nome dos players.**
+
+- `-file <arquivo>` **nunca abre o arquivo pra descobrir quem são os players** — ele só aponta
+  pra ele e assume, sempre, a frota fixa `falcon1..4`. É por isso que serve para `flight`/
+  `python-flight`/`onnx-policy` e para qualquer fixture gerada por `tests/scenario/
+  make_fixture.py` (essas SEMPRE têm essa frota — é o formato que as fixtures garantem, não uma
+  coincidência). Fora desse contrato, o binário aborta cedo com "player 'falcon1' não encontrado"
+  — não é um bug, é `-file` fazendo exatamente o que promete.
+- `-folder <pasta> -scenario <nome>` **lê o próprio cenário e descobre os players em runtime**
+  (`app::discoverFleet()`), então funciona com qualquer nome e qualquer quantidade de player —
+  `bandit` (`{bandit1}`), `full-systems-nav` (`{a4}`), a família `sandbox/A4-*DOF` (`a4_1..a4_8`),
+  ou qualquer cenário próprio que você venha a criar.
+
+**Regra prática: `-folder` é a opção que sempre funciona; `-file` é só um atalho mais direto**
+(sem precisar organizar o cenário numa subpasta com `configs/`), útil quando você já sabe que o
+`.edl` segue a convenção `falcon1..4` — ou para apontar rápido a um arquivo avulso durante um
+experimento. Na dúvida, use `-folder`.
+
+`-file <arquivo>` aceita tanto um `.edl.in` (o "modelo" versionado, ainda com marcadores como
+`@NUM_TC_THREADS@`/`@NUM_BG_THREADS@`) quanto um `.edl` já resolvido — nos dois casos o app roda,
+antes do parser EDL, uma etapa de **expansão**: troca literal de cada marcador `@TOKEN@` pelo
+valor correspondente (ex.: o tamanho dos pools de tempo crítico/background, resolvidos a partir
+de `-numTcThreads`/`-numBgThreads`, ver abaixo); sobre um `.edl` sem marcador nenhum essa etapa é
+identidade. O resultado sempre vai para
 `./build/generated-scenarios/<chave>.generated.edl` ([§6](#6-portas-e-arquivos)) — um artefato de
-runtime, nunca a fonte a editar. `-f` carrega um cenário apontado direto pelo caminho — assume
-sempre a frota `falcon1..4` (o caso de `flight`/`python-flight`/`onnx-policy` e das fixtures de
-teste, incluindo `built-in_mixr_1` em `tests/fixtures/`). Um cenário com frota diferente (ex.:
-`bandit`, `{bandit1}`; `full-systems-nav`, `{a4}`, hoje também em `tests/fixtures/`) tem de ser
-carregado por `-folder` em vez de `-f`, que descobre a frota em runtime.
+runtime, nunca a fonte a editar.
 
 `-folder <pasta>` navega `<pasta>/<cenário>/configs/*.edl(.in)` — sozinho (sem `-scenario`) abre a
 tela de navegação; combinado com `-scenario <subpasta>`, pula direto pra ela. Só funciona quando
@@ -188,7 +203,7 @@ isso, o próprio FTXUI degrada para a paleta de 16 cores mais próxima — nada 
 funcionalidade, o resto do `./app` já dependia da mesma detecção. Ver `app/BannerImage.hpp`.
 
 **Fronteira de confiança (achado por auditoria, nunca documentado antes deste parágrafo):**
-carregar um cenário por `-f`/`-folder` — inclusive `-folder ./sandbox`, o fluxo de primeira classe
+carregar um cenário por `-file`/`-folder` — inclusive `-folder ./sandbox`, o fluxo de primeira classe
 para experimentação — é **executar código com os privilégios deste processo**, não só "ler dado".
 Um `.edl`/`.edl.in` pode apontar: (1) `( PyDecide script: "..." )` — `libs/xpyembed` roda o
 `decide()` desse `.py` dentro do frame, Python irrestrito, sem sandbox nenhuma (ver
@@ -204,7 +219,8 @@ rodar um script `.sh`/`.py` desconhecido.
 
 | opção | efeito |
 |---|---|
-| `-threads <N>` | força o tamanho do pool de tempo crítico (padrão: metade dos núcleos; em todos os casos o teto é `hardware_concurrency() - 1`) |
+| `-numTcThreads <N>` | tamanho do pool de tempo crítico — quantas threads decidem em paralelo, uma por player, round-robin. Sem a flag, o default é **metade dos núcleos** da máquina (a outra metade fica para o laço de background: TUI, gravador Tacview, rede). Com a flag, o valor pedido é sempre limitado a `[1, hardware_concurrency() - 1]` — nunca menos que 1, nunca mais que núcleos-1. O número final substitui `@NUM_TC_THREADS@` dentro do `.edl.in` (ver §3) antes do parser ler o arquivo — só cenários com esse marcador reagem à flag. É o parâmetro que `tests/determinism/check_determinism.sh` varia (1/2/4) para provar que o resultado da simulação independe de quantas threads decidem em paralelo. Era `-threads`, renomeado para não contradizer o par nativo que ela sempre teve no framework (`numTcThreads`/`numBgThreads`, ver a flag abaixo) |
+| `-numBgThreads <N>` | tamanho do pool nativo de **background** — o mesmo mecanismo round-robin do T/C acima, mas para `Simulation::updateData()` (fora do frame de tempo crítico; ver `mixr::simulation::Simulation::setSlotNumBgThreads()`). Sem a flag, o default é **2** (não metade dos núcleos, ao contrário do T/C: nenhum cenário deste repositório decide via agente em background, então não há motivo para variar tanto — 2 só exercita o mecanismo nativo). Mesmo clamp `[1, hardware_concurrency() - 1]`. Substitui `@NUM_BG_THREADS@` dentro do `.edl.in` |
 | `-deterministic <N>` | roda N frames de passo fixo e sai — sem TUI nem **TTY** (de *teletype*, terminal interativo de verdade: um dispositivo de terminal real por trás de stdin/stdout, o que falta em pipe/redirecionamento/CI), imprime `frame=` + relatório de instâncias; é o caminho usado por `make test` |
 
 ## 4. Árvore de comportamento e breakpoints
@@ -222,8 +238,8 @@ ou por `x`.
 ## 5. Ações disruptivas
 
 `r`/`q` sempre pedem confirmação. `r` derruba a `Station` atual e **reexecuta o próprio processo**
-(`execv`) com o mesmo cenário (`-f`/`-folder`, conforme a origem) — nunca uma segunda simulação no
-mesmo processo; `q` só encerra. `F9` da aba EDL usa o mesmo mecanismo de reexec, com `-f` apontando
+(`execv`) com o mesmo cenário (`-file`/`-folder`, conforme a origem) — nunca uma segunda simulação no
+mesmo processo; `q` só encerra. `F9` da aba EDL usa o mesmo mecanismo de reexec, com `-file` apontando
 pro texto editado.
 
 ## 6. Portas e arquivos
@@ -236,7 +252,7 @@ preservam o mesmo bloco bidirecional de `flight`, só trocando a decisão); os c
 `README.md` raiz) são herméticos.
 
 O terreno é compartilhado entre cenários (`./shared/data/terrain/srtm/`). O cenário expandido de
-qualquer `-f`/`-folder` vai para `./build/generated-scenarios/` (gitignored) — o binário não grava
+qualquer `-file`/`-folder` vai para `./build/generated-scenarios/` (gitignored) — o binário não grava
 mais dentro de nenhum `configs/`. (Três `scenario.generated.edl` de antes dessa mudança seguem
 commitados em `src/poc/dis/flight/configs/`, `src/poc/onnx-policy/configs/` e
 `src/poc/python-flight/configs/` — leftovers inofensivos; `-folder` já ignora esse sufixo ao
@@ -253,9 +269,7 @@ juntas em `app/include/app/DashboardWiring.hpp`, o header comum que também defi
 `DashboardWiring` (o estado que antes vivia todo local a `runDashboard()`, hoje agregado por
 valor). Diferente das camadas mais internas que cada aba consome (`FleetPanel`, `MapPanel`,
 `BackgroundPanel`...), essas funções de "fiação" usam FTXUI diretamente — são o ponto onde o
-estado vira componente de tela — e uma delas (`DashboardLogTab.cpp`) também usa MIXR direto. O
-histórico completo de cada decisão de design — e as armadilhas encontradas rodando — está na
-seção `./app` do [CLAUDE.md](../CLAUDE.md); este README não repete o que já está lá.
+estado vira componente de tela — e uma delas (`DashboardLogTab.cpp`) também usa MIXR direto.
 
 ## 8. Limitações conhecidas
 
@@ -268,16 +282,14 @@ seção `./app` do [CLAUDE.md](../CLAUDE.md); este README não repete o que já 
 - **Sem `-deterministic`, este binário exige um TTY interativo de verdade.** Rodar qualquer modo
   com TUI sob pipe/redirecionamento/CI (sem terminal real) **trava o processo indefinidamente**
   dentro de `ScreenInteractive::Fullscreen()` — não é um bug desta rodada, é característica do
-  FTXUI (medido e detalhado em [CLAUDE.md](../CLAUDE.md), seção `./app`, trecho "vigésima quinta
-  passada"). Para automação/CI use `-deterministic` ou [`src/node/`](../src/node/README.md), que
+  FTXUI. Para automação/CI use `-deterministic` ou [`src/node/`](../src/node/README.md), que
   não abrem TUI nenhuma.
 
 ## 9. Leia mais
 
 | documento | quando ler |
 |---|---|
-| [CLAUDE.md](../CLAUDE.md), seção `./app` | toda decisão de design e armadilha, rodada por rodada |
 | [README.md](../README.md) (raiz) | pré-requisitos, build, como o repositório se organiza |
 | [libs/README.md](../libs/README.md) | as bibliotecas que este app consome (`xboard`, `xtrack`, `xlog`...) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) (raiz) | como um modelo vira plugin, como escrever um novo (não cobre contribuição ao core/`./app`) |
-| [tests/README.md](../tests/README.md) | a suíte automatizada, inclusive `scenario/run_app_stress_test.py` (`scenario-app-quit`/`scenario-app-quit-dis` estão documentados em `CLAUDE.md`, não lá) |
+| [tests/README.md](../tests/README.md) | a suíte automatizada, inclusive `scenario/run_app_stress_test.py` |

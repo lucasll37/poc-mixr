@@ -15,7 +15,7 @@ namespace app {
 // Ele so vai para editedScenarioPath(), um arquivo de TRABALHO a parte
 // (gitignored, ver app/data/edl_editor/.gitkeep), escrito de novo a cada
 // "Validar"/"Rodar". "Rodar" nunca constroi uma segunda Station no mesmo
-// processo -- e sempre um REEXEC com '-f' (ver DashboardExit::RunEdited em
+// processo -- e sempre um REEXEC com '-file' (ver DashboardExit::RunEdited em
 // app/DashboardLoop.hpp e o "porque" em app/Respawn.hpp), a mesma regra que
 // ja vale para "Carregar"/"Reiniciar".
 //------------------------------------------------------------------------------

@@ -12,11 +12,11 @@ FONTE dos modelos. É puramente um artefato binário, como `dist/`.
 ## Os dois jeitos de algo chegar aqui
 
 1. **Compilado por este repositório** — `make models` (na raiz) chama `install-core` de cada
-   projeto de modelo (`models/players/A-4/`, `models/template/`, este último instalado
+   projeto de modelo (`models/players/air/A-4/`, `models/template/`, este último instalado
    incondicionalmente à parte por causa do mirror de contrato — ver o Makefile raiz), e cada um
    copia o próprio `.so` (e dados, se houver) para cá. Nenhum deles escreve em `dist/`
-   diretamente — ver a seção "Desacoplando `models` de `dist/`" no `CLAUDE.md` da raiz para o
-   "porquê".
+   diretamente — só `make install` (alvo `sync-plugins`) sincroniza os dois, no único momento em
+   que a união importa de verdade: alguém vai rodar algo.
 2. **Um `.so` de terceiro** — já compilado fora deste repositório (por outra equipe, outro
    fornecedor), entra aqui do mesmo jeito: solto nesta pasta, com o nome que ele já tem.
 
@@ -32,7 +32,7 @@ simulada.
 - **Flat**: os `.so` vão direto na raiz desta pasta, sem subpasta por modelo.
 - **`data/`** é a única exceção ao depósito flat — uma subpasta por modelo que publica dado
   próprio (ex.: `data/A-4/`, a árvore de comportamento + a aeronave JSBSim de
-  `models/players/A-4/`), porque é dado do MODELO, não do cenário. Nem todo modelo publica algo
+  `models/players/air/A-4/`), porque é dado do MODELO, não do cenário. Nem todo modelo publica algo
   aqui — um modelo sem `configs:`/`data:` (ex.: `missile`) não ganha subpasta.
 - **`.so` de terceiro não é versionado** (`.gitignore`: `plugins/*.so`, `plugins/data/`) — é
   binário, e no caso de terceiro nem é nosso para versionar. `.gitkeep`/este `README.md` são o
@@ -67,8 +67,5 @@ não como falha.
 
 ## Ler também
 
-- [`../CLAUDE.md`](../CLAUDE.md), seção "Desacoplando `models` de `dist/`" — o "porquê" completo
-  da separação entre este depósito e `dist/`, e a seção "O MODELO é um plugin, construído numa
-  etapa PRÉVIA" para a estrutura de `models/` e o build em etapas
 - [`../tests/plugin/run_thirdparty_deposit.py`](../tests/plugin/run_thirdparty_deposit.py) — a
   prova de que um `.so` depositado aqui roda a simulação de produção de verdade

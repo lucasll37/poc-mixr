@@ -7,11 +7,11 @@
 #include <vector>
 
 // app::parseCommandLine() -- so traducao de argv para Options, sem tocar
-// disco nem Station. As flags que aceitam valor (-threads, -deterministic, e
-// as string puras -scenario/-f/-folder) sao cobertas pelo caminho feliz; os
-// die() (token nao numerico, flag sem valor, -deterministic <= 0) sao death
-// tests -- e a unica forma de testar um std::exit() sem derrubar o binario
-// de teste inteiro.
+// disco nem Station. As flags que aceitam valor (-numTcThreads,
+// -numBgThreads, -deterministic, e as string puras -scenario/-file/-folder)
+// sao cobertas pelo caminho feliz; os die() (token nao numerico, flag sem
+// valor, -deterministic <= 0) sao death tests -- e a unica forma de testar
+// um std::exit() sem derrubar o binario de teste inteiro.
 
 namespace {
 
@@ -34,12 +34,12 @@ TEST(ParseCommandLine, SemArgumentosMantemOsDefaults)
 {
    app::Options defaults;
    defaults.scenarioKey = "patrol";
-   defaults.threadsOverride = 3;
+   defaults.tcThreadsOverride = 3;
 
    const app::Options opts{parse({}, defaults)};
 
    EXPECT_EQ(opts.scenarioKey, "patrol");
-   EXPECT_EQ(opts.threadsOverride, 3);
+   EXPECT_EQ(opts.tcThreadsOverride, 3);
    EXPECT_FALSE(opts.isDeterministic());
 }
 
@@ -47,26 +47,41 @@ TEST(ParseCommandLine, FlagDesconhecidaEIgnoradaSemConsumirOProximoToken)
 {
    // '-bogus' nao casa com nenhum 'else if': tem que ser descartada
    // sozinha, sem "engolir" o argumento seguinte como se fosse o valor dela.
-   const app::Options opts{parse({"-bogus", "-threads", "2"})};
-   EXPECT_EQ(opts.threadsOverride, 2);
+   const app::Options opts{parse({"-bogus", "-numTcThreads", "2"})};
+   EXPECT_EQ(opts.tcThreadsOverride, 2);
 }
 
-TEST(ParseCommandLine, ScenarioFFolderSaoIndependentes)
+TEST(ParseCommandLine, ScenarioFileFolderSaoIndependentes)
 {
    // A exclusividade das tres formas de escolher cenario e uma REGRA DE USO
    // (documentada no header), nao uma validacao desta funcao -- ela so
    // traduz argv, sem decidir o que fazer com o resultado.
-   const app::Options opts{parse({"-scenario", "intercept", "-f", "/tmp/x.edl",
+   const app::Options opts{parse({"-scenario", "intercept", "-file", "/tmp/x.edl",
                                   "-folder", "./sandbox"})};
    EXPECT_EQ(opts.scenarioKey, "intercept");
    EXPECT_EQ(opts.scenarioPath, "/tmp/x.edl");
    EXPECT_EQ(opts.scenarioFolder, "./sandbox");
 }
 
-TEST(ParseCommandLine, ThreadsConverteInteiro)
+TEST(ParseCommandLine, NumTcThreadsConverteInteiro)
 {
-   const app::Options opts{parse({"-threads", "4"})};
-   EXPECT_EQ(opts.threadsOverride, 4);
+   const app::Options opts{parse({"-numTcThreads", "4"})};
+   EXPECT_EQ(opts.tcThreadsOverride, 4);
+}
+
+TEST(ParseCommandLine, NumBgThreadsConverteInteiro)
+{
+   const app::Options opts{parse({"-numBgThreads", "5"})};
+   EXPECT_EQ(opts.bgThreadsOverride, 5);
+}
+
+TEST(ParseCommandLine, NumTcThreadsENumBgThreadsSaoIndependentes)
+{
+   // Mesma forma da FlagDesconhecidaEIgnoradaSemConsumirOProximoToken acima
+   // -- as duas flags de thread nao podem "roubar" o valor uma da outra.
+   const app::Options opts{parse({"-numTcThreads", "3", "-numBgThreads", "2"})};
+   EXPECT_EQ(opts.tcThreadsOverride, 3);
+   EXPECT_EQ(opts.bgThreadsOverride, 2);
 }
 
 TEST(ParseCommandLine, DeterministicConverteLongEHabilitaIsDeterministic)
@@ -77,36 +92,48 @@ TEST(ParseCommandLine, DeterministicConverteLongEHabilitaIsDeterministic)
 }
 
 //------------------------------------------------------------------------------
-// Death tests -- os quatro die() de app/Options.cpp. EXPECT_EXIT roda a
+// Death tests -- os cinco die() de app/Options.cpp. EXPECT_EXIT roda a
 // expressao num processo filho (fork) e verifica o exit code e uma parte da
 // saida; e o unico jeito de exercitar um std::exit() sem matar a suite
 // inteira.
 //------------------------------------------------------------------------------
 
-TEST(ParseCommandLineMorte, ThreadsComTokenNaoNumericoMorreComMensagemClara)
+TEST(ParseCommandLineMorte, NumTcThreadsComTokenNaoNumericoMorreComMensagemClara)
 {
-   EXPECT_EXIT(parse({"-threads", "abc"}), ::testing::ExitedWithCode(EXIT_FAILURE),
+   EXPECT_EXIT(parse({"-numTcThreads", "abc"}), ::testing::ExitedWithCode(EXIT_FAILURE),
               "numero inteiro");
 }
 
-TEST(ParseCommandLineMorte, ThreadsComTokenParcialmenteNumericoMorre)
+TEST(ParseCommandLineMorte, NumTcThreadsComTokenParcialmenteNumericoMorre)
 {
    // std::stoi("3xyz", &consumido) converte so o prefixo "3" e NAO lanca --
    // e o 'consumido != token.size()' que pega isto (ver o comentario do
-   // .cpp). Sem essa checagem, '-threads 3xyz' viraria silenciosamente 3.
-   EXPECT_EXIT(parse({"-threads", "3xyz"}), ::testing::ExitedWithCode(EXIT_FAILURE),
+   // .cpp). Sem essa checagem, '-numTcThreads 3xyz' viraria silenciosamente 3.
+   EXPECT_EXIT(parse({"-numTcThreads", "3xyz"}), ::testing::ExitedWithCode(EXIT_FAILURE),
               "numero inteiro");
 }
 
-TEST(ParseCommandLineMorte, ThreadsQueEstouraIntMorre)
+TEST(ParseCommandLineMorte, NumTcThreadsQueEstouraIntMorre)
 {
-   EXPECT_EXIT(parse({"-threads", "99999999999999999999"}),
+   EXPECT_EXIT(parse({"-numTcThreads", "99999999999999999999"}),
               ::testing::ExitedWithCode(EXIT_FAILURE), "numero inteiro");
 }
 
-TEST(ParseCommandLineMorte, ThreadsSemValorNoFinalDeArgvMorre)
+TEST(ParseCommandLineMorte, NumTcThreadsSemValorNoFinalDeArgvMorre)
 {
-   EXPECT_EXIT(parse({"-threads"}), ::testing::ExitedWithCode(EXIT_FAILURE),
+   EXPECT_EXIT(parse({"-numTcThreads"}), ::testing::ExitedWithCode(EXIT_FAILURE),
+              "valor apos a flag");
+}
+
+TEST(ParseCommandLineMorte, NumBgThreadsComTokenNaoNumericoMorreComMensagemClara)
+{
+   EXPECT_EXIT(parse({"-numBgThreads", "abc"}), ::testing::ExitedWithCode(EXIT_FAILURE),
+              "numero inteiro");
+}
+
+TEST(ParseCommandLineMorte, NumBgThreadsSemValorNoFinalDeArgvMorre)
+{
+   EXPECT_EXIT(parse({"-numBgThreads"}), ::testing::ExitedWithCode(EXIT_FAILURE),
               "valor apos a flag");
 }
 
@@ -116,9 +143,9 @@ TEST(ParseCommandLineMorte, DeterministicSemValorNoFinalDeArgvMorre)
               "valor apos a flag");
 }
 
-TEST(ParseCommandLineMorte, FMSemValorNoFinalDeArgvMorre)
+TEST(ParseCommandLineMorte, FileSemValorNoFinalDeArgvMorre)
 {
-   EXPECT_EXIT(parse({"-f"}), ::testing::ExitedWithCode(EXIT_FAILURE), "valor apos a flag");
+   EXPECT_EXIT(parse({"-file"}), ::testing::ExitedWithCode(EXIT_FAILURE), "valor apos a flag");
 }
 
 TEST(ParseCommandLineMorte, FolderSemValorNoFinalDeArgvMorre)

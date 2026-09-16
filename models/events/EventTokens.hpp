@@ -41,10 +41,10 @@ namespace events {
 //
 // EID_PING (payload: events::PingMessage, events/payloads/EID_PING/
 // PingMessage.hpp): broadcast DIRETO tambem -- mas aqui quem EMITE e quem
-// TRATA e' a MESMA classe (models/players/Beacon), nos dois papeis ao mesmo
+// TRATA e' a MESMA classe (models/others/Beacon), nos dois papeis ao mesmo
 // tempo. Existe para exercitar a convencao completa (token + payload +
 // emissor + receptor) sem depender de nenhum subsistema nativo, ver
-// models/players/Beacon/README.md e events/README.md.
+// models/others/Beacon/README.md e events/README.md.
 //
 // Proximo token livre: USER_EVENTS + 3.
 //------------------------------------------------------------------------------

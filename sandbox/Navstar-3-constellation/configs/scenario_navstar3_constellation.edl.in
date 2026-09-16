@@ -1,10 +1,10 @@
 //
 // sandbox/Navstar-3-constellation
 //
-// O modelo models/others/Navstar-3 (ver src/poc/navstar3-orbit para a
+// O modelo models/players/space/Navstar-3 (ver src/poc/navstar3-orbit para a
 // demonstracao de UM satelite so), aqui com QUATRO instancias -- o proposito
 // deste sandbox e mostrar o que src/poc/navstar3-orbit deixou de proposito
-// fora de escopo (ver models/others/Navstar-3/docs/ARCHITECTURE.md, secao
+// fora de escopo (ver models/players/space/Navstar-3/docs/ARCHITECTURE.md, secao
 // "O que fica de fora"): o modelo aceita multiplas instancias porque os
 // elementos orbitais (altitude/inclination/raan/argLat0) sao slots POR
 // PLAYER, nao globais -- uma constelacao e' so' EDL, sem nenhuma mudanca de
@@ -99,12 +99,13 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       // Ponto de referencia arbitrario (equatorial) -- so' usado para as
       // coordenadas locais NED do mapa/painel de status; a fisica orbital
       // (ECEF/geodetica) nao depende disto. 'gamingAreaRange' fica
       // DELIBERADAMENTE nao declarado (default: ilimitado) -- ver
-      // models/others/Navstar-3/docs/ARCHITECTURE.md.
+      // models/players/space/Navstar-3/docs/ARCHITECTURE.md.
       latitude:  0.0
       longitude: 0.0
 

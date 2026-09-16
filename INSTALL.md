@@ -1,8 +1,8 @@
-# Instalação — passo a passo a partir de uma máquina limpa
+# INSTALAÇÃO
 
 Este roteiro é o que [`.gitlab-ci.yml`](.gitlab-ci.yml) segue, passo a passo, contra um
 `ubuntu:24.04` recém-saído da instalação — o job `build` roda exatamente esta sequência antes de
-`make configure`. `make test-ci` (ver [`README.md`](README.md), seção "CI (GitLab)") roda esse
+`make configure`. `make test-ci` (ver [`README.md`](README.md), seção "CI") roda esse
 pipeline localmente, num container Docker, do zero; se algum passo aqui parecer incompleto, é ali
 que a lacuna aparece primeiro.
 
@@ -34,7 +34,7 @@ Por que cada um:
   Conan privado da ASA (ASA-Simulation, a organização que mantém os forks `mixr`/
   `behaviortree.cpp.asa` consumidos aqui — `github.com/ASA-Simulation`; nenhum dos dois está no
   ConanCenter, e por padrão
-  viriam prontos daquele remote privado — ver [`README.md`](README.md), seção "CI (GitLab)" —, mas
+  viriam prontos daquele remote privado — ver [`README.md`](README.md), seção "CI" —, mas
   aqui vêm sempre de `deps/`). `mixr`, `behaviortree.cpp.asa`, `jsbsim` e `openrti` são sempre
   clonados do fonte (`git`) e compilados via Meson/CMake com `--build=missing`, incondicionalmente
   e independente de GCC. Esse mesmo `--build=missing` também alcança as dependências que essas
@@ -116,7 +116,7 @@ Por que cada um:
   módulo SVG que ele usa para os ícones da árvore); sem eles, o `cmake` da receita falha ao achar
   `Qt5Widgets`/`Qt5Svg`.
 - **`libzmq3-dev`** — a camada de transporte do modo Monitor (troca mensagens com uma árvore
-  rodando via `PublisherZMQ`, portas 1666/1667 — ver `CLAUDE.md`) — mas só traz a API **C**
+  rodando via `PublisherZMQ`, portas 1666/1667) — mas só traz a API **C**
   (`zmq.h`).
 - **`cppzmq-dev`** — o Groot inclui `zmq.hpp` (`bt_editor/sidepanel_monitor.h`), os *bindings*
   **C++** de libzmq, que são um pacote `apt` **separado** de `libzmq3-dev` — sem ele, o build
@@ -143,7 +143,7 @@ mixr/behaviortree.cpp.asa também são recompiladas do zero):
 >
 > - **`groot` — FIX 6**: sem ela, o **modo Monitor fecha a janela sozinho**, sem diálogo e sem
 >   mensagem, poucos milissegundos depois de conectar (`std::out_of_range` escapando de um slot Qt).
->   Detalhe completo em [`CLAUDE.md`](CLAUDE.md), seção "Groot", armadilha nº3. `scripts/find_groot.sh`
+>   `scripts/find_groot.sh`
 >   avisa em `stderr` quando o binário em cache é anterior à correção — ele procura o marcador
 >   `POC-MIXR-FIX6`, que fica em `lib/libbehavior_tree_editor.so` (é lá que
 >   `sidepanel_monitor.cpp` compila), não em `bin/Groot`.
@@ -170,14 +170,6 @@ repositório. Três alvos o exigem:
 | `make open-edl` | recompila e abre `src/ui/edl-builder.html` (o editor visual de cenário EDL). Aqui não há saída equivalente versionada: sem Node o alvo não roda |
 | `make test-ci` | chama `npx gitlab-ci-local`, que roda o pipeline do `.gitlab-ci.yml` num container. O Node é exigido na **máquina core** (é lá que o `npx` roda) e **também dentro do container**, onde o pipeline o instala do zero seguindo exatamente esta seção — é assim que este §5 fica coberto por processo automatizado. Também precisa de Docker (ver [`README.md`](README.md)) |
 
-**Versão mínima: 18** — e o pacote da distro pode não servir. Medido nesta base de código: o `apt`
-do Ubuntu 22.04 oferece `nodejs 12.22.9`, bem abaixo do mínimo. Confira antes de assumir que o
-pacote da sua distro serve:
-
-```bash
-apt-cache policy nodejs
-```
-
 O caminho é o repositório **NodeSource**, que instala `nodejs` pelo `apt`, system-wide, para todo
 usuário da máquina. `setup_24.x` fixa a linha **24 "Krypton"**, a LTS ativa:
 
@@ -188,15 +180,9 @@ sudo npm install -g npm@latest
 node --version && npm --version
 ```
 
-**A primeira execução de cada um dos dois precisa de rede** — `cdnjs.cloudflare.com` (React e
-ReactDOM 18 UMD, baixados com `curl`) e `registry.npmjs.org` (o Babel, via `npm`). Depois disso
-fica tudo em `docs/manual/.cache/` e `src/ui/.cache/` — um cache por ferramenta, não
-compartilhados, os dois gitignorados — e os alvos rodam offline. As **páginas geradas** nunca
-precisam de rede para abrir.
-
 > **Não confundir com `make run-node`.** `dist/bin/node` é um binário **deste projeto** — o runner
 > headless de um cenário, escrito em C++, sem TUI (ver [`src/node/README.md`](src/node/README.md))
-> — e não tem relação nenhuma com o Node.js desta seção. A colisão de nome é infeliz, e só isso.
+> — e não tem relação nenhuma com o Node.js desta seção.
 
 ## 6. Checagem
 
@@ -205,9 +191,60 @@ gcc --version && meson --version && ninja --version && pkg-config --version && c
   && node --version && npm --version
 ```
 
-## 7. Editor: VS Code (opcional)
+## 7. Elevação de terreno (SRTM)
 
-### 7.1. `clangd` (C++)
+```bash
+scripts/fetch_srtm.sh --sudeste   # recomendado -- cobertura de SP/RJ/MG/ES, ~195 tiles
+```
+
+**O que é SRTM1**: dado de elevação da *Shuttle Radar Topography Mission* (missão de radar da
+NASA/NGA, ano 2000, que mapeou o relevo de quase todo o globo). "1" é a resolução — 1 arco-segundo
+(~30 m no equador), a mais fina disponível publicamente (contra os 3 arco-segundos, ~90 m, do
+SRTM3). Cada tile cobre 1°×1° de lat/lon, nomeado pelo canto sudoeste (`S23W043` = 23°S 43°O), com
+3601×3601 amostras de elevação (inteiro de 16 bits, *big-endian*) no formato binário `.hgt` — o
+mesmo que `mixr::terrain::SrtmHgtFile` espera.
+
+**Fonte dos dados**: o mirror aberto *Terrain Tiles* da AWS Open Data
+(`s3.amazonaws.com/elevation-tiles-prod/skadi`), que redistribui o `.hgt.gz` da NASA **sem
+exigir login** — a distribuição oficial da NASA hoje exige conta Earthdata. `scripts/fetch_srtm.sh`
+baixa direto desse mirror.
+
+**Cinco tiles já vêm versionados** em `shared/data/terrain/srtm/` (`S23W043`, `S23W042`,
+`S22W043`, `S23W044`, `S22W044` — o cenário de demonstração e a vizinhança imediata dele; ver
+[`shared/data/terrain/srtm/README.md`](shared/data/terrain/srtm/README.md)). Nenhum passo é
+necessário para rodar as pocs padrão nem os cenários de `sandbox/`; o comando acima é recomendado
+mesmo assim, para qualquer cenário próprio nessa região.
+
+Para um cenário fora dessa área, baixe os tiles que faltam com `scripts/fetch_srtm.sh`:
+
+```bash
+scripts/fetch_srtm.sh S23W042 S22W043          # tiles nomeados
+scripts/fetch_srtm.sh --bbox -23 -22 -44 -42   # caixa de lat/lon (canto SW, graus inteiros)
+scripts/fetch_srtm.sh --brasil                 # a caixa do Brasil inteira: ~1.600 tiles, ~12 GB
+scripts/fetch_srtm.sh --brasil --dry-run       # só sonda (HEAD, sem baixar): quantidade + tamanho total
+```
+
+O script é idempotente (pula todo tile já em disco e íntegro — `gzip -t`) e paralelo
+(`SRTM_PARALELO`, default 12); interromper com `Ctrl+C` e rodar de novo continua de onde parou. Os
+tiles baixados por ele **não são versionados** — ficam em `shared/data/terrain/srtm/*.hgt.gz`, fora
+do git (só os cinco tiles de demonstração são exceção nomeada no `.gitignore`).
+
+**Para ver, num mapa, o que de fato está em disco** — não só o que `fetch_srtm.sh` deveria ter
+baixado, mas o estado real (inclusive um `.hgt` descomprimido que ficou desatualizado em relação
+ao `.hgt.gz` mais novo ao lado, caso em que `app::ensureTerrainData()` **não** o atualiza sozinho):
+
+```bash
+make terrain-coverage   # gera build/terrain-coverage/{coverage.svg,coverage.json} e já abre o SVG
+```
+
+`tools/plot_terrain_coverage.py` varre `shared/data/terrain/` e desenha um mapa-múndi (com o
+contorno real dos países) mais um recorte por região contígua de cobertura, coloridas por
+SRTM1/SRTM3/tamanho inesperado/download incompleto — e sinaliza explicitamente qualquer cache
+`.hgt` desatualizado.
+
+## 8. Editor: VS Code (opcional)
+
+### 8.1. `clangd` (C++)
 
 O repositório já vem configurado para **clangd** (`.clangd`, `.vscode/settings.json`), não para o
 IntelliSense nativo do C/C++ da Microsoft. `.clangd` aponta `CompilationDatabase: build` — o
@@ -233,7 +270,7 @@ o padrão do próprio MIXR). `.clang-tidy`, em contraste, cuida só de lint (hoj
 > desses blocos**; um `BEGIN_SLOTTABLE`/`BEGIN_SLOT_MAP` novo, sem o par, formata errado na
 > primeira vez que alguém rodar "Format Document" em cima dele.
 
-### 7.2. Extensões recomendadas
+### 8.2. Extensões recomendadas
 
 O repositório declara recomendações em `.vscode/extensions.json` — ao abrir a pasta, o VS Code
 mostra um aviso ("This workspace has extension recommendations") e deixa instalar todas de uma vez
@@ -252,7 +289,7 @@ code --install-extension spencerwmiles.vscode-task-buttons
 
 | extensão | para quê |
 |---|---|
-| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §7.1 |
+| `llvm-vs-code-extensions.vscode-clangd` | o language server C++ deste projeto — ver §8.1 |
 | `ms-vscode.cpptools` | debugger (`cppdbg`) e tarefas de build da Microsoft — **não** o IntelliSense dela, que `.vscode/settings.json` já desliga (`C_Cpp.intelliSenseEngine: "disabled"`) a favor do clangd |
 | `spencerwmiles.vscode-task-buttons` | mostra o botão "$(play) app" na barra de status (task "Run app" de `.vscode/tasks.json`, que roda `./build/app/src/app -folder ./sandbox`) — **essa task assume `gnome-terminal` instalado** (abre o app num terminal externo); em KDE/XFCE/WSL2 sem esse pacote a task falha com "command not found" — rode o binário direto num terminal seu nesse caso |
 | `anthropic.claude-code` | a extensão do Claude Code em si |
@@ -261,7 +298,7 @@ code --install-extension spencerwmiles.vscode-task-buttons
 | `pkief.material-icon-theme`, `natqe.reload` | cosméticas/conveniência, sem efeito no build |
 
 
-### 7.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
+### 8.3. Highlight de `.edl` (extensão local, não vem do Marketplace)
 
 `.vscode/extensions/edl/` é uma extensão de sintaxe para `.edl`/`.edl.in` **vendorizada no próprio
 repositório** — só highlight/indentação/colchetes (sem `main`/código nenhum), não publicada no
@@ -276,8 +313,3 @@ ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode/extensions/edl-mixr-local
 # VS Code Remote (WSL2/SSH) -- o core de extensoes fica do lado remoto/Linux
 ln -s "$(pwd)/.vscode/extensions/edl" ~/.vscode-server/extensions/edl-mixr-local
 ```
-
-Se o VS Code já estava aberto, "Developer: Reload Window" (`Ctrl+Shift+P`) — ela aparece em
-Extensões, "Installed", sem ícone/changelog (não tem metadado de Marketplace), mas funcional.
-Alternativa sem symlink, empacotando de verdade (precisa de `npm i -g @vscode/vsce`):
-`vsce package` dentro de `.vscode/extensions/edl/` e `code --install-extension edl-0.0.1.vsix`.

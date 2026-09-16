@@ -78,7 +78,7 @@ fi
 # uma lista fixa de nomes de poc fica cega a qualquer poc nova.
 achados_arvore="$(find src app -mindepth 1 \( -name node_modules -o -name .venv -o -name __pycache__ \) -prune -o -type d \( -name domain -o -name bt -o -name ubf -o -name xnative \) -print 2>/dev/null)"
 if [ -n "$achados_arvore" ]; then
-   echo "  FALHA arvore do modelo encontrada sob src/ ou app/ -- o modelo mora em models/players/A-4:"
+   echo "  FALHA arvore do modelo encontrada sob src/ ou app/ -- o modelo mora em models/players/air/A-4:"
    echo "$achados_arvore" | sed 's/^/        /'
    fail=1
 else

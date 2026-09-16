@@ -17,7 +17,7 @@ namespace bt {
 //
 // PORT 'margin': convencao do BehaviorTree.CPP para parametrizar um no pelo
 // XML (providedPorts + getInput). A divisao de responsabilidade e a mesma do
-// ( FuelLow margin ) de models/players/A-4: os limiares sao propriedade da
+// ( FuelLow margin ) de models/players/air/A-4: os limiares sao propriedade da
 // ENTIDADE (slots onValue/offValue do .edl); a margem e propriedade da
 // ARVORE, entao o mesmo modelo serve a dois cenarios com sensibilidades
 // diferentes sem recompilar.

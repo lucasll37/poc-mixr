@@ -171,7 +171,7 @@ jobs:
           retention-days: 3
           path: |
             build/meson-logs/
-            models/players/*/build/meson-logs/
+            models/**/build/meson-logs/
             dist/bin/
             plugins/
 
@@ -296,7 +296,7 @@ jobs:
           retention-days: 7
           path: |
             build/meson-logs/
-            models/players/A-4/build/meson-logs/
+            models/**/A-4/build/meson-logs/
 
   # 'allow_failure: true' no original -- caminho AddressSanitizer/
   # LeakSanitizer, complementar (mesmo enquadramento de 'make test-asan' no

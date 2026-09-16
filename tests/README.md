@@ -32,15 +32,15 @@ make test                            # so a suite do CORE (64 testes hoje -- num
 > sem redefinição — os três estão no glossário de abertura do [`README.md`](../README.md) raiz.
 
 **São DUAS suítes, em dois diretórios de build, e DOIS alvos separados** — porque o modelo saiu
-para um projeto próprio (`models/players/A-4/`), e cada alvo testa só o lado dele:
+para um projeto próprio (`models/players/air/A-4/`), e cada alvo testa só o lado dele:
 
 ```bash
 make test-models   # a suíte de CADA projeto de modelo descoberto na hora (find sobre
                      # models/**, o mesmo MODELOS_PRODUCAO de 'make models', mais o
                      # template/). Hoje: A-4 com domain (50) + tree (19) + native (24)
                      # casos GTest em 4 alvos meson (o 4º, tree-model-sync, é o guard
-                     # de models/players/A-4/tools/dump-tree-model — ver a seção Groot
-                     # do CLAUDE.md raiz), mais os 5 alvos do template/. Modelo novo
+                     # de models/players/air/A-4/tools/dump-tree-model), mais os 5 alvos
+                     # do template/. Modelo novo
                      # entra sozinho, sem editar alvo nenhum.
 make test           # só a do core — sincroniza (nao builda) o(s) modelo(s) antes, via
                      # 'install' (dlopen precisa do .so em dist/), mas nao roda a suite deles
@@ -56,7 +56,7 @@ roda os dois, nessa ordem, para cobrir os dois relatórios JUnit.
 > `meson introspect --tests` **antes** de rodar.
 >
 > **`--suite domain` do CORE cresceu bem além do que o nome sugere.** As regras do MODELO
-> continuam só em `models/players/A-4/build` (`make test-models`) — isso não mudou. Mas
+> continuam só em `models/players/air/A-4/build` (`make test-models`) — isso não mudou. Mas
 > `meson test -C build --suite domain` (30 alvos hoje) deixou de ser só as primitivas do
 > `libs/xmsg`: a maior parte agora é lógica pura de `./app` extraída pra fora do FTXUI/MIXR
 > (mapa, memória, log, EDL, breakpoint, árvore de componentes, ...) mais uma unidade por
@@ -86,7 +86,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 
 | suite | pergunta | como | custo |
 |---|---|---|---|
-| `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/A-4/src/domain/`, sem MIXR e sem BT.CPP | 50 casos, ~10 ms |
+| `domain` (modelo) | as regras estão certas? | GTest sobre `models/players/air/A-4/src/domain/`, sem MIXR e sem BT.CPP | 50 casos, ~10 ms |
 | `domain` (core) | as unidades puras estão certas — `libs/xmsg/rules/`, `libs/x{board,infer,joystick,log,pyembed,random,rlbridge,track}`, e a lógica sem-FTXUI-nem-MIXR de `./app` | GTest/scripts pequenos, um alvo por unidade, sem `Station` | 30 alvos, ~10 s no total |
 | `tree` (modelo) | a máquina de estados está certa? | o `flight_tree.xml` **de produção** contra um contexto falso | 19 casos, ~10 ms |
 | `native` (modelo) | as classes MIXR próprias estão certas? | fábrica, tabelas de slot (tipo **e unidade**) e a fronteira de fase do datalink — **sem levantar Station** | 24 casos, ~10 ms |
@@ -100,7 +100,7 @@ Cada camada responde uma pergunta diferente e custa uma ordem de grandeza a mais
 > Os números de `custo` são contagem de alvos/execuções `meson test`, não de casos internos —
 > um único alvo GTest pode conter vários `TEST`/`TEST_F`. Confira a contagem viva a qualquer
 > momento com `meson introspect build --tests | python3 -c "import json,sys;
-> print(len(json.load(sys.stdin)))"` (core) ou o equivalente em `models/players/A-4/build`
+> print(len(json.load(sys.stdin)))"` (core) ou o equivalente em `models/players/air/A-4/build`
 > (modelo) — mais confiável que qualquer número fixado em prosa.
 
 ---
@@ -118,7 +118,7 @@ somado 50 vezes fica **acima**, então um `hold: ( Seconds 1 )` armava em passos
 10 Hz e a 50 Hz. Dois testes vermelhos acharam isso antes de qualquer linha de MIXR ser escrita.
 
 O que se trava aqui é, sobretudo, a história registrada no cabeçalho de
-[`domain/ThreatPolicy.hpp`](../models/players/A-4/include/domain/ThreatPolicy.hpp): três correções
+[`domain/ThreatPolicy.hpp`](../models/players/air/A-4/include/domain/ThreatPolicy.hpp): três correções
 que vieram de ver as aeronaves "batendo asa" no Tacview. Cada uma virou um teste, porque cada uma
 é uma regressão que voltaria em silêncio:
 
@@ -130,10 +130,10 @@ Mais o piso anti-CFIT, com **varredura de invariante**: para uma grade de eleva�
 marcação × sentido do contato, a altitude comandada nunca fica abaixo de `terreno + folga`. É
 laço aninhado comum, sem dependência de *property testing*.
 
-## Camada 2 — a árvore ([tree/](../models/players/A-4/tests/tree/))
+## Camada 2 — a árvore ([tree/](../models/players/air/A-4/tests/tree/))
 
 Carrega o
-[`flight_tree.xml` de produção](../models/players/A-4/configs/flight_tree.xml) — por caminho, não
+[`flight_tree.xml` de produção](../models/players/air/A-4/configs/flight_tree.xml) — por caminho, não
 uma cópia. Um teste contra uma cópia provaria que a cópia está certa, o que não interessa a
 ninguém.
 
@@ -148,12 +148,12 @@ hoje isso não quebra o build, quebra o voo.
 > **Esta camada só é possível por causa de duas mudanças no código de produção**, ambas mecânicas
 > e provadas neutras (o dump determinístico saiu byte a byte idêntico ao de antes):
 >
-> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/players/A-4/include/domain/WorldView.hpp),
+> 1. `FlightState::Snapshot` virou [`domain::WorldView`](../models/players/air/A-4/include/domain/WorldView.hpp),
 >    com `using Snapshot = domain::WorldView;` mantendo todos os call sites. A estrutura nunca teve
 >    tipo do MIXR — o que a prendia ao framework era só morar dentro de uma classe que herda de
 >    `AbstractState`.
 > 2. `NodeContext` deixou de carregar um `BtBehavior*` concreto e passou a apontar para
->    [`bt_nodes::DecisionContext`](../models/players/A-4/include/bt/DecisionContext.hpp), a interface
+>    [`bt_nodes::DecisionContext`](../models/players/air/A-4/include/bt/DecisionContext.hpp), a interface
 >    com os 8 getters que os nós já usavam. `BtBehavior` a implementa sem um método novo.
 >
 > Resultado: `ldd` no binário desta camada mostra **zero** bibliotecas do MIXR. O comentário de
@@ -194,8 +194,7 @@ nenhum, que é o oposto do que se quer.
 
 Usa instrumentação que **já existia no MIXR e estava sem uso aqui**. Toda classe MIXR ganha RTTI
 própria com as macros `DECLARE_SUBCLASS(Classe, Base)` (no `.hpp`) e `IMPLEMENT_SUBCLASS(Classe,
-"FactoryName")` (no `.cpp`) — ver "O modelo MIXR em uma tela" no [`CLAUDE.md`](../CLAUDE.md) raiz
-para o padrão completo. De graça, isso já carrega um `base::MetaObject` estático com três
+"FactoryName")` (no `.cpp`). De graça, isso já carrega um `base::MetaObject` estático com três
 contadores públicos, mantidos pelas macros `STANDARD_CONSTRUCTOR`/`STANDARD_DESTRUCTOR`:
 
 | campo | é |
@@ -373,7 +372,7 @@ vacuamente. `--carga 0` desliga; `--ciclos 50` é o modo de investigação.
    gdb ./build/app/src/app /tmp/core.* -ex 'thread apply all bt' -ex quit
    ```
 2. **AddressSanitizer, interativo.** A instrumentação já cobre o `./app`, mas `make test-asan` só
-   roda `-threads 1 -deterministic 500` numa fixture hermética — o oposto do caminho que quebra.
+   roda `-numTcThreads 1 -deterministic 500` numa fixture hermética — o oposto do caminho que quebra.
    Para usá-la de verdade (os DOIS lados: sem instrumentar o plugin o relatório sai sem símbolo):
    ```bash
    make models ASAN=true && make sync-plugins ASAN=true
@@ -408,7 +407,7 @@ passaram a rodar hermético. Assim, a poc passa com 1, 2 e 4 threads em 2000 fra
 
 **2. Os contadores de instância não são atômicos.** `++metaObject.count` é `int` cru
 (`macros.hpp:247-255`); com os agentes decidindo em paralelo no pool T/C os incrementos correm
-entre si. O teste de vazamento roda com `-threads 1`.
+entre si. O teste de vazamento roda com `-numTcThreads 1`.
 
 **3. Os testes que executam uma poc são `is_parallel: false`.** `app/ScenarioTemplate` grava o
 cenário expandido sempre no mesmo caminho (`src/poc/<poc>/configs/scenario.generated.edl`, não
@@ -440,7 +439,7 @@ sem falso positivo nas outras:
 `memory-controle-negativo` (`tests/memory/check_leak_detector_controle_negativo.py`) roda o
 cenário `flight` contra `model_leak.so` — uma terceira variante de teste do MESMO fonte de
 produção (mesma família de `model_variant_a`/`model_variant_b`, atrás da opção `variants` de
-`models/players/A-4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
+`models/players/air/A-4/meson.build`), com um único `ref()` extra em `BtBehavior::genAction()` logo após
 `new FlightAction()` (`#ifdef POC_LEAK_ONE_REF_PER_DECISION`, nunca definida no build de produção)
 — exatamente a quebra da linha acima, agora sem depender de alguém lembrar de repeti-la à mão.
 Prova, a cada `make test`, que `memory-<poc>` pegaria um vazamento de verdade, não só que a

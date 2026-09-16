@@ -13,10 +13,11 @@ namespace app {
 //
 // Duas formas de escolher o cenario, e elas se excluem:
 //
-//   -f <arquivo>         um .edl/.edl.in qualquer -- o caso das fixtures de
+//   -file <arquivo>      um .edl/.edl.in qualquer -- o caso das fixtures de
 //                        teste (tests/scenario/make_fixture.py) e de rodar
 //                        um cenario apontando direto pro arquivo. Assume a
-//                        frota falcon1..4 (ver app::adHocScenario()).
+//                        frota falcon1..4 (ver app::adHocScenario()) -- nao
+//                        descobre os players do arquivo, so aponta pra ele.
 //   -folder <pasta>      uma pasta navegavel de cenarios de sandbox, formato
 //                        '<pasta>/<cenario>/configs/*.edl' (ver
 //                        app/ScenarioFolder.hpp). Combinado com
@@ -30,16 +31,29 @@ namespace app {
 // uma delas explicitamente (uso normal desta aplicacao nunca "adivinha" o
 // que abrir).
 //
-//   -threads <N>         numTcThreads do pool nativo de tempo critico
+//   -numTcThreads <N>    numTcThreads do pool nativo de tempo critico
+//                        (era '-threads' -- renomeado para nao contradizer
+//                        o nome de '-numBgThreads' abaixo, o par que ela
+//                        sempre teve no framework, ver Simulation::
+//                        setSlotNumTcThreads()/setSlotNumBgThreads())
+//   -numBgThreads <N>    numBgThreads do pool nativo de background (o laco
+//                        de updateData(), fora do frame de tempo critico).
+//                        Sem a flag, o default e' 2 -- ao contrario do T/C
+//                        (que default para METADE dos nucleos), o laco de
+//                        background deste projeto nunca teve motivo para
+//                        variar tanto; 2 so' exercita o mecanismo nativo
+//                        sem monopolizar a maquina. Mesmo clamp do T/C:
+//                        [1, nucleos-1].
 //   -deterministic <N>   roda N frames de passo fixo e sai (sem TUI)
 //------------------------------------------------------------------------------
 struct Options
 {
    std::string scenarioKey;      // '-scenario <nome>' -- so tem efeito combinado com '-folder'
-   std::string scenarioPath;     // '-f <arquivo>' -- vazio quando nao usado
+   std::string scenarioPath;     // '-file <arquivo>' -- vazio quando nao usado
    std::string scenarioFolder;   // '-folder <pasta>' -- vazio quando nao usado
    long deterministicFrames{};
-   int threadsOverride{};
+   int tcThreadsOverride{};      // '-numTcThreads <N>' -- 0 == "sem override" (usa o default)
+   int bgThreadsOverride{};      // '-numBgThreads <N>' -- 0 == "sem override" (usa o default)
 
    bool isDeterministic() const   { return deterministicFrames > 0; }
 };

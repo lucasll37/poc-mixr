@@ -13,7 +13,7 @@ serviço externo que um agente precise acessar — por exemplo: um rastreador de
 deste repositório passem a ser abertos (hoje é só o histórico de commits + CLAUDE.md), um painel
 de telemetria além do Tacview local, ou uma API de CI que um agente precise CONSULTAR em runtime
 (status de pipeline, logs remotos — o projeto já tem CI de verdade, `.gitlab-ci.yml`/jobs
-`build`+`test`, ver README.md "CI (GitLab)"; o que falta é só um serviço externo que valha a pena
+`build`+`test`, ver README.md "CI"; o que falta é só um serviço externo que valha a pena
 um agente chamar via MCP, não CI em si).
 
 Use `claude mcp add <nome> <comando>` (ou edite `.mcp.json` direto) e documente o motivo no

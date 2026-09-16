@@ -10,13 +10,16 @@
 
 #include <cctype>
 #include <cmath>
+#include <condition_variable>
 #include <cstdlib>
+#include <deque>
 #include <filesystem>
 #include <iostream>
 #include <list>
 #include <map>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace app {
@@ -74,6 +77,7 @@ struct TileEntry
    bool hasGz{};                                 // existe "<nome>.hgt.gz"?
    mixr::terrain::Terrain* terrain{nullptr};     // nulo = ainda nao carregado
    bool loadFailed{false};                       // ja tentou e falhou; nao repetir
+   bool pendingLoad{false};                      // ja enfileirado pra thread de carga -- nao duplicar
 };
 
 // Chave do indice: o canto SW em graus INTEIROS. Um std::map (e nao a
@@ -200,8 +204,197 @@ void evictIfNeeded()
    }
 }
 
-// Devolve o Terrain do tile que cobre 'cell', carregando sob demanda.
-// Nulo = nao ha tile ali, ou ele falhou ao carregar.
+// ---------------------------------------------------------------------------
+// CARGA EM BACKGROUND -- a razao de este bloco existir.
+//
+// Ate aqui, um tile ainda nao residente era carregado NA CHAMADA: gunzip
+// (fork+exec de um processo externo) + 'new SrtmHgtFile' + reset() (que le
+// e valida ~26 MB), tudo dentro de residentTerrain(), chamada pela THREAD
+// DE DESENHO (o Renderer do FTXUI) enquanto ela ja segura terrainMutex().
+// Com poucos tiles isso era barato (o comentario antigo dizia "getElevation()
+// e indexacao de array, nao I/O por chamada" -- verdade so depois do
+// primeiro acesso). Dar bastante zoom out faz o grid de amostragem (passo
+// FIXO em pixel de canvas, ver kTerrainGridStepPx em MapPanel.cpp) cobrir
+// uma area geografica muito maior -- com a cobertura completa do Brasil
+// baixada (scripts/fetch_srtm.sh --brasil, ~1600 tiles, a maioria so em
+// '.gz'), uma unica varredura passa a cruzar dezenas de tiles NOVOS, cada
+// um disparando um gunzip sincrono na thread de desenho: a UI trava por
+// segundos, redesenho apos redesenho, enquanto o zoom ficar nesse nivel.
+//
+// A simulacao (station->updateTC()/updateData(), a MESMA thread que precisa
+// ser deterministica em '-deterministic') nunca chamou nada deste arquivo
+// -- makeTerrainSampler() so e usado pela aba Mapa do './app' interativo
+// (ver main.cpp). Ainda assim, o trabalho pesado NAO pode continuar na
+// thread de desenho: uma thread NOVA, dedicada, e' quem carrega. A thread
+// de desenho so PEDE (requestLoad(), rapido, so enfileira) e le o que ja
+// estiver pronto -- nunca espera.
+// ---------------------------------------------------------------------------
+
+// Fila de pedidos de carga, e o sinal pra a thread worker acordar --
+// mutex PROPRIO, separado de terrainMutex(): a thread de desenho pede com
+// terrainMutex() ja travado (dentro de residentTerrain()), e travar dois
+// mutexes na mesma ordem dos dois lados (nunca o inverso) evita deadlock.
+std::mutex& loaderMutex()
+{
+   static std::mutex m;
+   return m;
+}
+
+std::condition_variable& loaderCv()
+{
+   static std::condition_variable cv;
+   return cv;
+}
+
+std::deque<Cell>& loaderQueue()
+{
+   static std::deque<Cell> q;
+   return q;
+}
+
+// Guardado pelo MESMO 'loaderMutex()' da fila -- pedido de parada pra
+// loaderThreadBody() sair do laco (ver shutdownTerrainLoader(), a razao
+// de existir isto -- achado rodando, nao hipotetico).
+bool& loaderStopRequested()
+{
+   static bool stop{false};
+   return stop;
+}
+
+// O 'std::thread' em si -- default-construido (nao-joinable) ate
+// ensureLoaderThreadStarted() de fato criar a thread. Guardado aqui (nao
+// so' 'detach()'ado) porque shutdownTerrainLoader() precisa de um handle
+// pra join().
+std::thread& loaderThreadHandle()
+{
+   static std::thread t;
+   return t;
+}
+
+// PRE-CONDICAO: terrainMutex() ja travado pelo chamador (so pra marcar
+// 'pendingLoad' sem corrida com a propria thread worker). NAO faz I/O --
+// so anexa a fila e devolve.
+void requestLoad(const Cell& cell)
+{
+   {
+      const std::lock_guard<std::mutex> lock{loaderMutex()};
+      loaderQueue().push_back(cell);
+   }
+   loaderCv().notify_one();
+}
+
+// O trabalho de verdade -- chamado SO' pela thread worker, NUNCA pela
+// thread de desenho. As duas fases que tocam 'terrainMutex()' sao curtas
+// (leitura/escrita de campos, sem I/O); o meio -- gunzip + leitura/parse do
+// '.hgt' -- roda FORA de qualquer mutex, pra nao bloquear consultas de
+// OUTRAS celulas (ja residentes) enquanto isto roda.
+void loadTileIntoCache(const Cell& cell)
+{
+   std::string hgtName;
+   bool hasGz{};
+   {
+      const std::lock_guard<std::mutex> lock{terrainMutex()};
+      const auto it{tileIndex().find(cell)};
+      if (it == tileIndex().end()) return;
+      TileEntry& e{it->second};
+      // Ja resolvido por outro pedido enfileirado antes deste (a mesma
+      // celula pode ter sido pedida por dezenas de amostras do MESMO
+      // quadro, antes de 'pendingLoad' silenciar as seguintes -- ver
+      // residentTerrain()) ou ja carregado enquanto este pedido esperava
+      // na fila.
+      if (e.terrain != nullptr || e.loadFailed) { e.pendingLoad = false; return; }
+      hgtName = e.hgtName;
+      hasGz = e.hasGz;
+   }
+
+   const std::string hgtPath{std::string{kTerrainDir} + hgtName};
+
+   // SrtmHgtFile nao le '.gz' -- descomprime sob demanda, so este tile.
+   // 'gunzip'/leitura/parse: o custo real, de proposito FORA do mutex.
+   std::error_code ec;
+   bool failed{false};
+   if (!std::filesystem::exists(hgtPath, ec)) {
+      if (!hasGz) {
+         failed = true;
+      } else {
+         const std::string cmd{"gunzip -kf \"" + hgtPath + ".gz\""};
+         if (std::system(cmd.c_str()) != 0 || !std::filesystem::exists(hgtPath, ec)) {
+            std::cerr << "[terreno] falha ao descomprimir " << hgtPath << ".gz -- tile ignorado"
+                      << std::endl;
+            failed = true;
+         }
+      }
+   }
+
+   mixr::terrain::SrtmHgtFile* tile{nullptr};
+   if (!failed) {
+      tile = new mixr::terrain::SrtmHgtFile();
+      auto* const pathStr{new mixr::base::String(kTerrainDir)};
+      auto* const fileStr{new mixr::base::String(hgtName.c_str())};
+      tile->setPathname(pathStr);
+      tile->setFilename(fileStr);
+      pathStr->unref();
+      fileStr->unref();
+      tile->reset();   // Terrain::reset() chama loadData() se ainda nao carregado
+
+      if (!tile->isDataLoaded()) {
+         tile->unref();
+         tile = nullptr;
+         failed = true;   // tamanho invalido/arquivo truncado: nao insistir
+      }
+   }
+
+   // Instalar o resultado -- rapido de novo: so um ponteiro + contabilidade
+   // de LRU, sob o MESMO mutex que a thread de desenho usa pra ler.
+   const std::lock_guard<std::mutex> lock{terrainMutex()};
+   const auto it{tileIndex().find(cell)};
+   if (it == tileIndex().end()) { if (tile != nullptr) tile->unref(); return; }
+   TileEntry& e{it->second};
+   e.pendingLoad = false;
+   if (failed) { e.loadFailed = true; return; }
+   e.terrain = tile;
+   touchLru(cell);
+   evictIfNeeded();
+}
+
+void loaderThreadBody()
+{
+   for (;;) {
+      Cell cell{};
+      {
+         std::unique_lock<std::mutex> lock{loaderMutex()};
+         loaderCv().wait(lock, [] { return !loaderQueue().empty() || loaderStopRequested(); });
+         if (loaderQueue().empty()) return;   // so' sobrou o pedido de parada -- sai
+         cell = loaderQueue().front();
+         loaderQueue().pop_front();
+      }
+      loadTileIntoCache(cell);
+   }
+}
+
+// Uma thread so, criada na PRIMEIRA vez que algum cenario com terreno abre
+// a aba Mapa. NAO e' detach()ada -- ver shutdownTerrainLoader() logo
+// abaixo e o "porque", achado rodando: uma thread detached parada num
+// condition_variable::wait() para sempre TRAVA o exit() normal do
+// processo, medido travando o encerramento por completo do './app'
+// interativo depois do 'q' -- main() retorna 0 mas o processo nunca
+// termina. std::thread joinavel + join() explicito no fim (app::
+// shutdownTerrainLoader(), chamado por main.cpp) elimina isso.
+void ensureLoaderThreadStarted()
+{
+   static const bool started = [] {
+      loaderThreadHandle() = std::thread{loaderThreadBody};
+      return true;
+   }();
+   (void)started;
+}
+
+// Devolve o Terrain do tile que cobre 'cell' -- SO se ja estiver
+// residente. Nulo tanto para "nao ha tile ali" quanto para "ha tile, mas
+// ainda esta' carregando em background" (o pedido ja foi feito, ou esta
+// sendo feito agora): NUNCA bloqueia, nunca faz I/O -- e' por isso que
+// pode continuar rodando na thread de desenho, chamada por milhares de
+// amostras a cada redesenho.
 // PRE-CONDICAO: terrainMutex() ja travado pelo chamador.
 mixr::terrain::Terrain* residentTerrain(const Cell& cell)
 {
@@ -213,40 +406,11 @@ mixr::terrain::Terrain* residentTerrain(const Cell& cell)
    if (e.terrain != nullptr) { touchLru(cell); return e.terrain; }
    if (e.loadFailed) return nullptr;
 
-   const std::string hgtPath{std::string{kTerrainDir} + e.hgtName};
-
-   // SrtmHgtFile nao le '.gz' -- descomprime sob demanda, so este tile.
-   std::error_code ec;
-   if (!std::filesystem::exists(hgtPath, ec)) {
-      if (!e.hasGz) { e.loadFailed = true; return nullptr; }
-      const std::string cmd{"gunzip -kf \"" + hgtPath + ".gz\""};
-      if (std::system(cmd.c_str()) != 0 || !std::filesystem::exists(hgtPath, ec)) {
-         std::cerr << "[terreno] falha ao descomprimir " << hgtPath << ".gz -- tile ignorado"
-                   << std::endl;
-         e.loadFailed = true;
-         return nullptr;
-      }
+   if (!e.pendingLoad) {
+      e.pendingLoad = true;
+      requestLoad(cell);
    }
-
-   auto* const tile{new mixr::terrain::SrtmHgtFile()};
-   auto* const pathStr{new mixr::base::String(kTerrainDir)};
-   auto* const fileStr{new mixr::base::String(e.hgtName.c_str())};
-   tile->setPathname(pathStr);
-   tile->setFilename(fileStr);
-   pathStr->unref();
-   fileStr->unref();
-   tile->reset();   // Terrain::reset() chama loadData() se ainda nao carregado
-
-   if (!tile->isDataLoaded()) {
-      tile->unref();
-      e.loadFailed = true;   // tamanho invalido/arquivo truncado: nao insistir
-      return nullptr;
-   }
-
-   e.terrain = tile;
-   touchLru(cell);
-   evictIfNeeded();
-   return e.terrain;
+   return nullptr;
 }
 
 }   // namespace
@@ -259,6 +423,10 @@ TerrainSampler makeTerrainSampler(mixr::models::WorldModel* const worldModel)
       const std::lock_guard<std::mutex> lock{terrainMutex()};
       if (tileIndex().empty()) return {};
    }
+
+   // So' sobe a thread worker se HOUVER algum tile no diretorio (o check
+   // acima) -- sem terreno nenhum, nao ha o que carregar em background.
+   ensureLoaderThreadStarted();
 
    const double refLat{worldModel->getRefLatitude()};
    const double refLon{worldModel->getRefLongitude()};
@@ -290,6 +458,23 @@ TerrainSampler makeTerrainSampler(mixr::models::WorldModel* const worldModel)
       }
       return false;
    };
+}
+
+void shutdownTerrainLoader()
+{
+   // No-op se a thread nunca foi criada -- '-deterministic' nunca chama
+   // makeTerrainSampler(), e um cenario sem nenhum tile no diretorio
+   // tambem nunca chega a criar (ver o early-return de makeTerrainSampler()
+   // acima). 'joinable()' e' falso nos dois casos (thread default-
+   // construida, nunca movida por cima).
+   if (!loaderThreadHandle().joinable()) return;
+
+   {
+      const std::lock_guard<std::mutex> lock{loaderMutex()};
+      loaderStopRequested() = true;
+   }
+   loaderCv().notify_all();
+   loaderThreadHandle().join();
 }
 
 } // namespace app

@@ -176,7 +176,7 @@ raiz: o log deve citar o nome do seu modelo sem você ter tocado no Makefile.
 Isto cobre só o `.so` em si (compilar/testar/instalar). Se você também quer que o modelo apareça
 num cenário rodável pelo `./app` (`-folder <pasta> -scenario <nome>`) e, opcionalmente, ganhe
 cobertura de teste automática (`tests/meson.build`), isso é um passo separado, documentado em
-[`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md), seções 5.2 e 5.4 — não tem relação
+[`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md), seção 6 — não tem relação
 com este Passo 7.
 
 Antes do primeiro commit, vale ler também [`../CLAUDE.md`](../CLAUDE.md) (este projeto,

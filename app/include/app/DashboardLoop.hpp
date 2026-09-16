@@ -17,11 +17,11 @@ namespace app {
 
 // O que fazer depois que o laco termina (main.cpp decide com isto: sair,
 // reexecutar com o MESMO cenario, ou reexecutar com
-// '-f app::editedScenarioPath()' -- ver app/Respawn.hpp para o "porque" de
+// '-file app::editedScenarioPath()' -- ver app/Respawn.hpp para o "porque" de
 // ser sempre um reexec, nunca uma segunda Station no mesmo processo).
 // 'RunEdited' vem da aba "EDL" (F7, ver app/EdlEditorState.hpp): o cenario
 // editado ja foi escrito em editedScenarioPath() e validado pelo 'edlcheck'
-// antes de sair do laco -- main.cpp so precisa reexecutar com '-f'.
+// antes de sair do laco -- main.cpp so precisa reexecutar com '-file'.
 enum class DashboardExit { Quit, Restart, RunEdited };
 
 //------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ DashboardExit runDashboard(mixr::simulation::Station* station,
                            mixr::xclock::ClockStation* clockStation,
                            mixr::xtacview::TacviewOutput* tacviewOutput,
                            mixr::linkage::IoHandler* ioHandler,
-                           int numTcThreads, const std::string& scenarioLabel,
+                           int numTcThreads, int numBgThreads, const std::string& scenarioLabel,
                            const BtNode& behaviorTree,
                            const std::string& generatedEdlPath);
 

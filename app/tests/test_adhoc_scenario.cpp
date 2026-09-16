@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-// app::falconFleet()/app::adHocScenario() -- a entrada de '-f <arquivo>'.
+// app::falconFleet()/app::adHocScenario() -- a entrada de '-file <arquivo>'.
 // Puro (so std::filesystem::path::stem()), sem MIXR, sem disco: nenhum dos
 // caminhos testados aqui precisa que o arquivo exista de verdade.
 
@@ -58,5 +58,5 @@ TEST(AdHocScenario, TokensDeTacviewFicamVaziosEDescricaoEFixa)
    EXPECT_TRUE(e.tacviewModelMap.empty());
    EXPECT_TRUE(e.tacviewTypeMap.empty());
    EXPECT_TRUE(e.tacviewColorMap.empty());
-   EXPECT_EQ(e.description, "cenario carregado por -f");
+   EXPECT_EQ(e.description, "cenario carregado por -file");
 }

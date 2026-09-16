@@ -183,13 +183,13 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       latitude:  -22.25
       longitude: -42.48
 
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {

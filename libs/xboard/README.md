@@ -29,7 +29,7 @@ components: {
 **Lado que escreve — dentro do plugin**, no ponto de atuação do `FlightAgentTC`, depois de o
 `UbfArbiter` (o `Arbiter` nativo do UBF, que compõe vários `Behavior` por votação — ver
 `contexts/MIXR-CONTEXT.md` §14.3) ou o `Fallback` da árvore de comportamento já ter escolhido o
-vencedor (`models/players/A-4/src/ubf/FlightAction.cpp`).
+vencedor (`models/players/air/A-4/src/ubf/FlightAction.cpp`).
 Sem prefixo `mixr::` porque esse `.cpp` já está aninhado em `namespace mixr { namespace models {
 namespace xnative { ... } } }` — a busca de nome do C++ enxerga `mixr::xboard` a partir dali sem
 qualificar:
@@ -74,7 +74,7 @@ quadro. `threadTag()`/`currentCpu()` identificam **qual thread física do pool**
 índice pequeno e estável (0, 1, 2...), com cache `thread_local` que evita tocar esse mutex a cada
 chamada no caminho quente (todo player, todo frame; só a primeira chamada de cada thread paga o
 lock). Foram promovidas para cá de um contador que
-era privado de `models/players/A-4`: com dois plugins distintos no mesmo processo (o modelo de voo e
+era privado de `models/players/air/A-4`: com dois plugins distintos no mesmo processo (o modelo de voo e
 o míssil guiado, por exemplo), cada `.so` veria sua própria primeira chamada como índice 0, e o
 número mostrado na aba Players deixaria de significar "esta é a MESMA thread" entre um avião e um
 míssil processados lado a lado no mesmo frame. Com uma única `libxboard.so` compartilhada por

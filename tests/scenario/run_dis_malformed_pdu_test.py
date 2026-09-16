@@ -179,8 +179,8 @@ def payloads():
 
 def sobe_processo(binario, frames):
     return subprocess.Popen(
-        [binario, "-f", "src/poc/dis/flight/configs/scenario.edl.in",
-         "-threads", "1", "-deterministic", str(frames)],
+        [binario, "-file", "src/poc/dis/flight/configs/scenario.edl.in",
+         "-numTcThreads", "1", "-deterministic", str(frames)],
         cwd=RAIZ, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1,
     )

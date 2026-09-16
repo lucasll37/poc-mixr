@@ -24,7 +24,7 @@ using namespace mixr::models::xtemplate;
 
 // O contexto falso: guarda o que os nos leem e o que eles escrevem, e nada
 // mais. Um teste de modelo de verdade normalmente cresce daqui (ver
-// FakeDecisionContext em models/players/A-4/tests/tree/).
+// FakeDecisionContext em models/players/air/A-4/tests/tree/).
 class FakeContext final : public bt::DecisionContext
 {
 public:

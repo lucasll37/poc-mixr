@@ -1,7 +1,7 @@
 # ==============================================================================
 # Suite deste template -- tres camadas: a regra pura (domain), a arvore de
 # comportamento (tree, mais a guarda de sincronia do <TreeNodesModel>) e a
-# FORMA do artefato (contract). models/players/A-4 tem uma quarta, 'native',
+# FORMA do artefato (contract). models/players/air/A-4 tem uma quarta, 'native',
 # que levanta as classes MIXR do modelo -- fora de escopo aqui.
 #
 # 'model_inc' e 'template_lib' vem do escopo do meson.build PAI (Meson

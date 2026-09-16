@@ -2,7 +2,7 @@
 # Suite do CORE -- so entra no build com -Dtests=true (ver meson_options.txt)
 #
 # As camadas 'domain' e 'tree' NAO estao mais aqui: elas compilam domain/ e bt/
-# direto, e esses fontes sairam para models/players/A-4/. Moraram junto com o que
+# direto, e esses fontes sairam para models/players/air/A-4/. Moraram junto com o que
 # testam -- rode 'make test-models' (ou 'make test', que roda as duas).
 #
 #   domain-rules  as primitivas de deteccao do libs/xmsg (core, ficaram)
@@ -29,13 +29,13 @@ node = find_program('node', required: false)
 
 raiz = meson.project_source_root()
 dist_plugins = raiz / 'dist' / 'lib' / 'mixr-plugins'
-# 'models/players/A-4' e um projeto Meson AUTOCONTIDO (ver CLAUDE.md, secao
+# 'models/players/air/A-4' e um projeto Meson AUTOCONTIDO (ver CLAUDE.md, secao
 # "O MODELO e um plugin, construido numa etapa PREVIA") -- constroi em
 # './build' DENTRO da propria pasta, nao mais em
 # 'build-flight' na raiz (esse era o caminho do design anterior, quando
 # 'make models' fazia o setup do flight direto por aqui). As variantes A/B
 # de teste ('libmodel_variant_a.so'/'_b.so', para plugin-hotswap) saem la.
-model_build  = raiz / 'models' / 'players' / 'A-4' / 'build'
+model_build  = raiz / 'models' / 'players' / 'air' / 'A-4' / 'build'
 
 # ------------------------------------------------------------------------------
 # Camada 1 -- as primitivas de deteccao do libs/xmsg
@@ -419,7 +419,7 @@ test_app_terrain_data = executable('test-app-terrain-data',
 )
 test('app-terrain-data', test_app_terrain_data, suite: 'domain', timeout: 60)
 
-# app::falconFleet()/app::adHocScenario() -- a entrada de '-f <arquivo>'.
+# app::falconFleet()/app::adHocScenario() -- a entrada de '-file <arquivo>'.
 test_app_adhoc_scenario = executable('test-app-adhoc-scenario',
     files('../app/tests/test_adhoc_scenario.cpp') + files(
         '../app/src/app/AdHocScenario.cpp',
@@ -510,7 +510,7 @@ test('app-background-panel', test_app_background_panel, suite: 'domain', timeout
 # A regra de selecao de pista (filtro por lado + desempate deterministico)
 # de libs/xtrack, separada da travessia AirVehicle->OnboardComputer->
 # TrackManager->Track que a alimenta -- ver o "porque" em
-# libs/xtrack/TrackQuery.hpp. Alimenta models/players/A-4/src/ubf/
+# libs/xtrack/TrackQuery.hpp. Alimenta models/players/air/A-4/src/ubf/
 # FlightState.cpp (a percepcao do modelo).
 test_track_selection = executable('test-track-selection',
     files('domain/test_track_selection.cpp'),
@@ -546,7 +546,7 @@ test_factory_parity = executable('test-factory-parity',
     link_args           : rpath_link_args,
     include_directories : include_directories('../app/include', '../src/node'),
     dependencies        : [gtest_dep, gtest_main_dep, thread_dep, mixr_dep, xtacview_dep,
-                           xclock_dep, xjoystick_dep, xplugin_dep, xmsg_dep],
+                           xclock_dep, xjoystick_dep, xplugin_dep, xmsg_dep, xterrain_dep],
     install             : false,
     build_rpath         : mixr_libdir,
 )
@@ -570,15 +570,15 @@ test('clock-station', test_clock_station, suite: 'domain', timeout: 60)
 # a simulacao no meio do frame; todas tem de devolver 0/negativo e deixar o
 # consumidor cair no ramo seguinte da arvore. O caminho FELIZ (inferencia de
 # verdade + determinismo com 1/2/4 threads) precisa de um .onnx e vem depois.
-# O .onnx DE VERDADE que models/players/A-4 instala -- por caminho, nao uma copia.
-# Mesmo padrao de FLIGHT_TREE_XML em models/players/A-4/tests/meson.build: um teste
+# O .onnx DE VERDADE que models/players/air/A-4 instala -- por caminho, nao uma copia.
+# Mesmo padrao de FLIGHT_TREE_XML em models/players/air/A-4/tests/meson.build: um teste
 # contra uma copia provaria que a copia esta certa, o que nao interessa.
-policy_onnx = raiz / 'models' / 'players' / 'A-4' / 'configs' / 'policy_example.onnx'
+policy_onnx = raiz / 'models' / 'players' / 'air' / 'A-4' / 'configs' / 'policy_example.onnx'
 
 # Fixture COM metadata 'xrlbridge.fields' (ver o README ao lado dela) -- so
 # para o round-trip de xinfer::fields(), abaixo. policy_onnx (acima) e' o
 # contraste: exportado ANTES desta funcionalidade existir, sem metadata.
-policy_all38_onnx = raiz / 'models' / 'players' / 'A-4' / 'tests' / 'native' / 'fixtures' / 'policy_all38.onnx'
+policy_all38_onnx = raiz / 'models' / 'players' / 'air' / 'A-4' / 'tests' / 'native' / 'fixtures' / 'policy_all38.onnx'
 
 test_xinfer = executable('test-xinfer',
     files('domain/test_xinfer.cpp'),
@@ -642,6 +642,21 @@ test_xjoystick = executable('test-xjoystick',
 )
 test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 
+# libs/xterrain::MultiTileTerrain -- a funcionalidade especifica de multi-tile:
+# players em regioes diferentes resolvendo pro tile certo, travessia de
+# fronteira, despejo de LRU acima do teto (e recarga correta), concorrencia
+# real (varias threads no MESMO objeto -- o cenario que numBgThreads>1 torna
+# real em producao) e clone()/copyData(). Tiles SRTM3 sinteticos, gerados em
+# ::testing::TempDir() -- nao depende dos tiles reais de shared/data/terrain/.
+test_xterrain_multi_tile = executable('test-xterrain-multi-tile',
+    files('domain/test_xterrain_multi_tile.cpp'),
+    link_args           : rpath_link_args,
+    dependencies        : [gtest_dep, gtest_main_dep, thread_dep, xterrain_dep],
+    install             : false,
+    build_rpath         : mixr_libdir,
+)
+test('xterrain-multi-tile', test_xterrain_multi_tile, suite: 'domain', timeout: 60)
+
 # ------------------------------------------------------------------------------
 # Camadas de cenario, memoria e determinismo
 #
@@ -657,7 +672,7 @@ test('xjoystick-degradacao', test_xjoystick, suite: 'domain', timeout: 60)
 # O SEGUNDO campo era o binario de cada poc; hoje e SEMPRE 'app' -- as pocs
 # deixaram de ter executavel proprio quando o ./app virou o runner unico (ver
 # src/poc/meson.build). O que distingue uma poc da outra e a fixture, gerada
-# por make_fixture.py a partir do cenario dela, e passada com '-f'.
+# por make_fixture.py a partir do cenario dela, e passada com '-file'.
 #
 # >>> ESTA LISTA NAO E O PONTO DE ENTRADA PADRAO PRA UM MODELO/POC NOVO. <<<
 # So entra aqui quem segue o formato dual 'intruder'/'lowfuel' com rotulos
@@ -735,11 +750,12 @@ test('random-seed-determinism', bash,
      timeout: 1800, is_parallel: false)
 
 # NAO HA MAIS um teste 'scenario-adhoc-fleet' aqui: ele provava que
-# adHocScenario() ('-f <arquivo>') casava o caminho contra um catalogo
+# adHocScenario() ('-file <arquivo>') casava o caminho contra um catalogo
 # estatico de cenarios antes de assumir falcon1..4 -- esse catalogo foi
-# removido (ver CLAUDE.md). '-f' hoje SEMPRE assume falcon1..4; um cenario
+# removido (ver CLAUDE.md). '-file' hoje SEMPRE assume falcon1..4, sem
+# nunca abrir o arquivo pra descobrir quem sao os players; um cenario
 # com frota diferente (ex.: tests/fixtures/full-systems-nav, frota {"a4"})
-# deve ser carregado por '-folder <pasta>' em vez de '-f' -- a mesma
+# deve ser carregado por '-folder <pasta>' em vez de '-file' -- a mesma
 # propriedade que este teste defendia (full-systems-nav com a frota certa)
 # continua coberta por 'scenario-folder' logo abaixo, que carrega o MESMO
 # .edl.in via '-folder'.
@@ -836,7 +852,7 @@ test('scenario-app-stress', py,
 # binario cinco vezes com cenarios diferentes nao acrescentaria cobertura
 # nenhuma sobre a ordem de encerramento, que e o que aquele teste afirma.
 
-# '-threads'/'-deterministic' com um token nao numerico nao pode derrubar o
+# '-numTcThreads'/'-deterministic' com um token nao numerico nao pode derrubar o
 # processo com um sinal -- ver o cabecalho de run_bad_args_test.py e o fix em
 # app/src/app/Options.cpp (parseLongOrDie/parseIntOrDie). Era um teste por
 # poc; hoje ha um binario so, entao ha um teste so.
@@ -912,10 +928,10 @@ test('memory-onnx-policy', py,
 # mesma opcao 'variants'), so que com um UNICO ref() extra em
 # BtBehavior::genAction(), nunca balanceado por um unref() (ver o cabecalho
 # do script e o #ifdef POC_LEAK_ONE_REF_PER_DECISION em
-# models/players/A-4/src/ubf/BtBehavior.cpp). Reproduz de forma PERMANENTE o
+# models/players/air/A-4/src/ubf/BtBehavior.cpp). Reproduz de forma PERMANENTE o
 # que so tinha sido provado manualmente uma vez (tests/README.md, "ref() a
 # mais na FlightAction"). 'model_leak.so' nunca e instalado (so existe em
-# models/players/A-4/build/, como as duas variantes de hotswap) -- por isso o
+# models/players/air/A-4/build/, como as duas variantes de hotswap) -- por isso o
 # caminho vem de 'model_build', igual a 'plugin-hotswap' logo abaixo.
 test('memory-controle-negativo', py,
      args: files('memory/check_leak_detector_controle_negativo.py') + [
@@ -1015,7 +1031,7 @@ test('plugin-deposito-terceiro', py,
 # comparar, e uma guarda que nao acha nada para comparar ou falha (o caso
 # deste script, que sai 1 quando o find volta vazio) ou passa vacuamente, que
 # e pior. A duplicacao esta dissolvida POR CONSTRUCAO, como aconteceu com o
-# MODELO quando ele saiu para models/players/A-4.
+# MODELO quando ele saiu para models/players/air/A-4.
 
 # O catalogo de --edl-catalog (tools/extract_execution_chain.py), fonte
 # unica de verdade do editor grafico de .edl (src/ui/edl_builder.jsx): tipo/
@@ -1049,7 +1065,7 @@ test('class-diagram', py, args: files('tools/test_extract_class_diagram.py'),
 # dele contra o blob de fato commitado dentro de doc.jsx
 # ('const CLASS_DIAGRAM = {...};', colado a mao -- sem passo de
 # 'make open-docs' que regenere isso sozinho). Mesmo padrao ja usado para as
-# arvores BT.CPP (models/players/A-4, alvo 'tree-model-sync').
+# arvores BT.CPP (models/players/air/A-4, alvo 'tree-model-sync').
 test('class-diagram-sync', py, args: files('tools/test_class_diagram_sync.py'),
      workdir: raiz, suite: 'tools', timeout: 120)
 
@@ -1062,6 +1078,15 @@ test('class-diagram-sync', py, args: files('tools/test_class_diagram_sync.py'),
 # tambem varrem.
 test('models-sh-scaffold', py, args: files('tools/test_models_sh_scaffold.py'),
      workdir: raiz, suite: 'tools', timeout: 120, is_parallel: false)
+
+# scripts/fetch_srtm.sh (o baixador de tiles SRTM1 usado por INSTALL.md/README.md, fora do
+# fluxo core/modelo -- so' popula shared/data/terrain/srtm/). Hermetico: nome_tile/
+# tiles_da_caixa sao avaliadas isoladas (sem 'source' do script inteiro, que executaria o
+# 'exit 2' de argumento vazio), e os testes de --dry-run/--sudeste sobem um servidor HTTP
+# LOCAL (SRTM_BASE) em vez de tocar a AWS -- nunca escreve em shared/data/terrain/srtm/ de
+# verdade (--dry-run nunca baixa nada).
+test('fetch-srtm', py, args: files('tools/test_fetch_srtm.py'),
+     workdir: raiz, suite: 'tools', timeout: 60)
 
 # O catalogo da aba "Catalogo" de docs/manual/doc.jsx
 # (tools/generate_manual_catalog.py): a soma das 7 factories nativas bate com

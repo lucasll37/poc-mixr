@@ -2,8 +2,7 @@
 
 Nem todas cruzam a fronteira `dlopen` como `shared_library()`: hoje só seis (`xboard`/`xlog`/
 `xtrack`/`xrlbridge`/`xinfer`/`xpyembed`) precisam de uma cópia única em runtime, compartilhada
-entre core e plugin — as demais ficam estáticas/header-only (ver `CLAUDE.md`, seção "O SDK de
-plugin", para o porquê de cada caso).
+entre core e plugin — as demais ficam estáticas/header-only.
 
 Uma biblioteca por pasta, no padrão `libs/x<nome>` — herdado do "x" = *eXample* das bibliotecas
 de exemplo dos tutoriais oficiais do MIXR (`contexts/MIXR-PATTERN-CONTEXT.md` §1.5); aqui a letra
@@ -34,4 +33,4 @@ sua própria cópia, silenciosamente. `xtacview`, `xclock`, `xjoystick`, `xmsg` 
 cruzam essa fronteira (nenhum modelo as inclui) e ficam `static_library()` — um plugin que linkasse
 uma delas ganharia esse mesmo problema ao contrário. `xrandom` é a única header-only: função pura,
 sem estado nenhum para sincronizar. Cada README explica o "por quê" do próprio caso; o `.claude/
-rules/core-app-src.md` trava a regra geral, e `CLAUDE.md` tem o histórico completo.
+rules/core-app-src.md` trava a regra geral.

@@ -2,7 +2,7 @@
 
 Uma troca síncrona de dois structs, `Command`/`Observation`, entre um core de RL em Python
 (`src/rl/bindings/`, pybind11) e o comportamento UBF que decide por fora do processo MIXR
-(`RLBridgeBehavior`, em `models/players/A-4`). Mais o contrato de dados que dá ordem aos 38 floats
+(`RLBridgeBehavior`, em `models/players/air/A-4`). Mais o contrato de dados que dá ordem aos 38 floats
 que viram entrada de rede — `ObservationFields.hpp` — reusado por quatro consumidores diferentes
 (`RLBridge.cpp`, e os três nós de árvore do modelo), e o mecanismo de **schema nomeado**
 (`FieldRegistry.hpp`/`Schema.hpp`, novos) que permite escolher, em runtime e por nome, QUAIS desses
@@ -22,14 +22,14 @@ agent: ( FlightAgentTC
       behaviors: {
          ( AltitudeSafetyBehavior vote: 90 ... )   // o piso nativo continua acima
          // Decisao vem de fora (Python), via libs/xrlbridge --
-         // ver models/players/A-4/include/ubf/RLBridgeBehavior.hpp.
+         // ver models/players/air/A-4/include/ubf/RLBridgeBehavior.hpp.
          ( RLBridgeBehavior vote: 50 )
       }
    )
 )
 ```
 
-Do lado do **modelo** (`models/players/A-4/src/ubf/RLBridgeBehavior.cpp`), `genAction()` não decide
+Do lado do **modelo** (`models/players/air/A-4/src/ubf/RLBridgeBehavior.cpp`), `genAction()` não decide
 nada — só publica o `WorldView` deste frame e devolve o `Command` que o core deixou pendente:
 
 ```cpp
@@ -92,10 +92,10 @@ core não pode conhecer o fonte do modelo), então define sua própria cópia da
 `WorldView` → `Observation` é feita uma única vez, do lado do modelo
 (`RLBridgeBehavior.cpp::toObservation()`); o core nunca vê `WorldView`, só `Observation`.
 
-## Por que `RLBridgeBehavior` mora DENTRO de `models/players/A-4`, e não num plugin próprio
+## Por que `RLBridgeBehavior` mora DENTRO de `models/players/air/A-4`, e não num plugin próprio
 
 Um plugin separado (no molde do que o modelo de demo `missile` fazia antes de ser removido — não o
-modelo atual de mesmo nome em `models/players/missile`, que é uma implementação diferente — para
+modelo atual de mesmo nome em `models/players/weapon/missile`, que é uma implementação diferente — para
 não obrigar as pocs de produção a atualizar `provides:`) não serviria aqui: `RLBridgeBehavior::genAction()` precisa de
 `dynamic_cast<const xnative::FlightState*>` e construir um `xnative::FlightAction*` — tipos
 **concretos** do modelo, não só o nome de fábrica. Como cada plugin compila com
@@ -153,8 +153,8 @@ embutido).
 Isso é o que dá aos três nós de árvore do modelo (`OnnxPolicyAction`/`OnnxScoreCondition`/
 `PyDecideAction`) uma porta `schema` — `"classic28"` (default, os 28 de sempre), `"all"` (os 38
 completos) ou uma lista ad-hoc separada por espaço — sem precisar recompilar para trocar QUAIS
-campos entram na observação efetiva. Ver `models/players/A-4/docs/POLITICAS.md` para o guia de uso,
-e `models/players/A-4/include/bt/ObservationSchema.hpp` para a resolução da porta em si.
+campos entram na observação efetiva. Ver `models/players/air/A-4/docs/POLITICAS.md` para o guia de uso,
+e `models/players/air/A-4/include/bt/ObservationSchema.hpp` para a resolução da porta em si.
 
 **O core (`env.py`/`PyBindings.cpp`) não usa este mecanismo** — o dict que `toDict()` devolve já
 tem as 38 chaves sempre; escolher um subconjunto do lado Python é feito filtrando esse dict
@@ -216,5 +216,5 @@ nenhum struct parcialmente escrito escapa do mutex).
 `pack`, isolado com um `State` fake (sem nenhum `WorldView`/`Observation` de verdade): ordem
 preservada do schema (não do registro), nome desconhecido coletado em `SchemaError`, `pack()` com
 saída em `float` e em `double`. A resolução contra o registro REAL do A-4
-(`domain::worldViewFieldRegistry()`) é testada em `models/players/A-4/tests/domain/
+(`domain::worldViewFieldRegistry()`) é testada em `models/players/air/A-4/tests/domain/
 test_WorldViewFieldRegistry.cpp`.

@@ -17,10 +17,11 @@ a tela de navegacao. Isso exercita, de ponta a ponta:
      '-folder' (ver o comentario em app/Fleet.hpp);
   4. a degradacao graciosa com zero players -- o codigo ja e robusto
      (Fleet vazia, printDeterministicDump() nunca entra no laco), mas nao
-     havia regressao automatizada cobrindo esse caso. '-f' bare nao serve
-     para provar isso -- ele sempre assume a frota falcon1..4 fixa e
-     abortaria antes de rodar um frame sequer; so '-folder' (descoberta em
-     runtime) alcanca o caminho zero-players de verdade.
+     havia regressao automatizada cobrindo esse caso. '-file' bare nao serve
+     para provar isso -- ele sempre assume a frota falcon1..4 fixa (nunca
+     le o arquivo pra descobrir os players) e abortaria antes de rodar um
+     frame sequer; so '-folder' (descoberta em runtime) alcanca o caminho
+     zero-players de verdade.
 
 A subpasta malformada prova que uma pasta 'irma' invalida nao impede a
 pasta valida de ser encontrada (aviso em stderr, sem abortar o processo
@@ -90,7 +91,7 @@ def main():
     print("  '-folder' + '-scenario <subpasta>' (selecao direta, sem UI) ...")
     proc = subprocess.run(
         [args.binario, "-folder", str(pasta), "-scenario", "voo-de-teste",
-         "-threads", "1", "-deterministic", str(args.frames)],
+         "-numTcThreads", "1", "-deterministic", str(args.frames)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         cwd=RAIZ, timeout=300,
     )
@@ -112,7 +113,7 @@ def main():
     print("  '-folder' + '-scenario zero-players' (Station sem nenhum player) ...")
     proc_zero = subprocess.run(
         [args.binario, "-folder", str(pasta), "-scenario", "zero-players",
-         "-threads", "1", "-deterministic", str(args.frames)],
+         "-numTcThreads", "1", "-deterministic", str(args.frames)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         cwd=RAIZ, timeout=300,
     )

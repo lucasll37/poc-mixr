@@ -5,7 +5,7 @@
 # (o que a execucao escreve) e o README. Quem as executa e o ./app, o runner
 # unico -- 'app -folder src/poc -scenario <nome>' (ver app/ScenarioFolder.hpp;
 # nao ha catalogo estatico, qualquer poc com um unico .edl(.in) em configs/ ja
-# e alcancavel) ou 'app -f <arquivo>' apontando direto pro caminho.
+# e alcancavel) ou 'app -file <arquivo>' apontando direto pro caminho.
 #
 # POR QUE: cada poc carregava uma copia byte a byte da camada de aplicacao
 # (~1.500 linhas: include/app/ + src/app/ + mixr_factory), sustentada pela
@@ -13,7 +13,7 @@
 # cobrado o preco: a correcao de ordem do encerramento (calar a thread T/C
 # antes do SHUTDOWN_EVENT) teve de ser copiada, uma a uma, para as cinco.
 # Hoje a duplicacao esta dissolvida POR CONSTRUCAO -- do mesmo jeito que
-# aconteceu quando o MODELO saiu para models/players/A-4 -- e a guarda que a
+# aconteceu quando o MODELO saiu para models/players/air/A-4 -- e a guarda que a
 # sustentava foi aposentada junto.
 #
 # PROVA DE NEUTRALIDADE (medida na troca): o dump 'frame=' de flight,

@@ -7,6 +7,7 @@
 #include "xclock/factory.hpp"
 #include "xjoystick/factory.hpp"
 #include "xmsg/factory.hpp"
+#include "xterrain/factory.hpp"
 
 #include "mixr/simulation/factory.hpp"
 #include "mixr/models/factory.hpp"
@@ -46,8 +47,10 @@ mixr::base::Object* factoryBuiltin(const std::string& name)
 
    // 6) banco de elevacao -- simulation::/models::factory() NAO encadeiam
    //    terrain:: sozinhos; sem esta linha, ( SrtmHgtFile ) nao constroi
-   //    nada, em silencio.
+   //    nada, em silencio. MultiTileTerrain (libs/xterrain) e' a variante
+   //    multi-tile, com carga sob demanda -- ver libs/xterrain/README.md.
    if (obj == nullptr) obj = mixr::terrain::factory(name);
+   if (obj == nullptr) obj = mixr::xterrain::factory(name);
 
    // 7) DIS nativo -- ( DisNetIO )/( DisNtm ).
    if (obj == nullptr) obj = mixr::dis::factory(name);

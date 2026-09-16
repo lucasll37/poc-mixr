@@ -146,3 +146,36 @@ TEST(MapGeometry, ContourIntervalEscolheODegrauCerto)
    EXPECT_DOUBLE_EQ(contourIntervalFor(0.0, 100000.0), 5000.0);
    EXPECT_DOUBLE_EQ(contourIntervalFor(50.0, 40.0), 5.0);   // min > max: range clampado em 1.0
 }
+
+TEST(MapGeometry, MaxMetersPerCellForAreaUsaOMaiorLado)
+{
+   // Largura maior que altura -- quem limita e' a largura (o lado que, em
+   // pixels, precisaria de MENOS metros/celula pra caber na mesma area).
+   EXPECT_DOUBLE_EQ(maxMetersPerCellForArea(200, 100, 100000.0), 500.0);
+   // Altura maior que largura -- inverte, mesmo raciocinio.
+   EXPECT_DOUBLE_EQ(maxMetersPerCellForArea(100, 250, 100000.0), 400.0);
+   // Canvas quadrado -- os dois lados dao o mesmo resultado.
+   EXPECT_DOUBLE_EQ(maxMetersPerCellForArea(50, 50, 100000.0), 2000.0);
+}
+
+TEST(MapGeometry, MaxMetersPerCellForAreaNaoDividePorZero)
+{
+   // Canvas degenerado (0 ou negativo) nao pode gerar divisao por zero /
+   // resultado infinito -- o piso e' 1 pixel.
+   EXPECT_DOUBLE_EQ(maxMetersPerCellForArea(0, 0, 100000.0), 100000.0);
+   EXPECT_DOUBLE_EQ(maxMetersPerCellForArea(-5, -5, 100000.0), 100000.0);
+}
+
+TEST(MapGeometry, MaxMetersPerCellForAreaLimitaRetanguloA600Nm)
+{
+   // O caso real: 600 NM (a constante kMapMaxVisibleAreaNm, MapPanel.hpp)
+   // convertida pra metros, contra um canvas tipico (240x120 px, o default
+   // de MapViewState). O teto resultante tem que manter os DOIS lados do
+   // retangulo (largura E altura) dentro de 600 NM.
+   const double maxAreaSideM{600.0 * 1852.0};
+   const double maxMetersPerCell{maxMetersPerCellForArea(240, 120, maxAreaSideM)};
+   EXPECT_LE(240.0 * maxMetersPerCell, maxAreaSideM + 1e-6);
+   EXPECT_LE(120.0 * maxMetersPerCell, maxAreaSideM + 1e-6);
+   // E o lado que manda (a largura, maior) bate EXATAMENTE no limite.
+   EXPECT_NEAR(240.0 * maxMetersPerCell, maxAreaSideM, 1e-6);
+}

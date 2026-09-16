@@ -46,7 +46,6 @@ public:
    virtual void resetSlot(int slot) = 0;
 
    Group group() const           { return group_; }
-   int fieldIndex() const        { return index_; }
    const std::string& fieldName() const { return fieldName_; }
 
 protected:

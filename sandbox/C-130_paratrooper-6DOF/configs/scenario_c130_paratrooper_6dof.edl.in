@@ -3,10 +3,10 @@
 //
 // A integracao de VERDADE entre os dois modelos, adiada de proposito em
 // src/poc/c130-airdrop (que ainda libera so' um C130ParatrooperPlaceholder --
-// ver models/players/C-130/docs/ARCHITECTURE.md): UM C-130
-// (models/players/C-130, dinamica JSBSim 6-DOF, mesmo estilo aerodinamico de
+// ver models/players/air/C-130/docs/ARCHITECTURE.md): UM C-130
+// (models/players/air/C-130, dinamica JSBSim 6-DOF, mesmo estilo aerodinamico de
 // sandbox/C-130-6DOF) que, no SEGUNDO ponto de navegacao (15.000 ft), libera
-// 30 paraquedistas DE VERDADE (models/players/paratrooper, a classe
+// 30 paraquedistas DE VERDADE (models/players/effect/paratrooper, a classe
 // 'Paratrooper' real -- queda livre, paraquedas, pouso -- nao o placeholder),
 // com 1,5 segundos de intervalo entre uma liberacao e a proxima.
 //
@@ -41,14 +41,14 @@
 // 15.000 ft ao cruzar wp2 -- e' o valor COMANDADO, nao um teto travado; ver
 // o README desta poc para o numero de verdade, medido depois de rodar.
 //
-// A ACAO NOVA -- C130ActionParatrooperStick (models/players/C-130), irma de
+// A ACAO NOVA -- C130ActionParatrooperStick (models/players/air/C-130), irma de
 // C130ActionParatrooperRelease (esta so' libera UMA estacao por cruzamento;
 // a nova libera VARIAS, espacadas no tempo, a partir de UM cruzamento so).
 // Mecanismo: e' o proprio mixr::models::Action (trigger() uma vez ->
 // OnboardComputer::actionManager() chamando process(dt) a cada ciclo de
 // FUNDO ate isCompleted()) -- nenhum mecanismo de tempo foi inventado, ja
 // existia no framework e nunca tinha sido usado desse jeito neste
-// repositorio. Ver models/players/C-130/include/xnative/ActionParatrooperStick.hpp
+// repositorio. Ver models/players/air/C-130/include/xnative/ActionParatrooperStick.hpp
 // para o detalhe completo.
 //
 // AS 30 ESTACOES SAO ( Paratrooper ), NAO ( C130ParatrooperPlaceholder) --
@@ -58,7 +58,7 @@
 // faz dynamic_cast em classe concreta nenhuma, so compara Player::getType())
 // alcanca a classe real do OUTRO plugin sem nenhuma mudanca de C++ em
 // nenhum dos dois -- exatamente o contrato que
-// models/players/C-130/docs/ARCHITECTURE.md ja prometia.
+// models/players/air/C-130/docs/ARCHITECTURE.md ja prometia.
 //
 // TACVIEW: dois typeMap/colorMap/modelMap -- um pro c130 (mesmo de
 // C-130-6DOF), outro pro "PARATROOPER" (mesmo de src/poc/paratrooper-drop) --
@@ -135,15 +135,15 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       // Mesma referencia de sandbox/C-130-6DOF/src/poc/paratrooper-drop --
       // Serra do Mar / regiao de Nova Friburgo (RJ).
       latitude:  -22.25
       longitude: -42.48
 
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {

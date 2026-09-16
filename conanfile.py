@@ -14,7 +14,7 @@ class MixrHelloConan(ConanFile):
 
     # A BehaviorTree.CPP tem de ser ESTATICA: o plugin do modelo a linka com
     # -Wl,--exclude-libs,ALL para esconder os simbolos dela do .dynsym (ver
-    # models/players/A-4/meson.build); o core nunca a linka, pra nao
+    # models/players/air/A-4/meson.build); o core nunca a linka, pra nao
     # duplicar o contador estatico BT::getUID() entre core e plugin.
     #
     # O override abaixo e' seguro/idempotente independentemente de o pacote

@@ -15,8 +15,8 @@ namespace {
 // errado. Toda outra entrada invalida desta aplicacao (arquivo de cenario,
 // player ausente, banco de elevacao corrompido -- ver TerrainData/
 // StationBuilder/Fleet) sai por std::exit com uma mensagem clara; um
-// '-threads abc' devia se comportar da mesma forma, nao travar com um sinal.
-// Erro comum aos dois de baixo -- extraido para nao repetir a mensagem.
+// '-numTcThreads abc' devia se comportar da mesma forma, nao travar com um
+// sinal. Erro comum aos dois de baixo -- extraido para nao repetir a mensagem.
 [[noreturn]] void dieNaoNumero(const std::string& flag, const std::string& token)
 {
    std::cerr << "[app] " << flag << " espera um numero inteiro, recebi '"
@@ -46,7 +46,7 @@ long parseLongOrDie(const std::string& flag, const std::string& token)
    // std::stol para no primeiro caractere que não é dígito -- não lança
    // exceção para '3.5'/'7xyz' (converte só o prefixo numérico e ignora o
    // resto, comportamento documentado da função). Sem esta checagem,
-   // '-threads 3.5' viraria '3' sem nenhum aviso do '.5' descartado --
+   // '-numTcThreads 3.5' viraria '3' sem nenhum aviso do '.5' descartado --
    // exatamente o tipo de entrada que este arquivo promete recusar com
    // mensagem clara.
    if (consumido != token.size()) dieNaoNumero(flag, token);
@@ -77,7 +77,7 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
       if (arg == "-scenario") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioKey = argv[++i];
-      } else if (arg == "-f") {
+      } else if (arg == "-file") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
          opts.scenarioPath = argv[++i];
       } else if (arg == "-folder") {
@@ -99,9 +99,12 @@ Options parseCommandLine(const int argc, char* argv[], const Options& defaults)
                       << opts.deterministicFrames << "'" << std::endl;
             std::exit(EXIT_FAILURE);
          }
-      } else if (arg == "-threads") {
+      } else if (arg == "-numTcThreads") {
          if ((i + 1) >= argc) dieFaltouValor(arg);
-         opts.threadsOverride = parseIntOrDie(arg, argv[++i]);
+         opts.tcThreadsOverride = parseIntOrDie(arg, argv[++i]);
+      } else if (arg == "-numBgThreads") {
+         if ((i + 1) >= argc) dieFaltouValor(arg);
+         opts.bgThreadsOverride = parseIntOrDie(arg, argv[++i]);
       }
    }
 

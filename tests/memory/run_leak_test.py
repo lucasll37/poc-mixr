@@ -19,7 +19,7 @@ Roda contra uma fixture HERMETICA (sem 'networks:'): com o bloco de rede o
 processo ingere PDUs DIS de quem estiver na LAN, e duas execucoes iguais dao
 contagens diferentes -- observado com um bandit de outra sessao no ar.
 
-Roda com '-threads 1' de proposito: os contadores do framework nao sao
+Roda com '-numTcThreads 1' de proposito: os contadores do framework nao sao
 atomicos (macros.hpp:249), entao com os agentes decidindo em paralelo no pool
 de tempo critico o numero perde exatidao.
 """
@@ -73,7 +73,7 @@ LINHA = re.compile(
 
 def roda(binario, cenario, frames):
     proc = subprocess.run(
-        [binario, "-f", cenario, "-threads", "1", "-deterministic", str(frames)],
+        [binario, "-file", cenario, "-numTcThreads", "1", "-deterministic", str(frames)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800,
     )
     if proc.returncode != 0:
@@ -144,9 +144,9 @@ def main():
     (RAIZ / "build" / "tests-recordings").mkdir(parents=True, exist_ok=True)
     cenario = str(cenario)
 
-    print(f"  rodando {CURTA} frames com -threads 1 ...")
+    print(f"  rodando {CURTA} frames com -numTcThreads 1 ...")
     curta, states_curta = roda(binario, cenario, CURTA)
-    print(f"  rodando {LONGA} frames com -threads 1 ...")
+    print(f"  rodando {LONGA} frames com -numTcThreads 1 ...")
     longa, states_longa = roda(binario, cenario, LONGA)
 
     falhas = []

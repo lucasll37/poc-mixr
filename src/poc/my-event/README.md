@@ -5,7 +5,7 @@
 Nenhuma decisão (sem BT, sem UBF, sem agente) — só o **mecanismo de evento** do MIXR
 (`mixr::base::Component::event()`), de ponta a ponta:
 
-- **O modelo**: [`models/players/Beacon/`](../../../models/players/Beacon/) — um
+- **O modelo**: [`models/others/Beacon/`](../../../models/others/Beacon/) — um
   `mixr::models::Player` mínimo (sem `dynamicsModel`, sem `pilot`, sem sensor) que, periodicamente,
   transmite um `PingMessage` (payload não-nulo: remetente, sequência, mensagem) para os demais
   `Beacon`s do cenário — e **trata** o mesmo evento quando é ele quem recebe. A mesma classe nos
@@ -20,7 +20,7 @@ Nenhuma decisão (sem BT, sem UBF, sem agente) — só o **mecanismo de evento**
 
 Três `Beacon` parados (`beacon1`/`beacon2`/`beacon3`), formando um triângulo de ~2 NM de lado —
 só para aparecerem separados no Tacview, já que o alcance do ping não é filtrado por distância
-nenhuma (mesmo caminho (b) de `xnative::AlertDatalink::broadcastAlert()`, `models/players/A-4`: o
+nenhuma (mesmo caminho (b) de `xnative::AlertDatalink::broadcastAlert()`, `models/players/air/A-4`: o
 broadcast alcança todo player local ativo). Cada um com um `pingInterval` diferente (3s/4s/6s) e
 uma `pingMessage` própria — de propósito, para que a leitura do log mostre os três relógios saindo
 de fase (todos emitem juntos no primeiro frame, porque `pingTimer` nasce zerado, e depois cada um
@@ -47,7 +47,7 @@ exatamente o que mostra o ping sendo emitido e tratado:
 mostra os três `Beacon` na aba Players, posição no Mapa, contadores de instância na aba Memória) —
 mas o `./app` desliga o log para não sujar o desenho da TUI (`xlog::setConsoleEnabled(false)`), e
 os campos `sent=`/`recv=`/`bt=`/`dec=` do dump `-deterministic` são específicos de
-`AlertDatalink`/UBF (`models/players/A-4`) — `Beacon` não os preenche, então saem `--`/`0`, o que é
+`AlertDatalink`/UBF (`models/players/air/A-4`) — `Beacon` não os preenche, então saem `--`/`0`, o que é
 esperado e não indica falha: a prova de que os pings estão acontecendo é o contador
 `meta=PingMessage ... tc=N` (N cresce com o número de pings emitidos) e, principalmente, o log.
 

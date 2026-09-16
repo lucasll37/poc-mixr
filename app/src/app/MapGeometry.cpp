@@ -65,5 +65,12 @@ double contourIntervalFor(const double minM, const double maxM)
    return 5000.0;
 }
 
+double maxMetersPerCellForArea(const int canvasWidthPx, const int canvasHeightPx,
+                               const double maxAreaSideM)
+{
+   const int largerSidePx{std::max(1, std::max(canvasWidthPx, canvasHeightPx))};
+   return maxAreaSideM / static_cast<double>(largerSidePx);
+}
+
 } // namespace mapgeometry
 } // namespace app

@@ -93,6 +93,7 @@ struct DashboardWiring
    mixr::xtacview::TacviewOutput* tacviewOutput{};
    mixr::linkage::IoHandler* ioHandler{};
    int numTcThreads{};
+   int numBgThreads{};
    std::string scenarioLabel;
    std::string generatedEdlPath;
 

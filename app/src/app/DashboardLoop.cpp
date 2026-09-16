@@ -151,7 +151,8 @@ Element renderHeader(const DashboardState& st)
              filler(),
              text(tw.str() + "  " + ts.str() + "  "),
              text(" " + speedLabel + " ") | bold | bgcolor(speedColor) | color(Color::Black),
-             text("  n_thread=" + std::to_string(st.numTcThreads) + " "),
+             text("  numTcThreads=" + std::to_string(st.numTcThreads)
+                  + " numBgThreads=" + std::to_string(st.numBgThreads) + " "),
           })
           | border;
 }
@@ -163,7 +164,8 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
                            mixr::xclock::ClockStation* const clockStation,
                            mixr::xtacview::TacviewOutput* const tacviewOutput,
                            mixr::linkage::IoHandler* const ioHandler,
-                           const int numTcThreads, const std::string& scenarioLabel,
+                           const int numTcThreads, const int numBgThreads,
+                           const std::string& scenarioLabel,
                            const BtNode& behaviorTree, const std::string& generatedEdlPath)
 {
    // Todo o estado que antes era local a esta funcao mora agora em 'w' (ver
@@ -177,6 +179,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
    w.tacviewOutput = tacviewOutput;
    w.ioHandler = ioHandler;
    w.numTcThreads = numTcThreads;
+   w.numBgThreads = numBgThreads;
    w.scenarioLabel = scenarioLabel;
    w.generatedEdlPath = generatedEdlPath;
 
@@ -285,7 +288,7 @@ DashboardExit runDashboard(mixr::simulation::Station* const station,
          DashboardState next{captureState(worldModel, station, tacviewOutput,
                                           mixr::base::getComputerTime() - realWallClockStart,
                                           worldModel->getExecTimeSec(), clockStation,
-                                          numTcThreads, scenarioLabel, classHistory,
+                                          numTcThreads, numBgThreads, scenarioLabel, classHistory,
                                           wantComponentTree.load(std::memory_order_relaxed))};
          classHistory = next.classStats;
 

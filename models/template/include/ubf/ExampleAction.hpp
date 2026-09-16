@@ -25,7 +25,7 @@ namespace xtemplate {
 // o exemplo compilar e rodar contra QUALQUER tipo de Player, nao so
 // aeronaves. Um modelo real substituiria o corpo de execute() por comandos
 // de verdade (ex.: models::Autopilot::setCommandedHeadingD(), como
-// models/players/A-4/src/ubf/FlightAction.cpp ou
+// models/players/air/A-4/src/ubf/FlightAction.cpp ou
 // ../mirror.cpp (o mirror de contrato deste mesmo diretorio) fazem -- leia
 // os dois quando for a hora de sair do "engajado/nao engajado" para algo
 // que pilota de verdade).

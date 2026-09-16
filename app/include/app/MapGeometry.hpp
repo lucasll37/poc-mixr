@@ -57,5 +57,14 @@ void worldFromCanvasLateral(int px, const MapViewState& view, double& northM, do
 // conforme a escala, nao um numero arbitrario.
 double contourIntervalFor(double minM, double maxM);
 
+// O maior 'metersPerCell' que ainda mostra, no MAIOR lado do canvas
+// (largura ou altura, o que for maior em pixels), no maximo
+// 'maxAreaSideM' metros de mundo -- e' o que garante que NENHUM dos dois
+// lados do retangulo visivel excede esse limite (o lado menor, por ser
+// menor em pixels, fica dentro por construcao). Usado por zoomMap()
+// (MapPanel.cpp) para nao deixar o zoom out crescer sem limite -- ver o
+// "porque" no comentario daquela funcao.
+double maxMetersPerCellForArea(int canvasWidthPx, int canvasHeightPx, double maxAreaSideM);
+
 } // namespace mapgeometry
 } // namespace app

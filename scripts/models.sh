@@ -3,16 +3,20 @@
 # Gera um modelo novo em models/<categoria>/<nome>/ a partir do unico ponto
 # de partida copiavel: models/template/.
 #
-# A CATEGORIA e obrigatoria (--category player|system|others) e decide a
-# subpasta de destino sob models/ -- mesma taxonomia que 'MODELOS_PRODUCAO'
-# do Makefile raiz ja descobre por 'find' (ver CLAUDE.md, secao "O MODELO e
-# um plugin"): 'player' -> models/players/, 'system' -> models/systems/,
-# 'others' -> models/others/. NAO existe categoria 'event': models/events/
-# nao e uma pasta de projetos-modelo, um por evento -- e UM projeto Meson so
-# (a lib 'events'), e um evento novo vira uma pasta payloads/<TOKEN>/ DENTRO
-# dele, nao um scaffold de template/ novo (ver models/events/README.md);
-# forcar esse fluxo por aqui produziria uma estrutura que nao bate com nada
-# documentado. Continua fora do escopo deste gerador.
+# A CATEGORIA e obrigatoria (--category <subpasta-relativa-a-models/>) e e' o
+# caminho, relativo a models/, onde o scaffold entra -- NAO um enum fixo:
+# qualquer subpasta serve (players/air, players/ground, systems/trackmanager,
+# dynamics, sensors, others, ...), existente ou nova, espelhando a taxonomia
+# de mixr::models que este repositorio usa hoje (ver CLAUDE.md, secao "O
+# MODELO e um plugin") sem precisar deste script saber essa taxonomia de cor
+# -- 'MODELOS_PRODUCAO' do Makefile raiz ja descobre por 'find', a QUALQUER
+# profundidade sob models/, entao mover a categoria nao quebra build/teste.
+# NAO existe categoria 'events': models/events/ nao e uma pasta de
+# projetos-modelo, um por evento -- e UM projeto Meson so (a lib 'events'), e
+# um evento novo vira uma pasta payloads/<TOKEN>/ DENTRO dele, nao um scaffold
+# de template/ novo (ver models/events/README.md); forcar esse fluxo por aqui
+# produziria uma estrutura que nao bate com nada documentado -- '--category
+# events'/'--category template' sao recusados explicitamente logo abaixo.
 #
 # Automatiza a receita MECANICA ja documentada em
 # models/template/docs/PRIMEIROS-PASSOS.md -- nao inventa passo
@@ -22,7 +26,7 @@
 # CONTRATO.md secao 6) esquecido pela metade -- e apaga o mirror de contrato
 # (src/mirror.cpp + os blocos MIRROR-BLOCK-START/END em meson.build/tests/
 # meson.build), que NAO faz parte do scaffold e colidiria em nome de fabrica
-# com models/players/A-4 se um modelo novo continuasse exportando os mesmos
+# com models/players/air/A-4 se um modelo novo continuasse exportando os mesmos
 # 9 nomes por acidente.
 #
 # O QUE ESTE SCRIPT NAO FAZ, de proposito:
@@ -37,12 +41,12 @@
 # Tudo isso fica no checklist impresso ao final.
 #
 # Uso -- CRIAR:
-#   scripts/models.sh --name meu_modelo --category player
-#   scripts/models.sh --name F-5 --category player
-#   scripts/models.sh --name meu_modelo --category system --dest algum/lugar --no-build
+#   scripts/models.sh --name meu_modelo --category players/air
+#   scripts/models.sh --name F-5 --category players/air
+#   scripts/models.sh --name meu_modelo --category systems/trackmanager --dest algum/lugar --no-build
 #
 # Uso -- REMOVER (ver o bloco "MODO --remove" logo abaixo do parsing):
-#   scripts/models.sh --remove --name meu_modelo --category player
+#   scripts/models.sh --remove --name meu_modelo --category players/air
 #   scripts/models.sh --remove --so libx9.so [--data x9]      # orfao legado, sem fonte
 #
 # Pre-requisito (uma vez por maquina, igual a qualquer modelo deste
@@ -77,8 +81,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-USO="uso: scripts/models.sh --name meu_modelo --category player|system|others [--dest pasta] [--no-build]"
-USO_REMOVE="uso: scripts/models.sh --remove --name <nome> --category player|system|others [--force] [--dry-run]
+USO="uso: scripts/models.sh --name meu_modelo --category <subpasta-de-models/, ex: players/air> [--dest pasta] [--no-build]"
+USO_REMOVE="uso: scripts/models.sh --remove --name <nome> --category <subpasta-de-models/, ex: players/air> [--force] [--dry-run]
      ou: scripts/models.sh --remove --so lib<X>.so [--so ...] [--data <dir>] [--force] [--dry-run]"
 
 # --no-build e' exclusiva da CRIACAO (pula o build de fumaca). Aceitar junto
@@ -108,6 +112,55 @@ if [ "$REMOVER" = "0" ] && [ -z "$CATEGORIA" ]; then
     exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# validar_categoria CATEGORIA -- confere que a categoria e' um caminho
+# RELATIVO valido sob models/ (sem '/' inicial, sem '..', so' letras/digitos/
+# underscore/hifen/barra) e que nao e' uma das duas subpastas RESERVADAS
+# (template/events, que nunca sao destino de scaffold -- ver o comentario de
+# cabecalho deste arquivo). Usada tanto no modo CRIAR quanto no modo REMOVER,
+# unica fonte da regra.
+#
+# De proposito NAO valida que a categoria ja EXISTE em disco: 'dynamics'/
+# 'sensors'/'systems/trackmanager' hoje so' tem '.gitkeep' (nenhum modelo
+# ainda), e uma categoria mais funda que as de hoje (ex.: 'players/air/
+# experimental') e' igualmente valida -- 'mkdir -p "$DEST_ABS"' mais abaixo
+# cria a arvore que faltar. Isto e' o que torna a criacao/remocao AGNOSTICAS
+# a estrutura de pastas: nenhum enum fixo para manter em sincronia com
+# 'models/' -- se a taxonomia mudar de novo (uma pasta renomeada, uma
+# subpasta nova), este script nao precisa acompanhar.
+validar_categoria() {
+    local cat="$1"
+    if [ -z "$cat" ]; then
+        echo "categoria invalida: vazia" >&2
+        return 1
+    fi
+    case "$cat" in
+        /*)
+            echo "categoria invalida: '$cat' -- tem que ser RELATIVA a models/, sem '/' inicial" >&2
+            return 1
+            ;;
+        *..*)
+            echo "categoria invalida: '$cat' -- nao pode conter '..'" >&2
+            return 1
+            ;;
+    esac
+    if ! [[ "$cat" =~ ^[A-Za-z0-9_/-]+$ ]]; then
+        echo "categoria invalida: '$cat' -- use so' letras/digitos/underscore/hifen/barra (ex.: players/air, systems/trackmanager)" >&2
+        return 1
+    fi
+    case "$cat" in
+        template|template/*)
+            echo "categoria invalida: 'template' e reservado -- models/template/ e' o UNICO ponto de partida copiavel deste gerador, nunca um destino de scaffold" >&2
+            return 1
+            ;;
+        events|events/*)
+            echo "categoria invalida: 'events' e reservado -- models/events/ e' o projeto Meson do contrato de eventos (payload + token), nao uma categoria de modelo -- ver o comentario de cabecalho" >&2
+            return 1
+            ;;
+    esac
+    return 0
+}
+
 # ===========================================================================
 # MODO --remove -- remover um modelo sem deixar inconsistencia
 #
@@ -119,7 +172,7 @@ fi
 # meson.build exige a pasta; nao ha manifesto; 'plugininfo' nem devolve
 # plugin_name (a saida e' so {"classes":[...]}); e nada impede um modelo
 # futuro de publicar .so/diretorio de dados com nome diferente do da propria
-# pasta (ja aconteceu com models/players/A-4, ate ser alinhado) -- nao dá para
+# pasta (ja aconteceu com models/players/air/A-4, ate ser alinhado) -- nao dá para
 # simplesmente assumir "nome da pasta == nome do artefato".
 #
 # Dai a ordem abaixo, escolhida para que TODO PREFIXO seja um estado
@@ -298,12 +351,8 @@ EOF
                 *)  DEST_ABS="$REPO_ROOT/$DEST" ;;
             esac
         else
-            case "$CATEGORIA" in
-                player) DEST_ABS="$REPO_ROOT/models/players/$NAME" ;;
-                system) DEST_ABS="$REPO_ROOT/models/systems/$NAME" ;;
-                others) DEST_ABS="$REPO_ROOT/models/others/$NAME" ;;
-                *) echo "categoria invalida: '$CATEGORIA' -- use player, system ou others" >&2; exit 1 ;;
-            esac
+            validar_categoria "$CATEGORIA" || exit 1
+            DEST_ABS="$REPO_ROOT/models/$CATEGORIA/$NAME"
         fi
 
         case "$DEST_ABS" in
@@ -438,7 +487,7 @@ fi
 # Letra inicial, depois letras (as duas caixas), digitos, underscore e hifen.
 #
 # A regra ANTERIOR era '^[a-z][a-z0-9_]*$' e recusava exatamente a convencao
-# de PASTA que este repositorio ja usa em producao: models/players/A-4 --
+# de PASTA que este repositorio ja usa em producao: models/players/air/A-4 --
 # designacao de aeronave, com maiuscula e hifen (ver CLAUDE.md, secao "O
 # MODELO e um plugin"). Nada FORA deste script deriva identificador do nome
 # do modelo -- conferido: a descoberta de MODELOS_PRODUCAO do Makefile raiz
@@ -485,17 +534,11 @@ if [ -n "$COLISAO" ]; then
     exit 1
 fi
 
-# categoria -> subpasta de models/ (ver o comentario de cabecalho: 'event'
-# nao entra aqui de proposito).
-case "$CATEGORIA" in
-    player) CATEGORIA_DIR="players" ;;
-    system) CATEGORIA_DIR="systems" ;;
-    others) CATEGORIA_DIR="others" ;;
-    *)
-        echo "categoria invalida: '$CATEGORIA' -- use player, system ou others" >&2
-        exit 1
-        ;;
-esac
+# categoria -> subpasta de models/, validada por validar_categoria() (ja
+# definida mais acima, antes do bloco --remove -- 'events'/'template' nao
+# entram aqui de proposito, ver o comentario de cabecalho).
+validar_categoria "$CATEGORIA" || exit 1
+CATEGORIA_DIR="$CATEGORIA"
 
 ORIGEM="$REPO_ROOT/models/template"
 ORIGEM_NOME="$(basename "$ORIGEM")"
@@ -616,9 +659,9 @@ Falta, MANUALMENTE (nada disto e automatizavel):
   [ ] git add ${dest_rel}/ (este script nao commita nada)
   [ ] este modelo ja entra sozinho em 'make models'/'make test' da raiz (descoberta por
       'find' -- nao ha lista pra editar); falta so escrever um CENARIO pra ele: um
-      '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-f', sem
+      '.edl.in' novo em src/poc/${nome}/configs/ (ja alcancavel por '-folder'/'-file', sem
       registrar em lugar nenhum) e, se fizer sentido, cobertura em tests/meson.build --
-      ver CONTRIBUTING.md, secoes 5.2 e 5.4
+      ver CONTRIBUTING.md, secao 6
   [ ] acrescentar sua linha em models/REGISTRO.md (nome, pasta, status, responsavel)
 EOF
 }
@@ -668,7 +711,7 @@ substituir "$MESON" "'$ORIGEM_NOME'" "'$NAME'"
 # nomeia o namespace do modelo (mixr::models::x<nome>::bt) para montar a
 # factory, entao um scaffold com 'tools/' fora desta varredura sai com
 # 'xtemplate' cravado la e NAO COMPILA -- reproduzido com 'make new-model
-# NAME=probe-bt CATEGORY=others'. O models/players/A-4 nao expunha isso
+# NAME=probe-bt CATEGORY=others'. O models/players/air/A-4 nao expunha isso
 # porque os nos dele vivem num 'bt_nodes' solto no escopo global (a excecao
 # historica que models/template/docs/CONTRATO.md secao 6 manda NAO copiar).
 ARQUIVOS_NS="$(arquivos_contendo "$DEST_ABS" "x$ORIGEM_NOME" include src tests tools)"

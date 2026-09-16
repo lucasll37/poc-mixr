@@ -30,7 +30,7 @@
 // ARMADILHA: os contadores NAO sao atomicos (macros.hpp:249 faz
 // '++metaObject.count' em int cru). Com os agentes decidindo em paralelo no
 // pool de tempo critico os incrementos correm entre si e o numero perde
-// exatidao -- por isso o teste de vazamento roda com '-threads 1'.
+// exatidao -- por isso o teste de vazamento roda com '-numTcThreads 1'.
 //------------------------------------------------------------------------------
 
 namespace app {

@@ -1,5 +1,6 @@
 # diretorios de build do Meson: a raiz (build/) e o de cada projeto de modelo
-# (models/players/*/build/). A BARRA FINAL nao e' decorativa -- 'build*' sem
+# (models/**/build/, qualquer profundidade sob models/ -- sem '/' no meio do
+# padrao, casa em qualquer nivel por construcao). A BARRA FINAL nao e' decorativa -- 'build*' sem
 # ela casa tambem com ARQUIVO, em qualquer nivel, e engolia
 # src/ui/scripts/build.js (o orquestrador de 'make open-edl'): ele
 # nunca entrava em commit nenhum, sem aviso, e o alvo quebrava com
@@ -60,26 +61,7 @@ src/ui/.cache-dom/
 src/ui/presets/*.edl
 src/ui/presets/*.edl.in
 
-# Tiles SRTM. O .hgt descomprimido (25 MB cada) e artefato gerado sob
-# demanda -- ver app/TerrainQuery.cpp::residentTerrain().
-shared/data/terrain/srtm/*.hgt
-
-# O .gz TAMBEM e ignorado por padrao, e a excecao e a lista curta abaixo.
-# Motivo: a cobertura do Brasil sao ~1600 tiles / ~12 GB de .gz, que num
-# repositorio git ficariam para sempre no historico e tornariam o clone
-# inviavel. Esses 12 GB sao REPRODUTIVEIS a qualquer momento com
-# 'scripts/fetch_srtm.sh --brasil' (o espelho e publico e sem login), entao
-# nao ha nada a preservar versionando-os.
-#
-# As cinco excecoes sao os tiles do cenario de demonstracao (a familia
-# A4-*DOF) e sua vizinhanca imediata -- o que um clone limpo precisa ter
-# para rodar os cenarios deste repositorio sem baixar nada.
-shared/data/terrain/srtm/*.hgt.gz
-!shared/data/terrain/srtm/S23W043.hgt.gz
-!shared/data/terrain/srtm/S23W042.hgt.gz
-!shared/data/terrain/srtm/S22W043.hgt.gz
-!shared/data/terrain/srtm/S23W044.hgt.gz
-!shared/data/terrain/srtm/S22W044.hgt.gz
+# Tiles SRTM (.hgt/.hgt.gz) -- ver shared/data/terrain/srtm/.gitignore.
 
 # deposito COMPARTILHADO de plugins (locais -- flight/template, via o
 # 'install-core' de cada um -- E de terceiros, externos a este repositorio)
@@ -172,14 +154,13 @@ tests/scenario/__pycache__/
 src/poc/onnx-policy/tools/__pycache__/
 src/poc/rl-training/tests/__pycache__/
 src/rl/tests/__pycache__/
-models/players/A-4/tools/__pycache__/
-models/players/AAA/tools/__pycache__/
-models/players/Beacon/tools/__pycache__/
-models/players/C-130/tools/__pycache__/
-models/players/missile/tools/__pycache__/
-models/players/paratrooper/tools/__pycache__/
-models/others/Navstar-3/tools/__pycache__/
-models/template/tools/__pycache__/
+
+# __pycache__ de tools/check_organization.py (copiado em todo projeto de
+# modelo) e de tools/dump_tree_model.cpp-adjacentes -- glob '**' em vez de uma
+# entrada por caminho: um projeto de modelo pode morar em QUALQUER
+# profundidade sob models/ (ver CLAUDE.md, "Reestruturacao por taxonomia
+# MIXR") -- mover um modelo entre subpastas nunca deve exigir editar isto.
+models/**/tools/__pycache__/
 
 # Saida de 'make create-bt' -- uma arvore VAZIA gerada pelo dump-tree-model,
 # ponto de partida para editar no Groot. Nao e fonte: versionar faria o
@@ -187,9 +168,9 @@ models/template/tools/__pycache__/
 # 'make new-model'. A arvore de VERDADE (example_tree.xml) continua rastreada.
 #
 # Regra restrita ao template DE PROPOSITO, e nao um glob sobre
-# models/players/*/: o A-4 ja tem o bt.xml dele RASTREADO (decisao anterior),
+# models/**/: o A-4 ja tem o bt.xml dele RASTREADO (decisao anterior),
 # e um glob deixaria aquele arquivo rastreado e ignorado ao mesmo tempo --
 # inconsistencia sem ganho. Consequencia conhecida, herdada e nao mexida
-# aqui: 'make -C models/players/A-4 create-bt' recusa, porque o arquivo ja
+# aqui: 'make -C models/players/air/A-4 create-bt' recusa, porque o arquivo ja
 # existe la.
 models/template/configs/bt.xml

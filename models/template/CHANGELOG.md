@@ -56,7 +56,7 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
   `-->`, o `<root>` e a `<BehaviorTree>` inteira — reportando "substituído", sem erro. Os
   comentários agora são mascarados antes da busca (mesma técnica de
   `tools/mixr_source_scan.py::mask_source()` na raiz). O mesmo defeito existia, latente, na cópia
-  de `A-4` — corrigido nas duas. Ver `../players/A-4/CHANGELOG.md`.
+  de `A-4` — corrigido nas duas. Ver `../players/air/A-4/CHANGELOG.md`.
 
 ### Mudado
 
@@ -84,7 +84,7 @@ não há tag de git, e o descritor do plugin não carrega versão do modelo (`Pl
 - **O diretório pai passou de `models/player/` para `models/players/`** — este projeto passou a
   morar em `models/players/template/` (hoje `models/template/`, ver a entrada acima). `git mv`,
   histórico preservado. Detalhe da varredura →
-  [`../players/A-4/CHANGELOG.md`](../players/A-4/CHANGELOG.md). (2026-09-07)
+  [`../players/air/A-4/CHANGELOG.md`](../players/air/A-4/CHANGELOG.md). (2026-09-07)
 
 ---
 
@@ -102,7 +102,7 @@ quer nascer já separado em camadas.
   slots `base::Distance`) → ação (`ExampleAction`, que escreve no `xboard`).
 - **`docs/ARCHITECTURE.md`** — o porquê de cada camada, o porquê de `domain::` morar aninhado em
   `mixr::models::xtemplate` (evita colisão de `type_info` entre plugins carregados juntos — mesmo
-  raciocínio de `models/players/missile/src/domain/Guidance.hpp`), a tabela comparando os quatro
+  raciocínio de `models/players/weapon/missile/src/domain/Guidance.hpp`), a tabela comparando os quatro
   pontos de referência de `models/players/` (`stub`, este `template`, `missile`, `A-4`), e o roteiro
   para crescer até uma árvore do BehaviorTree.CPP quando uma regra só deixar de bastar.
 - **`docs/PRIMEIROS-PASSOS.md`** — o roteiro mecânico completo: copiar, renomear (projeto, módulo,
@@ -111,7 +111,7 @@ quer nascer já separado em camadas.
 - **`tests/domain/test_ExampleThreshold.cpp`** (4 casos, sem MIXR) e
   **`tests/check_contract.sh`** (a forma do `.so` — 1 símbolo `T`, deps resolvidas; cópia literal
   do de `fixtures/stub`, que já era genérico).
-- **`Makefile` autocontido**, no molde de `models/players/missile/Makefile` (mesma profundidade —
+- **`Makefile` autocontido**, no molde de `models/players/weapon/missile/Makefile` (mesma profundidade —
   três níveis até a raiz do repositório).
 - **Nunca entra no `models:` do Makefile raiz nem em `tests/meson.build`** — de propósito: não é
   produção, nenhum cenário aponta para ele. Ver `docs/PRIMEIROS-PASSOS.md` passo 7 para como

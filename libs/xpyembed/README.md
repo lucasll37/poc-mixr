@@ -5,14 +5,14 @@ Roda um script de decisão de dentro do `genAction()`. Três funções:
 inteiro mora em [`PyEmbed.cpp`](PyEmbed.cpp).
 
 Para que serve: **prototipagem**. Escrever uma regra em Python, ver o efeito em segundos, e só
-depois — se ela se provar — reescrever em C++. É a tensão registrada em `TODO.md` ("testar em
-python para migrar para mixr/cpp facilita a prototipagem mas abre margem para desafios de
-integração") com os desafios de integração resolvidos.
+depois — se ela se provar — reescrever em C++: a prototipagem fica mais rápida, com os desafios
+de integração entre as duas linguagens (GIL, extensões C, isolamento por plugin `RTLD_LOCAL`) já
+resolvidos por esta lib.
 
 ## Como se usar
 
 Ninguém declara `libs/xpyembed` num `.edl` — quem chama a API é um nó de BehaviorTree.CPP dentro
-do plugin do modelo (`bt/nodes/PyDecideAction.cpp`, em `models/players/A-4/`). A "configuração" mora
+do plugin do modelo (`bt/nodes/PyDecideAction.cpp`, em `models/players/air/A-4/`). A "configuração" mora
 na árvore XML, no atributo `script:` do nó.
 
 **1. A árvore aponta `( PyDecide )` para um `.py`** —

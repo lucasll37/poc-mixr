@@ -2,10 +2,9 @@
 
 Sob `src/poc/` por escolha, mas de natureza diferente das outras pastas dali
 (as pocs sob `src/poc/dis/` e as demais -- cenarios EDL, sem `main.cpp` proprio
-desde que `./app` virou o runner unico; ver `CLAUDE.md`, secao "Estrutura de
-um subprojeto"): esta pasta nao
+desde que `./app` virou o runner unico): esta pasta nao
 produz nenhum binario, e so Python. Separada de [`src/rl`](../../rl/) pelo
-mesmo motivo que separa `models/players/A-4` (o modelo) de `src/poc/*` (quem
+mesmo motivo que separa `models/players/air/A-4` (o modelo) de `src/poc/*` (quem
 consome): `src/rl` e so o AMBIENTE (`mixr_gym.MixrFlightEnv`, contrato
 reset/step/observacao); aqui e onde entram as dependencias de treino e o
 script que de fato roda um algoritmo de RL contra ele.
@@ -116,7 +115,7 @@ MESMO `flatten_obs.py` -- nao ha duplicata dessa logica.
 ## Exportar para producao
 
 `tools/export_onnx.py` converte um checkpoint treinado em `.onnx`, no
-contrato que `bt/nodes/OnnxPolicyAction` (`models/players/A-4`) espera -- ver o
+contrato que `bt/nodes/OnnxPolicyAction` (`models/players/air/A-4`) espera -- ver o
 cabecalho do proprio arquivo para o contrato de entrada/saida e por que a
 ordem dos campos nunca e escrita a mao aqui. Por default exporta os 28
 campos historicos (`--fields` omitido = `"classic28"`); `--fields all` usa

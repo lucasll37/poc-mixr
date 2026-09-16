@@ -16,7 +16,7 @@ namespace bt {
 // (ver configs/example_tree.xml, que o usa duas vezes com rotulos
 // diferentes). Um modelo de verdade normalmente tem um no POR ramo, cada um
 // com sua propria logica -- ver ( Patrol )/( ReportAndEvade )/( SupportAlert )
-// em models/players/A-4. Aqui um no so basta porque nao ha logica nenhuma
+// em models/players/air/A-4. Aqui um no so basta porque nao ha logica nenhuma
 // alem do rotulo.
 class ExampleLabelAction final : public BT::SyncActionNode
 {

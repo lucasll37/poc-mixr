@@ -15,7 +15,7 @@ para conferir que o executavel do core nao foi relinkado (existiu um alvo
 'make check-plugin-hotswap' fazendo isso; removido): essa parte e verdadeira
 por CONSTRUCAO, nao uma propriedade que possa regredir em silencio. Core e
 modelo sao dois projetos meson INDEPENDENTES, com arvores de build separadas
-('build/' x 'models/players/A-4/build/') -- um 'meson compile' no diretorio do
+('build/' x 'models/players/air/A-4/build/') -- um 'meson compile' no diretorio do
 modelo nao tem caminho fisico ate 'build/app/src/app'. O invariante estrutural
 por tras disso (o build do core nao referenciar uma linha do fonte do modelo)
 ja e cobrado por tests/guard/check_core_opaco.sh, automaticamente.
@@ -56,7 +56,7 @@ def sha(p):
 
 def dump(binario, fixture):
     r = subprocess.run(
-        [binario, "-f", str(fixture), "-threads", "1", "-deterministic", "1500"],
+        [binario, "-file", str(fixture), "-numTcThreads", "1", "-deterministic", "1500"],
         cwd=RAIZ, capture_output=True, text=True, timeout=300,
     )
     if r.returncode != 0:

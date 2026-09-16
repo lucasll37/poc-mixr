@@ -15,7 +15,7 @@ namespace xtrack {
 // Uma unica questao, e ela aparece em varios lugares diferentes -- na
 // percepcao do UBF (ubf::FlightState), no status/dump da aplicacao, e (desde
 // a generalizacao abaixo) na aquisicao de alvo de um modelo terrestre
-// (models/players/AAA) e na percepcao de RWR do A-4. Manter a consulta num
+// (models/players/ground/AAA) e na percepcao de RWR do A-4. Manter a consulta num
 // so lugar garante que todos digam a mesma coisa.
 //
 // O caminho e sempre o mesmo do framework:

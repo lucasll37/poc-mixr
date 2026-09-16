@@ -5,7 +5,7 @@ Página estática (React embutido, zero rede para abrir) com cinco visões sobre
 registro, slots, fases e os trechos de código (com arquivo e linha reais) vêm de
 `tools/generate_manual_catalog.py` (que reaproveita `tools/mixr_source_scan.py` e
 `tools/extract_execution_chain.py` como módulos) escaneando o fonte de verdade
-(`contexts/src/mixr/` e `models/players/A-4/`) — nada digitado à mão.
+(`contexts/src/mixr/` e `models/players/air/A-4/`) — nada digitado à mão.
 
 Todo bloco de código C++ das cinco abas (Execução, Comportamento, step-by-step, Estrutura, Catálogo) passa
 por `cppTokenizeLines()`/`renderCppSrc()` (`doc.jsx`) — um highlight de sintaxe LEVE, por
@@ -31,7 +31,7 @@ precisa de rede liberada para `cdnjs.cloudflare.com`/`registry.npmjs.org`); as p
 offline.
 
 **Execução** (o botão na página diz "Simulação" — "Execução" aqui é só o nome descritivo do
-conteúdo, mesma convenção do `CLAUDE.md`) — o ciclo de fases do MIXR (dynamics/transmit/receive/
+conteúdo) — o ciclo de fases do MIXR (dynamics/transmit/receive/
 process + as duas threads de decisão/fundo) desenhado sobre a árvore de um `( Aircraft )` com os
 dez sistemas primários que
 `Player::updateSystemPointers()` resolve por tipo (~72 nós, o mesmo cenário exaustivo de
@@ -57,8 +57,8 @@ que não muda de tom entre os dois temas da página) — modelo A-4/míssil, fon
 para C++, não para EDL) — e uma nota sobre o que aquele passo emite, ou deixa de emitir. Cenário
 de referência: `sandbox/A4-6DOF-MISSILE` (`a4_shooter` detecta `a4_target` pelo radar e dispara um
 `( GuidedMissile )`). Mesma natureza da aba Comportamento — curadoria **à mão** sobre código real,
-não extração automática — só que atravessando dois plugins (`models/players/A-4` +
-`models/players/missile`), classes abstratas do MIXR (`AbstractWeapon`, `StoresMgr`) que o
+não extração automática — só que atravessando dois plugins (`models/players/air/A-4` +
+`models/players/weapon/missile`), classes abstratas do MIXR (`AbstractWeapon`, `StoresMgr`) que o
 Catálogo não cobre (ele só lista classe **concreta**, despachada por fábrica — ver abaixo), e a
 matemática pura de guiagem/espoleta (`domain::proportionalNavigation`/`domain::proximityFuze`,
 `domain::inLaunchEnvelope`) que nem é MIXR nem é do plugin em si. O prólogo (estágio "contexto")
@@ -79,7 +79,7 @@ proximidade. Play/pause, `←`/`→`, clique em qualquer passo da lista lateral.
 
 **Catálogo** — as 225 classes nativas do MIXR (`base`/`models`/`simulation`/`terrain`/
 `interop::dis`/`linkage`/`recorder`, o mesmo escopo de [`models/BUILT-IN.md`](../../models/BUILT-IN.md))
-mais as 9 do plugin de produção `models/players/A-4` — só classe com despacho **real** num
+mais as 9 do plugin de produção `models/players/air/A-4` — só classe com despacho **real** num
 `factory.cpp` (`new X()` alcançável), nunca "toda classe com `DECLARE_SUBCLASS` em algum header".
 Por construção, toda entrada aqui já é "registrada em fábrica" — não existe mais um filtro/bloco
 separado para classes declaradas-mas-não-despachadas. Busca por classe/fábrica/slot, filtros
@@ -87,7 +87,7 @@ separado para classes declaradas-mas-não-despachadas. Busca por classe/fábrica
 real de qualquer método que ela sobrescreve, quando conhecido.
 
 **Estrutura** (o botão na página diz "Diagrama de Classes" — "Estrutura" aqui é só o nome
-descritivo do conteúdo, mesma convenção do `CLAUDE.md`) — diagrama de classe UML sobre um recorte
+descritivo do conteúdo) — diagrama de classe UML sobre um recorte
 curado de 19 classes fundacionais do MIXR
 (`Referenced`/`Object`/`Component`/`Player`/`Station`/`Simulation`/`Agent`/`NetIO`/...): caixa
 completa com atributos, componentes (membros de composição) e métodos, extraídos de verdade do
@@ -125,6 +125,5 @@ comentário `/* GERADO por tools/extract_class_diagram.py. Nao editar. */`. `STR
 
 ## Leia mais
 
-[CLAUDE.md](../../CLAUDE.md), seção `docs/` — toda decisão de design e armadilha confirmada
-rodando. O editor gráfico de cenário `.edl` (ferramenta de autoria, não visualização) mora em
+O editor gráfico de cenário `.edl` (ferramenta de autoria, não visualização) mora em
 [`src/ui/`](../../src/ui/README.md), não aqui.

@@ -281,7 +281,7 @@ def main():
 
     print(f"  rodando {args.poc} / {args.mode} por {args.frames} frames ...")
     proc = subprocess.run(
-        [args.binario, "-f", str(fixture), "-threads", "1",
+        [args.binario, "-file", str(fixture), "-numTcThreads", "1",
          "-deterministic", str(args.frames)],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         cwd=RAIZ, timeout=1800,

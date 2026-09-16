@@ -2,11 +2,10 @@
 
 Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
 
-Exercício (ver `TODO.md`, raiz do repositório): "implementar um míssil ... para verificar
-como isso é modelado em termos de uso idiomático do MIXR". Dois `( Aircraft )` A-4, o mínimo
-necessário para observar disparo → guiagem → detonação de ponta a ponta, sem nenhum outro
-ramo de decisão competindo (evasão de verdade, apoio, patrulha múltipla) — não é um cenário
-de produção.
+Exercício: implementar um míssil e verificar como isso é modelado em termos de uso idiomático do
+MIXR. Dois `( Aircraft )` A-4, o mínimo necessário para observar disparo → guiagem → detonação de
+ponta a ponta, sem nenhum outro ramo de decisão competindo (evasão de verdade, apoio, patrulha
+múltipla) — não é um cenário de produção.
 
 ```bash
 ./build/app/src/app -folder ./sandbox -scenario A4-6DOF-MISSILE        # tempo real, Tacview 1234
@@ -16,16 +15,16 @@ de produção.
 ## A pergunta que este cenário responde
 
 > Como se modela, de forma idiomática, um míssil guiado sobre o framework MIXR — e como um
-> `( Aircraft )` já existente (`models/players/A-4`) dispara um contra outro?
+> `( Aircraft )` já existente (`models/players/air/A-4`) dispara um contra outro?
 
 A resposta tem duas metades, cada uma num subprojeto separado:
 
-- **`models/players/missile`** — `( GuidedMissile )`, subclasse **cinemática** de
+- **`models/players/weapon/missile`** — `( GuidedMissile )`, subclasse **cinemática** de
   `mixr::models::Missile` (sem `dynamicsModel` nenhum): guiagem por navegação proporcional de
   verdade e espoleta de proximidade, os dois em `domain/Guidance.hpp`, puros e testados sem
   MIXR. Ver o `README.md`/`docs/ARCHITECTURE.md` daquele diretório para o porquê de não
   repetir a abordagem histórica (JSBSim dedicado) que este repositório já teve e removeu.
-- **`models/players/A-4`** — dois nós de árvore novos (`LaunchEnvelopeCondition`/
+- **`models/players/air/A-4`** — dois nós de árvore novos (`LaunchEnvelopeCondition`/
   `LaunchMissileAction`), um ramo novo numa árvore de **demonstração**
   (`configs/flight_tree_missile_demo.xml` — a árvore de produção não muda), e a extensão de
   `ubf::FlightAction::execute()` que faz o disparo de verdade:
@@ -70,7 +69,7 @@ poucas dezenas de metros do alvo (não uma trajetória balística/reta); a espol
 proximidade detonando perto do ponto de menor aproximação, não em qualquer outro instante; e
 a limpeza pós-detonação removendo o míssil da lista de players/do Tacview — sem ela, o objeto
 detonado ficaria para sempre na gravação (achado histórico já documentado em
-`models/players/missile/docs/ARCHITECTURE.md`).
+`models/players/weapon/missile/docs/ARCHITECTURE.md`).
 
 **Determinismo confirmado**: `tests/determinism/check_determinism.sh` com 1, 2 e 4 threads
 T/C (mais uma repetição de 4), 6000 frames — dumps `frame=` byte-idênticos nas três
@@ -89,15 +88,15 @@ nó para "já disparei uma vez".
 Ao contrário de `A4-6DOF`/`A4-6DOF-RANDOM`, este cenário **não** declara `terrain:` em
 `simulation:`. O ponto aqui é o mecanismo de disparo, não navegação sobre relevo — terreno só
 acrescentaria risco de `CRASH_EVENT` (AGL < 0) sem nenhum ganho para o que se quer observar.
-Sem banco de elevação, `getAltitudeAgl()` devolve a altitude HAE diretamente (ver a seção
-"Terreno" do `CLAUDE.md` raiz) — nunca negativo nas altitudes usadas aqui (~2000 m).
+Sem banco de elevação, `getAltitudeAgl()` devolve a altitude HAE diretamente — nunca negativo
+nas altitudes usadas aqui (~2000 m).
 
 ## Ler também
 
-- [`models/players/missile/README.md`](../../models/players/missile/README.md) e
-  [`docs/ARCHITECTURE.md`](../../models/players/missile/docs/ARCHITECTURE.md) — o modelo do
+- [`models/players/weapon/missile/README.md`](../../models/players/weapon/missile/README.md) e
+  [`docs/ARCHITECTURE.md`](../../models/players/weapon/missile/docs/ARCHITECTURE.md) — o modelo do
   míssil em si.
-- [`models/players/A-4/CHANGELOG.md`](../../models/players/A-4/CHANGELOG.md) — a entrada
+- [`models/players/air/A-4/CHANGELOG.md`](../../models/players/air/A-4/CHANGELOG.md) — a entrada
   "Envelope de lançamento de míssil", com a lista completa das peças novas no lançador.
 - [`../A4-6DOF/README.md`](../A4-6DOF/README.md) — o cenário do "player máximo" navegando por
   `Route`/`Steerpoint`, referência para a pilha de sensor completa (esta poc usa só o

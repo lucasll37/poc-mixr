@@ -47,7 +47,7 @@ struct ClassStat
    // contagem de instancias vivas de verdade, e por isso a prova de que
    // mixr::base::MetaObject::count deste 'factoryName' esta sendo raceado
    // (macros.hpp: '++'/'--' cru, sem lock -- mesma armadilha ja documentada
-   // em tests/memory/run_leak_test.py, que roda com '-threads 1' por causa
+   // em tests/memory/run_leak_test.py, que roda com '-numTcThreads 1' por causa
    // dela). So acontece com decisao multithread (pool T/C): classes criadas
    // a cada ciclo de decisao em mais de uma thread do pool -- FlightAction,
    // TacticalAlert -- competem pelo mesmo contador nao-atomico. Enquanto

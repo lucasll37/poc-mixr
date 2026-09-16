@@ -203,6 +203,6 @@ a um estado como `bt=`/`dec=`.
 
 Não há teste rebuildando o modelo para conferir que o executável do core não foi relinkado — e não
 precisa haver: core e modelo são **projetos Meson independentes, em árvores de build separadas**
-(`build/` × `models/players/A-4/build/`), então um `meson compile` no diretório do modelo não tem
+(`build/` × `models/players/air/A-4/build/`), então um `meson compile` no diretório do modelo não tem
 caminho até `build/app/src/app`. O invariante estrutural por trás disso é cobrado por
 `tests/guard/check_core_opaco.sh`.

@@ -157,7 +157,7 @@ Medido rodando, e é o mesmo limite que já dimensionava a rota anterior.
 `maxBankAngle`/`maxRateOfTurnDps` do `( Autopilot )` são **inertes** com
 `( JSBSimModel )` — os dois chegam a `JSBSimModel::setCommandedHeadingD(h,,)` como
 parâmetros **sem nome** e são descartados. Quem manda é o autopiloto do próprio
-airframe, `models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml`: erro de rumo
+airframe, `models/players/air/A-4/data/jsbsim/aircraft/A4/a4ap.xml`: erro de rumo
 limitado a ±30°, ganho 1:1 de erro para inclinação, e um nivelador de asa
 (`−0.8·phi`) sempre ligado que na prática segura o banco em ~25°. A 135 m/s isso
 dá raio de curva de ~4,8 km e uma **reversão de banco de ~30 s**. Em circuito

@@ -18,18 +18,17 @@
 #   uso: check_determinism.sh <binario> <rotulo> [frames] [poc] [arquivo-de-cenario]
 #
 # O <binario> hoje e sempre o ./app -- as pocs nao tem executavel proprio (ver
-# src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por '-f'
-# (a fixture, gerada por make_fixture.py, sempre tem a frota falcon1..4) e ja
-# diz tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o de
+# src/poc/meson.build). Quando ha <poc>, a fixture gerada aqui entra por
+# '-file' (a fixture, gerada por make_fixture.py, sempre tem a frota
+# falcon1..4 -- e' o contrato que '-file' assume, nunca descobre) e ja diz
+# tudo; quando nao ha (cenario que ja e hermetico de fabrica, como o de
 # tests/fixtures/built-in_mixr_1 e tests/fixtures/full-systems-nav, ou
 # qualquer cenario de sandbox/), e preciso dizer ao runner QUAL arquivo
 # carregar, e e isso que <arquivo-de-cenario> faz -- por '-folder <pasta>
-# -scenario <nome>' (nao '-f'): a frota desses cenarios pode nao ser
-# falcon1..4 (a familia
-# sandbox/A4-*DOF, p.ex., tem so 'a4'), e '-f' SEMPRE assume falcon1..4
-# (app::adHocScenario()) enquanto '-folder' descobre a frota em runtime
-# (app::discoverFleet()) -- ver a armadilha documentada junto da montagem de
-# 'args', mais abaixo. <arquivo-de-cenario> tem de morar em
+# -scenario <nome>' (nao '-file'): '-folder' LE o cenario e descobre a frota
+# em runtime (app::discoverFleet()), entao serve para qualquer cenario, com
+# qualquer frota -- ver a armadilha documentada junto da montagem de 'args',
+# mais abaixo. <arquivo-de-cenario> tem de morar em
 # <pasta>/<nome>/configs/<arquivo>, o mesmo layout que '-folder' ja exige.
 # Sem nenhuma das duas opcoes o ./app recusaria de cara (uma delas e
 # obrigatoria).
@@ -49,23 +48,25 @@ if [ -n "$POC" ]; then
    mkdir -p "$RAIZ/build/tests-recordings"
    python3 "$RAIZ/tests/scenario/make_fixture.py" --poc "$POC" --mode intruder \
       --out "$CENARIO" || exit 1
-   args=(-f "$CENARIO")
+   args=(-file "$CENARIO")
 elif [ -n "$ARQUIVO" ]; then
-   # '-f "$ARQUIVO"' sempre assumiria a frota falcon1..4 (app::adHocScenario()),
-   # o que falha para qualquer cenario hermetico com frota diferente (ex.: a
-   # familia sandbox/A4-*DOF, frota so 'a4') com "player 'falcon1' nao
-   # encontrado!" antes de rodar um frame sequer -- reportado por este script
-   # como "FALHA execucao com N threads", indistinguivel de nao-determinismo
-   # de verdade. Por isso o caminho abaixo usa '-folder'/'-scenario' em vez de
-   # '-f' direto.
+   # '-file "$ARQUIVO"' NUNCA le o arquivo pra descobrir quem sao os players --
+   # so aponta pra ele e assume de antemao a frota falcon1..4
+   # (app::adHocScenario()). Pra qualquer cenario hermetico com frota
+   # diferente (ex.: a familia sandbox/A4-*DOF, frota so 'a4') isso falha com
+   # "player 'falcon1' nao encontrado!" antes de rodar um frame sequer --
+   # reportado por este script como "FALHA execucao com N threads",
+   # indistinguivel de nao-determinismo de verdade. Por isso o caminho abaixo
+   # usa '-folder'/'-scenario' em vez de '-file' direto: '-folder' LE o
+   # cenario e descobre a frota sozinho, entao funciona com qualquer frota,
+   # sem precisar saber de antemao quais sao os nomes dos players.
    #
    # Todo cenario hermetico alcancavel por este parametro segue o MESMO
    # layout que '-folder <pasta> -scenario <nome>' ja exige --
    # <pasta>/<nome>/configs/<arquivo> (src/poc/<nome>/configs/,
-   # sandbox/<nome>/configs/) -- e '-folder' descobre a frota em runtime
-   # (app::discoverFleet()), sem assumir nome nenhum. Derivar pasta/nome do
-   # proprio caminho do arquivo (dois 'dirname' acima de 'configs/') e o que
-   # da a este script cobertura pra QUALQUER frota, nao so falcon1..4.
+   # sandbox/<nome>/configs/). Derivar pasta/nome do proprio caminho do
+   # arquivo (dois 'dirname' acima de 'configs/') e o que da a este script
+   # cobertura pra QUALQUER frota, nao so falcon1..4.
    configs_dir="$(dirname "$ARQUIVO")"
    cenario_dir="$(dirname "$configs_dir")"
    pasta="$(dirname "$cenario_dir")"
@@ -96,7 +97,7 @@ roda() {   # roda <n-threads> <arquivo-de-saida>
    local raw errf rc
    raw="$(mktemp)"
    errf="$(mktemp)"
-   "$BIN" "${args[@]}" -threads "$1" -deterministic "$FRAMES" > "$raw" 2>"$errf"
+   "$BIN" "${args[@]}" -numTcThreads "$1" -deterministic "$FRAMES" > "$raw" 2>"$errf"
    rc=$?
    grep '^frame=' "$raw" > "$2"
    rm -f "$raw"

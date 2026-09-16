@@ -72,12 +72,12 @@ cache:
   # de fato mudou. Mesmo motivo do Cache 1 para 'when: always'.
   #
   # 'models/' NUNCA entra aqui inteiro -- e' arvore de FONTE rastreada
-  # (models/players/A-4/src, meson.build etc.), so' 'build/'/'dist/' DENTRO
+  # (models/players/air/A-4/src, meson.build etc.), so' 'build/'/'dist/' DENTRO
   # dela sao gerados (mesmo padrao do .gitignore raiz). Achado por auditoria
   # (revisao completa do repositorio): o GitLab restaura o cache DEPOIS do
   # checkout do commit, sobrescrevendo arquivo ja presente na working tree --
   # cachear 'models/' inteiro por CHAVE DE BRANCH significa que um push que
-  # altera models/players/A-4/src/... pode ter esse arquivo revertido, em
+  # altera models/players/air/A-4/src/... pode ter esse arquivo revertido, em
   # silencio, para a versao de um pipeline ANTERIOR da mesma branch, antes de
   # 'make models'/'make test-models' rodar. So os subdiretorios GERADOS
   # entram no cache.
@@ -173,7 +173,7 @@ build:
     expire_in: 3 days
     paths:
       - build/meson-logs/
-      - models/players/*/build/meson-logs/
+      - models/**/build/meson-logs/
       - dist/bin/
       - plugins/
 
@@ -188,7 +188,7 @@ test:
     # A suite do core fica atras desta opcao (README.md, secao "Testes").
     # 'make test' roda SO o core (encadeia 'install' sozinho, Makefile);
     # a suite do MODELO e' um alvo a parte -- os dois, para cobrir o
-    # mesmo par de relatorios JUnit de sempre (build/ e models/players/A-4/build/).
+    # mesmo par de relatorios JUnit de sempre (build/ e models/players/air/A-4/build/).
     - meson configure build -Dtests=true
     - make test-models
     - make test
@@ -219,10 +219,10 @@ test:
     reports:
       junit:
         - build/meson-logs/testlog.junit.xml
-        - models/players/A-4/build/meson-logs/testlog.junit.xml
+        - models/**/A-4/build/meson-logs/testlog.junit.xml
     paths:
       - build/meson-logs/
-      - models/players/A-4/build/meson-logs/
+      - models/**/A-4/build/meson-logs/
 
 # Achado por auditoria: o caminho -Dasan=true (README.md/CLAUDE.md, "AddressSanitizer") nunca era
 # exercitado em CI, so manualmente. 'allow_failure' porque este job e' deliberadamente

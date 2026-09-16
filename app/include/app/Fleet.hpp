@@ -18,7 +18,7 @@ namespace app {
 //
 // GENERICO sobre mixr::models::Player desde que o dump '-deterministic'
 // deixou de ser cego para qualquer player que nao fosse AirVehicle (ex.: um
-// Paratrooper, models/players/paratrooper) -- ANTES disso, um cenario de
+// Paratrooper, models/players/effect/paratrooper) -- ANTES disso, um cenario de
 // '-folder' sem nenhum AirVehicle produzia uma Fleet vazia e um dump
 // '-deterministic' sem linha nenhuma, silenciosamente. Widening verificado
 // como NO-OP para todo cenario existente: nenhum player nao-AirVehicle
@@ -53,9 +53,9 @@ std::vector<mixr::models::Player*> discoverPlayers(mixr::models::WorldModel* wm)
 // AdHocScenario.hpp, DashboardLoop.hpp) ja o citam). USO EXCLUSIVO das
 // entradas sinteticas de '-folder <pasta>' (app/ScenarioFolder.hpp) quando
 // ScenarioEntry::fleet vem vazio -- NUNCA do fallback de
-// app::adHocScenario()/'-f', que continua devolvendo falconFleet()
+// app::adHocScenario()/'-file', que continua devolvendo falconFleet()
 // explicitamente. Essa funcao ja foi tentada como fallback
-// GENERICO de '-f' e revertida: quebrava as fixtures de teste 'intruder'
+// GENERICO de '-file' e revertida: quebrava as fixtures de teste 'intruder'
 // (tests/scenario/make_fixture.py), que tem um bandit1 LOCAL deliberadamente
 // FORA da frota rastreada -- uma descoberta generica pegava esse bandit1
 // tambem. Cenarios de '-folder' nao sao fixtures de teste, sao criacoes do
@@ -67,7 +67,7 @@ Fleet discoverFleet(mixr::models::WorldModel* wm);
 // POTENCIA DE CRUZEIRO -- historicamente a correcao para o c310 (cujo
 // autopilot fechava malha de RUMO e ALTITUDE, mas nao de VELOCIDADE, sem
 // manete fixo a aeronave perdia velocidade e estolava). Desde a troca para
-// o A-4, `models/players/A-4/data/jsbsim/aircraft/A4/a4ap.xml` tem um canal
+// o A-4, `models/players/air/A-4/data/jsbsim/aircraft/A4/a4ap.xml` tem um canal
 // de autothrottle proprio (fecha a malha de velocidade de verdade, via
 // `ap/airspeed_hold`/`ap/airspeed_setpoint`), entao esta chamada e so um
 // empurrao inicial -- o autothrottle recalcula `fcs/throttle-cmd-norm` a

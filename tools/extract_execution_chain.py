@@ -9,9 +9,9 @@ afirmacao de "isto e ocioso" usada na arvore da UI tem de bater com a saida daqu
 
 O que ele faz, dois passos:
 
-  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/players/A-4/include
+  1) varre os headers (.hpp) de contexts/src/mixr/include/mixr e models/players/air/A-4/include
      por DECLARE_SUBCLASS(Tipo, Base) -- monta a cadeia de heranca (Tipo -> Base).
-     varre os .cpp de contexts/src/mixr/src e models/players/A-4/src por
+     varre os .cpp de contexts/src/mixr/src e models/players/air/A-4/src por
      IMPLEMENT_SUBCLASS/IMPLEMENT_PARTIAL_SUBCLASS/IMPLEMENT_ABSTRACT_SUBCLASS
      (Tipo, "NomeDeFabrica") -- monta fabrica -> classe C++.
 
@@ -34,8 +34,8 @@ arquivo) mora em src/ui/scripts/generate_edl_catalog.py. O catalogo da aba
 "Catalogo" de docs/manual/ (antigo modo --catalog deste arquivo, removido --
 universo restrito a mixr::models, sem o plugin de producao nem os demais
 modulos nativos) mora agora em tools/generate_manual_catalog.py, que importa
-find_overrides()/TARGET_METHODS/find_impl_file() daqui como MODULO, sem
-reimplementar nada. As primitivas de varredura de C++ que os tres geradores
+find_overrides()/TARGET_METHODS daqui como MODULO, sem reimplementar nada.
+As primitivas de varredura de C++ que os tres geradores
 compartilham (mask_source, build_inheritance, build_factory_map, extract_slots,
 find_dispatch_reachable_classes, ...) moram em tools/mixr_source_scan.py,
 importado por TODOS -- nao duplicadas.
@@ -60,7 +60,7 @@ import mixr_source_scan as scan  # noqa: E402
 MIXR_INCLUDE = REPO_ROOT / scan.MIXR_INCLUDE_REL
 MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
 # 'models/' -- deliberadamente a pasta inteira, nao um subcaminho fixo como
-# models/players/A-4/include: a arvore de models/ pode se reorganizar
+# models/players/air/A-4/include: a arvore de models/ pode se reorganizar
 # (headers mudam de lugar entre reestruturacoes), e qualquer subcaminho
 # fixo aqui ficaria errado no commit seguinte. rglob() sobre a pasta toda e
 # imune a esse tipo de mudanca de endereco.
@@ -226,17 +226,6 @@ def print_table(rows):
                 for m, info in lvl["methods"].items()
             ]
             print(f"      {lvl['class']:22s}{tag}: {', '.join(hits)}")
-
-
-def find_impl_file(cls, cpp_roots):
-    """Arquivo .cpp onde IMPLEMENT_*SUBCLASS(cls, ...) aparece -- usado so para
-    as classes sem NENHUM dos 7 metodos-alvo sobrescrito (ex.: classes de dado
-    puro, sem trabalho de fase), que 'overrides' nao teria como localizar."""
-    pattern = re.compile(r"\bIMPLEMENT_(?:PARTIAL_|ABSTRACT_)?SUBCLASS\s*\(\s*" + re.escape(cls) + r"\s*,")
-    for f in iter_files(cpp_roots, {".cpp"}):
-        if pattern.search(mask_source(f.read_text(encoding="utf-8", errors="replace"))):
-            return str(f.relative_to(REPO_ROOT))
-    return None
 
 
 def main():

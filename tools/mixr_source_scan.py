@@ -5,7 +5,7 @@ de extracao:
   - tools/generate_manual_catalog.py -- para a aba Catalogo de
     docs/manual/doc.jsx, universo = as 7 factories nativas que
     models/BUILT-IN.md ja usa como escopo, mais o plugin de producao
-    models/players/A-4.
+    models/players/air/A-4.
   - src/ui/scripts/generate_edl_catalog.py -- para o editor grafico de .edl
     (src/ui/edl_builder.jsx), universo = todas as factories que
     app/src/mixr_factory.cpp de fato encadeia.
@@ -208,7 +208,7 @@ def extract_slots(cpp_roots):
     PRIMEIRO achado vence (nunca sobrescreve) quando o mesmo nome de classe
     aparece em mais de um arquivo -- relevante para o catalogo do editor
     grafico, que varre 'models/' (deste repositorio) inteiro:
-    'models/players/A-4' (a implementacao de producao) e
+    'models/players/air/A-4' (a implementacao de producao) e
     'models/template' (o mirror de contrato em src/mirror.cpp, um
     modelo minimo so pra testar o CONTRATO de carga de plugin) declaram as
     MESMAS classes (BtBehavior, AlertDatalink, ...) com o MESMO nome barra,

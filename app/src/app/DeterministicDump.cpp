@@ -38,7 +38,7 @@ void printDeterministicDump(const Fleet& fleet, const long frame)
       // 'mach=', 'fuel=' e a busca de pista (radar/track manager) sao
       // conceito AERODINAMICO, exclusivo de AirVehicle -- 0.0/nenhuma pista
       // para qualquer outro tipo de player (ex.: um Paratrooper,
-      // models/players/paratrooper), mesmo padrao ja usado por
+      // models/players/effect/paratrooper), mesmo padrao ja usado por
       // app::DashboardState (ver DashboardState.cpp) para os campos
       // opcionais do dashboard.
       double mach{};

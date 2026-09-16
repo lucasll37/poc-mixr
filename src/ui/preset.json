@@ -511,6 +511,11 @@
               "value": "2",
               "unit": ""
             },
+            "numBgThreads": {
+              "kind": "number",
+              "value": "2",
+              "unit": ""
+            },
             "latitude": {
               "kind": "number",
               "value": "-22.25",
@@ -528,15 +533,11 @@
                 "key": "1",
                 "node": {
                   "id": 46,
-                  "factory": "SrtmHgtFile",
+                  "factory": "MultiTileTerrain",
                   "slotValues": {
-                    "path": {
+                    "dir": {
                       "kind": "text",
                       "value": "./shared/data/terrain/srtm/"
-                    },
-                    "file": {
-                      "kind": "text",
-                      "value": "S23W043.hgt"
                     }
                   },
                   "children": {}

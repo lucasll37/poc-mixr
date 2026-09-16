@@ -6,7 +6,7 @@
 namespace app {
 
 //------------------------------------------------------------------------------
-// A descricao de um cenario carregado por '-f <arquivo>' ou '-folder <pasta>'
+// A descricao de um cenario carregado por '-file <arquivo>' ou '-folder <pasta>'
 // -- as duas fontes de cenario que este app conhece (nao ha mais catalogo
 // estatico embutido no binario: toda pasta com um '.edl'/'.edl.in' proprio ja
 // e alcancavel).
@@ -43,19 +43,22 @@ struct ScenarioEntry
 };
 
 // A frota das pocs de voo: os quatro falcons. E o fallback assumido para
-// '-f <arquivo>' (ver adHocScenario() abaixo) -- o unico caso real que cai
+// '-file <arquivo>' (ver adHocScenario() abaixo) -- o unico caso real que cai
 // nisso hoje sao as fixtures de tests/scenario/make_fixture.py, que SEMPRE
 // derivam de um cenario com falcon1..4. O intruso (bandit1), quando existe,
 // NAO entra -- ele nao e observado, e nenhum dump deste repositorio jamais o
 // imprimiu.
 const std::vector<std::string>& falconFleet();
 
-// Entrada para '-f <arquivo>': monta uma ScenarioEntry a partir so do
+// Entrada para '-file <arquivo>': monta uma ScenarioEntry a partir so do
 // caminho, assumindo falcon1..4 como frota e sem token de Tacview nenhum
-// para substituir (o arquivo ja traz o bloco 'dataRecorder:' inteiro). Um
-// cenario com frota diferente (ex.: um unico player de nome custom) deve ser
-// carregado por '-folder <pasta>' em vez de '-f' -- esse caminho descobre a
-// frota em runtime (app::discoverFleet()) em vez de assumir esta lista.
+// para substituir (o arquivo ja traz o bloco 'dataRecorder:' inteiro). '-file'
+// NUNCA abre o arquivo para descobrir quem sao os players -- so aponta pra
+// ele. Um cenario cuja frota nao e exatamente falcon1..4 deve ser carregado
+// por '-folder <pasta>' em vez de '-file' -- esse caminho le o cenario e
+// descobre a frota em runtime (app::discoverFleet()), entao funciona com
+// qualquer nome/quantidade de player, sem depender de nenhuma convencao
+// fixa.
 ScenarioEntry adHocScenario(const std::string& path);
 
 } // namespace app

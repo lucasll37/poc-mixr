@@ -170,7 +170,7 @@ def main():
 
     # -- origem de QUALQUER coisa sob ./models/, nao so models/players/<x>/ ---
     a4_entries = [f for f, e in by_factory.items() if e["origin"] == "plugin:A-4"]
-    check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A-4' -- models/players/A-4 sumiu do catalogo")
+    check(len(a4_entries) > 0, "nenhuma classe com origin=='plugin:A-4' -- models/players/air/A-4 sumiu do catalogo")
     tactical_alert = by_factory.get("TacticalAlert")
     check(tactical_alert is not None, "TacticalAlert nao esta no catalogo")
     if tactical_alert:
@@ -179,7 +179,7 @@ def main():
               f"regressao: uma classe sob models/ que NAO e models/players/<nome>/ "
               f"(aqui, models/events/payloads/EID_ALERT/) caindo de volta pra 'builtin' por engano")
 
-    # -- primeiro-achado-vence entre models/players/A-4 e template/mirror ----
+    # -- primeiro-achado-vence entre models/players/air/A-4 e template/mirror ----
     bt_behavior = by_factory.get("BtBehavior")
     check(bt_behavior is not None, "BtBehavior nao esta no catalogo")
     if bt_behavior:
@@ -290,7 +290,7 @@ def main():
     if tactical_alert_concrete:
         check(tactical_alert_concrete["concrete"] is True,
               f"TacticalAlert.concrete == {tactical_alert_concrete['concrete']!r}, esperado True -- "
-              f"classe de plugin (A-4) com despacho real em models/players/A-4/src/xnative/factory.cpp")
+              f"classe de plugin (A-4) com despacho real em models/players/air/A-4/src/xnative/factory.cpp")
 
     # -- spot-check de dois casos reais de cada categoria --------------------
     station = by_factory.get("Station")

@@ -15,7 +15,7 @@
 //      SensorMgr+Tws, OnboardComputer+AirTrkMgr, StoresMgr com UM
 //      ( GuidedMissile ), agent: ( FlightAgentTC ) com a arvore de
 //      DEMONSTRACAO (configs/flight_tree_missile_demo.xml em
-//      models/players/A-4 -- NAO a arvore de producao, que fica intocada).
+//      models/players/air/A-4 -- NAO a arvore de producao, que fica intocada).
 //
 //   a4_target -- so' dynamicsModel + pilot (Autopilot com os tres hold
 //      modes ligados, SEM nenhum cmdHeading/cmdAltitude/cmdSpeed
@@ -108,6 +108,7 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       latitude:  -22.25
       longitude: -42.48

@@ -35,10 +35,10 @@ Um modulo de extensao **pybind11** (a lib de bindings C++/Python que gera a exte
 a partir de headers anotados -- `src/rl/bindings/`, compila para
 `_native*.so`) mantem a `Station` (a classe do MIXR que e o objeto raiz da simulacao --
 dona do laco de frames e do gravador; a lista de players e o terreno ficam num `WorldModel`
-intermediario que a Station hospeda -- ver `CLAUDE.md`, secao "O modelo MIXR
-em uma tela", para a hierarquia completa `Station` -> `WorldModel` -> players) viva no MESMO processo Python -- sem
+intermediario que a Station hospeda -- hierarquia `Station` -> `WorldModel` -> players) viva no
+MESMO processo Python -- sem
 round-trip de rede por passo. A troca de comando/observacao entre o core
-(este modulo) e o modelo (`models/players/A-4`, um `.so` carregado por `dlopen`
+(este modulo) e o modelo (`models/players/air/A-4`, um `.so` carregado por `dlopen`
 -- a chamada de sistema que carrega uma biblioteca compartilhada em tempo de
 execucao, sem o core precisar conhecer o modelo em tempo de compilacao)
 passa por `libs/xrlbridge` -- uma shared_library pequena, dedicada,
@@ -48,7 +48,7 @@ modelo nem linkar contra o `.so` dele em tempo de compilacao
 (`tests/guard/check_core_opaco.sh` trava esse invariante), entao a troca
 so pode passar por uma peca que os dois lados linkam de verdade.
 
-`models/players/A-4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior`
+`models/players/air/A-4/include/ubf/RLBridgeBehavior.hpp` e o `AbstractBehavior`
 (a classe-base do UBF da qual todo Behavior plugavel no `UbfArbiter` herda --
 `genAction()` devolve uma acao a partir do estado, com um `vote` que pesa essa
 acao contra as dos outros Behaviors) que faz esse papel do lado do modelo --

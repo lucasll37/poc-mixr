@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""'-threads'/'-deterministic' com um token nao numerico nao pode DERRUBAR o
-processo com um sinal -- tem de recusar com uma mensagem clara e sair com um
-codigo de erro, o MESMO padrao que toda outra entrada invalida desta
-aplicacao ja segue (arquivo de cenario ausente, player que nao existe no
-cenario, banco de elevacao corrompido -- ver TerrainData/StationBuilder/
+"""'-numTcThreads'/'-deterministic' com um token nao numerico nao pode
+DERRUBAR o processo com um sinal -- tem de recusar com uma mensagem clara e
+sair com um codigo de erro, o MESMO padrao que toda outra entrada invalida
+desta aplicacao ja segue (arquivo de cenario ausente, player que nao existe
+no cenario, banco de elevacao corrompido -- ver TerrainData/StationBuilder/
 Fleet, todos em app/, todos saindo por std::exit com mensagem).
 
 POR QUE ISTO EXISTE: app::parseCommandLine() usava std::stol()/std::stoi()
-sem tratar excecao -- um '-threads abc' ou '-deterministic xyz' terminava com
-std::invalid_argument nao capturada (e um '-threads 99999999999999999999'
-com std::out_of_range), as duas virando abort()/SIGABRT sem nenhuma mensagem
-apontando QUAL argumento estava errado. Nenhum teste ponta-a-ponta cobria
-esse caminho porque todo test() deste repositorio so passa numeros validos
-para essas duas flags.
+sem tratar excecao -- um '-numTcThreads abc' ou '-deterministic xyz'
+terminava com std::invalid_argument nao capturada (e um '-numTcThreads
+99999999999999999999' com std::out_of_range), as duas virando abort()/
+SIGABRT sem nenhuma mensagem apontando QUAL argumento estava errado. Nenhum
+teste ponta-a-ponta cobria esse caminho porque todo test() deste repositorio
+so passa numeros validos para essas duas flags.
 
 Nao precisa de fixture nem de cenario -- o parse de argv acontece ANTES de
 qualquer coisa em main() (antes ate de app::ensureTerrainData()), entao o
 processo sai quase instantaneamente nos dois sentidos.
 
 O quarto caso ('sem-nenhuma-opcao') cobre uma mudanca de comportamento
-diferente: rodar o binario SEM '-f'/'-folder' nenhum e erro fatal, recusado
+diferente: rodar o binario SEM '-file'/'-folder' nenhum e erro fatal, recusado
 ANTES de qualquer Station (main.cpp exige uma das duas opcoes
 explicitamente -- nao ha mais catalogo estatico nem tela de selecao
 alcancavel sem '-folder'; ver app/Options.hpp). 'stdin=DEVNULL' aqui
@@ -32,9 +32,9 @@ import subprocess
 import sys
 
 CASOS = [
-    (["-threads", "abc"], "threads-nao-numerico"),
+    (["-numTcThreads", "abc"], "threads-nao-numerico"),
     (["-deterministic", "xyz"], "deterministic-nao-numerico"),
-    (["-threads", "99999999999999999999"], "threads-estoura-o-tipo"),
+    (["-numTcThreads", "99999999999999999999"], "threads-estoura-o-tipo"),
     ([], "sem-nenhuma-opcao"),
 ]
 

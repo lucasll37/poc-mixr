@@ -137,7 +137,25 @@ struct MapViewState
 
 const double kMapZoomStep{1.25};
 const double kMapMinMetersPerCell{2.0};
+
+// Teto ABSOLUTO de 'metersPerCell' -- rede de seguranca contra canvas
+// degenerado (largura/altura zero num quadro transiente), nunca o limite
+// que de fato governa o zoom out em uso normal: 'kMapMaxVisibleAreaNm'
+// abaixo e sempre mais restritivo em qualquer tamanho de terminal
+// razoavel (ver zoomMap(), MapPanel.cpp).
 const double kMapMaxMetersPerCell{200000.0};
+
+// Zoom out nao pode mostrar mais que isto no MAIOR lado do canvas --
+// pedido explicito, depois de medir que sem teto o grid de amostragem de
+// terreno (kTerrainGridStepPx, TerrainQuery.cpp) passava a cruzar dezenas
+// de tiles de 1x1 grau numa unica varredura, o que -- antes do
+// carregamento assincrono, ver app/TerrainLoader.hpp -- travava a thread
+// de desenho em gunzip/parse sequencial. 600 NM e um valor aproximado,
+// "bom o bastante": mostra uma area continental sem chegar no ponto em
+// que a curvatura da Terra ou a cobertura de tile deixam de fazer sentido
+// numa projecao plana.
+const double kMapMaxVisibleAreaNm{600.0};
+
 const double kMapRotateStepDeg{15.0};
 const std::size_t kMapTrailLength{80};   // ~8s a 10 Hz
 

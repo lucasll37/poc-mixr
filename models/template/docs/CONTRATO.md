@@ -94,7 +94,7 @@ quem faz isso do lado de quem consome a `AbstractAction*` devolvida aqui. Esquec
 devolver um ponteiro que ninguém possui) é a classe de bug que essa convenção existe para evitar:
 o objeto seria destruído por baixo de quem ainda o está usando.
 
-`models/template/src/mirror.cpp` e `models/players/A-4/src/{ubf,xnative}/*.cpp` são as
+`models/template/src/mirror.cpp` e `models/players/air/A-4/src/{ubf,xnative}/*.cpp` são as
 implementações de referência de cada um destes métodos — leia-as depois desta tabela, não em vez
 dela.
 
@@ -174,7 +174,7 @@ Por isso, todo modelo NOVO (qualquer coisa além dos dois artefatos deste diret�
 isto — `xtemplate` para o scaffold copiável, `xtemplate_mirror` para o mirror de contrato, nunca
 compartilhando namespace) precisa aninhar TODO o próprio namespace — incluindo um eventual
 `domain::` — dentro de `mixr::models::x<nome-do-modelo>`, nunca solto: isso torna o nome
-qualificado único e imune à colisão descrita acima. `models/players/A-4` foi a exceção histórica
+qualificado único e imune à colisão descrita acima. `models/players/air/A-4` foi a exceção histórica
 (nasceu antes desta convenção existir, com `domain::`/`bt_nodes::` soltos no escopo global e
 `ubf::`/`xnative::` sob `mixr::models::xnative` em vez de `mixr::models::xA_4`) — já corrigido (ver
 `CHANGELOG.md` daquele modelo); hoje os 7 projetos de modelo deste repositório seguem a convenção,
@@ -185,7 +185,7 @@ A colisão de NOME DE FÁBRICA (o string que o `.edl` usa em `provides:`, não o
 prima deste problema e já tem guarda automática —
 [`../../../tests/guard/check_colisao_fabrica.py`](../../../tests/guard/check_colisao_fabrica.py)
 — que já pegou um caso real em produção (`ThreadTagProbe` → `MissileThreadTagProbe`, do extinto
-modelo `missile` — ver `CLAUDE.md` raiz). A colisão de `type_info` desta seção é mais difícil de
+modelo `missile`). A colisão de `type_info` desta seção é mais difícil de
 flagrar automaticamente — por isso o namespace aninhado é a defesa que não depende de um teste
 pegar o problema depois.
 
@@ -213,5 +213,3 @@ pegar o problema depois.
   quadro de leitura da seção 3
 - [`../../../CONTRIBUTING.md`](../../../CONTRIBUTING.md) — como registrar um modelo novo
   num cenário
-- [`../../../CLAUDE.md`](../../../CLAUDE.md), seção "O MODELO é um plugin, construído
-  numa etapa PRÉVIA" — visão geral de como os modelos deste repositório se encaixam no core

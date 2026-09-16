@@ -59,14 +59,49 @@ MIXR_SRC = REPO_ROOT / scan.MIXR_SRC_REL
 MODELS_DIR = REPO_ROOT / scan.MODELS_REL
 LIBS_DIR = REPO_ROOT / scan.LIBS_REL
 
-# As tres subpastas de categoria que 'scripts/models.sh' (CATEGORIA_DIR) usa
-# como destino de 'make new-model' -- nao ha constante Python compartilhada
-# com aquele script (bash), entao esta lista e' o espelho dela aqui. Usada
-# tanto para descobrir factory.cpp de modelo (dispatch_factory_cpp_paths())
-# quanto para rotular a origem de uma classe (origin_of()) -- as duas
-# assumiam "models/players/" ate um modelo real aparecer em
-# models/others/ pela primeira vez (Navstar-3) e expor a lacuna.
-MODEL_CATEGORY_DIRS = {"players", "systems", "others"}
+# Descoberta de projeto de modelo GENERICA -- nenhuma lista de categoria
+# fixa (a lista curta que existia aqui, {"players","systems","others"},
+# quebrou em silencio quando 'players/' ganhou subpastas proprias --
+# 'players/air/A-4' tem DOIS niveis entre 'models/' e o nome do modelo, nao
+# UM). Em vez de presumir profundidade nenhuma, MESMA descoberta que
+# 'MODELOS_PRODUCAO' do Makefile raiz e tests/guard/check_modelo_estrutura.sh
+# usam: qualquer diretorio sob models/, a QUALQUER profundidade, com um
+# 'project()' na raiz do proprio meson.build -- por CONTEUDO, nunca por
+# posicao. Ao contrario das duas, esta inclui models/template/ de proposito:
+# e' de onde vem o mirror de contrato (src/mirror.cpp), que tambem precisa
+# de um rotulo 'plugin:template' em origin_of() abaixo.
+_MODEL_PROJECT_ROOTS_CACHE: list[Path] | None = None
+
+
+def model_project_roots():
+    """Todo diretorio sob models/ com um projeto Meson proprio (mesmo
+    criterio de MODELOS_PRODUCAO no Makefile raiz) -- memorizado apos a
+    primeira chamada, ja que dispatch_factory_cpp_paths()/origin_of() os
+    consultam repetidamente."""
+    global _MODEL_PROJECT_ROOTS_CACHE
+    if _MODEL_PROJECT_ROOTS_CACHE is not None:
+        return _MODEL_PROJECT_ROOTS_CACHE
+    roots = []
+    for meson_build in sorted(MODELS_DIR.glob("**/meson.build")):
+        rel_parts = meson_build.relative_to(MODELS_DIR).parts
+        # poda build/dist/subprojects/tests/tools -- MESMOS '-not -path' do
+        # 'find' que MODELOS_PRODUCAO usa (um meson.build de subdiretorio,
+        # como tests/meson.build, so tem subdir(), nunca project()).
+        if any(p in ("build", "dist", "subprojects", "tests", "tools") for p in rel_parts[:-1]):
+            continue
+        try:
+            texto = meson_build.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not re.search(r"^project\b", texto, re.M):
+            continue
+        roots.append(meson_build.parent)
+    # mais fundo primeiro: um origin_of() que casasse pelo PRIMEIRO prefixo
+    # que bater poderia, em tese, parar num projeto mais raso se um dia
+    # houver aninhamento -- nunca acontece hoje, mas a ordem custa nada.
+    roots.sort(key=lambda p: len(p.relative_to(MODELS_DIR).parts), reverse=True)
+    _MODEL_PROJECT_ROOTS_CACHE = roots
+    return roots
 
 mask_source = scan.mask_source
 iter_files = scan.iter_files
@@ -139,7 +174,7 @@ def extract_slot_types(cpp_roots):
     vira falso positivo e o indice 7 pareceria aceitar 3 tipos em vez de 1.
 
     PRIMEIRO achado vence, por classe inteira (mesmo motivo/mesma ordem de
-    varredura de extract_slots() em mixr_source_scan.py -- 'models/players/A-4'
+    varredura de extract_slots() em mixr_source_scan.py -- 'models/players/air/A-4'
     antes de 'models/template'): sem isso, os INDICES de ON_SLOT
     de dois arquivos diferentes para a mesma classe se MISTURARIAM num so
     dicionario, o que faz ainda menos sentido que so perder um dos dois --
@@ -165,25 +200,24 @@ def extract_slot_types(cpp_roots):
 
 def dispatch_factory_cpp_paths():
     """Todos os factory.cpp cujo despacho real conta para 'concrete' no
-    catalogo -- reunidos por GLOB, nunca lista fixa (o repositorio pode
-    ganhar mais plugins/libs com o tempo, e o usuario pediu que isso seja
-    automatico, sem tratamento especial por nome): os 7 factory.cpp nativos
-    (os MESMOS EDL_CATALOG_MIXR_MODULES que ja restringem o resto deste
-    gerador -- ver o comentario deles), mais
-    'models/<categoria>/*/src/xnative/factory.cpp' para toda categoria de
-    MODEL_CATEGORY_DIRS (A-4/C-130/paratrooper em players/, e qualquer modelo
-    futuro em systems/ ou others/), MAIS 'models/*/src/xnative/factory.cpp'
-    para um modelo de PRIMEIRO nivel -- hoje so' models/template/, que nao
-    mora em categoria nenhuma e entra sem exclusao, como qualquer outro --
-    e 'libs/*/factory.cpp' (resolve sozinho quais libs tem
-    fabrica EDL -- hoje xtacview/xclock/xjoystick/xmsg/xplugin; uma lib sem
-    fabrica, como xboard/xlog, so' nao tem o arquivo, sem tabela de exclusao
-    curada). Caminhos inexistentes sao tolerados por
-    find_dispatch_reachable_classes() (mesma tolerancia de iter_files)."""
+    catalogo -- reunidos por DESCOBERTA, nunca lista fixa nem profundidade
+    presumida (o repositorio pode ganhar mais plugins/libs, e mover um
+    modelo entre subpastas de models/ nao pode exigir editar isto): os 7
+    factory.cpp nativos (os MESMOS EDL_CATALOG_MIXR_MODULES que ja
+    restringem o resto deste gerador -- ver o comentario deles), mais
+    '<raiz-do-projeto>/src/xnative/factory.cpp' para cada projeto de modelo
+    devolvido por model_project_roots() (qualquer profundidade sob
+    models/ -- A-4/C-130/paratrooper hoje moram dois niveis abaixo, em
+    players/<subcategoria>/<nome>/, e o template um nivel abaixo, e os dois
+    casos saem cobertos do mesmo jeito), e 'libs/*/factory.cpp' (resolve
+    sozinho quais libs tem fabrica EDL -- hoje xtacview/xclock/xjoystick/
+    xmsg/xplugin; uma lib sem fabrica, como xboard/xlog, so' nao tem o
+    arquivo, sem tabela de exclusao curada). Caminhos inexistentes sao
+    tolerados por find_dispatch_reachable_classes() (mesma tolerancia de
+    iter_files)."""
     paths = [MIXR_SRC / m / "factory.cpp" for m in EDL_CATALOG_MIXR_MODULES]
-    for categoria in sorted(MODEL_CATEGORY_DIRS):
-        paths += sorted(MODELS_DIR.glob(f"{categoria}/*/src/xnative/factory.cpp"))
-    paths += sorted(MODELS_DIR.glob("*/src/xnative/factory.cpp"))
+    for root in model_project_roots():
+        paths.append(root / "src" / "xnative" / "factory.cpp")
     paths += sorted(LIBS_DIR.glob("*/factory.cpp"))
     return paths
 
@@ -205,32 +239,38 @@ def origin_of(impl_file):
     factory nativa do fork (agrupada pelo primeiro nivel sob
     contexts/src/mixr/src/, com interop/dis e interop/rprfom mantidos
     distintos), uma lib propria deste repo (libs/x*), ou algo do USUARIO
-    sob ./models/ -- QUALQUER coisa la (nao so models/players/<nome>/): um
-    plugin de player (inclusive o mirror de contrato em
-    models/template/src/mirror.cpp), ou um payload de evento
+    sob ./models/ -- QUALQUER coisa la, a QUALQUER profundidade (nao so
+    models/players/<nome>/): um plugin de player (inclusive o mirror de
+    contrato em models/template/src/mirror.cpp), ou um payload de evento
     (models/events/<nome>/...). Generico de proposito -- um modelo novo em
-    models/<qualquer-coisa>/ ja aparece rotulado na hora, sem precisar
-    editar este arquivo.
+    models/<qualquer-caminho>/ ja aparece rotulado na hora, sem precisar
+    editar este arquivo, e mover um modelo existente para outra subpasta
+    (ex.: players/<nome>/ -> players/<subcategoria>/<nome>/) tambem nao
+    quebra o rotulo.
 
     Trata dois casos historicamente propensos a erro: uma classe em
     models/events/... (ex.: TacticalAlert) nao pode cair no ramo generico
-    "builtin"; e uma classe em models/<categoria>/<nome>/... fora de
-    players/ deve rotular pelo NOME do modelo (rest[1]), nao pela categoria
-    (rest[0])."""
+    "builtin"; e uma classe dentro de um projeto de modelo aninhado sob
+    subcategorias (ex.: models/players/space/Navstar-3/...) deve rotular
+    pelo NOME do modelo (a pasta que TEM o meson.build, "Navstar-3"), nao
+    pela subcategoria (players/space) nem pela categoria (players)."""
     if impl_file is None:
         return "unknown"
     if impl_file.startswith("models/"):
+        impl_path = REPO_ROOT / impl_file
+        # Casa contra a raiz de projeto de modelo mais ESPECIFICA que contem
+        # este arquivo (model_project_roots() ja devolve mais funda
+        # primeiro) -- e' o que distingue "plugin:Navstar-3" de
+        # "plugin:players" independente de quantos niveis de subcategoria
+        # existam entre models/ e a pasta do modelo.
+        for root in model_project_roots():
+            if impl_path == root or root in impl_path.parents:
+                return f"plugin:{root.name}"
+        # Nao pertence a projeto de modelo nenhum (ex.:
+        # models/events/payloads/EID_ALERT/TacticalAlert.cpp) -- rotula pelo
+        # PRIMEIRO nivel sob models/, que e' um projeto proprio (nao uma
+        # categoria de modelo).
         rest = impl_file[len("models/"):].split("/")
-        # 'models/<categoria>/<nome>/...' (players/others/systems) rotula
-        # pelo NOME do modelo (rest[1]), nao pela categoria -- e' o que
-        # distingue "plugin:Navstar-3" de "plugin:others" (o bug que existia
-        # antes de um modelo real aparecer fora de players/ pela primeira
-        # vez). Qualquer outra coisa sob models/ (ex.:
-        # models/events/payloads/EID_ALERT/TacticalAlert.cpp) rotula pelo
-        # PRIMEIRO nivel (rest[0], "events") -- nao e' uma categoria de
-        # modelo, e' um projeto proprio.
-        if rest[0] in MODEL_CATEGORY_DIRS and len(rest) > 1:
-            return f"plugin:{rest[1]}"
         return f"plugin:{rest[0]}"
     if impl_file.startswith("libs/"):
         return "libs"

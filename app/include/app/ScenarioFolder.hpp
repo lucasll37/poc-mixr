@@ -7,7 +7,7 @@ namespace app {
 
 //------------------------------------------------------------------------------
 // A pasta navegavel de '-folder <pasta>': N subpastas, cada uma com uma UNICA
-// 'configs/*.edl' (ou '.edl.in') dentro. Ao contrario do '-f <arquivo>' (um
+// 'configs/*.edl' (ou '.edl.in') dentro. Ao contrario do '-file <arquivo>' (um
 // caminho so, passado por linha de comando), isto e descoberta em DISCO, em
 // tempo de execucao -- pensado para navegar varios cenarios de uma vez
 // (pocs de src/poc/** inclusive) sem precisar saber o caminho exato de cada

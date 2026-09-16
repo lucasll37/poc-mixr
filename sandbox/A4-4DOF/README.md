@@ -52,8 +52,7 @@ VelocityKts` **incondicionalmente**, independente de qual subclasse está
 anexada (confirmado lendo `contexts/src/mixr/src/models/system/
 Autopilot.cpp`). `LaeroModel` implementa os três sem nenhuma condição extra
 (ao contrário do `JSBSimModel`, que só engata se o airframe JSBSim específico
-tiver seu próprio FCS de piloto automático — ver a nota "F4N" em `CLAUDE.md`,
-seção "Gotchas de unidades e de modelo"). Confirmado também: os parâmetros
+tiver seu próprio FCS de piloto automático). Confirmado também: os parâmetros
 secundários do `Autopilot` (`maxRateOfTurnDps`/`maxBankAngle`/
 `maxPitchAngle`/`maxClimbRateMps`, herdados sem mudança) **são usados de
 verdade** pelo `LaeroModel` (via `flyPhi`/`flyTht` internos) — ao contrário

@@ -142,6 +142,7 @@
    simulation: ( WorldModel
 
       numTcThreads: 2
+      numBgThreads: 2
 
       // Mesma referencia das duas pocs gemeas -- Serra do Mar / regiao de
       // Nova Friburgo (RJ). Ver o comentario completo no scenario.edl.in
@@ -149,9 +150,8 @@
       latitude:  -22.25
       longitude: -42.48
 
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {

@@ -73,7 +73,7 @@ descrito aqui".
 | peça | onde |
 |---|---|
 | o motor de inferência (`open`/`shape`/`run`, sessão cacheada por caminho) | [`libs/xinfer`](../../../libs/xinfer/) |
-| o nó de árvore `( OnnxPolicy )` | `models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
+| o nó de árvore `( OnnxPolicy )` | `models/players/air/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
 | a desnormalização da ação (`unscaleCommand`) | [`libs/xrlbridge`](../../../libs/xrlbridge/) |
 | a lista completa de campos (38; esta poc usa os 28 default, `schema="classic28"`, o mesmo em que `policy_barrier.onnx` foi treinado) | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
@@ -83,7 +83,7 @@ descrito aqui".
 
 * um **subprojeto completo** em cima daquelas peças: cenário próprio, árvore própria, rede própria,
   portas próprias (Tacview **1238**, DIS **3005**), alvos de `make` e a bateria de testes de
-  sempre. Antes havia um `flight_tree_onnx.xml` de **exemplo** no `models/players/A-4`, apontando para
+  sempre. Antes havia um `flight_tree_onnx.xml` de **exemplo** no `models/players/air/A-4`, apontando para
   um `.onnx` de **pesos aleatórios**, exercitado só por um teste: dava para provar que a cadeia
   funciona, não para *voar* com ela e olhar o resultado no Tacview.
 * uma rede que **de fato pilota**: treinada (por clonagem de comportamento) em vez de sorteada, com
@@ -308,7 +308,7 @@ ambiente em si não precisa conhecer):
 # src/poc/rl-training/requirements.txt ja vem com gymnasium+numpy+stable-baselines3+torch
 # ativos por padrao -- so acrescente ali se o SEU algoritmo precisar de outra coisa
 make venv-rl-training
-# treinar (ver models/players/A-4/docs/POLITICAS.md, seção 2)
+# treinar (ver models/players/air/A-4/docs/POLITICAS.md, seção 2)
 ```
 
 **`-o` para `configs/policy_barrier.onnx` SOBRESCREVE o artefato versionado** — a rede de 6.211
@@ -350,18 +350,18 @@ src/rl/.venv/bin/python3 src/poc/onnx-policy/tools/train_policy.py
    `onnx` 1.22 grava 13 por padrão.** O sintoma não é um erro de exportação — é a poc voando com
    `bt=PATROL`, porque a recusa acontece em tempo de execução, dentro de `xinfer::open()`. O
    treinador fixa `modelo.ir_version = 8` (o mesmo do `policy_example.onnx` já versionado em
-   `models/players/A-4`). **Vale para qualquer `.onnx` gerado hoje** — inclusive
+   `models/players/air/A-4`). **Vale para qualquer `.onnx` gerado hoje** — inclusive
    `src/poc/rl-training/tools/export_onnx.py` (nos dois modos, `--random`/`--sb3`), que também
    fixa `ir_version = 8` por causa desta mesma armadilha; um gerador novo que não fizesse essa
    fixação produziria um arquivo que este ORT recusa se o `onnx` instalado for recente.
 2. **A política é dado do CENÁRIO, não do modelo.** Por isso `.onnx` e árvore moram em `configs/`
    desta poc, lidos por caminho relativo, e não em `dist/share/mixr-plugins/A-4/` (que é onde
-   `models/players/A-4` instala os **dele**). As duas coisas convivem: o teste `scenario-policy-onnx`
+   `models/players/air/A-4` instala os **dele**). As duas coisas convivem: o teste `scenario-policy-onnx`
    continua rodando a árvore do modelo com pesos aleatórios sobre a poc `flight`.
 3. **Portas próprias, senão as pocs brigam.** Tacview **1238** e DIS `localPort` **3005** (Tacview:
    1234 flight, 1235 bandit, 1237 python-flight; DIS: 3001 bandit, 3002 flight, 3004
-   python-flight). O `./app` não tem mais cenário nem porta própria (`app/configs/` foi removido —
-   ver a seção "`./app`" do `CLAUDE.md`). Todo mundo escuta DIS em 3000 e ignora a própria porta de
+   python-flight). O `./app` não tem mais cenário nem porta própria (`app/configs/` foi removido).
+   Todo mundo escuta DIS em 3000 e ignora a própria porta de
    origem.
 4. **Comentário de XML não aceita `--`.** A mesma classe de armadilha do parser EDL com acento: o
    traço duplo dentro de um comentário faz o parser recusar o arquivo. `xmllint --noout` no `.xml`
@@ -422,6 +422,6 @@ Mais o que já vale para a poc `flight`: `tests/guard/check_falcons_estrutura.sh
 | o treinador | [`tools/train_policy.py`](tools/train_policy.py) |
 | o cenário | [`configs/scenario.edl.in`](configs/scenario.edl.in) |
 | o motor de inferência | [`libs/xinfer/README.md`](../../../libs/xinfer/README.md) |
-| o nó `( OnnxPolicy )` | `models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
-| o guia de políticas | [`models/players/A-4/docs/POLITICAS.md`](../../../models/players/A-4/docs/POLITICAS.md) |
+| o nó `( OnnxPolicy )` | `models/players/air/A-4/src/bt/nodes/OnnxPolicyAction.cpp` |
+| o guia de políticas | [`models/players/air/A-4/docs/POLITICAS.md`](../../../models/players/air/A-4/docs/POLITICAS.md) |
 | o wrapper de treino | [`src/rl/README.md`](../../rl/README.md) |

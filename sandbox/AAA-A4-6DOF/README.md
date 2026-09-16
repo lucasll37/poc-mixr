@@ -2,14 +2,13 @@
 
 Ver o índice dos 11 cenários deste `sandbox/` em [`sandbox/README.md`](../README.md).
 
-Exercício (ver `TODO.md`, raiz do repositório, segundo da série que começa com
-`sandbox/A4-6DOF-MISSILE`): "implementar uma antiaérea com domo que dispara o mesmo míssil ...
-que entra no seu raio de atuação. Depois, crie o cenário ... onde uma aeronave A-4 adentra no
-domo de uma antiaérea. A antiaérea dispara contra essa aeronave, que percebe o míssil se
-aproximar através do seu sistema de RWR e inicia manobras evasivas ... efeitos estocásticos
-com o uso da `libs/xrandom` no retardo de ação do piloto evasivo." Não é um cenário de
-produção — é o mínimo necessário para observar detecção → disparo → percepção via RWR →
-atraso estocástico de reação → evasão, de ponta a ponta.
+Exercício, segundo de uma série que começa em
+[`sandbox/A4-6DOF-MISSILE`](../A4-6DOF-MISSILE/README.md): uma antiaérea com domo dispara o
+mesmo míssil daquele exercício contra uma aeronave A-4 que adentra o seu raio de atuação; a
+aeronave percebe o míssil se aproximar através do seu sistema de RWR e inicia manobras evasivas,
+com efeitos estocásticos (via `libs/xrandom`) no retardo de ação do piloto evasivo. Não é um
+cenário de produção — é o mínimo necessário para observar detecção → disparo → percepção via
+RWR → atraso estocástico de reação → evasão, de ponta a ponta.
 
 ```bash
 ./build/app/src/app -folder ./sandbox -scenario AAA-A4-6DOF                    # tempo real, Tacview 1234
@@ -24,16 +23,16 @@ atraso estocástico de reação → evasão, de ponta a ponta.
 
 A resposta tem duas metades, cada uma num subprojeto separado:
 
-- **`models/players/AAA`** (novo) — `( AaaSite )`, subclasse de `mixr::models::SamVehicle`
+- **`models/players/ground/AAA`** (novo) — `( AaaSite )`, subclasse de `mixr::models::SamVehicle`
   (que já traz os slots nativos `minLaunchRange`/`maxLaunchRange` — o "domo" já é dado nativo,
   não código novo). Pilha completa `domain/bt/ubf/xnative`, com uma árvore de comportamento de
   verdade (`Sequence(TargetInDome, FireMissile)` num `Fallback` com `Watch` de degradação) e
   decisão via `( UbfAgent )` **nativo** (sem subclasse de `AgentTC` — a antiaérea decide na
   taxa de FUNDO, ~10 Hz, de sobra para um alvo a ~130 m/s). Ver
-  [`docs/ARCHITECTURE.md`](../../models/players/AAA/docs/ARCHITECTURE.md) para o porquê de não
+  [`docs/ARCHITECTURE.md`](../../models/players/ground/AAA/docs/ARCHITECTURE.md) para o porquê de não
   existir nenhum `AgentTC` próprio e para a armadilha do `SamVehicle`/`Sam`-cast (documentada
   abaixo também).
-- **`models/players/A-4`** (estendido) — um segundo par condição/ação de árvore
+- **`models/players/air/A-4`** (estendido) — um segundo par condição/ação de árvore
   (`RwrThreatDetectedCondition`/`EvadeRwrThreatAction`, rótulos `RWR_EVADE`/`RWR_BREAK`), uma
   árvore de **demonstração** (`configs/flight_tree_rwr_evade_demo.xml` — a árvore de produção
   não muda), e `domain::EvasionReactionPlan` — o atraso estocástico, semeado via `libs/xrandom`
@@ -147,12 +146,11 @@ sai do cabide, exatamente como um RWR de verdade avisaria "estou sendo iluminado
 
 ## Ler também
 
-- [`models/players/AAA/README.md`](../../models/players/AAA/README.md) e
-  [`docs/ARCHITECTURE.md`](../../models/players/AAA/docs/ARCHITECTURE.md) — o modelo da
+- [`models/players/ground/AAA/README.md`](../../models/players/ground/AAA/README.md) e
+  [`docs/ARCHITECTURE.md`](../../models/players/ground/AAA/docs/ARCHITECTURE.md) — o modelo da
   antiaérea.
-- [`models/players/A-4/CHANGELOG.md`](../../models/players/A-4/CHANGELOG.md) — a entrada da
+- [`models/players/air/A-4/CHANGELOG.md`](../../models/players/air/A-4/CHANGELOG.md) — a entrada da
   extensão de RWR/evasão estocástica.
 - [`../A4-6DOF-MISSILE/README.md`](../A4-6DOF-MISSILE/README.md) — o cenário anterior da
   mesma série (A-4 detecta e dispara contra outro A-4 via radar ativo).
-- [`libs/xrandom/`](../../libs/xrandom) — a derivação de semente reprodutível (ver também a
-  seção `libs/xrandom` do `CLAUDE.md` raiz).
+- [`libs/xrandom/`](../../libs/xrandom) — a derivação de semente reprodutível.

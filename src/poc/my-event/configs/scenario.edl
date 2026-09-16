@@ -2,12 +2,12 @@
 // src/poc/my-event
 //
 // Nao demonstra decisao nenhuma (sem BT, sem UBF, sem agente) -- demonstra
-// EVENTO: tres ( Beacon ) (models/players/Beacon, plugin novo, ver o
+// EVENTO: tres ( Beacon ) (models/others/Beacon, plugin novo, ver o
 // README dele) parados, cada um emitindo um "ping" periodico (payload
 // events::PingMessage, nao-nulo) para os outros dois, e cada um TRATANDO os
 // pings que recebe -- a mesma classe nos dois papeis. Ver
 // models/events/README.md para a convencao completa e
-// models/players/Beacon/docs/ARCHITECTURE.md para o "porque" de cada
+// models/others/Beacon/docs/ARCHITECTURE.md para o "porque" de cada
 // decisao deste modelo.
 //
 // Os tres nascem com 'pingTimer' zerado (ver Beacon::reset()), entao o
@@ -48,7 +48,7 @@
       // 'provides:' e uma ASSERCAO: se a .so nao entregar EXATAMENTE esses
       // dois nomes, o processo morre dizendo o que ela entrega de verdade.
       // 'PingMessage' entra aqui porque o proprio plugin a registra no
-      // proprio factoryNames() (ver models/players/Beacon/src/plugin.cpp)
+      // proprio factoryNames() (ver models/others/Beacon/src/plugin.cpp)
       // -- nao porque este .edl construa uma por nome.
       // ------------------------------------------------------------------
       plugins: ( PluginLoader
@@ -93,6 +93,7 @@
    simulation: ( WorldModel
 
       numTcThreads: 1
+      numBgThreads: 1
 
       // Referencia arbitraria -- Beacon nao le terreno nem precisa de uma
       // regiao especifica (nao ha risco de CFIT: os tres ficam parados).

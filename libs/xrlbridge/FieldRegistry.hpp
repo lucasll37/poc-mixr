@@ -20,7 +20,7 @@ namespace xrlbridge {
 // que contra um lambda (`[](const State& s){ return s.nome; }`) em vez de
 // escrever direto num vetor -- um `nome` que nao existe em State continua
 // nao compilando (ver domain/WorldViewFieldRegistry.cpp, em
-// models/players/A-4, para o uso real).
+// models/players/air/A-4, para o uso real).
 //
 // O registro em si e' so' o CATALOGO ("quais campos existem, como ler cada
 // um"). A ESCOLHA de quais entram num vetor, e em que ordem, e' o Schema

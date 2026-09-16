@@ -32,7 +32,7 @@
 // arrasta MIXR nenhum -- entao basta dar aos dois alvos de teste o CAMINHO DE
 // INCLUDE do SDK (sdk_dep.partial_dependency(includes: true)), sem o link.
 // A propriedade que importa ("test_tree NAO linka o MIXR", ver
-// models/players/A-4/tests/meson.build) continua valendo e continua conferida
+// models/players/air/A-4/tests/meson.build) continua valendo e continua conferida
 // por 'ldd'.
 //
 // A HIERARQUIA que este arquivo existe para viabilizar (ver o "porque" no

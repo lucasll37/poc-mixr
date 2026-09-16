@@ -3,7 +3,7 @@
 Duas pastas, cada uma um cenário EDL completo (`configs/` + `data/`, sem
 código próprio — o padrão de qualquer poc deste repositório), que **não
 aparecem mais em `src/poc/`**: `built-in_mixr_1` e `full-systems-nav` foram
-removidas como pocs (ver `TODO.md`/`CLAUDE.md`), mas os `.edl.in` continuam
+removidas como pocs, mas os `.edl.in` continuam
 sendo consumidos de verdade por outras partes do repositório:
 
 | quem usa | o quê |

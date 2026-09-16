@@ -50,11 +50,12 @@ OUT="$RAIZ/build/tests-random-seed/${ROTULO}"
 mkdir -p "$OUT" || exit 1
 
 # ARMADILHA (a MESMA ja documentada em check_determinism.sh, repetida aqui
-# porque este script tambem monta '-f'/'-folder' na mao): '-f <arquivo>'
+# porque este script tambem monta '-file'/'-folder' na mao): '-file <arquivo>'
+# NUNCA le o arquivo pra descobrir quem sao os players -- so aponta pra ele e
 # SEMPRE assume a frota falcon1..4 (app::adHocScenario()) -- sandbox/
 # A4-6DOF-RANDOM e' a4_1..a4_8, e o binario morreria com "player 'falcon1'
 # nao encontrado!" antes do primeiro frame. A saida e' '-folder <pasta>
-# -scenario <nome>', que descobre a frota em runtime
+# -scenario <nome>', que LE o cenario e descobre a frota sozinho
 # (app::discoverFleet()) -- mas isso exige o layout <pasta>/<nome>/
 # configs/<arquivo>, entao cada semente ganha sua PROPRIA pasta de cenario
 # dentro de build/tests-fixtures/, com o MESMO nome-base do arquivo
@@ -89,7 +90,7 @@ roda() {   # roda <nome-subpasta> <n-threads> <arquivo-saida>
    # arquivo bruto e o rc e checado a parte, antes de filtrar.
    local raw rc
    raw="$(mktemp)"
-   "$BIN" -folder "$FIXTURES" -scenario "$1" -threads "$2" -deterministic "$FRAMES" > "$raw" 2>/dev/null
+   "$BIN" -folder "$FIXTURES" -scenario "$1" -numTcThreads "$2" -deterministic "$FRAMES" > "$raw" 2>/dev/null
    rc=$?
    grep '^frame=' "$raw" > "$3"
    rm -f "$raw"

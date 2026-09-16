@@ -27,7 +27,7 @@ namespace xtemplate {
 // atua.
 //
 // ARMADILHA DO FRAMEWORK, ja medida em producao (ver o comentario
-// equivalente em models/players/A-4/include/ubf/FlightState.hpp): um Agent NAO
+// equivalente em models/players/air/A-4/include/ubf/FlightState.hpp): um Agent NAO
 // propaga updateTC()/updateData() para os filhos, e o 'state' e filho do
 // agente -- este objeto NUNCA recebe o ciclo normal de componentes. Tudo o
 // que ele precisa fazer tem que estar dentro de updateState().

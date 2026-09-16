@@ -4,7 +4,7 @@
 
   Forma: um Fallback (o "primeiro que der SUCCESS vence") com as prioridades
   de cima para baixo. E a MESMA forma do flight_tree.xml de producao em
-  models/players/A-4, com dois ramos em vez de quatro:
+  models/players/air/A-4, com dois ramos em vez de quatro:
 
     1) gatilho engajado  -> rotulo ENGAGED
     2) qualquer outro caso -> rotulo IDLE   (o ramo de degradacao, sempre SUCCESS)

@@ -16,28 +16,48 @@ namespace app {
 
 namespace {
 
-const char* const PLACEHOLDER{"@NUM_TC_THREADS@"};
+const char* const PLACEHOLDER_TC{"@NUM_TC_THREADS@"};
+const char* const PLACEHOLDER_BG{"@NUM_BG_THREADS@"};
 
 // Onde os fragmentos EDL compartilhados (ver app/configs/fragments/) moram
 // -- caminho relativo, como todo o resto do projeto: os binarios rodam a
 // partir da RAIZ do repositorio (convencao documentada no CLAUDE.md).
 const char* const kFragmentsDir{"./app/configs/fragments"};
 
+// Clampa 'wanted' em [1, nucleos-1] -- nunca menos que 1, nunca mais que
+// nucleos-1 (deixa sempre 1 nucleo de fora, para o SO e o resto do
+// processo). Mesmo teto usado pelo slot nativo (mixr::simulation::
+// Simulation::setSlotNumTcThreads()/setSlotNumBgThreads()) -- compartilhado
+// pelas duas resolucoes abaixo; so' o DEFAULT quando nada foi pedido difere
+// entre T/C e background.
+int clampThreadCount(const int wanted, const unsigned int hwThreads)
+{
+   const int maxByCpu{static_cast<int>(hwThreads > 1 ? hwThreads - 1 : 1)};
+   return std::max(1, std::min(wanted, maxByCpu));
+}
+
 // Por padrao, METADE dos nucleos da maquina -- a outra metade fica para o
 // laco de background, para o resto do processo (TUI, gravador, rede) e para
-// o que mais estiver rodando na maquina. O '-threads N' do usuario sobrepuja
-// esse default, mas nunca o TETO: em todos os casos o resultado fica em
-// [1, nucleos-1] -- pedir mais threads do que ha CPUs so acrescenta troca de
-// contexto, e deixar zero nucleo para o laco de background nao faz sentido.
-int resolveTcThreadCount(const int threadsOverride, unsigned int* const hwThreadsOut)
+// o que mais estiver rodando na maquina. O '-numTcThreads N' do usuario
+// sobrepuja esse default, mas nunca o TETO (ver clampThreadCount()).
+int resolveTcThreadCount(const int tcThreadsOverride, const unsigned int hwThreads)
 {
-   const unsigned int hwThreads{std::thread::hardware_concurrency()};
-   *hwThreadsOut = hwThreads;
-
-   const int maxByCpu{static_cast<int>(hwThreads > 1 ? hwThreads - 1 : 1)};
    const int metadeDosNucleos{static_cast<int>(hwThreads / 2)};
-   const int wanted{(threadsOverride > 0) ? threadsOverride : metadeDosNucleos};
-   return std::max(1, std::min(wanted, maxByCpu));
+   const int wanted{(tcThreadsOverride > 0) ? tcThreadsOverride : metadeDosNucleos};
+   return clampThreadCount(wanted, hwThreads);
+}
+
+// Por padrao, 2 threads -- ao contrario do T/C, o laco de background deste
+// projeto nunca teve motivo para variar tanto (nenhum cenario aqui decide
+// via agente em background -- ver CLAUDE.md, "numBgThreads"): 2 e' so' o
+// ponto de partida pra exercitar o mecanismo nativo (mixr::simulation::
+// Simulation::updateBgPlayerList(), o pool round-robin espelhado do T/C)
+// sem monopolizar a maquina. O '-numBgThreads N' do usuario sobrepuja esse
+// default, mas nunca o TETO (mesmo clampThreadCount() do T/C).
+int resolveBgThreadCount(const int bgThreadsOverride, const unsigned int hwThreads)
+{
+   const int wanted{(bgThreadsOverride > 0) ? bgThreadsOverride : 2};
+   return clampThreadCount(wanted, hwThreads);
 }
 
 std::string readFileOrDie(const std::string& path)
@@ -75,12 +95,13 @@ void replaceAll(std::string& text, const std::string& from, const std::string& t
 }
 
 // Acha '@include:NOME@' e troca pelo conteudo de 'kFragmentsDir/NOME' --
-// roda ANTES da substituicao de token (PLACEHOLDER/extraTokens), assim um
-// fragmento pode conter tokens que so fazem sentido resolvidos depois do
-// include (ex.: '@SCENARIO_ID@' dentro de tacview_recorder.edl.frag). O
-// parser EDL nunca ve nem '@include:...@' nem '@TOKEN@' -- a mesma garantia
-// que ja vale para '@NUM_TC_THREADS@' desde sempre: a resolucao acontece
-// aqui, no .edl.in -> .edl, nao no '.edl' final que o edl_parser le.
+// roda ANTES da substituicao de token (PLACEHOLDER_TC/PLACEHOLDER_BG/
+// extraTokens), assim um fragmento pode conter tokens que so fazem sentido
+// resolvidos depois do include (ex.: '@SCENARIO_ID@' dentro de
+// tacview_recorder.edl.frag). O parser EDL nunca ve nem '@include:...@' nem
+// '@TOKEN@' -- a mesma garantia que ja vale para '@NUM_TC_THREADS@'/
+// '@NUM_BG_THREADS@' desde sempre: a resolucao acontece aqui, no
+// .edl.in -> .edl, nao no '.edl' final que o edl_parser le.
 //
 // Deliberadamente RASO -- um nivel so, sem include recursivo -- para nao
 // reintroduzir a complexidade que a auxsencia do preprocessador C evitou
@@ -146,24 +167,27 @@ void warnUnresolvedTokens(const std::string& text)
 
 } // namespace
 
-int generateScenario(const std::string& templatePath, const std::string& outPath,
-                     const int threadsOverride, const std::map<std::string, std::string>& extraTokens)
+ThreadCounts generateScenario(const std::string& templatePath, const std::string& outPath,
+                              const int tcThreadsOverride, const int bgThreadsOverride,
+                              const std::map<std::string, std::string>& extraTokens)
 {
-   unsigned int hwThreads{};
-   const int numTcThreads{resolveTcThreadCount(threadsOverride, &hwThreads)};
+   const unsigned int hwThreads{std::thread::hardware_concurrency()};
+   const int numTcThreads{resolveTcThreadCount(tcThreadsOverride, hwThreads)};
+   const int numBgThreads{resolveBgThreadCount(bgThreadsOverride, hwThreads)};
 
    std::string text{readFileOrDie(templatePath)};
    text = expandIncludes(std::move(text), kFragmentsDir);
-   replaceAll(text, PLACEHOLDER, std::to_string(numTcThreads));
+   replaceAll(text, PLACEHOLDER_TC, std::to_string(numTcThreads));
+   replaceAll(text, PLACEHOLDER_BG, std::to_string(numBgThreads));
    for (const auto& [name, value] : extraTokens) replaceAll(text, "@" + name + "@", value);
    warnUnresolvedTokens(text);
 
    std::ofstream out(outPath);
    out << text;
 
-   std::cout << "[main] numTcThreads=" << numTcThreads
+   std::cout << "[main] numTcThreads=" << numTcThreads << " numBgThreads=" << numBgThreads
              << " (hardware_concurrency=" << hwThreads << ")" << std::endl;
-   return numTcThreads;
+   return ThreadCounts{numTcThreads, numBgThreads};
 }
 
 } // namespace app

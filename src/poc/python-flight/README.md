@@ -70,7 +70,7 @@ na primeira decisão de cada aeronave.
 | peça | onde |
 |---|---|
 | o interpretador embarcado (`isAvailable`/`loadScript`/`decide`) | [`libs/xpyembed`](../../../libs/xpyembed/) |
-| o nó de árvore `( PyDecide )` | `models/players/A-4/src/bt/nodes/PyDecideAction.cpp` |
+| o nó de árvore `( PyDecide )` | `models/players/air/A-4/src/bt/nodes/PyDecideAction.cpp` |
 | a lista completa de campos (38; esta poc usa os 28 default, `schema="classic28"`) | [`libs/xrlbridge/ObservationFields.hpp`](../../../libs/xrlbridge/ObservationFields.hpp) |
 | a pilha inteira: `Aircraft` + `JSBSimModel` (o adaptador MIXR para o **JSBSim**, motor de dinâmica de voo de código aberto que integra as equações de movimento da aeronave a cada frame) + `Autopilot` + radar + `AlertDatalink` + terreno | igual à da poc `flight` |
 | o plugin | o **mesmo** `libA-4.so` da poc `flight`, byte a byte |
@@ -79,7 +79,7 @@ na primeira decisão de cada aeronave.
 
 * um **subprojeto completo** em cima daquelas peças: cenário próprio, árvore própria, quatro
   scripts, portas próprias (Tacview **1237**, DIS **3004**), alvos de `make` próprios e a bateria
-  de testes de sempre. Antes havia um `flight_tree_py.xml` de **exemplo** no `models/players/A-4`, com
+  de testes de sempre. Antes havia um `flight_tree_py.xml` de **exemplo** no `models/players/air/A-4`, com
   um único nó e um script de dez linhas, exercitado só por um teste — não havia como *rodar* uma
   poc governada por Python e olhar para ela no Tacview.
 * **quatro** folhas em Python no lugar de uma, uma por ramo da árvore de produção. É isso que faz
@@ -91,7 +91,7 @@ na primeira decisão de cada aeronave.
 **Nenhuma linha de C++ foi escrita para isto.** O core é uma cópia do da poc `flight` com
 caminhos e banner trocados; o modelo não mudou. Isso é o resultado a observar, não uma economia:
 a extensibilidade que o `( PluginModule )` (o bloco que carrega o `.so` do modelo num cenário —
-ver [`CONTRIBUTING.md` §8.8](../../../CONTRIBUTING.md#88-carregando-o-modelo-num-cenário-o-bloco-pluginmodule-real))
+ver [`CONTRIBUTING.md`, seção 6](../../../CONTRIBUTING.md#6-publique-e-aponte-um-cenário))
 + `( PyDecide )` prometiam se paga aqui.
 
 ---
@@ -355,7 +355,7 @@ assim sobra folga de duas ordens de grandeza. **Não faça I/O dentro de `decide
 jeito conhecido de gastar esse orçamento.
 
 **Este número não é comparável ao de
-[`models/players/A-4/docs/POLITICAS.md`](../../../models/players/A-4/docs/POLITICAS.md), seção
+[`models/players/air/A-4/docs/POLITICAS.md`](../../../models/players/air/A-4/docs/POLITICAS.md), seção
 1.4** (~8 µs com uma thread, ~18 µs com quatro), que mede outra coisa: uma única chamada a
 `policy_example.py` — o script de exemplo de dez linhas do modelo, não os quatro scripts de
 produção desta poc —, cronometrada chamada a chamada, não pela diferença de tempo de parede entre

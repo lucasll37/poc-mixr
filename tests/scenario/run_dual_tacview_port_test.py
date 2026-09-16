@@ -85,7 +85,7 @@ def main():
     deriva_copia(pasta / "porta-b", "b")
 
     print("  subindo dois processos concorrentes na MESMA porta Tacview ...")
-    comum = ["-folder", str(pasta), "-threads", "1", "-deterministic", str(args.frames)]
+    comum = ["-folder", str(pasta), "-numTcThreads", "1", "-deterministic", str(args.frames)]
     proc_a = subprocess.Popen(
         [args.binario, "-scenario", "porta-a", *comum],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=RAIZ,

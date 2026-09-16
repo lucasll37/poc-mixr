@@ -13,7 +13,7 @@ essa a propriedade que a lib existe para manter.
 ## Como se usar
 
 Único consumidor real hoje: `BtBehavior::configurePlans()`
-(`models/players/A-4/src/ubf/BtBehavior.cpp`), que já depende do SDK. O `.edl` de produção declara
+(`models/players/air/A-4/src/ubf/BtBehavior.cpp`), que já depende do SDK. O `.edl` de produção declara
 a **mesma** `patrolMasterSeed` nos quatro falcons — a variação vem do nome de cada um, não do
 literal:
 
@@ -73,7 +73,7 @@ Três decisões que estavam **repetidas em cada consumidor** e agora são tomada
   qualquer outra. Aleatoriedade que muda a cada execução não tem lugar neste projeto.
 
 Consumidores hoje: `domain::PatrolPlan` (jitter de rumo) e `domain::AerobaticPlan` (intervalo
-entre acrobacias), os dois em `models/players/A-4`, os dois semeados por
+entre acrobacias), os dois em `models/players/air/A-4`, os dois semeados por
 `BtBehavior::configurePlans()` a partir do **mesmo** `instanceSeed` com salts de propósito
 diferentes.
 

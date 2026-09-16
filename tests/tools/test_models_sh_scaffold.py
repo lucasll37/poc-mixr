@@ -112,11 +112,56 @@ def test_colisao_de_namespace_e_recusada():
         criar = run("--name", "A_4", "--category", "others", "--no-build")
         check(criar.returncode != 0,
               "criar '--name A_4' deveria ter sido RECUSADO (colide com o namespace de "
-              "models/players/A-4), mas devolveu rc=0")
+              "models/players/air/A-4), mas devolveu rc=0")
         check("xA_4" in criar.stderr, "mensagem de recusa nao menciona o namespace colidido 'xA_4'")
         check(not dest.exists(), f"{dest} foi criado apesar da colisao de namespace esperada")
     finally:
         cleanup("A_4")
+
+
+def test_categoria_aninhada_cria_e_remove():
+    """--category aceita QUALQUER caminho relativo a models/, inclusive um
+    NOVO com mais de um nivel (ex.: 'players/air') -- nao um enum fixo. Sem
+    isso, mover um modelo entre subpastas de models/ (como a reorganizacao
+    por taxonomia MIXR fez: players/<nome>/ -> players/<subcategoria>/
+    <nome>/) exigiria editar este script."""
+    categoria = "players/air"
+    dest = REPO_ROOT / "models" / categoria / NOME_TESTE
+    try:
+        criar = run("--name", NOME_TESTE, "--category", categoria, "--no-build")
+        check(criar.returncode == 0, f"criacao em categoria aninhada falhou (rc={criar.returncode}): {criar.stderr}")
+        check(dest.is_dir(), f"{dest} nao foi criado")
+        if not dest.is_dir():
+            return
+
+        # profundidade de ROOT certa para models/<subcat1>/<subcat2>/<nome>/ (4 niveis)
+        makefile = (dest / "Makefile").read_text(encoding="utf-8")
+        check("$(abspath ../../../..)" in makefile,
+              "Makefile nao tem 'ROOT := $(abspath ../../../..)' -- profundidade errada para "
+              f"models/{categoria}/<nome>/")
+
+        remover = run("--remove", "--name", NOME_TESTE, "--category", categoria, "--force")
+        check(remover.returncode == 0,
+              f"remocao de categoria aninhada falhou (rc={remover.returncode}): {remover.stderr}")
+        check(not dest.exists(), f"{dest} ainda existe depois de --remove --force")
+    finally:
+        cleanup(NOME_TESTE, categoria)
+
+
+def test_categoria_reservada_e_recusada():
+    """'template'/'events' sao subpastas RESERVADAS de models/ (a primeira e'
+    o unico ponto de partida copiavel, a segunda e' o projeto Meson do
+    contrato de eventos) -- nunca destino de scaffold, com ou sem sufixo."""
+    for categoria in ("template", "events", "template/sub", "events/sub"):
+        dest = REPO_ROOT / "models" / categoria / NOME_TESTE
+        try:
+            criar = run("--name", NOME_TESTE, "--category", categoria, "--no-build")
+            check(criar.returncode != 0,
+                  f"criar '--category {categoria}' deveria ter sido RECUSADO, devolveu rc=0")
+            check(not dest.exists(), f"{dest} foi criado apesar de a categoria ser reservada")
+        finally:
+            if dest.exists():
+                shutil.rmtree(dest, ignore_errors=True)
 
 
 def main() -> int:
@@ -125,6 +170,8 @@ def main() -> int:
 
     test_criar_estrutura_namespace_remover()
     test_colisao_de_namespace_e_recusada()
+    test_categoria_aninhada_cria_e_remove()
+    test_categoria_reservada_e_recusada()
 
     if failures:
         print(f"FALHOU ({len(failures)}):")

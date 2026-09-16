@@ -18,7 +18,7 @@ namespace xrlbridge {
 // nenhum tipo C++ do lado de quem escreve o cenario.
 //
 // Tres formas de uso, todas resolvidas por quem CHAMA bind() (ver os tres
-// nos em models/players/A-4/src/bt/nodes/):
+// nos em models/players/air/A-4/src/bt/nodes/):
 //   - um preset com nome ("classic28" -- ver xrlbridge::classicSchema28());
 //   - "all" -- todo campo que o registro tiver, na ordem em que foi
 //     registrado (ver FieldRegistry<State>::all());

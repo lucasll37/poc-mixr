@@ -11,7 +11,7 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallba
  * app transpilado. Universo:
  * as 7 factories nativas que models/BUILT-IN.md ja usa como escopo (base,
  * models, simulation, terrain, interop/dis, linkage, recorder) mais o
- * plugin de producao models/players/A-4 -- so classe com despacho REAL num
+ * plugin de producao models/players/air/A-4 -- so classe com despacho REAL num
  * factory.cpp, nunca "toda classe com DECLARE_SUBCLASS em algum header".
  * Nada nesses dados e digitado a mao:
  *   - heranca      <- DECLARE_SUBCLASS nos headers
@@ -2190,7 +2190,7 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
  * Ao contrario da trilha "Thread de Tempo Critico" (framework puro,
  * escopo deliberado so em mixr::base::ubf -- ver a nota em walk() e no
  * README.md), esta aba mostra a cadeia REAL do MODELO de voo deste
- * repositorio (models/players/A-4/): FlightAgentTC, FlightState, BtBehavior,
+ * repositorio (models/players/air/A-4/): FlightAgentTC, FlightState, BtBehavior,
  * os 4 ramos do Fallback de producao (flight_tree.xml) e FlightAction
  * escrevendo no Autopilot nativo -- UM EXEMPLO concreto do padrao
  * generico Agent/AgentTC + AbstractState/AbstractBehavior/AbstractAction,
@@ -2208,7 +2208,7 @@ function Exec({ focus, setFocus, onOpenCatalog }) {
  *
  * tools/extract_execution_chain.py so cobre contexts/src/mixr/ (ver
  * docs/manual/README.md) -- FLIGHT_SNIPPETS/FLIGHT_MODEL abaixo foram
- * conferidos a mao, direto do fonte de models/players/A-4/, arquivo e linha
+ * conferidos a mao, direto do fonte de models/players/air/A-4/, arquivo e linha
  * reais, mesma pratica ja usada por EDL_TEXT/SCENARIO (curadoria manual
  * sobre dado real, nao invencao). Agent/AgentTC/AbstractState/
  * AbstractBehavior/AbstractAction JA estao no MODEL global (extraidos de
@@ -2238,7 +2238,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "FlightAgentTC::controller": {
-    "file": "models/players/A-4/src/xnative/FlightAgentTC.cpp",
+    "file": "models/players/air/A-4/src/xnative/FlightAgentTC.cpp",
     "line": 72,
     "lines": [
       "void FlightAgentTC::controller(const double dt)",
@@ -2273,7 +2273,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "FlightState::updateState": {
-    "file": "models/players/A-4/src/ubf/FlightState.cpp",
+    "file": "models/players/air/A-4/src/ubf/FlightState.cpp",
     "line": 49,
     "lines": [
       "void FlightState::updateState(const base::Component* const actor)",
@@ -2407,7 +2407,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "BtBehavior::genAction": {
-    "file": "models/players/A-4/src/ubf/BtBehavior.cpp",
+    "file": "models/players/air/A-4/src/ubf/BtBehavior.cpp",
     "line": 175,
     "lines": [
       "base::ubf::AbstractAction* BtBehavior::genAction(const base::ubf::AbstractState* const state,",
@@ -2461,7 +2461,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "ContactDetectedCondition::tick": {
-    "file": "models/players/A-4/src/bt/nodes/ContactDetectedCondition.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/ContactDetectedCondition.cpp",
     "line": 14,
     "lines": [
       "//------------------------------------------------------------------------------",
@@ -2486,7 +2486,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "PatrolAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/PatrolAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/PatrolAction.cpp",
     "line": 13,
     "lines": [
       "BT::NodeStatus PatrolAction::tick()",
@@ -2503,7 +2503,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "ReportAndEvadeAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/ReportAndEvadeAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/ReportAndEvadeAction.cpp",
     "line": 15,
     "lines": [
       "//------------------------------------------------------------------------------",
@@ -2549,7 +2549,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "ReturnToBaseAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/ReturnToBaseAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/ReturnToBaseAction.cpp",
     "line": 13,
     "lines": [
       "BT::NodeStatus ReturnToBaseAction::tick()",
@@ -2569,7 +2569,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "SupportAlertAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/SupportAlertAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/SupportAlertAction.cpp",
     "line": 14,
     "lines": [
       "BT::NodeStatus SupportAlertAction::tick()",
@@ -2595,7 +2595,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "FlightAction::execute": {
-    "file": "models/players/A-4/src/ubf/FlightAction.cpp",
+    "file": "models/players/air/A-4/src/ubf/FlightAction.cpp",
     "line": 129,
     "lines": [
       "bool FlightAction::execute(base::Component* actor)",
@@ -2744,7 +2744,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "PyDecideAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/PyDecideAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/PyDecideAction.cpp",
     "line": 36,
     "lines": [
       "BT::NodeStatus PyDecideAction::tick()",
@@ -2798,7 +2798,7 @@ const FLIGHT_SNIPPETS = {
     "trunc": false
   },
   "OnnxPolicyAction::tick": {
-    "file": "models/players/A-4/src/bt/nodes/OnnxPolicyAction.cpp",
+    "file": "models/players/air/A-4/src/bt/nodes/OnnxPolicyAction.cpp",
     "line": 30,
     "lines": [
       "BT::NodeStatus OnnxPolicyAction::tick()",
@@ -2998,7 +2998,7 @@ const FLIGHT_TREE_ONNX = flightSkeleton([
 // uma subclasse de BT::ConditionNode/BT::SyncActionNode -- código de         *
 // TERCEIRO, não deste modelo. "behavior" (BtBehavior) fica DE FORA da faixa: *
 // é dele o tree.tickRoot() que cruza a fronteira, mas a classe em si é do    *
-// plugin (models/players/A-4), não da lib. Uma lista por árvore -- os ids    *
+// plugin (models/players/air/A-4), não da lib. Uma lista por árvore -- os ids    *
 // das folhas mudam entre produção/Python/ONNX.
 const FLIGHT_BTCPP_SCOPE = ["fuelLow", "contact", "alert", "patrol"];
 const FLIGHT_BTCPP_SCOPE_PYTHON = ["pyRtb", "pyEvade", "pySupport", "pyPatrol", "patrolFallbackPy"];
@@ -3013,7 +3013,7 @@ const FLIGHT_BTCPP_SCOPE_ONNX = ["onnxPolicy", "patrolFallbackOnnx"];
 // as folhas sob "behavior" mudam -- então um escopo só serve para as 3.
 const FLIGHT_UBF_SCOPE = ["agent", "state", "behavior", "action"];
 
-/* ---------- Classe: dados que o extrator NÃO cobre (models/players/A-4/) ---------- *
+/* ---------- Classe: dados que o extrator NÃO cobre (models/players/air/A-4/) ---------- *
  * tools/extract_execution_chain.py só varre contexts/src/mixr/, então as      *
  * classes deste modelo não têm entrada em MODEL. Preenchido à mão, uma vez,   *
  * a partir do PRÓPRIO header (DECLARE_SUBCLASS + BEGIN_SLOTTABLE) -- mesma    *
@@ -3025,18 +3025,18 @@ const FLIGHT_UBF_SCOPE = ["agent", "state", "behavior", "action"];
  * costura visível. */
 const FLIGHT_MODEL = {
   FlightAgentTC: { b: "AgentTC", ch: ["FlightAgentTC", "AgentTC", "Agent", "Component"], sl: [], own: 0,
-    f: "FlightAgentTC", r: true, m: "models/players/A-4",
-    hd: "models/players/A-4/include/xnative/FlightAgentTC.hpp", src: "models/players/A-4/src/xnative/FlightAgentTC.cpp" },
+    f: "FlightAgentTC", r: true, m: "models/players/air/A-4",
+    hd: "models/players/air/A-4/include/xnative/FlightAgentTC.hpp", src: "models/players/air/A-4/src/xnative/FlightAgentTC.cpp" },
   FlightState: { b: "AbstractState", ch: ["FlightState", "AbstractState", "Component"], sl: [], own: 0,
-    f: "FlightState", r: true, m: "models/players/A-4",
-    hd: "models/players/A-4/include/ubf/FlightState.hpp", src: "models/players/A-4/src/ubf/FlightState.cpp" },
+    f: "FlightState", r: true, m: "models/players/air/A-4",
+    hd: "models/players/air/A-4/include/ubf/FlightState.hpp", src: "models/players/air/A-4/src/ubf/FlightState.cpp" },
   BtBehavior: { b: "AbstractBehavior", ch: ["BtBehavior", "AbstractBehavior", "Component"],
     sl: ["treeFile", "patrolHeading", "legTime", "legTurn", "patrolAltitude", "patrolSpeed", "rtbAltitude", "rtbSpeed", "arrivalRadius", "fuelReserve", "breakTurn", "evadeClimb", "evadeSpeed", "evadeHold", "supportSpeed", "terrainClearance", "launchMinRange", "launchMaxRange", "launchCone", "patrolJitterHeading", "patrolMasterSeed", "patrolSeedOverride"], own: 22,
-    f: "BtBehavior", r: true, m: "models/players/A-4",
-    hd: "models/players/A-4/include/ubf/BtBehavior.hpp", src: "models/players/A-4/src/ubf/BtBehavior.cpp" },
+    f: "BtBehavior", r: true, m: "models/players/air/A-4",
+    hd: "models/players/air/A-4/include/ubf/BtBehavior.hpp", src: "models/players/air/A-4/src/ubf/BtBehavior.cpp" },
   FlightAction: { b: "AbstractAction", ch: ["FlightAction", "AbstractAction"], sl: [], own: 0,
-    f: "FlightAction", r: true, m: "models/players/A-4",
-    hd: "models/players/A-4/include/ubf/FlightAction.hpp", src: "models/players/A-4/src/ubf/FlightAction.cpp" },
+    f: "FlightAction", r: true, m: "models/players/air/A-4",
+    hd: "models/players/air/A-4/include/ubf/FlightAction.hpp", src: "models/players/air/A-4/src/ubf/FlightAction.cpp" },
 };
 // Tipo de cada slot -- só BtBehavior tem slots próprios nesta curadoria;      *
 // o resto do catálogo (MODEL) não anota tipo, então esta é uma camada extra  *
@@ -3062,55 +3062,55 @@ const flightFactoryOf = (cls) => (FLIGHT_MODEL[cls] ? (FLIGHT_MODEL[cls].f || cl
 // FuelLowCondition declara um de verdade (margin).
 const FLIGHT_BT_LEAVES = {
   fuelLow: {
-    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
-    act: { cls: "ReturnToBaseAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/ReturnToBaseAction.hpp", ports: [] },
+    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
+    act: { cls: "ReturnToBaseAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/ReturnToBaseAction.hpp", ports: [] },
   },
   contact: {
-    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
-    act: { cls: "ReportAndEvadeAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/ReportAndEvadeAction.hpp", ports: [] },
+    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
+    act: { cls: "ReportAndEvadeAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/ReportAndEvadeAction.hpp", ports: [] },
   },
   alert: {
-    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
-    act: { cls: "SupportAlertAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/SupportAlertAction.hpp", ports: [] },
+    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
+    act: { cls: "SupportAlertAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/SupportAlertAction.hpp", ports: [] },
   },
   patrol: {
     cond: null,
-    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
   },
   // -------- src/poc/python-flight (flight_tree_python.xml) --------
   pyRtb: {
-    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
-    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+    cond: { cls: "FuelLowCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/FuelLowCondition.hpp", ports: [["margin", "double"]] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
       delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
   },
   pyEvade: {
-    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
-    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+    cond: { cls: "ContactDetectedCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/ContactDetectedCondition.hpp", ports: [] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
       delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
   },
   pySupport: {
-    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/players/A-4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
-    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+    cond: { cls: "AlertReceivedCondition", base: "BT::ConditionNode", hd: "models/players/air/A-4/include/bt/nodes/AlertReceivedCondition.hpp", ports: [] },
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
       delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no próximo ramo" } },
   },
   pyPatrol: {
     cond: null,
-    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
+    act: { cls: "PyDecideAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PyDecideAction.hpp", ports: [["script", "std::string"], ["label", "std::string"]],
       delegate: { lib: "libs/xpyembed", to: "mixr::xpyembed::decide()", cost: "~42 µs/decisão (medido, ver CLAUDE.md)", fail: "sem interpretador Python, script ausente/sem decide()/exceção -> FAILURE, o Fallback cai no Patrol nativo (degradação)" } },
   },
   patrolFallbackPy: {
     cond: null,
-    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
   },
   // -------- src/poc/onnx-policy (flight_tree_onnx.xml) --------
   onnxPolicy: {
     cond: null,
-    act: { cls: "OnnxPolicyAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/OnnxPolicyAction.hpp", ports: [["model", "std::string"], ["normalized", "bool"], ["label", "std::string"]],
+    act: { cls: "OnnxPolicyAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/OnnxPolicyAction.hpp", ports: [["model", "std::string"], ["normalized", "bool"], ["label", "std::string"]],
       delegate: { lib: "libs/xinfer", to: "mixr::xinfer::run()", cost: "~50,1 µs/inferência (medido, ver CLAUDE.md)", fail: "modelo ausente, forma diferente de 28->3 ou erro de inferência -> FAILURE, o Fallback cai no Patrol nativo (a \"rede de segurança\")" } },
   },
   patrolFallbackOnnx: {
     cond: null,
-    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
+    act: { cls: "PatrolAction", base: "BT::SyncActionNode", hd: "models/players/air/A-4/include/bt/nodes/PatrolAction.hpp", ports: [] },
   },
 };
 
@@ -3324,7 +3324,7 @@ function traceFlightPatrol() {
   p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     body: "Os três comandos que de fato chegam ao JSBSimModel (via ap/heading_hold, ap/altitude_hold, ap/airspeed_hold). Gotcha de unidade: setCommandedAltitudeFt() é em PÉS -- domain::FlightCommand.altitudeM fica em METROS até esta linha; a conversão (M2FT) acontece exatamente aqui, na fronteira.",
-    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso é código deste modelo (models/players/A-4)." });
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso é código deste modelo (models/players/air/A-4)." });
   p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
     title: "FlightAction::execute() -- xboard + log de transição",
     body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo pro dashboard/dump (dec=). O log só registra a TRANSIÇÃO (before.label != label) -- não a cada tick, senão seria uma linha a 50 Hz por avião." });
@@ -3443,7 +3443,7 @@ function traceFlightPython() {
   p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     body: "Os três comandos que de fato chegam ao JSBSimModel. O Autopilot não sabe (nem precisa saber) que o comando veio de um script Python -- recebe os MESMOS três números que receberia de qualquer outro ramo.",
-    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a chamada ao interpretador, é código deste modelo/SDK (models/players/A-4, libs/xpyembed)." });
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a chamada ao interpretador, é código deste modelo/SDK (models/players/air/A-4, libs/xpyembed)." });
   p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
     title: "FlightAction::execute() -- xboard + log de transição",
     body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo ('PY-PATROL') pro dashboard/dump (dec=) -- o MESMO ponto de atuação, comum aos dois agentes UBF, que a seção 'libs/xlog' do CLAUDE.md documenta como fonte das transições logadas." });
@@ -3491,7 +3491,7 @@ function traceFlightOnnx() {
   p({ node: "autopilot", src: "FlightAction::execute", hl: [27, 33], stage: 2, call: "setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     title: "autopilot->setCommandedHeadingD/AltitudeFt/VelocityKts(...)",
     body: "Os três comandos que de fato chegam ao JSBSimModel. O Autopilot não sabe (nem precisa saber) que o comando veio de uma rede neural -- recebe os MESMOS três números que receberia de qualquer outro ramo.",
-    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a inferência, é código deste modelo/SDK (models/players/A-4, libs/xinfer)." });
+    warn: "É o ÚNICO ponto desta cadeia inteira que é de fato código NATIVO do framework sendo comandado -- tudo antes disso, inclusive a inferência, é código deste modelo/SDK (models/players/air/A-4, libs/xinfer)." });
   p({ node: "action", src: "FlightAction::execute", hl: [42, 54], stage: 2, call: "xboard::setBehaviorLabel(...); LOG(INFO)",
     title: "FlightAction::execute() -- xboard + log de transição",
     body: "xboard::setBehaviorLabel()/bumpDecisionCount() publicam o rótulo ('ONNX') pro dashboard/dump (dec=) -- é o que faz bt=ONNX aparecer em 100% das linhas do dump desta poc (medido, ver CLAUDE.md)." });
@@ -4025,7 +4025,7 @@ function FlightDecision({ onOpenCatalog }) {
  * Curadoria manual sobre dado real -- MESMA pratica ja registrada acima para FLIGHT_SNIPPETS:
  * cada trecho abaixo foi conferido direto no fonte, arquivo e linha reais, nao gerado pelo
  * extrator automatico. Aqui por um motivo a mais que o de FLIGHT_SNIPPETS: esta trilha atravessa
- * DOIS plugins (models/players/A-4 e models/players/missile) e duas classes ABSTRATAS do MIXR
+ * DOIS plugins (models/players/air/A-4 e models/players/weapon/missile) e duas classes ABSTRATAS do MIXR
  * (AbstractWeapon, StoresMgr) que ficam de fora do Catalogo (ele so' cobre classe CONCRETA,
  * IMPLEMENT_SUBCLASS -- ver MOD_ORDER/Catalog abaixo) -- tools/generate_manual_catalog.py nao
  * tem como alcancar nada disso automaticamente.
@@ -4196,7 +4196,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "LaunchEnvelopeCondition::tick": {
-    file: "models/players/A-4/src/bt/nodes/LaunchEnvelopeCondition.cpp",
+    file: "models/players/air/A-4/src/bt/nodes/LaunchEnvelopeCondition.cpp",
     line: 15,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -4222,7 +4222,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "LaunchMissileAction::tick": {
-    file: "models/players/A-4/src/bt/nodes/LaunchMissileAction.cpp",
+    file: "models/players/air/A-4/src/bt/nodes/LaunchMissileAction.cpp",
     line: 14,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -4262,7 +4262,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "FlightAction::execute (lancamento)": {
-    file: "models/players/A-4/src/ubf/FlightAction.cpp",
+    file: "models/players/air/A-4/src/ubf/FlightAction.cpp",
     line: 291,
     lines: [
       "   // Lancamento de missil -- o UNICO ponto deste modelo que toca um objeto",
@@ -4272,7 +4272,7 @@ const MISSILE_SNIPPETS = {
       "   // baixo -- casa QUALQUER subclasse de Missile, nativa ou de terceiro) ->",
       "   // AbstractWeapon::setTargetPlayer(alvo, /*posTrkEnb=*/true) -> unref().",
       "   // 'posTrkEnb=true' e' o que liga isGuidanceEnabled() do lado do missil",
-      "   // (alem do proprio tof>=tsg) -- ver models/players/missile/docs/ARCHITECTURE.md.",
+      "   // (alem do proprio tof>=tsg) -- ver models/players/weapon/missile/docs/ARCHITECTURE.md.",
       "   if (launchRequested) {",
       "      launchRequested = false;   // um pedido so' vale para UM frame",
       "",
@@ -4571,7 +4571,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "GuidedMissile::atReleaseInit": {
-    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    file: "models/players/weapon/missile/src/xnative/GuidedMissile.cpp",
     line: 88,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -4660,7 +4660,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "GuidedMissile::weaponGuidance": {
-    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    file: "models/players/weapon/missile/src/xnative/GuidedMissile.cpp",
     line: 116,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -4737,7 +4737,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "GuidedMissile::weaponDynamics": {
-    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    file: "models/players/weapon/missile/src/xnative/GuidedMissile.cpp",
     line: 187,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -4980,7 +4980,7 @@ const MISSILE_SNIPPETS = {
     trunc: true,
   },
   "GuidedMissile::updateTC": {
-    file: "models/players/missile/src/xnative/GuidedMissile.cpp",
+    file: "models/players/weapon/missile/src/xnative/GuidedMissile.cpp",
     line: 65,
     lines: [
       "//------------------------------------------------------------------------------",
@@ -5063,7 +5063,7 @@ const MISSILE_SNIPPETS = {
     trunc: true,
   },
   "BtBehavior::configurePlans (launchEnvelope)": {
-    file: "models/players/A-4/src/ubf/BtBehavior.cpp",
+    file: "models/players/air/A-4/src/ubf/BtBehavior.cpp",
     line: 148,
     lines: [
       "   rtb.configure(0.0, 0.0, tune.arrivalRadiusM, tune.rtbAltitudeM, tune.rtbSpeedKts);",
@@ -5077,7 +5077,7 @@ const MISSILE_SNIPPETS = {
     trunc: true,
   },
   "domain::inLaunchEnvelope": {
-    file: "models/players/A-4/src/domain/LaunchPolicy.cpp",
+    file: "models/players/air/A-4/src/domain/LaunchPolicy.cpp",
     line: 1,
     lines: [
       "#include \"domain/LaunchPolicy.hpp\"",
@@ -5148,7 +5148,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "domain::proportionalNavigation": {
-    file: "models/players/missile/src/domain/Guidance.cpp",
+    file: "models/players/weapon/missile/src/domain/Guidance.cpp",
     line: 14,
     lines: [
       "GuidanceCommand proportionalNavigation(const Vec3& relPos, const Vec3& relVel, const GuidanceGains& gains)",
@@ -5185,7 +5185,7 @@ const MISSILE_SNIPPETS = {
     trunc: false,
   },
   "domain::proximityFuze": {
-    file: "models/players/missile/src/domain/Guidance.cpp",
+    file: "models/players/weapon/missile/src/domain/Guidance.cpp",
     line: 45,
     lines: [
       "FuzeOutcome proximityFuze(const Vec3& relPos, const Vec3& relVel, const double burstRangeM, const FuzeState& prev)",

@@ -1,4 +1,4 @@
-.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci open-docs open-presentation open-edl open-groot new-model rm-model loc
+.PHONY: clean configure sdk models sync-plugins build install package help test-models run-app run-app-monitor run-node run-node-monitor venv-rl test-rl venv-rl-training test test-asan test-ci clean-ci open-docs open-presentation open-edl open-groot terrain-coverage new-model rm-model loc
 
 .DEFAULT_GOAL := help
 
@@ -173,6 +173,13 @@ MODELOS_PRODUCAO := $(shell find models -mindepth 2 -name meson.build \
                        -exec grep -q '^project' {} \; -print \
                      | xargs -r -n1 dirname | sort -u)
 
+# O A-4 e' o UNICO modelo que 'test'/'test-asan' tocam pelo NOME (as suites do
+# core memory-controle-negativo/plugin-hotswap linkam DIRETO no build dele --
+# ver o alvo 'test' mais abaixo). Descoberto por FILTRO sobre MODELOS_PRODUCAO
+# (que ja e' agnostico a profundidade), nunca por caminho cravado -- mover
+# A-4 para outra subpasta de models/ nao quebra isto.
+A4_MODEL_DIR := $(filter %/A-4,$(MODELOS_PRODUCAO))
+
 models: sdk ## Compila os modelos e deposita em plugins/ -- nao toca dist/ (ver 'install').
 	@for d in $(MODELOS_PRODUCAO); do \
 	   $(MAKE) -C $$d install-core TESTS=true VARIANTS=true ASAN=$(ASAN) || exit 1; \
@@ -252,17 +259,17 @@ sync-plugins: ## Copia plugins/ -> dist/ -- so aqui um cenario enxerga o modelo.
 # Scaffold de modelo novo
 # ============================================
 
-new-model: ## Copia template/ num modelo novo. Uso: NAME= CATEGORY=player|system|others.
-	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
-	@test -n "$$CATEGORY" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; exit 1; }
+new-model: ## Copia template/ num modelo novo. Uso: NAME= CATEGORY=<subpasta-de-models/, ex: players/air>.
+	@test -n "$$NAME" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=players/air$(NC)"; exit 1; }
+	@test -n "$$CATEGORY" || { echo "$(RED)uso: make new-model NAME=meu_modelo CATEGORY=players/air$(NC)"; exit 1; }
 	scripts/models.sh --name "$$NAME" --category "$$CATEGORY"
 
 # Dois modos, e a diferenca importa: com NAME a pasta tem de existir (e dela que
 # saem os nomes dos artefatos); com SO voce remove um artefato orfao cuja fonte ja
 # nao existe mais. O script recusa se algum cenario ainda referenciar o modelo.
-rm-model: ## Remove um modelo. Uso: NAME= CATEGORY= | SO=libX.so [DATA=dir] [FORCE=1] [DRY_RUN=1].
+rm-model: ## Remove um modelo. Uso: NAME= CATEGORY=<subpasta-de-models/> | SO=libX.so [DATA=dir] [FORCE=1] [DRY_RUN=1].
 	@test -n "$$NAME" -o -n "$$SO" || { \
-	   echo "$(RED)uso: make rm-model NAME=meu_modelo CATEGORY=player|system|others$(NC)"; \
+	   echo "$(RED)uso: make rm-model NAME=meu_modelo CATEGORY=players/air$(NC)"; \
 	   echo "$(RED)  ou: make rm-model SO=libx9.so [DATA=x9]   (orfao legado, sem fonte)$(NC)"; \
 	   exit 1; }
 	@scripts/models.sh --remove \
@@ -292,7 +299,7 @@ package: ## Gera o pacote Conan deste projeto.
 # ============================================
 
 # Nao ha alvo de run/check por poc ou cenario particular -- use
-# './app -folder <pasta> -scenario <nome>' / '-f <arquivo>' direto, e
+# './app -folder <pasta> -scenario <nome>' / '-file <arquivo>' direto, e
 # 'tests/determinism/check_determinism.sh' para determinismo. 'make install'
 # continua sendo o pre-requisito (dlopen do modelo so em tempo de execucao).
 #
@@ -315,13 +322,15 @@ run-app: install ## Roda dist/bin/app (TUI) sobre ./sandbox.
 # players; um grep no .edl aqui duplicaria esse conhecimento e envelheceria
 # sozinho.
 #
-# SCENARIO= nao pode entrar por '-f <arquivo>' porque '-f' assume sempre a
-# frota falcon1..4 (app::adHocScenario()/falconFleet()), e nenhum cenario de
-# sandbox/ usa esses nomes (sao a4, a4_1..a4_8, c130). Por isso, quando o
-# arquivo esta no layout padrao '<raiz>/<cenario>/configs/<arquivo>', o alvo
-# traduz para '-folder <raiz> -scenario <cenario>' (frota descoberta em
-# runtime via app::discoverFleet()); fora desse layout, cai em '-f' e avisa
-# sobre a suposicao de frota em vez de falhar sem explicacao.
+# SCENARIO= nao pode entrar por '-file <arquivo>' porque '-file' nunca le o
+# arquivo pra descobrir quem sao os players -- so aponta pra ele e assume
+# sempre a frota falcon1..4 (app::adHocScenario()/falconFleet()), e nenhum
+# cenario de sandbox/ usa esses nomes (sao a4, a4_1..a4_8, c130). Por isso,
+# quando o arquivo esta no layout padrao '<raiz>/<cenario>/configs/<arquivo>',
+# o alvo traduz para '-folder <raiz> -scenario <cenario>' (que LE o cenario e
+# descobre a frota sozinho, via app::discoverFleet()); fora desse layout, cai
+# em '-file' e avisa sobre a suposicao de frota em vez de falhar sem
+# explicacao.
 run-app-monitor: install ## App + Monitor do Groot. Uso: PLAYER=a4_1 [SCENARIO=<arquivo>] [ARGS=...] [GROOT=0].
 	@test -n "$$PLAYER" || { echo "$(RED)uso: make run-app-monitor PLAYER=<nome-do-player> [SCENARIO=<arquivo.edl|.edl.in>]$(NC)"; exit 1; }
 	@if [ -n "$$SCENARIO" ] && [ ! -f "$$SCENARIO" ]; then echo "$(RED)run-app-monitor: cenario nao encontrado: $$SCENARIO$(NC)"; exit 1; fi
@@ -336,8 +345,8 @@ run-app-monitor: install ## App + Monitor do Groot. Uso: PLAYER=a4_1 [SCENARIO=<
 		NOME="$$(basename "$$(dirname "$$(dirname "$$SCENARIO")")")"; \
 		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app -folder "$$RAIZ" -scenario "$$NOME" $$ARGS; \
 	else \
-		echo "$(YELLOW)monitor:$(NC) $$SCENARIO fora do layout <raiz>/<cenario>/configs/ -- indo por '-f', que ASSUME a frota falcon1..4 (ver app::adHocScenario)."; \
-		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app -f "$$SCENARIO" $$ARGS; \
+		echo "$(YELLOW)monitor:$(NC) $$SCENARIO fora do layout <raiz>/<cenario>/configs/ -- indo por '-file', que ASSUME a frota falcon1..4 (ver app::adHocScenario)."; \
+		MIXR_GROOT_MONITOR="$$PLAYER" $(DEST_DIR)/bin/app -file "$$SCENARIO" $$ARGS; \
 	fi
 
 run-node: install ## Roda dist/bin/node (headless, so log). Uso: SCENARIO=<arquivo.edl>.
@@ -387,13 +396,16 @@ test-models: ## Roda a suite de CADA projeto de modelo descoberto.
 
 test: install ## Roda SO a suite do CORE (requer -Dtests=true; modelo: 'test-models').
 	@# Duas suites do core (memory-controle-negativo, plugin-hotswap) linkam DIRETO
-	@# em models/players/A-4/build/ -- libmodel_leak.so/libmodel_variant_{a,b}.so,
-	@# nunca instalados, so existem com '-Dvariants=true'. 'install' nao garante
-	@# isso ('sync-plugins' so copia .so, sem tocar o build do modelo), e um
-	@# 'make test-models' anterior pode ter reconfigurado de volta pro default
-	@# 'variants=false', derrubando os dois em silencio. Reassertar e barato: o
-	@# guard STALE de models/common.mk so reconfigura quando algo de fato mudou.
-	@$(MAKE) --no-print-directory -C models/players/A-4 build VARIANTS=true ASAN=$(ASAN)
+	@# no build/ do A-4 (achado por NOME em MODELOS_PRODUCAO, ver A4_MODEL_DIR
+	@# acima -- nao presume em qual subpasta de models/ ele mora hoje) --
+	@# libmodel_leak.so/libmodel_variant_{a,b}.so, nunca instalados, so existem
+	@# com '-Dvariants=true'. 'install' nao garante isso ('sync-plugins' so copia
+	@# .so, sem tocar o build do modelo), e um 'make test-models' anterior pode
+	@# ter reconfigurado de volta pro default 'variants=false', derrubando os
+	@# dois em silencio. Reassertar e barato: o guard STALE de models/common.mk
+	@# so reconfigura quando algo de fato mudou.
+	@test -n "$(A4_MODEL_DIR)" || { echo "$(RED)test: nenhum projeto de modelo chamado 'A-4' encontrado sob models/$(NC)"; exit 1; }
+	@$(MAKE) --no-print-directory -C $(A4_MODEL_DIR) build VARIANTS=true ASAN=$(ASAN)
 	@N=$$(meson introspect --tests $(BUILD_DIR) | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'); \
 	 [ "$$N" -ge 10 ] || { echo "$(RED)suite do core vazia ou incompleta ($$N) -- configure com -Dtests=true$(NC)"; exit 1; }
 	meson test -C $(BUILD_DIR) --print-errorlogs
@@ -419,8 +431,8 @@ test-asan: ## Roda a flight sob AddressSanitizer/LeakSanitizer (build separado, 
 	@LSAN_OPTIONS=suppressions=./tests/memory/asan.supp \
 		ASAN_OPTIONS=detect_leaks=1 \
 		$(BUILD_DIR)/app/src/app \
-		-f $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in \
-		-threads 1 -deterministic 500 > /dev/null; \
+		-file $(BUILD_DIR)/tests-fixtures/flight-intruder.edl.in \
+		-numTcThreads 1 -deterministic 500 > /dev/null; \
 		rc=$$?; \
 		echo "  revertendo build/ para nao-ASan ..."; \
 		revert_falhou=0; \
@@ -478,6 +490,13 @@ open-presentation: ## [TEMPORARIO] Abre docs/presentation/index.html (slide deck
 open-edl: ## Regenera e abre src/ui/edl-builder.html (editor visual de cenario).
 	node src/ui/scripts/build.js
 	@scripts/open_browser.sh src/ui/edl-builder.html
+
+# tools/plot_terrain_coverage.py e' standalone (nao depende de configure/build
+# nenhum) -- so' le shared/data/terrain/ e escreve em build/terrain-coverage/
+# (gitignorado). Um alvo so', mesmo padrao de 'open-docs'/'open-edl' (gerar E
+# abrir juntos) -- '--open' ja chama scripts/open_browser.sh por dentro.
+terrain-coverage: ## Varre shared/data/terrain, gera e abre o SVG de cobertura de elevacao SRTM.
+	python3 tools/plot_terrain_coverage.py --open
 
 # stdout e stderr do Groot precisam ser capturados (nao redirecionados para
 # /dev/null): e em stderr que aparece a unica pista de um crash ("Qt has

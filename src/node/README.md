@@ -18,6 +18,6 @@ Pré-requisito, uma vez: `make configure && make models && make install` (seçã
 
 Como todo binário deste repositório, precisa ser executado a partir da **raiz** do repositório
 (lê `configs/`/`data/`/`shared/` por caminho relativo). Aceita qualquer cenário `.edl`/`.edl.in`
-de `src/poc/**` — não há `-folder`/`-scenario`/`-threads`/`-deterministic`: é a leitura mais
+de `src/poc/**` — não há `-folder`/`-scenario`/`-numTcThreads`/`-numBgThreads`/`-deterministic`: é a leitura mais
 direta de "roda uma simulação passada por argumento", mesma convenção já usada por
 `dist/bin/edlcheck <arquivo>`. `Ctrl+C` (`SIGINT`) ou `SIGTERM` encerram de forma limpa.

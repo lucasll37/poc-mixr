@@ -12,7 +12,7 @@ namespace xtemplate {
 // Nao e encadeada no mixrFactory() do executavel do core -- o modelo e um
 // plugin, carregado com dlopen durante o parse do cenario. Quem a alcanca e
 // src/plugin.cpp, atraves do contrato de libs/xplugin/PluginAbi.hpp. Ver
-// models/players/A-4/include/xnative/factory.hpp para o mesmo desenho aplicado a
+// models/players/air/A-4/include/xnative/factory.hpp para o mesmo desenho aplicado a
 // um modelo com muito mais classes.
 base::Object* factory(const std::string& name);
 

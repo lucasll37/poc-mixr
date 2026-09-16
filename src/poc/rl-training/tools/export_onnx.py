@@ -2,7 +2,7 @@
 """Exporta uma politica treinada para .onnx, no contrato que o modelo espera.
 
 O fecho do ciclo treino -> producao. O que sai daqui e carregado por
-`bt/nodes/OnnxPolicyAction` (models/players/A-4) e roda DENTRO do frame de tempo
+`bt/nodes/OnnxPolicyAction` (models/players/air/A-4) e roda DENTRO do frame de tempo
 critico, sem Python nenhum.
 
 O CONTRATO, e por que ele nao esta escrito aqui:
@@ -25,7 +25,7 @@ exata usada como metadata (`xrlbridge.fields`) -- e' o que permite
 USO
 
     # gera um .onnx de pesos ALEATORIOS para exercitar a cadeia (sem treino)
-    python3 src/poc/rl-training/tools/export_onnx.py --random -o models/players/A-4/configs/policy_example.onnx
+    python3 src/poc/rl-training/tools/export_onnx.py --random -o models/players/air/A-4/configs/policy_example.onnx
 
     # exporta uma politica treinada com Stable-Baselines3
     python3 src/poc/rl-training/tools/export_onnx.py --sb3 src/poc/rl-training/runs/ppo_falcon1.zip -o politica.onnx

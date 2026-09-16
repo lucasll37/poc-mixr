@@ -12,7 +12,7 @@ namespace bt {
 //
 // Os nos nao tocam em nenhum objeto MIXR: eles so preenchem esta estrutura.
 // Quem a transforma em atuacao e ubf::ExampleAction. E o mesmo desenho de
-// bt_nodes::FlightDecision em models/players/A-4, reduzido ao minimo -- la a
+// bt_nodes::FlightDecision em models/players/air/A-4, reduzido ao minimo -- la a
 // struct carrega tambem um domain::FlightCommand (rumo/altitude/velocidade),
 // porque aquele modelo pilota de verdade; aqui so o rotulo, porque
 // ExampleAction nao comanda subsistema nenhum (ver o cabecalho dela para o

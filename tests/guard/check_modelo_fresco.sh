@@ -11,15 +11,19 @@
 # Conferir mtime nao e conhecer o fonte: e conhecer um CAMINHO, exatamente
 # como o 'searchPaths:' do cenario ja faz.
 #
-# Descobre os modelos por find sob QUALQUER subpasta de models/ (mesma
+# Descobre os modelos por find sob models/, a QUALQUER PROFUNDIDADE (mesma
 # filosofia de check_modelo_estrutura.sh/o 'MODELOS_PRODUCAO' do Makefile
-# raiz: um modelo novo em models/systems/ ou models/others/ ja entra na
-# checagem, sem editar este arquivo).
+# raiz: um modelo novo em qualquer subpasta de models/ ja entra na checagem,
+# sem editar este arquivo).
 #
-# A descoberta é por 'find' sob QUALQUER subpasta de models/ (mesma filosofia
-# de check_modelo_estrutura.sh) — um glob restrito a um nível fixo (ex.: só
-# models/players/*/) ficaria cego a um modelo nascido em models/systems/ ou
-# models/others/ (o destino real de 'make new-model CATEGORY=system|others').
+# A descoberta é por 'find' sob models/ inteiro, a qualquer nível (mesma
+# filosofia de check_modelo_estrutura.sh) — um glob restrito a um nível fixo
+# (ex.: só models/players/*/) ficaria cego assim que uma categoria ganhasse
+# subpastas próprias (foi o que aconteceu quando players/ ganhou
+# air/effect/ground/space/weapon/ — ver CLAUDE.md, "O MODELO é um plugin",
+# o Adendo da reorganização por taxonomia MIXR) ou a um modelo nascido em
+# outra subpasta de models/ (o destino de 'make new-model CATEGORY=<subpasta
+# relativa a models/>').
 #
 # 'template/' entra nesta checagem como qualquer modelo real, sem exceção:
 # 'make models' builda o template explicitamente e deposita libtemplate.so/
@@ -85,7 +89,7 @@ while IFS= read -r modelo; do
 
    # Os .so de VARIANTE de teste do core (ex.: libmodel_leak.so/
    # libmodel_variant_{a,b}.so de A-4, atrás da opção 'variants' — ver
-   # models/players/A-4/meson.build, consumidos por
+   # models/players/air/A-4/meson.build, consumidos por
    # 'memory-controle-negativo'/'plugin-hotswap' em tests/meson.build) nunca
    # são instalados — só existem direto em "$modelo/build/", fora do alcance
    # do loop acima (que só varre "$modelo/dist/..."). Cobre qualquer '.so'

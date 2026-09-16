@@ -7,12 +7,12 @@
 // apague este arquivo (src/mirror.cpp) e o bloco 'template_mirror_lib' de
 // meson.build/tests/meson.build ANTES de personalizar a copia. Um modelo
 // novo que continuasse exportando os 9 nomes abaixo colidiria de fabrica
-// com models/players/A-4 -- o mesmo incidente real ja documentado em
+// com models/players/air/A-4 -- o mesmo incidente real ja documentado em
 // CLAUDE.md ("ThreadTagProbe, A-4 x missile"). Ver docs/PRIMEIROS-PASSOS.md.
 // ==============================================================================
 //
 // Escrito SO contra o SDK publicado. Nao inclui, nao le e nao conhece nada
-// de models/players/A-4 -- so:
+// de models/players/air/A-4 -- so:
 //    dist/include/xplugin/PluginAbi.hpp   (o contrato de empacotamento)
 //    dist/include/xboard/Board.hpp        (o quadro de leitura)
 //    o cenario de producao                (que nomes e que slots usar)
@@ -202,7 +202,7 @@ BEGIN_SLOT_MAP(BtBehavior)
    // "slot not found" contra o mirror, ja que check_falcons_estrutura.sh nao
    // impede um slot usado so num falcon.
    ON_SLOT(19, setSlotIgnoraNumero,    base::Number)
-   // Slots 20-23: o slow roll (models/players/A-4/include/ubf/BtBehavior.hpp).
+   // Slots 20-23: o slow roll (models/players/air/A-4/include/ubf/BtBehavior.hpp).
    // Nenhum cenario de producao os declara hoje (so sandbox/A4-6DOF-RANDOM).
    // Este arquivo e' o espelho exato da tabela de producao -- uma
    // divergencia so se manifesta quando algum slot for promovido a producao
@@ -284,7 +284,7 @@ EMPTY_COPYDATA(ThreadTagProbe)
 
 //------------------------------------------------------------------------------
 // FlightAgentTC -- o agente de tempo critico. So precisa existir e nao
-// decidir errado: mesmas TRES armadilhas do framework que models/players/A-4/
+// decidir errado: mesmas TRES armadilhas do framework que models/players/air/A-4/
 // src/xnative/FlightAgentTC.cpp resolve (ver o cabecalho de lá para o
 // "porque" completo de cada uma), replicadas aqui em miniatura para nao
 // decidir 8x por frame por engano (4 fases x 2 caminhos, T/C e background).

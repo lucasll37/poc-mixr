@@ -1,0 +1,100 @@
+<!--
+  Arvore de DEMONSTRACAO de evasao disparada por RWR - NAO e a arvore de
+  producao (essa continua em flight_tree.xml, intocada).
+
+  Usada so' pelo cenario sandbox/AAA-A4-6DOF, no A-4 que entra no domo de
+  uma antiaerea (models/players/ground/AAA): mesma prioridade do flight_tree.xml,
+  com UM ramo novo entre "voltar pra base" e "evadir contato de radar
+  proprio" - reagir a um emissor hostil detectado passivamente pelo RWR
+  (Rwr/RwrTrkMgr nativos), depois de um atraso ESTOCASTICO que representa o
+  tempo de reacao do piloto (domain/EvasionReactionPlan.hpp, semeado via
+  libs/xrandom).
+
+  Prioridade (Fallback, de cima para baixo):
+    1) combustivel abaixo da reserva                     -> volta para a base
+    2) RWR mostra ameaca (apos o atraso de reacao vencer) -> quebra contra ela
+    3) contato de radar proprio (TWS) dentro do envelope  -> quebra E AVISA os outros
+    4) alerta recebido de outro caca                      -> vai apoiar no ponto avisado
+    5) caso contrario                                     -> patrulha
+
+  O item 2 NAO e "o RWR mostra alguem agora". RwrThreatDetectedCondition
+  consulta domain::ThreatPolicy::engaged() de uma SEGUNDA instancia
+  (rwrThreatPolicy(), independente da threatPolicy() do item 3) - e essa
+  instancia so' recebe contato quando domain::EvasionReactionPlan ja'
+  liberou a manobra (ver ubf::BtBehavior::feedRwrEvasion()). Antes do atraso
+  vencer, a aeronave continua patrulhando normalmente, como se nada tivesse
+  sido percebido - e' isso que representa o piloto ainda nao ter reagido.
+
+  LIMITACAO REAL, documentada de proposito (ver domain/WorldView.hpp): o RWR
+  nativo do MIXR detecta um EMISSOR hostil transmitindo (o radar de tiro da
+  antiaerea), nao um missil especificamente - nao ha como distinguir "estou
+  sendo varrido" de "um missil foi lancado contra mim" neste fork
+  (Track::isMissileWarning() esta morto, sem nenhum caller). O rotulo
+  RWR_EVADE/RWR_BREAK reflete essa ambiguidade honestamente.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="root">
+
+      <Sequence name="rtb_sequence">
+        <FuelLow margin="0.05"/>
+        <ReturnToBase/>
+      </Sequence>
+
+      <Sequence name="rwr_evade_sequence">
+        <RwrThreatDetected/>
+        <EvadeRwrThreat/>
+      </Sequence>
+
+      <Sequence name="engage_sequence">
+        <ContactDetected/>
+        <ReportAndEvade/>
+      </Sequence>
+
+      <Sequence name="support_sequence">
+        <AlertReceived/>
+        <SupportAlert/>
+      </Sequence>
+
+      <Patrol/>
+
+    </Fallback>
+  </BehaviorTree>
+  <TreeNodesModel>
+        <Action ID="OnnxPolicy">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
+            <input_port name="label" type="std::string" default="ONNX">rotulo no dump e no quadro</input_port>
+            <input_port name="normalized" type="bool" default="1">true: saida em [-1,1], desnormalizada aqui (export do SB3)</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx da politica</input_port>
+        </Action>
+        <Condition ID="OnnxScore">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
+            <input_port name="above" type="bool" default="1">true: SUCCESS se saida &gt; limiar; false: se saida &lt; limiar</input_port>
+            <input_port name="index" type="int" default="0">qual saida do modelo comparar</input_port>
+            <input_port name="threshold" type="double" default="0.500000">limiar de comparacao</input_port>
+            <input_port name="model" type="std::string">caminho do .onnx (entrada = tamanho do schema resolvido)</input_port>
+        </Condition>
+        <Action ID="SlowRoll">
+            <input_port name="label" type="std::string" default="ROLL">rotulo no dump e no quadro durante a manobra</input_port>
+        </Action>
+        <Action ID="SupportAlert"/>
+        <Action ID="EvadeRwrThreat"/>
+        <Condition ID="RwrThreatDetected"/>
+        <Action ID="ReportAndEvade"/>
+        <Action ID="Navigate"/>
+        <Action ID="LaunchMissile"/>
+        <Condition ID="LaunchEnvelope"/>
+        <Action ID="ReturnToBase"/>
+        <Action ID="PyDecide">
+            <input_port name="schema" type="std::string" default="classic28">campos da observacao, e ordem: 'classic28' (default), 'all', ou lista ad-hoc separada por espaco</input_port>
+            <input_port name="label" type="std::string" default="PY">rotulo no dump e no quadro</input_port>
+            <input_port name="script" type="std::string">caminho do .py que define decide(obs)</input_port>
+        </Action>
+        <Condition ID="FuelLow">
+            <input_port name="margin" type="double" default="0.000000">margem somada a reserva de combustivel (fracao 0..1)</input_port>
+        </Condition>
+        <Condition ID="ContactDetected"/>
+        <Action ID="Patrol"/>
+        <Condition ID="AlertReceived"/>
+    </TreeNodesModel>
+</root>

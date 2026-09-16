@@ -20,7 +20,7 @@ namespace bt {
 // contra BehaviorTree.CPP + domain/ apenas, e tests/tree/ carrega a arvore
 // de PRODUCAO contra um contexto falso, sem simulacao nenhuma.
 //
-// E o mesmo desenho de bt_nodes::DecisionContext em models/players/A-4 (nove
+// E o mesmo desenho de bt_nodes::DecisionContext em models/players/air/A-4 (nove
 // getters la, quatro aqui). Acrescente um metodo por grandeza nova que um no
 // seu precise ler -- ExampleBehavior o implementa sem escrever metodo novo,
 // porque as assinaturas ja sao as dos membros dele.

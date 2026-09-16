@@ -7,7 +7,7 @@
 # contrato (xplugin/PluginAbi.hpp) e as .so de fronteira (libxboard, libxlog,
 # libxtrack, ...). E POR ISSO que ele e um project() proprio e nao um
 # subdir(): o `meson setup` do core tem que conseguir rodar SEM os fontes
-# daqui existirem -- mesma razao documentada em models/players/A-4/meson.build.
+# daqui existirem -- mesma razao documentada em models/players/air/A-4/meson.build.
 #
 # NAO e um projeto de PRODUCAO -- ele nunca entra no `models:` do Makefile
 # raiz por MODELOS_PRODUCAO (ver ../../Makefile, que o instala a parte)
@@ -66,7 +66,7 @@ rpath_link_args = ['-Wl,--disable-new-dtags']
 
 # A impressao digital do build, gravada no descritor e comparada na carga.
 # Calculada AQUI, e nao herdada do .pc do SDK, de proposito -- ver o
-# comentario identico em models/players/A-4/meson.build para o "porque".
+# comentario identico em models/players/air/A-4/meson.build para o "porque".
 plugin_version_args = [
     '-DMIXR_PLUGIN_PKG_VERSION="' + mixr_dep.version() + '"',
     '-DMIXR_PLUGIN_BUILD_ID="' + cpp.get_id() + ' ' + cpp.version() + '"',
@@ -135,7 +135,7 @@ template_lib = shared_module('template',
 # entrega completa: o slot 'treeFile:' do ( ExampleBehavior ) nomeia este
 # XML, e ele e' do MODELO, nao do cenario -- os nos que ele referencia so
 # existem dentro desta biblioteca. Mesma decisao (e mesmo destino) de
-# models/players/A-4 com flight_tree.xml.
+# models/players/air/A-4 com flight_tree.xml.
 install_data('configs/example_tree.xml',
     install_dir : get_option('datadir') / 'mixr-plugins' / 'template')
 
@@ -150,7 +150,7 @@ install_data('configs/example_tree.xml',
 # contrato de plugin basta" contra o cenario de PRODUCAO deste repo --
 # herdou esse papel de models/players/fixtures/stub (removido).
 #
-# Exporta os MESMOS 9 nomes de fabrica que models/players/A-4 exporta, de
+# Exporta os MESMOS 9 nomes de fabrica que models/players/air/A-4 exporta, de
 # proposito -- e o que 'plugin-modelo-estranho'/'plugin-deposito-terceiro'
 # precisam para trocar so o 'file:' do cenario de producao e ver a
 # aplicacao inteira subir com um modelo que nunca viu.

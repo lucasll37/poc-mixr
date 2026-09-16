@@ -1,7 +1,7 @@
 #pragma once
 
 // namespace ANINHADO em mixr::models::xtemplate -- nao um "domain" solto no
-// escopo global (que e o que models/players/A-4 faz, por ter chegado primeiro e ja
+// escopo global (que e o que models/players/air/A-4 faz, por ter chegado primeiro e ja
 // estar documentado em dezenas de lugares daquele jeito). Isto e deliberado,
 // nao capricho de estilo: um cenario pode carregar MAIS DE UM plugin no
 // mesmo processo (este modelo ao lado de outro, cada um com sua propria
@@ -26,7 +26,7 @@ namespace domain {
 // precisa mais cedo ou mais tarde: "engajar quando o valor sobe, mas so
 // desengajar quando ele cai BEM abaixo" evita alternar a cada amostra
 // quando o sinal de entrada oscila perto de UM limiar so. Ver
-// domain::ThreatPolicy/PatrolPlan em models/players/A-4 para versoes de
+// domain::ThreatPolicy/PatrolPlan em models/players/air/A-4 para versoes de
 // producao da mesma ideia, e libs/xmsg/rules/Schmitt.hpp para outra.
 //
 // onValue engaja (a partir de onValue, inclusive); offValue desengaja

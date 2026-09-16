@@ -45,4 +45,10 @@ using TerrainSampler = std::function<bool(double northM, double eastM, double& e
 // diretorio.
 TerrainSampler makeTerrainSampler(mixr::models::WorldModel* worldModel);
 
+// Encerra e ESPERA a thread de carga em background que makeTerrainSampler()
+// pode ter criado (ver o "porque" no cabecalho de TerrainQuery.cpp) --
+// chamado UMA vez, no fim do processo interativo (main.cpp), antes de
+// main() retornar. No-op se a thread nunca foi criada.
+void shutdownTerrainLoader();
+
 } // namespace app

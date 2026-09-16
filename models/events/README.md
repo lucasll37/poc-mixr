@@ -78,7 +78,7 @@ primitiva de um jeito reaproveitável, com dois passos deliberadamente desacopla
 
 | forma | quando usar | exemplo |
 |---|---|---|
-| **(a) Subsistema nativo** — reaproveitar um hook já exposto por uma classe do framework (`onDatalinkMessageEvent`, `shutdownNotification`, ...) | quando o alcance/lado/canal que o subsistema já filtra importa (rádio com `radioName`/`maxRange`, por exemplo) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (`models/players/A-4`) — reage a `DATALINK_MESSAGE`, só alcança quem tem `Datalink` |
+| **(a) Subsistema nativo** — reaproveitar um hook já exposto por uma classe do framework (`onDatalinkMessageEvent`, `shutdownNotification`, ...) | quando o alcance/lado/canal que o subsistema já filtra importa (rádio com `radioName`/`maxRange`, por exemplo) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (`models/players/air/A-4`) — reage a `DATALINK_MESSAGE`, só alcança quem tem `Datalink` |
 | **(b) Broadcast direto** — token próprio (`USER_EVENTS + N`) entregue com `player->event(TOKEN, obj)` varrendo `getWorldModel()->getPlayers()` | quando o efeito é geral/físico e não deve depender de o receptor ter um subsistema específico (explosão, colisão, qualquer "efeito de área") | `events::EID_ALERT`, entregue por `AlertDatalink::broadcastAlert()` — o caminho que alcançaria um player **sem Datalink** reagindo ao mesmo evento (nenhum consumidor desse tipo existe hoje neste repositório, mas o mecanismo já foi provado rodando com o extinto modelo `missile`) |
 
 ## Por que o payload mora aqui, numa `shared_library()`, e não no plugin que o define primeiro
@@ -86,8 +86,8 @@ primitiva de um jeito reaproveitável, com dois passos deliberadamente desacopla
 Um `dynamic_cast` de um `base::Object*` recebido de **outro** `.so` (carregado por `dlopen`) só é
 seguro se a classe do payload vier de uma biblioteca **linkada por todos os lados envolvidos** —
 do contrário cada plugin compilado com `gnu_symbol_visibility: hidden` enxerga seu próprio
-`type_info` para o "mesmo" tipo, e o `dynamic_cast` falha silenciosamente. É o mesmo motivo, já
-documentado no `CLAUDE.md`, de `RLBridgeBehavior` ter ficado **dentro** de `models/players/A-4`
+`type_info` para o "mesmo" tipo, e o `dynamic_cast` falha silenciosamente. É o mesmo motivo de
+`RLBridgeBehavior` ter ficado **dentro** de `models/players/air/A-4`
 em vez de virar um plugin próprio. A saída aqui é a oposta: em vez de manter o payload preso a um
 plugin, ele mora numa `shared_library()` de verdade (esta pasta), publicada pelo SDK
 (`dist/lib/`), que **qualquer** modelo pode linkar via `sdk_dep` sem precisar de uma dependência
@@ -106,25 +106,25 @@ um índice de leitura rápida, para não colidir números ao adicionar um evento
 
 | token | valor | payload (arquivo) | emitido por | tratado por |
 |---|---|---|---|---|
-| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/players/A-4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) |
-| `events::EID_PING` | `USER_EVENTS + 2` | `events::PingMessage` ([payloads/EID_PING/PingMessage.hpp](payloads/EID_PING/PingMessage.hpp)) | `xBeacon::Beacon::broadcastPing()` (`models/players/Beacon`) | `xBeacon::Beacon::onPingEvent()` — a MESMA classe, caminho (b) |
+| `events::EID_ALERT` | `USER_EVENTS + 1` | `events::TacticalAlert` ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) | `xnative::AlertDatalink::broadcastAlert()` (`models/players/air/A-4`) | `xnative::AlertDatalink::onDatalinkMessageEvent()` (via `DATALINK_MESSAGE`, caminho a) |
+| `events::EID_PING` | `USER_EVENTS + 2` | `events::PingMessage` ([payloads/EID_PING/PingMessage.hpp](payloads/EID_PING/PingMessage.hpp)) | `xBeacon::Beacon::broadcastPing()` (`models/others/Beacon`) | `xBeacon::Beacon::onPingEvent()` — a MESMA classe, caminho (b) |
 
 Próximo token livre: `USER_EVENTS + 3`.
 
 ## Caso de referência: o `TacticalAlert` generalizado
 
 `events::TacticalAlert` já existia como `xnative::TacticalAlert`, usado só dentro de
-`models/players/A-4` (`AlertDatalink` emite e trata, via o subsistema `Datalink` nativo). Ele foi
+`models/players/air/A-4` (`AlertDatalink` emite e trata, via o subsistema `Datalink` nativo). Ele foi
 promovido para cá — mesma classe, mesmo nome de fábrica `"TacticalAlert"`, nenhuma mudança em
 `provides:` de nenhum cenário — e ganhou uma segunda via de entrega (`EID_ALERT`/broadcast
 direto) além da original (`DATALINK_MESSAGE`/`Datalink`). Isso já provou as duas metades da
 convenção ao mesmo tempo, rodando com o extinto modelo `missile`: (1) um payload definido uma vez
 pode ser tratado por mais de um caminho de despacho, e (2) um handler pode ser escrito num plugin
-sem nenhuma relação de compilação com quem define ou emite o evento (`models/players/A-4`).
+sem nenhuma relação de compilação com quem define ou emite o evento (`models/players/air/A-4`).
 
 ## Segundo caso de referência: o `PingMessage`, emissor e receptor na MESMA classe
 
-`events::EID_PING`/`events::PingMessage` (`models/players/Beacon`) é o segundo evento desta pasta,
+`events::EID_PING`/`events::PingMessage` (`models/others/Beacon`) é o segundo evento desta pasta,
 e cobre uma combinação que `TacticalAlert` não cobre sozinha: uma classe que **emite e trata** o
 próprio evento, sem depender de nenhum subsistema nativo (`Datalink`, `RfSensor`, ...) — só
 `Component::event()`/caminho (b) direto. `Beacon` (`mixr::models::xBeacon::Beacon`) herda
@@ -133,7 +133,7 @@ para isso: cada instância dispara um `PingMessage` periódico para os demais `B
 ativos e, no mesmo `event()` sobrescrito, processa o `PingMessage` que os outros mandam — a prova
 de que "definir o evento" e "tratar o evento" (as duas seções acima) são passos genuinamente
 independentes, mesmo quando o mesmo autor escreve os dois ao mesmo tempo. Ver
-[`../players/Beacon/README.md`](../players/Beacon/README.md) e o cenário de demonstração em
+[`../others/Beacon/README.md`](../others/Beacon/README.md) e o cenário de demonstração em
 [`../../../src/poc/my-event/`](../../../src/poc/my-event/).
 
 ## Um caso futuro conhecido, ainda não implementado

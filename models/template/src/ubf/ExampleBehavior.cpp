@@ -23,7 +23,7 @@ namespace {
 // se o agente do UBF decidir na fase 3 do frame de tempo critico (que e' o
 // caso de ( FlightAgentTC ), o agente que os cenarios deste repositorio
 // usam). Serializar so' a construcao e' barato: acontece uma vez por
-// entidade, nunca por tick. Mesmo padrao de models/players/A-4.
+// entidade, nunca por tick. Mesmo padrao de models/players/air/A-4.
 std::mutex g_treeBuildMutex;
 
 } // namespace
@@ -107,7 +107,7 @@ void ExampleBehavior::buildTree()
    // "ID already registered" pra um ID ja presente, entao um segundo
    // buildTree() sobre a MESMA factory (possivel depois de reset()) morreria
    // no primeiro no -- fora do try/catch abaixo, que so' cobre a leitura do
-   // arquivo. Mesmo achado ja registrado em models/players/A-4.
+   // arquivo. Mesmo achado ja registrado em models/players/air/A-4.
    btFactory_ = BT::BehaviorTreeFactory();
    bt::registerNodes(btFactory_, context);
 

@@ -126,14 +126,25 @@ void ensureTerrainTile(const std::string& dir, const std::string& baseName)
 // Metade dos nucleos, teto hardware_concurrency()-1 -- mesma formula ja usada
 // no restante do repositorio para o numero automatico de threads de tempo
 // critico (ver app::resolveTcThreadCount(), em app/src/app/
-// ScenarioTemplate.cpp). Aqui nao ha '-threads' para sobrepujar: 'node' roda
-// sempre no default.
+// ScenarioTemplate.cpp). Aqui nao ha '-numTcThreads' para sobrepujar: 'node'
+// roda sempre no default.
 unsigned int resolveTcThreadCount()
 {
    const unsigned int hw{std::thread::hardware_concurrency()};
    const unsigned int maxByCpu{(hw > 1) ? (hw - 1) : 1};
    const unsigned int metade{hw / 2};
    return std::max(1u, std::min(metade, maxByCpu));
+}
+
+// Espelho de resolveTcThreadCount(), para o slot 'numBgThreads' -- mesma
+// formula de app::resolveBgThreadCount() (ScenarioTemplate.cpp): por
+// padrao, 2 threads (nao METADE dos nucleos, ao contrario do T/C acima),
+// mesmo teto [1, nucleos-1]. Tambem sem '-numBgThreads' para sobrepujar.
+unsigned int resolveBgThreadCount()
+{
+   const unsigned int hw{std::thread::hardware_concurrency()};
+   const unsigned int maxByCpu{(hw > 1) ? (hw - 1) : 1};
+   return std::max(1u, std::min(2u, maxByCpu));
 }
 
 //------------------------------------------------------------------------------
@@ -222,10 +233,20 @@ void printFolderNamesAndExit(const std::vector<FolderScenarioEntry>& entradas, c
    std::exit(EXIT_FAILURE);
 }
 
-// .edl.in -> .edl. Confirmado por varredura de todo src/poc/**: o UNICO
-// token usado pelos cenarios de producao e @NUM_TC_THREADS@ -- por isso so
-// uma troca de string, sem a maquina generica de @include:@/tokens
-// arbitrarios (nenhum cenario que este binario roda usa isso).
+void replaceAllTokens(std::string& text, const std::string& token, const std::string& value)
+{
+   std::string::size_type pos{0};
+   while ((pos = text.find(token, pos)) != std::string::npos) {
+      text.replace(pos, token.size(), value);
+      pos += value.size();
+   }
+}
+
+// .edl.in -> .edl. Confirmado por varredura de todo src/poc/**: os UNICOS
+// tokens usados pelos cenarios de producao sao @NUM_TC_THREADS@ e
+// @NUM_BG_THREADS@ -- por isso so duas trocas de string, sem a maquina
+// generica de @include:@/tokens arbitrarios (nenhum cenario que este
+// binario roda usa isso).
 std::string generateScenario(const std::string& templatePath, const std::string& outPath)
 {
    std::ifstream in{templatePath};
@@ -237,13 +258,8 @@ std::string generateScenario(const std::string& templatePath, const std::string&
    ss << in.rdbuf();
    std::string content{ss.str()};
 
-   const std::string token{"@NUM_TC_THREADS@"};
-   const std::string value{std::to_string(resolveTcThreadCount())};
-   std::string::size_type pos{0};
-   while ((pos = content.find(token, pos)) != std::string::npos) {
-      content.replace(pos, token.size(), value);
-      pos += value.size();
-   }
+   replaceAllTokens(content, "@NUM_TC_THREADS@", std::to_string(resolveTcThreadCount()));
+   replaceAllTokens(content, "@NUM_BG_THREADS@", std::to_string(resolveBgThreadCount()));
 
    std::ofstream out{outPath};
    out << content;

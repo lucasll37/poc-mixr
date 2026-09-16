@@ -24,7 +24,7 @@ namespace events {
 //
 // Factory name: PingMessage
 //
-// Consumido por models/players/Beacon (src/plugin.cpp): toda instancia de
+// Consumido por models/others/Beacon (src/plugin.cpp): toda instancia de
 // ( Beacon ) emite este payload periodicamente para os DEMAIS players locais
 // ativos (broadcast direto, Component::event() sobre getPlayers() -- ver
 // events/README.md secao "As duas formas de despacho"), e toda instancia

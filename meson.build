@@ -40,7 +40,7 @@ protobuf_dep = dependency('protobuf', method: 'pkg-config', required: true)
 mixr_libdir = mixr_dep.get_variable(pkgconfig: 'libdir')
 
 # NAO ha behavior_tree_dep nem jsbsim_dep aqui, e a ausencia e deliberada:
-# depois que o modelo saiu para models/players/A-4 (projeto meson proprio),
+# depois que o modelo saiu para models/players/air/A-4 (projeto meson proprio),
 # NENHUM alvo deste projeto linka BehaviorTree.CPP ou JSBSim. Quem precisa
 # delas e o modelo, e ele declara as suas.
 #
@@ -91,6 +91,12 @@ subdir('./libs/xclock')
 # subprojetos, que consomem xjoystick_dep.
 subdir('./libs/xjoystick')
 
+# Terreno multi-tile (SRTM), com carga sob demanda e cache LRU -- alternativa
+# ao SrtmHgtFile nativo (um tile so) para cenarios cuja area de voo excede
+# 1x1 grau. Depois de xlog (consome xlog_dep) e antes dos subprojetos, que
+# consomem xterrain_dep.
+subdir('./libs/xterrain')
+
 # O quadro de leitura entre o core e o modelo. E a UNICA peca que o executavel
 # e o plugin de modelo compartilham -- por isso e shared_library() de verdade,
 # e nao static como as demais de libs/ (ver libs/xboard/Board.hpp).
@@ -110,12 +116,12 @@ subdir('./libs/xmsg')
 subdir('./libs/xplugin')
 
 # A ponte de comando/observacao entre o core de RL (./rl) e RLBridgeBehavior
-# (models/players/A-4). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
+# (models/players/air/A-4). Tambem antes do SDK, pelo mesmo motivo de xboard/xtrack:
 # precisa existir antes de pkg.generate() listar as libs do SDK.
 subdir('./libs/xrlbridge')
 
 # Inferencia ONNX -- o motor, contido numa .so so (o ORT sao ~1,9 GB de .a em
-# Debug e models/players/A-4 gera QUATRO artefatos do mesmo fonte). Tambem antes do
+# Debug e models/players/air/A-4 gera QUATRO artefatos do mesmo fonte). Tambem antes do
 # SDK, pelo mesmo motivo de xboard/xtrack/xrlbridge.
 subdir('./libs/xinfer')
 

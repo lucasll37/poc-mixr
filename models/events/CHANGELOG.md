@@ -1,7 +1,7 @@
 # Changelog — `events/`
 
 Formato adaptado de [Keep a Changelog](https://keepachangelog.com/pt-br/1.1.0/) — com uma
-diferença do `CHANGELOG.md` de cada projeto de modelo (`models/players/A-4`, `models/players/missile`,
+diferença do `CHANGELOG.md` de cada projeto de modelo (`models/players/air/A-4`, `models/players/weapon/missile`,
 `models/players/fixtures/stub`): **não há número de versão aqui.** `events/` não é um projeto Meson
 próprio — não tem `project()`, se junta ao `poc-mixr` da raiz via `subdir('./events')` — então não
 existe um `project()` cuja versão datar as entradas. A unidade que importa aqui é o **evento**:
@@ -9,7 +9,7 @@ cada linha abaixo é um token/payload adicionado ou mudado, não um número de r
 
 **As datas saem da data de COMMIT, nunca da mensagem** — todo commit deste repositório se chama
 `up`. Mesma convenção já usada nos `CHANGELOG.md` de `models/*` (ver, por exemplo,
-[`models/players/missile/CHANGELOG.md`](../players/missile/CHANGELOG.md)).
+[`models/players/weapon/missile/CHANGELOG.md`](../players/weapon/missile/CHANGELOG.md)).
 
 Ver [README.md](README.md) para a convenção completa (o que é um evento, como despachar, por que
 o payload mora numa `shared_library()`) e [EventTokens.hpp](EventTokens.hpp) para o registro de
@@ -23,15 +23,15 @@ tokens em código — este arquivo é a HISTÓRIA de como ele cresceu, não subs
 
 - **`events::EID_PING` / `events::PingMessage`** ([payloads/EID_PING/PingMessage.hpp](payloads/EID_PING/PingMessage.hpp)) —
   segundo evento da convenção, e o primeiro em que emissor e receptor são a MESMA classe
-  (`mixr::models::xBeacon::Beacon`, `models/players/Beacon` — modelo novo, criado só para exercitar
+  (`mixr::models::xBeacon::Beacon`, `models/others/Beacon` — modelo novo, criado só para exercitar
   esta convenção, sem nenhum subsistema nativo por trás). Broadcast direto (caminho b), payload com
   campos de verdade (remetente, sequência, mensagem) — não os dois `uint32` crus de um
   `REID_MARKER`. Cenário de demonstração: `src/poc/my-event/`. (2026-09-13)
 - **`events::EID_ALERT` / `events::TacticalAlert`** ([payloads/EID_ALERT/TacticalAlert.hpp](payloads/EID_ALERT/TacticalAlert.hpp)) —
   primeiro evento da convenção, generalizando o `xnative::TacticalAlert` que já existia só dentro
-  de `models/players/A-4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
+  de `models/players/air/A-4`. Ganhou uma segunda via de entrega (broadcast direto por `EID_ALERT`, além do
   `sendMessage()` nativo do `Datalink`) para alcançar um player **sem** Datalink —
-  `xmissile::GuidedMissile` (`models/players/missile`) é o primeiro handler escrito num plugin diferente
+  `xmissile::GuidedMissile` (`models/players/weapon/missile`) é o primeiro handler escrito num plugin diferente
   do que emite. Mesma classe, mesmo nome de fábrica `"TacticalAlert"` de antes — nenhuma mudança
   em `provides:` de nenhum cenário. (2026-09-03)
 - Este `CHANGELOG.md` e o `README.md` da convenção. (2026-09-03)

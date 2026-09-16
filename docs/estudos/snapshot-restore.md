@@ -85,7 +85,7 @@ reset **degrada o primeiro passo de integração a Euler**, e a diferença entra
 A ordem de grandeza desse erro, estimada, é `0,5·ddot·dt²` — com `dt = 0,02 s` e uma derivada de
 aceleração da ordem de 1 m/s³, algo como 2·10⁻⁴ m/s, que integrado dá ~10⁻⁵ m de posição.
 
-Vale notar onde esse número já aparece: o `CLAUDE.md` registra que chamar `reset()` repetidamente
+Vale notar onde esse número já aparece: já é sabido que chamar `reset()` repetidamente
 no `src/rl` deixa uma deriva de ~1e-5 m em `eastM` e ~1e-6 em `fuelFraction` por reset
 (`src/rl/bindings/NativeSimulation.hpp:50-58`). A causa **dominante** dessa deriva, porém, é outra
 e é pior — ver §2.6.
@@ -233,11 +233,11 @@ A última linha é a que mais importa: **o replay não encosta no JSBSim**.
 ### 3.4 O único PRNG do repositório já é reproduzível
 
 Há exatamente um gerador de números aleatórios em todo o projeto: o `std::mt19937_64` de
-`domain::PatrolPlan` (`models/players/A-4/include/domain/PatrolPlan.hpp:79`). O MIXR não tem PRNG
+`domain::PatrolPlan` (`models/players/air/A-4/include/domain/PatrolPlan.hpp:79`). O MIXR não tem PRNG
 nativo.
 
 E a semente dele já é derivada do **nome** do player, nunca da ordem de descoberta
-(`models/players/A-4/src/ubf/BtBehavior.cpp:96-118`, via `libs/xrandom/DeterministicRng.hpp`):
+(`models/players/air/A-4/src/ubf/BtBehavior.cpp:96-118`, via `libs/xrandom/DeterministicRng.hpp`):
 
 ```
 instanceSeed = deriveSeed(patrolMasterSeed, fnv1a64(player->getName()))
@@ -431,7 +431,7 @@ propriedade que a arquitetura não tem.
 
 ### Custo de retomada
 
-Com o `~200×` que o `CLAUDE.md` registra para o modo `-deterministic` — **número herdado, não medido
+Com o `~200×` já registrado para o modo `-deterministic` — **número herdado, não medido
 neste estudo** — a aritmética dá:
 
 | simulação | retomada (estimativa) |
@@ -493,7 +493,7 @@ Dois achados que não são sobre save/restore, mas apareceram na investigação 
 
 1. **A deriva de `reset()` do `src/rl` tem causa identificada** (§2.6): `RunIC()` não chama
    `ResetToInitialConditions()`, logo `FGPropulsion::InitModel()` nunca roda e **o combustível não é
-   reabastecido entre resets**. O `CLAUDE.md` registra o sintoma (~1e-6 em `fuelFraction`, ~1e-5 m
+   reabastecido entre resets**. O sintoma já era conhecido (~1e-6 em `fuelFraction`, ~1e-5 m
    em `eastM` por reset) sem a causa; aqui ela está, e é acumulativa por construção.
 2. **`Simulation::getExecCounter()` é público** (`Simulation.hpp:186`) e dá um índice **absoluto**
    de fases de tempo real desde a partida — ao contrário de `cycle()`/`frame()`/`phase()`
@@ -849,21 +849,22 @@ ordem documentada
   tempo das mensagens; DIS carrega tempo de parede/exec para os PDUs de saída
   (`interop/dis/{Nib_entity_state,Nib,EmissionPduHandler,NetIO}.cpp`). Nenhum desses caminhos
   entra em `DynamicsModel::dynamics(const double dt)` (`DynamicsModel.hpp:42` — recebe só um
-  delta, nunca tempo absoluto), e nenhum arquivo de `models/players/A-4/{include,src}` referencia
+  delta, nunca tempo absoluto), e nenhum arquivo de `models/players/air/A-4/{include,src}` referencia
   `getExecTimeSec`/`getSimTimeOfDay`/`execTime`/`simTime`. Ou seja: um restore sem `execTime`
   reproduz a TRAJETÓRIA byte-idêntica; só o timestamp do replay no Tacview/log/DIS ficaria
   descontínuo no ponto de retomada — degradação cosmética, não física. **Ressalva que precisa
   ficar escrita**: isto vale para o que o modelo A-4 exercita HOJE, não para o MIXR como um todo —
   o próprio framework tem um consumidor de DECISÃO que lê `getSimTimeOfDay()` como gatilho de
-  temporizador (`Actions.cpp`, a ação de liberação de chaff/decoy — já citada na seção "Terreno"
-  deste `CLAUDE.md` por outro motivo), simplesmente não usado por nenhum código do A-4 hoje. Um
+  temporizador (`Actions.cpp`, a ação de liberação de chaff/decoy — já citada em
+  `tests/fixtures/README.md` por outro motivo: conta o `interval` em relógio de parede, não em
+  tempo simulado), simplesmente não usado por nenhum código do A-4 hoje. Um
   modelo futuro que reusasse essa classe nativa reintroduziria a dependência.
 - **§2.4 (`sealed_`)**, **§5.1 (tempo real contra passo fixo)** e **§2.5 (estado do
   interpretador Python via `xpyembed`)** são inteiramente independentes de qual `DynamicsModel`
   está em uso — nenhum se resolve trocando de modelo de dinâmica. Trocar de modelo não muda a taxa
   do laço de fundo (10 Hz) contra a thread de tempo crítico (50 Hz) que sustenta §5.1, não cria um
   segundo `Station` no mesmo processo, e não serializa objetos Python arbitrários.
-- **Estado próprio do domínio** (`models/players/A-4/src/domain/`) — `domain::ThreatPolicy`
+- **Estado próprio do domínio** (`models/players/air/A-4/src/domain/`) — `domain::ThreatPolicy`
   (`limits_`, `cmd_`, `engaged_`/`contactLive_`, `holdTimer_`) e os timers de `PatrolPlan`/
   `AerobaticPlan`/`EvasionReactionPlan`/`RtbPlan` são todos POD, sem opacidade de framework
   nenhuma — trivialmente serializáveis por um código próprio deste repositório. A ÚNICA lacuna
@@ -913,8 +914,8 @@ que o CI compila: idêntico nos arquivos que sustentam o argumento.
 **O que não foi feito, e é importante saber.** Nenhum binário foi executado — o estudo é de leitura
 de fonte. Em particular:
 
-- **o `~200×` do modo `-deterministic` é número herdado** do `CLAUDE.md`, e os tempos de retomada
-  de §6 são aritmética sobre ele, não medição;
+- **o `~200×` do modo `-deterministic` é número herdado** (não medido neste estudo), e os tempos
+  de retomada de §6 são aritmética sobre ele, não medição;
 - **reprodutibilidade entre máquinas diferentes não foi confirmada** (§5.4). Há indícios a favor —
   o `meson.build` raiz não passa `-ffast-math` nem `-march=native`, e não se encontrou despacho
   SIMD em runtime — mas ausência de evidência não é prova;

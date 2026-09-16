@@ -338,7 +338,18 @@ void panMap(MapViewState& view, const double screenRightM, const double screenUp
 void zoomMap(MapViewState& view, const bool zoomIn)
 {
    view.metersPerCell *= zoomIn ? (1.0 / kMapZoomStep) : kMapZoomStep;
-   view.metersPerCell = std::clamp(view.metersPerCell, kMapMinMetersPerCell, kMapMaxMetersPerCell);
+
+   // O teto de verdade e' dinamico -- depende do tamanho ATUAL do canvas
+   // (ver o comentario de kMapMaxVisibleAreaNm, MapPanel.hpp): um terminal
+   // menor precisa de MAIS metros por pixel para mostrar a MESMA area, um
+   // maior precisa de menos. 'kMapMaxMetersPerCell' continua como rede de
+   // seguranca externa (canvas degenerado), quase nunca o fator que
+   // vincula na pratica.
+   const double maxAreaSideM{kMapMaxVisibleAreaNm * mixr::base::distance::NM2M};
+   const double maxByArea{maxMetersPerCellForArea(
+      view.canvasWidthPx, view.canvasHeightPx, maxAreaSideM)};
+   const double maxAllowed{std::min(kMapMaxMetersPerCell, maxByArea)};
+   view.metersPerCell = std::clamp(view.metersPerCell, kMapMinMetersPerCell, maxAllowed);
 }
 
 void rotateMap(MapViewState& view, const bool clockwise)

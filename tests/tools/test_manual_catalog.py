@@ -16,7 +16,7 @@ O que se prova aqui:
     silenciosa se o fork do MIXR mudar de versao ou o recorte de modulos
     mudar sem querer.
   * 'plugin:A-4' aparece com EXATAMENTE as 9 classes que
-    models/players/A-4/src/xnative/factory.cpp de fato despacha -- nem
+    models/players/air/A-4/src/xnative/factory.cpp de fato despacha -- nem
     mais (um nome de outro plugin vazando), nem menos (uma classe nova do
     A-4 esquecida de registrar aqui).
   * Nenhum MODEL[c]['m'] aparece fora dos 8 rotulos esperados (os 7 modulos

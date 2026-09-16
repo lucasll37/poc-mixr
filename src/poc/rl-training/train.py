@@ -135,7 +135,7 @@ def main() -> None:
     env.close()
     print(f"treino concluido -- checkpoint final em {final_path}.zip")
     print(
-        "exportar para producao (ver src/poc/onnx-policy e models/players/A-4/docs/POLITICAS.md):\n"
+        "exportar para producao (ver src/poc/onnx-policy e models/players/air/A-4/docs/POLITICAS.md):\n"
         f"  make export ARGS=\"--sb3 {final_path}.zip -o meu_policy.onnx\""
     )
 

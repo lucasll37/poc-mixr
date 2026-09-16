@@ -9,7 +9,7 @@
 # entrada (README.md) e o que mudou desde a ultima vez (CHANGELOG.md).
 #
 # Vale em dobro para models/template: ele e o ponto de partida copiavel
-# (CONTRIBUTING.md secao 2), entao o que falta la falta em todo modelo que
+# (CONTRIBUTING.md secao 3), entao o que falta la falta em todo modelo que
 # nascer dele.
 #
 # Os projetos sao descobertos por 'find' (todo diretorio sob models/ com um

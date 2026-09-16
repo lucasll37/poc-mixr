@@ -13,7 +13,7 @@ namespace xrlbridge {
 //------------------------------------------------------------------------------
 // A ponte de comando/observacao entre um core de RL (src/rl/bindings, um modulo
 // de extensao Python) e o comportamento UBF que decide por fora do processo
-// MIXR (models/players/A-4/include/ubf/RLBridgeBehavior.hpp).
+// MIXR (models/players/air/A-4/include/ubf/RLBridgeBehavior.hpp).
 //
 // Uma unica questao: o comando que o core quer aplicar, e a observacao que o
 // modelo capturou no ultimo ciclo de decisao -- os dois lados de uma troca
@@ -37,7 +37,7 @@ namespace xrlbridge {
 // Uma lib estatica daria a cada lado a SUA PROPRIA copia do mapa -- o core
 // nunca veria o comando chegar no modelo, e vice-versa.
 //
-// Os campos de Observation espelham domain::WorldView (models/players/A-4/include/
+// Os campos de Observation espelham domain::WorldView (models/players/air/A-4/include/
 // domain/WorldView.hpp) CAMPO A CAMPO, mas deliberadamente NAO reusam o tipo:
 // esta lib nao pode incluir headers do modelo (ver
 // tests/guard/check_core_opaco.sh -- o core nao pode conhecer o fonte do
@@ -169,7 +169,7 @@ Command unscaleCommand(const float* normalized3);
 // classicSchema28() -- os 28 nomes historicos, NESTA ordem, como um Schema
 // nomeado ("classic28"). Usado como default de todo consumidor que ganhou
 // selecao de schema nesta passada (os tres nos de arvore de
-// models/players/A-4/src/bt/nodes/, e o lado Python via
+// models/players/air/A-4/src/bt/nodes/, e o lado Python via
 // mixr_gym._native.classic_schema_28()) -- preserva byte a byte o
 // comportamento de antes desta macro crescer para 38 campos.
 //

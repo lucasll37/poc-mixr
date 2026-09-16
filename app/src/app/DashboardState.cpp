@@ -132,7 +132,8 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
                             const mixr::xtacview::TacviewOutput* const tacviewOutput,
                             const double wallSec, const double simSec,
                             const mixr::xclock::ClockStation* const clockStation,
-                            const int numTcThreads, const std::string& scenarioLabel,
+                            const int numTcThreads, const int numBgThreads,
+                            const std::string& scenarioLabel,
                             const std::vector<ClassStat>& previousClassStats,
                             const bool withComponentTree)
 {
@@ -141,6 +142,7 @@ DashboardState captureState(mixr::models::WorldModel* const worldModel,
    state.wallSec = wallSec;
    state.simSec = simSec;
    state.numTcThreads = numTcThreads;
+   state.numBgThreads = numBgThreads;
 
    if (clockStation != nullptr) {
       state.timeScale = clockStation->getTimeScale();

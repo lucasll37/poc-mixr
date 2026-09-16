@@ -34,7 +34,7 @@ namespace xtemplate {
 // PADRAO: percepcao (ExampleState) entra, a arvore decide chamando regras
 // puras de domain/ pelos nos de bt/, acao (ExampleAction) sai rotulada e
 // escreve no xboard. E' o mesmo desenho de
-// models/players/A-4/include/ubf/BtBehavior.hpp, reduzido: dois nos em vez de
+// models/players/air/A-4/include/ubf/BtBehavior.hpp, reduzido: dois nos em vez de
 // onze, uma arvore de dois ramos em vez de quatro.
 //
 // POR QUE A ARVORE, e nao um if em C++ (que foi o que este template teve

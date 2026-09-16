@@ -68,7 +68,7 @@ def main():
     fixture.write_text(novo)
 
     r = subprocess.run(
-        [args.binario, "-f", str(fixture), "-threads", "1", "-deterministic", "200"],
+        [args.binario, "-file", str(fixture), "-numTcThreads", "1", "-deterministic", "200"],
         cwd=RAIZ, capture_output=True, text=True, timeout=600,
     )
     saida = r.stdout + r.stderr
@@ -123,7 +123,7 @@ def main():
     if acmi.exists():
         acmi.unlink()
     try:
-        subprocess.run([args.binario, "-f", str(fixture_rt)],
+        subprocess.run([args.binario, "-file", str(fixture_rt)],
                        cwd=RAIZ, capture_output=True, text=True, timeout=8)
     except subprocess.TimeoutExpired:
         pass   # o laco de tempo real so para com Ctrl+C; o timeout E o fim

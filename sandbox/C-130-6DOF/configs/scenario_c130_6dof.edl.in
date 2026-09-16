@@ -1,7 +1,7 @@
 //
 // sandbox/C-130-6DOF
 //
-// UM C-130 (models/players/C-130 -- o modelo proprio, navegacao nativa por
+// UM C-130 (models/players/air/C-130 -- o modelo proprio, navegacao nativa por
 // Route/Steerpoint + capacidade de liberar paraquedista, NAO o "player
 // maximo" de 53 componentes que a familia sandbox/A4-*DOF usa), voando a
 // MESMA GEOMETRIA de rota que sandbox/A4-6DOF/configs/scenario_a4_6dof.edl.in
@@ -20,7 +20,7 @@
 //     essa distancia da ~2,9x o raio de curva do A-4 la; aqui sobra MAIS
 //     folga ainda, porque o limitador de guinada do C-130
 //     (bt::NavigateAction::kMaxHeadingRateDegPerSec=3.0, ver
-//     models/players/C-130/docs/ARCHITECTURE.md) e mais conservador que o
+//     models/players/air/C-130/docs/ARCHITECTURE.md) e mais conservador que o
 //     do A-4 (indiretamente, via o ganho do a4ap.xml).
 //   - initXPos/initYPos/initHeading: o MESMO ponto de entrada, 4 km antes de
 //     wp1, ja no rumo da perna wp10->wp1 (54 graus) -- evita o mesmo
@@ -44,7 +44,7 @@
 //   - wp5 (decoy em A4-6DOF) -> C130ActionParatrooperRelease. E o unico
 //     ponto desta rota que usa uma capacidade REAL do C-130 (a liberacao de
 //     paraquedista, tratada como arma -- ver
-//     models/players/C-130/docs/ARCHITECTURE.md); "piso do perfil" (4.000
+//     models/players/air/C-130/docs/ARCHITECTURE.md); "piso do perfil" (4.000
 //     ft) tambem faz sentido operacional pra uma largada.
 //   - wp9 (SAR em A4-6DOF) -> SEM action. ActionImagingSar precisa de um
 //     ( Sar ) RfSensor que este player nao tem (nao faz parte do "player
@@ -65,7 +65,7 @@
 // copiar cegamente numeros calibrados pro A-4. NAO SE ESPERA que a
 // velocidade se sustente -- ACHADO JA CONFIRMADO (nao redescobrir, ver
 // src/poc/c130-airdrop/README.md e o cabecalho de
-// models/players/C-130/data/jsbsim/aircraft/C130/c130ap.xml): o par
+// models/players/air/C-130/data/jsbsim/aircraft/C130/c130ap.xml): o par
 // motor/thruster vendorizado (t56.xml declara <turbine_engine>, t56_prop.xml
 // e um <propeller>, tipos incompativeis) faz o empuxo efetivo ficar perto de
 // zero, entao a aeronave desacelera sob arrasto independente do comando de
@@ -126,6 +126,7 @@
    simulation: ( WorldModel
 
       numTcThreads: @NUM_TC_THREADS@
+      numBgThreads: @NUM_BG_THREADS@
 
       // Mesma referencia de sandbox/A4-6DOF -- Serra do Mar / regiao de
       // Nova Friburgo (RJ). O oito foi posicionado sobre ESTE terreno (ver
@@ -134,9 +135,8 @@
       latitude:  -22.25
       longitude: -42.48
 
-      terrain: ( SrtmHgtFile
-         path: "./shared/data/terrain/srtm/"
-         file: "S23W043.hgt"
+      terrain: ( MultiTileTerrain
+         dir: "./shared/data/terrain/srtm/"
       )
 
       players: {

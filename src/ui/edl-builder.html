@@ -51692,6 +51692,164 @@ const EDL_CATALOG = [
     "primaryComponents": []
   },
   {
+    "class": "MultiTileTerrain",
+    "factory": "MultiTileTerrain",
+    "baseClass": "Terrain",
+    "chain": [
+      "MultiTileTerrain",
+      "Terrain",
+      "Component",
+      "Object"
+    ],
+    "origin": "libs",
+    "concrete": true,
+    "slots": [
+      {
+        "name": "components",
+        "declaredIn": "Component",
+        "comment": "1) Children components                                  (PairStream)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": true,
+        "unitFamilies": [],
+        "objectTypes": [
+          "Component"
+        ],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "select",
+        "declaredIn": "Component",
+        "comment": "2) Manage only this child component (component idx)     (Number)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableTimingStats",
+        "declaredIn": "Component",
+        "comment": "3) Enable/disable the timing statistics for updateTC()  (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "printTimingStats",
+        "declaredIn": "Component",
+        "comment": "4) Enable/disable the printing of the timing statistics (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "freeze",
+        "declaredIn": "Component",
+        "comment": "5) Freeze flag: true(1), false(0); default: false       (Number) (default: false)",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": false,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "enableMessageType",
+        "declaredIn": "Component",
+        "comment": "6) Enable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "disableMessageType",
+        "declaredIn": "Component",
+        "comment": "7) Disable message type { WARNING INFO DEBUG USER DATA }",
+        "acceptsNumber": true,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "file",
+        "declaredIn": "Terrain",
+        "comment": "1) Data file name",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "path",
+        "declaredIn": "Terrain",
+        "comment": "2) Data path name",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      },
+      {
+        "name": "dir",
+        "declaredIn": "MultiTileTerrain",
+        "comment": "1) Diretorio com os tiles SRTM (.hgt/.hgt.gz)",
+        "acceptsNumber": false,
+        "acceptsBoolean": false,
+        "acceptsText": true,
+        "acceptsVector": false,
+        "acceptsChildList": false,
+        "unitFamilies": [],
+        "objectTypes": [],
+        "isReference": false,
+        "textOnly": false
+      }
+    ],
+    "primaryComponents": []
+  },
+  {
     "class": "NanoSeconds",
     "factory": "NanoSeconds",
     "baseClass": "Time",
@@ -81492,6 +81650,11 @@ const EDL_PRESET = {
               "value": "2",
               "unit": ""
             },
+            "numBgThreads": {
+              "kind": "number",
+              "value": "2",
+              "unit": ""
+            },
             "latitude": {
               "kind": "number",
               "value": "-22.25",
@@ -81509,15 +81672,11 @@ const EDL_PRESET = {
                 "key": "1",
                 "node": {
                   "id": 46,
-                  "factory": "SrtmHgtFile",
+                  "factory": "MultiTileTerrain",
                   "slotValues": {
-                    "path": {
+                    "dir": {
                       "kind": "text",
                       "value": "./shared/data/terrain/srtm/"
-                    },
-                    "file": {
-                      "kind": "text",
-                      "value": "S23W043.hgt"
                     }
                   },
                   "children": {}
@@ -86597,8 +86756,8 @@ function makeNode(factory) {
 // (cada entrada é um base::String/Identifier, não uma classe MIXR: ver
 // TacviewOutput::setSlotTypeMap(), que faz dynamic_cast<base::String*> em
 // cada item, não dynamic_cast<Object*>). 'children: {}' aqui é só pra
-// findNode()/updateNode()/removeNode()/maxId() (genéricos, percorrem
-// node.children de QUALQUER nó) não precisarem de um caso especial.
+// findNode()/updateNode()/maxId() (genéricos, percorrem node.children de
+// QUALQUER nó) não precisarem de um caso especial.
 function makeTextLeaf(text) {
   return { id: freshId(), isText: true, text: text || "", children: {} };
 }
@@ -86634,17 +86793,6 @@ function updateNode(root, id, updater) {
     children[slotName] = newItems;
   }
   return changed ? { ...root, children } : root;
-}
-
-function removeNode(root, id) {
-  if (!root || root.id === id) return null;
-  const children = {};
-  for (const [slotName, items] of Object.entries(root.children)) {
-    children[slotName] = items
-      .filter((it) => it.node.id !== id)
-      .map((it) => ({ ...it, node: removeNode(it.node, id) }));
-  }
-  return { ...root, children };
 }
 
 function maxId(node, acc) {
@@ -87214,7 +87362,7 @@ if (typeof module !== "undefined" && module.exports) {
     isLeafSlot, isChildSlot, defaultKindFor,
     primaryRolesFor, roleFillStatus, TOKEN_PLACEHOLDER_RE, collectOpenIssues, findAncestorPath,
     countUncataloged,
-    freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, removeNode, maxId,
+    freshId, resetIdCounter, makeNode, makeTextLeaf, findNode, updateNode, maxId,
     isAscii, isEmptyLeafValue, serializeTextLiteral, serializeLeafValue, serializeNode, projectToEdl,
     projectToEdlWithSpans,
     tokenizeEdlText, splitTokensIntoLines, computeLineRanges,

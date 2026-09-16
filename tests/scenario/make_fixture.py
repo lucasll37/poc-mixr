@@ -61,7 +61,7 @@ from pathlib import Path
 
 # O intruso, identico ao de src/poc/dis/bandit/configs/scenario.edl, so que
 # local. O rootDir do jsbsim e o mesmo em qualquer poc -- e dado do MODELO
-# (models/players/A-4/data/jsbsim), instalado uma unica vez em dist/.
+# (models/players/air/A-4/data/jsbsim), instalado uma unica vez em dist/.
 BANDIT = """
          // ------------------------------------------------------------------
          // FIXTURE DE TESTE -- bandit1 LOCAL.

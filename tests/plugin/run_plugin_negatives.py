@@ -33,7 +33,7 @@ falhas = []
 
 def roda(binario, fixture, timeout=120):
     r = subprocess.run(
-        [binario, "-f", str(fixture), "-threads", "1", "-deterministic", "20"],
+        [binario, "-file", str(fixture), "-numTcThreads", "1", "-deterministic", "20"],
         cwd=RAIZ, capture_output=True, text=True, timeout=timeout,
     )
     return r.returncode, (r.stdout + r.stderr)

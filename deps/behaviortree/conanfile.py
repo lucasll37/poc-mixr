@@ -23,7 +23,7 @@ class Recipe(ConanFile):
         "with_coroutines": [True, False],
     }
     # shared=False porque o plugin do modelo linka a BT.CPP ESTATICA e esconde
-    # os simbolos dela com '-Wl,--exclude-libs,ALL' (ver models/players/A-4/
+    # os simbolos dela com '-Wl,--exclude-libs,ALL' (ver models/players/air/A-4/
     # meson.build); o core nunca a linka, pra nao duplicar o contador estatico
     # de BT::getUID() entre core e plugin. O conanfile.py da raiz repete este
     # override do lado do consumidor.

@@ -1,7 +1,6 @@
 #ifndef __xtacview_RealtimeTelemetryServer_H__
 #define __xtacview_RealtimeTelemetryServer_H__
 
-#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -110,10 +109,6 @@ public:
    unsigned long bytesSent() const          { return bytesSent_; }
    unsigned long linesWritten() const       { return linesWritten_; }
    unsigned long framesEmitted() const      { return framesEmitted_; }
-
-   // Objetos ja declarados (Name/Type/Color emitidos) para cada destino.
-   std::size_t objectsOnSocket() const      { return knownObjectsSocket_.size(); }
-   std::size_t objectsInFile() const        { return knownObjectsFile_.size(); }
 
    // Novo quadro de tempo (linha "#<segundos>").
    void beginFrame(const double simTimeSec);
