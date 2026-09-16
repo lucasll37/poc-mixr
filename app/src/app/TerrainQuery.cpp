@@ -364,7 +364,15 @@ void loaderThreadBody()
       {
          std::unique_lock<std::mutex> lock{loaderMutex()};
          loaderCv().wait(lock, [] { return !loaderQueue().empty() || loaderStopRequested(); });
-         if (loaderQueue().empty()) return;   // so' sobrou o pedido de parada -- sai
+         // Parada ABANDONA o resto da fila, nunca a drena -- achado rodando:
+         // dar bastante zoom out com uma cobertura regional de tiles no
+         // disco (nao so os poucos de demonstracao) enfileira potencialmente
+         // centenas de celulas distintas numa unica sessao de zoom, e
+         // esperar essa fila inteira esvaziar no encerramento levava o
+         // shutdownTerrainLoader() a demorar bem mais que o esperado. No
+         // encerramento ninguem precisa mais do resultado de um tile que
+         // ainda nem comecou a carregar.
+         if (loaderStopRequested()) return;
          cell = loaderQueue().front();
          loaderQueue().pop_front();
       }

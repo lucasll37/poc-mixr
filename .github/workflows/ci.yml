@@ -139,6 +139,15 @@ jobs:
       - name: "./scripts/deps.sh (mixr/behaviortree/jsbsim/openrti/Groot do fonte)"
         run: ./scripts/deps.sh
 
+      # -- INSTALL.md SS7: elevacao de terreno (SRTM) ----------------------
+      # Cobertura de SP/RJ/MG/ES (~195 tiles), alem dos 5 ja versionados em
+      # shared/data/terrain/srtm/ -- recomendado no roteiro, nao exigido
+      # pelas pocs padrao nem pelos cenarios de sandbox/ (que ja cabem nos 5
+      # tiles versionados), mas mantem o artefato publicado com cobertura de
+      # terreno pronta para qualquer cenario proprio nessa regiao.
+      - name: "INSTALL.md SS7: elevacao de terreno (SRTM, --sudeste)"
+        run: ./scripts/fetch_srtm.sh --sudeste
+
       # -- README.md, secao "Build": os cinco alvos, na ordem --------------
       - run: make configure
       - run: make sdk

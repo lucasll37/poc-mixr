@@ -162,6 +162,13 @@ build:
     - sudo apt install -y cmake qtbase5-dev libqt5svg5-dev libzmq3-dev cppzmq-dev libdw-dev
     - rm -rf /var/lib/apt/lists/*
     - ./scripts/deps.sh
+    # -- INSTALL.md SS7: elevacao de terreno (SRTM) ----------------------
+    # Cobertura de SP/RJ/MG/ES (~195 tiles), alem dos 5 ja versionados em
+    # shared/data/terrain/srtm/ -- recomendado no roteiro, nao exigido
+    # pelas pocs padrao nem pelos cenarios de sandbox/ (que ja cabem nos 5
+    # tiles versionados), mas mantem o artefato publicado com cobertura de
+    # terreno pronta para qualquer cenario proprio nessa regiao.
+    - ./scripts/fetch_srtm.sh --sudeste
     # -- README.md, secao "Build": os cinco alvos, na ordem --------------
     - make configure
     - make sdk
