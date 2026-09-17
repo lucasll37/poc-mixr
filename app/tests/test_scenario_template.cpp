@@ -119,7 +119,9 @@ TEST_F(ScenarioTemplateTest, BgThreadsOverrideZeroOuNegativoUsamODefaultDeDois)
    // sai de [1, nucleos-1] de qualquer forma.
    EXPECT_GE(comZero.bg, 1);
    EXPECT_LE(comZero.bg, maxThreadsByCpu());
-   if (maxThreadsByCpu() >= 2) EXPECT_EQ(comZero.bg, 2);
+   if (maxThreadsByCpu() >= 2) {
+      EXPECT_EQ(comZero.bg, 2);
+   }
 }
 
 TEST_F(ScenarioTemplateTest, BgThreadsOverrideAcimaDoLimiteDeCpuEhClampado)
