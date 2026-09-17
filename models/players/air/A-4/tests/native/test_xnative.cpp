@@ -130,6 +130,12 @@ TEST(Slots, BtBehaviorAceitaOsSlotsDoCenario)
    EXPECT_TRUE(obj->setSlotByName("patrolAltitude", &metros));
    EXPECT_TRUE(obj->setSlotByName("terrainClearance", &metros));
 
+   // Piso absoluto (default 200 m) -- aceita ate valor negativo, que e o
+   // controle usado para "desprezar" o piso e deixar so terreno+clearance
+   // decidir (ver sandbox/A4-6DOF-NBA).
+   base::Meters pisoNegativo{-10.0};
+   EXPECT_TRUE(obj->setSlotByName("minSafeAltitude", &pisoNegativo));
+
    base::Float num{160.0};
    EXPECT_TRUE(obj->setSlotByName("patrolSpeed", &num));
 

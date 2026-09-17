@@ -27,7 +27,7 @@ window.PRESENTATION_SLIDES = [
   <p class="eyebrow">Reestruturação de plataforma · MIXR + BehaviorTree.CPP</p>
   <h1>Refatoração do ASA</h1>
   <p class="lede">Simulação aeroespacial é desafiadora por natureza — isso não muda. O que muda é
-  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">arquitura e ecossistema</u>
+  <u style="text-decoration:none;border-bottom:5px solid var(--accent)">arquitetura e ecossistema</u>
   ao redor disso.</p>
   <div class="tag-row">
   <!--
@@ -51,7 +51,7 @@ window.PRESENTATION_SLIDES = [
     <li>Aeronaves, sensores, armas, sistemas de navegação — cada um com <b>dinâmica própria</b>,
     reagindo e causando efeito uns nos outros.</li>
     <li>Tudo isso ao mesmo tempo, com <b>dependências cruzadas</b> — não é dificuldade de código
-    malfeito, é dificuldade <b>inerente ao domínio</b> que estamos simulando.</li>
+    mal feito, é dificuldade <b>inerente ao domínio</b> que estamos simulando.</li>
   </ul>
   <figure class="diagram">
     <svg viewBox="0 0 900 440" style="max-height:38vh" role="img" aria-label="Radar, piloto automatico, alerta e terreno dispostos em circulo, cada um ligado a todos os outros -- nao uma cadeia, uma teia de dependencias cruzadas">
@@ -96,26 +96,26 @@ window.PRESENTATION_SLIDES = [
     <svg viewBox="0 0 800 370" style="max-height:36vh" role="img" aria-label="Um modelo novo se conecta, nos dois sentidos, com cada um dos modelos que ja existem: chaff, sistema de alerta, aeronave">
       <rect x="20" y="143" width="240" height="83" rx="8" fill="none" stroke="currentColor" stroke-width="1.8" class="svg-accent"/>
       <text x="140" y="180" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">modelo novo</text>
-      <text x="140" y="200" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-accent" opacity=".85">míssil · aeronave · sensor</text>
+      <text x="140" y="200" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".85">míssil · aeronave · sensor</text>
 
       <rect x="480" y="14" width="280" height="74" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-amber"/>
-      <text x="620" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-amber">chaff</text>
-      <text x="620" y="66" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-amber" opacity=".85">já existe</text>
+      <text x="620" y="46" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-amber">chaff</text>
+      <text x="620" y="66" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-amber" opacity=".85">já existe</text>
 
       <rect x="480" y="148" width="280" height="74" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-brick"/>
-      <text x="620" y="180" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-brick">sistema de alerta</text>
-      <text x="620" y="200" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-brick" opacity=".85">já existe</text>
+      <text x="620" y="180" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-brick">sistema de alerta</text>
+      <text x="620" y="200" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-brick" opacity=".85">já existe</text>
 
       <rect x="480" y="282" width="280" height="74" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
-      <text x="620" y="314" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-teal">aeronave</text>
-      <text x="620" y="334" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".85">já existe</text>
+      <text x="620" y="314" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">aeronave</text>
+      <text x="620" y="334" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".85">já existe</text>
 
       <line x1="260" y1="162" x2="478" y2="51" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
       <line x1="260" y1="185" x2="478" y2="185" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
       <line x1="260" y1="207" x2="478" y2="319" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
     </svg>
     <figcaption>Um míssil novo precisa reagir certo a um chaff que já existia — e ser
-    reconhecido certo por um sistema de alerta e por outras aeronaves escritos antes dele existir.
+    reconhecido certo por um sistema de alerta e por outras aeronaves modelados antes dele existir.
     Vale nos dois sentidos, para cada par.</figcaption>
   </figure>
   <div class="callout">
@@ -127,10 +127,10 @@ window.PRESENTATION_SLIDES = [
   },
   {
     extraClass: '',
-    title: 'MIXR ajuda — mas só se usado direito',
+    title: 'MIXR ajuda — mas somente se usado direito',
     html: `
   <p class="eyebrow">I · O problema que nenhuma ferramenta resolve</p>
-  <h2 class="headline">MIXR ajuda — mas só se usado direito</h2>
+  <h2 class="headline">MIXR ajuda — mas somente se usado direito</h2>
   <div class="grid-2">
     <ul class="list">
       <li>O framework já vem com uma <b>dinâmica de eventos</b> e classes-base pensadas para
@@ -144,15 +144,15 @@ window.PRESENTATION_SLIDES = [
       <svg viewBox="0 0 500 400" role="img" aria-label="Modelo A e Modelo B nao se conhecem diretamente -- os dois se comunicam, nos dois sentidos, so atraves da dinamica de eventos do MIXR">
         <rect x="110" y="15" width="280" height="75" rx="7" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
         <text x="250" y="48" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">modelo A</text>
-        <text x="250" y="68" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-teal" opacity=".85">não conhece B</text>
+        <text x="250" y="68" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".85">não conhece B</text>
 
         <rect x="90" y="155" width="320" height="95" rx="8" fill="none" stroke="currentColor" stroke-width="1.8" class="svg-accent"/>
         <text x="250" y="193" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">MIXR</text>
-        <text x="250" y="213" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-accent" opacity=".85">dinâmica de eventos</text>
+        <text x="250" y="213" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".85">dinâmica de eventos</text>
 
         <rect x="110" y="310" width="280" height="75" rx="7" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
         <text x="250" y="343" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">modelo B</text>
-        <text x="250" y="363" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-teal" opacity=".85">não conhece A</text>
+        <text x="250" y="363" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".85">não conhece A</text>
 
         <line x1="250" y1="90" x2="250" y2="153" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
         <line x1="250" y1="250" x2="250" y2="308" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
@@ -190,7 +190,7 @@ window.PRESENTATION_SLIDES = [
     <li><b>Contrato forte de modelo</b> — <code>docs/</code>, <code>CHANGELOG.md</code></li>
     <li><b>Ferramentas de assistência</b> — CLI rico em detalhes, manual iterativo, editor visual de .edl minimalista</li>
     <li><b>Ambiente padronizado</b> — extensão VSCode para <code>.edl</code></li>
-    <li><b>Roadmap</b> — integração respeitando interfaces pré-existentes (asa-engine, Flight Gear, config.json)</li>
+    <li><b>Retrocompatibilidade</b> — integração respeitando interfaces pré-existentes (asa-engine, Flight Gear, config.json)</li>
   </ul>
 `
   },
@@ -249,35 +249,35 @@ window.PRESENTATION_SLIDES = [
 
       <line x1="100" y1="140" x2="100" y2="124" stroke="currentColor" stroke-width="1.3" class="svg-teal" opacity=".7"/>
       <circle cx="100" cy="140" r="5" fill="currentColor" class="svg-teal"/>
-      <text x="100" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-teal">domain</text>
+      <text x="100" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">domain</text>
 
       <line x1="211" y1="140" x2="211" y2="156" stroke="currentColor" stroke-width="1.3" class="svg-teal" opacity=".7"/>
       <circle cx="211" cy="140" r="5" fill="currentColor" class="svg-teal"/>
-      <text x="211" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-teal">tree</text>
+      <text x="211" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">tree</text>
 
       <line x1="323" y1="140" x2="323" y2="124" stroke="currentColor" stroke-width="1.3" class="svg-teal" opacity=".7"/>
       <circle cx="323" cy="140" r="5" fill="currentColor" class="svg-teal"/>
-      <text x="323" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-teal">native</text>
+      <text x="323" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">native</text>
 
       <line x1="434" y1="140" x2="434" y2="156" stroke="currentColor" stroke-width="1.3" class="svg-accent" opacity=".7"/>
       <circle cx="434" cy="140" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="434" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-accent">scenario</text>
+      <text x="434" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">scenario</text>
 
       <line x1="546" y1="140" x2="546" y2="124" stroke="currentColor" stroke-width="1.3" class="svg-accent" opacity=".7"/>
       <circle cx="546" cy="140" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="546" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-accent">memory</text>
+      <text x="546" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">memory</text>
 
       <line x1="657" y1="140" x2="657" y2="156" stroke="currentColor" stroke-width="1.3" class="svg-accent" opacity=".7"/>
       <circle cx="657" cy="140" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="657" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-accent">determinism</text>
+      <text x="657" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">determinism</text>
 
       <line x1="769" y1="140" x2="769" y2="124" stroke="currentColor" stroke-width="1.3" class="svg-accent" opacity=".7"/>
       <circle cx="769" cy="140" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="769" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-accent">plugin</text>
+      <text x="769" y="114" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">plugin</text>
 
       <line x1="880" y1="140" x2="880" y2="156" stroke="currentColor" stroke-width="1.3" class="svg-accent" opacity=".7"/>
       <circle cx="880" cy="140" r="5" fill="currentColor" class="svg-accent"/>
-      <text x="880" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12.5" font-weight="600" class="svg-accent">guard</text>
+      <text x="880" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">guard</text>
 
       <text x="40" y="196" text-anchor="start" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".6">mais isolado</text>
       <text x="930" y="196" text-anchor="end" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".6">mais integrado</text>
@@ -324,7 +324,7 @@ window.PRESENTATION_SLIDES = [
   <div class="callout">
     <span class="k">Diagnóstico pragmático, não promessa</span>
     <p><code>make check-organization</code> confere isso na prática — as cinco peças do
-    contrato, namespace por-modelo, slots documentados, cada camada com a suíte de teste
+    contrato, namespace por modelo, slots documentados, cada camada com a suíte de teste
     correspondente — e reporta o que falha (ou marca como exceção conhecida, sem esconder do
     relatório).</p>
   </div>
@@ -443,23 +443,23 @@ window.PRESENTATION_SLIDES = [
   <figure class="diagram">
     <svg viewBox="0 0 880 300" role="img" aria-label="poc-mixr hoje se conecta ao asa-engine, que se conecta a asapy, webstation e, como exploracao futura ainda mais adiante, ao FlightGear">
       <rect x="20" y="90" width="170" height="70" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-ink"/>
-      <text x="105" y="122" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-ink">poc-mixr</text>
-      <text x="105" y="140" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".7">hoje</text>
+      <text x="105" y="122" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-ink">poc-mixr</text>
+      <text x="105" y="140" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".7">hoje</text>
 
       <rect x="260" y="80" width="230" height="90" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" class="svg-teal"/>
-      <text x="375" y="115" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-teal">asa-engine</text>
-      <text x="375" y="133" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">node · manager</text>
-      <text x="375" y="148" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-teal" opacity=".8">handler</text>
+      <text x="375" y="115" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">asa-engine</text>
+      <text x="375" y="133" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".8">node · manager</text>
+      <text x="375" y="148" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".8">handler</text>
 
       <rect x="610" y="10" width="220" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="720" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">asapy</text>
+      <text x="720" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">asapy</text>
 
       <rect x="610" y="118" width="220" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 4" class="svg-ink" opacity=".7"/>
-      <text x="720" y="145" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="svg-ink">FlightGear</text>
-      <text x="720" y="163" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="9.5" class="svg-ink" opacity=".75">(exploração futura)</text>
+      <text x="720" y="145" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-ink">FlightGear</text>
+      <text x="720" y="163" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".75">(exploração futura)</text>
 
       <rect x="610" y="226" width="220" height="64" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-accent"/>
-      <text x="720" y="263" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-accent">webstation</text>
+      <text x="720" y="263" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">webstation</text>
 
       <line x1="192" y1="125" x2="258" y2="125" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
       <line x1="492" y1="102" x2="608" y2="45" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
@@ -497,7 +497,7 @@ window.PRESENTATION_SLIDES = [
     <div>
       <ul class="list">
         <li>Um metaprojeto <b>open-source</b>, com todo o esqueleto do que pode vir a ser, no
-        futuro, uma refatoração completa da ASA.</li>
+        futuro, uma refatoração completa do ASA.</li>
         <li>Provas de conceito que mostram até onde essa estrutura pode ir, de forma
         <b>nativa</b>: uma decisão tomada por uma <b>rede neural treinada via ONNX</b>, e uma
         decisão escrita <b>inteiramente em Python</b>, sem recompilar nada.</li>
@@ -675,31 +675,31 @@ window.PRESENTATION_SLIDES = [
   <figure class="diagram">
     <svg viewBox="0 0 900 195" role="img" aria-label="As quatro fases do frame de tempo critico, com a fase 3 destacada como onde a decisao roda hoje; abaixo, updateData na thread de fundo, onde a versao anterior decidia">
       <rect x="30" y="15" width="185" height="65" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55"/>
-      <text x="122" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-ink" opacity=".75">fase 0</text>
-      <text x="122" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-ink" opacity=".65">dynamics</text>
+      <text x="122" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" class="svg-ink" opacity=".75">fase 0</text>
+      <text x="122" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".65">dynamics</text>
 
       <rect x="240" y="15" width="185" height="65" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55"/>
-      <text x="332" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-ink" opacity=".75">fase 1</text>
-      <text x="332" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-ink" opacity=".65">transmit</text>
+      <text x="332" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" class="svg-ink" opacity=".75">fase 1</text>
+      <text x="332" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".65">transmit</text>
 
       <rect x="450" y="15" width="185" height="65" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55"/>
-      <text x="542" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-ink" opacity=".75">fase 2</text>
-      <text x="542" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-ink" opacity=".65">receive</text>
+      <text x="542" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" class="svg-ink" opacity=".75">fase 2</text>
+      <text x="542" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".65">receive</text>
 
       <rect x="660" y="15" width="185" height="65" rx="6" fill="none" stroke="currentColor" stroke-width="2" class="svg-accent"/>
-      <text x="752" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">fase 3</text>
-      <text x="752" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-accent" opacity=".9">process — decisão</text>
+      <text x="752" y="45" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">fase 3</text>
+      <text x="752" y="63" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".9">process — decisão</text>
 
       <line x1="215" y1="48" x2="238" y2="48" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".5" marker-end="url(#arrow)"/>
       <line x1="425" y1="48" x2="448" y2="48" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".5" marker-end="url(#arrow)"/>
       <line x1="635" y1="48" x2="658" y2="48" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".5" marker-end="url(#arrow)"/>
 
       <rect x="30" y="118" width="460" height="55" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 4" class="svg-brick" opacity=".85"/>
-      <text x="260" y="142" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-brick">updateData()</text>
-      <text x="260" y="160" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10" class="svg-brick" opacity=".85">fundo, ~10 Hz — versão anterior decidia aqui</text>
+      <text x="260" y="142" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-brick">updateData()</text>
+      <text x="260" y="160" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-brick" opacity=".85">fundo, ~10 Hz — versão anterior decidia aqui</text>
 
       <line x1="480" y1="120" x2="742" y2="83" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 4" class="svg-ink" opacity=".6" marker-end="url(#arrow)"/>
-      <text x="605" y="97" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".8">mudou para</text>
+      <text x="605" y="97" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".8">mudou para</text>
     </svg>
     <figcaption>Hoje o mesmo ciclo decide em <code>updateTC()</code>, fase 3, até 50 Hz — junto
     com o resto da lógica de decisão da simulação, na mesma cadência da física.</figcaption>
@@ -749,20 +749,20 @@ window.PRESENTATION_SLIDES = [
   <figure class="diagram">
     <svg viewBox="0 0 900 260" role="img" aria-label="Quatro aeronaves decidindo cada uma na propria thread do pool de tempo critico, convergindo para um dump byte-identico independente do numero de threads">
       <rect x="20" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-teal"/>
-      <text x="115" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-teal">falcon1</text>
-      <text x="115" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-teal" opacity=".85">thread do pool</text>
+      <text x="115" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">falcon1</text>
+      <text x="115" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-teal" opacity=".85">thread do pool</text>
 
       <rect x="237" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-accent"/>
-      <text x="332" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">falcon2</text>
-      <text x="332" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-accent" opacity=".85">thread do pool</text>
+      <text x="332" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">falcon2</text>
+      <text x="332" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-accent" opacity=".85">thread do pool</text>
 
       <rect x="454" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-amber"/>
-      <text x="549" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-amber">falcon3</text>
-      <text x="549" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-amber" opacity=".85">thread do pool</text>
+      <text x="549" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-amber">falcon3</text>
+      <text x="549" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-amber" opacity=".85">thread do pool</text>
 
       <rect x="671" y="15" width="190" height="70" rx="7" fill="none" stroke="currentColor" stroke-width="1.6" class="svg-brick"/>
-      <text x="766" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-brick">falcon4</text>
-      <text x="766" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-brick" opacity=".85">thread do pool</text>
+      <text x="766" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-brick">falcon4</text>
+      <text x="766" y="67" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-brick" opacity=".85">thread do pool</text>
 
       <line x1="115" y1="85" x2="115" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
       <line x1="332" y1="85" x2="332" y2="168" stroke="currentColor" stroke-width="1.4" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
@@ -771,7 +771,7 @@ window.PRESENTATION_SLIDES = [
 
       <rect x="20" y="170" width="840" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="2" class="svg-ink"/>
       <text x="440" y="202" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-ink">dump byte-idêntico</text>
-      <text x="440" y="222" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="10.5" class="svg-ink" opacity=".8">com 1, 2 ou 4 threads T/C</text>
+      <text x="440" y="222" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="11" class="svg-ink" opacity=".8">com 1, 2 ou 4 threads T/C</text>
     </svg>
     <figcaption>Quatro aeronaves, quatro threads, um único resultado possível — o número de
     threads muda o paralelismo, nunca o resultado.</figcaption>
@@ -862,24 +862,23 @@ window.PRESENTATION_SLIDES = [
       suficiente para que o esforço de cada equipe vá para o que é específico.</li>
     </ul>
     <figure class="diagram">
-      <svg viewBox="0 0 520 320" role="img" aria-label="Slot, plugin e folha de arvore de comportamento convergindo para um contexto tecnico comum">
-        <rect x="20" y="10" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">"slot"</text>
+      <svg viewBox="0 0 680 320" role="img" aria-label="Slot, plugin e folha de arvore de comportamento convergindo para um contexto tecnico comum">
+        <rect x="20" y="10" width="380" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
+        <text x="210" y="47" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">"slot"</text>
 
-        <rect x="20" y="130" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="167" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" class="svg-teal">"plugin"</text>
+        <rect x="20" y="130" width="380" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
+        <text x="210" y="167" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">"plugin"</text>
 
-        <rect x="20" y="250" width="220" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
-        <text x="130" y="280" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-teal">"folha de árvore</text>
-        <text x="130" y="296" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="12" class="svg-teal">de comportamento"</text>
+        <rect x="20" y="250" width="380" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.4" class="svg-teal"/>
+        <text x="210" y="287" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-teal">"folha de árvore de comportamento"</text>
 
-        <rect x="300" y="115" width="200" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.7" class="svg-accent"/>
-        <text x="400" y="152" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">contexto</text>
-        <text x="400" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="13" font-weight="600" class="svg-accent">técnico comum</text>
+        <rect x="460" y="115" width="200" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.7" class="svg-accent"/>
+        <text x="560" y="152" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">contexto</text>
+        <text x="560" y="172" text-anchor="middle" fill="currentColor" font-family="IBM Plex Mono" font-size="14" font-weight="600" class="svg-accent">técnico comum</text>
 
-        <line x1="242" y1="40" x2="298" y2="130" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-        <line x1="242" y1="160" x2="298" y2="160" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
-        <line x1="242" y1="280" x2="298" y2="190" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+        <line x1="402" y1="40" x2="458" y2="130" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+        <line x1="402" y1="160" x2="458" y2="160" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
+        <line x1="402" y1="280" x2="458" y2="190" stroke="currentColor" stroke-width="1.3" class="svg-ink" opacity=".55" marker-end="url(#arrow)"/>
       </svg>
       <figcaption>Quando os termos significam a mesma coisa para todo mundo, a equipe ganha um
       contexto técnico comum — não um "só entendo meu quadrado".</figcaption>
@@ -892,11 +891,9 @@ window.PRESENTATION_SLIDES = [
     title: 'Fechamento',
     html: `
   <p class="eyebrow">IV · O convite</p>
-  <p class="statement">Simulação aeroespacial vai continuar sendo desafiadora. Mas a forma como
-  escrevemos, testamos, documentamos e conversamos sobre os modelos que simulam esse domínio —
-  <em>essa parte é otimizável</em>.</p>
-  <p class="lede muted" style="margin-top:4px">Um eixo de cada vez. Um modelo, hoje. E o convite
-  aberto para o próximo.</p>
+  <p class="statement">Simulação aeroespacial vai continuar sendo desafiadora. Contudo, a forma como
+  escrevemos, testamos e documentamos os modelos que simulam esse domínio
+  <em> é otimizável</em>.</p>
 `
   },
   {
@@ -910,7 +907,7 @@ window.PRESENTATION_SLIDES = [
     <div class="media-empty">
       <svg width="40" height="40"><use href="#i-image"></use></svg>
       <span class="tag">Imagem sugerida</span>
-      <p class="caption">Logo da ASA ou imagem de encerramento do time</p>
+      <p class="caption">Logo do ASA ou imagem de encerramento do time</p>
       <p class="hint">demos/encerramento.png</p>
     </div>
   </div>

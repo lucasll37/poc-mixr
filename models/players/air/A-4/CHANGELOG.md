@@ -24,6 +24,24 @@ alguém precisaria saber antes de mexer neste modelo, não uma por commit.
 
 ### Adicionado
 
+- **`( BtBehavior )` ganhou o slot `minSafeAltitude` — o piso ABSOLUTO de
+  `domain::terrainFloorM()`/`clampToTerrain()` deixou de ser a constante C++ fixa
+  `MIN_SAFE_ALT_M = 200.0` (`BtBehavior.cpp`) e virou `BtTuning::minSafeAltitudeM`, ajustável por
+  EDL (`BtBehaviorSlots.cpp`, slot 30), com **default 200 m** — todo cenário que não declarar o
+  slot continua byte a byte idêntico a antes.** Motivado por relato do usuário rodando
+  `sandbox/A4-6DOF-NBA` na vista Lateral do `./app`: a aeronave não acompanhava o contorno do
+  solo. Investigado com telemetria real (não hipótese): `terrainFloorM()` é
+  `max(minSafeAltitude, terreno + terrainClearance)`, e com `terrainClearance: 300 ft` (o ajuste
+  daquele cenário) o piso de 200 m dominava em **90% das amostras** de uma corrida completa — a
+  aeronave voava nivelada a 200 m MSL sempre que o terreno real ficava abaixo de ~108,6 m, que é
+  a maior parte daquele corredor (Serra do Mar descendo para a baixada costeira). `sandbox/
+  A4-6DOF-NBA` passou a declarar `minSafeAltitude: ( Meters 0 )` ("despreze a altitude de
+  segurança, voe o que for configurado para voar", pedido explícito) — medido depois: o piso
+  passou a dominar em só 12,8% das amostras, e as 154 amostras onde isso acontece são
+  EXATAMENTE os dois trechos já documentados do bug nativo de decodificação SRTM negativa
+  (`sandbox/A4-6DOF-NBA/README.md`), nunca terreno real sendo mascarado por engano. Nenhum outro
+  cenário de produção (`flight`/os demais `sandbox/A4-*`) muda de comportamento — todos ficam no
+  default 200 m.
 - **Observação de RL/ONNX passou a ser configurável por SCHEMA nomeado, em vez de um vetor fixo
   de 28 campos único e global** — pedido do usuário: "a interface do que é recebido como estado
   [deveria poder mudar], a depender do modelo que se quer treinar". Duas peças novas, genéricas,

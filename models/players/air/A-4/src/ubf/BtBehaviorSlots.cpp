@@ -56,6 +56,7 @@ BEGIN_SLOTTABLE(BtBehavior)
    "launchCone",          // 27
    "evadeReactionMinDelay", // 28
    "evadeReactionMaxDelay", // 29
+   "minSafeAltitude",     // 30 -- piso absoluto (default: 200 m); ver setter abaixo
 END_SLOTTABLE(BtBehavior)
 
 BEGIN_SLOT_MAP(BtBehavior)
@@ -88,6 +89,7 @@ BEGIN_SLOT_MAP(BtBehavior)
    ON_SLOT(27, setSlotLaunchCone,          base::Angle)
    ON_SLOT(28, setSlotEvadeReactionMinDelay, base::Time)
    ON_SLOT(29, setSlotEvadeReactionMaxDelay, base::Time)
+   ON_SLOT(30, setSlotMinSafeAltitude,       base::Distance)
 END_SLOT_MAP()
 
 bool BtBehavior::setSlotTreeFile(const base::String* const msg)
@@ -339,6 +341,20 @@ bool BtBehavior::setSlotEvadeReactionMaxDelay(const base::Time* const msg)
    if (msg == nullptr) return false;
    tune.evadeReactionMaxDelaySec = base::Seconds::convertStatic(*msg);
    return (tune.evadeReactionMaxDelaySec >= 0.0);
+}
+
+
+//------------------------------------------------------------------------------
+// PISO ABSOLUTO (ver domain/TerrainFloor.hpp -- terrainFloorM()/clampToTerrain()
+// e o comentario de BtTuning::minSafeAltitudeM). Sem faixa de validacao: e' so
+// o outro operando de um max(), e um cenario pode querer QUALQUER valor,
+// inclusive negativo, para deixar o piso relativo ao terreno decidir sozinho.
+//------------------------------------------------------------------------------
+bool BtBehavior::setSlotMinSafeAltitude(const base::Distance* const msg)
+{
+   if (msg == nullptr) return false;
+   tune.minSafeAltitudeM = base::Meters::convertStatic(*msg);
+   return true;
 }
 
 

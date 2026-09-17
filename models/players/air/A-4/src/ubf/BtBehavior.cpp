@@ -260,16 +260,6 @@ void BtBehavior::startGrootMonitorIfRequested()
    }
 }
 
-namespace {
-// Mesmo piso absoluto de domain::ThreatPolicy.cpp (MIN_SAFE_ALT_M) -- os
-// dois soh valem quando NAO ha dado de elevacao (ver domain/TerrainFloor.hpp);
-// duplicado aqui, nao promovido a constante compartilhada, porque
-// domain::terrainFloorM()/clampToTerrain() ja recebem o piso como
-// PARAMETRO de proposito (funcao pura, sem estado escondido) -- cada
-// chamador continua dono do proprio numero, mesmo que hoje coincidam.
-const double MIN_SAFE_ALT_M{200.0};
-}
-
 //------------------------------------------------------------------------------
 // feedThreatPolicy() -- uma das duas traducoes Snapshot -> domain nesta
 // classe (a outra e' clampAltitudeToTerrain(), logo abaixo).
@@ -332,7 +322,7 @@ double BtBehavior::clampAltitudeToTerrain(const double altitudeM) const
    ground.valid = snap.terrainValid;
    ground.elevationM = snap.terrainElevM;
 
-   return domain::clampToTerrain(altitudeM, ground, tune.terrainClearanceM, MIN_SAFE_ALT_M);
+   return domain::clampToTerrain(altitudeM, ground, tune.terrainClearanceM, tune.minSafeAltitudeM);
 }
 
 //------------------------------------------------------------------------------
@@ -340,7 +330,7 @@ double BtBehavior::clampAltitudeToTerrain(const double altitudeM) const
 // clampAltitudeToTerrain() acima, mas responde uma pergunta diferente: nao
 // "que altitude e' segura comandar agora", e sim "ha folga de sobra para
 // COMECAR uma acrobacia" -- ver o comentario grande em bt/DecisionContext.hpp
-// para o "porque". Reusa o MESMO MIN_SAFE_ALT_M de clampAltitudeToTerrain().
+// para o "porque". Reusa o MESMO tune.minSafeAltitudeM de clampAltitudeToTerrain().
 //------------------------------------------------------------------------------
 bool BtBehavior::hasAerobaticAltitudeMargin() const
 {
@@ -353,7 +343,7 @@ bool BtBehavior::hasAerobaticAltitudeMargin() const
    ground.valid = snap.terrainValid;
    ground.elevationM = snap.terrainElevM;
 
-   const double floorM{domain::terrainFloorM(ground, tune.terrainClearanceM, MIN_SAFE_ALT_M)};
+   const double floorM{domain::terrainFloorM(ground, tune.terrainClearanceM, tune.minSafeAltitudeM)};
    return (snap.altitudeM - floorM) >= tune.slowRollMinMarginM;
 }
 

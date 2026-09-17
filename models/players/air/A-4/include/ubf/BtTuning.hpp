@@ -53,6 +53,16 @@ struct BtTuning
    double evadeHoldSec{30.0};             // histerese: quanto a manobra vale sem contato
    double terrainClearanceM{500.0};       // piso anti-CFIT: folga sobre o terreno
 
+   // piso ABSOLUTO de domain::terrainFloorM()/clampToTerrain() -- o "sempre,
+   // como minimo" que vale mesmo quando o terreno pede menos. Default 200 m
+   // preserva byte a byte o comportamento de antes (era constante C++ fixa,
+   // MIN_SAFE_ALT_M, em BtBehavior.cpp) para todo cenario que nao declarar
+   // este slot. Aceita qualquer valor, inclusive negativo -- um cenario que
+   // queira "acompanhar o terreno o tempo todo, sem piso nenhum acima dele"
+   // (ex.: sandbox/A4-6DOF-NBA) baixa este numero para perto de zero; nao ha
+   // sentinela especial, e' so o outro operando do max() em TerrainFloor.cpp.
+   double minSafeAltitudeM{200.0};
+
    // apoio a um alerta recebido
    double supportSpeedKts{420.0};
 

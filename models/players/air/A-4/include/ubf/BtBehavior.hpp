@@ -50,6 +50,11 @@ namespace xA_4 {
 //    terrainClearance <Distance> ! Folga sobre o terreno no desconflito da
 //                                ! evasao -- piso anti-CFIT (default: 500 m;
 //                                ! 0 desliga e volta ao piso absoluto)
+//    minSafeAltitude <Distance>  ! Piso ABSOLUTO de domain::terrainFloorM()
+//                                ! (default: 200 m -- era MIN_SAFE_ALT_M, C++
+//                                ! fixo). Aceita valor perto de zero (ou
+//                                ! negativo) para deixar o piso relativo ao
+//                                ! terreno + terrainClearance decidir sozinho.
 //    patrolJitterHeading <Angle> ! Amplitude do jitter de rumo na patrulha, sorteado a
 //                                ! cada troca de perna (default: 0 deg = desligado)
 //    patrolMasterSeed <Number>   ! Semente do cenario; cada player deriva a sua propria
@@ -215,6 +220,7 @@ private:
    bool setSlotSlowRollMinMargin(const base::Distance* const);
    bool setSlotEvadeReactionMinDelay(const base::Time* const);
    bool setSlotEvadeReactionMaxDelay(const base::Time* const);
+   bool setSlotMinSafeAltitude(const base::Distance* const);
 };
 
 } // namespace xA_4

@@ -33,6 +33,44 @@ do início do corredor até ~196 km — o trecho que atravessa a fronteira real 
 Depois disso, o cenário tropeça num bug **diferente e não relacionado** (native, do MIXR) — ver a
 seção própria abaixo, que é a parte mais interessante do que se descobriu construindo isto.
 
+## ARMADILHA CONFIRMADA E CORRIGIDA — o piso ABSOLUTO escondia o acompanhamento de contorno
+
+**Relatado observando a vista Lateral do `./app`: a aeronave não acompanhava o contorno do solo
+— voava aparentemente nivelada por boa parte do corredor.** Investigado com a telemetria real
+(`altMslM` contra `terrainElevM`), não por inspeção de código isolada: não era bug de
+`MultiTileTerrain`/carregamento de tile (a elevação lida estava correta e variando de verdade) nem
+da vista Lateral — era o **piso absoluto** de `domain::terrainFloorM()`
+(`max(minSafeAltitude, terreno + terrainClearance)`, `TerrainFloor.hpp`) dominando o `max()` na
+maior parte do corredor.
+
+Até esta correção, `minSafeAltitude` era a constante C++ `MIN_SAFE_ALT_M = 200.0`, fixa,
+compartilhada por **todo** cenário que usa este modelo (`BtBehavior.cpp`). Com
+`terrainClearance: ( Feet 300 )` (~91,44 m), o termo do terreno só vence os 200 m quando a
+elevação real passa de ~108,6 m — e esta faixa de Serra do Mar descendo para a baixada costeira
+fica, na maior parte do trajeto, **abaixo** disso. Medido numa corrida completa: o piso de 200 m
+dominava em **90% das amostras** — a aeronave voava nivelada a 200 m MSL constante em vez de
+acompanhar as subidas/descidas reais do relevo, exatamente o platô observado na vista Lateral.
+
+**A correção**: `MIN_SAFE_ALT_M` virou o slot `minSafeAltitude` de `( BtBehavior )`
+(`models/players/air/A-4/src/ubf/BtBehaviorSlots.cpp`), com **default 200 m** — todo cenário que
+não declarar o slot (inclusive `flight`/`patrol`/os demais `sandbox/A4-*`) continua byte a byte
+igual a antes. Este cenário passou a declarar `minSafeAltitude: ( Meters 0 )`, por pedido
+explícito ("despreze a altitude de segurança, voe o que for configurado para voar"): o piso
+absoluto vira só "nunca abaixo do nível do mar", e o termo do terreno decide sozinho o tempo quase
+todo.
+
+**Medido depois da correção** (mesma corrida, `-deterministic 60000`): o piso de 0 m domina em só
+**12,8% das amostras** — e as 154 amostras onde isso acontece são **exatamente** os dois trechos já
+documentados abaixo onde o bug nativo de decodificação SRTM devolve elevação ~-32700 m (nenhuma é
+terreno real genuinamente abaixo de -91,44 m). Ou seja: fora do bug nativo já conhecido, a
+aeronave agora acompanha o contorno real do terreno em **100%** do corredor, com `altAglM`
+oscilando perto dos 300 ft pedidos (tipicamente 70-170 m, a variação vindo do atraso físico normal
+de subida/descida do Autopilot, não de um piso artificial). Durante os dois trechos bugados, a
+altitude comandada agora fica perto de **0 m MSL** (nível do mar) em vez de travar em 200 m —
+consequência direta de "desprezar a altitude de segurança": o piso residual de 0 m ainda evita que
+o avião mergulhe até o `( Meters -2000 )` cru do `wp1` (ver a seção abaixo), mas não mais o mascara
+em 200 m como antes.
+
 ## Como o cenário funciona — só EDL, zero C++ novo
 
 Um único player (`a4`, mesmo modelo/plugin `A-4` dos outros 11 cenários deste `sandbox`),
@@ -97,13 +135,17 @@ dali até o destino, o bug fica ativo quase o corredor inteiro.
 
 **Por que isso NÃO é perigoso para a aeronave, só para a telemetria** — confirmado lendo
 `domain::terrainFloorM()` (`models/players/air/A-4/src/domain/TerrainFloor.cpp`):
-`max(absoluteFloorM, ground.elevationM + clearanceM)`. Com `ground.elevationM` incorretamente em
-~-32700, o termo "terreno + folga" fica muito mais negativo que o piso absoluto (200 m) — quem
-vence o `max()` é sempre o piso absoluto, nunca o valor bugado. Medido no dump: durante esses
-trechos, `alt=` fica travado em ~200,06 m (o piso absoluto) enquanto `elev=`/`agl=` mostram
-números sem sentido (`elev=-32765`, `agl=32965`...) — a aeronave voa nivelada e segura a 200 m
-MSL; só o **campo relatado** de elevação/AGL (e portanto o acompanhamento fino do relevo) fica
-errado enquanto isso dura.
+`max(minSafeAltitude, ground.elevationM + clearanceM)`. Com `ground.elevationM` incorretamente em
+~-32700, o termo "terreno + folga" fica muito mais negativo que o piso absoluto — quem vence o
+`max()` é sempre o piso absoluto, nunca o valor bugado. **Atualizado após a correção do piso
+absoluto (ver a seção logo acima)**: este cenário declara `minSafeAltitude: ( Meters 0 )`, não
+mais os 200 m fixos de antes — medido no dump, durante esses trechos `alt=` agora fica travado
+perto de **0 m MSL** (não mais ~200,06 m) enquanto `elev=`/`agl=` continuam mostrando números sem
+sentido (`elev=-32767`, `agl=32787`...) — a aeronave voa nivelada e segura perto do nível do mar;
+só o **campo relatado** de elevação/AGL (e portanto o acompanhamento fino do relevo) fica errado
+enquanto isso dura. Confirmado nas 154 amostras onde o piso domina numa corrida completa: **todas**
+caem exatamente nesses dois trechos (`terrainElevM < -1000`), nenhuma é terreno real genuinamente
+baixo sendo mascarado por engano.
 
 **O que isso significa para quem lê `data/messages/mission_*.jsonl`**: os campos `terrainElevM`/
 `altAglM` são confiáveis do início do corredor até ~196 km — é exatamente esse trecho, cruzando
@@ -142,3 +184,7 @@ cat sandbox/A4-6DOF-NBA/data/messages/mission_*.jsonl | tail -5   # terrainElevM
 
 `bt=NAV` em toda linha do dump é o esperado (única folha da árvore). `dec=` avança na mesma
 taxa que `frame=` entre dumps consecutivos, como em qualquer cenário deste repositório.
+`altAglM` na telemetria deve oscilar perto de 300 ft (~91 m, tipicamente 70-170 m) na maior parte
+do corredor — não mais travado num platô constante (ver a seção "ARMADILHA CONFIRMADA E
+CORRIGIDA" acima); só nos dois trechos do bug SRTM (`terrainElevM` na casa de `-327xx`) é que
+`altMslM` fica perto de 0 m.

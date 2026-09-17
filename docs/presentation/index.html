@@ -189,7 +189,6 @@ button{font:inherit; color:inherit;}
 .body-copy p + p{ margin-top:12px; }
 
 .slide--title .slide-fit{ justify-content:center; gap:26px; }
-.slide--title .eyebrow{ font-size:.82rem; }
 .slide--title h1{
   font-family:var(--font-display); font-weight:900; letter-spacing:.01em;
   font-size:clamp(3.4rem,min(11vw,15vh),7.8rem); line-height:.92; color:var(--ink);
@@ -335,11 +334,13 @@ figure.diagram figcaption{ font-size:clamp(.85rem,min(1.15vw,2.1vh),1.2rem); col
 
 /* slides de demonstracao em video -- UM video por tela (navegacao pelo proprio deck, igual a
    qualquer outro slide), nao um player+menu dentro de um slide so. .demo-stage reserva o MAXIMO
-   de espaco disponivel pro video (flex:1 preenche tudo que sobra na coluna do slide), com o
-   cabecalho reduzido de proposito pra sobrar mais altura -- mas o video em si so' cresce ate'
-   onde a PROPRIA proporcao permitir (ver .demo-stage.is-filled logo abaixo), nunca esticado. */
+   de espaco disponivel pro video (flex:1 preenche tudo que sobra na coluna do slide) -- mas o
+   video em si so' cresce ate' onde a PROPRIA proporcao permitir (ver .demo-stage.is-filled logo
+   abaixo), nunca esticado. O headline usa o MESMO tamanho de fonte responsivo de qualquer outra
+   slide (".headline", sem override) -- so' o max-width muda, pra' o titulo (mais descritivo que
+   o das demais slides) nao quebrar linha sem necessidade. */
 .slide--demo .slide-fit{ gap:12px; }
-.slide--demo .headline{ font-size:1.3rem; max-width:none; }
+.slide--demo .headline{ max-width:none; }
 .demo-stage{
   flex:1; min-height:0; position:relative; background:#050708; border:1px solid var(--line);
   border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;

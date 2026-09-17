@@ -31,8 +31,8 @@
 // steerpoints para "seguir uma linha reta"; precisa de UM, distante o
 // suficiente para o rumo nunca precisar recalcular de verdade.
 //
-// COMO A ALTITUDE VIRA "300 FT ACOMPANHANDO O TERRENO" SEM NENHUMA LINHA DE
-// C++ NOVA -- o pulo do gato deste cenario. ( bt_nodes::NavigateAction )
+// COMO A ALTITUDE VIRA "300 FT ACOMPANHANDO O TERRENO" -- o pulo do gato
+// deste cenario. ( bt_nodes::NavigateAction )
 // (models/players/air/A-4/src/bt/nodes/NavigateAction.cpp) SEMPRE passa a
 // altitude comandada do steerpoint por
 // BtBehavior::clampAltitudeToTerrain(), o mesmo piso anti-CFIT que
@@ -44,14 +44,34 @@
 // (elevacao real do terreno sob a aeronave, lida ao vivo por
 // Player::updateElevation() -> MultiTileTerrain::getElevation(), a cada
 // frame de fundo) + terrainClearance (300 ft, ajustado abaixo em
-// ( BtBehavior )). Ou seja: o voo de baixa altura acompanhando o terreno E'
-// literalmente o piso anti-CFIT em acao o tempo todo, nao uma rota
-// pre-calculada nem um no novo -- se MultiTileTerrain carregar o tile ERRADO
-// (ou nao carregar nenhum) em algum ponto do corredor, o sintoma aparece na
-// hora: a altitude comandada salta para o piso absoluto (200 m, ver
-// domain::terrainFloorM) ou para um valor incoerente com o relevo real ao
-// redor -- visivel no proprio Tacview e na telemetria (ver 'msgFeed:'
-// abaixo, campo terrainElevM).
+// ( BtBehavior )).
+//
+// ARMADILHA JA CONFIRMADA E CORRIGIDA -- o PISO ABSOLUTO escondia o
+// acompanhamento de contorno na maior parte do corredor. domain::
+// terrainFloorM() e' 'max(minSafeAltitude, terreno + terrainClearance)'
+// (TerrainFloor.hpp) -- os DOIS termos, nao so' o do terreno. Ate esta
+// correcao, 'minSafeAltitude' era a constante C++ MIN_SAFE_ALT_M=200 m,
+// fixa, a mesma para TODO cenario que usa este modelo. Com
+// terrainClearance=300 ft (91,44 m), o termo do terreno so' vence os 200 m
+// quando a elevacao real passa de ~108,6 m -- e MEDIDO rodando (telemetria
+// de uma corrida completa, comparando altMslM contra terrainElevM), isso
+// acontecia em so' ~14% das amostras: no resto (a baixada entre as
+// escarpas e a costa, a MAIOR parte deste corredor especifico), o A-4 voava
+// nivelado a 200 m MSL, sem acompanhar as subidas/descidas reais do
+// terreno -- exatamente o "plato" observado na vista Lateral do ./app antes
+// desta correcao.
+//
+// O QUE MUDOU: MIN_SAFE_ALT_M deixou de ser constante C++ e virou o slot
+// 'minSafeAltitude' de ( BtBehavior ) (models/players/air/A-4/src/ubf/
+// BtBehaviorSlots.cpp), com DEFAULT 200 m -- todo cenario que nao declarar
+// este slot continua identico a antes, byte a byte. ESTE cenario declara
+// 'minSafeAltitude: ( Meters 0 )' abaixo, por pedido explicito ("despreze a
+// altitude de seguranca, voe o que for configurado para voar"): o piso
+// absoluto vira so' "nunca abaixo do nivel do mar", e quem decide a
+// altitude e' o termo do terreno o tempo quase todo -- ver o efeito medido
+// na secao ARMADILHA CONFIRMADA RODANDO abaixo (o mesmo bug nativo de
+// decodificacao SRTM negativa passa a aparecer como um mergulho ate perto
+// de 0 m, em vez de ficar mascarado em 200 m).
 //
 // O CORREDOR E OS TILES REAIS ATRAVESSADOS -- os TRES tiles reais e
 // vendorizados que cobrem esta faixa leste-oeste (shared/data/terrain/srtm/
@@ -91,21 +111,24 @@
 //
 //   POR QUE ISSO NAO E' PERIGOSO PARA A AERONAVE, so' para a TELEMETRIA --
 //   confirmado lendo domain::terrainFloorM() (TerrainFloor.cpp):
-//   'max(absoluteFloorM, ground.elevationM + clearanceM)'. Com
+//   'max(minSafeAltitude, ground.elevationM + clearanceM)'. Com
 //   ground.elevationM~=-32700 (o valor decodificado errado), o termo
-//   'terreno+folga' fica MUITO mais negativo que absoluteFloorM (200 m) --
-//   entao quem VENCE o max() e' sempre o piso absoluto de 200 m, nunca o
-//   valor bugado. Medido no dump: durante os trechos acima, 'alt=' fica
-//   travado em ~200,06 m (o piso absoluto, com a mesma folga residual de
-//   sempre) enquanto 'elev='/'agl=' mostram os numeros sem sentido
-//   (elev=-32765, agl=32965...) -- a AERONAVE fica em voo nivelado seguro a
-//   200 m MSL; so' o CAMPO de elevacao/AGL relatado (e portanto o
+//   'terreno+folga' fica MUITO mais negativo que minSafeAltitude (0 m,
+//   ver a secao "O QUE MUDOU" acima) -- entao quem VENCE o max() e' sempre
+//   o piso absoluto de 0 m, nunca o valor bugado. Medido no dump: durante
+//   os trechos acima, 'alt=' fica travado perto de 0 m MSL (o piso
+//   absoluto deste cenario, ja NAO mais 200 m -- ver abaixo) enquanto
+//   'elev='/'agl=' mostram os numeros sem sentido (elev=-32765,
+//   agl=32765...) -- a AERONAVE fica em voo nivelado seguro perto do nivel
+//   do mar; so' o CAMPO de elevacao/AGL relatado (e portanto o
 //   acompanhamento fino do relevo) fica errado enquanto isso dura. Nenhuma
 //   linha deste cenario contorna isso -- e' o proprio piso absoluto de
 //   domain/TerrainFloor.hpp (a "rede" que a documentacao daquele arquivo ja
 //   promete para "quando se sabe menos sobre o mundo") funcionando como
 //   projetado, mesmo diante de um dado de entrada corrompido por um bug
-//   bem a montante.
+//   bem a montante -- so' que agora com um piso residual de 0 m em vez de
+//   200 m (ver "O QUE MUDOU" acima), porque este cenario pediu para
+//   desprezar a altitude de seguranca generica do modelo.
 //
 //   O QUE ISSO SIGNIFICA PARA QUEM LER data/messages/mission_*.jsonl: o
 //   campo terrainElevM (e altAglM) e' confiavel do inicio do corredor ate
@@ -322,13 +345,17 @@
 
                // --- o AGENTE: UBF de producao, arvore de UM no so
                // (( Navigate )) -- mesmo padrao de full-systems-nav/
-               // A4-6DOF. terrainClearance e' o UNICO ajuste fora do
-               // default (500 m): 300 ft, exatamente o pedido. -----------
+               // A4-6DOF. terrainClearance: 300 ft, exatamente o pedido
+               // (default e' 500 m). minSafeAltitude: 0 m -- desliga o
+               // piso absoluto generico do modelo (default 200 m, ver "O
+               // QUE MUDOU" no topo deste arquivo) para o termo do
+               // terreno decidir sozinho o tempo quase todo. -------------
                agent: ( FlightAgentTC
                   state: ( FlightState )
                   behavior: ( BtBehavior
                      treeFile: "./dist/share/mixr-plugins/A-4/flight_tree_nav.xml"
                      terrainClearance: ( Feet 300 )
+                     minSafeAltitude: ( Meters 0 )
                   )
                )
 
