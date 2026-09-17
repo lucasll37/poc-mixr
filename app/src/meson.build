@@ -83,7 +83,7 @@ edlcheck = executable('edlcheck',
 # edlcheck, NAO recompila mixr_factory.cpp -- este programa carrega UM
 # plugin isolado via xplugin::loadModule() direto, sem cadeia de factories
 # nativas nem Station nenhuma por perto.
-plugininfo = executable('plugininfo',
+executable('plugininfo',
     files('plugininfo_main.cpp'),
     cpp_args            : asan_cpp_args,
     link_args           : asan_link_args + rpath_link_args,
